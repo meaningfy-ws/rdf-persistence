@@ -8,12 +8,11 @@ The toolkit starts spans and writes log records, and configures nothing: it uses
 OpenTelemetry API only, so without an SDK its spans are no-ops and its log records go to whatever
 handler your application set. This page shows what the application installs to make them visible,
 what the toolkit then emits, how the log attributes changed, and what stays out of telemetry. It
-describes `develop` as of 2026-11-17 (the change `otel-observability`). The toolkit targets
-OpenTelemetry semantic conventions v1.45.0 and the `opentelemetry-api` 1.45.x release its lock
-resolves; it declares `opentelemetry-api>=1.44,<2`.
+describes rdf-persistence from 0.5.0. The toolkit targets OpenTelemetry semantic conventions
+v1.45.0 and the `opentelemetry-api` 1.45.x release; it declares `opentelemetry-api>=1.44,<2`.
 
 [#breaking]
-.Breaking for whoever reads the logs
+.Breaking for whoever reads the logs, from rdf-persistence 0.5.0
 ****
 The attribute names and the message texts of the toolkit's log records changed. Queries,
 dashboards and alerts on the old names (`step`, `tenant`, `resource`, ...) or on message text that
@@ -25,8 +24,9 @@ xref:#old-to-new[the old-to-new table]. There are no compatibility aliases.
 == 1. Install the SDK and an exporter
 
 The toolkit depends on `opentelemetry-api` only. The application adds the SDK, an exporter and the
-instrumentation it wants. The SDK must be of the same release line as the API the lock resolves
-(1.45.x at the time of writing), so let `uv` resolve them together:
+instrumentation it wants, and lets `uv` resolve them together so the SDK matches the API's release
+line. FastStream's telemetry middleware (step 4) needs `opentelemetry-semantic-conventions`; the SDK
+brings it, so the list below adds nothing for it:
 
 [source,toml]
 ----
@@ -41,8 +41,10 @@ dependencies = [
 ]
 ----
 
-Then install the providers once, before the application is built. This sets up traces and logs
-and sends both over OTLP:
+Then install the providers once, before the application is built. This is the complete function:
+it sets up traces and logs, sends both over OTLP, instruments `httpx` (step 3) and attaches the
+logging bridge (step 5). The module path (`library/entrypoints/telemetry.py`) and the service name
+(`library`) are placeholders for your own:
 
 [source,python]
 ----
@@ -53,6 +55,7 @@ from opentelemetry import trace
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.logging.handler import LoggingHandler
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
@@ -72,31 +75,33 @@ def install_telemetry() -> None:
     logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
     set_logger_provider(logger_provider)
 
+    # httpx, step 3: before any store is built, so every client the adapters create is traced
+    HTTPXClientInstrumentor().instrument()
+
     # the logging bridge, step 5
     logging.getLogger().addHandler(LoggingHandler(level=logging.INFO, logger_provider=logger_provider))
     logging.getLogger().setLevel(logging.INFO)
 ----
 
 The exporters read their endpoint and headers from the standard `OTEL_EXPORTER_OTLP_*`
-environment variables. Call `install_telemetry()` first in the composition root, before
-`build_library_app` (step 12 of xref:howto/adopt.adoc#serve[the adoption guide]). The toolkit never
-calls any of this: it installs no provider, exporter, handler or level, in the package or in the
-testkit.
+environment variables. The toolkit never calls any of this: it installs no provider, exporter,
+handler or level, in the package or in the testkit. The end of step 4 shows where the call
+goes in the composition root.
 
 [#fastapi]
 == 2. Trace the HTTP requests
 
 FastAPI 0.162 has native telemetry. It is on by default, uses the global providers you installed
 in step 1, and opens one SERVER span per request. You build the `FastAPI` app, so you set it
-there; `install_service` never touches it:
+there; `install_service` never touches it. The three lines are alternatives, not a sequence; use one:
 
 [source,python]
 ----
 from fastapi import FastAPI
 
-app = FastAPI()                                        # tracing on, global providers
-app = FastAPI(telemetry={"tracing": True, "logs": False})
-app = FastAPI(telemetry={"exclude": lambda scope: scope["path"] == "/health"})
+app = FastAPI()                                        # alternative 1: the defaults, tracing on, global providers
+app = FastAPI(telemetry={"tracing": True, "logs": False})                           # alternative 2: no FastAPI logs
+app = FastAPI(telemetry={"exclude": lambda scope: scope["path"] == "/health"})      # alternative 3: skip a path
 ----
 
 `telemetry` takes a `TelemetryConfig` dictionary (`fastapi.telemetry.TelemetryConfig`); the keys
@@ -114,14 +119,14 @@ an exception message of your own can carry a tenant's data.
 
 The Fuseki and identity adapters (and the token-key fetch) talk over `httpx`; the S3 file store uses
 `boto3`, which this instrumentation does not cover. The toolkit does not instrument the client; the
-instrumentation package does. Instrument before the stores are built, so every client the adapters
-create is traced:
+instrumentation package does. `install_telemetry()` of step 1 already calls it, before any store is
+built, so every client the adapters create is traced:
 
 [source,python]
 ----
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-HTTPXClientInstrumentor().instrument()     # in install_telemetry(), before any store is built
+HTTPXClientInstrumentor().instrument()     # already in install_telemetry(), step 1
 ----
 
 An HTTP CLIENT span then appears beneath the toolkit's own CLIENT span for the store call (step 6).
@@ -139,7 +144,7 @@ from rdf_persistence.adapters.redis_events import RedisEventBus
 
 bus = RedisEventBus(
     "redis://redis:6379",
-    deployment=settings.deployment,
+    deployment="library",          # your deployment's name, as in the event-driven guide
     middlewares=[RedisTelemetryMiddleware()],
 )
 ----
@@ -152,6 +157,33 @@ another deployment's CONSUMER span continues the trace; the envelope reads back 
 xref:howto/event-driven.adoc#relay[Carry commits to other deployments and to browsers] for the rest
 of the bus.
 
+The pieces go into the composition root of xref:howto/adopt.adoc#serve[the adoption guide] in this
+order. The telemetry set-up comes first, because a provider installed after a store is built does
+not trace that store's clients:
+
+[source,python]
+----
+install_telemetry()                                   # step 1: providers, httpx, logging bridge
+app = FastAPI(telemetry={"tracing": True})            # step 2: you build the app
+bus = RedisEventBus(                                  # step 4: only if the service uses events
+    "redis://redis:6379",
+    deployment="library",
+    middlewares=[RedisTelemetryMiddleware()],
+)
+kit = install_service(                                # as the adoption guide shows it
+    app,
+    event_bus=bus,
+    # ... schema, stores, identity, verifier, settings, as in the adoption guide
+)
+----
+
+`install_service` mounts the toolkit's routes and wiring on the app and returns the *kit*, the
+toolkit's handle to the parts it set up (*wired* means connected to the app and to each other). `RedisEventBus` is the toolkit's event-broker adapter, and a
+*deployment* is one running instance of your service, named by a lowercase string that is unique on
+the broker (see xref:howto/event-driven.adoc#relay[Carry commits to other deployments and to
+browsers]). The application adds no dependency for steps 2 and 4: FastAPI is a toolkit dependency and
+FastStream comes with the `events` extra of step 1.
+
 [#logging-bridge]
 == 5. Send the log records with the logging bridge
 
@@ -161,15 +193,9 @@ trace and span ids, the `extra=` attributes as log attributes, and `exc_info` as
 Attach one to the root logger (the last lines of `install_telemetry` above), or to the
 `rdf_persistence` logger to bridge the toolkit alone.
 
-Which module provides the handler has changed between SDK releases, and the name carries no
-promise: in `opentelemetry-sdk` 1.45.2, the release `uv.lock` resolves, `LoggingHandler` is in
-`opentelemetry.sdk._logs` (defined in `opentelemetry.sdk._logs._internal`), but it is deprecated
-there and raises a `DeprecationWarning` when built, which points to the handler of
-`opentelemetry-instrumentation-logging`. This page uses that one,
-`opentelemetry.instrumentation.logging.handler.LoggingHandler` (release 0.66b2, which takes
-`level`, `logger_provider` and `log_code_attributes`). After an upgrade of the SDK, look for the
-class with `uv run python -c "import opentelemetry.sdk._logs as m; print(m.LoggingHandler.__module__)"`
-and read the release notes of both packages; the import path above is the line to change.
+The handler comes from `opentelemetry-instrumentation-logging`; the SDK's own `LoggingHandler` is
+deprecated. If the import fails after an upgrade, look in the release notes of that package and of
+`opentelemetry-sdk`: the import line of `install_telemetry` is the one to change.
 
 With the bridge on, the record the sweep writes when it drops an orphan database
 (`log.info("dropping an orphan database", extra=...)`) reaches the backend as a log record with the
@@ -183,7 +209,7 @@ Span names are fixed: an identifier is an attribute, never part of a name, so a 
 cardinality. An exception that leaves a span records it, sets the status ERROR and sets `error.type`
 to the exception's qualified class name.
 
-*Store spans.* The kit puts a traced wrapper around every wired store: one CLIENT span per call of
+*Store spans.* `install_service` puts a traced wrapper around every store you give it: one CLIENT span per call of
 the `Store` port, named after the port method. They carry `db.system.name`, `db.operation.name`
 and, when the call names a dataset, `db.namespace`.
 
@@ -288,7 +314,7 @@ attributes that apply to it, and always `rp.step`.
 |`rp.step`
 |string
 |What the code was doing, such as `drop-orphan-database`; on every record and span
-|`rp`
+|`rp` (the toolkit's own name, not in the conventions)
 
 |`rp.tenant.id`
 |string
@@ -480,20 +506,20 @@ Messages are now constant, and the keys changed. Rewrite a query on an old key t
 |`resources`
 |`rp.sweep.resources`
 
-|`error.type` (the 500 answer of the service)
-|the same name and the same qualified value
+|`error.type` (on the 500 answer of the service)
+|unchanged: it keeps its name and its value, the exception's qualified class name
 |===
 
 A query that matched a tenant, an activity or a database in the message text now matches the
 attribute (`rp.tenant.id`, `rp.activity.id`, `db.namespace`) and never the text.
 
 A record of a failure carries the exception in `exc_info`, which the bridge sends as `exception.type`,
-`exception.message` and `exception.stacktrace`. The exception is `error_text` only where its text
-could carry a tenant's data (step 10).
+`exception.message` and `exception.stacktrace`. Where the exception's text could carry a tenant's
+data, the record carries `error.type` and `rp.error.detail` instead, and no `exc_info` (step 10).
 
-One toolkit class changed with this: `FusekiDataset.ds_name` is now `fuseki_dataset_name` (the
-dotted wire name `ds.name` is unchanged). Code that reads the field by its Python name changes it;
-generated models name a field after its slot whenever the alias is not a Python identifier.
+One toolkit class changed with this: the field `FusekiDataset.ds_name` was renamed
+`fuseki_dataset_name`; the dotted wire name `ds.name` is unchanged. Code that reads the field by its
+Python name changes it.
 
 [#sampling]
 == 9. Keep the span volume down
@@ -547,10 +573,12 @@ outside the toolkit the same way.
 == 11. Check that it works
 
 . Start the application against a local collector (or swap `OTLPSpanExporter()` in step 1 for
-  `ConsoleSpanExporter()` from `opentelemetry.sdk.trace.export`), and commit one aggregate.
+  `ConsoleSpanExporter()` from `opentelemetry.sdk.trace.export`, and `OTLPLogExporter()` for
+  `ConsoleLogRecordExporter()` from `opentelemetry.sdk._logs.export`), and commit one aggregate
+  through an HTTP request.
 . Look for one trace holding the request span, `rp.session.commit`, an `update` span with
   `db.system.name` `fuseki`, and its HTTP span.
 . Look for a log record with a body that is a sentence and an `rp.step` attribute; on a record
   written inside a span, the trace id equals the span's.
-. If nothing appears, check the order in step 1: the providers are installed before the stores
-  are built, and the root logger has the handler.
+. If nothing appears, check the order in step 4: `install_telemetry()` runs before the stores are
+  built, it calls the httpx instrumentation, and the root logger has the handler.
