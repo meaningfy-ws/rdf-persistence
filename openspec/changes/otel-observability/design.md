@@ -407,6 +407,12 @@ DEC-9, and PD-4's fallback `"sparql"`.
   qualified class name; task 2.1 rewords it ("or the code a service answered with", PD-3) and
   regenerates.
 
+- **D-7 TC-22's input** (stage 1 container lane, red). The test wrote a raw `xadd {"data": "{}"}`;
+  FastStream decodes that body as JSON, so the handler's `raw: bytes` refuses it before
+  `RedisEventBus` reads the envelope, and no warning is logged. The test, not the adapter, is
+  wrong: it sends a bytes body with headers that are no valid envelope, so the adapter's own
+  check refuses it.
+
 **Stage 1, under the floor** (L2+L3 pass, `findings=5 accepted=0`; W1 and S3 carried by D-6):
 
 - S1 `test_messagebus_adversarial.py:629,669,776` assert exception text through `caplog.text`
