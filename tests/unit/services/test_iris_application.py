@@ -14,13 +14,12 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.services.iris import (
+from rdf_persistence.domain.layout import (
     APPLICATION_ID,
     APPLICATION_SUFFIX,
-    Iris,
     application_database_name,
-    effective_policy,
 )
+from rdf_persistence.services.iris import Iris, effective_policy
 
 BASE = "https://ex.org/"
 APPLICATION = f"{BASE}app"

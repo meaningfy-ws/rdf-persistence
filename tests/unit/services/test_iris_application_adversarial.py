@@ -24,13 +24,12 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
+from rdf_persistence.domain.layout import APPLICATION_ID, graph_iri
 from rdf_persistence.services import iris as iris_module
 from rdf_persistence.services.iris import (
-    APPLICATION_ID,
     DEFAULT_ALPHABET,
     Iris,
     effective_policy,
-    graph_iri,
     policy_differences,
 )
 

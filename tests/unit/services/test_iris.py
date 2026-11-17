@@ -4,57 +4,32 @@ import re
 import uuid
 
 import pytest
-from rdflib import BNode, Literal, URIRef
+from rdflib import URIRef
 
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
+from rdf_persistence.domain.layout import (
+    graph_iri,
+    system_database_name,
+    tenant_name_prefix,
+)
 from rdf_persistence.services.iris import (
     DEFAULT_IRIS,
     aggregate_iri,
-    graph_iri,
     is_aggregate_graph_iri,
     is_aggregate_iri,
-    is_canonical_uuid,
-    is_inside_tenant,
     is_loaded_graph_of,
-    is_skolem_of,
     loaded_graph_iri,
     mint_aggregate_iri,
     mint_part_iri,
     mint_tenant_iri,
     principal_iri,
-    root_of_graph,
-    skolem_iri,
-    system_database_name,
     tenant_iri,
-    tenant_name_prefix,
     tenant_resource_name,
-    toolkit_principal_iri,
 )
 
 BASE = "https://example.org/library/"
 UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 TENANT = URIRef(f"{BASE}libraries/12345678-1234-4234-8234-123456789abc")
-
-
-def test_graph_iri_appends_graph():
-    root = f"{BASE}libraries/t/books/b"
-    assert graph_iri(root) == URIRef(f"{root}/graph"), "a graph IRI is its root plus slash graph"
-    assert graph_iri(root) != URIRef(root), "never the root IRI itself"
-
-
-def test_root_of_graph_is_the_inverse_of_graph_iri():
-    root = f"{BASE}libraries/t/books/b"
-    assert root_of_graph(graph_iri(root)) == URIRef(root), (
-        "the root of a graph IRI is the root it was made from"
-    )
-
-
-@pytest.mark.parametrize(
-    "iri", [f"{BASE}libraries/t/books/b", f"{BASE}libraries/t/books/b/graphs", "/graph"]
-)
-def test_root_of_graph_refuses_what_is_not_a_graph_iri(iri):
-    with pytest.raises(InvalidIri):
-        root_of_graph(URIRef(iri))
 
 
 def test_mint_tenant_iri_has_the_base_segment_and_a_uuid():
@@ -118,14 +93,6 @@ def test_tenant_name_starts_with_the_sweep_prefix_and_fits_a_bucket_name():
     assert re.fullmatch("[a-z0-9-]{3,63}", name), name
 
 
-@pytest.mark.parametrize("prefix", ["", "Lib", "a" * 21, "li b", "lib_x", "-lib"])
-def test_a_prefix_outside_pd_6a_is_refused(prefix):
-    with pytest.raises(InvalidIri, match="prefix"):
-        system_database_name(prefix)
-    with pytest.raises(InvalidIri, match="prefix"):
-        tenant_name_prefix(prefix)
-
-
 def test_tenant_name_needs_a_uuid_last_segment():
     with pytest.raises(InvalidIri, match="tenant IRI"):
         tenant_resource_name("lib", URIRef(f"{BASE}libraries/not-a-uuid"))
@@ -173,43 +140,6 @@ def test_tenant_name_needs_a_canonical_uuid(last):
 
 def test_an_iri_rule_breach_is_an_invalid_iri_and_still_a_value_error():
     assert issubclass(InvalidIri, ValueError), "callers that catch ValueError keep working"
-
-
-def test_a_skolem_iri_lives_under_its_graph_and_is_fresh_each_time():
-    graph = graph_iri(f"{TENANT}/books/1")
-    first = skolem_iri(graph)
-    assert first.startswith(f"{graph}/.well-known/genid/"), "under the graph, in the genid space"
-    assert skolem_iri(graph) != first, "each mint is fresh"
-
-
-def test_is_skolem_of_tells_the_skolem_iris_of_a_graph_from_everything_else():
-    graph = graph_iri(f"{TENANT}/books/1")
-    other = graph_iri(f"{TENANT}/books/2")
-    assert is_skolem_of(graph, skolem_iri(graph)), "a minted skolem IRI"
-    assert not is_skolem_of(graph, skolem_iri(other)), "a skolem IRI of another graph"
-    assert not is_skolem_of(graph, graph), "the graph IRI itself"
-    assert not is_skolem_of(graph, BNode("x")), "a blank node"
-    assert not is_skolem_of(graph, Literal(f"{graph}/.well-known/genid/x")), "a literal"
-
-
-def test_the_toolkit_principal_is_toolkit_under_the_base():
-    assert toolkit_principal_iri(BASE) == URIRef(f"{BASE}toolkit"), (
-        "the toolkit principal is toolkit under the base"
-    )
-
-
-@pytest.mark.parametrize(
-    ("iri", "inside"),
-    [
-        (f"{TENANT}/books/1", True),
-        (f"{TENANT}/access", True),
-        (str(TENANT), False),  # the tenant itself is not inside itself
-        (f"{TENANT}x/books/1", False),  # a longer sibling
-        ("https://example.org/other/books/1", False),
-    ],
-)
-def test_an_iri_is_inside_a_tenant_only_below_its_path(iri, inside):
-    assert is_inside_tenant(str(TENANT), iri) is inside, iri
 
 
 # Fixed, so every xdist worker collects the same parameter ids.
@@ -296,20 +226,6 @@ def test_principal_iri_keeps_the_subject_in_one_segment(issuer, subject, expecte
 # --- the IRIs of a path (PD-14b): one rule, validating ------------------------------------------
 
 UUID_A = "12345678-1234-4234-8234-123456789abc"
-
-
-@pytest.mark.parametrize(
-    ("text", "canonical"),
-    [
-        (UUID_A, True),
-        (UUID_A.upper(), False),
-        (UUID_A.replace("-", ""), False),
-        ("books", False),
-        ("", False),
-    ],
-)
-def test_only_a_lower_case_hyphenated_uuid_is_canonical(text, canonical):
-    assert is_canonical_uuid(text) is canonical, "only a lower-case hyphenated uuid is canonical"
 
 
 def test_a_tenant_iri_is_the_base_the_segment_and_the_id():

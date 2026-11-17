@@ -38,19 +38,19 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.domain.media import N_QUADS
-from rdf_persistence.domain.sparql import Triple, fill, term
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.files import FileStore
-from rdf_persistence.services.iris import (
-    Iris,
+from rdf_persistence.domain.layout import (
     application_database_name,
     graph_iri,
     stamps_graph_iri,
     system_database_name,
     toolkit_principal_iri,
 )
+from rdf_persistence.domain.media import N_QUADS
+from rdf_persistence.domain.sparql import Triple, fill, term
+from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.access import AccessRules
+from rdf_persistence.services.files import FileStore
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.migrations import stamp_if_none, stamp_problems

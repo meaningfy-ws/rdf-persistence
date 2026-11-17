@@ -27,6 +27,7 @@ from rdflib.term import Node
 
 from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
 from rdf_persistence.services import vocabulary as v
@@ -38,7 +39,7 @@ from rdf_persistence.services.artifacts import (
     SHAPES_FILE,
     TYPE_KEY,
 )
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris, graph_iri
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.schema_structure import (
     annotation_text,
     holds_owned_part,

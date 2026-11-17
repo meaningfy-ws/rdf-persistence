@@ -27,7 +27,7 @@ from rdf_persistence.domain.generated import (
     rp_provenance,
     rp_workflow,
 )
-from rdf_persistence.services.iris import graph_iri
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.services.schema import load_schema
 from tests.fixtures.library.generated import (
     books,

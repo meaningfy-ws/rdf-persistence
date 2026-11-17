@@ -42,6 +42,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     ListPlan,
     ListRequest,
 )
+from rdf_persistence.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.domain.sparql import (
     SparqlTerm,
     Triple,
@@ -55,12 +56,7 @@ from rdf_persistence.domain.sparql import (
     triples_block,
 )
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.iris import (
-    DEFAULT_IRIS,
-    Iris,
-    graph_iri,
-    skolem_iri,
-)
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import (
     PAGE,
     Listings,

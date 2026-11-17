@@ -13,8 +13,9 @@ from rdflib import URIRef
 from rdf_persistence import FusekiStore
 from rdf_persistence.domain.exceptions import DatabaseGone
 from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.domain.sparql import fill, term
-from rdf_persistence.services.iris import Iris, graph_iri, tenant_resource_name
+from rdf_persistence.services.iris import Iris, tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types

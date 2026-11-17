@@ -43,6 +43,7 @@ from rdf_persistence.domain.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
+from rdf_persistence.domain.layout import system_database_name
 from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.services import file_removal, tenant_dump, tenant_sweep
 from rdf_persistence.services.access import AccessRules
@@ -56,7 +57,7 @@ from rdf_persistence.services.event_hub import EventHub
 from rdf_persistence.services.events import EventBus, context_link
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.identity import Identity
-from rdf_persistence.services.iris import IdSource, Iris, draw_id, system_database_name
+from rdf_persistence.services.iris import IdSource, Iris, draw_id
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.messagebus import MessageBus

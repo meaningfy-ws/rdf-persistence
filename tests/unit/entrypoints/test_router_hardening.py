@@ -10,10 +10,10 @@ from fastapi import HTTPException
 
 from rdf_persistence import Page
 from rdf_persistence.domain.exceptions import BadQuery, SparqlError
+from rdf_persistence.domain.layout import system_database_name
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import MAX_NODES, Documents
-from rdf_persistence.services.iris import system_database_name
 from tests.toy import SETTINGS
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of, store_scan
 from tests.unit.entrypoints.scene import PROBLEMS, Scene, problem_of

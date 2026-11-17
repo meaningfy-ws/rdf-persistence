@@ -6,13 +6,8 @@ from rdf_persistence.domain.generated.service.rp_service import (
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.services.iris import (
-    DEFAULT_ALPHABET,
-    Iris,
-    policy_differences,
-    policy_record_iri,
-    stamps_graph_iri,
-)
+from rdf_persistence.domain.layout import policy_record_iri, stamps_graph_iri
+from rdf_persistence.services.iris import DEFAULT_ALPHABET, Iris, policy_differences
 
 SETTINGS = ServiceSettings(
     base="https://example.org/library/",
