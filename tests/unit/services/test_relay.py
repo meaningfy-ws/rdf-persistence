@@ -18,6 +18,7 @@ from rdf_persistence.domain.exceptions import StoreUnavailable
 from rdf_persistence.domain.generated.rp_provenance import Generation, Invalidation, Replace
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.events import context_link
+from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.relay import Relay, chain_order
 from rdf_persistence.services.schema import load_schema
@@ -300,7 +301,10 @@ class HangingBus(InMemoryEventBus):
 async def test_d18_a_publish_that_hangs_times_out_and_stops_that_database_only(world, caplog):
     await add_one(world, world.tenant)
     await add_one(world, world.second)
-    relay = world.relay(HangingBus(world.broker, world.tenant), publish_timeout=0.05)
+    relay = world.relay(
+        HangingBus(world.broker, world.tenant),
+        events=EventSettings(publish_timeout_seconds=0.05),
+    )
     with caplog.at_level(logging.WARNING, logger=LOGGER):
         await asyncio.wait_for(relay.run_once(), 5)
     assert classes(world, world.tenant) == [], "nothing went out, nothing marked"
@@ -417,7 +421,7 @@ async def test_tc16_the_loop_survives_a_failed_round_and_publishes_after_a_wake(
         return await real()
 
     monkeypatch.setattr(world.tenancy, "tenants", tenants)
-    relay = world.relay(interval=3600)
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
     task = asyncio.create_task(relay.run())
     try:
         with caplog.at_level(logging.ERROR, logger=LOGGER):
@@ -511,7 +515,7 @@ async def test_tc18a_wakes_during_a_round_cause_exactly_one_more_round(world, mo
         return await real()
 
     monkeypatch.setattr(world.tenancy, "tenants", tenants)
-    relay = world.relay(interval=3600)
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
     task = asyncio.create_task(relay.run())
     try:
         relay.wake()

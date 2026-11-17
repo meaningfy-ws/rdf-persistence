@@ -4,7 +4,7 @@ Needs the extra ``rdf-persistence[events]`` and Redis 8.4 or later (redelivery u
 ``XREADGROUP ... CLAIM``). Only this module imports ``faststream`` and ``redis``.
 
 A deployment is a consumer group: each deployment reads every entry once, and an entry whose
-``receive`` raised stays pending and is delivered again after ``claim_idle``. Publishing needs a
+``receive`` raised stays pending and is delivered again after ``events.claim_idle_seconds``. Publishing needs a
 started bus; a closed bus raises on ``publish``. Two processes of one deployment share the consumer
 name ``deployment``, so run one consumer per deployment.
 """
@@ -21,6 +21,7 @@ from pydantic import ValidationError
 from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.services.events import Receive
 from rdf_persistence.services.generated.service.rp_service import EventEnvelope
+from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.telemetry import log_extra
 
@@ -28,7 +29,6 @@ log = logging.getLogger(__name__)
 
 REDIS_SYSTEM = "redis"
 
-POLLING_INTERVAL_MS = 100
 ENVELOPE_FIELDS = tuple(EventEnvelope.model_fields)
 
 
@@ -38,15 +38,15 @@ class RedisEventBus:
         url: str,
         *,
         deployment: str,
-        stream: str = "rp-events",
-        retention: timedelta = timedelta(days=7),
-        claim_idle: timedelta = timedelta(seconds=30),
+        events: EventSettings | None = None,
     ) -> None:
+        events = events or EventSettings()
         self._url = url
         self._deployment = deployment
-        self._stream = stream
-        self._retention = retention
-        self._claim_idle = claim_idle
+        self._stream = events.stream
+        self._retention = timedelta(seconds=events.retention_seconds)
+        self._claim_idle = timedelta(seconds=events.claim_idle_seconds)
+        self._polling_interval_ms = events.polling_interval_ms
         self._broker: RedisBroker | None = None
 
     def _context(self, step: str) -> LogContext:
@@ -83,7 +83,7 @@ class RedisEventBus:
             self._stream,
             group=self._deployment,
             consumer=self._deployment,
-            polling_interval=POLLING_INTERVAL_MS,
+            polling_interval=self._polling_interval_ms,
             claim_min_idle_time=int(self._claim_idle.total_seconds() * 1000),
         )
 

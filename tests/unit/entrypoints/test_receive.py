@@ -18,6 +18,7 @@ from rdf_persistence.domain.exceptions import (
     TenantBehind,
 )
 from rdf_persistence.domain.generated.rp_provenance import Activity, Add, Replace
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import Work, command
 from rdf_persistence.services.session import Session
@@ -305,7 +306,7 @@ async def test_a_looping_observer_over_the_limit_leaves_one_error_record_in_the_
     bus = bootstrap(
         commands={Replace: replace},
         observers={Replace: [again]},
-        limit=3,
+        limits=LimitSettings(max_messages=3),
         mapper=world.cat.kit.mapper,
     )
     world.cat.kit.bus = bus

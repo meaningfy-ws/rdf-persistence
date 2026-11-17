@@ -39,6 +39,7 @@ from rdf_persistence.services.artifacts import (
     SHAPES_FILE,
     TYPE_KEY,
 )
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.jsonld import (
     ABSOLUTE_IRIS,
@@ -69,8 +70,6 @@ NATIVE = {"useNativeTypes": True}
 NOT_INLINE = "a JSON-LD context must be inline: remote contexts are not followed"
 ONE_GRAPH = "a body describes one graph"
 MAX_MESSAGES = 5
-# Objects in a body; with the byte bound, it keeps one request from costing a minute.
-MAX_NODES = 10_000
 TYPE_KEYS = ("type", TYPE_KEY)
 VALUE_KEY = "@value"
 LANGUAGE_KEY = "@language"
@@ -79,10 +78,20 @@ LANGUAGE_KEY = "@language"
 class Documents:
     """The schema's context, frames and shapes, and what turns a body into triples and triples into a body."""
 
-    def __init__(self, view: SchemaView, folder: Path, iris: Iris = DEFAULT_IRIS) -> None:
+    def __init__(
+        self,
+        view: SchemaView,
+        folder: Path,
+        iris: Iris = DEFAULT_IRIS,
+        *,
+        limits: LimitSettings | None = None,
+    ) -> None:
         """Read the artefacts the generator wrote to ``folder`` for the schema ``view``; new parts get
-        their IRIs from ``iris`` (default: the default policy)."""
+        their IRIs from ``iris`` (default: the default policy). A body holds at most
+        ``limits.max_document_nodes`` objects and list values (a fresh ``LimitSettings`` unless
+        given); with the byte bound, that keeps one request from costing a minute."""
         self._iris = iris
+        self._max_nodes = (limits or LimitSettings()).max_document_nodes
         self._view = view
         self._folder = folder
         self._frames: dict[str, dict] = {}
@@ -195,7 +204,7 @@ class Documents:
             raise InvalidBody(f"the body is not valid JSON: {str(error)[:200]}") from error
         if not isinstance(body, dict):
             raise InvalidBody("the body must be a JSON object")
-        _bound(body)
+        _bound(body, self._max_nodes)
         return body if media_type == JSON_LD else self._plain_document(body, cls)
 
     def _plain_document(self, body: dict, cls: ClassDefinition) -> dict:
@@ -482,25 +491,23 @@ def _without_languages(value: Any) -> Any:
     return value
 
 
-def _bound(body: dict) -> None:
-    """Raise unless the body holds at most ``MAX_NODES`` objects and list values; counted without recursion."""
+def _bound(body: dict, limit: int) -> None:
+    """Raise unless the body holds at most ``limit`` objects and list values; counted without recursion."""
     pending: list[Any] = [body]
     count = 0
     while pending:
         value = pending.pop()
         if isinstance(value, dict):
             count += 1
-            if count > MAX_NODES:
-                raise PayloadTooLarge(f"a body holds at most {MAX_NODES} objects")
+            if count > limit:
+                raise PayloadTooLarge(f"a body holds at most {limit} objects")
             pending.extend(value.values())
         elif isinstance(value, list):
             count += sum(
                 not isinstance(item, dict | list) for item in value
             )  # a list of strings costs as much as one of objects
-            if count > MAX_NODES:
-                raise PayloadTooLarge(
-                    f"a body holds at most {MAX_NODES} objects and values in lists"
-                )
+            if count > limit:
+                raise PayloadTooLarge(f"a body holds at most {limit} objects and values in lists")
             pending.extend(value)
 
 

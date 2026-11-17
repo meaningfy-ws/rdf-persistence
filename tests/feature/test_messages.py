@@ -29,6 +29,7 @@ from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import UnitOfWork
@@ -57,6 +58,7 @@ from tests.toy import (
     held,
     role,
     toy_mapper,
+    toy_mapper_limited,
 )
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 
@@ -141,7 +143,10 @@ class Run:
             ]
         )
         self.bus = bootstrap(
-            commands=self.commands, observers=self.observers, limit=self.limit, mapper=toy_mapper()
+            commands=self.commands,
+            observers=self.observers,
+            limits=LimitSettings(max_messages=self.limit),
+            mapper=toy_mapper(),
         )
         listings = Listings(VIEW)
         guards = WriteGuards(
@@ -299,7 +304,7 @@ def _spent_record(run: Run) -> None:
 @given("a change that adds four books in batches of two")
 def _four_books(run: Run) -> None:
     run.world()
-    run.unit = UnitOfWork(run.session, toy_mapper(), max_roots=2)
+    run.unit = UnitOfWork(run.session, toy_mapper_limited(2))
     for iri in (B1, B2, B3, B4):
         run.unit.add(dune(iri, chapters=1))
 

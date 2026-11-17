@@ -25,8 +25,9 @@ from rdf_persistence.domain.generated.rp_provenance import (
 from rdf_persistence.domain.generated.rp_workflow import Transition, Workflow
 from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS
-from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, Mapper, new_part
+from rdf_persistence.services.mapper import Mapper, new_part
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence.testkit import assert_isomorphic
@@ -48,6 +49,7 @@ from tests.toy import (
     shelf_iri,
     template,
     toy_mapper,
+    toy_mapper_limited,
 )
 from tests.toy import access as toy_access
 
@@ -531,15 +533,11 @@ def test_a_served_command_serves_one_commit_and_a_second_claim_is_refused():
         served.claim()
 
 
-def toy_mapper_limited(max_roots: int) -> Mapper:
-    return Mapper(load_schema(TOY_SCHEMA), generated_models(*MODULES), max_roots=max_roots)
-
-
 def test_a_mapper_holds_its_root_limit() -> None:  # TC-26b
-    assert toy_mapper().max_roots == DEFAULT_MAX_ROOTS, "the default"
-    assert toy_mapper_limited(7).max_roots == 7, "the one it was given"
+    assert toy_mapper().max_roots == LimitSettings().max_roots == 500, "the default group"
+    assert toy_mapper_limited(7).max_roots == 7, "the one its limits group gave"
 
 
-def test_a_mapper_refuses_a_root_limit_under_one() -> None:  # TC-26b
-    with pytest.raises(ValueError, match="max_roots"):
-        toy_mapper_limited(0)
+def test_a_mapper_no_longer_takes_the_roots_limit_as_a_keyword() -> None:  # TC-26b, DEC-5
+    with pytest.raises(TypeError, match="max_roots"):
+        Mapper(load_schema(TOY_SCHEMA), generated_models(*MODULES), max_roots=7)  # type: ignore[call-arg]

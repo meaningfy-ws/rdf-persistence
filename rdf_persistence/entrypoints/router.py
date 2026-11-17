@@ -444,7 +444,7 @@ def build_router(kit: ServiceKit) -> APIRouter:
     add_context_route(router, kit)
     add_tenant_routes(router, kit, gate)
     # before the aggregates; ``rp-events`` is under the reserved prefix (D-15)
-    add_events_route(router, kit)
+    add_events_route(router, kit, sse=kit.toolkit.sse)
     for rp_path, cls in kit.documents.aggregates.items():
         add_aggregate_routes(router, kit, gate, rp_path, cls)
     return router

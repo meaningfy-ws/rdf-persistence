@@ -129,8 +129,8 @@ notes each, the request is about 2.9 MB, and Fuseki takes about 4 seconds to app
 would risk a body limit or a timeout on a store you do not control, and the whole request would be
 lost with the one guard that failed.
 
-So a `UnitOfWork` refuses a commit over its `max_roots`, 500 unless you pass another value. The
-count is the roots added, replaced and removed. The refusal comes before anything is read or
+So a `UnitOfWork` refuses a commit over the `max_roots` of its mapper, 500 unless the mapper's
+`limits` (`LimitSettings`) say another value. The count is the roots added, replaced and removed. The refusal comes before anything is read or
 written, and the unit of work is unchanged:
 
 [source,python]

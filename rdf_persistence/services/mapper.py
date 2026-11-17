@@ -42,6 +42,7 @@ from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.layout import is_skolem_of
 from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.provenance import Served
 from rdf_persistence.services.schema_structure import (
@@ -113,25 +114,20 @@ def new_part[M: BaseModel](
     return cls(id=str(minted), **fields)
 
 
-DEFAULT_MAX_ROOTS = 500  # roots in one commit transaction (atomic-commit PD-10)
-
-
 class Mapper:
     """Maps the generated classes of a schema to and from the triples of an aggregate.
 
     It keeps no model of its own (PD-24): it reads each class and slot from ``SchemaView`` as it
     goes, remembering only the induced slots of a class and their predicates. It holds the limit on
-    the roots of one commit, ``max_roots``, which every ``UnitOfWork`` over it and the reference
-    collections' cascade share.
+    the roots of one commit, ``max_roots`` of its ``limits`` (a fresh ``LimitSettings`` unless
+    given), which every ``UnitOfWork`` over it and the reference collections' cascade share.
     """
 
     def __init__(
-        self, view: SchemaView, models: GeneratedModels, *, max_roots: int = DEFAULT_MAX_ROOTS
+        self, view: SchemaView, models: GeneratedModels, *, limits: LimitSettings | None = None
     ) -> None:
-        if max_roots < 1:
-            raise ValueError(f"max_roots must be at least 1, got {max_roots}")
         self.view = view
-        self._max_roots = max_roots
+        self._max_roots = (limits or LimitSettings()).max_roots
         self._models = models
         self._schema_names = {camelcase(name): name for name in view.all_classes()}
         self._slots: dict[str, list[tuple[SlotDefinition, URIRef]]] = {}
@@ -314,25 +310,20 @@ class UnitOfWork:
     ``Conflict.iris``, ``get`` again from a new unit of work for the fresh values, and retry.
     The held objects keep the tracking they were read with. A commit of more than ``max_roots``
     roots is refused (``CommitTooLarge``); ``commit(batches=True)`` takes it in several transactions.
-    ``max_roots`` is the mapper's unless given here (a value under 1 is a ``ValueError``).
+    ``max_roots`` is the mapper's.
     """
 
     def __init__(
         self,
         session: Session,
         mapper: Mapper,
-        max_roots: int | None = None,
         *,
         served: Served | None = None,
     ) -> None:
-        if max_roots is None:
-            max_roots = mapper.max_roots
-        elif max_roots < 1:
-            raise ValueError(f"max_roots must be at least 1, got {max_roots}")
         self._served = served  # the command this unit of work commits for (message-bus PD-16)
         self._session = session
         self._mapper = mapper
-        self._max_roots = max_roots
+        self._max_roots = mapper.max_roots
         self._objects: dict[str, BaseModel] = {}
         self._versions: dict[str, str] = {}  # of the roots that are stored
         self._dirty: set[str] = set()

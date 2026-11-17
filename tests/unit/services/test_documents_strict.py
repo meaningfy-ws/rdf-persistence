@@ -7,9 +7,14 @@ from rdflib import RDF, Graph, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
-from rdf_persistence.services.documents import MAX_NODES
-from tests.toy import TENANT, book_iri
+from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
+from rdf_persistence.services.schema import load_schema
+from tests.toy import TENANT, TOY_SCHEMA, book_iri
+from tests.unit.services.conftest import GENERATED
 from tests.unit.services.test_documents import BOOK, BOOK_JSON, encoded
+
+MAX_NODES = LimitSettings().max_document_nodes  # the default limit of a ``Documents``
 
 RP = "https://meaningfy.ws/ns/rdf-persistence#"
 FILE_KEY = URIRef(f"{RP}fileKey")
@@ -266,6 +271,15 @@ async def test_a_body_of_too_many_nodes_is_refused_before_it_is_expanded(
     async with asyncio.timeout(5):  # a body that is expanded first takes minutes
         with pytest.raises(PayloadTooLarge):
             await parsed(documents, book_class, {**BOOK_JSON, "chapters": chapters}, iri=BOOK)
+
+
+async def test_a_documents_takes_its_node_limit_from_its_limits_group(book_class) -> None:  # TC-37
+    small = Documents(
+        load_schema(TOY_SCHEMA), GENERATED, limits=LimitSettings(max_document_nodes=3)
+    )
+    chapters = [{"number": n} for n in range(3)]  # the body, its authors list and three chapters
+    with pytest.raises(PayloadTooLarge, match="at most 3 objects"):
+        await parsed(small, book_class, {**BOOK_JSON, "chapters": chapters}, iri=BOOK)
 
 
 async def test_a_body_of_too_many_list_items_is_refused(documents, book_class) -> None:

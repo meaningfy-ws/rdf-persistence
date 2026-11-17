@@ -21,6 +21,7 @@ from rdf_persistence.domain.generated.rp_provenance import (
     Replace,
 )
 from rdf_persistence.domain.generated.rp_workflow import Transition
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus, Work, command
 from tests.logs import attributes
@@ -233,7 +234,7 @@ async def test_a_command_that_sends_itself_again_stops_at_the_limit():  # TC-68
     async def again(activity: Activity, work: Work) -> None:
         await work.send(activity)
 
-    bus = MessageBus({Replace: replace}, {Replace: [again]}, limit=5)
+    bus = MessageBus({Replace: replace}, {Replace: [again]}, limits=LimitSettings(max_messages=5))
 
     with pytest.raises(MessageLimitExceeded, match="message limit 5 reached") as caught:
         await bus.handle(command(Replace), collaboration)
@@ -287,14 +288,14 @@ async def test_a_failing_queued_command_is_logged_and_the_queue_goes_on(caplog):
     }, "naming the command"
 
 
-def test_a_key_that_is_no_activity_or_a_limit_below_one_is_refused():  # TC-71
+def test_a_key_that_is_no_activity_or_the_old_limit_keyword_is_refused():  # TC-71, DEC-5
     handler = Recorder().handler("h")
     with pytest.raises(ValueError, match="Activity"):
         MessageBus({Conflict: handler}, {})  # type: ignore[dict-item]
     with pytest.raises(ValueError, match="Activity"):
         MessageBus({}, {str: [handler]})  # type: ignore[dict-item]
-    with pytest.raises(ValueError, match="limit"):
-        MessageBus({}, {}, limit=0)
+    with pytest.raises(TypeError, match="limit"):
+        MessageBus({}, {}, limit=5)  # type: ignore[call-arg]
 
 
 async def test_an_observer_that_publishes_again_stops_at_the_limit_outside_handle():  # TC-72
@@ -305,7 +306,7 @@ async def test_an_observer_that_publishes_again_stops_at_the_limit_outside_handl
         runs.append(activity)
         await bus.publish(activity, work.session)
 
-    bus = MessageBus({}, {Replace: [again]}, limit=5)
+    bus = MessageBus({}, {Replace: [again]}, limits=LimitSettings(max_messages=5))
 
     with pytest.raises(MessageLimitExceeded, match="message limit 5 reached"):
         await bus.publish(command(Replace), session)
@@ -324,7 +325,7 @@ async def test_a_nested_handle_joins_the_running_count():  # TC-72a
     async def nested(activity: Activity, work: Work) -> None:
         await bus.handle(activity, collaboration)
 
-    bus = MessageBus({Replace: replace}, {Replace: [nested]}, limit=5)
+    bus = MessageBus({Replace: replace}, {Replace: [nested]}, limits=LimitSettings(max_messages=5))
 
     with pytest.raises(MessageLimitExceeded, match="message limit 5 reached"):
         await bus.handle(command(Replace), collaboration)
@@ -340,7 +341,7 @@ async def test_two_handles_in_two_tasks_each_have_their_own_count_and_work():  #
         await asyncio.sleep(0)  # let the other task run
         assert work is not None, "the handler got a unit of work"
 
-    bus = MessageBus({Replace: replace}, {}, limit=1)
+    bus = MessageBus({Replace: replace}, {}, limits=LimitSettings(max_messages=1))
     (_, one), (_, other) = fakes(), fakes()
 
     await asyncio.gather(bus.handle(command(Replace), one), bus.handle(command(Replace), other))
@@ -449,7 +450,7 @@ async def test_the_limit_error_names_the_command_and_the_bus_logs_nothing(caplog
     async def again(activity: Activity, work: Work) -> None:
         await work.send(activity)
 
-    bus = MessageBus({Replace: replace}, {Replace: [again]}, limit=2)
+    bus = MessageBus({Replace: replace}, {Replace: [again]}, limits=LimitSettings(max_messages=2))
 
     with caplog.at_level(logging.DEBUG), pytest.raises(MessageLimitExceeded) as caught:
         await bus.handle(command(Replace), collaboration)

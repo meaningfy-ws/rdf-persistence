@@ -25,6 +25,7 @@ from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.service.rp_service import IdKind, IdSpec, IriPolicy
+from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris, draw_id, principal_iri
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
@@ -143,6 +144,7 @@ class ToyService:
         event_bus: EventBus | None = None,
         deployment: str | None = None,
         public_url: str | None = None,
+        toolkit: ToolkitSettings | None = None,
     ) -> None:
         self.signer = TokenSigner(key=shared_key())
         self.store = store or FakeStore()
@@ -184,6 +186,7 @@ class ToyService:
             migrations=migrations,
             stores=stores,
             event_bus=event_bus,
+            toolkit=toolkit,
         )
 
     def client(self) -> httpx.AsyncClient:

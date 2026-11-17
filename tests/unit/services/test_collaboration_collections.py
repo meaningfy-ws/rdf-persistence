@@ -10,6 +10,7 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.generated.service.rp_service import Filter, ListRequest, MemberList
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
@@ -469,7 +470,7 @@ def limited_collaboration(session, max_roots: int) -> Collaboration:
         view=view,
         rules=AccessRules(load_role_definitions(ROLES)),
         iris=DEFAULT_IRIS,
-        mapper=Mapper(view, generated_models(*MODULES), max_roots=max_roots),
+        mapper=Mapper(view, generated_models(*MODULES), limits=LimitSettings(max_roots=max_roots)),
         models=generated_models(*MODULES),
         listings=Listings(view),
         caller=caller(principal=ADA),

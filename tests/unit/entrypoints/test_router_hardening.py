@@ -13,7 +13,8 @@ from rdf_persistence.domain.exceptions import BadQuery, SparqlError
 from rdf_persistence.domain.layout import system_database_name
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.documents import MAX_NODES, Documents
+from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from tests.toy import SETTINGS
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of, store_scan
 from tests.unit.entrypoints.scene import PROBLEMS, Scene, problem_of
@@ -136,7 +137,7 @@ async def test_a_body_of_too_many_objects_is_a_413_before_it_is_typed_or_expande
 
     monkeypatch.setattr(Documents, "_plain_document", spied("typed", Documents._plain_document))
     monkeypatch.setattr(Documents, "_triples", staticmethod(spied("expanded", Documents._triples)))
-    chapters = [{"number": n} for n in range(MAX_NODES + 1)]
+    chapters = [{"number": n} for n in range(LimitSettings().max_document_nodes + 1)]
     response = await scene.http.post(
         f"{scene.tenant}/books",
         json={**DUNE_BODY, "chapters": chapters},

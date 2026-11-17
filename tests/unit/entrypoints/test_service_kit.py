@@ -1,5 +1,6 @@
 """The service kit (task 5.1): the token and access dependencies, problem handlers, versions, start-up."""
 
+import asyncio
 import io
 import re
 import shutil
@@ -17,6 +18,7 @@ from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence import GrantSet, Problem, bootstrap
 from rdf_persistence.domain.exceptions import (
+    CommitTooLarge,
     Forbidden,
     InvalidBody,
     InvalidRoleDefinition,
@@ -28,15 +30,40 @@ from rdf_persistence.domain.generated.rp_workflow import Transition
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
+from rdf_persistence.services.event_hub import CLOSED
 from rdf_persistence.services.generated.service.rp_service import Migration
+from rdf_persistence.services.generated.settings.rp_settings import (
+    EventSettings,
+    LimitSettings,
+    SseSettings,
+    ToolkitSettings,
+)
 from rdf_persistence.services.iris import DEFAULT_IRIS, tenant_resource_name
+from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migrations import stamps
 from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.testkit import FakeStore, RecordingObserver
 from tests.fixtures.library import generated
-from tests.toy import REVIEW_WORKFLOW, ROLES, SETTINGS, TOY_MIGRATIONS, TOY_SCHEMA
-from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService, principal_of
+from tests.toy import (
+    REVIEW_WORKFLOW,
+    ROLES,
+    SETTINGS,
+    TOY_MIGRATIONS,
+    TOY_SCHEMA,
+    book_iri,
+    dune,
+)
+from tests.toy_service import (
+    CONSUMER_POLICY,
+    DUNE_BODY,
+    TENANT_BODY,
+    ToyService,
+    assert_problem,
+    principal_of,
+)
+from tests.unit.entrypoints.scene import Scene
+from tests.unit.entrypoints.test_events_route import follow, parsed
 from tests.unit.services.test_session_activity import activities
 
 PROBLEMS = f"{SETTINGS.base}problems/"
@@ -692,3 +719,64 @@ async def test_a_direct_transition_reaches_the_transition_observers(scene) -> No
     [move] = seen.of(Transition)
     assert move.to_state_iri.endswith("/in_review"), "the observer got the move"
     assert move.was_associated_with == [principal_of("ada")], "made by the caller"
+
+
+# --- the toolkit settings reach what the kit builds (technical-models PD-7) --------------------------
+
+
+@asynccontextmanager
+async def served(toolkit: ToolkitSettings) -> AsyncIterator[ToyService]:
+    toy = ToyService(toolkit=toolkit)
+    async with toy.app.router.lifespan_context(toy.app):
+        yield toy
+
+
+async def test_a_roots_limit_of_the_toolkit_settings_reaches_the_units_of_work() -> None:  # TC-35
+    toolkit = ToolkitSettings(limits=LimitSettings(max_roots=2))
+    async with served(toolkit) as toy, toy.client() as http:
+        tenant = (await http.post("/libraries", json=TENANT_BODY, headers=toy.bearer("ada"))).json()
+        async with toy.kit.session(tenant["id"], "ada") as session:
+            work = UnitOfWork(session, toy.kit.mapper)
+            for n in (1, 2, 3):
+                work.add(dune(book_iri(n)))
+            with pytest.raises(CommitTooLarge):
+                await work.commit()
+
+
+async def test_a_keep_alive_of_the_toolkit_settings_reaches_the_events_route() -> None:  # TC-36
+    toolkit = ToolkitSettings(sse=SseSettings(keep_alive_seconds=0.05))
+    async with served(toolkit) as toy, toy.client() as http:
+        scene = await Scene.set_up(toy, http)
+        await toy.kit.relay.run_once()
+        async with follow(scene, prefix="") as stream:
+            block = await asyncio.wait_for(stream._block(), 3.0)  # 15 s by default
+    assert parsed(block or "").comment is not None, "a comment line within the window"
+
+
+async def test_a_node_limit_of_the_toolkit_settings_reaches_the_documents() -> None:  # TC-37
+    toolkit = ToolkitSettings(limits=LimitSettings(max_document_nodes=3))
+    async with served(toolkit) as toy, toy.client() as http:
+        headers = toy.bearer("ada")
+        path = (await http.post("/libraries", json=TENANT_BODY, headers=headers)).headers[
+            "location"
+        ]
+        chapters = [{"number": n} for n in range(4)]
+        response = await http.post(
+            f"{path}/books", json={**DUNE_BODY, "chapters": chapters}, headers=headers
+        )
+        assert_problem(response, 413, "payload-too-large")
+
+
+async def test_a_queue_size_of_the_toolkit_settings_reaches_the_hub() -> None:  # TC-38
+    toolkit = ToolkitSettings(events=EventSettings(hub_queue_size=1))
+    async with served(toolkit) as toy, toy.kit.hub.subscribe("tenant") as queue:
+        for n in (1, 2):
+            toy.kit.hub.offer("tenant", Activity(id=f"urn:uuid:{n}"))
+        assert await asyncio.wait_for(queue.get(), 1) is CLOSED, "the second one overflowed it"
+
+
+def test_a_kit_given_no_toolkit_settings_holds_a_fresh_default_instance() -> None:
+    first, second = ToyService().kit, ToyService().kit
+    assert first.toolkit == ToolkitSettings(), "the defaults"
+    assert first.toolkit is not second.toolkit, "a fresh instance, shared by no two kits"
+    assert first.mapper.max_roots == LimitSettings().max_roots, "the roots limit"

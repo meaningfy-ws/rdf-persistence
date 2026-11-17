@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 import pytest
 from rdflib import URIRef
 
-from rdf_persistence import generated_models
 from rdf_persistence.domain.exceptions import BadQuery, CommitTooLarge, Conflict, NotFound
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
@@ -14,14 +13,21 @@ from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.services.iris import (
     DEFAULT_IRIS,
 )
-from rdf_persistence.services.mapper import Mapper, UnitOfWork, new_part
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.mapper import UnitOfWork, new_part
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE, FakeStore, fake_session
 from tests.fixtures.library.generated.books import Book, Chapter
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.toy import ADA, MODULES, TENANT, TOY_SCHEMA, access, book_iri, dune, toy_mapper
+from tests.toy import (
+    ADA,
+    TENANT,
+    access,
+    book_iri,
+    dune,
+    toy_mapper,
+    toy_mapper_limited,
+)
 
 BEN = "https://example.org/people/ben"
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
@@ -413,7 +419,7 @@ async def test_remove_wins_over_an_earlier_add_and_a_later_add_is_refused(sessio
 
 
 def limited(session: Session, max_roots: int) -> UnitOfWork:
-    return UnitOfWork(session, toy_mapper(), max_roots=max_roots)
+    return UnitOfWork(session, toy_mapper_limited(max_roots))
 
 
 def steady_dune(iri: str) -> Book:
@@ -707,24 +713,13 @@ async def test_discarding_a_root_this_unit_of_work_does_not_hold_is_a_lookup_err
 
 
 async def test_tc26b_a_unit_of_work_takes_the_limit_of_its_mapper(session):
-    mapper = Mapper(load_schema(TOY_SCHEMA), generated_models(*MODULES), max_roots=2)
-    work = UnitOfWork(session, mapper)
+    work = UnitOfWork(session, toy_mapper_limited(2))
     for book in three_books(60):
         work.add(book)
     with pytest.raises(CommitTooLarge, match=r"(?s)(?=.*\b3\b)(?=.*\b2\b)"):
         await work.commit()
 
 
-async def test_tc26b_an_explicit_limit_beats_the_mappers(session):
-    mapper = Mapper(load_schema(TOY_SCHEMA), generated_models(*MODULES), max_roots=2)
-    work = UnitOfWork(session, mapper, max_roots=5)
-    books = three_books(70)
-    for book in books:
-        work.add(book)
-    await work.commit()
-    assert (await unit(session).get(Book, books[0].id)).id == books[0].id, "committed"
-
-
-def test_tc26b_an_explicit_limit_under_one_is_refused(session):
-    with pytest.raises(ValueError, match="max_roots"):
-        UnitOfWork(session, toy_mapper(), max_roots=0)
+def test_tc26b_a_unit_of_work_no_longer_takes_a_limit_of_its_own(session):  # DEC-5
+    with pytest.raises(TypeError, match="max_roots"):
+        UnitOfWork(session, toy_mapper(), max_roots=5)  # type: ignore[call-arg]

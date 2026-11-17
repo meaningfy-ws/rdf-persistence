@@ -28,15 +28,12 @@ from rdf_persistence.services.event_stream import (
     event_stream,
 )
 from rdf_persistence.services.generated.service.rp_service import CallerAccess, VerifiedCaller
+from rdf_persistence.services.generated.settings.rp_settings import SseSettings
 from rdf_persistence.services.session import utc_now
 
 EVENTS_ROUTE = (
     "rp-events"  # under the toolkit's reserved prefix, so no aggregate can shadow it (D-15)
 )
-MAX_LIFETIME = timedelta(minutes=5)
-ACCESS_TTL = timedelta(seconds=1)
-KEEP_ALIVE_SECONDS = 15.0
-RESUME_WINDOW = timedelta(days=7)
 
 
 def _sent(item: Activity | Signal) -> ServerSentEvent:
@@ -55,19 +52,18 @@ def add_events_route(
     router: APIRouter,
     kit: ServiceKit,
     *,
-    access_ttl: timedelta = ACCESS_TTL,
-    keep_alive: float = KEEP_ALIVE_SECONDS,
-    resume_window: timedelta = RESUME_WINDOW,
-    max_lifetime: timedelta = MAX_LIFETIME,
+    sse: SseSettings | None = None,
     clock: Callable[[], datetime] = utc_now,
 ) -> None:
     """Add the events route of a tenant to ``router``.
 
-    ``access_ttl`` is how old the caller's access may be before it is read again, ``keep_alive`` the
-    seconds of silence before a comment is sent, ``resume_window`` how far back a ``Last-Event-ID``
-    may be resumed from, ``max_lifetime`` how long a stream lives before the client must reconnect
-    with a fresh token (D-20), and ``clock`` where "now" comes from.
+    ``sse`` (a fresh ``SseSettings`` unless given) says how old the caller's access may be before it
+    is read again (``access_ttl_seconds``), the seconds of silence before a comment is sent
+    (``keep_alive_seconds``), how far back a ``Last-Event-ID`` may be resumed from
+    (``resume_window_seconds``) and how long a stream lives before the client must reconnect with a
+    fresh token (``max_lifetime_seconds``, D-20); ``clock`` is where "now" comes from.
     """
+    sse = sse or SseSettings()
     gate = kit.gate
     path = f"/{kit.settings.tenant_segment}/{{t}}/{EVENTS_ROUTE}"
 
@@ -98,10 +94,10 @@ def add_events_route(
             open_session=lambda: kit.session(tenant, caller.principal),
             decode=lambda iri, graph: decode_activity(kit.view, kit.models, kit.mapper, iri, graph),
             last_event_id=last_event_id,
-            window=resume_window,
-            access_ttl=access_ttl,
-            keep_alive=keep_alive,
-            max_lifetime=max_lifetime,
+            window=timedelta(seconds=sse.resume_window_seconds),
+            access_ttl=timedelta(seconds=sse.access_ttl_seconds),
+            keep_alive=sse.keep_alive_seconds,
+            max_lifetime=timedelta(seconds=sse.max_lifetime_seconds),
             clock=clock,
         )
         async for item in stream:

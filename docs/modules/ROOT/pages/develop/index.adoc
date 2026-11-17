@@ -197,7 +197,7 @@ error; run it again.
 |50 rule shelves of `Book` in one dataset on real Fuseki; the one call asks the store whether the book meets each rule (one `MATCHES` query per shelf). Printed, not asserted.
 
 |`tests/integration/store/test_collaboration.py::test_a_cascade_of_the_most_members_a_commit_holds_is_one_request` |1 |Cascade ≈ 6.7 s (one run) |2026-11-14, collaboration-and-reference-collections stage 2 review round
-|A shelf naming 499 stored books (`DEFAULT_MAX_ROOTS` - 1, with the shelf exactly the limit), deleted in one update request on real Fuseki. Printed, not asserted. Marked `slow`.
+|A shelf naming 499 stored books (`LimitSettings().max_roots` - 1, with the shelf exactly the limit), deleted in one update request on real Fuseki. Printed, not asserted. Marked `slow`.
 
 |`tests/integration/store/test_collaboration.py::test_a_target_with_many_comments_is_removed_with_them_in_one_request` (IT-07, TC-63) |1 |Remove ≈ 0.28 s (one run); the whole test ≈ 3 s with the 600 comments seeded in 6 commits of 100; the file's 26 tests ≈ 37 s with container start-up (20 tests ≈ 32 s before stage 4) |2026-11-14, collaboration-and-reference-collections stage 4
 |A book with 600 comments removed in one update request on real Fuseki, comments and registry entries included. Printed, not asserted. Marked `slow`.

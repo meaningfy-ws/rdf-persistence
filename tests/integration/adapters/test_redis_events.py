@@ -4,13 +4,13 @@ import logging
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import timedelta
 
 import pytest
 from faststream.redis import RedisBroker
 from redis.asyncio import Redis
 
 from rdf_persistence.adapters.redis_events import RedisEventBus
+from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 from rdf_persistence.testkit.bootstrap import wait_until_async
 from rdf_persistence.testkit.event_bus_conformance import (
     BODY,
@@ -28,10 +28,11 @@ NODE_MAX_ENTRIES = "stream-node-max-entries"
 class RedisPair:
     """Two deployments on one stream; Redis fails a bus by closing it, and starts it again after."""
 
-    def __init__(self, url: str, **options: timedelta) -> None:
+    def __init__(self, url: str, **options: float) -> None:
         self.stream = stream = f"rp-events-{uuid.uuid4().hex[:8]}"
-        self.a = RedisEventBus(url, deployment="lib", stream=stream, **options)
-        self.b = RedisEventBus(url, deployment="cat", stream=stream, **options)
+        events = EventSettings(stream=stream, **options)
+        self.a = RedisEventBus(url, deployment="lib", events=events)
+        self.b = RedisEventBus(url, deployment="cat", events=events)
 
     @asynccontextmanager
     async def failing(self, bus: RedisEventBus) -> AsyncIterator[None]:
@@ -42,11 +43,16 @@ class RedisPair:
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
 async def test_the_redis_bus_conforms(redis, case):
-    await run_case(case, RedisPair(redis, claim_idle=timedelta(milliseconds=500)))
+    await run_case(case, RedisPair(redis, claim_idle_seconds=0.5))
+
+
+def test_the_redis_bus_takes_no_per_value_keyword_beside_its_events_group():  # TC-39, DEC-5
+    with pytest.raises(TypeError, match="stream"):
+        RedisEventBus("redis://localhost", deployment="d", stream="x")  # type: ignore[call-arg]
 
 
 async def test_an_entry_older_than_the_retention_is_trimmed_on_the_next_publish(redis):
-    pair = RedisPair(redis, retention=timedelta(seconds=1))
+    pair = RedisPair(redis, retention_seconds=1)
     inbox = Inbox()
     await pair.a.start(inbox)
     async with Redis.from_url(redis) as client:

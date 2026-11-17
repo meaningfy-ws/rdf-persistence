@@ -42,7 +42,17 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.logs import attributes
-from tests.toy import ADA, BOB, SETTINGS, TENANT, TOY_SCHEMA, Book, dune, toy_mapper
+from tests.toy import (
+    ADA,
+    BOB,
+    SETTINGS,
+    TENANT,
+    TOY_SCHEMA,
+    Book,
+    dune,
+    toy_mapper,
+    toy_mapper_limited,
+)
 from tests.unit.services.test_session_activity import (
     B1,
     B2,
@@ -163,7 +173,7 @@ async def test_a_key_conflict_of_a_served_commit_names_the_key_and_records_nothi
 
 
 async def test_commit_too_large_sends_nothing_and_records_nothing(store, session):
-    unit = UnitOfWork(session, toy_mapper(), max_roots=2)
+    unit = UnitOfWork(session, toy_mapper_limited(2))
     for iri in (B1, B2, B3):
         unit.add(dune(iri))
     with pytest.raises(CommitTooLarge):
@@ -174,7 +184,7 @@ async def test_commit_too_large_sends_nothing_and_records_nothing(store, session
 
 async def test_batches_record_one_activity_per_batch_and_a_failed_batch_none(store, session):
     # PD-8: a batch is its own transaction. After a failure, the stored roots and the records agree.
-    unit = UnitOfWork(session, toy_mapper(), max_roots=2)
+    unit = UnitOfWork(session, toy_mapper_limited(2))
     for iri in (B1, B2, B3):
         unit.add(dune(iri))
     store.on("update", PersistenceError("second batch fails"), after=1)
