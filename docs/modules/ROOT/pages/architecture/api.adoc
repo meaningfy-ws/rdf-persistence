@@ -350,9 +350,11 @@ xref:architecture/access-control.adoc#check[the check].
 |406
 
 |6
-|Read the expected version from `If-Match`.
-|`negotiation.py`, `expected_version`
-|428
+|Match `If-Match` to the one version the write takes: `*`, or a list of entity tags, by strong
+comparison. A single strong tag is that version with no read; `*` or a list reads the current version
+once. A weak tag names no version. A consumer's own route takes one strong tag with `expected_version`.
+|`negotiation.py`, `matched_version` (`expected_version` for a consumer's route)
+|428 (missing or malformed), 409 (weak, or none names the current version)
 
 |7
 |Check the body's `Content-Type` (JSON or JSON-LD), then read the body with its size limit: a
