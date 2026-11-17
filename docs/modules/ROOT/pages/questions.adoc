@@ -325,8 +325,8 @@ xref:adr/adr-003-fastapi-not-connexion.adoc[ADR-003].
 
 *Which token signature algorithms does the verifier accept, and how do I change them?*::
 RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 and EdDSA, with 30 seconds of clock
-leeway on `exp` and `nbf`. Pass `algorithms=` and `leeway_seconds=` to `JwksTokenVerifier`; `none`
-and `HS*` are always refused. Post-quantum signatures join when the identity provider and PyJWT
+leeway on `exp` and `nbf`. Set `allowed_algorithms` and `leeway_seconds` on `JwksSettings` and pass
+it as `jwks=` to `JwksTokenVerifier`; `none` and `HS*` are always refused. Post-quantum signatures join when the identity provider and PyJWT
 ship them. See xref:adr/adr-004-signing-algorithms.adoc[ADR-004] and
 xref:howto/adopt.adoc#verifier-options[the how-to].
 

@@ -28,15 +28,17 @@ The state of post-quantum signatures:
 
 == Decision
 
-. *The allow-list is a parameter.* `JwksTokenVerifier(..., algorithms=...)` takes it. The default is
+. *The allow-list is a setting.* `JwksSettings.allowed_algorithms`, passed as
+  `JwksTokenVerifier(..., jwks=...)`, holds it. The default is
   RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 and EdDSA. `none` and every `HS*`
-  name are refused at construction, even when a deployment lists them, and so is a name the
-  pinned PyJWT does not implement.
-. *The clock leeway is a parameter.* `leeway_seconds=` is 30 seconds by default and applies to `exp`
+  name are refused when the settings are built (`ValidationError`), even when a deployment lists
+  them, and so is an empty list. A name the installed PyJWT does not implement is refused when the
+  verifier is built (`ValueError`).
+. *The clock leeway is a setting.* `JwksSettings.leeway_seconds` is 30 seconds by default and applies to `exp`
   and `nbf`. It is checked against the injected clock, not PyJWT's own `exp` check, so the testkit's
   clock still drives it.
-. *Both are constructor parameters now.* `technical-models` moves them into the generated settings
-  with the other JWKS values.
+. *Both sit with the other JWKS values.* They are fields of the generated `JwksSettings`, beside
+  the key cache lifetime.
 . *Post-quantum follows the provider.* ML-DSA joins the day the provider and PyJWT both ship it.
   PyJWT is pinned exactly, so adding it needs a toolkit release that raises the pin, then a
   configuration change. An algorithm the pinned PyJWT already implements joins by configuration

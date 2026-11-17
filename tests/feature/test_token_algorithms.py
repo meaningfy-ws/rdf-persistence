@@ -10,6 +10,7 @@ import jwt
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
+from rdf_persistence import JwksSettings
 from rdf_persistence.adapters.jwks import RS256, JwksTokenVerifier
 from rdf_persistence.testkit import TokenSigner, shared_key
 from rdf_persistence.testkit.tokens import AUDIENCE, ISSUER
@@ -164,7 +165,10 @@ def _request_with_the_keys_id(run: Run, algorithm: str) -> None:
 def _build(run: Run) -> None:
     assert run.algorithms is not None, "the deployment lists its algorithms"
     try:
-        verifier_of(run.signer, algorithms=run.algorithms)
+        # the settings model refuses `none` and `HS*`, the verifier a name PyJWT lacks;
+        # a pydantic ValidationError is a ValueError, so either refusal is caught here
+        jwks = JwksSettings(allowed_algorithms=list(run.algorithms))
+        verifier_of(run.signer, jwks=jwks)
     except ValueError as error:
         run.build_error = error
 

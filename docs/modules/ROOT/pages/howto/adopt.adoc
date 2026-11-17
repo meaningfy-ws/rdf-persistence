@@ -1583,22 +1583,26 @@ test containers only. In Zitadel, set each application to JWT access tokens: the
 check opaque ones.
 
 [#verifier-options]
-Two more parameters have defaults (xref:adr/adr-004-signing-algorithms.adoc[ADR-004]):
+Two more values have defaults (xref:adr/adr-004-signing-algorithms.adoc[ADR-004]). They are fields
+of `JwksSettings`, the `jwks` group of `ToolkitSettings`, and you pass the group as `jwks=`:
 
-* `algorithms=`, the signature algorithms it accepts. The default is RS256, RS384, RS512, PS256,
-  PS384, PS512, ES256, ES384, ES512 and EdDSA, which covers every key Zitadel can sign with. Pass a
-  shorter collection to accept fewer. `ValueError` at construction for an empty collection, `none`,
-  an `HS*` name in any case, or a name the pinned PyJWT does not implement. A post-quantum
-  algorithm is not accepted until the identity provider and PyJWT both ship it.
-* `leeway_seconds=`, the clock skew allowed on `exp` and `nbf`: 30 seconds by default, a number from
-  0 to 300 (`ValueError` otherwise). A token that expired up to that long ago is still accepted, so
-  pass `leeway_seconds=0` if a client counts on an exact expiry.
+* `allowed_algorithms`, the signature algorithms it accepts. The default is RS256, RS384, RS512,
+  PS256, PS384, PS512, ES256, ES384, ES512 and EdDSA, which covers every key Zitadel can sign with.
+  Give a shorter list to accept fewer. `JwksSettings` raises pydantic's `ValidationError` for an
+  empty list, `none` or an `HS*` name in any case. The verifier raises `ValueError` when it is built
+  for a name the installed PyJWT does not implement. A post-quantum algorithm is not accepted until
+  the identity provider and PyJWT both ship it.
+* `leeway_seconds`, the clock skew allowed on `exp` and `nbf`: 30 seconds by default, a number from
+  0 to 300 (`ValidationError` otherwise). A token that expired up to that long ago is still
+  accepted, so set `leeway_seconds=0` if a client counts on an exact expiry.
 
 [source,python]
 ----
+from rdf_persistence import JwksSettings
+
 verifier = JwksTokenVerifier(
     issuer, project_id, zitadel_roles_claim(project_id),
-    algorithms=("ES256", "ES384"), leeway_seconds=10,
+    jwks=JwksSettings(allowed_algorithms=["ES256", "ES384"], leeway_seconds=10),
 )
 ----
 
