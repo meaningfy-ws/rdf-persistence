@@ -553,9 +553,10 @@ class Iris:
             InvalidIri: ``tenant_iri`` is not what the tenant template mints.
         """
         found = self._tenant_re.fullmatch(str(tenant_iri))
-        if found is None or found["tenant_id"] in self._reserved:
+        tenant_id = None if found is None else _parts(found).tenant_id
+        if tenant_id is None or tenant_id in self._reserved:
             raise InvalidIri(f"not a tenant IRI of this policy: {tenant_iri!r}")
-        return found["tenant_id"]
+        return tenant_id
 
     def access(self, tenant: str) -> URIRef:
         """The IRI of the tenant's access record; its graph is ``graph_iri`` of it."""
