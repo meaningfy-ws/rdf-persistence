@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 
 import pytest
+from faststream.redis import RedisBroker
 from redis.asyncio import Redis
 
 from rdf_persistence.adapters.redis_events import RedisEventBus
@@ -105,8 +106,11 @@ async def test_a_message_without_a_valid_envelope_is_dropped_with_a_warning(redi
     inbox = Inbox()
     await pair.a.start(inbox)
     with caplog.at_level(logging.WARNING, logger="rdf_persistence.adapters.redis_events"):
-        async with Redis.from_url(redis) as client:
-            await client.xadd(pair.stream, {"data": "{}"})  # no envelope headers
+        # a text body, as RedisEventBus.publish sends it, with headers that hold no envelope (D-7)
+        async with RedisBroker(redis) as sender:
+            await sender.publish(
+                BODY.model_dump_json(exclude_none=True), stream=pair.stream, headers={}
+            )
 
         async def warned() -> bool:
             return bool(records_of(caplog, "event-invalid-envelope"))
