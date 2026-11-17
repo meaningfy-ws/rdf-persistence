@@ -609,3 +609,77 @@ Under the floor (not fixed in this stage; the full review after stage 3 weighs t
   change's; task 3.3 touches `howto/adopt.adoc` and may take them.
 - L2 S4 `test_hard_check.py:728`'s name and message do not mention the metamodel group.
 - L2 S5 TC-43's golden is one plain triple; richer samples would show where PyLD and rdflib differ.
+
+### Full review findings (L1, L2, L3, L4+L5; cold reader)
+
+The full review of the EPIC (D-1, P-0005) ran on PR #151 against the gate report of `f059d3d`.
+Reviewers: L1 (3 findings), L2 (9), L3 (8), L4+L5 (11); the cold reader read `howto/adopt.adoc`.
+Only L3 labelled one Critical; the lead re-labels the rest below, each with its reason.
+
+Accepted, Critical (fixed in the one fix pass):
+
+- **F-7** (L3 C1, L2 W2, L4+L5 W1, L1 note) A create or replace with `Accept: application/rdf+xml`
+  commits, then `render` refuses RDF/XML with 406. The client is told the write failed although it
+  was stored: a retried `POST` mints a second aggregate, a retried `PUT` gets 409. Critical: three
+  lenses found it on their own, and it is a write a consumer cannot see, which PD-12's "answered
+  406" never meant. Fix: the 406 comes before anything is written, on create, replace and the
+  tenant root; the route-level tests show 406 and that nothing was stored.
+- **F-8** (L1 W1) rdflib's RDF/XML writer passes characters XML 1.0 forbids (`\x00`–`\x08`, `\x0B`,
+  `\x0C`, `\x0E`–`\x1F`) through raw: a read answers 200 with a body no XML parser accepts.
+  Critical: the rp-service-api delta says an aggregate a serialisation cannot express SHALL be
+  answered 406; this one is answered 200 and broken. Fix: such a literal is refused with the same
+  `NotAcceptable` as a predicate with no XML local name, and the F-7 check covers it.
+- **F-9** (L4+L5 W2, L3 W2 in part) The `except ValueError` in `_serialised` wraps all five RDF
+  writers, so a defect in the Turtle, N-Triples, N-Quads or TriG path is answered 406 "no form"
+  instead of 500. Critical: the Error matrix sends our own defects to 500, and the 406 is for
+  RDF/XML only (PD-12). Fix: catch only for RDF/XML. The same lines change for F-7 and F-8.
+- **F-10** (L3 W1, L1 W2) TC-63 runs every operation in one loop under `xfail(strict=True)`; the
+  first #148 failure ends the loop, so no check (server error, status, content type, schema) runs
+  on the operations after it. Critical: PD-15's contract test, ADR-003's confirmation, checks
+  almost nothing until #148 is fixed. Fix: one case per operation; only the operations #148 hits
+  expect a failure, and only of `response_schema_conformance`; every other check of every
+  operation must pass. Still strict, so fixing #148 removes the markers by failing.
+- **F-11** (L2 W3) `architecture/data-flows.adoc:394`, `architecture/index.adoc:204` and
+  `questions.adoc:422` still name only JSON, JSON-LD and Turtle. Critical: doc agreement on what
+  this stage delivers (PD-16, as F-1 and F-5). Fix: name the seven types or link
+  `api.adoc#representations`.
+- **F-12** (cold reader) The `#etag-proxy` test in `howto/adopt.adoc` reads through the proxy
+  without `Accept-Encoding: gzip`, so nginx does not compress and the test passes behind the very
+  proxy RISK-9 warns of. Critical: this stage's own text, and the check it gives cannot fail. Fix:
+  the read sends `Accept-Encoding: gzip`, and the page says how to pass the `ETag` through
+  unchanged or names the nginx setting.
+
+- **D-18 The scenario map is mapped at archive** (L2 W1). `tests/audit/scenario-map.csv` has no row
+  for any test this EPIC added (stages 1 to 3). `make refresh-map` is not part of `check-all`, so
+  no gate is red; the map is brought up to date in the archive step, together with the 38 renamed
+  rows (D-16), and the hand-over note names it.
+
+Under the floor (not fixed; for the hand-over note and later changes):
+
+- L1 S1 `adapters/jwks.py` keeps a JWK whose `use` is `enc` (PyJWT's client drops it); low risk, a
+  provider that publishes an encryption key with a `kid`.
+- L2 W4 TC-57 does not assert which graph holds the tenant root's quads; L2 S4 TC-58 checks only
+  the replace response's media type.
+- L2 S1 `questions.adoc:319` and `howto/adopt.adoc:1588` drop "after a toolkit release raises the
+  PyJWT pin" from DEC-1's condition; L2 S2 `token_algorithms.feature:31` drops the spec's second
+  THEN without saying it cannot be tested.
+- L2 S3 only the read's 200 is asserted to list the seven types; F-10 covers the others once it
+  passes.
+- L2 S5 still open from stages 1 and 2: the class-level `Mapper.max_roots` patch,
+  `howto/commits.adoc:138`, `test_jsonld.py:61`'s name.
+- L3 W2 the broad `except Exception` around `triples_of` (`documents.py:301`, `loading.py:45`);
+  L3 S4 the refusal mappings written twice; L3 S3 / stage 2 L3 W1 `jsonld.py`'s own `N_QUADS`.
+- L3 S1, L4+L5 W4, L4+L5 S6 "the RDF serialisations" defined three ways (`REPRESENTATIONS[2:]`,
+  `not in (JSON, JSON_LD)`, the `rdf=` flag); an `RDF_REPRESENTATIONS` constant when next touched.
+- L3 S2, L4+L5 S7 the context route's OpenAPI entry and `JsonLdResponse` live in `router.py`.
+- L3 S5 `RpModel.replaced` can be shadowed by a consumer slot; rename before 1.0.
+- L4+L5 W3 the five RDF serialisations run on the event loop (framing runs in a worker); an
+  aggregate near `MAX_NODES` stalls the loop while it serialises.
+- L4+L5 S1 JSON-LD keywords in three modules; S2 positional `[2]`/`[1]` reads of `Stored`; S3
+  `PyJWKSetError` raised to reach an `except`; S4 algorithm names repeated in the testkit; S5 the
+  bare `"error.type"` string.
+- Cold reader, older text: `loaded_graphs=[loaded]` replaces earlier loaded graphs (the next
+  paragraph says so); the `rdf_format` table row versus the prose example; `max_roots` as the batch
+  size; "`@context` not given"; the missing `CommitTooLarge` import and `book_iri` arguments; what
+  a token whose algorithm is outside `algorithms=` gets.
+- Stage 1 and stage 2 floor items not named above stay as they were listed.
