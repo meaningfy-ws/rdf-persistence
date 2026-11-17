@@ -651,6 +651,21 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   the changelog for the old paths instead (the guard's exemption, D-10). Fixed with the cold
   reader's Criticals and Warnings on `howto/settings.adoc` and `howto/adopt.adoc` in one docs
   fixer; the code fixer takes D-48 and D-49.
+- **D-52 (stage 4, D-48 as built; the lead's choice under the developer's "do not ask")** Naming
+  every field after its slot, as D-48 wrote it, renames 80 generated fields: the wire and service
+  schemas give a slot an identifier alias on purpose, to name the field (`IdSpec.kind`,
+  `ProblemDetails.title`, the Zitadel wire names), and every user of them breaks. So the rule is
+  opt-in: a slot annotated `field_name: slot` (a `GenerationAnnotation`) is named after the slot and
+  keeps its alias; every other field keeps today's name. `schema_file` (alias `schema`) and
+  `target_kind` (alias `kind`) carry it, and `FIELD_OF_TOML_KEY` goes, as PD-10 planned. The fixer's
+  first attempt is kept as a patch in the session scratchpad, not in the repository. D-49 as built
+  also skips the other hard class rules (key, reserved segment, workflow, application, `iri_type`)
+  for a technical class, as PD-23 does for the toolkit's own; the direction rule still runs.
+- **D-53 (stage 4, the developer's instruction 2026-11-17)** Merge the fixes, skip the demo (the
+  developer accepts the change), open PR 4, merge it as admin and close the change without asking.
+  The review set of D-47 still runs, in parallel with the D-52 fixer; the checker covers the fix
+  pass. The two LinkML issues of D-48 are drafted, not filed: the permission check refused the
+  filing and the instruction did not name it.
 
 Under the floor (not fixed in stage 3):
 

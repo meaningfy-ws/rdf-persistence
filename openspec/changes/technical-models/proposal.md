@@ -191,7 +191,7 @@ install_service(app, ..., settings=service_settings, toolkit=settings)
 - `generation/`: the `kind` check; `pydantic_split` imports the Python type a LinkML type's
   `repr` names, defaults a slot annotated `default_instance` to a new instance of its class, gives
   a multivalued `ifabsent: string(a, b)` its list default (design D-31, a LinkML work-around), and
-  names every field after its slot with the alias apart (D-48), so `config.py` drops
+  names a field annotated `field_name: slot` after its slot with the alias apart (D-48, D-52), so `config.py` drops
   `FIELD_OF_TOML_KEY`. The hard check refuses a `default_instance` it cannot honour (D-32); the
   class rules (root, owned, reference) skip the classes of a technical module (D-49).
 - `domain/sparql.py`: `SparqlTerm`'s pydantic schema and `fill_terms`. `services/unique_keys.py`,
@@ -239,7 +239,7 @@ install_service(app, ..., settings=service_settings, toolkit=settings)
   `rdf_persistence.testkit.generated.rp_testkit` (**BREAKING**, no shim).
 - External libraries: two work-arounds, each in one place and recorded: LinkML's scalar default
   for a multivalued `ifabsent` (D-31, commented on linkml#4160) and pydantic-settings'
-  environment loading (D-34). LinkML's alias handling (D-48) is fixed in our generator.
+  environment loading (D-34). LinkML's alias handling (D-48) is met by an opt-in annotation in our generator (D-52).
 - New optional dependency `pydantic-settings==2.16.2` (already in `uv.lock`) in the `settings` extra.
 
 ## As built
