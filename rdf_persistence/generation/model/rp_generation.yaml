@@ -4,7 +4,7 @@ title: RDF persistence generation module
 description: >-
   The data of the generation toolchain: the configuration of one `rp-generate` run, the manifest it
   writes, the files and problems it produces, the view-models its templates render and the
-  conformance cases. The testkit's own records are in `rp_testkit.yaml`.
+  conformance cases.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/

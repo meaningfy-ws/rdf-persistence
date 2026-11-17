@@ -13,7 +13,7 @@ TC below or a generated diff. Every task is test first. Its gate is
 
 ## Stage 1: the testkit stops importing the generator, but for configuration (PR 1)
 
-- [ ] 1.1 PD-1: on `develop`, the import cut's test: list every name a module of
+- [x] 1.1 PD-1: on `develop`, the import cut's test: list every name a module of
   `rdf_persistence/testkit/` (other than `freshness.py` and `conformance.py`) imports from
   `rdf_persistence.generation`. `technical-models` task 4.1 moved every such record into
   `rdf_persistence.testkit.generated`, so the expected list is empty and the task is TC-01 to
