@@ -529,6 +529,30 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   today's defaults". Adding a requirement changes a signed spec, so it waits for the developer
   (Open): recommended, an `rp-generation` requirement "A slot can default to an instance of its
   class" with the type-range, required-slot and declaration-order refusals as scenarios, in task 4.2.
+- **D-34 (stage 3, task 3.4, external library: pydantic-settings 2.16.2)** `BaseSettings` reads
+  only `os.environ`, so `settings_from_env(..., environ=)` injects the mapping by overriding
+  `EnvSettingsSource._load_env_vars`, a private method (the library's own dotenv, AWS and Azure
+  sources override it the same way), wired through `settings_customise_sources`, so no dotenv file
+  or secrets directory is read. The lead's choice: a work-around in this one module, pinned by
+  `==2.16.2` and covered by TC-40, so an upgrade that changes the method fails a test. Also exported
+  lazily from `rdf_persistence`: `ToolkitSettings` and its six groups (a consumer builds them).
+- **D-35 (stage 3, task 3.2, as built)** `generation/lint.yaml` excludes the six `USER_STATE_*`
+  values from `standard_naming`: they are Zitadel's wire values and cannot be snake_case. The
+  verifier's leeway bounds now come from `JwksSettings` alone; its `none`/`HS*`/empty-list refusal
+  stays as defence in depth beside the PyJWT check (TC-60). TC-30 also sets
+  `unknown_kid_cooldown_seconds=1`: the cooldown spaces the refresh of stale keys too, as before.
+  boto turns `max_attempts=N` into `total_max_attempts=N+1`, as today. `jwks.RS256` stays (the
+  testkit imports it).
+- **D-36 (stage 3, task 3.3, as built, and an incident)** TC-36 reads the events route in real
+  time (`keep_alive_seconds=0.05`, a comment within 3 s): `install_service` takes no clock. The
+  constructors' `limit < 1` / `max_roots < 1` checks are gone; `LimitSettings` refuses those values.
+  Incident: the builder's Serena `replace_content` resolved a relative path against the main
+  checkout (held by another session) and edited two test files there; it reverse-applied its own
+  diff and the lead confirmed the main checkout has no tracked change. A repo-wide `ruff --fix`
+  also touched four probe scripts of `test-debt-paydown`; the lead restored them. Briefs for later
+  tasks name absolute worktree paths for Serena. Parallel merge (D-29): the three tasks were
+  cherry-picked onto the stage branch; one conflict (`scenario-map.csv`, rows both appended)
+  resolved by keeping both.
 
 Under the floor (not fixed in stage 2):
 

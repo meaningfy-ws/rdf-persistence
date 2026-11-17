@@ -152,7 +152,7 @@ Stage 2 closes like stage 1.
 | TC-33 | `ZitadelIdentity(..., directory=DirectorySettings(page_size=2))` over 5 users | 3 requests, 5 accounts |
 | TC-34 | `grep` for `PROJECTS`, `MACHINE_USERS`, `OWN_ORGANISATION`, `TOKEN_PATH` in `adapters/` | none |
 
-- [ ] 3.3 PD-7: `RedisEventBus`, `Relay`, `EventHub`, `MessageBus`/`bootstrap`, `Mapper` (the
+- [x] 3.3 PD-7: `RedisEventBus`, `Relay`, `EventHub`, `MessageBus`/`bootstrap`, `Mapper` (the
   roots limit A-2 put there; `UnitOfWork`'s `max_roots=` and `DEFAULT_MAX_ROOTS` deleted),
   `Documents`, `tenant_dump.restore`, `add_events_route` take their groups; `ServiceKit` and
   `install_service` take `toolkit=` and pass them on. Tests: the existing tests of each, moved to
@@ -226,8 +226,8 @@ Stage 4 closes like stage 1, then the reconciliation of `proposal.md` (P-0004) i
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 ·
-  (tester) · [ ] 3.4 · [ ] 3.5 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · reconcile · PR 4
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · PR 2 · [x] 3.1 · [x] 3.2 · [x] 3.3 ·
+  (tester) · [x] 3.4 · [ ] 3.5 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · reconcile · PR 4
 
 ## Verification
 
