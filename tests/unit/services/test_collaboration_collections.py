@@ -4,7 +4,7 @@ import pytest
 from rdflib import RDF, URIRef
 
 from rdf_persistence import Action, StoredDataInvalid, generated_models
-from rdf_persistence.domain.exceptions import Forbidden, InvalidBody, InvalidIri
+from rdf_persistence.domain.exceptions import CommitTooLarge, Forbidden, InvalidBody, InvalidIri
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.domain.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.domain.iris import DEFAULT_IRIS
@@ -12,7 +12,7 @@ from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import UnitOfWork
+from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import fake_session
@@ -460,3 +460,34 @@ async def test_a_member_that_is_no_longer_a_collection_is_a_leaf_of_a_deep_read(
     await put_book(guarded, B)  # the IRI of a shelf now holds a book
     found = await as_ada(collaboration, guarded).members(A, deep=True)
     assert found.member_iris == [B], "the shelf it names; what is stored there is no collection"
+
+
+def limited_collaboration(session, max_roots: int) -> Collaboration:
+    view = load_schema(TOY_SCHEMA)
+    return Collaboration(
+        session,
+        view=view,
+        rules=AccessRules(load_role_definitions(ROLES)),
+        iris=DEFAULT_IRIS,
+        mapper=Mapper(view, generated_models(*MODULES), max_roots=max_roots),
+        models=generated_models(*MODULES),
+        listings=Listings(view),
+        caller=caller(principal=ADA),
+        access=held(role("librarian")),
+    )
+
+
+async def test_a_cascade_over_the_mappers_limit_is_refused_naming_it(guarded):  # TC-25
+    for iri in (B1, B2, B3):
+        await put_book(guarded, iri)
+    await put(guarded, a_shelf(S1, had_member=[B1, B2, B3]))
+    stored = (await guarded.get_graph(S1))[2]
+    with pytest.raises(CommitTooLarge, match=r"\b3\b"):
+        await limited_collaboration(guarded, 3).delete_cascade(S1, stored)
+    assert (await guarded.get_graph(S1))[2] == stored, "nothing was deleted"
+
+
+async def test_a_mapper_with_a_high_limit_admits_a_collection_of_600_members(guarded):  # TC-26
+    members = {book_iri(n) for n in range(1000, 1600)}
+    room = limited_collaboration(guarded, 1000)._collections._require_room
+    room((members, set()))  # does not raise: the default limit of 500 is not the cascade's

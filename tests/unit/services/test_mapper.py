@@ -12,6 +12,7 @@ from hypothesis import strategies as st
 from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
 
+from rdf_persistence import generated_models
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
@@ -27,7 +28,8 @@ from rdf_persistence.domain.iris import (
     graph_iri,
 )
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.mapper import new_part
+from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, Mapper, new_part
+from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence.testkit import assert_isomorphic
 from rdf_persistence.testkit.conformance import Conformance
@@ -39,6 +41,7 @@ from tests.fixtures.library.generated.scans import Scan
 from tests.fixtures.library.generated.templates import Template
 from tests.toy import (
     ADA,
+    MODULES,
     TENANT,
     TOY_SCHEMA,
     book_iri,
@@ -528,3 +531,17 @@ def test_a_served_command_serves_one_commit_and_a_second_claim_is_refused():
     served.claim()
     with pytest.raises(RuntimeError, match=ACTIVITY_ID):
         served.claim()
+
+
+def toy_mapper_limited(max_roots: int) -> Mapper:
+    return Mapper(load_schema(TOY_SCHEMA), generated_models(*MODULES), max_roots=max_roots)
+
+
+def test_a_mapper_holds_its_root_limit() -> None:  # TC-26b
+    assert toy_mapper().max_roots == DEFAULT_MAX_ROOTS, "the default"
+    assert toy_mapper_limited(7).max_roots == 7, "the one it was given"
+
+
+def test_a_mapper_refuses_a_root_limit_under_one() -> None:  # TC-26b
+    with pytest.raises(ValueError, match="max_roots"):
+        toy_mapper_limited(0)

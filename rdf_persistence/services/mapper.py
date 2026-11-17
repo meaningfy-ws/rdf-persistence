@@ -112,15 +112,25 @@ def new_part[M: BaseModel](
     return cls(id=str(minted), **fields)
 
 
+DEFAULT_MAX_ROOTS = 500  # roots in one commit transaction (atomic-commit PD-10)
+
+
 class Mapper:
     """Maps the generated classes of a schema to and from the triples of an aggregate.
 
     It keeps no model of its own (PD-24): it reads each class and slot from ``SchemaView`` as it
-    goes, remembering only the induced slots of a class and their predicates.
+    goes, remembering only the induced slots of a class and their predicates. It holds the limit on
+    the roots of one commit, ``max_roots``, which every ``UnitOfWork`` over it and the reference
+    collections' cascade share.
     """
 
-    def __init__(self, view: SchemaView, models: GeneratedModels) -> None:
+    def __init__(
+        self, view: SchemaView, models: GeneratedModels, *, max_roots: int = DEFAULT_MAX_ROOTS
+    ) -> None:
+        if max_roots < 1:
+            raise ValueError(f"max_roots must be at least 1, got {max_roots}")
         self.view = view
+        self._max_roots = max_roots
         self._models = models
         self._schema_names = {camelcase(name): name for name in view.all_classes()}
         self._slots: dict[str, list[tuple[SlotDefinition, URIRef]]] = {}
@@ -128,6 +138,11 @@ class Mapper:
         self._roots = {c.name for c in aggregate_roots(view, classes)} | {
             c.name for c in classes if is_tenant_root(c)
         }
+
+    @property
+    def max_roots(self) -> int:
+        """The most roots one commit may hold (``CommitTooLarge`` beyond it)."""
+        return self._max_roots
 
     def is_root(self, cls: type[BaseModel]) -> bool:
         """True for an aggregate root or the tenant root: what a session stores as a graph."""
@@ -288,9 +303,6 @@ def _listed(value: Any) -> Iterable[Any]:
     return value if isinstance(value, list) else [value]
 
 
-DEFAULT_MAX_ROOTS = 500  # roots in one commit transaction (atomic-commit PD-10)
-
-
 class UnitOfWork:
     """Object-level access to one session: ``get`` roots, ``add`` new or changed ones, ``commit``.
 
@@ -301,17 +313,20 @@ class UnitOfWork:
     ``Conflict.iris``, ``get`` again from a new unit of work for the fresh values, and retry.
     The held objects keep the tracking they were read with. A commit of more than ``max_roots``
     roots is refused (``CommitTooLarge``); ``commit(batches=True)`` takes it in several transactions.
+    ``max_roots`` is the mapper's unless given here (a value under 1 is a ``ValueError``).
     """
 
     def __init__(
         self,
         session: Session,
         mapper: Mapper,
-        max_roots: int = DEFAULT_MAX_ROOTS,
+        max_roots: int | None = None,
         *,
         served: Served | None = None,
     ) -> None:
-        if max_roots < 1:
+        if max_roots is None:
+            max_roots = mapper.max_roots
+        elif max_roots < 1:
             raise ValueError(f"max_roots must be at least 1, got {max_roots}")
         self._served = served  # the command this unit of work commits for (message-bus PD-16)
         self._session = session

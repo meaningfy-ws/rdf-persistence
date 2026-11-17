@@ -191,14 +191,21 @@ class Transitions:
     ) -> str:
         entered = state_iri(workflow, to)
         posted = self._mint(COMMENT) if comment else None
-        record = (command or Transition(id=new_activity_id(), used_resource=iri)).model_copy(
-            update={
-                "used_resource": iri,
-                "from_state_iri": current,
-                "to_state_iri": entered,
-                "transition_comment": posted,
-            }
-        )
+        if command is None:
+            record = Transition(
+                id=new_activity_id(),
+                used_resource=iri,
+                from_state_iri=current,
+                to_state_iri=entered,
+                transition_comment=posted,
+            )
+        else:
+            record = command.replaced(
+                used_resource=iri,
+                from_state_iri=current,
+                to_state_iri=entered,
+                transition_comment=posted,
+            )
         models: list[Comment] = []
         if comment:
             models.append(
@@ -234,11 +241,9 @@ class Transitions:
 def _about(move: Transition, iri: str) -> Transition:
     """``move`` with only the generations and invalidations of the entity ``iri``: what else the
     commit changed is no business of a reader of ``iri`` (D-6 b)."""
-    return move.model_copy(
-        update={
-            "generations": [g for g in move.generations or [] if g.entity == iri] or None,
-            "invalidations": [i for i in move.invalidations or [] if i.entity == iri] or None,
-        }
+    return move.replaced(
+        generations=[g for g in move.generations or [] if g.entity == iri] or None,
+        invalidations=[i for i in move.invalidations or [] if i.entity == iri] or None,
     )
 
 
