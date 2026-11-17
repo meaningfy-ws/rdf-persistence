@@ -2,10 +2,12 @@
 
 ## Done
 Stage 1 (defects, tasks 1.1–1.6), PR #141 (merged by the watch-and-merge command after this note).
-It unblocks `technical-models` (A-3/A-4, `jwks.py`) and `otel-observability` (A-7).
+It unblocks `technical-models` (A-3/A-4, `jwks.py`) and `otel-observability` (A-7). The EPIC is
+reconciled for stage 1 (proposal.md "As built"); stages 2 and 3 add their rows.
 
 ## Decided since the PLAN
-D-1 to D-7, F-1, F-2, and the stage 1 findings under the floor (design.md, Delivery decisions).
+D-1 to D-7 (agreed by the developer), F-1, F-2, and the stage 1 findings under the floor
+(design.md, Delivery decisions).
 
 ## Open
 - The full review (L1, L2, L3, L4+L5) runs once after stage 3 (D-1, P-0005); it weighs the findings
