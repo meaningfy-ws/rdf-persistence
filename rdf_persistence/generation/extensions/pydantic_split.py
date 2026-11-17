@@ -18,6 +18,7 @@ The stock generator lacks five things the toolkit needs, and this module adds th
 
 import copy
 import keyword
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -38,7 +39,7 @@ from linkml_runtime.linkml_model.meta import (
     SlotDefinition,
     TypeDefinition,
 )
-from linkml_runtime.utils.formatutils import underscore
+from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.generation.exceptions import SchemaGenerationError
@@ -62,6 +63,9 @@ PUBLIC_PACKAGE = "rdf_persistence"
 TOOLKIT_PACKAGE = "rdf_persistence.domain.generated"
 METAMODEL_DIR = PACKAGE_DIR / "model"
 INIT = "__init__.py"
+_LIST_DEFAULT = re.compile(
+    r"string\((.*)\)"
+)  # the ifabsent of a multivalued slot: its names, comma-separated
 
 
 class InternalAttribute(PydanticAttribute):
@@ -71,6 +75,7 @@ class InternalAttribute(PydanticAttribute):
     loosens: bool = False
     secret: bool = False
     strict: bool = False
+    default_factory: str | None = None
 
 
 def metamodel_module(name: str, *, toolkit: bool) -> str:
@@ -150,6 +155,11 @@ class SplitPydanticGenerator(PydanticGenerator):
         fields["description"] = slot.source.description  # the raw text, as for classes
         if not _is_python_name(slot.attribute.alias):
             fields["name"] = make_valid_python_identifier(underscore(slot.source.name))
+        if slot.source.multivalued and slot.source.ifabsent is not None:
+            fields["predefined"] = _list_default(slot.source)
+        factory = _default_factory(slot.source)
+        if factory is not None:
+            fields["range"] = factory  # never absent, so never ``Optional``
         internal = is_internal(slot.source)
         secret = annotation_text(slot.source, GenerationAnnotation.SECRET) == TRUE_TEXT
         slot.attribute = InternalAttribute(
@@ -158,6 +168,7 @@ class SplitPydanticGenerator(PydanticGenerator):
             loosens=_loosens_a_base_slot(slot.source, sv),
             secret=secret,
             strict=annotation_text(slot.source, GenerationAnnotation.STRICT) == TRUE_TEXT,
+            default_factory=factory,
         )
         return slot
 
@@ -169,6 +180,28 @@ def _is_python_name(alias: str | None) -> bool:
     a dotted alias (``rp.step``) would become ``rp_step``. Such a slot is named after itself instead.
     """
     return alias is None or (alias.isidentifier() and not keyword.iskeyword(alias))
+
+
+def _list_default(slot: SlotDefinition) -> str:
+    """The Python list a multivalued slot's ``ifabsent: string(a, b)`` stands for.
+
+    The stock generator writes the one string ``"a, b"`` as the default of a list field, which is no list.
+    """
+    found = _LIST_DEFAULT.fullmatch(str(slot.ifabsent))
+    if found is None:
+        raise SchemaGenerationError(
+            f"{slot.name} is multivalued: its ifabsent must be string(a, b, ...), got {slot.ifabsent}"
+        )
+    return repr([name.strip() for name in found.group(1).split(",")])
+
+
+def _default_factory(slot: SlotDefinition) -> str | None:
+    """The class name a ``default_instance`` slot builds its default from; None for any other slot.
+
+    The hard check (``checks/default_instance.py``) has already refused a slot whose range is no class.
+    """
+    flagged = annotation_text(slot, GenerationAnnotation.DEFAULT_INSTANCE) == TRUE_TEXT
+    return camelcase(str(slot.range)) if flagged else None
 
 
 def _python_module(definition: TypeDefinition) -> str | None:

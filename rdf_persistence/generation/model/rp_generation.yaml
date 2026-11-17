@@ -1142,6 +1142,12 @@ enums:
           to a slot annotated `toolkit_filled`, gives no slot of its own the `slot_uri` of one, and has
           no slot that is both `payload` and required.
         meaning: rp:HardRuleToolkitFilled
+      default_instance:
+        title: Default instance
+        description: >-
+          A slot annotated `default_instance` ranges over a class, and every required slot of that
+          class has an `ifabsent`, so the class can be built with no argument.
+        meaning: rp:HardRuleDefaultInstance
   LockRule:
     title: Lock rule
     description: How a change between two locks is treated.
@@ -1282,3 +1288,10 @@ enums:
           On a type, the Python module its `repr` class is imported from: the generated module then
           reads `from <module> import <repr>`.
         meaning: rp:GenerationAnnotationPythonImport
+      default_instance:
+        title: Default instance
+        description: >-
+          On a slot whose range is a class, `true` when the slot's default is a new instance of that
+          class (`Field(default_factory=<Range>)`), so it is never absent. The hard check refuses it on
+          a slot whose range is not a class, or whose range class has a required slot with no `ifabsent`.
+        meaning: rp:GenerationAnnotationDefaultInstance

@@ -255,6 +255,97 @@ def test_a_type_with_a_repr_and_a_python_import_is_imported_and_used_as_the_fiel
     assert ast.unparse(field.annotation) == "SparqlTerm", "the field is typed by the type's repr"
 
 
+GROUP_MODULE = """
+id: https://example.org/ns/groups
+name: groups
+title: Groups
+description: A class that holds a group of its own.
+prefixes: {g: "https://example.org/ns/g#", linkml: "https://w3id.org/linkml/"}
+default_prefix: g
+default_range: string
+imports: [linkml:types]
+classes:
+  Group:
+    title: Group
+    description: A group of values.
+    slots: [size]
+  Holder:
+    title: Holder
+    description: Holds a default group and an optional one.
+    slots: [group, other]
+slots:
+  size:
+    title: Size
+    description: A count.
+    range: integer
+    ifabsent: int(3)
+  group:
+    title: Group slot
+    description: The group, never absent.
+    range: Group
+    annotations:
+      default_instance: 'true'
+  other:
+    title: Other slot
+    description: A group that may be absent.
+    range: Group
+"""
+
+
+def test_a_slot_with_default_instance_builds_a_fresh_default_of_its_range(tmp_path: Path) -> None:
+    """TC-56's generator half: `Field(default_factory=Group)` for the annotated slot, `None` for the other."""
+    (tmp_path / "groups.yaml").write_text(GROUP_MODULE, encoding="utf-8")
+    text = {f.name: f.text for f in render_modules(tmp_path / "groups.yaml")}["groups.py"]
+    lines = {line.strip().split(":")[0]: line for line in text.splitlines()}
+    assert "default_factory=Group" in lines["group"], lines["group"]
+    assert "default=None" in lines["other"], "an unannotated slot keeps the stock default"
+    namespace: dict[str, object] = {}
+    exec(compile(text, "groups.py", "exec"), namespace)
+    holder = namespace["Holder"]
+    first, second = holder(), holder()  # type: ignore[operator]
+    assert first.group.size == 3, "the group holds its own defaults"
+    assert first.group is not second.group, "each instance gets a group of its own"
+    assert first.other is None, "the slot without the annotation stays absent"
+
+
+LIST_MODULE = """
+id: https://example.org/ns/names
+name: names
+title: Names
+description: A class with a list that has a default.
+prefixes: {n: "https://example.org/ns/n#", linkml: "https://w3id.org/linkml/"}
+default_prefix: n
+default_range: string
+imports: [linkml:types]
+classes:
+  Names:
+    title: Names
+    description: Holds a list.
+    slots: [names]
+slots:
+  names:
+    title: Names slot
+    description: The names; the default is the two given.
+    multivalued: true
+    required: true
+    minimum_cardinality: 1
+    ifabsent: string(RS256, ES256)
+"""
+
+
+def test_a_multivalued_slot_with_ifabsent_defaults_to_the_list_of_its_names(tmp_path: Path) -> None:
+    """PD-6: the stock generator writes the scalar `"RS256, ES256"`; the list is `string(a, b)`'s meaning."""
+    (tmp_path / "names.yaml").write_text(LIST_MODULE, encoding="utf-8")
+    text = {f.name: f.text for f in render_modules(tmp_path / "names.yaml")}["names.py"]
+    namespace: dict[str, object] = {}
+    exec(compile(text, "names.py", "exec"), namespace)
+    names = namespace["Names"]
+    first, second = names(), names()  # type: ignore[operator]
+    assert first.names == ["RS256", "ES256"], "the default is the list, not the text"
+    first.names.append("EdDSA")
+    assert second.names == ["RS256", "ES256"], "each instance gets a list of its own"
+
+
 _REPR_LINE = "    repr: SparqlTerm\n"
 _IMPORT_LINES = "    annotations:\n      python_import: rdf_persistence.domain.sparql\n"
 

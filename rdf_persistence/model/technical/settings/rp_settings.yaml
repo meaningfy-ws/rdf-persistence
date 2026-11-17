@@ -1,0 +1,289 @@
+id: https://meaningfy.ws/ns/rdf-persistence/settings
+name: rp_settings
+title: RDF persistence settings module
+description: >-
+  The deployment and tuning values of the toolkit, grouped by area and held together by
+  `ToolkitSettings`: HTTP timeouts and attempts, the JWKS cache, the directory page size, the event
+  bus, the relay and the hub, server-sent events and the size limits. Every slot defaults to the value
+  the toolkit used before it had settings, so a consumer that sets none gets the same behaviour. A
+  consumer's composition root builds the groups (by hand or with `settings_from_env`) and hands each
+  to the adapter or service that uses it. Nothing here is served by the HTTP service
+  (technical-models PD-6, DEC-5).
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+
+classes:
+  HttpSettings:
+    title: HTTP settings
+    description: >-
+      The timeouts and the attempts of every HTTP client of the toolkit: the SPARQL store, the identity
+      provider and the object store.
+    slots:
+      - connect_timeout_seconds
+      - read_timeout_seconds
+      - max_attempts
+  JwksSettings:
+    title: JWKS settings
+    description: How the token verifier caches the identity provider's keys and which signatures it accepts.
+    slots:
+      - ttl_seconds
+      - unknown_kid_cooldown_seconds
+      - allowed_algorithms
+      - leeway_seconds
+  DirectorySettings:
+    title: Directory settings
+    description: How the user directory of the identity provider is read.
+    slots:
+      - page_size
+  EventSettings:
+    title: Event settings
+    description: The event bus, the relay that publishes from the outbox, and the hub that fans events out.
+    slots:
+      - stream
+      - retention_seconds
+      - claim_idle_seconds
+      - polling_interval_ms
+      - relay_interval_seconds
+      - publish_timeout_seconds
+      - hub_queue_size
+  SseSettings:
+    title: Server-sent events settings
+    description: The lifetime, the access check, the keep-alive and the resume window of the events route.
+    slots:
+      - max_lifetime_seconds
+      - access_ttl_seconds
+      - keep_alive_seconds
+      - resume_window_seconds
+  LimitSettings:
+    title: Limit settings
+    description: The most the toolkit takes in one message bus run, one commit, one body and one restore manifest.
+    slots:
+      - max_messages
+      - max_roots
+      - max_document_nodes
+      - max_manifest_bytes
+  ToolkitSettings:
+    title: Toolkit settings
+    description: >-
+      Every group of settings; each group is a new instance of its class with its own defaults, never
+      absent.
+    slots:
+      - http
+      - jwks
+      - directory
+      - events
+      - sse
+      - limits
+
+slots:
+  connect_timeout_seconds:
+    title: Connect timeout
+    description: The seconds an HTTP client waits to open a connection.
+    range: float
+    required: true
+    ifabsent: float(5.0)
+    minimum_value: 0.001
+  read_timeout_seconds:
+    title: Read timeout
+    description: The seconds an HTTP client waits for the answer.
+    range: float
+    required: true
+    ifabsent: float(30.0)
+    minimum_value: 0.001
+  max_attempts:
+    title: Maximum attempts
+    description: The most times the object store client tries a request.
+    range: integer
+    required: true
+    ifabsent: int(3)
+    minimum_value: 1
+  ttl_seconds:
+    title: Key cache lifetime
+    description: The seconds a fetched set of signing keys is used before it is fetched again.
+    range: float
+    required: true
+    ifabsent: float(600.0)
+    minimum_value: 0.001
+  unknown_kid_cooldown_seconds:
+    title: Key refresh cooldown
+    description: >-
+      The most often, in seconds, that the keys are fetched again, whether they are stale or a token
+      names a key id that is not in the cache.
+    range: float
+    required: true
+    ifabsent: float(10.0)
+    minimum_value: 0.001
+  allowed_algorithms:
+    title: Allowed algorithms
+    description: >-
+      The JWS algorithms a token may be signed with. Any name but `none` and the shared-secret `HS*`
+      family is accepted here; the token verifier checks each name against the installed JWT library
+      when it is built.
+    range: string
+    multivalued: true
+    required: true
+    minimum_cardinality: 1
+    ifabsent: string(RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512, EdDSA)
+    pattern: '(?i)^(?!none$|hs)\S+$'
+  leeway_seconds:
+    title: Clock leeway
+    description: The seconds a token's expiry and not-before times may be off, to allow for clock drift.
+    range: float
+    required: true
+    ifabsent: float(30.0)
+    minimum_value: 0
+    maximum_value: 300
+  page_size:
+    title: Page size
+    description: The users read from the directory in one request.
+    range: integer
+    required: true
+    ifabsent: int(100)
+    minimum_value: 1
+  stream:
+    title: Stream
+    description: The name of the event stream.
+    range: string
+    required: true
+    ifabsent: string(rp-events)
+  retention_seconds:
+    title: Retention
+    description: The seconds an event stays in the stream.
+    range: float
+    required: true
+    ifabsent: float(604800)
+    minimum_value: 0.001
+  claim_idle_seconds:
+    title: Claim idle time
+    description: The seconds a delivered event may stay unacknowledged before it is delivered again.
+    range: float
+    required: true
+    ifabsent: float(30.0)
+    minimum_value: 0.001
+  polling_interval_ms:
+    title: Polling interval
+    description: The milliseconds between two reads of the stream.
+    range: integer
+    required: true
+    ifabsent: int(100)
+    minimum_value: 1
+  relay_interval_seconds:
+    title: Relay interval
+    description: The seconds the relay waits between two looks at the outbox.
+    range: float
+    required: true
+    ifabsent: float(5.0)
+    minimum_value: 0.001
+  publish_timeout_seconds:
+    title: Publish timeout
+    description: The seconds the relay waits for the bus to take one event.
+    range: float
+    required: true
+    ifabsent: float(10.0)
+    minimum_value: 0.001
+  hub_queue_size:
+    title: Hub queue size
+    description: The events a subscriber of the hub may have waiting before it is reset.
+    range: integer
+    required: true
+    ifabsent: int(1000)
+    minimum_value: 1
+  max_lifetime_seconds:
+    title: Maximum lifetime
+    description: The seconds an events connection stays open before the client must reconnect.
+    range: float
+    required: true
+    ifabsent: float(300.0)
+    minimum_value: 0.001
+  access_ttl_seconds:
+    title: Access check lifetime
+    description: The seconds the result of an access check is kept.
+    range: float
+    required: true
+    ifabsent: float(1.0)
+    minimum_value: 0.001
+  keep_alive_seconds:
+    title: Keep-alive interval
+    description: The seconds of silence after which the events route sends a comment line.
+    range: float
+    required: true
+    ifabsent: float(15.0)
+    minimum_value: 0.001
+  resume_window_seconds:
+    title: Resume window
+    description: The seconds back from now a client may resume from with its last event id.
+    range: float
+    required: true
+    ifabsent: float(604800)
+    minimum_value: 0.001
+  max_messages:
+    title: Maximum messages
+    description: The most messages one run of the message bus handles.
+    range: integer
+    required: true
+    ifabsent: int(100)
+    minimum_value: 1
+  max_roots:
+    title: Maximum roots
+    description: The most aggregate roots one commit transaction holds.
+    range: integer
+    required: true
+    ifabsent: int(500)
+    minimum_value: 1
+  max_document_nodes:
+    title: Maximum document nodes
+    description: The most objects and list values one JSON-LD body may hold.
+    range: integer
+    required: true
+    ifabsent: int(10000)
+    minimum_value: 1
+  max_manifest_bytes:
+    title: Maximum manifest size
+    description: The most bytes the manifest of a tenant dump may hold.
+    range: integer
+    required: true
+    ifabsent: int(65536)
+    minimum_value: 1
+  http:
+    title: HTTP
+    description: The HTTP client settings.
+    range: HttpSettings
+    annotations:
+      default_instance: 'true'
+  jwks:
+    title: JWKS
+    description: The key cache and signature settings of the token verifier.
+    range: JwksSettings
+    annotations:
+      default_instance: 'true'
+  directory:
+    title: Directory
+    description: The user directory settings.
+    range: DirectorySettings
+    annotations:
+      default_instance: 'true'
+  events:
+    title: Events
+    description: The event bus, relay and hub settings.
+    range: EventSettings
+    annotations:
+      default_instance: 'true'
+  sse:
+    title: Server-sent events
+    description: The settings of the events route.
+    range: SseSettings
+    annotations:
+      default_instance: 'true'
+  limits:
+    title: Limits
+    description: The size and count limits.
+    range: LimitSettings
+    annotations:
+      default_instance: 'true'
