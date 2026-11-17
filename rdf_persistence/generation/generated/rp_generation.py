@@ -158,6 +158,8 @@ class GenerationAnnotation(str, Enum):
     "On a class, `true` when it accepts fields it does not declare and keeps them in `model_extra`, as the answer of a foreign API needs. Every other class refuses them."
     STRICT = "strict"
     "On a slot, `true` when its value must already be of its type: a string is not read as a number, and a boolean is not read as one either."
+    PYTHON_IMPORT = "python_import"
+    "On a type, the Python module its `repr` class is imported from: the generated module then reads `from \u003cmodule\u003e import \u003crepr\u003e`."
 
 
 

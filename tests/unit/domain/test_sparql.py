@@ -3,6 +3,7 @@
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from pydantic import BaseModel, ValidationError
 from rdflib import BNode, Dataset, Graph, Literal, URIRef
 from rdflib.namespace import XSD
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
@@ -13,7 +14,9 @@ from rdf_persistence.domain.sparql import (
     checked_group,
     count,
     fill,
+    fill_terms,
     fragment,
+    fragment_terms,
     join,
     match_patterns,
     order_by,
@@ -448,3 +451,51 @@ def test_a_pattern_too_long_for_the_parser_is_refused_with_the_advice_to_split()
     text = " ".join(f"?s <urn:p{n}> ?o{n} ." for n in range(400))
     with pytest.raises(SparqlError, match="too long to check"):
         checked_group(text, template=False)
+
+
+# -- term models: a bundle of SparqlTerm fields (PD-4, DEC-7) ---------------------------------------
+
+
+class Pair(BaseModel):
+    a: SparqlTerm
+    b: SparqlTerm | None = None
+
+
+T1 = term(URIRef("urn:x"))
+T2 = term(URIRef("urn:y"))
+
+
+def test_a_term_field_keeps_the_sparql_term_it_is_given():
+    """TC-14."""
+    assert type(Pair(a=T1).a) is SparqlTerm, "the field must stay a SparqlTerm, not become a str"
+
+
+def test_a_term_field_refuses_a_raw_string():
+    """TC-15."""
+    with pytest.raises(ValidationError, match="SparqlTerm"):
+        Pair(a="<urn:x>")  # type: ignore[arg-type]
+
+
+def test_a_none_field_is_left_out_so_fill_reports_it_missing():
+    """TC-17."""
+    with pytest.raises(SparqlError, match=r"missing terms for \['b'\]"):
+        fill_terms("$a $b", Pair(a=T1, b=None))
+
+
+def test_fill_terms_takes_the_model_fields_and_the_extra_terms():
+    """TC-55."""
+    assert fill_terms("$a $b", Pair(a=T1), b=T2) == "<urn:x> <urn:y>", "model plus extra"
+
+
+def test_a_name_in_both_the_model_and_the_extra_terms_is_refused():
+    """TC-55."""
+    with pytest.raises(SparqlError, match=r"term given twice: \['a'\]"):
+        fill_terms("$a", Pair(a=T1), a=T2)
+
+
+def test_fragment_terms_gives_a_sparql_term_and_refuses_a_name_given_twice():
+    """TC-55, for fragment_terms."""
+    piece = fragment_terms("$a", Pair(a=T1))
+    assert type(piece) is SparqlTerm, "a fragment is a term again"
+    with pytest.raises(SparqlError, match="term given twice"):
+        fragment_terms("$a", Pair(a=T1), a=T2)

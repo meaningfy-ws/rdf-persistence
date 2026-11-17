@@ -8,7 +8,10 @@ SPARQL text from a value, so injection is audited here only.
 import re
 from collections.abc import Collection, Iterable, Iterator, Sequence
 from string import Template
+from typing import Any
 
+from pydantic import BaseModel, GetCoreSchemaHandler
+from pydantic_core import core_schema
 from pyparsing import ParseBaseException, ParseResults
 from rdflib import RDF, BNode, Literal, URIRef, Variable
 from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
@@ -29,6 +32,13 @@ class SparqlTerm(str):
     """SPARQL text that ``term`` produced: the only kind of value ``fill`` accepts."""
 
     __slots__ = ()
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source: type[Any], handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        """A model field of this type takes a ``SparqlTerm`` and nothing else: a raw ``str`` fails."""
+        return core_schema.is_instance_schema(cls)
 
 
 def _iri(value: str) -> str:
@@ -96,6 +106,32 @@ def fill(template: str, **terms: SparqlTerm) -> str:
 def fragment(template: str, **terms: SparqlTerm) -> SparqlTerm:
     """``fill`` for a piece of a larger text: the result is a ``SparqlTerm``, so ``join`` and ``fill`` take it."""
     return SparqlTerm(fill(template, **terms))
+
+
+def _bundle_terms(terms: BaseModel, more: dict[str, SparqlTerm]) -> dict[str, SparqlTerm]:
+    """The set fields of a term model, with ``more``; a ``None`` field is left out.
+
+    Iterating the model yields its attribute values as they are, so each stays a ``SparqlTerm``
+    (``model_dump()`` would turn it into a ``str``).
+    """
+    given = {name: value for name, value in terms if value is not None}
+    if twice := sorted(given.keys() & more.keys()):
+        raise SparqlError(f"term given twice: {twice}")
+    return {**given, **more}
+
+
+def fill_terms(template: str, terms: BaseModel, **more: SparqlTerm) -> str:
+    """``fill`` with the ``SparqlTerm`` fields of a model, and ``more`` that one call adds to it.
+
+    Raises:
+        SparqlError: A name is both a field of ``terms`` and in ``more``, or ``fill`` refuses.
+    """
+    return fill(template, **_bundle_terms(terms, more))
+
+
+def fragment_terms(template: str, terms: BaseModel, **more: SparqlTerm) -> SparqlTerm:
+    """``fill_terms`` for a piece of a larger text: the result is a ``SparqlTerm``."""
+    return SparqlTerm(fill_terms(template, terms, **more))
 
 
 def _joined(separator: str, parts: Iterable[SparqlTerm], caller: str) -> SparqlTerm:
