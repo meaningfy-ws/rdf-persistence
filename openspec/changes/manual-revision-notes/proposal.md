@@ -166,7 +166,8 @@ GET /libraries/t1/books/b7   Accept: application/n-quads
 - `services/mapper.py`: `max_roots` moves to the `Mapper` (`UnitOfWork` falls back to it);
   `services/reference_collections.py`: the mapper's `max_roots`. `domain/base.py`:
   `RpModel.replaced(**changes)`, used at the eight `model_copy(update=...)` sites.
-- `services/messagebus.py`, `entrypoints/kit.py`, `entrypoints/problems.py`: one log per error.
+- `services/messagebus.py`, `entrypoints/problems.py`: one log per error (`entrypoints/kit.py`
+  keeps its one log and is unchanged).
 - `adapters/fuseki.py`, `entrypoints/negotiation.py`: rdflib format names and `EVENT_STREAM`
   replaced by media types and `EventSourceResponse.media_type`.
 - `model/rp_files.yaml`, `model/rp_core.yaml`: `media_type` annotations on `RdfFormat`, a
@@ -179,7 +180,9 @@ GET /libraries/t1/books/b7   Accept: application/n-quads
   declared if DEC-8 holds.
 - `services/mapper.py`: the corrected docstring (G-4).
 - Docs: `adr/` records ADR-001 to ADR-005 and their index; `architecture/api.adoc` representations;
-  `howto/adopt.adoc` the verifier's parameters; `questions.adoc` entries.
+  `howto/adopt.adoc` the verifier's parameters; `questions.adoc` entries. Stage 1 also corrected
+  `howto/workflow.adoc` and `architecture/api.adoc` (`If-Match`) and `howto/event-driven.adoc` (the
+  loop limit is raised, not logged).
 
 ## Capabilities
 
@@ -197,15 +200,16 @@ None.
 
 ## Impact
 
-- Consumers: **BREAKING** in six places, each listed in design.md "Breaking changes" and marked
+- Consumers: **BREAKING** in seven places, each listed in design.md "Breaking changes" and marked
   by a `BREAKING CHANGE:` footer: `If-Match` is strict (a weak tag `W/"v"` is 409, an unquoted
   value 428; both matched before); `expected_version` refuses `W/`, `*` and lists, which a
-  consumer's own route may call; `jwks.ALLOWED_ALGORITHMS` and `jwks.ES256` are removed; a loaded
-  JSON-LD file that names a graph or uses a relative IRI is refused, and so is a body with a
-  relative IRI; a language-tagged value changes shape in JSON and JSON-LD; `REPRESENTATIONS` holds
-  seven members. Otherwise: a consumer that builds `JwksTokenVerifier` gets the wider algorithm
-  default and a 30 s leeway without changing code, and `If-Match: *` and lists, refused as stale
-  today, now work.
+  consumer's own route may call; `jwks.ALLOWED_ALGORITHMS` and `jwks.ES256` are removed; a token
+  expired by less than the leeway (30 s by default) is accepted (`leeway_seconds=0` restores the
+  exact expiry); a loaded JSON-LD file that names a graph or uses a relative IRI is refused, and so
+  is a body with a relative IRI; a language-tagged value is a value object in JSON-LD (plain JSON
+  still shows the string); `REPRESENTATIONS` holds seven members. Otherwise: a consumer that builds
+  `JwksTokenVerifier` gets the wider algorithm default without changing code, and `If-Match: *`
+  and lists, refused as stale today, now work.
 - Dependencies: `python-mimeparse` 2.0.x (pure Python, no dependencies) at run time; `schemathesis`
   in tests; `pyoxigraph` declared at the locked 0.5.13 if DEC-8 holds (already installed through
   linkml-runtime).
@@ -213,3 +217,13 @@ None.
   change is expected `SAFE` (checked in task 2.4).
 - The later changes: `technical-models` takes DEC-3's parameters into settings; `otel-observability`
   builds on DEC-12.
+
+## As built
+
+Kept in step with each stage's PR (P-0004); the full reconciliation closes PR 3.
+
+| Stage | PR | As shaped | As built |
+|---|---|---|---|
+| 1 defects | #141 | DEC-1 to DEC-4, DEC-12; six breaking changes | Delivered as shaped. Seven breaking changes: DEC-2's leeway is breaking for a client that counts on an exact expiry (design D-5). A language-tagged value changes shape in JSON-LD only, not in JSON. A token header whose `alg` is not a string is refused with 401; it raised a 500 for one commit of the stage. `entrypoints/kit.py` needed no change. Three docs pages corrected beyond the shaped ones (What Changes). One CI-only test timeout, present on develop, quarantined (#142, design D-7). Delivery decisions D-1 to D-7 agreed by the developer, 2026-11-17 |
+| 2 reuse | — | DEC-5 to DEC-8 | — |
+| 3 representations, contract, decisions | — | DEC-9 to DEC-11 | — |

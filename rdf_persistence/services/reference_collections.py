@@ -39,7 +39,7 @@ from rdf_persistence.domain.iris import Iris, graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, GeneratedModels, Mapper
+from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.session import Session
 
 COLLECTION_MIXIN = "ReferenceCollection"
@@ -213,7 +213,7 @@ class ReferenceCollections:
                 served root, or its rule is no longer one the schema accepts, or it names a stored
                 aggregate that is not of its member class (the message names the collection, not
                 that aggregate).
-            CommitTooLarge: The collection and its members are more than ``DEFAULT_MAX_ROOTS``;
+            CommitTooLarge: The collection and its members are more than the mapper's ``max_roots``;
                 the message gives the limit, not the number of members.
             Conflict: ``collection`` is not at ``if_version``, or a member changed, or no longer
                 meets the rule, since it was read; nothing is deleted.
@@ -258,15 +258,16 @@ class ReferenceCollections:
             )
 
     def _require_room(self, held: Held) -> None:
-        """Only ``UnitOfWork.commit`` enforces the limit, so a cascade counts before it reads more.
+        """Only ``UnitOfWork.commit`` enforces the limit, so a cascade counts before it reads more, against
+        the mapper's ``max_roots``, the limit every unit of work over it uses.
 
         The message gives the limit and not how many members there are: some of them may match the
         rule of a caller who may not read them.
         """
-        if len(held[0] | held[1]) + 1 > DEFAULT_MAX_ROOTS:
+        limit = self._mapper.max_roots
+        if len(held[0] | held[1]) + 1 > limit:
             raise CommitTooLarge(
-                f"the collection and its members are more than the {DEFAULT_MAX_ROOTS} roots one "
-                "commit holds"
+                f"the collection and its members are more than the {limit} roots one commit holds"
             )
 
     def _require_deletable(self, held: Held) -> None:

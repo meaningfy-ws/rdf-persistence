@@ -165,14 +165,12 @@ def completed(
             for entity, class_iri, version in events
         ] or None
 
-    activity = base.model_copy(
-        update={
-            "started_at_time": started,
-            "ended_at_time": max(started, ended),  # a clock that went back (D-5 c)
-            "was_associated_with": [principal.id],
-            "generations": parts(Generation, [g for g, _ in changes if g]),
-            "invalidations": parts(Invalidation, [i for _, i in changes if i]),
-        }
+    activity = base.replaced(
+        started_at_time=started,
+        ended_at_time=max(started, ended),  # a clock that went back (D-5 c)
+        was_associated_with=[principal.id],
+        generations=parts(Generation, [g for g, _ in changes if g]),
+        invalidations=parts(Invalidation, [i for _, i in changes if i]),
     )
     return activity, list(types)
 

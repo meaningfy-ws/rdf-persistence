@@ -19,7 +19,7 @@ from rdf_persistence.domain.exceptions import (
 )
 from rdf_persistence.domain.generated.rp_provenance import Activity, Add, Replace
 from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.messagebus import Work
+from rdf_persistence.services.messagebus import Work, command
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import (
     FakeStore,
@@ -272,6 +272,36 @@ async def test_an_observer_that_exceeds_the_message_limit_is_logged_at_error_and
     )
     await restarted(world)
     assert [r.levelno for r in caplog.records if r.name == LOGGER] == [logging.ERROR], "acked"
+
+
+async def test_a_looping_observer_over_the_limit_leaves_one_error_record_in_the_run(
+    world, caplog
+) -> None:  # TC-32
+    async def replace(cmd: Replace, work: Work) -> None:
+        await work.send(command(Replace))
+
+    async def again(activity: Replace, work: Work) -> None:
+        await bus.handle(command(Replace), SimpleNamespace(session=work.session))
+
+    bus = bootstrap(
+        commands={Replace: replace},
+        observers={Replace: [again]},
+        limit=3,
+        mapper=world.cat.kit.mapper,
+    )
+    world.cat.kit.bus = bus
+    caplog.set_level(logging.DEBUG)
+    await sent(world)
+    await wait_until_async(
+        lambda: _async([r for r in caplog.records if r.levelno >= logging.ERROR]),
+        "the message limit to be logged",
+        poll_seconds=0.01,
+    )
+    errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert [r.name for r in errors] == [LOGGER], (
+        "one record in the run, from the kit that handled it"
+    )
+    assert "message limit 3 reached by Replace" in errors[0].getMessage(), "the command is named"
 
 
 async def test_a_key_error_while_handing_over_leaves_the_message_unacked(

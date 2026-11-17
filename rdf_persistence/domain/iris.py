@@ -69,11 +69,7 @@ def root_of_graph(graph: str) -> URIRef:
 
 def _default_iris(base: str, tenant_segment: str) -> "Iris":
     """The default policy under ``base`` and ``tenant_segment``, for the module functions below."""
-    return Iris(
-        DEFAULT_IRIS.settings.model_copy(
-            update={"base": base, "tenant_segment": _segment(tenant_segment)}
-        )
-    )
+    return Iris(DEFAULT_IRIS.settings.replaced(base=base, tenant_segment=_segment(tenant_segment)))
 
 
 def mint_tenant_iri(base: str, tenant_segment: str) -> URIRef:
@@ -260,7 +256,7 @@ _ID_SPECS = ("tenant_id", "object_id")
 def _canonical_spec(spec: IdSpec | None) -> IdSpec:
     if spec is None or spec.kind == IdKind.UUID4:
         return _UUID4
-    return spec.model_copy(update={"alphabet": spec.alphabet or DEFAULT_ALPHABET})
+    return spec.replaced(alphabet=spec.alphabet or DEFAULT_ALPHABET)
 
 
 def effective_policy(policy: IriPolicy | None, settings: ServiceSettings) -> IriPolicy:
@@ -283,7 +279,7 @@ def effective_policy(policy: IriPolicy | None, settings: ServiceSettings) -> Iri
             template = template.replace(f"{{{variable}}}", value)
         update[name] = template
     update.update({name: _canonical_spec(getattr(policy, name)) for name in _ID_SPECS})
-    return policy.model_copy(update=update)
+    return policy.replaced(**update)
 
 
 def policy_differences(stored: IriPolicy, configured: IriPolicy) -> list[str]:

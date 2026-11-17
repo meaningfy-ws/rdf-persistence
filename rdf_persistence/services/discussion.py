@@ -278,16 +278,16 @@ class Discussion:
         if command is not None and isinstance(command, PostReply) != (reply_to is not None):
             raise InvalidBody("a reply command goes with a reply_to, and a comment command without")
         minted = mint_iri(self._view.get_class(COMMENT), self._iris, self._access.tenant)
-        post = (
-            command
-            or (
+        if command is None:
+            post = (
                 PostReply(id=new_activity_id(), used_resource=iri, replies_to=reply_to)
                 if reply_to is not None
                 else PostComment(id=new_activity_id(), used_resource=iri)
             )
-        ).model_copy(
-            update={"used_resource": iri, **({"replies_to": reply_to} if reply_to else {})}
-        )
+        else:
+            post = command.replaced(
+                used_resource=iri, **({"replies_to": reply_to} if reply_to else {})
+            )
         model = Comment(
             id=minted,
             has_target=iri,

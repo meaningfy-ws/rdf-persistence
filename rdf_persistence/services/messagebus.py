@@ -147,10 +147,7 @@ class MessageBus:
     async def _start(self, run: _Run, command: Activity, collaboration: Collaboration) -> object:
         run.started += 1
         if run.started > self._limit:
-            log.error(
-                "message limit %s reached by %s %s", self._limit, type(command).__name__, command.id
-            )
-            raise MessageLimitExceeded(self._limit)
+            raise MessageLimitExceeded(self._limit, f"{type(command).__name__} {command.id}")
         if not any(c is collaboration for c in run.collaborations):
             run.collaborations.append(collaboration)
         _refuse_filled(command)

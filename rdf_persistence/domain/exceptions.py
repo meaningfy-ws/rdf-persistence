@@ -158,8 +158,15 @@ class StoredDataInvalid(PersistenceError):
 
 
 class MessageLimitExceeded(PersistenceError):
-    """A message bus started or published more messages in one chain than its ``limit`` allows."""
+    """A message bus started or published more messages in one chain than its ``limit`` allows.
 
-    def __init__(self, limit: int) -> None:
-        super().__init__(f"message limit {limit} reached")
+    ``command`` names the message that went over (its class and id) where the bus knows it; the
+    message then ends ``by <command>``. The bus raises without logging: the handler of the error logs.
+    """
+
+    def __init__(self, limit: int, command: str | None = None) -> None:
+        super().__init__(
+            f"message limit {limit} reached" + (f" by {command}" if command is not None else "")
+        )
         self.limit = limit
+        self.command = command

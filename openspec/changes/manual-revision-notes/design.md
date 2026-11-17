@@ -218,6 +218,7 @@ lands one carries a `BREAKING CHANGE:` footer (before 1.0.0 it bumps the MINOR, 
 | `If-Match: W/"v"` is 409, an unquoted `v` is 428 (both matched before) | a client that echoes a weakened or unquoted tag | 1.3 |
 | `expected_version` refuses `W/`, `*` and lists | a consumer route that calls it (`howto/workflow.adoc`) | 1.3 |
 | `jwks.ALLOWED_ALGORITHMS` and `jwks.ES256` removed | code that imports them (none in the repo but the verifier) | 1.1 |
+| A token expired by less than the leeway (30 s by default) is accepted | a client or test that counts on an exact expiry; `leeway_seconds=0` restores it | 1.1 |
 | A loaded JSON-LD file that names a graph, or uses a relative IRI, is refused; so is a body with a relative IRI (its triple was dropped before) | a consumer loading such files or sending such bodies | 2.2 |
 | A language-tagged value is a plain string in JSON and a value object in JSON-LD (it lost its tag in both) | a JSON-LD client | 1.4 |
 | `REPRESENTATIONS` holds seven members | code that matches it exhaustively | 3.1 |
@@ -356,3 +357,75 @@ recommendation):
 - **OQ-3** (from the attack) Match a weak tag after all, since a proxy may weaken the `ETag`
   (RISK-9)? Recommendation: keep strong comparison (DEC-4) and document the proxy rule; a version
   token is exact, so a weak match would hide nothing but the proxy's change.
+
+## Delivery decisions
+
+Taken by the lead (R-0007), shown to the developer at the end of each stage; the developer may
+overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
+
+- **D-1 Stage 1 review set.** Two read-only passes, L2 and L3, each its own reviewer (P-0005: one
+  pass of L2 and L3 per stage; `develop/agents.adoc`: L1, L2 and L3 are never combined). The full
+  review (L1, L2, L3, L4+L5) runs once, after stage 3. Then one fresh checker (MEDIUM).
+- **D-2 Stage 1 tester: no.** The PLAN has no `## Invariants` section and the appetite is MEDIUM,
+  so the stage-loop condition is not met; the PLAN schedules the tester after task 2.5.
+- **D-3 Stage 1 builders in parallel** (R-0004). Five builders in their own worktrees from
+  `b196bb8`, on disjoint files: 1.1 then 1.2 (`jwks.py`, one after the other), 1.3, 1.4, 1.5, 1.6.
+  The lead commits each task in its worktree and cherry-picks it onto
+  `change/manual-revision-notes-s1`; `rdf_persistence/__init__.py` and
+  `tests/unit/test_public_api.py`, the only files two tasks may share, are merged by the lead and
+  the task gate is re-run (T2).
+- **D-4 Impact of task 1.6 read as low.** GitNexus rates `MessageLimitExceeded` CRITICAL (48
+  direct): it counts every importer of `domain/exceptions.py`. The change only adds an optional
+  `command=` keyword; the three call sites (`messagebus.py:153`, `:182`, `test_receive.py:266`)
+  keep working unchanged. The other tasks rate LOW (`JwksTokenVerifier`, `dataset_of`,
+  `install_problem_handlers`) or MEDIUM (`expected_version`, 5 direct; `Mapper`, 14 direct, all
+  keeping their signatures).
+- **D-5 Three expiry tests changed in task 1.1.** The PLAN said the existing refusals stay green
+  (and named `tests/unit/services/`; the file is `tests/unit/adapters/test_token_verifier.py`).
+  DEC-2's default leeway accepts a token that expired up to 30 s ago, so `test_an_expired_token` and
+  the `expired` and `expires-this-instant` cases now issue tokens past the leeway; the exact-instant
+  refusal is kept by TC-11 (`leeway_seconds=0`). The leeway is added to "Breaking changes".
+- **D-6 Builder departures accepted.** TC-30 is a lasting `ast` scan in the suite, not a one-off
+  ast-grep (ast-grep is no project dependency). TC-24b uses `label` (`skos:prefLabel`): the toy has
+  no `title`, and the path is the same string slot. TC-26 calls `_require_room` directly: the TC
+  names it, and a real cascade of 600 members on the fake store is too slow. Builder 1.3 edited
+  three files with a python string replace instead of Edit; the lead read every changed site.
+
+- **D-7 A CI timeout quarantined (#142).** `test_heads_of_hundreds_of_iris_is_one_query` times out
+  at 120 s on the CI runner on unchanged code (develop's run for #140 failed, #139's passed; PR #141
+  failed the same way) and passes locally. Per testing.adoc rule 14 it is marked `quarantine` with
+  the issue linked; not a stage 1 defect. Candidate fix: task 2.5's pyoxigraph `FakeStore`, or
+  `test-debt-paydown`.
+
+### Stage 1 review findings (L2, L3)
+
+Accepted, re-labelled Critical (fixed in the one fix pass):
+
+- **F-1** (L2 W1) `howto/event-driven.adoc:323` says the bus logs a `MessageLimitExceeded`; after
+  PD-9 it raises without logging. Critical: a how-to that contradicts the code sends an operator
+  looking for a log line that never comes (L2 doc agreement). Fix: the bus raises; the place that
+  handles the error (the kit, or the problem handler for HTTP) logs it once.
+- **F-2** (L2 W3) The rp-service-api scenario "a list of versions" has no route test; TC-19 covers
+  only a list that names nothing, so a wrong `current` read would pass. Critical: a spec scenario
+  without a test breaks the traceability the checker verifies (`bdd-gherkin`). Fix: a `DELETE` with
+  `If-Match: "v0", <etag>` answers 204, then the `GET` answers 404.
+
+Under the floor (not fixed in this stage):
+
+- L3 W1 `RpModel.replaced` could be shadowed by a consumer slot named `replaced`; the full review
+  after stage 3 weighs a `model_`-prefixed name or a function.
+- L3 S2 the `current` closures read the whole aggregate for its version; a version-only read when
+  stage 2 or `technical-models` touches `Aggregates`.
+- L3 S3 TC-30 scans `domain` and `services` only; `adapters` and `entrypoints` are clean today.
+- L2 W2 the `expires-this-instant` case id now tests the leeway's edge (recorded in D-5).
+- L2 W4 the adversarial `small_limit` fixture patches `Mapper.max_roots` on the class instead of
+  building `Mapper(max_roots=)`; its assertions are unchanged.
+- L2 W5 asserts without a message in `test_negotiation.py` and `test_documents.py` (checklist rule 10).
+- L2 S1 TC-05's `pytest.raises` has no `match`.
+- L2 S2 TC-21 sends an unchanged body, so "the book is unchanged" is not observed.
+- L2 S3 TC-26 reaches private members (recorded in D-6).
+- L2 S4 `howto/commits.adoc:138` and `howto/adopt.adoc:906` do not name `Mapper(max_roots=)`,
+  `algorithms=` or `leeway_seconds=`; task 3.3 updates `howto/adopt.adoc`.
+- L3 to L4/L5 notes (positional `[2]`/`[1]` reads in `router.py`, `PyJWKSetError` raised to reach an
+  `except`, the bare `"error.type"` string, `VALUE_KEY`/`LANGUAGE_KEY` beside the other JSON-LD keys)
+  go to the full review after stage 3.

@@ -27,6 +27,4 @@ def visible_part(activity: Activity, may_read: Callable[[str], bool]) -> Activit
     invalidations = _readable(activity.invalidations, may_read)
     if not generations and not invalidations:
         return None
-    return activity.model_copy(
-        update={"generations": generations or None, "invalidations": invalidations or None}
-    )
+    return activity.replaced(generations=generations or None, invalidations=invalidations or None)

@@ -31,10 +31,9 @@ from rdf_persistence.domain.generated.rp_collections import MembershipRule, Slot
 from rdf_persistence.domain.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import term
-from rdf_persistence.services import reference_collections as collections_module
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, UnitOfWork
+from rdf_persistence.services.mapper import DEFAULT_MAX_ROOTS, Mapper, UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
@@ -646,8 +645,8 @@ LIMIT = 6  # the limit the three tests below lower the cascade's to: the fake st
 
 @pytest.fixture
 def small_limit(monkeypatch):
-    """The cascade counts against ``services.reference_collections.DEFAULT_MAX_ROOTS``; the fake store takes minutes at 500."""
-    monkeypatch.setattr(collections_module, "DEFAULT_MAX_ROOTS", LIMIT)
+    """The cascade counts against the mapper's ``max_roots``; the fake store takes minutes at 500."""
+    monkeypatch.setattr(Mapper, "max_roots", property(lambda self: LIMIT))
 
 
 async def test_rule_members_that_make_the_collection_and_members_exactly_the_limit_are_deleted(
@@ -1273,6 +1272,9 @@ async def test_heads_of_a_graph_iri_a_part_and_a_loose_iri_are_none(guarded):
     assert await guarded.heads(asked) == [], "none is a registered aggregate"
 
 
+# Quarantined: times out on CI at 120 s, on unchanged develop too.
+# https://github.com/meaningfy-ws/rdf-persistence/issues/142
+@pytest.mark.quarantine
 @pytest.mark.slow
 async def test_heads_of_hundreds_of_iris_is_one_query(guarded):
     iris = await books_through_one_transaction(guarded, 400)

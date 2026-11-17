@@ -11,7 +11,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 
 ## Stage 1: defects (PR 1)
 
-- [ ] 1.1 PD-1, PD-3 (A-3, A-4, DEC-1 to DEC-3): `algorithms=` and `leeway_seconds=` on
+- [x] 1.1 PD-1, PD-3 (A-3, A-4, DEC-1 to DEC-3): `algorithms=` and `leeway_seconds=` on
   `JwksTokenVerifier`, `DEFAULT_ALGORITHMS`, `DEFAULT_LEEWAY_SECONDS`; `TokenSigner(algorithm=...)`
   in `testkit/tokens.py`, generating an RSA, EC (P-256/384/521) or Ed25519 key to fit, the JWK
   naming `alg`; `jwks.RS256` stays (the testkit imports it), `ALLOWED_ALGORITHMS` and `ES256` go
@@ -29,7 +29,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 | TC-10 | `leeway_seconds=` -1, 301, `inf`, `nan` | each a `ValueError` |
 | TC-11 | `leeway_seconds=0`; `exp` 1000 at clock 1000 | refused (today's behaviour) |
 
-- [ ] 1.2 PD-2: the JWK mappings cached, the key bound to the token's algorithm. Layer: adapters.
+- [x] 1.2 PD-2: the JWK mappings cached, the key bound to the token's algorithm. Layer: adapters.
   Tests in `tests/unit/adapters/test_jwks.py` with a JWKS served by `httpx.MockTransport`. Gate:
   `make test-changed check-quality`.
 
@@ -41,7 +41,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 | TC-06 | a JWKS whose only key has no `kty` | `IdentityUnavailable` at refresh, as today |
 | TC-06b | a JWKS of a key with no `kty` (`kid` `bad`) and a good RSA key (`kid` `k1`) | a token for `k1` accepted; one for `bad` `InvalidToken` "unknown to the issuer" |
 
-- [ ] 1.3 PD-4 (A-5, DEC-4): `matched_version`; `expected_version` kept, strict. The five callers
+- [x] 1.3 PD-4 (A-5, DEC-4): `matched_version`; `expected_version` kept, strict. The five callers
   in `entrypoints/router.py` (`DocumentApi.replace`, `remove`; `TenantApi.delete`, `set_grants`,
   `set_label`) call `matched_version` with `current` as PD-4 names it. `howto/workflow.adoc:189`
   says what `expected_version` now refuses. Layer: entrypoints, docs. Tests in
@@ -65,7 +65,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 | TC-21b | `expected_version` of `"v3"`; `W/"v3"`; `*`; `"v1", "v3"` | `v3`; `Conflict`; `PreconditionRequired` naming `matched_version`; the same |
 | TC-21c | `"v1", , "v3"`, current `v3` | `v3` (the empty member skipped) |
 
-- [ ] 1.4 PD-6 part (A-1): `dataset_of` emits `language` and `rdf:langString` for a tagged literal
+- [x] 1.4 PD-6 part (A-1): `dataset_of` emits `language` and `rdf:langString` for a tagged literal
   (still in `documents.py`; it moves in 2.2); `render` for plain JSON turns a language value object
   into its value. Layer: services. Tests in `tests/unit/services/test_documents.py`. Gate:
   `make test-changed check-quality`.
@@ -77,7 +77,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 | TC-24 | `"a\\r"` (backslash, r) and `"x"^^xsd:integer` | unchanged from today (the PyLD workaround holds) |
 | TC-24b | a book whose title is `"Dune"@en`, rendered as JSON and as JSON-LD | JSON: `"title": "Dune"`; JSON-LD: `{"@value": "Dune", "@language": "en"}` |
 
-- [ ] 1.5 PD-7, PD-8 (A-2, A-6): `Mapper(max_roots=)` and its property; `UnitOfWork` falls back
+- [x] 1.5 PD-7, PD-8 (A-2, A-6): `Mapper(max_roots=)` and its property; `UnitOfWork` falls back
   to it; `_require_room` uses it; `RpModel.replaced`; the eight sites. Layer: domain, services.
   Tests in `tests/unit/domain/test_rp_model.py`, `tests/unit/services/test_mapper.py`,
   `tests/unit/services/test_collaboration_collections.py`, and the existing tests of the eight
@@ -95,7 +95,7 @@ changes `domain` or a port, or its reach is wide). After a schema change: `make 
 | TC-29 | `IdSpec(...).replaced(length="x")` | `ValidationError` (`model_copy` accepted it) |
 | TC-30 | `ast-grep` for `model_copy(update=` in `rdf_persistence/domain` and `rdf_persistence/services` | only `mapper.py` (schema-keyed, keep.md) |
 
-- [ ] 1.6 PD-9 (A-7, DEC-12): the bus raises without logging; `MessageLimitExceeded(limit,
+- [x] 1.6 PD-9 (A-7, DEC-12): the bus raises without logging; `MessageLimitExceeded(limit,
   command=)`; the problem handler logs each 500 once. Layer: domain, services, entrypoints. Tests in
   `tests/unit/services/test_messagebus.py` (the caplog test at :445 changes: no ERROR record from
   the bus, the class and id in the exception), `tests/unit/entrypoints/test_receive.py` (unchanged:
@@ -245,7 +245,7 @@ section), in PR 3 before it merges.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 ·
   [ ] 2.4 · [ ] 2.5 · (tester) · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] reconcile · PR 3
 
 ## Verification

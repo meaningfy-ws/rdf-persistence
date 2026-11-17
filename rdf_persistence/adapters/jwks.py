@@ -9,7 +9,7 @@ import asyncio
 import json
 import math
 import time
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from http import HTTPMethod
 
 import httpx
@@ -27,14 +27,48 @@ JWKS_TTL_SECONDS = 600.0
 # Keys are refreshed at most this often (stale or unknown kid alike), so neither an outage nor a burst of
 # forged kids can hammer the provider; inside it the verifier answers at once.
 UNKNOWN_KID_COOLDOWN_SECONDS = 10.0
-# Asymmetric only: `none` and the HS* family never verify.
-RS256, ES256 = "RS256", "ES256"
-ALLOWED_ALGORITHMS = (RS256, ES256)
+RS256 = "RS256"
+# Asymmetric only (DEC-1): `none` and the HS* family are refused at construction, even when listed.
+# The algorithms and the leeway are constructor parameters with these defaults; `technical-models`
+# moves them into the generated settings model with the other JWKS values (DEC-3).
+DEFAULT_ALGORITHMS = (
+    RS256,
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "EdDSA",
+)
+DEFAULT_LEEWAY_SECONDS = 30.0
+MAX_LEEWAY_SECONDS = 300.0
+UNSIGNED_ALGORITHM = "none"
+SYMMETRIC_PREFIX = "HS"
 HTTPS_PREFIX = "https://"
 DISCOVERY_PATH = "/.well-known/openid-configuration"
 REQUIRED_CLAIMS = ("exp", "sub")
 # A principal IRI ending in one of these is empty or a dot segment, which IRI normalisation resolves away (PD-14h).
 UNUSABLE_SUBJECTS = ("", ".", "..")
+
+
+def _checked_algorithms(algorithms: Collection[str]) -> Collection[str]:
+    """``algorithms`` unchanged if each is a signature algorithm PyJWT implements, else ``ValueError``."""
+    if not algorithms:
+        raise ValueError("the algorithms must not be empty")
+    implemented = jwt.algorithms.get_default_algorithms()
+    for name in algorithms:
+        if name.lower() == UNSIGNED_ALGORITHM.lower():
+            raise ValueError(f"the algorithm {name!r} is unsigned and never accepted")
+        if name.upper().startswith(SYMMETRIC_PREFIX):
+            raise ValueError(f"the algorithm {name!r} is symmetric and never accepted")
+        if name not in implemented:
+            raise ValueError(
+                f"the algorithm {name!r} is not implemented by the verification library"
+            )
+    return algorithms
 
 
 class JwksTokenVerifier(HttpAdapter):
@@ -54,8 +88,15 @@ class JwksTokenVerifier(HttpAdapter):
         clock: EpochClock = time.time,
         allow_insecure_issuer: bool = False,
         iris: Iris = DEFAULT_IRIS,
+        algorithms: Collection[str] = DEFAULT_ALGORITHMS,
+        leeway_seconds: float = DEFAULT_LEEWAY_SECONDS,
     ) -> None:
-        """Verify tokens of ``issuer``, which must be an https URL unless ``allow_insecure_issuer`` (test containers)."""
+        """Verify tokens of ``issuer``, which must be an https URL unless ``allow_insecure_issuer`` (test containers).
+
+        ``algorithms`` are the signature algorithms accepted; ``ValueError`` for an empty collection,
+        ``none``, an ``HS*`` name (any case) or a name PyJWT does not implement. ``leeway_seconds`` is the
+        clock skew allowed on ``exp`` and ``nbf``; ``ValueError`` unless finite and within 0 to 300.
+        """
         for name, value in (
             ("issuer", issuer),
             ("audience", audience),
@@ -65,6 +106,12 @@ class JwksTokenVerifier(HttpAdapter):
                 raise ValueError(f"the {name} must not be empty")
         if not allow_insecure_issuer and not issuer.startswith(HTTPS_PREFIX):
             raise ValueError("the issuer must be an https URL")
+        self._algorithms = frozenset(_checked_algorithms(algorithms))
+        if not math.isfinite(leeway_seconds) or not 0 <= leeway_seconds <= MAX_LEEWAY_SECONDS:
+            raise ValueError(
+                f"the leeway must be finite and within 0 to {MAX_LEEWAY_SECONDS:g} seconds, got {leeway_seconds}"
+            )
+        self._leeway = leeway_seconds
         super().__init__(transport=transport)
         self._issuer = issuer
         self._iris = iris
@@ -72,7 +119,7 @@ class JwksTokenVerifier(HttpAdapter):
         self._roles_claim = roles_claim
         self._jwks_uri = jwks_uri
         self._clock = clock
-        self._keys: dict[str, jwt.PyJWK] = {}
+        self._keys: dict[str, Mapping[str, object]] = {}
         self._fetched_at: float | None = None
         self._attempted_at: float | None = None
         self._lock = asyncio.Lock()
@@ -85,24 +132,38 @@ class JwksTokenVerifier(HttpAdapter):
         if not token:
             raise InvalidToken("the token is missing")
         algorithm, kid = self._header(token)
-        key = await self._key_for(kid)
-        claims = self._decode(token, key, algorithm)
+        jwk = await self._key_for(kid)
+        claims = self._decode(token, self._bound_key(jwk, algorithm), algorithm)
         return VerifiedCaller(
             principal=self._principal(claims.sub), global_roles=self._roles(claims)
         )
 
-    @staticmethod
-    def _header(token: str) -> tuple[str, str]:
+    def _header(self, token: str) -> tuple[str, str]:
         try:
             header = jwt.get_unverified_header(token)
         except jwt.PyJWTError as error:
             raise InvalidToken("the token is malformed") from error
         algorithm, kid = header.get("alg"), header.get("kid")
-        if algorithm not in ALLOWED_ALGORITHMS:
+        if not isinstance(algorithm, str) or algorithm not in self._algorithms:
             raise InvalidToken("the token's algorithm is not accepted")
         if not isinstance(kid, str) or not kid:
             raise InvalidToken("the token names no key (kid)")
         return algorithm, kid
+
+    @staticmethod
+    def _bound_key(jwk: Mapping[str, object], algorithm: str) -> jwt.PyJWK:
+        """The key of ``jwk`` bound to the token's (already allowed) ``algorithm``.
+
+        A JWK that names another ``alg`` is refused; one that names none is bound to the token's, since
+        PyJWT would otherwise infer ``RS256`` for every RSA key. A key type the algorithm cannot use is refused.
+        """
+        named = jwk.get("alg")
+        if named is not None and named != algorithm:
+            raise InvalidToken("the token's algorithm does not match its key")
+        try:
+            return jwt.PyJWK(dict(jwk), algorithm=algorithm)
+        except (jwt.InvalidKeyError, jwt.PyJWKError) as error:
+            raise InvalidToken("the token's key does not fit its algorithm") from error
 
     def _decode(self, token: str, key: jwt.PyJWK, algorithm: str) -> JwtClaims:
         now = self._clock()
@@ -130,9 +191,9 @@ class JwksTokenVerifier(HttpAdapter):
             raise InvalidToken("the token's times are malformed")
         if claims.sub in UNUSABLE_SUBJECTS:
             raise InvalidToken("the token's subject cannot name a principal")
-        if claims.exp <= now:
+        if claims.exp + self._leeway <= now:
             raise InvalidToken("the token has expired")
-        if claims.nbf is not None and claims.nbf > now:
+        if claims.nbf is not None and claims.nbf - self._leeway > now:
             raise InvalidToken("the token is not yet valid")
         return claims
 
@@ -145,7 +206,7 @@ class JwksTokenVerifier(HttpAdapter):
             return [str(role) for role in claim]
         return []
 
-    async def _key_for(self, kid: str) -> jwt.PyJWK:
+    async def _key_for(self, kid: str) -> Mapping[str, object]:
         if self._is_stale() or kid not in self._keys:
             await self._renew(kid)
         try:
@@ -180,12 +241,32 @@ class JwksTokenVerifier(HttpAdapter):
         self._attempted_at = self._clock()
         uri = self._jwks_uri or await self._discover()
         try:
-            keys = jwt.PyJWKSet.from_dict(json.loads(await self._fetch(uri))).keys
+            keys = self._usable_keys(json.loads(await self._fetch(uri)))
         except (ValueError, jwt.PyJWTError, TypeError, AttributeError) as error:
             raise IdentityUnavailable("the issuer's key set is unusable") from error
-        self._keys = {key.key_id: key for key in keys if key.key_id}
+        self._keys = keys
         self._fetched_at = self._clock()
         self._jwks_uri = uri
+
+    @staticmethod
+    def _usable_keys(document: Mapping[str, object]) -> dict[str, Mapping[str, object]]:
+        """The JWKs of ``document`` by ``kid``: those that build into a ``PyJWK`` and name a ``kid``.
+
+        As ``PyJWKSet`` does, a key that does not build is skipped; no usable key is an error.
+        """
+        usable: dict[str, Mapping[str, object]] = {}
+        for jwk in document["keys"]:  # type: ignore[attr-defined]
+            kid = jwk.get("kid") if isinstance(jwk, Mapping) else None
+            if not isinstance(kid, str) or not kid:
+                continue
+            try:
+                jwt.PyJWK(dict(jwk))
+            except jwt.PyJWTError:
+                continue
+            usable[kid] = jwk
+        if not usable:
+            raise jwt.PyJWKSetError("the key set has no usable key")
+        return usable
 
     async def _discover(self) -> str:
         content = await self._fetch(self._issuer.rstrip("/") + DISCOVERY_PATH)

@@ -1,8 +1,12 @@
 """``JwksTokenVerifier``'s key handling: discovery, the cache, one refresh per unknown kid, an unreachable provider."""
 
 import asyncio
+import base64
+import json
+import math
 
 import httpx
+import jwt
 import pytest
 
 from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JWKS_TTL_SECONDS, JwksTokenVerifier
@@ -10,7 +14,7 @@ from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.domain.generated.service.rp_service import IriPolicy, ServiceSettings
 from rdf_persistence.domain.iris import Iris
 from rdf_persistence.testkit import TokenSigner, shared_key
-from rdf_persistence.testkit.tokens import ISSUER
+from rdf_persistence.testkit.tokens import ISSUER, new_key
 
 PAST_COOLDOWN = 11.0
 WITHIN_COOLDOWN = 1.0
@@ -385,6 +389,117 @@ async def test_a_dot_or_empty_subject_is_refused(
         await verifier.verify(signer.issue(sub=sub))
 
 
+# --- the algorithm allow-list (PD-1, DEC-1) and the clock leeway (PD-3, DEC-2) -----------------
+
+DEFAULT_ALGORITHM_NAMES = (
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "EdDSA",
+)
+
+
+@pytest.mark.parametrize("algorithm", DEFAULT_ALGORITHM_NAMES)
+async def test_the_default_verifier_accepts_every_default_algorithm(
+    clock: ManualClock, algorithm: str
+) -> None:
+    signer = TokenSigner(clock=clock, algorithm=algorithm)
+    caller = await verifier_for(signer, clock).verify(signer.issue())
+    assert caller.principal.endswith("/user-1"), f"a {algorithm} token was not accepted"
+
+
+@pytest.mark.parametrize(
+    ("algorithms", "named"),
+    [
+        (["none"], "none"),
+        (["NONE"], "NONE"),
+        (["HS256"], "HS256"),
+        (["hs512"], "hs512"),
+        ([], "empty"),
+        (["ML-DSA-65"], "ML-DSA-65"),
+        (["RS256", "HS512"], "HS512"),
+    ],
+    ids=["none", "NONE", "HS256", "hs512", "empty", "unknown", "mixed"],
+)
+def test_an_unusable_algorithm_list_is_refused_naming_the_entry(
+    algorithms: list[str], named: str
+) -> None:
+    with pytest.raises(ValueError, match=named):
+        JwksTokenVerifier("https://idp.test", "aud", "roles", algorithms=algorithms)
+
+
+async def test_a_token_outside_the_instance_algorithms_is_refused_before_any_key_fetch(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    verifier = verifier_for(signer, clock, algorithms=["ES256"])
+    with pytest.raises(InvalidToken, match="algorithm"):
+        await verifier.verify(signer.issue())
+    assert signer.jwks_requests == 0, "the key set was fetched for a refused algorithm"
+
+
+async def test_a_narrower_list_still_accepts_its_own_algorithm(clock: ManualClock) -> None:
+    signer = TokenSigner(clock=clock, algorithm="ES256")
+    caller = await verifier_for(signer, clock, algorithms=("ES256",)).verify(signer.issue())
+    assert caller.principal, "an ES256 token under algorithms=['ES256'] was refused"
+
+
+CLOCK_NOW = 1000.0
+
+
+@pytest.mark.parametrize(
+    ("exp", "accepted"),
+    [(990, True), (971, True), (970, False), (940, False)],
+)
+async def test_the_default_leeway_lets_an_expired_token_through_for_30_seconds(
+    signer: TokenSigner, clock: ManualClock, exp: float, accepted: bool
+) -> None:
+    clock.now = CLOCK_NOW
+    verifier = verifier_for(signer, clock)
+    token = signer.issue(expires_in=exp - CLOCK_NOW)
+    if accepted:
+        assert (await verifier.verify(token)).principal, f"exp {exp} should be within the leeway"
+    else:
+        with pytest.raises(InvalidToken, match="expired"):
+            await verifier.verify(token)
+
+
+@pytest.mark.parametrize(("nbf", "accepted"), [(1020, True), (1031, False)])
+async def test_the_default_leeway_lets_an_early_token_through_for_30_seconds(
+    signer: TokenSigner, clock: ManualClock, nbf: float, accepted: bool
+) -> None:
+    clock.now = CLOCK_NOW
+    verifier = verifier_for(signer, clock)
+    token = signer.issue(not_before_in=nbf - CLOCK_NOW)
+    if accepted:
+        assert (await verifier.verify(token)).principal, f"nbf {nbf} should be within the leeway"
+    else:
+        with pytest.raises(InvalidToken, match="not yet valid"):
+            await verifier.verify(token)
+
+
+@pytest.mark.parametrize(
+    "leeway", [-1, 301, math.inf, math.nan], ids=["negative", "above-300", "inf", "nan"]
+)
+def test_a_leeway_outside_zero_to_300_or_not_finite_is_refused(leeway: float) -> None:
+    with pytest.raises(ValueError, match="leeway"):
+        JwksTokenVerifier("https://idp.test", "aud", "roles", leeway_seconds=leeway)
+
+
+async def test_a_zero_leeway_refuses_a_token_expiring_now(
+    signer: TokenSigner, clock: ManualClock
+) -> None:
+    clock.now = CLOCK_NOW
+    verifier = verifier_for(signer, clock, leeway_seconds=0)
+    with pytest.raises(InvalidToken, match="expired"):
+        await verifier.verify(signer.issue(expires_in=0))
+
+
 def test_the_verifier_exposes_the_iris_it_mints_with(
     signer: TokenSigner, clock: ManualClock
 ) -> None:
@@ -400,3 +515,80 @@ def test_the_verifier_exposes_the_iris_it_mints_with(
     assert verifier_for(signer, clock, iris=iris).iris is iris, (
         "the verifier exposes the IRI policy it was given"
     )
+
+
+# --- keys bound to the token's algorithm (PD-2) -----------------------------------------------
+
+
+def _jwks_verifier(jwks: list[dict[str, object]], clock: ManualClock) -> JwksTokenVerifier:
+    """A verifier over a JWKS the test wrote by hand, served by a mock transport."""
+    transport = httpx.MockTransport(lambda _r: httpx.Response(200, json={"keys": jwks}))
+    return JwksTokenVerifier(
+        ISSUER, "aud", "roles", jwks_uri=f"{ISSUER}/keys", transport=transport, clock=clock
+    )
+
+
+def _public_jwk(key: object, algorithm: str, kid: str, **extra: object) -> dict[str, object]:
+    jwk = jwt.get_algorithm_by_name(algorithm).to_jwk(key.public_key(), as_dict=True)  # type: ignore[attr-defined]
+    return {**jwk, "kid": kid, **extra}
+
+
+def _token(key: object, algorithm: str, kid: str, clock: ManualClock) -> str:
+    claims = {"iss": ISSUER, "aud": "aud", "sub": "u1", "exp": clock.now + 300}
+    return jwt.encode(claims, key, algorithm=algorithm, headers={"kid": kid})  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("algorithm", ["PS256", "RS384"])
+async def test_an_rsa_key_without_alg_verifies_any_rsa_algorithm_the_token_names(
+    clock: ManualClock, algorithm: str
+) -> None:
+    key = shared_key()
+    verifier = _jwks_verifier([_public_jwk(key, "RS256", "k1")], clock)
+    caller = await verifier.verify(_token(key, algorithm, "k1", clock))
+    assert caller.principal.endswith("/u1"), f"a {algorithm} token on a key without alg was refused"
+
+
+async def test_a_key_naming_another_algorithm_than_the_token_is_refused(
+    clock: ManualClock,
+) -> None:
+    key = shared_key()
+    verifier = _jwks_verifier([_public_jwk(key, "RS256", "k1", alg="RS256")], clock)
+    with pytest.raises(InvalidToken, match="does not match its key"):
+        await verifier.verify(_token(key, "PS256", "k1", clock))
+
+
+async def test_a_key_of_a_type_that_does_not_fit_the_token_algorithm_is_refused(
+    clock: ManualClock,
+) -> None:
+    ec_key = new_key("ES256")
+    verifier = _jwks_verifier([_public_jwk(ec_key, "ES256", "k1")], clock)
+    with pytest.raises(InvalidToken):
+        await verifier.verify(_token(shared_key(), "RS256", "k1", clock))
+
+
+async def test_a_jwks_whose_only_key_has_no_kty_is_unavailable(clock: ManualClock) -> None:
+    verifier = _jwks_verifier([{"kid": "bad", "n": "AQAB", "e": "AQAB"}], clock)
+    with pytest.raises(IdentityUnavailable):
+        await verifier.verify(_token(shared_key(), "RS256", "bad", clock))
+
+
+async def test_an_unusable_key_is_skipped_beside_a_good_one(clock: ManualClock) -> None:
+    key = shared_key()
+    verifier = _jwks_verifier([{"kid": "bad"}, _public_jwk(key, "RS256", "k1")], clock)
+    assert (await verifier.verify(_token(key, "RS256", "k1", clock))).principal, (
+        "the good key was refused beside a bad one"
+    )
+    with pytest.raises(InvalidToken, match="unknown to the issuer"):
+        await verifier.verify(_token(key, "RS256", "bad", clock))
+
+
+@pytest.mark.parametrize("alg", [["RS256"], {"a": 1}], ids=["list", "dict"])
+async def test_a_token_whose_alg_is_not_a_string_is_refused(
+    signer: TokenSigner, clock: ManualClock, alg: object
+) -> None:
+    def segment(value: object) -> str:
+        return base64.urlsafe_b64encode(json.dumps(value).encode()).rstrip(b"=").decode()
+
+    token = f"{segment({'alg': alg, 'kid': 'k1'})}.{segment({'sub': 'u1'})}.c2ln"
+    with pytest.raises(InvalidToken, match="algorithm is not accepted"):
+        await verifier_for(signer, clock).verify(token)

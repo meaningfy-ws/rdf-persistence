@@ -11,7 +11,7 @@ caller, before it counts and pages. It is JSON or JSON-LD, never Turtle (PD-15).
 """
 
 import json
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from http import HTTPMethod, HTTPStatus
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -45,7 +45,7 @@ from rdf_persistence.entrypoints.negotiation import (
     accepted_media_type,
     allowed_actions_value,
     etag_of,
-    expected_version,
+    matched_version,
     request_media_type,
 )
 from rdf_persistence.entrypoints.openapi import AggregateOpenApi, TenantOpenApi
@@ -175,24 +175,40 @@ class DocumentApi:
         location = f"{request.url.path.rstrip('/')}/{_last_segment(iri)}"
         return await self._response(read, media_type, status=HTTPStatus.CREATED, location=location)
 
+    def _version_of(
+        self, tenant: str, principal: Principal, iri: str
+    ) -> Callable[[], Awaitable[str]]:
+        """A read of the version ``iri`` has now, in the caller's session, for ``If-Match`` to match."""
+
+        async def current() -> str:
+            return (await self._kit.aggregates.read(tenant, principal, iri, self._cls))[2]
+
+        return current
+
     async def replace(
         self, request: Request, caller: VerifiedCaller, tenant: str, iri: str
     ) -> Response:
         media_type = accepted_media_type(request.headers.get(ACCEPT))
-        expected = expected_version(request.headers.get(IF_MATCH))
+        principal = Principal(id=caller.principal)
+
+        expected = await matched_version(
+            request.headers.get(IF_MATCH), self._version_of(tenant, principal, iri)
+        )
         data, body_type = await self._body(request)
         read = await self._kit.aggregates.replace(
-            tenant, Principal(id=caller.principal), self._cls, iri, data, body_type, expected
+            tenant, principal, self._cls, iri, data, body_type, expected
         )
         return await self._response(read, media_type)
 
     async def remove(
         self, request: Request, caller: VerifiedCaller, tenant: str, iri: str
     ) -> Response:
-        expected = expected_version(request.headers.get(IF_MATCH))
-        await self._kit.aggregates.remove(
-            tenant, Principal(id=caller.principal), iri, expected, self._cls
+        principal = Principal(id=caller.principal)
+
+        expected = await matched_version(
+            request.headers.get(IF_MATCH), self._version_of(tenant, principal, iri)
         )
+        await self._kit.aggregates.remove(tenant, principal, iri, expected, self._cls)
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
@@ -244,8 +260,18 @@ class TenantApi:
         )
         return model_response(page)
 
+    def _access_version(self, access: CallerAccess) -> Callable[[], Awaitable[str]]:
+        """A read of the access record's version, which the tenant routes compare."""
+
+        async def current() -> str:
+            return (await self._kit.tenancy.get(access.tenant))[1]
+
+        return current
+
     async def delete(self, request: Request, access: CallerAccess) -> Response:
-        expected = expected_version(request.headers.get(IF_MATCH))
+        expected = await matched_version(
+            request.headers.get(IF_MATCH), self._access_version(access)
+        )
         await self._kit.tenancy.delete(access.tenant, expected)
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
@@ -257,7 +283,9 @@ class TenantApi:
     async def set_grants(
         self, request: Request, caller: VerifiedCaller, access: CallerAccess
     ) -> Response:
-        expected = expected_version(request.headers.get(IF_MATCH))
+        expected = await matched_version(
+            request.headers.get(IF_MATCH), self._access_version(access)
+        )
         grants = await read_model(request, GrantSet, self._kit.max_body_bytes)
         self._kit.rules.validate_grants(grants, access.tenant)
         version = await self._kit.tenancy.set_grants(
@@ -268,7 +296,9 @@ class TenantApi:
     async def set_label(
         self, request: Request, caller: VerifiedCaller, access: CallerAccess
     ) -> Response:
-        expected = expected_version(request.headers.get(IF_MATCH))
+        expected = await matched_version(
+            request.headers.get(IF_MATCH), self._access_version(access)
+        )
         update = await read_model(request, LabelUpdate, self._kit.max_body_bytes)
         version = await self._kit.tenancy.rename(
             access.tenant, update.label, expected, Principal(id=caller.principal)

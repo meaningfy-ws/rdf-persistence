@@ -58,6 +58,8 @@ MAX_MESSAGES = 5
 # Objects in a body; with the byte bound, it keeps one request from costing a minute.
 MAX_NODES = 10_000
 TYPE_KEYS = ("type", TYPE_KEY)
+VALUE_KEY = "@value"
+LANGUAGE_KEY = "@language"
 
 
 def _refuse_remote(url: str, _options: Any) -> Any:
@@ -72,7 +74,8 @@ def dataset_of(graph: Graph) -> dict:
     """The triples of ``graph`` as the dataset ``jsonld.from_rdf`` takes.
 
     pyld 3.3.0 reads backslash sequences in N-Quads text wrongly (a literal of a backslash and `r`
-    comes back as a backslash and a carriage return), so the text goes through rdflib instead.
+    comes back as a backslash and a carriage return), so the text goes through rdflib instead. A
+    language-tagged literal carries its ``language`` and the datatype ``rdf:langString``.
     """
 
     def term(node: Node) -> dict:
@@ -81,6 +84,13 @@ def dataset_of(graph: Graph) -> dict:
         if isinstance(node, BNode):
             return {"type": "blank node", "value": f"_:{node}"}
         assert isinstance(node, Literal)
+        if node.language:
+            return {
+                "type": "literal",
+                "value": str(node),
+                "language": node.language,
+                "datatype": str(RDF.langString),
+            }
         return {"type": "literal", "value": str(node), "datatype": str(node.datatype or XSD.string)}
 
     triples = [{"subject": term(s), "predicate": term(p), "object": term(o)} for s, p, o in graph]
@@ -452,7 +462,9 @@ class Documents:
         """``stored``, the graph read for an aggregate of class ``cls``, as ``media_type`` text.
 
         ``graph_iri`` is the graph the session read it from: the statements about it are left out, and
-        so are the values of the ``internal`` slots, which no representation shows.
+        so are the values of the ``internal`` slots, which no representation shows. JSON and JSON-LD
+        come from framing; JSON loses the language tag of a value (it keeps the published ``string``
+        schema), JSON-LD and Turtle keep it.
         """
         shown = Graph()
         for s, p, o in stored:
@@ -463,6 +475,7 @@ class Documents:
         framed = await anyio.to_thread.run_sync(self.frame, shown, cls)
         if media_type == JSON:
             framed.pop(CONTEXT_KEY, None)
+            return json.dumps(_without_languages(framed), ensure_ascii=False)
         return json.dumps(framed, ensure_ascii=False)
 
     def frame(self, graph: Graph, cls: ClassDefinition) -> dict:
@@ -471,6 +484,17 @@ class Documents:
         expanded = jsonld.from_rdf(dataset_of(graph), NATIVE)
         framed: dict = jsonld.frame(expanded, frame, LOADER)
         return framed
+
+
+def _without_languages(value: Any) -> Any:
+    """``value`` with each value object ``{"@value": v, "@language": l}`` replaced by ``v``, at any depth."""
+    if isinstance(value, list):
+        return [_without_languages(item) for item in value]
+    if isinstance(value, dict):
+        if value.keys() == {VALUE_KEY, LANGUAGE_KEY}:
+            return value[VALUE_KEY]
+        return {key: _without_languages(item) for key, item in value.items()}
+    return value
 
 
 def _bound(body: dict) -> None:

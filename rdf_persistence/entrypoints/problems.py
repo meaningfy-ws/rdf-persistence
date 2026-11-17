@@ -7,6 +7,7 @@ outsider what exists or where the store is. Errors of the framework (an unknown 
 route lacks) and of the consumer's own routes are problems too.
 """
 
+import logging
 import re
 from collections.abc import Mapping
 from http import HTTPStatus
@@ -25,6 +26,8 @@ from rdf_persistence.entrypoints.auth import BEARER_SCHEME
 WWW_AUTHENTICATE = "WWW-Authenticate"
 BEARER = BEARER_SCHEME.capitalize()
 PROBLEMS_PATH = "problems/"
+
+log = logging.getLogger(__name__)
 
 # The fixed title and status of each kind of problem; the slugs are those of the generated ``ProblemSlug``.
 _ROWS = {
@@ -195,6 +198,12 @@ def install_problem_handlers(app: FastAPI, base: str) -> None:
     async def toolkit_error(_: Request, error: Exception) -> Response:
         kind = kind_of(error)
         assert kind is not None, "a handler is registered only for mapped errors"
+        if kind.status == HTTPStatus.INTERNAL_SERVER_ERROR:
+            log.error(
+                "internal error answered",
+                exc_info=error,
+                extra={"error.type": f"{type(error).__module__}.{type(error).__qualname__}"},
+            )
         return problem_response(problem_for(base, kind, str(error)))
 
     async def invalid_body(_: Request, error: Exception) -> Response:
@@ -207,6 +216,7 @@ def install_problem_handlers(app: FastAPI, base: str) -> None:
         return problem_response(problem, error.headers)
 
     async def server_error(_: Request, __: Exception) -> Response:
+        # not logged here: Starlette re-raises after answering and the server logs it (PD-9)
         return problem_response(problem_for(base, INTERNAL_ERROR))
 
     for cls, _ in ERROR_KINDS:

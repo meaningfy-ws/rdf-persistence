@@ -429,7 +429,7 @@ async def test_a_handle_in_a_task_that_outlives_its_parent_starts_a_run_of_its_o
     assert rec.names() == ["add"], "what it queued ran, in its own run"
 
 
-async def test_the_limit_error_is_logged_with_the_command_before_it_is_raised(caplog):  # D-11 c
+async def test_the_limit_error_names_the_command_and_the_bus_logs_nothing(caplog):  # TC-31
     (_, collaboration), seen = fakes(), []
     bus: MessageBus
 
@@ -442,12 +442,15 @@ async def test_the_limit_error_is_logged_with_the_command_before_it_is_raised(ca
 
     bus = MessageBus({Replace: replace}, {Replace: [again]}, limit=2)
 
-    with caplog.at_level(logging.ERROR), pytest.raises(MessageLimitExceeded):
+    with caplog.at_level(logging.DEBUG), pytest.raises(MessageLimitExceeded) as caught:
         await bus.handle(command(Replace), collaboration)
 
-    logged = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
-    assert logged == [f"message limit 2 reached by Replace {seen[0].id}"], (
-        "class and id of the command"
+    assert str(caught.value) == f"message limit 2 reached by Replace {seen[0].id}", (
+        "class and id of the command, in the exception"
+    )
+    assert caught.value.limit == 2, "the limit stays an attribute"
+    assert not [r for r in caplog.records if r.name == "rdf_persistence.services.messagebus"], (
+        "the bus raises; the place that handles the error logs it (PD-9)"
     )
 
 
