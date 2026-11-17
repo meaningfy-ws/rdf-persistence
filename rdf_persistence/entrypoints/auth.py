@@ -10,12 +10,12 @@ from fastapi import Depends, Header
 
 from rdf_persistence.domain.exceptions import InvalidToken
 from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.service.rp_service import (
+from rdf_persistence.services.access import load_caller_access
+from rdf_persistence.services.generated.service.rp_service import (
     Authorised,
     CallerAccess,
     VerifiedCaller,
 )
-from rdf_persistence.services.access import load_caller_access
 
 if TYPE_CHECKING:  # the kit builds its gate, so it cannot be imported here at run time
     from rdf_persistence.entrypoints.kit import ServiceKit

@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 from rdflib import URIRef
 
-from rdf_persistence.domain.generated.service.rp_service import Migration, MigrationStep
+from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.services.migrations import Chain, load_chain
 
 LIB = "https://example.org/ns/library"

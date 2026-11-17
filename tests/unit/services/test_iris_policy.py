@@ -7,13 +7,13 @@ import pytest
 from rdflib import URIRef
 
 from rdf_persistence.domain.exceptions import InvalidIri, NotFound
-from rdf_persistence.domain.generated.service.rp_service import (
+from rdf_persistence.services.generated.service.rp_service import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import Iris
+from rdf_persistence.services.iris import Iris
 
 BASE = "http://mwb.meaningfy.ws/"
 TENANT = f"{BASE}project/p4x8k2m"

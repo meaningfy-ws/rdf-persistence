@@ -16,7 +16,7 @@ file differs from the committed one (`check-generated`).
 
 ## Stage 1: technical models in the layer that uses them (PR 1)
 
-- [ ] 1.1 PD-9: `TargetKind`, `GenerationTarget.target_kind` (TOML key `kind` through
+- [x] 1.1 PD-9: `TargetKind`, `GenerationTarget.target_kind` (TOML key `kind` through
   `FIELD_OF_TOML_KEY` until 4.1), the `BoundaryRule` value `target_kind` in
   `generation/model/rp_generation.yaml`; `target_kind_problems` in `generation/checks/boundary.py`,
   called from `steps.py::_boundary_problems`. Tests in `tests/unit/generation/test_boundary_check.py`
@@ -31,7 +31,7 @@ file differs from the committed one (`check-generated`).
 | TC-04 | the toy library's table, no `kind` | no problem; generated files unchanged |
 | TC-05 | `kind = "access"` in a table | `ConfigError` naming `kind` |
 
-- [ ] 1.2 PD-2 (the `iris.py` split), DEC-3, DEC-9: commit A `git mv rdf_persistence/domain/iris.py
+- [x] 1.2 PD-2 (the `iris.py` split), DEC-3, DEC-9: commit A `git mv rdf_persistence/domain/iris.py
   rdf_persistence/services/iris.py` and `domain/tenant_move.py` → `services/tenant_move.py`, with
   their tests (PD-2's list) → `tests/unit/services/`; commit B cuts `domain/layout.py` out of
   `services/iris.py` and rewrites every importer (one ast-grep rule per name group over
@@ -47,7 +47,7 @@ file differs from the committed one (`check-generated`).
 | TC-62 | `rdf_persistence.Iris`, `DEFAULT_IRIS`, `mint_aggregate_iri`, `IdSource` | the objects defined in `rdf_persistence.services.iris`; `test_public_api.py` green |
 | TC-63 | `git log --follow --oneline rdf_persistence/services/iris.py` | reaches the commit that created `domain/iris.py` |
 
-- [ ] 1.3 PD-1, PD-2, PD-3, DEC-1, DEC-9: `git mv` `model/service/rp_service.yaml` →
+- [x] 1.3 PD-1, PD-2, PD-3, DEC-1, DEC-9: `git mv` `model/service/rp_service.yaml` →
   `model/technical/service/`, `model/adapters/rp_wire.yaml` → `model/technical/wire/`; the
   `[[tool.rp-generate]]` entries with their `package` (`rdf_persistence.services.generated.service`;
   `rdf_persistence.adapters.generated` unchanged for `wire`) and `kind` (the metamodel and
@@ -226,7 +226,7 @@ Stage 4 closes like stage 1, then the reconciliation of `proposal.md` (P-0004) i
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · PR 2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 ·
   (tester) · [ ] 3.4 · [ ] 3.5 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · reconcile · PR 4
 
 ## Verification

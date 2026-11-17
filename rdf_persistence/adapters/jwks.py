@@ -19,8 +19,8 @@ from pydantic import ValidationError
 from rdf_persistence.adapters._http import HttpAdapter
 from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument, JwtClaims
 from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
-from rdf_persistence.domain.generated.service.rp_service import VerifiedCaller
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.services.generated.service.rp_service import VerifiedCaller
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.tokens import EpochClock
 
 JWKS_TTL_SECONDS = 600.0

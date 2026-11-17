@@ -85,7 +85,7 @@ tests/integration/identity/test_zitadel.py::test_disabling_twice_is_harmless_and
 tests/integration/identity/test_zitadel.py::test_the_admin_principal_holds_the_admin_role_in_its_verified_token,capability,rp-identity,,,medium,covered code (adapters/jwks roles claim)
 tests/integration/identity/test_zitadel.py::test_zitadel_conforms,requirement,rp-identity,Accounts are administered through the identity port,,high,"name; covered code (adapters/zitadel, testkit/identity_conformance)"
 tests/integration/identity/test_zitadel_smoke.py::test_zitadel_answers_an_authenticated_management_call,requirement,rp-testkit,Adapters are tested against real containers,,medium,"name (container smoke); calls httpx only, covers no package line"
-tests/integration/network/test_loading_network.py::test_a_jsonld_context_that_is_not_inline_is_refused_and_nothing_is_fetched,requirement,rp-aggregate-store,RDF files load into a graph of their own,,high,name; covered code
+tests/integration/network/test_loading_network.py::test_a_jsonld_context_that_is_not_inline_never_reaches_the_server,requirement,rp-aggregate-store,RDF files load into a graph of their own,,high,name; covered code
 tests/integration/store/test_activity_cost.py::test_a_commit_that_records_its_activity_costs_what_beside_one_that_does_not,requirement,rp-messages,Every commit records one activity with its PROV events,,high,"name; spec id (PD-12, TC-50); covered code (services/provenance)"
 tests/integration/store/test_collaboration.py::test_a_cascade_deletes_the_shelf_and_its_members_in_one_request,requirement,rp-reference-collections,Deleting a collection keeps its members unless a cascade is asked for,,high,name; spec id (TC-34)
 tests/integration/store/test_collaboration.py::test_a_cascade_of_the_most_members_a_commit_holds_is_one_request,requirement,rp-reference-collections,Deleting a collection keeps its members unless a cascade is asked for,,high,name; spec id (PD-28 item 12)
@@ -219,7 +219,7 @@ tests/integration/tenancy/test_tenant_stores.py::test_tc37_a_sweep_drops_the_orp
 tests/integration/tenancy/test_tenant_sweep.py::test_it02_a_root_load_is_swept_only_when_no_commit_owns_it,scenario,rp-tenancy,Orphans inside a live tenant are removed,a root load is swept only when no commit owns it,high,name (the scenario's title); spec id (IT-02)
 tests/integration/tenancy/test_tenant_sweep.py::test_removing_with_files_deletes_only_the_keys_no_other_aggregate_names,scenario,rp-tenancy,A file aggregate can be removed with its blobs,a shared blob stays,high,name; covered code (services/file_removal)
 tests/integration/tenancy/test_tenant_sweep.py::test_the_sweep_gives_the_worked_examples_outcome_on_real_stores,requirement,rp-tenancy,Orphans inside a live tenant are removed,,high,name; spec id (live-tenant-sweep 5.2); covered code (services/tenant_sweep)
-tests/perf/store/test_dependents_cost.py::test_removing_a_book_of_a_tenant_without_comments_with_and_without_the_drop,capability,rp-discussion,,,medium,"spec id (PD-30 item 6); asserts the dependents-cost bound"
+tests/perf/store/test_dependents_cost.py::test_removing_a_book_of_a_tenant_without_comments_with_and_without_the_drop,capability,rp-discussion,,,medium,spec id (PD-30 item 6); asserts the dependents-cost bound
 tests/perf/store/test_store_budgets.py::test_a_commit_of_the_default_limit_of_new_books_stays_within_30_s,requirement,rp-aggregate-store,A commit has a size limit and an explicit batch mode,,high,"name; spec id (PD-10, PD-11, RISK-2)"
 tests/perf/store/test_store_budgets.py::test_a_keyed_add_stays_under_half_a_second_in_a_tenant_of_a_thousand_books,requirement,rp-aggregate-store,Unique keys hold across the aggregates of a tenant,,high,"name; spec id (IT-06, RISK-1)"
 tests/perf/store/test_store_budgets.py::test_replace_and_remove_cost_the_size_of_the_graphs_not_their_product,capability,rp-aggregate-store,,,medium,name; docstring (no spec or decision id)
@@ -357,186 +357,203 @@ tests/unit/domain/test_blob_keys.py::test_an_ordinary_key_is_returned_unchanged,
 tests/unit/domain/test_exceptions.py::test_a_conflict_names_the_roots_that_conflict_and_defaults_to_none,requirement,rp-aggregate-store,Several aggregates of one tenant commit atomically,,medium,covered code
 tests/unit/domain/test_exceptions.py::test_an_error_caused_by_the_callers_input_is_also_a_value_error,none,,,,none,none
 tests/unit/domain/test_exceptions.py::test_every_error_of_the_module_derives_persistence_error,none,,,,none,none
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_32_character_tenant_id_under_a_20_character_prefix_fits_a_bucket_name,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_default_aggregate_iri_with_a_longer_nesting_is_not_an_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_default_tenant_id_is_a_lower_case_hyphenated_uuid_and_nothing_else,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_drawn_id_that_is_a_reserved_word_is_discarded_for_every_kind_of_id,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_part_or_loaded_graph_template_must_name_a_tenant_or_a_root,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_part_type_is_not_an_aggregate_type_and_an_aggregate_type_is_not_a_part_type,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_reserved_word_is_not_a_tenant_id_when_matching,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_reserved_word_is_not_an_object_id_when_matching,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_source_that_only_answers_reserved_words_gives_up_after_100_draws_and_says_so,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_subject_and_its_percent_encoding_are_two_principals,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_subject_never_leaves_its_path_segment,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_template_with_deployment_and_no_slug_is_refused_at_build_time,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_tenant_id_that_is_not_the_policys_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_a_type_that_is_regex_syntax_matches_only_itself,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_access_iri_of_another_tenant_is_not_this_tenants_record,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_access_meta_registry_or_principal_template_of_its_own_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,medium,covered code; PD-12a-c
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_access_template_with_tenant_and_tenant_id_round_trips,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_aggregate_graph_is_never_the_graph_of_the_access_record,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_aggregate_graph_is_only_the_roots_slash_graph,requirement,rp-aggregate-store,"One named graph per aggregate, at a derived IRI",,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_aggregate_iri_with_anything_after_its_id_is_not_an_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_aggregate_template_must_name_its_tenant,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_alphabet_that_can_only_spell_a_reserved_word_fails_loudly_not_forever,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_an_object_id_that_is_not_the_policys_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_another_tenants_objects_are_not_this_tenants,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_building_an_iris_checks_the_policy_even_for_a_random_id_without_a_length,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_ids_at_the_ends_of_the_allowed_length_round_trip_through_every_matcher,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_iris_cannot_be_changed_after_it_is_built,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_the_default_uuid_tenant_under_a_20_character_prefix_fits_a_bucket_name,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_the_default_value_of_an_access_meta_or_registry_template_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,medium,covered code; PD-12a-c
-tests/unit/domain/test_iri_policy_adversarial.py::test_the_deployment_slug_is_never_an_id_even_when_the_policy_has_no_template_for_it,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iri_policy_adversarial.py::test_the_settings_an_iris_was_built_from_cannot_change_what_it_mints,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iri_policy_effective.py::test_a_deployment_in_a_template_is_written_in,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
-tests/unit/domain/test_iri_policy_effective.py::test_a_random_id_without_an_alphabet_has_the_default_one,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
-tests/unit/domain/test_iri_policy_effective.py::test_differences_are_dotted_field_names,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
-tests/unit/domain/test_iri_policy_effective.py::test_the_record_iri_is_under_the_toolkit_segment,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,medium,covered code
-tests/unit/domain/test_iri_policy_effective.py::test_the_settings_are_written_into_the_templates,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
-tests/unit/domain/test_iri_policy_effective.py::test_the_stamps_graph_is_under_the_toolkit_segment,capability,rp-schema-migrations,,,medium,covered code
-tests/unit/domain/test_iri_policy_effective.py::test_unset_and_empty_parts_get_their_defaults,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
-tests/unit/domain/test_iri_policy_model.py::test_a_deployment_variable_without_a_deployment_is_refused_naming_it,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_a_literal_character_outside_the_allowed_set_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_a_lower_case_deployment_of_at_most_32_characters_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,medium,covered code
-tests/unit/domain/test_iri_policy_model.py::test_a_policy_without_a_deployment_variable_needs_no_deployment,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_a_random_id_length_from_4_to_32_is_accepted,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iri_policy_model.py::test_a_random_id_length_outside_4_to_32_is_refused,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iri_policy_model.py::test_a_random_id_without_a_length_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_a_recorded_policy_without_the_field_holds_the_default_and_the_effective_one_parses,requirement,rp-iri-policy,The application space has its own IRI,,high,name; covered code; app-level-data PD-1
-tests/unit/domain/test_iri_policy_model.py::test_a_template_with_allowed_variables_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_a_template_without_its_id_is_refused_naming_the_aggregate_template,scenario,rp-iri-policy,Policies are checked when settings are made,a template without its id,high,name; covered code
-tests/unit/domain/test_iri_policy_model.py::test_a_tenant_graph_template_without_the_tenant_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_a_variable_not_allowed_for_its_kind_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_an_absent_id_spec_is_the_default_uuid4,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iri_policy_model.py::test_an_alphabet_outside_lower_case_letters_and_digits_is_refused,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iri_policy_model.py::test_an_application_template_of_the_allowed_placeholders_is_accepted,requirement,rp-iri-policy,The application space has its own IRI,,high,name; covered code; app-level-data PD-1
-tests/unit/domain/test_iri_policy_model.py::test_an_application_template_outside_the_pattern_is_refused,requirement,rp-iri-policy,The application space has its own IRI,,high,name; covered code; app-level-data PD-1
-tests/unit/domain/test_iri_policy_model.py::test_an_id_template_that_does_not_end_in_its_id_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_an_unknown_id_kind_is_refused,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
-tests/unit/domain/test_iri_policy_model.py::test_any_other_deployment_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,medium,covered code
-tests/unit/domain/test_iri_policy_model.py::test_no_policy_needs_no_check,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_settings_without_a_policy_hold_none_and_no_deployment,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iri_policy_model.py::test_the_consumers_policy_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
-tests/unit/domain/test_iri_policy_model.py::test_the_default_alphabet_is_lower_case_letters_and_digits,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iri_policy_model.py::test_the_default_application_template_is_base_app,requirement,rp-iri-policy,The application space has its own IRI,,high,name; covered code; app-level-data PD-1
-tests/unit/domain/test_iri_policy_model.py::test_the_default_part_and_loaded_graph_templates_need_neither_type_tenant_nor_base,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code; PD-12j
-tests/unit/domain/test_iri_policy_model.py::test_the_default_policy_has_todays_template,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iris.py::test_a_loaded_graph_is_the_minted_form_under_its_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris.py::test_a_prefix_outside_pd_6a_is_refused,capability,rp-iri-policy,,,high,name (PD-6a); covered code
-tests/unit/domain/test_iris.py::test_a_segment_that_is_not_a_path_segment_is_refused,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iris.py::test_a_skolem_iri_lives_under_its_graph_and_is_fresh_each_time,capability,rp-aggregate-store,,,medium,covered code
-tests/unit/domain/test_iris.py::test_a_tenant_id_that_is_not_a_canonical_uuid_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris.py::test_a_tenant_iri_is_the_base_the_segment_and_the_id,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
-tests/unit/domain/test_iris.py::test_a_tenant_segment_that_breaks_the_rule_is_an_invalid_iri,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iris.py::test_an_aggregate_graph_iri_is_the_graph_of_a_tenants_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iris.py::test_an_aggregate_id_that_is_not_a_canonical_uuid_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris.py::test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris.py::test_an_aggregate_iri_is_the_tenant_the_path_and_the_id,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
-tests/unit/domain/test_iris.py::test_an_iri_is_inside_a_tenant_only_below_its_path,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iris.py::test_an_iri_rule_breach_is_an_invalid_iri_and_still_a_value_error,none,,,,none,none
-tests/unit/domain/test_iris.py::test_an_iri_that_is_not_an_access_record_has_no_tenant,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iris.py::test_every_minted_aggregate_iri_is_an_aggregate_iri,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris.py::test_graph_iri_appends_graph,requirement,rp-aggregate-store,"One named graph per aggregate, at a derived IRI",,high,name; covered code
-tests/unit/domain/test_iris.py::test_is_skolem_of_tells_the_skolem_iris_of_a_graph_from_everything_else,capability,rp-aggregate-store,,,medium,covered code
-tests/unit/domain/test_iris.py::test_loaded_graph_iri_sits_under_the_aggregate,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iris.py::test_meta_registry_and_access_iris,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iris.py::test_mint_aggregate_iri_sits_under_the_tenant,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iris.py::test_mint_part_iri_sits_under_the_root_and_is_fresh,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iris.py::test_mint_tenant_iri_has_the_base_segment_and_a_uuid,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iris.py::test_minted_ids_are_uuid4,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iris.py::test_names_follow_pd_6a,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name (PD-6a); covered code
-tests/unit/domain/test_iris.py::test_only_a_lower_case_hyphenated_uuid_is_canonical,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iris.py::test_principal_iri_keeps_the_subject_in_one_segment,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,name; covered code
-tests/unit/domain/test_iris.py::test_root_of_graph_is_the_inverse_of_graph_iri,requirement,rp-aggregate-store,"One named graph per aggregate, at a derived IRI",,high,name; covered code
-tests/unit/domain/test_iris.py::test_root_of_graph_refuses_what_is_not_a_graph_iri,requirement,rp-aggregate-store,"One named graph per aggregate, at a derived IRI",,medium,covered code
-tests/unit/domain/test_iris.py::test_tenant_name_needs_a_canonical_uuid,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
-tests/unit/domain/test_iris.py::test_tenant_name_needs_a_uuid_last_segment,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
-tests/unit/domain/test_iris.py::test_tenant_name_starts_with_the_sweep_prefix_and_fits_a_bucket_name,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
-tests/unit/domain/test_iris.py::test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
-tests/unit/domain/test_iris.py::test_the_toolkit_principal_is_toolkit_under_the_base,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iris_application.py::test_an_application_template_that_needs_a_deployment_slug_is_refused_without_one,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application.py::test_tc15_default_policy_mints_under_the_application_iri,scenario,rp-iri-policy,The application space has its own IRI,the default application IRI,high,name (TC-15); covered code
-tests/unit/domain/test_iris_application.py::test_tc16_flat_policy_mints_the_application_as_a_tenant_id,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application.py::test_tc17_matching_accepts_the_application_and_refuses_a_tenant,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application.py::test_tc18_a_tenant_aggregate_is_not_the_applications,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application.py::test_tc19_tc27_the_application_is_never_a_tenant,scenario,rp-iri-policy,The application space has its own IRI,the application IRI is not a tenant,high,"name (TC-19, TC-27); covered code"
-tests/unit/domain/test_iris_application.py::test_tc20_no_tenant_is_drawn_as_app,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application.py::test_tc21_flat_policy_starts_and_app_is_no_tenant,scenario,rp-iri-policy,The application space has its own IRI,a colliding application IRI,high,name (TC-21); covered code
-tests/unit/domain/test_iris_application.py::test_tc22_an_application_iri_that_reads_as_a_tenant_is_refused,scenario,rp-iri-policy,The application space has its own IRI,a colliding application IRI,high,name (TC-22); covered code
-tests/unit/domain/test_iris_application.py::test_tc23_an_application_iri_equal_to_its_meta_is_refused,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application.py::test_tc24_the_application_iri_stays_under_the_base_and_off_the_toolkit,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application.py::test_tc25_application_database_name,requirement,rp-tenancy,The application keeps its own aggregates outside any tenant,,medium,covered code
-tests/unit/domain/test_iris_application.py::test_tc26_the_effective_policy_holds_the_application_template,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application.py::test_the_application_is_no_aggregate_of_itself_and_has_no_access_record,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_hostile_iri_argument_raises_nothing_for_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_hostile_tenant_argument_never_takes_the_applications_iris,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_hostile_tenant_argument_raises_only_the_documented_exceptions,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_loaded_graph_of_no_tenant_is_not_read_from_a_lookalike_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_policy_whose_application_iris_do_not_read_as_a_tenants_is_accepted,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_policy_whose_application_iris_read_as_a_tenants_is_refused,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_policy_with_colliding_application_graphs_is_refused_with_invalid_iri,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_policy_without_the_application_template_is_the_default_one,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_tenant_id_of_three_characters_is_not_in_the_schema,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
-tests/unit/domain/test_iris_application_adversarial.py::test_a_tenant_is_never_minted_with_the_id_app,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_tenant_read_as_an_aggregate_of_the_application_is_refused_on_its_own,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_tenant_still_round_trips_whatever_the_application_template,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_tenant_whose_id_starts_like_the_application_is_not_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_tenants_iris_are_never_accepted_for_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_a_type_that_is_no_root_type_is_refused_for_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_an_accepted_policy_keeps_the_applications_graphs_apart,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_an_application_iri_that_the_tenant_pattern_matches_is_refused,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_an_application_iri_the_short_alphabet_cannot_spell_is_accepted,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_an_application_that_is_the_tenants_parent_path_with_a_tenant_shaped_aggregate_is_refused,scenario,rp-iri-policy,The application space has its own IRI,the application's aggregates would read as tenants,high,name; docstring D-4; covered code
-tests/unit/domain/test_iris_application_adversarial.py::test_an_id_source_that_only_says_app_is_refused_for_the_application_too,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_an_iri_that_only_starts_like_the_application_is_not_the_applications,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_an_object_id_of_a_real_application_template_word_is_replaced,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_an_object_is_never_minted_with_the_id_app,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_another_application_template_differs_in_that_field_alone,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_every_root_type_round_trips_for_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_no_id_is_minted_as_app_whatever_the_id_source_answers,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_the_application_is_never_a_tenant_under_any_accepted_policy,scenario,rp-iri-policy,The application space has its own IRI,the application IRI is not a tenant,high,name; covered code
-tests/unit/domain/test_iris_application_adversarial.py::test_the_application_is_no_tenant_when_the_text_carries_it,scenario,rp-iri-policy,The application space has its own IRI,the application IRI is not a tenant,high,name; covered code
-tests/unit/domain/test_iris_application_adversarial.py::test_the_applications_iris_are_never_accepted_for_a_tenant,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_the_effective_application_template_is_the_iri_that_is_minted,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_the_effective_policy_applied_twice_is_the_effective_policy,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,medium,covered code
-tests/unit/domain/test_iris_application_adversarial.py::test_the_effective_policy_applied_twice_keeps_a_base_that_holds_a_variable,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,medium,covered code
-tests/unit/domain/test_iris_application_adversarial.py::test_the_words_of_the_application_template_are_reserved_ids,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_application_adversarial.py::test_what_is_minted_for_the_application_is_accepted_for_it,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
-tests/unit/domain/test_iris_policy.py::test_a_default_policy_accepts_the_tenant_its_access_record_and_minted_roots,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_default_policy_mints_todays_shapes,scenario,rp-iri-policy,"Without a policy, IRIs are today's",an application that sets nothing,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_default_policy_names_the_tenant_graphs_and_resource_as_today,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_flat_object_is_not_nested_under_another,scenario,rp-iri-policy,Each kind of IRI follows its configured template,a flat object,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_loaded_graph_is_only_what_the_policy_mints,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_nested_loaded_graph_belongs_to_the_named_root,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_a_principal_is_the_issuer_and_the_subject_in_one_segment,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_provenance_template_equal_to_the_registry_template_is_refused,scenario,rp-iri-policy,Policies are checked when settings are made,a provenance graph that collides,high,name; spec id (TC-06); covered code
-tests/unit/domain/test_iris_policy.py::test_a_provenance_template_of_its_own_is_accepted,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_reserved_id_is_drawn_again,scenario,rp-iri-policy,"Ids are random, short when configured, and never reserved",a reserved id,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_short_tenant_id_names_the_database_and_bucket,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_template_without_a_root_variable_still_mints_a_loaded_graph_for_the_root,requirement,rp-aggregate-store,The tenant root's loaded graphs are registered,,medium,covered code (comment tenant-root-loads)
-tests/unit/domain/test_iris_policy.py::test_a_tenant_iri_the_policy_cannot_mint_is_invalid,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_a_tenant_path_id_of_the_wrong_form_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_type_the_deployment_or_a_layout_word_is_never_an_id,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_a_type_the_schema_does_not_know_cannot_be_minted,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_a_uriref_and_a_str_of_one_iri_are_checked_alike,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_a_uuid_tenant_id_names_them_by_its_hex,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_an_aggregate_graph_is_the_graph_of_a_tenants_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_an_aggregate_is_only_what_the_policy_mints,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_an_aggregate_path_id_of_the_right_form_gives_its_iri,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_an_aggregate_path_id_of_the_wrong_form_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_an_iri_that_is_not_an_access_record_has_no_tenant,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_an_iris_is_frozen,none,,,,none,none
-tests/unit/domain/test_iris_policy.py::test_an_rp_path_that_is_not_a_segment_is_invalid,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_ids_have_the_configured_length_and_alphabet,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_parts_are_nested_under_their_root_only_when_the_part_template_starts_with_it,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_settings_the_schema_cannot_refuse_alone_are_refused_when_iris_is_built,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_the_api_path_does_not_enter_the_iri,scenario,rp-iri-policy,Each kind of IRI follows its configured template,"the API path changes, the IRIs do not",high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_the_consumers_tenant_is_the_project_path_and_a_short_id,scenario,rp-iri-policy,Each kind of IRI follows its configured template,the consumer's tenant,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_the_provenance_graph_is_minted_and_is_not_an_aggregate_or_a_loaded_graph,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,"spec id (message-bus PD-5, TC-05); covered code"
-tests/unit/domain/test_iris_policy.py::test_the_tenant_of_a_default_access_record_is_the_iri_above_it,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
-tests/unit/domain/test_iris_policy.py::test_the_tenant_of_an_access_record_comes_back_through_the_templates,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,name; covered code
-tests/unit/domain/test_iris_policy.py::test_the_tenant_root_has_no_aggregate_graph_of_its_own,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/domain/test_layout.py::test_a_prefix_inside_pd_6a_gives_the_known_database_names,capability,rp-iri-policy,,,medium,name (PD-6a); covered code
+tests/unit/domain/test_layout.py::test_the_layout_module_defines_the_twelve_policy_free_functions,capability,rp-iri-policy,,,medium,name; covered code
+tests/unit/domain/test_layout.py::test_the_layout_module_imports_no_generated_package,requirement,rp-generation,Technical models are generated apart from domain models,,high,name; spec requirement text (no domain module imports a technical model)
+tests/unit/domain/test_layout.py::test_the_layout_module_imports_nothing_of_the_toolkit_outside_the_domain,requirement,rp-generation,Technical models are generated apart from domain models,,high,name; spec requirement text (no domain module imports a technical model)
+tests/unit/entrypoints/test_router_hardening.py::test_a_body_of_too_many_objects_is_a_413_before_it_is_typed_or_expanded,capability,rp-service-api,,,medium,covered code;spec id
+tests/unit/generation/test_boundary_check.py::test_a_domain_target_holding_a_technical_module_fails_naming_it_and_writes_nothing,requirement,rp-generation,A target declares the kind of model it generates,,high,name; covered code (checks/boundary.py); spec requirement text
+tests/unit/generation/test_boundary_check.py::test_a_domain_target_refuses_a_technical_module_naming_it,requirement,rp-generation,A target declares the kind of model it generates,,high,name; covered code (checks/boundary.py); spec requirement text
+tests/unit/generation/test_boundary_check.py::test_a_technical_target_over_domain_modules_fails_naming_target_and_module_and_writes_nothing,scenario,rp-generation,A target declares the kind of model it generates,a domain module in a technical target,high,name; covered code (checks/boundary.py); spec scenario text
+tests/unit/generation/test_boundary_check.py::test_a_technical_target_refuses_a_domain_module_naming_it,scenario,rp-generation,A target declares the kind of model it generates,a domain module in a technical target,high,name; covered code (checks/boundary.py); spec scenario text
+tests/unit/generation/test_boundary_check.py::test_a_technical_target_refuses_an_access_module_naming_it,requirement,rp-generation,A target declares the kind of model it generates,,high,name; covered code (checks/boundary.py); spec requirement text
+tests/unit/generation/test_boundary_check.py::test_a_technical_target_whose_only_module_is_technical_has_no_problem,requirement,rp-generation,A target declares the kind of model it generates,,high,name; covered code (checks/boundary.py); spec requirement text
+tests/unit/generation/test_boundary_check.py::test_the_boundary_step_checks_the_kind_of_its_target,requirement,rp-generation,A target declares the kind of model it generates,,high,name; covered code (generation/steps.py); spec requirement text
+tests/unit/generation/test_generate_config.py::test_a_kind_is_read_from_its_toml_key,requirement,rp-generation,A target declares the kind of model it generates,,high,name; covered code (config.py); spec requirement text
+tests/unit/generation/test_generate_config.py::test_a_kind_spelt_target_kind_is_refused_naming_the_key,requirement,rp-generation,A target declares the kind of model it generates,,medium,name; covered code (config.py)
+tests/unit/generation/test_generate_config.py::test_a_kind_that_is_not_exactly_domain_or_technical_is_an_error_naming_the_toml_key,requirement,rp-generation,A target declares the kind of model it generates,,high,name; covered code (config.py); spec requirement text
+tests/unit/generation/test_generate_config.py::test_the_toy_librarys_table_has_no_kind_and_passes_the_boundary_check,scenario,rp-generation,A target declares the kind of model it generates,a target without a kind,high,name; spec scenario text
+tests/unit/services/test_components_folder.py::test_the_toolkit_components_file_is_found_under_services_generated_service,capability,rp-service-api,,,medium,name; covered code (services/components)
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_32_character_tenant_id_under_a_20_character_prefix_fits_a_bucket_name,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_default_aggregate_iri_with_a_longer_nesting_is_not_an_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_default_tenant_id_is_a_lower_case_hyphenated_uuid_and_nothing_else,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_drawn_id_that_is_a_reserved_word_is_discarded_for_every_kind_of_id,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_part_or_loaded_graph_template_must_name_a_tenant_or_a_root,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_part_type_is_not_an_aggregate_type_and_an_aggregate_type_is_not_a_part_type,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_reserved_word_is_not_a_tenant_id_when_matching,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_reserved_word_is_not_an_object_id_when_matching,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_source_that_only_answers_reserved_words_gives_up_after_100_draws_and_says_so,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_subject_and_its_percent_encoding_are_two_principals,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_subject_never_leaves_its_path_segment,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_template_with_deployment_and_no_slug_is_refused_at_build_time,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_tenant_id_that_is_not_the_policys_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_a_type_that_is_regex_syntax_matches_only_itself,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_access_iri_of_another_tenant_is_not_this_tenants_record,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_access_iri_whose_two_tenant_variables_disagree_is_not_an_access_iri,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_access_meta_registry_or_principal_template_of_its_own_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,medium,covered code; PD-12a-c
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_access_template_with_tenant_and_tenant_id_round_trips,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_aggregate_graph_is_never_the_graph_of_the_access_record,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_aggregate_graph_is_only_the_roots_slash_graph,requirement,rp-aggregate-store,"One named graph per aggregate, at a derived IRI",,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_aggregate_iri_with_anything_after_its_id_is_not_an_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_aggregate_template_must_name_its_tenant,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_alphabet_that_can_only_spell_a_reserved_word_fails_loudly_not_forever,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_an_object_id_that_is_not_the_policys_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_another_tenants_objects_are_not_this_tenants,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_building_an_iris_checks_the_policy_even_for_a_random_id_without_a_length,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_ids_at_the_ends_of_the_allowed_length_round_trip_through_every_matcher,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_iris_cannot_be_changed_after_it_is_built,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_the_default_uuid_tenant_under_a_20_character_prefix_fits_a_bucket_name,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_the_default_value_of_an_access_meta_or_registry_template_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,medium,covered code; PD-12a-c
+tests/unit/services/test_iri_policy_model_adversarial.py::test_the_deployment_slug_is_never_an_id_even_when_the_policy_has_no_template_for_it,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iri_policy_model_adversarial.py::test_the_settings_an_iris_was_built_from_cannot_change_what_it_mints,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_iri_policy_effective.py::test_a_deployment_in_a_template_is_written_in,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
+tests/unit/services/test_iri_policy_effective.py::test_a_random_id_without_an_alphabet_has_the_default_one,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
+tests/unit/services/test_iri_policy_effective.py::test_differences_are_dotted_field_names,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
+tests/unit/services/test_iri_policy_effective.py::test_the_record_iri_is_under_the_toolkit_segment,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,medium,covered code
+tests/unit/services/test_iri_policy_effective.py::test_the_settings_are_written_into_the_templates,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
+tests/unit/services/test_iri_policy_effective.py::test_the_stamps_graph_is_under_the_toolkit_segment,capability,rp-schema-migrations,,,medium,covered code
+tests/unit/services/test_iri_policy_effective.py::test_unset_and_empty_parts_get_their_defaults,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,high,docstring (PD-14b); covered code
+tests/unit/services/test_iri_policy_model.py::test_a_deployment_variable_without_a_deployment_is_refused_naming_it,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_a_literal_character_outside_the_allowed_set_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_a_lower_case_deployment_of_at_most_32_characters_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,medium,covered code
+tests/unit/services/test_iri_policy_model.py::test_a_policy_without_a_deployment_variable_needs_no_deployment,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_a_random_id_length_from_4_to_32_is_accepted,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iri_policy_model.py::test_a_random_id_length_outside_4_to_32_is_refused,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iri_policy_model.py::test_a_random_id_without_a_length_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_a_recorded_policy_without_the_field_holds_the_default_and_the_effective_one_parses,requirement,rp-iri-policy,The application space has its own IRI,,high,name; covered code; app-level-data PD-1
+tests/unit/services/test_iri_policy_model.py::test_a_template_with_allowed_variables_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_a_template_without_its_id_is_refused_naming_the_aggregate_template,scenario,rp-iri-policy,Policies are checked when settings are made,a template without its id,high,name; covered code
+tests/unit/services/test_iri_policy_model.py::test_a_tenant_graph_template_without_the_tenant_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_a_variable_not_allowed_for_its_kind_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_an_absent_id_spec_is_the_default_uuid4,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iri_policy_model.py::test_an_alphabet_outside_lower_case_letters_and_digits_is_refused,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iri_policy_model.py::test_an_application_template_of_the_allowed_placeholders_is_accepted,requirement,rp-iri-policy,The application space has its own IRI,,high,name; covered code; app-level-data PD-1
+tests/unit/services/test_iri_policy_model.py::test_an_application_template_outside_the_pattern_is_refused,requirement,rp-iri-policy,The application space has its own IRI,,high,name; covered code; app-level-data PD-1
+tests/unit/services/test_iri_policy_model.py::test_an_id_template_that_does_not_end_in_its_id_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_an_unknown_id_kind_is_refused,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
+tests/unit/services/test_iri_policy_model.py::test_any_other_deployment_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,medium,covered code
+tests/unit/services/test_iri_policy_model.py::test_no_policy_needs_no_check,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_settings_without_a_policy_hold_none_and_no_deployment,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iri_policy_model.py::test_the_consumers_policy_is_accepted,requirement,rp-iri-policy,Policies are checked when settings are made,,high,"docstring (iri-policy 1.1, PD-1, PD-2); covered code"
+tests/unit/services/test_iri_policy_model.py::test_the_default_alphabet_is_lower_case_letters_and_digits,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iri_policy_model.py::test_the_default_application_template_is_base_app,requirement,rp-iri-policy,The application space has its own IRI,,high,name; covered code; app-level-data PD-1
+tests/unit/services/test_iri_policy_model.py::test_the_default_part_and_loaded_graph_templates_need_neither_type_tenant_nor_base,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code; PD-12j
+tests/unit/services/test_iri_policy_model.py::test_the_default_policy_has_todays_template,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iris.py::test_a_loaded_graph_is_the_minted_form_under_its_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/domain/test_layout.py::test_a_prefix_outside_pd_6a_is_refused,capability,rp-iri-policy,,,high,name (PD-6a); covered code
+tests/unit/services/test_iris.py::test_a_segment_that_is_not_a_path_segment_is_refused,capability,rp-iri-policy,,,medium,covered code
+tests/unit/domain/test_layout.py::test_a_skolem_iri_lives_under_its_graph_and_is_fresh_each_time,capability,rp-aggregate-store,,,medium,covered code
+tests/unit/services/test_iris.py::test_a_tenant_id_that_is_not_a_canonical_uuid_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iris.py::test_a_tenant_iri_is_the_base_the_segment_and_the_id,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
+tests/unit/services/test_iris.py::test_a_tenant_segment_that_breaks_the_rule_is_an_invalid_iri,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_iris.py::test_an_aggregate_graph_iri_is_the_graph_of_a_tenants_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iris.py::test_an_aggregate_id_that_is_not_a_canonical_uuid_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iris.py::test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iris.py::test_an_aggregate_iri_is_the_tenant_the_path_and_the_id,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
+tests/unit/domain/test_layout.py::test_an_iri_is_inside_a_tenant_only_below_its_path,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_iris.py::test_an_iri_rule_breach_is_an_invalid_iri_and_still_a_value_error,none,,,,none,none
+tests/unit/services/test_iris.py::test_an_iri_that_is_not_an_access_record_has_no_tenant,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_iris.py::test_every_minted_aggregate_iri_is_an_aggregate_iri,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/domain/test_layout.py::test_graph_iri_appends_graph,requirement,rp-aggregate-store,"One named graph per aggregate, at a derived IRI",,high,name; covered code
+tests/unit/domain/test_layout.py::test_is_skolem_of_tells_the_skolem_iris_of_a_graph_from_everything_else,capability,rp-aggregate-store,,,medium,covered code
+tests/unit/services/test_iris.py::test_loaded_graph_iri_sits_under_the_aggregate,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iris.py::test_meta_registry_and_access_iris,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iris.py::test_mint_aggregate_iri_sits_under_the_tenant,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iris.py::test_mint_part_iri_sits_under_the_root_and_is_fresh,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iris.py::test_mint_tenant_iri_has_the_base_segment_and_a_uuid,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iris.py::test_minted_ids_are_uuid4,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iris.py::test_names_follow_pd_6a,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name (PD-6a); covered code
+tests/unit/domain/test_layout.py::test_only_a_lower_case_hyphenated_uuid_is_canonical,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iris.py::test_principal_iri_keeps_the_subject_in_one_segment,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,name; covered code
+tests/unit/domain/test_layout.py::test_root_of_graph_is_the_inverse_of_graph_iri,requirement,rp-aggregate-store,"One named graph per aggregate, at a derived IRI",,high,name; covered code
+tests/unit/domain/test_layout.py::test_root_of_graph_refuses_what_is_not_a_graph_iri,requirement,rp-aggregate-store,"One named graph per aggregate, at a derived IRI",,medium,covered code
+tests/unit/services/test_iris.py::test_tenant_name_needs_a_canonical_uuid,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
+tests/unit/services/test_iris.py::test_tenant_name_needs_a_uuid_last_segment,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
+tests/unit/services/test_iris.py::test_tenant_name_starts_with_the_sweep_prefix_and_fits_a_bucket_name,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
+tests/unit/services/test_iris.py::test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
+tests/unit/domain/test_layout.py::test_the_toolkit_principal_is_toolkit_under_the_base,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_iris_application.py::test_an_application_template_that_needs_a_deployment_slug_is_refused_without_one,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application.py::test_tc15_default_policy_mints_under_the_application_iri,scenario,rp-iri-policy,The application space has its own IRI,the default application IRI,high,name (TC-15); covered code
+tests/unit/services/test_iris_application.py::test_tc16_flat_policy_mints_the_application_as_a_tenant_id,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application.py::test_tc17_matching_accepts_the_application_and_refuses_a_tenant,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application.py::test_tc18_a_tenant_aggregate_is_not_the_applications,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application.py::test_tc19_tc27_the_application_is_never_a_tenant,scenario,rp-iri-policy,The application space has its own IRI,the application IRI is not a tenant,high,"name (TC-19, TC-27); covered code"
+tests/unit/services/test_iris_application.py::test_tc20_no_tenant_is_drawn_as_app,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application.py::test_tc21_flat_policy_starts_and_app_is_no_tenant,scenario,rp-iri-policy,The application space has its own IRI,a colliding application IRI,high,name (TC-21); covered code
+tests/unit/services/test_iris_application.py::test_tc22_an_application_iri_that_reads_as_a_tenant_is_refused,scenario,rp-iri-policy,The application space has its own IRI,a colliding application IRI,high,name (TC-22); covered code
+tests/unit/services/test_iris_application.py::test_tc23_an_application_iri_equal_to_its_meta_is_refused,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application.py::test_tc24_the_application_iri_stays_under_the_base_and_off_the_toolkit,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application.py::test_tc25_application_database_name,requirement,rp-tenancy,The application keeps its own aggregates outside any tenant,,medium,covered code
+tests/unit/services/test_iris_application.py::test_tc26_the_effective_policy_holds_the_application_template,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application.py::test_the_application_is_no_aggregate_of_itself_and_has_no_access_record,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_hostile_iri_argument_raises_nothing_for_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_hostile_tenant_argument_never_takes_the_applications_iris,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_hostile_tenant_argument_raises_only_the_documented_exceptions,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_loaded_graph_of_no_tenant_is_not_read_from_a_lookalike_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_policy_whose_application_iris_do_not_read_as_a_tenants_is_accepted,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_policy_whose_application_iris_read_as_a_tenants_is_refused,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_policy_with_colliding_application_graphs_is_refused_with_invalid_iri,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_policy_without_the_application_template_is_the_default_one,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_tenant_id_of_three_characters_is_not_in_the_schema,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,medium,covered code
+tests/unit/services/test_iris_application_adversarial.py::test_a_tenant_is_never_minted_with_the_id_app,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_tenant_read_as_an_aggregate_of_the_application_is_refused_on_its_own,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_tenant_still_round_trips_whatever_the_application_template,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_tenant_whose_id_starts_like_the_application_is_not_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_tenants_iris_are_never_accepted_for_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_a_type_that_is_no_root_type_is_refused_for_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_an_accepted_policy_keeps_the_applications_graphs_apart,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_an_application_iri_that_the_tenant_pattern_matches_is_refused,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_an_application_iri_the_short_alphabet_cannot_spell_is_accepted,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_an_application_that_is_the_tenants_parent_path_with_a_tenant_shaped_aggregate_is_refused,scenario,rp-iri-policy,The application space has its own IRI,the application's aggregates would read as tenants,high,name; docstring D-4; covered code
+tests/unit/services/test_iris_application_adversarial.py::test_an_id_source_that_only_says_app_is_refused_for_the_application_too,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_an_iri_that_only_starts_like_the_application_is_not_the_applications,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_an_object_id_of_a_real_application_template_word_is_replaced,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_an_object_is_never_minted_with_the_id_app,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_another_application_template_differs_in_that_field_alone,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_every_root_type_round_trips_for_the_application,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_no_id_is_minted_as_app_whatever_the_id_source_answers,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_the_application_is_never_a_tenant_under_any_accepted_policy,scenario,rp-iri-policy,The application space has its own IRI,the application IRI is not a tenant,high,name; covered code
+tests/unit/services/test_iris_application_adversarial.py::test_the_application_is_no_tenant_when_the_text_carries_it,scenario,rp-iri-policy,The application space has its own IRI,the application IRI is not a tenant,high,name; covered code
+tests/unit/services/test_iris_application_adversarial.py::test_the_applications_iris_are_never_accepted_for_a_tenant,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_the_effective_application_template_is_the_iri_that_is_minted,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_the_effective_policy_applied_twice_is_the_effective_policy,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,medium,covered code
+tests/unit/services/test_iris_application_adversarial.py::test_the_effective_policy_applied_twice_keeps_a_base_that_holds_a_variable,requirement,rp-iri-policy,The policy is fixed once a deployment has data,,medium,covered code
+tests/unit/services/test_iris_application_adversarial.py::test_the_words_of_the_application_template_are_reserved_ids,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_application_adversarial.py::test_what_is_minted_for_the_application_is_accepted_for_it,requirement,rp-iri-policy,The application space has its own IRI,,high,"docstring (app-level-data 2.1, PD-2, PD-3); covered code"
+tests/unit/services/test_iris_policy.py::test_a_default_policy_accepts_the_tenant_its_access_record_and_minted_roots,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_default_policy_mints_todays_shapes,scenario,rp-iri-policy,"Without a policy, IRIs are today's",an application that sets nothing,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_default_policy_names_the_tenant_graphs_and_resource_as_today,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_flat_object_is_not_nested_under_another,scenario,rp-iri-policy,Each kind of IRI follows its configured template,a flat object,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_loaded_graph_is_only_what_the_policy_mints,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_nested_loaded_graph_belongs_to_the_named_root,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iris_policy.py::test_a_principal_is_the_issuer_and_the_subject_in_one_segment,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_provenance_template_equal_to_the_registry_template_is_refused,scenario,rp-iri-policy,Policies are checked when settings are made,a provenance graph that collides,high,name; spec id (TC-06); covered code
+tests/unit/services/test_iris_policy.py::test_a_provenance_template_of_its_own_is_accepted,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_reserved_id_is_drawn_again,scenario,rp-iri-policy,"Ids are random, short when configured, and never reserved",a reserved id,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_short_tenant_id_names_the_database_and_bucket,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_template_without_a_root_variable_still_mints_a_loaded_graph_for_the_root,requirement,rp-aggregate-store,The tenant root's loaded graphs are registered,,medium,covered code (comment tenant-root-loads)
+tests/unit/services/test_iris_policy.py::test_a_tenant_iri_the_policy_cannot_mint_is_invalid,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iris_policy.py::test_a_tenant_path_id_of_the_wrong_form_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_type_the_deployment_or_a_layout_word_is_never_an_id,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_a_type_the_schema_does_not_know_cannot_be_minted,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iris_policy.py::test_a_uriref_and_a_str_of_one_iri_are_checked_alike,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_iris_policy.py::test_a_uuid_tenant_id_names_them_by_its_hex,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_an_aggregate_graph_is_the_graph_of_a_tenants_aggregate,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iris_policy.py::test_an_aggregate_is_only_what_the_policy_mints,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_an_aggregate_path_id_of_the_right_form_gives_its_iri,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iris_policy.py::test_an_aggregate_path_id_of_the_wrong_form_is_not_found,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_an_iri_that_is_not_an_access_record_has_no_tenant,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_iris_policy.py::test_an_iris_is_frozen,none,,,,none,none
+tests/unit/services/test_iris_policy.py::test_an_rp_path_that_is_not_a_segment_is_invalid,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_iris_policy.py::test_ids_have_the_configured_length_and_alphabet,requirement,rp-iri-policy,"Ids are random, short when configured, and never reserved",,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_parts_are_nested_under_their_root_only_when_the_part_template_starts_with_it,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
+tests/unit/services/test_iris_policy.py::test_settings_the_schema_cannot_refuse_alone_are_refused_when_iris_is_built,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_the_api_path_does_not_enter_the_iri,scenario,rp-iri-policy,Each kind of IRI follows its configured template,"the API path changes, the IRIs do not",high,name; covered code
+tests/unit/services/test_iris_policy.py::test_the_consumers_tenant_is_the_project_path_and_a_short_id,scenario,rp-iri-policy,Each kind of IRI follows its configured template,the consumer's tenant,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_the_provenance_graph_is_minted_and_is_not_an_aggregate_or_a_loaded_graph,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,"spec id (message-bus PD-5, TC-05); covered code"
+tests/unit/services/test_iris_policy.py::test_the_tenant_of_a_default_access_record_is_the_iri_above_it,requirement,rp-iri-policy,"Without a policy, IRIs are today's",,medium,covered code
+tests/unit/services/test_iris_policy.py::test_the_tenant_of_an_access_record_comes_back_through_the_templates,requirement,rp-iri-policy,Each kind of IRI follows its configured template,,high,name; covered code
+tests/unit/services/test_iris_policy.py::test_the_tenant_root_has_no_aggregate_graph_of_its_own,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,covered code
 tests/unit/domain/test_rp_model.py::test_every_generated_class_inherits_rp_model,capability,rp-generation,,,medium,name (RpModel strict base)
 tests/unit/domain/test_rp_model.py::test_invalid_assignment_is_refused,capability,rp-generation,,,medium,name (RpModel strict base)
 tests/unit/domain/test_rp_model.py::test_metamodel_class_refuses_an_invalid_assignment,capability,rp-metamodel,,,medium,covered code
@@ -545,41 +562,43 @@ tests/unit/domain/test_rp_model.py::test_metamodel_class_refuses_extra_fields_by
 tests/unit/domain/test_rp_model.py::test_missing_required_field_is_refused,capability,rp-metamodel,,,medium,covered code
 tests/unit/domain/test_rp_model.py::test_refused_assignment_leaves_the_value_unchanged,capability,rp-generation,,,medium,name (RpModel strict base)
 tests/unit/domain/test_rp_model.py::test_unknown_field_is_refused,capability,rp-generation,,,medium,name (RpModel strict base)
-tests/unit/domain/test_service_model.py::test_a_base_ending_in_a_slash_is_accepted,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_base_that_is_not_an_http_iri_ending_in_a_slash_is_refused,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_body_bound_below_one_byte_is_refused,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_body_may_hold_a_mebibyte_unless_the_settings_say_otherwise,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_grant_set_accepts_distinct_grants,capability,rp-access,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_grant_set_builds_grants_from_data,capability,rp-access,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_grant_set_refuses_a_duplicate_grant,capability,rp-access,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_label_update_needs_a_label,capability,rp-tenancy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_lower_case_prefix_of_at_most_20_characters_is_accepted,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_lower_case_url_segment_names_the_tenants,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_page_keeps_any_items_and_refuses_negative_positions,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_prefix_with_a_trailing_newline_is_refused,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_problem_is_dumped_under_the_names_of_rfc_9457,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_problem_kind_is_a_slug_a_title_and_a_status,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_problem_kind_needs_all_three,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_problem_needs_a_type_a_title_and_a_status,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_restore_bound_below_one_byte_is_refused,requirement,rp-tenancy,A restore refuses a dump it cannot trust,,high,name (restore bound); covered code
-tests/unit/domain/test_service_model.py::test_a_restore_may_hold_a_gibibyte_unless_the_settings_say_otherwise,requirement,rp-tenancy,A restore refuses a dump it cannot trust,,high,name (restore bound); covered code
-tests/unit/domain/test_service_model.py::test_a_slug_that_is_not_lower_case_words_joined_by_hyphens_is_refused,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_tenant_create_body_needs_a_label_and_a_root,capability,rp-tenancy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_tenant_create_body_takes_any_root,capability,rp-tenancy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_tenant_dump_manifest_round_trips_through_its_json,requirement,rp-tenancy,A tenant can be dumped and restored into a new tenant,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_tenant_dump_may_leave_out_the_schema_version_only,requirement,rp-tenancy,A tenant can be dumped and restored into a new tenant,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_tenant_label_of_1_to_200_characters_is_accepted,capability,rp-tenancy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_tenant_summary_holds_the_state_of_the_tenant,capability,rp-tenancy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_verified_caller_has_a_principal_and_global_roles,capability,rp-identity,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_a_verified_caller_needs_a_principal,capability,rp-identity,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_an_empty_roles_claim_is_refused,capability,rp-identity,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_any_other_prefix_is_refused,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_any_other_tenant_label_is_refused,capability,rp-tenancy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_any_other_tenant_segment_is_refused,capability,rp-iri-policy,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_settings_require_what_has_no_default,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_the_creator_role_is_not_empty,capability,rp-service-api,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_the_roles_claim_has_no_default_because_it_names_the_consumers_project,capability,rp-identity,,,medium,covered code
-tests/unit/domain/test_service_model.py::test_the_service_module_declares_only_its_own_classes,capability,rp-generation,,,medium,name
+tests/unit/services/test_messagebus.py::test_the_limit_error_names_the_command_and_the_bus_logs_nothing,requirement,rp-messages,Messages raised while handling stay bounded,,high,name; covered code; spec id (PD-13)
+tests/unit/services/test_schema.py::test_a_consumer_imports_rp_core_and_no_technical_schema,scenario,rp-generation,Technical models are generated apart from domain models,the schemas a consumer imports,high,name; spec scenario text; covered code (services/schema)
+tests/unit/services/test_service_model.py::test_a_base_ending_in_a_slash_is_accepted,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_base_that_is_not_an_http_iri_ending_in_a_slash_is_refused,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_body_bound_below_one_byte_is_refused,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_body_may_hold_a_mebibyte_unless_the_settings_say_otherwise,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_grant_set_accepts_distinct_grants,capability,rp-access,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_grant_set_builds_grants_from_data,capability,rp-access,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_grant_set_refuses_a_duplicate_grant,capability,rp-access,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_label_update_needs_a_label,capability,rp-tenancy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_lower_case_prefix_of_at_most_20_characters_is_accepted,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_lower_case_url_segment_names_the_tenants,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_page_keeps_any_items_and_refuses_negative_positions,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_prefix_with_a_trailing_newline_is_refused,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_problem_is_dumped_under_the_names_of_rfc_9457,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_problem_kind_is_a_slug_a_title_and_a_status,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_problem_kind_needs_all_three,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_problem_needs_a_type_a_title_and_a_status,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_restore_bound_below_one_byte_is_refused,requirement,rp-tenancy,A restore refuses a dump it cannot trust,,high,name (restore bound); covered code
+tests/unit/services/test_service_model.py::test_a_restore_may_hold_a_gibibyte_unless_the_settings_say_otherwise,requirement,rp-tenancy,A restore refuses a dump it cannot trust,,high,name (restore bound); covered code
+tests/unit/services/test_service_model.py::test_a_slug_that_is_not_lower_case_words_joined_by_hyphens_is_refused,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_tenant_create_body_needs_a_label_and_a_root,capability,rp-tenancy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_tenant_create_body_takes_any_root,capability,rp-tenancy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_tenant_dump_manifest_round_trips_through_its_json,requirement,rp-tenancy,A tenant can be dumped and restored into a new tenant,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_tenant_dump_may_leave_out_the_schema_version_only,requirement,rp-tenancy,A tenant can be dumped and restored into a new tenant,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_tenant_label_of_1_to_200_characters_is_accepted,capability,rp-tenancy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_tenant_summary_holds_the_state_of_the_tenant,capability,rp-tenancy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_verified_caller_has_a_principal_and_global_roles,capability,rp-identity,,,medium,covered code
+tests/unit/services/test_service_model.py::test_a_verified_caller_needs_a_principal,capability,rp-identity,,,medium,covered code
+tests/unit/services/test_service_model.py::test_an_empty_roles_claim_is_refused,capability,rp-identity,,,medium,covered code
+tests/unit/services/test_service_model.py::test_any_other_prefix_is_refused,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_any_other_tenant_label_is_refused,capability,rp-tenancy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_any_other_tenant_segment_is_refused,capability,rp-iri-policy,,,medium,covered code
+tests/unit/services/test_service_model.py::test_settings_require_what_has_no_default,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_the_creator_role_is_not_empty,capability,rp-service-api,,,medium,covered code
+tests/unit/services/test_service_model.py::test_the_roles_claim_has_no_default_because_it_names_the_consumers_project,capability,rp-identity,,,medium,covered code
+tests/unit/services/test_service_model.py::test_the_service_module_declares_only_its_own_classes,capability,rp-generation,,,medium,name
 tests/unit/domain/test_sparql.py::test_a_blank_node_label_that_is_not_a_label_is_refused,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,"docstring (spec rp-aggregate-store, PD-3); covered code"
 tests/unit/domain/test_sparql.py::test_a_blank_node_or_a_collection_is_allowed_in_a_where,capability,rp-schema-migrations,,,high,"spec id (section comment schema-migrations PD-6, PD-21, PD-22); covered code"
 tests/unit/domain/test_sparql.py::test_a_blank_node_or_a_collection_is_refused_in_a_template,capability,rp-schema-migrations,,,high,"spec id (section comment schema-migrations PD-6, PD-21, PD-22); covered code"
@@ -921,7 +940,6 @@ tests/unit/entrypoints/test_router.py::test_the_tenant_root_cannot_change_its_id
 tests/unit/entrypoints/test_router.py::test_the_tenant_root_is_replaced_under_if_match,requirement,rp-service-api,Writes are versioned,,high,name;covered code;spec id
 tests/unit/entrypoints/test_router.py::test_the_three_representations_of_a_book_are_the_same_triples,scenario,rp-service-api,"Plain JSON by default, JSON-LD and Turtle on request",the same book three ways,high,name;covered code;spec id
 tests/unit/entrypoints/test_router.py::test_turtle_is_served_on_request,requirement,rp-service-api,"Plain JSON by default, JSON-LD and Turtle on request",,high,name;covered code;spec id
-tests/unit/entrypoints/test_router_hardening.py::test_a_body_of_too_many_objects_is_a_413,capability,rp-service-api,,,medium,covered code;spec id
 tests/unit/entrypoints/test_router_hardening.py::test_a_body_within_the_bound_is_taken,capability,rp-service-api,,,medium,covered code;spec id
 tests/unit/entrypoints/test_router_hardening.py::test_a_create_naming_an_iri_in_the_tenant_is_refused_and_nothing_is_there,requirement,rp-service-api,One generic router serves every aggregate type,,high,name;covered code
 tests/unit/entrypoints/test_router_hardening.py::test_a_declared_length_over_the_bound_is_a_413_before_the_body_is_read,capability,rp-service-api,,,medium,covered code;spec id
@@ -2263,7 +2281,6 @@ tests/unit/services/test_messagebus.py::test_an_observer_that_publishes_again_st
 tests/unit/services/test_messagebus.py::test_every_served_of_a_handlers_work_is_the_one_built_once,capability,rp-messages,,,medium,covered code (module PD-13); bus plumbing with no requirement of its own
 tests/unit/services/test_messagebus.py::test_observers_run_nearest_class_first_in_registration_order,requirement,rp-messages,One message per commit reaches observers along the class hierarchy,,high,name; covered code; spec id (PD-13)
 tests/unit/services/test_messagebus.py::test_send_outside_handle_is_a_runtime_error_logged_as_the_observers,requirement,rp-messages,Messages raised while handling stay bounded,,high,name; covered code; spec id (PD-13)
-tests/unit/services/test_messagebus.py::test_the_limit_error_is_logged_with_the_command_before_it_is_raised,requirement,rp-messages,Messages raised while handling stay bounded,,high,name; covered code; spec id (PD-13)
 tests/unit/services/test_messagebus.py::test_the_nearest_class_has_the_handler,requirement,rp-messages,A command goes to the nearest handler,,high,name; covered code; spec id (PD-13)
 tests/unit/services/test_messagebus.py::test_two_handles_in_two_tasks_each_have_their_own_count_and_work,requirement,rp-messages,Messages raised while handling stay bounded,,high,name; covered code; spec id (PD-13)
 tests/unit/services/test_messagebus.py::test_unit_of_work_is_on_the_works_session_with_the_buss_mapper,capability,rp-messages,,,medium,covered code (module PD-13); bus plumbing with no requirement of its own
@@ -3422,7 +3439,7 @@ tests/unit/test_lanes.py::test_the_refresh_map_target_runs_the_refresher,capabil
 tests/unit/test_lazy_exports.py::test_a_lazy_name_is_loaded_on_first_use_and_then_kept,capability,rp-package-boundaries,,,medium,spec id PD-8c
 tests/unit/test_lazy_exports.py::test_an_unknown_top_level_name_is_an_attribute_error,capability,rp-package-boundaries,,,medium,spec id PD-8c
 tests/unit/test_lazy_exports.py::test_importing_the_domain_or_a_generated_module_loads_nothing_heavy,capability,rp-package-boundaries,,,medium,spec id PD-8c
-tests/unit/test_markers.py::test_a_serial_run_ends_the_session_naming_the_test_past_its_timeout,scenario,rp-developer-checks,A test cannot hang the checks,"a test that never returns, in a serial run",high,name+open change
+tests/unit/test_markers.py::test_a_serial_run_fails_the_test_past_its_timeout_naming_it_and_the_next_test_runs,scenario,rp-developer-checks,A test cannot hang the checks,"a test that never returns, in a serial run",high,name+open change
 tests/unit/test_markers.py::test_a_test_past_its_timeout_fails_naming_itself_and_the_next_test_runs,scenario,rp-developer-checks,A test cannot hang the checks,"a test that never returns, in a parallel lane",high,name+open change
 tests/unit/test_markers.py::test_checkout_under_a_directory_named_like_a_row_is_not_matched,capability,rp-developer-checks,,,medium,spec id PD-16
 tests/unit/test_markers.py::test_directory_row_gives_every_marker,capability,rp-developer-checks,,,medium,spec id PD-16
@@ -3444,6 +3461,7 @@ tests/unit/test_public_api.py::test_all_lists_no_name_twice,requirement,rp-packa
 tests/unit/test_public_api.py::test_every_exported_name_imports_from_the_top_level,requirement,rp-package-boundaries,Consumers use the public API only,,high,"name,spec id DEC-6"
 tests/unit/test_public_api.py::test_every_generated_public_class_and_enum_is_exported,requirement,rp-package-boundaries,Consumers use the public API only,,high,"name,spec id DEC-6"
 tests/unit/test_public_api.py::test_every_name_in_the_architecture_index_is_exported,requirement,rp-package-boundaries,Consumers use the public API only,,high,"name,spec id DEC-6"
+tests/unit/test_public_api.py::test_the_iri_names_are_the_objects_of_services_iris,requirement,rp-package-boundaries,Consumers use the public API only,,high,name; covered code (rdf_persistence/__init__)
 tests/unit/test_refresh_map.py::test_a_collection_with_an_error_and_no_node_ids_leaves_the_map_untouched,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16, F-1)"
 tests/unit/test_refresh_map.py::test_a_parametrised_id_collapses_to_its_function,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/test_refresh_map.py::test_main_exits_one_only_when_ids_are_unmapped,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
@@ -3456,6 +3474,18 @@ tests/unit/test_refresh_map.py::test_a_malformed_map_exits_with_a_message_and_st
 tests/unit/test_refresh_map.py::test_the_two_ways_to_keep_the_map_have_their_own_exit_codes,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/test_refresh_map.py::test_refresh_removes_vanished_rows_and_keeps_the_rest_in_order,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/test_smoke.py::test_version_matches_pyproject,requirement,rp-release,The version lives in one file and the release matches the tag,,high,"name,spec id TC-01"
+tests/unit/test_technical_split.py::test_a_domain_module_importing_the_service_models_breaks_the_domain_contract,scenario,rp-generation,Technical models are generated apart from domain models,a domain model imports a technical one,high,name; spec scenario text
+tests/unit/test_technical_split.py::test_a_domain_module_reaching_a_technical_model_indirectly_breaks_the_domain_contract,scenario,rp-package-boundaries,Layers import downward only,a domain module imports a technical model,medium,name; spec scenario text (the indirect form)
+tests/unit/test_technical_split.py::test_a_service_module_importing_the_wire_models_breaks_layers,scenario,rp-package-boundaries,Layers import downward only,a service imports a wire model,high,name; spec scenario text
+tests/unit/test_technical_split.py::test_a_service_or_entrypoint_reaching_a_wire_model_breaks_layers,scenario,rp-package-boundaries,Layers import downward only,a service imports a wire model,medium,name; spec scenario text (the indirect form)
+tests/unit/test_technical_split.py::test_a_stale_toolkit_folder_stops_the_service_at_start,capability,rp-service-api,,,medium,name; covered code (services/components)
+tests/unit/test_technical_split.py::test_an_old_import_path_is_a_module_not_found_error,requirement,rp-generation,Technical models are generated apart from domain models,,medium,name; spec requirement text (technical models moved)
+tests/unit/test_technical_split.py::test_every_schema_under_model_technical_is_annotated_technical,requirement,rp-generation,Technical models are generated apart from domain models,,high,name; spec requirement text
+tests/unit/test_technical_split.py::test_no_live_file_still_names_an_old_path,requirement,rp-generation,Technical models are generated apart from domain models,,medium,name; spec requirement text (technical models moved)
+tests/unit/test_technical_split.py::test_no_schema_directly_under_model_is_annotated_technical,requirement,rp-generation,Technical models are generated apart from domain models,,high,name; spec requirement text
+tests/unit/test_technical_split.py::test_the_policy_free_layout_importing_the_service_models_breaks_the_domain_contract,scenario,rp-generation,Technical models are generated apart from domain models,a hand-written domain module imports a technical one,high,name; spec scenario text
+tests/unit/test_technical_split.py::test_the_scratch_layout_itself_keeps_every_contract,requirement,rp-package-boundaries,Layers import downward only,,medium,name (control of the planted-violation tests)
+tests/unit/test_technical_split.py::test_the_service_models_generate_outside_the_domain,requirement,rp-generation,Technical models are generated apart from domain models,,high,name; spec requirement text
 tests/unit/testkit/test_adopt_step6.py::test_a_testkit_module_import_is_refused_naming_file_line_and_module,scenario,rp-testkit,The model guards are public names of the testkit,an undocumented testkit module is still refused,high,"name,covered code,spec id PD-4 T-15"
 tests/unit/testkit/test_adopt_step6.py::test_the_guides_checks_pass_on_the_toy_library,requirement,rp-testkit,The model guards are public names of the testkit,,high,"name,covered code,spec id PD-4"
 tests/unit/testkit/test_adopt_step6.py::test_the_guides_snapshot_check_needs_a_deliberate_refresh,requirement,rp-testkit,The model guards are public names of the testkit,,medium,covered code
@@ -3533,6 +3563,12 @@ tests/unit/testkit/test_freshness_plugin.py::test_an_entry_names_its_own_command
 tests/unit/testkit/test_freshness_plugin.py::test_an_xdist_worker_does_not_check_again,scenario,rp-generation,The freshness check runs once per parallel session,a fresh tree on several workers,high,"name,covered code,spec id PD-7"
 tests/unit/testkit/test_freshness_plugin.py::test_every_listed_project_is_checked,requirement,rp-generation,Stale or edited generated output is detected,,high,"covered code,spec id PD-26"
 tests/unit/testkit/test_freshness_plugin.py::test_several_stale_projects_print_one_hint_naming_each_command_once,requirement,rp-generation,Stale or edited generated output is detected,,high,"covered code,spec id PD-26"
+tests/unit/testkit/test_guard_technical_models.py::test_a_class_extending_a_service_model_through_the_lazy_top_level_name_is_named,requirement,rp-generation,LinkML is the single source of every model artefact,,medium,name; covered code (testkit/guards)
+tests/unit/testkit/test_guard_technical_models.py::test_a_hand_written_model_in_services_is_named,requirement,rp-generation,LinkML is the single source of every model artefact,,high,name; covered code (testkit/guards)
+tests/unit/testkit/test_guard_technical_models.py::test_a_hand_written_model_in_services_next_to_the_generated_service_package_is_named,requirement,rp-generation,LinkML is the single source of every model artefact,,high,name; covered code (testkit/guards)
+tests/unit/testkit/test_guard_technical_models.py::test_a_hand_written_model_in_services_outside_a_generated_folder_is_named,requirement,rp-generation,LinkML is the single source of every model artefact,,high,name; covered code (testkit/guards)
+tests/unit/testkit/test_guard_technical_models.py::test_a_model_class_under_services_generated_is_not_flagged,requirement,rp-generation,LinkML is the single source of every model artefact,,high,name; covered code (testkit/guards)
+tests/unit/testkit/test_guard_technical_models.py::test_the_toolkit_tree_has_no_hand_written_model_with_the_service_models_under_services,requirement,rp-generation,LinkML is the single source of every model artefact,,high,name; covered code (testkit/guards)
 tests/unit/testkit/test_guards.py::test_allow_exempts_the_named_class_only,requirement,rp-generation,LinkML is the single source of every model artefact,,high,"covered code,spec id PD-28"
 tests/unit/testkit/test_guards.py::test_allowed_file_passes,requirement,rp-generation,LinkML is the single source of every model artefact,,high,"covered code,spec id PD-28"
 tests/unit/testkit/test_guards.py::test_clean_module_passes,requirement,rp-generation,LinkML is the single source of every model artefact,,high,"covered code,spec id PD-28"

@@ -11,7 +11,7 @@ from rdf_persistence.domain.exceptions import BadQuery, CommitTooLarge, Conflict
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.iris import (
+from rdf_persistence.services.iris import (
     DEFAULT_IRIS,
 )
 from rdf_persistence.services.mapper import Mapper, UnitOfWork, new_part

@@ -1,18 +1,13 @@
 """``Iris.effective_policy`` and ``policy_differences``: what the start-up guard compares (PD-14b)."""
 
-from rdf_persistence.domain.generated.service.rp_service import (
+from rdf_persistence.domain.layout import policy_record_iri, stamps_graph_iri
+from rdf_persistence.services.generated.service.rp_service import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import (
-    DEFAULT_ALPHABET,
-    Iris,
-    policy_differences,
-    policy_record_iri,
-    stamps_graph_iri,
-)
+from rdf_persistence.services.iris import DEFAULT_ALPHABET, Iris, policy_differences
 
 SETTINGS = ServiceSettings(
     base="https://example.org/library/",

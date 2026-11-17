@@ -30,7 +30,7 @@ from rdf_persistence.adapters.generated.rp_wire import (
     ZitadelWindow,
 )
 from rdf_persistence.domain.exceptions import IdentityUnavailable, NotFound
-from rdf_persistence.domain.generated.service.rp_service import AccountSummary
+from rdf_persistence.services.generated.service.rp_service import AccountSummary
 
 ORG_HEADER = "x-zitadel-orgid"
 USERS = "/v2/users"

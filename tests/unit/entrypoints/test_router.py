@@ -21,11 +21,12 @@ from rdf_persistence.domain.generated.rp_access import (
     RoleLevel,
 )
 from rdf_persistence.domain.generated.rp_provenance import Replace
-from rdf_persistence.domain.iris import DEFAULT_IRIS, graph_iri, tenant_resource_name
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions
+from rdf_persistence.services.iris import DEFAULT_IRIS, tenant_resource_name
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import ROLES, SETTINGS, keep_a_librarian
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of

@@ -1,7 +1,7 @@
 """The triple-store port (PD-1): adapters implement it, the session and tenancy services use it.
 
 Every method is async. SPARQL text arrives already built from ``domain.sparql``. A dataset is
-a Fuseki database, named as in ``domain.iris``.
+a Fuseki database, named as in ``services.iris``.
 """
 
 from typing import Protocol

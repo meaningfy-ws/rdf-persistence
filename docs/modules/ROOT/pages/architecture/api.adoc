@@ -328,7 +328,7 @@ sequenceDiagram
 |Turn the path into IRIs: the tenant's, then the aggregate's. An id that is not a canonical UUID
 names nothing; the policy decides what a valid id is, so under another policy a UUID may name
 nothing.
-|`ServiceKit.tenant_iri`, `Iris.tenant` and `Iris.aggregate` (`domain/iris.py`) on the kit's one
+|`ServiceKit.tenant_iri`, `Iris.tenant` and `Iris.aggregate` (`services/iris.py`) on the kit's one
 `Iris` (`ServiceKit.iris`); called by `Gate.aggregate_access`
 |404
 

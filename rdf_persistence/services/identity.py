@@ -7,7 +7,7 @@ result.
 
 from typing import Protocol
 
-from rdf_persistence.domain.generated.service.rp_service import AccountSummary
+from rdf_persistence.services.generated.service.rp_service import AccountSummary
 
 
 class Identity(Protocol):

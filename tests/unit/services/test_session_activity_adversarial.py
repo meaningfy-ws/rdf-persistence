@@ -30,9 +30,9 @@ from rdf_persistence.domain.generated.rp_provenance import (
     Remove,
     Replace,
 )
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.sparql import SparqlError
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.provenance import Served

@@ -15,7 +15,7 @@ from rdf_persistence import (
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.domain.generated.service import rp_service
+from rdf_persistence.services.generated.service import rp_service
 from tests.unit.domain.builders import ALICE, TENANT, grant, tenant_access
 
 BASE = "https://example.org/"

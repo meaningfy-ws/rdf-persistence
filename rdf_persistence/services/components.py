@@ -13,7 +13,7 @@ from typing import Any
 from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, COMPONENTS_FILE, REF, SCHEMAS
 from rdf_persistence.services.schema import PACKAGE_DIR
 
-TOOLKIT_FOLDER = PACKAGE_DIR / "domain" / "generated" / "service"
+TOOLKIT_FOLDER = PACKAGE_DIR / "services" / "generated" / "service"
 
 # One component schema: JSON data of the OpenAPI document, not a model of ours.
 JsonSchema = dict[str, Any]

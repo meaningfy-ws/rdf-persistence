@@ -11,9 +11,10 @@ from rdf_persistence.domain.exceptions import (
     InvalidGrant,
     InvalidIri,
 )
-from rdf_persistence.domain.iris import DEFAULT_IRIS, graph_iri
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.aggregates import Aggregates
+from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import ROLES, direct

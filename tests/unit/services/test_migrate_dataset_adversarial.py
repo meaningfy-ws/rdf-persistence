@@ -5,8 +5,8 @@ import pytest
 from rdflib import XSD, Dataset, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import InvalidBody
-from rdf_persistence.domain.generated.service.rp_service import MigrationStep
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import MigrationStep
 from rdf_persistence.services.migration_runner import migrate_dataset
 from rdf_persistence.services.migrations import Chain
 from tests.unit.services.migration_helpers import (

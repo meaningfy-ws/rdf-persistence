@@ -15,11 +15,11 @@
     },
     {
       "path": "rdf_persistence/generation/checks/boundary.py",
-      "sha256": "6181b40b379d4ea8d4d81adf24a9f6380faa7c954a4e06ae0a08e1ba9f81b4d6"
+      "sha256": "0649daaa9df18366f1a1d0d4cad2c80ab1113f69c1b4b8ffedb3c5e76441ee0f"
     },
     {
       "path": "rdf_persistence/generation/checks/hard.py",
-      "sha256": "db5767102579d022324f7371f95ea8334dd6ff3efe7b7e03a90a3727a38381c1"
+      "sha256": "50719e8dfb931f8312b5bfa83e9986e3433cc3439e967a3bdf9f4d80ef9fe06c"
     },
     {
       "path": "rdf_persistence/generation/checks/rules.py",
@@ -39,7 +39,7 @@
     },
     {
       "path": "rdf_persistence/generation/config.py",
-      "sha256": "bb549500000980812d423e31ffc323ad3c7367dc4aa725697dc865ffb9a20881"
+      "sha256": "0b0a64baf5683131e163d530bd769776c9f778900085848dd1e49052264698b5"
     },
     {
       "path": "rdf_persistence/generation/exceptions.py",
@@ -79,11 +79,11 @@
     },
     {
       "path": "rdf_persistence/generation/lock.py",
-      "sha256": "0ae295a31fb83ea67432f9714d88d21a88f680d6e2f5ec251a037e92e7f84a9a"
+      "sha256": "afa021003f467303089329ebf3ee5c1c43757af7c900ea32eecf7f20f7faf971"
     },
     {
       "path": "rdf_persistence/generation/lock_step.py",
-      "sha256": "d829253f855d5cc4dd60d920c7593e50be2986bc0f13c54d16950a4a0c330100"
+      "sha256": "57127764f4d72844661a616b9d57b349df51ec0a4b51ccf640295533cfad764e"
     },
     {
       "path": "rdf_persistence/generation/manifest.py",
@@ -99,7 +99,7 @@
     },
     {
       "path": "rdf_persistence/generation/steps.py",
-      "sha256": "7dc3f9db93e5d55adf861f0ccafd3130bd2f43c3bd50ed771a962680de63d9ee"
+      "sha256": "057276c4964ad5a2eb07496d9d97308b0ced056b082de6813608d8ab9baf86c9"
     },
     {
       "path": "rdf_persistence/generation/templates/mermaid/module.mmd.jinja",
@@ -146,12 +146,12 @@
       "sha256": "4da22bf6537a6e6bdf94e5d538a63d34242c8c69be6220b92243e19a86e7d0cd"
     },
     {
-      "path": "rdf_persistence/model/adapters/rp_wire.yaml",
+      "path": "rdf_persistence/model/technical/wire/rp_wire.yaml",
       "sha256": "99cb6317442ad01f3a60647532acb7c0850a2f61e6f6cd4bed1795321d9bb7bc"
     },
     {
       "path": "rdf_persistence/services/schema.py",
-      "sha256": "fcb37313df4dcceb52735a76ef35ff9b627cb17c532324c63d753cdbb26eaa8e"
+      "sha256": "2ee25a81ea95aeda5e8e44e1f42a4df829bd0ca3eec17bc89c430ed8763bc792"
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",

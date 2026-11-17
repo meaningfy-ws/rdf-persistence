@@ -356,6 +356,86 @@ schemas changes manifests and generated paths only. Settings are values, built o
   pin (`manual-revision-notes` DEC-1, RISK-1); a misspelt name passes the settings model and fails
   at start-up, with the name in the message (TC-60).
 
+## Delivery decisions
+
+The lead's, recorded as taken (R-0007); the developer may overrule any of them.
+
+- **D-1 (stage 1, task 1.1)** GitNexus rated `GenerationTarget` CRITICAL (30 direct importers).
+  Not taken to the developer: the task adds one optional slot defaulting to `None`, so no importer
+  changes.
+- **D-2 (stage 1)** The adversarial tester runs in every stage: the PLAN has no `## Invariants`
+  section, and the appetite is LARGE (epic-delivery's tester condition). In stage 1 it runs after
+  task 1.3, the riskiest task (`develop/agents.adoc`, keeping the challenge cheap), over the `kind`
+  check and the new contract.
+- **D-3 (stage 1)** The review set is the one `tasks.md` names for stage 1: L1, L2, L3 as separate
+  passes, L4 and L5 as one. It is wider than P-0005's per-stage L2 and L3 pass; the PLAN is newer
+  and names it, and stage 1 carries RISK-1 and RISK-5.
+- **D-4 (stage 1, RISK-6)** After the rebase on `cc1b283` (PR #141), A-3 and A-4 sit in
+  `adapters/jwks.py` as `JwksTokenVerifier(algorithms=DEFAULT_ALGORITHMS, leeway_seconds=30.0)`,
+  the leeway finite and within 0 to 300, the ten asymmetric names as the default. They agree with
+  PD-6's defaults and bounds; task 3.2 moves them as planned.
+- **D-5 (stage 1, task 1.2)** GitNexus rated `domain/iris.py` HIGH (24 direct importers). This is
+  RISK-5, accepted at the PLAN gate; not taken to the developer again.
+- **D-6 (stage 1, task 1.3)** GitNexus rated the generated service package CRITICAL (36 direct
+  importers). This is RISK-1, accepted at the PLAN gate; every name stays top-level (DEC-9). The
+  service models moved from eager to lazy top-level imports, as `Iris` did in task 1.2, because
+  importing `rdf_persistence` must not load `services` (`test_lazy_exports.py`).
+- **D-7 (stage 1, tester finding 1, withdrawn)** Reported as: the model guard misses
+  `from rdf_persistence import Page; class P(Page)` in `services/` once D-6 made the service models
+  lazy. Not a defect: `_import_names` walks the whole `__init__`, so it reads the imports under
+  `if TYPE_CHECKING:` that declare `rdf_persistence`'s lazy names. The tester's fixture declared its
+  lazy name only in a dict, a shape the guard does not support and the toolkit does not use. The
+  fixture now has the standard form, the test stays as the probe of D-6, and `_top_level_exports`'
+  docstring says where lazy exports are read. Accepted residual: a package that declares lazy
+  names only in a dict is invisible to the guard.
+- **D-8 (stage 1, tester finding 2, re-labelled Critical)** `questions.adoc` and
+  `architecture/data-flows.adoc` still named `model/service/`. Re-labelled from a docs Warning:
+  task 1.3 owned the paths, and a reader following `questions.adoc` lands on a file that no
+  longer exists. Fixed before the PR.
+- **D-9 (stage 1)** The tester ran before the full gates, so its two findings are fixed, and its
+  tests sorted, in a fix pass before the PR. The review findings get the stage's one fix pass
+  after the PR, as the stage loop sets.
+- **D-10 (stage 1, L2 W5 and L4+L5 W2, re-labelled Critical)** RISK-1 and RISK-5 were accepted on
+  the mitigation "the release notes list the old and new paths", but no task writes them, the
+  changelog is hand-written (`skip-changelog`), and only `7687f91` carries a `BREAKING CHANGE:`
+  footer. Without it the accepted risks lose their mitigation. Fix: a BREAKING entry under
+  `[Unreleased]` in `CHANGELOG.md` listing the three moves, carried by a commit whose footer names
+  the `iris` and `tenant_move` moves. No history rewrite.
+- **D-11 (stage 1, L2 W4, re-labelled Critical)** `tests/audit/scenario-map.csv` still maps 115
+  rows to the test files task 1.2 moved, and the stage's new tests have no rows; the next
+  `make refresh-map` would drop those mappings as vanished. The moves are this stage's, and the map
+  is what the traceability check reads. Fix: rewrite the moved paths, refresh, map the new ids.
+- **D-12 (stage 1, L2 W2 and W3, L3 W1, re-labelled Critical)** Pages the stage changed now
+  disagree with the code: `architecture/index.adoc`'s layer-map row (edited by task 1.3) lists
+  `Iris` and the service records under `domain`; `develop/index.adoc` and the Makefile's `mutation`
+  help still say only the domain is mutated. Every builder brief said to update the docs its task
+  changed; this is that item unmet. Fix: move the names to the `services` row and add
+  `domain/layout.py` to the `domain` row (task 4.3 still rewrites the page); reword the mutation
+  lines to `setup.cfg`.
+- **D-13 (stage 1, L2 W1, re-labelled Critical)** The `rp-generation` delta's scenario "the
+  schemas a consumer imports" has no test: a `glob` turned `rglob` in `metamodel_importmap` would
+  expose the technical schemas unnoticed. A signed scenario without a test fails the traceability
+  check. Fix: one unit test.
+
+Under the floor (not fixed in stage 1):
+
+- L1 S1, L4+L5 S2: `boundary.py:147` re-validates `kind`; the reviewers disagree on whether the
+  model holds the member or the string (the 1.1 builder saw a `str`). Harmless either way.
+- L3 S1: three docstrings (`services/iris.py:1`, `domain/layout.py:3`, `InvalidIri`) describe the
+  pre-split layout. Task 4.3's docs pass.
+- L4+L5 W1: nothing checks that `__init__.py`'s `TYPE_CHECKING` imports equal `_LAZY_MODULES`.
+- L4+L5 W3: the generator imports its own generated output (`rp_generation`, the service
+  package) at start, so adding a type it uses or moving a target needs a hand bootstrap. Noted in
+  the hand-over for stages 2 to 4; a follow-up documents the order.
+- L4+L5 W4: `services.iris` imports the private `_SEGMENT`/`_segment` from `domain.layout` (PD-2
+  kept them private on purpose; `thematic-structure` may rename them).
+- L4+L5 S1: the new contract's forbidden list and the `kind = "technical"` targets are two lists.
+- L4+L5 S3: no `__dir__` for the lazy names.
+- L2 S1, S2, S3, S5: a parametrized kind table, the target named in the domain CLI test,
+  `lint-imports` output naming both modules, assert messages.
+- L2 S4: TC-12 names `rdf_persistence.JwtClaims`, which was never top-level; the wire models are
+  adapters-only (PD-2).
+
 ## Open Questions
 
 - Whether `ServiceSettings` should join `rp_settings.yaml` (one settings home) once E-1 can import

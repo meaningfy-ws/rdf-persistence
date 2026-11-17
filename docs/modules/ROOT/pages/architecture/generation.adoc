@@ -277,7 +277,7 @@ is named in the model guard's allow-list (<<guarding>>).
 [cols="2,3,2",options="header"]
 |===
 |Schema |Classes |Generated into
-|`rdf_persistence/model/service/rp_service.yaml` |`ServiceSettings` (the settings of `install_service`), `VerifiedCaller` (what the token verifier returns), and the toolkit's request and response bodies: `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem` |`rdf_persistence/domain/generated/service/`
+|`rdf_persistence/model/technical/service/rp_service.yaml` |`ServiceSettings` (the settings of `install_service`), `VerifiedCaller` (what the token verifier returns), and the toolkit's request and response bodies: `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem` |`rdf_persistence/services/generated/service/`
 |`rdf_persistence/generation/model/rp_generation.yaml` |The data of the toolchain and the testkit: `GenerationTarget`, `GenerationManifest`, `ConstraintCase`, `ClassShape` (see <<guarding>>); `GeneratedFile`, `CheckProblem`, `CliFlag`, the rule, frame, TypeScript and Mermaid view-models, `ContainerMarker` and the guard's `Violation` |`rdf_persistence/generation/generated/`
 |===
 

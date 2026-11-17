@@ -6,11 +6,11 @@ from rdflib import RDF, URIRef
 from rdf_persistence import Action, StoredDataInvalid, generated_models
 from rdf_persistence.domain.exceptions import CommitTooLarge, Forbidden, InvalidBody, InvalidIri
 from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
-from rdf_persistence.domain.generated.service.rp_service import Filter, ListRequest, MemberList
-from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.generated.service.rp_service import Filter, ListRequest, MemberList
+from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.schema import load_schema

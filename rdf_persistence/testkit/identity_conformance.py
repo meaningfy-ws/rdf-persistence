@@ -11,7 +11,7 @@ from collections.abc import Awaitable, Callable
 import pytest
 
 from rdf_persistence.domain.exceptions import NotFound
-from rdf_persistence.domain.generated.service.rp_service import AccountSummary
+from rdf_persistence.services.generated.service.rp_service import AccountSummary
 from rdf_persistence.services.identity import Identity
 
 ROLE = "admin"

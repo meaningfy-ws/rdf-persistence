@@ -33,8 +33,6 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_workflow import Transition, WorkflowTransition
-from rdf_persistence.domain.generated.service.rp_service import TenantState
-from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import Triple, fill, term
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.generation.checks.hard import hard_problems
@@ -43,6 +41,8 @@ from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.generated.service.rp_service import TenantState
+from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session, Transaction

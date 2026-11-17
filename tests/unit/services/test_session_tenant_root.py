@@ -6,9 +6,9 @@ import pytest
 from rdflib import Literal, URIRef
 
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.iris import DEFAULT_IRIS
 from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 

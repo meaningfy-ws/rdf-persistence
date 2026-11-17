@@ -16,7 +16,7 @@ from rdf_persistence import Action, CallerAccess, TenantState
 from rdf_persistence.domain.exceptions import BadQuery, Forbidden, InvalidIri, NotFound
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.service.rp_service import Authorised, ReferrerList
+from rdf_persistence.services.generated.service.rp_service import Authorised, ReferrerList
 from rdf_persistence.testkit import fake_session
 from tests.fixtures.library.generated.books import Book
 from tests.toy import (

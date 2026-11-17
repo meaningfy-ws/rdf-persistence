@@ -5,13 +5,13 @@ from rdflib import Graph, URIRef
 
 from rdf_persistence import Action
 from rdf_persistence.domain.generated.rp_access import Grant
-from rdf_persistence.domain.generated.service.rp_service import (
+from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.collaboration import Collaboration
+from rdf_persistence.services.generated.service.rp_service import (
     CallerAccess,
     IriPolicy,
     TenantState,
 )
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import caller
 from tests.toy_service import DUNE_BODY, ToyService, assert_problem, principal_of

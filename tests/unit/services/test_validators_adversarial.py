@@ -8,8 +8,8 @@ import pytest
 from rdf_persistence.domain.exceptions import Conflict, InvalidBody, NotFound
 from rdf_persistence.domain.generated.rp_access import Grant
 from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.service.rp_service import GrantSet
-from rdf_persistence.domain.iris import tenant_resource_name
+from rdf_persistence.services.generated.service.rp_service import GrantSet
+from rdf_persistence.services.iris import tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy

@@ -26,10 +26,10 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_core import AggregateKey, Principal
 from rdf_persistence.domain.generated.rp_files import BlobEntry
 from rdf_persistence.domain.generated.rp_provenance import Activity
-from rdf_persistence.domain.generated.service.rp_service import AccountSummary, EventEnvelope
-from rdf_persistence.domain.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.services.events import Receive
+from rdf_persistence.services.generated.service.rp_service import AccountSummary, EventEnvelope
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.session import (
     Clock,

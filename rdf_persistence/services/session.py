@@ -35,19 +35,7 @@ from rdf_persistence.domain.generated.rp_core import (
 )
 from rdf_persistence.domain.generated.rp_files import RdfFormat
 from rdf_persistence.domain.generated.rp_provenance import Activity
-from rdf_persistence.domain.generated.service.rp_service import (
-    AggregateHead,
-    Condition,
-    Filter,
-    ListPlan,
-    ListRequest,
-)
-from rdf_persistence.domain.iris import (
-    DEFAULT_IRIS,
-    Iris,
-    graph_iri,
-    skolem_iri,
-)
+from rdf_persistence.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.domain.sparql import (
     SparqlTerm,
     Triple,
@@ -61,6 +49,14 @@ from rdf_persistence.domain.sparql import (
     triples_block,
 )
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import (
+    AggregateHead,
+    Condition,
+    Filter,
+    ListPlan,
+    ListRequest,
+)
+from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import (
     PAGE,
     Listings,

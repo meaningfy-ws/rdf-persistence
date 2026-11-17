@@ -24,7 +24,7 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_provenance import Activity, Add, Remove, Replace
 from rdf_persistence.domain.generated.rp_workflow import Transition
-from rdf_persistence.domain.iris import Iris
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus, Work, command
 from rdf_persistence.services.tenancy import Tenancy

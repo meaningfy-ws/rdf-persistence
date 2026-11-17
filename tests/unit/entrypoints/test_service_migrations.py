@@ -7,9 +7,9 @@ import yaml
 from fastapi import FastAPI
 
 from rdf_persistence.domain.exceptions import InvalidMigration
-from rdf_persistence.domain.generated.service.rp_service import Migration
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import Migration
 from rdf_persistence.services.migrations import stamps, versions
 from rdf_persistence.services.vocabulary import metamodel
 from rdf_persistence.testkit import FakeStore

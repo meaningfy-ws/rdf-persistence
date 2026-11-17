@@ -12,8 +12,9 @@ from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, InvalidIri, KeyConflict
 from rdf_persistence.domain.generated.rp_provenance import Add
-from rdf_persistence.domain.iris import Iris, application_database_name
+from rdf_persistence.domain.layout import application_database_name
 from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE

@@ -26,10 +26,11 @@ from rdf_persistence.domain.generated.rp_discussion import (
     PostComment,
     PostReply,
 )
-from rdf_persistence.domain.generated.service.rp_service import CallerAccess, VerifiedCaller
-from rdf_persistence.domain.iris import Iris, graph_iri
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
+from rdf_persistence.services.generated.service.rp_service import CallerAccess, VerifiedCaller
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.mapper import Mapper
 from rdf_persistence.services.provenance import new_activity_id
 from rdf_persistence.services.schema_structure import (

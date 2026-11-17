@@ -108,29 +108,6 @@ from rdf_persistence.domain.generated.rp_workflow import (
     Workflow,
     WorkflowTransition,
 )
-from rdf_persistence.domain.generated.service.rp_service import (
-    AccountSummary,
-    Authorised,
-    CallerAccess,
-    EventEnvelope,
-    GrantSet,
-    IdKind,
-    IdSpec,
-    IriPolicy,
-    LabelUpdate,
-    MemberList,
-    Page,
-    Problem,
-    ProblemKind,
-    Referrer,
-    ReferrerList,
-    ServiceSettings,
-    TenantCreate,
-    TenantDump,
-    TenantSummary,
-    VerifiedCaller,
-)
-from rdf_persistence.domain.iris import DEFAULT_IRIS, IdSource, Iris, mint_aggregate_iri
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.fuseki import FusekiStore
@@ -149,7 +126,30 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.services.events import EventBus, Receive, context_link
     from rdf_persistence.services.file_removal import remove_with_files
     from rdf_persistence.services.files import FileStore
+    from rdf_persistence.services.generated.service.rp_service import (
+        AccountSummary,
+        Authorised,
+        CallerAccess,
+        EventEnvelope,
+        GrantSet,
+        IdKind,
+        IdSpec,
+        IriPolicy,
+        LabelUpdate,
+        MemberList,
+        Page,
+        Problem,
+        ProblemKind,
+        Referrer,
+        ReferrerList,
+        ServiceSettings,
+        TenantCreate,
+        TenantDump,
+        TenantSummary,
+        VerifiedCaller,
+    )
     from rdf_persistence.services.identity import Identity
+    from rdf_persistence.services.iris import DEFAULT_IRIS, IdSource, Iris, mint_aggregate_iri
     from rdf_persistence.services.listing import Listings
     from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
     from rdf_persistence.services.messagebus import MessageBus, Work, bootstrap, command
@@ -166,7 +166,33 @@ __version__ = version("rdf-persistence")
 
 _ADAPTERS, _SERVICES = "rdf_persistence.adapters", "rdf_persistence.services"
 _ENTRYPOINTS = "rdf_persistence.entrypoints"
+_SERVICE_MODELS = f"{_SERVICES}.generated.service.rp_service"
 _LAZY_MODULES = {
+    **dict.fromkeys(
+        (
+            "AccountSummary",
+            "Authorised",
+            "CallerAccess",
+            "EventEnvelope",
+            "GrantSet",
+            "IdKind",
+            "IdSpec",
+            "IriPolicy",
+            "LabelUpdate",
+            "MemberList",
+            "Page",
+            "Problem",
+            "ProblemKind",
+            "Referrer",
+            "ReferrerList",
+            "ServiceSettings",
+            "TenantCreate",
+            "TenantDump",
+            "TenantSummary",
+            "VerifiedCaller",
+        ),
+        _SERVICE_MODELS,
+    ),
     "FusekiStore": f"{_ADAPTERS}.fuseki",
     "JwksTokenVerifier": f"{_ADAPTERS}.jwks",
     "S3FileStore": f"{_ADAPTERS}.s3",
@@ -176,6 +202,10 @@ _LAZY_MODULES = {
     "ServiceKit": f"{_ENTRYPOINTS}.kit",
     "limited_body": f"{_ENTRYPOINTS}.router",
     "Identity": f"{_SERVICES}.identity",
+    "DEFAULT_IRIS": f"{_SERVICES}.iris",
+    "IdSource": f"{_SERVICES}.iris",
+    "Iris": f"{_SERVICES}.iris",
+    "mint_aggregate_iri": f"{_SERVICES}.iris",
     "EventBus": f"{_SERVICES}.events",
     "Receive": f"{_SERVICES}.events",
     "context_link": f"{_SERVICES}.events",

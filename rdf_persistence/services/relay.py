@@ -18,10 +18,10 @@ from rdflib import Graph
 from rdf_persistence.domain.exceptions import DatabaseGone
 from rdf_persistence.domain.generated.rp_provenance import Activity
 from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.generated.service.rp_service import EventEnvelope
 from rdf_persistence.services.decoding import decode_activity, error_text
 from rdf_persistence.services.event_hub import Offer
 from rdf_persistence.services.events import EventBus
+from rdf_persistence.services.generated.service.rp_service import EventEnvelope
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.tenancy import Tenancy

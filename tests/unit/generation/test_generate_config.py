@@ -5,10 +5,14 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence.generation import steps
 from rdf_persistence.generation.cli import build_parser
 from rdf_persistence.generation.config import cli_flags, read_targets
 from rdf_persistence.generation.exceptions import ConfigError
-from rdf_persistence.generation.generated.rp_generation import GenerationTarget
+from rdf_persistence.generation.generated.rp_generation import GenerationTarget, TargetKind
+from rdf_persistence.generation.pipeline import generate
+
+from .conftest import TOY
 
 SINGLE = """
 [tool.rp-generate]
@@ -109,6 +113,44 @@ def test_a_regenerate_command_that_is_not_a_string_is_an_error_naming_the_toml_k
 ) -> None:
     with pytest.raises(ConfigError, match="regenerate-command"):
         read(tmp_path, SINGLE + "regenerate-command = 3\n")
+
+
+def test_a_kind_is_read_from_its_toml_key(tmp_path: Path) -> None:
+    (technical,) = read(tmp_path, SINGLE + 'kind = "technical"\n')
+    assert technical.target_kind == TargetKind.TECHNICAL, "the kind key was not read"
+
+
+def test_the_toy_librarys_table_has_no_kind_and_passes_the_boundary_check() -> None:
+    (toy,) = read_targets(TOY / "pyproject.toml")
+    assert toy.target_kind is None, "an absent key leaves the kind unset"
+    assert generate([toy], TOY, (steps.BOUNDARY_STEP,), check=True) == [], "no kind, no kind check"
+
+
+@pytest.mark.parametrize(
+    "literal",
+    [
+        '"access"',
+        '"Technical"',
+        '"TECHNICAL"',
+        '" domain"',
+        '"technical\\n"',
+        '""',
+        "1",
+        "true",
+        "[]",
+    ],
+)
+def test_a_kind_that_is_not_exactly_domain_or_technical_is_an_error_naming_the_toml_key(
+    tmp_path: Path, literal: str
+) -> None:
+    """Probe of PD-9: no case folding, no trimming, no coercion."""
+    with pytest.raises(ConfigError, match="kind"):
+        read(tmp_path, SINGLE + f"kind = {literal}\n")
+
+
+def test_a_kind_spelt_target_kind_is_refused_naming_the_key(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="target_kind"):
+        read(tmp_path, SINGLE + 'target_kind = "technical"\n')
 
 
 def test_the_regenerate_command_is_not_a_flag() -> None:

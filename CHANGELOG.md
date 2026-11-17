@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A generation target declares its `kind`** (`technical-models`): the optional `kind` key of a
+  `[[tool.rp-generate]]` entry is `domain` or `technical`; `rp-generate` fails, naming the target
+  and the module, when a technical target holds a module not annotated `module_kind: technical`,
+  or a domain target holds one annotated `technical`. A target without `kind` generates as before.
+
+### Changed
+- **BREAKING: the technical models moved out of the domain layer** (`technical-models`). Every
+  name still imports from `rdf_persistence`; only a deep import of an old module path breaks, with
+  `ModuleNotFoundError`:
+  - `rdf_persistence.domain.generated.service` is now `rdf_persistence.services.generated.service`
+    (the service records, loaded lazily from the top level);
+  - `rdf_persistence.domain.iris` is now `rdf_persistence.services.iris` (the IRI policy, `Iris`,
+    `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`) and `rdf_persistence.domain.layout` (the
+    fixed IRI and name layout functions, free of the policy);
+  - `rdf_persistence.domain.tenant_move` is now `rdf_persistence.services.tenant_move`;
+  - the schemas `model/service/` and `model/adapters/` are now `model/technical/service/` and
+    `model/technical/wire/`; the domain schemas `model/rp_*.yaml` stay where they are, and a
+    consumer schema still imports `rdf_persistence/model/rp_core` (no technical schema can be
+    imported that way).
+
 ## [0.4.0] - 2026-11-16
 
 ### Added

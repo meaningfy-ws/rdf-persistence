@@ -25,11 +25,11 @@ from rdf_persistence.domain.exceptions import (
 from rdf_persistence.domain.generated.rp_access import Action, Grant
 from rdf_persistence.domain.generated.rp_provenance import Activity, Replace
 from rdf_persistence.domain.generated.rp_workflow import Transition
-from rdf_persistence.domain.generated.service.rp_service import Migration
-from rdf_persistence.domain.iris import DEFAULT_IRIS, tenant_resource_name
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
+from rdf_persistence.services.generated.service.rp_service import Migration
+from rdf_persistence.services.iris import DEFAULT_IRIS, tenant_resource_name
 from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migrations import stamps
 from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel

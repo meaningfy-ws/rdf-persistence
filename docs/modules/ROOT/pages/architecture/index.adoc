@@ -286,23 +286,26 @@ _What may a consumer import?_
 |===
 |Layer (module) |Blocks |Exported at top level
 |`rdf_persistence.domain`
-|metamodel classes (generated from `model/rp.yaml`), the service records (generated from
-`model/service/rp_service.yaml`), the strict base model, the errors
-|`RpModel`; `Iris`, `DEFAULT_IRIS`, `mint_aggregate_iri`; `AggregateRoot`, `Described`, `Tracked`,
+|metamodel classes (generated from `model/rp.yaml`), the fixed IRI layout (`domain/layout.py`),
+the strict base model, the errors
+|`RpModel`; `AggregateRoot`, `Described`, `Tracked`,
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,
 `Rule`, `Grant`, `Prohibition`, `RoleDefinition`, `RoleLevel`, `Action`; `TenantAccess`,
 `TenantLabelled`, `TenantState`, `TenantSweepReport`, `BlobEntry`, `PendingLoad`; the collaboration
 classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Motivation`; `UnderWorkflow`,
 `Workflow`, `WorkflowTransition`, `Transition`); the annotation enums (`RpAnnotation`, `ModuleKind`, `DatabaseKind`,
-`GraphKind`, `RegistryKind`, `WritesKind`); the service records (`ServiceSettings`, `IriPolicy`, `IdSpec`,
-`IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem`,
-`ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`, `AccountSummary`, `Referrer`,
-`ReferrerList`, `MemberList`); the errors
+`GraphKind`, `RegistryKind`, `WritesKind`); the errors
 (`PersistenceError` and its subclasses: `Conflict`, `NotFound`, `DatabaseGone`, `TenantGone`,
 `Forbidden`, `InvalidBody`, `InvalidIri`, `InvalidToken`, `InvalidWorkflow`, `StoredDataInvalid`, …)
 |`rdf_persistence.services`
-|session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the ports
-|`open_session`, `Session`, `UnitOfWork`, `Mapper`, `generated_models`, `new_part`, `load_schema`,
+|session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the IRI
+policy and `Iris` (`services/iris.py`); the service records (generated from
+`model/technical/service/rp_service.yaml` into `rdf_persistence.services.generated.service`, loaded
+lazily); the ports
+|`open_session`, `Session`, `Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`; the service records
+(`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`,
+`GrantSet`, `Page`, `Problem`, `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`,
+`AccountSummary`, `Referrer`, `ReferrerList`, `MemberList`); `UnitOfWork`, `Mapper`, `generated_models`, `new_part`, `load_schema`,
 `Tenancy`, `sweep`, `sweep_tenant`, `remove_with_files`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
 `Collaboration` (opened with `kit.collaboration`), `Workflows`;
 the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`; `Session.named_file_keys`

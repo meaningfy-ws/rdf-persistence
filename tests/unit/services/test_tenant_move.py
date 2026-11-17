@@ -5,17 +5,18 @@ from rdflib import Dataset, Literal, URIRef
 from rdflib.namespace import DCTERMS
 
 from rdf_persistence.domain.exceptions import InvalidBody
-from rdf_persistence.domain.generated.service.rp_service import (
+from rdf_persistence.domain.layout import stamps_graph_iri
+from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.domain.iris import Iris, stamps_graph_iri
-from rdf_persistence.domain.tenant_move import check_graphs, glued_templates, rewrite
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
+from rdf_persistence.services.tenant_move import check_graphs, glued_templates, rewrite
 from tests.toy import SETTINGS, TOY_SCHEMA
 
 OLD = "9f1e6c2a-3b4d-4e5f-8a9b-0c1d2e3f4a5b"

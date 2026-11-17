@@ -9,7 +9,7 @@ import pytest
 from rdf_persistence import Grant, GrantSet, JwksTokenVerifier
 from rdf_persistence.domain.exceptions import NotFound, StoreUnavailable
 from rdf_persistence.domain.generated.rp_access import Action, Prohibition
-from rdf_persistence.domain.iris import graph_iri
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.domain.media import JSON
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 from rdf_persistence.testkit.tokens import ISSUER

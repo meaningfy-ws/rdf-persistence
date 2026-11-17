@@ -12,7 +12,7 @@ The examples use the toolkit's own toy library (`tests/toy.py`, `tests/fixtures/
 settings `base="https://example.org/library/"`, `prefix="lib"`, `tenant_segment="libraries"`,
 `creator_role="librarian"`; a tenant is a library; its aggregates are books (`rp_path: books`) and
 scans (`rp_path: scans`, a file aggregate). Every IRI below comes from the default
-IRI policy (`IriPolicy` in `model/service/`); a consumer may set other templates.
+IRI policy (`IriPolicy` in `model/technical/service/`); a consumer may set other templates.
 
 == Terms
 

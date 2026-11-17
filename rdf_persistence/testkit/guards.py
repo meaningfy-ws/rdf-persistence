@@ -106,7 +106,10 @@ def _model_violations(
 
 
 def _top_level_exports(package_dir: Path) -> dict[str, str]:
-    """Names the package's ``__init__`` re-exports, read with ``ast`` (no import)."""
+    """Names the package's ``__init__`` re-exports, read with ``ast`` (no import).
+
+    Lazy exports are read where they are declared, the imports under ``if TYPE_CHECKING:``.
+    """
     init = package_dir / "__init__.py"
     if not init.is_file():
         return {}

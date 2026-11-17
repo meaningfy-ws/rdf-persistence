@@ -15,7 +15,7 @@ from fastapi import APIRouter
 from rdf_persistence import GrantSet
 from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.domain.generated.rp_provenance import Activity, Generation, Replace
-from rdf_persistence.domain.iris import graph_iri
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.responses import CONTEXT_REL
 from rdf_persistence.entrypoints.sse import add_events_route

@@ -5,7 +5,7 @@ import pytest
 from rdf_persistence import Authorised, GrantSet
 from rdf_persistence.domain.exceptions import Forbidden, InvalidToken, NotFound
 from rdf_persistence.domain.generated.rp_access import Action, Prohibition
-from rdf_persistence.domain.iris import graph_iri
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.domain.media import JSON
 from tests.fixtures.library.generated.scans import Scan
 from tests.toy_service import principal_of, store_scan

@@ -23,7 +23,7 @@ from rdf_persistence.domain.generated.rp_core import (
     UniqueScope,
     WritesKind,
 )
-from rdf_persistence.domain.iris import LAYOUT_WORDS
+from rdf_persistence.domain.layout import LAYOUT_WORDS
 from rdf_persistence.generation.checks.application import application_problems
 from rdf_persistence.generation.checks.toolkit_filled import toolkit_filled_problems
 from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule

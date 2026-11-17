@@ -19,9 +19,9 @@ from starlette.exceptions import HTTPException
 
 from rdf_persistence.domain import exceptions as errors
 from rdf_persistence.domain.exceptions import PersistenceError
-from rdf_persistence.domain.generated.service.rp_service import Problem, ProblemKind, ProblemSlug
 from rdf_persistence.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.auth import BEARER_SCHEME
+from rdf_persistence.services.generated.service.rp_service import Problem, ProblemKind, ProblemSlug
 
 WWW_AUTHENTICATE = "WWW-Authenticate"
 BEARER = BEARER_SCHEME.capitalize()
