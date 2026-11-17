@@ -122,7 +122,7 @@ Stage 1 closes with the lead's `make check-all` and `make test-containers`, the 
 
 | ID | Input | Expected |
 |---|---|---|
-| TC-35 | the existing `ACCEPT` table, all 19 rows | as today |
+| TC-35 | the existing `ACCEPT` table, all 18 rows | as today |
 | TC-36 | `application/ld+json;profile="http://www.w3.org/ns/json-ld#compacted"` | JSON-LD |
 | TC-37 | `text/turtle;q=0.5, application/ld+json;q=0.5` | JSON-LD (first offered of the tie) |
 | TC-38 | `text`, `;q=1`, `a/b/c` | each `NotAcceptable` |

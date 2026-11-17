@@ -218,11 +218,12 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-12. The new ones:
   `tests/unit/services/test_iri_policy_guard_adversarial.py::test_two_records_that_disagree_refuse_whichever_policy_is_configured`
   (reads `store._dataset(...).graph(...)`, rdflib's `Dataset` API). Reaching even those 3 took two
   workarounds in the fake: a rewrite of `FILTER (?x NOT IN ())`, which oxigraph evaluates to an
-  error for a bound variable (the spec says true; `listing.py` and `unique_keys.py` emit it; 160
-  tests fail without it), and a `base_iri` for tests that write relative IRIs. The swap was
-  43-57 % faster (`make test-fast` 1m05s-1m26s against 2m30s) and ran the #142 quarantined test in
-  0.3 s. Per PD-13 the engine is reverted; nothing of 2.5 is merged, TC-51 and TC-53 are not
-  written. The attempt is kept in `evidence/spike-pyoxigraph-fakestore.patch` for a follow-up,
+  error for a bound variable (the spec says true; `listing.py`, `unique_keys.py` and
+  `session.py:169` can emit it; 160 tests fail without it), and a `base_iri` for tests that write
+  relative IRIs. The swap was 43-57 % faster (`make test-fast` 1m05s-1m26s against 2m30s) and ran
+  the #142 quarantined test in 0.3 s. Per PD-13 the engine is reverted; nothing of 2.5 is merged.
+  TC status: TC-50 passed on the swap, TC-52 too (the existing rows), TC-54 measured above; TC-51
+  and TC-53 are not written (they test the swapped engine). The attempt is kept in `evidence/spike-pyoxigraph-fakestore.patch` for a follow-up,
   which needs the developer's call on the three test edits and on the `NOT IN ()` workaround (an
   external-library shortcoming: contribute upstream, or work around it in the fake).
 
@@ -238,6 +239,8 @@ lands one carries a `BREAKING CHANGE:` footer (before 1.0.0 it bumps the MINOR, 
 | `jwks.ALLOWED_ALGORITHMS` and `jwks.ES256` removed | code that imports them (none in the repo but the verifier) | 1.1 |
 | A token expired by less than the leeway (30 s by default) is accepted | a client or test that counts on an exact expiry; `leeway_seconds=0` restores it | 1.1 |
 | A loaded JSON-LD file that names a graph, or uses a relative IRI, is refused; so is a body with a relative IRI (its triple was dropped before) | a consumer loading such files or sending such bodies | 2.2 |
+| A JSON-LD body or loaded file with an IRI that is not valid, or that is a scalar, is refused (it gave fewer or no triples before) | as above | 2.2, F-4 |
+| `Accept`: an unparsable or empty `q` reads as 1 (it read as 0); a `q` above 1 reads as 1 (it outranked `q=1`) | a client sending such a `q` | 2.1, F-3 |
 | A language-tagged value is a plain string in JSON and a value object in JSON-LD (it lost its tag in both) | a JSON-LD client | 1.4 |
 | `REPRESENTATIONS` holds seven members | code that matches it exhaustively | 3.1 |
 
@@ -306,11 +309,11 @@ Order of work: the swaps run the *old* tests against the new code before the old
 | `If-Match: *` or a list from a caller who may delete or modify but not read the aggregate | `current()` reads in the caller's session | that read's answer (404 or 403); a single strong tag still works |
 | A JWKS with one unusable key beside good ones | refresh | the bad key is skipped; its `kid` is unknown (401); the others verify |
 | A JWKS with no usable key | refresh | `IdentityUnavailable` (503), as today |
-| A JSON-LD body or loaded file with a relative IRI and no `@base` | `RelativeIriRefused` (PD-6) | `InvalidBody` (400) / `InvalidGraph`; nothing written |
+| A JSON-LD body or loaded file with a relative IRI and no `@base` | `RelativeIriRefused` (PD-6) | `InvalidBody` (422) / `InvalidGraph`; nothing written |
 | The aggregate changes between the version read and the write | guarded write | 409 |
 | A malformed `Accept` range | `MimeTypeParseException` | 406 |
 | RDF/XML cannot write a predicate | serialiser raises | 406 naming the type (PD-12) |
-| A JSON-LD body or loaded file with a remote, file or `@import` context | `LOADER` refuses | `InvalidBody` (400) / `InvalidGraph`; nothing fetched |
+| A JSON-LD body or loaded file with a remote, file or `@import` context | `LOADER` refuses | `InvalidBody` (422) / `InvalidGraph`; nothing fetched |
 | A JSON-LD body or loaded file that names a graph | `NamedGraphRefused` | `InvalidBody` / `InvalidGraph`; nothing written |
 | An `RdfFormat` value without `media_type` | `media_types` at import | `ValueError`; a toolkit bug, caught by TC |
 | `MessageLimitExceeded` in an observer | kit catch | one ERROR log, acked as today |
@@ -480,3 +483,68 @@ Under the floor (not fixed in this stage):
 - L3 to L4/L5 notes (positional `[2]`/`[1]` reads in `router.py`, `PyJWKSetError` raised to reach an
   `except`, the bare `"error.type"` string, `VALUE_KEY`/`LANGUAGE_KEY` beside the other JSON-LD keys)
   go to the full review after stage 3.
+
+### Stage 2 review findings (L2, L3, tester)
+
+Reviewers: L2 (10 findings), L3 (5), the adversarial tester (6: T-1 to T-6). No finding was labelled
+Critical; the lead re-labels these, each with its reason. The PLAN's own failure test applies to
+the swaps: "a swap changes behaviour a consumer can see beyond what the spec deltas and Breaking
+changes say" ("How it succeeds, how it fails").
+
+- **F-3** (T-2, T-3, L2 W1) The Accept swap changed more than PD-5 accepted: `*/turtle`, `*/json`,
+  `*` and a header of only such members are served JSON (was 406); `text/turtle;q=-1` outranks a
+  positive `q` (was not acceptable); one malformed member refuses the whole header (`text/turtle,
+  foo` was Turtle, now 406); a comma inside a quoted parameter (`profile="a,b"`) splits the member
+  (was JSON-LD, now 406). Critical: the PLAN's failure test. Fix in `_negotiate`, keeping
+  mimeparse: split on commas outside quoted strings; skip a member that does not parse, whose type
+  is `*` with a subtype other than `*`, or whose type or subtype is empty (as before PD-5: such a
+  range matched nothing); a header with no usable member left is 406, as before. `q`: unparsable
+  or empty reads as 1 (PD-5's accepted change, now naming the empty case), negative reads as 0
+  (not acceptable, as before), above 1 reads as 1 (a tie with `q=1`; the one further accepted
+  change, recorded in Breaking changes). Tests: the tester's failing rows for T-2 and T-3; the
+  `/turtle, application/json` row expects JSON (as before PD-5), not 406; rows for the four L2 W1
+  headers.
+- **F-4** (T-1, T-5, T-6) `triples_of` still loses statements without a word: a relative `@id`
+  under `"@base": null` (T-1), an IRI that is not valid (`https://ex.org/a b`, a control
+  character: T-5) and a scalar document (`123`, `true`: T-6) all give an empty or shorter graph.
+  A loaded file replaces its graph, so such a file empties it. Critical: the silent loss PD-6
+  exists to end, and for loaded files a change beyond the Breaking changes row (rdflib's parser
+  kept such IRIs). Fix in `services/jsonld.py`: refuse a document that is not a JSON object or
+  array; refuse any IRI that is relative or not valid, found in the document PyLD expands (walk
+  `jsonld.expand`'s output, or a PyLD option if one reports dropped statements; no hand-written
+  JSON-LD processing beyond that walk); keep `NO_BASE` for the relative case. Callers map the new
+  refusals as the others (`InvalidBody` / `InvalidGraph`, messages "a JSON-LD document must use
+  absolute IRIs", "… holds an IRI that is not valid", "a JSON-LD document is an object or an
+  array"). The Breaking changes row of 2.2 names them.
+- **F-5** (L2 W4) A loaded JSON-LD file is now refused for a named graph, a relative IRI or a
+  context that is not inline, but `howto/adopt.adoc:1187-1205`, `architecture/index.adoc:164-165`,
+  `architecture/data-flows.adoc:807` and the docstrings of `Session.load_graph` and `parse_graph`
+  still say only "data that does not parse raises `InvalidGraph`". Critical: a breaking change a
+  consumer is not told about where they read (L2 doc agreement, as F-1). Fix: one sentence in
+  each naming what a JSON-LD file is refused for and the message.
+- **F-6** (L2 W5) TC-42c names a JSON-LD body; the test sends plain JSON and carries no TC tag.
+  Critical: a TC row without its test breaks the traceability the checker verifies (as F-2). Fix:
+  parametrise over JSON and JSON-LD bodies, tagged `# TC-42c`.
+
+Fixed by the lead in the spine (no code): L2 W2 (Error matrix said 400; the code and D-10 say
+422), L2 S1 (TC-35 counts 18 rows), L2 S2 (PD-17's TC status and `session.py:169`).
+
+Under the floor (not fixed in this stage; the full review after stage 3 weighs them):
+
+- T-4 a graph named `urn:x-rdflib:default` reads as the default graph: a contrived name, and its
+  statements are kept, not lost.
+- L3 W1 `services/jsonld.py` defines its own `N_QUADS`; `domain/media.py` has it.
+- L3 W2 `triples_of` lets PyLD's and rdflib's exception types through, so both callers keep a
+  broad `except Exception` that turns a bug of ours into a client error (as before PD-6 for
+  bodies).
+- L2 W3 no test feeds valid JSON that is not valid JSON-LD to `_parse_jsonld`; the JSON-LD row of
+  `test_the_message_of_a_refused_file_is_the_parsers_own` compares with rdflib's parser; a loaded
+  file's PyLD message is not truncated as a body's is.
+- L3 S1 the three refusal mappings are written twice and the two `NOT_INLINE` texts differ.
+- L3 S2 `METAMODEL_ANNOTATIONS` is read only by its test; its comment overstates.
+- L3 S3 `test_documents.py` imports `dataset_of` from `documents`; `test_jsonld.py:124` uses
+  `format="nt"`; TC-44's regex sees double quotes only.
+- L2 S3 `test_jsonld.py:61`'s name contradicts its document; the session-level "no graph is
+  created" rows for relative IRI and remote context; TC-40 does not assert `sent("query") == []`.
+- L2 S4 `test_hard_check.py:728`'s name and message do not mention the metamodel group.
+- L2 S5 TC-43's golden is one plain triple; richer samples would show where PyLD and rdflib differ.
