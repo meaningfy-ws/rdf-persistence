@@ -484,7 +484,8 @@ overrule any of them. D-1 to D-7 agreed by the developer, 2026-11-17.
 - **D-15 Impact of task 3.1 read as low.** GitNexus rates `Documents.render` CRITICAL (60
   processes, 2 direct callers): it sits on every document route, as `_negotiate` did (D-9). Its
   signature stays; `domain/media.py` (MEDIUM, 12 importers) only gains constants and a longer
-  `REPRESENTATIONS`. The two tests the PLAN names are the only existing tests that may change;
+  `REPRESENTATIONS`. `openapi._document_media` (not in the index; read by text) has 7 call
+  sites, all in `openapi.py`, so its `turtle=` → `rdf=` rename stays in one file. The two tests the PLAN names are the only existing tests that may change;
   any other edit to an existing test stops the task.
 
 ### Stage 1 review findings (L2, L3)
