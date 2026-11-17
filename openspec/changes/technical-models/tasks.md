@@ -77,7 +77,7 @@ separate and L4+L5 one pass, the fix pass, PR 1.
 
 ## Stage 2: the templates' variables as models (PR 2)
 
-- [ ] 2.1 PD-4: `SparqlTerm.__get_pydantic_core_schema__`, `fill_terms`, `fragment_terms` in
+- [x] 2.1 PD-4: `SparqlTerm.__get_pydantic_core_schema__`, `fill_terms`, `fragment_terms` in
   `domain/sparql.py`; `GenerationAnnotation.python_import` and the import in
   `SplitPydanticGenerator._get_imports`. Tests: `tests/unit/domain/test_sparql.py`,
   `tests/unit/generation/test_ext_pydantic_split.py`. Gate: `make test-fast check-quality`.

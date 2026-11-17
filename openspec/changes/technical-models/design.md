@@ -416,6 +416,24 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   schemas a consumer imports" has no test: a `glob` turned `rglob` in `metamodel_importmap` would
   expose the technical schemas unnoticed. A signed scenario without a test fails the traceability
   check. Fix: one unit test.
+- **D-14 (stage 2, task 2.1)** GitNexus rated `SparqlTerm` HIGH (17 direct) and
+  `GenerationAnnotation` CRITICAL (30 importers of `rp_generation.py`). Not taken to the
+  developer: the task adds a pydantic schema hook (validation only, no change for code that uses
+  `SparqlTerm` as a `str`) and one enum value, so no importer changes (as D-1).
+- **D-15 (stage 2)** The review set is P-0005's one L2 and L3 pass for the stage, as the
+  hand-over proposed. Stage 2 carries RISK-4 (`pydantic_split` relies on `repr`), which TC-16 pins;
+  likelihood low on the pinned linkml, so it does not call for the full set. The full review runs
+  after stage 4.
+- **D-16 (stage 2)** The adversarial tester runs once, after task 2.2, as `tasks.md` names it
+  (D-2: every stage). Task 2.1 adds a generator type (`python_import`), so its builder bootstraps
+  the generator (stub the new import, `make generate`, restore, `make generate` again; hand-over
+  of stage 1).
+- **D-17 (stage 2, task 2.1, upstream finding, external)** The Context row "pydantic turns a
+  `SparqlTerm` into a plain `str`" does not hold for a field typed `SparqlTerm` on pydantic
+  2.14.2: without the schema hook, building the model raises `PydanticSchemaGenerationError`
+  (a field typed `str` still turns a `SparqlTerm` into a `str`, so `model_dump` stays unsafe). DEC-7
+  holds either way: the hook is what lets the field exist and refuse a raw `str`. No code change;
+  no upstream issue (pydantic behaves as documented).
 
 Under the floor (not fixed in stage 1):
 
