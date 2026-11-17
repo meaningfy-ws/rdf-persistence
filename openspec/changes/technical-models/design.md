@@ -456,7 +456,42 @@ The lead's, recorded as taken (R-0007); the developer may overrule any of them.
   readers now test `is None` where they tested a key's presence: `_belongs` (a `tenant` group that
   did not take part in the match) and `tenant_of_access` (an access template with neither `tenant`
   nor `tenant_id`, which used to raise `KeyError` and now reaches `self.tenant("None")`). The
-  builder holds that both paths need an invalid policy; the stage's review judges it.
+  builder holds that both paths need an invalid policy; the stage's review judges it. The review
+  (S1) agrees: `_compile` makes every named group mandatory, so `_belongs` behaves as before for
+  any policy; `tenant_of_access` needs a policy built with `model_construct`, and then refuses
+  with `InvalidIri`. The review (S2) adds GitNexus ratings missing here: `Iris._belongs` CRITICAL
+  (3 direct, 37 processes), `session._fill_marked` CRITICAL (3 direct), `Iris.tenant_of_access`
+  HIGH (4 direct). Not taken to the developer: `_belongs` is behaviour-preserving (S1), and TC-19's
+  goldens pin `_fill_marked`'s text.
+- **D-23 (stage 2, L2 W1, re-labelled Critical)** `architecture/generation.adoc`,
+  `architecture/index.adoc` and `rp_templates.yaml`'s description (which flows into the generated
+  docstrings) say every field of the templates group is a `SparqlTerm`; task 2.3 added
+  `IriTemplateVariables` and `IriParts`, of plain strings. Re-labelled as D-12 was in stage 1: the
+  stage changed these pages and they now disagree with the code. Fix: name the IRI models in both
+  pages and reword the schema description; `make generate`.
+- **D-24 (stage 2, L2 W2, re-labelled Critical)** Five tests task 2.1 added to
+  `tests/unit/domain/test_sparql.py` (TC-14, TC-17, TC-55) have no row in
+  `tests/audit/scenario-map.csv`. Re-labelled as D-11 was: the map is what the traceability check
+  reads. Fix: map them; `make refresh-map` lists none of this stage's ids.
+- **D-25 (stage 2, L2 W3, re-labelled Critical)** TC-23's reserved-word test passes with the
+  reserved-word check deleted: the default UUID4 tenant id never matches `app` or `books`, so the
+  check is never reached. A PLAN TC that does not test its row is that brief item unmet. Fix: a
+  policy whose `tenant_id` spec can spell the word; assert `InvalidIri` when it is reserved and
+  acceptance when it is not.
+
+Under the floor (not fixed in stage 2):
+
+- L2 W4: `CHANGELOG.md` has no line for the `python_import` annotation. Owed to stage 4 with the
+  other release-note lines (task 4.3 or the PR 4 reconciliation).
+- L2 S1 (optional): an explicit `InvalidIri` in `tenant_of_access` when both parts are `None`.
+- L2 S3: no test of the error-matrix row "`repr` with no `python_import`"; the stage's tester
+  wrote one (`repr` alone adds no import), which the fix pass keeps.
+- L2 S4: TC-19's golden names an uncommitted capture script; the docstring should say the golden
+  is frozen.
+- Tester F-1: `model_json_schema()` fails on a term model (`is_instance_schema`). The templates
+  group is never served (`openapi = false`), and nothing asks for its JSON Schema.
+- Tester F-2: `fill_terms` given a plain dict raises `ValueError`, not `SparqlError`; the
+  parameter is typed `BaseModel`.
 
 Under the floor (not fixed in stage 1):
 
@@ -474,8 +509,8 @@ Under the floor (not fixed in stage 1):
 - L4+L5 S3: no `__dir__` for the lazy names.
 - L2 S1, S2, S3, S5: a parametrized kind table, the target named in the domain CLI test,
   `lint-imports` output naming both modules, assert messages.
-- L2 S4: TC-12 names `rdf_persistence.JwtClaims`, which was never top-level; the wire models are
-  adapters-only (PD-2).
+- L2 S4 (stage 1): TC-12 names `rdf_persistence.JwtClaims`, which was never top-level; the wire
+  models are adapters-only (PD-2).
 
 ## Open Questions
 
