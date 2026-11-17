@@ -2,10 +2,17 @@
 
 import httpx
 from pyld import jsonld
-from rdflib import Graph
+from rdflib import Dataset, Graph
 
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.domain.media import (
+    DATASET_REPRESENTATIONS,
+    JSON,
+    JSON_LD,
+    N_QUADS,
+    REPRESENTATIONS,
+    TURTLE,
+)
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.testkit import assert_isomorphic
 from tests.integration.api.conftest import make_book
@@ -14,8 +21,11 @@ from tests.toy_service import ToyService, assert_problem, principal_of
 
 def triples_of(toy: ToyService, response: httpx.Response, media_type: str) -> Graph:
     """The RDF a response describes: Turtle is parsed, JSON gets the generated context, JSON-LD is read as served, with its own."""
-    if media_type == TURTLE:
-        return Graph().parse(data=response.text, format="turtle")
+    if media_type not in (JSON, JSON_LD):
+        triples = Graph()
+        for quad in Dataset().parse(data=response.text, format=media_type).quads():
+            triples.add(quad[:3])
+        return triples
     document = response.json()
     if media_type == JSON:  # plain JSON is JSON-LD with the context its Link header names
         document = {"@context": toy.kit.documents.context, **document}
@@ -38,6 +48,37 @@ async def test_the_same_book_is_described_by_the_same_triples_in_json_json_ld_an
         graphs[media_type] = triples_of(toy, response, media_type)
     for media_type in (JSON_LD, TURTLE):
         assert_isomorphic(graphs[JSON], graphs[media_type])
+
+
+async def test_the_same_book_is_described_by_the_same_triples_in_all_seven_representations(
+    toy, client
+) -> None:  # TC-55
+    book = (await make_book(toy, client)).headers["location"]
+    graphs = {}
+    for media_type in REPRESENTATIONS:
+        response = await client.get(book, headers={**toy.bearer("ada"), "Accept": media_type})
+        assert response.status_code == 200, f"{media_type}: {response.text}"
+        assert response.headers["content-type"].split(";")[0] == media_type, "as asked"
+        graphs[media_type] = triples_of(toy, response, media_type)
+    for media_type in REPRESENTATIONS:
+        assert_isomorphic(graphs[JSON], graphs[media_type])
+
+
+async def test_the_quads_of_a_book_are_in_its_graph_and_say_nothing_of_it(toy, client) -> None:
+    created = await make_book(toy, client)  # TC-56
+    for media_type in DATASET_REPRESENTATIONS:
+        response = await client.get(
+            created.headers["location"], headers={**toy.bearer("ada"), "Accept": media_type}
+        )
+        quads = list(Dataset().parse(data=response.text, format=media_type).quads())
+        assert {str(q[3]) for q in quads} == {str(graph_iri(created.json()["id"]))}, media_type
+        assert all(str(q[0]) != str(graph_iri(created.json()["id"])) for q in quads), media_type
+
+
+async def test_a_listing_as_n_quads_is_a_406_problem(toy, client) -> None:  # TC-59
+    tenant = (await make_book(toy, client)).headers["location"].rsplit("/", 2)[0]
+    response = await client.get(f"{tenant}/books", headers={**toy.bearer("ada"), "Accept": N_QUADS})
+    assert_problem(response, 406, "not-acceptable")
 
 
 async def test_the_triples_served_are_the_triples_stored(toy, client) -> None:

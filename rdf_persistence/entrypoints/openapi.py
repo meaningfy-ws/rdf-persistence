@@ -40,7 +40,7 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import Field
 
-from rdf_persistence.domain.media import JSON, JSON_LD, PROBLEM_JSON, TURTLE
+from rdf_persistence.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS
 from rdf_persistence.entrypoints import problems
 from rdf_persistence.entrypoints.auth import BEARER_SCHEME
 from rdf_persistence.entrypoints.kit import ServiceKit
@@ -138,10 +138,10 @@ def _media(schema: Schema, *types: str) -> dict[str, MediaType]:
     return {media_type: MediaType(schema=schema) for media_type in types}
 
 
-def _document_media(schema: Schema, *, turtle: bool = True) -> dict[str, MediaType]:
-    """The representations of a document: JSON by the schema, JSON-LD and Turtle by their own rules."""
+def _document_media(schema: Schema, *, rdf: bool = True) -> dict[str, MediaType]:
+    """The representations of a document: JSON by the schema, JSON-LD as an object, the RDF serialisations as text."""
     media = {**_media(schema, JSON), **_media(Schema(type="object"), JSON_LD)}
-    return {**media, **_media(Schema(type="string"), TURTLE)} if turtle else media
+    return {**media, **_media(Schema(type="string"), *REPRESENTATIONS[2:])} if rdf else media
 
 
 def _problem(kind: ProblemKind, description: str) -> Response:
@@ -258,7 +258,7 @@ def route_options(
 
 def _body(schema: Schema, *, documents: bool = False) -> RequestBody:
     """A required request body: plain JSON by the schema, and JSON-LD too for a document."""
-    media = _document_media(schema, turtle=False) if documents else _media(schema, JSON)
+    media = _document_media(schema, rdf=False) if documents else _media(schema, JSON)
     return RequestBody(required=True, content=media)
 
 
@@ -417,7 +417,7 @@ class AggregateOpenApi:
         ]
 
     def listing(self) -> RouteDocs:
-        page = _success(_document_media(_page_of(self._schema), turtle=False))
+        page = _success(_document_media(_page_of(self._schema), rdf=False))
         return route_options(
             f"List the {self._tag}",
             self._tag,

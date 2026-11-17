@@ -22,13 +22,13 @@ from linkml_runtime.utils.formatutils import camelcase
 from linkml_runtime.utils.schemaview import SchemaView
 from pyld import jsonld
 from pyshacl import validate
-from rdflib import RDF, SH, BNode, Graph, Literal, URIRef
+from rdflib import RDF, SH, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.domain.exceptions import InvalidBody, PayloadTooLarge
+from rdf_persistence.domain.exceptions import InvalidBody, NotAcceptable, PayloadTooLarge
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.domain.media import DATASET_REPRESENTATIONS, JSON, JSON_LD
 from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.artifacts import (
@@ -458,14 +458,19 @@ class Documents:
         ``graph_iri`` is the graph the session read it from: the statements about it are left out, and
         so are the values of the ``internal`` slots, which no representation shows. JSON and JSON-LD
         come from framing; JSON loses the language tag of a value (it keeps the published ``string``
-        schema), JSON-LD and Turtle keep it.
+        schema), JSON-LD and the RDF serialisations keep it. N-Quads and TriG hold the aggregate in the
+        graph ``graph_iri``; the other RDF serialisations hold its triples.
+
+        Raises:
+            NotAcceptable: The aggregate has no form in ``media_type``; RDF/XML cannot write a
+                predicate that ends where no XML name can start.
         """
         shown = Graph()
         for s, p, o in stored:
             if s != graph_iri and p not in self._internal:
                 shown.add((s, p, o))
-        if media_type == TURTLE:
-            return str(shown.serialize(format=TURTLE))
+        if media_type not in (JSON, JSON_LD):
+            return _serialised(shown, graph_iri, media_type)
         framed = await anyio.to_thread.run_sync(self.frame, shown, cls)
         if media_type == JSON:
             framed.pop(CONTEXT_KEY, None)
@@ -478,6 +483,20 @@ class Documents:
         expanded = jsonld.from_rdf(dataset_of(graph), NATIVE)
         framed: dict = jsonld.frame(expanded, frame, LOADER)
         return framed
+
+
+def _serialised(shown: Graph, graph_iri: URIRef, media_type: str) -> str:
+    """``shown`` as the RDF serialisation ``media_type``; a dataset type names ``graph_iri`` for it."""
+    rdf: Graph = shown
+    if media_type in DATASET_REPRESENTATIONS:
+        dataset = Dataset()
+        named = dataset.graph(graph_iri)
+        named += shown
+        rdf = dataset
+    try:
+        return str(rdf.serialize(format=media_type))
+    except ValueError as refusal:  # rdflib's RDF/XML writer: "Can't split <predicate>"
+        raise NotAcceptable(f"this aggregate has no {media_type} form") from refusal
 
 
 def _without_languages(value: Any) -> Any:

@@ -187,7 +187,7 @@ Stage 2 closes like stage 1, then PR 2.
 
 ## Stage 3: representations, contract and decisions (PR 3)
 
-- [ ] 3.1 PD-12 (Q-5, DEC-9): `N_TRIPLES`, `TRIG`, `RDF_XML`, `DATASET_REPRESENTATIONS`, the longer
+- [x] 3.1 PD-12 (Q-5, DEC-9): `N_TRIPLES`, `TRIG`, `RDF_XML`, `DATASET_REPRESENTATIONS`, the longer
   `REPRESENTATIONS` in `domain/media.py`; `Documents.render` for each; `openapi._document_media`
   documents them. Layer: domain, services, entrypoints. Tests in
   `tests/unit/services/test_documents.py`, `tests/unit/entrypoints/test_router.py`,

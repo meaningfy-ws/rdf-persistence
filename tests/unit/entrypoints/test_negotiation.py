@@ -10,7 +10,16 @@ from rdf_persistence.domain.exceptions import (
     PreconditionRequired,
     UnsupportedMediaType,
 )
-from rdf_persistence.domain.media import JSON, JSON_LD, REPRESENTATIONS, TURTLE
+from rdf_persistence.domain.media import (
+    JSON,
+    JSON_LD,
+    N_QUADS,
+    N_TRIPLES,
+    RDF_XML,
+    REPRESENTATIONS,
+    TRIG,
+    TURTLE,
+)
 from rdf_persistence.entrypoints.negotiation import (
     accepted_listing_type,
     accepted_media_type,
@@ -32,6 +41,10 @@ ACCEPT = [
     ("text/turtle, application/json;q=0.5", TURTLE),
     ("application/json;q=0.5, text/turtle;q=0.9", TURTLE),
     ("application/*", JSON),
+    ("application/n-triples", N_TRIPLES),
+    ("application/n-quads", N_QUADS),
+    ("application/trig", TRIG),
+    ("application/rdf+xml", RDF_XML),
     ("text/*", TURTLE),
     ("text/html, */*;q=0.1", JSON),
     ("text/html, text/turtle", TURTLE),
@@ -58,7 +71,11 @@ def test_a_range_that_names_a_type_overrides_a_wildcard() -> None:
 
 
 def test_a_client_that_refuses_every_representation_by_name_gets_nothing() -> None:
-    header = "text/turtle;q=0, application/json;q=0, application/ld+json;q=0, */*;q=0.1"
+    header = (
+        "text/turtle;q=0, application/json;q=0, application/ld+json;q=0, "
+        "application/n-triples;q=0, application/n-quads;q=0, application/trig;q=0, "
+        "application/rdf+xml;q=0, */*;q=0.1"
+    )
     with pytest.raises(NotAcceptable):
         accepted_media_type(header)
 

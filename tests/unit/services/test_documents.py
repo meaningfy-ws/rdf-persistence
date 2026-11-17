@@ -1,16 +1,25 @@
 """Bodies and representations of an aggregate (PD-14, PD-12): JSON and JSON-LD in, shapes, JSON, JSON-LD and Turtle out."""
 
 import json
+import re
 import shutil
 from copy import deepcopy
 
 import pytest
 from pyld import jsonld
-from rdflib import RDF, SKOS, XSD, BNode, Graph, Literal, URIRef
+from rdflib import RDF, SKOS, XSD, BNode, Dataset, Graph, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import InvalidBody
+from rdf_persistence.domain.exceptions import InvalidBody, NotAcceptable
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.domain.media import (
+    DATASET_REPRESENTATIONS,
+    JSON,
+    JSON_LD,
+    N_TRIPLES,
+    RDF_XML,
+    REPRESENTATIONS,
+    TURTLE,
+)
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import Documents, dataset_of
 from rdf_persistence.services.generated.service.rp_service import (
@@ -360,6 +369,59 @@ async def test_the_bookkeeping_of_the_stored_graph_is_not_shown(
     body = await documents.render(stored, GRAPH, book_class, TURTLE)
     assert "graph" not in body, "the version token is the ETag, not content"
     assert "urn:v" not in body, "the version token is the ETag, not content"
+
+
+RDF_REPRESENTATIONS = [m for m in REPRESENTATIONS if m not in (JSON, JSON_LD)]
+
+
+def parsed(body: str, media_type: str) -> Dataset:
+    """``body`` read back by rdflib under its media type, as a dataset so a quad keeps its graph."""
+    dataset = Dataset()
+    dataset.parse(data=body, format=media_type)
+    return dataset
+
+
+@pytest.mark.parametrize("media_type", RDF_REPRESENTATIONS)
+async def test_every_rdf_representation_holds_the_triples_of_the_aggregate(  # TC-55
+    documents, book_class, stored, media_type
+) -> None:
+    body = await documents.render(stored, GRAPH, book_class, media_type)
+    shown = Graph()
+    for quad in parsed(body, media_type).quads():
+        shown.add(quad[:3])
+    assert_same_triples(
+        shown,
+        Graph().parse(
+            data=await documents.render(stored, GRAPH, book_class, TURTLE), format="turtle"
+        ),
+    )
+
+
+@pytest.mark.parametrize("media_type", DATASET_REPRESENTATIONS)
+async def test_a_dataset_representation_puts_every_quad_in_the_graph_of_the_aggregate(  # TC-56
+    documents, book_class, stored, media_type
+) -> None:
+    stored.add((GRAPH, URIRef("https://meaningfy.ws/ns/rdf-persistence#version"), URIRef("urn:v")))
+    body = await documents.render(stored, GRAPH, book_class, media_type)
+    quads = list(parsed(body, media_type).quads())
+    assert quads, "the book is shown"
+    assert {q[3] for q in quads} == {GRAPH}, "in the graph the aggregate was read from"
+    assert all(q[0] != GRAPH for q in quads), "no statement about the graph itself"
+    assert "urn:v" not in body, "no bookkeeping"
+
+
+async def test_a_triple_representation_has_no_graph_name(documents, book_class, stored) -> None:
+    body = await documents.render(stored, GRAPH, book_class, N_TRIPLES)
+    assert str(GRAPH) not in body, "N-Triples name no graph"
+
+
+async def test_an_rdf_xml_predicate_without_a_local_name_is_not_acceptable(  # TC-60
+    documents, book_class
+) -> None:
+    odd = Graph()
+    odd.add((URIRef(BOOK), URIRef("https://ex.org/p/"), Literal("x")))
+    with pytest.raises(NotAcceptable, match=re.escape(RDF_XML)):
+        await documents.render(odd, GRAPH, book_class, RDF_XML)
 
 
 # --- language tags and literals through the JSON-LD path -------------------------------------------
