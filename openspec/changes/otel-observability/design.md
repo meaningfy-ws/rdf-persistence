@@ -413,6 +413,13 @@ DEC-9, and PD-4's fallback `"sparql"`.
   wrong: it sends a bytes body with headers that are no valid envelope, so the adapter's own
   check refuses it.
 
+- **D-8 Stage 2 order around `technical-models` stage 3.** PR #150 (its stage 3, rebased on our
+  stage 1) changes the constructors of `RedisEventBus`, `Relay`, `MessageBus`, the kit and the HTTP
+  adapters, the classes of tasks 2.2–2.4. Task 2.1 (new module, dependencies, lint bans, test
+  fixtures) runs first on `develop` at `7381b03`; before 2.2 the branch is rebased on
+  `origin/develop` (with #150 if merged by then), so the span work is written against the settings
+  parameters. Then 2.2 ∥ 2.4 ∥ 2.6 (disjoint files), then 2.3 (TC-29 needs `TracedStore`), then 2.5.
+
 **Stage 1, under the floor** (L2+L3 pass, `findings=5 accepted=0`; W1 and S3 carried by D-6):
 
 - S1 `test_messagebus_adversarial.py:629,669,776` assert exception text through `caplog.text`
