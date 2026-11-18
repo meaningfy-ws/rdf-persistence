@@ -97,6 +97,46 @@ forbidden_modules =
     rdf_persistence.adapters
     rdf_persistence.entrypoints
 
+; Temporary (thematic-structure D-14): the other direction of the contract above. While the unmoved modules
+; stay at the old layout, the old layers keep their order against the layers of the moved themes: an old
+; layer never imports upward into a theme. `*` matches one segment, so `rdf_persistence.*.services` names
+; `rdf_persistence.core.services` and not `rdf_persistence.services` (the old layer importing itself is
+; fine). Stage 7 removes these four contracts with the old layout.
+[importlinter:contract:old-domain-imports-no-theme-upper-layer]
+name = old-vs-themes (1/4) old domain imports no theme upper layer
+type = forbidden
+source_modules =
+    rdf_persistence.domain
+forbidden_modules =
+    rdf_persistence.*.services
+    rdf_persistence.*.adapters
+    rdf_persistence.*.entrypoints
+
+[importlinter:contract:old-services-import-no-theme-adapters-or-entrypoints]
+name = old-vs-themes (2/4) old services import no theme adapters or entrypoints
+type = forbidden
+source_modules =
+    rdf_persistence.services
+forbidden_modules =
+    rdf_persistence.*.adapters
+    rdf_persistence.*.entrypoints
+
+[importlinter:contract:old-adapters-import-no-theme-entrypoints]
+name = old-vs-themes (3/4) old adapters import no theme entrypoints
+type = forbidden
+source_modules =
+    rdf_persistence.adapters
+forbidden_modules =
+    rdf_persistence.*.entrypoints
+
+[importlinter:contract:old-entrypoints-import-no-theme-adapters]
+name = old-vs-themes (4/4) old entrypoints import no theme adapters
+type = forbidden
+source_modules =
+    rdf_persistence.entrypoints
+forbidden_modules =
+    rdf_persistence.*.adapters
+
 ; Technical models (service settings, wire shapes) are generated outside the domain and the domain never
 ; imports them, directly or through a chain (technical-models PD-2, Q-2). The `thematic-structure` change
 ; replaces this contract with one over the thematic layout.
