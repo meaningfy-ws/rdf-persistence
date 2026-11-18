@@ -696,4 +696,24 @@ consumers later.
   several themes (`test_service_model`, `test_settings_model*`, `test_relayed_since`) move with
   stage 7. (6) Combining: `events`, `collaboration`, `messaging` added to
   `themes-never-import-the-old-layout`'s sources; `make generate` changed three manifests only; the
-  TypeScript golden refresh is order-only, sorted lines identical to stage 5's.
+  TypeScript golden refresh is order-only, sorted lines identical to stage 5's. (7) As D-17 W1: the
+  move, the rewrite and the schema split are one commit; rename detection holds (R093–R100).
+- **D-23 Stage 6 review and tester, accepted** (lead; review 6 findings, tester 158 tests, 1 failed
+  first, 1 finding; one fixer pass). Re-labelled Critical, with the reason: review W1 (removing
+  `nothing-in-services-imports-the-bus` relied on the theme order, which does not reach the four
+  `api` services modules the contract named — `aggregates`, `components`, `documents`,
+  `file_removal` — since `api` sits above `messaging`: a narrowed gate). A narrow forbidden contract
+  keeps them off the bus: sources `rdf_persistence.services.{aggregates,components,documents,file_removal}`
+  (stage 7 moves them to `rdf_persistence.api.services`), forbidden `rdf_persistence.messaging`, with
+  a planted test; D-22 (3) is amended by this line. Accepted below Critical: W2 (the docs name the
+  `events` and `collaboration` themes, their schemas and classes, and eight served schemas in
+  `SERVED_SCHEMAS` order: `architecture/generation.adoc` ~318–319, `architecture/index.adoc`
+  ~314–324 and ~360–369, `develop/index.adoc` ~28, `howto/adopt.adoc` ~294–297); W3
+  (`tests/unit/services/test_relayed_since.py` moves to `tests/unit/tenancy/`, the highest theme
+  it uses; D-22 (5) is amended); S1 (a same-rank planted test: `events` → `collaboration` breaks
+  `themes-ordered`); S2 (TC-60's map row at scenario level); tester F1 (the
+  `event-bus-libraries-in-one-module` title says the Redis adapter may import `faststream` or
+  `redis`, but only `faststream` is exempt: the title is reworded to what the contract enforces,
+  rather than widening the exemption). Under the floor: S3 (recorded in D-22 (7)). The tester's
+  tests are not kept: none failed first on production code but F1's, which the reworded title
+  resolves.
