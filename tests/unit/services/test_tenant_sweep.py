@@ -19,15 +19,15 @@ from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantSweepReport
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.services.generated.service.rp_service import (
+from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.services.iris import Iris
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import iri_types
+from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.tenant_sweep import sweep_tenant

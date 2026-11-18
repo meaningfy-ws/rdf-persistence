@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, SecretStr, ValidationError
 
 import rdf_persistence
 from rdf_persistence.entrypoints.environment import settings_from_env
-from rdf_persistence.services.generated.service.rp_service import ServiceSettings
+from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
 
 ROOT = Path(__file__).parents[3]

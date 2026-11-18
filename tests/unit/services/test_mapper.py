@@ -23,13 +23,13 @@ from rdf_persistence.core.domain.generated.rp_provenance import (
     Replace,
 )
 from rdf_persistence.core.domain.generated.rp_workflow import Transition, Workflow
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.mapper import Mapper, new_part
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence.testkit import assert_isomorphic
 from rdf_persistence_generation.testkit.conformance import Conformance
 from rdf_persistence_generation.testkit.strategies import aggregate

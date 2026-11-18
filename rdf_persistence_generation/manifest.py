@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from rdf_persistence.services.schema import (
+from rdf_persistence.schema.services.schema import (
     LOAD_ERRORS,
     PACKAGE,
     PACKAGE_DIR,
@@ -29,7 +29,7 @@ GENERATION_DIR = GENERATOR_DIR
 GENERATED_DIR = GENERATION_DIR / "generated"
 TESTKIT_DIR = GENERATION_DIR / "testkit"  # never shapes the output, so never an input (PD-4)
 TEMPLATES_DIR = GENERATION_DIR / "templates"
-SERVICES_DIR = PACKAGE_DIR / "services"
+SCHEMA_SERVICES_DIR = PACKAGE_DIR / "schema" / "services"
 SCHEMA_READERS = "schema*.py"  # the modules that decide how a schema is read (PD-26)
 LINKML_TYPES_PREFIX = "linkml:"
 BYTECODE_DIR = "__pycache__"
@@ -66,7 +66,7 @@ def recorded_path(file: Path, base: Path) -> str:
 
 
 def _toolkit_files() -> Iterator[Path]:
-    yield from SERVICES_DIR.glob(SCHEMA_READERS)
+    yield from SCHEMA_SERVICES_DIR.glob(SCHEMA_READERS)
     for module in GENERATION_DIR.rglob("*.py"):
         if not module.is_relative_to(GENERATED_DIR) and not module.is_relative_to(TESTKIT_DIR):
             yield module

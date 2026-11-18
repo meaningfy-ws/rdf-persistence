@@ -12,13 +12,13 @@ from rdf_persistence.core.domain.exceptions import Conflict, InvalidIri
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.generated.service.rp_service import IriPolicy, ServiceSettings
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy, ServiceSettings
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE

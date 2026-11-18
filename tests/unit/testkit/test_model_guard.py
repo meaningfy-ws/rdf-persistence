@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.testkit.guards import SCANNED_LAYERS, assert_models_generated
+from tests.unit.test_theme_layout import TURNED_ON
 
 REPO = Path(__file__).resolve().parents[3]
 GENERATOR = "rdf_persistence_generation"
@@ -74,22 +75,36 @@ HAND_WRITTEN = (
 )
 
 
-LIBRARY_LAYERS = (*SCANNED_LAYERS, "adapters", "testkit", "core")
+# Every turned-on theme is scanned: a stage that turns a theme on needs no edit here (D-13 C2, D-16 C2).
+LIBRARY_LAYERS = (*SCANNED_LAYERS, "adapters", "testkit", *sorted(TURNED_ON))
+THEME_LAYERS = [
+    pytest.param(theme, layer, id=f"{theme}-{layer}")
+    for theme in sorted(TURNED_ON)
+    for layer in ("domain", "services", "adapters")
+    if (REPO / "rdf_persistence" / theme / layer).is_dir()
+]
 
 
-@pytest.mark.parametrize("layer", ["domain", "services", "adapters"])
-def test_a_hand_written_record_in_a_core_layer_is_caught_by_the_library_layers(tmp_path, layer):
-    """The toolkit's own guard call names ``core``: a record planted there is flagged (D-13 C2)."""
+@pytest.mark.parametrize("theme", sorted(TURNED_ON))
+def test_the_library_layers_name_every_turned_on_theme(theme):
+    assert theme in LIBRARY_LAYERS
+
+
+@pytest.mark.parametrize(("theme", "layer"), THEME_LAYERS)
+def test_a_hand_written_record_in_a_theme_layer_is_caught_by_the_library_layers(
+    tmp_path, theme, layer
+):
+    """The toolkit's own guard call names every turned-on theme: a record planted there is flagged."""
     shutil.copytree(
         REPO / "rdf_persistence",
         tmp_path / "rdf_persistence",
         ignore=shutil.ignore_patterns("__pycache__"),
     )
-    (tmp_path / "rdf_persistence" / "core" / layer / "handwritten.py").write_text(
+    (tmp_path / "rdf_persistence" / theme / layer / "handwritten.py").write_text(
         "from pydantic import BaseModel\n\n\nclass Handwritten(BaseModel):\n    x: int\n",
         encoding="utf-8",
     )
-    with pytest.raises(AssertionError, match=f"core/{layer}/handwritten.py:4"):
+    with pytest.raises(AssertionError, match=f"{theme}/{layer}/handwritten.py:4"):
         assert_models_generated(
             tmp_path / "rdf_persistence", roots=[], layers=LIBRARY_LAYERS, allow=HAND_WRITTEN
         )

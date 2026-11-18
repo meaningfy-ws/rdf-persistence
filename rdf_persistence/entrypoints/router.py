@@ -25,7 +25,6 @@ from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.media import ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, JSON, JSON_LD
 from rdf_persistence.core.services.artifacts import CONTEXT_FILE, CONTEXT_KEY
-from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import (
@@ -46,6 +45,8 @@ from rdf_persistence.entrypoints.responses import (
     page_response,
 )
 from rdf_persistence.entrypoints.sse import add_events_route
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.schema.services.schema_structure import is_service_written
 from rdf_persistence.services.generated.service.rp_service import (
     Authorised,
     CallerAccess,
@@ -57,7 +58,6 @@ from rdf_persistence.services.generated.service.rp_service import (
     VerifiedCaller,
 )
 from rdf_persistence.services.listing import items_of, list_request, total_of
-from rdf_persistence.services.schema_structure import is_service_written
 from rdf_persistence.services.session import Stored
 
 CONTEXT_ROUTE = "context"

@@ -31,13 +31,13 @@ from rdf_persistence.core.domain.generated.rp_provenance import (
     Replace,
 )
 from rdf_persistence.core.domain.sparql import SparqlError
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.provenance.services.provenance import Served
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.provenance import Served
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import aggregate_keys
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE

@@ -17,7 +17,7 @@ import json
 from pydantic import BaseModel
 
 from rdf_persistence.core.services.artifacts import CONTEXT_KEY, TYPE_KEY
-from rdf_persistence.services.schema_structure import is_internal
+from rdf_persistence.schema.services.schema_structure import is_internal
 from rdf_persistence.testkit.graphs import assert_isomorphic
 from rdf_persistence_generation.testkit.conformance import Conformance
 

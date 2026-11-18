@@ -34,12 +34,12 @@ from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra
 from rdf_persistence.core.services.yaml_files import shown
-from rdf_persistence.domain.blob_keys import checked_blob_key
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.files import FileStore
+from rdf_persistence.files.domain.blob_keys import checked_blob_key
+from rdf_persistence.files.services.files import FileStore
+from rdf_persistence.iris.services.iris import Iris, effective_policy, policy_differences
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import TenantDump, TenantSummary
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.iris import Iris, effective_policy, policy_differences
 from rdf_persistence.services.migration_runner import migrate_dataset
 from rdf_persistence.services.migrations import SchemaChain, stamps, versions
 from rdf_persistence.services.session import Clock, utc_now

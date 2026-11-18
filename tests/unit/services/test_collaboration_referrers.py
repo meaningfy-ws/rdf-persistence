@@ -6,8 +6,8 @@ from rdflib import URIRef
 from rdf_persistence import Action
 from rdf_persistence.core.domain.exceptions import BadQuery, Forbidden, InvalidIri
 from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.generated.service.rp_service import Referrer, ReferrerList
-from rdf_persistence.services.schema import load_schema
 from rdf_persistence.testkit import fake_session
 from tests.fixtures.library.generated.books import Book
 from tests.toy import (

@@ -1,0 +1,246 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rp: <https://meaningfy.ws/ns/rdf-persistence#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+rp:IdSpec a sh:NodeShape ;
+	rdfs:comment "How the toolkit draws an id: a UUIDv4, or `length` characters drawn from `alphabet`. The length is required for `random` ids." ;
+	rdfs:label "Id specification" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n25 ;
+	sh:property _:c14n11 , _:c14n22 , _:c14n7 ;
+	sh:targetClass rp:IdSpec .
+rp:IriPolicy a sh:NodeShape ;
+	rdfs:comment "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today's shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root." ;
+	rdfs:label "IRI policy" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n0 ;
+	sh:property _:c14n10 , _:c14n12 , _:c14n13 , _:c14n16 , _:c14n19 , _:c14n2 , _:c14n20 , _:c14n21 , _:c14n24 , _:c14n27 , _:c14n4 , _:c14n9 ;
+	sh:targetClass rp:IriPolicy .
+rp:ServiceSettings a sh:NodeShape ;
+	rdfs:comment "The settings of `install_service`: where the service is mounted, how it names tenants and which role its callers get on a tenant they create." ;
+	rdfs:label "Service settings" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n3 ;
+	sh:property _:c14n1 , _:c14n14 , _:c14n15 , _:c14n17 , _:c14n18 , _:c14n23 , _:c14n26 , _:c14n28 , _:c14n5 , _:c14n6 ;
+	sh:targetClass rp:ServiceSettings .
+_:c14n0 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n1 sh:description "The address this deployment is reachable at from outside, without a trailing slash; the event envelope's context link is absolute under it. Absent, the link is relative." ;
+	sh:maxCount 1 ;
+	sh:name "Public URL" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 8 ;
+	sh:path rp:publicUrl ;
+	sh:pattern "^(?:^https?://.+[^/]$)(?![\\s\\S])" .
+_:c14n10 sh:datatype xsd:string ;
+	sh:defaultValue "{tenant}/registry" ;
+	sh:description "The template of the IRI of a tenant's registry graph; contains `{tenant}` or `{tenant_id}`." ;
+	sh:maxCount 1 ;
+	sh:name "Registry template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:registryTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$)(?![\\s\\S])" .
+_:c14n11 sh:datatype xsd:string ;
+	sh:defaultValue "0123456789abcdefghijklmnopqrstuvwxyz" ;
+	sh:description "The characters a random id is drawn from, each a lower case letter or a digit." ;
+	sh:maxCount 1 ;
+	sh:name "Id alphabet" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:idAlphabet ;
+	sh:pattern "^(?:^[a-z0-9]+$)(?![\\s\\S])" .
+_:c14n12 sh:datatype xsd:string ;
+	sh:defaultValue "{tenant}/meta" ;
+	sh:description "The template of the IRI of a tenant's meta graph; contains `{tenant}` or `{tenant_id}`." ;
+	sh:maxCount 1 ;
+	sh:name "Meta template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:metaTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$)(?![\\s\\S])" .
+_:c14n13 sh:datatype xsd:string ;
+	sh:defaultValue "{root}/parts/{id}" ;
+	sh:description "The template of the IRI of an owned part; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`." ;
+	sh:maxCount 1 ;
+	sh:name "Part template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 7 ;
+	sh:path rp:partTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{(?:tenant|tenant_id|root)\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$)(?![\\s\\S])" .
+_:c14n14 sh:datatype xsd:string ;
+	sh:description "The claim of the token that holds the caller's global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer's project." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Roles claim" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:rolesClaim ;
+	sh:pattern "^(?:^.+$)(?![\\s\\S])" .
+_:c14n15 sh:datatype xsd:integer ;
+	sh:defaultValue 1048576 ;
+	sh:description "The most bytes a request body may hold; a larger one is refused with 413 before it is read whole." ;
+	sh:maxCount 1 ;
+	sh:minInclusive 1 ;
+	sh:name "Maximum body size" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path rp:maxBodyBytes .
+_:c14n16 sh:datatype xsd:string ;
+	sh:defaultValue "{root}/content/{id}" ;
+	sh:description "The template of the IRI of a loaded graph; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`." ;
+	sh:maxCount 1 ;
+	sh:name "Loaded graph template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 8 ;
+	sh:path rp:loadedGraphTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{(?:tenant|tenant_id|root)\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$)(?![\\s\\S])" .
+_:c14n17 sh:description "The IRI under which the service mints identifiers and problem types, ending in a slash." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Base" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path rp:base ;
+	sh:pattern "^(?:^https?://.+/$)(?![\\s\\S])" .
+_:c14n18 sh:description "The IRI policy of the service; absent, the default policy applies." ;
+	sh:maxCount 1 ;
+	sh:name "IRI policy" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 9 ;
+	sh:path rp:iriPolicy .
+_:c14n19 sh:description "How the id of a new tenant is drawn; absent, a UUIDv4." ;
+	sh:maxCount 1 ;
+	sh:name "Tenant id" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 10 ;
+	sh:path rp:tenantId .
+_:c14n2 sh:datatype xsd:string ;
+	sh:defaultValue "{base}app" ;
+	sh:description "The template of the application IRI, the root of the application database's IRIs." ;
+	sh:maxCount 1 ;
+	sh:name "Application template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:applicationTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant_segment)\\})+$)(?![\\s\\S])" .
+_:c14n20 sh:datatype xsd:string ;
+	sh:defaultValue "{tenant}/provenance" ;
+	sh:description "The template of the IRI of a tenant's provenance graph; contains `{tenant}` or `{tenant_id}`." ;
+	sh:maxCount 1 ;
+	sh:name "Provenance template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path rp:provenanceTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$)(?![\\s\\S])" .
+_:c14n21 sh:datatype xsd:string ;
+	sh:defaultValue "{tenant}/access" ;
+	sh:description "The template of the IRI of a tenant's access record; contains `{tenant}` or `{tenant_id}`." ;
+	sh:maxCount 1 ;
+	sh:name "Access template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:accessTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$)(?![\\s\\S])" .
+_:c14n22 sh:description "Whether ids are UUIDv4 or random characters of an alphabet." ;
+	sh:in _:c14n8 ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Id kind" ;
+	sh:order 0 ;
+	sh:path rp:idKind .
+_:c14n23 sh:datatype xsd:string ;
+	sh:description "The path segment that names the tenant collection in the service's routes." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Tenant segment" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:tenantSegment ;
+	sh:pattern "^(?:^[a-z][a-z0-9-]*$)(?![\\s\\S])" .
+_:c14n24 sh:datatype xsd:string ;
+	sh:defaultValue "{tenant}/{rp_path}/{id}" ;
+	sh:description "The template of an aggregate root IRI; contains `{tenant}` or `{tenant_id}` and ends in `{id}`." ;
+	sh:maxCount 1 ;
+	sh:name "Aggregate template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 6 ;
+	sh:path rp:aggregateTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{id\\}$)(?![\\s\\S])" .
+_:c14n25 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n26 sh:datatype xsd:string ;
+	sh:description "A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32." ;
+	sh:maxCount 1 ;
+	sh:name "Deployment" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 7 ;
+	sh:path rp:deployment ;
+	sh:pattern "^(?:^[a-z0-9]{1,32}$)(?![\\s\\S])" .
+_:c14n27 sh:datatype xsd:string ;
+	sh:defaultValue "{base}{tenant_segment}/{tenant_id}" ;
+	sh:description "The template of a tenant IRI; ends in `{tenant_id}`." ;
+	sh:maxCount 1 ;
+	sh:name "Tenant template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:tenantTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant_segment|tenant_id)\\})*\\{tenant_id\\}$)(?![\\s\\S])" .
+_:c14n28 sh:datatype xsd:integer ;
+	sh:defaultValue 1073741824 ;
+	sh:description "The most bytes a restore archive may hold once decompressed, counting each member's size and its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile upload cannot fill the memory or the object store." ;
+	sh:maxCount 1 ;
+	sh:minInclusive 1 ;
+	sh:name "Maximum restore size" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 6 ;
+	sh:path rp:maxRestoreBytes .
+_:c14n29 rdf:first rp:IdRandom ;
+	rdf:rest rdf:nil .
+_:c14n3 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n4 sh:description "How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4." ;
+	sh:maxCount 1 ;
+	sh:name "Object id" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 11 ;
+	sh:path rp:objectId .
+_:c14n5 sh:datatype xsd:string ;
+	sh:description "The role a caller is given on the tenant it creates." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Creator role" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:creatorRole ;
+	sh:pattern "^(?:^.+$)(?![\\s\\S])" .
+_:c14n6 sh:datatype xsd:string ;
+	sh:description "The prefix of the database names of the service's tenants; lower case, at most 20 characters." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Prefix" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:prefix ;
+	sh:pattern "^(?:^[a-z][a-z0-9]{0,19}$)(?![\\s\\S])" .
+_:c14n7 sh:datatype xsd:integer ;
+	sh:description "The number of characters of a random id, 4 to 32." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 32 ;
+	sh:minInclusive 4 ;
+	sh:name "Id length" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:idLength .
+_:c14n8 rdf:first rp:IdUuid4 ;
+	rdf:rest _:c14n29 .
+_:c14n9 sh:datatype xsd:string ;
+	sh:defaultValue "{issuer}/users/{sub}" ;
+	sh:description "The template of the IRI of a principal; ends in `{sub}`." ;
+	sh:maxCount 1 ;
+	sh:name "Principal template" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 9 ;
+	sh:path rp:principalTemplate ;
+	sh:pattern "^(?:^(?:[a-z0-9/:.-]|\\{(?:base|deployment|issuer|sub)\\})*\\{sub\\}$)(?![\\s\\S])" .

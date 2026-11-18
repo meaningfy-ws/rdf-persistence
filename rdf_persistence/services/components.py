@@ -16,7 +16,7 @@ from rdf_persistence.core.services.artifacts import (
     REF,
     SCHEMAS,
 )
-from rdf_persistence.services.schema import SERVED_SCHEMAS, generated_folder
+from rdf_persistence.schema.services.schema import SERVED_SCHEMAS, generated_folder
 
 # One component schema: JSON data of the OpenAPI document, not a model of ours.
 JsonSchema = dict[str, Any]

@@ -12,9 +12,9 @@ The examples use the toolkit's own toy library (`tests/toy.py`, `tests/fixtures/
 settings `base="https://example.org/library/"`, `prefix="lib"`, `tenant_segment="libraries"`,
 `creator_role="librarian"`; a tenant is a library; its aggregates are books (`rp_path: books`) and
 scans (`rp_path: scans`, a file aggregate). Every IRI below comes from the default
-IRI policy (`IriPolicy`, generated from `model/technical/service/rp_service.yaml`, applied by `Iris` in
-`services/iris.py`; the layout no policy changes, such as the graph IRI of a root, is in
-`domain/layout.py`); a consumer may set other templates.
+IRI policy (`IriPolicy`, generated from `model/technical/iris/rp_iris_services.yaml`, applied by `Iris` in
+`iris/services/iris.py`; the layout no policy changes, such as the graph IRI of a root, is in
+`iris/domain/layout.py`); a consumer may set other templates.
 
 == Terms
 
@@ -429,7 +429,7 @@ provenance graph (<<commit>>, _The activity_), with version tokens and no conten
 *Some aggregates have no write routes.* A class annotated `rp_writes: service`, or a file
 aggregate, gets only `GET` routes; a `POST`, `PUT` or `DELETE` on them answers 405. The consumer
 writes it through a session in its own route (`is_service_written`,
-`services/schema_structure.py`).
+`schema/services/schema_structure.py`).
 
 [#commit]
 == Committing several aggregates at once
@@ -1140,7 +1140,7 @@ from the templates; a create body may not name an `id` or a part
 |422
 
 |*IRI policy: the templates themselves*, checked once when the service starts
-|`check_iri_policy`, `Iris` (both in `services/iris.py`); see xref:howto/adopt.adoc#iri-policy[Configure the IRI policy]
+|`check_iri_policy`, `Iris` (both in `iris/services/iris.py`); see xref:howto/adopt.adoc#iri-policy[Configure the IRI policy]
 |`{deployment}` without a slug, colliding graphs, an id with no length
 |start-up error
 

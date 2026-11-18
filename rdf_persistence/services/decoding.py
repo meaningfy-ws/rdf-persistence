@@ -8,8 +8,8 @@ from pydantic import ValidationError
 from rdflib import RDF, Graph, URIRef
 
 from rdf_persistence.core.domain.generated.rp_provenance import Activity
+from rdf_persistence.provenance.services.provenance import activity_class_of
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
-from rdf_persistence.services.provenance import activity_class_of
 
 
 def decode_activity(

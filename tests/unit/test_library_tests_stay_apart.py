@@ -27,7 +27,7 @@ TOOL_USERS = frozenset(
         "tests/integration/api/test_router.py",
         "tests/unit/services/test_collaboration_workflow_adversarial.py",
         "tests/unit/services/test_collaboration_discussion_adversarial.py",
-        "tests/unit/services/test_activity_shape.py",
+        "tests/unit/provenance/test_activity_shape.py",
         "tests/unit/services/test_mapper.py",
         "tests/feature/test_technical_models.py",
     }

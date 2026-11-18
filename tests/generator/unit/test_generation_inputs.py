@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
-from rdf_persistence.services.schema_structure import is_toolkit_schema
+from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.schema.services.schema_structure import is_toolkit_schema
 from rdf_persistence_generation import steps
 from rdf_persistence_generation.cli import build_parser, main
 from rdf_persistence_generation.config import GENERATOR_DIR, TOOLKIT_ROOTS, read_targets

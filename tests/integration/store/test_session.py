@@ -10,9 +10,9 @@ from rdflib import Graph, Literal, URIRef
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.core.domain.exceptions import Conflict, DatabaseGone, InvalidIri, NotFound
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.iris import DEFAULT_IRIS, loaded_graph_iri
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.session import Session, open_session
 from rdf_persistence.testkit import assert_isomorphic
 from tests.integration.store.sessions import (
@@ -355,7 +355,7 @@ async def test_client_sent_bookkeeping_is_not_stored(store, database):
         lambda s: s.add_graph(book(1), title(book(1), "x")),
         lambda s: s.replace_graph(book(1), title(book(1), "x"), "v"),
         lambda s: s.remove(book(1), "v"),
-        lambda s: s.loaded_graph(book(1), loaded_graph_iri(book(1))),
+        lambda s: s.loaded_graph(book(1), DEFAULT_IRIS.mint_loaded_graph(tenant="", root=book(1))),
     ],
     ids=["get", "add", "replace", "remove", "loaded_graph"],
 )
@@ -376,8 +376,8 @@ async def test_open_session_yields_a_working_session(store, database):
 
 
 async def test_find_returns_the_aggregate_with_the_value_on_a_real_store(store, database):
+    from rdf_persistence.schema.services.schema import load_schema
     from rdf_persistence.services.listing import Listings
-    from rdf_persistence.services.schema import load_schema
     from tests.fixtures.library.generated.scans import Scan
     from tests.toy import TOY_SCHEMA, toy_mapper
 

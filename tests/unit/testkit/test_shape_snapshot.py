@@ -29,6 +29,8 @@ TESTKIT = ROOT / "rdf_persistence" / "model" / "technical" / "testkit" / "rp_tes
 TOY_PACKAGE = "tests.fixtures.library.generated"
 METAMODEL_PACKAGE = "rdf_persistence.core.domain.generated"
 SERVICE_PACKAGE = "rdf_persistence.services.generated.service"
+IRIS = ROOT / "rdf_persistence" / "model" / "technical" / "iris" / "rp_iris_services.yaml"
+IRIS_PACKAGE = "rdf_persistence.iris.services.generated"
 TESTKIT_PACKAGE = "rdf_persistence.testkit.generated"
 REFRESH = "RP_REFRESH_SNAPSHOT"
 
@@ -203,12 +205,18 @@ def test_snapshot_diff_describes_each_kind_of_change(
     [
         pytest.param(METAMODEL, METAMODEL_PACKAGE, id="metamodel"),
         pytest.param(TOY, TOY_PACKAGE, id="toy"),
+        pytest.param(IRIS, IRIS_PACKAGE, id="iris"),
         pytest.param(SERVICE, SERVICE_PACKAGE, id="service"),
         pytest.param(TESTKIT, TESTKIT_PACKAGE, id="testkit"),
     ],
 )
 def test_generated_classes_match_the_induced_slots(schema: Path, package: str) -> None:
-    models = generated_models(package) + generated_models(METAMODEL_PACKAGE)
+    # the service schema imports the iris one, whose classes are generated in the iris package
+    models = (
+        generated_models(package)
+        + generated_models(METAMODEL_PACKAGE)
+        + generated_models(IRIS_PACKAGE)
+    )
     shapes = class_shapes([schema])
     own = {m.__name__ for m in generated_models(package)}
     assert own, "the scan found no generated class"

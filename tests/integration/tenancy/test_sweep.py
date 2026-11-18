@@ -4,8 +4,8 @@ import pytest
 
 from rdf_persistence.core.domain.exceptions import StoreUnavailable
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.domain.layout import system_database_name
-from rdf_persistence.services.iris import tenant_resource_name
+from rdf_persistence.iris.domain.layout import system_database_name
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import assert_isomorphic
@@ -70,7 +70,7 @@ async def test_a_crash_during_creation_leaves_orphans_that_the_next_start_up_dro
     mine = [n for n in await store.list_datasets() if n.startswith(f"{settings.prefix}-t-")]
     assert len(mine) == 2, "the crashed tenant's database exists beside the kept one"
     await sweep(tenancy, store, files, settings)
-    kept_name = tenant_resource_name(settings.prefix, kept.id)
+    kept_name = Iris(settings).resource_name(kept.id)
     left = [n for n in await store.list_datasets() if n.startswith(f"{settings.prefix}-t-")]
     assert left == [kept_name], "databases: only the active tenant's"
     assert await files.list_buckets(f"{settings.prefix}-t-") == [kept_name], "buckets"
@@ -106,7 +106,7 @@ async def test_the_sweep_finishes_a_deletion_the_process_did_not(tenancy, store,
     with pytest.raises(StoreUnavailable):
         await dying.delete(summary.id, version)
     await sweep(tenancy, store, files, settings)
-    name = tenant_resource_name(settings.prefix, summary.id)
+    name = Iris(settings).resource_name(summary.id)
     assert name not in await store.list_datasets(), "database"
     assert await files.list_buckets(name) == [], "bucket"
     assert await tenancy.tenants() == [], "record"
@@ -116,7 +116,7 @@ async def test_a_lost_system_database_does_not_make_the_tenants_orphans(
     tenancy, store, files, settings
 ):
     kept = await tenancy.create("Ghent", library_slots(), CREATOR)
-    name = tenant_resource_name(settings.prefix, kept.id)
+    name = Iris(settings).resource_name(kept.id)
     await store.drop_dataset(system_database_name(settings.prefix))  # the records are gone
     await sweep(tenancy, store, files, settings)
     assert name in await store.list_datasets(), "the tenant's database is still there"
@@ -127,7 +127,7 @@ async def test_an_active_tenant_keeps_its_root_graph_record_version_and_blob(
     tenancy, store, files, settings
 ):
     kept = await tenancy.create("Ghent", library_slots(), CREATOR)
-    name = tenant_resource_name(settings.prefix, kept.id)
+    name = Iris(settings).resource_name(kept.id)
     await files.put(name, "scan.pdf", b"%PDF")
     query = f"CONSTRUCT {{ ?s ?p ?o }} WHERE {{ GRAPH <{kept.id}/meta> {{ ?s ?p ?o }} }}"
     root_before = (await store.query(name, query)).graph

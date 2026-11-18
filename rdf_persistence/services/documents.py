@@ -37,10 +37,21 @@ from rdf_persistence.core.services.artifacts import (
     SHAPES_FILE,
     TYPE_KEY,
 )
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema_structure import (
+    annotation_text,
+    holds_owned_part,
+    internal_predicates,
+    iri_type_of,
+    is_internal,
+    json_name,
+    refuse_internal,
+    served_roots,
+    tenant_root_class,
+)
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.jsonld import (
     ABSOLUTE_IRIS,
     INVALID_IRI,
@@ -53,17 +64,6 @@ from rdf_persistence.services.jsonld import (
     RemoteContextRefused,
     dataset_of,
     triples_of,
-)
-from rdf_persistence.services.schema_structure import (
-    annotation_text,
-    holds_owned_part,
-    internal_predicates,
-    iri_type_of,
-    is_internal,
-    json_name,
-    refuse_internal,
-    served_roots,
-    tenant_root_class,
 )
 from rdf_persistence.services.shacl import validate_warm, warm_up
 

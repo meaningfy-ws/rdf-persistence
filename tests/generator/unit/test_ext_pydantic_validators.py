@@ -13,7 +13,7 @@ from types import ModuleType
 import pytest
 from pydantic import ValidationError
 
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence_generation.checks.rules import rules_problems
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.exceptions import SchemaGenerationError

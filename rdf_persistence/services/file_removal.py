@@ -7,10 +7,10 @@ from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_files import DeleteFile
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.files import FileStore
+from rdf_persistence.files.services.files import FileStore
+from rdf_persistence.provenance.services.provenance import new_activity_id
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.mapper import Mapper
-from rdf_persistence.services.provenance import new_activity_id
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)

@@ -13,8 +13,8 @@ from pathlib import Path
 from linkml.generators.mermaidclassdiagramgen import MermaidClassDiagramGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.services.schema import metamodel_importmap
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema import metamodel_importmap
+from rdf_persistence.schema.services.schema_structure import (
     declared_slot_names,
     is_internal,
     is_owned,

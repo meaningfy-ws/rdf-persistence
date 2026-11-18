@@ -5,6 +5,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import XSD, Literal, URIRef
 
 from rdf_persistence.core.domain.exceptions import BadQuery
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.generated.service.rp_service import Filter, ListRequest
 from rdf_persistence.services.listing import (
     Listings,
@@ -13,7 +14,6 @@ from rdf_persistence.services.listing import (
     sort_keys,
     typed_value,
 )
-from rdf_persistence.services.schema import load_schema
 from tests.toy import TOY_SCHEMA, dune, toy_mapper
 
 SCHEMA_ORG = "http://schema.org/"

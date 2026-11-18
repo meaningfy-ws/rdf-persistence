@@ -11,9 +11,9 @@ from rdflib import XSD, Dataset, Literal, URIRef
 
 from rdf_persistence.core.domain.exceptions import InvalidBody, SparqlError
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind
-from rdf_persistence.domain.layout import stamps_graph_iri
+from rdf_persistence.iris.domain.layout import stamps_graph_iri
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services import migration_runner
-from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import MigrationStep
 from rdf_persistence.services.migration_runner import migrate_dataset
 from rdf_persistence.services.migrations import Chain

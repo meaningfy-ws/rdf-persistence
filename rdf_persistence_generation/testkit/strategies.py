@@ -15,7 +15,7 @@ from linkml_runtime.linkml_model.meta import SlotDefinition
 from linkml_runtime.utils.formatutils import underscore
 from pydantic import BaseModel
 
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema_structure import (
     ABSENT,
     ANY_OF,
     EXACTLY_ONE_OF,

@@ -2,7 +2,7 @@
 
 from rdflib import Literal, URIRef
 
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 from tests.unit.entrypoints.scene import PROBLEMS, problem_of
 from tests.unit.services.collaboration_data import OA, RP, SECRET, annotation, stored

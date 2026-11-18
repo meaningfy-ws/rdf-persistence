@@ -21,8 +21,8 @@ from rdf_persistence.core.services.artifacts import (
     FRAME_SUFFIX,
     TYPE_KEY,
 )
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import (
     ACTIVITY,
     FIELD_NAME_SLOT,
     annotation_text,

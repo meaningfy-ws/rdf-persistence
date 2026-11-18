@@ -26,15 +26,8 @@ from rdf_persistence.core.domain.sparql import (
     term,
     term_list,
 )
-from rdf_persistence.services import listing, migrations, session, unique_keys
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.generated.service.rp_service import (
-    Condition,
-    ListPlan,
-    Migration,
-    MigrationStep,
-)
-from rdf_persistence.services.generated.templates.rp_templates import (
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.generated.templates.rp_schema_templates import (
     KeyBranchTerms,
     KeyHeldTerms,
     ListingTerms,
@@ -42,11 +35,7 @@ from rdf_persistence.services.generated.templates.rp_templates import (
     RegistryTerms,
     StampGuardTerms,
 )
-from rdf_persistence.services.listing import listing_query
-from rdf_persistence.services.migrations import migration_request
-from rdf_persistence.services.session import remove_parts, replace_parts
-from rdf_persistence.services.unique_keys import KeyClaim, diagnosis, duplicates_query, guard
-from rdf_persistence.services.vocabulary import (
+from rdf_persistence.schema.services.vocabulary import (
     key_branch_terms,
     key_held_terms,
     listing_terms,
@@ -54,6 +43,17 @@ from rdf_persistence.services.vocabulary import (
     registry_terms,
     stamp_guard_terms,
 )
+from rdf_persistence.services import listing, migrations, session, unique_keys
+from rdf_persistence.services.generated.service.rp_service import (
+    Condition,
+    ListPlan,
+    Migration,
+    MigrationStep,
+)
+from rdf_persistence.services.listing import listing_query
+from rdf_persistence.services.migrations import migration_request
+from rdf_persistence.services.session import remove_parts, replace_parts
+from rdf_persistence.services.unique_keys import KeyClaim, diagnosis, duplicates_query, guard
 
 GOLDEN = Path(__file__).parent / "golden" / "term_models_sparql.json"
 EX = "https://example.org/"

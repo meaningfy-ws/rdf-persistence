@@ -1,6 +1,6 @@
 """The generator's own schema is not checked with the consumers' class-level rules (PD-5, error matrix)."""
 
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence_generation.checks.boundary import boundary_problems
 from rdf_persistence_generation.checks.hard import hard_problems
 from rdf_persistence_generation.config import GENERATION_MODEL

@@ -27,21 +27,21 @@ from rdf_persistence.core.domain.sparql import (
     order_by,
     term_list,
 )
-from rdf_persistence.domain.layout import root_of_graph
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.generated.service.rp_service import (
-    Condition,
-    Filter,
-    ListPlan,
-    ListRequest,
-)
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.iris.domain.layout import root_of_graph
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema_structure import (
     holds_iri,
     holds_owned_part,
     is_bookkeeping,
     is_internal,
     rdf_term,
     served_roots,
+)
+from rdf_persistence.services.generated.service.rp_service import (
+    Condition,
+    Filter,
+    ListPlan,
+    ListRequest,
 )
 
 LIMIT, OFFSET, SORT = "limit", "offset", "sort"

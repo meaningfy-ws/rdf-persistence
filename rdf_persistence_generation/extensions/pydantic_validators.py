@@ -26,7 +26,7 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition, Un
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema_structure import (
     ABSENT,
     ANY_OF,
     EXACTLY_ONE_OF,
@@ -36,7 +36,7 @@ from rdf_persistence.services.schema_structure import (
     keyed_slots,
     presence_alternatives,
 )
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema_structure import (
     Alternative as Presences,
 )
 from rdf_persistence_generation.exceptions import (

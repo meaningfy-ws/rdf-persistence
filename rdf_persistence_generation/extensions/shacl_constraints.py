@@ -19,7 +19,7 @@ from rdflib.collection import Collection
 from rdflib.namespace import RDF, SH
 from rdflib.term import Node
 
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema_structure import (
     ABSENT,
     ANY_OF,
     EXACTLY_ONE_OF,

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pyld import jsonld
 
-from rdf_persistence.services.schema import PACKAGE_DIR
+from rdf_persistence.schema.services.schema import PACKAGE_DIR
 from rdf_persistence_generation.config import GENERATOR_DIR
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions.jsonld_context import render, render_context

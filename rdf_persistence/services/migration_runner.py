@@ -24,7 +24,7 @@ from rdf_persistence.core.domain.sparql_parsing import prepare_update
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced
 from rdf_persistence.core.services.yaml_files import SHOWN, shown
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Migration
 from rdf_persistence.services.migrations import (
     Chain,

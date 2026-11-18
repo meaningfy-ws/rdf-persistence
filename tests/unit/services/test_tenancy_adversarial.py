@@ -7,8 +7,8 @@ from rdflib.namespace import RDF
 
 from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.services import vocabulary
-from rdf_persistence.services.iris import tenant_resource_name
+from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.schema.services import vocabulary
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
@@ -17,6 +17,7 @@ from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, BOB, SETTINGS, library_slots, toy_mapper
 
+IRIS = Iris(SETTINGS)
 CREATOR = Principal(id=ADA)
 BEN = Principal(id=BOB)
 OTHER = "https://example.org/other"
@@ -44,7 +45,7 @@ async def tenancy(store) -> Tenancy:
 async def _root_label(store, tenant: str) -> str:
     async with open_session(
         store,
-        database=tenant_resource_name(SETTINGS.prefix, tenant),
+        database=IRIS.resource_name(tenant),
         tenant_iri=tenant,
         principal=CREATOR,
     ) as session:

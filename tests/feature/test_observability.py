@@ -20,7 +20,7 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from rdf_persistence import bootstrap
 from rdf_persistence.core.domain.exceptions import StoreUnavailable
 from rdf_persistence.core.domain.generated.rp_provenance import Activity, Replace
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import EventEnvelope
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.mapper import UnitOfWork

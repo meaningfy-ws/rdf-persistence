@@ -462,8 +462,8 @@ WITHOUT_GENERATE_EXTRA_SOURCES = {
     )
 } | {
     "rdf_persistence.testkit",
-    "rdf_persistence.services.schema",
-    "rdf_persistence.services.schema_structure",
+    "rdf_persistence.schema.services.schema",
+    "rdf_persistence.schema.services.schema_structure",
 }
 
 

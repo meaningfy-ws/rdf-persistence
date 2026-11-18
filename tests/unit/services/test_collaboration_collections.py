@@ -11,15 +11,15 @@ from rdf_persistence.core.domain.exceptions import (
     InvalidIri,
 )
 from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
-from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import fake_session
 from tests.fixtures.library.generated.books import Genre, Shelf

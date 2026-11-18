@@ -68,7 +68,7 @@ def test_a_testkit_module_is_refused_by_name(tmp_path):
 def test_every_offending_import_is_listed_with_its_line(tmp_path):
     path = module(
         tmp_path,
-        "from rdf_persistence import Store\nimport rdf_persistence.adapters.s3\nfrom rdf_persistence.services import files",
+        "from rdf_persistence import Store\nimport rdf_persistence.files.adapters.s3\nfrom rdf_persistence.files.services import files",
     )
     with pytest.raises(AssertionError) as caught:
         assert_public_imports(path)

@@ -1,0 +1,190 @@
+id: https://meaningfy.ws/ns/rdf-persistence/schema-templates
+name: rp_schema_templates
+title: RDF persistence schema templates module
+description: >-
+  The bundles of rendered SPARQL terms that the toolkit's query templates share: the registry's
+  fixed vocabulary, the unique-key guard, the owner patterns of a write, a listing and the stamp
+  guard of a migration. They are in the `schema` theme because `vocabulary`, which sets their fixed
+  terms, is a module of that theme and a theme imports only the themes below it (thematic-structure
+  PD-2, D-8); the persistence and migration modules that fill them import them from here. A field
+  of a SPARQL term bundle holds a `SparqlTerm`, never a plain string, so only the output of `term()`
+  reaches a query (technical-models DEC-7). The IRI template variables and the parts of a matched
+  IRI, which are plain strings, are in the `iris` theme's services schema. Nothing here is served
+  by the HTTP service.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: sparql_term
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+  python_package: rdf_persistence.schema.services.generated.templates
+
+types:
+  sparql_term:
+    title: SPARQL term
+    description: >-
+      A piece of SPARQL text that `rdf_persistence.core.domain.sparql` rendered from an RDF term or a
+      pattern, the only kind of value a query template accepts.
+    typeof: string
+    repr: SparqlTerm
+    uri: rp:SparqlTerm
+    annotations:
+      python_import: rdf_persistence.core.domain.sparql
+
+slots:
+  registry:
+    title: Registry graph
+    description: The registry graph of the tenant.
+    required: true
+  p_kind:
+    title: Kind predicate
+    description: The predicate that gives a registry entry its kind.
+    required: true
+  p_owned_by:
+    title: Owned-by predicate
+    description: The predicate that names the root that owns a registry entry.
+    required: true
+  values:
+    title: Key values
+    description: The patterns that match the values a key claims, over the variable of the root.
+    required: true
+  aggregate:
+    title: Aggregate kind
+    description: The registry kind of an aggregate graph.
+    required: true
+  excluded:
+    title: Excluded roots
+    description: The list of roots the key check leaves out.
+    required: true
+  index:
+    title: Claim index
+    description: The position of the claim a branch of the diagnosis stands for.
+    required: true
+  root:
+    title: Root
+    description: The aggregate root a write operates on.
+    required: true
+  loaded:
+    title: Loaded-graph kind
+    description: The registry kind of a loaded graph.
+    required: true
+  target:
+    title: Listed class
+    description: The class of the aggregates a listing lists.
+    required: true
+  patterns:
+    title: Condition patterns
+    description: The patterns the conditions of a listing add over the variable of the root.
+    required: true
+  hidden:
+    title: Hidden graphs
+    description: The list of graphs a listing leaves out.
+    required: true
+  p_listed_in:
+    title: Listed-in predicate
+    description: The predicate that states the graph a listed subject was found in.
+    required: true
+  p_total:
+    title: Total predicate
+    description: The predicate that states the size of the whole listing.
+    required: true
+  p_sort:
+    title: Sort predicate
+    description: The predicate a listing is ordered by; absent, the listing is ordered by IRI.
+  order:
+    title: Order
+    description: The ordering clause of a listing.
+    required: true
+  limit:
+    title: Limit
+    description: The most aggregates the page can hold.
+    required: true
+  offset:
+    title: Offset
+    description: The position of the page's first aggregate in the whole listing.
+    required: true
+  stamps:
+    title: Stamps graph
+    description: The graph that holds the schema stamps.
+    required: true
+  schema_id:
+    title: Schema id
+    description: >-
+      The schema whose stamp a migration moves. Not `schema`, which pydantic's `BaseModel` has as a method.
+    required: true
+  p_stamp:
+    title: Stamp predicate
+    description: The predicate of a schema's data version in the stamps graph.
+    required: true
+  from_version:
+    title: From version
+    description: The version of the schema that the data follows before the migration.
+    required: true
+
+classes:
+  RegistryTerms:
+    title: Registry terms
+    description: The registry graph and the two predicates of its entries, shared by the templates that read it.
+    class_uri: rp:RegistryTerms
+    mixin: true
+    slots:
+      - registry
+      - p_kind
+      - p_owned_by
+  KeyHeldTerms:
+    title: Key held terms
+    description: The terms of the pattern that holds while another aggregate has the claimed values of a key.
+    class_uri: rp:KeyHeldTerms
+    mixins:
+      - RegistryTerms
+    slots:
+      - values
+      - aggregate
+      - excluded
+  KeyBranchTerms:
+    title: Key branch terms
+    description: The terms of one branch of the diagnosis, which are the key held terms and the claim's index.
+    class_uri: rp:KeyBranchTerms
+    is_a: KeyHeldTerms
+    slots:
+      - index
+  OwnerTerms:
+    title: Owner terms
+    description: >-
+      The terms of the operations that drop what a root owns. It has no registry of its own, so it
+      is not a `RegistryTerms`.
+    class_uri: rp:OwnerTerms
+    slots:
+      - root
+      - p_owned_by
+      - p_kind
+      - loaded
+  ListingTerms:
+    title: Listing terms
+    description: The terms of the listing query over a tenant's registry.
+    class_uri: rp:ListingTerms
+    mixins:
+      - RegistryTerms
+    slots:
+      - aggregate
+      - target
+      - patterns
+      - hidden
+      - p_listed_in
+      - p_total
+      - p_sort
+      - order
+      - limit
+      - offset
+  StampGuardTerms:
+    title: Stamp guard terms
+    description: The terms that make a migration operation match only the stamp of the version it starts from.
+    class_uri: rp:StampGuardTerms
+    slots:
+      - stamps
+      - schema_id
+      - p_stamp
+      - from_version

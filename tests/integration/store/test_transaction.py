@@ -13,9 +13,9 @@ from rdflib import URIRef
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.iris import DEFAULT_IRIS
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import Session
 from tests.fixtures.library.generated.books import Book

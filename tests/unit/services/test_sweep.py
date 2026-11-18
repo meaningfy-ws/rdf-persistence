@@ -8,8 +8,8 @@ from rdflib import Graph
 
 from rdf_persistence.core.domain.exceptions import NotFound, StoreNotWired, StoreUnavailable
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.domain.layout import system_database_name
-from rdf_persistence.services.iris import tenant_resource_name
+from rdf_persistence.iris.domain.layout import system_database_name
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.store import ToolkitStore, TracedStore
@@ -21,6 +21,7 @@ from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
 
+IRIS = Iris(SETTINGS)
 CREATOR = Principal(id=ADA)
 ORPHAN = "lib-t-" + "a" * 32
 FOREIGN = ["other-t-" + "b" * 32, "lib-system-copy", "lib-tx", "library-t-1", "lib"]
@@ -91,18 +92,18 @@ async def test_a_creation_that_stopped_before_the_record_leaves_only_the_kept_te
     with pytest.raises(StoreUnavailable):
         await tenancy.create("Bruges", library_slots(), CREATOR)
     await sweep(tenancy, store, files, SETTINGS)
-    name = tenant_resource_name(SETTINGS.prefix, kept.id)
+    name = IRIS.resource_name(kept.id)
     assert sorted(await store.list_datasets()) == sorted(["lib-system", name]), "databases"
     assert await files.list_buckets("") == [name], "buckets"
 
 
 async def root_graph(store, tenant: str) -> Graph:
     query = f"CONSTRUCT {{ ?s ?p ?o }} WHERE {{ GRAPH <{tenant}/meta> {{ ?s ?p ?o }} }}"
-    return (await store.query(tenant_resource_name(SETTINGS.prefix, tenant), query)).graph
+    return (await store.query(IRIS.resource_name(tenant), query)).graph
 
 
 async def test_an_active_tenant_is_left_unchanged(tenancy, store, files, kept):
-    name = tenant_resource_name(SETTINGS.prefix, kept.id)
+    name = IRIS.resource_name(kept.id)
     await files.put(name, "scan.pdf", b"%PDF")
     before = (await root_graph(store, kept.id), await tenancy.get(kept.id))
     await store.create_dataset(ORPHAN)
@@ -126,7 +127,7 @@ async def test_the_sweep_judges_by_the_database_name_the_record_stores(tenancy, 
         record.database_name = ORPHAN
         work.add(record)
         await work.commit()
-    derived = tenant_resource_name(SETTINGS.prefix, kept.id)
+    derived = IRIS.resource_name(kept.id)
     await store.create_dataset(ORPHAN)
     await files.create_bucket(ORPHAN)
     await sweep(tenancy, store, files, SETTINGS)
@@ -254,11 +255,11 @@ async def make_deleting(two, label: str, store: str) -> str:
     two.tenancy.stores()[store].on("drop_dataset", StoreUnavailable("down"))
     with pytest.raises(StoreUnavailable):
         await two.tenancy.delete(summary.id, version)
-    return tenant_resource_name(SETTINGS.prefix, summary.id)
+    return IRIS.resource_name(summary.id)
 
 
 async def test_tc21_an_orphan_is_dropped_from_whichever_store_holds_it(two):
-    held = tenant_resource_name(SETTINGS.prefix, two.tenant.id)
+    held = IRIS.resource_name(two.tenant.id)
     await two.a.create_dataset(ORPHAN_A)
     await two.d.create_dataset(ORPHAN_D)
     await sweep(two.tenancy, two.d, two.files, SETTINGS)
@@ -346,7 +347,7 @@ async def test_tc43_a_tenant_database_on_another_store_is_reported_and_left_alon
     made = wired(d, files, **{CLIENT_A: a})
     await made.ensure_system_database()
     summary = await made.create("Ghent", library_slots(), CREATOR)  # recorded on default
-    name = tenant_resource_name(SETTINGS.prefix, summary.id)
+    name = IRIS.resource_name(summary.id)
     await d.drop_dataset(name)
     await a.create_dataset(name)  # found on A
     before = (len(d.sent("drop_dataset")), len(a.sent("drop_dataset")))

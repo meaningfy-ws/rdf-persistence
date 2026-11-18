@@ -6,7 +6,7 @@ from linkml_runtime.linkml_model.meta import ClassDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.services.schema_structure import flag
+from rdf_persistence.schema.services.schema_structure import flag
 from rdf_persistence_generation.generated.rp_generation import CheckProblem, HardRule
 from rdf_persistence_generation.problems import rule_problem
 

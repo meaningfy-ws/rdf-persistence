@@ -1,0 +1,319 @@
+"""S3FileStore's calls and error mapping, against botocore's Stubber (no network)."""
+
+import logging
+from datetime import UTC, datetime
+from io import BytesIO
+
+import boto3
+import pytest
+from botocore.config import Config
+from botocore.exceptions import EndpointConnectionError
+from botocore.response import StreamingBody
+from botocore.stub import Stubber
+
+from rdf_persistence.core.domain.exceptions import (
+    Conflict,
+    NotFound,
+    StoreUnavailable,
+    TenantGone,
+)
+from rdf_persistence.core.domain.generated.rp_files import BlobEntry
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
+from rdf_persistence.files.adapters.s3 import S3FileStore
+from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
+from tests.logs import attributes, records_of
+
+REGION = "garage"
+BUCKET, KEY, URL = "b", "k", "http://s3.test"
+
+
+@pytest.fixture
+def s3(no_network):  # noqa: F811
+    client = boto3.client(
+        "s3",
+        endpoint_url=URL,
+        aws_access_key_id="id",
+        aws_secret_access_key="secret",
+        region_name=REGION,
+        config=Config(retries={"max_attempts": 1}),
+    )
+    with Stubber(client) as stubber:
+        yield S3FileStore(URL, "id", "secret", REGION, client=client), stubber
+
+
+CALLS = {
+    "put": ("put_object", lambda files: files.put(BUCKET, KEY, b"x")),
+    "get": ("get_object", lambda files: files.get(BUCKET, KEY)),
+    "delete": ("delete_object", lambda files: files.delete(BUCKET, KEY)),
+    "create_bucket": ("create_bucket", lambda files: files.create_bucket(BUCKET)),
+    "list_buckets": ("list_buckets", lambda files: files.list_buckets("")),
+}
+
+
+@pytest.mark.parametrize(
+    ("operation", "code", "expected"),
+    [
+        ("put", "NoSuchBucket", TenantGone),
+        ("get", "NoSuchBucket", TenantGone),
+        ("delete", "NoSuchBucket", TenantGone),
+        ("get", "NoSuchKey", NotFound),
+        ("create_bucket", "BucketAlreadyOwnedByYou", Conflict),
+        ("create_bucket", "BucketAlreadyExists", Conflict),
+        ("put", "InternalError", StoreUnavailable),
+        ("get", "AccessDenied", StoreUnavailable),
+        ("list_buckets", "InternalError", StoreUnavailable),
+    ],
+)
+async def test_an_s3_error_code_maps_to_the_toolkit_error(s3, operation, code, expected):
+    files, stubber = s3
+    api_call, call = CALLS[operation]
+    stubber.add_client_error(api_call, service_error_code=code)
+    with pytest.raises(expected):
+        await call(files)
+
+
+async def test_a_code_the_adapter_does_not_map_is_logged_at_debug(s3, caplog):  # TC-21
+    files, stubber = s3
+    stubber.add_client_error("get_object", service_error_code="AccessDenied", http_status_code=403)
+    with (
+        caplog.at_level(logging.DEBUG, logger="rdf_persistence.files.adapters.s3"),
+        pytest.raises(StoreUnavailable),
+    ):
+        await files.get(BUCKET, KEY)
+    [record] = records_of(caplog, "file-store-refused")
+    assert record.levelno == logging.DEBUG
+    assert record.getMessage() == "the object store refused a request"
+    assert attributes(record) == {"rp.step": "file-store-refused", "error.type": "AccessDenied"}
+
+
+async def test_a_mapped_code_is_not_logged(s3, caplog):  # TC-21
+    files, stubber = s3
+    stubber.add_client_error("get_object", service_error_code="NoSuchBucket", http_status_code=404)
+    with (
+        caplog.at_level(logging.DEBUG, logger="rdf_persistence.files.adapters.s3"),
+        pytest.raises(TenantGone),
+    ):
+        await files.get(BUCKET, KEY)
+    assert records_of(caplog, "file-store-refused") == [], "NoSuchBucket is mapped before the log"
+    assert caplog.records == []
+
+
+async def test_a_server_error_status_is_store_unavailable_whatever_its_code(s3):
+    files, stubber = s3
+    stubber.add_client_error("get_object", service_error_code="NoSuchKey", http_status_code=503)
+    with pytest.raises(StoreUnavailable):
+        await files.get(BUCKET, KEY)
+
+
+# One class: every BotoCoreError is mapped once in _run; EndpointConnectionError stands for it.
+@pytest.mark.parametrize(
+    "error",
+    [EndpointConnectionError(endpoint_url=URL)],
+    ids=type,
+)
+async def test_a_connection_failure_is_store_unavailable(s3, error):
+    files, _ = s3
+
+    def fail(**_):
+        raise error
+
+    files._client.meta.events.register("before-call.s3.ListBuckets", fail)
+    with pytest.raises(StoreUnavailable):
+        await files.list_buckets("")
+
+
+async def test_get_returns_the_body_bytes(s3):
+    files, stubber = s3
+    stubber.add_response(
+        "get_object", {"Body": StreamingBody(BytesIO(b"abc"), 3)}, {"Bucket": BUCKET, "Key": KEY}
+    )
+    assert await files.get(BUCKET, KEY) == b"abc", "a blob comes back as its body bytes"
+
+
+async def test_a_bucket_is_created_with_the_regions_location_constraint(s3):
+    files, stubber = s3
+    stubber.add_response(
+        "create_bucket",
+        {},
+        {"Bucket": BUCKET, "CreateBucketConfiguration": {"LocationConstraint": REGION}},
+    )
+    await files.create_bucket(BUCKET)
+    stubber.assert_no_pending_responses()
+
+
+async def test_buckets_are_listed_by_prefix_in_name_order(s3):
+    files, stubber = s3
+    stubber.add_response(
+        "list_buckets", {"Buckets": [{"Name": n} for n in ("p-2", "other", "p-1")]}
+    )
+    assert await files.list_buckets("p-") == ["p-1", "p-2"], (
+        "buckets with the prefix come back in name order"
+    )
+
+
+async def test_deleting_a_bucket_deletes_every_page_of_its_blobs_then_the_bucket(s3):
+    files, stubber = s3
+    page = {"Bucket": BUCKET}
+    stubber.add_response(
+        "list_objects_v2",
+        {"Contents": [{"Key": "a"}], "IsTruncated": True, "NextContinuationToken": "t"},
+        page,
+    )
+    stubber.add_response(
+        "delete_objects", {}, {"Bucket": BUCKET, "Delete": {"Objects": [{"Key": "a"}]}}
+    )
+    stubber.add_response(
+        "list_objects_v2", {"Contents": [{"Key": "b"}]}, {**page, "ContinuationToken": "t"}
+    )
+    stubber.add_response(
+        "delete_objects", {}, {"Bucket": BUCKET, "Delete": {"Objects": [{"Key": "b"}]}}
+    )
+    stubber.add_response("delete_bucket", {}, page)
+    await files.delete_bucket(BUCKET)
+    stubber.assert_no_pending_responses()
+
+
+async def test_a_blob_the_store_failed_to_delete_stops_the_bucket_delete(s3):
+    files, stubber = s3
+    page = {"Bucket": BUCKET}
+    stubber.add_response("list_objects_v2", {"Contents": [{"Key": "a"}]}, page)
+    stubber.add_response(
+        "delete_objects",
+        {"Errors": [{"Key": "a", "Code": "AccessDenied", "Message": "no"}]},
+        {"Bucket": BUCKET, "Delete": {"Objects": [{"Key": "a"}]}},
+    )
+    with pytest.raises(StoreUnavailable, match="a: AccessDenied"):
+        await files.delete_bucket(BUCKET)
+
+
+async def test_deleting_a_missing_bucket_is_not_found(s3):
+    files, stubber = s3
+    stubber.add_client_error("list_objects_v2", service_error_code="NoSuchBucket")
+    with pytest.raises(NotFound):
+        await files.delete_bucket(BUCKET)
+
+
+# --- input the caller got wrong is not an outage (PD-28a) ------------------------------------------
+
+BAD_KEYS = [
+    "a/../b",
+    "..",
+    "../x",
+    "a/..",
+    "a/./b",
+    "./a",
+    "a/.",
+    ".",
+    "a\x00b",
+    "a\nb",
+    "a\x7fb",
+    "",
+]
+ORDINARY_KEYS = ["a..b", "..x", "x/..y/z", "folder/ä b+c.bin"]
+
+
+# One class per call site of checked_blob_key: put, get and delete each call it on their own, so
+# each is tried once ("../x"); every form stays on put (they are different security probes).
+@pytest.mark.parametrize(
+    ("operation", "key"),
+    [("put", key) for key in BAD_KEYS] + [("get", "../x"), ("delete", "../x")],
+    ids=repr,
+)
+async def test_a_key_that_climbs_or_holds_a_control_character_is_refused_before_any_request(
+    s3, operation, key
+):
+    files, stubber = s3
+    calls = {
+        "put": lambda: files.put(BUCKET, key, b"x"),
+        "get": lambda: files.get(BUCKET, key),
+        "delete": lambda: files.delete(BUCKET, key),
+    }
+    with pytest.raises(ValueError, match="key"):
+        await calls[operation]()
+    stubber.assert_no_pending_responses()
+
+
+@pytest.mark.parametrize("key", ORDINARY_KEYS)
+async def test_a_key_with_dots_inside_a_segment_is_a_key(s3, key):
+    files, stubber = s3
+    stubber.add_response("put_object", {}, {"Bucket": BUCKET, "Key": key, "Body": b"x"})
+    await files.put(BUCKET, key, b"x")
+
+
+# One class: botocore's ParamValidationError, mapped once in _run.
+@pytest.mark.parametrize("bucket", [""])
+async def test_a_bucket_name_boto_refuses_is_the_callers_error_not_an_outage(no_network, bucket):  # noqa: F811
+    files = S3FileStore(
+        URL, "id", "secret", REGION
+    )  # a real client: the stubber looks before boto does
+    with pytest.raises(ValueError, match="bucket"):
+        await files.put(bucket, KEY, b"x")
+
+
+def test_the_timeouts_default_to_five_seconds_to_connect_and_thirty_to_read_with_three_attempts():
+    config = S3FileStore("http://s3.test", "id", "secret", REGION)._client.meta.config
+    assert config.connect_timeout == 5, "connecting waits five seconds"
+    assert config.read_timeout == 30, "reading waits thirty seconds"
+    # boto3 turns ``max_attempts`` (retries after the first try) into a total one higher.
+    assert config.retries["total_max_attempts"] == 4, "three attempts, as it always was"
+
+
+def test_the_client_is_configured_from_the_http_settings_given():
+    """TC-29: the boto3 client's config has the group's timeouts and attempts."""
+    settings = HttpSettings(connect_timeout_seconds=2, read_timeout_seconds=9, max_attempts=5)
+    config = S3FileStore(
+        "http://s3.test", "id", "secret", REGION, http=settings
+    )._client.meta.config
+    assert config.connect_timeout == 2, "the connect timeout is the group's"
+    assert config.read_timeout == 9, "the read timeout is the group's"
+    assert config.retries["total_max_attempts"] == 6, (
+        "the attempts are the group's (5 and the first)"
+    )
+
+
+async def test_list_blobs_follows_every_page_and_keeps_the_modified_time(s3):
+    files, stubber = s3
+    first, second = datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)
+    stubber.add_response(
+        "list_objects_v2",
+        {
+            "IsTruncated": True,
+            "NextContinuationToken": "t",
+            "Contents": [{"Key": "a", "LastModified": first}],
+        },
+        {"Bucket": BUCKET},
+    )
+    stubber.add_response(
+        "list_objects_v2",
+        {"IsTruncated": False, "Contents": [{"Key": "b", "LastModified": second}]},
+        {"Bucket": BUCKET, "ContinuationToken": "t"},
+    )
+    assert await files.list_blobs(BUCKET) == [
+        BlobEntry(file_key="a", modified=first),
+        BlobEntry(file_key="b", modified=second),
+    ], "every page is followed and each blob keeps its modified time"
+    stubber.assert_no_pending_responses()
+
+
+async def test_a_truncated_page_without_a_token_ends_the_listing(s3):
+    files, stubber = s3
+    first = datetime(2026, 1, 1, tzinfo=UTC)
+    page = {"IsTruncated": True, "Contents": [{"Key": "a", "LastModified": first}]}
+    stubber.add_response("list_objects_v2", page, {"Bucket": BUCKET})
+    assert await files.list_blobs(BUCKET) == [BlobEntry(file_key="a", modified=first)], (
+        "a truncated page with no token ends the listing"
+    )
+    stubber.assert_no_pending_responses()
+
+
+async def test_list_blobs_of_an_empty_bucket_is_empty(s3):
+    files, stubber = s3
+    stubber.add_response("list_objects_v2", {"IsTruncated": False}, {"Bucket": BUCKET})
+    assert await files.list_blobs(BUCKET) == [], "an empty bucket lists nothing"
+
+
+async def test_list_blobs_of_a_missing_bucket_is_tenant_gone(s3):
+    files, stubber = s3
+    stubber.add_client_error("list_objects_v2", service_error_code="NoSuchBucket")
+    with pytest.raises(TenantGone):
+        await files.list_blobs(BUCKET)

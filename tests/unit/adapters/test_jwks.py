@@ -11,9 +11,9 @@ import pytest
 
 from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JwksTokenVerifier
 from rdf_persistence.core.domain.exceptions import IdentityUnavailable, InvalidToken
-from rdf_persistence.services.generated.service.rp_service import IriPolicy, ServiceSettings
+from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy, ServiceSettings
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services.generated.settings.rp_settings import JwksSettings
-from rdf_persistence.services.iris import Iris
 from rdf_persistence.testkit import TokenSigner, shared_key
 from rdf_persistence.testkit.tokens import ISSUER, new_key
 

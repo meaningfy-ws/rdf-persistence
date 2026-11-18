@@ -30,29 +30,31 @@ from rdf_persistence.core.domain.exceptions import (
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.layout import stamps_graph_iri
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.generated.service.rp_service import (
-    GrantSet,
+from rdf_persistence.iris.domain.layout import stamps_graph_iri
+from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
     IdSpec,
     IriPolicy,
-    MigrationStep,
     ServiceSettings,
+)
+from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import iri_types
+from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
+from rdf_persistence.services.generated.service.rp_service import (
+    GrantSet,
+    MigrationStep,
     TenantDump,
 )
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.migrations import SchemaChain
 from rdf_persistence.services.migrations import chain_of as chain_of_schema
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.session import Clock, utc_now
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
-from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.testkit import FakeStore, assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library

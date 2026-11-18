@@ -291,10 +291,11 @@ Your regenerate target writes, under `library/domain/generated/`, one Python mod
 (`books.py`, `library.py`), `shapes.ttl`, `context.jsonld`, one `<Root>.frame.jsonld` per
 aggregate root, `openapi-components.json` (the component schemas of the service's OpenAPI document)
 and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts`, and
-`rp_service.ts`, which holds the classes of the toolkit's `rp_service.yaml`, among them the API's wire
+`rp_service.ts`, which holds the classes of the toolkit's served schemas (`rp_service.yaml` and the
+`iris` theme's `rp_iris_services.yaml`), among them the API's wire
 types (`TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page` and `Problem`); and one
 `.mmd` diagram per module. The module name `rp_service` and the names of the classes and enums of
-`rp_service.yaml` are reserved when a target renders TypeScript: a schema that uses one is refused,
+the served schemas are reserved when a target renders TypeScript: a schema that uses one is refused,
 naming the clash. Commit them together with the schema. Never edit them: to change
 the code, change the schema and generate again.
 
@@ -968,7 +969,7 @@ How a key behaves:
   its own scope, so a `Magazine` and a `Book` may share an ISBN. Another tenant never clashes.
 * `kit.session` and the generic router enforce the keys of the schema. `open_session` enforces
   none unless you pass `keys=aggregate_keys(mapper.view)` (from
-  `rdf_persistence.services.schema_structure`); a session you open without `keys` accepts
+  `rdf_persistence.schema.services.schema_structure`); a session you open without `keys` accepts
   duplicates.
 * A 409 tells a writer that the value exists in the tenant, even when the aggregate holding it is
   hidden from them. So do not make a slot of confidential values a key.
@@ -2027,7 +2028,7 @@ schema (needed only when a template uses `{type}`):
 [source,python]
 ----
 from rdf_persistence import Iris, load_schema
-from rdf_persistence.services.schema_structure import iri_types
+from rdf_persistence.schema.services.schema_structure import iri_types
 
 root_types, owned_types = iri_types(load_schema("models/library.yaml"))
 iris = Iris(settings, root_types, owned_types)

@@ -18,12 +18,12 @@ from opentelemetry.trace import StatusCode
 from rdf_persistence import generated_models
 from rdf_persistence.core.domain.exceptions import StoreUnavailable
 from rdf_persistence.core.domain.generated.rp_provenance import Generation, Invalidation, Replace
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.events import context_link
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings
-from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.relay import Relay, chain_order
-from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import open_session
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
 from tests.logs import attributes

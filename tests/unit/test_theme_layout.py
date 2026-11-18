@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = "rdf_persistence"
 LAYERS = ("domain", "services", "adapters", "entrypoints")
 # A stage adds its themes here (PD-1: the stage turns its rows on, and TC-01 then holds them).
-TURNED_ON: frozenset[str] = frozenset({"core"})
+TURNED_ON: frozenset[str] = frozenset({"core", "iris", "schema", "files", "provenance"})
 # Old paths that hold a deprecation shim, not a leftover (PD-8): the module re-exports the moved one and
 # stands until the release that removes it (stage 8). A stage that adds a shim lists it here.
 SHIMS: frozenset[str] = frozenset({f"{PACKAGE}.domain.base"})
@@ -153,6 +153,10 @@ class Placed:
     layer: str
     group: str
     classes: tuple[str, ...]
+    # The module below ``<theme>.<layer>.generated``, when it is not ``rp_<theme>_<layer>``: classes a
+    # served module must not carry (the TypeScript and OpenAPI of the toy are byte-identical, TC-07) are
+    # a schema of their own, in a group package beside it (PD-4 allows a group segment after ``generated``).
+    tail: str = ""
 
     @property
     def on(self) -> bool:
@@ -164,7 +168,8 @@ class Placed:
 
     @property
     def new(self) -> str:
-        return f"{PACKAGE}.{self.theme}.{self.layer}.generated.rp_{self.theme}_{self.layer}"
+        tail = self.tail or f"rp_{self.theme}_{self.layer}"
+        return f"{PACKAGE}.{self.theme}.{self.layer}.generated.{tail}"
 
     @property
     def standing(self) -> str:
@@ -173,7 +178,7 @@ class Placed:
 
 # PD-2's class table, row by row. Not named class by class in PD-2, so read from "the term bundles of
 # unique_keys, session, listing" and "the migration guard's terms" by the module that builds them
-# (`services/vocabulary.py`) and the one that uses each: `RegistryTerms`, `KeyHeldTerms`,
+# (`schema/services/vocabulary.py`) and the one that uses each: `RegistryTerms`, `KeyHeldTerms`,
 # `KeyBranchTerms` (unique_keys), `OwnerTerms` (session), `ListingTerms` (listing), `StampGuardTerms`
 # (migrations). The Zitadel records are every `Zitadel*` class of `rp_wire`.
 _ZITADEL = (
@@ -211,7 +216,13 @@ PLACED: tuple[Placed, ...] = (
     Placed("core", "services", "settings", ("HttpSettings",)),
     Placed("core", "services", "telemetry", ("LogContext",)),
     Placed("iris", "services", "service", ("IdKind", "IdSpec", "IriPolicy", "ServiceSettings")),
-    Placed("iris", "services", "templates", ("IriTemplateVariables", "IriParts")),
+    Placed(
+        "iris",
+        "services",
+        "templates",
+        ("IriTemplateVariables", "IriParts"),
+        tail="templates.rp_iris_templates",
+    ),
     Placed(
         "persistence",
         "services",
@@ -219,15 +230,25 @@ PLACED: tuple[Placed, ...] = (
         ("Filter", "Condition", "ListRequest", "ListPlan", "AggregateHead", "Page"),
     ),
     Placed("persistence", "services", "settings", ("LimitSettings",)),
+    # D-8, settled at stage 3: `schema/vocabulary` builds all six term bundles, so `schema` is their lowest
+    # user (PD-2); a bundle placed in `persistence` or `migrations` would make `schema` import a higher
+    # theme. Their slots range over `SparqlTerm` of `core`, so no slot reaches a class of a higher theme.
     Placed(
-        "persistence",
+        "schema",
         "services",
         "templates",
-        ("RegistryTerms", "KeyHeldTerms", "KeyBranchTerms", "OwnerTerms", "ListingTerms"),
+        (
+            "RegistryTerms",
+            "KeyHeldTerms",
+            "KeyBranchTerms",
+            "OwnerTerms",
+            "ListingTerms",
+            "StampGuardTerms",
+        ),
+        tail="templates.rp_schema_templates",
     ),
     Placed("persistence", "adapters", "wire", ("FusekiDatasetList", "FusekiDataset")),
     Placed("migrations", "services", "service", ("Migration", "MigrationStep")),
-    Placed("migrations", "services", "templates", ("StampGuardTerms",)),
     Placed(
         "access",
         "services",
@@ -397,8 +418,9 @@ def test_a_class_is_placed_once_and_in_a_known_theme_and_layer():
 # --- the guard on a planted tree ------------------------------------------------------------
 
 SERVICE_OLD = "rdf_persistence.services.generated.service.rp_service"
-SERVICE_NEW = "rdf_persistence.iris.services.generated.rp_iris_services"
-ONE_CLASS = (Placed("iris", "services", "service", ("IdKind",)),)
+# The planted rows use `api`, the theme that turns on last, so they stay "off" for the whole move.
+SERVICE_NEW = "rdf_persistence.api.entrypoints.generated.rp_api_entrypoints"
+ONE_CLASS = (Placed("api", "entrypoints", "service", ("Problem",)),)
 
 
 def _module(root: Path, module: str, *classes: str) -> None:
@@ -408,7 +430,7 @@ def _module(root: Path, module: str, *classes: str) -> None:
 
 
 def test_a_class_row_off_holds_while_the_class_is_in_its_group_module(tmp_path):
-    _module(tmp_path, SERVICE_OLD, "IdKind")
+    _module(tmp_path, SERVICE_OLD, "Problem")
 
     assert placed_problems(ONE_CLASS, tmp_path) == [], "the class stands where the row says"
 
@@ -417,24 +439,24 @@ def test_a_class_row_turned_on_whose_class_is_still_in_the_old_module_fails_nami
     tmp_path, monkeypatch
 ):
     """TC-01 for a class: the old and the new module are named."""
-    monkeypatch.setattr(f"{__name__}.TURNED_ON", frozenset({"iris"}))
-    _module(tmp_path, SERVICE_OLD, "IdKind")
+    monkeypatch.setattr(f"{__name__}.TURNED_ON", frozenset({"api"}))
+    _module(tmp_path, SERVICE_OLD, "Problem")
 
     problems = placed_problems(ONE_CLASS, tmp_path)
 
-    assert any("IdKind" in p and SERVICE_OLD in p and SERVICE_NEW in p for p in problems), problems
+    assert any("Problem" in p and SERVICE_OLD in p and SERVICE_NEW in p for p in problems), problems
 
 
 def test_a_class_row_turned_on_holds_when_the_class_stands_in_the_new_module(tmp_path, monkeypatch):
-    monkeypatch.setattr(f"{__name__}.TURNED_ON", frozenset({"iris"}))
-    _module(tmp_path, SERVICE_NEW, "IdKind")
+    monkeypatch.setattr(f"{__name__}.TURNED_ON", frozenset({"api"}))
+    _module(tmp_path, SERVICE_NEW, "Problem")
 
     assert placed_problems(ONE_CLASS, tmp_path) == [], "the moved class satisfies its row"
-    assert turned_on_classes(ONE_CLASS) == {(SERVICE_OLD, "IdKind"): SERVICE_NEW}
+    assert turned_on_classes(ONE_CLASS) == {(SERVICE_OLD, "Problem"): SERVICE_NEW}
 
 
 def test_a_class_without_a_row_fails_by_name(tmp_path):
-    _module(tmp_path, SERVICE_OLD, "IdKind", "Newcomer")
+    _module(tmp_path, SERVICE_OLD, "Problem", "Newcomer")
 
     problems = placed_problems(ONE_CLASS, tmp_path)
 

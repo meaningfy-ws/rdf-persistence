@@ -36,14 +36,14 @@ from rdf_persistence.core.domain.generated.rp_access import (
 )
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import (
     CallerAccess,
     GrantSet,
     VerifiedCaller,
 )
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.mapper import Mapper, generated_models
 from rdf_persistence.services.store import Store
 

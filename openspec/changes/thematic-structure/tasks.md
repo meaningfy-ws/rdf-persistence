@@ -116,7 +116,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 
 ## Stage 3: `iris`, `schema`, `files`, `provenance` (PR 3)
 
-- [ ] 3.1 PD-5: the recipe for `iris` (`domain/layout.py` → `iris/domain/layout.py`,
+- [x] 3.1 PD-5: the recipe for `iris` (`domain/layout.py` → `iris/domain/layout.py`,
   `services/iris.py` → `iris/services/iris.py`, the halves `technical-models` split), then the 11
   wrappers removed, `mint_aggregate_iri` warning; their users rewritten to `DEFAULT_IRIS` or a
   policy `Iris` (the full list in PD-5, integration, perf and `tests/toy_service.py` included;
@@ -132,7 +132,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 | TC-32 | `rdf_persistence.mint_aggregate_iri(t, "books")` | `DeprecationWarning` naming `Iris.mint_aggregate`; same IRI shape as `DEFAULT_IRIS.mint_aggregate(t, cls_type="", rp_path="books")` |
 | TC-33 | the existing IRI and IRI policy tests, on `Iris` instances | pass unchanged in what they assert |
 
-- [ ] 3.2 The recipe for `schema`, `files`, `provenance`. `schema/services/schema.py`'s
+- [x] 3.2 The recipe for `schema`, `files`, `provenance`. `schema/services/schema.py`'s
   `PACKAGE_DIR` still resolves `rdf_persistence/` (it uses `resources.files`, not `__file__`);
   `metamodel_importmap()` unchanged. Gate: `make test-fast check-quality`.
 
@@ -236,7 +236,7 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 2.1 · [ ] 3.1 · [ ] 3.2 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 2.1 · [x] 3.1 · [x] 3.2 ·
   [ ] 4.1 · [ ] 4.2 · [ ] 5.1 · [ ] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
 
 ## Verification

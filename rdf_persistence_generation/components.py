@@ -23,8 +23,8 @@ from rdf_persistence.core.services.artifacts import (
     REF,
     SCHEMAS,
 )
-from rdf_persistence.services.schema import load_schema, metamodel_importmap
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema import SERVED_SCHEMAS, load_schema, metamodel_importmap
+from rdf_persistence.schema.services.schema_structure import (
     apply_defaults,
     is_bookkeeping,
     is_internal,
@@ -108,12 +108,31 @@ def _retargeted(node: Any) -> Any:
     return node
 
 
+def _declared_by_another_served_schema(schema_path: Path) -> set[str]:
+    """The classes and enums that a served schema other than ``schema_path`` declares itself.
+
+    The service merges the files of the served schemas and refuses a name in two of them (PD-10), so a
+    schema that imports another served one leaves that one's classes to its file.
+    """
+    names: set[str] = set()
+    for served in SERVED_SCHEMAS:
+        if served.resolve() != schema_path.resolve():
+            declared = load_schema(served).schema
+            names |= {*declared.classes, *declared.enums}
+    return names
+
+
 def render(schema_path: Path) -> list[GeneratedFile]:
-    """``openapi-components.json``: the component schema of every class of the schema, by name."""
+    """``openapi-components.json``: the component schema of every class of the schema, by name.
+
+    A class that another served schema declares is left out (see ``_declared_by_another_served_schema``).
+    """
     view = load_schema(schema_path)
+    left_out = _declared_by_another_served_schema(schema_path)
     schemas = {
         name: _retargeted(_trimmed(view, name, definition))
         for name, definition in sorted(_generated(schema_path).items())
+        if name not in left_out
     }
     text = json.dumps({SCHEMAS: schemas}, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     return [GeneratedFile(name=COMPONENTS_FILE, text=text)]

@@ -118,14 +118,27 @@ openapi = false
 kind = "technical"
 
 [[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/iris/rp_iris_services.yaml"
+package = "rdf_persistence.iris.services.generated"
+regenerate-command = "make generate"
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/iris/rp_iris_templates.yaml"
+package = "rdf_persistence.iris.services.generated.templates"
+regenerate-command = "make generate"
+openapi = false
+kind = "technical"
+
+[[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/service/rp_service.yaml"
 package = "rdf_persistence.services.generated.service"
 regenerate-command = "make generate"
 kind = "technical"
 
 [[tool.rp-generate]]
-schema = "rdf_persistence/model/technical/templates/rp_templates.yaml"
-package = "rdf_persistence.services.generated.templates"
+schema = "rdf_persistence/model/technical/schema/rp_schema_templates.yaml"
+package = "rdf_persistence.schema.services.generated.templates"
 regenerate-command = "make generate"
 openapi = false
 kind = "technical"

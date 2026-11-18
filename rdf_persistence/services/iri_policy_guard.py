@@ -16,10 +16,10 @@ from rdf_persistence.core.domain.exceptions import IriPolicyChanged
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra
-from rdf_persistence.domain.layout import policy_record_iri
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.generated.service.rp_service import IriPolicy, ServiceSettings
-from rdf_persistence.services.iris import effective_policy, policy_differences
+from rdf_persistence.iris.domain.layout import policy_record_iri
+from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy, ServiceSettings
+from rdf_persistence.iris.services.iris import effective_policy, policy_differences
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.tenancy import Tenancy
 

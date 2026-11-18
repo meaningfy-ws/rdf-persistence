@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
+from rdf_persistence.schema.services.schema import IRIS_SCHEMA, SERVICE_SCHEMA, load_schema
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.extensions import typescript
@@ -207,7 +207,11 @@ def test_rendering_a_consumer_with_no_rp_core_import_still_resolves_rp_service_i
 
 
 def test_rendering_the_service_schema_equals_its_own_module_files() -> None:
-    own = typescript.with_index(typescript._module_files(SERVICE_SCHEMA))
+    """Its own files, but for the other served schemas', which are in ``rp_service.ts``."""
+    served_elsewhere = {f"{load_schema(IRIS_SCHEMA).schema.name}.ts"}
+    own = typescript.with_index(
+        [f for f in typescript._module_files(SERVICE_SCHEMA) if f.name not in served_elsewhere]
+    )
     assert [f.name for f in typescript.render(SERVICE_SCHEMA)] == [f.name for f in own], (
         "rendering the service schema adds nothing to its own files"
     )
@@ -222,7 +226,11 @@ def test_a_relative_path_to_the_service_schema_is_the_same_file(
 
 
 def test_a_symlink_to_the_service_schema_is_the_same_file(tmp_path: Path) -> None:
-    link = tmp_path / "linked_service.yaml"
+    # the service schema imports the iris one by a relative path, so the link keeps that neighbour
+    (tmp_path / "service").mkdir()
+    (tmp_path / "iris").mkdir()
+    (tmp_path / "iris" / IRIS_SCHEMA.name).symlink_to(IRIS_SCHEMA)
+    link = tmp_path / "service" / "linked_service.yaml"
     link.symlink_to(SERVICE_SCHEMA)
     names = [f.name for f in typescript.render(link)]
     assert len(names) == len(set(names)), f"duplicate files for a symlink: {names}"

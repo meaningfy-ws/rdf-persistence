@@ -27,9 +27,7 @@ from pydantic import BaseModel, ValidationError
 from rdflib import Graph
 
 from rdf_persistence.core.domain.exceptions import InvalidBody
-from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.mapper import generated_models_of
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema_structure import (
     generation_view,
     holds_owned_part,
     is_internal,
@@ -37,6 +35,8 @@ from rdf_persistence.services.schema_structure import (
     json_name,
     keyed_slots,
 )
+from rdf_persistence.services.documents import Documents
+from rdf_persistence.services.mapper import generated_models_of
 from rdf_persistence.services.shacl import validate_locked
 from rdf_persistence_generation.config import TOOLKIT_ROOTS, python_folder, read_targets
 from rdf_persistence_generation.exceptions import ConfigError

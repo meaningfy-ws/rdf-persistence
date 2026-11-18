@@ -9,7 +9,7 @@ import pytest
 from linkml_runtime.utils.schemaview import SchemaView
 
 import rdf_persistence_generation as generation
-from rdf_persistence.services.schema import metamodel_importmap
+from rdf_persistence.schema.services.schema import metamodel_importmap
 from rdf_persistence_generation import steps
 from rdf_persistence_generation.cli import build_parser, main
 from rdf_persistence_generation.config import read_targets

@@ -20,10 +20,10 @@ from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.domain.layout import graph_iri, skolem_iri
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import MigrationStep
-from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.migration_runner import migrate_database
 from rdf_persistence.services.migrations import Chain, migration_request, stamp_if_none, stamps
 from tests.unit.services.test_migration_runner import (

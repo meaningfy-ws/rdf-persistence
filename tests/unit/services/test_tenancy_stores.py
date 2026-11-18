@@ -22,13 +22,13 @@ from rdf_persistence.core.domain.generated import rp_core, rp_tenancy
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.domain.layout import graph_iri, system_database_name
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.iris.domain.layout import graph_iri, system_database_name
+from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.services.generated.service.rp_service import GrantSet
-from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.books import Book

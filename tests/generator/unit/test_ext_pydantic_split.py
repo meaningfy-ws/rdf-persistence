@@ -11,7 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from rdf_persistence.core.domain.generated.rp_files import StoredFile
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions import pydantic_split

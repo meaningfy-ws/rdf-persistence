@@ -8,7 +8,7 @@ import pytest
 from rdf_persistence import Action
 from rdf_persistence.core.domain.exceptions import Forbidden, InvalidIri, InvalidToken
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.layout import application_database_name
+from rdf_persistence.iris.domain.layout import application_database_name
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.templates import Template

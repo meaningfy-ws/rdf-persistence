@@ -1,0 +1,356 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rp: <https://meaningfy.ws/ns/rdf-persistence#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+rp:KeyBranchTerms a sh:NodeShape ;
+	rdfs:comment "The terms of one branch of the diagnosis, which are the key held terms and the claim's index." ;
+	rdfs:label "Key branch terms" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n40 ;
+	sh:property _:c14n1 , _:c14n18 , _:c14n3 , _:c14n35 , _:c14n36 , _:c14n38 , _:c14n39 ;
+	sh:targetClass rp:KeyBranchTerms .
+rp:KeyHeldTerms a sh:NodeShape ;
+	rdfs:comment "The terms of the pattern that holds while another aggregate has the claimed values of a key." ;
+	rdfs:label "Key held terms" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n29 ;
+	sh:property _:c14n0 , _:c14n13 , _:c14n19 , _:c14n21 , _:c14n33 , _:c14n9 ;
+	sh:targetClass rp:KeyHeldTerms .
+rp:ListingTerms a sh:NodeShape ;
+	rdfs:comment "The terms of the listing query over a tenant's registry." ;
+	rdfs:label "Listing terms" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n10 ;
+	sh:property _:c14n11 , _:c14n12 , _:c14n15 , _:c14n17 , _:c14n2 , _:c14n22 , _:c14n24 , _:c14n31 , _:c14n34 , _:c14n37 , _:c14n41 , _:c14n6 , _:c14n7 ;
+	sh:targetClass rp:ListingTerms .
+rp:OwnerTerms a sh:NodeShape ;
+	rdfs:comment "The terms of the operations that drop what a root owns. It has no registry of its own, so it is not a `RegistryTerms`." ;
+	rdfs:label "Owner terms" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n23 ;
+	sh:property _:c14n14 , _:c14n16 , _:c14n20 , _:c14n26 ;
+	sh:targetClass rp:OwnerTerms .
+rp:RegistryTerms a sh:NodeShape ;
+	rdfs:comment "The registry graph and the two predicates of its entries, shared by the templates that read it." ;
+	rdfs:label "Registry terms" ;
+	sh:closed false ;
+	sh:ignoredProperties _:c14n4 ;
+	sh:property _:c14n28 , _:c14n30 , _:c14n32 ;
+	sh:targetClass rp:RegistryTerms .
+rp:StampGuardTerms a sh:NodeShape ;
+	rdfs:comment "The terms that make a migration operation match only the stamp of the version it starts from." ;
+	rdfs:label "Stamp guard terms" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n5 ;
+	sh:property _:c14n25 , _:c14n42 , _:c14n43 , _:c14n8 ;
+	sh:targetClass rp:StampGuardTerms .
+_:c14n0 sh:datatype rp:SparqlTerm ;
+	sh:description "The patterns that match the values a key claims, over the variable of the root." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Key values" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:values .
+_:c14n1 sh:datatype rp:SparqlTerm ;
+	sh:description "The patterns that match the values a key claims, over the variable of the root." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Key values" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:values .
+_:c14n10 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n11 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate a listing is ordered by; absent, the listing is ordered by IRI." ;
+	sh:maxCount 1 ;
+	sh:name "Sort predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 6 ;
+	sh:path rp:p_sort .
+_:c14n12 sh:datatype rp:SparqlTerm ;
+	sh:description "The list of graphs a listing leaves out." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Hidden graphs" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:hidden .
+_:c14n13 sh:datatype rp:SparqlTerm ;
+	sh:description "The list of roots the key check leaves out." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Excluded roots" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:excluded .
+_:c14n14 sh:datatype rp:SparqlTerm ;
+	sh:description "The aggregate root a write operates on." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Root" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:root .
+_:c14n15 sh:datatype rp:SparqlTerm ;
+	sh:description "The class of the aggregates a listing lists." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Listed class" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:target .
+_:c14n16 sh:datatype rp:SparqlTerm ;
+	sh:description "The registry kind of a loaded graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Loaded-graph kind" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:loaded .
+_:c14n17 sh:datatype rp:SparqlTerm ;
+	sh:description "The registry kind of an aggregate graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Aggregate kind" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:aggregate .
+_:c14n18 sh:datatype rp:SparqlTerm ;
+	sh:description "The list of roots the key check leaves out." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Excluded roots" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:excluded .
+_:c14n19 sh:datatype rp:SparqlTerm ;
+	sh:description "The registry graph of the tenant." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Registry graph" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:registry .
+_:c14n2 sh:datatype rp:SparqlTerm ;
+	sh:description "The ordering clause of a listing." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Order" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 7 ;
+	sh:path rp:order .
+_:c14n20 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that gives a registry entry its kind." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Kind predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:p_kind .
+_:c14n21 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that gives a registry entry its kind." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Kind predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:p_kind .
+_:c14n22 sh:datatype rp:SparqlTerm ;
+	sh:description "The most aggregates the page can hold." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Limit" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 8 ;
+	sh:path rp:limit .
+_:c14n23 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n24 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that states the graph a listed subject was found in." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Listed-in predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:p_listed_in .
+_:c14n25 sh:datatype rp:SparqlTerm ;
+	sh:description "The graph that holds the schema stamps." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Stamps graph" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:stamps .
+_:c14n26 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that names the root that owns a registry entry." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Owned-by predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:p_owned_by .
+_:c14n27 rdf:first rp:index ;
+	rdf:rest rdf:nil .
+_:c14n28 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that gives a registry entry its kind." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Kind predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:p_kind .
+_:c14n29 rdf:first rdf:type ;
+	rdf:rest _:c14n27 .
+_:c14n3 sh:datatype rp:SparqlTerm ;
+	sh:description "The registry kind of an aggregate graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Aggregate kind" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:aggregate .
+_:c14n30 sh:datatype rp:SparqlTerm ;
+	sh:description "The registry graph of the tenant." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Registry graph" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:registry .
+_:c14n31 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that gives a registry entry its kind." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Kind predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 11 ;
+	sh:path rp:p_kind .
+_:c14n32 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that names the root that owns a registry entry." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Owned-by predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:p_owned_by .
+_:c14n33 sh:datatype rp:SparqlTerm ;
+	sh:description "The registry kind of an aggregate graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Aggregate kind" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:aggregate .
+_:c14n34 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that names the root that owns a registry entry." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Owned-by predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 12 ;
+	sh:path rp:p_owned_by .
+_:c14n35 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that gives a registry entry its kind." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Kind predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path rp:p_kind .
+_:c14n36 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that names the root that owns a registry entry." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Owned-by predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 6 ;
+	sh:path rp:p_owned_by .
+_:c14n37 sh:datatype rp:SparqlTerm ;
+	sh:description "The registry graph of the tenant." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Registry graph" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 10 ;
+	sh:path rp:registry .
+_:c14n38 sh:datatype rp:SparqlTerm ;
+	sh:description "The registry graph of the tenant." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Registry graph" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:registry .
+_:c14n39 sh:datatype rp:SparqlTerm ;
+	sh:description "The position of the claim a branch of the diagnosis stands for." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Claim index" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:index .
+_:c14n4 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n40 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n41 sh:datatype rp:SparqlTerm ;
+	sh:description "The position of the page's first aggregate in the whole listing." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Offset" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 9 ;
+	sh:path rp:offset .
+_:c14n42 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate of a schema's data version in the stamps graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Stamp predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:p_stamp .
+_:c14n43 sh:datatype rp:SparqlTerm ;
+	sh:description "The version of the schema that the data follows before the migration." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "From version" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:from_version .
+_:c14n5 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n6 sh:datatype rp:SparqlTerm ;
+	sh:description "The patterns the conditions of a listing add over the variable of the root." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Condition patterns" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:patterns .
+_:c14n7 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that states the size of the whole listing." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Total predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path rp:p_total .
+_:c14n8 sh:datatype rp:SparqlTerm ;
+	sh:description "The schema whose stamp a migration moves. Not `schema`, which pydantic's `BaseModel` has as a method." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Schema id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:schema_id .
+_:c14n9 sh:datatype rp:SparqlTerm ;
+	sh:description "The predicate that names the root that owns a registry entry." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Owned-by predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path rp:p_owned_by .

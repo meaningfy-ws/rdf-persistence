@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence_generation import steps
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.config import read_targets
