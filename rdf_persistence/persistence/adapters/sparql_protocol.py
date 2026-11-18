@@ -41,6 +41,13 @@ class SparqlProtocolStore(HttpAdapter, ABC):
 
     db_system_name: ClassVar[str]
 
+    def __new__(cls, *args: object, **kwargs: object) -> "SparqlProtocolStore":
+        """Refuse a subclass that names no ``db_system_name``, as ABC refuses a missing method."""
+        store = super().__new__(cls)  # the abstract methods are refused here first
+        if not hasattr(cls, "db_system_name"):
+            raise TypeError(f"Can't instantiate {cls.__name__} without a db_system_name attribute")
+        return store
+
     @abstractmethod
     def query_path(self, dataset: str) -> str:
         """The path a SPARQL query on ``dataset`` is posted to."""

@@ -31,6 +31,7 @@ from rdf_persistence.schema.services.schema_structure import (
     json_name,
 )
 from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.generated.rp_generation import GeneratedFile
 
 # One JSON Schema definition: JSON data of a library, not a model of ours.
@@ -108,34 +109,56 @@ def _retargeted(node: Any) -> Any:
     return node
 
 
-def _declared_by_another_served_schema(schema_path: Path) -> set[str]:
+def _declared(schema_path: Path) -> set[str]:
+    """The classes and enums the file at ``schema_path`` declares, not those it imports."""
+    declared = load_schema(schema_path).schema
+    return {*declared.classes, *declared.enums}
+
+
+def _refuse_import_of_a_later_schema(schema_path: Path, later: list[Path]) -> None:
+    """Refuse a served schema that imports one listed after it in ``SERVED_SCHEMAS``.
+
+    Raises:
+        SchemaGenerationError: ``schema_path`` imports a served schema in ``later``; it names both.
+    """
+    view = load_schema(schema_path)
+    imported = {*view.all_classes(), *view.all_enums()} - _declared(schema_path)
+    for served in later:
+        if imported & _declared(served):
+            raise SchemaGenerationError(
+                f"{schema_path.name} imports {served.name}, which SERVED_SCHEMAS lists after it: "
+                "list a schema before the ones that import it"
+            )
+
+
+def _left_out(schema_path: Path) -> set[str]:
     """The classes and enums that another served schema than ``schema_path`` publishes.
 
-    The service merges the files of the served schemas and refuses a name in two of them (PD-10), so a
-    schema that imports another served one leaves that one's classes to its file. Two schemas that
-    import the same metamodel module both generate its classes: the earlier one in ``SERVED_SCHEMAS``
-    publishes them, the later one leaves them out.
+    The service merges the files of the served schemas and refuses a name in two of them (PD-10).
+    A served schema leaves out what a served schema listed before it generates (its imports of
+    another served schema, and of a metamodel module both import), except a class it declares
+    itself: a class two served schemas declare stays in both files, so the merge refuses it. A
+    schema that is not served leaves out everything the served schemas declare.
+
+    Raises:
+        SchemaGenerationError: The schema imports a served schema listed after it.
     """
-    names: set[str] = set()
-    earlier = schema_path.resolve() in {served.resolve() for served in SERVED_SCHEMAS}
-    for served in SERVED_SCHEMAS:
-        if served.resolve() == schema_path.resolve():
-            earlier = False
-            continue
-        declared = load_schema(served).schema
-        names |= {*declared.classes, *declared.enums}
-        if earlier:
-            names |= set(_generated(served))
-    return names
+    resolved = [served.resolve() for served in SERVED_SCHEMAS]
+    if schema_path.resolve() not in resolved:
+        return {name for served in SERVED_SCHEMAS for name in _declared(served)}
+    position = resolved.index(schema_path.resolve())
+    _refuse_import_of_a_later_schema(schema_path, list(SERVED_SCHEMAS[position + 1 :]))
+    earlier = {name for served in SERVED_SCHEMAS[:position] for name in _generated(served)}
+    return earlier - _declared(schema_path)
 
 
 def render(schema_path: Path) -> list[GeneratedFile]:
     """``openapi-components.json``: the component schema of every class of the schema, by name.
 
-    A class that another served schema declares is left out (see ``_declared_by_another_served_schema``).
+    A class that another served schema publishes is left out (see ``_left_out``).
     """
     view = load_schema(schema_path)
-    left_out = _declared_by_another_served_schema(schema_path)
+    left_out = _left_out(schema_path)
     schemas = {
         name: _retargeted(_trimmed(view, name, definition))
         for name, definition in sorted(_generated(schema_path).items())

@@ -18,6 +18,7 @@ from rdf_persistence.core.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.persistence.adapters.sparql_protocol import SparqlProtocolStore
+from rdf_persistence.testkit import assert_isomorphic
 from tests.logs import attributes, records_of
 
 URL = "http://toy.test:7878"
@@ -112,6 +113,8 @@ async def test_a_graph_is_put_to_the_subclass_path_as_turtle_under_a_graph_param
     assert request.url.path == "/g/d", "a graph goes to the path the subclass names"
     assert request.url.params["graph"] == f"{EX}g?x=1&y", "the graph IRI is one encoded parameter"
     assert request.headers["content-type"].startswith("text/turtle")
+    sent = Graph().parse(data=request.content.decode(), format="turtle")
+    assert_isomorphic(sent, graph)  # the body is the graph, as Turtle
 
 
 DATA_PLANE = {
@@ -174,6 +177,19 @@ async def test_an_unreadable_query_answer_is_unavailable_and_names_the_service()
     store, _ = store_answering(reply(content=b"<html/>", content_type=RESULTS_JSON))
     with pytest.raises(StoreUnavailable, match="Toy answered with something unreadable"):
         await store.query("d", "ASK {}")
+
+
+def test_a_subclass_without_a_db_system_name_cannot_be_instantiated():
+    """The base declares ``db_system_name`` with no value; a 400 must never reach an AttributeError."""
+
+    body = {
+        name: member
+        for name, member in vars(ToyStore).items()
+        if name != "db_system_name" and not name.startswith("__")
+    }
+    forgetful = type("Forgetful", (SparqlProtocolStore,), body)
+    with pytest.raises(TypeError, match="db_system_name"):
+        forgetful(base_url=URL)
 
 
 def test_the_base_cannot_be_instantiated_on_its_own():  # TC-42

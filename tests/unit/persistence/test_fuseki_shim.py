@@ -54,6 +54,28 @@ def test_importing_the_old_path_warns_once_naming_the_new_path_and_hands_back_th
     assert answer["same"], "FusekiStore of the shim is the class of rdf_persistence.FusekiStore"
 
 
+def test_the_shim_keeps_the_two_messages_of_the_old_module_with_their_old_values():
+    """PD-8: the module's other names stay, ``BAD_QUERY_MESSAGE`` and ``UNREADABLE`` among them."""
+    run = subprocess.run(
+        [
+            sys.executable,
+            "-W",
+            "ignore",
+            "-c",
+            f"import json, {SHIM} as shim; print(json.dumps([shim.BAD_QUERY_MESSAGE, shim.UNREADABLE, shim.__all__]))",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=120,
+    )
+    bad_query, unreadable, exported = json.loads(run.stdout.splitlines()[-1])
+
+    assert bad_query == "Fuseki refused the SPARQL text as malformed"
+    assert unreadable == "Fuseki answered with something unreadable"
+    assert {"BAD_QUERY_MESSAGE", "UNREADABLE"} <= set(exported)
+
+
 def test_the_shim_hands_back_every_name_the_old_module_had_that_stays_public():
     answer = _import_in_a_fresh_interpreter()
 

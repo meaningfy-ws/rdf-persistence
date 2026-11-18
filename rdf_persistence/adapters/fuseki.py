@@ -24,6 +24,11 @@ from rdf_persistence.persistence.adapters.sparql_protocol import (
     SPARQL_UPDATE,
 )
 
+# Names of the module before the split (PD-8: its other names); the store now builds its messages from
+# its ``service``, with the same text for Fuseki.
+BAD_QUERY_MESSAGE = "Fuseki refused the SPARQL text as malformed"
+UNREADABLE = "Fuseki answered with something unreadable"
+
 warnings.warn(
     "rdf_persistence.adapters.fuseki moved to rdf_persistence.persistence.adapters.fuseki; "
     "the old path will be removed in the minor release after the one that ships the move",
@@ -33,6 +38,7 @@ warnings.warn(
 
 __all__ = [
     "ADMIN_DATASETS",
+    "BAD_QUERY_MESSAGE",
     "DATASET_TYPE",
     "DATA_ENDPOINT",
     "FORM_DB_NAME",
@@ -42,6 +48,7 @@ __all__ = [
     "RESULTS_JSON",
     "SPARQL_QUERY",
     "SPARQL_UPDATE",
+    "UNREADABLE",
     "UPDATE_ENDPOINT",
     "FusekiStore",
 ]

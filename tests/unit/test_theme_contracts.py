@@ -250,6 +250,12 @@ def test_a_turned_on_theme_importing_an_old_layer_breaks_the_old_layout_contract
             "iris.services.generated",
             id="iris-domain-to-iris-generated",
         ),
+        pytest.param(
+            "themes-ordered",
+            "persistence/services/x.py",
+            "migrations.services",
+            id="persistence-to-migrations",
+        ),  # TC-45
     ],
 )
 def test_a_planted_import_between_the_new_themes_breaks_its_contract(
