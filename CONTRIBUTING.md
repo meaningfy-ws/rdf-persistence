@@ -43,8 +43,10 @@ entrypoints | adapters  →  services  →  domain
 - `adapters/` implements the ports (Fuseki, S3, Zitadel, JWKS).
 - `entrypoints/` (the service kit) parses input, calls services, formats output.
 - `adapters` and `entrypoints` never import each other; the consumer's composition root wires them.
-- `generation/` (build time) and `testkit/` (tests) may import any layer; no runtime layer imports
-  them.
+- `testkit/` (tests) may import any layer; no runtime layer imports it.
+- `rdf_persistence_generation/` (build time) is a sibling top-level package, shipped in the same
+  wheel. The library never imports it, except through the four testkit shims
+  (`library-never-imports-the-generator`).
 - Consumers import only from the top-level package `rdf_persistence` (and `rdf_persistence.testkit`
   in tests).
 

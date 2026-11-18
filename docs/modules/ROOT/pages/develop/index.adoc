@@ -146,7 +146,8 @@ _How do I add a check rule?_
 . Add the rule's value to `HardRule` or `BoundaryRule` in `rp_generation.yaml`, with a title,
   description and meaning, and run `make generate`.
 . Implement it in `rdf_persistence_generation/checks/hard.py` or `boundary.py`, yielding a
-  `CheckProblem` through `rule_problem`.
+  `CheckProblem` through `rule_problem`. A rule with a module of its own, as `checks/python_package.py`
+  has, joins the list in `steps._hard_problems`, which the hard step runs.
 . Test it in `tests/generator/unit/test_hard_check.py` or `test_boundary_check.py`, with one
   schema that breaks the rule and one that does not.
 . If the rule is normative, add it to the list in

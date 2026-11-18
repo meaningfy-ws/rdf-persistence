@@ -206,7 +206,7 @@ and buckets, and the sweep inside a live tenant is the next building block (belo
 
 |Test kit
 |v1
-|`rdf_persistence.testkit`: `FakeStore`, `FakeFileStore`, `FakeIdentity` and `fake_session` (pure Python) for consumers' unit tests; `TokenSigner` for test tokens; four conformance suites, for a store, a file store, an identity adapter and an event bus, run on the fakes and on Fuseki, Garage, Zitadel and Redis in containers; the freshness plugin and the model guards. The toolkit's own tests use a toy domain.
+|`rdf_persistence.testkit`: `FakeStore`, `FakeFileStore`, `FakeIdentity` and `fake_session` (pure Python) for consumers' unit tests; `TokenSigner` for test tokens; four conformance suites, for a store, a file store, an identity adapter and an event bus, run on the fakes and on Fuseki, Garage, Zitadel and Redis in containers; the model guards; the freshness plugin lives in `rdf_persistence_generation.testkit.freshness` (the old path is a shim). The toolkit's own tests use a toy domain.
 |N-10
 
 |Model to code

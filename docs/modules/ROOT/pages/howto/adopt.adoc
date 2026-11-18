@@ -409,8 +409,9 @@ The testkit adds five checks to your test suite.
 pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]
 ----
 
-The plugin lives in the generator's package, `rdf_persistence_generation`, which the `generate`
-extra installs. The old line, `rdf_persistence.testkit.freshness`, still works for now. It warns
+The plugin lives in the generator's package, `rdf_persistence_generation`. The `rdf-persistence`
+wheel ships that package beside the library, so the plugin is there without the `generate` extra;
+only `rp-generate` needs the extra, for LinkML. The old line, `rdf_persistence.testkit.freshness`, still works for now. It warns
 once with a `DeprecationWarning` and is removed in the minor release after the one that ships this
 move, so change the line now.
 
