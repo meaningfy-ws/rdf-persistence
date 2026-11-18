@@ -406,8 +406,13 @@ The testkit adds five checks to your test suite.
 [source,python]
 ----
 # tests/conftest.py
-pytest_plugins = ["rdf_persistence.testkit.freshness"]
+pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]
 ----
+
+The plugin lives in the generator's package, `rdf_persistence_generation`, which the `generate`
+extra installs. The old line, `rdf_persistence.testkit.freshness`, still works for now. It warns
+once with a `DeprecationWarning` and is removed in the minor release after the one that ships this
+move, so change the line now.
 
 At the start of every test run the plugin reads the `[tool.rp-generate]` entries of the
 `pyproject.toml` in pytest's rootdir. For other files, list them one per line, relative to the
@@ -433,8 +438,9 @@ from pathlib import Path
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from rdf_persistence.testkit import (
-    Conformance, aggregate, assert_models_generated, conformance_problems, round_trip,
+from rdf_persistence.testkit import assert_models_generated
+from rdf_persistence_generation.testkit import (
+    Conformance, aggregate, conformance_problems, round_trip,
 )
 
 ROOT = Path(__file__).parents[1]
@@ -583,9 +589,10 @@ import json
 import os
 
 from rdf_persistence.testkit import (
-    Conformance, class_shapes, model_schema_diff, model_shape_diff, read_snapshot, snapshot_diff,
+    class_shapes, model_schema_diff, model_shape_diff, read_snapshot, snapshot_diff,
     write_snapshot,
 )
+from rdf_persistence_generation.testkit import Conformance
 
 SNAPSHOT = ROOT / "tests" / "model-shape.yaml"
 COMPONENTS = ROOT / "domain" / "generated" / "openapi-components.json"
@@ -643,6 +650,12 @@ plugin and `rp-generate --check` fail with `stale input: rdf_persistence/...`, b
 manifest records the generator files it was made with, and with `stale: generated with linkml ...`
 if the `linkml` version changed. Run your regenerate target and review the generated diff: a new
 toolkit version can change the generated code.
+
+After upgrading to the version that moves the generator to `rdf_persistence_generation`, run your
+regenerate command once. The manifest records the generator's files by path, and those paths
+changed from `rdf_persistence/generation/...` to `rdf_persistence_generation/...`, so every
+manifest is stale until you regenerate. The generated code itself changes only in these recorded
+paths.
 
 [#session]
 == 8. Store and read aggregates in a domain service

@@ -279,13 +279,13 @@ xref:architecture/generation.adoc#kinds[Two kinds of model].
 *How do I change a toolkit schema?*::
 Edit the schema under `rdf_persistence/model/` (or a technical schema under
 `rdf_persistence/model/technical/<group>/`, or
-`rdf_persistence/generation/model/rp_generation.yaml`), run
+`rdf_persistence_generation/model/rp_generation.yaml`), run
 `make generate`, refresh the model-shape snapshot if a class changed, and commit the schema and the
 generated code together. See xref:develop/index.adoc#change-a-toolkit-schema[Change a toolkit
 schema].
 
 *How do I add a generator extension or a check rule?*::
-An extension is a module in `rdf_persistence/generation/extensions/` with a `render` function, a
+An extension is a module in `rdf_persistence_generation/extensions/` with a `render` function, a
 step in `steps.py`, a row in the extensions table and its own test against the toy library. A
 check rule is a value in `rp_generation.yaml`, its code in `checks/` and two test schemas. See
 xref:develop/index.adoc#add-or-change-a-generator-extension[Add or change a generator extension]

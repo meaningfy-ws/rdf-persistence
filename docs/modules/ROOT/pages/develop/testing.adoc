@@ -18,6 +18,20 @@ _What makes a test acceptable here?_
   exception in `tests/integration/network/` talks to a loopback server the test starts itself
   (a real listener on 127.0.0.1): it needs no container, and `make test-containers` runs it.
 
+*Two pyramids.* There is one for each package. The library's is `tests/unit/`, `tests/feature/`,
+`tests/integration/` and `tests/e2e/`. The generator's is the same four tiers under
+`tests/generator/` (`tests/generator/unit/`, and so on), and its folders give the same markers.
+Place a test by the module it tests, not by where it used to sit: a test of the library stays in
+the library's pyramid, even if it uses the generator as a tool. A library test imports
+`rdf_persistence_generation` only if it is listed in `TOOL_USERS` in
+`tests/unit/test_library_tests_stay_apart.py`; that test fails on any other file, and on a stale
+entry.
+
+`make test-unit` and `make test-feature` leave out `tests/generator/` and measure the coverage of
+`rdf_persistence`. `make test-generator` runs only `tests/generator/` and measures the coverage of
+`rdf_persistence_generation`, with the same floor of 80 %. `make test` runs the three.
+`make test-containers` also runs the generator's integration and end-to-end tests.
+
 == Test doubles and data
 
 [start=3]
