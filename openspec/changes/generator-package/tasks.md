@@ -140,7 +140,7 @@ Stage 3 closes like stage 1 (one review pass, L1+L3+L4).
 
 ## Stage 4: the generator's upper tiers (PR 4)
 
-- [ ] 4.1 PD-11: `tests/generator/feature/generation.feature` from the `rp-generation` delta's
+- [x] 4.1 PD-11: `tests/generator/feature/generation.feature` from the `rp-generation` delta's
   pyramid scenario and the scenarios below, steps in `test_generation.py`. Gate:
   `make test-changed check-quality`.
 
@@ -152,7 +152,7 @@ Stage 3 closes like stage 1 (one review pass, L1+L3+L4).
 | TC-44 | the `description` of a class in `books.yaml` removed | a hard-check problem tagged `[description]` (`HardRule.DESCRIPTION`) naming the class; exit 1; nothing written |
 | TC-45 | a toy class giving `slot_usage` to a slot annotated `toolkit_filled` | a hard-check problem tagged `[toolkit_filled]` (`HardRule.TOOLKIT_FILLED`) naming the class and slot; exit 1 |
 
-- [ ] 4.2 PD-12: `tests/generator/integration/test_generated_artefacts.py`. Gate:
+- [x] 4.2 PD-12: `tests/generator/integration/test_generated_artefacts.py`. Gate:
   `make test-generator`, then `make check-quality`.
 
 | ID | Input | Expected |
@@ -163,7 +163,7 @@ Stage 3 closes like stage 1 (one review pass, L1+L3+L4).
 | TC-49 | `tsc --noEmit --strict` on the fresh TypeScript | exit 0 |
 | TC-50 | `PATH` without `npx` | the test fails with "install Node 20" |
 
-- [ ] 4.3 PD-13: `tests/generator/e2e/test_generated_library_served.py`. Gate:
+- [x] 4.3 PD-13: `tests/generator/e2e/test_generated_library_served.py`. Gate:
   `make test-containers TEST_PATH=tests/generator/e2e`, then `make check-quality`.
 
 | ID | Input | Expected |
@@ -173,7 +173,7 @@ Stage 3 closes like stage 1 (one review pass, L1+L3+L4).
 | TC-53 | an outsider reads the tenant | 404 |
 | TC-54 | after the test | `toy_e2e` gone from `sys.modules` and `sys.path` |
 
-- [ ] 4.4 DEC-9, PD-10: `make test-generator` adds the integration tier; the CI job installs Node;
+- [x] 4.4 DEC-9, PD-10: `make test-generator` adds the integration tier; the CI job installs Node;
   `develop/testing.adoc` gains the generator lane; `rp-developer-checks` delta applied by the docs.
   Gate: `make check-all`.
 
@@ -188,7 +188,7 @@ one pass), PR 4, then the reconciliation of `proposal.md` (P-0004) in PR 4 befor
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · (tester) · [x] 2.4 · [x] 2.5 · PR 2 ·
-  [x] 3.1 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4 · reconcile · PR 4
+  [x] 3.1 · PR 3 · [x] 4.1 · [x] 4.2 · [x] 4.3 · [x] 4.4 · reconcile · PR 4
 
 ## Verification
 
