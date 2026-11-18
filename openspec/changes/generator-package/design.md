@@ -328,3 +328,12 @@ package name are leader's choices (DEC-2, DEC-5).
     passage (task 2.5).
   - S: the contract's comment says "configuration and records" while `freshness` also uses the
     manifest logic; the name is fixed by task 1.2 and stage 2 replaces the contract.
+- **D-7 PR #161 does not block the move** (lead, 2026-11-18, under the developer's "take the
+  decisions for me"). The ordering rule allows no open PR but release-please (#134) and the lead's
+  own before stage 2. #161 (the developer's) changes only `.gitignore`, which no move touches, so
+  stage 2 starts. A parallel session merged #163 (`mrn-followups`) into `develop` meanwhile; stage 2
+  branches after it (c11961b) and rebases before its PR (P-0002).
+- **D-8 Stage 2 runs its tasks in parallel where their files are disjoint** (developer, 2026-11-18,
+  "run things in parallel whenever they can"). 2.1 first (nothing imports half-moved); then 2.2,
+  2.3 and 2.5 in parallel worktrees; 2.4 after 2.2 (both edit `tests/conftest.py`). Builders do
+  not tick `tasks.md`; the lead does (T2).
