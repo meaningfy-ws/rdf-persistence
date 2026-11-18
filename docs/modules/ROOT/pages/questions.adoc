@@ -216,7 +216,8 @@ xref:howto/migrate.adoc[Change a schema that has stored data].
 *How do I test my application with the testkit?*::
 Use `FakeStore`, `FakeFileStore` and `FakeIdentity` in place of the adapters, `fake_session` for a
 domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from
-`rdf_persistence.testkit`. Add the freshness plugin and the model guards to your test suite. See
+`rdf_persistence.testkit`. Add the model guards and the freshness plugin to your test suite; the
+plugin is `rdf_persistence_generation.testkit.freshness`. See
 xref:howto/adopt.adoc#guard[step 6] and xref:howto/adopt.adoc#test-service[step 13].
 
 *How do I run a use case as a command?*::

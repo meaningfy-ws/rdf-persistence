@@ -145,6 +145,60 @@ def test_the_library_lanes_leave_the_generators_tests_to_their_own_lane() -> Non
     )
 
 
+def test_the_generator_lane_runs_its_unit_feature_and_integration_tiers_only() -> None:
+    """generator-package DEC-9, PD-10, TC-56: no e2e tier, no container, and the slow tsc test runs."""
+    recipe = expanded("\n".join(recipe_of("test-generator")))
+    selection = " ".join(SELECTION.findall(recipe))
+    tiers = set(re.findall(r"\b(unit|feature|integration|e2e|slow)\b", selection))
+
+    assert tiers == {"unit", "feature", "integration"}, f"the generator lane selects {selection!r}"
+    assert "not slow" not in selection, "the generator lane must keep the slow tsc test"
+    assert "docker" not in recipe.lower(), "the generator lane starts no container"
+
+
+GENERATOR_E2E_IGNORE = re.compile(
+    r"--ignore=(?:(?!--).)*?/tests/generator/e2e(?:\s|$)"
+)  # $(shell pwd) holds a space
+LANES_WITHOUT_CONTAINERS = [
+    "test-unit",
+    "test-unit-ci",
+    "test-durations",
+    "test-feature",
+    "test-generator",
+    "test-fast",
+    "test-changed",
+    "coverage-report",
+    "profile-tests",
+]
+
+
+@pytest.mark.parametrize("lane", LANES_WITHOUT_CONTAINERS)
+def test_the_lanes_without_containers_ignore_the_generators_e2e_folder(lane: str) -> None:
+    """D-27 L2 W1+W2: its conftest registers the container plugin whenever a session collects it."""
+    recipe = expanded("\n".join(recipe_of(lane)))
+
+    assert GENERATOR_E2E_IGNORE.search(recipe + " "), f"{lane} collects tests/generator/e2e"
+
+
+@pytest.mark.parametrize("lane", ["test-containers", "test-e2e"])
+def test_the_container_lanes_still_collect_the_generators_e2e_folder(lane: str) -> None:
+    recipe = expanded("\n".join(recipe_of(lane)))
+
+    assert not GENERATOR_E2E_IGNORE.search(recipe + " "), f"{lane} ignores tests/generator/e2e"
+
+
+def test_the_ci_generator_job_sets_up_node_before_it_runs_the_lane() -> None:
+    """generator-package DEC-9, TC-55: the integration tier runs tsc, which needs Node 20."""
+    job = _ci_job("test-generator")
+
+    assert "uses: actions/setup-node@v4" in job, "the generator job has no Node"
+    assert re.search(r'node-version:\s*"?20"?', job), "the generator job must set up Node 20"
+    assert "run: make test-generator" in job, "the generator job must run its lane"
+    assert job.index("actions/setup-node") < job.index("run: make test-generator"), (
+        "Node must be set up before the lane runs"
+    )
+
+
 def test_the_durations_lane_replaces_the_file_instead_of_merging_into_it() -> None:
     """generator-package D-14: keys of moved tests must not survive a refresh."""
     recipe = expanded("\n".join(recipe_of("test-durations")))

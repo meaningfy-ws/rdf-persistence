@@ -63,5 +63,7 @@ generated toy library through the service kit on Fuseki.
 
 #### Scenario: fresh shapes judge the conformance cases
 - **GIVEN** the toy library freshly generated
-- **WHEN** pySHACL validates each conformance case against the fresh shapes
-- **THEN** every valid case conforms and every invalid case does not
+- **WHEN** pySHACL validates each conformance case of the toy's classes against the fresh shapes
+- **THEN** every valid case conforms, and every invalid case does not conform and its report names
+  the constraint of the case's kind, except a `closed` case, which the reader of the fresh
+  documents refuses before the shapes see it

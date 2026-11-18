@@ -201,3 +201,69 @@ None.
 - `thematic-structure` gets F-4 and a generator that imports the library one way only.
 - `typescript-client`, `second-store`, `graphql-read-api`: any generator work they plan targets
   `rdf_persistence_generation`.
+
+## As built
+
+Reconciled at the close of the change, in PR 4 before it merges (P-0004). Delivery decisions are
+design D-1 to D-29.
+
+| Stage | PR | As shaped | As built |
+|---|---|---|---|
+| 1 one-way testkit | #162 | DEC-3 (first half), DEC-4, PD-1 | Delivered as shaped. No record had to move: only `testkit/freshness.py` and `testkit/conformance.py` imported the generator (D-5). The import-cut test and the interim contract `testkit-imports-the-generator-only-for-configuration`. A small stage: one L2+L3 pass, no checker (D-3, D-6). Acceptance demo waived for the whole EPIC (D-2). Delivery decisions D-1 to D-6 |
+| 2 the sibling package | #166 | DEC-1 to DEC-6, DEC-8, DEC-9, DEC-10, PD-2 to PD-5, PD-7 to PD-10 | Delivered: one wheel with both packages, `rp-generate` at `rdf_persistence_generation.cli:main`, the four testkit modules moved with their shims, `library-never-imports-the-generator` with exactly the four shim edges, the generator's `tests/generator/unit/` pyramid and the `test-generator` lane and CI job. `make generate` changed only the manifests of the nine toolkit targets and the toy. Built differently: `assert_isomorphic` stays in the library (D-10); `TOOL_USERS` has nine files (D-13); the manifests leave out the generator's `testkit/` as well as `generated/` (D-20). Added beyond the shape: the event-bus and SPARQL-parser contracts also cover the generator (D-19); a separate `sonar` job reads both coverage reports, so the `unit` job does not wait for the generator (D-15, D-19); `make refresh-map` re-keys moved tests (D-17); the `roots=` guard walks Python's `ast`, not the `ast-grep` binary (D-19). Delivery decisions D-7 to D-20 |
+| 3 F-4 | #168 | DEC-7, PD-6 | Delivered: `python_package` on every toolkit schema module, `public_package` on `rp.yaml`, `metamodel_module` reads them, the two constants gone, two hard-check rules in `checks/python_package.py`. `rp.yaml` also carries `python_package`, because rule (a) covers every module of its target; TC-39 checks that no constant is assigned, imported or used, since PD-6's own key generates the enum member `PUBLIC_PACKAGE` (D-23). A small stage (D-24). Delivery decisions D-21 to D-25 |
+| 4 upper tiers, docs | PR 4 (this PR) | DEC-9, PD-10 to PD-13 | Delivered: the feature, integration and end-to-end tiers of the generator, built in parallel with stage 3 (D-21); `make test-generator` runs unit, feature and integration with no container, its CI job sets up Node 20; the docs owed by stages 2 and 3 (`evidence/docs-owed.md`); the scenario map of the new tests. Built differently: a class without a `description` is refused by the lint step before the hard check (TC-44); a `closed` invalid case is refused by the reader before SHACL, so its report is not asserted (TC-47); `--python-out` is not passed (PD-13) (all D-26). The full review over the EPIC re-labelled two findings Critical: the pre-commit freshness hook must watch the whole generator, and the unit lanes must leave out `tests/generator/e2e` so they never load the container plugin (D-27). The stage's tester closed four gaps with tests, no production change: generation is the same under any hash seed, every activity class gets a frame, the fresh closed shapes accept the session's bookkeeping predicates, and the e2e cleanup holds when a test fails (D-28). The checker found the guard on the container plugin failing the container lane, now scoped to the lanes that ignore the e2e folder, and the last rows of the commands table (D-29). Delivery decisions D-26 to D-29 |
+
+### What Changes, Capabilities and Impact as delivered
+
+- **What Changes** holds as written, with these differences. The library keeps
+  `rdf_persistence/testkit/graphs.py` with `assert_isomorphic`; the `roundtrip` shim still
+  re-exports it (D-10). `.importlinter` also widens `event-bus-libraries-in-one-module` and
+  `sparql-parser-only-through-the-wrappers` to the generator (D-19). CI gains a `sonar` job beside
+  `test-generator` (D-15, D-19). The manifests list neither the generator's `generated/` nor its
+  `testkit/` as inputs (D-20). The docs touched more pages than listed: `AGENTS.md`,
+  `CONTRIBUTING.md` and `questions.adoc` too.
+- **BREAKING**, as shaped: `rdf_persistence.generation` is gone with no shim; every manifest names
+  `rdf_persistence_generation/...`, so each consumer runs `rp-generate` once after upgrading. The
+  adoption guide says so (`howto/adopt.adoc`).
+- **Capabilities** as shaped: `rp-generation`, `rp-package-boundaries`, `rp-testkit` and
+  `rp-developer-checks` are modified; none is new. `rp-testkit` also keeps `assert_isomorphic` in the
+  library and modifies the requirement on the model guards' public names, whose four moved names
+  the adoption guide now imports from `rdf_persistence_generation.testkit`.
+- **Impact** as shaped. The four old testkit paths warn and name 0.6.0, the minor release after
+  0.5.0, which ships this change; if it ships later, the shims take the new number (D-12). Their
+  removal is #165.
+
+### Divergences from the shape
+
+- **DEC-4, PD-2**: the round trip moved, but its graph comparison `assert_isomorphic` did not.
+  About ten library tests use it, and through the shim each would warn and reach the generator
+  (D-10, D-18).
+- **DEC-3, PD-8**: besides the new contract, two existing contracts gained the generator, because
+  the move had narrowed them (D-19 W1).
+- **DEC-9, PD-10**: the generator's coverage reaches SonarCloud through its own `sonar` job, which
+  needs `unit` and `test-generator`; otherwise a generator failure would skip the library's job
+  (D-15, D-19 W2).
+- **PD-4**: the generator's `testkit/` is not a manifest input, because it never shapes the output
+  (D-20 W1).
+- **PD-5**: the `roots=` guard is a Python `ast` walk, since the `ast-grep` binary is not in CI
+  (D-19).
+- **PD-6**: `rp.yaml` carries `python_package` too; TC-39 is an `ast` check, not a `grep` (D-23).
+- **PD-9**: `TOOL_USERS` has nine files, not eight (D-13).
+- **PD-11, TC-44**: the missing `description` is refused by lint, not by the hard check; the
+  `[description]` tag stays pinned by the hard check's unit test (D-26).
+- **PD-12, TC-47**: `closed` cases are refused by the reader before SHACL; the `rp-generation`
+  delta says so (D-26).
+- **PD-13**: `--python-out` is not passed, as the toy's own `python` key already writes into the
+  new package; the end-to-end test reuses the library's e2e helpers (D-26).
+- **D-3**: each stage had one L2+L3 pass, and the five-lens review ran once over the whole EPIC,
+  instead of the per-stage review sets of `tasks.md`.
+- **D-2**: the acceptance demo that LARGE makes mandatory was waived by the developer.
+
+### Follow-ups
+
+- **#164**: hardening found under the review floor: the tester's findings of stages 2 and 3
+  (D-16, D-25) and the full review's (D-27), among them a contract keeping the generator's core off
+  its testkit, `assert_public_imports` for the generator's surface, and duplicated test helpers.
+  Item 1, the `roots=` guard's blind spots, was closed by D-19.
+- **#165**: remove the four shims and their contract exceptions in 0.6.0 (D-12).

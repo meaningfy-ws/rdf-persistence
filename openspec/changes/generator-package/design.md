@@ -480,3 +480,66 @@ package name are leader's choices (DEC-2, DEC-5).
   toolkit's run); (P3) `public_package()` is cached over a module constant, stale only in tests
   that swap the metamodel. The sort keeps the end-to-end tests of the two error-matrix rows
   (which also closes the review's S1) and the consumer half of TC-37 (W3).
+- **D-26 Tasks 4.1 to 4.3 as built** (builders, accepted by the lead). (1) TC-44: through
+  `rp-generate` a class without a `description` is refused by the lint step (the toolkit's
+  `lint.yaml` makes LinkML's `recommended` rule an error), which runs before the hard check; the
+  scenario asserts the lint problem naming the class and `description`, exit 1, nothing written;
+  the `[description]` tag stays pinned by the unit test of the hard check. (2) TC-47: the toy's
+  `closed` invalid cases are refused by `Documents.expand` (`InvalidBody`) before SHACL, so their
+  `ClosedConstraintComponent` is not asserted; any other kind refused that way fails the test.
+  (3) PD-13: `--python-out` is not passed; the toy's own `python = "generated"` already writes into
+  `toy_e2e/generated`, and the flag would nest it a level deeper. (4) The e2e test reuses
+  `tests.e2e.world.Callers` and `library_app.library_settings`, coupling the generator's e2e to
+  the library's e2e helpers; `build_library_app` is bound to the committed toy, so the wiring is
+  repeated in a small `served` helper.
+- **D-27 The full review of the EPIC** (lead; D-3: L1, L2, L3 apart, L4+L5 one pass, over
+  `14b3a86..e9d0cc5`, after stages 1–3 merged). No finding was labelled Critical; re-labelled,
+  with the reason, and fixed in one fixer pass:
+  - L3 W1 → Critical: the pre-commit `rp-generate-check` hook fires only on
+    `rdf_persistence_generation/model/`, while every generator module is a manifest input; the move
+    narrowed a gate (DEC-10). It matches the whole generator but `testkit/` and `generated/`
+    (PD-4, D-20), pinned by a test.
+  - L2 W1 + W2 → Critical: `tests/generator/e2e/conftest.py` registers the container plugin for any
+    session that collects `tests/generator`, so the unit lanes (`test-fast`, `test-changed`,
+    `test-generator`) import testcontainers and run its autouse fixture, and the integration
+    tier's "no container plugin" guard cannot fail. The unit lanes ignore `tests/generator/e2e`
+    like `tests/e2e`; the guard asserts the plugin is not registered in the session.
+  Accepted below Critical because each is the same class as an earlier fix: L3 S2 (pin the
+  sources of `works-without-the-generate-extra` and `rdf_persistence_generation` among the
+  forbidden modules of `runtime-without-extras`, as D-20 W2); L2 W3 (`architecture/generation.adoc`
+  ~683 and `develop/index.adoc` ~134: the manifest inputs also exclude `testkit/`, D-20 W1);
+  L2 S5 (tick 4.1–4.3).
+  Under the floor, follow-ups in #164: L1 S1 (`refresh_map --base` value starting with `-` is read
+  by git as an option); L3 S1 (a contract keeping the generator's core off its testkit, pytest and
+  hypothesis); L2 W4 (`assert_public_imports` does not know the generator's public surface);
+  L2 S1–S4 (TC-46/47 silently drop rows outside the toy, TC-44/45 "nothing written" checks only two
+  folders, TC-41 checks two frames, TC-47's `closed` refusal reason); L4+L5 W1 (three copies of
+  "copy and generate the toy"), W2 (three `ast` import walkers), W3 (constraint kinds as bare
+  strings in the integration test), S1–S10 (duplicated constants and helpers).
+- **D-28 Stage 4 tester** (lead; 11 planted regressions, 7 caught by the tiers, 4 gaps; 4 tests,
+  all failed first against their plant and pass on the clean tree). Accepted, closed by the kept
+  tests, no production change: (1, P2) TC-42 generates twice in one process and cannot see
+  hash-seed nondeterminism — three generations under different `PYTHONHASHSEED`; (2, P2) TC-41
+  checks two frames — every activity class gets one; (3, P2) the closed shapes' exemption for the
+  session's bookkeeping predicates had no upper-tier test; (4, P3) TC-54 covered only the passing
+  path — cleanup when the body raises or the import fails. Under the floor, already in #164
+  item 11: (5) TC-44's step does not pin the `[description]` tag (D-26), (6) "nothing written"
+  checks two folders. The tester's note that no make target runs one generator tier is a
+  suggestion, not filed.
+- **D-29 Stage 4 checker: verdict fail, items fixed now** (lead, under the developer's grant;
+  9 findings). C1 (Critical): D-27's guard asserts the container plugin is absent from the
+  session, but `make test-containers` loads it on purpose and selects the integration tier too,
+  so the container gate fails; the guard asserts absence only when the session ignores
+  `tests/generator/e2e` (the lanes D-27 pins), and holds nothing otherwise. W1: the
+  `develop/index.adoc` commands table (`make test` runs three lanes, no "two halves",
+  `refresh-map` re-keys moved tests against `BASE`) is done now (D-19 W5, D-17). W2: `proposal.md`'s
+  As built names D-28. W3: the 14 new tests are mapped (D-17), in this PR. W4: the hook's docstring
+  and `generation.adoc` (~713) say it fires on the generator's inputs, not "every manifest input"
+  (the library's `schema*.py` readers are inputs it does not match, as before the move). Under the
+  floor: S2 (a cleanup test asserts `sys.path` only), S3 (a direct `tests/generator/e2e` path given
+  to `test-changed` loads its conftest, as `tests/e2e` does), S4 (docs-owed has no status column).
+- **D-30 The docs stage is folded into stage 4's PR** (lead, under the developer's "work in
+  parallel" and "do not stop"). The owed pages were written while stage 4 was built, from the
+  same base, and land in PR 4 instead of a separate docs PR; the full review's L2 pass and the
+  stage 4 checker verified every row of `evidence/docs-owed.md` against the code, and a cold
+  reader read the changed how-to (`howto/adopt.adoc`). The archive follows as its own PR.

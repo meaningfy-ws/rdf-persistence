@@ -42,7 +42,9 @@ instructions are missing, route by the skills' descriptions and say so once.
 1. **Layers.** `domain` is innermost. Direction: `entrypoints | adapters → services → domain`. The
    ports live in `services`, their implementations in `adapters`; `entrypoints` and `adapters`
    never import each other (the consumer's composition root wires them). `domain` imports no I/O,
-   web, token or validation library. `generation` and `testkit` sit outside the layers.
+   web, token or validation library. `testkit` sits outside the layers. The generator is a sibling
+   top-level package, `rdf_persistence_generation/`, shipped in the same wheel; the library never
+   imports it (`library-never-imports-the-generator`, but through the four testkit shims).
    `make check-architecture` enforces it.
 2. **LinkML is the single source.** Every model artefact is generated from the LinkML schemas;
    never write or edit one by hand. Change the schema and run `make generate`; where a stock

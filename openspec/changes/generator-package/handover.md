@@ -1,28 +1,24 @@
-# Hand-over: generator-package, after stage 3
+# Hand-over: generator-package, after stage 4
 
 ## Done
-Stage 1, PR #162; stage 2, PR #166 (merged). Stage 3 (task 3.1, F-4), PR into `develop` (merged
-by the watch-and-merge command after this note): the metamodel's schemas say their packages
-(`python_package`, `public_package`); the two hard-check rules.
+Stage 1, PR #162; stage 2, PR #166; stage 3, PR #168 (merged). Stage 4 (tasks 4.1 to 4.4), the
+docs stage (D-30) and the reconciliation of `proposal.md` (P-0004), PR into `develop` (merged by
+the watch-and-merge command after this note). Acceptance waived by the developer
+(`evidence/acceptance.md`, D-2). Every build box of `tasks.md` is ticked.
 
 ## Decided since the PLAN
-D-1 to D-25 (design.md, Delivery decisions). Stage 3: D-21 to D-25.
+D-1 to D-30 (design.md, Delivery decisions). Stage 4: D-26 to D-30.
 
 ## Open
-- #164 (under-floor hardening, items 1–7), #165 (shims out in 0.6.0).
-- `evidence/docs-owed.md` for the docs stage; the scenario-map rows of the new tests (D-17).
-- Stage 4's tasks 4.1–4.3 are already built and committed in their worktrees (D-21):
-  `.worktrees/gp-s4-4.1` 489051c, `gp-s4-4.2` 9c9cf42, `gp-s4-4.3` 30e4f41. Their deviations to
-  record on stage 4's branch: TC-44 is refused by lint, not the hard check (4.1); `closed` cases
-  are refused before SHACL, so their report is not asserted (4.2); PD-13's `--python-out` is not
-  needed (4.3).
-- PR #161 (the developer's) still open (D-7).
+- #164 (follow-ups under the floor, items 1–12; item 1 closed by D-19), #165 (shims out in 0.6.0).
+- PR #161 (the developer's `.gitignore`) and #167 (another session's 0.5.0 changelog) are open.
 
 ## Next
-Stage 4: branch from `develop`, cherry-pick 4.1–4.3, task 4.4 (lane, CI Node, docs), then the
-full review (D-3) and the reconciliation of `proposal.md` (P-0004). Read first: tasks.md §Stage 4,
-design.md PD-11 to PD-13, DEC-9, D-3, D-21.
+Archive the change per `spec-stewardship` (`openspec archive generator-package --yes`), with
+`make refresh-map` exiting 0 (it does on this head), as its own PR merged like a stage. Then
+`thematic-structure` stage 1: its preconditions were checked on 2026-11-18 (ASM-1..3 hold; stale
+PLAN references listed in the lead's `temp/ts-asm-check.md`, to record as its first D-n).
 
 ## Prompt
-Act as the team lead. Deliver stage 4 of openspec/changes/generator-package from handover.md,
-in .worktrees/lead.
+Act as the team lead. Archive openspec/changes/generator-package from handover.md, then deliver
+thematic-structure stage 1, in .worktrees/lead.
