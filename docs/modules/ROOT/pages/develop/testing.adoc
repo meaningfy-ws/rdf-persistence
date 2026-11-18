@@ -30,7 +30,13 @@ entry.
 `make test-unit` and `make test-feature` leave out `tests/generator/` and measure the coverage of
 `rdf_persistence`. `make test-generator` runs only `tests/generator/` and measures the coverage of
 `rdf_persistence_generation`, with the same floor of 80 %. `make test` runs the three.
-`make test-containers` also runs the generator's integration and end-to-end tests.
+
+The generator lane runs the generator's unit, feature and integration tiers, the `slow` tests
+included, and starts no container. The integration tier generates a library and runs `tsc` on the
+generated TypeScript, so the lane needs Node 20 on the path; the CI job `test-generator` sets it
+up with `actions/setup-node` before it runs `make test-generator`. The generator's end-to-end tier
+serves a freshly generated library on Fuseki, so it runs in `make test-containers`, which also
+runs the generator's integration tests, never in CI.
 
 == Test doubles and data
 
