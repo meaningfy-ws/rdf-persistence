@@ -271,7 +271,7 @@ deployment values].
 
 *How do I tell a technical model from a domain model?*::
 By its path. A domain model is the metamodel, `rdf_persistence/model/rp_*.yaml`, generated into
-`domain/generated/`. A technical model (a request body, a setting, a wire shape, a SPARQL term bundle, a
+`core/domain/generated/`. A technical model (a request body, a setting, a wire shape, a SPARQL term bundle, a
 testkit record) is a schema under `rdf_persistence/model/technical/<group>/`, generated into the
 `generated/` folder of the lowest layer whose code may import it, and the domain layer imports none of
 them. A target's `kind` key and an import-linter contract check it. See

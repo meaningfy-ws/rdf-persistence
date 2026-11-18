@@ -330,6 +330,16 @@ def test_a_class_derived_from_the_public_rpmodel_is_named_once_rpmodel_lives_in_
         assert_models_generated(tmp_path / "rdf_persistence", roots=[])
 
 
+def test_a_consumer_class_derived_from_the_public_rpmodel_is_named(tmp_path):
+    """TC-24 as a consumer meets it: its own package, ``from rdf_persistence import RpModel``."""
+    plant(tmp_path, "consumer/__init__.py", "")
+    plant(tmp_path, "consumer/domain/__init__.py", "")
+    plant(tmp_path, "consumer/domain/book.py", BOOK)
+
+    with pytest.raises(AssertionError, match=r"domain/book\.py:4.*class Book .*derives from"):
+        assert_models_generated(tmp_path / "consumer", roots=[])
+
+
 def test_rpmodel_defined_in_core_domain_base_is_allowed_by_default(tmp_path):
     plant(
         tmp_path,

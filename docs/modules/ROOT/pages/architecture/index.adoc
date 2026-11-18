@@ -288,9 +288,9 @@ _What may a consumer import?_
 [cols="2,3,3,4",options="header"]
 |===
 |Layer (module) |Hand-written blocks |Generated models inside the layer |Exported at top level
-|`rdf_persistence.domain`
-|the fixed IRI layout (`domain/layout.py`: graph and skolem IRIs, database and resource names, which no policy changes), SPARQL terms (`domain/sparql.py`), the SPARQL parser (`domain/sparql_parsing.py`: every rdflib SPARQL parse goes through it, under one lock), the strict base model, the errors
-|the metamodel's classes, shapes and context, generated from `model/rp.yaml` into `domain/generated/`; no technical model
+|`rdf_persistence.domain`, `rdf_persistence.core.domain`
+|the fixed IRI layout (`domain/layout.py`: graph and skolem IRIs, database and resource names, which no policy changes), SPARQL terms (`core/domain/sparql.py`), the SPARQL parser (`core/domain/sparql_parsing.py`: every rdflib SPARQL parse goes through it, under one lock), the strict base model (`core/domain/base.py`), the errors (`core/domain/exceptions.py`)
+|the metamodel's classes, shapes and context, generated from `model/rp.yaml` into `core/domain/generated/`; no technical model
 |`RpModel`; `AggregateRoot`, `Described`, `Tracked`,
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,
 `Rule`, `Grant`, `Prohibition`, `RoleDefinition`, `RoleLevel`, `Action`; `TenantAccess`,
@@ -341,13 +341,16 @@ contracts `runtime-without-extras` and `works-without-the-generate-extra` keep t
 the extras.
 
 *Technical models in the layers.* A model's kind shows in its path (xref:architecture/generation.adoc#kinds[Two kinds of model]):
-the metamodel is generated into `domain/generated/`, and each technical group into the `generated/`
+the metamodel is generated into `core/domain/generated/`, and each technical group into the `generated/`
 folder of the lowest layer whose code may import it, so the `layers` contract of import-linter orders
-the `generated` packages of the three runtime layers without a line of its own. `testkit.generated`
-is outside that contract: the contract `runtime-without-extras` keeps it out of the runtime. Four groups sit in `services/generated/`
-(`service`, `settings`, `templates` and `telemetry`), the `wire` group in `adapters/generated/`
+the `generated` packages of the three old runtime layers without a line of its own; the `core` theme is
+not in that contract, `themes-layered` and `themes-ordered` order it. `testkit.generated`
+is outside that contract: the contract `runtime-without-extras` keeps it out of the runtime. Three groups sit in `services/generated/`
+(`service`, `settings` and `templates`), the `core` group (`HttpSettings` and `LogContext`, from
+`model/technical/core/rp_core_services.yaml`) in `core/services/generated/`, the `wire` group in `adapters/generated/`
 and the `testkit` group in `testkit/generated/`. The domain layer imports none of them:
-the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` from importing
+the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` and
+`rdf_persistence.core.domain` from importing
 any of the three `generated` packages, directly or through a chain, so a failure names the rule that
 broke. Two hand-written modules used the service records, so they moved to the services layer: the
 layout functions that no policy changes stay in `domain/layout.py`, and `Iris`, its policy, its

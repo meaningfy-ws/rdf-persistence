@@ -83,6 +83,20 @@ source_modules =
 forbidden_modules =
     rdf_persistence.*.adapters
 
+; Temporary (thematic-structure D-13): while the unmoved modules stay at the old layout, no old contract
+; or theme contract stops `core`, the lowest theme, from importing them. Stage 7 removes this contract
+; with the old layout.
+[importlinter:contract:core-never-imports-the-old-layout]
+name = core never imports the old layout (domain, services, adapters, entrypoints), until stage 7 removes it
+type = forbidden
+source_modules =
+    rdf_persistence.core
+forbidden_modules =
+    rdf_persistence.domain
+    rdf_persistence.services
+    rdf_persistence.adapters
+    rdf_persistence.entrypoints
+
 ; Technical models (service settings, wire shapes) are generated outside the domain and the domain never
 ; imports them, directly or through a chain (technical-models PD-2, Q-2). The `thematic-structure` change
 ; replaces this contract with one over the thematic layout.
@@ -91,6 +105,7 @@ name = the domain never imports a technical model (service, wire or testkit)
 type = forbidden
 source_modules =
     rdf_persistence.domain
+    rdf_persistence.core.domain
 forbidden_modules =
     rdf_persistence.services.generated
     rdf_persistence.adapters.generated

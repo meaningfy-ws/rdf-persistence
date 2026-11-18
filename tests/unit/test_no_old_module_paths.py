@@ -47,6 +47,9 @@ EXEMPT: frozenset[str] = frozenset(
         "rdf_persistence/testkit/guards.py",
         "tests/unit/testkit/test_guards.py",
         "tests/unit/test_theme_layout.py",
+        # stage 2 (D-13 S2): the probe that an old import path is a ModuleNotFoundError names the paths
+        # that never existed or are gone, which is the point of the probe.
+        "tests/unit/test_technical_split.py",
     }
 )
 
