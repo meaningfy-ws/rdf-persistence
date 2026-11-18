@@ -561,3 +561,21 @@ consumers later.
   vs its plant), S4 (no planted test exercises `themes-layered` or `layers-across-themes` in
   stage 2; later stages' TC-35, TC-45, TC-51 do). S3: D-12 (7)'s release-note line for `error.type`
   goes into stage 7's CHANGELOG entry (task 7.2).
+- **D-15 Stage 3 as built** (builders of 3.1 and 3.2, accepted by the lead; built from stage 2's
+  head before D-13/D-14 and combined on `develop` after #174). (1) PD-2 vs PD-10/TC-07: a technical
+  class that would add TypeScript to the served `rp_service.ts` (the IRI models `IriTemplateVariables`,
+  `IriParts`; the six term bundles) is generated as a non-served target under
+  `<theme>/services/generated/<group>/`, so TC-07 stays byte-identical; `PLACED` rows carry that
+  group. (2) Two served schemas: `components.py` leaves out a class another served schema declares,
+  and the iris schema repeats the `url_segment` pattern for `tenant_segment` instead of importing
+  `rp_core` (a test pins the two equal). (3) The merged TypeScript file is named `rp_service`
+  (`SERVICE_MODULE`), not after the first served schema. (4) TC-33: a bad tenant segment, once
+  refused by a wrapper with `InvalidIri`, is now refused by `ServiceSettings` with
+  `ValidationError`. (5) Only the iris-only tests moved to `tests/unit/iris/`; the IRI policy tests
+  of `api` and `tenancy` move with their themes. (6) D-8 closed: the six term bundles live in
+  `schema/services/generated/templates/` (`vocabulary` builds them; `schema` is their lowest user),
+  and `persistence`/`migrations` import them from below; PD-2's table is amended by this line.
+  (7) D-10 closed: TypeScript that names a served type imports the merged file. (8) Logger names
+  change with the move (`rdf_persistence.files.adapters.s3` …), RISK-3's list for the CHANGELOG of
+  stage 7. (9) `vocabulary.TOTAL` and `IRI_POLICY` read the schema files of higher themes; a file
+  read, not an import, as PD-10 states.
