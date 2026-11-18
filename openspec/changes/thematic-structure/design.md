@@ -500,3 +500,11 @@ consumers later.
   schema would still import from `./<that schema>`, a file that is no longer written. Harmless while
   only `rp_service` is served; the stage that serves a second schema (stage 3, the split of
   `rp_service.yaml`) rewrites such imports to the merged file, with a test, before its TC-07 check.
+- **D-11 Stage 1 checker: verdict fail, fixed now** (lead; 5 findings). C1 (Critical, agreed): `make
+  refresh-snapshot`, which every model change runs, also rewrites the TC-03 public-surface snapshot,
+  so a name left in the wrong module could be written into the baseline; the public-surface refresh
+  moves to its own target (`refresh-surface`), pinned like `refresh-served-golden`. W2: the OpenAPI
+  golden test names `make refresh-served-golden`. W3: a served schema imported by another served
+  schema is merged once, not also written as its own file (with an import edge in the W1 test).
+  Under the floor: S4 (the kind/folder problem names only the package; no end-to-end "writes
+  nothing"). S5: the new tests' scenario-map rows are added before this change's archive.
