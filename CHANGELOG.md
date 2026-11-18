@@ -39,6 +39,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Generation: `python_import`** (`technical-models`): a LinkML type annotated `python_import`
   with a module name, together with `repr`, generates its field as the `repr` class imported from
   that module.
+- **Four more RDF representations** (`manual-revision-notes`): a route that answers one aggregate
+  also serves N-Triples, N-Quads, TriG and RDF/XML, chosen by `Accept`; a listing stays JSON and
+  JSON-LD. RDF/XML is 406 for a predicate with no XML local name or a value XML 1.0 cannot hold,
+  and on a create or replace that 406 comes before anything is written. The LinkML `RdfFormat`
+  enum declares each serialisation's media type.
+- **`If-Match` takes `*` and a list of tags** (`manual-revision-notes`, RFC 9110 §13.1.1).
+- **The token verifier's algorithms and leeway are configurable** (`manual-revision-notes`):
+  RS, PS and ES 256 to 512 and EdDSA by default, `none` and shared-secret algorithms always refused,
+  with a leeway on `exp` and `nbf` (about 30 s by default); through `JwksSettings` since
+  `technical-models`. Each key is bound to the token's algorithm, and only signature keys verify.
+- **Tracing through the OpenTelemetry API** (`otel-observability`): spans around every store call,
+  the commit, the migrations, both sweeps, the relay rounds and the message bus's handlers and
+  observers. They are no-ops until the application installs a provider; a span records an
+  exception's type, never its message. `opentelemetry-api>=1.44,<2` is a declared dependency.
+  `RedisEventBus(middlewares=...)` lets the application add FastStream's broker telemetry. The
+  how-to "See what the toolkit is doing" (`howto/observability.adoc`) shows the set-up.
+- **One log context** (`otel-observability`): `LogContext`, generated from
+  `model/technical/telemetry/rp_telemetry.yaml`, names every log attribute after the OpenTelemetry
+  semantic conventions (`db.*`, `error.type`, `messaging.*`) plus an `rp.*` namespace.
+- **The generator is its own top-level package** (`generator-package`): `rdf_persistence_generation`,
+  shipped in the same wheel behind the `generate` extra. The library never imports it, and the
+  generator has its own unit, feature, integration and end-to-end tests (`make test-generator`).
+- **The metamodel says where its classes live** (`generator-package`): each toolkit schema module
+  declares `python_package`, and `rp.yaml` its `public_package`; the generator reads them in place
+  of two hard-coded constants and checks them with two hard rules.
+- **Decision records** (`manual-revision-notes`): ADR-001 to ADR-005 (own SPARQL client, own JWKS
+  cache, FastAPI rather than connexion, signing algorithms, representations), and a contract test
+  of every operation against the served OpenAPI (schemathesis).
 
 ### Changed
 - **A `SparqlTerm` model field refuses a raw `str`** (`technical-models`): a field of that type
@@ -108,6 +136,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `model/technical/wire/`; the domain schemas `model/rp_*.yaml` stay where they are, and a
     consumer schema still imports `rdf_persistence/model/rp_core` (no technical schema can be
     imported that way).
+- **BREAKING: the generator moved to `rdf_persistence_generation`** (`generator-package`).
+  `rdf_persistence.generation` is gone, with no shim; import the generator from
+  `rdf_persistence_generation`, and the `rp-generate` entry point is
+  `rdf_persistence_generation.cli:main`. Every manifest's input paths change, so run your
+  regenerate command once after upgrading (`howto/adopt.adoc#upgrade-generator-package`). The
+  testkit's freshness plugin, conformance suite, round-trip check and strategies moved to
+  `rdf_persistence_generation.testkit`; their old paths in `rdf_persistence.testkit` warn and go in
+  0.6.0 (#165). `assert_isomorphic` stays in `rdf_persistence.testkit.graphs`.
+- **BREAKING for log readers: log attributes and messages** (`otel-observability`). Attribute names
+  follow `LogContext` (`step` is `rp.step`, `tenant` is `rp.tenant.id`, ...) and every message is a
+  constant; there are no aliases. `howto/observability.adoc` lists the old and new names. The
+  library logs an error only where it handles it, so `MessageLimitExceeded` is logged once.
+- **BREAKING: `FusekiDataset.ds_name` is now `fuseki_dataset_name`** (`otel-observability`): the
+  generator names a field after its slot when the alias is no Python name.
+- **BREAKING: `If-Match` is compared strongly** (`manual-revision-notes`): `W/"v"` is now 409 and
+  an unquoted `v` 428 (both matched before); `expected_version` refuses `W/`, `*` and lists.
+- **BREAKING: Accept** (`manual-revision-notes`). Parsing is python-mimeparse's (a new dependency,
+  `python-mimeparse==2.0.0`): an unparsable or empty `q` reads as 1 (it read as 0) and a `q` above 1
+  as 1 (it outranked `q=1`). A wildcard or a type range can now be answered with one of the four new
+  serialisations where it was 406; a client that refuses every type by name must name the new ones
+  too.
+- **BREAKING: a language-tagged value keeps its tag in JSON-LD** (`manual-revision-notes`): it is a
+  value object, where it lost the tag before; JSON still shows a plain string.
+- **BREAKING: JSON-LD is read on one path, PyLD's** (`manual-revision-notes`). A body or loaded file
+  with an invalid IRI, or that is not a JSON object or array, is refused where it gave fewer or no
+  triples. A loaded file that names a graph or uses a relative IRI without `@base` is refused with
+  `InvalidGraph`, and such a body with `InvalidBody`; those triples were dropped without a word.
+- **BREAKING: token checks** (`manual-revision-notes`): `jwks.ALLOWED_ALGORITHMS` and `jwks.ES256`
+  are removed (the algorithms are `JwksSettings.allowed_algorithms`), and a token expired by less
+  than the leeway is now accepted.
+
+### Fixed
+- **Reference collections honour the mapper's `max_roots`** (`manual-revision-notes`); they used the
+  default limit.
+- **Models are built with keyword arguments, not `model_copy(update=...)`**
+  (`manual-revision-notes`), so a misspelt field fails validation instead of being ignored.
+- **rdflib's SPARQL parsing is safe across threads** (`manual-revision-notes` follow-ups): parsing
+  goes through locked wrappers, which an import contract enforces; concurrent requests could fail
+  in pyparsing before.
+- **The RDF writers run off the event loop**, in a worker thread.
+- **The OpenAPI document** gives the generated component schemas their `type` (#148) and each
+  server-sent event its shape (#153).
+- **A hung test times out with a signal**, so a test worker never crashes.
 
 ## [0.4.0] - 2026-11-16
 
