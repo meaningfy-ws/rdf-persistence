@@ -387,3 +387,14 @@ package name are leader's choices (DEC-2, DEC-5).
   - (7, nit) the freshness report repeats a stale generator module once per target.
   Filed together as a follow-up issue (linked in Open of `handover.md`). TC-14c's "nothing" allows
   the migration note in `howto/adopt.adoc`, which names the old path on purpose.
+- **D-17 The scenario map follows moved tests** (lead, found running D-14). `make refresh-map`
+  drops the rows of a test whose file moved (493 rows here) and lists it again as unmapped, so
+  a move loses its traceability. `tests/audit/refresh_map.py` gains moves: a row whose test file
+  was renamed (`git diff --name-status -M <base>`, or a `--moved OLD=NEW` pair) is re-keyed to
+  the new path instead of dropped; `make refresh-map` passes `BASE` (default `develop`).
+  `thematic-structure` moves every test folder too, so it needs this as well. The new tests of
+  the change are mapped by the lead before the archive (`make refresh-map` exits 0).
+- **D-18 The `assert_isomorphic` identity test moves to the generator's pyramid** (lead). D-10's
+  test that the name is one object through the generator's `roundtrip` imports the generator from
+  `tests/unit/testkit/`, which the PD-9 checker refuses; it moves to
+  `tests/generator/unit/test_testkit_moved.py`. The no-warning test stays in the library.
