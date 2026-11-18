@@ -15,17 +15,52 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_the_wheel_ships_the_py_typed_marker(tmp_path: Path) -> None:
+@pytest.fixture(scope="module")
+def wheel(tmp_path_factory: pytest.TempPathFactory) -> zipfile.ZipFile:
+    """The wheel of this checkout, built once."""
+    out = tmp_path_factory.mktemp("wheel")
     subprocess.run(
-        ["uv", "build", "--wheel", "--no-build-isolation", "--out-dir", str(tmp_path)],
+        ["uv", "build", "--wheel", "--no-build-isolation", "--out-dir", str(out)],
         cwd=ROOT,
         check=True,
         capture_output=True,
     )
-    (wheel,) = tmp_path.glob("*.whl")
-    assert "rdf_persistence/py.typed" in zipfile.ZipFile(wheel).namelist(), (
-        "the wheel lists the marker"
-    )
+    (built,) = out.glob("*.whl")
+    return zipfile.ZipFile(built)
+
+
+def test_the_wheel_ships_the_py_typed_marker(wheel: zipfile.ZipFile) -> None:
+    assert "rdf_persistence/py.typed" in wheel.namelist(), "the wheel lists the marker"
+
+
+def test_the_wheel_ships_the_generator_as_a_sibling_package(wheel: zipfile.ZipFile) -> None:
+    """TC-07 (PD-7): the generator, its model, templates and marker; no old folder."""
+    names = set(wheel.namelist())
+    templates = {
+        f"rdf_persistence_generation/templates/{p.relative_to(ROOT / 'rdf_persistence_generation/templates').as_posix()}"
+        for p in (ROOT / "rdf_persistence_generation/templates").rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts
+    }
+    wanted = {
+        "rdf_persistence/py.typed",
+        "rdf_persistence_generation/py.typed",
+        "rdf_persistence_generation/model/rp_generation.yaml",
+        "rdf_persistence/model/rp_core.yaml",
+        *templates,
+    }
+
+    assert templates, "the generator has templates"
+    assert not wanted - names, f"missing from the wheel: {sorted(wanted - names)}"
+    assert not [n for n in names if n.startswith("rdf_persistence/generation/")], "the old folder"
+
+
+def test_the_wheel_points_rp_generate_at_the_generator(wheel: zipfile.ZipFile) -> None:
+    """TC-08 (PD-7)."""
+    (entry_points,) = [n for n in wheel.namelist() if n.endswith(".dist-info/entry_points.txt")]
+
+    lines = wheel.read(entry_points).decode().splitlines()
+
+    assert "rp-generate = rdf_persistence_generation.cli:main" in lines, lines
 
 
 @pytest.mark.slow

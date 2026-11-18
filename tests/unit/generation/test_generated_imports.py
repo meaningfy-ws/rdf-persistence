@@ -6,10 +6,10 @@ import pkgutil
 import pytest
 
 import rdf_persistence.domain.generated
-import rdf_persistence.generation.generated
+import rdf_persistence_generation.generated
 from tests.fixtures.library import generated as toy_generated
 
-PACKAGES = [rdf_persistence.domain.generated, rdf_persistence.generation.generated, toy_generated]
+PACKAGES = [rdf_persistence.domain.generated, rdf_persistence_generation.generated, toy_generated]
 
 
 def generated_modules() -> list[str]:

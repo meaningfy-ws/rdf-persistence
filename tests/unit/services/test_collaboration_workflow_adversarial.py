@@ -35,9 +35,6 @@ from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_workflow import Transition, WorkflowTransition
 from rdf_persistence.domain.sparql import Triple, fill, term
 from rdf_persistence.entrypoints.kit import ServiceKit
-from rdf_persistence.generation.checks.hard import hard_problems
-from rdf_persistence.generation.generated.rp_generation import HardRule
-from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
@@ -52,6 +49,9 @@ from rdf_persistence.services.workflows import Workflows, load_workflow, state_i
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from rdf_persistence_generation.checks.hard import hard_problems
+from rdf_persistence_generation.generated.rp_generation import HardRule
+from rdf_persistence_generation.problems import format_problem
 from tests.toy import (
     ADA,
     BOB,

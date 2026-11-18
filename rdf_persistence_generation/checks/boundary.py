@@ -7,12 +7,6 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.domain.generated.rp_core import ModuleKind, RpAnnotation
-from rdf_persistence.generation.generated.rp_generation import (
-    BoundaryRule,
-    CheckProblem,
-    TargetKind,
-)
-from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema_structure import (
     ACTIVITY,
     AGGREGATE_ROOT,
@@ -26,6 +20,13 @@ from rdf_persistence.services.schema_structure import (
     own_schemas,
     owned_classes,
 )
+from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.generated.rp_generation import (
+    BoundaryRule,
+    CheckProblem,
+    TargetKind,
+)
+from rdf_persistence_generation.problems import rule_problem
 
 # Classes reached by IRI, never owned (PD-23).
 REFERENCE_CLASSES = ("Principal", ACTIVITY)
@@ -216,7 +217,7 @@ def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     classes of a module annotated ``module_kind: technical``, which are never stored (D-49).
     """
     schemas = own_schemas(view, folder)
-    classes = [] if is_toolkit_schema(folder) else own_classes(schemas)
+    classes = [] if is_toolkit_schema(folder, roots=TOOLKIT_ROOTS) else own_classes(schemas)
     technical = technical_classes(schemas)
     exempt = {id(cls) for cls in technical}
     stored = [cls for cls in classes if id(cls) not in exempt]

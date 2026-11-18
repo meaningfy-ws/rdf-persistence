@@ -9,16 +9,16 @@ from pathlib import Path
 
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation import manifest
-from rdf_persistence.generation.config import python_folder
-from rdf_persistence.generation.exceptions import SchemaGenerationError, StepError
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.services.schema import LOAD_ERRORS, load_schema
+from rdf_persistence_generation import manifest
+from rdf_persistence_generation.config import python_folder
+from rdf_persistence_generation.exceptions import SchemaGenerationError, StepError
+from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     GeneratedFile,
     GenerationTarget,
     ManifestEntry,
 )
-from rdf_persistence.services.schema import LOAD_ERRORS, load_schema
 
 STAGING_PREFIX = ".rp-generate-"
 NOT_PLAIN_NAMES = ("", ".", "..")  # what a path component can be without naming a file

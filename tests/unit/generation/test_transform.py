@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.cli import main
 from rdf_persistence.services.components import read_components
 from rdf_persistence.testkit.model_shape import model_schema_diff
+from rdf_persistence_generation.cli import main
 
 from .test_generate_cli import SCHEMA, project
 

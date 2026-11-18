@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 FALLBACK_EXIT = 3
-LAYERS = frozenset({"domain", "services", "adapters", "entrypoints", "generation", "testkit"})
+LAYERS = frozenset({"domain", "services", "adapters", "entrypoints", "testkit"})
 NO_TEST_ROOTS = frozenset({"openspec", ".claude", "temp"})
 SHARED_FILES = frozenset({"pytest.ini", "pyproject.toml", "uv.lock", "Makefile", ".coveragerc"})
 DOMAIN_FOLDER = "tests/unit/domain/"

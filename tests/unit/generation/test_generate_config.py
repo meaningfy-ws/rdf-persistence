@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation import config, steps
-from rdf_persistence.generation.cli import build_parser
-from rdf_persistence.generation.config import cli_flags, read_targets
-from rdf_persistence.generation.exceptions import ConfigError
-from rdf_persistence.generation.generated.rp_generation import GenerationTarget, TargetKind
-from rdf_persistence.generation.pipeline import generate
+from rdf_persistence_generation import config, steps
+from rdf_persistence_generation.cli import build_parser
+from rdf_persistence_generation.config import cli_flags, read_targets
+from rdf_persistence_generation.exceptions import ConfigError
+from rdf_persistence_generation.generated.rp_generation import GenerationTarget, TargetKind
+from rdf_persistence_generation.pipeline import generate
 
 from .conftest import TOY
 

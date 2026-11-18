@@ -25,16 +25,6 @@ from rdf_persistence.domain.generated.rp_core import (
     WritesKind,
 )
 from rdf_persistence.domain.layout import LAYOUT_WORDS
-from rdf_persistence.generation.checks.application import application_problems
-from rdf_persistence.generation.checks.boundary import technical_classes
-from rdf_persistence.generation.checks.default_instance import default_instance_problems
-from rdf_persistence.generation.checks.toolkit_filled import toolkit_filled_problems
-from rdf_persistence.generation.generated.rp_generation import (
-    CheckProblem,
-    GenerationAnnotation,
-    HardRule,
-)
-from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.services.schema_structure import (
     AGGREGATE_ROOT,
@@ -56,6 +46,17 @@ from rdf_persistence.services.schema_structure import (
     root_classes,
     workflow_name_of,
 )
+from rdf_persistence_generation.checks.application import application_problems
+from rdf_persistence_generation.checks.boundary import technical_classes
+from rdf_persistence_generation.checks.default_instance import default_instance_problems
+from rdf_persistence_generation.checks.toolkit_filled import toolkit_filled_problems
+from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.generated.rp_generation import (
+    CheckProblem,
+    GenerationAnnotation,
+    HardRule,
+)
+from rdf_persistence_generation.problems import rule_problem
 
 QUOTES = ('"', "'")  # the styles of a quoted YAML scalar
 
@@ -401,7 +402,7 @@ def stored_schema_problems(
 
 def _stored_classes(schemas: list[SchemaDefinition], folder: Path) -> list[ClassDefinition]:
     """The classes the root and owned-class rules apply to: none of the toolkit's own (PD-23), none of a technical module (D-49)."""
-    if is_toolkit_schema(folder):
+    if is_toolkit_schema(folder, roots=TOOLKIT_ROOTS):
         return []
     exempt = {id(cls) for cls in technical_classes(schemas)}
     return [cls for cls in own_classes(schemas) if id(cls) not in exempt]

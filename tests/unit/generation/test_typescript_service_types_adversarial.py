@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.cli import main
-from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.extensions import typescript
-from rdf_persistence.generation.generated.rp_generation import GeneratedFile
-from rdf_persistence.generation.manifest import current_inputs
 from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
+from rdf_persistence_generation.cli import main
+from rdf_persistence_generation.config import read_targets
+from rdf_persistence_generation.extensions import typescript
+from rdf_persistence_generation.generated.rp_generation import GeneratedFile
+from rdf_persistence_generation.manifest import current_inputs
 
 from .conftest import ROOT_SCHEMA
 from .test_boundary_check import add_api_module, problems_of

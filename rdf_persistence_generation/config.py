@@ -3,20 +3,26 @@
 import functools
 import tomllib
 from argparse import Namespace
+from importlib import resources
 from pathlib import Path
 
 from pydantic import ValidationError
 
-from rdf_persistence.generation.exceptions import ConfigError
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.services.schema_structure import annotation_text
+from rdf_persistence_generation.exceptions import ConfigError
+from rdf_persistence_generation.generated.rp_generation import (
     CliFlag,
     GenerationAnnotation,
     GenerationTarget,
 )
-from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
-from rdf_persistence.services.schema_structure import annotation_text
 
-GENERATION_MODEL = PACKAGE_DIR / "generation" / "model" / "rp_generation.yaml"
+GENERATOR_PACKAGE = "rdf_persistence_generation"
+GENERATOR_DIR = Path(str(resources.files(GENERATOR_PACKAGE))).resolve()
+# The folders whose schemas are the toolkit's own (PD-5); passed as ``roots=`` at every call of
+# ``is_toolkit_schema``, ``apply_defaults`` and ``generation_view``, since the library knows only itself.
+TOOLKIT_ROOTS = (PACKAGE_DIR, GENERATOR_DIR)
+GENERATION_MODEL = GENERATOR_DIR / "model" / "rp_generation.yaml"
 TARGET_CLASS = "GenerationTarget"
 
 

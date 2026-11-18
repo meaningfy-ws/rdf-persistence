@@ -6,12 +6,12 @@ Attacks: a stored or domain class slipped past the class rules by way of a modul
 
 from pathlib import Path
 
-from rdf_persistence.generation.checks.boundary import boundary_problems, target_kind_problems
-from rdf_persistence.generation.checks.hard import hard_problems
-from rdf_persistence.generation.generated.rp_generation import BoundaryRule, TargetKind
-from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import root_classes
+from rdf_persistence_generation.checks.boundary import boundary_problems, target_kind_problems
+from rdf_persistence_generation.checks.hard import hard_problems
+from rdf_persistence_generation.generated.rp_generation import BoundaryRule, TargetKind
+from rdf_persistence_generation.problems import format_problem
 
 HEADER = """id: https://example.org/ns/{name}
 name: {name}

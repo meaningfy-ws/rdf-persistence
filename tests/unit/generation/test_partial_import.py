@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.cli import main
+from rdf_persistence_generation.cli import main
 
 from .conftest import TOY
 from .terms import terms_of

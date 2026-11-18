@@ -15,13 +15,6 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, EnumDefinition, Sl
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.generated.rp_generation import (
-    Frame,
-    FramePart,
-    GeneratedFile,
-    GenerationAnnotation,
-)
 from rdf_persistence.services.artifacts import CONTEXT_FILE, CONTEXT_KEY, FRAME_SUFFIX, TYPE_KEY
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
@@ -31,6 +24,13 @@ from rdf_persistence.services.schema_structure import (
     is_internal,
     is_owned,
     root_classes,
+)
+from rdf_persistence_generation.exceptions import SchemaGenerationError
+from rdf_persistence_generation.generated.rp_generation import (
+    Frame,
+    FramePart,
+    GeneratedFile,
+    GenerationAnnotation,
 )
 
 # JSON carries these natively: a datatype tag would turn them into strings when framed back.

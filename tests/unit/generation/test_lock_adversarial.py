@@ -12,7 +12,8 @@ import pytest
 import yaml
 
 from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.services.migrations import load_migration
+from rdf_persistence_generation.generated.rp_generation import (
     LockChange,
     LockedClass,
     LockedEnum,
@@ -20,8 +21,7 @@ from rdf_persistence.generation.generated.rp_generation import (
     LockRule,
     SchemaLock,
 )
-from rdf_persistence.generation.lock import changes, described, draft
-from rdf_persistence.services.migrations import load_migration
+from rdf_persistence_generation.lock import changes, described, draft
 
 from .conftest import ROOT_SCHEMA, Breaker
 from .test_lock import (

@@ -8,13 +8,13 @@ import pytest
 from rdflib import Graph, URIRef
 from rdflib.namespace import SH
 
-from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.pydantic_split import render as render_modules
-from rdf_persistence.generation.extensions.shacl import render as render_shapes
-from rdf_persistence.generation.generated.rp_generation import ConstraintKind
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.testkit.conformance import Conformance
+from rdf_persistence_generation.exceptions import SchemaGenerationError
+from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
+from rdf_persistence_generation.extensions.shacl import render as render_shapes
+from rdf_persistence_generation.generated.rp_generation import ConstraintKind
 
 SHAPE_BASE = "https://example.org/ns/r#"
 

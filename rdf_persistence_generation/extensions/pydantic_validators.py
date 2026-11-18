@@ -26,15 +26,6 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition, Un
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.exceptions import (
-    SchemaGenerationError,
-    refusing_unsupported_rules,
-)
-from rdf_persistence.generation.generated.rp_generation import (
-    GenerationAnnotation,
-    PresenceRule,
-    RuleAlternative,
-)
 from rdf_persistence.services.schema_structure import (
     ABSENT,
     ANY_OF,
@@ -47,6 +38,15 @@ from rdf_persistence.services.schema_structure import (
 )
 from rdf_persistence.services.schema_structure import (
     Alternative as Presences,
+)
+from rdf_persistence_generation.exceptions import (
+    SchemaGenerationError,
+    refusing_unsupported_rules,
+)
+from rdf_persistence_generation.generated.rp_generation import (
+    GenerationAnnotation,
+    PresenceRule,
+    RuleAlternative,
 )
 
 VALIDATOR_IMPORT = Import(module="pydantic", objects=[ObjectImport(name="model_validator")])

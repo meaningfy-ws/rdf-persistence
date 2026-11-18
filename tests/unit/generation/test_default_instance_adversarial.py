@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.generated.rp_generation import HardRule
+from rdf_persistence_generation.generated.rp_generation import HardRule
 
 from .test_hard_check import DEFAULT_INSTANCE_SCHEMA, problems_of
 

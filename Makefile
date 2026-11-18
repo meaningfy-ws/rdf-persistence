@@ -14,8 +14,9 @@ ICON_PROGRESS = [-]
 # No-src layout: the top-level package lives at the repo root.
 REPO_ROOT    = $(shell pwd)
 PACKAGE_NAME = rdf_persistence
+GENERATOR_NAME = rdf_persistence_generation
 TEST_PATH    = $(REPO_ROOT)/tests
-PYTHON_PATHS = $(PACKAGE_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools $(REPO_ROOT)/.claude/hooks
+PYTHON_PATHS = $(PACKAGE_NAME) $(GENERATOR_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools $(REPO_ROOT)/.claude/hooks
 BUILD_PATH   = $(REPO_ROOT)/dist
 
 # The release version: VERSION is the one source; release-please writes it and mirrors it into
@@ -29,7 +30,7 @@ FUSEKI_IMAGE_TAR = $(REPO_ROOT)/temp/fuseki-image.tar
 
 # Coverage flags — appended only in coverage-aware targets, never in pytest.ini.
 # `make test-containers` overrides the floor with --cov-fail-under=0 (PD-16).
-COV_FLAGS = --cov=$(PACKAGE_NAME) \
+COV_FLAGS = --cov=$(PACKAGE_NAME) --cov=$(GENERATOR_NAME) \
             --cov-report=term-missing \
             --cov-report=xml:$(REPO_ROOT)/coverage.xml \
             --cov-fail-under=80
@@ -151,7 +152,7 @@ lint: ## Run Ruff linting checks
 
 typecheck: ## Run mypy type checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mypy$(END_BUILD_PRINT)"
-	@ uv run mypy $(PACKAGE_NAME)
+	@ uv run mypy $(PACKAGE_NAME) $(GENERATOR_NAME)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Type checks passed$(END_BUILD_PRINT)"
 
 # The Python folders of every [[tool.rp-generate]] entry, so a new entry is checked without an edit here.
@@ -333,6 +334,7 @@ maintainability: ## Radon maintainability index
 clean-code: ## Xenon threshold checks
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running Xenon threshold checks$(END_BUILD_PRINT)"
 	@ uv run --directory $(PACKAGE_NAME) xenon . --exclude '*/generated/*' --max-absolute B --max-modules A --max-average A
+	@ uv run --directory $(GENERATOR_NAME) xenon . --exclude '*/generated/*' --max-absolute B --max-modules A --max-average A
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Clean code checks passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------

@@ -46,7 +46,7 @@ instructions are missing, route by the skills' descriptions and say so once.
    `make check-architecture` enforces it.
 2. **LinkML is the single source.** Every model artefact is generated from the LinkML schemas;
    never write or edit one by hand. Change the schema and run `make generate`; where a stock
-   generator falls short, extend it in `rdf_persistence/generation/` with its own test. Data goes
+   generator falls short, extend it in `rdf_persistence_generation/` with its own test. Data goes
    through the generated models, not bare dicts (PD-24 to PD-28).
 3. **Generic only.** No consumer terms in the package, the tests or the architecture pages
    (`make check-docs`).

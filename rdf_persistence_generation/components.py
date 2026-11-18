@@ -16,7 +16,6 @@ from typing import Any
 from linkml.generators.jsonschemagen import JsonSchemaGenerator
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.generated.rp_generation import GeneratedFile
 from rdf_persistence.services.artifacts import (
     COMPONENT_REFERENCES,
     COMPONENTS_FILE,
@@ -31,6 +30,8 @@ from rdf_persistence.services.schema_structure import (
     is_internal,
     json_name,
 )
+from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.generated.rp_generation import GeneratedFile
 
 # One JSON Schema definition: JSON data of a library, not a model of ours.
 JsonSchema = dict[str, Any]
@@ -40,7 +41,9 @@ def _generated(schema_path: Path) -> dict[str, JsonSchema]:
     generator = JsonSchemaGenerator(
         str(schema_path), importmap=metamodel_importmap(), include_null=False
     )
-    apply_defaults(generator.schemaview, schema_path.parent)  # PD-8: the same view as the Python
+    apply_defaults(
+        generator.schemaview, schema_path.parent, roots=TOOLKIT_ROOTS
+    )  # PD-8: the same view as the Python
     definitions: dict[str, JsonSchema] = json.loads(generator.serialize())["$defs"]
     return definitions
 

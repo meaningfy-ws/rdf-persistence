@@ -5,13 +5,13 @@ from collections.abc import Iterator
 from linkml_runtime.linkml_model.meta import SchemaDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.services.schema_structure import is_switched_on
+from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     GenerationAnnotation,
     HardRule,
 )
-from rdf_persistence.generation.problems import rule_problem
-from rdf_persistence.services.schema_structure import is_switched_on
+from rdf_persistence_generation.problems import rule_problem
 
 ANNOTATION = GenerationAnnotation.DEFAULT_INSTANCE
 RULE = HardRule.DEFAULT_INSTANCE

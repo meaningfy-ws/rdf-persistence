@@ -10,13 +10,13 @@ import pytest
 from pydantic import ValidationError
 
 from rdf_persistence.domain.generated.rp_files import StoredFile
-from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.pydantic_split import (
+from rdf_persistence_generation.exceptions import SchemaGenerationError
+from rdf_persistence_generation.extensions.pydantic_split import (
     TOOLKIT_PACKAGE,
     metamodel_module,
 )
-from rdf_persistence.generation.extensions.pydantic_split import render as render_modules
-from rdf_persistence.generation.steps import PYTHON_STEP
+from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
+from rdf_persistence_generation.steps import PYTHON_STEP
 
 from .golden import assert_matches_toy, run_toy
 

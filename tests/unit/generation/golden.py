@@ -17,10 +17,10 @@ from pathlib import Path
 from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic, to_isomorphic
 
-from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.generated.rp_generation import GenerationTarget
-from rdf_persistence.generation.pipeline import Run, Step
 from rdf_persistence.services.schema import load_schema
+from rdf_persistence_generation.config import read_targets
+from rdf_persistence_generation.generated.rp_generation import GenerationTarget
+from rdf_persistence_generation.pipeline import Run, Step
 
 from .conftest import ROOT_SCHEMA, TOY
 

@@ -293,7 +293,8 @@ def test_no_live_file_still_names_an_old_path():
 # --- stage 4: the testkit's records get their own technical target (PD-11, TC-49..TC-51) -----------
 
 TESTKIT = PACKAGE / "testkit"
-GENERATION_SCHEMA = PACKAGE / "generation" / "model" / "rp_generation.yaml"
+GENERATION_DIR = PACKAGE.parent / "rdf_persistence_generation"
+GENERATION_SCHEMA = GENERATION_DIR / "model" / "rp_generation.yaml"
 TESTKIT_SCHEMA = TECHNICAL / "testkit" / "rp_testkit.yaml"
 MOVED_CLASSES = {
     "ClassShape",
@@ -334,7 +335,7 @@ MOVED_ONLY_SLOTS = {
     "project_id",
     "machine_users",
 }
-GENERATION_GENERATED = "rdf_persistence.generation.generated"
+GENERATION_GENERATED = "rdf_persistence_generation.generated"
 KEEPS_THE_GENERATION_MODELS = {
     "freshness.py",
     "conformance.py",
@@ -398,7 +399,7 @@ def test_the_generation_schema_declares_none_of_the_moved_records_nor_their_own_
 
 def test_no_testkit_or_generation_module_copies_a_model_with_model_copy_update():  # TC-49
     hits = []
-    for folder in (TESTKIT, PACKAGE / "generation"):
+    for folder in (TESTKIT, GENERATION_DIR):
         for path in sorted(folder.rglob("*.py")):
             if "generated" in path.relative_to(folder).parts:
                 continue

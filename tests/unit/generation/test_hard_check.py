@@ -6,32 +6,32 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.generation import steps
-from rdf_persistence.generation.checks.application import ROWS
-from rdf_persistence.generation.checks.hard import (
+from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema_structure import aggregate_keys, keyed_slots
+from rdf_persistence_generation import steps
+from rdf_persistence_generation.checks.application import ROWS
+from rdf_persistence_generation.checks.hard import (
     ALLOWED_ANNOTATIONS,
     METAMODEL_ANNOTATIONS,
     PATTERNED_ANNOTATIONS,
     hard_problems,
     stored_schema_problems,
 )
-from rdf_persistence.generation.cli import main
-from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence_generation.cli import main
+from rdf_persistence_generation.config import read_targets
+from rdf_persistence_generation.generated.rp_generation import (
     GenerationAnnotation,
     GenerationTarget,
     HardRule,
 )
-from rdf_persistence.generation.pipeline import generate
-from rdf_persistence.generation.problems import format_problem
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import aggregate_keys, keyed_slots
+from rdf_persistence_generation.pipeline import generate
+from rdf_persistence_generation.problems import format_problem
 
 from .conftest import ROOT_SCHEMA, Breaker
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
 GENERATION_MODEL = (
-    Path(__file__).parents[3] / "rdf_persistence" / "generation" / "model" / "rp_generation.yaml"
+    Path(__file__).parents[3] / "rdf_persistence_generation" / "model" / "rp_generation.yaml"
 )
 
 

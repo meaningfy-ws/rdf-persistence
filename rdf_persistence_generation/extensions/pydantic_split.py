@@ -51,12 +51,6 @@ from linkml_runtime.linkml_model.meta import (
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.pydantic_validators import with_validators
-from rdf_persistence.generation.generated.rp_generation import (
-    GeneratedFile,
-    GenerationAnnotation,
-)
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema, metamodel_importmap
 from rdf_persistence.services.schema_structure import (
     FIELD_NAME_SLOT,
@@ -67,6 +61,13 @@ from rdf_persistence.services.schema_structure import (
     is_switched_on,
     is_toolkit_schema,
     own_schemas,
+)
+from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.exceptions import SchemaGenerationError
+from rdf_persistence_generation.extensions.pydantic_validators import with_validators
+from rdf_persistence_generation.generated.rp_generation import (
+    GeneratedFile,
+    GenerationAnnotation,
 )
 
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "pydantic"
@@ -258,10 +259,10 @@ def _generator(path: Path, folder: Path, mode: SplitMode) -> SplitPydanticGenera
         emit_metadata=False,
         split=True,
         split_mode=mode,
-        toolkit=is_toolkit_schema(folder),
+        toolkit=is_toolkit_schema(folder, roots=TOOLKIT_ROOTS),
         folder=folder.resolve(),
     )
-    apply_defaults(generator.schemaview, folder)
+    apply_defaults(generator.schemaview, folder, roots=TOOLKIT_ROOTS)
     return generator
 
 

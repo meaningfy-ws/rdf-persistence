@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.cli import main
+from rdf_persistence_generation.cli import main
 
 TOY = Path(__file__).parents[2] / "fixtures" / "library"
 ROOT_SCHEMA = "library.yaml"

@@ -5,23 +5,23 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation import steps
-from rdf_persistence.generation.checks.boundary import boundary_problems, target_kind_problems
-from rdf_persistence.generation.cli import main
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.services.schema import load_schema
+from rdf_persistence_generation import steps
+from rdf_persistence_generation.checks.boundary import boundary_problems, target_kind_problems
+from rdf_persistence_generation.cli import main
+from rdf_persistence_generation.generated.rp_generation import (
     BoundaryRule,
     GenerationTarget,
     TargetKind,
 )
-from rdf_persistence.generation.pipeline import generate
-from rdf_persistence.generation.problems import format_problem
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence_generation.pipeline import generate
+from rdf_persistence_generation.problems import format_problem
 
 from .conftest import ROOT_SCHEMA, TOY, Breaker
 
 MODEL_DIR = Path(__file__).parents[3] / "rdf_persistence"
 METAMODEL = MODEL_DIR / "model" / "rp.yaml"
-GENERATION_MODEL = MODEL_DIR / "generation" / "model" / "rp_generation.yaml"
+GENERATION_MODEL = MODEL_DIR.parent / "rdf_persistence_generation" / "model" / "rp_generation.yaml"
 
 NOTES_OWNED = "    range: Note\n    multivalued: true\n    inlined_as_list: true\n    annotations:\n      owned: true\n"
 NOTES_REFERENCED = "    range: Note\n    multivalued: true\n    inlined_as_list: true\n"

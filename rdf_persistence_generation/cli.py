@@ -5,12 +5,12 @@ import os
 import sys
 from pathlib import Path
 
-from rdf_persistence.generation.config import cli_flags, python_folder, read_targets
-from rdf_persistence.generation.exceptions import ConfigError
-from rdf_persistence.generation.generated.rp_generation import CheckProblem, GenerationTarget
-from rdf_persistence.generation.manifest import fix_hint, stale_targets
-from rdf_persistence.generation.pipeline import Step, generate
-from rdf_persistence.generation.problems import format_problem
+from rdf_persistence_generation.config import cli_flags, python_folder, read_targets
+from rdf_persistence_generation.exceptions import ConfigError
+from rdf_persistence_generation.generated.rp_generation import CheckProblem, GenerationTarget
+from rdf_persistence_generation.manifest import fix_hint, stale_targets
+from rdf_persistence_generation.pipeline import Step, generate
+from rdf_persistence_generation.problems import format_problem
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2
 LINKML_PACKAGE = "linkml"  # the top-level package the `generate` extra installs
@@ -38,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _pipeline_steps() -> tuple[Step, ...] | None:
     """The pipeline, or ``None`` without the ``generate`` extra (a check then only compares the manifest)."""
     try:
-        from rdf_persistence.generation import steps  # lazy: needs the `generate` extra
+        from rdf_persistence_generation import steps  # lazy: needs the `generate` extra
     except ModuleNotFoundError as error:
         if (error.name or "").split(".")[0] != LINKML_PACKAGE:
             raise

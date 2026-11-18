@@ -6,9 +6,9 @@ from linkml_runtime.linkml_model.meta import ClassDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
-from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema_structure import flag
+from rdf_persistence_generation.generated.rp_generation import CheckProblem, HardRule
+from rdf_persistence_generation.problems import rule_problem
 
 
 def _redeclared(cls: ClassDefinition, filled: set[str]) -> Iterator[CheckProblem]:

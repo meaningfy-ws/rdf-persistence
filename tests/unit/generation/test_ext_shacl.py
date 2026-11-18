@@ -7,8 +7,8 @@ from rdflib import Graph, URIRef
 from rdflib.collection import Collection
 from rdflib.namespace import DCTERMS, RDF, SH
 
-from rdf_persistence.generation.extensions.shacl import render
-from rdf_persistence.generation.steps import SHAPES_STEP
+from rdf_persistence_generation.extensions.shacl import render
+from rdf_persistence_generation.steps import SHAPES_STEP
 
 from .golden import assert_matches_toy, run_toy
 

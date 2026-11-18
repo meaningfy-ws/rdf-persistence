@@ -11,7 +11,7 @@ from types import ModuleType
 
 import pytest
 
-from rdf_persistence.generation.cli import main
+from rdf_persistence_generation.cli import main
 
 HEAD = """id: https://example.org/ns/{name}
 name: {name}

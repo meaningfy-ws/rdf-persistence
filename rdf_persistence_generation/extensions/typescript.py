@@ -17,8 +17,16 @@ from pathlib import Path
 from linkml.generators.typescriptgen import TypescriptGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema, metamodel_importmap
+from rdf_persistence.services.schema_structure import (
+    apply_defaults,
+    is_internal,
+    is_owned,
+    own_schemas,
+)
+from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.exceptions import SchemaGenerationError
+from rdf_persistence_generation.generated.rp_generation import (
     GeneratedFile,
     TsEnum,
     TsEnumValue,
@@ -27,14 +35,7 @@ from rdf_persistence.generation.generated.rp_generation import (
     TsInterface,
     TsModule,
 )
-from rdf_persistence.generation.templating import environment
-from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema, metamodel_importmap
-from rdf_persistence.services.schema_structure import (
-    apply_defaults,
-    is_internal,
-    is_owned,
-    own_schemas,
-)
+from rdf_persistence_generation.templating import environment
 
 TEMPLATES = "typescript"
 MODULE_TEMPLATE = "module.ts.jinja"
@@ -170,7 +171,7 @@ def with_index(files: list[GeneratedFile]) -> list[GeneratedFile]:
 
 def _generator(schema_path: Path) -> ToolkitTypescriptGenerator:
     generator = ToolkitTypescriptGenerator(str(schema_path), importmap=metamodel_importmap())
-    apply_defaults(generator.schemaview, schema_path.parent)
+    apply_defaults(generator.schemaview, schema_path.parent, roots=TOOLKIT_ROOTS)
     return generator
 
 

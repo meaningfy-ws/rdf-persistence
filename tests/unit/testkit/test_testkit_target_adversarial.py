@@ -25,7 +25,7 @@ PROBE = (
     "import rdf_persistence.testkit\n"
     "import rdf_persistence.testkit.model_shape, rdf_persistence.testkit.shape_snapshot\n"
     "import rdf_persistence.testkit.guards, rdf_persistence.testkit.tokens, rdf_persistence.testkit.zitadel\n"
-    "loaded = [m for m in ('rdf_persistence.generation', 'rdf_persistence.generation.generated.rp_generation') if m in sys.modules]\n"
+    "loaded = [m for m in ('rdf_persistence_generation', 'rdf_persistence_generation.generated.rp_generation') if m in sys.modules]\n"
     "assert not loaded, f'the testkit pulled in the generator: {loaded}'\n"
 )
 
@@ -160,7 +160,7 @@ def test_load_cases_of_an_empty_file_is_empty(tmp_path: Path) -> None:
 
 def test_a_check_problem_replaced_keeps_what_it_does_not_name() -> None:
     """Tries the pipeline's rewrite of a problem: rule, element and message stay; a prior step is overwritten."""
-    from rdf_persistence.generation.generated.rp_generation import CheckProblem
+    from rdf_persistence_generation.generated.rp_generation import CheckProblem
 
     problem = CheckProblem(rule="r", element="e", message="m", step="old", schema_file="a.yaml")
     changed = problem.replaced(schema_file="sub/b.yaml", step="new")

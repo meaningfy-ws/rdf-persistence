@@ -8,7 +8,7 @@ from pyshacl import validate
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDF, SH
 
-from rdf_persistence.generation.extensions.shacl import render
+from rdf_persistence_generation.extensions.shacl import render
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
 

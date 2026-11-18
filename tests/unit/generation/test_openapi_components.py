@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.components import TYPE_SCHEMA, render
-from rdf_persistence.generation.steps import COMPONENTS_STEP
 from rdf_persistence.services.artifacts import COMPONENTS_FILE
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
+from rdf_persistence_generation.components import TYPE_SCHEMA, render
+from rdf_persistence_generation.steps import COMPONENTS_STEP
 
 from .conftest import ROOT_SCHEMA, TOY
 from .golden import TOY_TARGET, assert_matches_toy, run_toy

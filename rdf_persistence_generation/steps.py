@@ -12,23 +12,23 @@ from linkml.linter.config.datamodel.config import RuleLevel
 from linkml.linter.linter import Linter
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation import components
-from rdf_persistence.generation.checks.boundary import boundary_problems, target_kind_problems
-from rdf_persistence.generation.checks.hard import hard_problems, stored_schema_problems
-from rdf_persistence.generation.checks.rules import rules_problems
-from rdf_persistence.generation.config import migrations_folder
-from rdf_persistence.generation.extensions import (
+from rdf_persistence.services.schema import metamodel_importmap
+from rdf_persistence.services.schema_structure import own_schemas
+from rdf_persistence_generation import components
+from rdf_persistence_generation.checks.boundary import boundary_problems, target_kind_problems
+from rdf_persistence_generation.checks.hard import hard_problems, stored_schema_problems
+from rdf_persistence_generation.checks.rules import rules_problems
+from rdf_persistence_generation.config import migrations_folder
+from rdf_persistence_generation.extensions import (
     jsonld_context,
     mermaid,
     pydantic_split,
     shacl,
     typescript,
 )
-from rdf_persistence.generation.generated.rp_generation import CheckProblem
-from rdf_persistence.generation.lock_step import lock_problems, write_lock
-from rdf_persistence.generation.pipeline import Run, Step, check_step, render_step
-from rdf_persistence.services.schema import metamodel_importmap
-from rdf_persistence.services.schema_structure import own_schemas
+from rdf_persistence_generation.generated.rp_generation import CheckProblem
+from rdf_persistence_generation.lock_step import lock_problems, write_lock
+from rdf_persistence_generation.pipeline import Run, Step, check_step, render_step
 
 LINT_CONFIG = Path(__file__).with_name("lint.yaml")
 # The name Linter looks its SchemaView up by; a test pins it so a linkml upgrade cannot break the patch silently.

@@ -17,6 +17,7 @@ from rdf_persistence.testkit.shape_snapshot import (
     snapshot_diff,
     write_snapshot,
 )
+from rdf_persistence_generation.config import TOOLKIT_ROOTS
 
 ROOT = Path(__file__).parents[3]
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -24,12 +25,12 @@ SNAPSHOT = FIXTURES / "model-shape.yaml"
 METAMODEL = ROOT / "rdf_persistence" / "model" / "rp.yaml"
 TOY = FIXTURES / "library" / "library.yaml"
 SERVICE = ROOT / "rdf_persistence" / "model" / "technical" / "service" / "rp_service.yaml"
-GENERATION = ROOT / "rdf_persistence" / "generation" / "model" / "rp_generation.yaml"
+GENERATION = ROOT / "rdf_persistence_generation" / "model" / "rp_generation.yaml"
 TESTKIT = ROOT / "rdf_persistence" / "model" / "technical" / "testkit" / "rp_testkit.yaml"
 TOY_PACKAGE = "tests.fixtures.library.generated"
 METAMODEL_PACKAGE = "rdf_persistence.domain.generated"
 SERVICE_PACKAGE = "rdf_persistence.services.generated.service"
-GENERATION_PACKAGE = "rdf_persistence.generation.generated"
+GENERATION_PACKAGE = "rdf_persistence_generation.generated"
 TESTKIT_PACKAGE = "rdf_persistence.testkit.generated"
 REFRESH = "RP_REFRESH_SNAPSHOT"
 
@@ -203,7 +204,7 @@ def test_snapshot_diff_describes_each_kind_of_change(
 )
 def test_generated_classes_match_the_induced_slots(schema: Path, package: str) -> None:
     models = generated_models(package) + generated_models(METAMODEL_PACKAGE)
-    shapes = class_shapes([schema])
+    shapes = class_shapes([schema], roots=TOOLKIT_ROOTS)  # TC-14b: the generator's own schema too
     own = {m.__name__ for m in generated_models(package)}
     assert own, "the scan found no generated class"
     assert own <= {s.class_name for s in shapes}, "every generated class has a shape"

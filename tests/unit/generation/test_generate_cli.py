@@ -8,14 +8,14 @@ import linkml.linter.linter as linkml_linter
 import pytest
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence import generation
-from rdf_persistence.generation import steps
-from rdf_persistence.generation.cli import build_parser, main
-from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.exceptions import StepError
-from rdf_persistence.generation.generated.rp_generation import CheckProblem
-from rdf_persistence.generation.pipeline import Run, Step, generate
+import rdf_persistence_generation as generation
 from rdf_persistence.services.schema import metamodel_importmap
+from rdf_persistence_generation import steps
+from rdf_persistence_generation.cli import build_parser, main
+from rdf_persistence_generation.config import read_targets
+from rdf_persistence_generation.exceptions import StepError
+from rdf_persistence_generation.generated.rp_generation import CheckProblem
+from rdf_persistence_generation.pipeline import Run, Step, generate
 
 PYPROJECT = """
 [tool.rp-generate]
@@ -84,7 +84,7 @@ def test_a_missing_extra_exits_2_naming_the_extra(
     ]:  # a cached submodule would import
         monkeypatch.delitem(sys.modules, name)
     monkeypatch.setitem(sys.modules, "linkml", None)
-    monkeypatch.delitem(sys.modules, "rdf_persistence.generation.steps")
+    monkeypatch.delitem(sys.modules, "rdf_persistence_generation.steps")
     monkeypatch.delattr(generation, "steps")  # a from-import would find the attribute
     assert main(["--project", str(project(tmp_path))]) == 2, "wrong exit code"
     assert "install rdf-persistence[generate]" in capsys.readouterr().err, "no install hint"

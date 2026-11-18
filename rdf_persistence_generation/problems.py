@@ -1,6 +1,6 @@
 """Check problems: how a rule's finding is built, and the one place it becomes a line of text."""
 
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence_generation.generated.rp_generation import (
     BoundaryRule,
     CheckProblem,
     HardRule,

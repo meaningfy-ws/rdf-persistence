@@ -6,11 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence import generation
-from rdf_persistence.generation import manifest as manifest_module
-from rdf_persistence.generation.cli import main
-from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.generated.rp_generation import GenerationManifest, GenerationTarget
+import rdf_persistence_generation as generation
+from rdf_persistence.services.schema import PACKAGE_DIR
+from rdf_persistence_generation import manifest as manifest_module
+from rdf_persistence_generation.cli import main
+from rdf_persistence_generation.config import GENERATOR_DIR, read_targets
+from rdf_persistence_generation.generated.rp_generation import GenerationManifest, GenerationTarget
+from rdf_persistence_generation.manifest import recorded_path
 
 from .test_generate_cli import PYPROJECT, SCHEMA, project
 
@@ -72,8 +74,8 @@ def test_the_manifest_lists_sorted_posix_paths_with_raw_byte_hashes(generated: P
 def test_package_inputs_are_recorded_under_the_package_name(generated: Path) -> None:
     paths = [entry.path for entry in read_manifest(generated).inputs]
     assert "rdf_persistence/model/rp_core.yaml" in paths, "the metamodel is not an input"
-    assert "rdf_persistence/generation/cli.py" in paths, "the generator code is not an input"
-    assert any(p.startswith("rdf_persistence/generation/templates/") for p in paths), (
+    assert "rdf_persistence_generation/cli.py" in paths, "the generator code is not an input"
+    assert any(p.startswith("rdf_persistence_generation/templates/") for p in paths), (
         "the templates are not inputs"
     )
 
@@ -94,7 +96,7 @@ def test_every_module_that_decides_how_a_schema_is_read_is_an_input(generated: P
 def test_linkml_types_and_the_generated_folder_are_not_inputs(generated: Path) -> None:
     paths = [entry.path for entry in read_manifest(generated).inputs]
     assert not [p for p in paths if "types.yaml" in p], "linkml:types is an input"
-    assert not [p for p in paths if p.startswith("rdf_persistence/generation/generated/")], (
+    assert not [p for p in paths if p.startswith("rdf_persistence_generation/generated/")], (
         "the toolkit's own generated folder is an input"
     )
 
@@ -151,7 +153,7 @@ def test_without_the_extra_the_comparison_runs_and_the_version_is_not_compared(
     for name in [m for m in sys.modules if m.startswith("linkml.")]:
         monkeypatch.delitem(sys.modules, name)
     monkeypatch.setitem(sys.modules, "linkml", None)
-    monkeypatch.delitem(sys.modules, "rdf_persistence.generation.steps", raising=False)
+    monkeypatch.delitem(sys.modules, "rdf_persistence_generation.steps", raising=False)
     monkeypatch.delattr(
         generation, "steps", raising=False
     )  # a from-import would find the attribute
@@ -352,3 +354,28 @@ def test_a_change_to_the_service_schema_makes_a_typescript_target_stale(
     assert (
         "stale input: rdf_persistence/model/technical/service/rp_service.yaml (changed)" in error
     ), error
+
+
+def test_a_file_is_recorded_under_its_package_or_relative_to_the_base(tmp_path: Path) -> None:
+    """TC-10 (PD-4): the library and the generator each have a prefix; the rest is relative."""
+    library = PACKAGE_DIR / "model" / "rp.yaml"
+    generator = GENERATOR_DIR / "model" / "rp_generation.yaml"
+    other = tmp_path / "app" / "m.yaml"
+
+    assert recorded_path(library, tmp_path) == "rdf_persistence/model/rp.yaml", "the library"
+    assert recorded_path(generator, tmp_path) == (
+        "rdf_persistence_generation/model/rp_generation.yaml"
+    ), "the generator"
+    assert recorded_path(other, tmp_path) == "app/m.yaml", "relative to the base"
+
+
+def test_the_generators_modules_and_templates_are_inputs_of_every_target(
+    generated: Path,
+) -> None:
+    paths = [e.path for e in read_manifest(generated).inputs or []]
+
+    assert "rdf_persistence_generation/manifest.py" in paths, "a generator module"
+    assert not [p for p in paths if p.startswith("rdf_persistence/generation/")], "the old folder"
+    assert not [p for p in paths if "/generated/" in p and p.startswith("rdf_persistence_")], (
+        "the generated folder is an output of the generator, not an input"
+    )

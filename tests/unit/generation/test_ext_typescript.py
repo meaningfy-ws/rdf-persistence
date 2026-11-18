@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.steps import TYPESCRIPT_STEP
+from rdf_persistence_generation.steps import TYPESCRIPT_STEP
 
 from .golden import TOY_TARGET, assert_matches_toy, run_toy
 

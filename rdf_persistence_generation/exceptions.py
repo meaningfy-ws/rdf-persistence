@@ -3,8 +3,8 @@
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 
-from rdf_persistence.generation.generated.rp_generation import CheckProblem
 from rdf_persistence.services.schema_structure import UnsupportedRuleError
+from rdf_persistence_generation.generated.rp_generation import CheckProblem
 
 
 class ConfigError(Exception):

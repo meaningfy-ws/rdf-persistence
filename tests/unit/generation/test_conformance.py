@@ -9,11 +9,6 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
 from rdflib import Graph
 
-from rdf_persistence.generation.generated.rp_generation import (
-    CheckProblem,
-    ConstraintCase,
-    ConstraintKind,
-)
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import keyed_slots
 from rdf_persistence.testkit.conformance import (
@@ -24,6 +19,11 @@ from rdf_persistence.testkit.conformance import (
     run,
     used_kinds,
     verdict_problems,
+)
+from rdf_persistence_generation.generated.rp_generation import (
+    CheckProblem,
+    ConstraintCase,
+    ConstraintKind,
 )
 
 from .terms import terms_of

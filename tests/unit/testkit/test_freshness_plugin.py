@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.cli import main
 from rdf_persistence.testkit import freshness
+from rdf_persistence_generation.cli import main
 from tests.unit.generation.test_freshness import DEFAULT_HINT, NAMED
 from tests.unit.generation.test_generate_cli import PYPROJECT, SCHEMA
 

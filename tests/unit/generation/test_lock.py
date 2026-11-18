@@ -4,15 +4,15 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.services.schema_structure import generation_view
+from rdf_persistence_generation.generated.rp_generation import (
     LockChange,
     LockedClass,
     LockedSlot,
     LockRule,
     SchemaLock,
 )
-from rdf_persistence.generation.lock import changes, described, draft, summarise
-from rdf_persistence.services.schema_structure import generation_view
+from rdf_persistence_generation.lock import changes, described, draft, summarise
 
 from .conftest import ROOT_SCHEMA, Breaker
 

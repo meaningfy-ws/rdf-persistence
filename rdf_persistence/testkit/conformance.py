@@ -27,9 +27,6 @@ from pydantic import BaseModel, ValidationError
 from rdflib import Graph
 
 from rdf_persistence.domain.exceptions import InvalidBody
-from rdf_persistence.generation.config import python_folder, read_targets
-from rdf_persistence.generation.exceptions import ConfigError
-from rdf_persistence.generation.generated.rp_generation import ConstraintCase, ConstraintKind
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.mapper import generated_models_of
 from rdf_persistence.services.schema_structure import (
@@ -41,6 +38,9 @@ from rdf_persistence.services.schema_structure import (
     keyed_slots,
 )
 from rdf_persistence.services.shacl import validate_locked
+from rdf_persistence_generation.config import python_folder, read_targets
+from rdf_persistence_generation.exceptions import ConfigError
+from rdf_persistence_generation.generated.rp_generation import ConstraintCase, ConstraintKind
 
 
 def load_cases(path: Path) -> list[ConstraintCase]:

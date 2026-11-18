@@ -6,12 +6,12 @@ from pathlib import Path
 
 import yaml
 
-from rdf_persistence.generation.generated import rp_generation
+from rdf_persistence_generation.generated import rp_generation
 
 PACKAGE = Path(__file__).resolve().parents[3] / "rdf_persistence"
 TESTKIT = PACKAGE / "testkit"
-GENERATION_SCHEMA = PACKAGE / "generation" / "model" / "rp_generation.yaml"
-GENERATOR = "rdf_persistence.generation"
+GENERATION_SCHEMA = PACKAGE.parent / "rdf_persistence_generation" / "model" / "rp_generation.yaml"
+GENERATOR = "rdf_persistence_generation"
 TESTKIT_MODELS = "rdf_persistence.testkit.generated"
 GENERATOR_LOGIC_USERS = {"freshness.py", "conformance.py"}
 TECHNICAL_RECORDS = {
@@ -55,7 +55,7 @@ def is_under(module: str, package: str) -> bool:
 
 
 def test_no_library_testkit_module_imports_the_generator():
-    """TC-01: no testkit module but freshness and conformance imports rdf_persistence.generation."""
+    """TC-01: no testkit module but freshness and conformance imports rdf_persistence_generation."""
     offenders = [
         f"{path.relative_to(PACKAGE)} imports {module}" + (f" {name}" if name else "")
         for path in library_modules()

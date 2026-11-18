@@ -21,4 +21,4 @@ repos:
         entry: make check-freshness
         language: system
         pass_filenames: false
-        files: ^(rdf_persistence/(model|generation)/|tests/fixtures/library/|.*/generated/)
+        files: ^(rdf_persistence/model/|rdf_persistence_generation/model/|tests/fixtures/library/|.*/generated/)

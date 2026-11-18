@@ -8,13 +8,6 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from rdf_persistence.generation.config import python_folder
-from rdf_persistence.generation.generated.rp_generation import (
-    CheckProblem,
-    GenerationManifest,
-    GenerationTarget,
-    ManifestEntry,
-)
 from rdf_persistence.services.schema import (
     LOAD_ERRORS,
     PACKAGE,
@@ -22,10 +15,17 @@ from rdf_persistence.services.schema import (
     SERVICE_SCHEMA,
     load_schema,
 )
+from rdf_persistence_generation.config import GENERATOR_DIR, GENERATOR_PACKAGE, python_folder
+from rdf_persistence_generation.generated.rp_generation import (
+    CheckProblem,
+    GenerationManifest,
+    GenerationTarget,
+    ManifestEntry,
+)
 
 MANIFEST_NAME = "rp-manifest.json"
 DEFAULT_REGENERATE = "rp-generate"
-GENERATION_DIR = PACKAGE_DIR / "generation"
+GENERATION_DIR = GENERATOR_DIR
 GENERATED_DIR = GENERATION_DIR / "generated"
 TEMPLATES_DIR = GENERATION_DIR / "templates"
 SERVICES_DIR = PACKAGE_DIR / "services"
@@ -53,10 +53,14 @@ def manifest_path(target: GenerationTarget, base: Path) -> Path:
 
 
 def recorded_path(file: Path, base: Path) -> str:
-    """The POSIX path recorded for ``file``: ``rdf_persistence/...`` inside the package, else from ``base``."""
+    """The POSIX path recorded for ``file``: under its package's name inside the library or the generator, else from ``base``.
+
+    The paths do not depend on where either package is installed (PD-4).
+    """
     file = file.resolve()
-    if file.is_relative_to(PACKAGE_DIR):
-        return f"{PACKAGE}/{file.relative_to(PACKAGE_DIR).as_posix()}"
+    for package, folder in ((PACKAGE, PACKAGE_DIR), (GENERATOR_PACKAGE, GENERATOR_DIR)):
+        if file.is_relative_to(folder):
+            return f"{package}/{file.relative_to(folder).as_posix()}"
     return Path(os.path.relpath(file, base.resolve())).as_posix()
 
 

@@ -30,8 +30,6 @@ from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.collection import Collection
 from rdflib.namespace import SH
 
-from rdf_persistence.generation.extensions.shacl_constraints import constraints_graph, shape_uri
-from rdf_persistence.generation.generated.rp_generation import GeneratedFile
 from rdf_persistence.services.artifacts import SHAPES_FILE
 from rdf_persistence.services.schema import metamodel_importmap
 from rdf_persistence.services.schema_structure import (
@@ -40,6 +38,9 @@ from rdf_persistence.services.schema_structure import (
     is_internal,
     is_owned,
 )
+from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.extensions.shacl_constraints import constraints_graph, shape_uri
+from rdf_persistence_generation.generated.rp_generation import GeneratedFile
 
 NO_MORE_INPUT = r"(?![\s\S])"
 
@@ -127,5 +128,5 @@ class RpShaclGenerator(ShaclGenerator):
 def render(schema_path: Path) -> list[GeneratedFile]:
     """The closed shapes of the schema and its closure, as Turtle in a canonical form."""
     generator = RpShaclGenerator(str(schema_path), importmap=metamodel_importmap())
-    apply_defaults(generator.schemaview, schema_path.parent)
+    apply_defaults(generator.schemaview, schema_path.parent, roots=TOOLKIT_ROOTS)
     return [GeneratedFile(name=SHAPES_FILE, text=generator.serialize())]

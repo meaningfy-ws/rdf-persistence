@@ -12,7 +12,7 @@ from collections.abc import Iterable, Iterator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.generation.generated.rp_generation import CheckProblem
+from rdf_persistence_generation.generated.rp_generation import CheckProblem
 
 UNSUPPORTED = ("rules", "all_of", "none_of")
 UNSUPPORTED_ON_SLOTS = ("all_of", "none_of", "exactly_one_of")

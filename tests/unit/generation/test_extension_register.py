@@ -10,16 +10,16 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parents[3]
-EXTENSIONS = ROOT / "rdf_persistence" / "generation" / "extensions"
+EXTENSIONS = ROOT / "rdf_persistence_generation" / "extensions"
 PAGE = ROOT / "docs" / "modules" / "ROOT" / "pages" / "architecture" / "generation.adoc"
 TESTS = Path(__file__).parent
 GOLDENS = ROOT / "tests" / "fixtures" / "library" / "golden"
-EXTENSIONS_PREFIX = "rdf_persistence/generation/extensions/"
+EXTENSIONS_PREFIX = "rdf_persistence_generation/extensions/"  # page rows: task 2.5 renames them
 TOY_TREE_CHECK = "assert_matches_toy("
 GOLDEN_CHECK = "assert_matches_golden("
 
 ROW = re.compile(r"^\|`([^`]+)`")
-TEMPLATE_DIR = re.compile(r"`(rdf_persistence/generation/templates/[^`]+)`")
+TEMPLATE_DIR = re.compile(r"`(rdf_persistence_generation/templates/[^`]+)`")
 
 
 def register_rows() -> list[str]:

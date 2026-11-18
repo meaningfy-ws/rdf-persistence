@@ -14,14 +14,6 @@ from rdflib import URIRef
 
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.domain.sparql import term
-from rdf_persistence.generation.generated.rp_generation import (
-    LockChange,
-    LockedClass,
-    LockedEnum,
-    LockedSlot,
-    LockRule,
-    SchemaLock,
-)
 from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.services.schema_structure import (
     annotation_text,
@@ -29,6 +21,14 @@ from rdf_persistence.services.schema_structure import (
     holds_owned_part,
     iri_type_of,
     root_classes,
+)
+from rdf_persistence_generation.generated.rp_generation import (
+    LockChange,
+    LockedClass,
+    LockedEnum,
+    LockedSlot,
+    LockRule,
+    SchemaLock,
 )
 
 

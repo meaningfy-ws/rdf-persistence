@@ -6,18 +6,19 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from rdf_persistence.generation import steps
-from rdf_persistence.generation.cli import build_parser, main
-from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.exceptions import ConfigError, SchemaGenerationError, StepError
-from rdf_persistence.generation.generated.rp_generation import (
+from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.services.schema_structure import is_toolkit_schema
+from rdf_persistence_generation import steps
+from rdf_persistence_generation.cli import build_parser, main
+from rdf_persistence_generation.config import GENERATOR_DIR, TOOLKIT_ROOTS, read_targets
+from rdf_persistence_generation.exceptions import ConfigError, SchemaGenerationError, StepError
+from rdf_persistence_generation.generated.rp_generation import (
     GeneratedFile,
     GenerationManifest,
     GenerationTarget,
     ManifestEntry,
 )
-from rdf_persistence.generation.pipeline import Run, render_step, stage
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence_generation.pipeline import Run, render_step, stage
 
 from .test_freshness import MANIFEST, read_manifest
 from .test_generate_cli import project
@@ -234,3 +235,23 @@ def test_a_schema_that_does_not_load_is_reported_with_its_file(
 ) -> None:
     assert main(["--project", str(project(tmp_path, broken))]) == 1, "an unloadable schema passed"
     assert "m.yaml: load:" in capsys.readouterr().err, "the load problem was not reported"
+
+
+@pytest.mark.parametrize(
+    ("folder", "expected"),
+    [
+        (GENERATOR_DIR / "model", True),
+        (PACKAGE_DIR / "model", True),
+        (Path("tests/fixtures/library").resolve(), False),
+    ],
+    ids=["generator", "library", "toy"],
+)
+def test_the_generators_toolkit_roots_count_both_packages(folder: Path, expected: bool) -> None:
+    """TC-11 (PD-5)."""
+    assert is_toolkit_schema(folder, roots=TOOLKIT_ROOTS) is expected, f"{folder}"
+
+
+def test_the_library_alone_knows_only_itself() -> None:
+    """TC-12 (PD-5): the library never names the generator."""
+    assert is_toolkit_schema(PACKAGE_DIR / "model") is True, "the library's own schemas"
+    assert is_toolkit_schema(GENERATOR_DIR / "model") is False, "the library knows no generator"

@@ -19,11 +19,6 @@ from rdflib.collection import Collection
 from rdflib.namespace import RDF, SH
 from rdflib.term import Node
 
-from rdf_persistence.generation.exceptions import (
-    SchemaGenerationError,
-    refusing_unsupported_rules,
-)
-from rdf_persistence.generation.generated.rp_generation import UniqueKeyOn
 from rdf_persistence.services.schema_structure import (
     ABSENT,
     ANY_OF,
@@ -32,6 +27,11 @@ from rdf_persistence.services.schema_structure import (
     keyed_slots,
     presence_alternatives,
 )
+from rdf_persistence_generation.exceptions import (
+    SchemaGenerationError,
+    refusing_unsupported_rules,
+)
+from rdf_persistence_generation.generated.rp_generation import UniqueKeyOn
 
 
 def shape_uri(sv: SchemaView, cls: ClassDefinition) -> URIRef:

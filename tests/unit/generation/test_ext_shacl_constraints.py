@@ -8,14 +8,14 @@ from rdflib import Graph
 from rdflib.compare import to_canonical_graph
 from rdflib.namespace import RDF, SH
 
-from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.shacl import render
-from rdf_persistence.generation.extensions.shacl_constraints import (
+from rdf_persistence.services.schema import load_schema
+from rdf_persistence_generation.exceptions import SchemaGenerationError
+from rdf_persistence_generation.extensions.shacl import render
+from rdf_persistence_generation.extensions.shacl_constraints import (
     UniqueKeyOn,
     constraints_graph,
     unique_key_query,
 )
-from rdf_persistence.services.schema import load_schema
 
 from .conftest import ROOT_SCHEMA, TOY
 from .golden import assert_matches_golden

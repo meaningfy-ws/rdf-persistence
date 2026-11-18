@@ -2,7 +2,7 @@
 
 from jinja2 import Environment, FileSystemLoader
 
-from rdf_persistence.generation.manifest import TEMPLATES_DIR
+from rdf_persistence_generation.manifest import TEMPLATES_DIR
 
 
 def environment(folder: str) -> Environment:

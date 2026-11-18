@@ -6,10 +6,11 @@ from pathlib import Path
 import pytest
 from pyld import jsonld
 
-from rdf_persistence.generation.exceptions import SchemaGenerationError
-from rdf_persistence.generation.extensions.jsonld_context import render, render_context
-from rdf_persistence.generation.steps import CONTEXT_STEP
 from rdf_persistence.services.schema import PACKAGE_DIR
+from rdf_persistence_generation.config import GENERATOR_DIR
+from rdf_persistence_generation.exceptions import SchemaGenerationError
+from rdf_persistence_generation.extensions.jsonld_context import render, render_context
+from rdf_persistence_generation.steps import CONTEXT_STEP
 
 from .golden import TOY_TARGET, assert_matches_toy, run_toy
 
@@ -246,7 +247,7 @@ def test_a_slot_annotated_field_name_slot_keeps_its_slot_name_as_its_term(tmp_pa
 
 def test_the_generated_context_of_the_generation_model_keeps_its_prefix_and_kind_terms() -> None:
     """D-55 (9): in `rp_generation`, `schema` is not a term over `schema_file`; `kind` is the slot over `ConstraintKind`."""
-    context_file = PACKAGE_DIR / "generation" / "generated" / "context.jsonld"
+    context_file = GENERATOR_DIR / "generated" / "context.jsonld"
     context = json.loads(context_file.read_text(encoding="utf-8"))["@context"]
     assert not isinstance(context.get("schema"), dict), f"`schema` shadows the prefix: {context}"
     assert "schema_file" in context, "the slot's name is its term"

@@ -6,8 +6,6 @@ from linkml_runtime.linkml_model.meta import ClassDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.domain.generated.rp_core import DatabaseKind, RpAnnotation
-from rdf_persistence.generation.generated.rp_generation import CheckProblem, HardRule
-from rdf_persistence.generation.problems import rule_problem
 from rdf_persistence.services.schema_structure import (
     STORED_FILE,
     annotation,
@@ -16,6 +14,8 @@ from rdf_persistence.services.schema_structure import (
     is_tenant_root,
     owned_classes,
 )
+from rdf_persistence_generation.generated.rp_generation import CheckProblem, HardRule
+from rdf_persistence_generation.problems import rule_problem
 
 TENANT_ROOT_ROW = "an application class cannot be the tenant root"
 OWNED_ROW = "an application class cannot be owned; its owner decides the database"

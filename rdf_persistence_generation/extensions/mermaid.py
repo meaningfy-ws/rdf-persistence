@@ -13,13 +13,6 @@ from pathlib import Path
 from linkml.generators.mermaidclassdiagramgen import MermaidClassDiagramGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.generation.generated.rp_generation import (
-    GeneratedFile,
-    MmdAttribute,
-    MmdClass,
-    MmdModule,
-)
-from rdf_persistence.generation.templating import environment
 from rdf_persistence.services.schema import metamodel_importmap
 from rdf_persistence.services.schema_structure import (
     declared_slot_names,
@@ -29,6 +22,13 @@ from rdf_persistence.services.schema_structure import (
     owned_class_names,
     root_classes,
 )
+from rdf_persistence_generation.generated.rp_generation import (
+    GeneratedFile,
+    MmdAttribute,
+    MmdClass,
+    MmdModule,
+)
+from rdf_persistence_generation.templating import environment
 
 TEMPLATES = "mermaid"
 TEMPLATE = "module.mmd.jinja"

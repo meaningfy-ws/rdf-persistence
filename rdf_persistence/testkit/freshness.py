@@ -10,11 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.config import read_targets
-from rdf_persistence.generation.exceptions import ConfigError
-from rdf_persistence.generation.generated.rp_generation import GenerationTarget
-from rdf_persistence.generation.manifest import fix_hint, stale_targets
-from rdf_persistence.generation.problems import format_problem
+from rdf_persistence_generation.config import read_targets
+from rdf_persistence_generation.exceptions import ConfigError
+from rdf_persistence_generation.generated.rp_generation import GenerationTarget
+from rdf_persistence_generation.manifest import fix_hint, stale_targets
+from rdf_persistence_generation.problems import format_problem
 
 PROJECTS_OPTION = "rp_generate_projects"
 DEFAULT_PROJECT = "pyproject.toml"

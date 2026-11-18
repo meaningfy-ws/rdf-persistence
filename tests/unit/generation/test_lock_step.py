@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.generation.cli import main
-from rdf_persistence.generation.generated.rp_generation import SchemaLock
-from rdf_persistence.generation.lock_step import _write_draft
-from rdf_persistence.generation.manifest import MANIFEST_NAME
 from rdf_persistence.services.migrations import load_migration
+from rdf_persistence_generation.cli import main
+from rdf_persistence_generation.generated.rp_generation import SchemaLock
+from rdf_persistence_generation.lock_step import _write_draft
+from rdf_persistence_generation.manifest import MANIFEST_NAME
 
 from .conftest import TOY, Breaker
 from .test_lock import (
