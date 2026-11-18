@@ -9,12 +9,15 @@ from tests.conftest import TESTS_ROOT_DIR
 MAKEFILE = (TESTS_ROOT_DIR.parent / "Makefile").read_text(encoding="utf-8")
 SELECTION = re.compile(r'-m "([^"]+)"')
 MAX_RECIPE_LINES = 15
+# `test` is no lane of its own: it runs the three below (test_the_test_target_runs_the_three_lanes).
+AGGREGATE_LANE = "test"
+THREE_LANES = ["test-unit", "test-feature", "test-generator"]
 LANES = [
-    "test",
     "test-unit",
     "test-unit-ci",
     "test-durations",
     "test-feature",
+    "test-generator",
     "test-fast",
     "test-changed",
     "coverage-report",
@@ -24,11 +27,11 @@ LANES = [
     "test-perf",
 ]
 PARALLEL_LANES = [
-    "test",
     "test-unit",
     "test-unit-ci",
     "test-durations",
     "test-feature",
+    "test-generator",
     "test-fast",
     "profile-tests",
 ]
@@ -107,6 +110,41 @@ def test_a_lane_that_names_workers_is_in_the_parallel_list() -> None:
     assert sorted(named) == sorted(PARALLEL_LANES), "a lane runs in parallel but is not checked"
 
 
+def test_the_test_target_runs_the_three_lanes() -> None:
+    """generator-package PD-10: ``make test`` is the library's unit and feature lanes and the generator's."""
+    recipe = expanded("\n".join(recipe_of(AGGREGATE_LANE)))
+
+    assert " ".join(THREE_LANES) in recipe, "make test no longer runs the three lanes"
+    assert not SELECTION.findall(recipe), "make test selects tests itself instead of its lanes"
+
+
+def test_the_library_lanes_leave_the_generators_tests_to_their_own_lane() -> None:
+    """generator-package PD-10, TC-29, TC-30: the pyramids are measured apart."""
+    recipes = {lane: expanded("\n".join(recipe_of(lane))) for lane in LANES}
+
+    for lane in ("test-unit", "test-unit-ci", "test-feature", "test-durations"):
+        assert re.search(r"--ignore=.*?/tests/generator\s", recipes[lane] + " "), (
+            f"{lane} collects tests/generator"
+        )
+        assert re.search(r"--cov=rdf_persistence\s", recipes[lane]) or lane == "test-durations", (
+            f"{lane} does not measure the library"
+        )
+        assert "--cov=rdf_persistence_generation" not in recipes[lane], (
+            f"{lane} measures the generator"
+        )
+    generator = recipes["test-generator"]
+    assert re.search(r"--cov=rdf_persistence_generation\s", generator), (
+        "it must measure the generator"
+    )
+    assert "--cov=rdf_persistence " not in generator, "test-generator measures the library"
+    assert re.search(r"GENERATOR_COV_FLAGS\s*=(?:.*\\\n)*.*--cov-fail-under=80", MAKEFILE), (
+        "the generator's coverage flags have no 80 % floor"
+    )
+    assert re.search(r"pytest .*?/tests/generator\s", generator), (
+        "it must run tests/generator alone"
+    )
+
+
 def test_the_perf_lane_selects_perf_tests_not_in_quarantine() -> None:
     selections = SELECTION.findall(expanded("\n".join(recipe_of("test-perf"))))
 
@@ -118,7 +156,7 @@ def test_only_the_ci_unit_lane_leaves_the_slow_tests_out() -> None:
         return " ".join(SELECTION.findall(expanded("\n".join(recipe_of(lane)))))
 
     assert "and not slow" in selection("test-unit-ci"), "CI must not run the slow tests"
-    for lane in ("test", "test-unit", "test-changed"):
+    for lane in ("test-unit", "test-changed"):
         assert "slow" not in selection(lane), f"{lane} must keep running the slow tests"
 
 

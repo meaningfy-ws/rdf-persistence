@@ -17,6 +17,9 @@ LAYERS = frozenset({"domain", "services", "adapters", "entrypoints", "testkit"})
 NO_TEST_ROOTS = frozenset({"openspec", ".claude", "temp"})
 SHARED_FILES = frozenset({"pytest.ini", "pyproject.toml", "uv.lock", "Makefile", ".coveragerc"})
 DOMAIN_FOLDER = "tests/unit/domain/"
+# The generator's own pyramid (generator-package PD-9, PD-10): its code selects all of it.
+GENERATOR_PACKAGE = "rdf_persistence_generation"
+GENERATOR_TESTS = "tests/generator/"
 # The same distribution as the Makefile's PARALLEL: tests in one xdist_group share a worker.
 DIST = ("--dist", "loadgroup")
 
@@ -61,6 +64,10 @@ def _test_folder_of(parts: tuple[str, ...], root_tests: Sequence[str]) -> list[s
         return [PurePosixPath(*parts).as_posix()] if is_test else None
     if parts[0] == "tests" and len(parts) > 1 and parts[1] == "feature":
         return ["tests/feature/"]
+    if parts[0] == GENERATOR_PACKAGE and len(parts) > 1:
+        return [GENERATOR_TESTS]
+    if parts[0] == "tests" and len(parts) > 2 and parts[1] == "generator":
+        return [GENERATOR_TESTS]
     if parts[0] == "rdf_persistence" and len(parts) > 2 and parts[1] in LAYERS:
         return [f"tests/unit/{parts[1]}/"]
     if parts[0] == "rdf_persistence" and len(parts) > 1:

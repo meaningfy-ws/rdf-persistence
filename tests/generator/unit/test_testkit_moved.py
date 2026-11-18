@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.generation.test_freshness import DEFAULT_HINT
+from tests.generator.unit.test_freshness import DEFAULT_HINT
 from tests.unit.testkit.test_freshness_plugin import INI, TEST, make_project
 
 OLD = "rdf_persistence.testkit"

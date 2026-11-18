@@ -30,13 +30,21 @@ FUSEKI_IMAGE_TAR = $(REPO_ROOT)/temp/fuseki-image.tar
 
 # Coverage flags — appended only in coverage-aware targets, never in pytest.ini.
 # `make test-containers` overrides the floor with --cov-fail-under=0 (PD-16).
-COV_FLAGS = --cov=$(PACKAGE_NAME) --cov=$(GENERATOR_NAME) \
+# The library's lanes measure `rdf_persistence` alone and the generator's lane `rdf_persistence_generation`
+# alone, each against its own pyramid (generator-package PD-10). `make test-containers` measures both.
+COV_FLAGS = --cov=$(PACKAGE_NAME) \
             --cov-report=term-missing \
             --cov-report=xml:$(REPO_ROOT)/coverage.xml \
             --cov-fail-under=80
+GENERATOR_COV_FLAGS = --cov=$(GENERATOR_NAME) \
+                      --cov-report=term-missing \
+                      --cov-report=xml:$(REPO_ROOT)/coverage-generator.xml \
+                      --cov-fail-under=80
 
 # The unit lane never collects the container tests, so it runs without testcontainers (PD-16).
 UNIT_LANE = --ignore=$(TEST_PATH)/integration --ignore=$(TEST_PATH)/e2e --ignore=$(TEST_PATH)/perf
+# The library's lanes leave the generator's pyramid to `make test-generator`.
+LIBRARY_LANE = $(UNIT_LANE) --ignore=$(TEST_PATH)/generator
 
 # Every parallel lane distributes by xdist_group, and every lane leaves the quarantined tests out
 # (tests/unit/test_lanes.py checks both).
@@ -102,13 +110,13 @@ check-generated: generate ## Regenerate and fail if the result differs from what
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated output is fresh$(END_BUILD_PRINT)"
 
 refresh-snapshot: ## Rewrite the reviewed model-shape snapshot after a deliberate model change (review the diff)
-	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/generation/test_shape_snapshot.py -q
+	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/testkit/test_shape_snapshot.py tests/generator/unit/test_generation_shape.py -q
 
 refresh-map: ## Drop the scenario-map rows of vanished tests and list the collected tests with no row (exit 1 while some are unmapped)
 	@ uv run python -m tests.audit.refresh_map
 
 refresh-golden: ## Rewrite the golden files of schemas that are not the toy (the toy's golden is the committed tree: make generate)
-	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/generation -k "ext_" -q
+	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/generator/unit -k "ext_" -q
 
 build: generate ## Build the package distribution (generates first)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Building package$(END_BUILD_PRINT)"
@@ -138,7 +146,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: format-check lint typecheck typecheck-generated typecheck-ts typecheck-openapi-ts check-architecture test test-unit test-feature test-containers fuseki-image test-e2e test-perf test-fast test-changed profile-tests test-unit-ci coverage-combine test-durations
+.PHONY: format-check lint typecheck typecheck-generated typecheck-ts typecheck-openapi-ts check-architecture test test-unit test-feature test-generator test-containers fuseki-image test-e2e test-perf test-fast test-changed profile-tests test-unit-ci coverage-combine test-durations
 
 format-check: ## Check formatting with Ruff, without changing files
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking formatting$(END_BUILD_PRINT)"
@@ -186,14 +194,14 @@ check-architecture: ## Check architecture constraints with import-linter
 check-spec: ## Validate the OpenSpec spine (pinned CLI, strict)
 	@ npx -y @fission-ai/openspec@1.13.2 validate --all --strict
 
-test: ## Run the unit and feature tests, with the coverage floor
+test: ## Run the library's unit and feature tests and the generator's, each with its coverage floor
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "(unit or feature) $(NOT_QUARANTINE)" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ $(MAKE) --no-print-directory test-unit test-feature test-generator
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit and feature tests passed$(END_BUILD_PRINT)"
 
 test-containers: ## Run the integration and e2e tests against Docker containers (no coverage floor)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running container tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "(integration or e2e) $(NOT_QUARANTINE)" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
+	@ uv run pytest $(TEST_PATH) -m "(integration or e2e) $(NOT_QUARANTINE)" $(COV_FLAGS) --cov=$(GENERATOR_NAME) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Container tests passed$(END_BUILD_PRINT)"
 
 $(FUSEKI_IMAGE_TAR): $(FUSEKI_COMPOSE) $(shell find $(dir $(FUSEKI_COMPOSE))fuseki -type f)
@@ -206,28 +214,33 @@ fuseki-image: $(FUSEKI_IMAGE_TAR) ## Load the Fuseki test image from its tar, bu
 	@ docker load -i $<
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fuseki image ready$(END_BUILD_PRINT)"
 
-test-unit: ## Run the unit tests in parallel, slow ones included, with the 80 % coverage floor
+test-unit: ## Run the library's unit tests in parallel, slow ones included, with the 80 % coverage floor over rdf_persistence
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "unit $(NOT_QUARANTINE)" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit $(NOT_QUARANTINE)" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
 
 test-unit-ci: ## Run the unit tests not marked slow in parallel, with the 80 % floor; GROUP=i runs CI shard i of SPLITS, without it
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the fast unit tests $(GROUP)$(END_BUILD_PRINT)"
-	@ COVERAGE_FILE=.coverage$(if $(GROUP),.$(GROUP)) uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" $(COV_FLAGS) $(if $(GROUP),$(SHARD_FLAGS)) --junitxml=$(REPO_ROOT)/test-results$(if $(GROUP),-$(GROUP)).xml
+	@ COVERAGE_FILE=.coverage$(if $(GROUP),.$(GROUP)) uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" $(COV_FLAGS) $(if $(GROUP),$(SHARD_FLAGS)) --junitxml=$(REPO_ROOT)/test-results$(if $(GROUP),-$(GROUP)).xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast unit tests passed$(END_BUILD_PRINT)"
 
 coverage-combine: ## Combine the coverage data of the CI unit shards and check the 80 % floor
 	@ uv run coverage combine
-	@ uv run coverage xml -o $(REPO_ROOT)/coverage.xml
-	@ uv run coverage report --fail-under=80
+	@ uv run coverage xml --include='$(PACKAGE_NAME)/*' -o $(REPO_ROOT)/coverage.xml
+	@ uv run coverage report --include='$(PACKAGE_NAME)/*' --fail-under=80
 
 test-durations: ## Record the fast unit tests' durations in .test_durations, which balance the CI shards
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" --store-durations
+	@ uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" --store-durations
 
-test-feature: ## Run the BDD feature tests in parallel, with a 50 % coverage floor (CI job "feature")
+test-feature: ## Run the library's BDD feature tests in parallel, with a 50 % coverage floor over rdf_persistence (CI job "feature")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "feature $(NOT_QUARANTINE)" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
+	@ uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "feature $(NOT_QUARANTINE)" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Feature tests passed$(END_BUILD_PRINT)"
+
+test-generator: ## Run the generator's own tests (tests/generator, unit, feature and integration) in parallel, with the 80 % floor over rdf_persistence_generation (CI job "test-generator")
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the generator tests$(END_BUILD_PRINT)"
+	@ COVERAGE_FILE=.coverage.generator uv run pytest $(TEST_PATH)/generator $(PARALLEL) -m "(unit or feature or integration) $(NOT_QUARANTINE)" $(GENERATOR_COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results-generator.xml
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generator tests passed$(END_BUILD_PRINT)"
 
 test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not part of check-all
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running perf tests$(END_BUILD_PRINT)"
@@ -306,7 +319,7 @@ mutation: ## Mutate the domain layer, services/iris.py and services/tenant_move.
 coverage-report: ## Generate HTML coverage report in reports/
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Generating coverage report$(END_BUILD_PRINT)"
 	@ mkdir -p $(REPO_ROOT)/reports
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(COV_FLAGS) --cov-report=html:$(REPO_ROOT)/reports/htmlcov -m "(unit or feature) $(NOT_QUARANTINE)"
+	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(COV_FLAGS) --cov=$(GENERATOR_NAME) --cov-report=html:$(REPO_ROOT)/reports/htmlcov -m "(unit or feature) $(NOT_QUARANTINE)"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Coverage report at reports/htmlcov/index.html$(END_BUILD_PRINT)"
 
 quality-report: ## Generate Radon quality report in reports/
@@ -314,6 +327,8 @@ quality-report: ## Generate Radon quality report in reports/
 	@ mkdir -p $(REPO_ROOT)/reports
 	@ uv run --directory $(PACKAGE_NAME) radon cc . -s -a -j > $(REPO_ROOT)/reports/complexity.json
 	@ uv run --directory $(PACKAGE_NAME) radon mi . -s -j > $(REPO_ROOT)/reports/maintainability.json
+	@ uv run --directory $(GENERATOR_NAME) radon cc . -s -a -j > $(REPO_ROOT)/reports/complexity-generator.json
+	@ uv run --directory $(GENERATOR_NAME) radon mi . -s -j > $(REPO_ROOT)/reports/maintainability-generator.json
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Quality reports at reports/$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
@@ -324,11 +339,13 @@ quality-report: ## Generate Radon quality report in reports/
 complexity: ## Radon cyclomatic complexity analysis
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking cyclomatic complexity$(END_BUILD_PRINT)"
 	@ uv run --directory $(PACKAGE_NAME) radon cc . -s -a
+	@ uv run --directory $(GENERATOR_NAME) radon cc . -s -a
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Complexity analysis complete$(END_BUILD_PRINT)"
 
 maintainability: ## Radon maintainability index
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking maintainability index$(END_BUILD_PRINT)"
 	@ uv run --directory $(PACKAGE_NAME) radon mi . -s
+	@ uv run --directory $(GENERATOR_NAME) radon mi . -s
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Maintainability analysis complete$(END_BUILD_PRINT)"
 
 clean-code: ## Xenon threshold checks

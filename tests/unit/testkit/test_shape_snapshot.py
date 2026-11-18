@@ -4,6 +4,7 @@ import importlib
 import json
 import os
 import pkgutil
+import shutil
 from pathlib import Path
 
 import pytest
@@ -17,7 +18,6 @@ from rdf_persistence.testkit.shape_snapshot import (
     snapshot_diff,
     write_snapshot,
 )
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
 
 ROOT = Path(__file__).parents[3]
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -25,12 +25,10 @@ SNAPSHOT = FIXTURES / "model-shape.yaml"
 METAMODEL = ROOT / "rdf_persistence" / "model" / "rp.yaml"
 TOY = FIXTURES / "library" / "library.yaml"
 SERVICE = ROOT / "rdf_persistence" / "model" / "technical" / "service" / "rp_service.yaml"
-GENERATION = ROOT / "rdf_persistence_generation" / "model" / "rp_generation.yaml"
 TESTKIT = ROOT / "rdf_persistence" / "model" / "technical" / "testkit" / "rp_testkit.yaml"
 TOY_PACKAGE = "tests.fixtures.library.generated"
 METAMODEL_PACKAGE = "rdf_persistence.domain.generated"
 SERVICE_PACKAGE = "rdf_persistence.services.generated.service"
-GENERATION_PACKAGE = "rdf_persistence_generation.generated"
 TESTKIT_PACKAGE = "rdf_persistence.testkit.generated"
 REFRESH = "RP_REFRESH_SNAPSHOT"
 
@@ -64,6 +62,14 @@ def generated_models(package: str) -> list[type[BaseModel]]:
 
 
 # --- the snapshot ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def toy_copy(tmp_path: Path) -> Path:
+    """The toy library's schemas copied to ``tmp_path``; returns the folder."""
+    folder = tmp_path / "library"
+    shutil.copytree(TOY.parent, folder, ignore=shutil.ignore_patterns("__pycache__", "generated"))
+    return folder
 
 
 def test_the_current_shapes_equal_the_reviewed_snapshot() -> None:
@@ -198,13 +204,12 @@ def test_snapshot_diff_describes_each_kind_of_change(
         pytest.param(METAMODEL, METAMODEL_PACKAGE, id="metamodel"),
         pytest.param(TOY, TOY_PACKAGE, id="toy"),
         pytest.param(SERVICE, SERVICE_PACKAGE, id="service"),
-        pytest.param(GENERATION, GENERATION_PACKAGE, id="generation"),
         pytest.param(TESTKIT, TESTKIT_PACKAGE, id="testkit"),
     ],
 )
 def test_generated_classes_match_the_induced_slots(schema: Path, package: str) -> None:
     models = generated_models(package) + generated_models(METAMODEL_PACKAGE)
-    shapes = class_shapes([schema], roots=TOOLKIT_ROOTS)  # TC-14b: the generator's own schema too
+    shapes = class_shapes([schema])
     own = {m.__name__ for m in generated_models(package)}
     assert own, "the scan found no generated class"
     assert own <= {s.class_name for s in shapes}, "every generated class has a shape"

@@ -83,6 +83,11 @@ class DirectoryMarkers:
 # The first row whose directory starts the relative path wins (PD-16), so a row never needs
 # to exclude another.
 _MARKERS_BY_DIR = (
+    DirectoryMarkers("generator/unit/", ("unit",)),
+    DirectoryMarkers("generator/feature/", ("feature",)),
+    DirectoryMarkers("generator/integration/", ("integration",)),
+    # install_service needs a store, a file store and an identity provider, as the library's e2e/ row
+    DirectoryMarkers("generator/e2e/", ("e2e", STORE, FILES, IDENTITY)),
     DirectoryMarkers("unit/", ("unit",)),
     DirectoryMarkers("feature/", ("feature",)),
     DirectoryMarkers("integration/store/", ("integration", STORE)),

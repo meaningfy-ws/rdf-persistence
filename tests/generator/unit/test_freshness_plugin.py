@@ -6,8 +6,8 @@ import pytest
 
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.testkit import freshness
-from tests.unit.generation.test_freshness import DEFAULT_HINT, NAMED
-from tests.unit.generation.test_generate_cli import PYPROJECT, SCHEMA
+from tests.generator.unit.test_freshness import DEFAULT_HINT, NAMED
+from tests.generator.unit.test_generate_cli import PYPROJECT, SCHEMA
 
 CONFTEST = 'pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]\n'
 TEST = "def test_it():\n    assert True\n"

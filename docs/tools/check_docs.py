@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE = ROOT / "docs/modules/ROOT"
-CODE_DIRS = ["rdf_persistence", "tests"]
+CODE_DIRS = ["rdf_persistence", "rdf_persistence_generation", "tests"]
 BYTECODE_DIR = "__pycache__"
 ALL_NAME = "__all__"
 MERMAID_PIN = "mermaid@"

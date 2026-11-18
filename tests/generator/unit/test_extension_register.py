@@ -50,7 +50,7 @@ def test_every_extension_module_has_a_row(module: str) -> None:
 @pytest.mark.parametrize("module", extension_modules())
 def test_every_extension_module_has_a_golden_test(module: str) -> None:
     assert (TESTS / f"test_ext_{module}.py").is_file(), (
-        f"tests/unit/generation/test_ext_{module}.py is missing"
+        f"tests/generator/unit/test_ext_{module}.py is missing"
     )
 
 
