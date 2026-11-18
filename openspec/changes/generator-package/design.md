@@ -526,3 +526,15 @@ package name are leader's choices (DEC-2, DEC-5).
   item 11: (5) TC-44's step does not pin the `[description]` tag (D-26), (6) "nothing written"
   checks two folders. The tester's note that no make target runs one generator tier is a
   suggestion, not filed.
+- **D-29 Stage 4 checker: verdict fail, items fixed now** (lead, under the developer's grant;
+  9 findings). C1 (Critical): D-27's guard asserts the container plugin is absent from the
+  session, but `make test-containers` loads it on purpose and selects the integration tier too,
+  so the container gate fails; the guard asserts absence only when the session ignores
+  `tests/generator/e2e` (the lanes D-27 pins), and holds nothing otherwise. W1: the
+  `develop/index.adoc` commands table (`make test` runs three lanes, no "two halves",
+  `refresh-map` re-keys moved tests against `BASE`) is done now (D-19 W5, D-17). W2: `proposal.md`'s
+  As built names D-28. W3: the 14 new tests are mapped (D-17), in this PR. W4: the hook's docstring
+  and `generation.adoc` (~713) say it fires on the generator's inputs, not "every manifest input"
+  (the library's `schema*.py` readers are inputs it does not match, as before the move). Under the
+  floor: S2 (a cleanup test asserts `sys.path` only), S3 (a direct `tests/generator/e2e` path given
+  to `test-changed` loads its conftest, as `tests/e2e` does), S4 (docs-owed has no status column).
