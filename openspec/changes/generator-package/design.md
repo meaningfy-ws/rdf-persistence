@@ -337,3 +337,9 @@ package name are leader's choices (DEC-2, DEC-5).
   "run things in parallel whenever they can"). 2.1 first (nothing imports half-moved); then 2.2,
   2.3 and 2.5 in parallel worktrees; 2.4 after 2.2 (both edit `tests/conftest.py`). Builders do
   not tick `tasks.md`; the lead does (T2).
+- **D-9 Stage 2's impact is CRITICAL, accepted** (lead, under the developer's grant to decide).
+  GitNexus rates `is_toolkit_schema` (4 direct callers, 108 symbols to depth 3) and
+  `recorded_path` (4 direct, 13 to depth 3) CRITICAL. Expected for the move: the direct callers
+  are the call sites PD-5 lists, the new `roots=` keyword defaults to today's behaviour, and the
+  only output change allowed is the manifests' input paths (TC-09), which `make check-generated`
+  and the full gates check.
