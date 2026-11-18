@@ -202,6 +202,7 @@ name = only the Redis adapter imports faststream or redis (aggregate-events PD-8
 type = forbidden
 source_modules =
     rdf_persistence
+    rdf_persistence_generation
 forbidden_modules =
     faststream
     redis
@@ -232,6 +233,7 @@ type = forbidden
 allow_indirect_imports = True
 source_modules =
     rdf_persistence
+    rdf_persistence_generation
 forbidden_modules =
     rdflib.plugins.sparql
     pyshacl

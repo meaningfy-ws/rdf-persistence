@@ -182,16 +182,38 @@ def _ci_job(name: str) -> str:
     return match.group(1)
 
 
+def _needs(job: str) -> list[str]:
+    header = _ci_job(job).split("steps:")[0]
+    match = re.search(r"^    needs:\s*\[([^\]]*)\]", header, re.MULTILINE)
+    return [name.strip() for name in match.group(1).split(",")] if match else []
+
+
 def test_the_generator_job_hands_its_coverage_to_the_job_that_scans() -> None:
-    """D-15: the scan job downloads ``unit-shard-*``; the generator's report is uploaded under it."""
+    """D-15, D-19: the scan job downloads the generator's report by the name it is uploaded under."""
     upload = _ci_job("test-generator")
-    scan = _ci_job("unit")
+    scan = _ci_job("sonar")
 
     assert "actions/upload-artifact@v4" in upload, "test-generator must upload its coverage"
-    assert "name: unit-shard-generator" in upload, "the artifact must match the scan's pattern"
+    assert "name: generator-coverage" in upload, "the artifact must carry the name the scan reads"
     assert "coverage-generator.xml" in upload, "the generator's coverage report is uploaded"
-    assert "pattern: unit-shard-*" in scan, "the scan job downloads the shards by this pattern"
-    assert "test-generator" in scan.split("steps:")[0], "the scan job must wait for test-generator"
+    assert "name: generator-coverage" in scan, "the scan job downloads the generator's report"
+    assert "name: coverage-report" in scan, "the scan job downloads the library's combined report"
+    assert sorted(_needs("sonar")) == ["test-generator", "unit"], "the scan waits for both lanes"
+
+
+def test_a_generator_failure_leaves_the_unit_job_green_and_the_reverse() -> None:
+    """D-19: the unit job's result depends on the shards alone, and the shards do not read the generator."""
+    assert _needs("unit") == ["unit-shard"], "unit must need only the shards"
+    assert _needs("test-generator") == [], "the generator job must not wait for the library's jobs"
+    assert "unit-shard-*" not in _ci_job("test-generator"), "no artifact named for the shards"
+
+
+def test_the_scan_job_keeps_its_gate_and_runs_whatever_the_lanes_did() -> None:
+    scan = _ci_job("sonar")
+
+    assert "vars.SONAR_ENABLED == 'true'" in scan, "the scan runs only when enabled"
+    assert "SonarSource/sonarqube-scan-action" in scan, "the scan lives in the sonar job"
+    assert "SonarSource/sonarqube-scan-action" not in _ci_job("unit"), "unit no longer scans"
 
 
 def test_sonar_reads_the_library_and_the_generator_coverage() -> None:
