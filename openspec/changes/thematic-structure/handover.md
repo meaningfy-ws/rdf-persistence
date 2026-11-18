@@ -1,29 +1,30 @@
-# Hand-over: thematic-structure, after stage 3
+# Hand-over: thematic-structure, after stage 4
 
 ## Done
-Stage 1 #171, stage 2 #174 (merged). Stage 3 (tasks 3.1, 3.2), PR into `develop` (merged by the
-watch-and-merge command after this note): `iris` (the 11 IRI wrappers removed,
-`mint_aggregate_iri` warns), `schema` (with the six term bundles), `files`, `provenance`; the
-contracts and the model guard derive their themes from `TURNED_ON` (D-16).
+Stage 1 #171, stage 2 #174, stage 3 #175 (merged). Stage 4 (tasks 4.1, 4.2), PR into `develop`
+(merged by the watch-and-merge command after this note): `SparqlProtocolStore` and `FusekiStore`;
+`persistence` and `migrations` moved; the `adapters.fuseki` shim; persistence and migrations
+served from their own schemas; a component two served schemas declare is an error (D-19).
+Checker: pass.
 
 ## Decided since the PLAN
-D-1 to D-17 (design.md, Delivery decisions).
+D-1 to D-19 (design.md, Delivery decisions).
 
 ## Open
-- Stage 7 removes the temporary contracts `themes-never-import-the-old-layout` and the four
-  `old-vs-themes` contracts with the old layout; its CHANGELOG lists the moved logger names
-  (D-12 (7), D-15 (8)).
+- Stage 7 removes the temporary contracts (`themes-never-import-the-old-layout`, the four
+  `old-vs-themes`), and its CHANGELOG names the moved logger names, `error.type`, the 400 log
+  line and the IRI wrappers (D-12 (7), D-15 (8), D-18 (5)).
 - `evidence/docs-owed.md` for task 7.2.
 
 ## Next
-Stage 4 is built in `.worktrees/ts-s4` (a069a31 move, 3de626d `adapters.fuseki` shim, d060813
-the served TypeScript golden in served-schema order, proven order-only) on 330e041; cut
-`change/thematic-structure-s4` from `develop`, cherry-pick the three, settle conflicts (docs by
-combining both sides, `.test_durations` by regenerating), record D-18 (the lead's
-`temp/session-state.md` lists its items) and add the test tying `themes-layered`/`themes-ordered`
-to `TURNED_ON` (D-17 W2). Stage 5 is building in `.worktrees/ts-s5` on d060813. Re-index Serena
-and GitNexus after this merge.
+Stage 5 is built in `.worktrees/ts-s5` (63299b5 move, a13343c TypeScript golden in served order,
+proven order-only); stage 6 in `.worktrees/ts-s6` (1ea2a06, 161d2ec); task 7.1 in `.worktrees/ts-s7`
+(d9b7679). Cut `change/thematic-structure-s5` from `develop` after this merge, cherry-pick stage
+5's two commits, settle conflicts (docs by combining; `.test_durations` and the scenario map by
+regenerating and re-mapping), record its D-n from the lead's `temp/session-state.md`. Detach
+`.worktrees/lead` from the PR branch before every watch-and-merge (D-18 (13)). Re-index after
+each merge.
 
 ## Prompt
-Act as the team lead. Deliver stage 4 of openspec/changes/thematic-structure from handover.md,
+Act as the team lead. Deliver stage 5 of openspec/changes/thematic-structure from handover.md,
 in .worktrees/lead.
