@@ -8,9 +8,9 @@ from pydantic import BaseModel
 
 from rdf_persistence.core.domain.media import ACCEPT, JSON
 from rdf_persistence.entrypoints.negotiation import ETAG, LINK, LOCATION, VARY, etag_of
+from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
+from rdf_persistence.persistence.services.session import Stored
 from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.generated.service.rp_service import Page
-from rdf_persistence.services.session import Stored
 
 CONTEXT_REL = "http://www.w3.org/ns/json-ld#context"
 

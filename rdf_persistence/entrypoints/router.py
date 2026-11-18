@@ -46,19 +46,19 @@ from rdf_persistence.entrypoints.responses import (
 )
 from rdf_persistence.entrypoints.sse import add_events_route
 from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
+from rdf_persistence.persistence.services.listing import items_of, list_request, total_of
+from rdf_persistence.persistence.services.session import Stored
 from rdf_persistence.schema.services.schema_structure import is_service_written
 from rdf_persistence.services.generated.service.rp_service import (
     Authorised,
     CallerAccess,
     GrantSet,
     LabelUpdate,
-    Page,
     TenantCreate,
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.services.listing import items_of, list_request, total_of
-from rdf_persistence.services.session import Stored
 
 CONTEXT_ROUTE = "context"
 

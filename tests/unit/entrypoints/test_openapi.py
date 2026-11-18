@@ -10,8 +10,8 @@ from openapi_spec_validator import validate
 from rdf_persistence.core.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS, TURTLE
 from rdf_persistence.entrypoints.problems import CONFLICT as VERSION_CONFLICT
 from rdf_persistence.entrypoints.problems import KEY_CONFLICT, KINDS
+from rdf_persistence.persistence.services.listing import listable_slots
 from rdf_persistence.schema.services.schema_structure import is_internal
-from rdf_persistence.services.listing import listable_slots
 from tests.toy_service import ToyService
 
 COMPONENT = "#/components/schemas/"

@@ -17,7 +17,7 @@ from rdf_persistence.entrypoints.problems import (
     install_problem_handlers,
     kind_of,
 )
-from rdf_persistence.services.decoding import error_text
+from rdf_persistence.persistence.services.decoding import error_text
 from rdf_persistence.services.generated.service.rp_service import ProblemSlug
 from tests.logs import attributes
 from tests.toy_service import assert_problem

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.services.migrations import load_migration
+from rdf_persistence.migrations.services.migrations import load_migration
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.generated.rp_generation import SchemaLock
 from rdf_persistence_generation.lock_step import _write_draft

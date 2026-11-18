@@ -8,7 +8,9 @@ import pytest
 from rdf_persistence.core.services.artifacts import COMPONENTS_FILE, SCHEMAS
 from rdf_persistence.schema.services.schema import (
     IRIS_SCHEMA,
+    MIGRATIONS_SCHEMA,
     PACKAGE_DIR,
+    PERSISTENCE_SCHEMA,
     SERVED_SCHEMAS,
     SERVICE_SCHEMA,
 )
@@ -59,11 +61,16 @@ def test_the_application_folder_may_redeclare_a_served_class(tmp_path: Path) -> 
 
 
 def test_the_served_folders_follow_the_served_schemas() -> None:
-    assert SERVED_SCHEMAS == (IRIS_SCHEMA, SERVICE_SCHEMA), (
-        "the iris schema comes before the service"
-    )
+    assert SERVED_SCHEMAS == (
+        IRIS_SCHEMA,
+        PERSISTENCE_SCHEMA,
+        MIGRATIONS_SCHEMA,
+        SERVICE_SCHEMA,
+    ), "each theme's schema comes before the ones that import it"
     assert served_folders() == (
         PACKAGE_DIR / "iris" / "services" / "generated",
+        PACKAGE_DIR / "persistence" / "services" / "generated",
+        PACKAGE_DIR / "migrations" / "services" / "generated",
         PACKAGE_DIR / "services" / "generated" / "service",
     ), "each folder is the package its schema declares"
     assert all((folder / COMPONENTS_FILE).is_file() for folder in served_folders())

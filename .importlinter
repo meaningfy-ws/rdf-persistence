@@ -40,6 +40,8 @@ containers =
     rdf_persistence.schema
     rdf_persistence.files
     rdf_persistence.provenance
+    rdf_persistence.persistence
+    rdf_persistence.migrations
 layers =
     (entrypoints) | (adapters)
     (services)
@@ -50,6 +52,8 @@ exhaustive = true
 name = Themes: a theme imports only the themes below it (core is the lowest)
 type = layers
 layers =
+    rdf_persistence.migrations
+    rdf_persistence.persistence
     rdf_persistence.provenance | rdf_persistence.files
     rdf_persistence.iris | rdf_persistence.schema
     rdf_persistence.core
@@ -102,6 +106,8 @@ source_modules =
     rdf_persistence.schema
     rdf_persistence.files
     rdf_persistence.provenance
+    rdf_persistence.persistence
+    rdf_persistence.migrations
 forbidden_modules =
     rdf_persistence.domain
     rdf_persistence.services
@@ -246,26 +252,16 @@ layers =
     rdf_persistence.services.transitions | rdf_persistence.services.write_guards
     rdf_persistence.services.discussion | rdf_persistence.services.reference_collections | rdf_persistence.services.workflows
     rdf_persistence.services.access
-    rdf_persistence.services.session
+    rdf_persistence.persistence.services.session
 
 [importlinter:contract:session-and-provenance-without-mapper]
 name = the session and the activity shape never import the mapper, which imports the session (message-bus PD-6)
 type = forbidden
 source_modules =
-    rdf_persistence.services.session
+    rdf_persistence.persistence.services.session
     rdf_persistence.provenance.services.provenance
 forbidden_modules =
-    rdf_persistence.services.mapper
-
-[importlinter:contract:migrations-below-the-runner]
-name = the migration files and the request import neither the tenancy, the runner nor the dump (PD-24.2, PD-25.6)
-type = forbidden
-source_modules =
-    rdf_persistence.services.migrations
-forbidden_modules =
-    rdf_persistence.services.tenancy
-    rdf_persistence.services.migration_runner
-    rdf_persistence.services.tenant_dump
+    rdf_persistence.persistence.services.mapper
 
 [importlinter:contract:tenancy-without-the-runner]
 name = the tenancy never imports the runner, which imports the tenancy (PD-24.2, PD-25.6)
@@ -285,7 +281,7 @@ source_modules =
     rdf_persistence.core.services.artifacts
     rdf_persistence.services.collaboration
     rdf_persistence.services.components
-    rdf_persistence.services.decoding
+    rdf_persistence.persistence.services.decoding
     rdf_persistence.services.discussion
     rdf_persistence.services.documents
     rdf_persistence.services.event_hub
@@ -296,18 +292,18 @@ source_modules =
     rdf_persistence.services.identity
     rdf_persistence.services.iri_policy_guard
     rdf_persistence.iris.services.iris
-    rdf_persistence.services.listing
-    rdf_persistence.services.loading
-    rdf_persistence.services.mapper
+    rdf_persistence.persistence.services.listing
+    rdf_persistence.persistence.services.loading
+    rdf_persistence.persistence.services.mapper
     rdf_persistence.services.migration_runner
-    rdf_persistence.services.migrations
+    rdf_persistence.migrations.services.migrations
     rdf_persistence.provenance.services.provenance
     rdf_persistence.services.reference_collections
     rdf_persistence.services.relay
     rdf_persistence.schema.services.schema
     rdf_persistence.schema.services.schema_structure
-    rdf_persistence.services.session
-    rdf_persistence.services.store
+    rdf_persistence.persistence.services.session
+    rdf_persistence.persistence.services.store
     rdf_persistence.services.sweep
     rdf_persistence.services.tenancy
     rdf_persistence.services.tenant_dump
@@ -316,7 +312,7 @@ source_modules =
     rdf_persistence.core.services.telemetry
     rdf_persistence.services.tokens
     rdf_persistence.services.transitions
-    rdf_persistence.services.unique_keys
+    rdf_persistence.persistence.services.unique_keys
     rdf_persistence.provenance.services.visible_part
     rdf_persistence.schema.services.vocabulary
     rdf_persistence.services.workflows

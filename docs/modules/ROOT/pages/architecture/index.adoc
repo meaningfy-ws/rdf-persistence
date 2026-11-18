@@ -136,7 +136,7 @@ xref:architecture/data-flows.adoc[Where data lives and what each operation does]
 |Mapper
 |v1
 |Domain object to triples and back, IRIs taken from the LinkML schema at run time (implemented, task
-2.5: `rdf_persistence/services/mapper.py`). Owned parts live in the root's graph: by an IRI minted
+2.5: `rdf_persistence/persistence/services/mapper.py`). Owned parts live in the root's graph: by an IRI minted
 under the root's (by default `{root_iri}/parts/{uuid4}`, per the IRI policy) when their class
 includes `Described`, otherwise as blank nodes skolemised on write; references to other aggregates
 are IRIs; multi-valued slots are sets. The mapper reads the class the caller asks for (it does not
@@ -156,7 +156,7 @@ comes back as its parent: a known limit, lifted when a schema owns a class hiera
 
 |Schema migrations
 |v1
-|The change of stored data when a schema changes. At build time, `rp-generate` keeps a *schema lock* (`schema.lock.json`, in `rdf_persistence_generation/lock.py` and `lock_step.py`) next to the migration files, compares it with the schema, refuses the changes that need a new `version:` and drafts a migration for those that need a step. At run time, the migration files (`services/migrations.py`) form one chain per schema, the toolkit's own and the consumer's, and the runner (`services/migration_runner.py`) applies them. Each database holds a *stamp* per schema id, the version its data follows, in the graph `{base}toolkit/schema-stamps` (see xref:architecture/data-flows.adoc#migrations[Start-up migrations]). `install_service` creates the system database, guards the IRI policy, creates the application database, migrates the shared databases, runs the sweep, then migrates the tenants, before it serves; its argument `migrations` is the folder of the consumer's files. A tenant whose migration fails is set aside (`Tenancy.behind`) and answers `503`. See xref:howto/migrate.adoc[Change a schema that has stored data].
+|The change of stored data when a schema changes. At build time, `rp-generate` keeps a *schema lock* (`schema.lock.json`, in `rdf_persistence_generation/lock.py` and `lock_step.py`) next to the migration files, compares it with the schema, refuses the changes that need a new `version:` and drafts a migration for those that need a step. At run time, the migration files (`migrations/services/migrations.py`) form one chain per schema, the toolkit's own and the consumer's, and the runner (`services/migration_runner.py`) applies them. Each database holds a *stamp* per schema id, the version its data follows, in the graph `{base}toolkit/schema-stamps` (see xref:architecture/data-flows.adoc#migrations[Start-up migrations]). `install_service` creates the system database, guards the IRI policy, creates the application database, migrates the shared databases, runs the sweep, then migrates the tenants, before it serves; its argument `migrations` is the folder of the consumer's files. A tenant whose migration fails is set aside (`Tenancy.behind`) and answers `503`. See xref:howto/migrate.adoc[Change a schema that has stored data].
 |
 
 |Graph loading
@@ -301,7 +301,7 @@ classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Mo
 (`PersistenceError` and its subclasses: `Conflict`, `NotFound`, `DatabaseGone`, `TenantGone`,
 `Forbidden`, `InvalidBody`, `InvalidIri`, `InvalidToken`, `InvalidWorkflow`, `StoredDataInvalid`, …)
 |`rdf_persistence.services`
-|session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the IRI
+|the `persistence` theme (`persistence/services/`: session and unit of work, mapper, the `Store` port, listing, unique keys, JSON-LD and loading) and the `migrations` theme (`migrations/services/migrations.py`: the migration files and their chain); tenancy, access check, collaboration, workflows, sweep; the IRI
 policy and `Iris` (`iris/services/iris.py`; `tenant_move.py` is beside the services); the factories that build the SPARQL
 term bundles (`schema/services/vocabulary.py`); the activity shape and the visible part (`provenance/services/`); the file ports and the file-key rules (`files/services/files.py`, `files/domain/blob_keys.py`); the message bus; the other ports
 |the technical models of the services, loaded lazily from the top level, each group a folder of
@@ -313,7 +313,12 @@ of `SparqlTerm`, are in `schema/services/generated/templates/` (`model/technical
 IRI policy of the `iris` theme (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`) in
 `iris/services/generated/` (`model/technical/iris/rp_iris_services.yaml`), with the IRI models
 `IriTemplateVariables` and `IriParts`, plain strings read by `iris/services/iris.py`, in
-`iris/services/generated/templates/` (`rp_iris_templates.yaml`)
+`iris/services/generated/templates/` (`rp_iris_templates.yaml`); the `persistence` theme's request and plan
+records (`Page`, `Filter`, `ListRequest`, `Condition`, `ListPlan`, `AggregateHead`) in
+`persistence/services/generated/` (`model/technical/persistence/rp_persistence_services.yaml`) and its
+`LimitSettings` in `persistence/services/generated/settings/` (`rp_persistence_settings.yaml`); the
+`migrations` theme's `Migration` and `MigrationStep` in `migrations/services/generated/`
+(`model/technical/migrations/rp_migrations_services.yaml`)
 |`open_session`, `Session`, `Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`; the service records
 (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`,
 `GrantSet`, `Page`, `Problem`, `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`,
@@ -322,7 +327,7 @@ IRI policy of the `iris` theme (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKin
 `Tenancy`, `sweep`, `sweep_tenant`, `remove_with_files`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
 `Collaboration` (opened with `kit.collaboration`), `Workflows`, `Listings`; `MessageBus`, `bootstrap`, `command`, `Work`;
 the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`, `EventBus` (with `Receive`, `context_link`); `Session.named_file_keys`
-|`rdf_persistence.adapters` |Fuseki, Zitadel and Redis Streams adapters; JWKS token verification (the S3 adapter is `files/adapters/s3.py`) |the wire shapes of the identity provider, Fuseki and the token, in `adapters/generated/` (from `model/technical/wire/rp_wire.yaml`); only the adapters and the testkit import them |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
+|`rdf_persistence.adapters` |Zitadel and Redis Streams adapters; JWKS token verification (the S3 adapter is `files/adapters/s3.py`; the Fuseki store is `persistence/adapters/fuseki.py` over the protocol base `persistence/adapters/sparql_protocol.py`, and the module of the same name under `adapters/` is a deprecation shim) |the wire shapes of the identity provider and the token, in `adapters/generated/` (from `model/technical/wire/rp_wire.yaml`); `FusekiDatasetList` and `FusekiDataset` are in `persistence/adapters/generated/` (`rp_persistence_adapters.yaml`); only the adapters and the testkit import them |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
 |`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up), the events route, `settings_from_env` (`entrypoints/environment.py`) |none: it imports the technical models of the services |`install_service` (with `migrations=`, the folder of the migration files, and `workflows=`, the paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and `workflows`), `limited_body`, `settings_from_env` (reads a settings model such as `ToolkitSettings` from `RP_` environment variables; needs the `settings` extra)
 |`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the
 waiting helpers (`wait_until`, `wait_until_async`), the adapter conformance suites, the model-shape
@@ -348,12 +353,14 @@ the extras.
 the metamodel is generated into `core/domain/generated/`, and each technical group into the `generated/`
 folder of the lowest layer whose code may import it, so the `layers` contract of import-linter orders
 the `generated` packages of the three old runtime layers without a line of its own; the moved themes
-(`core`, `iris`, `schema`, `files`, `provenance`) are not in that contract, `themes-layered`,
+(`core`, `iris`, `schema`, `files`, `provenance`, `persistence`, `migrations`) are not in that contract, `themes-layered`,
 `themes-ordered` and `layers-across-themes` order them. `testkit.generated`
 is outside that contract: the contract `runtime-without-extras` keeps it out of the runtime. Two groups sit in `services/generated/`
 (`service` and `settings`), the `core` group (`HttpSettings` and `LogContext`, from
 `model/technical/core/rp_core_services.yaml`) in `core/services/generated/`, the `iris` and `schema` groups in
-`iris/services/generated/` and `schema/services/generated/templates/`, the `wire` group in `adapters/generated/`
+`iris/services/generated/` and `schema/services/generated/templates/`, the `persistence` groups in
+`persistence/services/generated/`, `persistence/services/generated/settings/` and
+`persistence/adapters/generated/`, the `migrations` group in `migrations/services/generated/`, the `wire` group in `adapters/generated/`
 and the `testkit` group in `testkit/generated/`. The domain layer imports none of them:
 the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` and the domain of
 every theme (`rdf_persistence.*.domain`) from importing

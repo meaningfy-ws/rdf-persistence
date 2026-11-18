@@ -31,6 +31,7 @@ from rdf_persistence.core.services.generated.rp_core_services import (
     HttpSettings,
     LogContext
 )
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import LimitSettings
 
 
 metamodel_version = "1.12.0"
@@ -106,14 +107,6 @@ class SseSettings(ConfiguredBaseModel):
     resume_window_seconds: float = Field(default=604800, title="Resume window", description="The seconds back from now a client may resume from with its last event id.", ge=0.001, le=31536000)
 
 
-class LimitSettings(ConfiguredBaseModel):
-    "The most the toolkit takes in one message bus run, one commit, one body and one restore manifest."
-    max_messages: int = Field(default=100, title="Maximum messages", description="The most messages one run of the message bus handles.", ge=1)
-    max_roots: int = Field(default=500, title="Maximum roots", description="The most aggregate roots one commit transaction holds.", ge=1)
-    max_document_nodes: int = Field(default=10000, title="Maximum document nodes", description="The most objects and list values one JSON-LD body may hold.", ge=1)
-    max_manifest_bytes: int = Field(default=65536, title="Maximum manifest size", description="The most bytes the manifest of a tenant dump may hold.", ge=1)
-
-
 class ToolkitSettings(ConfiguredBaseModel):
     "Every group of settings; each group is a new instance of its class with its own defaults, never absent."
     http: HttpSettings = Field(default_factory=HttpSettings, title="HTTP", description="The HTTP client settings.")
@@ -130,5 +123,4 @@ JwksSettings.model_rebuild()
 DirectorySettings.model_rebuild()
 EventSettings.model_rebuild()
 SseSettings.model_rebuild()
-LimitSettings.model_rebuild()
 ToolkitSettings.model_rebuild()

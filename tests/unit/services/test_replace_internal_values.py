@@ -10,10 +10,10 @@ from rdflib import Literal, URIRef
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from rdf_persistence_generation.cli import main as generate

@@ -8,10 +8,10 @@ from fastapi import FastAPI
 
 from rdf_persistence.core.domain.exceptions import InvalidMigration
 from rdf_persistence.entrypoints.service import install_service
+from rdf_persistence.migrations.services.generated.rp_migrations_services import Migration
+from rdf_persistence.migrations.services.migrations import stamps, versions
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.vocabulary import metamodel
-from rdf_persistence.services.generated.service.rp_service import Migration
-from rdf_persistence.services.migrations import stamps, versions
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library import generated
 from tests.toy import REVIEW_WORKFLOW, TOY_SCHEMA

@@ -15,8 +15,9 @@ from rdf_persistence.core.domain.exceptions import BadQuery, InvalidBody, Invali
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.core.domain.sparql import Triple
-from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import GeneratedModels, Mapper
+from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
+from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.services.reference_collections import (
     collection_class,
     collection_classes,
@@ -24,7 +25,6 @@ from rdf_persistence.services.reference_collections import (
     outside_member_class,
     rule_plan,
 )
-from rdf_persistence.services.session import Session
 from rdf_persistence.services.workflows import Workflows
 
 

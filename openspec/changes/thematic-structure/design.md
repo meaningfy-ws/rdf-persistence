@@ -607,3 +607,43 @@ consumers later.
   those contracts. S1 (a scenario-map row) and S2 (this file's order line) fixed here. Under the
   floor: S3 (`tests/unit/schema/test_schema.py` was recreated, not renamed, so its history starts
   here).
+- **D-18 Stage 4 as built** (builder of 4.1 and 4.2, accepted by the lead; built in parallel from
+  stage 3's build and combined on `develop` after #175). (1) TC-07's TypeScript: with
+  `persistence` and `migrations` served from their own schemas, the merged `rp_service.ts` holds
+  the same declarations in the order of `SERVED_SCHEMAS`; no rule over the served schemas gives
+  the old single file's interleaved order, so PD-10's "the order today's `rp_service.yaml` gives"
+  cannot hold once a theme has its own file. The golden is refreshed deliberately (`make
+  refresh-served-golden`) after proving the sorted lines identical; `/openapi.json` stays
+  byte-identical; later stages do the same, order-only, proven the same way. (2) `migrations/services`
+  is served (PD-10's list amended): `Migration` and `MigrationStep` are in the served TypeScript.
+  (3) `components.py` also leaves out a class an earlier served schema generates (the migrations
+  schema pulls in the metamodel through `rp_annotations`), tested. (4) `LimitSettings` is a
+  non-served target. (5) The 400 log line is a constant message ("A SPARQL Protocol store refused a
+  request with 400"); `BAD_QUERY_MESSAGE`/`UNREADABLE` are gone from `fuseki.py`. (6) The
+  `model_copy` guard scans the themes' layers. (7) Fixtures shared by persistence and api tests move
+  to `tests/unit/conftest.py`. (8) A created `LAYOUT` row stands at its new path. (9) `fuseki.py`'s
+  history is cut: half of it moved to `sparql_protocol.py`, so git sees no rename; the shim at the
+  old path is its own commit. (10) TC-45 is probed with `persistence` → `migrations` (`access` is
+  not a theme until stage 5). (11) Short-form paths in the architecture docs are owed to task 7.2.
+  (12) Combining on `develop`: the D-16 tests derived from `TURNED_ON` found `persistence` and
+  `migrations` missing from the old-layout contract's sources — fixed in the integration pass, with
+  the D-17 W2 test that ties `themes-layered`/`themes-ordered` to `TURNED_ON`. (13) Lesson for the
+  run: `gh pr merge --delete-branch` run while the PR's branch is checked out in `.worktrees/lead`
+  removed that worktree; the lead detaches from the branch before merging.
+- **D-19 Stage 4 review and tester, accepted** (lead; review 7 findings, tester 190 tests, 7
+  failed first, 5 findings; one fixer pass). Re-labelled Critical, with the reason: tester F1 (a
+  class declared, not imported, by two served schemas is left out of both by `render`, so it
+  vanishes from `/openapi.json` and its `$ref`s dangle; PD-10's error matrix says a name in two
+  files is an error, and the guard never fires): `render` leaves out only a class another served
+  schema imports or generates earlier, and a class declared by two served schemas is a
+  `DuplicateComponentError` naming both. Accepted below Critical: F4 (a served schema listed before
+  the one it imports silently loses that one's classes: an error naming both); F2 = review S1
+  (`SparqlProtocolStore` requires `db_system_name` when a store is instantiated, so an abstract
+  subclass in between may omit it; stage 4's checker W-1 corrected this wording); F3 (the `adapters.fuseki`
+  shim keeps `BAD_QUERY_MESSAGE` and `UNREADABLE` as PD-8's "the module's other names", with their
+  old values; D-18 (5) is amended); review W1 (TC-45 as a planted test: `persistence` →
+  `migrations`); W2, W3 (the architecture page, `generation.adoc` and `howto/adopt.adoc` state where
+  persistence and migrations live, the four served schemas and the groups' classes); S2 (TC-40
+  checks the Turtle body). Under the floor: review S3 (a commit's trace line), S4 (stage 7's
+  CHANGELOG names the dropped log constant change, D-18 (5)), tester F5 (the 400 log line, as
+  PD-7 intends).

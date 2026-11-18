@@ -17,10 +17,10 @@ from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_provenance import Generation, Invalidation, Replace
 from rdf_persistence.core.domain.sparql import fill, term, triples_block
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.provenance.services.provenance import ID_PREFIX, activity_triples
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import Session, open_session
 from tests.toy import ADA, TENANT, book_iri, dune, toy_mapper
 
 PRELOADED = 20_000

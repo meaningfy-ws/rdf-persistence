@@ -17,10 +17,12 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = "rdf_persistence"
 LAYERS = ("domain", "services", "adapters", "entrypoints")
 # A stage adds its themes here (PD-1: the stage turns its rows on, and TC-01 then holds them).
-TURNED_ON: frozenset[str] = frozenset({"core", "iris", "schema", "files", "provenance"})
+TURNED_ON: frozenset[str] = frozenset(
+    {"core", "iris", "schema", "files", "provenance", "persistence", "migrations"}
+)
 # Old paths that hold a deprecation shim, not a leftover (PD-8): the module re-exports the moved one and
 # stands until the release that removes it (stage 8). A stage that adds a shim lists it here.
-SHIMS: frozenset[str] = frozenset({f"{PACKAGE}.domain.base"})
+SHIMS: frozenset[str] = frozenset({f"{PACKAGE}.domain.base", f"{PACKAGE}.adapters.fuseki"})
 
 
 @dataclass(frozen=True)
@@ -46,8 +48,12 @@ class Move:
 
     @property
     def standing(self) -> str | None:
-        """The module path the row expects the module at: the new one when on, else the old one."""
-        return self.new if self.on else self.old
+        """The module path the row expects the module at: the new one when on or created, else the old one.
+
+        A created module has no old path, so it stands at its new one from the task that creates it, even
+        while the rest of its theme has not moved yet.
+        """
+        return self.new if self.on or self.created else self.old
 
 
 def _rows(theme: str, layer: str, *modules: str, created: tuple[str, ...] = ()) -> tuple[Move, ...]:
@@ -229,7 +235,15 @@ PLACED: tuple[Placed, ...] = (
         "service",
         ("Filter", "Condition", "ListRequest", "ListPlan", "AggregateHead", "Page"),
     ),
-    Placed("persistence", "services", "settings", ("LimitSettings",)),
+    # Not served: `LimitSettings` would add TypeScript to the served `rp_service.ts` (TC-07), so it is a
+    # package of its own beside the served module (PD-4 allows a group segment after `generated`).
+    Placed(
+        "persistence",
+        "services",
+        "settings",
+        ("LimitSettings",),
+        tail="settings.rp_persistence_settings",
+    ),
     # D-8, settled at stage 3: `schema/vocabulary` builds all six term bundles, so `schema` is their lowest
     # user (PD-2); a bundle placed in `persistence` or `migrations` would make `schema` import a higher
     # theme. Their slots range over `SparqlTerm` of `core`, so no slot reaches a class of a higher theme.

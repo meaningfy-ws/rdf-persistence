@@ -22,9 +22,9 @@ from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced
 from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.persistence.services.session import utc_now
+from rdf_persistence.persistence.services.store import Store
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.services.session import utc_now
-from rdf_persistence.services.store import Store
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)

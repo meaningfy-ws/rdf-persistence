@@ -9,8 +9,8 @@ from rdflib import Literal, URIRef
 
 from rdf_persistence import FusekiStore
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import Session
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import Session
 from tests.integration.store.sessions import (
     TITLE,
     book,

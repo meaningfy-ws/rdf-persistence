@@ -58,7 +58,7 @@ def test_the_hook_fires_on_generated_output_on_purpose(path: str) -> None:
     [
         "rdf_persistence_generation/testkit/freshness.py",
         "rdf_persistence_generation/testkit/strategies.py",
-        "rdf_persistence/services/mapper.py",
+        "rdf_persistence/persistence/services/mapper.py",
         "tests/unit/test_lanes.py",
     ],
 )

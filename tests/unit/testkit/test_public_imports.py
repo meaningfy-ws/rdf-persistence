@@ -21,7 +21,7 @@ ALLOWED = [
 ]
 REFUSED = [
     "from rdf_persistence.services.access import AccessRules",
-    "import rdf_persistence.adapters.fuseki",
+    "import rdf_persistence.persistence.adapters.fuseki",
     "from rdf_persistence.services import iris",
     "from rdf_persistence.entrypoints.service import install_service",
     "from rdf_persistence import services",

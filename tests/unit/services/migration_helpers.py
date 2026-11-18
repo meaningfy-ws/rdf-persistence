@@ -8,8 +8,11 @@ from pathlib import Path
 import yaml
 from rdflib import URIRef
 
-from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
-from rdf_persistence.services.migrations import Chain, load_chain
+from rdf_persistence.migrations.services.generated.rp_migrations_services import (
+    Migration,
+    MigrationStep,
+)
+from rdf_persistence.migrations.services.migrations import Chain, load_chain
 
 LIB = "https://example.org/ns/library"
 RP = "https://meaningfy.ws/ns/rdf-persistence"

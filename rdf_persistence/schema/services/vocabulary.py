@@ -28,7 +28,7 @@ from rdf_persistence.schema.services.generated.templates.rp_schema_templates imp
 from rdf_persistence.schema.services.schema import (
     IRIS_SCHEMA,
     PACKAGE_DIR,
-    SERVICE_SCHEMA,
+    PERSISTENCE_SCHEMA,
     load_schema,
 )
 from rdf_persistence.schema.services.schema_structure import ACTIVITY as ACTIVITY_NAME
@@ -199,7 +199,7 @@ PROHIBITIONS = predicate("prohibitions")
 ASSIGNEE = predicate("assignee")
 
 # A listing's query returns the size of the whole listing as this statement about the listed class.
-TOTAL = predicate("total", load_schema(SERVICE_SCHEMA))
+TOTAL = predicate("total", load_schema(PERSISTENCE_SCHEMA))
 
 # The one statement of the policy record: the graph names itself, the object is the policy's JSON (PD-13).
 IRI_POLICY = predicate("iri_policy", load_schema(IRIS_SCHEMA))

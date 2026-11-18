@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 PACKAGE = Path(__file__).parents[3] / "rdf_persistence"
-DEFINED_IN = "services/session.py"
+DEFINED_IN = "persistence/services/session.py"
 CALLERS = {
     "_allow_state": {"services/transitions.py"},
     "_require_match": {"services/reference_collections.py"},

@@ -69,6 +69,19 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
     IriPolicy,
     ServiceSettings
 )
+from rdf_persistence.migrations.services.generated.rp_migrations_services import (
+    Migration,
+    MigrationStep
+)
+from rdf_persistence.persistence.services.generated.rp_persistence_services import (
+    AggregateHead,
+    Any,
+    Condition,
+    Filter,
+    ListPlan,
+    ListRequest,
+    Page
+)
 
 
 metamodel_version = "1.12.0"
@@ -251,47 +264,6 @@ class Authorised(ConfiguredBaseModel):
     global_roles: Optional[list[str]] = Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
 
 
-class Page(ConfiguredBaseModel):
-    "One page of a listing, with the position of the page in the whole listing."
-    items: list[Any] = Field(default=..., title="Items", description="The objects of the page; framed aggregates, or tenant summaries.")
-    total: int = Field(default=..., title="Total", description="The number of objects in the whole listing.", ge=0)
-    limit: int = Field(default=..., title="Limit", description="The most objects the page can hold.", ge=1, le=200)
-    offset: int = Field(default=..., title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0)
-
-
-class Filter(ConfiguredBaseModel):
-    "One equality filter of a listing, the name of a slot of the listed type and the value it must have, as the text the caller sent."
-    slot: str = Field(default=..., title="Filter slot", description="The name of the slot the filter is on.")
-    value: str = Field(default=..., title="Filter value", description="The value the slot must have, as text.")
-
-
-class ListRequest(ConfiguredBaseModel):
-    "The query of a listing, as the caller sent it: the equality filters, the position and size of the page and the key to sort by."
-    limit: Optional[int] = Field(default=50, title="Limit", description="The most objects the page can hold.", ge=1, le=200)
-    offset: Optional[int] = Field(default=0, title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0)
-    sort: Optional[str] = Field(default=None, title="Sort", description="The slot a listing is ordered by, ascending, or descending when its name starts with a minus sign; absent, the listing is ordered by IRI.")
-    filters: Optional[list[Filter]] = Field(default=None, title="Filters", description="The equality filters of a listing; all of them must hold.")
-
-
-class Condition(ConfiguredBaseModel):
-    "An equality filter of a listing resolved against the slots of the listed type: the aggregate has this statement. The value is an IRI when it is a reference, else a literal of the datatype."
-    predicate: str = Field(default=..., title="Condition predicate", description="The IRI of the predicate the aggregate must have a statement with.")
-    value: str = Field(default=..., title="Condition value", description="The value of the statement, an IRI or the lexical form of a literal.")
-    datatype: Optional[str] = Field(default=None, title="Condition datatype", description="The IRI of the datatype of a literal value; absent for a plain string.")
-    reference: Optional[bool] = Field(default=False, title="Condition reference", description="Whether the value is an IRI rather than a literal.")
-
-
-class ListPlan(ConfiguredBaseModel):
-    "A listing resolved against the slots of the listed type: the class, the typed conditions, the predicate to order by (none orders by IRI), the page, and the graphs of the aggregates the caller may not read."
-    target: str = Field(default=..., title="Plan class", description="The IRI of the class of the aggregates listed.")
-    conditions: Optional[list[Condition]] = Field(default=None, title="Conditions", description="The equality conditions of a listing; all of them must hold.")
-    sort_by: Optional[str] = Field(default=None, title="Plan sort", description="The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI.")
-    descending: Optional[bool] = Field(default=False, title="Descending", description="Whether the order is reversed.")
-    limit: int = Field(default=..., title="Limit", description="The most objects the page can hold.", ge=1, le=200)
-    offset: int = Field(default=..., title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0)
-    hidden_graphs: Optional[list[str]] = Field(default=None, title="Hidden graphs", description="The IRIs of the graphs of the aggregates a listing leaves out.")
-
-
 class Problem(ConfiguredBaseModel):
     "An RFC 9457 problem detail, the body of every error answer of the service."
     type: str = Field(default=..., title="Problem type", description="The IRI that identifies the kind of problem.")
@@ -362,31 +334,6 @@ class MemberList(ConfiguredBaseModel):
     hidden_count: int = Field(default=..., title="Hidden count", description="The number of referrers or members the caller may not read, so are not listed.", ge=0)
 
 
-class AggregateHead(ConfiguredBaseModel):
-    "The IRI, the types and the version token of one stored aggregate, without its content."
-    head_iri: Optional[str] = Field(default=None, title="Head IRI", description="The IRI of the stored aggregate.")
-    head_types: Optional[list[str]] = Field(default=None, title="Head types", description="The class IRIs the stored aggregate is typed with.")
-    head_version: Optional[str] = Field(default=None, title="Head version", description="The version token of the stored aggregate\u0027s graph.")
-
-
-class MigrationStep(ConfiguredBaseModel):
-    "One step of a migration: three group graph patterns, as text, that the toolkit wraps into one update request over the graphs of a database. A step with `unresolved` is a draft and does not load."
-    title: str = Field(default=..., title="Title", description="A short name for what a record describes.")
-    where_pattern: Optional[str] = Field(default=None, title="Where pattern", description="The group graph pattern, as text, that selects what a migration step changes.")
-    delete_pattern: Optional[str] = Field(default=None, title="Delete pattern", description="The group graph pattern, as text, of the triples a migration step removes.")
-    insert_pattern: Optional[str] = Field(default=None, title="Insert pattern", description="The group graph pattern, as text, of the triples a migration step adds.")
-    unresolved: Optional[str] = Field(default=None, title="Unresolved", description="Text saying what a draft step still needs from the developer; a step that has it does not load.")
-
-
-class Migration(ConfiguredBaseModel):
-    "The reviewed file that moves the data of a database from one version of a schema to the next: the schema\u0027s id, the two versions and the steps, in order."
-    schema_id: str = Field(default=..., title="Schema id", description="The id of the schema whose data the migration moves.")
-    from_version: str = Field(default=..., title="From version", description="The version of the schema that the data follows before the migration.")
-    to_version: str = Field(default=..., title="To version", description="The version of the schema that the data follows after the migration.")
-    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
-    steps: Optional[list[MigrationStep]] = Field(default=None, title="Steps", description="The steps of a migration, in the order they run.")
-
-
 class EventEnvelope(ConfiguredBaseModel):
     "What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it."
     tenant: str = Field(default=..., title="Tenant", description="The IRI of the tenant, or of the application, the activity happened in.")
@@ -405,18 +352,10 @@ LabelUpdate.model_rebuild()
 GrantSet.model_rebuild()
 CallerAccess.model_rebuild()
 Authorised.model_rebuild()
-Page.model_rebuild()
-Filter.model_rebuild()
-ListRequest.model_rebuild()
-Condition.model_rebuild()
-ListPlan.model_rebuild()
 Problem.model_rebuild()
 ProblemKind.model_rebuild()
 AccountSummary.model_rebuild()
 Referrer.model_rebuild()
 ReferrerList.model_rebuild()
 MemberList.model_rebuild()
-AggregateHead.model_rebuild()
-MigrationStep.model_rebuild()
-Migration.model_rebuild()
 EventEnvelope.model_rebuild()

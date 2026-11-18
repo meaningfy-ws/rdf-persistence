@@ -19,11 +19,11 @@ from pydantic import ValidationError
 from pytest_bdd import given, parsers, scenarios, then, when
 from rdflib import URIRef
 
-from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.core.domain.sparql import term
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 from rdf_persistence.entrypoints.environment import settings_from_env
+from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.schema.services.generated.templates.rp_schema_templates import RegistryTerms
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.generated.settings.rp_settings import (
@@ -117,13 +117,19 @@ def _layout(run: Run) -> None:
 
 @given("a copy of the toolkit where a service module imports an adapter module")
 def _service_adapter(run: Run) -> None:
-    run.planted = {"adapters/store.py": "", "services/session.py": f"import {ADAPTER}\n"}
-    run.modules = ("rdf_persistence.services.session", ADAPTER)
+    # a module planted in the scratch copy of the old layout (the layers contract), under a name of its own
+    run.planted = {"adapters/store.py": "", "services/service_module.py": f"import {ADAPTER}\n"}
+    run.modules = ("rdf_persistence.services.service_module", ADAPTER)
 
 
 @given("a copy of the toolkit where a service module imports a wire model")
 def _service_wire(run: Run) -> None:
-    _plant(run, "services/session.py", WIRE, ("rdf_persistence.services.session", WIRE))
+    _plant(
+        run,
+        "services/service_module.py",
+        WIRE,
+        ("rdf_persistence.services.service_module", WIRE),
+    )
 
 
 @given("a copy of the toolkit where a domain module imports the generated settings")

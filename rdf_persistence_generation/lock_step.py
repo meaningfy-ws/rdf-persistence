@@ -12,9 +12,9 @@ from pathlib import Path
 import yaml
 
 from rdf_persistence.core.domain.exceptions import InvalidMigration
+from rdf_persistence.migrations.services.generated.rp_migrations_services import Migration
+from rdf_persistence.migrations.services.migrations import load_migration, migration_file_name
 from rdf_persistence.schema.services.schema_structure import generation_view
-from rdf_persistence.services.generated.service.rp_service import Migration
-from rdf_persistence.services.migrations import load_migration, migration_file_name
 from rdf_persistence_generation.config import TOOLKIT_ROOTS, migrations_folder
 from rdf_persistence_generation.exceptions import refusing_unsupported_rules
 from rdf_persistence_generation.generated.rp_generation import (

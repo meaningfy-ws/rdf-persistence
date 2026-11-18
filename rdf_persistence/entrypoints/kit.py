@@ -42,6 +42,17 @@ from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.domain.layout import system_database_name
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.iris.services.iris import IdSource, Iris, draw_id
+from rdf_persistence.migrations.services.migrations import chain_of, current_version
+from rdf_persistence.persistence.services.decoding import error_text
+from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.mapper import Mapper, generated_models_of
+from rdf_persistence.persistence.services.session import Session
+from rdf_persistence.persistence.services.store import (
+    Store,
+    ToolkitStore,
+    TracedStore,
+    system_name_of,
+)
 from rdf_persistence.provenance.services.provenance import activity_class_named
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import (
@@ -53,7 +64,6 @@ from rdf_persistence.services import file_removal, tenant_dump, tenant_sweep
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.collaboration import Collaboration
-from rdf_persistence.services.decoding import error_text
 from rdf_persistence.services.discussion import dependents as discussion_dependents
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.event_hub import EventHub
@@ -68,13 +78,8 @@ from rdf_persistence.services.generated.service.rp_service import (
 )
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
 from rdf_persistence.services.identity import Identity
-from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.messagebus import MessageBus
-from rdf_persistence.services.migrations import chain_of, current_version
 from rdf_persistence.services.relay import Relay
-from rdf_persistence.services.session import Session
-from rdf_persistence.services.store import Store, ToolkitStore, TracedStore, system_name_of
 from rdf_persistence.services.tenancy import (
     DEFAULT_STORE,
     GrantValidator,

@@ -23,7 +23,7 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.services.store import Store
+from rdf_persistence.persistence.services.store import Store
 
 EX = "http://example.org/"
 A, B, P, G, OTHER = (URIRef(f"{EX}{n}") for n in ("a", "b", "p", "g", "other"))

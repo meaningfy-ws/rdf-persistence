@@ -1,0 +1,60 @@
+id: https://meaningfy.ws/ns/rdf-persistence/persistence-adapters
+name: rp_persistence_adapters
+title: RDF persistence persistence adapters module
+description: >-
+  The shape of the foreign API the `persistence` adapters speak: the answer of the Fuseki
+  administration endpoint that lists datasets. A JSON key is the alias of its slot. The answer allows
+  fields it does not declare, because Fuseki says more than the toolkit reads. Nothing here is served
+  by the HTTP service.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+  python_package: rdf_persistence.persistence.adapters.generated
+
+classes:
+  FusekiDatasetList:
+    title: Fuseki dataset list
+    description: >-
+      The answer of the Fuseki administration endpoint that lists datasets.
+    class_uri: rp:FusekiDatasetList
+    slots:
+      - fuseki_datasets
+    slot_usage:
+      fuseki_datasets:
+        required: true
+    annotations:
+      allows_extra: 'true'
+  FusekiDataset:
+    title: Fuseki dataset
+    description: >-
+      One dataset of the Fuseki dataset list.
+    class_uri: rp:FusekiDataset
+    slots:
+      - fuseki_dataset_name
+    slot_usage:
+      fuseki_dataset_name:
+        required: true
+    annotations:
+      allows_extra: 'true'
+
+slots:
+  fuseki_datasets:
+    title: Fuseki datasets
+    description: >-
+      The datasets Fuseki serves.
+    slot_uri: rp:fusekiDatasets
+    alias: datasets
+    range: FusekiDataset
+    multivalued: true
+  fuseki_dataset_name:
+    title: Fuseki dataset name
+    description: >-
+      The name of the dataset, with a leading slash.
+    slot_uri: rp:fusekiDatasetName
+    alias: ds.name

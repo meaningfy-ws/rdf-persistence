@@ -13,13 +13,13 @@ import warnings
 import pytest
 
 import rdf_persistence
-from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.adapters.redis_events import RedisEventBus
 from rdf_persistence.adapters.zitadel import ZitadelIdentity
 from rdf_persistence.files.adapters.s3 import S3FileStore
+from rdf_persistence.persistence.adapters.fuseki import FusekiStore
+from rdf_persistence.persistence.services.mapper import Mapper
 from rdf_persistence.services.event_hub import EventHub
-from rdf_persistence.services.mapper import Mapper
 from rdf_persistence.services.messagebus import MessageBus
 
 REMOVED = {

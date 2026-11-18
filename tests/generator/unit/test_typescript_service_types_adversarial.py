@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.schema.services.schema import IRIS_SCHEMA, SERVICE_SCHEMA, load_schema
+from rdf_persistence.schema.services.schema import (
+    SERVED_SCHEMAS,
+    SERVICE_SCHEMA,
+    load_schema,
+)
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.extensions import typescript
@@ -208,10 +212,16 @@ def test_rendering_a_consumer_with_no_rp_core_import_still_resolves_rp_service_i
 
 def test_rendering_the_service_schema_equals_its_own_module_files() -> None:
     """Its own files, but for the other served schemas', which are in ``rp_service.ts``."""
-    served_elsewhere = {f"{load_schema(IRIS_SCHEMA).schema.name}.ts"}
-    own = typescript.with_index(
-        [f for f in typescript._module_files(SERVICE_SCHEMA) if f.name not in served_elsewhere]
-    )
+    served_elsewhere = {
+        f"{load_schema(path).schema.name}.ts" for path in SERVED_SCHEMAS if path != SERVICE_SCHEMA
+    }
+    # a module that two served schemas import (the metamodel's) is one file in the output
+    kept = {
+        f.name: f
+        for f in typescript._module_files(SERVICE_SCHEMA)
+        if f.name not in served_elsewhere
+    }
+    own = typescript.with_index(list(kept.values()))
     assert [f.name for f in typescript.render(SERVICE_SCHEMA)] == [f.name for f in own], (
         "rendering the service schema adds nothing to its own files"
     )
@@ -226,10 +236,11 @@ def test_a_relative_path_to_the_service_schema_is_the_same_file(
 
 
 def test_a_symlink_to_the_service_schema_is_the_same_file(tmp_path: Path) -> None:
-    # the service schema imports the iris one by a relative path, so the link keeps that neighbour
+    # the service schema imports the other served schemas by a relative path, so the link keeps them
     (tmp_path / "service").mkdir()
-    (tmp_path / "iris").mkdir()
-    (tmp_path / "iris" / IRIS_SCHEMA.name).symlink_to(IRIS_SCHEMA)
+    for neighbour in (path for path in SERVED_SCHEMAS if path != SERVICE_SCHEMA):
+        (tmp_path / neighbour.parent.name).mkdir(exist_ok=True)
+        (tmp_path / neighbour.parent.name / neighbour.name).symlink_to(neighbour)
     link = tmp_path / "service" / "linked_service.yaml"
     link.symlink_to(SERVICE_SCHEMA)
     names = [f.name for f in typescript.render(link)]

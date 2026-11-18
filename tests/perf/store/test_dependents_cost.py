@@ -15,12 +15,12 @@ import pytest
 
 from rdf_persistence import generated_models
 from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.persistence.services import session as session_module
+from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services import session as session_module
 from rdf_persistence.services.discussion import dependents
-from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import Session, open_session
 from rdf_persistence.services.write_guards import WriteGuards
 from tests.toy import ADA, MODULES, TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
 

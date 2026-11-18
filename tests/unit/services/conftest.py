@@ -1,46 +1,17 @@
-"""The toy library's documents, read once, for the tests of bodies and representations."""
+"""The ``collaboration`` fixture; the toy library's documents and session are in ``tests/unit/conftest.py``."""
 
-from collections.abc import AsyncIterator, Callable
-from pathlib import Path
+from collections.abc import Callable
 
 import pytest
 
 from rdf_persistence import CallerAccess, VerifiedCaller, generated_models
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
-from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.session import Session
-from rdf_persistence.testkit import fake_session
-from tests.toy import MODULES, ROLES, TENANT, TOY_SCHEMA, toy_mapper
-
-GENERATED = Path(__file__).parents[2] / "fixtures" / "library" / "generated"
-
-
-@pytest.fixture(scope="module")
-def documents() -> Documents:
-    return Documents(load_schema(TOY_SCHEMA), GENERATED)
-
-
-@pytest.fixture(scope="module")
-def book_class(documents: Documents):
-    return documents.aggregates["books"]
-
-
-@pytest.fixture(scope="module")
-def scan_class(documents: Documents):
-    return documents.aggregates["scans"]
-
-
-@pytest.fixture
-async def toy_session() -> AsyncIterator[Session]:
-    """A session on the toy tenant's database, over the fake store."""
-    async with fake_session(
-        tenant_iri=TENANT, listings=Listings(load_schema(TOY_SCHEMA))
-    ) as session:
-        yield session
+from tests.toy import MODULES, ROLES, TOY_SCHEMA, toy_mapper
 
 
 @pytest.fixture

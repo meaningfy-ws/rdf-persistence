@@ -8,9 +8,9 @@ from rdf_persistence import Action, Grant, Principal, TenantState
 from rdf_persistence.core.domain.exceptions import NotFound
 from rdf_persistence.iris.domain.layout import system_database_name
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.services.access import load_caller_access
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import open_session
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 from tests.toy import ADA, BOB, ban, direct, graph_of, library_slots, toy_mapper

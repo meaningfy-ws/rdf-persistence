@@ -15,10 +15,10 @@ from types import SimpleNamespace
 import pytest
 
 from rdf_persistence.core.domain.generated.rp_workflow import Transition
+from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 from rdf_persistence.services.relay import chain_order
-from rdf_persistence.services.session import open_session
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
 from tests.logs import attributes
 from tests.toy import ApproveBook, library_slots, toy_mapper

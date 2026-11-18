@@ -88,7 +88,7 @@ SDK_FREE_IMPORTS = (
     "import sys\n"
     "import rdf_persistence\n"
     "import rdf_persistence.entrypoints.kit\n"
-    "import rdf_persistence.adapters.fuseki\n"
+    "import rdf_persistence.persistence.adapters.fuseki\n"
     "print([name for name in sys.modules if name.startswith('opentelemetry.sdk')])\n"
 )
 

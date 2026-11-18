@@ -12,7 +12,7 @@ import pytest
 import yaml
 
 from rdf_persistence.core.domain.exceptions import InvalidMigration, SparqlError
-from rdf_persistence.services.migrations import load_migration
+from rdf_persistence.migrations.services.migrations import load_migration
 from rdf_persistence_generation.generated.rp_generation import (
     LockChange,
     LockedClass,

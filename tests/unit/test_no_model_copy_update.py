@@ -5,7 +5,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2] / "rdf_persistence"
 LAYERS = ("domain", "services")
-SCHEMA_KEYED = {"services/mapper.py"}  # keyed by the schema, generic by design (keep.md)
+SCHEMA_KEYED = {
+    "persistence/services/mapper.py"
+}  # keyed by the schema, generic by design (keep.md)
 
 
 def update_copies(path: Path) -> list[int]:
@@ -24,7 +26,8 @@ def test_model_copy_with_update_remains_only_in_the_schema_keyed_mapper() -> Non
     found = {
         str(path.relative_to(ROOT)): lines
         for layer in LAYERS
-        for path in sorted((ROOT / layer).rglob("*.py"))
+        for folder in (ROOT / layer, *sorted(ROOT.glob(f"*/{layer}")))
+        for path in sorted(folder.rglob("*.py"))
         if (lines := update_copies(path))
     }
     assert set(found) == SCHEMA_KEYED, f"model_copy(update=) outside the mapper: {found}"

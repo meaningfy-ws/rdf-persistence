@@ -7,11 +7,13 @@ no two default instances share a group or a list.
 import pytest
 
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
 from rdf_persistence.services.generated.settings.rp_settings import (
     DirectorySettings,
     EventSettings,
     JwksSettings,
-    LimitSettings,
     SseSettings,
     ToolkitSettings,
 )

@@ -10,15 +10,15 @@ import pytest
 from rdflib import BNode, Graph, Literal, URIRef
 
 from rdf_persistence import InvalidGraph
-from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.core.domain.exceptions import NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.persistence.adapters.fuseki import FusekiStore
+from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import assert_isomorphic
 
 TENANT = "https://example.org/libraries/6f1c0c1e"

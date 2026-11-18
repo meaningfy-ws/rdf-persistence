@@ -50,6 +50,9 @@ EXEMPT: frozenset[str] = frozenset(
         # stage 2 (D-13 S2): the probe that an old import path is a ModuleNotFoundError names the paths
         # that never existed or are gone, which is the point of the probe.
         "tests/unit/test_technical_split.py",
+        # stage 4: the `adapters.fuseki` shim (PD-8) names its own path, so does its test.
+        "rdf_persistence/adapters/fuseki.py",
+        "tests/unit/persistence/test_fuseki_shim.py",
     }
 )
 

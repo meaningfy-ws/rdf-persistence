@@ -62,12 +62,20 @@
       "sha256": "c826e00b6507bfac33c84bc583ceb92f9eb26be5aaff87f1544d493f74cc0dd9"
     },
     {
+      "path": "rdf_persistence/model/technical/migrations/rp_migrations_services.yaml",
+      "sha256": "e747d0b9fe9d6a07db82b6cf22bd59798685945d31678a5a6a060c8c4edd1a96"
+    },
+    {
+      "path": "rdf_persistence/model/technical/persistence/rp_persistence_services.yaml",
+      "sha256": "52f11c34ed8a8bd35b4f251aaf74c396889c398ed7944de47e63cfbe30801e80"
+    },
+    {
       "path": "rdf_persistence/model/technical/service/rp_service.yaml",
-      "sha256": "4f53f537b7ad8d9577c670900c38d6235e9b5465bb067a86636ca3b2db16164e"
+      "sha256": "40a71a0e4f88ccdc397132f986850d098900dac639984467ba2e3a2fff776baf"
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
-      "sha256": "68a229b8c203e530f29bf8a45879e7e13f3a89ecc9180576847e797c02f1ddda"
+      "sha256": "bf71da4e46d0a8ba261ffe270262bb8bfb5f3c4092321c7e9dd1222d7cfc9546"
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
@@ -115,7 +123,7 @@
     },
     {
       "path": "rdf_persistence_generation/components.py",
-      "sha256": "ac98081ac9ce3b4e3b3dfb23cce64cac78ed08829ee376f15735a244995f1dae"
+      "sha256": "b6964db3768f7179ab5240d69a3939804ad477e50526772c7c627bee217d9d5f"
     },
     {
       "path": "rdf_persistence_generation/config.py",
@@ -159,11 +167,11 @@
     },
     {
       "path": "rdf_persistence_generation/lock.py",
-      "sha256": "243e07b6955fd5b94f8d3124b468fde7452f2f739b42e8fde60e26d17e079c43"
+      "sha256": "24e4cb72baa701eca1f8daa520822a9767ffd6f473254c793e6bd64a20e14763"
     },
     {
       "path": "rdf_persistence_generation/lock_step.py",
-      "sha256": "8e2ae0dac20629d9eb239a431be7c2ec1ad0b7e014ba0a9fe177908fac19f9bc"
+      "sha256": "2824d4fff089efc9a5e0bd4b1683bf8e27f4d450a28168465e7127d8c42a9ac8"
     },
     {
       "path": "rdf_persistence_generation/manifest.py",
@@ -417,7 +425,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_service.ts",
-      "sha256": "b032841b849c71550309031a0b4e2c500639eae5423653f248e0eb6364915841"
+      "sha256": "7c40f22ddbd0244a1c76d4cd5be24459215d06cb02663ea2e714382c38021b42"
     },
     {
       "path": "web/src/domain/generated/rp_tenancy.ts",

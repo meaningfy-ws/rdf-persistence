@@ -131,6 +131,32 @@ openapi = false
 kind = "technical"
 
 [[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/persistence/rp_persistence_services.yaml"
+package = "rdf_persistence.persistence.services.generated"
+regenerate-command = "make generate"
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/persistence/rp_persistence_settings.yaml"
+package = "rdf_persistence.persistence.services.generated.settings"
+regenerate-command = "make generate"
+openapi = false
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/persistence/rp_persistence_adapters.yaml"
+package = "rdf_persistence.persistence.adapters.generated"
+regenerate-command = "make generate"
+openapi = false
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/migrations/rp_migrations_services.yaml"
+package = "rdf_persistence.migrations.services.generated"
+regenerate-command = "make generate"
+kind = "technical"
+
+[[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/service/rp_service.yaml"
 package = "rdf_persistence.services.generated.service"
 regenerate-command = "make generate"

@@ -1,0 +1,529 @@
+"""The mapper between generated objects and the graph of an aggregate, and the object-level unit of
+work (PD-7a, PD-8a, PD-10, PD-12 D-2).
+
+Domain services work on the generated classes; the router works on whole graphs and frames. The
+mapper serves the first: ``to_graph`` writes an aggregate root and its owned parts as triples,
+``from_graph`` builds the object back, nesting owned parts whether their nodes are IRIs or skolem
+IRIs. It is driven by ``SchemaView`` and writes rdflib terms directly, not through linkml's
+``rdflib_dumper``/``rdflib_loader``. Both accept pydantic classes (checked against linkml-runtime
+1.12.1), so that is not the reason. The reasons are three. The loader reads ``class_class_uri`` from
+the class, which the generated classes do not carry (they keep no ``linkml_meta``). The dumper
+writes every slot that holds a value, the tracking slots (``bookkeeping``) too, where the session
+writes them as statements about the graph IRI. And the dumper fails on a slot that ranges over a
+class but holds an IRI string (``Grant.assignee``). Predicates and types are those of the generated
+context, which a test checks.
+
+What a value becomes: an owned part, a node; a class-ranged slot that is not owned, or a ``uri``
+slot, the IRI; an enum value, its meaning IRI when it has one; anything else, a literal. Internal
+slots are written (the toolkit persists them). The tracking slots (``bookkeeping``) are never
+written: the session writes them as statements about the graph IRI, and ``from_graph`` reads them
+from there.
+
+Shortcut: an owned part is read as the slot's range class, so a subclass comes back as its parent;
+upgrade when a schema owns a hierarchy. A ``uri`` value is taken as an absolute IRI; CURIEs are not
+expanded.
+"""
+
+import asyncio
+import importlib
+import pkgutil
+from collections.abc import Iterable
+from types import ModuleType
+from typing import Any, cast
+
+from linkml_runtime.linkml_model.meta import SlotDefinition
+from linkml_runtime.utils.formatutils import camelcase, underscore
+from linkml_runtime.utils.schemaview import SchemaView
+from pydantic import BaseModel
+from rdflib import RDF, BNode, Graph, Literal, URIRef
+from rdflib.compare import isomorphic
+from rdflib.term import Node
+
+from rdf_persistence.core.domain.base import RpModel
+from rdf_persistence.core.domain.exceptions import CommitTooLarge, NotFound, PersistenceError
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.iris.domain.layout import is_skolem_of
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
+from rdf_persistence.persistence.services.session import Session, without_bookkeeping
+from rdf_persistence.provenance.services.provenance import Served
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema_structure import (
+    aggregate_roots,
+    flag,
+    holds_iri,
+    holds_owned_part,
+    is_bookkeeping,
+    is_tenant_root,
+    kebab_case,
+    rdf_term,
+)
+
+
+class GeneratedModels:
+    """The generated classes of some modules, found by the name of the schema class they come from."""
+
+    def __init__(self, modules: Iterable[ModuleType]) -> None:
+        self._by_name = {
+            name: member
+            for module in modules
+            for name, member in vars(module).items()
+            if isinstance(member, type)
+            and issubclass(member, RpModel)
+            and member.__module__ == module.__name__
+        }
+
+    def classes(self) -> dict[str, type[RpModel]]:
+        """Every class, by its name in the generated module."""
+        return dict(self._by_name)
+
+    def named(self, schema_name: str) -> type[RpModel]:
+        """The generated class of the schema class ``schema_name``; ``LookupError`` if there is none."""
+        try:
+            return self._by_name[camelcase(schema_name)]
+        except KeyError:
+            raise LookupError(f"no generated class for {schema_name}") from None
+
+
+def generated_models(*modules: ModuleType) -> GeneratedModels:
+    """The generated classes of ``modules``, for ``Mapper``."""
+    return GeneratedModels(modules)
+
+
+def generated_models_of(package: ModuleType, *modules: ModuleType) -> GeneratedModels:
+    """The generated classes of every module of ``package``, and of ``modules``, for ``Mapper``."""
+    found = [
+        importlib.import_module(f"{package.__name__}.{info.name}")
+        for info in pkgutil.iter_modules(package.__path__)
+    ]
+    return GeneratedModels([*found, *modules])
+
+
+def new_part[M: BaseModel](
+    cls: type[M], root_iri: str, *, iris: Iris = DEFAULT_IRIS, tenant: str = "", **fields: Any
+) -> M:
+    """A part of the aggregate rooted at ``root_iri``, with an IRI minted by ``iris`` (default
+    policy: ``{root}/parts/{uuid4}``); ``tenant`` is the tenant the aggregate is in (PD-3).
+
+    Shortcut: the ``{type}`` is the kebab-case name of ``cls``; the generated class does not carry an
+    ``rp_iri_type``. A policy that needs ``{type}`` refuses a class whose type differs (``InvalidIri``).
+
+    A part whose class is ``Described`` has a required ``id``, so it cannot be built without one;
+    domain code builds it here, and the IRI is kept across commits because it is the node's IRI in
+    the graph. (Minting inside ``add`` is impossible: the object does not exist before it has an id.)
+    """
+    minted = iris.mint_part(tenant, root_iri, kebab_case(cls.__name__))
+    return cls(id=str(minted), **fields)
+
+
+class Mapper:
+    """Maps the generated classes of a schema to and from the triples of an aggregate.
+
+    It keeps no model of its own (PD-24): it reads each class and slot from ``SchemaView`` as it
+    goes, remembering only the induced slots of a class and their predicates. It holds the limit on
+    the roots of one commit, ``max_roots`` of its ``limits`` (a fresh ``LimitSettings`` unless
+    given), which every ``UnitOfWork`` over it and the reference collections' cascade share.
+    """
+
+    def __init__(
+        self, view: SchemaView, models: GeneratedModels, *, limits: LimitSettings | None = None
+    ) -> None:
+        self.view = view
+        self._max_roots = (limits or LimitSettings()).max_roots
+        self._models = models
+        self._schema_names = {camelcase(name): name for name in view.all_classes()}
+        self._slots: dict[str, list[tuple[SlotDefinition, URIRef]]] = {}
+        classes = list(view.all_classes().values())
+        self._roots = {c.name for c in aggregate_roots(view, classes)} | {
+            c.name for c in classes if is_tenant_root(c)
+        }
+
+    @property
+    def max_roots(self) -> int:
+        """The most roots one commit may hold (``CommitTooLarge`` beyond it)."""
+        return self._max_roots
+
+    def is_root(self, cls: type[BaseModel]) -> bool:
+        """True for an aggregate root or the tenant root: what a session stores as a graph."""
+        return self._schema_names.get(cls.__name__) in self._roots
+
+    # -- writing -----------------------------------------------------------------------------
+
+    def to_triples(self, obj: BaseModel) -> Iterable[Triple]:
+        """The triples of ``obj`` and its owned parts: what ``Session`` takes, without tracking."""
+        # rdflib types a graph's terms as Node; the mapper writes only URIs, literals and blank nodes
+        return cast(Iterable[Triple], self.to_graph(obj))
+
+    def to_graph(self, obj: BaseModel) -> Graph:
+        """The triples of ``obj`` and its owned parts, without the tracking statements."""
+        graph = Graph()
+        self._write(obj, URIRef(getattr(obj, "id")), graph)  # noqa: B009 - a root always has an id
+        return graph
+
+    def served(self, command: Activity) -> Served:
+        """``command`` as a ``Served`` for the transaction that commits it (message-bus PD-8).
+
+        Its ``activity`` is the command without its payload slots (``payload: true`` on the induced
+        slot of its class); its ``triples`` are its own statements without ``rdf:type``, the payload
+        slots and the slots the session fills; its ``types`` are its class and every ancestor up to
+        ``prov:Activity``.
+
+        Raises:
+            ValueError: ``command`` is no activity, or its id is not a ``urn:uuid:`` IRI.
+        """
+        if (name := self._schema_names.get(type(command).__name__)) is None:
+            raise ValueError(f"{type(command).__name__} is not a class of the schema")
+        payload = {
+            underscore(s.name): None
+            for s, _ in self._slots_of(name)
+            if flag(s, RpAnnotation.PAYLOAD)
+        }
+        types = v.activity_types(name, self.view)  # the mapper's view knows a consumer's classes
+        own = command.model_copy(update={**payload, **dict.fromkeys(v.SESSION_FILLED)})
+        graph = self.to_graph(own)
+        graph.remove((URIRef(command.id), RDF.type, None))
+        return Served(command.model_copy(update=payload), list(self._triples(graph)), types)
+
+    @staticmethod
+    def _triples(graph: Graph) -> Iterable[Triple]:
+        # rdflib types a graph's terms as Node; the mapper writes only URIs, literals and blank nodes
+        return cast(Iterable[Triple], graph)
+
+    def _write(self, obj: BaseModel, subject: Node, graph: Graph) -> None:
+        name = self._schema_names[type(obj).__name__]
+        graph.add((subject, RDF.type, URIRef(self.view.get_uri(name, expand=True))))
+        for slot, predicate in self._slots_of(name):
+            if is_bookkeeping(slot):
+                continue
+            for value in _listed(getattr(obj, underscore(slot.name))):
+                graph.add((subject, predicate, self._term(slot, value, graph)))
+
+    def _term(self, slot: SlotDefinition, value: Any, graph: Graph) -> Node:
+        if holds_owned_part(self.view, slot):
+            return self._write_part(value, graph)
+        if isinstance(value, BaseModel):
+            raise ValueError(f"slot {slot.name} holds an object but is not owned: give its IRI")
+        return rdf_term(self.view, slot, value)
+
+    def _write_part(self, part: BaseModel, graph: Graph) -> Node:
+        identifier = self._identifier(self._schema_names[type(part).__name__])
+        node = URIRef(getattr(part, identifier)) if identifier else BNode()
+        self._write(part, node, graph)
+        return node
+
+    # -- reading -----------------------------------------------------------------------------
+
+    def from_graph[M: BaseModel](
+        self, cls: type[M], iri: str, graph: Graph, graph_iri: URIRef | None
+    ) -> M:
+        """The object of class ``cls`` rooted at ``iri``, owned parts nested.
+
+        The tracking slots are read from the statements about ``graph_iri`` (PD-7): the graph IRI
+        ``Session.get_graph`` returns with the aggregate. None (an activity has no tracking graph)
+        leaves them unset.
+
+        Raises:
+            ValueError: ``graph`` has no statement about ``iri``, or its owned parts form a cycle.
+        """
+        root = URIRef(iri)
+        if (root, None, None) not in graph:
+            raise ValueError(f"the graph has no statements about {iri}")
+        return self._read(cls, root, graph, graph_iri, frozenset())
+
+    def _read[M: BaseModel](
+        self, cls: type[M], node: Node, graph: Graph, tracked_by: URIRef | None, path: frozenset
+    ) -> M:
+        if node in path:
+            raise ValueError(f"the owned parts of the graph form a cycle at {node}")
+        path = path | {node}
+        name = self._schema_names[cls.__name__]
+        data: dict[str, Any] = {}
+        if identifier := self._identifier(name):
+            if isinstance(node, BNode):
+                raise ValueError(f"a {cls.__name__} needs an IRI, found a blank node")
+            data[identifier] = str(node)
+        for slot, predicate in self._slots_of(name):
+            subject = tracked_by if is_bookkeeping(slot) else node
+            if subject is None:
+                continue
+            found = [
+                self._value(slot, o, graph, path)
+                for o in sorted(graph.objects(subject, predicate), key=str)
+            ]
+            if found:
+                data[underscore(slot.name)] = found if slot.multivalued else found[0]
+        return cls.model_validate(data)
+
+    def _value(self, slot: SlotDefinition, term: Node, graph: Graph, path: frozenset) -> Any:
+        if holds_owned_part(self.view, slot):
+            return self._read(self._model(slot.range), term, graph, None, path)
+        if self._is_enum(slot):
+            return self._enum_text(slot.range, term)
+        if isinstance(term, Literal) and not holds_iri(self.view, slot):
+            return term.toPython()
+        return str(term)
+
+    # -- the schema --------------------------------------------------------------------------
+
+    def _model(self, schema_name: str) -> type[RpModel]:
+        return self._models.named(schema_name)
+
+    def _identifier(self, name: str) -> str | None:
+        slot = self.view.get_identifier_slot(name, use_key=False)
+        return underscore(slot.name) if slot else None
+
+    def _slots_of(self, name: str) -> list[tuple[SlotDefinition, URIRef]]:
+        """The induced slots of a class other than its identifier, each with its predicate."""
+        if name not in self._slots:
+            self._slots[name] = [
+                (slot, URIRef(self.view.get_uri(slot, expand=True)))
+                for slot in self.view.class_induced_slots(name)
+                if not slot.identifier
+            ]
+        return self._slots[name]
+
+    def _is_enum(self, slot: SlotDefinition) -> bool:
+        return slot.range in self.view.all_enums()
+
+    def _meaning(self, enum: str, text: str) -> URIRef | None:
+        meaning = self.view.get_enum(enum).permissible_values[text].meaning
+        return URIRef(self.view.expand_curie(meaning)) if meaning else None
+
+    def _enum_text(self, enum: str, term: Node) -> str:
+        for text in self.view.get_enum(enum).permissible_values:
+            if self._meaning(enum, text) == term:
+                return str(text)
+        return str(term)
+
+
+def _listed(value: Any) -> Iterable[Any]:
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
+
+
+class UnitOfWork:
+    """Object-level access to one session: ``get`` roots, ``add`` new or changed ones, ``commit``.
+
+    A root read twice is the same object, so edits cannot race with themselves. ``commit`` writes
+    every added root, with the version it read (``replace_graph``) or as new (``add_graph``), and
+    removes every root passed to ``remove``, in one session transaction: all or nothing. On a
+    ``Conflict`` nothing is stored and nothing in the unit of work changes, so the caller can read
+    ``Conflict.iris``, ``get`` again from a new unit of work for the fresh values, and retry.
+    The held objects keep the tracking they were read with. A commit of more than ``max_roots``
+    roots is refused (``CommitTooLarge``); ``commit(batches=True)`` takes it in several transactions.
+    ``max_roots`` is the mapper's.
+    """
+
+    def __init__(
+        self,
+        session: Session,
+        mapper: Mapper,
+        *,
+        served: Served | None = None,
+    ) -> None:
+        self._served = served  # the command this unit of work commits for (message-bus PD-16)
+        self._session = session
+        self._mapper = mapper
+        self._max_roots = mapper.max_roots
+        self._objects: dict[str, BaseModel] = {}
+        self._versions: dict[str, str] = {}  # of the roots that are stored
+        self._dirty: set[str] = set()
+        self._removed: set[str] = set()
+
+    async def get[M: BaseModel](self, cls: type[M], iri: str) -> M:
+        """The root ``iri`` as an object of ``cls``.
+
+        Raises:
+            NotFound: The aggregate has no graph.
+            TypeError: The root was already read as another class.
+        """
+        iri = str(iri)  # a URIRef never equals a str, so the held roots are keyed by str (PD-12)
+        if iri not in self._objects:
+            graph, graph_iri, version = await self._session.get_graph(iri)
+            self._objects[iri] = self._mapper.from_graph(cls, iri, graph, graph_iri)
+            self._versions[iri] = version
+        obj = self._objects[iri]
+        if not isinstance(obj, cls):
+            raise TypeError(f"{iri} was read as {type(obj).__name__}, not {cls.__name__}")
+        return obj
+
+    def add(self, obj: BaseModel) -> None:
+        """Take a new root, or a changed one read here, to be written by the next ``commit``.
+
+        Raises:
+            ValueError: ``obj`` is not an aggregate root or the tenant root, or it was removed here.
+        """
+        iri = self._root_iri(obj)
+        if iri in self._removed:
+            raise ValueError(f"{iri} was removed in this unit of work")
+        self._objects[iri] = obj
+        self._dirty.add(iri)
+
+    def remove(self, obj: BaseModel) -> None:
+        """Take a root read here to be removed by the next ``commit``; it leaves the added ones.
+
+        Raises:
+            ValueError: ``obj`` is not an aggregate root, or was not read by this unit of work.
+        """
+        iri = self._root_iri(obj)
+        if iri not in self._versions:
+            raise ValueError(f"{iri} was not read by this unit of work; read it to remove it")
+        self._dirty.discard(iri)
+        self._removed.add(iri)
+
+    def discard(self, iri: str) -> None:
+        """Take the root ``iri`` out of the pending changes: the next ``commit`` neither writes nor
+        removes it. A new root is forgotten; a root read here stays held at the version read.
+
+        Use it after a ``Conflict`` to leave the roots in ``Conflict.iris`` out and commit the rest.
+
+        Raises:
+            LookupError: The root is not held by this unit of work.
+        """
+        key = str(iri)
+        if key not in self._objects:
+            raise LookupError(key)
+        self._dirty.discard(key)
+        self._removed.discard(key)
+        if key not in self._versions:
+            del self._objects[key]
+
+    def version(self, iri: str) -> str:
+        """The version token of the stored root ``iri``, as read or as last committed here.
+
+        Raises:
+            LookupError: The root was not read or committed by this unit of work.
+        """
+        key = str(iri)
+        if key not in self._versions:
+            raise LookupError(iri)
+        return self._versions[key]
+
+    def _root_iri(self, obj: BaseModel) -> str:
+        if not self._mapper.is_root(type(obj)):
+            raise ValueError(f"{type(obj).__name__} is not an aggregate root")
+        return str(getattr(obj, "id"))  # noqa: B009
+
+    async def commit(self, *, batches: bool = False) -> None:
+        """Write every added root and remove every removed one, in one transaction, in the order
+        of the first ``get`` or ``add`` of each root.
+
+        With ``batches=True`` the same list is cut into batches of ``max_roots``, each its own
+        transaction, committed in order: the way to store more roots than one request holds. This is
+        **not atomic overall**: a failure leaves the earlier batches stored. The batch that fails
+        raises its own exception, same type and fields, its message extended with how many batches
+        were committed; the unit of work keeps the rest, so ``commit(batches=True)`` again (or a new
+        unit of work given the same roots) carries on.
+
+        A re-run converges for **adds** only: before a batch, a root to add whose stored graph already
+        equals what this commit would write is taken as committed and left out. Equal means the same
+        triples, with the stored skolem IRIs read as blank nodes, so it holds when the parts get the
+        same IRIs on the re-run: anonymous parts, or IRIs derived from the source. A part made with
+        ``new_part`` has a random IRI, so such a root conflicts on the re-run (safe: nothing is
+        duplicated). Replaces and removes are not idempotent; read the roots again.
+
+        Raises:
+            ValueError: ``batches`` is set on a unit of work that serves a command (``served``): one
+                command is one commit; nothing was read or written.
+            CommitTooLarge: More than ``max_roots`` roots were added, changed or removed, and
+                ``batches`` is not set; nothing was read or written.
+            Conflict: A new root already exists, or a read one changed since it was read; nothing
+                was written (in batch mode: nothing of that batch) and the unit of work keeps the
+                roots not yet committed.
+        """
+        if batches and self._served is not None:
+            raise ValueError(
+                "a unit of work that serves a command commits once: batches is not allowed"
+            )
+        order = [i for i in self._objects if i in self._dirty or i in self._removed]
+        if not batches:
+            if len(order) > self._max_roots:
+                raise CommitTooLarge(
+                    f"{len(order)} roots to commit, more than the limit of {self._max_roots}"
+                )
+            await self._write(order)
+            return
+        await self._write_batches(order)
+
+    async def _write_batches(self, order: list[str]) -> None:
+        """Commit ``order`` in batches of ``max_roots``; a failing batch says how many went before."""
+        slices = [order[n : n + self._max_roots] for n in range(0, len(order), self._max_roots)]
+        for done, batch in enumerate(slices):
+            try:
+                await self._write_batch(batch)
+            except Exception as error:
+                _add_count(error, f"{done} of {len(slices)} batches committed before it")
+                raise
+
+    async def _write_batch(self, batch: list[str]) -> None:
+        stored = await asyncio.gather(*(self._stored_version_if_equal(iri) for iri in batch))
+        taken: dict[str, str] = {}
+        for iri, version in zip(batch, stored, strict=True):
+            if version is not None:
+                taken[iri] = version
+        self._versions.update(taken)
+        self._dirty.difference_update(taken)  # before the write, so a retry never rewrites them
+        await self._write([iri for iri in batch if iri not in taken])
+
+    async def _stored_version_if_equal(self, iri: str) -> str | None:
+        """The stored version of the root ``iri`` if it is to be added and already stored as it
+        would be written (PD-9); else None."""
+        if iri in self._removed or iri in self._versions:
+            return None
+        try:
+            stored, graph_iri, version = await self._session.get_graph(iri)
+        except NotFound:
+            return None
+        written = self._mapper.to_graph(self._objects[iri])
+        return version if _same_triples(graph_iri, stored, written) else None
+
+    async def _write(self, order: list[str]) -> None:
+        written: dict[str, str] = {}
+        async with self._session.transaction(served=self._served) as transaction:
+            for iri in order:
+                if iri in self._removed:
+                    await transaction.remove(iri, self._versions[iri])
+                    continue
+                triples = self._mapper.to_triples(self._objects[iri])
+                if iri in self._versions:
+                    written[iri] = await transaction.replace_graph(
+                        iri, triples, self._versions[iri]
+                    )
+                else:
+                    written[iri] = await transaction.add_graph(iri, triples)
+        self._versions.update(written)
+        for iri in self._removed & self._objects.keys() & set(order):  # stays in _removed
+            del self._objects[iri], self._versions[iri]
+        self._dirty.difference_update(order)
+
+
+def _add_count(error: Exception, count: str) -> None:
+    """Say ``count`` on ``error`` and keep its type, fields and arguments (PD-20d): a toolkit error
+    gets it appended to its first argument; any other error gets it as a note."""
+    if isinstance(error, PersistenceError) and error.args:
+        error.args = (f"{error.args[0]}; {count}", *error.args[1:])
+    elif isinstance(error, PersistenceError):
+        error.args = (count,)
+    else:
+        error.add_note(count)
+
+
+def _same_triples(graph_iri: URIRef, stored: Graph, written: Graph) -> bool:
+    """Whether ``stored`` holds what ``written`` says: the statements about the graph IRI that the
+    session adds are left out, and the skolem IRIs of the graph read as blank nodes."""
+
+    def blank(term: Node) -> Node:
+        return BNode(str(term)) if is_skolem_of(graph_iri, term) else term
+
+    def comparable(graph: Graph) -> Graph:
+        copy = Graph()
+        for s, p, o in without_bookkeeping(graph_iri, cast(Iterable[Triple], graph)):
+            copy.add((blank(s), p, blank(o)))
+        return copy
+
+    return isomorphic(comparable(stored), comparable(written))
