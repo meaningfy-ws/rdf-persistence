@@ -463,3 +463,20 @@ package name are leader's choices (DEC-2, DEC-5).
   toolkit target, and `rp.yaml` is one. (3) The two rules live in `checks/python_package.py`, run
   by the hard step with the target's `package`; TC-35 to TC-37 assert the problem, and "nothing
   written" holds by the pipeline's rule that a failing hard step blocks every write.
+- **D-24 Stage 3 is a small stage; its review** (lead). About 450 added lines, one task: one L2+L3
+  pass, the tester, the full gates and CI, no separate checker (as D-6). Review: 7 findings, no
+  Critical. Owed to the docs stage: W1 (`architecture/generation.adoc`: the two `HardRule`
+  members, the toolkit's run checks its own modules' `python_package`, the two annotations in
+  the table), W2 (a new technical group also needs `python_package` on its schema), S3
+  (`develop/index.adoc` "Add a check rule": a rule with its own module joins
+  `steps._hard_problems`). Under the floor: W3 (TC-37 is tested in two halves; the consumer run
+  against a disagreeing metamodel holds by reading, `is_toolkit_schema` returns early), S1 (no
+  end-to-end "writes nothing" test for the two rules), S2 (TC-38 plants no fault in a technical
+  schema), S4 (`pydantic_split.py`'s docstring cites another change's DEC-6).
+- **D-25 Stage 3 tester** (lead; 35 tests, 13 failed first, 3 findings, none accepted). Under the
+  floor, added to #164: (P2) `public_package` is not validated, so a malformed value in `rp.yaml`
+  would make a consumer write a broken import (only the toolkit edits `rp.yaml`); (P3)
+  `metamodel_module` does not validate `python_package` itself (rule (b) catches it on the
+  toolkit's run); (P3) `public_package()` is cached over a module constant, stale only in tests
+  that swap the metamodel. The sort keeps the end-to-end tests of the two error-matrix rows
+  (which also closes the review's S1) and the consumer half of TC-37 (W3).
