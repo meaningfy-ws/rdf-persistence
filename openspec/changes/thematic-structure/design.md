@@ -508,3 +508,19 @@ consumers later.
   schema is merged once, not also written as its own file (with an import edge in the W1 test).
   Under the floor: S4 (the kind/folder problem names only the package; no end-to-end "writes
   nothing"). S5: the new tests' scenario-map rows are added before this change's archive.
+- **D-12 Stage 2 (`core`) as built** (builder of 2.1, accepted by the lead). (1) `rp_settings.yaml`
+  imports `../core/rp_core_services` by a relative path: the library's `metamodel_importmap` maps
+  only `model/*.yaml`, and the relative path needs no library change. (2) The move and the
+  `domain.base` shim are two commits, so `git log --follow` sees `core/domain/base.py` as a rename
+  (TC-02). (3) `test_theme_layout.py` gains a `SHIMS` set (a listed shim may stand at its old path)
+  and `test_no_old_module_paths.py`'s `EXEMPT` lists the five files that name the shim's old path
+  on purpose. (4) `layers-across-themes` is four contracts, not three: a forbidden contract cannot
+  state the entrypoints/adapters independence both ways in one. (5) PD-4 (c) needs no change yet:
+  the library guard already scans every layer folder. (6) `tests/unit/services/test_telemetry.py`
+  and `tests/unit/adapters/test_http.py` stay until their themes' test folders exist (PD-11).
+  (7) The telemetry attribute `error.type` of the toolkit's exceptions now names
+  `rdf_persistence.core.domain.exceptions.X` (RISK-3's family; the release notes say so). (8) The
+  ast-grep pattern `from a.b.c import $$$A` also matched submodules and partial name lists; the
+  builder repaired ~270 lines and checked every import's names against the original — later
+  stages use explicit patterns and read the diff. (9) The model guard misses a consumer class whose
+  base comes through `from rdf_persistence import RpModel`; it predates the move: #173.
