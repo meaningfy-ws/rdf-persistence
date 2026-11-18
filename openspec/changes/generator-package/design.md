@@ -480,3 +480,15 @@ package name are leader's choices (DEC-2, DEC-5).
   toolkit's run); (P3) `public_package()` is cached over a module constant, stale only in tests
   that swap the metamodel. The sort keeps the end-to-end tests of the two error-matrix rows
   (which also closes the review's S1) and the consumer half of TC-37 (W3).
+- **D-26 Tasks 4.1 to 4.3 as built** (builders, accepted by the lead). (1) TC-44: through
+  `rp-generate` a class without a `description` is refused by the lint step (the toolkit's
+  `lint.yaml` makes LinkML's `recommended` rule an error), which runs before the hard check; the
+  scenario asserts the lint problem naming the class and `description`, exit 1, nothing written;
+  the `[description]` tag stays pinned by the unit test of the hard check. (2) TC-47: the toy's
+  `closed` invalid cases are refused by `Documents.expand` (`InvalidBody`) before SHACL, so their
+  `ClosedConstraintComponent` is not asserted; any other kind refused that way fails the test.
+  (3) PD-13: `--python-out` is not passed; the toy's own `python = "generated"` already writes into
+  `toy_e2e/generated`, and the flag would nest it a level deeper. (4) The e2e test reuses
+  `tests.e2e.world.Callers` and `library_app.library_settings`, coupling the generator's e2e to
+  the library's e2e helpers; `build_library_app` is bound to the committed toy, so the wiring is
+  repeated in a small `served` helper.
