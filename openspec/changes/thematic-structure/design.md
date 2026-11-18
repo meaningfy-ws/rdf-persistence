@@ -21,7 +21,7 @@ What the brief asked to check against the code:
 
 | Claim | Found | In this PLAN |
 |---|---|---|
-| The theme graph is acyclic (analysis §5.3) | Holds for the hand-written modules (grimp, 2026-11-17). Order: core; iris, schema, files; provenance; persistence; migrations, access; tenancy; collaboration, events; messaging; api | DEC-1, PD-1, PD-6 |
+| The theme graph is acyclic (analysis §5.3) | Holds for the hand-written modules (grimp, 2026-11-17). Order (PD-6 as built, D-16 W1): core; iris, schema; provenance, files; persistence; access, migrations; tenancy; collaboration, events; messaging; api | DEC-1, PD-1, PD-6 |
 | The generated code can mirror the themes | Holds for `rp_service` and `rp_wire` (every class has one lowest-user theme, table PD-2); fails for the metamodel (cycles) | DEC-2, PD-2 |
 | The consumer imports 5 modules | 3 by hand; the `domain.base` lines are its generated files; the `adapters.fuseki` line is a test string | DEC-5, PD-8 |
 | The 149-name re-export (`__all__`, `rdf_persistence/__init__.py:274`; the EPIC says 141) | Holds, 149 names | PD-8, TC-03 |
@@ -599,3 +599,11 @@ consumers later.
   moves to `tests/unit/schema/`); S1 (one planted old-vs-themes case per new theme). Under the
   floor: F3 (the S3 logger rename silences an old logging configuration: stage 7's CHANGELOG says
   so, D-15 (8)), F4 (`Iris.resource_name` is stricter than the old function, as designed).
+- **D-17 Stage 3 checker: pass** (lead; 5 findings, none Critical). W1: stage 3's commits hold the
+  move and the import rewrite together (the recipe's commits A and B); rename detection holds
+  (R086–R100) and `git log --follow` reaches each file's history, so it is recorded, not split;
+  from stage 4 a shim at an old path is committed apart from its move. W2 (no test ties
+  `themes-layered`/`themes-ordered` to `TURNED_ON`): done in stage 4, where the next themes join
+  those contracts. S1 (a scenario-map row) and S2 (this file's order line) fixed here. Under the
+  floor: S3 (`tests/unit/schema/test_schema.py` was recreated, not renamed, so its history starts
+  here).
