@@ -155,6 +155,18 @@ def test_the_generator_testkit_exports_the_four_names_lazily() -> None:
     assert exported == sorted(LAZY), exported
 
 
+@pytest.mark.filterwarnings("ignore:.*moved to rdf_persistence_generation:DeprecationWarning")
+def test_assert_isomorphic_is_one_object_through_every_path() -> None:
+    """D-10, D-18: the library's testkit, the roundtrip shim and the generator's module share it."""
+    from rdf_persistence.testkit import assert_isomorphic, roundtrip
+    from rdf_persistence_generation.testkit import roundtrip as generator_roundtrip
+
+    assert assert_isomorphic is roundtrip.assert_isomorphic, "the shim re-exports the one object"
+    assert assert_isomorphic is generator_roundtrip.assert_isomorphic, (
+        "the generator's module re-exports the one object"
+    )
+
+
 def test_the_testkit_root_does_not_warn_nor_load_the_shims() -> None:
     """TC-20: ``import rdf_persistence.testkit`` loads no shim and warns about none."""
     seen = run_python(

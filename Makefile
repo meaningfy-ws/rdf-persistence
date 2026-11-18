@@ -41,6 +41,9 @@ GENERATOR_COV_FLAGS = --cov=$(GENERATOR_NAME) \
                       --cov-report=xml:$(REPO_ROOT)/coverage-generator.xml \
                       --cov-fail-under=80
 
+# The git ref `test-changed` and `refresh-map` read the changed and renamed files against.
+BASE ?= develop
+
 # The unit lane never collects the container tests, so it runs without testcontainers (PD-16).
 UNIT_LANE = --ignore=$(TEST_PATH)/integration --ignore=$(TEST_PATH)/e2e --ignore=$(TEST_PATH)/perf
 # The library's lanes leave the generator's pyramid to `make test-generator`.
@@ -112,8 +115,8 @@ check-generated: generate ## Regenerate and fail if the result differs from what
 refresh-snapshot: ## Rewrite the reviewed model-shape snapshot after a deliberate model change (review the diff)
 	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/testkit/test_shape_snapshot.py tests/generator/unit/test_generation_shape.py -q
 
-refresh-map: ## Drop the scenario-map rows of vanished tests and list the collected tests with no row (exit 1 while some are unmapped)
-	@ uv run python -m tests.audit.refresh_map
+refresh-map: ## Re-key the scenario-map rows of renamed test files (against BASE, default develop), drop those of vanished tests and list the collected tests with no row (exit 1 while some are unmapped)
+	@ uv run python -m tests.audit.refresh_map --base $(BASE)
 
 refresh-golden: ## Rewrite the golden files of schemas that are not the toy (the toy's golden is the committed tree: make generate)
 	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/generator/unit -k "ext_" -q
