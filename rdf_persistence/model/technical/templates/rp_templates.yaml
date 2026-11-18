@@ -6,8 +6,8 @@ description: >-
   fixed vocabulary, the unique-key guard, the owner patterns of a write, a listing and the stamp
   guard of a migration. A field of a SPARQL term bundle holds a `SparqlTerm`, never a plain string,
   so only the output of `term()` reaches a query (technical-models DEC-7). The IRI template
-  variables and the parts of a matched IRI are plain strings. Nothing here is served by the HTTP
-  service.
+  variables and the parts of a matched IRI, which are plain strings, are in the `iris` theme's
+  services schema. Nothing here is served by the HTTP service.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
@@ -120,41 +120,6 @@ slots:
     title: From version
     description: The version of the schema that the data follows before the migration.
     required: true
-  base:
-    title: Base
-    description: The base IRI of the service, as the settings give it.
-    range: string
-    required: true
-  deployment:
-    title: Deployment
-    description: The deployment segment of the IRIs; empty when the settings give none.
-    range: string
-    required: true
-  tenant_segment:
-    title: Tenant segment
-    description: The path segment that holds the tenants, as the settings give it.
-    range: string
-    required: true
-  tenant:
-    title: Tenant
-    description: The tenant IRI a pattern matched.
-    range: string
-  tenant_id:
-    title: Tenant id
-    description: The id of the tenant a pattern matched.
-    range: string
-  id:
-    title: Object id
-    description: The id of the aggregate or part a pattern matched.
-    range: string
-  type:
-    title: Type
-    description: The class type a pattern matched.
-    range: string
-  rp_path:
-    title: Path segment
-    description: The path segment of the aggregate's class a pattern matched.
-    range: string
 
 classes:
   RegistryTerms:
@@ -220,32 +185,3 @@ classes:
       - schema_id
       - p_stamp
       - from_version
-  IriTemplateVariables:
-    title: IRI template variables
-    description: >-
-      The settings' values that every IRI template writes in as plain text: the base, the deployment
-      (empty when there is none) and the tenant segment. A mapping of them goes to `str.format` and to
-      the pattern compiler, which take a mapping (technical-models PD-5).
-    class_uri: rp:IriTemplateVariables
-    slots:
-      - base
-      - deployment
-      - tenant_segment
-  IriParts:
-    title: IRI parts
-    description: >-
-      The named groups of an IRI template's match. A group the model does not name is refused: it
-      would be a pattern that the toolkit builds and no reader reads.
-    class_uri: rp:IriParts
-    slots:
-      - tenant
-      - tenant_id
-      - id
-      - type
-      - rp_path
-      - root
-    slot_usage:
-      root:
-        description: The root IRI a pattern matched.
-        range: string
-        required: false

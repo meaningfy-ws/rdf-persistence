@@ -5,7 +5,7 @@ import time
 import pytest
 from rdflib import Graph, Literal, URIRef
 
-from rdf_persistence.services.iris import loaded_graph_iri, mint_aggregate_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import TENANT
@@ -20,8 +20,8 @@ def titles(subject: URIRef, n: int) -> list:
 
 
 async def committed(session, store, aggregate_size: int, loaded_size: int):
-    iri = str(mint_aggregate_iri(TENANT, "books"))
-    loaded = loaded_graph_iri(iri)
+    iri = str(DEFAULT_IRIS.mint_aggregate(TENANT, cls_type="", rp_path="books"))
+    loaded = DEFAULT_IRIS.mint_loaded_graph(tenant="", root=iri)
     await store.put_graph(FAKE_DATABASE, loaded, _graph(titles(URIRef(iri), loaded_size)))
     version = await session.add_graph(iri, titles(URIRef(iri), aggregate_size), [loaded])
     return iri, loaded, version

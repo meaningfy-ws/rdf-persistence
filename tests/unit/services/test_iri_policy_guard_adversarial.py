@@ -14,11 +14,11 @@ from rdf_persistence.core.domain.exceptions import (
     PersistenceError,
 )
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.domain.layout import POLICY_SEGMENT
+from rdf_persistence.iris.domain.layout import POLICY_SEGMENT
+from rdf_persistence.iris.services.generated.rp_iris_services import IdKind, IdSpec, IriPolicy
+from rdf_persistence.iris.services.iris import DEFAULT_ALPHABET, Iris
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.generated.service.rp_service import IdKind, IdSpec, IriPolicy
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
-from rdf_persistence.services.iris import DEFAULT_ALPHABET, Iris
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library

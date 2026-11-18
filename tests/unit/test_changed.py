@@ -36,7 +36,7 @@ SELECTS = [
     (8, "tests/unit/entrypoints/test_router.py", ("tests/unit/entrypoints/",)),
     (9, "tests/feature/steps/test_steps.py", ("tests/feature/",)),
     (10, "rdf_persistence/services/session.py", ("tests/unit/services/",)),
-    (10, "rdf_persistence/domain/layout.py", ("tests/unit/domain/",)),
+    (10, "rdf_persistence/iris/domain/layout.py", ("tests/unit/iris/",)),
     (10, "rdf_persistence/testkit/containers/fuseki.py", ("tests/unit/testkit/",)),
     (11, "rdf_persistence/__init__.py", ROOT_TESTS),
 ]

@@ -17,7 +17,12 @@ from pathlib import Path
 from linkml.generators.typescriptgen import TypescriptGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.services.schema import SERVED_SCHEMAS, load_schema, metamodel_importmap
+from rdf_persistence.services.schema import (
+    SERVED_SCHEMAS,
+    SERVICE_SCHEMA,
+    load_schema,
+    metamodel_importmap,
+)
 from rdf_persistence.services.schema_structure import (
     apply_defaults,
     is_internal,
@@ -38,6 +43,9 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.templating import environment
 
 TEMPLATES = "typescript"
+# The module that holds the types of every served schema (``rp_service.ts``), named after the service
+# schema, not after the schema served first.
+SERVICE_MODULE = SERVICE_SCHEMA.stem
 MODULE_TEMPLATE = "module.ts.jinja"
 INDEX_TEMPLATE = "index.ts.jinja"
 INDEX_NAME = "index.ts"
@@ -225,8 +233,9 @@ def render(schema_path: Path) -> list[GeneratedFile]:
 def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
     """``modules`` and the served schemas' modules; the served schemas' own types share one file.
 
-    The file is named after the first served schema and holds the types of every served schema in
-    ``SERVED_SCHEMAS`` order, so splitting a served schema later does not change its name (TC-07).
+    The file is named ``SERVICE_MODULE`` (``rp_service``) whichever schema is served first, and holds
+    the types of every served schema in ``SERVED_SCHEMAS`` order, so splitting the service schema
+    changes neither its name nor the order of its types (TC-07).
     """
     served_names = [load_schema(path).schema.name for path in SERVED_SCHEMAS]
     by_name = {m.name: m for m in modules if m.name not in served_names}
@@ -238,18 +247,18 @@ def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
             elif module.name not in served_names:
                 by_name.setdefault(module.name, module)
     if own:
-        by_name[served_names[0]] = _merged(own, served_names)
+        by_name[SERVICE_MODULE] = _merged(own, served_names)
     return [_file(by_name[name]) for name in sorted(by_name)]
 
 
 def _merged(modules: list[TsModule], served_names: list[str]) -> TsModule:
-    """One module named like the first, with the enums and interfaces of all in order."""
+    """One module named ``SERVICE_MODULE``, with the enums and interfaces of all in order."""
     imports: dict[str, set[str]] = {}
     for module in modules:
         for item in module.imports:
             imports.setdefault(item.module, set()).update(item.names)
     return TsModule(
-        name=modules[0].name,
+        name=SERVICE_MODULE,
         enums=[e for module in modules for e in module.enums],
         interfaces=[i for module in modules for i in module.interfaces],
         imports=[

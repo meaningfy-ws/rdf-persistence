@@ -288,8 +288,8 @@ _What may a consumer import?_
 [cols="2,3,3,4",options="header"]
 |===
 |Layer (module) |Hand-written blocks |Generated models inside the layer |Exported at top level
-|`rdf_persistence.domain`, `rdf_persistence.core.domain`
-|the fixed IRI layout (`domain/layout.py`: graph and skolem IRIs, database and resource names, which no policy changes), SPARQL terms (`core/domain/sparql.py`), the SPARQL parser (`core/domain/sparql_parsing.py`: every rdflib SPARQL parse goes through it, under one lock), the strict base model (`core/domain/base.py`), the errors (`core/domain/exceptions.py`)
+|`rdf_persistence.domain`, `rdf_persistence.core.domain`, `rdf_persistence.iris.domain`
+|the fixed IRI layout (`iris/domain/layout.py`: graph and skolem IRIs, database and resource names, which no policy changes), SPARQL terms (`core/domain/sparql.py`), the SPARQL parser (`core/domain/sparql_parsing.py`: every rdflib SPARQL parse goes through it, under one lock), the strict base model (`core/domain/base.py`), the errors (`core/domain/exceptions.py`)
 |the metamodel's classes, shapes and context, generated from `model/rp.yaml` into `core/domain/generated/`; no technical model
 |`RpModel`; `AggregateRoot`, `Described`, `Tracked`,
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,
@@ -302,14 +302,17 @@ classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Mo
 `Forbidden`, `InvalidBody`, `InvalidIri`, `InvalidToken`, `InvalidWorkflow`, `StoredDataInvalid`, …)
 |`rdf_persistence.services`
 |session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the IRI
-policy and `Iris` (`services/iris.py`, with `tenant_move.py`); the factories that build the SPARQL
+policy and `Iris` (`iris/services/iris.py`; `tenant_move.py` is beside the services); the factories that build the SPARQL
 term bundles (`services/vocabulary.py`); the message bus; the ports
 |the technical models of the services, loaded lazily from the top level, each group a folder of
 `services/generated/`: `service/` (from `model/technical/service/rp_service.yaml`: the service
 records), `settings/` (`rp_settings.yaml`: the deployment values), `templates/` (`rp_templates.yaml`:
-the SPARQL term bundles, fields of `SparqlTerm`, and the IRI models `IriTemplateVariables` and
-`IriParts`, plain strings read by `services/iris.py`); `LogContext` and `HttpSettings` are in
-`core/services/generated/` (`model/technical/core/rp_core_services.yaml`)
+the SPARQL term bundles, fields of `SparqlTerm`); `LogContext` and `HttpSettings` are in
+`core/services/generated/` (`model/technical/core/rp_core_services.yaml`), and the settings and the
+IRI policy of the `iris` theme (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`) in
+`iris/services/generated/` (`model/technical/iris/rp_iris_services.yaml`), with the IRI models
+`IriTemplateVariables` and `IriParts`, plain strings read by `iris/services/iris.py`, in
+`iris/services/generated/templates/` (`rp_iris_templates.yaml`)
 |`open_session`, `Session`, `Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`; the service records
 (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`,
 `GrantSet`, `Page`, `Problem`, `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`,
@@ -353,8 +356,9 @@ the contract `domain-never-imports-technical-models` forbids `rdf_persistence.do
 `rdf_persistence.core.domain` from importing
 any of the three `generated` packages, directly or through a chain, so a failure names the rule that
 broke. Two hand-written modules used the service records, so they moved to the services layer: the
-layout functions that no policy changes stay in `domain/layout.py`, and `Iris`, its policy, its
-templates and the functions over `DEFAULT_IRIS` are in `services/iris.py`, with `tenant_move.py`.
+layout functions that no policy changes stay in the domain (`iris/domain/layout.py`), and `Iris`, its
+policy and its templates are in `iris/services/iris.py`; `mint_aggregate_iri` stays there, warning,
+until it is removed (use `Iris.mint_aggregate`).
 Every name still imports from `rdf_persistence`; only a deep import of one of the old module paths
 breaks, and `CHANGELOG.md` lists them with their new ones.
 

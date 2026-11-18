@@ -22,11 +22,11 @@ from rdf_persistence import (
     load_role_definitions,
 )
 from rdf_persistence.entrypoints.service import install_service
+from rdf_persistence.iris.services.generated.rp_iris_services import IdKind, IdSpec, IriPolicy
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris, draw_id
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.files import FileStore
-from rdf_persistence.services.generated.service.rp_service import IdKind, IdSpec, IriPolicy
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris, draw_id, principal_iri
 from rdf_persistence.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 from rdf_persistence.testkit.tokens import ISSUER, shared_key
@@ -67,7 +67,7 @@ def toy_key() -> rsa.RSAPrivateKey:
 
 def principal_of(sub: str) -> str:
     """The principal IRI a token with ``sub`` identifies."""
-    return str(principal_iri(ISSUER, sub))
+    return str(DEFAULT_IRIS.principal(ISSUER, sub))
 
 
 def body_of(model: BaseModel) -> dict:

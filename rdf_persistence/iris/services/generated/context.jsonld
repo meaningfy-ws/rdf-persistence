@@ -1,0 +1,107 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "linkml": "https://w3id.org/linkml/",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "access_template": {
+         "@id": "accessTemplate"
+      },
+      "aggregate_template": {
+         "@id": "aggregateTemplate"
+      },
+      "application_template": {
+         "@id": "applicationTemplate"
+      },
+      "base": {
+         "@type": "@id",
+         "@id": "base"
+      },
+      "creator_role": {
+         "@id": "creatorRole"
+      },
+      "deployment": {
+         "@id": "deployment"
+      },
+      "alphabet": {
+         "@id": "idAlphabet"
+      },
+      "kind": {
+         "@id": "idKind",
+         "@type": "@vocab",
+         "@context": {
+            "uuid4": "https://meaningfy.ws/ns/rdf-persistence#IdUuid4",
+            "random": "https://meaningfy.ws/ns/rdf-persistence#IdRandom"
+         }
+      },
+      "length": {
+         "@id": "idLength"
+      },
+      "iri_policy": {
+         "@type": "@id",
+         "@id": "iriPolicy"
+      },
+      "loaded_graph_template": {
+         "@id": "loadedGraphTemplate"
+      },
+      "max_body_bytes": {
+         "@id": "maxBodyBytes"
+      },
+      "max_restore_bytes": {
+         "@id": "maxRestoreBytes"
+      },
+      "meta_template": {
+         "@id": "metaTemplate"
+      },
+      "object_id": {
+         "@type": "@id",
+         "@id": "objectId"
+      },
+      "part_template": {
+         "@id": "partTemplate"
+      },
+      "prefix": {
+         "@id": "prefix"
+      },
+      "principal_template": {
+         "@id": "principalTemplate"
+      },
+      "provenance_template": {
+         "@id": "provenanceTemplate"
+      },
+      "public_url": {
+         "@type": "@id",
+         "@id": "publicUrl"
+      },
+      "registry_template": {
+         "@id": "registryTemplate"
+      },
+      "roles_claim": {
+         "@id": "rolesClaim"
+      },
+      "tenant_id": {
+         "@type": "@id",
+         "@id": "tenantId"
+      },
+      "tenant_segment": {
+         "@id": "tenantSegment"
+      },
+      "tenant_template": {
+         "@id": "tenantTemplate"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "IdSpec": {
+         "@id": "IdSpec"
+      },
+      "IriPolicy": {
+         "@id": "IriPolicy"
+      },
+      "ServiceSettings": {
+         "@id": "ServiceSettings"
+      }
+   }
+}

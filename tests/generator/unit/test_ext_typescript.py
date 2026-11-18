@@ -109,6 +109,18 @@ def test_the_service_types_are_written_with_any_as_unknown(staged: Path) -> None
     assert "interface Any" not in service, "Any has no interface of its own"
 
 
+def test_the_merged_file_keeps_the_name_of_the_service_schema_whatever_comes_first(
+    staged: Path,
+) -> None:  # TC-07
+    first = typescript.SERVED_SCHEMAS[0].stem
+    assert first != typescript.SERVICE_MODULE, "a schema is served before the service schema"
+    assert (staged / "rp_service.ts").is_file(), "the types of the served schemas are rp_service.ts"
+    assert not (staged / f"{first}.ts").exists(), "no file named after the first served schema"
+    assert "export type IdKind =" in text(staged, "rp_service"), (
+        "the first schema's types are in it"
+    )
+
+
 def test_the_index_exports_the_service_types_once(staged: Path) -> None:
     index = text(staged, "index")
     assert index.count('export * from "./rp_service";') == 1, "the index exports rp_service once"

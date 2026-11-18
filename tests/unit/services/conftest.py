@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence import CallerAccess, VerifiedCaller, generated_models
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session

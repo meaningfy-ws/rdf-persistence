@@ -17,8 +17,8 @@ from rdflib import URIRef
 from rdf_persistence.core.domain.exceptions import StoreNotWired
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.domain.layout import graph_iri, tenant_name_prefix
-from rdf_persistence.services.iris import Iris
+from rdf_persistence.iris.domain.layout import graph_iri, tenant_name_prefix
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.migrations import chain_of
 from rdf_persistence.services.schema import load_schema

@@ -2,11 +2,12 @@
 
 import pytest
 
-from rdf_persistence.domain import layout
-from rdf_persistence.services import iris
-from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.iris.domain import layout
+from rdf_persistence.iris.services import iris
+from rdf_persistence.services.schema import IRIS_SCHEMA, PACKAGE_DIR, load_schema
 
-VIEW = load_schema(PACKAGE_DIR / "model" / "technical" / "service" / "rp_service.yaml")
+VIEW = load_schema(IRIS_SCHEMA)
+METAMODEL = load_schema(PACKAGE_DIR / "model" / "rp_core.yaml")
 
 
 def _unanchored(pattern: str) -> str:
@@ -21,8 +22,16 @@ def test_the_prefix_rule_is_the_pattern_of_the_service_settings_prefix():
 
 
 def test_the_segment_rule_is_the_pattern_of_url_segment():
-    assert layout._SEGMENT.pattern == _unanchored(VIEW.get_slot("url_segment").pattern), (
+    assert layout._SEGMENT.pattern == _unanchored(METAMODEL.get_slot("url_segment").pattern), (
         "the segment rule is the pattern the schema declares"
+    )
+
+
+def test_the_tenant_segment_of_the_settings_repeats_the_pattern_of_url_segment():
+    """The iris schema does not import the metamodel, so it states the pattern again (see its slot)."""
+    declared = VIEW.induced_slot("tenant_segment", "ServiceSettings").pattern
+    assert declared == METAMODEL.get_slot("url_segment").pattern, (
+        "the settings' tenant segment and the metamodel's url_segment follow one pattern"
     )
 
 
@@ -35,4 +44,4 @@ def test_a_prefix_the_schema_refuses_is_refused(prefix):
 @pytest.mark.parametrize("segment", ["Books", "1books", "a.b", "a_b", "a~b"])
 def test_a_segment_the_schema_refuses_is_refused(segment):
     with pytest.raises(ValueError, match="segment"):
-        iris.mint_aggregate_iri("https://example.org/t", segment)
+        iris.DEFAULT_IRIS.mint_aggregate("https://example.org/t", cls_type="", rp_path=segment)

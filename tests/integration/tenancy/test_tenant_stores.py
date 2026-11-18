@@ -14,8 +14,8 @@ from rdf_persistence import FusekiStore
 from rdf_persistence.core.domain.exceptions import DatabaseGone
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services.iris import Iris, tenant_resource_name
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
@@ -75,8 +75,8 @@ async def holds(store: Store, database: str, graph: URIRef) -> bool:
 async def test_tc36_each_book_is_on_its_own_server_only(world):
     on_default, book_d = await made_with_book(world, DEFAULT_STORE)
     on_a, book_a = await made_with_book(world, CLIENT_A)
-    db_d = tenant_resource_name(world.settings.prefix, on_default)
-    db_a = tenant_resource_name(world.settings.prefix, on_a)
+    db_d = Iris(world.settings).resource_name(on_default)
+    db_a = Iris(world.settings).resource_name(on_a)
 
     assert db_d in await world.d.list_datasets(), "default holds its tenant's database"
     assert db_d not in await world.a.list_datasets(), "client-a does not"
@@ -92,7 +92,7 @@ async def test_tc36_each_book_is_on_its_own_server_only(world):
 
 async def test_tc37_a_sweep_drops_the_orphan_on_the_second_server_and_keeps_its_tenant(world):
     tenant, book = await made_with_book(world, CLIENT_A)
-    kept = tenant_resource_name(world.settings.prefix, tenant)
+    kept = Iris(world.settings).resource_name(tenant)
     await world.a.create_dataset(f"{world.settings.prefix}-t-{'0' * 32}")  # an orphan: no record
 
     await sweep(world.tenancy, world.d, world.files, world.settings)

@@ -5,11 +5,11 @@ from rdflib import Graph, URIRef
 
 from rdf_persistence import Action
 from rdf_persistence.core.domain.generated.rp_access import Grant
+from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.generated.service.rp_service import (
     CallerAccess,
-    IriPolicy,
     TenantState,
 )
 from rdf_persistence.testkit import assert_isomorphic

@@ -12,14 +12,14 @@ from rdflib.plugins.sparql import prepareQuery
 
 from rdf_persistence import new_part
 from rdf_persistence.core.domain.sparql import Triple
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services.generated.service.rp_service import (
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import (
     Listings,
     items_of,

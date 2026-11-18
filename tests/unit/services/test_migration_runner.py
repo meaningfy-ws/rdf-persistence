@@ -23,11 +23,11 @@ from rdf_persistence.core.domain.exceptions import (
     TenantBehind,
 )
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.domain.layout import graph_iri, skolem_iri, stamps_graph_iri
+from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri, stamps_graph_iri
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy
-from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.migration_runner import (
     migrate_database,
     migrate_shared,

@@ -20,16 +20,16 @@ from rdf_persistence.core.domain.media import (
     REPRESENTATIONS,
     TURTLE,
 )
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.documents import Documents, dataset_of
-from rdf_persistence.services.generated.service.rp_service import (
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.services.iris import Iris
+from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.documents import Documents, dataset_of
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.testkit import assert_isomorphic

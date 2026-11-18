@@ -44,10 +44,10 @@ from rdf_persistence.core.domain.exceptions import CommitTooLarge, NotFound, Per
 from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.core.domain.sparql import Triple
-from rdf_persistence.domain.layout import is_skolem_of
+from rdf_persistence.iris.domain.layout import is_skolem_of
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.provenance import Served
 from rdf_persistence.services.schema_structure import (
     aggregate_roots,

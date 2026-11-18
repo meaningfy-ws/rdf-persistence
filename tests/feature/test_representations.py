@@ -17,7 +17,7 @@ from rdf_persistence.core.domain.media import (
     TRIG,
     TURTLE,
 )
-from rdf_persistence.domain.layout import graph_iri
+from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, assert_problem
 

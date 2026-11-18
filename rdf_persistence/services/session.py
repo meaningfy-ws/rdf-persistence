@@ -50,7 +50,8 @@ from rdf_persistence.core.domain.sparql import (
 )
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced
-from rdf_persistence.domain.layout import graph_iri, skolem_iri
+from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import (
     AggregateHead,
@@ -60,7 +61,6 @@ from rdf_persistence.services.generated.service.rp_service import (
     ListRequest,
 )
 from rdf_persistence.services.generated.templates.rp_templates import OwnerTerms
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import (
     PAGE,
     Listings,

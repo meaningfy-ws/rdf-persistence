@@ -1,0 +1,89 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rp: <https://meaningfy.ws/ns/rdf-persistence#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+rp:IriParts a sh:NodeShape ;
+	rdfs:comment "The named groups of an IRI template's match. A group the model does not name is refused: it would be a pattern that the toolkit builds and no reader reads." ;
+	rdfs:label "IRI parts" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n2 ;
+	sh:property _:c14n3 , _:c14n4 , _:c14n5 , _:c14n6 , _:c14n8 , _:c14n9 ;
+	sh:targetClass rp:IriParts .
+rp:IriTemplateVariables a sh:NodeShape ;
+	rdfs:comment "The settings' values that every IRI template writes in as plain text: the base, the deployment (empty when there is none) and the tenant segment. A mapping of them goes to `str.format` and to the pattern compiler, which take a mapping (technical-models PD-5)." ;
+	rdfs:label "IRI template variables" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n0 ;
+	sh:property _:c14n1 , _:c14n10 , _:c14n7 ;
+	sh:targetClass rp:IriTemplateVariables .
+_:c14n0 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n1 sh:datatype xsd:string ;
+	sh:description "The path segment that holds the tenants, as the settings give it." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Tenant segment" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:tenant_segment .
+_:c14n10 sh:datatype xsd:string ;
+	sh:description "The base IRI of the service, as the settings give it." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Base" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:base .
+_:c14n2 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n3 sh:datatype xsd:string ;
+	sh:description "The root IRI a pattern matched." ;
+	sh:maxCount 1 ;
+	sh:name "Root" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path rp:root .
+_:c14n4 sh:datatype xsd:string ;
+	sh:description "The path segment of the aggregate's class a pattern matched." ;
+	sh:maxCount 1 ;
+	sh:name "Path segment" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:rp_path .
+_:c14n5 sh:datatype xsd:string ;
+	sh:description "The tenant IRI a pattern matched." ;
+	sh:maxCount 1 ;
+	sh:name "Tenant" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:tenant .
+_:c14n6 sh:datatype xsd:string ;
+	sh:description "The class type a pattern matched." ;
+	sh:maxCount 1 ;
+	sh:name "Type" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:type .
+_:c14n7 sh:datatype xsd:string ;
+	sh:description "The deployment segment of the IRIs; empty when the settings give none." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Deployment" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:deployment .
+_:c14n8 sh:datatype xsd:string ;
+	sh:description "The id of the aggregate or part a pattern matched." ;
+	sh:maxCount 1 ;
+	sh:name "Object id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:id .
+_:c14n9 sh:datatype xsd:string ;
+	sh:description "The id of the tenant a pattern matched." ;
+	sh:maxCount 1 ;
+	sh:name "Tenant id" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:tenant_id .

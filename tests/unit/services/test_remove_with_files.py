@@ -8,9 +8,9 @@ import pytest
 from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound, StoreUnavailable
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.file_removal import remove_with_files
-from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library

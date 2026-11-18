@@ -25,7 +25,7 @@ from rdf_persistence.services.generated.templates.rp_templates import (
     RegistryTerms,
     StampGuardTerms,
 )
-from rdf_persistence.services.schema import PACKAGE_DIR, SERVICE_SCHEMA, load_schema
+from rdf_persistence.services.schema import IRIS_SCHEMA, PACKAGE_DIR, SERVICE_SCHEMA, load_schema
 from rdf_persistence.services.schema_structure import ACTIVITY as ACTIVITY_NAME
 from rdf_persistence.services.schema_structure import annotation_text, flag, is_bookkeeping
 
@@ -197,7 +197,7 @@ ASSIGNEE = predicate("assignee")
 TOTAL = predicate("total", load_schema(SERVICE_SCHEMA))
 
 # The one statement of the policy record: the graph names itself, the object is the policy's JSON (PD-13).
-IRI_POLICY = predicate("iri_policy", load_schema(SERVICE_SCHEMA))
+IRI_POLICY = predicate("iri_policy", load_schema(IRIS_SCHEMA))
 
 
 # The term bundles of the query templates (technical-models PD-5): the fixed vocabulary is set here,

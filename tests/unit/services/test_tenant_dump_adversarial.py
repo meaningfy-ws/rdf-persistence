@@ -25,8 +25,9 @@ from rdf_persistence.core.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.core.domain.media import N_QUADS
-from rdf_persistence.domain.layout import stamps_graph_iri
-from rdf_persistence.services.generated.service.rp_service import IriPolicy, TenantDump
+from rdf_persistence.iris.domain.layout import stamps_graph_iri
+from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy
+from rdf_persistence.services.generated.service.rp_service import TenantDump
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenant_dump import dump
 from rdf_persistence.services.tenant_move import rewrite

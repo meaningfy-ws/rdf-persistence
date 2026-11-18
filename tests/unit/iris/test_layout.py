@@ -1,4 +1,4 @@
-"""The fixed IRI and name layout of the domain (PD-4, PD-6a): policy-free, and free of the services."""
+"""The fixed IRI and name layout of the iris domain (PD-4, PD-6a): policy-free, and free of the services."""
 
 import ast
 from pathlib import Path
@@ -7,8 +7,8 @@ import pytest
 from rdflib import BNode, Literal, URIRef
 
 from rdf_persistence.core.domain.exceptions import InvalidIri
-from rdf_persistence.domain import layout
-from rdf_persistence.domain.layout import (
+from rdf_persistence.iris.domain import layout
+from rdf_persistence.iris.domain.layout import (
     application_database_name,
     graph_iri,
     is_canonical_uuid,
@@ -48,21 +48,24 @@ _IMPORTED_MODULES = [
 ] + [node.module or "" for node in ast.walk(ast.parse(_SOURCE)) if isinstance(node, ast.ImportFrom)]
 
 
-def test_the_layout_module_defines_the_twelve_policy_free_functions():
+def test_the_layout_module_defines_the_twelve_policy_free_functions():  # TC-30
     defined = {node.name for node in ast.parse(_SOURCE).body if isinstance(node, ast.FunctionDef)}
-    assert set(LAYOUT_FUNCTIONS) <= defined, "each layout function is defined in domain.layout"
+    assert set(LAYOUT_FUNCTIONS) <= defined, "each layout function is defined in iris.domain.layout"
 
 
-def test_the_layout_module_imports_nothing_of_the_toolkit_outside_the_domain():
+def test_the_layout_module_is_the_one_of_the_iris_theme():  # TC-30
+    assert layout.__name__ == "rdf_persistence.iris.domain.layout", "the module stands in the theme"
+
+
+def test_the_layout_module_imports_only_the_core_domain_of_the_toolkit():  # TC-30
     toolkit = [name for name in _IMPORTED_MODULES if name.split(".")[0] == "rdf_persistence"]
-    inside = ("rdf_persistence.domain", "rdf_persistence.core.domain")  # core is below every theme
-    outside = [name for name in toolkit if not name.startswith(inside)]
-    assert outside == [], f"domain.layout imports outside the domain: {outside}"
+    outside = [name for name in toolkit if not name.startswith("rdf_persistence.core.domain")]
+    assert outside == [], f"iris.domain.layout imports outside core.domain: {outside}"
 
 
 def test_the_layout_module_imports_no_generated_package():
     generated = [name for name in _IMPORTED_MODULES if "generated" in name.split(".")]
-    assert generated == [], f"domain.layout imports a generated package: {generated}"
+    assert generated == [], f"iris.domain.layout imports a generated package: {generated}"
 
 
 def test_graph_iri_appends_graph():

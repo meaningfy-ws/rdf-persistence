@@ -30,6 +30,7 @@ from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.event_hub import CLOSED
 from rdf_persistence.services.generated.service.rp_service import Migration
 from rdf_persistence.services.generated.settings.rp_settings import (
@@ -38,7 +39,6 @@ from rdf_persistence.services.generated.settings.rp_settings import (
     SseSettings,
     ToolkitSettings,
 )
-from rdf_persistence.services.iris import DEFAULT_IRIS, tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migrations import stamps
@@ -694,11 +694,10 @@ async def test_a_kit_with_no_bus_records_and_publishes_nothing(scene, monkeypatc
     await replace_the_book(scene)
 
     assert published == [], "the kit's hook handed nothing to any bus"
-    prefix = scene.service.settings.prefix
     stored = await activities(
         scene.service.store,
         DEFAULT_IRIS.provenance(scene.tenant_iri),
-        tenant_resource_name(prefix, scene.tenant_iri),
+        scene.service.kit.iris.resource_name(scene.tenant_iri),
     )
     assert [type(a) for a in stored if type(a) is Replace] == [Replace], "the commit is recorded"
 

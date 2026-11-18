@@ -6,9 +6,9 @@ from rdflib.namespace import Namespace
 
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.services.iris import (
+from rdf_persistence.iris.services.iris import (
     DEFAULT_IRIS,
-    tenant_resource_name,
+    Iris,
 )
 from rdf_persistence.services.session import open_session
 from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
@@ -31,7 +31,7 @@ async def test_create_then_delete_leaves_no_database_no_bucket_and_no_record(
     tenancy, store, files, settings
 ):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
-    name = tenant_resource_name(settings.prefix, summary.id)
+    name = Iris(settings).resource_name(summary.id)
     assert name in await store.list_datasets(), "the database exists after create"
     assert await files.list_buckets(name) == [name], "the bucket exists after create"
     assert [t.id for t in await tenancy.tenants()] == [summary.id], "the record exists after create"
@@ -56,7 +56,7 @@ async def test_a_label_the_record_refuses_creates_no_database_and_no_bucket(
 
 async def test_finish_deletion_leaves_an_active_tenant_whole(tenancy, store, files, settings):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
-    name = tenant_resource_name(settings.prefix, summary.id)
+    name = Iris(settings).resource_name(summary.id)
     with pytest.raises(Conflict):
         await tenancy.finish_deletion(summary.id)
     assert name in await store.list_datasets(), "database"
@@ -94,7 +94,7 @@ ASK_CITY = "ASK { GRAPH ?g { ?s <http://schema.org/addressLocality> '%s' } }"
 async def test_a_tenant_database_holds_only_its_own_root_object(tenancy, store, settings):
     ghent = await tenancy.create("Ghent", library_slots("Ghent"), CREATOR)
     await tenancy.create("Bruges", library_slots("Bruges"), CREATOR)
-    name = tenant_resource_name(settings.prefix, ghent.id)
+    name = Iris(settings).resource_name(ghent.id)
     held = [
         bool((await store.query(name, ASK_CITY % city)).askAnswer) for city in ("Ghent", "Bruges")
     ]

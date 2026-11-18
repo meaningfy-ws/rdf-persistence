@@ -108,7 +108,7 @@ def test_every_name_in_the_architecture_index_is_exported(name: str) -> None:
 
 @pytest.mark.parametrize("name", ["Iris", "DEFAULT_IRIS", "mint_aggregate_iri", "IdSource"])
 def test_the_iri_names_are_the_objects_of_services_iris(name: str) -> None:
-    from rdf_persistence.services import iris
+    from rdf_persistence.iris.services import iris
 
     assert getattr(rdf_persistence, name) is getattr(iris, name), (
         f"{name} is not the object of services.iris"

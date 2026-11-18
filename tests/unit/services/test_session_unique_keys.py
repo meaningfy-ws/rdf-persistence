@@ -19,7 +19,7 @@ from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, KeyCon
 from rdf_persistence.core.domain.generated.rp_core import AggregateKey, KeyDuplicate, Principal
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.services.iris import DEFAULT_IRIS
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import aggregate_keys

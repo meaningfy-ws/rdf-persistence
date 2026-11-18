@@ -22,10 +22,10 @@ from rdf_persistence.core.domain.generated.rp_discussion import Comment, PostCom
 from rdf_persistence.core.domain.generated.rp_files import DeleteFile
 from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add
 from rdf_persistence.core.domain.generated.rp_workflow import Transition
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
-from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus, Work, command

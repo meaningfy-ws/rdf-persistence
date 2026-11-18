@@ -20,9 +20,9 @@ from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument, JwtCla
 from rdf_persistence.core.adapters._http import HttpAdapter
 from rdf_persistence.core.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.generated.service.rp_service import VerifiedCaller
 from rdf_persistence.services.generated.settings.rp_settings import JwksSettings
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.tokens import EpochClock
 
 RS256 = "RS256"  # the testkit signs with it

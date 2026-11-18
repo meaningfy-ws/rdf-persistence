@@ -9,7 +9,6 @@ from rdf_persistence import InvalidBody, Page
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.media import JSON
-from rdf_persistence.services.iris import tenant_resource_name
 from tests.toy_service import ToyService, principal_of
 from tests.unit.entrypoints.scene import PROBLEMS, Scene, problem_of
 
@@ -127,8 +126,7 @@ async def _outcome_of_a_root_put_on_a_deleting_tenant(**validators) -> str:
         await kit.tenancy._replace_root(
             system, scene.tenant_iri, toolkit, record, version, store=scene.service.store
         )
-        prefix = scene.service.settings.prefix
-        await scene.service.store.drop_dataset(tenant_resource_name(prefix, scene.tenant_iri))
+        await scene.service.store.drop_dataset(kit.iris.resource_name(scene.tenant_iri))
         body = b'{"label": "Ghent", "description": "Books for all.", "city": "Bruges"}'
         try:
             await kit.aggregates.replace(

@@ -106,11 +106,12 @@ def _generated_domain(run: Run) -> None:
     "a copy of the toolkit where the IRI layout module of the domain layer imports the service settings"
 )
 def _layout(run: Run) -> None:
+    # a module planted in the scratch copy of the old layout (the layers contract), under a name of its own
     _plant(
         run,
-        "domain/layout.py",
+        "domain/iri_layout.py",
         SERVICE_SETTINGS,
-        ("rdf_persistence.domain.layout", SERVICE_SETTINGS),
+        ("rdf_persistence.domain.iri_layout", SERVICE_SETTINGS),
     )
 
 

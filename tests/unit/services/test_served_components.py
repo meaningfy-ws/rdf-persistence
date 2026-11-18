@@ -12,7 +12,12 @@ from rdf_persistence.services.components import (
     merge_components,
     served_folders,
 )
-from rdf_persistence.services.schema import PACKAGE_DIR, SERVED_SCHEMAS, SERVICE_SCHEMA
+from rdf_persistence.services.schema import (
+    IRIS_SCHEMA,
+    PACKAGE_DIR,
+    SERVED_SCHEMAS,
+    SERVICE_SCHEMA,
+)
 
 
 def folder_with(root: Path, name: str, *classes: str) -> Path:
@@ -54,8 +59,11 @@ def test_the_application_folder_may_redeclare_a_served_class(tmp_path: Path) -> 
 
 
 def test_the_served_folders_follow_the_served_schemas() -> None:
-    assert SERVED_SCHEMAS == (SERVICE_SCHEMA,), "only the service schema is served for now"
-    assert served_folders() == (PACKAGE_DIR / "services" / "generated" / "service",), (
-        "the folder is the package the schema declares"
+    assert SERVED_SCHEMAS == (IRIS_SCHEMA, SERVICE_SCHEMA), (
+        "the iris schema comes before the service"
     )
+    assert served_folders() == (
+        PACKAGE_DIR / "iris" / "services" / "generated",
+        PACKAGE_DIR / "services" / "generated" / "service",
+    ), "each folder is the package its schema declares"
     assert all((folder / COMPONENTS_FILE).is_file() for folder in served_folders())

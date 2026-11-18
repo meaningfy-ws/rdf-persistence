@@ -30,11 +30,11 @@ from rdf_persistence.core.domain.media import (
     REPRESENTATIONS,
     TURTLE,
 )
-from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions
-from rdf_persistence.services.iris import DEFAULT_IRIS, tenant_resource_name
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import ROLES, SETTINGS, keep_a_librarian
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
@@ -541,11 +541,10 @@ async def test_a_generic_put_of_a_book_records_one_replace_for_the_caller(scene)
         headers=scene.headers("ada", **{"If-Match": scene.book_etag}),
     )
     assert response.status_code == 200, response.text
-    prefix = scene.service.settings.prefix
     found = await activities(
         scene.service.store,
         DEFAULT_IRIS.provenance(scene.tenant_iri),
-        tenant_resource_name(prefix, scene.tenant_iri),
+        scene.service.kit.iris.resource_name(scene.tenant_iri),
     )
     [replace] = [a for a in found if type(a) is Replace]
     assert replace.was_associated_with == [principal_of("ada")], "the caller"

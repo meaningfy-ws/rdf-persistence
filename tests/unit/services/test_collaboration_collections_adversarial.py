@@ -29,10 +29,10 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.core.domain.sparql import term
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.schema import load_schema

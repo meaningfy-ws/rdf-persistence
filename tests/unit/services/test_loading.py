@@ -20,8 +20,8 @@ from rdf_persistence.core.domain.exceptions import (
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.sparql import fill, term
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.loading import NOT_INLINE, parse_graph
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import (  # noqa: F401  (no_network is a fixture)

@@ -8,18 +8,18 @@ import pytest
 from rdflib import URIRef
 
 from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
-from rdf_persistence.domain.layout import (
+from rdf_persistence.iris.domain.layout import (
     APPLICATION_ID,
     APPLICATION_SUFFIX,
     application_database_name,
 )
-from rdf_persistence.services.generated.service.rp_service import (
+from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.services.iris import Iris, effective_policy
+from rdf_persistence.iris.services.iris import Iris, effective_policy
 
 BASE = "https://ex.org/"
 APPLICATION = f"{BASE}app"

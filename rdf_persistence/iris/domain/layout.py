@@ -1,7 +1,7 @@
 """The fixed layout of the toolkit's IRIs and resource names (PD-4): what no policy changes.
 
 Nothing here reads the IRI policy, ``Iris`` or a generated model, so the domain and the services both
-use it. What a policy shapes (templates, ids, ``Iris``) is in ``services.iris``.
+use it. What a policy shapes (templates, ids, ``Iris``) is in ``iris.services.iris``.
 """
 
 import re

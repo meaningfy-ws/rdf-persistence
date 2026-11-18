@@ -37,8 +37,10 @@ from rdf_persistence.core.domain.generated.rp_tenancy import (
 from rdf_persistence.core.services.artifacts import CONTEXT_FILE
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import error_type, log_extra
-from rdf_persistence.domain.layout import system_database_name
 from rdf_persistence.entrypoints.auth import Gate
+from rdf_persistence.iris.domain.layout import system_database_name
+from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
+from rdf_persistence.iris.services.iris import IdSource, Iris, draw_id
 from rdf_persistence.services import file_removal, tenant_dump, tenant_sweep
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
@@ -53,14 +55,12 @@ from rdf_persistence.services.generated.service.rp_service import (
     Authorised,
     CallerAccess,
     EventEnvelope,
-    ServiceSettings,
     TenantDump,
     TenantSummary,
     VerifiedCaller,
 )
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
 from rdf_persistence.services.identity import Identity
-from rdf_persistence.services.iris import IdSource, Iris, draw_id
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.messagebus import MessageBus

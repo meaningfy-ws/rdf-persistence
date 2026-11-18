@@ -10,7 +10,7 @@ from rdf_persistence.core.domain.exceptions import BadQuery, CommitTooLarge, Con
 from rdf_persistence.core.domain.generated.rp_access import Grant
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
-from rdf_persistence.services.iris import (
+from rdf_persistence.iris.services.iris import (
     DEFAULT_IRIS,
 )
 from rdf_persistence.services.mapper import UnitOfWork, new_part

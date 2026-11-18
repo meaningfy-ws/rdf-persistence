@@ -1,0 +1,183 @@
+{
+  "schemas": {
+    "IdKind": {
+      "description": "The ways an id is drawn.",
+      "enum": [
+        "uuid4",
+        "random"
+      ],
+      "title": "IdKind",
+      "type": "string"
+    },
+    "IdSpec": {
+      "additionalProperties": false,
+      "description": "How the toolkit draws an id: a UUIDv4, or `length` characters drawn from `alphabet`. The length is required for `random` ids.",
+      "properties": {
+        "alphabet": {
+          "description": "The characters a random id is drawn from, each a lower case letter or a digit.",
+          "pattern": "^[a-z0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/components/schemas/IdKind",
+          "description": "Whether ids are UUIDv4 or random characters of an alphabet."
+        },
+        "length": {
+          "description": "The number of characters of a random id, 4 to 32.",
+          "maximum": 32,
+          "minimum": 4,
+          "type": "integer"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "IdSpec",
+      "type": "object"
+    },
+    "IriPolicy": {
+      "additionalProperties": false,
+      "description": "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today's shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root.",
+      "properties": {
+        "access_template": {
+          "description": "The template of the IRI of a tenant's access record; contains `{tenant}` or `{tenant_id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$",
+          "type": "string"
+        },
+        "aggregate_template": {
+          "description": "The template of an aggregate root IRI; contains `{tenant}` or `{tenant_id}` and ends in `{id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\\})*\\{id\\}$",
+          "type": "string"
+        },
+        "application_template": {
+          "description": "The template of the application IRI, the root of the application database's IRIs.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant_segment)\\})+$",
+          "type": "string"
+        },
+        "loaded_graph_template": {
+          "description": "The template of the IRI of a loaded graph; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{(?:tenant|tenant_id|root)\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$",
+          "type": "string"
+        },
+        "meta_template": {
+          "description": "The template of the IRI of a tenant's meta graph; contains `{tenant}` or `{tenant_id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$",
+          "type": "string"
+        },
+        "object_id": {
+          "$ref": "#/components/schemas/IdSpec",
+          "description": "How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4."
+        },
+        "part_template": {
+          "description": "The template of the IRI of an owned part; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{(?:tenant|tenant_id|root)\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|root|type|id)\\})*\\{id\\}$",
+          "type": "string"
+        },
+        "principal_template": {
+          "description": "The template of the IRI of a principal; ends in `{sub}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|issuer|sub)\\})*\\{sub\\}$",
+          "type": "string"
+        },
+        "provenance_template": {
+          "description": "The template of the IRI of a tenant's provenance graph; contains `{tenant}` or `{tenant_id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$",
+          "type": "string"
+        },
+        "registry_template": {
+          "description": "The template of the IRI of a tenant's registry graph; contains `{tenant}` or `{tenant_id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$",
+          "type": "string"
+        },
+        "tenant_id": {
+          "$ref": "#/components/schemas/IdSpec",
+          "description": "How the id of a new tenant is drawn; absent, a UUIDv4."
+        },
+        "tenant_template": {
+          "description": "The template of a tenant IRI; ends in `{tenant_id}`.",
+          "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant_segment|tenant_id)\\})*\\{tenant_id\\}$",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "title": "IriPolicy",
+      "type": "object"
+    },
+    "ServiceSettings": {
+      "additionalProperties": false,
+      "description": "The settings of `install_service`: where the service is mounted, how it names tenants and which role its callers get on a tenant they create.",
+      "properties": {
+        "base": {
+          "description": "The IRI under which the service mints identifiers and problem types, ending in a slash.",
+          "format": "uri",
+          "pattern": "^https?://.+/$",
+          "type": "string"
+        },
+        "creator_role": {
+          "description": "The role a caller is given on the tenant it creates.",
+          "pattern": "^.+$",
+          "type": "string"
+        },
+        "deployment": {
+          "description": "A slug that names this deployment, for templates that use `{deployment}`; lower case letters and digits, at most 32.",
+          "pattern": "^[a-z0-9]{1,32}$",
+          "type": "string"
+        },
+        "iri_policy": {
+          "$ref": "#/components/schemas/IriPolicy",
+          "description": "The IRI policy of the service; absent, the default policy applies."
+        },
+        "max_body_bytes": {
+          "description": "The most bytes a request body may hold; a larger one is refused with 413 before it is read whole.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_restore_bytes": {
+          "description": "The most bytes a restore archive may hold once decompressed, counting each member's size and its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile upload cannot fill the memory or the object store.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "prefix": {
+          "description": "The prefix of the database names of the service's tenants; lower case, at most 20 characters.",
+          "pattern": "^[a-z][a-z0-9]{0,19}$",
+          "type": "string"
+        },
+        "public_url": {
+          "description": "The address this deployment is reachable at from outside, without a trailing slash; the event envelope's context link is absolute under it. Absent, the link is relative.",
+          "format": "uri",
+          "pattern": "^https?://.+[^/]$",
+          "type": "string"
+        },
+        "roles_claim": {
+          "description": "The claim of the token that holds the caller's global roles, an object keyed by role name; for Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer's project.",
+          "pattern": "^.+$",
+          "type": "string"
+        },
+        "tenant_segment": {
+          "description": "The path segment that names the tenant collection in the service's routes.",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "base",
+        "prefix",
+        "tenant_segment",
+        "creator_role",
+        "roles_claim"
+      ],
+      "title": "ServiceSettings",
+      "type": "object"
+    }
+  }
+}

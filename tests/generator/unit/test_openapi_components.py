@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.core.services.artifacts import COMPONENTS_FILE
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.services.schema import SERVED_SCHEMAS, load_schema
 from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence_generation.components import TYPE_SCHEMA, render
 from rdf_persistence_generation.steps import COMPONENTS_STEP
@@ -100,6 +100,22 @@ def test_every_class_schema_lists_an_optional_type_property(schemas: dict) -> No
         if "properties" in schema:
             assert schema["properties"]["type"] == TYPE_SCHEMA, name
             assert "type" not in schema.get("required", []), f"{name}: the type is optional"
+
+
+def _names(schema_path: Path) -> list[str]:
+    [file] = render(schema_path)
+    return list(json.loads(file.text)["schemas"])
+
+
+def test_a_served_schema_leaves_the_classes_of_another_served_schema_to_its_file() -> None:  # TC-21
+    """A schema that imports a served one would publish its classes twice: the merge refuses that."""
+    iris, service = (_names(path) for path in SERVED_SCHEMAS)
+    assert {"IriPolicy", "ServiceSettings", "IdSpec", "IdKind"} <= set(iris), "its own classes"
+    assert not {"IriPolicy", "ServiceSettings", "IdSpec", "IdKind"} & set(service), (
+        "the importing schema leaves them to the file of the schema that declares them"
+    )
+    assert {"TenantSummary", "Page", "Problem"} <= set(service), "its own classes stay"
+    assert not set(iris) & set(service), "no name is in two of the served files"
 
 
 OWN_TYPE_SCHEMA = """

@@ -27,7 +27,7 @@ from rdf_persistence.core.domain.sparql import (
     order_by,
     term_list,
 )
-from rdf_persistence.domain.layout import root_of_graph
+from rdf_persistence.iris.domain.layout import root_of_graph
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import (
     Condition,

@@ -36,6 +36,7 @@ name = Themes: in each theme, entrypoints | adapters > services > domain, and no
 type = layers
 containers =
     rdf_persistence.core
+    rdf_persistence.iris
 layers =
     (entrypoints) | (adapters)
     (services)
@@ -46,6 +47,7 @@ exhaustive = true
 name = Themes: a theme imports only the themes below it (core is the lowest)
 type = layers
 layers =
+    rdf_persistence.iris
     rdf_persistence.core
 
 [importlinter:contract:domain-of-a-theme-imports-no-upper-layer]
@@ -282,7 +284,7 @@ source_modules =
     rdf_persistence.services.files
     rdf_persistence.services.identity
     rdf_persistence.services.iri_policy_guard
-    rdf_persistence.services.iris
+    rdf_persistence.iris.services.iris
     rdf_persistence.services.listing
     rdf_persistence.services.loading
     rdf_persistence.services.mapper
@@ -336,6 +338,7 @@ source_modules =
     tests.unit.core.test_exceptions
     tests.unit.core.test_sparql
     tests.unit.core.test_sparql_parsing
+    tests.unit.iris.test_layout
 forbidden_modules =
     rdf_persistence.services
     rdf_persistence.adapters

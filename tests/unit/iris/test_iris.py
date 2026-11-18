@@ -9,37 +9,26 @@ from pydantic import ValidationError
 from rdflib import URIRef
 
 from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
-from rdf_persistence.domain.layout import (
+from rdf_persistence.iris.domain.layout import (
     graph_iri,
     system_database_name,
     tenant_name_prefix,
 )
-from rdf_persistence.services.generated.service.rp_service import (
+from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.services.generated.templates.rp_templates import (
+from rdf_persistence.iris.services.generated.templates.rp_iris_templates import (
     IriParts,
     IriTemplateVariables,
 )
-from rdf_persistence.services.iris import (
+from rdf_persistence.iris.services.iris import (
     DEFAULT_IRIS,
     Iris,
-    aggregate_iri,
     effective_policy,
     iri_template_variables,
-    is_aggregate_graph_iri,
-    is_aggregate_iri,
-    is_loaded_graph_of,
-    loaded_graph_iri,
-    mint_aggregate_iri,
-    mint_part_iri,
-    mint_tenant_iri,
-    principal_iri,
-    tenant_iri,
-    tenant_resource_name,
 )
 
 BASE = "https://example.org/library/"
@@ -47,22 +36,34 @@ UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 TENANT = URIRef(f"{BASE}libraries/12345678-1234-4234-8234-123456789abc")
 
 
+def iris_under(base: str, segment: str, prefix: str = "rp") -> Iris:
+    """The default policy under ``base`` and the tenant ``segment``, naming databases by ``prefix``.
+
+    What the module functions removed in thematic-structure PD-5 built for each call.
+    """
+    return Iris(DEFAULT_IRIS.settings.replaced(base=base, tenant_segment=segment, prefix=prefix))
+
+
+LIBRARIES = iris_under(BASE, "libraries", "lib")
+
+
 def test_mint_tenant_iri_has_the_base_segment_and_a_uuid():
-    iri = mint_tenant_iri(BASE, "libraries")
+    iri = LIBRARIES.mint_tenant()
     assert re.fullmatch(f"{re.escape(BASE)}libraries/{UUID_RE}", iri), iri
-    assert mint_tenant_iri(BASE, "libraries") != iri, "each mint is fresh"
+    assert LIBRARIES.mint_tenant() != iri, "each mint is fresh"
 
 
 def test_mint_aggregate_iri_sits_under_the_tenant():
-    iri = mint_aggregate_iri(TENANT, "books")
+    iri = DEFAULT_IRIS.mint_aggregate(TENANT, cls_type="", rp_path="books")
     assert re.fullmatch(f"{re.escape(TENANT)}/books/{UUID_RE}", iri), iri
 
 
 def test_loaded_graph_iri_sits_under_the_aggregate():
-    aggregate = mint_aggregate_iri(TENANT, "books")
-    assert re.fullmatch(f"{re.escape(aggregate)}/content/{UUID_RE}", loaded_graph_iri(aggregate)), (
-        "a loaded graph sits under its aggregate with a uuid"
-    )
+    aggregate = DEFAULT_IRIS.mint_aggregate(TENANT, cls_type="", rp_path="books")
+    assert re.fullmatch(
+        f"{re.escape(aggregate)}/content/{UUID_RE}",
+        DEFAULT_IRIS.mint_loaded_graph(tenant="", root=aggregate),
+    ), "a loaded graph sits under its aggregate with a uuid"
 
 
 def test_meta_registry_and_access_iris():
@@ -83,9 +84,10 @@ def test_meta_registry_and_access_iris():
 @pytest.mark.parametrize("segment", ["", "a/b", "a b", "a>b", "../x", "a?b", "a#b"])
 def test_a_segment_that_is_not_a_path_segment_is_refused(segment):
     with pytest.raises(InvalidIri, match="segment"):
-        mint_aggregate_iri(TENANT, segment)
-    with pytest.raises(InvalidIri, match="segment"):
-        mint_tenant_iri(BASE, segment)
+        DEFAULT_IRIS.mint_aggregate(TENANT, cls_type="", rp_path=segment)
+    # the tenant segment is a setting now: the settings model refuses it before an Iris is built
+    with pytest.raises(ValidationError, match="tenant_segment"):
+        iris_under(BASE, segment)
 
 
 def test_names_follow_pd_6a():
@@ -95,13 +97,14 @@ def test_names_follow_pd_6a():
     assert tenant_name_prefix("lib") == "lib-t-", (
         "the tenant prefix is the deployment plus the tenant marker"
     )
-    assert tenant_resource_name("lib", TENANT) == "lib-t-12345678123442348234123456789abc", (
+    assert LIBRARIES.resource_name(TENANT) == "lib-t-12345678123442348234123456789abc", (
         "a tenant resource is the prefix plus its id in hex"
     )
 
 
 def test_tenant_name_starts_with_the_sweep_prefix_and_fits_a_bucket_name():
-    name = tenant_resource_name("a" * 20, mint_tenant_iri(BASE, "libraries"))
+    longest = iris_under(BASE, "libraries", "a" * 20)
+    name = longest.resource_name(longest.mint_tenant())
     assert name.startswith(tenant_name_prefix("a" * 20)), (
         "a tenant resource name starts with the sweep prefix"
     )
@@ -110,19 +113,19 @@ def test_tenant_name_starts_with_the_sweep_prefix_and_fits_a_bucket_name():
 
 def test_tenant_name_needs_a_uuid_last_segment():
     with pytest.raises(InvalidIri, match="tenant IRI"):
-        tenant_resource_name("lib", URIRef(f"{BASE}libraries/not-a-uuid"))
+        LIBRARIES.resource_name(URIRef(f"{BASE}libraries/not-a-uuid"))
 
 
 def test_minted_ids_are_uuid4():
-    last = mint_tenant_iri(BASE, "libraries").rsplit("/", 1)[1]
+    last = LIBRARIES.mint_tenant().rsplit("/", 1)[1]
     assert uuid.UUID(last).version == 4, "a minted id is a version 4 uuid"
 
 
 def test_mint_part_iri_sits_under_the_root_and_is_fresh():
     root = f"{BASE}libraries/t/books/b"
-    iri = mint_part_iri(root)
+    iri = DEFAULT_IRIS.mint_part(tenant="", root=root, cls_type="")
     assert re.fullmatch(f"{re.escape(root)}/parts/{UUID_RE}", iri), iri
-    assert mint_part_iri(root) != iri, "each mint is fresh"
+    assert DEFAULT_IRIS.mint_part(tenant="", root=root, cls_type="") != iri, "each mint is fresh"
 
 
 def test_the_tenant_of_an_access_record_is_the_iri_it_hangs_under():
@@ -150,7 +153,7 @@ def test_an_iri_that_is_not_an_access_record_has_no_tenant():
 )
 def test_tenant_name_needs_a_canonical_uuid(last):
     with pytest.raises(InvalidIri, match="tenant IRI"):
-        tenant_resource_name("lib", f"{BASE}libraries/{last}")
+        LIBRARIES.resource_name(f"{BASE}libraries/{last}")
 
 
 def test_an_iri_rule_breach_is_an_invalid_iri_and_still_a_value_error():
@@ -180,39 +183,49 @@ AGGREGATE = f"{TENANT}/books/{AGGREGATE_ID}"
     ],
 )
 def test_an_aggregate_iri_is_the_minted_form_or_the_tenant_root(iri, accepted):
-    assert is_aggregate_iri(str(TENANT), iri) is accepted, iri
+    assert DEFAULT_IRIS.is_aggregate(str(TENANT), iri) is accepted, iri
 
 
 @pytest.mark.parametrize(
     ("iri", "accepted"),
     [
         pytest.param(
-            str(graph_iri(str(mint_aggregate_iri(TENANT, "books")))), True, id="a minted graph"
+            str(graph_iri(str(DEFAULT_IRIS.mint_aggregate(TENANT, cls_type="", rp_path="books")))),
+            True,
+            id="a minted graph",
         ),
         (
             str(graph_iri(str(DEFAULT_IRIS.access(TENANT)))),
             False,
         ),  # the access record is not an aggregate
         (str(graph_iri(str(TENANT))), False),  # the tenant root has no aggregate graph of its own
-        pytest.param(str(mint_aggregate_iri(TENANT, "books")), False, id="the root, not its graph"),
+        pytest.param(
+            str(DEFAULT_IRIS.mint_aggregate(TENANT, cls_type="", rp_path="books")),
+            False,
+            id="the root, not its graph",
+        ),
         (f"{TENANT}/books/x/graph", False),
         (f"{BASE}libraries/{OTHER_ID}/books/{OTHER_ID}/graph", False),
     ],
 )
 def test_an_aggregate_graph_iri_is_the_graph_of_a_tenants_aggregate(iri, accepted):
-    assert is_aggregate_graph_iri(str(TENANT), iri) is accepted, iri
+    assert DEFAULT_IRIS.is_aggregate_graph(str(TENANT), iri) is accepted, iri
 
 
 def test_every_minted_aggregate_iri_is_an_aggregate_iri():
-    assert is_aggregate_iri(str(TENANT), str(mint_aggregate_iri(TENANT, "books"))), (
-        "a minted aggregate IRI is recognised as an aggregate of its tenant"
-    )
+    assert DEFAULT_IRIS.is_aggregate(
+        str(TENANT), str(DEFAULT_IRIS.mint_aggregate(TENANT, cls_type="", rp_path="books"))
+    ), "a minted aggregate IRI is recognised as an aggregate of its tenant"
 
 
 @pytest.mark.parametrize(
     ("graph", "loaded"),
     [
-        pytest.param(str(loaded_graph_iri(AGGREGATE)), True, id="a minted loaded graph"),
+        pytest.param(
+            str(DEFAULT_IRIS.mint_loaded_graph(tenant="", root=AGGREGATE)),
+            True,
+            id="a minted loaded graph",
+        ),
         (f"{AGGREGATE}/content/{OTHER_ID}/more", False),
         (f"{AGGREGATE}/content/x", False),  # not a UUID
         (f"{AGGREGATE}/content/{OTHER_ID.replace('-', '')}", False),
@@ -223,7 +236,7 @@ def test_every_minted_aggregate_iri_is_an_aggregate_iri():
     ],
 )
 def test_a_loaded_graph_is_the_minted_form_under_its_aggregate(graph, loaded):
-    assert is_loaded_graph_of(AGGREGATE, graph) is loaded, graph
+    assert DEFAULT_IRIS.is_loaded_graph(None, graph, AGGREGATE) is loaded, graph
 
 
 @pytest.mark.parametrize(
@@ -235,7 +248,7 @@ def test_a_loaded_graph_is_the_minted_form_under_its_aggregate(graph, loaded):
     ],
 )
 def test_principal_iri_keeps_the_subject_in_one_segment(issuer, subject, expected) -> None:
-    assert str(principal_iri(issuer, subject)) == expected, "the principal IRI is wrong"
+    assert str(DEFAULT_IRIS.principal(issuer, subject)) == expected, "the principal IRI is wrong"
 
 
 # --- the IRIs of a path (PD-14b): one rule, validating ------------------------------------------
@@ -244,7 +257,7 @@ UUID_A = "12345678-1234-4234-8234-123456789abc"
 
 
 def test_a_tenant_iri_is_the_base_the_segment_and_the_id():
-    assert tenant_iri(BASE, "libraries", UUID_A) == URIRef(f"{BASE}libraries/{UUID_A}"), (
+    assert LIBRARIES.tenant(UUID_A) == URIRef(f"{BASE}libraries/{UUID_A}"), (
         "a tenant IRI is the base, the segment and the id"
     )
 
@@ -252,28 +265,30 @@ def test_a_tenant_iri_is_the_base_the_segment_and_the_id():
 @pytest.mark.parametrize("tenant_id", ["nope", UUID_A.upper(), f"{UUID_A}/books", "..", ""])
 def test_a_tenant_id_that_is_not_a_canonical_uuid_is_not_found(tenant_id):
     with pytest.raises(NotFound):
-        tenant_iri(BASE, "libraries", tenant_id)
+        LIBRARIES.tenant(tenant_id)
 
 
-def test_a_tenant_segment_that_breaks_the_rule_is_an_invalid_iri():
-    with pytest.raises(InvalidIri):
-        tenant_iri(BASE, "Libraries/..", UUID_A)
+def test_a_tenant_segment_that_breaks_the_rule_is_refused_by_the_settings():
+    with pytest.raises(ValidationError, match="tenant_segment"):
+        iris_under(BASE, "Libraries/..")
 
 
 def test_an_aggregate_iri_is_the_tenant_the_path_and_the_id():
     tenant = f"{BASE}libraries/{UUID_A}"
-    assert aggregate_iri(tenant, "books", UUID_A) == URIRef(f"{tenant}/books/{UUID_A}"), (
-        "an aggregate IRI is the tenant, the path and the id"
-    )
-    assert is_aggregate_iri(tenant, aggregate_iri(tenant, "books", UUID_A)), (
-        "what it builds is what is accepted"
-    )
+    assert DEFAULT_IRIS.aggregate(tenant, cls_type="", rp_path="books", object_id=UUID_A) == URIRef(
+        f"{tenant}/books/{UUID_A}"
+    ), "an aggregate IRI is the tenant, the path and the id"
+    assert DEFAULT_IRIS.is_aggregate(
+        tenant, DEFAULT_IRIS.aggregate(tenant, cls_type="", rp_path="books", object_id=UUID_A)
+    ), "what it builds is what is accepted"
 
 
 @pytest.mark.parametrize("aggregate_id", ["nope", "..", f"{UUID_A}/graph", UUID_A.upper(), ""])
 def test_an_aggregate_id_that_is_not_a_canonical_uuid_is_not_found(aggregate_id):
     with pytest.raises(NotFound):
-        aggregate_iri(f"{BASE}libraries/{UUID_A}", "books", aggregate_id)
+        DEFAULT_IRIS.aggregate(
+            f"{BASE}libraries/{UUID_A}", cls_type="", rp_path="books", object_id=aggregate_id
+        )
 
 
 def _settings(deployment: str | None = None) -> ServiceSettings:

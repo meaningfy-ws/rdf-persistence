@@ -37,10 +37,10 @@ from rdf_persistence.core.services.artifacts import (
     SHAPES_FILE,
     TYPE_KEY,
 )
-from rdf_persistence.domain.layout import graph_iri
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.jsonld import (
     ABSOLUTE_IRIS,
     INVALID_IRI,

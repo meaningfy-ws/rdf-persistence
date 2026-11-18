@@ -8,8 +8,8 @@ import pytest
 from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, NotFound
 from rdf_persistence.core.domain.generated.rp_access import Grant
 from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services.generated.service.rp_service import GrantSet
-from rdf_persistence.services.iris import tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
@@ -18,6 +18,7 @@ from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, BOB, SETTINGS, library_slots, toy_mapper
 
+IRIS = Iris(SETTINGS)
 CREATOR = Principal(id=ADA)
 BEN = Principal(id=BOB)
 
@@ -73,7 +74,7 @@ async def _made(store, files, label="A", **validators) -> tuple[Tenancy, str]:
 async def _root(store, tenant: str) -> Library:
     async with open_session(
         store,
-        database=tenant_resource_name(SETTINGS.prefix, tenant),
+        database=IRIS.resource_name(tenant),
         tenant_iri=tenant,
         principal=CREATOR,
     ) as session:
@@ -83,7 +84,7 @@ async def _root(store, tenant: str) -> Library:
 async def _root_version(store, tenant: str) -> str:
     async with open_session(
         store,
-        database=tenant_resource_name(SETTINGS.prefix, tenant),
+        database=IRIS.resource_name(tenant),
         tenant_iri=tenant,
         principal=CREATOR,
     ) as session:
@@ -130,9 +131,7 @@ async def test_a_passing_root_validator_that_changes_the_id_on_create_cannot_mov
     summary = await plain.create("Ghent", library_slots(), CREATOR)
     assert (await _root(store, summary.id)).id == summary.id, "the root keeps the minted id"
     databases = [d for d in await store.list_datasets() if d.startswith("lib-t-")]
-    assert databases == [tenant_resource_name(SETTINGS.prefix, summary.id)], (
-        "one database, no orphan"
-    )
+    assert databases == [IRIS.resource_name(summary.id)], "one database, no orphan"
 
 
 async def test_a_validator_that_mutates_the_new_grants_changes_nothing_stored(store, files):
@@ -303,7 +302,7 @@ async def test_a_grant_validator_that_passes_before_a_lost_write_leaves_only_the
     _, version = await made.get(tenant)
     winner = GrantSet(grants=[_ada(tenant)])
     loser = GrantSet(grants=[_bob(tenant)])
-    database = tenant_resource_name(SETTINGS.prefix, tenant)
+    database = IRIS.resource_name(tenant)
     system = made.system_database
 
     async def other_writer() -> None:

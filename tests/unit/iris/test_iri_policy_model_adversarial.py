@@ -10,13 +10,13 @@ import pytest
 from pydantic import ValidationError
 
 from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
-from rdf_persistence.services.generated.service.rp_service import (
+from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.services.iris import Iris
+from rdf_persistence.iris.services.iris import Iris
 
 BASE = "http://mwb.meaningfy.ws/"
 FLAT = "{base}{tenant_id}/{type}/{id}"

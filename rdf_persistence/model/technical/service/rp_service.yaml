@@ -2,9 +2,10 @@ id: https://meaningfy.ws/ns/rdf-persistence/service
 name: rp_service
 title: RDF persistence service module
 description: >-
-  The toolkit's own data types for the HTTP service: the settings of `install_service`, the caller a
-  token verifier returns, and the request and response bodies of the tenant routes. They are generated
-  into their own package, so an application's models do not carry them.
+  The toolkit's own data types for the HTTP service: the caller a token verifier returns, and the
+  request and response bodies of the tenant routes (the settings of `install_service` and the IRI policy
+  are in the `iris` theme's schema, which this one imports). They are generated into their own package,
+  so an application's models do not carry them.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
@@ -15,6 +16,7 @@ imports:
   - rdf_persistence/model/rp_core
   - rdf_persistence/model/rp_access
   - rdf_persistence/model/rp_tenancy
+  - ../iris/rp_iris_services
 annotations:
   module_kind: technical
   python_package: rdf_persistence.services.generated.service
@@ -24,97 +26,6 @@ classes:
     title: Any
     description: Any value; the slots that range over it hold data the toolkit does not model.
     class_uri: linkml:Any
-  ServiceSettings:
-    title: Service settings
-    description: >-
-      The settings of `install_service`: where the service is mounted, how it names tenants and which
-      role its callers get on a tenant they create.
-    class_uri: rp:ServiceSettings
-    slots:
-      - base
-      - prefix
-      - tenant_segment
-      - creator_role
-      - roles_claim
-      - max_body_bytes
-      - max_restore_bytes
-      - deployment
-      - public_url
-      - iri_policy
-    slot_usage:
-      max_body_bytes:
-        ifabsent: int(1048576)
-      max_restore_bytes:
-        ifabsent: int(1073741824)
-      base:
-        required: true
-      prefix:
-        required: true
-      tenant_segment:
-        required: true
-      creator_role:
-        required: true
-      roles_claim:
-        required: true
-  IdSpec:
-    title: Id specification
-    description: >-
-      How the toolkit draws an id: a UUIDv4, or `length` characters drawn from `alphabet`. The length
-      is required for `random` ids.
-    class_uri: rp:IdSpec
-    slots:
-      - id_kind
-      - id_length
-      - id_alphabet
-    slot_usage:
-      id_kind:
-        required: true
-      id_alphabet:
-        ifabsent: string(0123456789abcdefghijklmnopqrstuvwxyz)
-  IriPolicy:
-    title: IRI policy
-    description: >-
-      The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id
-      specifications of tenant and object ids. Every slot defaults to today's shape, so an empty
-      policy is the default one. A template fills the variables allowed for its kind; the tenant,
-      aggregate, part, loaded graph and principal templates end in their id variable, the access,
-      meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph
-      templates name their tenant or, for the last two, their root.
-    class_uri: rp:IriPolicy
-    slots:
-      - tenant_template
-      - application_template
-      - access_template
-      - meta_template
-      - registry_template
-      - provenance_template
-      - aggregate_template
-      - part_template
-      - loaded_graph_template
-      - principal_template
-      - tenant_id
-      - object_id
-    slot_usage:
-      tenant_template:
-        ifabsent: string({base}{tenant_segment}/{tenant_id})
-      application_template:
-        ifabsent: string({base}app)
-      access_template:
-        ifabsent: string({tenant}/access)
-      meta_template:
-        ifabsent: string({tenant}/meta)
-      registry_template:
-        ifabsent: string({tenant}/registry)
-      provenance_template:
-        ifabsent: string({tenant}/provenance)
-      aggregate_template:
-        ifabsent: string({tenant}/{rp_path}/{id})
-      part_template:
-        ifabsent: string({root}/parts/{id})
-      loaded_graph_template:
-        ifabsent: string({root}/content/{id})
-      principal_template:
-        ifabsent: string({issuer}/users/{sub})
   TenantDump:
     title: Tenant dump
     description: >-
@@ -540,147 +451,6 @@ slots:
     range: MigrationStep
     multivalued: true
     inlined_as_list: true
-  base:
-    title: Base
-    description: The IRI under which the service mints identifiers and problem types, ending in a slash.
-    slot_uri: rp:base
-    range: uri
-    pattern: "^https?://.+/$"
-  prefix:
-    title: Prefix
-    description: >-
-      The prefix of the database names of the service's tenants; lower case, at most 20 characters.
-    slot_uri: rp:prefix
-    range: string
-    pattern: "^[a-z][a-z0-9]{0,19}$"
-  tenant_segment:
-    is_a: url_segment
-    title: Tenant segment
-    description: The path segment that names the tenant collection in the service's routes.
-    slot_uri: rp:tenantSegment
-    range: string
-  creator_role:
-    title: Creator role
-    description: The role a caller is given on the tenant it creates.
-    slot_uri: rp:creatorRole
-    range: string
-    pattern: "^.+$"
-  roles_claim:
-    title: Roles claim
-    description: >-
-      The claim of the token that holds the caller's global roles, an object keyed by role name; for
-      Zitadel, urn:zitadel:iam:org:project:{project_id}:roles of the consumer's project.
-    slot_uri: rp:rolesClaim
-    range: string
-    pattern: "^.+$"
-  max_body_bytes:
-    title: Maximum body size
-    description: >-
-      The most bytes a request body may hold; a larger one is refused with 413 before it is read
-      whole.
-    slot_uri: rp:maxBodyBytes
-    range: integer
-    minimum_value: 1
-  max_restore_bytes:
-    title: Maximum restore size
-    description: >-
-      The most bytes a restore archive may hold once decompressed, counting each member's size and
-      its tar block; a larger archive is refused with `InvalidBody` as it is read, so a small hostile
-      upload cannot fill the memory or the object store.
-    slot_uri: rp:maxRestoreBytes
-    range: integer
-    minimum_value: 1
-  tenant_template:
-    title: Tenant template
-    description: The template of a tenant IRI; ends in `{tenant_id}`.
-    slot_uri: rp:tenantTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant_segment|tenant_id)\})*\{tenant_id\}$'
-  application_template:
-    title: Application template
-    description: The template of the application IRI, the root of the application database's IRIs.
-    slot_uri: rp:applicationTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant_segment)\})+$'
-  access_template:
-    title: Access template
-    description: The template of the IRI of a tenant's access record; contains `{tenant}` or `{tenant_id}`.
-    slot_uri: rp:accessTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*$'
-  meta_template:
-    title: Meta template
-    description: The template of the IRI of a tenant's meta graph; contains `{tenant}` or `{tenant_id}`.
-    slot_uri: rp:metaTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*$'
-  registry_template:
-    title: Registry template
-    description: The template of the IRI of a tenant's registry graph; contains `{tenant}` or `{tenant_id}`.
-    slot_uri: rp:registryTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*$'
-  provenance_template:
-    title: Provenance template
-    description: The template of the IRI of a tenant's provenance graph; contains `{tenant}` or `{tenant_id}`.
-    slot_uri: rp:provenanceTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id)\})*$'
-  aggregate_template:
-    title: Aggregate template
-    description: The template of an aggregate root IRI; contains `{tenant}` or `{tenant_id}` and ends in `{id}`.
-    slot_uri: rp:aggregateTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|type|rp_path|id)\})*\{id\}$'
-  part_template:
-    title: Part template
-    description: The template of the IRI of an owned part; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.
-    slot_uri: rp:partTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|root|type|id)\})*\{(?:tenant|tenant_id|root)\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|root|type|id)\})*\{id\}$'
-  loaded_graph_template:
-    title: Loaded graph template
-    description: The template of the IRI of a loaded graph; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.
-    slot_uri: rp:loadedGraphTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|root|type|id)\})*\{(?:tenant|tenant_id|root)\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|root|type|id)\})*\{id\}$'
-  principal_template:
-    title: Principal template
-    description: The template of the IRI of a principal; ends in `{sub}`.
-    slot_uri: rp:principalTemplate
-    range: string
-    pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|issuer|sub)\})*\{sub\}$'
-  tenant_id:
-    title: Tenant id
-    description: How the id of a new tenant is drawn; absent, a UUIDv4.
-    slot_uri: rp:tenantId
-    range: IdSpec
-  object_id:
-    title: Object id
-    description: How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4.
-    slot_uri: rp:objectId
-    range: IdSpec
-  id_kind:
-    title: Id kind
-    description: Whether ids are UUIDv4 or random characters of an alphabet.
-    slot_uri: rp:idKind
-    alias: kind
-    range: IdKind
-  id_length:
-    title: Id length
-    description: The number of characters of a random id, 4 to 32.
-    slot_uri: rp:idLength
-    alias: length
-    range: integer
-    minimum_value: 4
-    maximum_value: 32
-  id_alphabet:
-    title: Id alphabet
-    description: The characters a random id is drawn from, each a lower case letter or a digit.
-    slot_uri: rp:idAlphabet
-    alias: alphabet
-    range: string
-    pattern: "^[a-z0-9]+$"
   allowed_actions:
     title: Allowed actions
     description: >-
@@ -689,22 +459,6 @@ slots:
     slot_uri: rp:allowedActions
     range: Action
     multivalued: true
-  deployment:
-    title: Deployment
-    description: >-
-      A slug that names this deployment, for templates that use `{deployment}`; lower case letters and
-      digits, at most 32.
-    slot_uri: rp:deployment
-    range: string
-    pattern: "^[a-z0-9]{1,32}$"
-  public_url:
-    title: Public URL
-    description: >-
-      The address this deployment is reachable at from outside, without a trailing slash; the
-      event envelope's context link is absolute under it. Absent, the link is relative.
-    slot_uri: rp:publicUrl
-    range: uri
-    pattern: "^https?://.+[^/]$"
   origin:
     title: Origin
     description: The deployment that published the message, as its `deployment` setting names it.
@@ -720,11 +474,6 @@ slots:
     description: A link to the JSON-LD context that reads the message body.
     slot_uri: rp:contextLink
     range: string
-  iri_policy:
-    title: IRI policy
-    description: The IRI policy of the service; absent, the default policy applies.
-    slot_uri: rp:iriPolicy
-    range: IriPolicy
   format_version:
     title: Format version
     description: The version of the dump archive layout; a restore refuses a version it does not know.
@@ -1005,18 +754,6 @@ slots:
     range: boolean
 
 enums:
-  IdKind:
-    title: Id kind
-    description: The ways an id is drawn.
-    permissible_values:
-      uuid4:
-        title: UUIDv4
-        meaning: rp:IdUuid4
-        description: A random UUID, in its canonical form.
-      random:
-        title: Random
-        meaning: rp:IdRandom
-        description: Characters drawn at random from an alphabet.
   ProblemSlug:
     title: Problem slug
     description: >-

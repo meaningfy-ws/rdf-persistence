@@ -7,8 +7,8 @@ identity).
 from collections.abc import Callable
 from typing import Protocol
 
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services.generated.service.rp_service import VerifiedCaller
-from rdf_persistence.services.iris import Iris
 
 EpochClock = Callable[[], float]
 """A clock that answers seconds since the epoch, as the ``exp`` and ``nbf`` claims count them."""

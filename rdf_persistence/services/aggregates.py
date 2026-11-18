@@ -14,8 +14,8 @@ from rdf_persistence.core.domain.exceptions import InvalidBody, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.schema_structure import iri_type_of
 from rdf_persistence.services.session import Stored
 from rdf_persistence.services.tenancy import Tenancy

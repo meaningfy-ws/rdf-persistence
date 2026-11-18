@@ -26,7 +26,8 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.core.domain.generated.rp_access import Action
 from rdf_persistence.core.domain.generated.rp_collections import ReferenceCollection
-from rdf_persistence.domain.layout import graph_iri
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.generated.service.rp_service import (
@@ -38,7 +39,6 @@ from rdf_persistence.services.generated.service.rp_service import (
     MemberList,
     VerifiedCaller,
 )
-from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.session import Session

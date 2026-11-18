@@ -23,18 +23,20 @@ from rdf_persistence.core.domain.exceptions import (
 from rdf_persistence.core.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.layout import system_database_name
+from rdf_persistence.iris.domain.layout import system_database_name
+from rdf_persistence.iris.services.generated.rp_iris_services import (
+    IdKind,
+    IdSpec,
+    IriPolicy,
+    ServiceSettings,
+)
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.generated.service.rp_service import (
     GrantSet,
-    IdKind,
-    IdSpec,
-    IriPolicy,
     Page,
-    ServiceSettings,
 )
-from rdf_persistence.services.iris import Iris, tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
@@ -58,6 +60,7 @@ from tests.toy_service import body_of, scan_of_dune
 
 ODRL = "http://www.w3.org/ns/odrl/2/"
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
+IRIS = Iris(SETTINGS)
 CREATOR = Principal(id=ADA)
 SYSTEM = system_database_name(SETTINGS.prefix)
 PREFIX = "lib-t-"
@@ -134,7 +137,7 @@ async def test_the_system_database_is_created_once_and_the_call_says_whether_it_
 
 async def test_create_makes_a_database_and_a_bucket_named_after_the_tenant(tenancy, store, files):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
-    name = tenant_resource_name(SETTINGS.prefix, summary.id)
+    name = IRIS.resource_name(summary.id)
     assert await tenant_databases(store) == [name], "the database"
     assert await files.list_buckets(PREFIX) == [name], "the bucket"
 
@@ -148,7 +151,7 @@ async def test_create_answers_an_active_summary_under_the_consumers_base(tenancy
 
 async def test_create_stores_the_root_object_under_the_tenant_iri(tenancy, store):
     summary = await tenancy.create("Ghent", library_slots("Ghent"), CREATOR)
-    name = tenant_resource_name(SETTINGS.prefix, summary.id)
+    name = IRIS.resource_name(summary.id)
     async with open_session(
         store, database=name, tenant_iri=summary.id, principal=CREATOR
     ) as session:
@@ -185,9 +188,7 @@ async def test_the_record_description_ends_in_one_period(tenancy, label, descrip
 async def test_the_record_names_the_database(tenancy):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
     record, _ = await tenancy.get(summary.id)
-    assert record.database_name == tenant_resource_name(SETTINGS.prefix, summary.id), (
-        "the record names its database"
-    )
+    assert record.database_name == IRIS.resource_name(summary.id), "the record names its database"
 
 
 async def test_a_retry_after_a_failure_creates_a_new_tenant(tenancy, store):
@@ -222,7 +223,7 @@ async def test_a_failure_at_any_step_leaves_no_access_record(
 
 async def test_the_access_record_is_written_after_the_bucket_and_the_root(tenancy, store, files):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
-    name = tenant_resource_name(SETTINGS.prefix, summary.id)
+    name = IRIS.resource_name(summary.id)
     assert files.sent("create_bucket") == [name], "the bucket is created"
     assert store.sent("create_dataset") == [SYSTEM, name], (
         "the datasets are created in order, the system one first"
@@ -314,7 +315,7 @@ async def test_delete_finishes_when_the_database_or_the_bucket_is_already_gone(
     tenancy, store, files
 ):
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
-    name = tenant_resource_name(SETTINGS.prefix, summary.id)
+    name = IRIS.resource_name(summary.id)
     await store.drop_dataset(name)
     await files.delete_bucket(name)
     _, version = await tenancy.get(summary.id)
@@ -379,7 +380,7 @@ async def rename_database(tenancy, store, files, tenant: str) -> str:
         record.database_name = STORED
         work.add(record)
         await work.commit()
-    return tenant_resource_name(SETTINGS.prefix, tenant)
+    return IRIS.resource_name(tenant)
 
 
 async def test_delete_drops_the_database_and_bucket_the_record_names_and_not_a_derived_name(
@@ -427,7 +428,7 @@ async def test_each_create_and_drop_step_is_logged_with_the_tenant_and_resource_
         summary = await tenancy.create("Ghent", library_slots(), CREATOR)
         _, version = await tenancy.get(summary.id)
         await tenancy.delete(summary.id, version)
-    name = tenant_resource_name(SETTINGS.prefix, summary.id)
+    name = IRIS.resource_name(summary.id)
     logged = [r for r in caplog.records if "rp.step" in attributes(r)]
     steps = [
         (attributes(r)["rp.step"], attributes(r)["rp.tenant.id"], attributes(r)["rp.resource"])
@@ -484,7 +485,7 @@ async def test_rename_with_a_stale_version_conflicts_and_changes_nothing(tenancy
 async def _root_label(store, tenant: str) -> str:
     async with open_session(
         store,
-        database=tenant_resource_name(SETTINGS.prefix, tenant),
+        database=IRIS.resource_name(tenant),
         tenant_iri=tenant,
         principal=CREATOR,
     ) as session:

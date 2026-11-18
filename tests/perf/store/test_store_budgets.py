@@ -8,7 +8,7 @@ import pytest
 from rdflib import Literal, URIRef
 
 from rdf_persistence import FusekiStore
-from rdf_persistence.services.iris import loaded_graph_iri
+from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import Session
 from tests.integration.store.sessions import (
@@ -41,7 +41,7 @@ async def test_replace_and_remove_cost_the_size_of_the_graphs_not_their_product(
 ):
     """50 aggregate triples and a loaded graph of 2000: the cartesian form took tens of seconds."""
     session = session_for(store, database)
-    loaded = loaded_graph_iri(book(1))
+    loaded = DEFAULT_IRIS.mint_loaded_graph(tenant="", root=book(1))
     root = URIRef(book(1))
     await store.put_graph(
         database, loaded, graph_of([(root, TITLE, Literal(i)) for i in range(2000)])

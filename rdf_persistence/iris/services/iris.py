@@ -1,12 +1,14 @@
 """The IRI policy and ``Iris``, which derive the IRIs and resource names the policy shapes (PD-4, PD-6, PD-6a).
 
-The policy, its templates and ids, ``Iris``, ``DEFAULT_IRIS`` and the wrappers over it are here; what no
-policy changes (the layout of graph IRIs, skolem IRIs, database names) is in ``domain.layout``, which
-this module uses. The policy is a technical model, so none of this can be in the domain layer.
+The policy, its templates and ids, ``Iris`` and ``DEFAULT_IRIS`` are here, and ``mint_aggregate_iri``, the
+one wrapper left, which warns; what no policy changes (the layout of graph IRIs, skolem IRIs, database
+names) is in ``iris.domain.layout``, which this module uses. The policy is a technical model, so none
+of this can be in the domain layer.
 """
 
 import re
 import secrets
+import warnings
 from collections.abc import Callable
 from functools import cached_property
 from typing import Any
@@ -16,23 +18,22 @@ from uuid import uuid4
 from rdflib import URIRef
 
 from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
-from rdf_persistence.domain.layout import (
+from rdf_persistence.iris.domain.layout import (
     _SEGMENT,
     APPLICATION_ID,
     LAYOUT_WORDS,
     LOADED_GRAPH_TYPE,
     _segment,
-    is_canonical_uuid,
     tenant_name_prefix,
     toolkit_principal_iri,
 )
-from rdf_persistence.services.generated.service.rp_service import (
+from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
     IdSpec,
     IriPolicy,
     ServiceSettings,
 )
-from rdf_persistence.services.generated.templates.rp_templates import (
+from rdf_persistence.iris.services.generated.templates.rp_iris_templates import (
     IriParts,
     IriTemplateVariables,
 )
@@ -46,86 +47,25 @@ _TENANT_GROUP = "tenant"
 _TENANT_ID_GROUP = "tenant_id"
 
 
-def _default_iris(base: str, tenant_segment: str) -> "Iris":
-    """The default policy under ``base`` and ``tenant_segment``, for the module functions below."""
-    return Iris(DEFAULT_IRIS.settings.replaced(base=base, tenant_segment=_segment(tenant_segment)))
-
-
-def mint_tenant_iri(base: str, tenant_segment: str) -> URIRef:
-    """A fresh tenant IRI ``{base}{tenant_segment}/{uuid4}``."""
-    return _default_iris(base, tenant_segment).mint_tenant()
-
-
-def tenant_iri(base: str, tenant_segment: str, tenant_id: str) -> URIRef:
-    """The IRI of the tenant whose id in a path is ``tenant_id``: ``{base}{tenant_segment}/{id}``.
-
-    Raises:
-        NotFound: ``tenant_id`` is not a canonical UUID, so no tenant has it.
-        InvalidIri: ``tenant_segment`` is not a path segment.
-    """
-    return _default_iris(base, tenant_segment).tenant(tenant_id)
-
-
-def aggregate_iri(tenant: str, rp_path: str, aggregate_id: str) -> URIRef:
-    """The IRI of the aggregate whose id in a path is ``aggregate_id``: ``{tenant}/{rp_path}/{id}``.
-
-    Raises:
-        NotFound: ``aggregate_id`` is not a canonical UUID, so no aggregate has it.
-        InvalidIri: ``rp_path`` is not a path segment.
-    """
-    return DEFAULT_IRIS.aggregate(tenant, cls_type="", rp_path=rp_path, object_id=aggregate_id)
-
-
 def mint_aggregate_iri(tenant_iri: str, rp_path: str) -> URIRef:
-    """A fresh aggregate IRI ``{tenant_iri}/{rp_path}/{uuid4}``."""
+    """A fresh aggregate IRI ``{tenant_iri}/{rp_path}/{uuid4}``.
+
+    Deprecated: use ``Iris.mint_aggregate``, on the ``Iris`` of the service (or on ``DEFAULT_IRIS``
+    for the default policy). It is removed in the minor release after the one that ships the
+    thematic layout (thematic-structure PD-5, PD-13).
+    """
+    warnings.warn(
+        "mint_aggregate_iri is deprecated; use Iris.mint_aggregate "
+        '(DEFAULT_IRIS.mint_aggregate(tenant, cls_type="", rp_path=path) mints the same IRI); '
+        "it will be removed in the minor release after the one that ships the thematic layout",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return DEFAULT_IRIS.mint_aggregate(tenant_iri, cls_type="", rp_path=rp_path)
-
-
-def is_aggregate_iri(tenant_iri: str, iri: str) -> bool:
-    """True for what the toolkit mints as an aggregate: the tenant root, its access record, or
-    ``{tenant_iri}/{rp_path}/{canonical uuid}``. Anything else could alias another graph."""
-    return DEFAULT_IRIS.is_aggregate(tenant_iri, iri)
-
-
-def is_aggregate_graph_iri(tenant_iri: str, iri: str) -> bool:
-    """True when ``iri`` is the ``graph_iri`` of an aggregate of the tenant (never of the tenant root)."""
-    return DEFAULT_IRIS.is_aggregate_graph(tenant_iri, iri)
-
-
-def is_loaded_graph_of(root_iri: str, graph: str) -> bool:
-    """True when ``graph`` is exactly ``{root_iri}/content/{canonical uuid}`` (see ``loaded_graph_iri``)."""
-    return DEFAULT_IRIS.is_loaded_graph(None, graph, root_iri)
-
-
-def mint_part_iri(root_iri: str) -> URIRef:
-    """A fresh IRI ``{root_iri}/parts/{uuid4}`` for an owned part that has none."""
-    return DEFAULT_IRIS.mint_part(tenant="", root=root_iri, cls_type="")
-
-
-def loaded_graph_iri(aggregate_iri: str) -> URIRef:
-    """A fresh IRI for a graph loaded into an aggregate."""
-    return DEFAULT_IRIS.mint_loaded_graph(tenant="", root=aggregate_iri)
 
 
 def _resource_name(prefix: str, tenant_id: str) -> str:
     return f"{tenant_name_prefix(prefix)}{tenant_id.replace('-', '')}"
-
-
-def tenant_resource_name(prefix: str, tenant_iri: str) -> str:
-    """The tenant's database and bucket name ``{prefix}-t-{uuid hex}``."""
-    last = tenant_iri.rsplit("/", 1)[-1]
-    if not is_canonical_uuid(last):
-        raise InvalidIri(f"tenant IRI must end in a canonical UUID: {tenant_iri!r}")
-    return _resource_name(prefix, last)
-
-
-def principal_iri(issuer: str, subject: str) -> URIRef:
-    """The IRI of the person or service account a token's ``sub`` names: ``{issuer}/users/{sub}``.
-
-    The issuer names the provider, so the IRI is unique across providers; percent-encoding keeps a
-    ``sub`` from leaving its path segment.
-    """
-    return DEFAULT_IRIS.principal(issuer, subject)
 
 
 def _templates(policy: IriPolicy) -> dict[str, str]:

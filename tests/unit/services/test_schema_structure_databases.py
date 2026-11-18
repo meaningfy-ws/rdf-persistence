@@ -8,8 +8,8 @@ from rdflib import RDF, URIRef
 
 from rdf_persistence.core.domain.exceptions import InvalidIri
 from rdf_persistence.core.domain.generated.rp_core import DatabaseKind, Principal
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.services.iris import Iris
+from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
