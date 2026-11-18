@@ -13,9 +13,9 @@ from rdflib import URIRef
 
 from rdf_persistence.core.domain.exceptions import InvalidBody
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.services.generated.service.rp_service import TenantDump
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import assert_isomorphic

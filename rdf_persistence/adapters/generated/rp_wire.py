@@ -351,20 +351,6 @@ class JwtClaims(ConfiguredBaseModel):
         return v
 
 
-class FusekiDatasetList(ConfiguredBaseModel):
-    "The answer of the Fuseki administration endpoint that lists datasets."
-    model_config = ConfigDict(extra="allow")
-
-    datasets: list[FusekiDataset] = Field(default=..., title="Fuseki datasets", description="The datasets Fuseki serves.")
-
-
-class FusekiDataset(ConfiguredBaseModel):
-    "One dataset of the Fuseki dataset list."
-    model_config = ConfigDict(extra="allow")
-
-    fuseki_dataset_name: str = Field(default=..., alias="ds.name", title="Fuseki dataset name", description="The name of the dataset, with a leading slash.")
-
-
 class DiscoveryDocument(ConfiguredBaseModel):
     "The part of an OpenID Connect discovery document the toolkit reads."
     model_config = ConfigDict(extra="allow")
@@ -404,6 +390,4 @@ ZitadelKeyAnswer.model_rebuild()
 ZitadelKeyFile.model_rebuild()
 ZitadelTokenAnswer.model_rebuild()
 JwtClaims.model_rebuild()
-FusekiDatasetList.model_rebuild()
-FusekiDataset.model_rebuild()
 DiscoveryDocument.model_rebuild()

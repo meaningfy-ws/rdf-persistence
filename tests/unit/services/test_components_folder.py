@@ -4,7 +4,10 @@ from rdf_persistence.services.components import served_folders
 
 
 def test_the_toolkit_components_files_are_found_under_the_generated_service_models():
-    iris, service = served_folders()
+    iris, persistence, migrations, service = served_folders()
     assert iris.parts[-3:] == ("iris", "services", "generated"), "the iris theme's served schema"
+    assert persistence.parts[-3:] == ("persistence", "services", "generated"), "persistence's"
+    assert migrations.parts[-3:] == ("migrations", "services", "generated"), "migrations'"
     assert service.parts[-3:] == ("services", "generated", "service"), "the service schema"
-    assert all((folder / "openapi-components.json").is_file() for folder in (iris, service))
+    folders = (iris, persistence, migrations, service)
+    assert all((folder / "openapi-components.json").is_file() for folder in folders)

@@ -109,16 +109,23 @@ def _retargeted(node: Any) -> Any:
 
 
 def _declared_by_another_served_schema(schema_path: Path) -> set[str]:
-    """The classes and enums that a served schema other than ``schema_path`` declares itself.
+    """The classes and enums that another served schema than ``schema_path`` publishes.
 
     The service merges the files of the served schemas and refuses a name in two of them (PD-10), so a
-    schema that imports another served one leaves that one's classes to its file.
+    schema that imports another served one leaves that one's classes to its file. Two schemas that
+    import the same metamodel module both generate its classes: the earlier one in ``SERVED_SCHEMAS``
+    publishes them, the later one leaves them out.
     """
     names: set[str] = set()
+    earlier = schema_path.resolve() in {served.resolve() for served in SERVED_SCHEMAS}
     for served in SERVED_SCHEMAS:
-        if served.resolve() != schema_path.resolve():
-            declared = load_schema(served).schema
-            names |= {*declared.classes, *declared.enums}
+        if served.resolve() == schema_path.resolve():
+            earlier = False
+            continue
+        declared = load_schema(served).schema
+        names |= {*declared.classes, *declared.enums}
+        if earlier:
+            names |= set(_generated(served))
     return names
 
 

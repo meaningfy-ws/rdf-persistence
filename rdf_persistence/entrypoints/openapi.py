@@ -56,26 +56,28 @@ from rdf_persistence.entrypoints.negotiation import (
     allowed_actions_value,
 )
 from rdf_persistence.entrypoints.problems import WWW_AUTHENTICATE
-from rdf_persistence.schema.services.schema_structure import DESCRIPTION
-from rdf_persistence.services.access import ACTIONS
-from rdf_persistence.services.components import JsonSchema, component_schemas, served_folders
-from rdf_persistence.services.generated.service.rp_service import (
-    GrantSet,
-    LabelUpdate,
+from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     ListRequest,
     Page,
-    Problem,
-    ProblemKind,
-    TenantCreate,
-    TenantSummary,
 )
-from rdf_persistence.services.listing import (
+from rdf_persistence.persistence.services.listing import (
     DESCENDING,
     LIMIT,
     OFFSET,
     SORT,
     listable_slots,
     sort_keys,
+)
+from rdf_persistence.schema.services.schema_structure import DESCRIPTION
+from rdf_persistence.services.access import ACTIONS
+from rdf_persistence.services.components import JsonSchema, component_schemas, served_folders
+from rdf_persistence.services.generated.service.rp_service import (
+    GrantSet,
+    LabelUpdate,
+    Problem,
+    ProblemKind,
+    TenantCreate,
+    TenantSummary,
 )
 
 BEARER_AUTH = "bearerAuth"

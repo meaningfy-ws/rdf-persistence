@@ -53,87 +53,6 @@
       "title": "Action",
       "type": "string"
     },
-    "AggregateHead": {
-      "additionalProperties": false,
-      "description": "The IRI, the types and the version token of one stored aggregate, without its content.",
-      "properties": {
-        "head_iri": {
-          "description": "The IRI of the stored aggregate.",
-          "format": "uri",
-          "type": "string"
-        },
-        "head_types": {
-          "description": "The class IRIs the stored aggregate is typed with.",
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "head_version": {
-          "description": "The version token of the stored aggregate's graph.",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "title": "AggregateHead",
-      "type": "object"
-    },
-    "AggregateKey": {
-      "additionalProperties": false,
-      "description": "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates.",
-      "properties": {
-        "key_name": {
-          "description": "The name of a key across aggregates, as declared in `unique_keys`.",
-          "type": "string"
-        },
-        "key_predicates": {
-          "description": "The predicates of the key's slots, in the order of the key.",
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "root_class": {
-          "description": "The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope.",
-          "format": "uri",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "key_name",
-        "root_class",
-        "key_predicates"
-      ],
-      "title": "AggregateKey",
-      "type": "object"
-    },
-    "AggregateRoot": {
-      "additionalProperties": false,
-      "description": "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole.",
-      "title": "AggregateRoot",
-      "type": "object"
-    },
-    "Any": {
-      "additionalProperties": true,
-      "description": "Any value; the slots that range over it hold data the toolkit does not model.",
-      "title": "Any",
-      "type": [
-        "null",
-        "boolean",
-        "object",
-        "number",
-        "string"
-      ]
-    },
     "Authorised": {
       "additionalProperties": false,
       "description": "What a route's access check settled: the caller's principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on, and the global roles the token granted the caller.",
@@ -211,107 +130,6 @@
       "title": "CallerAccess",
       "type": "object"
     },
-    "CommitMarker": {
-      "additionalProperties": false,
-      "description": "The registry marker of one transaction's commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written.",
-      "properties": {
-        "id": {
-          "description": "A fresh urn:uuid IRI, never shared by two transactions.",
-          "format": "uri",
-          "readOnly": true,
-          "type": "string"
-        },
-        "started_at": {
-          "description": "The time a transaction started.",
-          "format": "date-time",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "started_at"
-      ],
-      "title": "CommitMarker",
-      "type": "object"
-    },
-    "Condition": {
-      "additionalProperties": false,
-      "description": "An equality filter of a listing resolved against the slots of the listed type: the aggregate has this statement. The value is an IRI when it is a reference, else a literal of the datatype.",
-      "properties": {
-        "datatype": {
-          "description": "The IRI of the datatype of a literal value; absent for a plain string.",
-          "format": "uri",
-          "type": "string"
-        },
-        "predicate": {
-          "description": "The IRI of the predicate the aggregate must have a statement with.",
-          "format": "uri",
-          "type": "string"
-        },
-        "reference": {
-          "description": "Whether the value is an IRI rather than a literal.",
-          "type": "boolean"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        },
-        "value": {
-          "description": "The value of the statement, an IRI or the lexical form of a literal.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "predicate",
-        "value"
-      ],
-      "title": "Condition",
-      "type": "object"
-    },
-    "DatabaseKind": {
-      "description": "The databases an aggregate can live in, the values of the database annotation.",
-      "enum": [
-        "tenant",
-        "system",
-        "application"
-      ],
-      "title": "DatabaseKind",
-      "type": "string"
-    },
-    "Described": {
-      "additionalProperties": false,
-      "description": "A mixin giving an object an IRI, a label and a description. The application writes them.",
-      "properties": {
-        "description": {
-          "description": "A free-text description of the object.",
-          "type": "string"
-        },
-        "id": {
-          "description": "The IRI that identifies the object.",
-          "format": "uri",
-          "readOnly": true,
-          "type": "string"
-        },
-        "label": {
-          "description": "The preferred label of the object.",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "label"
-      ],
-      "title": "Described",
-      "type": "object"
-    },
     "EventEnvelope": {
       "additionalProperties": false,
       "description": "What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it.",
@@ -346,30 +164,6 @@
         "context"
       ],
       "title": "EventEnvelope",
-      "type": "object"
-    },
-    "Filter": {
-      "additionalProperties": false,
-      "description": "One equality filter of a listing, the name of a slot of the listed type and the value it must have, as the text the caller sent.",
-      "properties": {
-        "slot": {
-          "description": "The name of the slot the filter is on.",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        },
-        "value": {
-          "description": "The value the slot must have, as text.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "slot",
-        "value"
-      ],
-      "title": "Filter",
       "type": "object"
     },
     "Grant": {
@@ -450,56 +244,6 @@
       "title": "GrantSet",
       "type": "object"
     },
-    "GraphKind": {
-      "description": "The special graphs a class can live in, the values of the graph annotation.",
-      "enum": [
-        "meta"
-      ],
-      "title": "GraphKind",
-      "type": "string"
-    },
-    "KeyDuplicate": {
-      "additionalProperties": false,
-      "description": "A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant's database by the duplicates report.",
-      "properties": {
-        "key_name": {
-          "description": "The name of a key across aggregates, as declared in `unique_keys`.",
-          "type": "string"
-        },
-        "key_roots": {
-          "description": "The IRIs of the roots that hold the values, sorted.",
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "key_values": {
-          "description": "The lexical forms of the shared values, in the order of the key.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "root_class": {
-          "description": "The IRI of the class of the roots.",
-          "format": "uri",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "key_name",
-        "root_class",
-        "key_values",
-        "key_roots"
-      ],
-      "title": "KeyDuplicate",
-      "type": "object"
-    },
     "LabelUpdate": {
       "additionalProperties": false,
       "description": "The body that replaces the label of a tenant.",
@@ -518,97 +262,6 @@
         "label"
       ],
       "title": "LabelUpdate",
-      "type": "object"
-    },
-    "ListPlan": {
-      "additionalProperties": false,
-      "description": "A listing resolved against the slots of the listed type: the class, the typed conditions, the predicate to order by (none orders by IRI), the page, and the graphs of the aggregates the caller may not read.",
-      "properties": {
-        "conditions": {
-          "description": "The equality conditions of a listing; all of them must hold.",
-          "items": {
-            "$ref": "#/components/schemas/Condition"
-          },
-          "type": "array"
-        },
-        "descending": {
-          "description": "Whether the order is reversed.",
-          "type": "boolean"
-        },
-        "hidden_graphs": {
-          "description": "The IRIs of the graphs of the aggregates a listing leaves out.",
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "limit": {
-          "description": "The most objects the page can hold.",
-          "maximum": 200,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "offset": {
-          "description": "The position of the page's first object in the whole listing.",
-          "minimum": 0,
-          "type": "integer"
-        },
-        "sort_by": {
-          "description": "The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI.",
-          "format": "uri",
-          "type": "string"
-        },
-        "target": {
-          "description": "The IRI of the class of the aggregates listed.",
-          "format": "uri",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "target",
-        "limit",
-        "offset"
-      ],
-      "title": "ListPlan",
-      "type": "object"
-    },
-    "ListRequest": {
-      "additionalProperties": false,
-      "description": "The query of a listing, as the caller sent it: the equality filters, the position and size of the page and the key to sort by.",
-      "properties": {
-        "filters": {
-          "description": "The equality filters of a listing; all of them must hold.",
-          "items": {
-            "$ref": "#/components/schemas/Filter"
-          },
-          "type": "array"
-        },
-        "limit": {
-          "description": "The most objects the page can hold.",
-          "maximum": 200,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "offset": {
-          "description": "The position of the page's first object in the whole listing.",
-          "minimum": 0,
-          "type": "integer"
-        },
-        "sort": {
-          "description": "The slot a listing is ordered by, ascending, or descending when its name starts with a minus sign; absent, the listing is ordered by IRI.",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "title": "ListRequest",
       "type": "object"
     },
     "MemberList": {
@@ -639,185 +292,10 @@
       "title": "MemberList",
       "type": "object"
     },
-    "Migration": {
-      "additionalProperties": false,
-      "description": "The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order.",
-      "properties": {
-        "description": {
-          "description": "A free-text description of the object.",
-          "type": "string"
-        },
-        "from_version": {
-          "description": "The version of the schema that the data follows before the migration.",
-          "type": "string"
-        },
-        "schema_id": {
-          "description": "The id of the schema whose data the migration moves.",
-          "format": "uri",
-          "type": "string"
-        },
-        "steps": {
-          "description": "The steps of a migration, in the order they run.",
-          "items": {
-            "$ref": "#/components/schemas/MigrationStep"
-          },
-          "type": "array"
-        },
-        "to_version": {
-          "description": "The version of the schema that the data follows after the migration.",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "schema_id",
-        "from_version",
-        "to_version"
-      ],
-      "title": "Migration",
-      "type": "object"
-    },
-    "MigrationStep": {
-      "additionalProperties": false,
-      "description": "One step of a migration: three group graph patterns, as text, that the toolkit wraps into one update request over the graphs of a database. A step with `unresolved` is a draft and does not load.",
-      "properties": {
-        "delete_pattern": {
-          "description": "The group graph pattern, as text, of the triples a migration step removes.",
-          "type": "string"
-        },
-        "insert_pattern": {
-          "description": "The group graph pattern, as text, of the triples a migration step adds.",
-          "type": "string"
-        },
-        "title": {
-          "description": "A short name for what a record describes.",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        },
-        "unresolved": {
-          "description": "Text saying what a draft step still needs from the developer; a step that has it does not load.",
-          "type": "string"
-        },
-        "where_pattern": {
-          "description": "The group graph pattern, as text, that selects what a migration step changes.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "title"
-      ],
-      "title": "MigrationStep",
-      "type": "object"
-    },
-    "ModuleKind": {
-      "description": "The kinds of schema module, the values of the module_kind annotation.",
-      "enum": [
-        "domain",
-        "technical",
-        "access"
-      ],
-      "title": "ModuleKind",
-      "type": "string"
-    },
-    "Page": {
-      "additionalProperties": false,
-      "description": "One page of a listing, with the position of the page in the whole listing.",
-      "properties": {
-        "items": {
-          "description": "The objects of the page; framed aggregates, or tenant summaries.",
-          "items": {
-            "$ref": "#/components/schemas/Any"
-          },
-          "type": "array"
-        },
-        "limit": {
-          "description": "The most objects the page can hold.",
-          "maximum": 200,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "offset": {
-          "description": "The position of the page's first object in the whole listing.",
-          "minimum": 0,
-          "type": "integer"
-        },
-        "total": {
-          "description": "The number of objects in the whole listing.",
-          "minimum": 0,
-          "type": "integer"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "items",
-        "total",
-        "limit",
-        "offset"
-      ],
-      "title": "Page",
-      "type": "object"
-    },
-    "PendingLoad": {
-      "additionalProperties": false,
-      "description": "The registry marker of a load not yet committed: one triple saying when the graph was put. It names no registry entry, so deleting it never deletes an entry.",
-      "properties": {
-        "id": {
-          "description": "The IRI of the graph the load put; the marker's subject, so no rp:graph triple.",
-          "format": "uri",
-          "readOnly": true,
-          "type": "string"
-        },
-        "loaded_at": {
-          "description": "The time a graph was put to the store by a load.",
-          "format": "date-time",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "loaded_at"
-      ],
-      "title": "PendingLoad",
-      "type": "object"
-    },
     "Policy": {
       "additionalProperties": false,
       "description": "A set of permissions and prohibitions.",
       "title": "Policy",
-      "type": "object"
-    },
-    "Principal": {
-      "additionalProperties": false,
-      "description": "A reference to a user account in the identity provider, by IRI only.",
-      "properties": {
-        "id": {
-          "description": "The IRI that identifies the object.",
-          "format": "uri",
-          "readOnly": true,
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
-      ],
-      "title": "Principal",
       "type": "object"
     },
     "Problem": {
@@ -995,46 +473,6 @@
       "title": "ReferrerList",
       "type": "object"
     },
-    "RegistryEntry": {
-      "additionalProperties": false,
-      "description": "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application.",
-      "properties": {
-        "graph": {
-          "description": "The IRI of a named graph.",
-          "format": "uri",
-          "type": "string"
-        },
-        "kind": {
-          "$ref": "#/components/schemas/RegistryKind",
-          "description": "The kind of graph a registry entry names."
-        },
-        "owned_by": {
-          "description": "The IRI of the aggregate root that owns the graph.",
-          "format": "uri",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "graph",
-        "kind",
-        "owned_by"
-      ],
-      "title": "RegistryEntry",
-      "type": "object"
-    },
-    "RegistryKind": {
-      "description": "The kinds of graph a registry entry can name.",
-      "enum": [
-        "aggregate",
-        "loaded_graph"
-      ],
-      "title": "RegistryKind",
-      "type": "string"
-    },
     "RoleDefinition": {
       "additionalProperties": false,
       "description": "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored.",
@@ -1075,28 +513,6 @@
         "aggregate"
       ],
       "title": "RoleLevel",
-      "type": "string"
-    },
-    "RpAnnotation": {
-      "description": "The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone. Each description says which element carries the tag and which values it accepts.",
-      "enum": [
-        "owned",
-        "internal",
-        "graph",
-        "database",
-        "module_kind",
-        "rp_path",
-        "rp_iri_type",
-        "rp_unlabelled",
-        "rp_writes",
-        "workflow",
-        "bookkeeping",
-        "toolkit_filled",
-        "payload",
-        "rp_unique_scope",
-        "media_type"
-      ],
-      "title": "RpAnnotation",
       "type": "string"
     },
     "Rule": {
@@ -1392,26 +808,6 @@
       "title": "TenantSweepReport",
       "type": "object"
     },
-    "Tracked": {
-      "additionalProperties": false,
-      "description": "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity.",
-      "properties": {
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "title": "Tracked",
-      "type": "object"
-    },
-    "UniqueScope": {
-      "description": "The scopes of a key across aggregates, the values of the rp_unique_scope annotation.",
-      "enum": [
-        "tenant"
-      ],
-      "title": "UniqueScope",
-      "type": "string"
-    },
     "VerifiedCaller": {
       "additionalProperties": false,
       "description": "What a token verifier returns for a valid token, the principal and its global roles.",
@@ -1438,15 +834,6 @@
       ],
       "title": "VerifiedCaller",
       "type": "object"
-    },
-    "WritesKind": {
-      "description": "How an aggregate root is written, the values of the rp_writes annotation.",
-      "enum": [
-        "service",
-        "toolkit"
-      ],
-      "title": "WritesKind",
-      "type": "string"
     }
   }
 }

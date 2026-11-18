@@ -23,7 +23,7 @@ from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import error_type, log_extra
 from rdf_persistence.entrypoints.auth import BEARER_SCHEME
-from rdf_persistence.services.decoding import error_text
+from rdf_persistence.persistence.services.decoding import error_text
 from rdf_persistence.services.generated.service.rp_service import Problem, ProblemKind, ProblemSlug
 
 WWW_AUTHENTICATE = "WWW-Authenticate"

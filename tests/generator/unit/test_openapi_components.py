@@ -109,13 +109,34 @@ def _names(schema_path: Path) -> list[str]:
 
 def test_a_served_schema_leaves_the_classes_of_another_served_schema_to_its_file() -> None:  # TC-21
     """A schema that imports a served one would publish its classes twice: the merge refuses that."""
-    iris, service = (_names(path) for path in SERVED_SCHEMAS)
+    iris, persistence, migrations, service = (_names(path) for path in SERVED_SCHEMAS)
     assert {"IriPolicy", "ServiceSettings", "IdSpec", "IdKind"} <= set(iris), "its own classes"
     assert not {"IriPolicy", "ServiceSettings", "IdSpec", "IdKind"} & set(service), (
         "the importing schema leaves them to the file of the schema that declares them"
     )
-    assert {"TenantSummary", "Page", "Problem"} <= set(service), "its own classes stay"
-    assert not set(iris) & set(service), "no name is in two of the served files"
+    assert {"Page", "Filter", "ListPlan", "AggregateHead"} <= set(persistence), "its own classes"
+    assert {"Migration", "MigrationStep"} <= set(migrations), "its own classes"
+    assert {"TenantSummary", "Problem"} <= set(service), "its own classes stay"
+    served = {
+        "iris": iris,
+        "persistence": persistence,
+        "migrations": migrations,
+        "service": service,
+    }
+    twice = {
+        name
+        for name in {n for names in served.values() for n in names}
+        if sum(name in names for names in served.values()) > 1
+    }
+    assert not twice, f"names in two of the served files: {sorted(twice)}"
+
+
+def test_a_metamodel_class_that_two_served_schemas_import_is_in_the_first_one_only() -> None:
+    """The migrations and the service schemas both reach the metamodel; the earlier one publishes it."""
+    _, _, migrations, service = (_names(path) for path in SERVED_SCHEMAS)
+    shared = set(migrations) & {"AggregateKey", "Described"}
+    assert shared, "the earlier schema publishes the metamodel classes it imports"
+    assert not shared & set(service), "the later one leaves them to it"
 
 
 OWN_TYPE_SCHEMA = """

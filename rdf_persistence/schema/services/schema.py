@@ -13,7 +13,13 @@ IRIS_SCHEMA = PACKAGE_DIR / "model" / "technical" / "iris" / "rp_iris_services.y
 # The technical schemas whose classes the HTTP API serves, in the order their types and components
 # are merged (PD-10): the one place that says what is served. A schema comes before the ones that
 # import it, so the types keep the order the single service schema gave them.
-SERVED_SCHEMAS = (IRIS_SCHEMA, SERVICE_SCHEMA)
+PERSISTENCE_SCHEMA = (
+    PACKAGE_DIR / "model" / "technical" / "persistence" / "rp_persistence_services.yaml"
+)
+MIGRATIONS_SCHEMA = (
+    PACKAGE_DIR / "model" / "technical" / "migrations" / "rp_migrations_services.yaml"
+)
+SERVED_SCHEMAS = (IRIS_SCHEMA, PERSISTENCE_SCHEMA, MIGRATIONS_SCHEMA, SERVICE_SCHEMA)
 PYTHON_PACKAGE = "python_package"  # the annotation of a toolkit schema: where its code is generated
 MODEL_PREFIX = f"{PACKAGE}/model"
 # What opening a schema raises when the file or an import is missing, is not YAML, or is not a LinkML

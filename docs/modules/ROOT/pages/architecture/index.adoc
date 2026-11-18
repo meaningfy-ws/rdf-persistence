@@ -136,7 +136,7 @@ xref:architecture/data-flows.adoc[Where data lives and what each operation does]
 |Mapper
 |v1
 |Domain object to triples and back, IRIs taken from the LinkML schema at run time (implemented, task
-2.5: `rdf_persistence/services/mapper.py`). Owned parts live in the root's graph: by an IRI minted
+2.5: `rdf_persistence/persistence/services/mapper.py`). Owned parts live in the root's graph: by an IRI minted
 under the root's (by default `{root_iri}/parts/{uuid4}`, per the IRI policy) when their class
 includes `Described`, otherwise as blank nodes skolemised on write; references to other aggregates
 are IRIs; multi-valued slots are sets. The mapper reads the class the caller asks for (it does not

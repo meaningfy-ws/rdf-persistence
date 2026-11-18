@@ -17,6 +17,7 @@ default_range: string
 imports:
   - linkml:types
   - ../core/rp_core_services
+  - ../persistence/rp_persistence_settings
 annotations:
   module_kind: technical
   python_package: rdf_persistence.services.generated.settings
@@ -54,14 +55,6 @@ classes:
       - access_ttl_seconds
       - keep_alive_seconds
       - resume_window_seconds
-  LimitSettings:
-    title: Limit settings
-    description: The most the toolkit takes in one message bus run, one commit, one body and one restore manifest.
-    slots:
-      - max_messages
-      - max_roots
-      - max_document_nodes
-      - max_manifest_bytes
   ToolkitSettings:
     title: Toolkit settings
     description: >-
@@ -205,34 +198,6 @@ slots:
     ifabsent: float(604800)
     minimum_value: 0.001
     maximum_value: 31536000
-  max_messages:
-    title: Maximum messages
-    description: The most messages one run of the message bus handles.
-    range: integer
-    required: true
-    ifabsent: int(100)
-    minimum_value: 1
-  max_roots:
-    title: Maximum roots
-    description: The most aggregate roots one commit transaction holds.
-    range: integer
-    required: true
-    ifabsent: int(500)
-    minimum_value: 1
-  max_document_nodes:
-    title: Maximum document nodes
-    description: The most objects and list values one JSON-LD body may hold.
-    range: integer
-    required: true
-    ifabsent: int(10000)
-    minimum_value: 1
-  max_manifest_bytes:
-    title: Maximum manifest size
-    description: The most bytes the manifest of a tenant dump may hold.
-    range: integer
-    required: true
-    ifabsent: int(65536)
-    minimum_value: 1
   http:
     title: HTTP
     description: The HTTP client settings.

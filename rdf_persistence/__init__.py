@@ -110,7 +110,6 @@ from rdf_persistence.core.domain.generated.rp_workflow import (
 )
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
-    from rdf_persistence.adapters.fuseki import FusekiStore
     from rdf_persistence.adapters.jwks import JwksTokenVerifier
     from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
     from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
@@ -127,6 +126,20 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         ServiceSettings,
     )
     from rdf_persistence.iris.services.iris import DEFAULT_IRIS, IdSource, Iris, mint_aggregate_iri
+    from rdf_persistence.persistence.adapters.fuseki import FusekiStore
+    from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
+    from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+        LimitSettings,
+    )
+    from rdf_persistence.persistence.services.listing import Listings
+    from rdf_persistence.persistence.services.mapper import (
+        Mapper,
+        UnitOfWork,
+        generated_models,
+        new_part,
+    )
+    from rdf_persistence.persistence.services.session import Session, open_session
+    from rdf_persistence.persistence.services.store import Store
     from rdf_persistence.schema.services.schema import load_schema
     from rdf_persistence.services.access import (
         AccessRules,
@@ -144,7 +157,6 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         GrantSet,
         LabelUpdate,
         MemberList,
-        Page,
         Problem,
         ProblemKind,
         Referrer,
@@ -158,16 +170,11 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         DirectorySettings,
         EventSettings,
         JwksSettings,
-        LimitSettings,
         SseSettings,
         ToolkitSettings,
     )
     from rdf_persistence.services.identity import Identity
-    from rdf_persistence.services.listing import Listings
-    from rdf_persistence.services.mapper import Mapper, UnitOfWork, generated_models, new_part
     from rdf_persistence.services.messagebus import MessageBus, Work, bootstrap, command
-    from rdf_persistence.services.session import Session, open_session
-    from rdf_persistence.services.store import Store
     from rdf_persistence.services.sweep import sweep
     from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
     from rdf_persistence.services.tenant_sweep import sweep_tenant
@@ -185,14 +192,17 @@ _S3 = "rdf_persistence.files.adapters.s3"
 _SCHEMA = "rdf_persistence.schema.services.schema"
 _SERVICE_MODELS = f"{_SERVICES}.generated.service.rp_service"
 _SETTINGS_MODELS = f"{_SERVICES}.generated.settings.rp_settings"
+_PERSISTENCE = "rdf_persistence.persistence.services"
+_PERSISTENCE_MODELS = f"{_PERSISTENCE}.generated.rp_persistence_services"
+_LIMIT_MODELS = f"{_PERSISTENCE}.generated.settings.rp_persistence_settings"
 _LAZY_MODULES = {
     "HttpSettings": "rdf_persistence.core.services.generated.rp_core_services",
+    "LimitSettings": _LIMIT_MODELS,
     **dict.fromkeys(
         (
             "DirectorySettings",
             "EventSettings",
             "JwksSettings",
-            "LimitSettings",
             "SseSettings",
             "ToolkitSettings",
         ),
@@ -208,7 +218,6 @@ _LAZY_MODULES = {
             "GrantSet",
             "LabelUpdate",
             "MemberList",
-            "Page",
             "Problem",
             "ProblemKind",
             "Referrer",
@@ -221,7 +230,8 @@ _LAZY_MODULES = {
         _SERVICE_MODELS,
     ),
     **dict.fromkeys(("IdKind", "IdSpec", "IriPolicy", "ServiceSettings"), _IRIS_MODELS),
-    "FusekiStore": f"{_ADAPTERS}.fuseki",
+    "Page": _PERSISTENCE_MODELS,
+    "FusekiStore": "rdf_persistence.persistence.adapters.fuseki",
     "JwksTokenVerifier": f"{_ADAPTERS}.jwks",
     "S3FileStore": _S3,
     "ZitadelIdentity": f"{_ADAPTERS}.zitadel",
@@ -239,15 +249,15 @@ _LAZY_MODULES = {
     "load_role_definitions": f"{_SERVICES}.access",
     "TokenVerifier": f"{_SERVICES}.tokens",
     "FileStore": _FILES,
-    "Mapper": f"{_SERVICES}.mapper",
-    "UnitOfWork": f"{_SERVICES}.mapper",
-    "generated_models": f"{_SERVICES}.mapper",
-    "new_part": f"{_SERVICES}.mapper",
-    "Listings": f"{_SERVICES}.listing",
+    "Mapper": f"{_PERSISTENCE}.mapper",
+    "UnitOfWork": f"{_PERSISTENCE}.mapper",
+    "generated_models": f"{_PERSISTENCE}.mapper",
+    "new_part": f"{_PERSISTENCE}.mapper",
+    "Listings": f"{_PERSISTENCE}.listing",
     "load_schema": _SCHEMA,
-    "Session": f"{_SERVICES}.session",
-    "open_session": f"{_SERVICES}.session",
-    "Store": f"{_SERVICES}.store",
+    "Session": f"{_PERSISTENCE}.session",
+    "open_session": f"{_PERSISTENCE}.session",
+    "Store": f"{_PERSISTENCE}.store",
     "sweep": f"{_SERVICES}.sweep",
     "sweep_tenant": f"{_SERVICES}.tenant_sweep",
     "remove_with_files": f"{_SERVICES}.file_removal",

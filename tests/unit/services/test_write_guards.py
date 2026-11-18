@@ -18,12 +18,12 @@ from rdf_persistence import (
 )
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
+from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import Session, Transaction
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.reference_collections import member_class_iris
-from rdf_persistence.services.session import Session, Transaction
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session

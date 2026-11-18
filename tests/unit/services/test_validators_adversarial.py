@@ -9,9 +9,9 @@ from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, NotFou
 from rdf_persistence.core.domain.generated.rp_access import Grant
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.services.generated.service.rp_service import GrantSet
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library

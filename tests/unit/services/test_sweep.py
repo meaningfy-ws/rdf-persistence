@@ -10,9 +10,9 @@ from rdf_persistence.core.domain.exceptions import NotFound, StoreNotWired, Stor
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.iris.domain.layout import system_database_name
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import open_session
-from rdf_persistence.services.store import ToolkitStore, TracedStore
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import open_session
+from rdf_persistence.persistence.services.store import ToolkitStore, TracedStore
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic

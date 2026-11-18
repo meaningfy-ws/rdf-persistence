@@ -15,7 +15,7 @@ import pytest
 
 from rdf_persistence import InvalidGraph
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
-from rdf_persistence.services.loading import parse_graph
+from rdf_persistence.persistence.services.loading import parse_graph
 
 
 class _Recorder(BaseHTTPRequestHandler):

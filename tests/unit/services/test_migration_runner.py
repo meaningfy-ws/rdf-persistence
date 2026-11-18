@@ -25,6 +25,12 @@ from rdf_persistence.core.domain.exceptions import (
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri, stamps_graph_iri
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.migrations.services.migrations import (
+    Chain,
+    migration_request,
+    stamp_if_none,
+    stamps,
+)
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import LABEL
@@ -35,12 +41,6 @@ from rdf_persistence.services.migration_runner import (
     migrate_shared,
     migrate_tenants,
 )
-from rdf_persistence.services.migrations import (
-    Chain,
-    migration_request,
-    stamp_if_none,
-    stamps,
-)
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.books import Book
@@ -48,7 +48,7 @@ from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
-from tests.unit.services.conftest import GENERATED
+from tests.unit.conftest import GENERATED
 from tests.unit.services.migration_helpers import (
     ISBN,
     LIB,

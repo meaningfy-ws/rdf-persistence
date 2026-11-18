@@ -1,0 +1,165 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "id": "@id",
+      "contributor": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:contributor"
+      },
+      "created": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:created"
+      },
+      "creator": {
+         "@type": "@id",
+         "@id": "dcterms:creator"
+      },
+      "data_schema_version": {
+         "@id": "dataSchemaVersion"
+      },
+      "delete_pattern": {
+         "@id": "deletePattern"
+      },
+      "description": {
+         "@id": "dcterms:description"
+      },
+      "from_version": {
+         "@id": "fromVersion"
+      },
+      "graph": {
+         "@type": "@id",
+         "@id": "graph"
+      },
+      "insert_pattern": {
+         "@id": "insertPattern"
+      },
+      "key_name": {
+         "@id": "keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "keyValues"
+      },
+      "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "label": {
+         "@id": "skos:prefLabel"
+      },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "listedIn"
+      },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "loadedAt"
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "loadedGraph"
+      },
+      "modified": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:modified"
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "ownedBy"
+      },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rootClass"
+      },
+      "schema_id": {
+         "@type": "@id",
+         "@id": "schemaId"
+      },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "startedAt"
+      },
+      "steps": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "migrationSteps"
+      },
+      "title": {
+         "@id": "title"
+      },
+      "to_version": {
+         "@id": "toVersion"
+      },
+      "unresolved": {
+         "@id": "unresolved"
+      },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
+      "version": {
+         "@id": "version"
+      },
+      "where_pattern": {
+         "@id": "wherePattern"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "AggregateKey": {
+         "@id": "AggregateKey"
+      },
+      "AggregateRoot": {
+         "@id": "AggregateRoot"
+      },
+      "CommitMarker": {
+         "@id": "CommitMarker"
+      },
+      "Described": {
+         "@id": "Described"
+      },
+      "KeyDuplicate": {
+         "@id": "KeyDuplicate"
+      },
+      "Migration": {
+         "@id": "Migration"
+      },
+      "MigrationStep": {
+         "@id": "MigrationStep"
+      },
+      "PendingLoad": {
+         "@id": "PendingLoad"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "RegistryEntry": {
+         "@id": "RegistryEntry"
+      },
+      "Tracked": {
+         "@id": "Tracked"
+      }
+   }
+}

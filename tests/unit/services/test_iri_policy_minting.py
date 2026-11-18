@@ -24,16 +24,16 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
     ServiceSettings,
 )
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.generated.books import Chapter
 from tests.toy import TENANT, TOY_SCHEMA, book_iri
-from tests.unit.services.conftest import GENERATED
+from tests.unit.conftest import GENERATED
 
 BASE = "http://mwb.meaningfy.ws/"
 FLAT = "{base}{tenant_id}/{type}/{id}"

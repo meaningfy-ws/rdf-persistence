@@ -28,6 +28,8 @@ from rdf_persistence.core.domain.generated.rp_discussion import (
 )
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.persistence.services.mapper import Mapper
+from rdf_persistence.persistence.services.session import Dependents, ReferrerRow, Session
 from rdf_persistence.provenance.services.provenance import new_activity_id
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema_structure import (
@@ -37,8 +39,6 @@ from rdf_persistence.schema.services.schema_structure import (
 )
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.generated.service.rp_service import CallerAccess, VerifiedCaller
-from rdf_persistence.services.mapper import Mapper
-from rdf_persistence.services.session import Dependents, ReferrerRow, Session
 
 COMMENT = "Comment"
 

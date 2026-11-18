@@ -6,7 +6,6 @@ from uuid import UUID
 
 import pytest
 
-from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.core.domain.exceptions import Conflict
 from rdf_persistence.core.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.core.domain.generated.rp_core import Principal
@@ -14,8 +13,9 @@ from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.services.iris import (
     DEFAULT_IRIS,
 )
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import Session, open_session
+from rdf_persistence.persistence.adapters.fuseki import FusekiStore
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import Session, open_session
 from tests.fixtures.library.generated.books import Book, Genre
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess

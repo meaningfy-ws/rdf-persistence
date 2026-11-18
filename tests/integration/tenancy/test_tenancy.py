@@ -10,7 +10,7 @@ from rdf_persistence.iris.services.iris import (
     DEFAULT_IRIS,
     Iris,
 )
-from rdf_persistence.services.session import open_session
+from rdf_persistence.persistence.services.session import open_session
 from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 from tests.toy import ADA, library_slots
 

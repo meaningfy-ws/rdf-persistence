@@ -7,11 +7,13 @@ from rdflib import RDF, Graph, Literal, URIRef
 
 from rdf_persistence.core.domain.exceptions import InvalidBody, PayloadTooLarge
 from rdf_persistence.core.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from tests.toy import TENANT, TOY_SCHEMA, book_iri
-from tests.unit.services.conftest import GENERATED
+from tests.unit.conftest import GENERATED
 from tests.unit.services.test_documents import BOOK, BOOK_JSON, encoded
 
 MAX_NODES = LimitSettings().max_document_nodes  # the default limit of a ``Documents``

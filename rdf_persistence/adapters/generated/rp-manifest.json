@@ -3,11 +3,11 @@
   "inputs": [
     {
       "path": "rdf_persistence/model/technical/wire/rp_wire.yaml",
-      "sha256": "4c8292b6324c70fe7d1b52707c2a1048efa9eacf2815ffdb4ab50bb4037419d3"
+      "sha256": "1b449486f3bc802a2d5d34a0c12f8faec296c1e9701ab4221fec821dd1d9dc08"
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
-      "sha256": "68a229b8c203e530f29bf8a45879e7e13f3a89ecc9180576847e797c02f1ddda"
+      "sha256": "bf71da4e46d0a8ba261ffe270262bb8bfb5f3c4092321c7e9dd1222d7cfc9546"
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
@@ -55,7 +55,7 @@
     },
     {
       "path": "rdf_persistence_generation/components.py",
-      "sha256": "ac98081ac9ce3b4e3b3dfb23cce64cac78ed08829ee376f15735a244995f1dae"
+      "sha256": "79fa9f6a6c4793e216d269b6f08c6ef33636c2fc66975c84786f71769a87a30b"
     },
     {
       "path": "rdf_persistence_generation/config.py",
@@ -99,11 +99,11 @@
     },
     {
       "path": "rdf_persistence_generation/lock.py",
-      "sha256": "243e07b6955fd5b94f8d3124b468fde7452f2f739b42e8fde60e26d17e079c43"
+      "sha256": "24e4cb72baa701eca1f8daa520822a9767ffd6f473254c793e6bd64a20e14763"
     },
     {
       "path": "rdf_persistence_generation/lock_step.py",
-      "sha256": "8e2ae0dac20629d9eb239a431be7c2ec1ad0b7e014ba0a9fe177908fac19f9bc"
+      "sha256": "2824d4fff089efc9a5e0bd4b1683bf8e27f4d450a28168465e7127d8c42a9ac8"
     },
     {
       "path": "rdf_persistence_generation/manifest.py",
@@ -173,15 +173,15 @@
     },
     {
       "path": "rdf_persistence/adapters/generated/context.jsonld",
-      "sha256": "9621c279ff318bc13b2a52f93fbeb150597a87d5fd426736df52e24245c44e07"
+      "sha256": "539c3a5acb4fe5fc121042a58f0e72370c3f16825611102b5ec80229c5ac740b"
     },
     {
       "path": "rdf_persistence/adapters/generated/rp_wire.py",
-      "sha256": "5e75cbfc5e432dfcecc4abc78dca55ce9939a5e9a05bea776a471bebdc5a71fd"
+      "sha256": "b7dfd13e97a9b3c1789f88bd05ce81e0ff67176f21cf1248aa2928657abb1239"
     },
     {
       "path": "rdf_persistence/adapters/generated/shapes.ttl",
-      "sha256": "32a14ea738bd250678eb52f8105fa93385ddc63fbaf29c9fdd280de969263b16"
+      "sha256": "c201b3d26b4a4503857b32a2acac5ef1bed37449f3aff902974b719262715d28"
     }
   ]
 }

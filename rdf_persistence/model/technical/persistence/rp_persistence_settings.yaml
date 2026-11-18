@@ -1,0 +1,58 @@
+id: https://meaningfy.ws/ns/rdf-persistence/persistence-settings
+name: rp_persistence_settings
+title: RDF persistence persistence settings module
+description: >-
+  The size and count limits of the `persistence` theme: the most the toolkit takes in one message bus
+  run, one commit, one body and one restore manifest. Every slot defaults to the value the toolkit used
+  before it had settings. They are a package of their own, beside the served `persistence` services,
+  so the HTTP service does not serve them (technical-models PD-6, DEC-5; thematic-structure PD-2).
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+  python_package: rdf_persistence.persistence.services.generated.settings
+
+classes:
+  LimitSettings:
+    title: Limit settings
+    description: The most the toolkit takes in one message bus run, one commit, one body and one restore manifest.
+    slots:
+      - max_messages
+      - max_roots
+      - max_document_nodes
+      - max_manifest_bytes
+
+slots:
+  max_messages:
+    title: Maximum messages
+    description: The most messages one run of the message bus handles.
+    range: integer
+    required: true
+    ifabsent: int(100)
+    minimum_value: 1
+  max_roots:
+    title: Maximum roots
+    description: The most aggregate roots one commit transaction holds.
+    range: integer
+    required: true
+    ifabsent: int(500)
+    minimum_value: 1
+  max_document_nodes:
+    title: Maximum document nodes
+    description: The most objects and list values one JSON-LD body may hold.
+    range: integer
+    required: true
+    ifabsent: int(10000)
+    minimum_value: 1
+  max_manifest_bytes:
+    title: Maximum manifest size
+    description: The most bytes the manifest of a tenant dump may hold.
+    range: integer
+    required: true
+    ifabsent: int(65536)
+    minimum_value: 1

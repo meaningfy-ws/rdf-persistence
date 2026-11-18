@@ -31,14 +31,12 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
     ServiceSettings,
 )
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
-from rdf_persistence.services.generated.service.rp_service import (
-    GrantSet,
-    Page,
-)
-from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.session import open_session
+from rdf_persistence.services.generated.service.rp_service import GrantSet
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.generated.library import Library

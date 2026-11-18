@@ -8,8 +8,8 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services import shacl
 from rdf_persistence.services.documents import Documents
 from tests.toy import TOY_SCHEMA
+from tests.unit.conftest import GENERATED
 from tests.unit.core.test_sparql_parsing import RecordingLock
-from tests.unit.services.conftest import GENERATED
 
 EX = Namespace("urn:example:")
 SHAPES = """

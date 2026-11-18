@@ -31,6 +31,19 @@ METAMODEL_PACKAGE = "rdf_persistence.core.domain.generated"
 SERVICE_PACKAGE = "rdf_persistence.services.generated.service"
 IRIS = ROOT / "rdf_persistence" / "model" / "technical" / "iris" / "rp_iris_services.yaml"
 IRIS_PACKAGE = "rdf_persistence.iris.services.generated"
+PERSISTENCE = (
+    ROOT
+    / "rdf_persistence"
+    / "model"
+    / "technical"
+    / "persistence"
+    / "rp_persistence_services.yaml"
+)
+PERSISTENCE_PACKAGE = "rdf_persistence.persistence.services.generated"
+MIGRATIONS = (
+    ROOT / "rdf_persistence" / "model" / "technical" / "migrations" / "rp_migrations_services.yaml"
+)
+MIGRATIONS_PACKAGE = "rdf_persistence.migrations.services.generated"
 TESTKIT_PACKAGE = "rdf_persistence.testkit.generated"
 REFRESH = "RP_REFRESH_SNAPSHOT"
 
@@ -206,16 +219,20 @@ def test_snapshot_diff_describes_each_kind_of_change(
         pytest.param(METAMODEL, METAMODEL_PACKAGE, id="metamodel"),
         pytest.param(TOY, TOY_PACKAGE, id="toy"),
         pytest.param(IRIS, IRIS_PACKAGE, id="iris"),
+        pytest.param(PERSISTENCE, PERSISTENCE_PACKAGE, id="persistence"),
+        pytest.param(MIGRATIONS, MIGRATIONS_PACKAGE, id="migrations"),
         pytest.param(SERVICE, SERVICE_PACKAGE, id="service"),
         pytest.param(TESTKIT, TESTKIT_PACKAGE, id="testkit"),
     ],
 )
 def test_generated_classes_match_the_induced_slots(schema: Path, package: str) -> None:
-    # the service schema imports the iris one, whose classes are generated in the iris package
+    # the service schema imports the served schemas below it, whose classes are generated in their packages
     models = (
         generated_models(package)
         + generated_models(METAMODEL_PACKAGE)
         + generated_models(IRIS_PACKAGE)
+        + generated_models(PERSISTENCE_PACKAGE)
+        + generated_models(MIGRATIONS_PACKAGE)
     )
     shapes = class_shapes([schema])
     own = {m.__name__ for m in generated_models(package)}

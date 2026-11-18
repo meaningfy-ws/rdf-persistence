@@ -44,6 +44,20 @@ from rdf_persistence.iris.domain.layout import (
 )
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.migrations.services.migrations import stamp_if_none, stamp_problems
+from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
+from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.mapper import Mapper, UnitOfWork
+from rdf_persistence.persistence.services.session import (
+    Clock,
+    Dependents,
+    OnCommit,
+    Session,
+    WriteGuard,
+    open_session,
+    utc_now,
+)
+from rdf_persistence.persistence.services.store import Store
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema_structure import (
     LABEL,
@@ -59,23 +73,9 @@ from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.generated.service.rp_service import (
     CallerAccess,
     GrantSet,
-    Page,
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.mapper import Mapper, UnitOfWork
-from rdf_persistence.services.migrations import stamp_if_none, stamp_problems
-from rdf_persistence.services.session import (
-    Clock,
-    Dependents,
-    OnCommit,
-    Session,
-    WriteGuard,
-    open_session,
-    utc_now,
-)
-from rdf_persistence.services.store import Store
 from rdf_persistence.services.tenant_move import check_graphs, rewrite
 
 log = logging.getLogger(__name__)

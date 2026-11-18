@@ -5,11 +5,11 @@ from uuid import UUID
 
 from rdflib import RDF, Graph, Literal, URIRef
 
-from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.persistence.adapters.fuseki import FusekiStore
+from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import aggregate_keys
-from rdf_persistence.services.session import Session
 from tests.toy import TOY_SCHEMA
 
 TENANT = "https://example.org/libraries/6f1c0c1e"

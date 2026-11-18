@@ -23,8 +23,10 @@ from rdf_persistence.core.domain.generated.rp_provenance import (
     Replace,
 )
 from rdf_persistence.core.domain.generated.rp_workflow import Transition
-from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.mapper import UnitOfWork
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
+from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus, Work, command
 from tests.logs import attributes
 from tests.spans import assert_no_text_in_spans

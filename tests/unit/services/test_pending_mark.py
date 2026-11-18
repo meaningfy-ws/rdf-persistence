@@ -19,6 +19,8 @@ from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import SETTINGS, template, toy_mapper
+from tests.unit.persistence.test_session_activity_adversarial import KEYS, X, overtaken_commit
+from tests.unit.persistence.test_session_unique_keys import book as isbn_book
 from tests.unit.services.test_session_activity import (
     B1,
     B2,
@@ -31,8 +33,6 @@ from tests.unit.services.test_session_activity import (
     opened,
     stored_graph,
 )
-from tests.unit.services.test_session_activity_adversarial import KEYS, X, overtaken_commit
-from tests.unit.services.test_session_unique_keys import book as isbn_book
 from tests.unit.services.test_tenant_dump import BASE_STAMPS, TOY_CHAINS
 from tests.unit.services.test_tenant_sweep import CREATOR, make_world
 

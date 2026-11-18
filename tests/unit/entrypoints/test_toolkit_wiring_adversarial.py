@@ -9,9 +9,11 @@ from datetime import timedelta
 
 import pytest
 
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
 from rdf_persistence.services.generated.settings.rp_settings import (
     EventSettings,
-    LimitSettings,
     SseSettings,
     ToolkitSettings,
 )

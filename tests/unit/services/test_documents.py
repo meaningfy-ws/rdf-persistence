@@ -34,7 +34,7 @@ from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.services.documents import Documents, dataset_of
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
-from tests.unit.services.conftest import GENERATED
+from tests.unit.conftest import GENERATED
 
 BOOK = book_iri(1)
 GRAPH = graph_iri(BOOK)

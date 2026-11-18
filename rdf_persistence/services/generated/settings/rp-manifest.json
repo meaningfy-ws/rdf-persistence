@@ -6,12 +6,16 @@
       "sha256": "5fbe977a181eb6b5594be12949513057c9384cc190b5c4265d95af18c198224c"
     },
     {
+      "path": "rdf_persistence/model/technical/persistence/rp_persistence_settings.yaml",
+      "sha256": "49c8f54c1d6a51fae1ad17634a4a136dd4b9f6c359dec923168e2a891da160ff"
+    },
+    {
       "path": "rdf_persistence/model/technical/settings/rp_settings.yaml",
-      "sha256": "7602f1ee869ae0574d956b7c3e0e001425f4e6643b28c3f5da06e41a96b0899b"
+      "sha256": "f56e4e77b1b6f7376d625bb901225b9f69209f5202dfb16cbed670bbf7a7b83a"
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
-      "sha256": "68a229b8c203e530f29bf8a45879e7e13f3a89ecc9180576847e797c02f1ddda"
+      "sha256": "bf71da4e46d0a8ba261ffe270262bb8bfb5f3c4092321c7e9dd1222d7cfc9546"
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
@@ -59,7 +63,7 @@
     },
     {
       "path": "rdf_persistence_generation/components.py",
-      "sha256": "ac98081ac9ce3b4e3b3dfb23cce64cac78ed08829ee376f15735a244995f1dae"
+      "sha256": "79fa9f6a6c4793e216d269b6f08c6ef33636c2fc66975c84786f71769a87a30b"
     },
     {
       "path": "rdf_persistence_generation/config.py",
@@ -103,11 +107,11 @@
     },
     {
       "path": "rdf_persistence_generation/lock.py",
-      "sha256": "243e07b6955fd5b94f8d3124b468fde7452f2f739b42e8fde60e26d17e079c43"
+      "sha256": "24e4cb72baa701eca1f8daa520822a9767ffd6f473254c793e6bd64a20e14763"
     },
     {
       "path": "rdf_persistence_generation/lock_step.py",
-      "sha256": "8e2ae0dac20629d9eb239a431be7c2ec1ad0b7e014ba0a9fe177908fac19f9bc"
+      "sha256": "2824d4fff089efc9a5e0bd4b1683bf8e27f4d450a28168465e7127d8c42a9ac8"
     },
     {
       "path": "rdf_persistence_generation/manifest.py",
@@ -181,7 +185,7 @@
     },
     {
       "path": "rdf_persistence/services/generated/settings/rp_settings.py",
-      "sha256": "20d1f268c1cb67623ea8af21916354bfe3fec428ff87ab45f52f416071368c7f"
+      "sha256": "bb72fe887bb36bea1e89473ae634de408c7291b667723f8ac8b26fdf1824bc8e"
     },
     {
       "path": "rdf_persistence/services/generated/settings/shapes.ttl",

@@ -23,6 +23,7 @@ from rdf_persistence.core.domain.exceptions import (
     TenantBehind,
 )
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.migrations.services.migrations import Chain, migration_request
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import LABEL
@@ -31,7 +32,6 @@ from rdf_persistence.services.migration_runner import (
     migrate_shared,
     migrate_tenants,
 )
-from rdf_persistence.services.migrations import Chain, migration_request
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.tenant_dump import dump

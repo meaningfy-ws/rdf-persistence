@@ -36,13 +36,13 @@ from rdf_persistence.core.domain.generated.rp_workflow import Transition, Workfl
 from rdf_persistence.core.domain.sparql import Triple, fill, term
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.session import Session, Transaction
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.generated.service.rp_service import TenantState
-from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.session import Session, Transaction
 from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.transitions import Transitions
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
