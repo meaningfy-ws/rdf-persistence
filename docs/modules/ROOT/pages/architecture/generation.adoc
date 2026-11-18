@@ -710,7 +710,7 @@ identifier; every staged file must stay inside the staging folder.
 |Where |What runs
 |`make check-quality` (before every PR, and in CI) |the full `--check`
 |every pytest session |the manifest comparison, by the plugin `rdf_persistence_generation.testkit.freshness` in `pytest_sessionstart`; it stops the run on anything stale or edited. A consumer enables it with `pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]` (the old path, `rdf_persistence.testkit.freshness`, is a shim that warns); the ini option `rp_generate_projects` lists the `pyproject.toml` files to read (default: the rootdir's).
-|pre-commit hook `rp-generate-check` |the check, on commits touching a model, any module of the generation package except its `testkit/` and `generated/` folders (they are no inputs), the toy library or a `generated/` folder (a hand edit of generated code)
+|pre-commit hook `rp-generate-check` |the check, on commits touching the generator's inputs (a model, any module, template or lint config of the generation package except its `testkit/` and `generated/` folders, which are no inputs, and the toy library) or a `generated/` folder (a hand edit of generated code); not every manifest input: the library's `services/schema.py` and `schema_structure.py` are inputs the hook does not match
 |`make check-generated` (CI) |a regeneration from scratch and a diff, which catches a generator that is not deterministic
 |===
 

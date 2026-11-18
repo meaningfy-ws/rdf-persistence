@@ -168,15 +168,31 @@ def test_a_missing_node_is_a_failure_that_says_to_install_it(tmp_path: Path) -> 
         run_tsc([], path=str(tmp_path))
 
 
+def _ignores(config: pytest.Config, folder: Path) -> bool:
+    """Whether the session's ``--ignore`` or ``--ignore-glob`` options leave out ``folder``."""
+    base = Path(config.invocation_params.dir)
+    ignored = [(base / path).resolve() for path in config.getoption("ignore") or []]
+    globs = config.getoption("ignore_glob") or []
+    return folder.resolve() in ignored or any(folder.match(glob) for glob in globs)
+
+
 def test_the_tier_loads_no_container_plugin(request: pytest.FixtureRequest) -> None:
-    """No container starts in this lane, so the session has not registered the fixtures plugin (D-20 S3, D-27).
+    """No container starts in this lane, so the session has not registered the fixtures plugin (D-20 S3, D-27, D-29).
 
     The generator's e2e conftest registers it whenever a session collects ``tests/generator``;
-    the lanes that run this tier ignore ``tests/generator/e2e`` so that it never does.
+    the lanes that run this tier ignore ``tests/generator/e2e`` so that it never does. The
+    session assertion therefore holds only when the session ignores that folder: ``make
+    test-containers`` collects it on purpose, loads the plugin and runs this tier too, and
+    asserts nothing here. The static scan of the tier's conftests holds in every session.
     """
-    assert not request.config.pluginmanager.has_plugin(
-        "rdf_persistence.testkit.containers.fixtures"
-    ), "the session registered the container fixtures plugin: a lane collected tests/generator/e2e"
+    e2e = ROOT / "tests" / "generator" / "e2e"
+    if _ignores(request.config, e2e):
+        registered = request.config.pluginmanager.has_plugin(
+            "rdf_persistence.testkit.containers.fixtures"
+        )
+        assert not registered, (
+            "the container fixtures plugin is registered: tests/generator/e2e was collected"
+        )
     sources = [*INTEGRATION.rglob("conftest.py"), INTEGRATION.parent / "conftest.py"]
     named = [
         str(path)

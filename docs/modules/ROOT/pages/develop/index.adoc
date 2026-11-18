@@ -57,14 +57,14 @@ xref:develop/testing.adoc#slow[the testing checklist].
 |`make check-generated` |Regenerate from scratch and fail if anything differs from what is committed
 |`make refresh-snapshot` |Rewrite `tests/fixtures/model-shape.yaml` after a deliberate model change
 |`make refresh-golden` |Rewrite the golden folders of schemas that are not the toy
-|`make test` |Run the unit and feature tests in parallel (`pytest -n auto`), with the coverage floor
+|`make test` |Run the unit, feature and generator lanes (`make test-unit`, `make test-feature`, `make test-generator`), each in parallel (`pytest -n auto`) with its coverage floor
 |`make test-changed` |Run only the tests of the files you changed against `develop` (`BASE=` and `PYTEST_N=` override the base and the worker count); the lane for every task
 |`make test-fast` |Run every unit and feature test not marked `slow`, without coverage; the fallback of `make test-changed`
 |`make profile-tests` |Print the 15 slowest unit and feature tests, set-up and call apart; `PROFILE_MARK` narrows the selection
-|`make test-unit`, `make test-feature` |The two halves of `make test`, each in parallel; coverage floors 80 % (unit) and 50 % (feature)
+|`make test-unit`, `make test-feature` |Two of the three lanes of `make test` (the third is `make test-generator`), each in parallel over the library; coverage floors 80 % (unit) and 50 % (feature)
 |`make test-generator` |Run the generator's unit, feature and integration tests of `tests/generator/` in parallel, without containers; fails under 80 % coverage of `rdf_persistence_generation`; needs Node 20 for the `tsc` test, which the CI job `test-generator` sets up
 |`make test-perf` |Run the wall-clock budget tests alone (needs Docker); not part of `check-all` or CI
-|`make refresh-map` |Drop the rows of `tests/audit/scenario-map.csv` whose test is gone and list the collected tests that have no row (exit 1 while some are unmapped); keeps the map when the collection fails
+|`make refresh-map` |Re-key the rows of `tests/audit/scenario-map.csv` whose test file was renamed (against `BASE`, default `develop`, or an explicit `--moved OLD=NEW`), drop those whose test is gone and list the collected tests that have no row (exit 1 while some are unmapped); keeps the map when the collection fails
 |`make mutation` |Mutate the domain layer, `services/iris.py` and `services/tenant_move.py` (`mutmut`, selection in `setup.cfg`: `tests/unit/domain` and the IRI-policy and tenant-move tests of `tests/unit/services`) and print the killed, survived and untested counts; slow, not part of `check-all` or CI
 |`make test-containers` |Run the integration and e2e tests against Fuseki, Garage, Zitadel and Redis (needs Docker); local only, not in CI
 |`make fuseki-image` |Load the Fuseki test image from `temp/fuseki-image.tar`; build it and save the tar first when the tar is missing or older than `fuseki/` or `compose.yaml`
