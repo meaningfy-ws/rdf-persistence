@@ -638,7 +638,8 @@ consumers later.
   schema imports or generates earlier, and a class declared by two served schemas is a
   `DuplicateComponentError` naming both. Accepted below Critical: F4 (a served schema listed before
   the one it imports silently loses that one's classes: an error naming both); F2 = review S1
-  (`SparqlProtocolStore` requires `db_system_name` at class definition); F3 (the `adapters.fuseki`
+  (`SparqlProtocolStore` requires `db_system_name` when a store is instantiated, so an abstract
+  subclass in between may omit it; stage 4's checker W-1 corrected this wording); F3 (the `adapters.fuseki`
   shim keeps `BAD_QUERY_MESSAGE` and `UNREADABLE` as PD-8's "the module's other names", with their
   old values; D-18 (5) is amended); review W1 (TC-45 as a planted test: `persistence` →
   `migrations`); W2, W3 (the architecture page, `generation.adoc` and `howto/adopt.adoc` state where
