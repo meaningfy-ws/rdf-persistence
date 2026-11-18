@@ -117,7 +117,7 @@ Stage 2 closes with `make check-all`, `make check-generated`, `make test-contain
 
 ## Stage 3: the metamodel says where its classes live (PR 3)
 
-- [ ] 3.1 DEC-7, PD-6: `python_package` and `public_package` in `GenerationAnnotation`; the
+- [x] 3.1 DEC-7, PD-6: `python_package` and `public_package` in `GenerationAnnotation`; the
   annotations on `model/rp.yaml`, every `model/rp_*.yaml`, every technical group's schema and
   `rp_generation.yaml`; `metamodel_module` reads them (design PD-6); the
   constants deleted; the two hard-check rules. Tests in
@@ -188,7 +188,7 @@ one pass), PR 4, then the reconciliation of `proposal.md` (P-0004) in PR 4 befor
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · (tester) · [x] 2.4 · [x] 2.5 · PR 2 ·
-  [ ] 3.1 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4 · reconcile · PR 4
+  [x] 3.1 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4 · reconcile · PR 4
 
 ## Verification
 
