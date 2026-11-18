@@ -233,7 +233,7 @@ coverage-combine: ## Combine the coverage data of the CI unit shards and check t
 	@ uv run coverage report --include='$(PACKAGE_NAME)/*' --fail-under=80
 
 test-durations: ## Record the fast unit tests' durations in .test_durations, which balance the CI shards
-	@ uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" --store-durations
+	@ uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" --store-durations --clean-durations
 
 test-feature: ## Run the library's BDD feature tests in parallel, with a 50 % coverage floor over rdf_persistence (CI job "feature")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"

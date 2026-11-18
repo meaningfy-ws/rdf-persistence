@@ -145,6 +145,14 @@ def test_the_library_lanes_leave_the_generators_tests_to_their_own_lane() -> Non
     )
 
 
+def test_the_durations_lane_replaces_the_file_instead_of_merging_into_it() -> None:
+    """generator-package D-14: keys of moved tests must not survive a refresh."""
+    recipe = expanded("\n".join(recipe_of("test-durations")))
+
+    assert "--store-durations" in recipe, "test-durations no longer stores durations"
+    assert "--clean-durations" in recipe, "test-durations merges into .test_durations"
+
+
 def test_the_perf_lane_selects_perf_tests_not_in_quarantine() -> None:
     selections = SELECTION.findall(expanded("\n".join(recipe_of("test-perf"))))
 

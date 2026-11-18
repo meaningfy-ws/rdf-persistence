@@ -61,7 +61,11 @@ def test_no_tooling_or_source_file_names_the_old_generator_path() -> None:
     assert hits == [], f"{len(hits)} lines name the old path, first: {hits[:5]}"
 
 
-@pytest.mark.parametrize("folder", ["tests/unit/generation", "rdf_persistence/generation"])
+@pytest.mark.parametrize(
+    "folder",
+    ["tests/unit/generation", "rdf_persistence/generation"],
+    ids=["generator-tests", "generator-source"],  # an id must not carry the old path: see D-14
+)
 def test_the_old_folders_are_gone(folder: str) -> None:
     """TC-14c: neither the old source folder nor the old test folder holds a file."""
     left = [p for p in (ROOT / folder).rglob("*") if p.is_file() and "__pycache__" not in p.parts]
