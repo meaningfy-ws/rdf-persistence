@@ -222,6 +222,32 @@ def test_other_layers_are_not_scanned(tmp_path):
     assert check(tmp_path) is None, "only domain, services and entrypoints are scanned"
 
 
+THEME_SOURCE = "from pydantic import BaseModel\nclass Thing(BaseModel): ...\n"
+
+
+def test_a_theme_scan_names_a_hand_written_model_under_any_layer_of_the_theme(tmp_path):
+    """TC-17: ``layers=("tenancy",)`` scans the whole theme, whatever its layer folders are."""
+    plant(tmp_path, f"{PKG}/tenancy/services/x.py", THEME_SOURCE)
+    with pytest.raises(AssertionError) as err:
+        check(tmp_path, layers=("tenancy",))
+    assert f"{PKG}/tenancy/services/x.py:2" in str(err.value), "the file and line are named"
+    assert "class Thing" in str(err.value), "the class is named"
+
+
+def test_a_theme_scan_passes_the_same_model_under_the_theme_generated_folder(tmp_path):
+    """TC-17: the same class under ``<theme>/services/generated/`` is generated code."""
+    plant(tmp_path, f"{PKG}/tenancy/services/generated/x.py", THEME_SOURCE)
+    assert check(tmp_path, layers=("tenancy",)) is None, "generated/ is not scanned in a theme"
+
+
+def test_a_theme_scan_leaves_the_old_layers_unscanned_unless_they_are_named(tmp_path):
+    """TC-17: the scan is what ``layers`` names: the old layers are not scanned for a theme alone."""
+    plant(tmp_path, f"{PKG}/services/x.py", THEME_SOURCE)
+    assert check(tmp_path, layers=("tenancy",)) is None, "services/ is not named"
+    with pytest.raises(AssertionError, match=r"services/x\.py:2"):
+        check(tmp_path, layers=("tenancy", "services"))
+
+
 def test_missing_layers_are_fine(tmp_path):
     (tmp_path / PKG).mkdir()
     assert check(tmp_path) is None, "a package with none of the three layers passes"

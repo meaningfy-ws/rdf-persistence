@@ -32,6 +32,12 @@ from rdf_persistence_generation.problems import rule_problem
 REFERENCE_CLASSES = ("Principal", ACTIVITY)
 FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
 
+# PD-4: the folder before ``generated`` that each target kind allows, and the packages outside the themes.
+GENERATED = "generated"
+DOMAIN_FOLDERS = ("domain",)
+TECHNICAL_FOLDERS = ("services", "adapters", "entrypoints")
+FOLDER_EXEMPT = ("rdf_persistence.testkit", "rdf_persistence_generation")
+
 
 def technical_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]:
     """The classes of the modules annotated ``module_kind: technical``; a class is told apart by object, not by name."""
@@ -208,6 +214,29 @@ def target_kind_problems(view: SchemaView, folder: Path, kind: TargetKind) -> li
             continue
         problems.append(rule_problem(BoundaryRule.TARGET_KIND, schema.name, message))
     return problems
+
+
+def kind_folder_problems(folder: Path, package: str, kind: TargetKind | None) -> list[CheckProblem]:
+    """The ``package`` of a toolkit target that sits in a folder its ``kind`` does not allow (PD-4, DEC-3).
+
+    The segment before ``generated`` is ``domain`` for a domain target and a technical layer for a
+    technical one; a group after ``generated`` is allowed. The testkit and the generator sit outside
+    the themes. Only the toolkit's own run is checked: a consumer keeps its layout.
+    """
+    if kind is None or not is_toolkit_schema(folder, roots=TOOLKIT_ROOTS):
+        return []
+    if package.startswith(FOLDER_EXEMPT):
+        return []
+    kind = TargetKind(kind)
+    allowed = DOMAIN_FOLDERS if kind == TargetKind.DOMAIN else TECHNICAL_FOLDERS
+    segments = package.split(".")
+    if GENERATED not in segments:
+        message = f"has no {GENERATED} segment: a {kind.value} target's package ends in <{'|'.join(allowed)}>.{GENERATED}"
+    elif segments[segments.index(GENERATED) - 1] in allowed:
+        return []
+    else:
+        message = f"is not in a folder a {kind.value} target allows: {' or '.join(allowed)} before {GENERATED}"
+    return [rule_problem(BoundaryRule.TARGET_KIND, package, message)]
 
 
 def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:

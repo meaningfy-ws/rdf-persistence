@@ -65,8 +65,9 @@ def assert_models_generated(
     ``allow``: ``"<posix path relative to the package's parent>:<ClassName>"`` entries added to the
     default exception (``rdf_persistence/domain/base.py:RpModel``).
     ``exempt``: folders the file guard skips (instance data, request bodies).
-    ``layers``: the subpackages the model guard scans; a consumer keeps the default, the toolkit
-    adds ``generation`` and ``testkit`` for itself.
+    ``layers``: the subpackages the model guard scans, each as a whole (a theme such as
+    ``tenancy`` is scanned under every layer folder it holds); a consumer keeps the default, the
+    toolkit names its themes, the remaining old layers and ``testkit`` for itself.
     """
     package_dir = _package_dir(package)
     allowed = frozenset((*DEFAULT_ALLOW, *allow))
