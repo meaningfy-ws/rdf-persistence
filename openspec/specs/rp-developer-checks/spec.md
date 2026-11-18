@@ -4,7 +4,9 @@
 The checks a developer and CI run on this repository: they give the same answer on every run,
 the unit and feature tests run in parallel, CI runs one parallel job per make group without
 containers, and the testing checklist names only public testkit helpers.
+
 ## Requirements
+
 ### Requirement: The checks give the same answer on every run
 
 `make check-all` and `make test-containers` SHALL pass or fail for the same commit regardless of
@@ -45,9 +47,11 @@ their own lane (`make test-perf`), outside `make check-all` and CI.
 ### Requirement: CI runs the static checks and the tests in parallel jobs, without containers
 
 The CI workflow SHALL run one job per make group, in parallel: `check-style`, `check-types`,
-`check-architecture`, `check-spec-docs` with `check-generation`, `test-unit` and `test-feature`;
-each group SHALL be a make target that runs alone. `test-unit` SHALL fail under 80 % coverage and
-`test-feature` under 50 %.
+`check-architecture`, `check-spec-docs` with `check-generation`, `test-unit`, `test-feature` and
+`test-generator`; each group SHALL be a make target that runs alone. `test-unit` SHALL fail under
+80 % coverage of `rdf_persistence` and `test-feature` under 50 %; `test-unit` and `test-feature`
+SHALL NOT collect `tests/generator/`. `test-generator` SHALL run the generator's unit, feature and
+integration tests and fail under 80 % coverage of `rdf_persistence_generation`.
 CI SHALL NOT run container, e2e or Fuseki work; `make test-containers` runs locally.
 
 #### Scenario: a failing lint in CI
@@ -58,6 +62,11 @@ CI SHALL NOT run container, e2e or Fuseki work; `make test-containers` runs loca
 #### Scenario: no containers in CI
 - **WHEN** CI runs on a PR or a push to develop
 - **THEN** no job starts a Docker container or builds the Fuseki image
+
+#### Scenario: a generator change
+- **GIVEN** a PR that breaks a generator test only
+- **WHEN** CI runs
+- **THEN** the `test-generator` job fails and the `test-unit` job passes
 
 ### Requirement: The testing checklist names only public helpers
 
@@ -257,4 +266,3 @@ SHALL name its code and its reason.
 - **GIVEN** a test with `assert a and b`
 - **WHEN** `make lint` runs
 - **THEN** it fails with `PT018` naming the file and line
-
