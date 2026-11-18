@@ -10,6 +10,13 @@ from typing import BinaryIO, cast
 
 from pydantic import BaseModel, ValidationError
 
+from rdf_persistence.access.services.access import AccessRules
+from rdf_persistence.access.services.generated.rp_access_services import (
+    CallerAccess,
+    VerifiedCaller,
+)
+from rdf_persistence.access.services.identity import Identity
+from rdf_persistence.access.services.tokens import TokenVerifier
 from rdf_persistence.core.domain.exceptions import (
     DatabaseGone,
     MessageLimitExceeded,
@@ -60,35 +67,30 @@ from rdf_persistence.schema.services.schema_structure import (
     tenant_access_class,
 )
 from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
-from rdf_persistence.services import file_removal, tenant_dump, tenant_sweep
-from rdf_persistence.services.access import AccessRules
+from rdf_persistence.services import file_removal
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.discussion import dependents as discussion_dependents
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.event_hub import EventHub
 from rdf_persistence.services.events import EventBus, context_link
-from rdf_persistence.services.generated.service.rp_service import (
-    Authorised,
-    CallerAccess,
-    EventEnvelope,
-    TenantDump,
-    TenantSummary,
-    VerifiedCaller,
-)
+from rdf_persistence.services.generated.service.rp_service import Authorised, EventEnvelope
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
-from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.relay import Relay
-from rdf_persistence.services.tenancy import (
+from rdf_persistence.services.workflows import Workflows
+from rdf_persistence.services.write_guards import WriteGuards
+from rdf_persistence.tenancy.services import tenant_dump, tenant_sweep
+from rdf_persistence.tenancy.services.generated.rp_tenancy_services import (
+    TenantDump,
+    TenantSummary,
+)
+from rdf_persistence.tenancy.services.tenancy import (
     DEFAULT_STORE,
     GrantValidator,
     RootValidator,
     Tenancy,
 )
-from rdf_persistence.services.tokens import TokenVerifier
-from rdf_persistence.services.workflows import Workflows
-from rdf_persistence.services.write_guards import WriteGuards
 
 log = logging.getLogger(__name__)
 
@@ -434,7 +436,7 @@ class ServiceKit:
         older than ``older_than``; delete the graphs if ``remove`` and the blobs if ``remove_blobs``.
 
         A dry run by default. Pass ``remove_blobs`` only when every blob key of the tenant is stored
-        in ``rp:fileKey``. See ``rdf_persistence.services.tenant_sweep.sweep_tenant``.
+        in ``rp:fileKey``. See ``rdf_persistence.tenancy.services.tenant_sweep.sweep_tenant``.
 
         Raises:
             NotFound: The tenant has no access record.
@@ -458,7 +460,7 @@ class ServiceKit:
         Stop writes to the tenant for an exact copy: a blob deleted between the listing and its read is left out.
         Writing to ``out`` blocks (a synchronous file or buffer): run the call off the request loop, or give it a
         buffer and send that. Route it behind ``require(..., Action.ADMINISTER)``. See
-        ``rdf_persistence.services.tenant_dump.dump``.
+        ``rdf_persistence.tenancy.services.tenant_dump.dump``.
 
         Raises:
             NotFound: The tenant has no access record.
@@ -484,7 +486,7 @@ class ServiceKit:
         and nothing is left if the restore fails. There is no tenant yet, so ``require`` cannot guard it: verify the
         caller with ``gate.caller``, apply the consumer's own rule on who may create a tenant, and pass
         ``caller.principal`` as ``creator``. Reading ``src`` blocks (a synchronous file or buffer): run the call off
-        the request loop. See ``rdf_persistence.services.tenant_dump.restore``.
+        the request loop. See ``rdf_persistence.tenancy.services.tenant_dump.restore``.
 
         Raises:
             InvalidBody: The archive is not a dump this service can restore, or is larger than

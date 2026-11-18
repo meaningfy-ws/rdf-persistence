@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from rdflib import RDF, BNode, Literal, URIRef
 from rdflib.term import Node
 
+from rdf_persistence.access.services.access import AccessRules
 from rdf_persistence.core.domain.exceptions import Forbidden, InvalidWorkflow
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.generated.rp_workflow import Workflow
@@ -22,7 +23,6 @@ from rdf_persistence.core.services.yaml_files import SHOWN, problems_of, read_ma
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema_structure import workflow_name_of
-from rdf_persistence.services.access import AccessRules
 
 Object = URIRef | Literal | BNode  # what a triple's object can be
 CHANGED_BY_TRANSITION = "the state is changed only by a transition"

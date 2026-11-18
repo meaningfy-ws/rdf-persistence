@@ -55,7 +55,7 @@ from tests.toy import (
 )
 from tests.unit.persistence.test_session_unique_keys import ISBN
 from tests.unit.persistence.test_session_unique_keys import book as isbn_book
-from tests.unit.services.test_session_activity import (
+from tests.unit.tenancy.test_session_activity import (
     B1,
     B2,
     B3,
@@ -72,7 +72,7 @@ from tests.unit.services.test_session_activity import (
     stored_graph,
     ticking,
 )
-from tests.unit.services.test_tenant_sweep import make_world
+from tests.unit.tenancy.test_tenant_sweep import make_world
 
 Y = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c002"
 EVE = "https://example.org/people/eve"

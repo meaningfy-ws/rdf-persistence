@@ -30,7 +30,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
 )
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus, Work, command
-from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeStore, RecordingObserver
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.generated.books import Book
@@ -65,8 +65,8 @@ from tests.unit.services.test_messagebus_wiring import (
     version_of,
     world,
 )
-from tests.unit.services.test_session_activity import activities
-from tests.unit.services.test_tenant_sweep import CREATOR, EventFiles, Events
+from tests.unit.tenancy.test_session_activity import activities
+from tests.unit.tenancy.test_tenant_sweep import CREATOR, EventFiles, Events
 
 NOW = datetime(2026, 11, 14, 10, 0, tzinfo=UTC)
 ALL_QUADS = "SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } }"

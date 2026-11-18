@@ -13,9 +13,9 @@ import warnings
 import pytest
 
 import rdf_persistence
-from rdf_persistence.adapters.jwks import JwksTokenVerifier
+from rdf_persistence.access.adapters.jwks import JwksTokenVerifier
+from rdf_persistence.access.adapters.zitadel import ZitadelIdentity
 from rdf_persistence.adapters.redis_events import RedisEventBus
-from rdf_persistence.adapters.zitadel import ZitadelIdentity
 from rdf_persistence.files.adapters.s3 import S3FileStore
 from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.persistence.services.mapper import Mapper
@@ -48,8 +48,8 @@ REMOVED = {
 ALLOWED = {
     ("rdf_persistence.services.event_stream", "event_stream"),
     ("rdf_persistence.services.event_stream", "_live"),
-    ("rdf_persistence.services.tenant_dump", "_Counted"),
-    ("rdf_persistence.services.tenant_dump", "_Budget"),
+    ("rdf_persistence.tenancy.services.tenant_dump", "_Counted"),
+    ("rdf_persistence.tenancy.services.tenant_dump", "_Budget"),
 }
 
 

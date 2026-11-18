@@ -157,6 +157,32 @@ regenerate-command = "make generate"
 kind = "technical"
 
 [[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/access/rp_access_services.yaml"
+package = "rdf_persistence.access.services.generated"
+regenerate-command = "make generate"
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/access/rp_access_settings.yaml"
+package = "rdf_persistence.access.services.generated.settings"
+regenerate-command = "make generate"
+openapi = false
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/access/rp_access_adapters.yaml"
+package = "rdf_persistence.access.adapters.generated"
+regenerate-command = "make generate"
+openapi = false
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/tenancy/rp_tenancy_services.yaml"
+package = "rdf_persistence.tenancy.services.generated"
+regenerate-command = "make generate"
+kind = "technical"
+
+[[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/service/rp_service.yaml"
 package = "rdf_persistence.services.generated.service"
 regenerate-command = "make generate"
@@ -186,13 +212,6 @@ kind = "technical"
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/testkit/rp_testkit.yaml"
 package = "rdf_persistence.testkit.generated"
-regenerate-command = "make generate"
-openapi = false
-kind = "technical"
-
-[[tool.rp-generate]]
-schema = "rdf_persistence/model/technical/wire/rp_wire.yaml"
-package = "rdf_persistence.adapters.generated"
 regenerate-command = "make generate"
 openapi = false
 kind = "technical"

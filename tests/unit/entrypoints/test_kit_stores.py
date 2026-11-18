@@ -13,7 +13,7 @@ from rdf_persistence.core.domain.exceptions import DatabaseGone, NotFound, Store
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.persistence.services.store import ToolkitStore
-from rdf_persistence.services.tenancy import DEFAULT_STORE
+from rdf_persistence.tenancy.services.tenancy import DEFAULT_STORE
 from rdf_persistence.testkit import FakeStore
 from tests.toy import library_slots
 from tests.toy_service import DUNE_BODY, ToyService, principal_of

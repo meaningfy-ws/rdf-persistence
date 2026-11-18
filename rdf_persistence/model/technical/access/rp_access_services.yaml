@@ -1,0 +1,117 @@
+id: https://meaningfy.ws/ns/rdf-persistence/access-services
+name: rp_access_services
+title: RDF persistence access services module
+description: >-
+  The served technical models of the `access` theme: the caller a token verifier returns, what the
+  access check knows about one caller in one tenant, the body that replaces a tenant's grants and
+  prohibitions, and what the identity port reports about an account. The HTTP service serves them, so
+  the toolkit's OpenAPI document and TypeScript types describe them; they are generated into their own
+  package, so an application's models do not carry them (technical-models DEC-3, DEC-7;
+  thematic-structure PD-2). `principal` and `global_roles` are declared here, the lowest theme that
+  uses them, and the schemas of the higher themes import them. The settings of the token verifier and
+  of the directory are in `rp_access_settings`, in the `settings` package beside this one, because the
+  HTTP service does not serve them.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_access
+  - rdf_persistence/model/rp_tenancy
+annotations:
+  module_kind: technical
+  python_package: rdf_persistence.access.services.generated
+
+classes:
+  VerifiedCaller:
+    title: Verified caller
+    description: >-
+      What a token verifier returns for a valid token, the principal and its global roles.
+    class_uri: rp:VerifiedCaller
+    slots:
+      - principal
+      - global_roles
+    slot_usage:
+      principal:
+        required: true
+  GrantSet:
+    title: Grant set
+    description: >-
+      The body that replaces the grants and prohibitions of a tenant; two grants with the same
+      assignee, target and role or action are refused.
+    class_uri: rp:GrantSet
+    slots:
+      - grants
+      - prohibitions
+  CallerAccess:
+    title: Caller access
+    description: >-
+      What the access check needs to know about one caller in one tenant: the tenant's state, and the
+      grants and prohibitions of the access record that name the caller.
+    class_uri: rp:CallerAccess
+    slots:
+      - tenant
+      - state
+      - grants
+      - prohibitions
+    slot_usage:
+      tenant:
+        required: true
+      state:
+        required: true
+  AccountSummary:
+    title: Account summary
+    description: >-
+      What the identity port reports about one account of the identity provider: its id, its login
+      name, its email (a service account has none), whether it may sign in, and its global roles.
+    class_uri: rp:AccountSummary
+    slots:
+      - account_id
+      - user_name
+      - email
+      - active
+      - global_roles
+    slot_usage:
+      account_id:
+        required: true
+      user_name:
+        required: true
+      active:
+        required: true
+
+slots:
+  principal:
+    title: Principal
+    description: The user account the token identifies.
+    slot_uri: rp:principal
+    range: Principal
+  global_roles:
+    title: Global roles
+    description: The system-level roles the token grants the principal.
+    slot_uri: rp:globalRole
+    range: string
+    multivalued: true
+  account_id:
+    title: Account id
+    description: The identity provider's id of the account.
+    slot_uri: rp:accountId
+    range: string
+    pattern: "^.+$"
+  user_name:
+    title: User name
+    description: The name the account signs in with.
+    slot_uri: rp:userName
+    range: string
+  email:
+    title: Email
+    description: The email address of a person's account.
+    slot_uri: rp:email
+    range: string
+  active:
+    title: Active
+    description: Whether the account may sign in; a disabled account is refused new tokens.
+    slot_uri: rp:accountActive
+    range: boolean

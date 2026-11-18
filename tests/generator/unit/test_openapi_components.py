@@ -109,18 +109,26 @@ def _names(schema_path: Path) -> list[str]:
 
 def test_a_served_schema_leaves_the_classes_of_another_served_schema_to_its_file() -> None:  # TC-21
     """A schema that imports a served one would publish its classes twice: the merge refuses that."""
-    iris, persistence, migrations, service = (_names(path) for path in SERVED_SCHEMAS)
+    iris, persistence, migrations, access, tenancy, service = (
+        _names(path) for path in SERVED_SCHEMAS
+    )
     assert {"IriPolicy", "ServiceSettings", "IdSpec", "IdKind"} <= set(iris), "its own classes"
     assert not {"IriPolicy", "ServiceSettings", "IdSpec", "IdKind"} & set(service), (
         "the importing schema leaves them to the file of the schema that declares them"
     )
     assert {"Page", "Filter", "ListPlan", "AggregateHead"} <= set(persistence), "its own classes"
     assert {"Migration", "MigrationStep"} <= set(migrations), "its own classes"
-    assert {"TenantSummary", "Problem"} <= set(service), "its own classes stay"
+    assert {"VerifiedCaller", "GrantSet", "CallerAccess", "AccountSummary"} <= set(access), (
+        "its own classes"
+    )
+    assert {"TenantDump", "TenantSummary"} <= set(tenancy), "its own classes"
+    assert {"Problem", "TenantCreate"} <= set(service), "its own classes stay"
     served = {
         "iris": iris,
         "persistence": persistence,
         "migrations": migrations,
+        "access": access,
+        "tenancy": tenancy,
         "service": service,
     }
     twice = {
@@ -133,7 +141,7 @@ def test_a_served_schema_leaves_the_classes_of_another_served_schema_to_its_file
 
 def test_a_metamodel_class_that_two_served_schemas_import_is_in_the_first_one_only() -> None:
     """The migrations and the service schemas both reach the metamodel; the earlier one publishes it."""
-    _, _, migrations, service = (_names(path) for path in SERVED_SCHEMAS)
+    _, _, migrations, _, _, service = (_names(path) for path in SERVED_SCHEMAS)
     shared = set(migrations) & {"AggregateKey", "Described"}
     assert shared, "the earlier schema publishes the metamodel classes it imports"
     assert not shared & set(service), "the later one leaves them to it"

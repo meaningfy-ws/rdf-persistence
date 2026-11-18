@@ -1,0 +1,400 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "access_template": {
+         "@id": "accessTemplate"
+      },
+      "action": {
+         "@id": "ODRL:action",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
+         }
+      },
+      "actions": {
+         "@container": "@set",
+         "@id": "permits",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
+         }
+      },
+      "aggregate_template": {
+         "@id": "aggregateTemplate"
+      },
+      "allowed_actions": {
+         "@container": "@set",
+         "@id": "allowedActions",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
+         }
+      },
+      "application_template": {
+         "@id": "applicationTemplate"
+      },
+      "assignee": {
+         "@type": "@id",
+         "@id": "ODRL:assignee"
+      },
+      "base": {
+         "@type": "@id",
+         "@id": "base"
+      },
+      "blobs": {
+         "@container": "@set",
+         "@id": "sweptBlob"
+      },
+      "id": "@id",
+      "contributor": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:contributor"
+      },
+      "created": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:created"
+      },
+      "creator": {
+         "@type": "@id",
+         "@id": "dcterms:creator"
+      },
+      "creator_role": {
+         "@id": "creatorRole"
+      },
+      "data_schema_version": {
+         "@id": "dataSchemaVersion"
+      },
+      "delete_pattern": {
+         "@id": "deletePattern"
+      },
+      "deployment": {
+         "@id": "deployment"
+      },
+      "description": {
+         "@id": "dcterms:description"
+      },
+      "created_at": {
+         "@type": "xsd:dateTime",
+         "@id": "dumpCreatedAt"
+      },
+      "format_version": {
+         "@id": "dumpFormatVersion"
+      },
+      "from_version": {
+         "@id": "fromVersion"
+      },
+      "grants": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "grant"
+      },
+      "graph": {
+         "@type": "@id",
+         "@id": "graph"
+      },
+      "alphabet": {
+         "@id": "idAlphabet"
+      },
+      "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "length": {
+         "@id": "idLength"
+      },
+      "insert_pattern": {
+         "@id": "insertPattern"
+      },
+      "iri_policy": {
+         "@type": "@id",
+         "@id": "iriPolicy"
+      },
+      "key_name": {
+         "@id": "keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "keyValues"
+      },
+      "label": {
+         "@id": "skos:prefLabel"
+      },
+      "level": {
+         "@id": "level",
+         "@type": "@vocab",
+         "@context": {
+            "system": "https://meaningfy.ws/ns/rdf-persistence#SystemLevel",
+            "tenant": "https://meaningfy.ws/ns/rdf-persistence#TenantLevel",
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#AggregateLevel"
+         }
+      },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "listedIn"
+      },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "loadedAt"
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "loadedGraph"
+      },
+      "loaded_graph_template": {
+         "@id": "loadedGraphTemplate"
+      },
+      "loaded_graphs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "sweptLoadedGraph"
+      },
+      "max_body_bytes": {
+         "@id": "maxBodyBytes"
+      },
+      "max_restore_bytes": {
+         "@id": "maxRestoreBytes"
+      },
+      "meta_template": {
+         "@id": "metaTemplate"
+      },
+      "modified": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:modified"
+      },
+      "object_id": {
+         "@type": "@id",
+         "@id": "objectId"
+      },
+      "older_than_seconds": {
+         "@id": "olderThanSeconds"
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "ownedBy"
+      },
+      "part_template": {
+         "@id": "partTemplate"
+      },
+      "prefix": {
+         "@id": "prefix"
+      },
+      "principal_template": {
+         "@id": "principalTemplate"
+      },
+      "prohibitions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prohibition"
+      },
+      "provenance_template": {
+         "@id": "provenanceTemplate"
+      },
+      "public_url": {
+         "@type": "@id",
+         "@id": "publicUrl"
+      },
+      "registry_template": {
+         "@id": "registryTemplate"
+      },
+      "removed_blobs": {
+         "@id": "removedBlobs"
+      },
+      "removed_loaded_graphs": {
+         "@id": "removedLoadedGraphs"
+      },
+      "role": {
+         "@id": "role"
+      },
+      "roles_claim": {
+         "@id": "rolesClaim"
+      },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rootClass"
+      },
+      "schema_id": {
+         "@type": "@id",
+         "@id": "schemaId"
+      },
+      "schema_version": {
+         "@id": "dumpSchemaVersion"
+      },
+      "skipped_blobs": {
+         "@container": "@set",
+         "@id": "skippedBlob"
+      },
+      "source_tenant": {
+         "@type": "@id",
+         "@id": "sourceTenant"
+      },
+      "source_tenant_id": {
+         "@id": "sourceTenantId"
+      },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "startedAt"
+      },
+      "state": {
+         "@id": "state",
+         "@type": "@vocab",
+         "@context": {
+            "active": "https://meaningfy.ws/ns/rdf-persistence#Active",
+            "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
+         }
+      },
+      "steps": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "migrationSteps"
+      },
+      "target": {
+         "@type": "@id",
+         "@id": "ODRL:target"
+      },
+      "tenant": {
+         "@type": "@id",
+         "@id": "tenant"
+      },
+      "tenant_id": {
+         "@type": "@id",
+         "@id": "tenantId"
+      },
+      "tenant_segment": {
+         "@id": "tenantSegment"
+      },
+      "tenant_template": {
+         "@id": "tenantTemplate"
+      },
+      "title": {
+         "@id": "title"
+      },
+      "to_version": {
+         "@id": "toVersion"
+      },
+      "toolkit_version": {
+         "@id": "toolkitVersion"
+      },
+      "unresolved": {
+         "@id": "unresolved"
+      },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
+      "version": {
+         "@id": "version"
+      },
+      "where_pattern": {
+         "@id": "wherePattern"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "AggregateKey": {
+         "@id": "AggregateKey"
+      },
+      "AggregateRoot": {
+         "@id": "AggregateRoot"
+      },
+      "CommitMarker": {
+         "@id": "CommitMarker"
+      },
+      "Described": {
+         "@id": "Described"
+      },
+      "Grant": {
+         "@id": "ODRL:Permission"
+      },
+      "IdSpec": {
+         "@id": "IdSpec"
+      },
+      "IriPolicy": {
+         "@id": "IriPolicy"
+      },
+      "KeyDuplicate": {
+         "@id": "KeyDuplicate"
+      },
+      "Migration": {
+         "@id": "Migration"
+      },
+      "MigrationStep": {
+         "@id": "MigrationStep"
+      },
+      "PendingLoad": {
+         "@id": "PendingLoad"
+      },
+      "Policy": {
+         "@id": "ODRL:Set"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Prohibition": {
+         "@id": "ODRL:Prohibition"
+      },
+      "RegistryEntry": {
+         "@id": "RegistryEntry"
+      },
+      "RoleDefinition": {
+         "@id": "RoleDefinition"
+      },
+      "Rule": {
+         "@id": "ODRL:Rule"
+      },
+      "ServiceSettings": {
+         "@id": "ServiceSettings"
+      },
+      "TenantAccess": {
+         "@id": "TenantAccess"
+      },
+      "TenantDump": {
+         "@id": "TenantDump"
+      },
+      "TenantLabelled": {
+         "@id": "TenantLabelled"
+      },
+      "TenantSummary": {
+         "@id": "TenantSummary"
+      },
+      "TenantSweepReport": {
+         "@id": "TenantSweepReport"
+      },
+      "Tracked": {
+         "@id": "Tracked"
+      }
+   }
+}

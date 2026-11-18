@@ -28,7 +28,7 @@ from rdf_persistence.services.relay import Relay, chain_order
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
 from tests.logs import attributes
 from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, dune, library_slots, template, toy_mapper
-from tests.unit.services.test_tenant_sweep import CREATOR, make_world
+from tests.unit.tenancy.test_tenant_sweep import CREATOR, make_world
 
 DEPLOYMENT = "deployment-a"
 CONTEXT = context_link("https://lib.example")

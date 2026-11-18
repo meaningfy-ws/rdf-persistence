@@ -349,13 +349,13 @@ nothing.
 |3
 |Load what the caller may do in the tenant: one `CONSTRUCT` on the system database for the access
 record's state and the rules that name the caller.
-|`services/access.py`, `load_caller_access`, called by `Gate.check`
+|`access/services/access.py`, `load_caller_access`, called by `Gate.check`
 |404
 
 |4
 |The access check for `modify` on the aggregate, in the order of
 xref:architecture/access-control.adoc#check[the check].
-|`services/access.py`, `AccessRules.require`
+|`access/services/access.py`, `AccessRules.require`
 |404, 403
 
 |5

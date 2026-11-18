@@ -5,7 +5,7 @@ import uuid
 import httpx
 import pytest
 
-from rdf_persistence.adapters.generated.rp_wire import (
+from rdf_persistence.access.adapters.generated.rp_access_adapters import (
     ZitadelOrganisationQuery,
     ZitadelQuery,
     ZitadelSearch,
@@ -13,8 +13,8 @@ from rdf_persistence.adapters.generated.rp_wire import (
     ZitadelUserState,
     ZitadelWindow,
 )
-from rdf_persistence.adapters.jwks import JwksTokenVerifier
-from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
+from rdf_persistence.access.adapters.jwks import JwksTokenVerifier
+from rdf_persistence.access.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
 from rdf_persistence.core.domain.exceptions import InvalidToken, NotFound
 from rdf_persistence.testkit.bootstrap import wait_until_async
 from rdf_persistence.testkit.exceptions import TokenRefusedError

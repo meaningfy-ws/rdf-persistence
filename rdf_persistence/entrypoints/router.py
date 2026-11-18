@@ -19,6 +19,11 @@ from linkml_runtime.linkml_model.meta import ClassDefinition
 from pydantic import BaseModel
 from rdflib import Graph, URIRef
 
+from rdf_persistence.access.services.generated.rp_access_services import (
+    CallerAccess,
+    GrantSet,
+    VerifiedCaller,
+)
 from rdf_persistence.core.domain.exceptions import BadQuery, InvalidBody, PayloadTooLarge
 from rdf_persistence.core.domain.generated.rp_access import Action
 from rdf_persistence.core.domain.generated.rp_core import Principal
@@ -52,13 +57,10 @@ from rdf_persistence.persistence.services.session import Stored
 from rdf_persistence.schema.services.schema_structure import is_service_written
 from rdf_persistence.services.generated.service.rp_service import (
     Authorised,
-    CallerAccess,
-    GrantSet,
     LabelUpdate,
     TenantCreate,
-    TenantSummary,
-    VerifiedCaller,
 )
+from rdf_persistence.tenancy.services.generated.rp_tenancy_services import TenantSummary
 
 CONTEXT_ROUTE = "context"
 

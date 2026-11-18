@@ -17,6 +17,11 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel
 from rdflib import RDF, Graph, URIRef
 
+from rdf_persistence.access.services.access import AccessRules
+from rdf_persistence.access.services.generated.rp_access_services import (
+    CallerAccess,
+    VerifiedCaller,
+)
 from rdf_persistence.core.domain.exceptions import InvalidBody, InvalidIri, NotFound, UnknownRole
 from rdf_persistence.core.domain.generated.rp_access import Action
 from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
@@ -37,8 +42,6 @@ from rdf_persistence.schema.services.schema_structure import (
     iri_type_of,
     is_toolkit_written,
 )
-from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.generated.service.rp_service import CallerAccess, VerifiedCaller
 
 COMMENT = "Comment"
 

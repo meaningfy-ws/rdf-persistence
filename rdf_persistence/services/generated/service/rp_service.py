@@ -25,8 +25,13 @@ from pydantic import (
     SerializationInfo,
     SerializerFunctionWrapHandler,
     field_validator,
-    model_serializer,
-    model_validator
+    model_serializer
+)
+from rdf_persistence.access.services.generated.rp_access_services import (
+    AccountSummary,
+    CallerAccess,
+    GrantSet,
+    VerifiedCaller
 )
 from rdf_persistence.core.domain.generated.rp_access import (
     Action,
@@ -62,16 +67,6 @@ from rdf_persistence.core.domain.generated.rp_tenancy import (
     TenantLabelled,
     TenantState,
     TenantSweepReport
-)
-from rdf_persistence.iris.services.generated.rp_iris_services import (
-    IdKind,
-    IdSpec,
-    IriPolicy,
-    ServiceSettings
-)
-from rdf_persistence.migrations.services.generated.rp_migrations_services import (
-    Migration,
-    MigrationStep
 )
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     AggregateHead,
@@ -146,25 +141,6 @@ class ProblemSlug(str, Enum):
 
 
 
-class TenantDump(ConfiguredBaseModel):
-    "The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can check that the dump was made under the same schema and policy."
-    format_version: int = Field(default=..., title="Format version", description="The version of the dump archive layout; a restore refuses a version it does not know.")
-    created_at: datetime  = Field(default=..., title="Dump created at", description="When the dump was taken, so a person choosing among dumps can tell them apart.")
-    toolkit_version: str = Field(default=..., title="Toolkit version", description="The version of the toolkit that wrote the dump.")
-    schema_id: str = Field(default=..., title="Schema id", description="The id of the LinkML schema whose data the dump holds; a restore checks it against its own.")
-    schema_version: Optional[str] = Field(default=None, title="Schema version", description="The version of that schema, when it declares one.")
-    source_tenant: str = Field(default=..., title="Source tenant", description="The IRI of the tenant the dump was taken from.")
-    source_tenant_id: str = Field(default=..., title="Source tenant id", description="The id part of the source tenant\u0027s IRI, which a restore replaces by the new tenant\u0027s id.")
-    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
-    iri_policy: IriPolicy = Field(default=..., title="IRI policy", description="The IRI policy of the service; absent, the default policy applies.")
-
-
-class VerifiedCaller(ConfiguredBaseModel):
-    "What a token verifier returns for a valid token, the principal and its global roles."
-    principal: str = Field(default=..., title="Principal", description="The user account the token identifies.")
-    global_roles: Optional[list[str]] = Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
-
-
 class TenantCreate(TenantLabelled):
     "The body that creates a tenant, its label and the slots of the tenant\u0027s root object."
     root: Any = Field(default=..., title="Root", description="The slots of the tenant\u0027s root object, as the application\u0027s schema defines them.")
@@ -184,14 +160,6 @@ class TenantCreate(TenantLabelled):
         return v
 
 
-class TenantSummary(ConfiguredBaseModel):
-    "What the service answers about one tenant, in a listing or after creating it."
-    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
-    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
-    state: TenantState = Field(default=..., title="State", description="Where the tenant is in its life.")
-    allowed_actions: Optional[list[Action]] = Field(default=None, title="Allowed actions", description="The actions the caller who asked may take on the tenant, in the order read, modify, delete, administer. Only a listing fills it.")
-
-
 class LabelUpdate(TenantLabelled):
     "The body that replaces the label of a tenant."
     label: str = Field(default=..., title="Label", description="The preferred label of the object.")
@@ -208,52 +176,6 @@ class LabelUpdate(TenantLabelled):
             err_msg = "Invalid label format: " + str(v)
             raise ValueError(err_msg)
         return v
-
-
-class GrantSet(ConfiguredBaseModel):
-    "The body that replaces the grants and prohibitions of a tenant; two grants with the same assignee, target and role or action are refused."
-    grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
-    prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
-
-    @model_validator(mode="after")
-    def unique_keys_grants_grant_key(self) -> "GrantSet":
-        seen: set[str] = set()
-        repeated: list[tuple] = []
-        for item in self.grants or []:
-            key = (item.assignee, item.target, item.role, item.action,)
-            if repr(key) in seen:
-                repeated.append(key)
-            seen.add(repr(key))
-        if repeated:
-            raise ValueError(
-                "GrantSet.grants: unique_keys grant_key (assignee, target, role, action) repeated by "
-                + str(repeated)
-            )
-        return self
-
-
-class CallerAccess(ConfiguredBaseModel):
-    "What the access check needs to know about one caller in one tenant: the tenant\u0027s state, and the grants and prohibitions of the access record that name the caller."
-    tenant: str = Field(default=..., title="Tenant", description="The IRI of the tenant.")
-    state: TenantState = Field(default=..., title="State", description="Where the tenant is in its life.")
-    grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
-    prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
-
-    @model_validator(mode="after")
-    def unique_keys_grants_grant_key(self) -> "CallerAccess":
-        seen: set[str] = set()
-        repeated: list[tuple] = []
-        for item in self.grants or []:
-            key = (item.assignee, item.target, item.role, item.action,)
-            if repr(key) in seen:
-                repeated.append(key)
-            seen.add(repr(key))
-        if repeated:
-            raise ValueError(
-                "CallerAccess.grants: unique_keys grant_key (assignee, target, role, action) repeated by "
-                + str(repeated)
-            )
-        return self
 
 
 class Authorised(ConfiguredBaseModel):
@@ -293,28 +215,6 @@ class ProblemKind(ConfiguredBaseModel):
         return v
 
 
-class AccountSummary(ConfiguredBaseModel):
-    "What the identity port reports about one account of the identity provider: its id, its login name, its email (a service account has none), whether it may sign in, and its global roles."
-    account_id: str = Field(default=..., title="Account id", description="The identity provider\u0027s id of the account.")
-    user_name: str = Field(default=..., title="User name", description="The name the account signs in with.")
-    email: Optional[str] = Field(default=None, title="Email", description="The email address of a person\u0027s account.")
-    active: bool = Field(default=..., title="Active", description="Whether the account may sign in; a disabled account is refused new tokens.")
-    global_roles: Optional[list[str]] = Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
-
-    @field_validator("account_id")
-    def pattern_account_id(cls, v):
-        pattern=re.compile("^.+$")
-        if isinstance(v, list):
-            for element in v:
-                if isinstance(element, str) and not pattern.fullmatch(element):
-                    err_msg = "Invalid account_id format: " + str(element)
-                    raise ValueError(err_msg)
-        elif isinstance(v, str) and not pattern.fullmatch(v):
-            err_msg = "Invalid account_id format: " + str(v)
-            raise ValueError(err_msg)
-        return v
-
-
 class Referrer(ConfiguredBaseModel):
     "One aggregate that points at another: its IRI, its schema class and the slot that holds the reference."
     referrer: str = Field(default=..., title="Referrer", description="The IRI of the aggregate that holds the reference.")
@@ -344,17 +244,11 @@ class EventEnvelope(ConfiguredBaseModel):
 
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
-TenantDump.model_rebuild()
-VerifiedCaller.model_rebuild()
 TenantCreate.model_rebuild()
-TenantSummary.model_rebuild()
 LabelUpdate.model_rebuild()
-GrantSet.model_rebuild()
-CallerAccess.model_rebuild()
 Authorised.model_rebuild()
 Problem.model_rebuild()
 ProblemKind.model_rebuild()
-AccountSummary.model_rebuild()
 Referrer.model_rebuild()
 ReferrerList.model_rebuild()
 MemberList.model_rebuild()

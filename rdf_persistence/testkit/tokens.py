@@ -13,10 +13,13 @@ import httpx
 import jwt
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
 
-from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument, JwtClaims
-from rdf_persistence.adapters.jwks import DISCOVERY_PATH, RS256
-from rdf_persistence.adapters.zitadel import zitadel_roles_claim
-from rdf_persistence.services.tokens import EpochClock
+from rdf_persistence.access.adapters.generated.rp_access_adapters import (
+    DiscoveryDocument,
+    JwtClaims,
+)
+from rdf_persistence.access.adapters.jwks import DISCOVERY_PATH, RS256
+from rdf_persistence.access.adapters.zitadel import zitadel_roles_claim
+from rdf_persistence.access.services.tokens import EpochClock
 
 ISSUER: Final = "https://idp.test"
 AUDIENCE: Final = "rp-test"

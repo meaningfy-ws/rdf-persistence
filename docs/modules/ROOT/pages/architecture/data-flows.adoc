@@ -833,7 +833,7 @@ removes them; see xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant].
 == Tenant operations
 
 The routes are `/libraries` and `/libraries/{t}` (`TenantApi`); the use cases are in
-`services/tenancy.py`, `Tenancy`. A tenant's life, and the order of writes that makes a crash
+`tenancy/services/tenancy.py`, `Tenancy`. A tenant's life, and the order of writes that makes a crash
 safe at every step:
 
 [mermaid]
@@ -921,7 +921,7 @@ including another `DELETE`; the next start-up sweep finishes it.
 [#dump-restore]
 == Dump and restore a tenant
 
-`kit.dump_tenant` and `kit.restore_tenant` (`services/tenant_dump.py`) are Python calls with no
+`kit.dump_tenant` and `kit.restore_tenant` (`tenancy/services/tenant_dump.py`) are Python calls with no
 route and no gate; the consumer decides who may call them (see
 xref:howto/dump-restore.adoc[Back up or copy a project]). A dump is one gzipped tar: `manifest.json`,
 `graphs.nq`, then `blobs/<key>`, then an empty member `end` that shows the dump finished. A restore
@@ -1030,7 +1030,7 @@ _What does the service do at start-up when the schema has changed? What happens 
 fails?_
 
 `install_service` makes the lifespan bring every database to the version of the running schema
-before it serves (`entrypoints/service.py`, `services/migration_runner.py`). The page
+before it serves (`entrypoints/service.py`, `tenancy/services/migration_runner.py`). The page
 xref:howto/migrate.adoc[Change a schema that has stored data] says what a developer writes; this
 section says what runs.
 

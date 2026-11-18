@@ -18,7 +18,17 @@ PACKAGE = "rdf_persistence"
 LAYERS = ("domain", "services", "adapters", "entrypoints")
 # A stage adds its themes here (PD-1: the stage turns its rows on, and TC-01 then holds them).
 TURNED_ON: frozenset[str] = frozenset(
-    {"core", "iris", "schema", "files", "provenance", "persistence", "migrations"}
+    {
+        "core",
+        "iris",
+        "schema",
+        "files",
+        "provenance",
+        "persistence",
+        "migrations",
+        "access",
+        "tenancy",
+    }
 )
 # Old paths that hold a deprecation shim, not a leftover (PD-8): the module re-exports the moved one and
 # stands until the release that removes it (stage 8). A stage that adds a shim lists it here.
@@ -269,7 +279,14 @@ PLACED: tuple[Placed, ...] = (
         "service",
         ("VerifiedCaller", "CallerAccess", "GrantSet", "AccountSummary"),
     ),
-    Placed("access", "services", "settings", ("JwksSettings", "DirectorySettings")),
+    # Not served, like `LimitSettings`: a package of its own beside the served `access` services.
+    Placed(
+        "access",
+        "services",
+        "settings",
+        ("JwksSettings", "DirectorySettings"),
+        tail="settings.rp_access_settings",
+    ),
     Placed(
         "access",
         "adapters",

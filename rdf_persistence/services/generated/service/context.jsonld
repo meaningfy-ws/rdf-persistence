@@ -10,9 +10,6 @@
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
-      "access_template": {
-         "@id": "accessTemplate"
-      },
       "account_id": {
          "@id": "accountId"
       },
@@ -46,31 +43,9 @@
          "@type": "@id",
          "@id": "activityClass"
       },
-      "aggregate_template": {
-         "@id": "aggregateTemplate"
-      },
-      "allowed_actions": {
-         "@container": "@set",
-         "@id": "allowedActions",
-         "@type": "@vocab",
-         "@context": {
-            "read": "http://www.w3.org/ns/odrl/2/read",
-            "modify": "http://www.w3.org/ns/odrl/2/modify",
-            "delete": "http://www.w3.org/ns/odrl/2/delete",
-            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
-            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
-         }
-      },
-      "application_template": {
-         "@id": "applicationTemplate"
-      },
       "assignee": {
          "@type": "@id",
          "@id": "ODRL:assignee"
-      },
-      "base": {
-         "@type": "@id",
-         "@id": "base"
       },
       "blobs": {
          "@container": "@set",
@@ -120,27 +95,14 @@
          "@type": "@id",
          "@id": "dcterms:creator"
       },
-      "creator_role": {
-         "@id": "creatorRole"
-      },
       "data_schema_version": {
          "@id": "dataSchemaVersion"
-      },
-      "delete_pattern": {
-         "@id": "deletePattern"
-      },
-      "deployment": {
-         "@id": "deployment"
       },
       "descending": {
          "@id": "descending"
       },
       "description": {
          "@id": "dcterms:description"
-      },
-      "created_at": {
-         "@type": "xsd:dateTime",
-         "@id": "dumpCreatedAt"
       },
       "email": {
          "@id": "email"
@@ -152,12 +114,6 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "filter"
-      },
-      "format_version": {
-         "@id": "dumpFormatVersion"
-      },
-      "from_version": {
-         "@id": "fromVersion"
       },
       "global_roles": {
          "@container": "@set",
@@ -192,27 +148,6 @@
          "@container": "@set",
          "@id": "hiddenGraph"
       },
-      "alphabet": {
-         "@id": "idAlphabet"
-      },
-      "kind": {
-         "@id": "kind",
-         "@type": "@vocab",
-         "@context": {
-            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
-            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
-         }
-      },
-      "length": {
-         "@id": "idLength"
-      },
-      "insert_pattern": {
-         "@id": "insertPattern"
-      },
-      "iri_policy": {
-         "@type": "@id",
-         "@id": "iriPolicy"
-      },
       "items": {
          "@type": "@id",
          "@container": "@set",
@@ -234,6 +169,14 @@
       "key_values": {
          "@container": "@set",
          "@id": "keyValues"
+      },
+      "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
       },
       "label": {
          "@id": "skos:prefLabel"
@@ -262,35 +205,19 @@
          "@type": "@id",
          "@id": "loadedGraph"
       },
-      "loaded_graph_template": {
-         "@id": "loadedGraphTemplate"
-      },
       "loaded_graphs": {
          "@type": "@id",
          "@container": "@set",
          "@id": "sweptLoadedGraph"
-      },
-      "max_body_bytes": {
-         "@id": "maxBodyBytes"
-      },
-      "max_restore_bytes": {
-         "@id": "maxRestoreBytes"
       },
       "member_iris": {
          "@type": "@id",
          "@container": "@set",
          "@id": "memberIri"
       },
-      "meta_template": {
-         "@id": "metaTemplate"
-      },
       "modified": {
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
-      },
-      "object_id": {
-         "@type": "@id",
-         "@id": "objectId"
       },
       "offset": {
          "@id": "offset"
@@ -305,9 +232,6 @@
          "@type": "@id",
          "@id": "ownedBy"
       },
-      "part_template": {
-         "@id": "partTemplate"
-      },
       "target": {
          "@type": "@id",
          "@id": "ODRL:target"
@@ -316,15 +240,9 @@
          "@type": "@id",
          "@id": "planSort"
       },
-      "prefix": {
-         "@id": "prefix"
-      },
       "principal": {
          "@type": "@id",
          "@id": "principal"
-      },
-      "principal_template": {
-         "@id": "principalTemplate"
       },
       "detail": {
          "@id": "problemDetail"
@@ -340,20 +258,13 @@
          "@id": "problemStatus"
       },
       "title": {
-         "@id": "title"
+         "@id": "problemTitle"
       },
       "type": "@type",
       "prohibitions": {
          "@type": "@id",
          "@container": "@set",
          "@id": "prohibition"
-      },
-      "provenance_template": {
-         "@id": "provenanceTemplate"
-      },
-      "public_url": {
-         "@type": "@id",
-         "@id": "publicUrl"
       },
       "referrer": {
          "@type": "@id",
@@ -370,9 +281,6 @@
          "@container": "@set",
          "@id": "referrers"
       },
-      "registry_template": {
-         "@id": "registryTemplate"
-      },
       "removed_blobs": {
          "@id": "removedBlobs"
       },
@@ -382,9 +290,6 @@
       "role": {
          "@id": "role"
       },
-      "roles_claim": {
-         "@id": "rolesClaim"
-      },
       "root": {
          "@type": "@id",
          "@id": "root"
@@ -393,26 +298,12 @@
          "@type": "@id",
          "@id": "rootClass"
       },
-      "schema_id": {
-         "@type": "@id",
-         "@id": "schemaId"
-      },
-      "schema_version": {
-         "@id": "dumpSchemaVersion"
-      },
       "skipped_blobs": {
          "@container": "@set",
          "@id": "skippedBlob"
       },
       "sort": {
          "@id": "sort"
-      },
-      "source_tenant": {
-         "@type": "@id",
-         "@id": "sourceTenant"
-      },
-      "source_tenant_id": {
-         "@id": "sourceTenantId"
       },
       "started_at": {
          "@type": "xsd:dateTime",
@@ -426,36 +317,12 @@
             "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
          }
       },
-      "steps": {
-         "@type": "@id",
-         "@container": "@set",
-         "@id": "migrationSteps"
-      },
       "tenant": {
          "@type": "@id",
          "@id": "tenant"
       },
-      "tenant_id": {
-         "@type": "@id",
-         "@id": "tenantId"
-      },
-      "tenant_segment": {
-         "@id": "tenantSegment"
-      },
-      "tenant_template": {
-         "@id": "tenantTemplate"
-      },
-      "to_version": {
-         "@id": "toVersion"
-      },
-      "toolkit_version": {
-         "@id": "toolkitVersion"
-      },
       "total": {
          "@id": "total"
-      },
-      "unresolved": {
-         "@id": "unresolved"
       },
       "url_segment": {
          "@id": "urlSegment"
@@ -465,9 +332,6 @@
       },
       "version": {
          "@id": "version"
-      },
-      "where_pattern": {
-         "@id": "wherePattern"
       },
       "@version": 1.1,
       "AccountSummary": {
@@ -512,12 +376,6 @@
       "GrantSet": {
          "@id": "GrantSet"
       },
-      "IdSpec": {
-         "@id": "IdSpec"
-      },
-      "IriPolicy": {
-         "@id": "IriPolicy"
-      },
       "KeyDuplicate": {
          "@id": "KeyDuplicate"
       },
@@ -532,12 +390,6 @@
       },
       "MemberList": {
          "@id": "MemberList"
-      },
-      "Migration": {
-         "@id": "Migration"
-      },
-      "MigrationStep": {
-         "@id": "MigrationStep"
       },
       "Page": {
          "@id": "Page"
@@ -575,23 +427,14 @@
       "Rule": {
          "@id": "ODRL:Rule"
       },
-      "ServiceSettings": {
-         "@id": "ServiceSettings"
-      },
       "TenantAccess": {
          "@id": "TenantAccess"
       },
       "TenantCreate": {
          "@id": "TenantCreate"
       },
-      "TenantDump": {
-         "@id": "TenantDump"
-      },
       "TenantLabelled": {
          "@id": "TenantLabelled"
-      },
-      "TenantSummary": {
-         "@id": "TenantSummary"
       },
       "TenantSweepReport": {
          "@id": "TenantSweepReport"

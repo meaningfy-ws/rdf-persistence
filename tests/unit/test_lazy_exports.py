@@ -13,6 +13,8 @@ HEAVY = (
     "rdf_persistence.adapters",
     "rdf_persistence.services",
     "rdf_persistence.persistence.adapters",
+    "rdf_persistence.access",
+    "rdf_persistence.tenancy",
     "rdf_persistence.migrations.services.migrations",
     "rdf_persistence.persistence.services.session",
 )

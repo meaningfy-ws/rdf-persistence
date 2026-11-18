@@ -16,6 +16,11 @@ from typing import cast
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
+from rdf_persistence.access.services.access import AccessRules
+from rdf_persistence.access.services.generated.rp_access_services import (
+    CallerAccess,
+    VerifiedCaller,
+)
 from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     CommitTooLarge,
@@ -38,12 +43,7 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.generated.service.rp_service import (
-    CallerAccess,
-    MemberList,
-    VerifiedCaller,
-)
+from rdf_persistence.services.generated.service.rp_service import MemberList
 
 COLLECTION_MIXIN = "ReferenceCollection"
 

@@ -322,7 +322,7 @@ check-all: check-quality test ## Full suite: quality + unit and feature tests (c
 #-----------------------------------------------------------------------------
 .PHONY: coverage-report quality-report mutation
 
-mutation: ## Mutate the domain layer, iris/services/iris.py and services/tenant_move.py (domain, iris and tenant-move tests) and print the killed, survived and untested counts (selection in setup.cfg; slow)
+mutation: ## Mutate the domain layer, iris/services/iris.py and tenancy/services/tenant_move.py (domain, iris and tenant-move tests) and print the killed, survived and untested counts (selection in setup.cfg; slow)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mutmut (see setup.cfg for the selection)$(END_BUILD_PRINT)"
 	@ uv run mutmut run
 	@ uv run mutmut results

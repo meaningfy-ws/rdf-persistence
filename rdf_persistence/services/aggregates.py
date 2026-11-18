@@ -18,7 +18,7 @@ from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.session import Stored
 from rdf_persistence.schema.services.schema_structure import iri_type_of
 from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.tenancy.services.tenancy import Tenancy
 
 
 class Aggregates:

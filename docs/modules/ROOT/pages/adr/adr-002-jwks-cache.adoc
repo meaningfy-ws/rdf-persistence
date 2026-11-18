@@ -33,7 +33,7 @@ Where the two differ:
 |===
 
 * The clock leeway was the one gap in our cache; it is a parameter now (xref:adr/adr-004-signing-algorithms.adoc[ADR-004]).
-* The cache values are constants in `adapters/jwks.py`. `technical-models` moves them, with the
+* The cache values are constants in `access/adapters/jwks.py`. `technical-models` moves them, with the
   algorithm list and the leeway, into generated settings.
 * The path to a post-quantum signature is to follow the identity provider, not to change the
   cache (xref:adr/adr-004-signing-algorithms.adoc[ADR-004]).

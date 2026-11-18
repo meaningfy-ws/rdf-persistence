@@ -51,9 +51,9 @@ def test_the_service_models_generate_outside_the_domain():  # TC-08
         "no service subpackage is left under domain.generated"
     )
     service = import_module(f"{SERVICE_SCHEMA_PACKAGE}.rp_service")
-    wire = import_module("rdf_persistence.adapters.generated.rp_wire")
-    assert hasattr(service, "ServiceSettings"), "services.generated.service defines ServiceSettings"
-    assert hasattr(wire, "JwtClaims"), "adapters.generated.rp_wire defines JwtClaims"
+    wire = import_module("rdf_persistence.access.adapters.generated.rp_access_adapters")
+    assert hasattr(service, "Problem"), "services.generated.service defines Problem"
+    assert hasattr(wire, "JwtClaims"), "access.adapters.generated defines JwtClaims"
 
 
 # --- the import contracts, run on a scratch copy of the layout (TC-09, TC-10, TC-53) ---------------

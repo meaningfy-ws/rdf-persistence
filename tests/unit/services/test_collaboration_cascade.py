@@ -7,6 +7,7 @@ wrapping one operation of the store: ``before`` runs it once, just before the fi
 import pytest
 
 from rdf_persistence import Action, StoredDataInvalid, generated_models
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import (
     CommitTooLarge,
     Conflict,
@@ -22,7 +23,6 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
