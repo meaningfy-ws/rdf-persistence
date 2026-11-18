@@ -270,6 +270,8 @@ docs/node_modules/
 # Local agent overrides
 settings.local.json
 .claude/worktrees/
+# Worktrees of an epic session: the lead's checkout and its builders (epic-delivery)
+.worktrees/
 
 # Agent/dev temporary files
 temp/
