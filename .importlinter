@@ -7,8 +7,10 @@
 ;   entrypoints | adapters  >  services  >  domain
 ; Ports live in `services`; their implementations in `adapters`. `entrypoints`
 ; and `adapters` are independent siblings: neither imports the other, so the
-; consumer's composition root wires adapters in. `generation` and `testkit` sit
-; outside the contract. Parenthesised layers are optional until they exist.
+; consumer's composition root wires adapters in. `testkit` sits outside the
+; contract, and `rdf_persistence_generation` is a separate root package the
+; library never imports (library-never-imports-the-generator). Parenthesised
+; layers are optional until they exist.
 
 [importlinter]
 root_packages =
@@ -74,13 +76,15 @@ name = what runs without the generate extra imports no linkml (only linkml_runti
 ; the lazy import in cli.py, which is ignored here so every other chain is checked.
 type = forbidden
 source_modules =
-    rdf_persistence.testkit
     rdf_persistence_generation.cli
     rdf_persistence_generation.config
     rdf_persistence_generation.manifest
     rdf_persistence_generation.pipeline
     rdf_persistence_generation.exceptions
+    rdf_persistence_generation.problems
     rdf_persistence_generation.generated
+    rdf_persistence_generation.testkit
+    rdf_persistence.testkit
     rdf_persistence.services.schema
     rdf_persistence.services.schema_structure
 forbidden_modules =
@@ -88,13 +92,14 @@ forbidden_modules =
 ignore_imports =
     rdf_persistence_generation.cli -> rdf_persistence_generation.steps
 
-; The testkit reaches the generator only through its freshness plugin and conformance suite, for
-; configuration and records (generator-package DEC-3). Stage 2 of generator-package replaces this contract.
-[importlinter:contract:testkit-imports-the-generator-only-for-configuration]
-name = the testkit imports the generator only for configuration
+; The library never imports the generator (generator-package PD-8, DEC-3). The only edges are the four
+; shims that keep the old `rdf_persistence.testkit.*` import paths alive, each re-exporting its
+; generator-side module.
+[importlinter:contract:library-never-imports-the-generator]
+name = the library never imports the generator, but through the four testkit shims
 type = forbidden
 source_modules =
-    rdf_persistence.testkit
+    rdf_persistence
 forbidden_modules =
     rdf_persistence_generation
 ignore_imports =
