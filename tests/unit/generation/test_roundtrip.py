@@ -11,9 +11,9 @@ from hypothesis import strategies as st
 from linkml_runtime.linkml_model.meta import ClassDefinition
 from rdflib import Graph
 
-from rdf_persistence.testkit.conformance import Conformance
-from rdf_persistence.testkit.roundtrip import round_trip
-from rdf_persistence.testkit.strategies import IRI_BASE, aggregate
+from rdf_persistence_generation.testkit.conformance import Conformance
+from rdf_persistence_generation.testkit.roundtrip import round_trip
+from rdf_persistence_generation.testkit.strategies import IRI_BASE, aggregate
 
 ROOT = Path(__file__).parents[3]
 TOY_SCHEMA = ROOT / "tests" / "fixtures" / "library" / "library.yaml"
@@ -68,7 +68,7 @@ def test_a_round_trip_that_loses_a_value_is_caught(monkeypatch: pytest.MonkeyPat
 
 
 def test_the_strategies_name_hypothesis_when_it_is_missing() -> None:
-    code = "import sys; sys.modules['hypothesis'] = None\nimport rdf_persistence.testkit.strategies"
+    code = "import sys; sys.modules['hypothesis'] = None\nimport rdf_persistence_generation.testkit.strategies"
     run = subprocess.run(
         [sys.executable, "-I", "-c", code], capture_output=True, text=True, check=False
     )
@@ -78,7 +78,7 @@ def test_the_strategies_name_hypothesis_when_it_is_missing() -> None:
 @pytest.mark.slow
 def test_the_testkit_and_the_round_trip_do_not_import_hypothesis() -> None:
     code = (
-        "import sys, rdf_persistence.testkit, rdf_persistence.testkit.roundtrip\n"
+        "import sys, rdf_persistence_generation.testkit, rdf_persistence_generation.testkit.roundtrip\n"
         "sys.exit('hypothesis' in sys.modules)"
     )
     assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (

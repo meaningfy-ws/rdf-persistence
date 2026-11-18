@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.testkit import freshness
 from rdf_persistence_generation.cli import main
+from rdf_persistence_generation.testkit import freshness
 from tests.unit.generation.test_freshness import DEFAULT_HINT, NAMED
 from tests.unit.generation.test_generate_cli import PYPROJECT, SCHEMA
 
-CONFTEST = 'pytest_plugins = ["rdf_persistence.testkit.freshness"]\n'
+CONFTEST = 'pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]\n'
 TEST = "def test_it():\n    assert True\n"
 INI = "[pytest]\nrp_generate_projects =\n    pyproject.toml\n    other/pyproject.toml\n"
 
@@ -187,7 +187,7 @@ COUNTING_CONFTEST = (
     + """
 from pathlib import Path
 
-from rdf_persistence.testkit import freshness
+from rdf_persistence_generation.testkit import freshness
 
 _checked = freshness._project_report
 

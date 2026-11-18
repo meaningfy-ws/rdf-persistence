@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+import warnings
 
 import pytest
 
@@ -38,11 +39,15 @@ def test_a_lazy_name_loads_nothing_until_it_is_touched(name: str) -> None:
 
 def test_conformance_problems_is_the_run_function_of_the_conformance_module() -> None:
     import rdf_persistence.testkit as testkit
-    from rdf_persistence.testkit import conformance
+    from rdf_persistence_generation.testkit import conformance
 
-    assert testkit.conformance_problems is conformance.run, "the public name is the run function"
+    with warnings.catch_warnings():  # the shim warns once per process; its warning is TC-15's
+        warnings.simplefilter("ignore", DeprecationWarning)
+        name = testkit.conformance_problems
+    assert name is conformance.run, "the public name is the moved run function, through the shim"
 
 
+@pytest.mark.filterwarnings("ignore:.*moved to rdf_persistence_generation:DeprecationWarning")
 def test_a_lazy_name_is_kept_after_the_first_touch() -> None:
     import rdf_persistence.testkit as testkit
 

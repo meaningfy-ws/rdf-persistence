@@ -8,6 +8,7 @@ one.
 import importlib
 import inspect
 import pkgutil
+import warnings
 
 import pytest
 
@@ -56,7 +57,10 @@ def modules():
     for info in pkgutil.walk_packages(rdf_persistence.__path__, "rdf_persistence."):
         if ".generated" in info.name:
             continue
-        yield importlib.import_module(info.name)
+        with warnings.catch_warnings():  # the testkit shims warn on import (generator-package PD-3)
+            warnings.simplefilter("ignore", DeprecationWarning)
+            module = importlib.import_module(info.name)
+        yield module
 
 
 def test_no_constructor_or_function_of_the_package_has_a_removed_keyword() -> None:

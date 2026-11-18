@@ -70,7 +70,7 @@ HAND_WRITTEN = (
     # a dataclass subclass of gen-shacl's ShaclGenerator
     "rdf_persistence_generation/extensions/shacl.py:RpShaclGenerator",
     # holds a SchemaView, the generated classes and an rdflib Graph of the shapes
-    "rdf_persistence/testkit/conformance.py:Conformance",
+    "rdf_persistence_generation/testkit/conformance.py:Conformance",
 )
 
 
@@ -94,9 +94,10 @@ def test_every_hand_written_type_in_the_allow_list_still_exists_and_is_flagged_w
     """An entry that names nothing is dead weight; drop it when the type is generated or gone."""
     flagged = ""
     for package, layers in (("rdf_persistence", LIBRARY_LAYERS), (REPO / GENERATOR, ("",))):
-        with pytest.raises(AssertionError) as err:
+        try:  # the library has no entry left since Conformance moved: nothing may be flagged there
             assert_models_generated(package, roots=[], layers=layers)
-        flagged += str(err.value)
+        except AssertionError as err:
+            flagged += str(err)
     for entry in HAND_WRITTEN:
         path, name = entry.split(":")
         assert f"{path}:" in flagged, f"{entry} is allowed but the guard does not flag it"

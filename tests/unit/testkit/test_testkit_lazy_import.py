@@ -50,6 +50,7 @@ def test_the_token_and_provisioning_names_load_on_first_use(name: str) -> None:
     )
 
 
+@pytest.mark.filterwarnings("ignore:.*moved to rdf_persistence_generation:DeprecationWarning")
 def test_assert_isomorphic_is_a_public_testkit_name() -> None:
     import rdf_persistence.testkit as testkit
 
@@ -64,6 +65,7 @@ def test_an_unknown_testkit_name_is_an_attribute_error() -> None:
         testkit.no_such_helper  # noqa: B018
 
 
+@pytest.mark.filterwarnings("ignore:.*moved to rdf_persistence_generation:DeprecationWarning")
 def test_every_name_of_all_resolves() -> None:
     import rdf_persistence.testkit as testkit
 

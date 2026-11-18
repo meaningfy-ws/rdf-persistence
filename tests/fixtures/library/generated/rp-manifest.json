@@ -218,6 +218,26 @@
       "sha256": "43a7c52d6981949ca8f5d302f60d28edcc7cdb92703f03093c7e895cd7a9510f"
     },
     {
+      "path": "rdf_persistence_generation/testkit/__init__.py",
+      "sha256": "60e17bf94a46e78929fc9275cf988dbf47a8ca6248a1fb8b79babd5284738628"
+    },
+    {
+      "path": "rdf_persistence_generation/testkit/conformance.py",
+      "sha256": "abd81e9afa38314670e9f22ec80b794a0e1a0751a31fd8c545e0cb05f0363b13"
+    },
+    {
+      "path": "rdf_persistence_generation/testkit/freshness.py",
+      "sha256": "17ee1dfa79c510601ed2a8e53d7bf12bad866bdf271dc0816da30bc538bbfbba"
+    },
+    {
+      "path": "rdf_persistence_generation/testkit/roundtrip.py",
+      "sha256": "faacf54ee0f87aa53ab590e4c1ffca3a961d72f9ffd46831133ae1702dc293c1"
+    },
+    {
+      "path": "rdf_persistence_generation/testkit/strategies.py",
+      "sha256": "441fc1d759c37aff9aaf2af6492c394540b19f8dc7b99dfad61393ac3438ebee"
+    },
+    {
       "path": "scans.yaml",
       "sha256": "04ff04ce52931ba4580f2dac6d40a132cd7ebac08ce6a2fc565965ace0fa4f3b"
     },

@@ -121,7 +121,7 @@ def test_the_line_text_is_unchanged() -> None:
 
 def test_load_cases_resolves_paths_and_leaves_absent_lists_empty(tmp_path: Path) -> None:
     """Tries a row with no valid/invalid, one with an absolute path, and a refused extra key."""
-    from rdf_persistence.testkit.conformance import load_cases
+    from rdf_persistence_generation.testkit.conformance import load_cases
 
     cases = tmp_path / "cases.yaml"
     cases.write_text(
@@ -151,7 +151,7 @@ def test_load_cases_resolves_paths_and_leaves_absent_lists_empty(tmp_path: Path)
 
 def test_load_cases_of_an_empty_file_is_empty(tmp_path: Path) -> None:
     """Tries an empty YAML file."""
-    from rdf_persistence.testkit.conformance import load_cases
+    from rdf_persistence_generation.testkit.conformance import load_cases
 
     empty = tmp_path / "cases.yaml"
     empty.write_text("")

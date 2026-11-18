@@ -98,14 +98,10 @@ source_modules =
 forbidden_modules =
     rdf_persistence_generation
 ignore_imports =
-    rdf_persistence.testkit.freshness -> rdf_persistence_generation.config
-    rdf_persistence.testkit.freshness -> rdf_persistence_generation.exceptions
-    rdf_persistence.testkit.freshness -> rdf_persistence_generation.generated.rp_generation
-    rdf_persistence.testkit.freshness -> rdf_persistence_generation.manifest
-    rdf_persistence.testkit.freshness -> rdf_persistence_generation.problems
-    rdf_persistence.testkit.conformance -> rdf_persistence_generation.config
-    rdf_persistence.testkit.conformance -> rdf_persistence_generation.exceptions
-    rdf_persistence.testkit.conformance -> rdf_persistence_generation.generated.rp_generation
+    rdf_persistence.testkit.freshness -> rdf_persistence_generation.testkit.freshness
+    rdf_persistence.testkit.conformance -> rdf_persistence_generation.testkit.conformance
+    rdf_persistence.testkit.roundtrip -> rdf_persistence_generation.testkit.roundtrip
+    rdf_persistence.testkit.strategies -> rdf_persistence_generation.testkit.strategies
 
 [importlinter:contract:collaboration-layers]
 name = the collaboration modules layer above the session: messagebus > collaboration > transitions | write_guards > discussion | reference_collections | workflows > access > session (PD-28, PD-32)
