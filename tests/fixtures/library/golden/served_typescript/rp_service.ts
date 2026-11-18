@@ -104,6 +104,106 @@ export interface IriPolicy {
   object_id?: IdSpec;
 }
 
+/** One page of a listing, with the position of the page in the whole listing. */
+export interface Page {
+  /** The objects of the page; framed aggregates, or tenant summaries. */
+  items: unknown[];
+  /** The number of objects in the whole listing. */
+  total: number;
+  /** The most objects the page can hold. */
+  limit: number;
+  /** The position of the page's first object in the whole listing. */
+  offset: number;
+}
+
+/** One equality filter of a listing, the name of a slot of the listed type and the value it must have, as the text the caller sent. */
+export interface Filter {
+  /** The name of the slot the filter is on. */
+  slot: string;
+  /** The value the slot must have, as text. */
+  value: string;
+}
+
+/** The query of a listing, as the caller sent it: the equality filters, the position and size of the page and the key to sort by. */
+export interface ListRequest {
+  /** The most objects the page can hold. */
+  limit?: number;
+  /** The position of the page's first object in the whole listing. */
+  offset?: number;
+  /** The slot a listing is ordered by, ascending, or descending when its name starts with a minus sign; absent, the listing is ordered by IRI. */
+  sort?: string;
+  /** The equality filters of a listing; all of them must hold. */
+  filters?: Filter[];
+}
+
+/** An equality filter of a listing resolved against the slots of the listed type: the aggregate has this statement. The value is an IRI when it is a reference, else a literal of the datatype. */
+export interface Condition {
+  /** The IRI of the predicate the aggregate must have a statement with. */
+  predicate: string;
+  /** The value of the statement, an IRI or the lexical form of a literal. */
+  value: string;
+  /** The IRI of the datatype of a literal value; absent for a plain string. */
+  datatype?: string;
+  /** Whether the value is an IRI rather than a literal. */
+  reference?: boolean;
+}
+
+/** A listing resolved against the slots of the listed type: the class, the typed conditions, the predicate to order by (none orders by IRI), the page, and the graphs of the aggregates the caller may not read. */
+export interface ListPlan {
+  /** The IRI of the class of the aggregates listed. */
+  target: string;
+  /** The equality conditions of a listing; all of them must hold. */
+  conditions?: Condition[];
+  /** The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI. */
+  sort_by?: string;
+  /** Whether the order is reversed. */
+  descending?: boolean;
+  /** The most objects the page can hold. */
+  limit: number;
+  /** The position of the page's first object in the whole listing. */
+  offset: number;
+  /** The IRIs of the graphs of the aggregates a listing leaves out. */
+  hidden_graphs?: string[];
+}
+
+/** The IRI, the types and the version token of one stored aggregate, without its content. */
+export interface AggregateHead {
+  /** The IRI of the stored aggregate. */
+  head_iri?: string;
+  /** The class IRIs the stored aggregate is typed with. */
+  head_types?: string[];
+  /** The version token of the stored aggregate's graph. */
+  head_version?: string;
+}
+
+/** One step of a migration: three group graph patterns, as text, that the toolkit wraps into one update request over the graphs of a database. A step with `unresolved` is a draft and does not load. */
+export interface MigrationStep {
+  /** A short name for what a record describes. */
+  title: string;
+  /** The group graph pattern, as text, that selects what a migration step changes. */
+  where_pattern?: string;
+  /** The group graph pattern, as text, of the triples a migration step removes. */
+  delete_pattern?: string;
+  /** The group graph pattern, as text, of the triples a migration step adds. */
+  insert_pattern?: string;
+  /** Text saying what a draft step still needs from the developer; a step that has it does not load. */
+  unresolved?: string;
+}
+
+/** The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order. */
+export interface Migration {
+  /** The id of the schema whose data the migration moves. */
+  schema_id: string;
+  /** The version of the schema that the data follows before the migration. */
+  from_version: string;
+  /** The version of the schema that the data follows after the migration. */
+  to_version: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The steps of a migration, in the order they run. */
+  steps?: MigrationStep[];
+}
+
 /** The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can check that the dump was made under the same schema and policy. */
 export interface TenantDump {
   /** The version of the dump archive layout; a restore refuses a version it does not know. */
@@ -192,68 +292,6 @@ export interface Authorised {
   global_roles?: string[];
 }
 
-/** One page of a listing, with the position of the page in the whole listing. */
-export interface Page {
-  /** The objects of the page; framed aggregates, or tenant summaries. */
-  items: unknown[];
-  /** The number of objects in the whole listing. */
-  total: number;
-  /** The most objects the page can hold. */
-  limit: number;
-  /** The position of the page's first object in the whole listing. */
-  offset: number;
-}
-
-/** One equality filter of a listing, the name of a slot of the listed type and the value it must have, as the text the caller sent. */
-export interface Filter {
-  /** The name of the slot the filter is on. */
-  slot: string;
-  /** The value the slot must have, as text. */
-  value: string;
-}
-
-/** The query of a listing, as the caller sent it: the equality filters, the position and size of the page and the key to sort by. */
-export interface ListRequest {
-  /** The most objects the page can hold. */
-  limit?: number;
-  /** The position of the page's first object in the whole listing. */
-  offset?: number;
-  /** The slot a listing is ordered by, ascending, or descending when its name starts with a minus sign; absent, the listing is ordered by IRI. */
-  sort?: string;
-  /** The equality filters of a listing; all of them must hold. */
-  filters?: Filter[];
-}
-
-/** An equality filter of a listing resolved against the slots of the listed type: the aggregate has this statement. The value is an IRI when it is a reference, else a literal of the datatype. */
-export interface Condition {
-  /** The IRI of the predicate the aggregate must have a statement with. */
-  predicate: string;
-  /** The value of the statement, an IRI or the lexical form of a literal. */
-  value: string;
-  /** The IRI of the datatype of a literal value; absent for a plain string. */
-  datatype?: string;
-  /** Whether the value is an IRI rather than a literal. */
-  reference?: boolean;
-}
-
-/** A listing resolved against the slots of the listed type: the class, the typed conditions, the predicate to order by (none orders by IRI), the page, and the graphs of the aggregates the caller may not read. */
-export interface ListPlan {
-  /** The IRI of the class of the aggregates listed. */
-  target: string;
-  /** The equality conditions of a listing; all of them must hold. */
-  conditions?: Condition[];
-  /** The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI. */
-  sort_by?: string;
-  /** Whether the order is reversed. */
-  descending?: boolean;
-  /** The most objects the page can hold. */
-  limit: number;
-  /** The position of the page's first object in the whole listing. */
-  offset: number;
-  /** The IRIs of the graphs of the aggregates a listing leaves out. */
-  hidden_graphs?: string[];
-}
-
 /** An RFC 9457 problem detail, the body of every error answer of the service. */
 export interface Problem {
   /** The IRI that identifies the kind of problem. */
@@ -316,44 +354,6 @@ export interface MemberList {
   member_iris?: string[];
   /** The number of referrers or members the caller may not read, so are not listed. */
   hidden_count: number;
-}
-
-/** The IRI, the types and the version token of one stored aggregate, without its content. */
-export interface AggregateHead {
-  /** The IRI of the stored aggregate. */
-  head_iri?: string;
-  /** The class IRIs the stored aggregate is typed with. */
-  head_types?: string[];
-  /** The version token of the stored aggregate's graph. */
-  head_version?: string;
-}
-
-/** One step of a migration: three group graph patterns, as text, that the toolkit wraps into one update request over the graphs of a database. A step with `unresolved` is a draft and does not load. */
-export interface MigrationStep {
-  /** A short name for what a record describes. */
-  title: string;
-  /** The group graph pattern, as text, that selects what a migration step changes. */
-  where_pattern?: string;
-  /** The group graph pattern, as text, of the triples a migration step removes. */
-  delete_pattern?: string;
-  /** The group graph pattern, as text, of the triples a migration step adds. */
-  insert_pattern?: string;
-  /** Text saying what a draft step still needs from the developer; a step that has it does not load. */
-  unresolved?: string;
-}
-
-/** The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order. */
-export interface Migration {
-  /** The id of the schema whose data the migration moves. */
-  schema_id: string;
-  /** The version of the schema that the data follows before the migration. */
-  from_version: string;
-  /** The version of the schema that the data follows after the migration. */
-  to_version: string;
-  /** A free-text description of the object. */
-  description?: string;
-  /** The steps of a migration, in the order they run. */
-  steps?: MigrationStep[];
 }
 
 /** What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it. */
