@@ -45,7 +45,9 @@ GENERATOR_COV_FLAGS = --cov=$(GENERATOR_NAME) \
 BASE ?= develop
 
 # The unit lane never collects the container tests, so it runs without testcontainers (PD-16).
-UNIT_LANE = --ignore=$(TEST_PATH)/integration --ignore=$(TEST_PATH)/e2e --ignore=$(TEST_PATH)/perf
+# The generator's e2e conftest registers the container plugin whenever a session collects it (D-27).
+GENERATOR_E2E = --ignore=$(TEST_PATH)/generator/e2e
+UNIT_LANE = --ignore=$(TEST_PATH)/integration --ignore=$(TEST_PATH)/e2e --ignore=$(TEST_PATH)/perf $(GENERATOR_E2E)
 # The library's lanes leave the generator's pyramid to `make test-generator`.
 LIBRARY_LANE = $(UNIT_LANE) --ignore=$(TEST_PATH)/generator
 
@@ -242,7 +244,7 @@ test-feature: ## Run the library's BDD feature tests in parallel, with a 50 % co
 
 test-generator: ## Run the generator's own tests (tests/generator, unit, feature and integration) in parallel, with the 80 % floor over rdf_persistence_generation (CI job "test-generator")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the generator tests$(END_BUILD_PRINT)"
-	@ COVERAGE_FILE=.coverage.generator uv run pytest $(TEST_PATH)/generator $(PARALLEL) -m "(unit or feature or integration) $(NOT_QUARANTINE)" $(GENERATOR_COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results-generator.xml
+	@ COVERAGE_FILE=.coverage.generator uv run pytest $(TEST_PATH)/generator $(GENERATOR_E2E) $(PARALLEL) -m "(unit or feature or integration) $(NOT_QUARANTINE)" $(GENERATOR_COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results-generator.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generator tests passed$(END_BUILD_PRINT)"
 
 test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not part of check-all

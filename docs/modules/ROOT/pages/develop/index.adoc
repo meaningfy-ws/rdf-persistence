@@ -132,7 +132,7 @@ It never patches the generated output.
   `assert_matches_golden` only for a schema that is not the toy.
 . Run `make generate`, review the change to the toy's generated tree, and run `make check-all`.
 
-Changing a module under `rdf_persistence_generation/` or a template changes the manifests' inputs, so
+Changing a module under `rdf_persistence_generation/` (but not its `generated/` or `testkit/` folders) or a template changes the manifests' inputs, so
 `make check-freshness` reports every target stale until you run `make generate`.
 
 Extensions subclass LinkML internals, which can change in a minor release. That is why `linkml`

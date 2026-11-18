@@ -168,8 +168,15 @@ def test_a_missing_node_is_a_failure_that_says_to_install_it(tmp_path: Path) -> 
         run_tsc([], path=str(tmp_path))
 
 
-def test_the_tier_loads_no_container_plugin(pytestconfig: pytest.Config) -> None:
-    """No container starts in this tier, so no conftest of it may register the fixtures plugin (D-20 S3)."""
+def test_the_tier_loads_no_container_plugin(request: pytest.FixtureRequest) -> None:
+    """No container starts in this lane, so the session has not registered the fixtures plugin (D-20 S3, D-27).
+
+    The generator's e2e conftest registers it whenever a session collects ``tests/generator``;
+    the lanes that run this tier ignore ``tests/generator/e2e`` so that it never does.
+    """
+    assert not request.config.pluginmanager.has_plugin(
+        "rdf_persistence.testkit.containers.fixtures"
+    ), "the session registered the container fixtures plugin: a lane collected tests/generator/e2e"
     sources = [*INTEGRATION.rglob("conftest.py"), INTEGRATION.parent / "conftest.py"]
     named = [
         str(path)
@@ -181,8 +188,3 @@ def test_the_tier_loads_no_container_plugin(pytestconfig: pytest.Config) -> None
         )
     ]
     assert named == [], f"these conftests load the container plugin: {named}"
-    plugins = pytestconfig.pluginmanager.get_plugins()
-    inside = [p for p in plugins if str(getattr(p, "__file__", "")).startswith(str(INTEGRATION))]
-    assert all("containers" not in getattr(p, "__name__", "") for p in inside), (
-        "a plugin of this tier is a container plugin"
-    )

@@ -691,7 +691,7 @@ output, sorted by path, with paths relative to the `pyproject.toml`.
 [cols="1,4",options="header"]
 |===
 |Recorded |Files
-|Inputs |the schema's import closure (metamodel files as `rdf_persistence/<path>`, so the manifest does not depend on where the package is installed), the template directories, every module under `rdf_persistence_generation/` except `generated/`, and every `rdf_persistence/services/schema*.py` module (they decide how a schema is read)
+|Inputs |the schema's import closure (metamodel files as `rdf_persistence/<path>`, so the manifest does not depend on where the package is installed), the template directories, every module under `rdf_persistence_generation/` except `generated/` and `testkit/` (the testkit never shapes the output), and every `rdf_persistence/services/schema*.py` module (they decide how a schema is read)
 |Outputs |every file the run wrote, in every target folder, except the manifest. A run deletes only the files its previous manifest lists, never a whole folder.
 |===
 
@@ -710,7 +710,7 @@ identifier; every staged file must stay inside the staging folder.
 |Where |What runs
 |`make check-quality` (before every PR, and in CI) |the full `--check`
 |every pytest session |the manifest comparison, by the plugin `rdf_persistence_generation.testkit.freshness` in `pytest_sessionstart`; it stops the run on anything stale or edited. A consumer enables it with `pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]` (the old path, `rdf_persistence.testkit.freshness`, is a shim that warns); the ini option `rp_generate_projects` lists the `pyproject.toml` files to read (default: the rootdir's).
-|pre-commit hook `rp-generate-check` |the check, on commits touching the model, the generation package, the toy library or a `generated/` folder
+|pre-commit hook `rp-generate-check` |the check, on commits touching a model, any module of the generation package except its `testkit/` and `generated/` folders (they are no inputs), the toy library or a `generated/` folder (a hand edit of generated code)
 |`make check-generated` (CI) |a regeneration from scratch and a diff, which catches a generator that is not deterministic
 |===
 

@@ -446,6 +446,44 @@ def test_the_library_never_imports_the_generator_but_through_the_four_shims():
     assert set(ignored) == SHIM_EDGES, "the ignored edges are not exactly the four testkit shims"
 
 
+WITHOUT_GENERATE_EXTRA_SOURCES = {
+    f"{GENERATOR_PACKAGE}.{m}"
+    for m in (
+        "cli",
+        "config",
+        "manifest",
+        "pipeline",
+        "exceptions",
+        "problems",
+        "generated",
+        "testkit",
+    )
+} | {
+    "rdf_persistence.testkit",
+    "rdf_persistence.services.schema",
+    "rdf_persistence.services.schema_structure",
+}
+
+
+def test_what_runs_without_the_generate_extra_is_exactly_the_list_of_pd_8():
+    """generator-package PD-8, D-27: a module added to or dropped from the list is a decision."""
+    contract = _contract("works-without-the-generate-extra")
+    sources = _lines(contract, "source_modules")
+    assert len(sources) == len(set(sources)), "a source module is listed twice"
+    assert set(sources) == WITHOUT_GENERATE_EXTRA_SOURCES
+    assert _lines(contract, "forbidden_modules") == ["linkml"]
+    assert _lines(contract, "ignore_imports") == [
+        f"{GENERATOR_PACKAGE}.cli -> {GENERATOR_PACKAGE}.steps"
+    ]
+
+
+def test_the_runtime_layers_do_not_import_the_generator():
+    """generator-package PD-8, D-27: ``runtime-without-extras`` forbids the generator's package."""
+    forbidden = _lines(_contract("runtime-without-extras"), "forbidden_modules")
+    assert GENERATOR_PACKAGE in forbidden, "runtime-without-extras no longer forbids the generator"
+    assert "rdf_persistence.generation" not in forbidden, "the old generation package is gone"
+
+
 @pytest.mark.parametrize(
     "name", ["event-bus-libraries-in-one-module", "sparql-parser-only-through-the-wrappers"]
 )
