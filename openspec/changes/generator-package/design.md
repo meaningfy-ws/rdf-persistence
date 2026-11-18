@@ -538,3 +538,8 @@ package name are leader's choices (DEC-2, DEC-5).
   (the library's `schema*.py` readers are inputs it does not match, as before the move). Under the
   floor: S2 (a cleanup test asserts `sys.path` only), S3 (a direct `tests/generator/e2e` path given
   to `test-changed` loads its conftest, as `tests/e2e` does), S4 (docs-owed has no status column).
+- **D-30 The docs stage is folded into stage 4's PR** (lead, under the developer's "work in
+  parallel" and "do not stop"). The owed pages were written while stage 4 was built, from the
+  same base, and land in PR 4 instead of a separate docs PR; the full review's L2 pass and the
+  stage 4 checker verified every row of `evidence/docs-owed.md` against the code, and a cold
+  reader read the changed how-to (`howto/adopt.adoc`). The archive follows as its own PR.
