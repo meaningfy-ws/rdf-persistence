@@ -23,7 +23,7 @@ Agents follow the same workflow with a fixed team of roles; see
 Every model artefact (classes, enums, shapes, JSON-LD context and frames, TypeScript types, API and
 JSON schemas, diagrams) is generated from the LinkML schemas. To change one, change the schema and
 run `make generate`; never edit a file under a `generated/` folder. Where a stock generator falls
-short, extend it in `rdf_persistence/generation/`, with its own test. Data goes through the
+short, extend it in `rdf_persistence_generation/`, with its own test. Data goes through the
 generated models, not bare dicts. See
 [Working on the toolkit](docs/modules/ROOT/pages/develop/index.adoc).
 

@@ -2,7 +2,9 @@
 # No-src layout: measure the top-level package directly.
 [run]
 branch = True
-source = rdf_persistence
+source =
+    rdf_persistence
+    rdf_persistence_generation
 # The adapters are under the floor: their unit tests use fakes of the remote side. Only the two
 # modules that need a real container (PD-16) stay outside it; `make test-containers` covers them.
 omit =

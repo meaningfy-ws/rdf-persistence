@@ -33,8 +33,6 @@ from rdf_persistence.domain.generated.rp_core import Principal
 from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
 from rdf_persistence.domain.layout import skolem_iri
 from rdf_persistence.domain.sparql import fill, term
-from rdf_persistence.generation.checks.hard import hard_problems
-from rdf_persistence.generation.problems import format_problem
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
@@ -47,6 +45,8 @@ from rdf_persistence.services.session import Session
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from rdf_persistence_generation.checks.hard import hard_problems
+from rdf_persistence_generation.problems import format_problem
 from tests.fixtures.library.generated.books import Book
 from tests.toy import (
     ADA,

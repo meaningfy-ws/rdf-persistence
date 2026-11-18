@@ -199,9 +199,13 @@ def is_toolkit_written(cls: ClassDefinition) -> bool:
     return annotation(cls, RpAnnotation.RP_WRITES) == WritesKind.TOOLKIT.value
 
 
-def is_toolkit_schema(folder: Path) -> bool:
-    """True for the toolkit's own schemas, which PD-23 exempts from the class-level rules."""
-    return folder.resolve().is_relative_to(PACKAGE_DIR)
+def is_toolkit_schema(folder: Path, *, roots: tuple[Path, ...] = (PACKAGE_DIR,)) -> bool:
+    """True for the toolkit's own schemas, which PD-23 exempts from the class-level rules.
+
+    ``roots`` are the folders that count as the toolkit's; the library knows only its own. The
+    generator passes its folder too, so the library never names it (PD-5).
+    """
+    return any(folder.resolve().is_relative_to(root) for root in roots)
 
 
 def own_schemas(view: SchemaView, folder: Path) -> list[SchemaDefinition]:
@@ -372,12 +376,15 @@ def _set_required(cls: ClassDefinition, slot: str, required: bool) -> None:
     cls.slot_usage[slot] = usage
 
 
-def apply_defaults(view: SchemaView, folder: Path) -> None:
+def apply_defaults(
+    view: SchemaView, folder: Path, *, roots: tuple[Path, ...] = (PACKAGE_DIR,)
+) -> None:
     """Make an unlabelled class's label optional (PD-11); a root's description stays optional (PD-1).
 
-    Only the application's classes change; the toolkit's own schemas are left as they are (PD-23).
+    Only the application's classes change; the toolkit's own schemas, those under ``roots``, are
+    left as they are (PD-23).
     """
-    if is_toolkit_schema(folder):
+    if is_toolkit_schema(folder, roots=roots):
         return
     classes = own_classes(own_schemas(view, folder))
     for cls in classes:
@@ -386,10 +393,10 @@ def apply_defaults(view: SchemaView, folder: Path) -> None:
     view.set_modified()
 
 
-def generation_view(path: str | Path) -> SchemaView:
+def generation_view(path: str | Path, *, roots: tuple[Path, ...] = (PACKAGE_DIR,)) -> SchemaView:
     """The schema at ``path`` as the generators see it: loaded, with the defaults of PD-11 applied."""
     view = load_schema(path)
-    apply_defaults(view, Path(path).parent)
+    apply_defaults(view, Path(path).parent, roots=roots)
     return view
 
 

@@ -9,7 +9,7 @@ from types import ModuleType
 
 import pytest
 
-from rdf_persistence.generation.cli import main as generate
+from rdf_persistence_generation.cli import main as generate
 from tests.integration.api.conftest import make_book, make_tenant
 from tests.toy import TOY_SCHEMA
 from tests.toy_service import (

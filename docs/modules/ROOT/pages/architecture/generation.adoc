@@ -200,8 +200,8 @@ Instance mixins:
 === The hard check: IRIs, labels and definitions
 
 `linkml-lint` cannot load extra rules, so the check is `linkml-lint` with the rule sets of
-`rdf_persistence/generation/lint.yaml` raised to errors (`recommended`, `standard_naming`,
-`canonical_prefixes`) plus `rdf_persistence/generation/checks/hard.py` over `SchemaView`. Its rules
+`rdf_persistence_generation/lint.yaml` raised to errors (`recommended`, `standard_naming`,
+`canonical_prefixes`) plus `rdf_persistence_generation/checks/hard.py` over `SchemaView`. Its rules
 are the generated enum `HardRule`. It fails generation when:
 
 . an element has no IRI: no `default_prefix` declared in `prefixes`, and no explicit `class_uri` or
@@ -246,7 +246,7 @@ import rule belongs to the boundary check (<<toolchain>>, step 2).
 [#extensions]
 === Generated artefacts, extensions and where they go
 
-Each gap in a stock LinkML generator is closed by an extension in `rdf_persistence/generation/`: a
+Each gap in a stock LinkML generator is closed by an extension in `rdf_persistence_generation/`: a
 subclass or a template, never a patch to generated output. Each extension has a row here and a
 golden test; a test fails if an extension module has neither. For the toy schema the golden is the
 committed generated tree itself (a test renders afresh and compares: Turtle by meaning, everything
@@ -257,15 +257,15 @@ not the toy keeps a golden folder, rewritten by `make refresh-golden`. Each exte
 [cols="3,2,2,4,2,1",options="header"]
 |===
 |Module |Artefact |Generator |Extension needed |Placed in (default) |Effort
-|`rdf_persistence/generation/extensions/pydantic_split.py` |Python classes |`gen-pydantic`, split mode |templates (`rdf_persistence/generation/templates/pydantic/`): the metamodel's classes imported from the toolkit, never regenerated; enum members named after the value keys; an `internal` slot marked `rp_internal` for the API layer (still dumped, since the mapper persists it); a `secret` slot kept out of the repr; a slot annotated `default_instance` (`GenerationAnnotation`, on a slot whose range is a class) declared `Field(default_factory=<Range>)`, so the group is never absent (see <<hard-check>>); a type annotated `python_import: <module>` with a `repr` class, whose fields import that class (<<python-import>>); the `ifabsent` of a multivalued slot, written `string(a, b, ...)`, as the default list `[a, b, ...]` (the stock generator writes the one string `"a, b"`); a slot with an identifier `alias` annotated `field_name: slot` (`GenerationAnnotation`) named after the slot, keeping the alias as the pydantic alias (any other aliased field keeps the stock name) |the backend package, `<pkg>/domain/generated/` |S
-|`rdf_persistence/generation/extensions/pydantic_validators.py` |Model validators for declared rules |`gen-pydantic`, template |the stock generator enforces neither `exactly_one_of` nor `unique_keys`: `exactly_one_of` and `any_of` become a model validator on the declaring class; `unique_keys` becomes a model validator on every class with a multivalued slot whose range declares them, refusing two items with equal key values (an absent value counts, and two absent values are equal); a key annotated `rp_unique_scope: tenant` (across aggregates) gets no validator: the session enforces it at commit |with the Python classes |M
-|`rdf_persistence/generation/extensions/typescript.py` |TypeScript types |`gen-typescript` |a subclass with our own template (the stock one is fixed and has no split mode): one file per module and an index, plus the toolkit's own `rp_service.ts` (the classes of `rp_service.yaml`, among them the API's wire types `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page` and `Problem`) when the schema is not `rp_service.yaml` itself, whose module and type names a schema may not reuse; an inlined class is its interface; `linkml:Any` is `unknown`; enums as string-literal unions, dates as ISO strings, owned parts nested and any other class an IRI string, `internal` slots left out |the frontend package, `src/domain/generated/` |M
-|`rdf_persistence/generation/extensions/shacl.py` |SHACL shapes |`gen-shacl` |a subclass: the `bookkeeping` predicates added to the ignored list of closed shapes; a shape per class, named by its own IRI (classes may share a `class_uri`); a reference to another aggregate checked as an IRI only, so a graph validates on its own; an `internal` slot optional; a `pattern` matched against the whole value, as the classes do |the backend package |S
-|`rdf_persistence/generation/extensions/shacl_constraints.py` |Shape constraints for declared rules |`gen-shacl` |the stock generator translates neither rule: `exactly_one_of` becomes `sh:xone`, `any_of` becomes `sh:or`, `unique_keys` becomes a SPARQL constraint on the owning class (absent values treated as in the validators); a key annotated `rp_unique_scope: tenant` gets no shape, since one graph cannot see another |with the shapes |M
-|`rdf_persistence/generation/extensions/jsonld_context.py` |JSON-LD context and frames |`gen-jsonld-context` |`id`/`type` aliases, `internal` slots left out, integers and booleans kept as native JSON, a `uri` read as an IRI and an enum as its meaning IRI (as the shapes expect), one frame per aggregate type, and one for `Activity` and each of its descendants in the target's closure (an activity is read from the store without being a root) |the backend package; copied to the frontend when needed |S
-|`rdf_persistence/generation/extensions/mermaid.py` |Diagrams, one per module |`gen-mermaid-class-diagram` (D-8) |a template marking aggregate roots and owned parts, and keeping each diagram small (one module, its links to other modules shown as names only) |the docs, next to the model pages |S
-|`rdf_persistence/generation/components.py` |OpenAPI component schemas |`gen-json-schema` |not under `extensions/`, since it adds no subclass or template: it trims the stock output to what the API shows (bookkeeping and `internal` slots dropped, the identifier read-only, since the service assigns it), adds an optional `type` property to every class schema unless the class has a slot of that name (#148), and points its references into `#/components/schemas` (PD-24). It runs at generation time because the generators are an extra (PD-2): the running service only reads the file |`openapi-components.json`, beside the context |S
-|`rdf_persistence/generation/checks/` |Boundary, hard and rules checks |`linkml-lint` + `rp-generate` |not a generator extension: three checks over `SchemaView` (`boundary.py`, `hard.py`, `rules.py`) |— |S
+|`rdf_persistence_generation/extensions/pydantic_split.py` |Python classes |`gen-pydantic`, split mode |templates (`rdf_persistence_generation/templates/pydantic/`): the metamodel's classes imported from the toolkit, never regenerated; enum members named after the value keys; an `internal` slot marked `rp_internal` for the API layer (still dumped, since the mapper persists it); a `secret` slot kept out of the repr; a slot annotated `default_instance` (`GenerationAnnotation`, on a slot whose range is a class) declared `Field(default_factory=<Range>)`, so the group is never absent (see <<hard-check>>); a type annotated `python_import: <module>` with a `repr` class, whose fields import that class (<<python-import>>); the `ifabsent` of a multivalued slot, written `string(a, b, ...)`, as the default list `[a, b, ...]` (the stock generator writes the one string `"a, b"`); a slot with an identifier `alias` annotated `field_name: slot` (`GenerationAnnotation`) named after the slot, keeping the alias as the pydantic alias (any other aliased field keeps the stock name) |the backend package, `<pkg>/domain/generated/` |S
+|`rdf_persistence_generation/extensions/pydantic_validators.py` |Model validators for declared rules |`gen-pydantic`, template |the stock generator enforces neither `exactly_one_of` nor `unique_keys`: `exactly_one_of` and `any_of` become a model validator on the declaring class; `unique_keys` becomes a model validator on every class with a multivalued slot whose range declares them, refusing two items with equal key values (an absent value counts, and two absent values are equal); a key annotated `rp_unique_scope: tenant` (across aggregates) gets no validator: the session enforces it at commit |with the Python classes |M
+|`rdf_persistence_generation/extensions/typescript.py` |TypeScript types |`gen-typescript` |a subclass with our own template (the stock one is fixed and has no split mode): one file per module and an index, plus the toolkit's own `rp_service.ts` (the classes of `rp_service.yaml`, among them the API's wire types `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page` and `Problem`) when the schema is not `rp_service.yaml` itself, whose module and type names a schema may not reuse; an inlined class is its interface; `linkml:Any` is `unknown`; enums as string-literal unions, dates as ISO strings, owned parts nested and any other class an IRI string, `internal` slots left out |the frontend package, `src/domain/generated/` |M
+|`rdf_persistence_generation/extensions/shacl.py` |SHACL shapes |`gen-shacl` |a subclass: the `bookkeeping` predicates added to the ignored list of closed shapes; a shape per class, named by its own IRI (classes may share a `class_uri`); a reference to another aggregate checked as an IRI only, so a graph validates on its own; an `internal` slot optional; a `pattern` matched against the whole value, as the classes do |the backend package |S
+|`rdf_persistence_generation/extensions/shacl_constraints.py` |Shape constraints for declared rules |`gen-shacl` |the stock generator translates neither rule: `exactly_one_of` becomes `sh:xone`, `any_of` becomes `sh:or`, `unique_keys` becomes a SPARQL constraint on the owning class (absent values treated as in the validators); a key annotated `rp_unique_scope: tenant` gets no shape, since one graph cannot see another |with the shapes |M
+|`rdf_persistence_generation/extensions/jsonld_context.py` |JSON-LD context and frames |`gen-jsonld-context` |`id`/`type` aliases, `internal` slots left out, integers and booleans kept as native JSON, a `uri` read as an IRI and an enum as its meaning IRI (as the shapes expect), one frame per aggregate type, and one for `Activity` and each of its descendants in the target's closure (an activity is read from the store without being a root) |the backend package; copied to the frontend when needed |S
+|`rdf_persistence_generation/extensions/mermaid.py` |Diagrams, one per module |`gen-mermaid-class-diagram` (D-8) |a template marking aggregate roots and owned parts, and keeping each diagram small (one module, its links to other modules shown as names only) |the docs, next to the model pages |S
+|`rdf_persistence_generation/components.py` |OpenAPI component schemas |`gen-json-schema` |not under `extensions/`, since it adds no subclass or template: it trims the stock output to what the API shows (bookkeeping and `internal` slots dropped, the identifier read-only, since the service assigns it), adds an optional `type` property to every class schema unless the class has a slot of that name (#148), and points its references into `#/components/schemas` (PD-24). It runs at generation time because the generators are an extra (PD-2): the running service only reads the file |`openapi-components.json`, beside the context |S
+|`rdf_persistence_generation/checks/` |Boundary, hard and rules checks |`linkml-lint` + `rp-generate` |not a generator extension: three checks over `SchemaView` (`boundary.py`, `hard.py`, `rules.py`) |— |S
 |===
 
 *Rules the generated code would silently ignore fail instead* (`checks/rules.py`). On a class only
@@ -314,10 +314,10 @@ import-linter contract (`domain-never-imports-technical-models`) check it three 
 
 The testkit group is separate from `rp_generation.yaml` so that the testkit's records do not come from
 the generator's models: the runtime layers import neither (contract `runtime-without-extras`), and the
-testkit's own modules read `testkit.generated`. Two testkit modules, `testkit/freshness.py` and
-`testkit/conformance.py`, still import the generator's models, until `generator-package` F-1 removes
-that. `rp_generation.yaml`
-(`rdf_persistence/generation/model/`, into `rdf_persistence/generation/generated/`) is the generator's
+testkit's own modules read `testkit.generated`. The two testkit modules that need the generator's
+logic, `freshness.py` and `conformance.py`, now live in the generator's package
+(<<generator-package>>). `rp_generation.yaml`
+(`rdf_persistence_generation/model/`, into `rdf_persistence_generation/generated/`) is the generator's
 own technical target, and holds what the toolchain uses: `GenerationTarget`, `GenerationManifest`,
 `GeneratedFile`, `CheckProblem`, `CliFlag`, the rule, frame, TypeScript and Mermaid view-models, and the
 conformance suite's `ConstraintCase` and `ConstraintKind`.
@@ -484,6 +484,48 @@ imports:
 An application may narrow `Grant.role` to an enum of its own roles by subclassing (`is_a` with
 `slot_usage`); the toy library keeps plain strings, matched against its role definitions.
 
+[#generator-package]
+== The generator's package
+
+_Where does the generator live, and what does the library know about it?_
+
+The generator is its own top-level package, `rdf_persistence_generation`, beside `rdf_persistence`.
+Both ship in the one `rdf-persistence` wheel (`module-name` lists the two), and each has a
+`py.typed`. The library is the runtime; the generator is build-time and test-time code that needs
+the `generate` extra. `rp-generate` is `rdf_persistence_generation.cli:main`. The package holds the
+CLI, the steps, the checks, the extensions and templates, the lint config, the generator's own
+model (`model/rp_generation.yaml`, into `generated/`) and its own testkit.
+
+*The generator's testkit.* `rdf_persistence_generation/testkit/` holds `freshness.py` (the pytest
+plugin), `conformance.py`, `roundtrip.py` and `strategies.py`. Its `__init__` loads `Conformance`,
+`conformance_problems`, `round_trip` and `aggregate` on first use, so `pyshacl` and `hypothesis` are
+imported only when needed. The plugin path is `rdf_persistence_generation.testkit.freshness`.
+
+*The shims.* The same four modules remain in `rdf_persistence/testkit/` as shims. A shim warns once
+with a `DeprecationWarning` that names the new module, then re-exports its public names, so
+`pytest_plugins = ["rdf_persistence.testkit.freshness"]` and the old imports keep working. They load
+only when used: `import rdf_persistence.testkit` does not warn. Each shim's docstring names the
+release that removes it, the minor release after the one that ships the move.
+
+*Toolkit schemas.* The library's `is_toolkit_schema`, `apply_defaults` and `generation_view` take a
+`roots` argument, the folders that count as the toolkit's. It defaults to the library's own folder.
+The generator passes `TOOLKIT_ROOTS` (its own folder and the library's) at every call site, so the
+library never has to name the generator. Manifests record a library file as
+`rdf_persistence/...` and a generator file as `rdf_persistence_generation/...`.
+
+*Contracts.* Three import-linter contracts keep the two packages apart (`make check-architecture`):
+
+* `library-never-imports-the-generator`: `rdf_persistence` does not import
+  `rdf_persistence_generation`. The only exceptions are the four shims, listed in the contract's
+  `ignore_imports`.
+* `runtime-without-extras`: the runtime layers import neither the testkit, nor
+  `rdf_persistence_generation`, nor `pytest`, `testcontainers` or `linkml`.
+* `works-without-the-generate-extra`: the modules that must run without the `generate` extra
+  (`cli`, `config`, `manifest`, `pipeline`, `exceptions`, `problems`, `generated` and `testkit` of
+  the generator, `rdf_persistence.testkit`, `rdf_persistence.services.schema` and
+  `schema_structure`) do not import `linkml` (only `linkml_runtime`). The one `cli` to `steps` edge
+  is excepted: it loads the steps only when it generates.
+
 [#toolchain]
 == The toolchain
 
@@ -512,7 +554,7 @@ rp-generate --check            # write nothing; exit 1 if anything is stale or e
 `rp-generate` is a thin Python wrapper around LinkML's generator API, not a shell script, because
 split generation (importing the metamodel's classes from the toolkit instead of regenerating them) is
 available only through the Python API. It is always installed; without the `generate` extra it exits
-2 and says so. Its steps are listed in order in `rdf_persistence/generation/steps.py`.
+2 and says so. Its steps are listed in order in `rdf_persistence_generation/steps.py`.
 
 [mermaid]
 ....
@@ -531,13 +573,13 @@ flowchart TB
 [cols="1,4,3",options="header"]
 |===
 |Step |What it does |Fails when
-|1 Lint |`linkml-lint` with `rdf_persistence/generation/lint.yaml` (<<hard-check>>), on the schema and each of its own modules; the metamodel is opened through the toolkit's import map |the schema has lint errors
+|1 Lint |`linkml-lint` with `rdf_persistence_generation/lint.yaml` (<<hard-check>>), on the schema and each of its own modules; the metamodel is opened through the toolkit's import map |the schema has lint errors
 |2 Checks |Over LinkML's `SchemaView`. *Boundary* (`BoundaryRule`): roots are the classes whose induced ancestors include `AggregateRoot`; every other non-mixin class, except those of a `module_kind: technical` module and those that descend from `Activity`, is reachable only through `owned` slots of classes that are not technical (a request shape is never stored, so what it owns is not either) (it may be owned by several root classes, e.g. a reusable value class); a non-owned slot whose range is a class must point to a root or to a reference class (`Principal`, `Activity`). *Hard*: <<hard-check>>. *Rules*: <<extensions>> |a class is owned by nothing, or reached through a non-owned slot without being a root; a module annotated `module_kind: domain` imports one annotated `technical` or `access`; an entry's `kind` and its modules' `module_kind` disagree (rule `TARGET_KIND`, <<target-kind>>); a slot of a class that is not an activity ranges over an application activity class that is not a root (rule `ACTIVITY_DIRECTION`: the stored model never refers to a use case); a hard-check rule fails; a schema uses a rule the generated code would ignore
 |2b Lock check |Loads the migration files of the `migrations` folder, reads the committed `schema.lock.json` and compares it with the schema as it is now. A change that needs a new `version:`, a step or neither is told from one that no step can do. Writes nothing, so `--check` runs it; skipped when the entry sets no `migrations` |a migration file does not load; the lock cannot be read or is another schema's; a change needs a new `version:` and the schema has none; a root changes its IRI type, path or database, or a part changes its graph; the version is one the chain already left
 |3 Domain classes |`gen-pydantic` in split mode with the toolkit's template directory: `base_model.py.jinja` makes every class inherit the toolkit's strict base `RpModel` (no extra fields, validation on assignment); metadata off; metamodel classes imported from the top-level `rdf_persistence` in an application's run; model validators for `exactly_one_of`, `any_of` and `unique_keys` |generation fails
 |4 Shapes |`gen-shacl` through `RpShaclGenerator`. Shapes are closed (`sh:closed true`), and the version token sits on the graph IRI, not the root, so the domain triples validate on their own |generation fails
 |5 JSON-LD context |`gen-jsonld-context`, with `id` and `type` aliased to `@id` and `@type`, and one frame per aggregate type and per activity class (`<Class>.frame.jsonld`, with `@omitDefault`); served by the service kit (O-2). Known gaps (no `@language` containers, inlined collections keyed by `@index`) need template fixes before a schema uses those features |generation fails
-|5b OpenAPI components |`gen-json-schema`, trimmed by `rdf_persistence/generation/components.py` (<<extensions>>), into `openapi-components.json` (skipped when the entry sets `openapi = false`); the service's OpenAPI document (xref:architecture/api.adoc#serving[API]) reads it |generation fails
+|5b OpenAPI components |`gen-json-schema`, trimmed by `rdf_persistence_generation/components.py` (<<extensions>>), into `openapi-components.json` (skipped when the entry sets `openapi = false`); the service's OpenAPI document (xref:architecture/api.adoc#serving[API]) reads it |generation fails
 |6 TypeScript types |`gen-typescript` with the toolkit's template: interfaces only, one file per module and an `index.ts`, into the client package the application names |generation fails
 |7 Diagrams |`gen-mermaid-class-diagram`, one `.mmd` file per schema module, each showing one module's classes and their links to other modules |generation fails
 |8 Lock |Writes `schema.lock.json` into the `migrations` folder, as an output of the manifest. When the `version` differs from the lock's and no file for that step exists, it drafts the migration beside the lock: created once, never overwritten, never an output of the manifest. Last, so a run that failed earlier drafts nothing. How to review a draft and what to do with it: xref:howto/migrate.adoc[Change a schema that has stored data] |the folder cannot be written
@@ -638,7 +680,7 @@ output, sorted by path, with paths relative to the `pyproject.toml`.
 [cols="1,4",options="header"]
 |===
 |Recorded |Files
-|Inputs |the schema's import closure (metamodel files as `rdf_persistence/<path>`, so the manifest does not depend on where the package is installed), the template directories, every module under `rdf_persistence/generation/` except `generated/`, and every `rdf_persistence/services/schema*.py` module (they decide how a schema is read)
+|Inputs |the schema's import closure (metamodel files as `rdf_persistence/<path>`, so the manifest does not depend on where the package is installed), the template directories, every module under `rdf_persistence_generation/` except `generated/`, and every `rdf_persistence/services/schema*.py` module (they decide how a schema is read)
 |Outputs |every file the run wrote, in every target folder, except the manifest. A run deletes only the files its previous manifest lists, never a whole folder.
 |===
 
@@ -656,7 +698,7 @@ identifier; every staged file must stay inside the staging folder.
 |===
 |Where |What runs
 |`make check-quality` (before every PR, and in CI) |the full `--check`
-|every pytest session |the manifest comparison, by the plugin `rdf_persistence.testkit.freshness` in `pytest_sessionstart`; it stops the run on anything stale or edited. A consumer enables it with `pytest_plugins = ["rdf_persistence.testkit.freshness"]`; the ini option `rp_generate_projects` lists the `pyproject.toml` files to read (default: the rootdir's).
+|every pytest session |the manifest comparison, by the plugin `rdf_persistence_generation.testkit.freshness` in `pytest_sessionstart`; it stops the run on anything stale or edited. A consumer enables it with `pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]` (the old path, `rdf_persistence.testkit.freshness`, is a shim that warns); the ini option `rp_generate_projects` lists the `pyproject.toml` files to read (default: the rootdir's).
 |pre-commit hook `rp-generate-check` |the check, on commits touching the model, the generation package, the toy library or a `generated/` folder
 |`make check-generated` (CI) |a regeneration from scratch and a diff, which catches a generator that is not deterministic
 |===
@@ -676,10 +718,10 @@ first.
   are `required`, `cardinality`, `range_type`, `range_enum`, `pattern`, `value_bounds`, `identifier`,
   `closed`, `exactly_one_of`, `any_of` and `unique_keys`; the test fails, naming the kind, when a
   schema uses a kind with no row. A consumer runs it on its own schema with
-  `conformance_problems(schema, cases)` (from `rdf_persistence.testkit`), which returns the
+  `conformance_problems(schema, cases)` (from `rdf_persistence_generation.testkit`), which returns the
   problems found, empty when all pass.
 . *Round trips*: an instance drawn by Hypothesis from the schema (the strategy is `aggregate` in
-  `rdf_persistence.testkit`) goes to JSON, is expanded with the generated context to RDF,
+  `rdf_persistence_generation.testkit`) goes to JSON, is expanded with the generated context to RDF,
   then framed and compacted back; the objects compare equal on their public projection (internal
   slots never cross the context) and the RDF graphs are isomorphic. Run on the toy library's
   aggregates and the metamodel's `TenantAccess`.
@@ -707,8 +749,8 @@ Both guards are `testkit.assert_models_generated(package, *, roots, allow=(), ex
   `RpModel`, `enum.Enum`, `enum.StrEnum`, `enum.IntEnum`, `typing.TypedDict` or `typing.NamedTuple`,
   or decorated with `dataclasses.dataclass`. Import aliases are resolved. The only default exception
   is `RpModel` in `rdf_persistence/domain/base.py`; an application passes its own with `allow=`, as
-  `"<path>:<ClassName>"`. This repository also scans `generation` and `testkit`, with the
-  foreign-object types of <<extensions>> in its allow-list (`tests/unit/generation/test_model_guard.py`);
+  `"<path>:<ClassName>"`. This repository also scans `rdf_persistence_generation` and `testkit`, with the
+  foreign-object types of <<extensions>> in its allow-list (`tests/unit/testkit/test_model_guard.py`);
   a subclass of a LinkML generator is not flagged, so it needs no entry.
 * *File guard*: fails on `*.shacl.ttl`, `*shapes*.ttl`, `context.jsonld`, `*.context.jsonld`, `*.frame.jsonld`,
   `*.schema.json`, `openapi*.json`, `openapi*.yaml` and `*.ts` (except `*.test.ts` and `*.spec.ts`)

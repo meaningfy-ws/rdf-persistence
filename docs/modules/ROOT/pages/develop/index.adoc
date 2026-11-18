@@ -28,11 +28,12 @@ types are allowed only where a field holds a run-time object LinkML cannot expre
 |`rdf_persistence/services/generated/`, `adapters/generated/`, `testkit/generated/` |The generated technical models, each in the lowest layer whose code may import them: `service/`, `settings/`, `templates/` and `telemetry/` in `services/generated/`, the wire shapes in `adapters/generated/`, the testkit's records in `testkit/generated/` (xref:architecture/generation.adoc#kinds[Two kinds of model])
 |`rdf_persistence/domain/base.py` |`RpModel`, the strict base class of every generated class
 |`rdf_persistence/services/schema.py`, `schema_structure.py` |`load_schema` (with the metamodel import map) and the rules that read a schema's aggregate structure, used by every other part
-|`rdf_persistence/generation/` |`rp-generate`: `cli.py`, `config.py` (the `[tool.rp-generate]` table), `steps.py` (the steps, in order), `pipeline.py` (staging and running them), `manifest.py` (freshness), `lint.yaml`
-|`rdf_persistence/generation/checks/` |The boundary, hard and rules checks
-|`rdf_persistence/generation/extensions/`, `templates/` |One module per extended LinkML generator, and their Jinja templates
-|`rdf_persistence/generation/model/rp_generation.yaml` |The toolchain's own records (the testkit's are in `rp_testkit.yaml`), generated into `generation/generated/`
-|`rdf_persistence/testkit/` |Helpers shipped to applications: the freshness plugin, the guards, conformance, round-trip strategies, the model-shape snapshot, and the container fixtures under `containers/`
+|`rdf_persistence_generation/` |`rp-generate`: `cli.py`, `config.py` (the `[tool.rp-generate]` table), `steps.py` (the steps, in order), `pipeline.py` (staging and running them), `manifest.py` (freshness), `lint.yaml`
+|`rdf_persistence_generation/checks/` |The boundary, hard and rules checks
+|`rdf_persistence_generation/extensions/`, `templates/` |One module per extended LinkML generator, and their Jinja templates
+|`rdf_persistence_generation/model/rp_generation.yaml` |The toolchain's own records (the testkit's are in `rp_testkit.yaml`), generated into `rdf_persistence_generation/generated/`
+|`rdf_persistence_generation/testkit/` |The generator's testkit: the freshness plugin, the conformance suite, round-trip strategies
+|`rdf_persistence/testkit/` |Helpers shipped to applications: the guards, the model-shape snapshot, the fakes, and the container fixtures under `containers/`; four shims forward the old freshness, conformance, round-trip and strategies paths to the generator's testkit
 |`tests/fixtures/library/` |The toy library schema, its `pyproject.toml` and its committed generated tree: the golden of every extension
 |===
 
@@ -91,7 +92,7 @@ This applies to the metamodel, the technical schemas under `model/technical/` an
 To add a record, declare it in the schema of the layer that uses it, regenerate, and import it from
 the generated package (xref:architecture/generation.adoc#kinds[Two kinds of model]): a record of the
 toolchain (a view-model, a problem) in `rp_generation.yaml`
-(`rdf_persistence.generation.generated`), a record the testkit's own modules use in
+(`rdf_persistence_generation.generated`), a record the testkit's own modules use in
 `model/technical/testkit/rp_testkit.yaml` (`rdf_persistence.testkit.generated`), a deployment value in
 `rp_settings.yaml` (xref:howto/settings.adoc[Configure the toolkit's deployment values]), a request
 or response body in `rp_service.yaml`. Use enums for value sets, never free strings.
@@ -106,7 +107,7 @@ Only two kinds of type are written by hand:
 
 The model guard fails on any other `BaseModel`, `RpModel`, enum, `TypedDict`, `NamedTuple` or
 dataclass outside a `generated` folder. Add a type of the first kind to `HAND_WRITTEN` in
-`tests/unit/generation/test_model_guard.py`, as `"<path>:<ClassName>"`, with a one-line comment
+`tests/unit/testkit/test_model_guard.py`, as `"<path>:<ClassName>"`, with a one-line comment
 saying which foreign object it holds. A test fails if an entry no longer exists. A generator
 subclass is not flagged, so it needs no entry.
 
@@ -117,20 +118,20 @@ _How do I add a generator extension?_
 An extension closes a gap in a stock LinkML generator by subclassing it or replacing its template.
 It never patches the generated output.
 
-. Create a module in `rdf_persistence/generation/extensions/`. Its `render(schema_path: Path)`
+. Create a module in `rdf_persistence_generation/extensions/`. Its `render(schema_path: Path)`
   returns a `list[GeneratedFile]`. Open schemas only with `load_schema` (or the metamodel import
   map), and read aggregate structure only through `services/schema_structure.py`.
-. Add its step to `STEPS` in `rdf_persistence/generation/steps.py`, with `render_step(name, render,
+. Add its step to `STEPS` in `rdf_persistence_generation/steps.py`, with `render_step(name, render,
   folder)`; the folder function picks the target folder.
 . Add a row to the extensions table in
   xref:architecture/generation.adoc#extensions[Model to code], with the module path in the first
-  column. `tests/unit/generation/test_extension_register.py` fails without it.
-. Write `tests/unit/generation/test_ext_<module>.py`. Render the step with `run_toy` and compare
+  column. `tests/generator/unit/test_extension_register.py` fails without it.
+. Write `tests/generator/unit/test_ext_<module>.py`. Render the step with `run_toy` and compare
   the result with `assert_matches_toy` (the toy's committed tree is the golden). Use
   `assert_matches_golden` only for a schema that is not the toy.
 . Run `make generate`, review the change to the toy's generated tree, and run `make check-all`.
 
-Changing a module under `generation/` or a template changes the manifests' inputs, so
+Changing a module under `rdf_persistence_generation/` or a template changes the manifests' inputs, so
 `make check-freshness` reports every target stale until you run `make generate`.
 
 Extensions subclass LinkML internals, which can change in a minor release. That is why `linkml`
@@ -143,9 +144,9 @@ _How do I add a check rule?_
 
 . Add the rule's value to `HardRule` or `BoundaryRule` in `rp_generation.yaml`, with a title,
   description and meaning, and run `make generate`.
-. Implement it in `rdf_persistence/generation/checks/hard.py` or `boundary.py`, yielding a
+. Implement it in `rdf_persistence_generation/checks/hard.py` or `boundary.py`, yielding a
   `CheckProblem` through `rule_problem`.
-. Test it in `tests/unit/generation/test_hard_check.py` or `test_boundary_check.py`, with one
+. Test it in `tests/generator/unit/test_hard_check.py` or `test_boundary_check.py`, with one
   schema that breaks the rule and one that does not.
 . If the rule is normative, add it to the list in
   xref:architecture/generation.adoc#hard-check[the hard check].
@@ -179,7 +180,7 @@ comes later.
 |Slow tests included. A file runs in one process; `domain` runs in one process too; other folders run in parallel.
 
 |`make profile-tests` |– |≈ 6 min |2026-11-09, test-lanes stage 1
-|Prints the 15 slowest tests. The slowest are `test_packaging.py::test_a_consumers_type_checker_reads_our_annotations` (62 s under load, ≈ 10 s alone), the `generation/test_freshness.py` subprocess tests (12 to 32 s under load), and the entrypoint set-up (≈ 10 s per test under load; stage 2 of test-lanes shortens it).
+|Prints the 15 slowest tests. The slowest are `test_packaging.py::test_a_consumers_type_checker_reads_our_annotations` (62 s under load, ≈ 10 s alone), the `generator/unit/test_freshness.py` subprocess tests (12 to 32 s under load), and the entrypoint set-up (≈ 10 s per test under load; stage 2 of test-lanes shortens it).
 
 |`tests/unit/entrypoints` |559 (18 skipped) |≈ 2.5 to 3 min before stage 2 of test-lanes (load ≈ 5) |2026-11-09, test-lanes stage 2
 |`uv run pytest tests/unit/entrypoints -n auto -q`. Each test builds a fresh `ToyService`; one build took 1.15 s with its own RSA key and 0.53 s with the per-worker key (`toy_key()`), measured back to back at load ≈ 33. Folder wall times after the change were not comparable: the machine stayed at load 20 to 33 from unrelated work.

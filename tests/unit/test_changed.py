@@ -75,6 +75,22 @@ def test_the_rows_cover_the_twelve_mapping_rules():
     assert rules == set(range(1, 13)), "a mapping rule of the design has no row"
 
 
+@pytest.mark.parametrize(
+    "changed",
+    [
+        "rdf_persistence_generation/manifest.py",
+        "rdf_persistence_generation/extensions/shacl.py",
+        "tests/generator/unit/test_manifest.py",
+    ],
+)
+def test_a_changed_generator_file_selects_the_generator_tests(changed):
+    """TC-26: the generator's code and its tests map to ``tests/generator/``, not to a fallback."""
+    selection = _select([changed])
+
+    assert selection.paths == ("tests/generator/",), f"{changed} must select the generator pyramid"
+    assert not selection.fallback_reasons, f"{changed} must not fall back"
+
+
 def test_the_layers_are_the_layer_folders_of_the_package():
     folders = {p.parent.name for p in (REPO / "rdf_persistence").glob("*/__init__.py")}
 

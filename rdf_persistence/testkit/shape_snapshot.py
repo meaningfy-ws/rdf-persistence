@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 from linkml_runtime.utils.schemaview import SchemaView
 
+from rdf_persistence.services.schema import PACKAGE_DIR
 from rdf_persistence.services.schema_structure import generation_view
 from rdf_persistence.testkit.generated.rp_testkit import ClassShape, SlotShape
 
@@ -13,17 +14,20 @@ _FLAGS = ("required", "multivalued", "range", "alias")
 ANY_URI = "linkml:Any"  # a class for it is typing.Any in code: no class, no shape
 
 
-def class_shapes(schema_paths: Iterable[str | Path]) -> list[ClassShape]:
+def class_shapes(
+    schema_paths: Iterable[str | Path], *, roots: tuple[Path, ...] = (PACKAGE_DIR,)
+) -> list[ClassShape]:
     """The shape of every class (mixins and abstract ones too) in the closure of the schemas.
 
     Mixins are included because the generated code has a class for each of them. A class that
     several closures share is listed once. The shapes are those of the schema after the generation
-    defaults (an unlabelled class's label), as the code has them.
+    defaults (an unlabelled class's label), as the code has them. ``roots`` are the folders whose
+    schemas count as the toolkit's and keep no consumer defaults; the library's own by default.
     Classes and slots are sorted by name.
     """
     found: dict[str, ClassShape] = {}
     for path in schema_paths:
-        view = generation_view(path)
+        view = generation_view(path, roots=roots)
         for name, cls in view.all_classes().items():
             if cls.class_uri != ANY_URI:
                 found.setdefault(name, _shape_of(view, name))

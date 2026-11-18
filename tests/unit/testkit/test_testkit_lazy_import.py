@@ -50,6 +50,18 @@ def test_the_token_and_provisioning_names_load_on_first_use(name: str) -> None:
     )
 
 
+def test_assert_isomorphic_loads_without_a_warning_or_the_generator() -> None:
+    """D-10: the graph comparison lives in the library, so a consumer of it never meets the shim."""
+    code = (
+        "import sys, warnings; warnings.simplefilter('error'); "
+        "from rdf_persistence.testkit import assert_isomorphic; "
+        "sys.exit(any(m.startswith('rdf_persistence_generation') for m in sys.modules))"
+    )
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (
+        "the name loads with no DeprecationWarning and no generator module"
+    )
+
+
 def test_assert_isomorphic_is_a_public_testkit_name() -> None:
     import rdf_persistence.testkit as testkit
 
@@ -64,6 +76,7 @@ def test_an_unknown_testkit_name_is_an_attribute_error() -> None:
         testkit.no_such_helper  # noqa: B018
 
 
+@pytest.mark.filterwarnings("ignore:.*moved to rdf_persistence_generation:DeprecationWarning")
 def test_every_name_of_all_resolves() -> None:
     import rdf_persistence.testkit as testkit
 

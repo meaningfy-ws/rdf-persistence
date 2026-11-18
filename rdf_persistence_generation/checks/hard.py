@@ -1,0 +1,424 @@
+"""The hard check (task 1.6): IRIs, titles, descriptions, meanings, paths, IRI types and mixins of the schema."""
+
+import re
+from collections.abc import Iterator
+from enum import Enum
+from functools import cache
+from pathlib import Path
+
+import yaml
+from linkml_runtime.linkml_model.meta import (
+    ClassDefinition,
+    Element,
+    PermissibleValue,
+    SchemaDefinition,
+    UniqueKey,
+)
+from linkml_runtime.utils.schemaview import SchemaView
+
+from rdf_persistence.domain.generated.rp_core import (
+    DatabaseKind,
+    GraphKind,
+    ModuleKind,
+    RpAnnotation,
+    UniqueScope,
+    WritesKind,
+)
+from rdf_persistence.domain.layout import LAYOUT_WORDS
+from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.services.schema_structure import (
+    AGGREGATE_ROOT,
+    UNDER_WORKFLOW,
+    aggregate_roots,
+    annotation,
+    annotation_text,
+    holds_owned_part,
+    inherits_from_metamodel,
+    iri_type_of,
+    is_bookkeeping,
+    is_scoped,
+    is_tenant_root,
+    is_toolkit_schema,
+    keyed_roots,
+    own_classes,
+    own_schemas,
+    owned_classes,
+    root_classes,
+    workflow_name_of,
+)
+from rdf_persistence_generation.checks.application import application_problems
+from rdf_persistence_generation.checks.boundary import technical_classes
+from rdf_persistence_generation.checks.default_instance import default_instance_problems
+from rdf_persistence_generation.checks.toolkit_filled import toolkit_filled_problems
+from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.generated.rp_generation import (
+    CheckProblem,
+    GenerationAnnotation,
+    HardRule,
+)
+from rdf_persistence_generation.problems import rule_problem
+
+QUOTES = ('"', "'")  # the styles of a quoted YAML scalar
+
+# The metaslot each element rule requires: a rule id is not an attribute name.
+ELEMENT_METASLOTS = ((HardRule.TITLE, "title"), (HardRule.DESCRIPTION, "description"))
+VALUE_METASLOTS = (*ELEMENT_METASLOTS, (HardRule.MEANING, "meaning"))
+DESCRIBED = "Described"
+CORE_MODEL = PACKAGE_DIR / "model" / "rp_core.yaml"
+URL_SEGMENT = "url_segment"  # the slot of rp_core whose pattern every route segment follows
+BOOLEAN = ("true", "false")
+VERSION_KEY = "version"  # the root key of a schema's YAML source that holds its version
+RESERVED_PREFIX = "rp-"  # the segments of the toolkit's own roots, such as rp-comments
+SEGMENT_ANNOTATIONS = (
+    RpAnnotation.RP_PATH,
+    RpAnnotation.RP_IRI_TYPE,
+)  # the ones a segment of a route or IRI
+PATTERNED_ANNOTATIONS = (*SEGMENT_ANNOTATIONS, RpAnnotation.WORKFLOW)
+# Read from the toolkit's own metamodel only (permissible values); `vocabulary.media_types` checks it at import.
+METAMODEL_ANNOTATIONS = (RpAnnotation.MEDIA_TYPE,)
+# Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
+# a pattern instead, checked on its own.
+ALLOWED_ANNOTATIONS = {
+    RpAnnotation.DATABASE: tuple(kind.value for kind in DatabaseKind),
+    RpAnnotation.GRAPH: tuple(kind.value for kind in GraphKind),
+    RpAnnotation.MODULE_KIND: tuple(kind.value for kind in ModuleKind),
+    RpAnnotation.RP_WRITES: tuple(kind.value for kind in WritesKind),
+    RpAnnotation.OWNED: BOOLEAN,
+    RpAnnotation.INTERNAL: BOOLEAN,
+    RpAnnotation.RP_UNLABELLED: BOOLEAN,
+    RpAnnotation.BOOKKEEPING: BOOLEAN,
+    RpAnnotation.TOOLKIT_FILLED: BOOLEAN,
+    RpAnnotation.PAYLOAD: BOOLEAN,
+    RpAnnotation.RP_UNIQUE_SCOPE: tuple(scope.value for scope in UniqueScope),
+}
+# The annotations of the generation metamodel the check reads, and their values (D-52).
+GENERATION_ALLOWED_ANNOTATIONS: dict[Enum, tuple[str, ...]] = {
+    GenerationAnnotation.FIELD_NAME: ("slot",),
+    GenerationAnnotation.DEFAULT_INSTANCE: ("true", "false"),  # a boolean, read case-blind (D-55)
+}
+
+
+def _has_default_prefix(schema: SchemaDefinition) -> bool:
+    return bool(schema.default_prefix) and schema.default_prefix in (schema.prefixes or {})
+
+
+def _element_problems(
+    element: object, name: str, explicit_iri: str | None, schema: SchemaDefinition
+) -> Iterator[CheckProblem]:
+    if not explicit_iri and not _has_default_prefix(schema):
+        yield rule_problem(
+            HardRule.IRI, name, "no IRI: no explicit URI and no default_prefix in prefixes"
+        )
+    for rule, metaslot in ELEMENT_METASLOTS:
+        if not getattr(element, metaslot, None):
+            yield rule_problem(rule, name, f"no {metaslot}")
+
+
+def _unique_key_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
+    """A key name ends up in the names of generated validators, so it must be an identifier."""
+    for key in cls.unique_keys.values():
+        name = str(key.unique_key_name)
+        if not (name.isidentifier() and name.isascii()):
+            yield rule_problem(
+                HardRule.UNIQUE_KEY, cls.name, f"unique key {name!r} is not an identifier"
+            )
+
+
+def _bad_key_slot(view: SchemaView, root: ClassDefinition, slot_name: str) -> str | None:
+    """Why the slot cannot be part of a key across aggregates of ``root``; None when it can."""
+    slot = next((s for s in view.class_induced_slots(root.name) if s.name == slot_name), None)
+    if slot is None:
+        return f"slot {slot_name!r} is not a slot of {root.name}"
+    reasons = (
+        (slot.multivalued, "multivalued"),
+        (slot.identifier, "the identifier, written as the subject"),
+        (is_bookkeeping(slot), "bookkeeping"),
+        (holds_owned_part(view, slot), "an owned part"),
+    )
+    found = next((reason for hit, reason in reasons if hit), None)
+    return None if found is None else f"slot {slot_name!r} is {found}"
+
+
+def _scoped_key_reasons(
+    view: SchemaView, key: UniqueKey, below: list[ClassDefinition]
+) -> Iterator[str]:
+    """Why the scoped ``key`` cannot be enforced across the aggregates of the roots ``below`` its class."""
+    scope, allowed = RpAnnotation.RP_UNIQUE_SCOPE, ALLOWED_ANNOTATIONS[RpAnnotation.RP_UNIQUE_SCOPE]
+    if (value := annotation_text(key, scope)) not in allowed:
+        yield f"{scope.value}: {value!r} is not one of {allowed}"
+    if not below:
+        yield "it is on a class that is neither a tenant-database aggregate root nor an ancestor of one"
+    if key.consider_nulls_inequal is False:
+        yield "consider_nulls_inequal: false contradicts a missing value claiming nothing"
+    for root in below:
+        for slot in key.unique_key_slots:
+            if (reason := _bad_key_slot(view, root, str(slot))) is not None:
+                yield reason
+
+
+def _key_problems(
+    view: SchemaView, cls: ClassDefinition, roots: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    """PD-2: a key across aggregates must enforce something; a root's in-aggregate key would not."""
+    below = [root for root in roots if cls.name in view.class_ancestors(root.name)]
+    for key in cls.unique_keys.values():
+        name = str(key.unique_key_name)
+        if is_scoped(key):
+            reasons = list(_scoped_key_reasons(view, key, below))
+        elif cls in roots:
+            scope = f"{RpAnnotation.RP_UNIQUE_SCOPE.value}: {UniqueScope.TENANT.value}"
+            reasons = [f"on a root it needs {scope}"]
+        else:
+            continue
+        for reason in dict.fromkeys(reasons):
+            yield rule_problem(HardRule.UNIQUE_KEY, cls.name, f"unique key {name!r}: {reason}")
+
+
+def _schema_problems(schema: SchemaDefinition) -> Iterator[CheckProblem]:
+    for cls in schema.classes.values():
+        yield from _element_problems(cls, cls.name, cls.class_uri, schema)
+        for attribute in cls.attributes.values():
+            yield from _element_problems(attribute, attribute.name, attribute.slot_uri, schema)
+        yield from _unique_key_problems(cls)
+    for slot in schema.slots.values():
+        yield from _element_problems(slot, slot.name, slot.slot_uri, schema)
+    for enum in schema.enums.values():
+        yield from _element_problems(enum, enum.name, enum.enum_uri, schema)
+        for value in enum.permissible_values.values():
+            yield from _value_problems(enum.name, value)
+
+
+def _value_problems(enum: str, value: PermissibleValue) -> Iterator[CheckProblem]:
+    name = value.text
+    for rule, metaslot in VALUE_METASLOTS:
+        if not getattr(value, metaslot, None):
+            yield rule_problem(rule, name, f"permissible value of {enum} has no {metaslot}")
+
+
+def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element]:
+    yield schema
+    for cls in schema.classes.values():
+        yield cls
+        yield from cls.attributes.values()
+    yield from schema.slots.values()
+    yield from schema.enums.values()
+
+
+@cache
+def _segment_pattern() -> str:
+    """The pattern an ``rp_path`` or ``rp_iri_type`` value must match: the one of the metamodel's ``url_segment`` slot."""
+    return str(load_schema(CORE_MODEL).get_slot(URL_SEGMENT).pattern)
+
+
+def _lowered(element: object, tag: Enum) -> str | None:
+    """The lower-cased value of the element's annotation ``tag``, of either annotation enum."""
+    text = annotation_text(element, tag)
+    return None if text is None else text.lower()
+
+
+def _annotation_problems(schema: SchemaDefinition, segment_pattern: str) -> Iterator[CheckProblem]:
+    for element in _annotated_elements(schema):
+        name = str(element.name)
+        for tag, allowed in (*ALLOWED_ANNOTATIONS.items(), *GENERATION_ALLOWED_ANNOTATIONS.items()):
+            value = _lowered(element, tag)
+            if value is not None and value not in allowed:
+                yield rule_problem(
+                    HardRule.ANNOTATION, name, f"{tag.value}: {value!r} is not one of {allowed}"
+                )
+        for tag in PATTERNED_ANNOTATIONS:
+            text = annotation_text(element, tag)
+            if text is not None and not re.fullmatch(segment_pattern, text):
+                yield rule_problem(
+                    HardRule.ANNOTATION,
+                    name,
+                    f"{tag.value}: {text!r} does not match {segment_pattern}",
+                )
+
+
+def _inherited_path(view: SchemaView, cls: ClassDefinition) -> bool:
+    ancestry = view.class_ancestors(cls.name, mixins=False)
+    return any(annotation(view.get_class(name), RpAnnotation.RP_PATH) for name in ancestry)
+
+
+def _path_problems(view: SchemaView, roots: list[ClassDefinition]) -> Iterator[CheckProblem]:
+    for root in roots:
+        if not is_tenant_root(root) and not _inherited_path(view, root):
+            yield rule_problem(
+                HardRule.RP_PATH, root.name, "an aggregate root needs the rp_path annotation"
+            )
+
+
+def _described_problems(
+    view: SchemaView, classes: list[ClassDefinition], roots: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    own = {cls.name for cls in classes}
+    owned = owned_classes(view, classes)
+    for cls in roots + [c for c in classes if c.name in owned and c not in roots]:
+        if inherits_from_metamodel(view, cls, own):
+            continue
+        if DESCRIBED not in view.class_ancestors(cls.name):
+            yield rule_problem(
+                HardRule.DESCRIBED, cls.name, "a root or owned class includes Described"
+            )
+
+
+def _iri_type_problems(
+    view: SchemaView, classes: list[ClassDefinition], roots: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    """PD-8: roots and owned classes (the ones the toolkit mints IRIs for) have distinct, unreserved types."""
+    owned = owned_classes(view, classes)
+    minted = [
+        cls
+        for cls in classes
+        if (cls in roots or cls.name in owned) and not cls.mixin and not cls.abstract
+    ]
+    by_type: dict[str, list[str]] = {}
+    for cls in minted:
+        by_type.setdefault(iri_type_of(cls), []).append(cls.name)
+    for iri_type, names in by_type.items():
+        if iri_type in LAYOUT_WORDS:
+            yield rule_problem(
+                HardRule.IRI_TYPE, names[0], f"the type {iri_type!r} is reserved by the IRI layout"
+            )
+        if len(names) > 1:
+            yield rule_problem(
+                HardRule.IRI_TYPE, names[0], f"{', '.join(names)} share the type {iri_type!r}"
+            )
+
+
+def _reserved_segment_problems(cls: ClassDefinition) -> Iterator[CheckProblem]:
+    """PD-11: the toolkit's own roots use the ``rp-`` prefix, so an application's path or type may not."""
+    for tag in SEGMENT_ANNOTATIONS:
+        text = annotation_text(cls, tag)
+        if text is not None and text.startswith(RESERVED_PREFIX):
+            yield rule_problem(
+                HardRule.RESERVED_SEGMENT,
+                cls.name,
+                f"{tag.value}: {text!r} starts with {RESERVED_PREFIX!r}, which the toolkit's own "
+                f"roots use; rename it without that prefix",
+            )
+
+
+def _workflow_problems(
+    view: SchemaView, cls: ClassDefinition, roots: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    """PD-18: the ``workflow`` annotation and the ``UnderWorkflow`` mixin go together on an aggregate root."""
+    tag = RpAnnotation.WORKFLOW.value
+    ancestors = view.class_ancestors(cls.name)
+    if annotation_text(cls, RpAnnotation.WORKFLOW) is not None:
+        yield from _annotated_workflow_problems(cls, ancestors)
+    elif cls in roots and UNDER_WORKFLOW in ancestors and workflow_name_of(view, cls.name) is None:
+        yield rule_problem(
+            HardRule.WORKFLOW,
+            cls.name,
+            f"includes {UNDER_WORKFLOW} with no workflow: add the annotation {tag}: <name>",
+        )
+
+
+def _annotated_workflow_problems(
+    cls: ClassDefinition, ancestors: list[str]
+) -> Iterator[CheckProblem]:
+    """A class that names a workflow is an aggregate root, not the tenant root, with the mixin."""
+    tag = RpAnnotation.WORKFLOW.value
+    if is_tenant_root(cls):
+        yield rule_problem(
+            HardRule.WORKFLOW, cls.name, f"the tenant root has no workflow: remove {tag}"
+        )
+    elif AGGREGATE_ROOT not in ancestors:
+        yield rule_problem(
+            HardRule.WORKFLOW,
+            cls.name,
+            f"a {tag} goes only on an aggregate root (not the tenant root): "
+            f"remove {tag} or include AggregateRoot",
+        )
+    elif UNDER_WORKFLOW not in ancestors:
+        yield rule_problem(
+            HardRule.WORKFLOW, cls.name, f"{tag} needs the mixin: include {UNDER_WORKFLOW}"
+        )
+
+
+def _class_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
+    roots = aggregate_roots(view, classes)
+    keyed = keyed_roots(view, classes)
+    yield from toolkit_filled_problems(view, classes)
+    for cls in classes:
+        yield from _key_problems(view, cls, keyed)
+        yield from _reserved_segment_problems(cls)
+        yield from _workflow_problems(view, cls, roots)
+    yield from _path_problems(view, roots)
+    yield from application_problems(view, classes, roots)
+    yield from _described_problems(view, classes, roots)
+    yield from _iri_type_problems(view, classes, roots)
+
+
+def _version_problems(view: SchemaView) -> Iterator[CheckProblem]:
+    """The root schema's ``version`` is a quoted string in the YAML source (PD-1): ``1.10`` is read as 1.1."""
+    rule = HardRule.QUOTED_VERSION
+    if not view.schema.source_file:
+        yield rule_problem(
+            rule, str(view.schema.name), "has no source file to read the `version:` from"
+        )
+        return
+    source = Path(str(view.schema.source_file))
+    name = source.name
+    root = yaml.compose(source.read_text(encoding="utf-8"))
+    if not isinstance(root, yaml.MappingNode):
+        yield rule_problem(rule, name, "must be a YAML mapping with a root `version:`")
+        return
+    version = next((value for key, value in root.value if key.value == VERSION_KEY), None)
+    if version is None:
+        yield rule_problem(rule, name, "a target with migrations needs a root `version:`")
+    elif version.style not in QUOTES:
+        yield rule_problem(
+            rule,
+            name,
+            f'`version: {version.value}` must be a quoted string (`version: "{version.value}"`): '
+            "an unquoted number loses its zeros",
+        )
+
+
+def stored_schema_problems(
+    view: SchemaView, folder: Path, migrations: Path | None
+) -> list[CheckProblem]:
+    """The declarations a stored schema needs (PD-1, PD-14).
+
+    A target whose own modules define a root class sets ``migrations`` (the folder, read with
+    ``config.migrations_folder``); a target that sets it has a quoted root ``version``.
+    """
+    if migrations:
+        return list(_version_problems(view))
+    roots = [cls.name for cls in root_classes(view, folder)]
+    if not roots:
+        return []
+    return [
+        rule_problem(
+            HardRule.MIGRATIONS_FOLDER,
+            ", ".join(roots),
+            "a target that stores its own root classes needs a `migrations` folder in its "
+            "[tool.rp-generate] entry",
+        )
+    ]
+
+
+def _stored_classes(schemas: list[SchemaDefinition], folder: Path) -> list[ClassDefinition]:
+    """The classes the root and owned-class rules apply to: none of the toolkit's own (PD-23), none of a technical module (D-49)."""
+    if is_toolkit_schema(folder, roots=TOOLKIT_ROOTS):
+        return []
+    exempt = {id(cls) for cls in technical_classes(schemas)}
+    return [cls for cls in own_classes(schemas) if id(cls) not in exempt]
+
+
+def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
+    """Every problem of the schemas kept in ``folder``, in a stable order.
+
+    The toolkit's own schemas get the element rules but not the root and owned-class rules (PD-23);
+    nor do the classes of a module annotated ``module_kind: technical``, which are never stored (D-49).
+    """
+    schemas = own_schemas(view, folder)
+    classes = _stored_classes(schemas, folder)
+    return [
+        *(p for schema in schemas for p in _schema_problems(schema)),
+        *(p for schema in schemas for p in _annotation_problems(schema, _segment_pattern())),
+        *default_instance_problems(view, schemas),
+        *_class_problems(view, classes),
+    ]

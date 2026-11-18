@@ -12,7 +12,7 @@ import pytest
 from rdf_persistence import Mapper, UnitOfWork, generated_models
 from rdf_persistence.domain.exceptions import NotFound
 from rdf_persistence.domain.generated import rp_core
-from rdf_persistence.generation.cli import main as generate
+from rdf_persistence_generation.cli import main as generate
 from tests.toy import TOY_SCHEMA
 from tests.toy_service import SCAN_BODY, ToyService, principal_of, store_scan
 from tests.unit.entrypoints.scene import NIL, Scene, problem_of

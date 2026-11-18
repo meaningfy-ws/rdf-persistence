@@ -293,7 +293,8 @@ def test_no_live_file_still_names_an_old_path():
 # --- stage 4: the testkit's records get their own technical target (PD-11, TC-49..TC-51) -----------
 
 TESTKIT = PACKAGE / "testkit"
-GENERATION_SCHEMA = PACKAGE / "generation" / "model" / "rp_generation.yaml"
+GENERATION_DIR = PACKAGE.parent / "rdf_persistence_generation"
+GENERATION_SCHEMA = GENERATION_DIR / "model" / "rp_generation.yaml"
 TESTKIT_SCHEMA = TECHNICAL / "testkit" / "rp_testkit.yaml"
 MOVED_CLASSES = {
     "ClassShape",
@@ -334,7 +335,7 @@ MOVED_ONLY_SLOTS = {
     "project_id",
     "machine_users",
 }
-GENERATION_GENERATED = "rdf_persistence.generation.generated"
+GENERATION_GENERATED = "rdf_persistence_generation.generated"
 KEEPS_THE_GENERATION_MODELS = {
     "freshness.py",
     "conformance.py",
@@ -398,7 +399,7 @@ def test_the_generation_schema_declares_none_of_the_moved_records_nor_their_own_
 
 def test_no_testkit_or_generation_module_copies_a_model_with_model_copy_update():  # TC-49
     hits = []
-    for folder in (TESTKIT, PACKAGE / "generation"):
+    for folder in (TESTKIT, GENERATION_DIR):
         for path in sorted(folder.rglob("*.py")):
             if "generated" in path.relative_to(folder).parts:
                 continue
@@ -411,3 +412,45 @@ def test_no_testkit_or_generation_module_copies_a_model_with_model_copy_update()
                 ):
                     hits.append(f"{path.relative_to(ROOT)}:{node.lineno}")
     assert hits == [], f"model_copy(update=...) skips validation; use replaced(): {hits}"
+
+
+# --- the generator contracts of generator-package (D-19, D-20) -------------------------------------
+
+GENERATOR_PACKAGE = "rdf_persistence_generation"
+CONTRACT_NEVER_IMPORTS_GENERATOR = "library-never-imports-the-generator"
+SHIM_MODULES = ("freshness", "conformance", "roundtrip", "strategies")
+SHIM_EDGES = {
+    f"rdf_persistence.testkit.{m} -> {GENERATOR_PACKAGE}.testkit.{m}" for m in SHIM_MODULES
+}
+
+
+def _contract(name: str) -> configparser.SectionProxy:
+    config = configparser.ConfigParser()
+    config.read(ROOT / ".importlinter", encoding="utf-8")
+    section = f"importlinter:contract:{name}"
+    assert config.has_section(section), f".importlinter declares the contract {name}"
+    return config[section]
+
+
+def _lines(contract: configparser.SectionProxy, key: str) -> list[str]:
+    return [line.strip() for line in contract.get(key, "").splitlines() if line.strip()]
+
+
+def test_the_library_never_imports_the_generator_but_through_the_four_shims():
+    contract = _contract(CONTRACT_NEVER_IMPORTS_GENERATOR)
+    assert contract["type"] == "forbidden"
+    assert _lines(contract, "source_modules") == ["rdf_persistence"]
+    assert _lines(contract, "forbidden_modules") == [GENERATOR_PACKAGE]
+    ignored = _lines(contract, "ignore_imports")
+    assert len(ignored) == len(set(ignored)), "an ignored edge is listed twice"
+    assert set(ignored) == SHIM_EDGES, "the ignored edges are not exactly the four testkit shims"
+
+
+@pytest.mark.parametrize(
+    "name", ["event-bus-libraries-in-one-module", "sparql-parser-only-through-the-wrappers"]
+)
+def test_the_event_bus_and_sparql_contracts_cover_the_generator(name):
+    sources = _lines(_contract(name), "source_modules")
+    assert {"rdf_persistence", GENERATOR_PACKAGE} <= set(sources), (
+        f"{name} no longer lists the generator in source_modules"
+    )

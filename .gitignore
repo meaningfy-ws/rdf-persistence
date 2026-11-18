@@ -244,6 +244,7 @@ infra/.secrets
 test-results.xml
 test-results-*.xml
 coverage-containers.xml
+coverage-generator.xml
 coverage-feature.xml
 reports/
 data/

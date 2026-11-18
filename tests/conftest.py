@@ -53,7 +53,7 @@ settings.load_profile(
 
 # Freshness of the generated code (PD-26) is checked at the start of every session; pytester runs
 # the plugin's own tests.
-pytest_plugins = ["pytester", "rdf_persistence.testkit.freshness"]
+pytest_plugins = ["pytester", "rdf_persistence_generation.testkit.freshness"]
 
 # The container fixtures plugin (PD-16). Only tests/integration/, tests/e2e/ and tests/perf/store/
 # load it, so the unit lane runs without testcontainers. pytest allows `pytest_plugins` only in
@@ -83,6 +83,11 @@ class DirectoryMarkers:
 # The first row whose directory starts the relative path wins (PD-16), so a row never needs
 # to exclude another.
 _MARKERS_BY_DIR = (
+    DirectoryMarkers("generator/unit/", ("unit",)),
+    DirectoryMarkers("generator/feature/", ("feature",)),
+    DirectoryMarkers("generator/integration/", ("integration",)),
+    # install_service needs a store, a file store and an identity provider, as the library's e2e/ row
+    DirectoryMarkers("generator/e2e/", ("e2e", STORE, FILES, IDENTITY)),
     DirectoryMarkers("unit/", ("unit",)),
     DirectoryMarkers("feature/", ("feature",)),
     DirectoryMarkers("integration/store/", ("integration", STORE)),

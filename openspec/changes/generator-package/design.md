@@ -328,3 +328,120 @@ package name are leader's choices (DEC-2, DEC-5).
     passage (task 2.5).
   - S: the contract's comment says "configuration and records" while `freshness` also uses the
     manifest logic; the name is fixed by task 1.2 and stage 2 replaces the contract.
+- **D-7 PR #161 does not block the move** (lead, 2026-11-18, under the developer's "take the
+  decisions for me"). The ordering rule allows no open PR but release-please (#134) and the lead's
+  own before stage 2. #161 (the developer's) changes only `.gitignore`, which no move touches, so
+  stage 2 starts. A parallel session merged #163 (`mrn-followups`) into `develop` meanwhile; stage 2
+  branches after it (c11961b) and rebases before its PR (P-0002).
+- **D-8 Stage 2 runs its tasks in parallel where their files are disjoint** (developer, 2026-11-18,
+  "run things in parallel whenever they can"). 2.1 first (nothing imports half-moved); then 2.2,
+  2.3 and 2.5 in parallel worktrees; 2.4 after 2.2 (both edit `tests/conftest.py`). Builders do
+  not tick `tasks.md`; the lead does (T2).
+- **D-9 Stage 2's impact is CRITICAL, accepted** (lead, under the developer's grant to decide).
+  GitNexus rates `is_toolkit_schema` (4 direct callers, 108 symbols to depth 3) and
+  `recorded_path` (4 direct, 13 to depth 3) CRITICAL. Expected for the move: the direct callers
+  are the call sites PD-5 lists, the new `roots=` keyword defaults to today's behaviour, and the
+  only output change allowed is the manifests' input paths (TC-09), which `make check-generated`
+  and the full gates check.
+- **D-10 `assert_isomorphic` stays in the library** (lead, found by the builder of task 2.2). It is
+  defined in `roundtrip.py`, which PD-2 moves, but it is a generic graph comparison that about ten
+  library tests import through `rdf_persistence.testkit`: after the move each of them loaded a shim
+  and the generator, warned at collection and reached the generator from a library test (PD-9).
+  It moves to a library testkit module of its own, `rdf_persistence/testkit/graphs.py`;
+  `_LAZY_NAMES` points it there; the generator's `roundtrip.py` imports it from there (generator →
+  library is the allowed direction) and the `roundtrip` shim keeps re-exporting it. Rejected:
+  rewriting the library tests to the generator's path (a library test would import the generator).
+- **D-11 `tasks.md` §2.2 names two test paths wrongly** (builder of 2.2): `test_stage1_adversarial.py`
+  does not exist (the four lazy names are tested in `tests/unit/testkit/test_lazy_guard_names_adversarial.py`)
+  and `test_testkit_lazy_import.py` is in `tests/unit/testkit/`. The builder used the real files.
+- **D-12 The shims are removed in 0.6.0** (builder of 2.2, PD-3): `VERSION` is 0.4.0, the
+  release-please PR proposes 0.5.0, which ships this change. If it ships later, the four shims,
+  their warnings and `test_the_removal_release_is_named_in_every_shim` take the new number.
+- **D-13 `TOOL_USERS` after the attack's list** (lead, builder of 2.4 asked). Three library test
+  files outside PD-9's eight import the generator, all added after the PLAN was read:
+  `tests/feature/test_technical_models.py` runs `rp-generate` on scratch technical-group projects,
+  a tool use on the library's own model layout: it joins `TOOL_USERS` (nine entries).
+  `tests/unit/testkit/test_testkit_imports.py` imports `rp_generation` only to check a record is not
+  defined there: it reads `rp_generation.yaml` instead, and leaves the set.
+  `tests/unit/testkit/test_testkit_target_adversarial.py::test_a_check_problem_replaced_keeps_what_it_does_not_name`
+  tests the generator's `CheckProblem`: it moves to `tests/generator/unit/`, as PD-9 split the
+  shape test.
+- **D-14 Path-keyed test data follows the move** (lead). `tests/audit/scenario-map.csv` and
+  `.test_durations` key tests by path; the lead regenerates them with `make refresh-map` and
+  `make test-durations` before the stage's gates, never by hand.
+- **D-15 The generator's coverage reaches SonarCloud** (lead; within PD-10). The new
+  `test-generator` CI job writes `coverage-generator.xml`; it is uploaded and listed in
+  `sonar.python.coverage.reportPaths`, so the generator's lines stop counting as uncovered.
+  As built (after D-19 W2): the generator uploads `generator-coverage`; a `sonar` job that needs
+  `unit` and `test-generator` (`if: always()` and `SONAR_ENABLED`) downloads both reports and
+  scans; `unit` needs only `unit-shard`.
+  `coverage-generator.xml` is git-ignored like the other reports.
+- **D-16 Stage 2 tester findings** (lead; tester: 100 tests, 16 failed first, 7 findings).
+  Accepted: (1, P1) `test_testkit_moved.py` did not collect after the lead's merge — fixed with
+  D-13; (4, P4) `.test_durations` names moved files — fixed by D-14's refresh, its two tests kept.
+  Under the floor (not fixed; their failed-first tests deleted in the sort):
+  - (2, P3) the `roots=` guard (TC-14a) misses calls through a module attribute and `roots=` in a
+    comment or another keyword, and crashes when a function is no longer called;
+  - (3, P3) the PD-9 checker does not read annotated or augmented `pytest_plugins`,
+    `__import__` or `pytest.importorskip`;
+  - (5, P4) `rp-generate --list-python-folders` needs the `generate` extra although it writes
+    nothing;
+  - (6) `hasattr(testkit, "aggregate")` without hypothesis raises; deliberate, pinned;
+  - (7, nit) the freshness report repeats a stale generator module once per target.
+  Filed together as a follow-up issue (linked in Open of `handover.md`). TC-14c's "nothing" allows
+  the migration note in `howto/adopt.adoc`, which names the old path on purpose.
+- **D-17 The scenario map follows moved tests** (lead, found running D-14). `make refresh-map`
+  drops the rows of a test whose file moved (493 rows here) and lists it again as unmapped, so
+  a move loses its traceability. `tests/audit/refresh_map.py` gains moves: a row whose test file
+  was renamed (`git diff --name-status -M <base>`, or a `--moved OLD=NEW` pair) is re-keyed to
+  the new path instead of dropped; `make refresh-map` passes `BASE` (default `develop`).
+  `thematic-structure` moves every test folder too, so it needs this as well. The new tests of
+  the change are mapped by the lead before the archive (`make refresh-map` exits 0).
+- **D-18 The `assert_isomorphic` identity test moves to the generator's pyramid** (lead). D-10's
+  test that the name is one object through the generator's `roundtrip` imports the generator from
+  `tests/unit/testkit/`, which the PD-9 checker refuses; it moves to
+  `tests/generator/unit/test_testkit_moved.py`. The no-warning test stays in the library.
+- **D-19 Stage 2 review (L2+L3), accepted findings** (lead). C1 (`.test_durations` keeps moved
+  ids) is D-14's fix, `--clean-durations`. Re-labelled Critical, with the reason:
+  - W1 → Critical: `event-bus-libraries-in-one-module` and `sparql-parser-only-through-the-wrappers`
+    have `source_modules = rdf_persistence`, which no longer covers the generator. The move
+    narrowed two enforced contracts, which is a weakened gate. Both add `rdf_persistence_generation`.
+  - W2 → Critical: the `unit` job (library floor, SonarCloud) `needs` `test-generator`, so a
+    generator-only failure skips it, against the `rp-developer-checks` scenarios "a generator
+    change" and "parallel jobs" of this change. The scan moves to its own job that needs both
+    (`unit` needs only `unit-shard` again); D-15 holds through that job.
+  - Lead's check: `tests/generator/unit/test_roots_call_sites.py` runs the `ast-grep` binary,
+    which is neither a dependency nor installed in CI, so `test-generator` would fail in CI. The
+    guard is rewritten with Python's `ast` (PD-5 allows an equivalent walk): a call of the three
+    functions, by name or through a module attribute, with no `roots` keyword is a problem, and
+    no call at all is no problem. This also closes #164 item 1.
+  Owed to the docs stage (`evidence/docs-owed.md`): W3 `howto/adopt.adoc` says the `generate`
+  extra installs the generator (one wheel ships both; the plugin needs no extra); W4 `AGENTS.md:45`
+  and `CONTRIBUTING.md:46` describe the old layout; W5 `develop/index.adoc` commands table (three
+  lanes, `test-generator`, `refresh-map` moves); W6 `architecture/index.adoc:209` and
+  `questions.adoc:216` place the freshness plugin in the library. Under the floor: S1 (TC-14c also
+  allows the tests that prove the old path absent), S2 ("the testkit alone" does not assert no
+  generator module loads), S3 (three docstrings name `generation`), S4 (the model guard's
+  `layers=("",)` and the generator half of `test_model_guard.py`), S5 (`test_generation_shape.py`
+  imports helpers from a library test).
+- **D-20 Stage 2 checker: verdict fail, items fixed now** (lead, under the developer's grant;
+  checker: 6 findings, no Critical). Fixed in one fixer pass, then one full-gates run:
+  - W1 (TC-09 deviates): `_toolkit_files()` takes every module under the generator but
+    `generated/`, so the moved `testkit/` (freshness plugin, conformance, round trip, strategies)
+    became an input of every manifest, and editing it would mark every consumer stale although it
+    never shapes the output. `testkit/` is excluded like `generated/`; the manifests are
+    regenerated (PD-4).
+  - W2: no test fails if `library-never-imports-the-generator` is deleted or its ignores relaxed,
+    or if the event-bus and SPARQL contracts stop covering the generator (D-19 W1); the contracts
+    join the kept-contracts tests of `tests/unit/test_technical_split.py`.
+  - W3, evidence recorded here: TC-31, the test count over `tests/` before and after the moves of
+    task 2.4 was 7765 both (builder of 2.4, `make test-fast` totals); TC-23, a planted
+    `import rdf_persistence_generation.config` in `services/schema.py` broke
+    `library-never-imports-the-generator` and `runtime-without-extras` naming both modules
+    (builders of 2.3 and the tester); TC-24, a planted `import linkml` in the generator's
+    `manifest.py` broke `works-without-the-generate-extra` (same); TC-09, the lead read the
+    regenerated diff of task 2.1: only `rp-manifest.json` files changed (nine targets and the toy),
+    input paths and the hashes of edited generator modules; outputs are R100 renames.
+  Under the floor: S1 (scenario-map rows, done before the archive per D-17), S3 (a guard that the
+  generator's integration tier loads no container plugin: stage 4, task 4.2). S2 (hand-over and
+  ticks) is the PR's last commit.

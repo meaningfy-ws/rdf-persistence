@@ -48,7 +48,7 @@ dependencies = [
 
 [project.scripts]
 # Always installed; without the `generate` extra it exits 2 and says so (PD-2).
-rp-generate = "rdf_persistence.generation.cli:main"
+rp-generate = "rdf_persistence_generation.cli:main"
 
 [project.optional-dependencies]
 # The generators, kept out of consumers' running services (PD-2).
@@ -111,8 +111,8 @@ migrations = "rdf_persistence/model/migrations"
 kind = "domain"
 
 [[tool.rp-generate]]
-schema = "rdf_persistence/generation/model/rp_generation.yaml"
-package = "rdf_persistence.generation.generated"
+schema = "rdf_persistence_generation/model/rp_generation.yaml"
+package = "rdf_persistence_generation.generated"
 regenerate-command = "make generate"
 openapi = false
 kind = "technical"
@@ -162,7 +162,9 @@ kind = "technical"
 default-groups = ["dev", "test", "lint"]
 
 [tool.uv.build-backend]
-# No-src layout: the top-level package lives in the repo root, NOT under src/.
+# No-src layout: the top-level packages live in the repo root, NOT under src/.
+# The generator is a sibling package (DEC-1, PD-7); the library never imports it.
+module-name = ["rdf_persistence", "rdf_persistence_generation"]
 module-root = ""
 
 [build-system]

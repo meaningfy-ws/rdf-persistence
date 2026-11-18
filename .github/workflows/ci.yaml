@@ -114,16 +114,15 @@ jobs:
             .coverage.${{ matrix.group }}
             test-results-${{ matrix.group }}.xml
 
-  # The floor and SonarCloud read the shards' union, so they run once, after every shard.
+  # The floor reads the shards' union, so it runs once, after every shard. It needs the shards
+  # alone: a generator failure leaves it green (generator-package D-19).
   unit:
     name: Unit tests (coverage floor)
-    needs: unit-shard
+    needs: [unit-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # SonarCloud reads the history
       - uses: ./.github/actions/setup
       - uses: actions/download-artifact@v4
         with:
@@ -141,9 +140,27 @@ jobs:
             coverage.xml
             test-results-*.xml
 
-      - name: SonarCloud scan
-        if: always() && vars.SONAR_ENABLED == 'true'
-        uses: SonarSource/sonarqube-scan-action@v4
+  # SonarCloud reads the library's combined report and the generator's, so it runs after both
+  # lanes, whatever their result. Neither lane waits for it.
+  sonar:
+    name: SonarCloud scan
+    needs: [unit, test-generator]
+    if: always() && vars.SONAR_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # SonarCloud reads the history
+      - uses: actions/download-artifact@v4
+        continue-on-error: true  # a failed lane may have uploaded nothing
+        with:
+          name: coverage-report
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: generator-coverage
+      - uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -155,3 +172,29 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - run: make test-feature
+
+  # The generator's own pyramid (tests/generator), measured against rdf_persistence_generation
+  # alone. Node is for the tests that run tsc on the generated TypeScript.
+  test-generator:
+    name: Generator tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: make test-generator
+
+      # The scan job downloads it by this name. It is not named like the unit shards: the unit job
+      # merges their artifacts and must not depend on this lane.
+      - name: Upload the generator's coverage report and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-coverage
+          retention-days: 1
+          path: |
+            coverage-generator.xml
+            test-results-generator.xml
