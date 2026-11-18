@@ -370,7 +370,7 @@ Both are values of the `GenerationAnnotation` enum, and a consumer's schema may 
 
 * `python_import` on a type. A model whose field must hold a class that is not a LinkML scalar names
   the class in the type's `repr` and its module in `python_import`; the generated module imports it
-  and the field has that class. `rp_templates.yaml` declares a field's type this way, so a bundle of
+  and the field has that class. `rp_schema_templates.yaml` declares a field's type this way, so a bundle of
   SPARQL terms holds `SparqlTerm` values, not strings, and a raw string fails validation:
 +
 [source,yaml]

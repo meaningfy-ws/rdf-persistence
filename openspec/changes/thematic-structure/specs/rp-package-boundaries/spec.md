@@ -36,8 +36,8 @@ sit outside its layers.
 
 ### Requirement: Themes import in one order
 
-The themes SHALL import only themes below them, in the order `core`; `iris`, `schema`, `files`;
-`provenance`; `persistence`; `access`, `migrations`; `tenancy`; `collaboration`, `events`;
+The themes SHALL import only themes below them, in the order `core`; `iris`, `schema`;
+`provenance`, `files`; `persistence`; `access`, `migrations`; `tenancy`; `collaboration`, `events`;
 `messaging`; `api`, where themes named together import neither the other.
 
 #### Scenario: a theme imports one above it

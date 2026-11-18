@@ -303,11 +303,12 @@ classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Mo
 |`rdf_persistence.services`
 |session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the IRI
 policy and `Iris` (`iris/services/iris.py`; `tenant_move.py` is beside the services); the factories that build the SPARQL
-term bundles (`schema/services/vocabulary.py`); the message bus; the ports
+term bundles (`schema/services/vocabulary.py`); the activity shape and the visible part (`provenance/services/`); the file ports and the file-key rules (`files/services/files.py`, `files/domain/blob_keys.py`); the message bus; the other ports
 |the technical models of the services, loaded lazily from the top level, each group a folder of
 `services/generated/`: `service/` (from `model/technical/service/rp_service.yaml`: the service
-records), `settings/` (`rp_settings.yaml`: the deployment values), `templates/` (`rp_templates.yaml`:
-the SPARQL term bundles, fields of `SparqlTerm`); `LogContext` and `HttpSettings` are in
+records) and `settings/` (`rp_settings.yaml`: the deployment values); the SPARQL term bundles, fields
+of `SparqlTerm`, are in `schema/services/generated/templates/` (`model/technical/schema/rp_schema_templates.yaml`);
+`LogContext` and `HttpSettings` are in
 `core/services/generated/` (`model/technical/core/rp_core_services.yaml`), and the settings and the
 IRI policy of the `iris` theme (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`) in
 `iris/services/generated/` (`model/technical/iris/rp_iris_services.yaml`), with the IRI models
@@ -321,7 +322,7 @@ IRI policy of the `iris` theme (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKin
 `Tenancy`, `sweep`, `sweep_tenant`, `remove_with_files`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
 `Collaboration` (opened with `kit.collaboration`), `Workflows`, `Listings`; `MessageBus`, `bootstrap`, `command`, `Work`;
 the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`, `EventBus` (with `Receive`, `context_link`); `Session.named_file_keys`
-|`rdf_persistence.adapters` |Fuseki, S3, Zitadel and Redis Streams adapters; JWKS token verification |the wire shapes of the identity provider, Fuseki and the token, in `adapters/generated/` (from `model/technical/wire/rp_wire.yaml`); only the adapters and the testkit import them |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
+|`rdf_persistence.adapters` |Fuseki, Zitadel and Redis Streams adapters; JWKS token verification (the S3 adapter is `files/adapters/s3.py`) |the wire shapes of the identity provider, Fuseki and the token, in `adapters/generated/` (from `model/technical/wire/rp_wire.yaml`); only the adapters and the testkit import them |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
 |`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up), the events route, `settings_from_env` (`entrypoints/environment.py`) |none: it imports the technical models of the services |`install_service` (with `migrations=`, the folder of the migration files, and `workflows=`, the paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and `workflows`), `limited_body`, `settings_from_env` (reads a settings model such as `ToolkitSettings` from `RP_` environment variables; needs the `settings` extra)
 |`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the
 waiting helpers (`wait_until`, `wait_until_async`), the adapter conformance suites, the model-shape
@@ -346,15 +347,17 @@ the extras.
 *Technical models in the layers.* A model's kind shows in its path (xref:architecture/generation.adoc#kinds[Two kinds of model]):
 the metamodel is generated into `core/domain/generated/`, and each technical group into the `generated/`
 folder of the lowest layer whose code may import it, so the `layers` contract of import-linter orders
-the `generated` packages of the three old runtime layers without a line of its own; the `core` theme is
-not in that contract, `themes-layered` and `themes-ordered` order it. `testkit.generated`
-is outside that contract: the contract `runtime-without-extras` keeps it out of the runtime. Three groups sit in `services/generated/`
-(`service`, `settings` and `templates`), the `core` group (`HttpSettings` and `LogContext`, from
-`model/technical/core/rp_core_services.yaml`) in `core/services/generated/`, the `wire` group in `adapters/generated/`
+the `generated` packages of the three old runtime layers without a line of its own; the moved themes
+(`core`, `iris`, `schema`, `files`, `provenance`) are not in that contract, `themes-layered`,
+`themes-ordered` and `layers-across-themes` order them. `testkit.generated`
+is outside that contract: the contract `runtime-without-extras` keeps it out of the runtime. Two groups sit in `services/generated/`
+(`service` and `settings`), the `core` group (`HttpSettings` and `LogContext`, from
+`model/technical/core/rp_core_services.yaml`) in `core/services/generated/`, the `iris` and `schema` groups in
+`iris/services/generated/` and `schema/services/generated/templates/`, the `wire` group in `adapters/generated/`
 and the `testkit` group in `testkit/generated/`. The domain layer imports none of them:
-the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` and
-`rdf_persistence.core.domain` from importing
-any of the three `generated` packages, directly or through a chain, so a failure names the rule that
+the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` and the domain of
+every theme (`rdf_persistence.*.domain`) from importing
+any `generated` package of the services, the adapters or the testkit, directly or through a chain, so a failure names the rule that
 broke. Two hand-written modules used the service records, so they moved to the services layer: the
 layout functions that no policy changes stay in the domain (`iris/domain/layout.py`), and `Iris`, its
 policy and its templates are in `iris/services/iris.py`; `mint_aggregate_iri` stays there, warning,
