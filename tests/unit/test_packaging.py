@@ -130,3 +130,28 @@ def test_tc43_the_settings_extra_pins_pydantic_settings() -> None:  # PD-12
     assert not any("pydantic-settings" in name for name in project["dependencies"]), (
         "the library stays out of the base dependencies"
     )
+
+
+NOT_SHIPPED = re.compile(r"(^|/)(__pycache__/|\.gitignore$|\.DS_Store$)|\.pyc$")
+
+
+def tracked(package: str) -> list[str]:
+    """The files git tracks under ``package``, minus those a wheel leaves out."""
+    done = subprocess.run(
+        ["git", "ls-files", package], cwd=ROOT, check=True, capture_output=True, text=True
+    )
+    return [f for f in done.stdout.splitlines() if not NOT_SHIPPED.search(f)]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("package", ["rdf_persistence", "rdf_persistence_generation"])
+def test_every_tracked_file_of_a_package_is_in_the_wheel(
+    wheel: zipfile.ZipFile, package: str
+) -> None:
+    """Error matrix: a wheel missing a generator file (a template, a YAML, a ``.jinja``, a ``.py``)."""
+    names = set(wheel.namelist())
+
+    missing = [f for f in tracked(package) if f not in names]
+
+    assert tracked(package), f"git lists nothing for {package}"
+    assert missing == [], f"{len(missing)} tracked files are not in the wheel, first: {missing[:5]}"
