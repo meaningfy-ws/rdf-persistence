@@ -144,7 +144,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 
 ## Stage 4: `persistence` and `migrations`, the store split (PR 4)
 
-- [ ] 4.1 PD-7: `SparqlProtocolStore` and `FusekiStore`. If `second-store` is planned first, this
+- [x] 4.1 PD-7: `SparqlProtocolStore` and `FusekiStore`. If `second-store` is planned first, this
   task is its own PR in the old layout (`adapters/sparql_protocol.py`). Tests:
   `tests/unit/persistence/test_sparql_protocol_store.py` (a subclass over `httpx.MockTransport`),
   `test_fuseki_store.py` unchanged apart from imports and the `caplog` logger name (PD-7). Gate:
@@ -158,7 +158,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 | TC-42 | `SparqlProtocolStore` instantiated directly | `TypeError` (abstract) |
 | TC-43 | the store conformance suite on Fuseki | passes unchanged |
 
-- [ ] 4.2 The recipe for `persistence` (with `fuseki.py`, the `adapters.fuseki` shim) and
+- [x] 4.2 The recipe for `persistence` (with `fuseki.py`, the `adapters.fuseki` shim) and
   `migrations`. PD-2 `persistence/services`, `persistence/adapters`, `migrations/services`.
   `migrations-below-the-runner` removed (implied). Gate: `make test-fast check-quality`.
 
@@ -237,7 +237,7 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 2.1 · [x] 3.1 · [x] 3.2 ·
-  [ ] 4.1 · [ ] 4.2 · [ ] 5.1 · [ ] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
+  [x] 4.1 · [x] 4.2 · [ ] 5.1 · [ ] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
 
 ## Verification
 
