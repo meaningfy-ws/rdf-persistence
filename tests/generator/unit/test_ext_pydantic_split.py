@@ -13,9 +13,11 @@ from pydantic import ValidationError
 from rdf_persistence.domain.generated.rp_files import StoredFile
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence_generation.exceptions import SchemaGenerationError
+from rdf_persistence_generation.extensions import pydantic_split
 from rdf_persistence_generation.extensions.pydantic_split import (
     METAMODEL_DIR,
     metamodel_module,
+    public_package,
 )
 from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
 from rdf_persistence_generation.steps import PYTHON_STEP
@@ -136,6 +138,27 @@ def test_an_application_run_ignores_the_python_package_of_a_moved_module(
     folder = metamodel_copy("rp_core", "x.generated")
     schema = load_schema(folder / "rp_core.yaml").schema
     assert metamodel_module(schema, toolkit=False) == "rdf_persistence", "the public package"
+
+
+def test_a_metamodel_without_public_package_is_a_clear_error(
+    metamodel_copy: Callable[[str, str], Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An application run on a metamodel whose root lacks public_package names the annotation."""
+    folder = metamodel_copy("rp_core", TOOLKIT_DOMAIN)
+    root = folder / "rp.yaml"
+    text = root.read_text(encoding="utf-8")
+    assert "public_package: rdf_persistence" in text
+    root.write_text(
+        text.replace("public_package: rdf_persistence", "other: note", 1), encoding="utf-8"
+    )
+    monkeypatch.setattr(pydantic_split, "METAMODEL_DIR", folder)
+    schema = load_schema(folder / "rp_core.yaml").schema
+    public_package.cache_clear()  # the lookup is cached for the process
+    try:
+        with pytest.raises(SchemaGenerationError, match="public_package"):
+            metamodel_module(schema, toolkit=False)
+    finally:
+        public_package.cache_clear()
 
 
 def test_the_generator_does_not_name_the_metamodels_packages() -> None:
