@@ -231,7 +231,7 @@
     },
     {
       "path": "rdf_persistence_generation/testkit/roundtrip.py",
-      "sha256": "faacf54ee0f87aa53ab590e4c1ffca3a961d72f9ffd46831133ae1702dc293c1"
+      "sha256": "404a63e3922ffe330359808dbb08f5ab54075920532acfd293a4cd766bfcd2a4"
     },
     {
       "path": "rdf_persistence_generation/testkit/strategies.py",

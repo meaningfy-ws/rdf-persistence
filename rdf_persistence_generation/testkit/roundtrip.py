@@ -15,12 +15,20 @@ are in ``rdf_persistence_generation.testkit.strategies``.
 import json
 
 from pydantic import BaseModel
-from rdflib import Graph
-from rdflib.compare import graph_diff, isomorphic
 
 from rdf_persistence.services.artifacts import CONTEXT_KEY, TYPE_KEY
 from rdf_persistence.services.schema_structure import is_internal
+from rdf_persistence.testkit.graphs import assert_isomorphic
 from rdf_persistence_generation.testkit.conformance import Conformance
+
+__all__ = [
+    "FRAMING_KEYS",
+    "assert_isomorphic",
+    "internal_values",
+    "public_projection",
+    "round_trip",
+    "without_framing",
+]
 
 FRAMING_KEYS = {CONTEXT_KEY, TYPE_KEY, "type"}  # the context aliases @type as `type`
 
@@ -54,14 +62,6 @@ def internal_values(conformance: Conformance, class_name: str, data: dict) -> di
     """The top-level internal slots of ``data``, which an object needs to be built again."""
     slots = conformance.slots_of(class_name)
     return {k: v for k, v in data.items() if k in slots and is_internal(slots[k])}
-
-
-def assert_isomorphic(before: Graph, after: Graph) -> None:
-    assert isomorphic(before, after), (
-        "the two graphs differ:\n"
-        f"only before: {sorted(graph_diff(before, after)[1])}\n"
-        f"only after: {sorted(graph_diff(before, after)[2])}"
-    )
 
 
 def round_trip(conformance: Conformance, original: BaseModel, class_name: str) -> None:

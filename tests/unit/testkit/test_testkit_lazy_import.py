@@ -50,7 +50,30 @@ def test_the_token_and_provisioning_names_load_on_first_use(name: str) -> None:
     )
 
 
+def test_assert_isomorphic_loads_without_a_warning_or_the_generator() -> None:
+    """D-10: the graph comparison lives in the library, so a consumer of it never meets the shim."""
+    code = (
+        "import sys, warnings; warnings.simplefilter('error'); "
+        "from rdf_persistence.testkit import assert_isomorphic; "
+        "sys.exit(any(m.startswith('rdf_persistence_generation') for m in sys.modules))"
+    )
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (
+        "the name loads with no DeprecationWarning and no generator module"
+    )
+
+
 @pytest.mark.filterwarnings("ignore:.*moved to rdf_persistence_generation:DeprecationWarning")
+def test_assert_isomorphic_is_one_object_through_every_path() -> None:
+    """D-10: the library's testkit, the roundtrip shim and the generator's module share it."""
+    from rdf_persistence.testkit import assert_isomorphic, roundtrip
+    from rdf_persistence_generation.testkit import roundtrip as generator_roundtrip
+
+    assert assert_isomorphic is roundtrip.assert_isomorphic, "the shim re-exports the one object"
+    assert assert_isomorphic is generator_roundtrip.assert_isomorphic, (
+        "the generator's module re-exports the one object"
+    )
+
+
 def test_assert_isomorphic_is_a_public_testkit_name() -> None:
     import rdf_persistence.testkit as testkit
 
