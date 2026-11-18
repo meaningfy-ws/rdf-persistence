@@ -4,15 +4,18 @@
 
 ## Context
 
-On `docs/manual-revision-notes` (48f80c6) the library has four layer packages and four generation
-targets (`pyproject.toml:91-118`). After the four earlier changes (ASM-1 to ASM-3 of the EPIC) it
-will have the metamodel in `domain/generated/`; the technical groups in the `generated/` folder of
+On `develop` at 79c6837 (after `generator-package` stages 1 to 3) the library has four layer packages and
+eight generation targets (`pyproject.toml:105-159`: the metamodel, the generator's own, and the
+technical groups `service`, `templates`, `telemetry`, `settings`, `testkit`, `wire`, each with
+`kind` and `python_package`). The four earlier changes (ASM-1 to ASM-3 of the EPIC) left the
+metamodel in `domain/generated/`; the technical groups in the `generated/` folder of
 the lowest layer that uses them (`technical-models` DEC-1): `services/generated/{service,settings,templates}/`,
 `services/generated/telemetry/` (`otel-observability` PD-1), `adapters/generated/` (`wire`) and
 `testkit/generated/` (`testkit`, its PD-11); `domain/layout.py` and `services/iris.py` split from
 `domain/iris.py`, and `services/tenant_move.py` (`technical-models` DEC-3); and the generator in
-`rdf_persistence_generation/`. So every technical model already sits in the layer DEC-3 asks for,
-and this change adds the theme. This PLAN starts from that state; stage 1's task 1.1 checks it.
+`rdf_persistence_generation/`, a sibling top-level package. So every technical model already sits in
+the layer DEC-3 asks for, and this change adds the theme. This PLAN starts from that state; task 1.1
+checked it on 2026-11-18 (D-1 under Delivery decisions).
 
 What the brief asked to check against the code:
 
@@ -21,10 +24,10 @@ What the brief asked to check against the code:
 | The theme graph is acyclic (analysis §5.3) | Holds for the hand-written modules (grimp, 2026-11-17). Order: core; iris, schema, files; provenance; persistence; migrations, access; tenancy; collaboration, events; messaging; api | DEC-1, PD-1, PD-6 |
 | The generated code can mirror the themes | Holds for `rp_service` and `rp_wire` (every class has one lowest-user theme, table PD-2); fails for the metamodel (cycles) | DEC-2, PD-2 |
 | The consumer imports 5 modules | 3 by hand; the `domain.base` lines are its generated files; the `adapters.fuseki` line is a test string | DEC-5, PD-8 |
-| The 141-name re-export | Holds | PD-8, TC-03 |
+| The 149-name re-export (`__all__`, `rdf_persistence/__init__.py:274`; the EPIC says 141) | Holds, 149 names | PD-8, TC-03 |
 | The iris wrappers only delegate | 11 of 23 do | DEC-8, PD-5 |
 | `FusekiStore` is half generic | Holds: `query`, `update`, `put_graph`, `_raise_for_status`, `_read_result` are SPARQL 1.1 Protocol; the endpoint layout (`_dataset_path`), `create_dataset`, `drop_dataset`, `list_datasets` and dataset-level `export_quads`/`import_quads` are Fuseki's (`fuseki.py:25-160`) | DEC-7, PD-7 |
-| Contracts exist to carry over | `.importlinter`: 10 contracts. import-linter 2.11 has `containers`, `exhaustive` and wildcard module expressions in `forbidden` and `layers` | DEC-6, PD-6 |
+| Contracts exist to carry over | `.importlinter`: 14 contracts (the 10 of the EPIC, `domain-never-imports-technical-models`, and from `generator-package` `library-never-imports-the-generator`, `domain-tests-stay-in-the-domain`, `sparql-parser-only-through-the-wrappers`; PD-6 places each). import-linter 2.11 has `containers`, `exhaustive` and wildcard module expressions in `forbidden` and `layers` | DEC-6, PD-6 |
 
 ## Goals / Non-Goals
 
@@ -50,7 +53,7 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
 
   | Theme | domain | services | adapters | entrypoints |
   |---|---|---|---|---|
-  | core | `base`, `exceptions`, `media`, `sparql`; metamodel `generated/` | `artifacts`, `yaml_files`, `telemetry`† | `_http` | |
+  | core | `base`, `exceptions`, `media`, `sparql`, `sparql_parsing`†; metamodel `generated/` | `artifacts`, `yaml_files`, `telemetry`† | `_http` | |
   | iris | `layout`† (`domain/layout.py`) | `iris`† (`services/iris.py`) | | |
   | schema | | `schema`, `schema_structure`, `vocabulary` | | |
   | files | `blob_keys` | `files` (port) | `s3` | |
@@ -62,14 +65,25 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
   | events | | `events` (port), `event_hub`, `event_stream`, `relay` | `redis_events` | |
   | collaboration | | `discussion`, `reference_collections`, `workflows`, `transitions`, `write_guards`, `collaboration` | | |
   | messaging | | `messagebus` | | |
-  | api | | `aggregates`, `documents`, `file_removal`, `components` | | `auth`, `environment`†, `kit`, `negotiation`, `openapi`, `problems`, `responses`, `router`, `service`, `sse` |
+  | api | | `aggregates`, `documents`, `file_removal`, `components`, `shacl`† | | `auth`, `environment`†, `kit`, `negotiation`, `openapi`, `problems`, `responses`, `router`, `service`, `sse` |
 
   † A module an earlier change creates or moves: `services/jsonld.py` (`manual-revision-notes`,
   the one JSON-LD path; its users are `loading`, persistence, and `documents`, api);
   `domain/layout.py`, `services/iris.py`, `services/tenant_move.py` (`technical-models` DEC-3, the
   `iris.py` split) and `entrypoints/environment.py` (`technical-models` PD-12, `settings_from_env`);
-  `services/telemetry.py` (`otel-observability` PD-3; every theme logs through it). Task 1.1
-  re-reads the tree on `develop` and adds any other module those changes created.
+  `services/telemetry.py` (`otel-observability` PD-3; every theme logs through it);
+  `domain/sparql_parsing.py` and `services/shacl.py` (`generator-package`'s lock on the SPARQL parser).
+  The rule for a module is the one PD-2 gives a technical class: the lowest theme that uses it, in
+  the layer it already has. `sparql_parsing` is imported by `domain/sparql` (core), `migrations`,
+  `migration_runner` and the testkit, so its lowest user is `core`: `core/domain`. `shacl` is imported
+  by `services/documents` (api) and by the generator's testkit (outside the themes), and imports only
+  `sparql_parsing` (core), so its lowest in-theme user is `api`: `api/services`. (`schema` would also
+  satisfy `themes-ordered`; the rule picks `api`, and moving it down later is one more `git mv`.) Its
+  test, `tests/unit/services/test_shacl.py`, goes to `tests/unit/api/`; `tests/unit/domain/test_sparql_parsing.py`
+  to `tests/unit/core/`; the helper `tests/unit/sparql_threads.py` and its one user `tests/unit/test_sparql_parser_threads.py` stay at the root (a subprocess test of the parser lock, not of one module; PD-11's "a test of several themes" rule leaves it where it is).
+  The four testkit shims (`testkit/{freshness,conformance,roundtrip,strategies}.py`, generator-package PD-8)
+  import only `rdf_persistence_generation`; the testkit is outside the themes, so the move does not
+  touch them, and `generator-package` removes them in 0.6.0.
 
   The six technical groups the earlier changes leave, and where they go (classes in PD-2):
 
@@ -122,21 +136,24 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
   `generator-package` PD-6, and now each technical schema's). When a schema imports a module in
   that map, the generated code imports its classes from that package and does not generate them;
   the manifest lists the imported module's YAML as an input. That every technical `python_package`
-  agrees with its `[[tool.rp-generate]]` entry is `generator-package` PD-6 (b)'s hard check, which
-  already covers the technical groups; this change adds no check of its own, and each new per-theme
+  agrees with its `[[tool.rp-generate]]` entry is `generator-package` PD-6 (b)'s hard check
+  (`python_package_problems`, `rdf_persistence_generation/checks/python_package.py:29`, called from
+  `_hard_problems` in `steps.py:110`), which already covers the technical groups; this change adds no check of its own, and each new per-theme
   schema carries the annotation that check asks for. A consumer's run uses the same map, so a
   consumer's technical target can import its own domain target.
 - **PD-4 Kind and folder (DEC-3).** A new hard-check function `kind_folder_problems(target)` in
   `rdf_persistence_generation/checks/boundary.py`, beside `technical-models`' `target_kind_problems`
-  (which checks the modules' `module_kind`; this one checks the folder): in the target's `package`,
+  (`boundary.py:193`; it checks the modules' `module_kind`, this one checks the folder): in the target's `package`,
   the segment before `generated` is `domain` for a `domain` target, and `services`, `adapters` or
   `entrypoints` for a `technical` one (a group segment after `generated` is allowed, so the old
   layout's `rdf_persistence.services.generated.service` passes during the move). Packages outside
   the themes are exempt: `rdf_persistence.testkit` (the `testkit` group; No-go: the testkit is
-  outside the themes) and `rdf_persistence_generation` (the generator's own target). It runs **on
+  outside the themes) and `rdf_persistence_generation` (the generator's own target,
+  `rdf_persistence_generation.generated`). It runs **on
   the toolkit's own run only**, like `generator-package` PD-6 (b): a consumer that already declares
   `kind` (allowed since `technical-models` DEC-4) keeps its own folder layout, so the upgrade breaks
-  no consumer. It is built, tested and **wired into `steps.py` in stage 1**: `technical-models`
+  no consumer. It is built, tested and **wired into `steps.py` in stage 1**, in `_boundary_problems`
+  (`steps.py:96-101`) beside the `target_kind_problems` call: `technical-models`
   already put every toolkit technical target in a layer's `generated/` folder, so the toolkit's own
   targets pass it from the start and it guards every stage of the move.
 
@@ -147,8 +164,11 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
   consumer's `from rdf_persistence import RpModel` to the defining module, and without the new name
   the guard stops seeing any class derived from `RpModel`, silently (TC-24); the old name stays
   until stage 8 (the shim's users). (b) `DEFAULT_ALLOW` names `rdf_persistence/core/domain/base.py:RpModel`.
-  (c) The toolkit's own guard test (`test_model_guard.py`) scans each moved theme as a whole
-  (`layers=(*moved_themes, *old_layers_left, "generation", "testkit")`), and its `HAND_WRITTEN`
+  (c) The toolkit's own guard test (`tests/unit/testkit/test_model_guard.py`) scans the library with
+  `layers=LIBRARY_LAYERS` and the generator in a second call, as a package of its own
+  (`GENERATOR = "rdf_persistence_generation"`, `layers=("",)`, lines 11 and 89). From stage 2 the
+  library call becomes `layers=(*moved_themes, *old_layers_left, "testkit")` (each moved theme as a
+  whole); the generator call stays as it is, since the generator is not a theme. Its `HAND_WRITTEN`
   allow-list entries are rewritten with each stage's path table.
 - **PD-5 The `iris` theme and the wrappers (DEC-3, DEC-8).** `technical-models` (its PD-2) already
   split `iris.py` in the old layout: `domain/layout.py` holds the layout constants, `_segment`,
@@ -179,14 +199,43 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
     `rdf_persistence.*.{services,adapters,entrypoints}`; `rdf_persistence.*.services` imports no
     `rdf_persistence.*.{adapters,entrypoints}`; `rdf_persistence.*.adapters` and
     `rdf_persistence.*.entrypoints` import neither the other.
-  - `domain-pure`, `runtime-without-extras`, `works-without-the-generate-extra`,
-    `event-bus-libraries-in-one-module`, `collaboration-layers`, `session-and-provenance-without-mapper`,
-    `tenancy-without-the-runner`, `library-never-imports-the-generator` (generator-package): same
-    meaning, sources by wildcard or new path.
+  - `domain-pure`, `collaboration-layers`, `session-and-provenance-without-mapper`,
+    `tenancy-without-the-runner`: same meaning, sources by wildcard or new path.
+  - The `generator-package` contracts and the two the first list missed, each by the same rule (same
+    meaning; only a path that names a moved module changes):
+    - `runtime-without-extras`: sources become `rdf_persistence.*.{domain,services,adapters,entrypoints}`
+      (and the two shims while they exist); the forbidden list (testkit, generator, pytest,
+      testcontainers, linkml) names no moved path, so it stays.
+    - `works-without-the-generate-extra`: its sources `rdf_persistence.services.schema` and
+      `schema_structure` become `rdf_persistence.schema.services.schema` and `.schema_structure`
+      (stage 3); the generator sources, `rdf_persistence.testkit` and the `ignore_imports` line on
+      `rdf_persistence_generation.cli` name no moved path, so they stay.
+    - `event-bus-libraries-in-one-module`: its `ignore_imports` entry
+      `rdf_persistence.adapters.redis_events -> faststream` becomes
+      `rdf_persistence.events.adapters.redis_events -> faststream` (stage 6); sources and forbidden
+      modules stay.
+    - `library-never-imports-the-generator`: unchanged. Its source is the whole `rdf_persistence`
+      package and its four `ignore_imports` edges are the testkit shims, which the move does not touch.
+    - `domain-tests-stay-in-the-domain`: kept, retargeted. Its source `tests.unit.domain` stops
+      existing once the domain tests move to `tests/unit/<theme>/`, where they sit beside the tests of
+      services. Each stage lists the domain-layer test modules it moves (for example
+      `tests.unit.core.test_rp_model`, `tests.unit.core.test_sparql_parsing`) as `source_modules`
+      and turns the forbidden list into `rdf_persistence.*.{services,adapters,entrypoints}`,
+      `rdf_persistence.testkit`, `tests.toy`, `tests.toy_service`; `allow_indirect_imports = True`
+      stays. After stage 7 `tests.unit.domain` is gone and the explicit list is the contract.
+    - `sparql-parser-only-through-the-wrappers`: kept; its sources (`rdf_persistence`,
+      `rdf_persistence_generation`) and forbidden modules stay, and the two wrapper entries of
+      `ignore_imports` move: `rdf_persistence.domain.sparql_parsing -> ...` (two lines) becomes
+      `rdf_persistence.core.domain.sparql_parsing -> ...` (stage 2), and
+      `rdf_persistence.services.shacl -> pyshacl` becomes
+      `rdf_persistence.api.services.shacl -> pyshacl` (stage 7, PD-1).
   - Gone: `layers` (replaced by the three above), `nothing-in-services-imports-the-bus` and
     `migrations-below-the-runner` (implied by `themes-ordered`), `technical-models`'
     `domain-never-imports-technical-models` (implied by `layers-across-themes`: every technical
     package sits in a `services`, `adapters` or `entrypoints` layer, which no `*.domain` imports).
+
+  The 14 contracts of today therefore end as 15: ten carry over, four are gone, five are new
+  (`themes-layered`, `themes-ordered` and the three of `layers-across-themes`).
 
   During stages 2 to 6 the old `layers` contract and the new ones run side by side; a stage adds its
   themes to `containers` and `themes-ordered` (a theme not yet moved is absent, not empty).
@@ -195,10 +244,10 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
   `_raise_for_status`, `_read_result`, and abstract `query_path(dataset)`, `update_path(dataset)`,
   `graph_store_path(dataset)`, `create_dataset`, `drop_dataset`, `list_datasets`, `export_quads`,
   `import_quads`. `_raise_for_status` and `_read_result` are module functions today
-  (`fuseki.py:46`, `:62`); they become methods so the messages (`BAD_QUERY_MESSAGE`, `UNREADABLE`,
+  (`fuseki.py:47` and `:73`); they become methods so the messages (`BAD_QUERY_MESSAGE`, `UNREADABLE`,
   "answered {status}") say `self.service`, not "Fuseki". The 400 debug line then logs under
-  `rdf_persistence.persistence.adapters.sparql_protocol`, and the `caplog` logger string in
-  `test_fuseki_store.py:237` changes with it. The SPARQL protocol media
+  `rdf_persistence.persistence.adapters.sparql_protocol`, and the two `caplog` logger strings in
+  `tests/unit/adapters/test_fuseki_store.py:275` and `:292` change with it. The SPARQL protocol media
   types (`SPARQL_QUERY`, `SPARQL_UPDATE`, `RESULTS_JSON`) and `GRAPH_PARAM` move with it (protocol
   constants stay next to their use, P-0009). `FusekiStore(SparqlProtocolStore)` keeps the
   constructor, `service = "Fuseki"`, the layout, `ADMIN_DATASETS`, the form fields and the
@@ -222,17 +271,23 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
   merges them; a name in two files is an error. `SERVICE_SCHEMA` becomes `SERVED_SCHEMAS`, the tuple
   of their YAML paths; the TypeScript step copies the types of all of them, in the order today's
   single `rp_service.yaml` gives them (the golden files of TC-07 hold that order; a merged order
-  that differs is a failure, not a new golden) (`manifest.py:89` and
-  `extensions/typescript.py:183` read `SERVICE_SCHEMA` today). `vocabulary.TOTAL` reads `total`
+  that differs is a failure, not a new golden) (`rdf_persistence_generation/manifest.py:94` and
+  `extensions/typescript.py:184`, `:209`, `:217` read `SERVICE_SCHEMA` today, as do
+  `services/vocabulary.py:197` and `:200`, below). `vocabulary.TOTAL` reads `total`
   from the schema that declares it (`persistence/services`, with `Page`), and
   `vocabulary.IRI_POLICY` reads `iri_policy` from `iris/services` (with `ServiceSettings`); both
   are file reads of schemas of the same or a lower theme than their users.
 - **PD-11 Tests follow (DEC-9).** `tests/unit/{domain,services,adapters,entrypoints}/test_*.py` move
-  by the module they test to `tests/unit/<theme>/`. A test of several themes goes to the highest.
+  by the module they test to `tests/unit/<theme>/`. A test of several themes goes to the highest. The generator's tests
+  (`tests/generator/`) and the testkit's (`tests/unit/testkit/`) do not move.
   Helpers (`builders.py`, `scene.py`, `conftest.py`) go where their users are; one used by two
-  themes goes to `tests/unit/` root. `tests/changed.py`: `LAYERS` becomes `THEMES` plus `generation`
-  and `testkit`, and `rdf_persistence/<theme>/...` maps to `tests/unit/<theme>/`; a change in `core`
-  runs `make test-fast` (it replaces today's rule for `domain`).
+  themes goes to `tests/unit/` root. `tests/changed.py` today has `LAYERS = {domain, services,
+  adapters, entrypoints, testkit}` (line 16) and handles the generator apart, by `GENERATOR_PACKAGE`
+  and `GENERATOR_TESTS` (lines 21-22; rule at 67-70: a change in `rdf_persistence_generation/` or
+  `tests/generator/` selects `tests/generator/`). The move makes `LAYERS` the `THEMES` plus
+  `testkit`, keeps the two generator constants and their rules as they are (`generation` is no
+  member of the set), and maps `rdf_persistence/<theme>/...` to `tests/unit/<theme>/`; a change in
+  `core` runs `make test-fast` (it replaces today's rule for `domain`, `DOMAIN_FOLDER`).
 - **PD-12 One path table per stage.** Each stage's PR body lists old → new module paths, and
   `temp/` holds the ast-grep rule that rewrites them; the stage's last commit removes `temp/` files.
   The lead posts the table on every open PR of the repository.
@@ -359,3 +414,52 @@ the cross-change reconciliation of 2026-11-17: that change now applies DEC-3's r
 layers. One question remains for the developer: whether the kind/folder rule should bind
 consumers that declare `kind` (RISK-9); the recommendation is toolkit-only now, opt-in for
 consumers later.
+
+## Delivery decisions
+
+- **D-1 PLAN amended at task 1.1** (builder, 2026-11-18, on 79c6837; the lead reviews). ASM-1 to ASM-3
+  hold; what changed, one line each:
+  - Context: targets `pyproject.toml:91-118` (four) became `:105-159` (eight); the base is `develop`
+    after `generator-package`, not `docs/manual-revision-notes`.
+  - Context table: 141 names became 149 (`__all__`); 10 contracts became 14.
+  - PD-1: `domain/sparql_parsing.py` placed in `core/domain` and `services/shacl.py` in `api/services`
+    (lowest theme that uses it), with their tests; the four testkit shims noted as untouched.
+  - PD-3: the hard check cited at `checks/python_package.py:29`, wired at `steps.py:110`.
+  - PD-4: `target_kind_problems` at `boundary.py:193`; wiring is `_boundary_problems`, `steps.py:96-101`;
+    (c) follows `test_model_guard.py` (`GENERATOR`, a separate call, `LIBRARY_LAYERS`).
+  - PD-6: the two uncovered contracts and the four of `generator-package` placed one by one; the count
+    14 to 15 stated.
+  - PD-7: `fuseki.py:46,:62` became `:47,:73`; `test_fuseki_store.py:237` became
+    `tests/unit/adapters/test_fuseki_store.py:275,:292`.
+  - PD-10: `manifest.py:89` became `:94`, `typescript.py:183` became `:184,:209,:217`, and
+    `vocabulary.py:197,:200` named as readers of `SERVICE_SCHEMA`.
+  - PD-11: `tests/changed.py` keeps `GENERATOR_PACKAGE`/`GENERATOR_TESTS`; `LAYERS` is the themes plus
+    `testkit`, no `generation`.
+  - tasks.md: 141 to 149 (success line, task 1.6, TC-03 twice), 140 to 148 (task 8.1, TC-03); task 1.3
+    and TC-12 cite the code; task 1.4's test file marked new; task 1.5 extends
+    `test_components_folder.py` (`test_components.py` never existed); task 1.6's new test renamed
+    `test_no_old_module_paths.py` (`test_old_paths_gone.py` is `generator-package`'s); tasks 2.1 and
+    7.1 carry the two new modules.
+  - `proposal.md` (the EPIC) says 149 names at its three mentions, amended by the lead.
+- **D-2 One session for both EPICs** (developer, 2026-11-17). `generator-package` and this change
+  are delivered in one autonomous session, every stage, overriding "one EPIC per session, fresh
+  session per stage". Mitigation: after each merge the lead re-reads this change's `handover.md`
+  and `tasks.md` before the next stage; after any compaction it re-reads `handover.md` first.
+  Stages 1–7 only: stage 8 needs a published release containing stage 7 (PD-13).
+- **D-3 The acceptance demo is waived** (developer, 2026-11-17 and again 2026-11-18, before the
+  autonomous run), although VERY LARGE makes it mandatory. Recorded in `evidence/acceptance.md`.
+- **D-4 `second-store` is not planned first** (developer, 2026-11-17): task 4.1 takes the branch
+  where the store split is built inside stage 4.
+- **D-5 Open PRs before stage 1** (lead, under the developer's "take the decisions for me"). The
+  ordering rule allows only release-please (#134) and the lead's own PRs before each stage. Open:
+  #161 (the developer's, `.gitignore` only) and #167 (another session's, `CHANGELOG.md` only).
+  Neither touches a file a move stage changes, so stage 1 starts; the rule is re-checked before
+  every stage, and a PR touching moved files makes the stage wait for it.
+- **D-6 Stage 1 built while `generator-package` closed** (lead, under the developer's "run things in
+  parallel"). Its builders started from `generator-package` stage 4's head (79c6837); the branch is
+  cut from `develop` after that change's archive merges, and the work is rebased onto it (the
+  archive touches only `openspec/`).
+- **D-7 Review set** (lead). As `generator-package` D-3 and rule P-0005: each stage gets one pass of
+  L2 and L3; the full review (L1, L2, L3 apart, L4+L5 one pass) runs once, on stage 7, over the
+  EPIC's diff. The tester runs on every stage that moves code (no `## Invariants` section at VERY
+  LARGE).
