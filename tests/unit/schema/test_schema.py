@@ -5,7 +5,7 @@ from pathlib import Path
 import rdf_persistence
 from rdf_persistence.schema.services.schema import MODEL_PREFIX, PACKAGE_DIR, metamodel_importmap
 
-TECHNICAL_MARKERS = ("technical", "rp_service", "rp_wire")
+TECHNICAL_MARKERS = ("technical", "rp_service", "rp_api_entrypoints", "rp_wire")
 # The metamodel's modules, as they stood before the schema theme moved (thematic-structure TC-34).
 METAMODEL_MODULES = (
     "rp",

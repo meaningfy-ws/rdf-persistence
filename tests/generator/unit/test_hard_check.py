@@ -1169,8 +1169,12 @@ TOOLKIT_PACKAGES = [
         "rdf_persistence.collaboration.services.generated",
     ),
     (
-        "rdf_persistence/model/technical/service/rp_service.yaml",
-        "rdf_persistence.services.generated.service",
+        "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml",
+        "rdf_persistence.api.entrypoints.generated",
+    ),
+    (
+        "rdf_persistence/model/technical/api/rp_api_settings.yaml",
+        "rdf_persistence.api.entrypoints.generated.settings",
     ),
     (
         "rdf_persistence/model/technical/testkit/rp_testkit.yaml",

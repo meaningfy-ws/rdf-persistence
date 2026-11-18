@@ -21,6 +21,7 @@ from rdflib import RDF, XSD, BNode, Literal, URIRef
 
 from rdf_persistence import Action, UnitOfWork, generated_models
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence.api.entrypoints.kit import ServiceKit
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.transitions import Transitions
 from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
@@ -40,7 +41,6 @@ from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.generated.rp_workflow import Transition, WorkflowTransition
 from rdf_persistence.core.domain.sparql import Triple, fill, term
-from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import Session, Transaction

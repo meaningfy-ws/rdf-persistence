@@ -22,10 +22,18 @@ PACKAGE = ROOT / "rdf_persistence"
 MODEL = PACKAGE / "model"
 TECHNICAL = MODEL / "technical"
 KIND_KEY, TECHNICAL_KIND = "module_kind", "technical"
-SERVICE_SCHEMA_PACKAGE = "rdf_persistence.services.generated.service"
-CONTRACT_DOMAIN = "domain-never-imports-technical-models"
-CONTRACT_LAYERS = "layers"
-DOMAIN_CONTRACT_NAME = "the domain never imports a technical model"  # the `name` of that contract
+SERVICE_SCHEMA_PACKAGE = "rdf_persistence.api.entrypoints.generated"
+# The contracts that keep a technical model out of a domain and a layer from reaching the one above it
+# (thematic-structure PD-6): `domain-never-imports-technical-models` and `layers` are gone, and these
+# take their place. The first words of each contract's `name` are what a BROKEN line carries.
+CONTRACT_DOMAIN = "domain-of-a-theme-imports-no-upper-layer"
+CONTRACT_SERVICES = "services-of-a-theme-import-no-adapters-or-entrypoints"
+CONTRACT_ENTRYPOINTS = "entrypoints-of-themes-import-no-adapters"
+CONTRACT_RUNTIME = "runtime-without-extras"
+DOMAIN_CONTRACT_NAME = "layers-across-themes (1/3)"
+SERVICES_CONTRACT_NAME = "layers-across-themes (2/3)"
+ENTRYPOINTS_CONTRACT_NAME = "layers-across-themes (3/3)"
+RUNTIME_CONTRACT_NAME = "runtime layers import neither the testkit"
 
 
 def _module_kind(path: Path) -> str | None:
@@ -50,9 +58,9 @@ def test_the_service_models_generate_outside_the_domain():  # TC-08
     assert not (Path(domain_generated.__path__[0]) / "service").exists(), (
         "no service subpackage is left under domain.generated"
     )
-    service = import_module(f"{SERVICE_SCHEMA_PACKAGE}.rp_service")
+    service = import_module(f"{SERVICE_SCHEMA_PACKAGE}.rp_api_entrypoints")
     wire = import_module("rdf_persistence.access.adapters.generated.rp_access_adapters")
-    assert hasattr(service, "Problem"), "services.generated.service defines Problem"
+    assert hasattr(service, "Problem"), "api.entrypoints.generated defines Problem"
     assert hasattr(wire, "JwtClaims"), "access.adapters.generated defines JwtClaims"
 
 
@@ -60,23 +68,34 @@ def test_the_service_models_generate_outside_the_domain():  # TC-08
 
 LAYOUT = {
     "__init__.py": "",
-    "domain/__init__.py": "",
-    "domain/generated/__init__.py": "",
-    "domain/generated/rp_core.py": "",
-    "domain/layout.py": "",
     "core/__init__.py": "",
     "core/domain/__init__.py": "",
     "core/domain/generated/__init__.py": "",
-    "services/__init__.py": "",
-    "services/session.py": "",
-    "services/generated/__init__.py": "",
-    "services/generated/service/__init__.py": "",
-    "services/generated/service/rp_service.py": "",
-    "adapters/__init__.py": "",
-    "adapters/generated/__init__.py": "",
-    "adapters/generated/rp_wire.py": "",
+    "core/domain/generated/rp_core.py": "",
+    "iris/__init__.py": "",
+    "iris/domain/__init__.py": "",
+    "iris/domain/layout.py": "",
+    "persistence/__init__.py": "",
+    "persistence/services/__init__.py": "",
+    "persistence/services/session.py": "",
+    "access/__init__.py": "",
+    "access/adapters/__init__.py": "",
+    "access/adapters/generated/__init__.py": "",
+    "access/adapters/generated/rp_access_adapters.py": "",
+    "api/__init__.py": "",
+    "api/entrypoints/__init__.py": "",
+    "api/entrypoints/router.py": "",
+    "api/entrypoints/generated/__init__.py": "",
+    "api/entrypoints/generated/rp_api_entrypoints.py": "",
+    "api/entrypoints/generated/settings/__init__.py": "",
+    "api/entrypoints/generated/settings/rp_api_settings.py": "",
 }
-KEPT_CONTRACTS = (CONTRACT_LAYERS, CONTRACT_DOMAIN)
+KEPT_CONTRACTS = (CONTRACT_DOMAIN, CONTRACT_SERVICES, CONTRACT_ENTRYPOINTS, CONTRACT_RUNTIME)
+# the runtime contract also names the generator and test tools, which are no package of the scratch copy
+SCRATCH_RUNTIME_FORBIDDEN = "\nrdf_persistence.testkit"
+SCRATCH_RUNTIME_SOURCES = (
+    "\nrdf_persistence.*.domain\nrdf_persistence.*.services\nrdf_persistence.*.adapters"
+)
 
 
 def _scratch_config(real: Path) -> str:
@@ -89,6 +108,9 @@ def _scratch_config(real: Path) -> str:
         section = f"importlinter:contract:{name}"
         assert source.has_section(section), f"{real.name} declares the contract {name}"
         scratch[section] = dict(source[section])
+    runtime = scratch[f"importlinter:contract:{CONTRACT_RUNTIME}"]
+    runtime["forbidden_modules"] = SCRATCH_RUNTIME_FORBIDDEN
+    runtime["source_modules"] = SCRATCH_RUNTIME_SOURCES
     path = real.parent / "scratch.importlinter"
     with path.open("w", encoding="utf-8") as handle:
         scratch.write(handle)
@@ -117,8 +139,18 @@ def _scratch_config_in(tmp_path: Path) -> str:
     return _scratch_config(scratch)
 
 
+SUMMARY_LINE = re.compile(r"(?P<name>.+?) (?P<verdict>KEPT|BROKEN)(?= |$)")
+
+
 def _broken_contracts(result: subprocess.CompletedProcess[str]) -> list[str]:
-    return [line for line in result.stdout.splitlines() if line.endswith("BROKEN")]
+    """The names of the contracts reported BROKEN; a long name wraps, so the output is read as one text."""
+    summary = " ".join(result.stdout.split()).partition("dependencies.")[2]
+    summary = summary.partition("Contracts:")[0].lstrip("- ")
+    return [
+        m["name"].strip("- ") + " BROKEN"
+        for m in SUMMARY_LINE.finditer(summary)
+        if m["verdict"] == "BROKEN"
+    ]
 
 
 def test_the_scratch_layout_itself_keeps_every_contract(tmp_path):
@@ -135,13 +167,13 @@ def test_a_domain_module_importing_the_service_models_breaks_the_domain_contract
     assert any(DOMAIN_CONTRACT_NAME in line for line in _broken_contracts(result)), result.stdout
 
 
-def test_a_service_module_importing_the_wire_models_breaks_layers(tmp_path):  # TC-10
+def test_a_service_module_importing_the_wire_models_breaks_the_services_contract(tmp_path):  # TC-10
     result = _lint(
         tmp_path,
-        {"services/session.py": "import rdf_persistence.adapters.generated.rp_wire\n"},
+        {"persistence/services/session.py": f"import {WIRE}\n"},
     )
     assert result.returncode != 0, result.stdout
-    assert any(line.startswith("Layers") for line in _broken_contracts(result)), result.stdout
+    assert any(SERVICES_CONTRACT_NAME in line for line in _broken_contracts(result)), result.stdout
 
 
 def test_the_policy_free_layout_importing_the_service_models_breaks_the_domain_contract(
@@ -149,72 +181,85 @@ def test_the_policy_free_layout_importing_the_service_models_breaks_the_domain_c
 ):  # TC-53
     result = _lint(
         tmp_path,
-        {"core/domain/generated/rp_layout.py": f"import {SERVICE_SCHEMA_PACKAGE}\n"},
+        {"iris/domain/layout.py": f"import {SERVICE_SCHEMA_PACKAGE}\n"},
     )
     assert result.returncode != 0, result.stdout
     assert any(DOMAIN_CONTRACT_NAME in line for line in _broken_contracts(result)), result.stdout
 
 
-WIRE = "rdf_persistence.adapters.generated.rp_wire"
+WIRE = "rdf_persistence.access.adapters.generated.rp_access_adapters"
 TESTKIT_MODELS = "rdf_persistence.testkit.generated"
 PLANT_TESTKIT = {"testkit/__init__.py": "", "testkit/generated/__init__.py": ""}
-PLANT_ENTRYPOINTS = {"entrypoints/__init__.py": "", "entrypoints/router.py": ""}
+HELPER = "from rdf_persistence.{theme}.{layer} import helper\n"
 
 
 @pytest.mark.parametrize(
-    "planted",
+    ("planted", "contract"),
     [
         pytest.param(
             {
-                "domain/generated/rp_core.py": "from rdf_persistence.domain import helper\n",
-                "domain/helper.py": f"from {WIRE} import JwtClaims\n",
+                "core/domain/generated/rp_core.py": HELPER.format(theme="core", layer="domain"),
+                "core/domain/helper.py": f"from {WIRE} import JwtClaims\n",
             },
+            DOMAIN_CONTRACT_NAME,
             id="indirect-to-the-wire-models",
         ),
         pytest.param(
-            {"domain/layout.py": f"import {TESTKIT_MODELS}\n", **PLANT_TESTKIT},
+            {"iris/domain/layout.py": f"import {TESTKIT_MODELS}\n", **PLANT_TESTKIT},
+            RUNTIME_CONTRACT_NAME,
             id="testkit-generated-direct",
         ),
         pytest.param(
             {
-                "domain/layout.py": "from rdf_persistence.domain import helper\n",
-                "domain/helper.py": f"import {TESTKIT_MODELS}\n",
+                "iris/domain/layout.py": HELPER.format(theme="iris", layer="domain"),
+                "iris/domain/helper.py": f"import {TESTKIT_MODELS}\n",
                 **PLANT_TESTKIT,
             },
+            RUNTIME_CONTRACT_NAME,
             id="testkit-generated-indirect",
         ),
     ],
 )
-def test_a_domain_module_reaching_a_technical_model_indirectly_breaks_the_domain_contract(
-    tmp_path, planted
+def test_a_domain_module_reaching_a_technical_model_indirectly_breaks_a_contract(
+    tmp_path, planted, contract
 ):
-    """Row 3: probe of PD-1; a chain through a helper, and the testkit's generated models."""
+    """Row 3: probe of PD-1; a chain through a helper, and the testkit's generated models.
+
+    The domain never imports a technical model of an upper layer (``layers-across-themes``) nor the
+    testkit's (``runtime-without-extras``), which replace ``domain-never-imports-technical-models``.
+    """
     result = _lint(tmp_path, planted)
     assert result.returncode != 0, result.stdout
-    assert any(DOMAIN_CONTRACT_NAME in line for line in _broken_contracts(result)), result.stdout
+    assert any(contract in line for line in _broken_contracts(result)), result.stdout
 
 
 @pytest.mark.parametrize(
-    "planted",
+    ("planted", "contract"),
     [
         pytest.param(
             {
-                "services/session.py": "from rdf_persistence.services import helper\n",
-                "services/helper.py": f"import {WIRE}\n",
+                "persistence/services/session.py": HELPER.format(
+                    theme="persistence", layer="services"
+                ),
+                "persistence/services/helper.py": f"import {WIRE}\n",
             },
+            SERVICES_CONTRACT_NAME,
             id="service-through-a-helper",
         ),
         pytest.param(
-            {**PLANT_ENTRYPOINTS, "entrypoints/router.py": f"import {WIRE}\n"},
+            {"api/entrypoints/router.py": f"import {WIRE}\n"},
+            ENTRYPOINTS_CONTRACT_NAME,
             id="entrypoint-direct",
         ),
     ],
 )
-def test_a_service_or_entrypoint_reaching_a_wire_model_breaks_layers(tmp_path, planted):
+def test_a_service_or_entrypoint_reaching_a_wire_model_breaks_a_layer_contract(
+    tmp_path, planted, contract
+):
     """Row 4: probe of PD-2; the entrypoint, and a service that reaches it through a helper."""
     result = _lint(tmp_path, planted)
     assert result.returncode != 0, result.stdout
-    assert any(line.startswith("Layers") for line in _broken_contracts(result)), result.stdout
+    assert any(contract in line for line in _broken_contracts(result)), result.stdout
 
 
 @pytest.mark.parametrize(
@@ -239,7 +284,7 @@ def test_an_old_import_path_is_a_module_not_found_error(dotted):
 
 def test_a_stale_toolkit_folder_stops_the_service_at_start(monkeypatch):
     """Row 6: the components are read at install, so the old place gives an error, never an empty document."""
-    from rdf_persistence.entrypoints import openapi
+    from rdf_persistence.api.entrypoints import openapi
     from tests.toy_service import ToyService
 
     stale = ROOT / "rdf_persistence" / "domain" / "generated" / "service"

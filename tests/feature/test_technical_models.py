@@ -21,13 +21,13 @@ from rdflib import URIRef
 
 from rdf_persistence.access.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.access.services.generated.settings.rp_access_settings import JwksSettings
+from rdf_persistence.api.entrypoints.environment import settings_from_env
+from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import ToolkitSettings
 from rdf_persistence.core.domain.sparql import term
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
-from rdf_persistence.entrypoints.environment import settings_from_env
 from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.schema.services.generated.templates.rp_schema_templates import RegistryTerms
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
 from rdf_persistence.testkit.tokens import ISSUER
 from rdf_persistence_generation.cli import main as generate
 from tests.toy_service import ToyService
@@ -37,19 +37,21 @@ scenarios("technical_models.feature")
 
 ROOT = Path(__file__).parents[2]
 TOY = ROOT / "tests" / "fixtures" / "library"
-DOMAIN_GENERATED = "domain/generated/rp_core.py"
-DOMAIN_EXCEPTIONS = "domain/exceptions.py"
+DOMAIN_GENERATED = "core/domain/generated/rp_core.py"
+DOMAIN_EXCEPTIONS = "core/domain/exceptions.py"
+IRI_LAYOUT = "iris/domain/layout.py"
+SERVICE_MODULE = "persistence/services/service_module.py"
 
 
 def _scratch_module(planted_path: str) -> str:
-    """The module a file planted in the scratch copy of the old layout (the layers contract) is."""
+    """The module a file planted in the scratch copy of the theme layout (the layer contracts) is."""
     return "rdf_persistence." + planted_path.removesuffix(".py").replace("/", ".")
 
 
-SERVICE_SETTINGS = "rdf_persistence.services.generated.service.rp_service"
-WIRE = "rdf_persistence.adapters.generated.rp_wire"
-SETTINGS_MODULE = "rdf_persistence.services.generated.settings.rp_settings"
-ADAPTER = "rdf_persistence.adapters.store"
+SERVICE_SETTINGS = "rdf_persistence.api.entrypoints.generated.rp_api_entrypoints"
+WIRE = "rdf_persistence.access.adapters.generated.rp_access_adapters"
+SETTINGS_MODULE = "rdf_persistence.api.entrypoints.generated.settings.rp_api_settings"
+ADAPTER = "rdf_persistence.access.adapters.store"
 GENERATED_NAME = "groups"
 
 
@@ -104,39 +106,28 @@ def _generated_domain(run: Run) -> None:
     "a copy of the toolkit where the IRI layout module of the domain layer imports the service settings"
 )
 def _layout(run: Run) -> None:
-    # a module planted in the scratch copy of the old layout (the layers contract), under a name of its own
-    _plant(
-        run,
-        "domain/iri_layout.py",
-        SERVICE_SETTINGS,
-        ("rdf_persistence.domain.iri_layout", SERVICE_SETTINGS),
-    )
+    # the IRI layout is a module of the `iris` theme's domain layer in the scratch copy of the themes
+    _plant(run, IRI_LAYOUT, SERVICE_SETTINGS, (_scratch_module(IRI_LAYOUT), SERVICE_SETTINGS))
 
 
 @given("a copy of the toolkit where a service module imports an adapter module")
 def _service_adapter(run: Run) -> None:
-    # a module planted in the scratch copy of the old layout (the layers contract), under a name of its own
-    run.planted = {"adapters/store.py": "", "services/service_module.py": f"import {ADAPTER}\n"}
-    run.modules = ("rdf_persistence.services.service_module", ADAPTER)
+    # a module planted in the scratch copy of the theme layout (the layer contracts), under a name of its own
+    run.planted = {
+        "access/adapters/store.py": "",
+        SERVICE_MODULE: f"import {ADAPTER}\n",
+    }
+    run.modules = (_scratch_module(SERVICE_MODULE), ADAPTER)
 
 
 @given("a copy of the toolkit where a service module imports a wire model")
 def _service_wire(run: Run) -> None:
-    _plant(
-        run,
-        "services/service_module.py",
-        WIRE,
-        ("rdf_persistence.services.service_module", WIRE),
-    )
+    _plant(run, SERVICE_MODULE, WIRE, (_scratch_module(SERVICE_MODULE), WIRE))
 
 
 @given("a copy of the toolkit where a domain module imports the generated settings")
 def _domain_settings(run: Run) -> None:
-    run.planted = {
-        "services/generated/settings/__init__.py": "",
-        "services/generated/settings/rp_settings.py": "",
-        DOMAIN_EXCEPTIONS: f"import {SETTINGS_MODULE}\n",
-    }
+    run.planted = {DOMAIN_EXCEPTIONS: f"import {SETTINGS_MODULE}\n"}
     run.modules = (_scratch_module(DOMAIN_EXCEPTIONS), SETTINGS_MODULE)
 
 
@@ -607,7 +598,7 @@ def _others_default(run: Run) -> None:
 IMPORT_PROBE = (
     "import sys, rdf_persistence;"
     "assert 'pydantic_settings' not in sys.modules, 'the settings library was loaded';"
-    "assert 'rdf_persistence.entrypoints' not in sys.modules, 'the entrypoints were loaded'"
+    "assert 'rdf_persistence.api.entrypoints' not in sys.modules, 'the entrypoints were loaded'"
 )
 
 

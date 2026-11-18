@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence.api.services.documents import Documents
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.documents import Documents
 from rdf_persistence.testkit import fake_session
 from tests.toy import TENANT, TOY_SCHEMA
 

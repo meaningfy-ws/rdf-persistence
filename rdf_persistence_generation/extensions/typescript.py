@@ -19,7 +19,6 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, 
 
 from rdf_persistence.schema.services.schema import (
     SERVED_SCHEMAS,
-    SERVICE_SCHEMA,
     load_schema,
     metamodel_importmap,
 )
@@ -43,9 +42,10 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.templating import environment
 
 TEMPLATES = "typescript"
-# The module that holds the types of every served schema (``rp_service.ts``), named after the service
-# schema, not after the schema served first.
-SERVICE_MODULE = SERVICE_SCHEMA.stem
+# The module that holds the types of every served schema (``rp_service.ts``). The name is the one
+# consumers import: it is kept as it was when one schema held the service types, and it does not follow
+# the schema of the ``api`` theme (``rp_api_entrypoints``), so the move changes no consumer's import (TC-07).
+SERVICE_MODULE = "rp_service"
 MODULE_TEMPLATE = "module.ts.jinja"
 INDEX_TEMPLATE = "index.ts.jinja"
 INDEX_NAME = "index.ts"
@@ -191,7 +191,7 @@ def _module_files(schema_path: Path) -> list[GeneratedFile]:
 def _clashes(generator: ToolkitTypescriptGenerator, folder: Path) -> list[str]:
     """The modules and types of the schemas kept in ``folder`` whose names the served types reserve."""
     served = [load_schema(path).schema for path in SERVED_SCHEMAS]
-    reserved_modules = {schema.name for schema in served}
+    reserved_modules = {SERVICE_MODULE, *(schema.name for schema in served)}
     reserved = {name for schema in served for name in (*schema.classes, *schema.enums)}
     found = []
     for schema in own_schemas(generator.schemaview, folder):

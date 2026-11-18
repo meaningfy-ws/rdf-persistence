@@ -129,6 +129,22 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     )
     from rdf_persistence.access.services.identity import Identity
     from rdf_persistence.access.services.tokens import TokenVerifier
+    from rdf_persistence.api.entrypoints.environment import settings_from_env
+    from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import (
+        Authorised,
+        LabelUpdate,
+        Problem,
+        ProblemKind,
+        TenantCreate,
+    )
+    from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import (
+        SseSettings,
+        ToolkitSettings,
+    )
+    from rdf_persistence.api.entrypoints.kit import ServiceKit
+    from rdf_persistence.api.entrypoints.router import limited_body
+    from rdf_persistence.api.entrypoints.service import install_service
+    from rdf_persistence.api.services.file_removal import remove_with_files
     from rdf_persistence.collaboration.services.collaboration import Collaboration
     from rdf_persistence.collaboration.services.generated.rp_collaboration_services import (
         MemberList,
@@ -137,10 +153,6 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     )
     from rdf_persistence.collaboration.services.workflows import Workflows
     from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
-    from rdf_persistence.entrypoints.environment import settings_from_env
-    from rdf_persistence.entrypoints.kit import ServiceKit
-    from rdf_persistence.entrypoints.router import limited_body
-    from rdf_persistence.entrypoints.service import install_service
     from rdf_persistence.events.services.events import EventBus, Receive, context_link
     from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
     from rdf_persistence.events.services.generated.settings.rp_events_settings import (
@@ -171,18 +183,6 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.persistence.services.session import Session, open_session
     from rdf_persistence.persistence.services.store import Store
     from rdf_persistence.schema.services.schema import load_schema
-    from rdf_persistence.services.file_removal import remove_with_files
-    from rdf_persistence.services.generated.service.rp_service import (
-        Authorised,
-        LabelUpdate,
-        Problem,
-        ProblemKind,
-        TenantCreate,
-    )
-    from rdf_persistence.services.generated.settings.rp_settings import (
-        SseSettings,
-        ToolkitSettings,
-    )
     from rdf_persistence.tenancy.services.generated.rp_tenancy_services import (
         TenantDump,
         TenantSummary,
@@ -193,14 +193,14 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
 
 __version__ = version("rdf-persistence")
 
-_SERVICES = "rdf_persistence.services"
+_API_SERVICES = "rdf_persistence.api.services"
 _EVENTS = "rdf_persistence.events.services"
 _EVENTS_MODELS = f"{_EVENTS}.generated.rp_events_services"
 _EVENTS_SETTINGS_MODELS = f"{_EVENTS}.generated.settings.rp_events_settings"
 _COLLABORATION = "rdf_persistence.collaboration.services"
 _COLLABORATION_MODELS = f"{_COLLABORATION}.generated.rp_collaboration_services"
 _MESSAGING = "rdf_persistence.messaging.services"
-_ENTRYPOINTS = "rdf_persistence.entrypoints"
+_ENTRYPOINTS = "rdf_persistence.api.entrypoints"
 _ACCESS = "rdf_persistence.access.services"
 _ACCESS_ADAPTERS = "rdf_persistence.access.adapters"
 _ACCESS_MODELS = f"{_ACCESS}.generated.rp_access_services"
@@ -212,8 +212,8 @@ _IRIS = "rdf_persistence.iris.services.iris"
 _FILES = "rdf_persistence.files.services.files"
 _S3 = "rdf_persistence.files.adapters.s3"
 _SCHEMA = "rdf_persistence.schema.services.schema"
-_SERVICE_MODELS = f"{_SERVICES}.generated.service.rp_service"
-_SETTINGS_MODELS = f"{_SERVICES}.generated.settings.rp_settings"
+_SERVICE_MODELS = f"{_ENTRYPOINTS}.generated.rp_api_entrypoints"
+_SETTINGS_MODELS = f"{_ENTRYPOINTS}.generated.settings.rp_api_settings"
 _PERSISTENCE = "rdf_persistence.persistence.services"
 _PERSISTENCE_MODELS = f"{_PERSISTENCE}.generated.rp_persistence_services"
 _LIMIT_MODELS = f"{_PERSISTENCE}.generated.settings.rp_persistence_settings"
@@ -271,7 +271,7 @@ _LAZY_MODULES = {
     "Store": f"{_PERSISTENCE}.store",
     "sweep": f"{_TENANCY}.sweep",
     "sweep_tenant": f"{_TENANCY}.tenant_sweep",
-    "remove_with_files": f"{_SERVICES}.file_removal",
+    "remove_with_files": f"{_API_SERVICES}.file_removal",
     "Tenancy": f"{_TENANCY}.tenancy",
     "GrantValidator": f"{_TENANCY}.tenancy",
     "RootValidator": f"{_TENANCY}.tenancy",

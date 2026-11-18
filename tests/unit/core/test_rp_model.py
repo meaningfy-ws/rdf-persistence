@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from rdf_persistence import IdKind, IdSpec, Principal, RpModel, TenantAccess
 from rdf_persistence.core.domain.generated import rp as generated
-from tests.unit.domain.builders import ALICE, tenant_access
+from tests.unit.builders import ALICE, tenant_access
 
 METAMODEL_CLASSES = sorted(
     (

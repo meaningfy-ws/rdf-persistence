@@ -13,6 +13,7 @@ from rdf_persistence_generation.checks.boundary import (
     target_kind_problems,
 )
 from rdf_persistence_generation.cli import main
+from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.generated.rp_generation import (
     BoundaryRule,
     GenerationTarget,
@@ -524,7 +525,7 @@ def test_a_domain_target_holding_a_technical_module_fails_naming_it_and_writes_n
 # --- kind and folder (PD-4, DEC-3): the toolkit's own run only --------------------------------------
 
 REPO = MODEL_DIR.parent
-SERVICE_SCHEMA = "rdf_persistence/model/technical/service/rp_service.yaml"
+SERVICE_SCHEMA = "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml"
 TOOLKIT_FOLDER = REPO / Path(SERVICE_SCHEMA).parent
 
 
@@ -604,9 +605,53 @@ def toolkit_target(kind: TargetKind, package: str) -> GenerationTarget:
 
 @pytest.mark.slow
 def test_the_boundary_step_passes_the_old_layout_package_of_a_technical_target() -> None:
-    """TC-72, first half: the old layout's ``services.generated.service`` (``make generate`` covers the rest)."""
-    target = toolkit_target(TargetKind.TECHNICAL, "rdf_persistence.services.generated.service")
+    """TC-72, first half: a technical target in a theme's ``generated`` folder (``make generate`` covers the rest)."""
+    target = toolkit_target(TargetKind.TECHNICAL, "rdf_persistence.api.entrypoints.generated")
     assert generate([target], REPO, (steps.BOUNDARY_STEP,), check=True) == []
+
+
+PYPROJECT = REPO / "pyproject.toml"
+ACCESS_SERVICES_SCHEMA = "rdf_persistence/model/technical/access/rp_access_services.yaml"
+WRONG_FOLDER = "rdf_persistence.access.domain.generated"
+
+
+def toolkit_targets_from(project: Path) -> list[GenerationTarget]:
+    return [t for t in read_targets(project) if t.schema_file.startswith("rdf_persistence/")]
+
+
+@pytest.mark.slow
+def test_the_toolkit_targets_pass_the_boundary_step_on_the_theme_layout(tmp_path: Path) -> None:
+    """TC-73, first half: every target of the toolkit's own ``pyproject.toml``, read from a copy."""
+    (tmp_path / "pyproject.toml").write_text(
+        PYPROJECT.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    targets = toolkit_targets_from(tmp_path / "pyproject.toml")
+
+    assert len(targets) > 10, "the toolkit's own targets were read"
+    assert generate(targets, REPO, (steps.BOUNDARY_STEP,), check=True) == []
+
+
+@pytest.mark.slow
+def test_the_boundary_step_names_the_target_whose_package_is_edited_to_a_domain_folder(
+    tmp_path: Path,
+) -> None:
+    """TC-73, second half: one technical target's package edited, on a copy of ``pyproject.toml``."""
+    text = PYPROJECT.read_text(encoding="utf-8")
+    block = f'schema = "{ACCESS_SERVICES_SCHEMA}"\npackage = "rdf_persistence.access.services.generated"'
+    assert block in text, "the access services target is in pyproject.toml"
+    (tmp_path / "pyproject.toml").write_text(
+        text.replace(
+            block, block.replace("rdf_persistence.access.services.generated", WRONG_FOLDER)
+        ),
+        encoding="utf-8",
+    )
+
+    found = generate(
+        toolkit_targets_from(tmp_path / "pyproject.toml"), REPO, (steps.BOUNDARY_STEP,), check=True
+    )
+
+    assert [(p.rule, p.element) for p in found] == [(BoundaryRule.TARGET_KIND.value, WRONG_FOLDER)]
+    assert PYPROJECT.read_text(encoding="utf-8") == text, "the real pyproject.toml is untouched"
 
 
 @pytest.mark.slow

@@ -23,6 +23,7 @@ REPO = Path(__file__).resolve().parents[2]
 CONTAINER_TEST = "tests/integration/api/test_routes.py"
 ROOT_TESTS = ("tests/unit/test_a.py", "tests/unit/test_b.py")
 LOADGROUP = ("--dist", "loadgroup")
+SHIM_FOLDERS = {"domain", "adapters"}  # the two deprecation shims of PD-8, until stage 8
 
 SELECTS = [
     (1, "openspec/changes/x/design.md", ()),
@@ -31,11 +32,11 @@ SELECTS = [
     (1, "README.md", ()),
     (2, "docs/modules/ROOT/pages/index.adoc", ("tests/unit/test_check_docs.py",)),
     (7, "tests/unit/test_public_api.py", ("tests/unit/test_public_api.py",)),
-    (8, "tests/unit/domain/test_exceptions.py", ("tests/unit/domain/",)),
-    (8, "tests/unit/services/helpers.py", ("tests/unit/services/",)),
-    (8, "tests/unit/entrypoints/test_router.py", ("tests/unit/entrypoints/",)),
+    (8, "tests/unit/core/test_exceptions.py", ("tests/unit/core/",)),
+    (8, "tests/unit/api/helpers.py", ("tests/unit/api/",)),
+    (8, "tests/unit/api/test_router.py", ("tests/unit/api/",)),
     (9, "tests/feature/steps/test_steps.py", ("tests/feature/",)),
-    (10, "rdf_persistence/services/example.py", ("tests/unit/services/",)),
+    (10, "rdf_persistence/api/services/example.py", ("tests/unit/api/",)),
     (10, "rdf_persistence/iris/domain/layout.py", ("tests/unit/iris/",)),
     (10, "rdf_persistence/testkit/containers/fuseki.py", ("tests/unit/testkit/",)),
     (11, "rdf_persistence/__init__.py", ROOT_TESTS),
@@ -93,13 +94,13 @@ def test_a_changed_generator_file_selects_the_generator_tests(changed):
     assert not selection.fallback_reasons, f"{changed} must not fall back"
 
 
-def test_the_layers_and_themes_are_the_folders_of_the_package():
-    """Every layer folder is known, and every other folder is a theme the mapper knows (PD-11)."""
+def test_the_folders_of_the_package_are_the_themes_the_testkit_and_the_two_shims():
+    """Every folder is a theme the mapper knows, the testkit, or a deprecation shim (PD-8, PD-11, TC-70)."""
     folders = {p.parent.name for p in (REPO / "rdf_persistence").glob("*/__init__.py")}
 
-    assert folders >= LAYERS, "a layer of the mapper has no folder"
-    assert folders - LAYERS - THEMES == set(), "a folder is neither a layer nor a theme"
-    assert not LAYERS & THEMES, "a name cannot be a layer and a theme"
+    assert folders >= LAYERS | THEMES, "a theme or the testkit of the mapper has no folder"
+    assert folders - LAYERS - THEMES == SHIM_FOLDERS, "a folder is neither a theme nor a shim"
+    assert not LAYERS & THEMES, "a name cannot be the testkit and a theme"
 
 
 def test_the_themes_are_the_thirteen_of_the_design():
@@ -187,13 +188,20 @@ def test_main_exits_with_the_fallback_status_when_core_changed(monkeypatch, caps
     assert "rdf_persistence/core/domain/sparql.py" in out.err, "stderr names the file"
 
 
-def test_the_layer_rule_and_the_generator_rule_are_kept():
-    """The themes add a rule; today's layers and the generator's folder still map as before."""
+def test_the_theme_rule_and_the_generator_rule_are_kept():
+    """A theme's folder and the generator's folder both map, side by side (PD-11)."""
     selection = _select(
-        ["rdf_persistence/services/example.py", "rdf_persistence_generation/manifest.py"]
+        ["rdf_persistence/api/services/example.py", "rdf_persistence_generation/manifest.py"]
     )
 
-    assert selection.paths == ("tests/generator/", "tests/unit/services/"), "layer and generator"
+    assert selection.paths == ("tests/generator/", "tests/unit/api/"), "theme and generator"
+
+
+def test_a_change_in_a_shim_selects_the_root_tests_like_any_file_of_the_package():
+    """The shims are no theme: a file of ``rdf_persistence/domain/`` has no folder of its own (PD-8)."""
+    selection = _select(["rdf_persistence/domain/example.py"])
+
+    assert selection.paths == ROOT_TESTS, "the shim is covered by the root-level tests"
 
 
 @pytest.mark.parametrize(("rule", "changed", "expected"), SELECTS)
@@ -231,18 +239,18 @@ def test_the_root_level_unit_test_files_are_the_real_ones(monkeypatch):
 
 def test_the_worked_example_selects_one_folder_and_hints_at_the_container_test():
     changed = [
-        "rdf_persistence/services/example.py",
-        "tests/unit/services/test_replace_internal_values.py",
+        "rdf_persistence/api/services/example.py",
+        "tests/unit/api/test_replace_internal_values.py",
         "openspec/changes/x/design.md",
         CONTAINER_TEST,
     ]
 
     selection = _select(changed)
 
-    assert selection.paths == ("tests/unit/services/",), "one folder, not two"
+    assert selection.paths == ("tests/unit/api/",), "one folder, not two"
     assert selection.hints == (f"{CONTAINER_TEST}: run make test-containers",), "the container hint"
     assert pytest_arguments(selection.paths, None) == [
-        "tests/unit/services/",
+        "tests/unit/api/",
         "-n",
         "auto",
         *LOADGROUP,
@@ -270,35 +278,37 @@ def test_nothing_changed_selects_nothing():
 
 
 def test_a_selected_file_inside_a_selected_folder_is_dropped():
-    selection = _select(["rdf_persistence/services/a.py", "tests/unit/services/test_a.py"])
+    selection = _select(["rdf_persistence/api/services/a.py", "tests/unit/api/test_a.py"])
 
-    assert selection.paths == ("tests/unit/services/",), "the file lies in the folder"
+    assert selection.paths == ("tests/unit/api/",), "the file lies in the folder"
 
 
 def test_a_file_outside_the_selected_folder_is_kept_and_paths_are_sorted():
     selection = _select(
         [
             "tests/unit/test_public_api.py",
-            "rdf_persistence/domain/a.py",
+            "rdf_persistence/api/services/a.py",
             "tests/unit/test_markers.py",
         ]
     )
 
     assert selection.paths == (
-        "tests/unit/domain/",
+        "tests/unit/api/",
         "tests/unit/test_markers.py",
         "tests/unit/test_public_api.py",
     ), "sorted, the file outside the folder kept"
 
 
-def test_a_move_between_layers_selects_both_folders():
-    selection = _select(["rdf_persistence/services/a.py", "rdf_persistence/adapters/a.py"])
+def test_a_move_between_themes_selects_both_folders():
+    selection = _select(
+        ["rdf_persistence/api/services/a.py", "rdf_persistence/persistence/adapters/a.py"]
+    )
 
-    assert selection.paths == ("tests/unit/adapters/", "tests/unit/services/"), "both folders"
+    assert selection.paths == ("tests/unit/api/", "tests/unit/persistence/"), "both folders"
 
 
 def test_fallback_wins_over_selected_paths():
-    selection = _select(["rdf_persistence/services/a.py", "Makefile", "tests/conftest.py"])
+    selection = _select(["rdf_persistence/api/services/a.py", "Makefile", "tests/conftest.py"])
 
     assert len(selection.fallback_reasons) == 2, "one reason per fallback path"
 
@@ -308,22 +318,21 @@ def test_fallback_wins_over_selected_paths():
     [
         (("tests/unit/test_public_api.py",), "0"),
         (("tests/unit/test_markers.py", "tests/unit/test_public_api.py"), "0"),
-        (("tests/unit/domain/",), "0"),
-        (("tests/unit/services/",), "auto"),
+        (("tests/unit/api/",), "auto"),
         (("tests/feature/",), "auto"),
-        (("tests/unit/domain/", "tests/unit/services/"), "auto"),
-        (("tests/unit/domain/", "tests/unit/test_markers.py"), "auto"),
+        (("tests/unit/api/", "tests/unit/persistence/"), "auto"),
+        (("tests/unit/api/", "tests/unit/test_markers.py"), "auto"),
     ],
 )
-def test_one_process_is_chosen_for_files_only_or_the_domain_folder_only(paths, expected_n):
+def test_one_process_is_chosen_for_files_only(paths, expected_n):
     assert pytest_arguments(paths, None) == [*paths, "-n", expected_n, *LOADGROUP], (
         f"workers for {paths}"
     )
 
 
 def test_pytest_n_overrides_the_choice_of_workers():
-    assert pytest_arguments(("tests/unit/services/",), "4") == [
-        "tests/unit/services/",
+    assert pytest_arguments(("tests/unit/api/",), "4") == [
+        "tests/unit/api/",
         "-n",
         "4",
         *LOADGROUP,

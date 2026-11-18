@@ -36,7 +36,7 @@ from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
-from tests.unit.domain.builders import TENANT, tenant_access
+from tests.unit.builders import TENANT, tenant_access
 
 CREATOR = Principal(id=ADA)
 SYSTEM = system_database_name(SETTINGS.prefix)

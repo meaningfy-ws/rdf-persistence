@@ -21,7 +21,7 @@ from rdf_persistence.testkit import (  # noqa: F401  (no_network is a fixture)
 )
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import TENANT, book_iri
-from tests.unit.services.test_documents import BOOK_JSON, encoded
+from tests.unit.api.test_documents import BOOK_JSON, encoded
 
 TITLE = "http://purl.org/dc/terms/title"
 BOOK = f"{TENANT}/books/{UUID(int=1)}"

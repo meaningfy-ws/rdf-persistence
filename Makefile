@@ -127,7 +127,7 @@ refresh-golden: ## Rewrite the golden files of the extensions' schemas that are 
 	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/generator/unit -k "ext_ and not test_the_toy_typescript_equals_the_golden_files" -q
 
 refresh-served-golden: ## Rewrite the served OpenAPI and TypeScript goldens; this resets the baseline that guards the thematic move (review the diff)
-	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/entrypoints/test_openapi_served.py -q
+	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/api/test_openapi_served.py -q
 	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/generator/unit/test_ext_typescript.py -k "test_the_toy_typescript_equals_the_golden_files" -q
 
 build: generate ## Build the package distribution (generates first)
