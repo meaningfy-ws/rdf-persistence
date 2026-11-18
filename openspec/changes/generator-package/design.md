@@ -343,3 +343,17 @@ package name are leader's choices (DEC-2, DEC-5).
   are the call sites PD-5 lists, the new `roots=` keyword defaults to today's behaviour, and the
   only output change allowed is the manifests' input paths (TC-09), which `make check-generated`
   and the full gates check.
+- **D-10 `assert_isomorphic` stays in the library** (lead, found by the builder of task 2.2). It is
+  defined in `roundtrip.py`, which PD-2 moves, but it is a generic graph comparison that about ten
+  library tests import through `rdf_persistence.testkit`: after the move each of them loaded a shim
+  and the generator, warned at collection and reached the generator from a library test (PD-9).
+  It moves to a library testkit module of its own, `rdf_persistence/testkit/graphs.py`;
+  `_LAZY_NAMES` points it there; the generator's `roundtrip.py` imports it from there (generator →
+  library is the allowed direction) and the `roundtrip` shim keeps re-exporting it. Rejected:
+  rewriting the library tests to the generator's path (a library test would import the generator).
+- **D-11 `tasks.md` §2.2 names two test paths wrongly** (builder of 2.2): `test_stage1_adversarial.py`
+  does not exist (the four lazy names are tested in `tests/unit/testkit/test_lazy_guard_names_adversarial.py`)
+  and `test_testkit_lazy_import.py` is in `tests/unit/testkit/`. The builder used the real files.
+- **D-12 The shims are removed in 0.6.0** (builder of 2.2, PD-3): `VERSION` is 0.4.0, the
+  release-please PR proposes 0.5.0, which ships this change. If it ships later, the four shims,
+  their warnings and `test_the_removal_release_is_named_in_every_shim` take the new number.
