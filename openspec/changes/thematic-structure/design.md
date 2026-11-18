@@ -463,3 +463,35 @@ consumers later.
   L2 and L3; the full review (L1, L2, L3 apart, L4+L5 one pass) runs once, on stage 7, over the
   EPIC's diff. The tester runs on every stage that moves code (no `## Invariants` section at VERY
   LARGE).
+- **D-8 Stage 1 placements and readings** (lead, from the builders). `services/shacl.py` goes to
+  `api/services` (PD-2: the lowest theme that uses it is `api`; the generator's testkit is outside
+  the themes). `LAYOUT` holds a row per generated technical class (one old generated package splits
+  over several themes), the new module named `rp_<theme>_<layer>` (to confirm at stage 2). Six term
+  bundles PD-2 places by module only are placed by their users: `RegistryTerms`, `KeyHeldTerms`,
+  `KeyBranchTerms`, `OwnerTerms`, `ListingTerms` in `persistence/services`, `StampGuardTerms` in
+  `migrations/services`; `schema/vocabulary` builds bundles of higher themes, to settle when stage
+  3 moves `schema`. TC-11: a module outside the target's folder without `python_package` is still
+  refused (only a module beside the root is generated into the target). TC-72 uses `rp_service`
+  instead of a literal the old-path test bans. Four `Callable` aliases of the public surface have
+  no `__module__`; their home is the lazy map.
+- **D-9 Stage 1 review and tester, accepted** (lead; review 11 findings, tester 149 tests, 23
+  failed first, 9 findings; one fixer pass). Re-labelled Critical, with the reason: review W1 (one
+  TypeScript file per served schema cannot keep TC-07 byte-identical once stage 3 splits
+  `rp_service.yaml`: the step merges every served schema's types into `rp_service.ts` in
+  `SERVED_SCHEMAS` order, as PD-10 says); review W5 (`refresh-golden`/`refresh-snapshot` now rewrite
+  the move's baselines TC-07 and TC-03, a gate that can be reset by accident: TC-07's refresh gets
+  its own target and the `-k "ext_"` line leaves it alone, the docs and help strings say what each
+  rewrites); tester U1 (the stage's own head fails
+  `test_a_toy_generation_writes_rp_service_ts`: the toy copy ignores `golden/`). Accepted below
+  Critical: review W2 (TC-18 calls `assert_public_imports` on the toy's modules); tester F1 = review
+  S5 (the kind/folder exemptions match whole package segments); F2 (a malformed `python_package` —
+  empty, blank, not a dotted identifier — is a `SchemaGenerationError` naming the module); F3 (the
+  old-path scan reports an unparsable file instead of skipping it); F4 = review S4 (the scan covers
+  the root `*.md` and `setup.cfg`, `CHANGELOG.md` exempt); F8 (`tests.changed` falls back to
+  `test-fast` with a reason when a theme's test folder does not exist, instead of running nothing).
+  Owed to task 7.2's docs: review W3 (`generation.adoc` ~361 and the `pydantic_split` row: the
+  cross-target import and the consumer's `from rdf_persistence import RpModel`), W4 (the kind/folder
+  rule and its `TARGET_KIND` id). Under the floor: review S1 (the in-process mypy test is not
+  `slow`), S2 (`SERVED_SCHEMAS` vs the `openapi = true` targets), S3 (a stale comment); tester F5
+  (concatenated `mock.patch` strings), F6 (the `LAYOUT` guard misses modules in subpackages), F7
+  (relative imports of an old module).
