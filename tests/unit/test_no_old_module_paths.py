@@ -3,7 +3,8 @@
 Python files are read as text (a docstring, a comment and a ``mock.patch("...")`` string all count) and
 through ``ast`` (``from rdf_persistence.services import session`` names the module without writing its
 dotted path). Other files (docs, YAML, TOML, the Makefile, ``.importlinter``) are read as text, for the
-dotted path and the file path. ``openspec/``, the changelog and this test are out of the scan; a shim
+dotted path and the file path, the root ``*.md`` and ``setup.cfg`` among them. ``openspec/``, the
+changelog and this test are out of the scan; a Python file that does not parse is reported; a shim
 that must name its old path, and the test of that shim, are listed in ``EXEMPT`` by the stage that adds it.
 """
 
@@ -21,6 +22,7 @@ SCANNED = ("rdf_persistence", "rdf_persistence_generation", "tests", "docs", ".g
 SCANNED_FILES = (
     "Makefile",
     "pyproject.toml",
+    "setup.cfg",
     "pytest.ini",
     "ruff.toml",
     "mypy.ini",
@@ -33,11 +35,12 @@ SKIPPED_SUFFIXES = frozenset({".pyc", ".png", ".svg", ".whl", ".json", ".csv", "
 SKIPPED_PARTS = frozenset({"__pycache__", "node_modules", ".venv", "golden", "generated"})
 THIS_FILE = "tests/unit/test_no_old_module_paths.py"
 # Files that may name an old path: each stage that adds a shim lists the shim's test here, with the why.
-EXEMPT: frozenset[str] = frozenset({THIS_FILE})
+EXEMPT: frozenset[str] = frozenset({THIS_FILE, "CHANGELOG.md"})
 
 
 def _files(root: Path) -> list[Path]:
     found = [root / name for name in SCANNED_FILES if (root / name).is_file()]
+    found += [p for p in root.glob("*.md") if p.is_file()]
     for folder in SCANNED:
         found += [
             p
@@ -90,12 +93,16 @@ def old_path_hits(root: Path, pairs: tuple[tuple[str, str], ...]) -> list[str]:
         if path.suffix == ".py":
             try:
                 tree = ast.parse(text)
-            except SyntaxError:
-                continue
-            olds = {old for old, _ in pairs}
-            found |= {
-                (n, old) for n, dotted in _imported_modules(tree) for old in olds if dotted == old
-            }
+            except SyntaxError as error:
+                hits.append(f"{name}: cannot be parsed, so its imports are unchecked ({error.msg})")
+            else:
+                olds = {old for old, _ in pairs}
+                found |= {
+                    (n, old)
+                    for n, dotted in _imported_modules(tree)
+                    for old in olds
+                    if dotted == old
+                }
         hits += [f"{name}:{n}: {old}" for n, old in sorted(found)]
     return hits
 
@@ -149,6 +156,22 @@ def test_every_way_to_name_the_old_module_is_found(tmp_path, name, text, line):
     hits = old_path_hits(tmp_path, PAIRS)
 
     assert [h.rsplit(":", 1)[0] for h in hits] == [f"{name}:{line}"], hits
+
+
+@pytest.mark.parametrize("name", ["setup.cfg", "README.md", "CONTRIBUTING.md"])
+def test_a_root_file_naming_the_old_path_is_found(tmp_path, name):
+    _plant(tmp_path, name, "per-file-ignores =\n    rdf_persistence/services/session.py\n")
+
+    assert [h.rsplit(":", 1)[0] for h in old_path_hits(tmp_path, PAIRS)] == [f"{name}:2"]
+
+
+def test_a_python_file_that_does_not_parse_is_reported_and_still_text_scanned(tmp_path):
+    _plant(tmp_path, "tests/unit/test_broken.py", f"def (:\n    '{OLD}'\n")
+
+    hits = old_path_hits(tmp_path, PAIRS)
+
+    assert any(h.startswith("tests/unit/test_broken.py: cannot be parsed") for h in hits), hits
+    assert f"tests/unit/test_broken.py:2: {OLD}" in hits, "the text scan still ran"
 
 
 @pytest.mark.parametrize(

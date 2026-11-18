@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from mypy import api as mypy_api
 
+from rdf_persistence.testkit import assert_public_imports
 from rdf_persistence_generation.extensions.pydantic_split import METAMODEL_DIR
 from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
 
@@ -38,6 +39,7 @@ def test_a_consumer_module_imports_the_base_model_from_the_top_package(module: P
     assert [node.module for node in found] == [TOP_PACKAGE], (
         f"{module.name} must import {BASE_MODEL} from {TOP_PACKAGE} (PD-8)"
     )
+    assert_public_imports(module)
 
 
 def test_the_toy_library_type_checks_with_the_generated_code_settings() -> None:

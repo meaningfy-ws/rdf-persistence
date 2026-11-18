@@ -141,6 +141,18 @@ def test_a_changed_theme_file_selects_the_tests_of_its_theme(changed, expected):
     assert not selection.fallback_reasons, f"{changed} must not fall back"
 
 
+def test_a_changed_theme_file_whose_test_folder_does_not_exist_falls_back_with_a_reason():
+    """A theme folder that is gone or never made must not leave an empty selection that exits 0."""
+    selection = select(
+        ["rdf_persistence/tenancy/services/sweep.py"], lambda path: False, ROOT_TESTS
+    )
+
+    assert selection.paths == (), "nothing to run by path"
+    assert "rdf_persistence/tenancy/services/sweep.py" in selection.fallback_reasons[0]
+    assert "tests/unit/tenancy/" in selection.fallback_reasons[0], "the reason names the folder"
+    assert "make test-fast" in selection.fallback_reasons[0], "the reason names the lane"
+
+
 def test_two_changed_themes_select_both_folders():
     selection = _select(
         ["rdf_persistence/tenancy/services/sweep.py", "rdf_persistence/events/adapters/x.py"]

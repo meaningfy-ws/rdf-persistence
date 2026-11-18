@@ -599,3 +599,36 @@ def test_a_module_of_another_folder_without_python_package_is_still_refused(
     shutil.copy(_cross_target_b(), tmp_path / "b" / "b.yaml")
     with pytest.raises(SchemaGenerationError, match="python_package"):
         render_modules(tmp_path / "b" / "b.yaml")
+
+
+@pytest.mark.parametrize(
+    "package", ["", "   ", "not a package", "xt.a.generated.", ".xt.a", "xt..a"]
+)
+def test_a_malformed_python_package_of_another_target_is_refused_naming_its_module(
+    tmp_path: Path, package: str
+) -> None:
+    """A cross-target import must not turn an empty or odd package into a relative or broken import."""
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    text = (CROSS_TARGET / "a" / "a.yaml").read_text(encoding="utf-8")
+    (tmp_path / "a" / "a.yaml").write_text(
+        text.replace(f"python_package: {A_PACKAGE}", f'python_package: "{package}"'),
+        encoding="utf-8",
+    )
+    shutil.copy(_cross_target_b(), tmp_path / "b" / "b.yaml")
+    with pytest.raises(SchemaGenerationError, match=r"\ba\b.*python_package"):
+        render_modules(tmp_path / "b" / "b.yaml")
+
+
+def test_a_malformed_python_package_of_the_metamodel_is_refused_on_the_base_model_line(
+    metamodel_copy: Callable[[str, str], Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The ``RpModel`` import is written beside the metamodel's package: a hole in it is refused."""
+    folder = metamodel_copy("rp", "a..generated")
+    monkeypatch.setattr(pydantic_split, "METAMODEL_DIR", folder)
+    pydantic_split.toolkit_base_module.cache_clear()
+    try:
+        with pytest.raises(SchemaGenerationError, match="rp.*python_package"):
+            pydantic_split.toolkit_base_module()
+    finally:
+        pydantic_split.toolkit_base_module.cache_clear()

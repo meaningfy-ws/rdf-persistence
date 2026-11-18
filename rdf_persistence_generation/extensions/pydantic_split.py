@@ -135,7 +135,7 @@ def toolkit_base_module() -> str:
     ``rdf_persistence.domain.base``).
     """
     root = load_schema(METAMODEL_DIR / "rp.yaml").schema
-    package = _required_annotation(root, GenerationAnnotation.PYTHON_PACKAGE)
+    package = _dotted_package(root)
     parent, _, leaf = package.rpartition(".")
     if leaf != GENERATED_LEAF or not parent:
         raise SchemaGenerationError(
@@ -159,8 +159,18 @@ class RpBaseModel(PydanticBaseModel):
 
 def target_module(schema: SchemaDefinition) -> str:
     """The module a class of ``schema`` is imported from: its ``python_package``, then its name (PD-3)."""
-    package = _required_annotation(schema, GenerationAnnotation.PYTHON_PACKAGE)
-    return f"{package}.{schema.name}"
+    return f"{_dotted_package(schema)}.{schema.name}"
+
+
+def _dotted_package(schema: SchemaDefinition) -> str:
+    """The ``python_package`` of ``schema``: a dotted name of identifiers, or a refusal naming it."""
+    tag = GenerationAnnotation.PYTHON_PACKAGE
+    package = _required_annotation(schema, tag)
+    if not all(part.isidentifier() for part in package.split(".")):
+        raise SchemaGenerationError(
+            f"{schema.name}: the {tag.value} annotation ({package!r}) is not a dotted Python name"
+        )
+    return package
 
 
 @dataclass

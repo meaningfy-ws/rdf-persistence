@@ -43,7 +43,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/boundary.py",
-      "sha256": "7219f6eba8fd6304fb211f7c63066f45eed50c5812792107386aeb79376e2a5c"
+      "sha256": "f520a6d3add4815640531b095f716dd755f086d9a62611dab776ab5b348c51e4"
     },
     {
       "path": "rdf_persistence_generation/checks/default_instance.py",
@@ -95,7 +95,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_split.py",
-      "sha256": "a30031f05bb7b4f8f9d155fef1a7b4b59ae0c071680bf020ac06804f46aa403b"
+      "sha256": "698c3a76db8d8824fec1011e38e00660bae9bd21b4d122824002b3b803bb427e"
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_validators.py",
@@ -111,7 +111,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/typescript.py",
-      "sha256": "2c7a81c928f4d7b7028b3dc0c7f4894ddc20c6536fc299b02497ca477eceab9f"
+      "sha256": "3a63c80c07bf04beec5d535bfcdd52366c8053173a2477a909d9a122f34be42b"
     },
     {
       "path": "rdf_persistence_generation/lock.py",

@@ -131,6 +131,11 @@ def select(
         chosen.update(one.paths)
         hints += one.hints
         reasons += one.fallback_reasons
+        reasons += [
+            f"{path}: {folder} does not exist; run make test-fast"
+            for folder in one.paths
+            if folder.endswith("/") and not existing(folder)
+        ]
     folders = [p for p in chosen if p.endswith("/")]
     kept = sorted(
         p for p in chosen if existing(p) and not any(p != f and p.startswith(f) for f in folders)

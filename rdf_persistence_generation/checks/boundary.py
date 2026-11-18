@@ -216,6 +216,11 @@ def target_kind_problems(view: SchemaView, folder: Path, kind: TargetKind) -> li
     return problems
 
 
+def _is_exempt(package: str) -> bool:
+    """Whether ``package`` is one of ``FOLDER_EXEMPT`` or inside it (whole segments, not a prefix)."""
+    return any(package == p or package.startswith(f"{p}.") for p in FOLDER_EXEMPT)
+
+
 def kind_folder_problems(folder: Path, package: str, kind: TargetKind | None) -> list[CheckProblem]:
     """The ``package`` of a toolkit target that sits in a folder its ``kind`` does not allow (PD-4, DEC-3).
 
@@ -225,7 +230,7 @@ def kind_folder_problems(folder: Path, package: str, kind: TargetKind | None) ->
     """
     if kind is None or not is_toolkit_schema(folder, roots=TOOLKIT_ROOTS):
         return []
-    if package.startswith(FOLDER_EXEMPT):
+    if _is_exempt(package):
         return []
     kind = TargetKind(kind)
     allowed = DOMAIN_FOLDERS if kind == TargetKind.DOMAIN else TECHNICAL_FOLDERS

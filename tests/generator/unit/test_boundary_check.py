@@ -578,6 +578,20 @@ def test_the_testkit_and_the_generator_packages_are_exempt(package: str) -> None
     assert folder_problems_of(TOOLKIT_FOLDER, package, TargetKind.TECHNICAL) == []
 
 
+@pytest.mark.parametrize(
+    "package",
+    [
+        "rdf_persistence.testkitx.domain.generated",
+        "rdf_persistence.testkit_extra.access.domain.generated",
+        "rdf_persistence_generationx.access.domain.generated",
+        "rdf_persistence_generation_extra.domain.generated",
+    ],
+)
+def test_a_package_that_only_starts_like_an_exempt_one_is_not_exempt(package: str) -> None:
+    """The exemption matches whole segments: ``rdf_persistence.testkitx`` is not the testkit."""
+    assert len(folder_problems_of(TOOLKIT_FOLDER, package, TargetKind.TECHNICAL)) == 1, package
+
+
 def test_a_consumer_run_keeps_its_own_folder_layout() -> None:
     """TC-16: a consumer's ``app.generated`` passes, kind or not."""
     assert folder_problems_of(TOY, "app.generated", TargetKind.TECHNICAL) == [], "consumer run"
@@ -598,7 +612,7 @@ def test_the_boundary_step_passes_the_old_layout_package_of_a_technical_target()
 @pytest.mark.slow
 def test_the_boundary_step_refuses_a_technical_target_in_a_domain_folder_naming_it() -> None:
     """TC-72, second half: the check is wired into the step."""
-    # TC-72 names ...domain.generated.service, which test_technical_split bans as an old path
+    # TC-72 names the old service package under domain, which test_technical_split bans as a literal
     package = "rdf_persistence.domain.generated.rp_service"
     found = generate(
         [toolkit_target(TargetKind.TECHNICAL, package)], REPO, (steps.BOUNDARY_STEP,), check=True
