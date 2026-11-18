@@ -11,11 +11,11 @@ from rdf_persistence.access.services.generated.settings.rp_access_settings impor
     JwksSettings,
 )
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
+from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
     LimitSettings,
 )
 from rdf_persistence.services.generated.settings.rp_settings import (
-    EventSettings,
     SseSettings,
     ToolkitSettings,
 )

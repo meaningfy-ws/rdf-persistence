@@ -17,13 +17,13 @@ from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.openapi import install_openapi
 from rdf_persistence.entrypoints.problems import install_problem_handlers
 from rdf_persistence.entrypoints.router import build_router
+from rdf_persistence.events.services.events import EventBus
 from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.iris.services.iris import IdSource, draw_id
+from rdf_persistence.messaging.services.messagebus import MessageBus
 from rdf_persistence.persistence.services.store import Store
-from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
-from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.tenancy.services.iri_policy_guard import guard_iri_policy
 from rdf_persistence.tenancy.services.migration_runner import migrate_shared, migrate_tenants
 from rdf_persistence.tenancy.services.sweep import sweep

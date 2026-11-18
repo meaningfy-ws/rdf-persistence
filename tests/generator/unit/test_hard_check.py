@@ -1029,14 +1029,14 @@ def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings(
     `persistence` theme's three (`rp_persistence_services`, `_settings`, `_adapters`) and the `migrations`
     theme's one are the eleventh to the fourteenth (4.2). `rp_wire` is the `access` theme's
     `rp_access_adapters` from stage 5, beside `rp_access_services`, `rp_access_settings` and the
-    `tenancy` theme's `rp_tenancy_services`: seventeen in all (5.1).
+    `tenancy` theme's `rp_tenancy_services`: seventeen in all (5.1). The `events` theme's two
+    (`rp_events_services`, `rp_events_settings`) and the `collaboration` theme's one
+    (`rp_collaboration_services`) make twenty (6.1).
     """
     targets = read_targets(REPO / "pyproject.toml")
-    assert len(targets) == 17, [t.schema_file for t in targets]
+    assert len(targets) == 20, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
-    assert [format_problem(p) for p in found] == [], (
-        "the toolkit's seventeen targets raise no problem"
-    )
+    assert [format_problem(p) for p in found] == [], "the toolkit's twenty targets raise no problem"
 
 
 def _flag_problems(tmp_path: Path, written: str) -> list[str]:
@@ -1155,6 +1155,18 @@ TOOLKIT_PACKAGES = [
     (
         "rdf_persistence/model/technical/tenancy/rp_tenancy_services.yaml",
         "rdf_persistence.tenancy.services.generated",
+    ),
+    (
+        "rdf_persistence/model/technical/events/rp_events_services.yaml",
+        "rdf_persistence.events.services.generated",
+    ),
+    (
+        "rdf_persistence/model/technical/events/rp_events_settings.yaml",
+        "rdf_persistence.events.services.generated.settings",
+    ),
+    (
+        "rdf_persistence/model/technical/collaboration/rp_collaboration_services.yaml",
+        "rdf_persistence.collaboration.services.generated",
     ),
     (
         "rdf_persistence/model/technical/service/rp_service.yaml",

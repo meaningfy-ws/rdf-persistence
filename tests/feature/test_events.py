@@ -17,10 +17,10 @@ from pytest_bdd import given, scenarios, then, when
 from rdf_persistence import generated_models
 from rdf_persistence.core.domain.exceptions import Conflict
 from rdf_persistence.core.domain.generated.rp_provenance import Replace
+from rdf_persistence.events.services.events import context_link
+from rdf_persistence.events.services.relay import Relay
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.events import context_link
-from rdf_persistence.services.relay import Relay
 from rdf_persistence.tenancy.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus
 from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, toy_mapper
@@ -37,7 +37,7 @@ from tests.unit.entrypoints.test_events_route import (
     reshape_grants,
     with_carol,
 )
-from tests.unit.services.test_relay import add_one, book, commit, pending, triples
+from tests.unit.events.test_relay import add_one, book, commit, pending, triples
 from tests.unit.tenancy.test_pending_mark import RESTORER, TOY_CHAINS
 from tests.unit.tenancy.test_tenant_dump import BASE_STAMPS
 from tests.unit.tenancy.test_tenant_sweep import make_world

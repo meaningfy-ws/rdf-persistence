@@ -1,0 +1,87 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rp: <https://meaningfy.ws/ns/rdf-persistence#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+rp:EventSettings a sh:NodeShape ;
+	rdfs:comment "The event bus, the relay that publishes from the outbox, and the hub that fans events out." ;
+	rdfs:label "Event settings" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n5 ;
+	sh:property _:c14n0 , _:c14n1 , _:c14n2 , _:c14n3 , _:c14n4 , _:c14n6 , _:c14n7 ;
+	sh:targetClass rp:EventSettings .
+_:c14n0 sh:datatype xsd:float ;
+	sh:defaultValue "30.0"^^xsd:float ;
+	sh:description "The seconds a delivered event may stay unacknowledged before it is delivered again." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Claim idle time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:claim_idle_seconds .
+_:c14n1 sh:datatype xsd:float ;
+	sh:defaultValue "5.0"^^xsd:float ;
+	sh:description "The seconds the relay waits between two looks at the outbox." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Relay interval" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:relay_interval_seconds .
+_:c14n2 sh:datatype xsd:integer ;
+	sh:defaultValue 100 ;
+	sh:description "The milliseconds between two reads of the stream." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:minInclusive 1 ;
+	sh:name "Polling interval" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:polling_interval_ms .
+_:c14n3 sh:datatype xsd:string ;
+	sh:defaultValue "rp-events" ;
+	sh:description "The name of the event stream." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Stream" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:stream .
+_:c14n4 sh:datatype xsd:float ;
+	sh:defaultValue "604800.0"^^xsd:float ;
+	sh:description "The seconds an event stays in the stream." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Retention" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:retention_seconds .
+_:c14n5 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n6 sh:datatype xsd:float ;
+	sh:defaultValue "10.0"^^xsd:float ;
+	sh:description "The seconds the relay waits for the bus to take one event." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Publish timeout" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 5 ;
+	sh:path rp:publish_timeout_seconds .
+_:c14n7 sh:datatype xsd:integer ;
+	sh:defaultValue 1000 ;
+	sh:description "The events a subscriber of the hub may have waiting before it is reset." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:minInclusive 1 ;
+	sh:name "Hub queue size" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 6 ;
+	sh:path rp:hub_queue_size .

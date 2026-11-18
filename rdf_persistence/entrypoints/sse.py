@@ -1,6 +1,6 @@
 """``GET {prefix}/{tenant_segment}/{t}/rp-events``: a tenant's activities as server-sent events (aggregate-events PD-11, PD-12).
 
-The route checks ``read`` on the tenant and adapts ``services.event_stream`` to the wire: ``id`` is the
+The route checks ``read`` on the tenant and adapts ``events.services.event_stream`` to the wire: ``id`` is the
 activity's IRI, ``event`` its class's name, ``data`` its JSON. The stream is the service's; this module
 only names the times it runs by.
 """
@@ -23,15 +23,15 @@ from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import LAST_EVENT_ID, LINK
 from rdf_persistence.entrypoints.openapi import TenantOpenApi
 from rdf_persistence.entrypoints.responses import CONTEXT_REL
-from rdf_persistence.persistence.services.decoding import decode_activity
-from rdf_persistence.persistence.services.session import utc_now
-from rdf_persistence.services.event_stream import (
+from rdf_persistence.events.services.event_stream import (
     KEEP_ALIVE,
     RESET,
     MayRead,
     Signal,
     event_stream,
 )
+from rdf_persistence.persistence.services.decoding import decode_activity
+from rdf_persistence.persistence.services.session import utc_now
 from rdf_persistence.services.generated.settings.rp_settings import SseSettings
 
 EVENTS_ROUTE = (

@@ -48,6 +48,17 @@ ACCESS = ROOT / "rdf_persistence" / "model" / "technical" / "access" / "rp_acces
 ACCESS_PACKAGE = "rdf_persistence.access.services.generated"
 TENANCY = ROOT / "rdf_persistence" / "model" / "technical" / "tenancy" / "rp_tenancy_services.yaml"
 TENANCY_PACKAGE = "rdf_persistence.tenancy.services.generated"
+EVENTS = ROOT / "rdf_persistence" / "model" / "technical" / "events" / "rp_events_services.yaml"
+EVENTS_PACKAGE = "rdf_persistence.events.services.generated"
+COLLABORATION = (
+    ROOT
+    / "rdf_persistence"
+    / "model"
+    / "technical"
+    / "collaboration"
+    / "rp_collaboration_services.yaml"
+)
+COLLABORATION_PACKAGE = "rdf_persistence.collaboration.services.generated"
 TESTKIT_PACKAGE = "rdf_persistence.testkit.generated"
 REFRESH = "RP_REFRESH_SNAPSHOT"
 
@@ -94,7 +105,18 @@ def toy_copy(tmp_path: Path) -> Path:
 def test_the_current_shapes_equal_the_reviewed_snapshot() -> None:
     # every served schema, so a class of a theme the service schema does not import is in the snapshot too
     current = class_shapes(
-        [METAMODEL, IRIS, PERSISTENCE, MIGRATIONS, ACCESS, TENANCY, SERVICE, TOY]
+        [
+            METAMODEL,
+            IRIS,
+            PERSISTENCE,
+            MIGRATIONS,
+            ACCESS,
+            TENANCY,
+            EVENTS,
+            COLLABORATION,
+            SERVICE,
+            TOY,
+        ]
     )
     if os.environ.get(REFRESH):
         write_snapshot(SNAPSHOT, current)
@@ -230,6 +252,8 @@ def test_snapshot_diff_describes_each_kind_of_change(
         pytest.param(MIGRATIONS, MIGRATIONS_PACKAGE, id="migrations"),
         pytest.param(ACCESS, ACCESS_PACKAGE, id="access"),
         pytest.param(TENANCY, TENANCY_PACKAGE, id="tenancy"),
+        pytest.param(EVENTS, EVENTS_PACKAGE, id="events"),
+        pytest.param(COLLABORATION, COLLABORATION_PACKAGE, id="collaboration"),
         pytest.param(SERVICE, SERVICE_PACKAGE, id="service"),
         pytest.param(TESTKIT, TESTKIT_PACKAGE, id="testkit"),
     ],
@@ -244,6 +268,8 @@ def test_generated_classes_match_the_induced_slots(schema: Path, package: str) -
         + generated_models(MIGRATIONS_PACKAGE)
         + generated_models(ACCESS_PACKAGE)
         + generated_models(TENANCY_PACKAGE)
+        + generated_models(EVENTS_PACKAGE)
+        + generated_models(COLLABORATION_PACKAGE)
     )
     shapes = class_shapes([schema])
     own = {m.__name__ for m in generated_models(package)}

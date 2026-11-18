@@ -1,0 +1,40 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "linkml": "https://w3id.org/linkml/",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "claim_idle_seconds": {
+         "@type": "xsd:float",
+         "@id": "claim_idle_seconds"
+      },
+      "hub_queue_size": {
+         "@id": "hub_queue_size"
+      },
+      "polling_interval_ms": {
+         "@id": "polling_interval_ms"
+      },
+      "publish_timeout_seconds": {
+         "@type": "xsd:float",
+         "@id": "publish_timeout_seconds"
+      },
+      "relay_interval_seconds": {
+         "@type": "xsd:float",
+         "@id": "relay_interval_seconds"
+      },
+      "retention_seconds": {
+         "@type": "xsd:float",
+         "@id": "retention_seconds"
+      },
+      "stream": {
+         "@id": "stream"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "EventSettings": {
+         "@id": "EventSettings"
+      }
+   }
+}

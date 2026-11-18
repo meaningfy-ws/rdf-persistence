@@ -280,6 +280,44 @@ export interface TenantSummary {
   allowed_actions?: Action[];
 }
 
+/** What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it. */
+export interface EventEnvelope {
+  /** The IRI of the tenant, or of the application, the activity happened in. */
+  tenant: string;
+  /** The deployment that published the message, as its `deployment` setting names it. */
+  origin: string;
+  /** The IRI of the class of the activity the message carries. */
+  activity_class: string;
+  /** A link to the JSON-LD context that reads the message body. */
+  context: string;
+}
+
+/** One aggregate that points at another: its IRI, its schema class and the slot that holds the reference. */
+export interface Referrer {
+  /** The IRI of the aggregate that holds the reference. */
+  referrer: string;
+  /** The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class. */
+  referrer_class: string;
+  /** The name of the slot that holds the reference; its IRI when the schema does not know the slot. */
+  referrer_slot: string;
+}
+
+/** The aggregates that point at one resource and that the caller may read, and the number of referrers left out because the caller may not read them. */
+export interface ReferrerList {
+  /** The aggregates that point at the resource, ordered by IRI and slot. */
+  referrers?: Referrer[];
+  /** The number of referrers or members the caller may not read, so are not listed. */
+  hidden_count: number;
+}
+
+/** The members of a collection that the caller may read, and the number of members left out because the caller may not read them. */
+export interface MemberList {
+  /** The IRIs of the members of a collection. */
+  member_iris?: string[];
+  /** The number of referrers or members the caller may not read, so are not listed. */
+  hidden_count: number;
+}
+
 /** The body that creates a tenant, its label and the slots of the tenant's root object. */
 export interface TenantCreate {
   /** The slots of the tenant's root object, as the application's schema defines them. */
@@ -328,42 +366,4 @@ export interface ProblemKind {
   title: string;
   /** The HTTP status code of the answer. */
   status: number;
-}
-
-/** One aggregate that points at another: its IRI, its schema class and the slot that holds the reference. */
-export interface Referrer {
-  /** The IRI of the aggregate that holds the reference. */
-  referrer: string;
-  /** The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class. */
-  referrer_class: string;
-  /** The name of the slot that holds the reference; its IRI when the schema does not know the slot. */
-  referrer_slot: string;
-}
-
-/** The aggregates that point at one resource and that the caller may read, and the number of referrers left out because the caller may not read them. */
-export interface ReferrerList {
-  /** The aggregates that point at the resource, ordered by IRI and slot. */
-  referrers?: Referrer[];
-  /** The number of referrers or members the caller may not read, so are not listed. */
-  hidden_count: number;
-}
-
-/** The members of a collection that the caller may read, and the number of members left out because the caller may not read them. */
-export interface MemberList {
-  /** The IRIs of the members of a collection. */
-  member_iris?: string[];
-  /** The number of referrers or members the caller may not read, so are not listed. */
-  hidden_count: number;
-}
-
-/** What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it. */
-export interface EventEnvelope {
-  /** The IRI of the tenant, or of the application, the activity happened in. */
-  tenant: string;
-  /** The deployment that published the message, as its `deployment` setting names it. */
-  origin: string;
-  /** The IRI of the class of the activity the message carries. */
-  activity_class: string;
-  /** A link to the JSON-LD context that reads the message body. */
-  context: string;
 }

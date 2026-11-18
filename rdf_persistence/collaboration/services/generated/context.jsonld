@@ -1,0 +1,132 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "id": "@id",
+      "data_schema_version": {
+         "@id": "dataSchemaVersion"
+      },
+      "graph": {
+         "@type": "@id",
+         "@id": "graph"
+      },
+      "hidden_count": {
+         "@id": "hiddenCount"
+      },
+      "key_name": {
+         "@id": "keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "keyValues"
+      },
+      "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "listedIn"
+      },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "loadedAt"
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "loadedGraph"
+      },
+      "member_iris": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "memberIri"
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "ownedBy"
+      },
+      "referrer": {
+         "@type": "@id",
+         "@id": "referrer"
+      },
+      "referrer_class": {
+         "@id": "referrerClass"
+      },
+      "referrer_slot": {
+         "@id": "referrerSlot"
+      },
+      "referrers": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "referrers"
+      },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rootClass"
+      },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "startedAt"
+      },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
+      "version": {
+         "@id": "version"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "AggregateKey": {
+         "@id": "AggregateKey"
+      },
+      "AggregateRoot": {
+         "@id": "AggregateRoot"
+      },
+      "CommitMarker": {
+         "@id": "CommitMarker"
+      },
+      "KeyDuplicate": {
+         "@id": "KeyDuplicate"
+      },
+      "MemberList": {
+         "@id": "MemberList"
+      },
+      "PendingLoad": {
+         "@id": "PendingLoad"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Referrer": {
+         "@id": "Referrer"
+      },
+      "ReferrerList": {
+         "@id": "ReferrerList"
+      },
+      "RegistryEntry": {
+         "@id": "RegistryEntry"
+      }
+   }
+}

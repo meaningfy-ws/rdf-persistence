@@ -39,10 +39,6 @@
       "active": {
          "@id": "accountActive"
       },
-      "activity_class": {
-         "@type": "@id",
-         "@id": "activityClass"
-      },
       "assignee": {
          "@type": "@id",
          "@id": "ODRL:assignee"
@@ -78,9 +74,6 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "condition"
-      },
-      "context": {
-         "@id": "contextLink"
       },
       "contributor": {
          "@type": "@id",
@@ -139,9 +132,6 @@
       },
       "head_version": {
          "@id": "headVersion"
-      },
-      "hidden_count": {
-         "@id": "hiddenCount"
       },
       "hidden_graphs": {
          "@type": "@id",
@@ -210,11 +200,6 @@
          "@container": "@set",
          "@id": "sweptLoadedGraph"
       },
-      "member_iris": {
-         "@type": "@id",
-         "@container": "@set",
-         "@id": "memberIri"
-      },
       "modified": {
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
@@ -224,9 +209,6 @@
       },
       "older_than_seconds": {
          "@id": "olderThanSeconds"
-      },
-      "origin": {
-         "@id": "origin"
       },
       "owned_by": {
          "@type": "@id",
@@ -265,21 +247,6 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "prohibition"
-      },
-      "referrer": {
-         "@type": "@id",
-         "@id": "referrer"
-      },
-      "referrer_class": {
-         "@id": "referrerClass"
-      },
-      "referrer_slot": {
-         "@id": "referrerSlot"
-      },
-      "referrers": {
-         "@type": "@id",
-         "@container": "@set",
-         "@id": "referrers"
       },
       "removed_blobs": {
          "@id": "removedBlobs"
@@ -364,9 +331,6 @@
       "Described": {
          "@id": "Described"
       },
-      "EventEnvelope": {
-         "@id": "EventEnvelope"
-      },
       "Filter": {
          "@id": "Filter"
       },
@@ -388,9 +352,6 @@
       "ListRequest": {
          "@id": "ListRequest"
       },
-      "MemberList": {
-         "@id": "MemberList"
-      },
       "Page": {
          "@id": "Page"
       },
@@ -411,12 +372,6 @@
       },
       "Prohibition": {
          "@id": "ODRL:Prohibition"
-      },
-      "Referrer": {
-         "@id": "Referrer"
-      },
-      "ReferrerList": {
-         "@id": "ReferrerList"
       },
       "RegistryEntry": {
          "@id": "RegistryEntry"

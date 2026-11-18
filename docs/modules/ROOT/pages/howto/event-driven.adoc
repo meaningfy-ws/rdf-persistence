@@ -389,7 +389,7 @@ Terms used below:
 The Redis event bus needs the extra `rdf-persistence[events]` (FastStream, pinned) and *Redis 8.4
 or later*: redelivery uses a command older servers lack, and the consumer stops at start-up with
 `StreamClaimUnsupportedError` on one. A consumer without the extra imports the toolkit unchanged;
-only `rdf_persistence.adapters.redis_events` needs it.
+only `rdf_persistence.events.adapters.redis_events` needs it.
 
 In the examples, the `...` comments stand for what
 xref:howto/adopt.adoc#serve[Serve the application] in _Build an application_ passes to
@@ -397,7 +397,7 @@ xref:howto/adopt.adoc#serve[Serve the application] in _Build an application_ pas
 
 [source,python]
 ----
-from rdf_persistence.adapters.redis_events import RedisEventBus
+from rdf_persistence.events.adapters.redis_events import RedisEventBus
 
 settings = ServiceSettings(
     # ... the settings of "Serve the application", and:

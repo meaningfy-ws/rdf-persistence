@@ -35,6 +35,7 @@ from rdf_persistence.core.services.generated.rp_core_services import (
     HttpSettings,
     LogContext
 )
+from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import LimitSettings
 
 
@@ -66,17 +67,6 @@ class LinkMLMeta(RootModel):
 linkml_meta = None
 
 
-class EventSettings(ConfiguredBaseModel):
-    "The event bus, the relay that publishes from the outbox, and the hub that fans events out."
-    stream: str = Field(default="rp-events", title="Stream", description="The name of the event stream.")
-    retention_seconds: float = Field(default=604800, title="Retention", description="The seconds an event stays in the stream.", ge=0.001, le=31536000)
-    claim_idle_seconds: float = Field(default=30.0, title="Claim idle time", description="The seconds a delivered event may stay unacknowledged before it is delivered again.", ge=0.001, le=31536000)
-    polling_interval_ms: int = Field(default=100, title="Polling interval", description="The milliseconds between two reads of the stream.", ge=1)
-    relay_interval_seconds: float = Field(default=5.0, title="Relay interval", description="The seconds the relay waits between two looks at the outbox.", ge=0.001, le=31536000)
-    publish_timeout_seconds: float = Field(default=10.0, title="Publish timeout", description="The seconds the relay waits for the bus to take one event.", ge=0.001, le=31536000)
-    hub_queue_size: int = Field(default=1000, title="Hub queue size", description="The events a subscriber of the hub may have waiting before it is reset.", ge=1)
-
-
 class SseSettings(ConfiguredBaseModel):
     "The lifetime, the access check, the keep-alive and the resume window of the events route."
     max_lifetime_seconds: float = Field(default=300.0, title="Maximum lifetime", description="The seconds an events connection stays open before the client must reconnect.", ge=0.001, le=31536000)
@@ -97,6 +87,5 @@ class ToolkitSettings(ConfiguredBaseModel):
 
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
-EventSettings.model_rebuild()
 SseSettings.model_rebuild()
 ToolkitSettings.model_rebuild()

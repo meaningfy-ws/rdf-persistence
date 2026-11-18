@@ -12,8 +12,8 @@ from opentelemetry.trace import SpanKind
 from redis.asyncio import Redis
 
 from rdf_persistence import ToolkitSettings
-from rdf_persistence.adapters.redis_events import RedisEventBus
 from rdf_persistence.core.domain.generated.rp_provenance import Replace
+from rdf_persistence.events.adapters.redis_events import RedisEventBus
 from rdf_persistence.testkit.bootstrap import wait_until_async
 from rdf_persistence.testkit.event_bus_conformance import (
     BODY,
@@ -93,7 +93,7 @@ async def test_a_trim_that_fails_does_not_fail_the_publish(
         raise ConnectionError("the trim was refused")
 
     monkeypatch.setattr(client, "xtrim", refused)  # this client only, not the class
-    with caplog.at_level(logging.WARNING, logger="rdf_persistence.adapters.redis_events"):
+    with caplog.at_level(logging.WARNING, logger="rdf_persistence.events.adapters.redis_events"):
         await pair.a.publish(ENVELOPE, BODY)  # the entry is sent; only the trim fails
     async with Redis.from_url(redis) as reader:
         assert len(await reader.xrange(pair.stream)) == 1, "the publish still wrote its entry"
@@ -143,7 +143,7 @@ async def test_a_message_without_a_valid_envelope_is_dropped_with_a_warning(
     pair = RedisPair(redis, toolkit)
     inbox = Inbox()
     await pair.a.start(inbox)
-    with caplog.at_level(logging.WARNING, logger="rdf_persistence.adapters.redis_events"):
+    with caplog.at_level(logging.WARNING, logger="rdf_persistence.events.adapters.redis_events"):
         # a text body, as RedisEventBus.publish sends it, with headers that hold no envelope (D-7)
         async with RedisBroker(redis) as sender:
             await sender.publish(

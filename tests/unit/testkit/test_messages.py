@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add, Replace
-from rdf_persistence.services.messagebus import MessageBus, Work, _name
+from rdf_persistence.messaging.services.messagebus import MessageBus, Work, _name
 from rdf_persistence.testkit import RecordingObserver
 
 NOW = datetime(2026, 11, 15, 10, 0, tzinfo=UTC)

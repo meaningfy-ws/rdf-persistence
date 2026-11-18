@@ -1,0 +1,104 @@
+id: https://meaningfy.ws/ns/rdf-persistence/collaboration-services
+name: rp_collaboration_services
+title: RDF persistence collaboration services module
+description: >-
+  The served technical models of the `collaboration` theme: what the service answers about the
+  aggregates that point at a resource and about the members of a collection. The HTTP service serves
+  them, so the toolkit's OpenAPI document and TypeScript types describe them; they are generated into
+  their own package, so an application's models do not carry them (technical-models DEC-3, DEC-7;
+  thematic-structure PD-2).
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+annotations:
+  module_kind: technical
+  python_package: rdf_persistence.collaboration.services.generated
+
+classes:
+  Referrer:
+    title: Referrer
+    description: >-
+      One aggregate that points at another: its IRI, its schema class and the slot that holds the
+      reference.
+    class_uri: rp:Referrer
+    slots:
+      - referrer
+      - referrer_class
+      - referrer_slot
+    slot_usage:
+      referrer:
+        required: true
+      referrer_class:
+        required: true
+      referrer_slot:
+        required: true
+  ReferrerList:
+    title: Referrer list
+    description: >-
+      The aggregates that point at one resource and that the caller may read, and the number of
+      referrers left out because the caller may not read them.
+    class_uri: rp:ReferrerList
+    slots:
+      - referrers
+      - hidden_count
+    slot_usage:
+      referrers:
+        inlined_as_list: true
+      hidden_count:
+        required: true
+  MemberList:
+    title: Member list
+    description: >-
+      The members of a collection that the caller may read, and the number of members left out because
+      the caller may not read them.
+    class_uri: rp:MemberList
+    slots:
+      - member_iris
+      - hidden_count
+    slot_usage:
+      hidden_count:
+        required: true
+
+slots:
+  referrer:
+    title: Referrer
+    description: The IRI of the aggregate that holds the reference.
+    slot_uri: rp:referrer
+    range: uri
+  referrer_class:
+    title: Referrer class
+    description: >-
+      The name of the schema class of the aggregate that holds the reference; its IRI when the
+      schema does not know the class.
+    slot_uri: rp:referrerClass
+    range: string
+  referrer_slot:
+    title: Referrer slot
+    description: >-
+      The name of the slot that holds the reference; its IRI when the schema does not know the
+      slot.
+    slot_uri: rp:referrerSlot
+    range: string
+  referrers:
+    title: Referrers
+    description: The aggregates that point at the resource, ordered by IRI and slot.
+    slot_uri: rp:referrers
+    range: Referrer
+    multivalued: true
+  hidden_count:
+    title: Hidden count
+    description: The number of referrers or members the caller may not read, so are not listed.
+    slot_uri: rp:hiddenCount
+    range: integer
+    minimum_value: 0
+  member_iris:
+    title: Member IRIs
+    description: The IRIs of the members of a collection.
+    slot_uri: rp:memberIri
+    range: uri
+    multivalued: true

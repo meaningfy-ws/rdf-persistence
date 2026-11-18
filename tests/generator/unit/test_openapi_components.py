@@ -109,7 +109,7 @@ def _names(schema_path: Path) -> list[str]:
 
 def test_a_served_schema_leaves_the_classes_of_another_served_schema_to_its_file() -> None:  # TC-21
     """A schema that imports a served one would publish its classes twice: the merge refuses that."""
-    iris, persistence, migrations, access, tenancy, service = (
+    iris, persistence, migrations, access, tenancy, events, collaboration, service = (
         _names(path) for path in SERVED_SCHEMAS
     )
     assert {"IriPolicy", "ServiceSettings", "IdSpec", "IdKind"} <= set(iris), "its own classes"
@@ -122,6 +122,8 @@ def test_a_served_schema_leaves_the_classes_of_another_served_schema_to_its_file
         "its own classes"
     )
     assert {"TenantDump", "TenantSummary"} <= set(tenancy), "its own classes"
+    assert {"EventEnvelope"} <= set(events), "its own class"
+    assert {"Referrer", "ReferrerList", "MemberList"} <= set(collaboration), "its own classes"
     assert {"Problem", "TenantCreate"} <= set(service), "its own classes stay"
     served = {
         "iris": iris,
@@ -129,6 +131,8 @@ def test_a_served_schema_leaves_the_classes_of_another_served_schema_to_its_file
         "migrations": migrations,
         "access": access,
         "tenancy": tenancy,
+        "events": events,
+        "collaboration": collaboration,
         "service": service,
     }
     twice = {
@@ -141,7 +145,7 @@ def test_a_served_schema_leaves_the_classes_of_another_served_schema_to_its_file
 
 def test_a_metamodel_class_that_two_served_schemas_import_is_in_the_first_one_only() -> None:
     """The migrations and the service schemas both reach the metamodel; the earlier one publishes it."""
-    _, _, migrations, _, _, service = (_names(path) for path in SERVED_SCHEMAS)
+    migrations, service = (_names(path) for path in (SERVED_SCHEMAS[2], SERVED_SCHEMAS[-1]))
     shared = set(migrations) & {"AggregateKey", "Described"}
     assert shared, "the earlier schema publishes the metamodel classes it imports"
     assert not shared & set(service), "the later one leaves them to it"

@@ -5,7 +5,7 @@ fake bus.
 """
 
 from rdf_persistence.core.domain.generated.rp_provenance import Activity
-from rdf_persistence.services.messagebus import Work
+from rdf_persistence.messaging.services.messagebus import Work
 
 
 class RecordingObserver:

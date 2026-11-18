@@ -59,7 +59,7 @@ generate = [
 testkit = [
     "testcontainers==4.14.2",
 ]
-# The Redis Streams event bus of `rdf_persistence.adapters.redis_events` (aggregate-events PD-8).
+# The Redis Streams event bus of `rdf_persistence.events.adapters.redis_events` (aggregate-events PD-8).
 events = [
     "faststream[redis]==0.7.8",
 ]
@@ -179,6 +179,25 @@ kind = "technical"
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/tenancy/rp_tenancy_services.yaml"
 package = "rdf_persistence.tenancy.services.generated"
+regenerate-command = "make generate"
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/events/rp_events_services.yaml"
+package = "rdf_persistence.events.services.generated"
+regenerate-command = "make generate"
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/events/rp_events_settings.yaml"
+package = "rdf_persistence.events.services.generated.settings"
+regenerate-command = "make generate"
+openapi = false
+kind = "technical"
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/collaboration/rp_collaboration_services.yaml"
+package = "rdf_persistence.collaboration.services.generated"
 regenerate-command = "make generate"
 kind = "technical"
 

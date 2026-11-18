@@ -1,0 +1,85 @@
+id: https://meaningfy.ws/ns/rdf-persistence/events-settings
+name: rp_events_settings
+title: RDF persistence events settings module
+description: >-
+  The settings of the `events` theme: the event bus, the relay that publishes from the outbox, and the
+  hub that fans events out. Every slot defaults to the value the toolkit used before it had settings.
+  They are a package of their own, beside the served `events` services, so the HTTP service does not
+  serve them (technical-models PD-6, DEC-5; thematic-structure PD-2).
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+  python_package: rdf_persistence.events.services.generated.settings
+
+classes:
+  EventSettings:
+    title: Event settings
+    description: The event bus, the relay that publishes from the outbox, and the hub that fans events out.
+    slots:
+      - stream
+      - retention_seconds
+      - claim_idle_seconds
+      - polling_interval_ms
+      - relay_interval_seconds
+      - publish_timeout_seconds
+      - hub_queue_size
+
+slots:
+  stream:
+    title: Stream
+    description: The name of the event stream.
+    range: string
+    required: true
+    ifabsent: string(rp-events)
+  retention_seconds:
+    title: Retention
+    description: The seconds an event stays in the stream.
+    range: float
+    required: true
+    ifabsent: float(604800)
+    minimum_value: 0.001
+    maximum_value: 31536000
+  claim_idle_seconds:
+    title: Claim idle time
+    description: The seconds a delivered event may stay unacknowledged before it is delivered again.
+    range: float
+    required: true
+    ifabsent: float(30.0)
+    minimum_value: 0.001
+    maximum_value: 31536000
+  polling_interval_ms:
+    title: Polling interval
+    description: The milliseconds between two reads of the stream.
+    range: integer
+    required: true
+    ifabsent: int(100)
+    minimum_value: 1
+  relay_interval_seconds:
+    title: Relay interval
+    description: The seconds the relay waits between two looks at the outbox.
+    range: float
+    required: true
+    ifabsent: float(5.0)
+    minimum_value: 0.001
+    maximum_value: 31536000
+  publish_timeout_seconds:
+    title: Publish timeout
+    description: The seconds the relay waits for the bus to take one event.
+    range: float
+    required: true
+    ifabsent: float(10.0)
+    minimum_value: 0.001
+    maximum_value: 31536000
+  hub_queue_size:
+    title: Hub queue size
+    description: The events a subscriber of the hub may have waiting before it is reset.
+    range: integer
+    required: true
+    ifabsent: int(1000)
+    minimum_value: 1

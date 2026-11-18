@@ -140,7 +140,7 @@ unchanged. Pass FastStream's telemetry middleware; the toolkit installs none:
 [source,python]
 ----
 from faststream.redis.opentelemetry import RedisTelemetryMiddleware
-from rdf_persistence.adapters.redis_events import RedisEventBus
+from rdf_persistence.events.adapters.redis_events import RedisEventBus
 
 bus = RedisEventBus(
     "redis://redis:6379",
