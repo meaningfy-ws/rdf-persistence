@@ -524,3 +524,26 @@ consumers later.
   builder repaired ~270 lines and checked every import's names against the original — later
   stages use explicit patterns and read the diff. (9) The model guard misses a consumer class whose
   base comes through `from rdf_persistence import RpModel`; it predates the move: #173.
+- **D-13 Stage 2 review and tester, accepted** (lead; review 9 findings, tester 87 tests, 11 failed
+  first, 6 findings; one fixer pass). The review disagreed with D-12 (5), (6), (9); the lead agrees
+  and those readings are replaced here. Critical: C1 = tester F2 (since the move nothing forbids
+  `core` importing the unmoved old layout — `themes-ordered` has one theme, the old `layers` and
+  `domain-never-imports-technical-models` name only the old packages — so two old contracts were
+  weakened): a temporary forbidden contract, source `rdf_persistence.core`, forbidden the old
+  `domain`, `services`, `adapters`, `entrypoints` packages (removed at stage 7 when the old layout is
+  gone), and `domain-never-imports-technical-models` gains `rdf_persistence.core.domain` (tester
+  F3); TC-09 and TC-53 plant their imports at `core/domain/generated/`. C2 = tester F1 (the
+  library's model guard no longer scans `core`; D-12 (5) was wrong): `LIBRARY_LAYERS` gains `core`,
+  with a planted record in `core/services`. Accepted below Critical: W1 (TC-24 is not met for a real
+  consumer; D-12 (9) deferred it): `rdf_persistence.RpModel` joins `FORBIDDEN_BASES`, tested on a
+  consumer fixture package, closing #173; W2 (D-12 (6) was wrong, `tests/unit/core/` exists): the
+  telemetry and HTTP tests move there; W3 (docs naming moved paths: `architecture/index.adoc`
+  ~292, ~344, `questions.adoc` ~274, `generation.adoc` ~304, ~320, ~322, `develop/index.adoc` ~26);
+  S2 (`test_technical_split.py`'s historical paths were rewritten into paths that never existed:
+  restored and exempt). The tester's `xfail(strict=True)` tests are not kept as xfails (no new
+  xfail): the fix makes the accepted ones pass; the rest are sorted. Under the floor: review S1
+  (contract labels "3/3"), S3 (two stale docstrings), S4 (the move and the import rewrite were one
+  commit; TC-02 holds; later stages keep them apart); tester F4 (`rp_settings.py` re-exports
+  `HttpSettings` at the old generated path), F5 (TC-06's checker errors without naming a file on a
+  syntax error), F6 (it reads without `utf-8-sig`); a consumer `python_import` naming a gone module
+  is written as is.
