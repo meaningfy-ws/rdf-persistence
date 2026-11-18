@@ -492,3 +492,27 @@ package name are leader's choices (DEC-2, DEC-5).
   `tests.e2e.world.Callers` and `library_app.library_settings`, coupling the generator's e2e to
   the library's e2e helpers; `build_library_app` is bound to the committed toy, so the wiring is
   repeated in a small `served` helper.
+- **D-27 The full review of the EPIC** (lead; D-3: L1, L2, L3 apart, L4+L5 one pass, over
+  `14b3a86..e9d0cc5`, after stages 1–3 merged). No finding was labelled Critical; re-labelled,
+  with the reason, and fixed in one fixer pass:
+  - L3 W1 → Critical: the pre-commit `rp-generate-check` hook fires only on
+    `rdf_persistence_generation/model/`, while every generator module is a manifest input; the move
+    narrowed a gate (DEC-10). It matches the whole generator but `testkit/` and `generated/`
+    (PD-4, D-20), pinned by a test.
+  - L2 W1 + W2 → Critical: `tests/generator/e2e/conftest.py` registers the container plugin for any
+    session that collects `tests/generator`, so the unit lanes (`test-fast`, `test-changed`,
+    `test-generator`) import testcontainers and run its autouse fixture, and the integration
+    tier's "no container plugin" guard cannot fail. The unit lanes ignore `tests/generator/e2e`
+    like `tests/e2e`; the guard asserts the plugin is not registered in the session.
+  Accepted below Critical because each is the same class as an earlier fix: L3 S2 (pin the
+  sources of `works-without-the-generate-extra` and `rdf_persistence_generation` among the
+  forbidden modules of `runtime-without-extras`, as D-20 W2); L2 W3 (`architecture/generation.adoc`
+  ~683 and `develop/index.adoc` ~134: the manifest inputs also exclude `testkit/`, D-20 W1);
+  L2 S5 (tick 4.1–4.3).
+  Under the floor, follow-ups in #164: L1 S1 (`refresh_map --base` value starting with `-` is read
+  by git as an option); L3 S1 (a contract keeping the generator's core off its testkit, pytest and
+  hypothesis); L2 W4 (`assert_public_imports` does not know the generator's public surface);
+  L2 S1–S4 (TC-46/47 silently drop rows outside the toy, TC-44/45 "nothing written" checks only two
+  folders, TC-41 checks two frames, TC-47's `closed` refusal reason); L4+L5 W1 (three copies of
+  "copy and generate the toy"), W2 (three `ast` import walkers), W3 (constraint kinds as bare
+  strings in the integration test), S1–S10 (duplicated constants and helpers).
