@@ -38,9 +38,17 @@ from rdf_persistence.core.services.artifacts import CONTEXT_FILE
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import error_type, log_extra
 from rdf_persistence.entrypoints.auth import Gate
+from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.domain.layout import system_database_name
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.iris.services.iris import IdSource, Iris, draw_id
+from rdf_persistence.provenance.services.provenance import activity_class_named
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import (
+    iri_types,
+    tenant_access_class,
+)
+from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.services import file_removal, tenant_dump, tenant_sweep
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
@@ -50,7 +58,6 @@ from rdf_persistence.services.discussion import dependents as discussion_depende
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.event_hub import EventHub
 from rdf_persistence.services.events import EventBus, context_link
-from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.service.rp_service import (
     Authorised,
     CallerAccess,
@@ -65,13 +72,7 @@ from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, generated_models_of
 from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migrations import chain_of, current_version
-from rdf_persistence.services.provenance import activity_class_named
 from rdf_persistence.services.relay import Relay
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import (
-    iri_types,
-    tenant_access_class,
-)
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore, TracedStore, system_name_of
 from rdf_persistence.services.tenancy import (
@@ -81,7 +82,6 @@ from rdf_persistence.services.tenancy import (
     Tenancy,
 )
 from rdf_persistence.services.tokens import TokenVerifier
-from rdf_persistence.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.services.workflows import Workflows
 from rdf_persistence.services.write_guards import WriteGuards
 

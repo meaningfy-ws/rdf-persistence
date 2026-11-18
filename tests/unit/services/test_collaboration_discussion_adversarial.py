@@ -34,13 +34,13 @@ from rdf_persistence.core.domain.generated.rp_discussion import Comment, Motivat
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.iris.domain.layout import skolem_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.discussion import dependents
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import UnitOfWork
-from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.testkit import FakeStore, fake_session

@@ -20,6 +20,8 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
     ServiceSettings,
 )
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.services.listing import (
     Listings,
     items_of,
@@ -27,8 +29,6 @@ from rdf_persistence.services.listing import (
     listing_query,
     total_of,
 )
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE, FAKE_PRINCIPAL, FAKE_TENANT, FakeStore
 from tests.fixtures.library.generated.books import Book, Chapter, Genre

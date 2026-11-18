@@ -8,6 +8,7 @@ from rdflib import Graph
 
 from rdf_persistence.core.domain.exceptions import InvalidGraph
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.schema.services.vocabulary import media_types
 from rdf_persistence.services.jsonld import (
     ABSOLUTE_IRIS,
     INVALID_IRI,
@@ -19,7 +20,6 @@ from rdf_persistence.services.jsonld import (
     RemoteContextRefused,
     triples_of,
 )
-from rdf_persistence.services.vocabulary import media_types
 
 # rdflib takes a media type as the name of its format; the schema declares them (PD-11).
 _MEDIA_TYPES = media_types(RdfFormat)

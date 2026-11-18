@@ -6,7 +6,7 @@ from rdflib import Dataset, Literal, URIRef
 from rdf_persistence.core.domain.exceptions import InvalidBody
 from rdf_persistence.iris.domain.layout import stamps_graph_iri
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.tenant_move import check_graphs, rewrite
 from tests.toy import SETTINGS
 

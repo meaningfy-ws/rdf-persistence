@@ -6,8 +6,8 @@ from pathlib import Path
 import yaml
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.services.schema import PACKAGE_DIR
-from rdf_persistence.services.schema_structure import generation_view
+from rdf_persistence.schema.services.schema import PACKAGE_DIR
+from rdf_persistence.schema.services.schema_structure import generation_view
 from rdf_persistence.testkit.generated.rp_testkit import ClassShape, SlotShape
 
 _FLAGS = ("required", "multivalued", "range", "alias")

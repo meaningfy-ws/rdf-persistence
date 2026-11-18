@@ -38,7 +38,7 @@ from rdf_persistence.core.domain.generated.rp_tenancy import TenantAccess, Tenan
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import (
     CallerAccess,
     GrantSet,

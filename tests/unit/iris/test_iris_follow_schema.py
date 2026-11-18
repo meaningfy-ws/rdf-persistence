@@ -4,7 +4,7 @@ import pytest
 
 from rdf_persistence.iris.domain import layout
 from rdf_persistence.iris.services import iris
-from rdf_persistence.services.schema import IRIS_SCHEMA, PACKAGE_DIR, load_schema
+from rdf_persistence.schema.services.schema import IRIS_SCHEMA, PACKAGE_DIR, load_schema
 
 VIEW = load_schema(IRIS_SCHEMA)
 METAMODEL = load_schema(PACKAGE_DIR / "model" / "rp_core.yaml")

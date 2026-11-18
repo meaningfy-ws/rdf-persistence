@@ -25,8 +25,8 @@ from rdf_persistence.core.domain.generated.rp_core import (
     WritesKind,
 )
 from rdf_persistence.iris.domain.layout import LAYOUT_WORDS
-from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.schema.services.schema_structure import (
     AGGREGATE_ROOT,
     UNDER_WORKFLOW,
     aggregate_roots,

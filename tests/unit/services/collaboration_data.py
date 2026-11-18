@@ -2,7 +2,7 @@
 
 from rdflib import RDF, Namespace, URIRef
 
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.workflows import load_workflow, state_iri
 from tests.toy import REVIEW_WORKFLOW

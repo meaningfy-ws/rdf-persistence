@@ -11,10 +11,10 @@ from rdflib.namespace import PROV
 from rdf_persistence import generated_models
 from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add, Remove, Replace
 from rdf_persistence.core.domain.generated.rp_workflow import Transition
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.provenance.services.provenance import activity_class_named, activity_class_of
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.decoding import decode_activity
-from rdf_persistence.services.provenance import activity_class_named, activity_class_of
-from rdf_persistence.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import MODULES, TOY_SCHEMA, ApproveBook, toy_mapper

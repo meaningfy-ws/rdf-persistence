@@ -35,7 +35,7 @@ from rdf_persistence.core.domain.generated.rp_core import (
     WritesKind,
 )
 from rdf_persistence.core.domain.generated.rp_files import StoredFile
-from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
 ACTIVITY = "Activity"  # the class of the things that happened (rp_provenance)

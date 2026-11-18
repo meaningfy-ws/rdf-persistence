@@ -1,13 +1,16 @@
-id: https://meaningfy.ws/ns/rdf-persistence/templates
-name: rp_templates
-title: RDF persistence templates module
+id: https://meaningfy.ws/ns/rdf-persistence/schema-templates
+name: rp_schema_templates
+title: RDF persistence schema templates module
 description: >-
   The bundles of rendered SPARQL terms that the toolkit's query templates share: the registry's
   fixed vocabulary, the unique-key guard, the owner patterns of a write, a listing and the stamp
-  guard of a migration. A field of a SPARQL term bundle holds a `SparqlTerm`, never a plain string,
-  so only the output of `term()` reaches a query (technical-models DEC-7). The IRI template
-  variables and the parts of a matched IRI, which are plain strings, are in the `iris` theme's
-  services schema. Nothing here is served by the HTTP service.
+  guard of a migration. They are in the `schema` theme because `vocabulary`, which sets their fixed
+  terms, is a module of that theme and a theme imports only the themes below it (thematic-structure
+  PD-2, D-8); the persistence and migration modules that fill them import them from here. A field
+  of a SPARQL term bundle holds a `SparqlTerm`, never a plain string, so only the output of `term()`
+  reaches a query (technical-models DEC-7). The IRI template variables and the parts of a matched
+  IRI, which are plain strings, are in the `iris` theme's services schema. Nothing here is served
+  by the HTTP service.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
@@ -17,7 +20,7 @@ imports:
   - linkml:types
 annotations:
   module_kind: technical
-  python_package: rdf_persistence.services.generated.templates
+  python_package: rdf_persistence.schema.services.generated.templates
 
 types:
   sparql_term:

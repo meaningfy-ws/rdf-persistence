@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.services.schema import IRIS_SCHEMA, SERVICE_SCHEMA, load_schema
+from rdf_persistence.schema.services.schema import IRIS_SCHEMA, SERVICE_SCHEMA, load_schema
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.extensions import typescript

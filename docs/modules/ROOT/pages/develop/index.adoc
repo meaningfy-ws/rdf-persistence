@@ -27,7 +27,7 @@ types are allowed only where a field holds a run-time object LinkML cannot expre
 |`rdf_persistence/core/domain/generated/` |The metamodel's generated classes, shapes and context
 |`rdf_persistence/core/services/generated/`, `services/generated/`, `adapters/generated/`, `testkit/generated/` |The generated technical models, each in the lowest layer whose code may import them: `HttpSettings` and `LogContext` (from `model/technical/core/rp_core_services.yaml`) in `core/services/generated/`, `service/`, `settings/` and `templates/` in `services/generated/`, the wire shapes in `adapters/generated/`, the testkit's records in `testkit/generated/` (xref:architecture/generation.adoc#kinds[Two kinds of model])
 |`rdf_persistence/core/domain/base.py` |`RpModel`, the strict base class of every generated class
-|`rdf_persistence/services/schema.py`, `schema_structure.py` |`load_schema` (with the metamodel import map) and the rules that read a schema's aggregate structure, used by every other part
+|`rdf_persistence/schema/services/schema.py`, `schema_structure.py` |`load_schema` (with the metamodel import map) and the rules that read a schema's aggregate structure, used by every other part
 |`rdf_persistence_generation/` |`rp-generate`: `cli.py`, `config.py` (the `[tool.rp-generate]` table), `steps.py` (the steps, in order), `pipeline.py` (staging and running them), `manifest.py` (freshness), `lint.yaml`
 |`rdf_persistence_generation/checks/` |The boundary, hard and rules checks
 |`rdf_persistence_generation/extensions/`, `templates/` |One module per extended LinkML generator, and their Jinja templates
@@ -123,7 +123,7 @@ It never patches the generated output.
 
 . Create a module in `rdf_persistence_generation/extensions/`. Its `render(schema_path: Path)`
   returns a `list[GeneratedFile]`. Open schemas only with `load_schema` (or the metamodel import
-  map), and read aggregate structure only through `services/schema_structure.py`.
+  map), and read aggregate structure only through `schema/services/schema_structure.py`.
 . Add its step to `STEPS` in `rdf_persistence_generation/steps.py`, with `render_step(name, render,
   folder)`; the folder function picks the target folder.
 . Add a row to the extensions table in

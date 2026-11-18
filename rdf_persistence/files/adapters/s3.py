@@ -26,7 +26,7 @@ from rdf_persistence.core.domain.exceptions import (
 from rdf_persistence.core.domain.generated.rp_files import BlobEntry
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings, LogContext
 from rdf_persistence.core.services.telemetry import log_extra
-from rdf_persistence.domain.blob_keys import checked_blob_key
+from rdf_persistence.files.domain.blob_keys import checked_blob_key
 
 NO_SUCH_BUCKET, NO_SUCH_KEY = "NoSuchBucket", "NoSuchKey"
 BUCKET_EXISTS = frozenset({"BucketAlreadyOwnedByYou", "BucketAlreadyExists"})

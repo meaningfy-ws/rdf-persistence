@@ -13,7 +13,7 @@ from rdf_persistence.core.domain.media import (
     TURTLE,
 )
 from rdf_persistence.iris.domain.layout import graph_iri
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import assert_isomorphic
 from tests.integration.api.conftest import make_book
 from tests.toy_service import ToyService, assert_problem, principal_of

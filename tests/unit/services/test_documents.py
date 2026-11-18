@@ -28,10 +28,10 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
     ServiceSettings,
 )
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.services.documents import Documents, dataset_of
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import iri_types
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
 from tests.unit.services.conftest import GENERATED

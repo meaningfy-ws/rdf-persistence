@@ -11,9 +11,9 @@ from rdflib.parser import Parser
 from rdf_persistence.core.domain.generated.rp_core import RegistryEntry, RegistryKind
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.services import vocabulary
-from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
-from rdf_persistence.services.schema_structure import is_bookkeeping
+from rdf_persistence.schema.services import vocabulary
+from rdf_persistence.schema.services.schema import SERVICE_SCHEMA, load_schema
+from rdf_persistence.schema.services.schema_structure import is_bookkeeping
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
 

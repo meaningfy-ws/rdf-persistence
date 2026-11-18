@@ -295,26 +295,26 @@ tests/unit/adapters/test_jwks.py::test_the_default_principal_is_the_issuer_and_t
 tests/unit/adapters/test_jwks.py::test_the_verifier_exposes_the_iris_it_mints_with,requirement,rp-iri-policy,Principals are minted by the service's policy,,high,"name,covered code,spec id PD-2/PD-3a"
 tests/unit/adapters/test_jwks.py::test_unreachable_provider_serves_cached_keys_until_the_ttl,requirement,rp-identity,Every request carries a valid token,,high,"name,covered code (requirement: keys checked against the provider's published keys, cached)"
 tests/unit/adapters/test_jwks.py::test_unreachable_provider_with_no_cached_keys_is_unavailable,requirement,rp-identity,Every request carries a valid token,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_a_blob_the_store_failed_to_delete_stops_the_bucket_delete,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_a_bucket_is_created_with_the_regions_location_constraint,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_a_bucket_name_boto_refuses_is_the_callers_error_not_an_outage,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_a_connection_failure_is_store_unavailable,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_a_key_that_climbs_or_holds_a_control_character_is_refused_before_any_request,requirement,rp-file-store,"Files are kept byte for byte, per tenant, over S3",,high,"name,covered code"
-tests/unit/adapters/test_s3_file_store.py::test_a_key_with_dots_inside_a_segment_is_a_key,requirement,rp-file-store,"Files are kept byte for byte, per tenant, over S3",,high,"name,covered code"
-tests/unit/adapters/test_s3_file_store.py::test_a_server_error_status_is_store_unavailable_whatever_its_code,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_a_truncated_page_without_a_token_ends_the_listing,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_an_s3_error_code_maps_to_the_toolkit_error,requirement,rp-file-store,"Files are kept byte for byte, per tenant, over S3",,high,"name,covered code"
-tests/unit/adapters/test_s3_file_store.py::test_buckets_are_listed_by_prefix_in_name_order,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_deleting_a_bucket_deletes_every_page_of_its_blobs_then_the_bucket,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_deleting_a_missing_bucket_is_not_found,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_get_returns_the_body_bytes,requirement,rp-file-store,"Files are kept byte for byte, per tenant, over S3",,high,"name,covered code"
-tests/unit/adapters/test_s3_file_store.py::test_list_blobs_follows_every_page_and_keeps_the_modified_time,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_list_blobs_of_a_missing_bucket_is_tenant_gone,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_list_blobs_of_an_empty_bucket_is_empty,capability,rp-file-store,,,medium,covered code
-tests/unit/adapters/test_s3_file_store.py::test_the_timeouts_default_to_five_seconds_to_connect_and_thirty_to_read_with_three_attempts,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-25 PD-7 (change technical-models)
-tests/unit/adapters/test_s3_file_store.py::test_the_client_is_configured_from_the_http_settings_given,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-29 PD-7 (change technical-models)
-tests/unit/adapters/test_s3_file_store.py::test_a_code_the_adapter_does_not_map_is_logged_at_debug,requirement,rp-observability,Log records carry a constant message and conventional attributes,,medium,name; covered code (adapters/s3)
-tests/unit/adapters/test_s3_file_store.py::test_a_mapped_code_is_not_logged,requirement,rp-observability,Log records carry a constant message and conventional attributes,,medium,name; covered code (adapters/s3)
+tests/unit/files/test_s3_file_store.py::test_a_blob_the_store_failed_to_delete_stops_the_bucket_delete,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_a_bucket_is_created_with_the_regions_location_constraint,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_a_bucket_name_boto_refuses_is_the_callers_error_not_an_outage,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_a_connection_failure_is_store_unavailable,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_a_key_that_climbs_or_holds_a_control_character_is_refused_before_any_request,requirement,rp-file-store,"Files are kept byte for byte, per tenant, over S3",,high,"name,covered code"
+tests/unit/files/test_s3_file_store.py::test_a_key_with_dots_inside_a_segment_is_a_key,requirement,rp-file-store,"Files are kept byte for byte, per tenant, over S3",,high,"name,covered code"
+tests/unit/files/test_s3_file_store.py::test_a_server_error_status_is_store_unavailable_whatever_its_code,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_a_truncated_page_without_a_token_ends_the_listing,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_an_s3_error_code_maps_to_the_toolkit_error,requirement,rp-file-store,"Files are kept byte for byte, per tenant, over S3",,high,"name,covered code"
+tests/unit/files/test_s3_file_store.py::test_buckets_are_listed_by_prefix_in_name_order,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_deleting_a_bucket_deletes_every_page_of_its_blobs_then_the_bucket,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_deleting_a_missing_bucket_is_not_found,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_get_returns_the_body_bytes,requirement,rp-file-store,"Files are kept byte for byte, per tenant, over S3",,high,"name,covered code"
+tests/unit/files/test_s3_file_store.py::test_list_blobs_follows_every_page_and_keeps_the_modified_time,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_list_blobs_of_a_missing_bucket_is_tenant_gone,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_list_blobs_of_an_empty_bucket_is_empty,capability,rp-file-store,,,medium,covered code
+tests/unit/files/test_s3_file_store.py::test_the_timeouts_default_to_five_seconds_to_connect_and_thirty_to_read_with_three_attempts,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-25 PD-7 (change technical-models)
+tests/unit/files/test_s3_file_store.py::test_the_client_is_configured_from_the_http_settings_given,requirement,rp-settings,Deployment values are generated settings with today's defaults,,medium,docstring TC-29 PD-7 (change technical-models)
+tests/unit/files/test_s3_file_store.py::test_a_code_the_adapter_does_not_map_is_logged_at_debug,requirement,rp-observability,Log records carry a constant message and conventional attributes,,medium,name; covered code (adapters/s3)
+tests/unit/files/test_s3_file_store.py::test_a_mapped_code_is_not_logged,requirement,rp-observability,Log records carry a constant message and conventional attributes,,medium,name; covered code (adapters/s3)
 tests/unit/adapters/test_token_verifier.py::test_a_roles_claim_of_another_shape_gives_no_roles,capability,rp-identity,,,medium,covered code
 tests/unit/adapters/test_token_verifier.py::test_a_token_refused_by_pyjwt_chains_its_message_as_the_cause,requirement,rp-identity,Every request carries a valid token,,medium,covered code
 tests/unit/adapters/test_token_verifier.py::test_a_valid_token_gives_the_caller_with_the_principal_from_sub,requirement,rp-identity,Every request carries a valid token,,high,name; covered code (adapters/jwks.py); module docstring cites rp-identity
@@ -378,8 +378,8 @@ tests/unit/domain/test_access_model.py::test_tenant_access_accepts_a_known_state
 tests/unit/domain/test_access_model.py::test_tenant_access_refuses_an_unknown_state,capability,rp-tenancy,,,medium,covered code
 tests/unit/domain/test_access_model.py::test_tenant_label_inside_the_pattern_is_accepted,capability,rp-tenancy,,,medium,covered code
 tests/unit/domain/test_access_model.py::test_tenant_label_outside_the_pattern_is_refused,capability,rp-tenancy,,,medium,covered code
-tests/unit/domain/test_blob_keys.py::test_a_key_that_climbs_is_empty_or_holds_a_control_or_non_utf8_character_is_refused,capability,rp-tenancy,,,high,spec id (tenant-dump-restore PD-13); covered code
-tests/unit/domain/test_blob_keys.py::test_an_ordinary_key_is_returned_unchanged,capability,rp-tenancy,,,high,spec id (tenant-dump-restore PD-13); covered code
+tests/unit/files/test_blob_keys.py::test_a_key_that_climbs_is_empty_or_holds_a_control_or_non_utf8_character_is_refused,capability,rp-tenancy,,,high,spec id (tenant-dump-restore PD-13); covered code
+tests/unit/files/test_blob_keys.py::test_an_ordinary_key_is_returned_unchanged,capability,rp-tenancy,,,high,spec id (tenant-dump-restore PD-13); covered code
 tests/unit/core/test_exceptions.py::test_a_conflict_names_the_roots_that_conflict_and_defaults_to_none,requirement,rp-aggregate-store,Several aggregates of one tenant commit atomically,,medium,covered code
 tests/unit/core/test_exceptions.py::test_an_error_caused_by_the_callers_input_is_also_a_value_error,none,,,,none,none
 tests/unit/core/test_exceptions.py::test_every_error_of_the_module_derives_persistence_error,none,,,,none,none
@@ -596,7 +596,6 @@ tests/unit/core/test_rp_model.py::test_replaced_refuses_a_misspelt_field,capabil
 tests/unit/core/test_rp_model.py::test_replaced_returns_a_new_model_and_leaves_the_old_one_alone,capability,rp-generation,,,medium,"name (RpModel strict base, PD-8)"
 tests/unit/core/test_rp_model.py::test_replaced_validates_its_values,capability,rp-generation,,,medium,"name (RpModel strict base, PD-8)"
 tests/unit/services/test_messagebus.py::test_the_limit_error_names_the_command_and_the_bus_logs_nothing,requirement,rp-messages,Messages raised while handling stay bounded,,high,name; covered code; spec id (PD-13)
-tests/unit/services/test_schema.py::test_a_consumer_imports_rp_core_and_no_technical_schema,scenario,rp-generation,Technical models are generated apart from domain models,the schemas a consumer imports,high,name; spec scenario text; covered code (services/schema)
 tests/unit/services/test_service_model.py::test_a_base_ending_in_a_slash_is_accepted,capability,rp-iri-policy,,,medium,covered code
 tests/unit/services/test_service_model.py::test_a_base_that_is_not_an_http_iri_ending_in_a_slash_is_refused,capability,rp-iri-policy,,,medium,covered code
 tests/unit/services/test_service_model.py::test_a_body_bound_below_one_byte_is_refused,capability,rp-service-api,,,medium,covered code
@@ -1435,16 +1434,16 @@ tests/generator/unit/test_lock_step.py::test_safe_changes_with_a_new_version_dra
 tests/generator/unit/test_lock_step.py::test_safe_changes_with_the_version_unchanged_rewrite_the_lock_only,scenario,rp-schema-migrations,A schema change that stored data must follow needs a new version and a migration,an added optional slot,high,docstring TC-09 + covered code
 tests/generator/unit/test_lock_step.py::test_the_first_run_writes_the_lock_and_no_migration,requirement,rp-schema-migrations,A schema change that stored data must follow needs a new version and a migration,,medium,name (no lines: reads fixture output)
 tests/generator/unit/test_lock_step.py::test_the_lock_is_a_manifest_output_and_a_second_run_changes_nothing,requirement,rp-generation,Generated output is reproducible,,medium,name (second run changes nothing)
-tests/unit/services/test_metamodel_schema.py::test_a_part_needs_a_version_and_not_a_class,capability,rp-metamodel,,,medium,name (schema facts of the metamodel)
-tests/unit/services/test_metamodel_schema.py::test_a_replace_with_an_agent_round_trips_with_one_associated_principal,capability,rp-metamodel,,,medium,covered code (mapper)
-tests/unit/services/test_metamodel_schema.py::test_a_replace_with_one_generation_round_trips_through_the_mapper,capability,rp-metamodel,,,medium,covered code (mapper)
-tests/unit/services/test_metamodel_schema.py::test_a_slot_name_shared_across_the_imports_keeps_its_own_predicate,capability,rp-metamodel,,,medium,name (schema facts of the metamodel)
-tests/unit/services/test_metamodel_schema.py::test_a_transition_has_its_fields_and_requires_only_the_aggregate_it_used,capability,rp-workflow,,,medium,name (Transition fields); no lines
-tests/unit/services/test_metamodel_schema.py::test_an_activity_has_the_four_optional_slots_and_owns_its_parts,capability,rp-metamodel,,,medium,name (schema facts of the metamodel)
-tests/unit/services/test_metamodel_schema.py::test_database_name_is_internal,capability,rp-metamodel,,,medium,name (schema facts of the metamodel)
-tests/unit/services/test_metamodel_schema.py::test_rules_share_one_abstract_rule_class,requirement,rp-metamodel,Access is modelled with an ODRL subset,,medium,name (access rules)
-tests/unit/services/test_metamodel_schema.py::test_stored_rule_is_typed_as_its_odrl_class,requirement,rp-metamodel,Access is modelled with an ODRL subset,,high,name (ODRL class) + covered code
-tests/unit/services/test_metamodel_schema.py::test_the_session_writes_five_of_the_eight_toolkit_filled_slots,requirement,rp-generation,A consumer does not redefine what the toolkit fills,,medium,name (toolkit-filled slots); no lines
+tests/unit/schema/test_metamodel_schema.py::test_a_part_needs_a_version_and_not_a_class,capability,rp-metamodel,,,medium,name (schema facts of the metamodel)
+tests/unit/schema/test_metamodel_schema.py::test_a_replace_with_an_agent_round_trips_with_one_associated_principal,capability,rp-metamodel,,,medium,covered code (mapper)
+tests/unit/schema/test_metamodel_schema.py::test_a_replace_with_one_generation_round_trips_through_the_mapper,capability,rp-metamodel,,,medium,covered code (mapper)
+tests/unit/schema/test_metamodel_schema.py::test_a_slot_name_shared_across_the_imports_keeps_its_own_predicate,capability,rp-metamodel,,,medium,name (schema facts of the metamodel)
+tests/unit/schema/test_metamodel_schema.py::test_a_transition_has_its_fields_and_requires_only_the_aggregate_it_used,capability,rp-workflow,,,medium,name (Transition fields); no lines
+tests/unit/schema/test_metamodel_schema.py::test_an_activity_has_the_four_optional_slots_and_owns_its_parts,capability,rp-metamodel,,,medium,name (schema facts of the metamodel)
+tests/unit/schema/test_metamodel_schema.py::test_database_name_is_internal,capability,rp-metamodel,,,medium,name (schema facts of the metamodel)
+tests/unit/schema/test_metamodel_schema.py::test_rules_share_one_abstract_rule_class,requirement,rp-metamodel,Access is modelled with an ODRL subset,,medium,name (access rules)
+tests/unit/schema/test_metamodel_schema.py::test_stored_rule_is_typed_as_its_odrl_class,requirement,rp-metamodel,Access is modelled with an ODRL subset,,high,name (ODRL class) + covered code
+tests/unit/schema/test_metamodel_schema.py::test_the_session_writes_five_of_the_eight_toolkit_filled_slots,requirement,rp-generation,A consumer does not redefine what the toolkit fills,,medium,name (toolkit-filled slots); no lines
 tests/unit/testkit/test_model_guard.py::test_a_hand_written_record_in_a_widened_layer_is_caught_only_when_the_layer_is_scanned,requirement,rp-generation,LinkML is the single source of every model artefact,,high,module docstring cites rp-generation/PD-28 + covered code (testkit model guard)
 tests/unit/testkit/test_model_guard.py::test_every_hand_written_type_in_the_allow_list_still_exists_and_is_flagged_without_it,requirement,rp-generation,LinkML is the single source of every model artefact,,high,module docstring cites rp-generation/PD-28 + covered code (testkit model guard)
 tests/unit/testkit/test_model_guard.py::test_hand_written_domain_class_fails_the_guard_and_names_it,scenario,rp-generation,LinkML is the single source of every model artefact,a hand-written domain class,high,module docstring names the scenario + name + covered code
@@ -1471,10 +1470,10 @@ tests/generator/unit/test_roundtrip.py::test_a_toy_aggregate_survives_json_rdf_a
 tests/generator/unit/test_roundtrip.py::test_the_strategies_name_hypothesis_when_it_is_missing,capability,rp-testkit,,,medium,name (subprocess; no lines)
 tests/generator/unit/test_roundtrip.py::test_the_tenant_access_record_survives_json_rdf_and_a_frame,requirement,rp-generation,LinkML is the single source of every model artefact,,medium,module docstring PD-27 item 4/PD-12
 tests/generator/unit/test_roundtrip.py::test_the_testkit_and_the_round_trip_do_not_import_hypothesis,scenario,rp-testkit,The model guards are public names of the testkit,importing the testkit stays light,medium,name (subprocess; no lines; pyshacl not asserted)
-tests/unit/services/test_schema_loading.py::test_loading_does_not_depend_on_the_working_directory,capability,rp-generation,,,medium,module docstring PD-22 + covered code (services/schema.py); no requirement
-tests/unit/services/test_schema_loading.py::test_missing_metamodel_module_is_a_clear_error,capability,rp-generation,,,medium,module docstring PD-22 + covered code (services/schema.py); no requirement
-tests/unit/services/test_schema_loading.py::test_no_two_metamodel_slots_share_a_slot_uri,capability,rp-generation,,,medium,module docstring PD-22 + covered code (services/schema.py); no requirement
-tests/unit/services/test_schema_loading.py::test_toy_schema_loads_with_its_own_and_the_metamodel_classes,capability,rp-generation,,,medium,module docstring PD-22 + covered code (services/schema.py); no requirement
+tests/unit/schema/test_schema_loading.py::test_loading_does_not_depend_on_the_working_directory,capability,rp-generation,,,medium,module docstring PD-22 + covered code (services/schema.py); no requirement
+tests/unit/schema/test_schema_loading.py::test_missing_metamodel_module_is_a_clear_error,capability,rp-generation,,,medium,module docstring PD-22 + covered code (services/schema.py); no requirement
+tests/unit/schema/test_schema_loading.py::test_no_two_metamodel_slots_share_a_slot_uri,capability,rp-generation,,,medium,module docstring PD-22 + covered code (services/schema.py); no requirement
+tests/unit/schema/test_schema_loading.py::test_toy_schema_loads_with_its_own_and_the_metamodel_classes,capability,rp-generation,,,medium,module docstring PD-22 + covered code (services/schema.py); no requirement
 tests/unit/testkit/test_shape_snapshot.py::test_a_changed_multivalued_flag_is_detected,requirement,rp-generation,Stale or edited generated output is detected,,medium,module docstring PD-27 (snapshot); covered code testkit snapshot
 tests/unit/testkit/test_shape_snapshot.py::test_a_changed_required_flag_is_detected,requirement,rp-generation,Stale or edited generated output is detected,,medium,module docstring PD-27 (snapshot); covered code testkit snapshot
 tests/unit/testkit/test_shape_snapshot.py::test_a_field_absent_from_the_component_is_skipped,requirement,rp-testkit,The guards catch a required-flag mismatch,,high,name (Python vs JSON Schema required) + covered code
@@ -1561,14 +1560,14 @@ tests/unit/services/test_access_rules.py::test_an_aggregate_role_granted_on_the_
 tests/unit/services/test_access_rules.py::test_each_rule_case,requirement,rp-access,Access is decided per tenant and per aggregate,,high,name (rule order); covered code; spec id PD-9
 tests/unit/services/test_access_rules.py::test_every_rule_of_the_check_has_a_case_that_fires_and_a_case_that_does_not,capability,rp-access,,,medium,spec id PD-9 (self-check of the case table)
 tests/unit/services/test_access_rules.py::test_the_actions_listed_are_those_the_routes_on_the_target_allow,requirement,rp-service-api,Reads tell the caller what it may do,,medium,covered code
-tests/unit/services/test_activity_shape.py::test_an_activity_without_a_start_or_an_end_time_is_refused_naming_its_id,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id PD-3 (message-bus)
-tests/unit/services/test_activity_shape.py::test_tc10_the_triples_of_an_activity_are_the_pd3_shape,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id TC-10/PD-3
-tests/unit/services/test_activity_shape.py::test_tc11_the_mapper_writes_the_same_graph_but_the_ancestor_type,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id TC-11
-tests/unit/services/test_activity_shape.py::test_tc12_the_json_of_the_model_expands_to_the_mapped_graph,capability,rp-messages,,,medium,"spec id TC-12 (JSON-LD round trip, not a messages requirement)"
-tests/unit/services/test_activity_shape.py::test_tc13_the_framed_graph_compacts_to_the_model_once_compact_iris_are_expanded,capability,rp-messages,,,medium,spec id TC-13 (JSON-LD round trip)
-tests/unit/services/test_activity_shape.py::test_tc14_the_mapper_reads_the_stored_graph_and_ignores_the_ancestor_type,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id TC-14
-tests/unit/services/test_activity_shape.py::test_tc17_a_generation_without_an_entity_class_has_no_such_triple,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id TC-17
-tests/unit/services/test_activity_shape.py::test_the_vocabulary_names_the_pd3_terms,requirement,rp-messages,Every commit records one activity with its PROV events,,medium,spec id PD-3
+tests/unit/provenance/test_activity_shape.py::test_an_activity_without_a_start_or_an_end_time_is_refused_naming_its_id,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id PD-3 (message-bus)
+tests/unit/provenance/test_activity_shape.py::test_tc10_the_triples_of_an_activity_are_the_pd3_shape,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id TC-10/PD-3
+tests/unit/provenance/test_activity_shape.py::test_tc11_the_mapper_writes_the_same_graph_but_the_ancestor_type,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id TC-11
+tests/unit/provenance/test_activity_shape.py::test_tc12_the_json_of_the_model_expands_to_the_mapped_graph,capability,rp-messages,,,medium,"spec id TC-12 (JSON-LD round trip, not a messages requirement)"
+tests/unit/provenance/test_activity_shape.py::test_tc13_the_framed_graph_compacts_to_the_model_once_compact_iris_are_expanded,capability,rp-messages,,,medium,spec id TC-13 (JSON-LD round trip)
+tests/unit/provenance/test_activity_shape.py::test_tc14_the_mapper_reads_the_stored_graph_and_ignores_the_ancestor_type,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id TC-14
+tests/unit/provenance/test_activity_shape.py::test_tc17_a_generation_without_an_entity_class_has_no_such_triple,requirement,rp-messages,Every commit records one activity with its PROV events,,high,name; covered code; spec id TC-17
+tests/unit/provenance/test_activity_shape.py::test_the_vocabulary_names_the_pd3_terms,requirement,rp-messages,Every commit records one activity with its PROV events,,medium,spec id PD-3
 tests/unit/services/test_aggregate_keys.py::test_a_root_gets_the_scoped_keys_it_inherits_and_the_nearest_declaration_wins,requirement,rp-aggregate-store,Unique keys hold across the aggregates of a tenant,,high,covered code; spec id TC-02/PD-3 (cross-aggregate-unique-keys)
 tests/unit/services/test_aggregate_keys.py::test_a_system_database_root_and_an_unscoped_key_give_no_entry,requirement,rp-aggregate-store,Unique keys hold across the aggregates of a tenant,,medium,covered code
 tests/unit/services/test_aggregate_keys.py::test_the_toy_library_has_one_key_across_aggregates,requirement,rp-aggregate-store,Unique keys hold across the aggregates of a tenant,,high,name; covered code; spec id TC-01
@@ -2769,34 +2768,34 @@ tests/unit/services/test_restore_across_versions_adversarial.py::test_a_tenant_s
 tests/unit/services/test_restore_across_versions_adversarial.py::test_a_tenant_with_no_stamp_dumps_no_version_and_that_dump_is_refused_by_a_restore,requirement,rp-schema-migrations,A dump carries the version of its data and a restore migrates it,,high,covered code; spec id
 tests/unit/services/test_restore_across_versions_adversarial.py::test_a_tenant_with_two_stamps_is_not_dumped_and_nothing_is_written,requirement,rp-schema-migrations,A dump carries the version of its data and a restore migrates it,,high,covered code; spec id
 tests/unit/services/test_restore_across_versions_adversarial.py::test_the_toolkits_chain_runs_before_the_libraries_and_both_move_the_data,requirement,rp-schema-migrations,A dump carries the version of its data and a restore migrates it,,high,covered code; spec id
-tests/unit/services/test_schema_structure.py::test_a_condition_other_than_a_clear_presence_is_refused,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_a_predicate_reads_its_annotation_from_the_metamodel,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_a_root_is_service_written_by_annotation_or_by_a_stored_file_ancestor,requirement,rp-service-api,Some roots are written only through a session,,high,name; covered code
-tests/unit/services/test_schema_structure.py::test_a_root_the_toolkit_writes_is_no_served_root_but_keeps_its_iri_type,capability,rp-iri-policy,,,medium,covered code
-tests/unit/services/test_schema_structure.py::test_a_root_under_a_system_database_ancestor_is_no_served_root,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_a_rule_is_read_from_the_class_that_declares_it,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_a_slot_holds_owned_parts_or_iris_or_neither,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_a_slot_of_objects_is_keyed_by_the_keys_of_its_range,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_a_slot_that_refers_by_identifier_is_not_keyed,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_a_subclass_has_the_keyed_slots_it_inherits,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_a_tag_that_is_not_there_gives_none_and_a_false_flag,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_every_value_set_of_the_vocabulary_has_members,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_presence_alternatives_list_each_slot_present_or_absent,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_the_comment_is_a_root_the_generic_router_does_not_serve,capability,rp-discussion,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_the_comment_still_has_an_iri_type_the_policy_mints_and_recognises,capability,rp-discussion,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_the_defaults_leave_a_root_description_slot_usage_alone,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_the_generation_view_has_the_defaults_applied,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_the_grants_of_an_access_record_are_keyed_in_the_metamodel,capability,rp-access,,,medium,covered code
-tests/unit/services/test_schema_structure.py::test_the_iri_type_is_the_annotation_else_the_kebab_case_name,capability,rp-iri-policy,,,medium,covered code
-tests/unit/services/test_schema_structure.py::test_the_iri_types_of_the_toy_library_are_its_roots_and_its_owned_classes,capability,rp-iri-policy,,,medium,covered code
-tests/unit/services/test_schema_structure.py::test_the_json_name_of_a_slot_is_its_alias_or_its_name_in_snake_case,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_the_metamodel_is_left_untouched,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_the_nearest_declaration_of_a_key_name_wins,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_the_tenant_root_is_the_class_in_the_meta_graph,capability,rp-service-api,,,medium,spec id
-tests/unit/services/test_schema_structure.py::test_the_toys_scan_is_service_written_and_its_book_is_not,requirement,rp-service-api,Some roots are written only through a session,,high,name; covered code
-tests/unit/services/test_schema_structure.py::test_the_transition_has_no_iri_type_the_policy_mints,capability,rp-workflow,,,medium,covered code
-tests/unit/services/test_schema_structure.py::test_the_transition_is_no_served_root,capability,rp-workflow,,,medium,covered code
-tests/unit/services/test_schema_structure.py::test_the_workflow_of_a_class_is_the_first_name_up_its_is_a_chain,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_condition_other_than_a_clear_presence_is_refused,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_predicate_reads_its_annotation_from_the_metamodel,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_root_is_service_written_by_annotation_or_by_a_stored_file_ancestor,requirement,rp-service-api,Some roots are written only through a session,,high,name; covered code
+tests/unit/schema/test_schema_structure.py::test_a_root_the_toolkit_writes_is_no_served_root_but_keeps_its_iri_type,capability,rp-iri-policy,,,medium,covered code
+tests/unit/schema/test_schema_structure.py::test_a_root_under_a_system_database_ancestor_is_no_served_root,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_rule_is_read_from_the_class_that_declares_it,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_slot_holds_owned_parts_or_iris_or_neither,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_slot_of_objects_is_keyed_by_the_keys_of_its_range,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_slot_that_refers_by_identifier_is_not_keyed,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_subclass_has_the_keyed_slots_it_inherits,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_tag_that_is_not_there_gives_none_and_a_false_flag,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_every_value_set_of_the_vocabulary_has_members,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_presence_alternatives_list_each_slot_present_or_absent,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_comment_is_a_root_the_generic_router_does_not_serve,capability,rp-discussion,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_comment_still_has_an_iri_type_the_policy_mints_and_recognises,capability,rp-discussion,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_defaults_leave_a_root_description_slot_usage_alone,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_generation_view_has_the_defaults_applied,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_grants_of_an_access_record_are_keyed_in_the_metamodel,capability,rp-access,,,medium,covered code
+tests/unit/schema/test_schema_structure.py::test_the_iri_type_is_the_annotation_else_the_kebab_case_name,capability,rp-iri-policy,,,medium,covered code
+tests/unit/schema/test_schema_structure.py::test_the_iri_types_of_the_toy_library_are_its_roots_and_its_owned_classes,capability,rp-iri-policy,,,medium,covered code
+tests/unit/schema/test_schema_structure.py::test_the_json_name_of_a_slot_is_its_alias_or_its_name_in_snake_case,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_metamodel_is_left_untouched,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_nearest_declaration_of_a_key_name_wins,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_tenant_root_is_the_class_in_the_meta_graph,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_toys_scan_is_service_written_and_its_book_is_not,requirement,rp-service-api,Some roots are written only through a session,,high,name; covered code
+tests/unit/schema/test_schema_structure.py::test_the_transition_has_no_iri_type_the_policy_mints,capability,rp-workflow,,,medium,covered code
+tests/unit/schema/test_schema_structure.py::test_the_transition_is_no_served_root,capability,rp-workflow,,,medium,covered code
+tests/unit/schema/test_schema_structure.py::test_the_workflow_of_a_class_is_the_first_name_up_its_is_a_chain,capability,rp-service-api,,,medium,spec id
 tests/unit/services/test_schema_structure_databases.py::test_a_root_is_served_by_one_database_only,requirement,rp-tenancy,The application keeps its own aggregates outside any tenant,,high,covered code; spec id
 tests/unit/services/test_schema_structure_databases.py::test_a_subclass_of_an_application_class_is_committed_by_the_application_session_only,scenario,rp-tenancy,The application keeps its own aggregates outside any tenant,a subclass of an application class,high,name; covered code; spec id
 tests/unit/services/test_schema_structure_databases.py::test_a_subclass_of_an_application_class_is_listed_for_the_application,scenario,rp-tenancy,The application keeps its own aggregates outside any tenant,a subclass of an application class,high,name; covered code; spec id
@@ -3465,23 +3464,23 @@ tests/unit/services/test_validators_adversarial.py::test_two_renames_at_one_vers
 tests/unit/services/test_validators_adversarial.py::test_vet_root_gives_the_validator_the_root_of_the_tenant_written_not_another,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,high,name; covered code; spec id (mwb2-adoption-fixes PD-7)
 tests/unit/services/test_validators_adversarial.py::test_vet_root_of_an_unknown_tenant_is_not_found_with_validators,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,medium,covered code
 tests/unit/services/test_validators_adversarial.py::test_vet_root_with_the_tenant_database_gone_does_not_read_when_no_validators_given,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,medium,covered code
-tests/unit/services/test_visible_part.py::test_a_hidden_generation_is_dropped_and_the_other_kept,scenario,rp-events,Server-sent events respect access,a hidden aggregate,medium,name (unit filter only; the scenario's stream is wider)
-tests/unit/services/test_visible_part.py::test_a_hidden_invalidation_is_dropped_and_the_other_kept,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
-tests/unit/services/test_visible_part.py::test_a_hidden_used_resource_hides_the_activity,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
-tests/unit/services/test_visible_part.py::test_a_readable_used_resource_keeps_the_activity,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
-tests/unit/services/test_visible_part.py::test_an_activity_with_every_part_hidden_is_not_sent,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
-tests/unit/services/test_visible_part.py::test_an_activity_with_no_parts_is_not_sent,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
-tests/unit/services/test_visible_part.py::test_the_input_is_left_unchanged,requirement,rp-events,Server-sent events respect access,,medium,covered code
-tests/unit/services/test_vocabulary.py::test_a_commit_marker_is_an_id_and_the_time_the_transaction_started,capability,rp-aggregate-store,,,medium,name; covers no package line
-tests/unit/services/test_vocabulary.py::test_each_constant_is_the_uri_of_its_slot,requirement,rp-metamodel,Write tracking is stated about the graph,,medium,"spec id (PD-7, PD-8); covers no package line"
-tests/unit/services/test_vocabulary.py::test_each_enum_member_maps_to_the_meaning_the_schema_declares,none,,,,none,
-tests/unit/services/test_vocabulary.py::test_every_registry_slot_has_a_constant,capability,rp-aggregate-store,,,medium,spec id (module PD-7/8); covers no package line
-tests/unit/services/test_vocabulary.py::test_the_bookkeeping_predicates_are_exactly_the_bookkeeping_slots_of_the_schema,requirement,rp-metamodel,Write tracking is stated about the graph,,medium,"spec id (PD-7, PD-8)"
-tests/unit/services/test_vocabulary.py::test_the_commit_marker_class_iri_is_the_class_uri_of_the_schema,capability,rp-aggregate-store,,,medium,spec id (module PD-7/8); covers no package line
-tests/unit/services/test_vocabulary.py::test_the_total_of_a_listing_is_the_predicate_of_the_page_slot_of_that_name,capability,rp-service-api,,,medium,covered code
-tests/unit/services/test_vocabulary.py::test_a_serialisation_without_a_media_type_is_refused_by_name,requirement,rp-aggregate-store,RDF files load into a graph of their own,,high,name; covered code (services/vocabulary); each format is named by its media type
-tests/unit/services/test_vocabulary.py::test_each_media_type_is_a_parser_rdflib_registers,requirement,rp-aggregate-store,RDF files load into a graph of their own,,high,name; covered code (services/vocabulary); each format is named by its media type
-tests/unit/services/test_vocabulary.py::test_each_serialisation_carries_the_media_type_the_schema_declares,requirement,rp-aggregate-store,RDF files load into a graph of their own,,high,name; covered code (services/vocabulary); each format is named by its media type
+tests/unit/provenance/test_visible_part.py::test_a_hidden_generation_is_dropped_and_the_other_kept,scenario,rp-events,Server-sent events respect access,a hidden aggregate,medium,name (unit filter only; the scenario's stream is wider)
+tests/unit/provenance/test_visible_part.py::test_a_hidden_invalidation_is_dropped_and_the_other_kept,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
+tests/unit/provenance/test_visible_part.py::test_a_hidden_used_resource_hides_the_activity,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
+tests/unit/provenance/test_visible_part.py::test_a_readable_used_resource_keeps_the_activity,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
+tests/unit/provenance/test_visible_part.py::test_an_activity_with_every_part_hidden_is_not_sent,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
+tests/unit/provenance/test_visible_part.py::test_an_activity_with_no_parts_is_not_sent,requirement,rp-events,Server-sent events respect access,,high,"name; covered code (visible_part.py); spec id (PD-11, TC-33/34)"
+tests/unit/provenance/test_visible_part.py::test_the_input_is_left_unchanged,requirement,rp-events,Server-sent events respect access,,medium,covered code
+tests/unit/schema/test_vocabulary.py::test_a_commit_marker_is_an_id_and_the_time_the_transaction_started,capability,rp-aggregate-store,,,medium,name; covers no package line
+tests/unit/schema/test_vocabulary.py::test_each_constant_is_the_uri_of_its_slot,requirement,rp-metamodel,Write tracking is stated about the graph,,medium,"spec id (PD-7, PD-8); covers no package line"
+tests/unit/schema/test_vocabulary.py::test_each_enum_member_maps_to_the_meaning_the_schema_declares,none,,,,none,
+tests/unit/schema/test_vocabulary.py::test_every_registry_slot_has_a_constant,capability,rp-aggregate-store,,,medium,spec id (module PD-7/8); covers no package line
+tests/unit/schema/test_vocabulary.py::test_the_bookkeeping_predicates_are_exactly_the_bookkeeping_slots_of_the_schema,requirement,rp-metamodel,Write tracking is stated about the graph,,medium,"spec id (PD-7, PD-8)"
+tests/unit/schema/test_vocabulary.py::test_the_commit_marker_class_iri_is_the_class_uri_of_the_schema,capability,rp-aggregate-store,,,medium,spec id (module PD-7/8); covers no package line
+tests/unit/schema/test_vocabulary.py::test_the_total_of_a_listing_is_the_predicate_of_the_page_slot_of_that_name,capability,rp-service-api,,,medium,covered code
+tests/unit/schema/test_vocabulary.py::test_a_serialisation_without_a_media_type_is_refused_by_name,requirement,rp-aggregate-store,RDF files load into a graph of their own,,high,name; covered code (services/vocabulary); each format is named by its media type
+tests/unit/schema/test_vocabulary.py::test_each_media_type_is_a_parser_rdflib_registers,requirement,rp-aggregate-store,RDF files load into a graph of their own,,high,name; covered code (services/vocabulary); each format is named by its media type
+tests/unit/schema/test_vocabulary.py::test_each_serialisation_carries_the_media_type_the_schema_declares,requirement,rp-aggregate-store,RDF files load into a graph of their own,,high,name; covered code (services/vocabulary); each format is named by its media type
 tests/unit/services/test_workflows.py::test_a_check_of_the_workflows_names_the_file_of_the_workflow_at_fault,requirement,rp-workflow,A workflow is defined in a file and validated,,high,"name; covered code (workflows.py); spec id (PD-17, TC-69..75)"
 tests/unit/services/test_workflows.py::test_a_class_naming_a_workflow_no_file_defines_names_the_class_and_the_files_given,requirement,rp-workflow,A workflow is defined in a file and validated,,high,"name; covered code (workflows.py); spec id (PD-17, TC-69..75)"
 tests/unit/services/test_workflows.py::test_a_file_that_cannot_be_read_is_refused_naming_the_file,requirement,rp-workflow,A workflow is defined in a file and validated,,high,"name; covered code (workflows.py); spec id (PD-17, TC-69..75)"

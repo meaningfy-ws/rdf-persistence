@@ -14,11 +14,11 @@ from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.openapi import install_openapi
 from rdf_persistence.entrypoints.problems import install_problem_handlers
 from rdf_persistence.entrypoints.router import build_router
+from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.iris.services.iris import IdSource, draw_id
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.events import EventBus
-from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iri_policy_guard import guard_iri_policy

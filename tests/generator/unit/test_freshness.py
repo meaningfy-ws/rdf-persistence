@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 import rdf_persistence_generation as generation
-from rdf_persistence.services.schema import PACKAGE_DIR
+from rdf_persistence.schema.services.schema import PACKAGE_DIR
 from rdf_persistence_generation import manifest as manifest_module
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.config import GENERATOR_DIR, read_targets
@@ -83,12 +83,12 @@ def test_package_inputs_are_recorded_under_the_package_name(generated: Path) -> 
 def test_every_module_that_decides_how_a_schema_is_read_is_an_input(generated: Path) -> None:
     paths = {entry.path for entry in read_manifest(generated).inputs}
     readers = {
-        f"rdf_persistence/services/{module.name}"
-        for module in manifest_module.SERVICES_DIR.glob("schema*.py")
+        f"rdf_persistence/schema/services/{module.name}"
+        for module in manifest_module.SCHEMA_SERVICES_DIR.glob("schema*.py")
     }
     assert {
-        "rdf_persistence/services/schema.py",
-        "rdf_persistence/services/schema_structure.py",
+        "rdf_persistence/schema/services/schema.py",
+        "rdf_persistence/schema/services/schema_structure.py",
     } <= readers, "the scan found no schema reader"
     assert readers <= paths, f"not inputs: {sorted(readers - paths)}"
 

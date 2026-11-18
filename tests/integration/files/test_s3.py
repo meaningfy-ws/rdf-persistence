@@ -5,8 +5,8 @@ import os
 
 import pytest
 
-from rdf_persistence.adapters.s3 import S3FileStore
 from rdf_persistence.core.domain.exceptions import StoreUnavailable, TenantGone
+from rdf_persistence.files.adapters.s3 import S3FileStore
 from rdf_persistence.testkit.file_store_conformance import CASES, run_case
 
 

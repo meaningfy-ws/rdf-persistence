@@ -8,7 +8,7 @@ from rdflib.namespace import RDF
 from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.services import vocabulary
+from rdf_persistence.schema.services import vocabulary
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.session import open_session
 from rdf_persistence.services.tenancy import Tenancy

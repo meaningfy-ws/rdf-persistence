@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = "rdf_persistence"
 LAYERS = ("domain", "services", "adapters", "entrypoints")
 # A stage adds its themes here (PD-1: the stage turns its rows on, and TC-01 then holds them).
-TURNED_ON: frozenset[str] = frozenset({"core", "iris"})
+TURNED_ON: frozenset[str] = frozenset({"core", "iris", "schema", "files", "provenance"})
 # Old paths that hold a deprecation shim, not a leftover (PD-8): the module re-exports the moved one and
 # stands until the release that removes it (stage 8). A stage that adds a shim lists it here.
 SHIMS: frozenset[str] = frozenset({f"{PACKAGE}.domain.base"})
@@ -178,7 +178,7 @@ class Placed:
 
 # PD-2's class table, row by row. Not named class by class in PD-2, so read from "the term bundles of
 # unique_keys, session, listing" and "the migration guard's terms" by the module that builds them
-# (`services/vocabulary.py`) and the one that uses each: `RegistryTerms`, `KeyHeldTerms`,
+# (`schema/services/vocabulary.py`) and the one that uses each: `RegistryTerms`, `KeyHeldTerms`,
 # `KeyBranchTerms` (unique_keys), `OwnerTerms` (session), `ListingTerms` (listing), `StampGuardTerms`
 # (migrations). The Zitadel records are every `Zitadel*` class of `rp_wire`.
 _ZITADEL = (
@@ -230,15 +230,25 @@ PLACED: tuple[Placed, ...] = (
         ("Filter", "Condition", "ListRequest", "ListPlan", "AggregateHead", "Page"),
     ),
     Placed("persistence", "services", "settings", ("LimitSettings",)),
+    # D-8, settled at stage 3: `schema/vocabulary` builds all six term bundles, so `schema` is their lowest
+    # user (PD-2); a bundle placed in `persistence` or `migrations` would make `schema` import a higher
+    # theme. Their slots range over `SparqlTerm` of `core`, so no slot reaches a class of a higher theme.
     Placed(
-        "persistence",
+        "schema",
         "services",
         "templates",
-        ("RegistryTerms", "KeyHeldTerms", "KeyBranchTerms", "OwnerTerms", "ListingTerms"),
+        (
+            "RegistryTerms",
+            "KeyHeldTerms",
+            "KeyBranchTerms",
+            "OwnerTerms",
+            "ListingTerms",
+            "StampGuardTerms",
+        ),
+        tail="templates.rp_schema_templates",
     ),
     Placed("persistence", "adapters", "wire", ("FusekiDatasetList", "FusekiDataset")),
     Placed("migrations", "services", "service", ("Migration", "MigrationStep")),
-    Placed("migrations", "services", "templates", ("StampGuardTerms",)),
     Placed(
         "access",
         "services",

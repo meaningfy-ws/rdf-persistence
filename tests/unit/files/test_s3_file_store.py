@@ -11,7 +11,6 @@ from botocore.exceptions import EndpointConnectionError
 from botocore.response import StreamingBody
 from botocore.stub import Stubber
 
-from rdf_persistence.adapters.s3 import S3FileStore
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     NotFound,
@@ -20,6 +19,7 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.core.domain.generated.rp_files import BlobEntry
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
+from rdf_persistence.files.adapters.s3 import S3FileStore
 from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
 from tests.logs import attributes, records_of
 
@@ -76,7 +76,7 @@ async def test_a_code_the_adapter_does_not_map_is_logged_at_debug(s3, caplog):  
     files, stubber = s3
     stubber.add_client_error("get_object", service_error_code="AccessDenied", http_status_code=403)
     with (
-        caplog.at_level(logging.DEBUG, logger="rdf_persistence.adapters.s3"),
+        caplog.at_level(logging.DEBUG, logger="rdf_persistence.files.adapters.s3"),
         pytest.raises(StoreUnavailable),
     ):
         await files.get(BUCKET, KEY)
@@ -90,7 +90,7 @@ async def test_a_mapped_code_is_not_logged(s3, caplog):  # TC-21
     files, stubber = s3
     stubber.add_client_error("get_object", service_error_code="NoSuchBucket", http_status_code=404)
     with (
-        caplog.at_level(logging.DEBUG, logger="rdf_persistence.adapters.s3"),
+        caplog.at_level(logging.DEBUG, logger="rdf_persistence.files.adapters.s3"),
         pytest.raises(TenantGone),
     ):
         await files.get(BUCKET, KEY)

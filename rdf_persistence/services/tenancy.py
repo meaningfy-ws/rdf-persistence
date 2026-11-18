@@ -34,6 +34,7 @@ from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.core.domain.sparql import Triple, fill, term
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra
+from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.domain.layout import (
     application_database_name,
     graph_iri,
@@ -43,9 +44,18 @@ from rdf_persistence.iris.domain.layout import (
 )
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema_structure import (
+    LABEL,
+    aggregate_keys,
+    annotation_text,
+    internal_predicates,
+    iri_type_of,
+    refuse_internal,
+    root_class_iris,
+    tenant_root_class,
+)
 from rdf_persistence.services.access import AccessRules
-from rdf_persistence.services.files import FileStore
 from rdf_persistence.services.generated.service.rp_service import (
     CallerAccess,
     GrantSet,
@@ -56,16 +66,6 @@ from rdf_persistence.services.generated.service.rp_service import (
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.services.migrations import stamp_if_none, stamp_problems
-from rdf_persistence.services.schema_structure import (
-    LABEL,
-    aggregate_keys,
-    annotation_text,
-    internal_predicates,
-    iri_type_of,
-    refuse_internal,
-    root_class_iris,
-    tenant_root_class,
-)
 from rdf_persistence.services.session import (
     Clock,
     Dependents,

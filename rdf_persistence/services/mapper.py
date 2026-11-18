@@ -46,10 +46,9 @@ from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.iris.domain.layout import is_skolem_of
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.provenance import Served
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.provenance.services.provenance import Served
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema_structure import (
     aggregate_roots,
     flag,
     holds_iri,
@@ -59,6 +58,7 @@ from rdf_persistence.services.schema_structure import (
     kebab_case,
     rdf_term,
 )
+from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.session import Session, without_bookkeeping
 
 

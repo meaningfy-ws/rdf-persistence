@@ -6,17 +6,17 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.core.services.artifacts import COMPONENTS_FILE, SCHEMAS
+from rdf_persistence.schema.services.schema import (
+    IRIS_SCHEMA,
+    PACKAGE_DIR,
+    SERVED_SCHEMAS,
+    SERVICE_SCHEMA,
+)
 from rdf_persistence.services.components import (
     DuplicateComponentError,
     component_schemas,
     merge_components,
     served_folders,
-)
-from rdf_persistence.services.schema import (
-    IRIS_SCHEMA,
-    PACKAGE_DIR,
-    SERVED_SCHEMAS,
-    SERVICE_SCHEMA,
 )
 
 

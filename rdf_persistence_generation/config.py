@@ -8,8 +8,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
-from rdf_persistence.services.schema_structure import annotation_text
+from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.schema.services.schema_structure import annotation_text
 from rdf_persistence_generation.exceptions import ConfigError
 from rdf_persistence_generation.generated.rp_generation import (
     CliFlag,

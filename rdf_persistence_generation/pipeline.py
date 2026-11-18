@@ -9,7 +9,7 @@ from pathlib import Path
 
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.services.schema import LOAD_ERRORS, load_schema
+from rdf_persistence.schema.services.schema import LOAD_ERRORS, load_schema
 from rdf_persistence_generation import manifest
 from rdf_persistence_generation.config import python_folder
 from rdf_persistence_generation.exceptions import SchemaGenerationError, StepError

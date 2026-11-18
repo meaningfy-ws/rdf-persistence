@@ -34,9 +34,9 @@ from rdf_persistence.core.services.yaml_files import (
     read_mapping,
     shown,
 )
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.generated.templates.rp_schema_templates import StampGuardTerms
 from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
-from rdf_persistence.services.generated.templates.rp_templates import StampGuardTerms
 from rdf_persistence.services.store import Store
 
 # The toolkit's own predicates: a step may read them, never write them (PD-22 item 3).

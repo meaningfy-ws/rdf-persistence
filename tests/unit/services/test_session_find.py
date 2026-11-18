@@ -9,9 +9,9 @@ from linkml_runtime.linkml_model.annotations import Annotation
 from rdf_persistence import Action
 from rdf_persistence.core.domain.exceptions import BadQuery
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.listing import Listings
-from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.session import _filters
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_TENANT

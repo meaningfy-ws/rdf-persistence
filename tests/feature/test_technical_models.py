@@ -24,12 +24,12 @@ from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.core.domain.sparql import term
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 from rdf_persistence.entrypoints.environment import settings_from_env
+from rdf_persistence.schema.services.generated.templates.rp_schema_templates import RegistryTerms
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.generated.settings.rp_settings import (
     JwksSettings,
     ToolkitSettings,
 )
-from rdf_persistence.services.generated.templates.rp_templates import RegistryTerms
-from rdf_persistence.services.schema import load_schema
 from rdf_persistence.testkit.tokens import ISSUER
 from rdf_persistence_generation.cli import main as generate
 from tests.toy_service import ToyService

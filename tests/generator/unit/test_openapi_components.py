@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.core.services.artifacts import COMPONENTS_FILE
-from rdf_persistence.services.schema import SERVED_SCHEMAS, load_schema
-from rdf_persistence.services.schema_structure import is_bookkeeping, is_internal
+from rdf_persistence.schema.services.schema import SERVED_SCHEMAS, load_schema
+from rdf_persistence.schema.services.schema_structure import is_bookkeeping, is_internal
 from rdf_persistence_generation.components import TYPE_SCHEMA, render
 from rdf_persistence_generation.steps import COMPONENTS_STEP
 

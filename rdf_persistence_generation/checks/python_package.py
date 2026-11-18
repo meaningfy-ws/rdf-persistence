@@ -12,7 +12,7 @@ from pathlib import Path
 from linkml_runtime.linkml_model.meta import SchemaDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema_structure import (
     annotation_text,
     is_toolkit_schema,
     own_schemas,

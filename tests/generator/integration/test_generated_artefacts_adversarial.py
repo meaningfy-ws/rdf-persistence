@@ -11,8 +11,8 @@ from linkml_runtime.linkml_model.meta import SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import XSD, Graph, Literal, URIRef
 
+from rdf_persistence.schema.services.schema_structure import generation_view, is_bookkeeping
 from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.schema_structure import generation_view, is_bookkeeping
 from rdf_persistence.services.shacl import validate_locked
 from rdf_persistence_generation.config import TOOLKIT_ROOTS
 

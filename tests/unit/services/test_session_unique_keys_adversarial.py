@@ -23,8 +23,8 @@ from rdf_persistence.core.domain.exceptions import (
     NotFound,
 )
 from rdf_persistence.core.domain.generated.rp_core import AggregateKey, Principal
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import aggregate_keys
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from rdf_persistence.services.session import Session
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE

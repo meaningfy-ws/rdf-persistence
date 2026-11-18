@@ -26,7 +26,7 @@ from rdf_persistence.core.domain.generated.rp_provenance import (
     Replace,
 )
 from rdf_persistence.core.domain.sparql import Triple
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 
 ID_PREFIX = "urn:uuid:"
 

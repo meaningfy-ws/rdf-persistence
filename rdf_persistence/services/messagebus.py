@@ -19,11 +19,11 @@ from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.provenance.services.provenance import Served, new_activity_id
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
-from rdf_persistence.services.provenance import Served, new_activity_id
 from rdf_persistence.services.session import Session
 
 log = logging.getLogger(__name__)

@@ -18,8 +18,8 @@ from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add, Remove, Replace
 from rdf_persistence.iris.domain.layout import application_database_name
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore, assert_isomorphic, fake_session

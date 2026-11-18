@@ -37,6 +37,9 @@ type = layers
 containers =
     rdf_persistence.core
     rdf_persistence.iris
+    rdf_persistence.schema
+    rdf_persistence.files
+    rdf_persistence.provenance
 layers =
     (entrypoints) | (adapters)
     (services)
@@ -47,7 +50,8 @@ exhaustive = true
 name = Themes: a theme imports only the themes below it (core is the lowest)
 type = layers
 layers =
-    rdf_persistence.iris
+    rdf_persistence.provenance | rdf_persistence.files
+    rdf_persistence.iris | rdf_persistence.schema
     rdf_persistence.core
 
 [importlinter:contract:domain-of-a-theme-imports-no-upper-layer]
@@ -202,8 +206,8 @@ source_modules =
     rdf_persistence_generation.generated
     rdf_persistence_generation.testkit
     rdf_persistence.testkit
-    rdf_persistence.services.schema
-    rdf_persistence.services.schema_structure
+    rdf_persistence.schema.services.schema
+    rdf_persistence.schema.services.schema_structure
 forbidden_modules =
     linkml
 ignore_imports =
@@ -242,7 +246,7 @@ name = the session and the activity shape never import the mapper, which imports
 type = forbidden
 source_modules =
     rdf_persistence.services.session
-    rdf_persistence.services.provenance
+    rdf_persistence.provenance.services.provenance
 forbidden_modules =
     rdf_persistence.services.mapper
 
@@ -281,7 +285,7 @@ source_modules =
     rdf_persistence.services.event_stream
     rdf_persistence.services.events
     rdf_persistence.services.file_removal
-    rdf_persistence.services.files
+    rdf_persistence.files.services.files
     rdf_persistence.services.identity
     rdf_persistence.services.iri_policy_guard
     rdf_persistence.iris.services.iris
@@ -290,11 +294,11 @@ source_modules =
     rdf_persistence.services.mapper
     rdf_persistence.services.migration_runner
     rdf_persistence.services.migrations
-    rdf_persistence.services.provenance
+    rdf_persistence.provenance.services.provenance
     rdf_persistence.services.reference_collections
     rdf_persistence.services.relay
-    rdf_persistence.services.schema
-    rdf_persistence.services.schema_structure
+    rdf_persistence.schema.services.schema
+    rdf_persistence.schema.services.schema_structure
     rdf_persistence.services.session
     rdf_persistence.services.store
     rdf_persistence.services.sweep
@@ -306,8 +310,8 @@ source_modules =
     rdf_persistence.services.tokens
     rdf_persistence.services.transitions
     rdf_persistence.services.unique_keys
-    rdf_persistence.services.visible_part
-    rdf_persistence.services.vocabulary
+    rdf_persistence.provenance.services.visible_part
+    rdf_persistence.schema.services.vocabulary
     rdf_persistence.services.workflows
     rdf_persistence.services.write_guards
     rdf_persistence.core.services.yaml_files
@@ -339,6 +343,7 @@ source_modules =
     tests.unit.core.test_sparql
     tests.unit.core.test_sparql_parsing
     tests.unit.iris.test_layout
+    tests.unit.files.test_blob_keys
 forbidden_modules =
     rdf_persistence.services
     rdf_persistence.adapters

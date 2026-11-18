@@ -429,7 +429,7 @@ provenance graph (<<commit>>, _The activity_), with version tokens and no conten
 *Some aggregates have no write routes.* A class annotated `rp_writes: service`, or a file
 aggregate, gets only `GET` routes; a `POST`, `PUT` or `DELETE` on them answers 405. The consumer
 writes it through a session in its own route (`is_service_written`,
-`services/schema_structure.py`).
+`schema/services/schema_structure.py`).
 
 [#commit]
 == Committing several aggregates at once

@@ -9,9 +9,9 @@ from rdflib import URIRef
 
 from rdf_persistence.core.domain.generated.rp_provenance import Generation, Invalidation, Replace
 from rdf_persistence.core.domain.generated.rp_workflow import Transition
-from rdf_persistence.services import vocabulary
-from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
-from rdf_persistence.services.schema_structure import is_internal, is_owned
+from rdf_persistence.schema.services import vocabulary
+from rdf_persistence.schema.services.schema import SERVICE_SCHEMA, load_schema
+from rdf_persistence.schema.services.schema_structure import is_internal, is_owned
 from tests.toy import ADA, book_iri, toy_mapper
 
 MODEL = Path(__file__).parents[3] / "rdf_persistence" / "model"

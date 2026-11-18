@@ -11,7 +11,7 @@ from collections.abc import Awaitable, Callable
 import pytest
 
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound, TenantGone
-from rdf_persistence.services.files import FileStore
+from rdf_persistence.files.services.files import FileStore
 
 KEY = "blob"
 AWKWARD_KEY = "folder/ä b+c.bin"

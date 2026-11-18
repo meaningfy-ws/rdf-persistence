@@ -23,8 +23,8 @@ from rdf_persistence.core.services.artifacts import (
     REF,
     SCHEMAS,
 )
-from rdf_persistence.services.schema import SERVED_SCHEMAS, load_schema, metamodel_importmap
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema import SERVED_SCHEMAS, load_schema, metamodel_importmap
+from rdf_persistence.schema.services.schema_structure import (
     apply_defaults,
     is_bookkeeping,
     is_internal,

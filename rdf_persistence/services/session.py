@@ -52,7 +52,16 @@ from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced
 from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.provenance.services.provenance import (
+    Change,
+    Served,
+    activity_triples,
+    class_in,
+    completed,
+    first_class,
+)
+from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.generated.templates.rp_schema_templates import OwnerTerms
 from rdf_persistence.services.generated.service.rp_service import (
     AggregateHead,
     Condition,
@@ -60,7 +69,6 @@ from rdf_persistence.services.generated.service.rp_service import (
     ListPlan,
     ListRequest,
 )
-from rdf_persistence.services.generated.templates.rp_templates import OwnerTerms
 from rdf_persistence.services.listing import (
     PAGE,
     Listings,
@@ -70,14 +78,6 @@ from rdf_persistence.services.listing import (
     total_of,
 )
 from rdf_persistence.services.loading import parse_graph
-from rdf_persistence.services.provenance import (
-    Change,
-    Served,
-    activity_triples,
-    class_in,
-    completed,
-    first_class,
-)
 from rdf_persistence.services.store import Store
 from rdf_persistence.services.unique_keys import (
     KeyClaim,

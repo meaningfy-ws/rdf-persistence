@@ -7,8 +7,12 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import aggregate_keys, annotation_text, keyed_slots
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import (
+    aggregate_keys,
+    annotation_text,
+    keyed_slots,
+)
 from rdf_persistence_generation import steps
 from rdf_persistence_generation.checks.application import ROWS
 from rdf_persistence_generation.checks.hard import (

@@ -1,7 +1,7 @@
 """The freshness hook fires on the generator's inputs and on generated output (generator-package D-27, D-29, DEC-10).
 
 The generator's inputs are its modules, templates, model and lint config, the library's model and
-the toy. Not every manifest input: the library's ``services/schema.py`` and ``schema_structure.py``
+the toy. Not every manifest input: the library's ``schema/services/schema.py`` and ``schema_structure.py``
 are manifest inputs the hook does not match.
 """
 

@@ -31,6 +31,7 @@ from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.schema.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.services.event_hub import CLOSED
 from rdf_persistence.services.generated.service.rp_service import Migration
 from rdf_persistence.services.generated.settings.rp_settings import (
@@ -42,7 +43,6 @@ from rdf_persistence.services.generated.settings.rp_settings import (
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import MessageBus
 from rdf_persistence.services.migrations import stamps
-from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.testkit import FakeStore, RecordingObserver
 from tests.fixtures.library import generated
 from tests.toy import (

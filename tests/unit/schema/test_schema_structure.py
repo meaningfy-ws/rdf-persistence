@@ -13,8 +13,8 @@ from rdf_persistence.core.domain.generated.rp_core import (
     ModuleKind,
     RpAnnotation,
 )
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import (
     ABSENT,
     ANY_OF,
     EXACTLY_ONE_OF,

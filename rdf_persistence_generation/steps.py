@@ -12,8 +12,8 @@ from linkml.linter.config.datamodel.config import RuleLevel
 from linkml.linter.linter import Linter
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.services.schema import metamodel_importmap
-from rdf_persistence.services.schema_structure import own_schemas
+from rdf_persistence.schema.services.schema import metamodel_importmap
+from rdf_persistence.schema.services.schema_structure import own_schemas
 from rdf_persistence_generation import components
 from rdf_persistence_generation.checks.boundary import (
     boundary_problems,

@@ -15,8 +15,8 @@ from rdf_persistence.core.domain.generated.rp_provenance import (
     Remove,
     Replace,
 )
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.provenance import activity_triples
+from rdf_persistence.provenance.services.provenance import activity_triples
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import assert_isomorphic
 from rdf_persistence_generation.testkit.conformance import Conformance
 from rdf_persistence_generation.testkit.roundtrip import without_framing

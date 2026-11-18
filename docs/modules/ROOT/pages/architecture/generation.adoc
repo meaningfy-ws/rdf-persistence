@@ -89,7 +89,7 @@ The annotation names are the generated enum `RpAnnotation`, and their values the
 `ModuleKind`, `DatabaseKind`, `GraphKind` and `WritesKind`: a value outside them fails the hard check, so no code
 compares free strings. The rules that read a schema's aggregate structure (roots, the tenant root,
 owned, internal and bookkeeping slots, PD-11's defaults, the presence alternatives and keyed slots
-of a class) live once, in `rdf_persistence/services/schema_structure.py`, beside `load_schema` in
+of a class) live once, in `rdf_persistence/schema/services/schema_structure.py`, beside `load_schema` in
 `schema.py`; the checks, the extensions, the testkit and the mapper all use them.
 
 Slots of the metamodel (IRIs in the `rp:` namespace unless shown):
@@ -318,8 +318,8 @@ import-linter contract (`domain-never-imports-technical-models`) check it three 
 |`service` |`rp_service.yaml`: `VerifiedCaller` (what the token verifier returns), and the toolkit's request and response bodies: `TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Problem`; it imports `rp_iris_services.yaml` of the `iris` theme (`rdf_persistence/iris/services/generated/`): `ServiceSettings` (the settings of `install_service`), `IriPolicy`, `IdSpec`, `IdKind`. The two are the served schemas (`SERVED_SCHEMAS`, the iris schema first): the only ones with OpenAPI components, and the ones whose classes the TypeScript output copies, all into `rp_service.ts` |`rdf_persistence/services/generated/service/` |services, adapters, entrypoints
 |`wire` |`rp_wire.yaml`: the shapes of the identity provider's, Fuseki's and the JWT's wire formats (`ZitadelUser`, `ZitadelUserState`, `JwtClaims`, `FusekiDataset`, `DiscoveryDocument`, ...). No OpenAPI components (`openapi = false`) |`rdf_persistence/adapters/generated/` |adapters and the testkit only
 |`settings` |`rp_settings.yaml`: the deployment and tuning values of the toolkit, each slot with the default the toolkit used before: `JwksSettings`, `DirectorySettings`, `EventSettings`, `SseSettings`, `LimitSettings`, and `ToolkitSettings`, whose six group slots (`HttpSettings`, the class of the `http` slot, is defined in the `core` group) carry the `default_instance` annotation, so `ToolkitSettings()` holds a default instance of each group. The allowed JWS algorithms are a list that refuses `none` and every `HS*` name and accepts any other. No OpenAPI components. How to use them: xref:howto/settings.adoc[Configure the toolkit's deployment values] |`rdf_persistence/services/generated/settings/` |services, adapters, entrypoints
-|`templates` |`rp_templates.yaml`: the bundles of rendered SPARQL terms that the query templates share, each field a `SparqlTerm` (the type `sparql_term`, which its `python_import` annotation imports from `rdf_persistence.core.domain.sparql`): |`templates` |`rp_templates.yaml`: the bundles of rendered SPARQL terms that the query templates share, each field a `SparqlTerm` (the type `sparql_term`, which its `python_import` annotation imports from `rdf_persistence.core.domain.sparql`): `RegistryTerms`, `KeyHeldTerms`, `KeyBranchTerms`, `OwnerTerms`, `ListingTerms`, `StampGuardTerms`. The two IRI models, whose fields are plain strings that `iris/services/iris.py` reads, `IriTemplateVariables` (the fixed values of an IRI template) and `IriParts` (the parts of a matched IRI), are in `rp_iris_templates.yaml` (`rdf_persistence/iris/services/generated/templates/`), not served, so the TypeScript and the OpenAPI document do not carry them. The factories that set the fixed terms are in `services/vocabulary.py`; `fill_terms` and `fragment_terms` take a bundle. No OpenAPI components |`rdf_persistence/services/generated/templates/` |services
 |`core` |`model/technical/core/rp_core_services.yaml`: `LogContext`, the attributes of a log record or a span; each slot's alias is the attribute name, and `HttpSettings`, the HTTP client's timeouts. No OpenAPI components |`rdf_persistence/core/services/generated/` |services
+|`templates` |`rp_schema_templates.yaml`, in the `schema` theme (`vocabulary`, which sets the fixed terms, is a module of that theme, and a theme imports only the themes below it): the bundles of rendered SPARQL terms that the query templates share, each field a `SparqlTerm` (the type `sparql_term`, which its `python_import` annotation imports from `rdf_persistence.core.domain.sparql`): `RegistryTerms`, `KeyHeldTerms`, `KeyBranchTerms`, `OwnerTerms`, `ListingTerms`, `StampGuardTerms`. The two IRI models, whose fields are plain strings that `iris/services/iris.py` reads, `IriTemplateVariables` (the fixed values of an IRI template) and `IriParts` (the parts of a matched IRI), are in `rp_iris_templates.yaml` (`rdf_persistence/iris/services/generated/templates/`), not served, so the TypeScript and the OpenAPI document do not carry them. The factories that set the fixed terms are in `schema/services/vocabulary.py`; `fill_terms` and `fragment_terms` take a bundle. No OpenAPI components |`rdf_persistence/schema/services/generated/templates/` |services
 |`testkit` |`rp_testkit.yaml`: the records the library's testkit uses, `ClassShape`, `SlotShape` and `FieldFlags` (the model-shape snapshot), `ContainerMarker`, `Violation` (the guards), `MachineUser`, `ZitadelProject`, `ZitadelServer`, `ExecResult`, `FusekiServer` and `GarageServer` (the container fixtures and Zitadel provisioning). No OpenAPI components |`rdf_persistence/testkit/generated/` |the testkit, which sits outside the layers
 |===
 
@@ -535,7 +535,7 @@ library never has to name the generator. Manifests record a library file as
   `rdf_persistence_generation`, nor `pytest`, `testcontainers` or `linkml`.
 * `works-without-the-generate-extra`: the modules that must run without the `generate` extra
   (`cli`, `config`, `manifest`, `pipeline`, `exceptions`, `problems`, `generated` and `testkit` of
-  the generator, `rdf_persistence.testkit`, `rdf_persistence.services.schema` and
+  the generator, `rdf_persistence.testkit`, `rdf_persistence.schema.services.schema` and
   `schema_structure`) do not import `linkml` (only `linkml_runtime`). The one `cli` to `steps` edge
   is excepted: it loads the steps only when it generates.
 
@@ -693,7 +693,7 @@ output, sorted by path, with paths relative to the `pyproject.toml`.
 [cols="1,4",options="header"]
 |===
 |Recorded |Files
-|Inputs |the schema's import closure (metamodel files as `rdf_persistence/<path>`, so the manifest does not depend on where the package is installed), the template directories, every module under `rdf_persistence_generation/` except `generated/` and `testkit/` (the testkit never shapes the output), and every `rdf_persistence/services/schema*.py` module (they decide how a schema is read)
+|Inputs |the schema's import closure (metamodel files as `rdf_persistence/<path>`, so the manifest does not depend on where the package is installed), the template directories, every module under `rdf_persistence_generation/` except `generated/` and `testkit/` (the testkit never shapes the output), and every `rdf_persistence/schema/services/schema*.py` module (they decide how a schema is read)
 |Outputs |every file the run wrote, in every target folder, except the manifest. A run deletes only the files its previous manifest lists, never a whole folder.
 |===
 
@@ -712,7 +712,7 @@ identifier; every staged file must stay inside the staging folder.
 |Where |What runs
 |`make check-quality` (before every PR, and in CI) |the full `--check`
 |every pytest session |the manifest comparison, by the plugin `rdf_persistence_generation.testkit.freshness` in `pytest_sessionstart`; it stops the run on anything stale or edited. A consumer enables it with `pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]` (the old path, `rdf_persistence.testkit.freshness`, is a shim that warns); the ini option `rp_generate_projects` lists the `pyproject.toml` files to read (default: the rootdir's).
-|pre-commit hook `rp-generate-check` |the check, on commits touching the generator's inputs (a model, any module, template or lint config of the generation package except its `testkit/` and `generated/` folders, which are no inputs, and the toy library) or a `generated/` folder (a hand edit of generated code); not every manifest input: the library's `services/schema.py` and `schema_structure.py` are inputs the hook does not match
+|pre-commit hook `rp-generate-check` |the check, on commits touching the generator's inputs (a model, any module, template or lint config of the generation package except its `testkit/` and `generated/` folders, which are no inputs, and the toy library) or a `generated/` folder (a hand edit of generated code); not every manifest input: the library's `schema/services/schema.py` and `schema_structure.py` are inputs the hook does not match
 |`make check-generated` (CI) |a regeneration from scratch and a diff, which catches a generator that is not deterministic
 |===
 

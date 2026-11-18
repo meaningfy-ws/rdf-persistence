@@ -2,7 +2,7 @@
 
 import pytest
 
-from rdf_persistence.domain.blob_keys import checked_blob_key
+from rdf_persistence.files.domain.blob_keys import checked_blob_key
 
 BAD_KEYS = [
     "a/../b",

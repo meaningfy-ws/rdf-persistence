@@ -33,7 +33,7 @@ from rdf_persistence.core.domain.media import (
 from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.services import vocabulary
+from rdf_persistence.schema.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import ROLES, SETTINGS, keep_a_librarian

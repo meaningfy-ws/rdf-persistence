@@ -17,13 +17,13 @@ from pathlib import Path
 from linkml.generators.typescriptgen import TypescriptGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.services.schema import (
+from rdf_persistence.schema.services.schema import (
     SERVED_SCHEMAS,
     SERVICE_SCHEMA,
     load_schema,
     metamodel_importmap,
 )
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema_structure import (
     apply_defaults,
     is_internal,
     is_owned,
@@ -248,7 +248,27 @@ def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
                 by_name.setdefault(module.name, module)
     if own:
         by_name[SERVICE_MODULE] = _merged(own, served_names)
-    return [_file(by_name[name]) for name in sorted(by_name)]
+    return [_file(_pointing_at_merged(by_name[name], served_names)) for name in sorted(by_name)]
+
+
+def _pointing_at_merged(module: TsModule, served_names: list[str]) -> TsModule:
+    """``module`` with each import of a served schema's module pointed at ``SERVICE_MODULE``.
+
+    A served schema has no file of its own (its types are in the merged one), so an import of
+    ``./<served schema>`` would name a file that is not written (D-10).
+    """
+    if not any(item.module in served_names for item in module.imports):
+        return module
+    imports: dict[str, set[str]] = {}
+    for item in module.imports:
+        source = SERVICE_MODULE if item.module in served_names else item.module
+        imports.setdefault(source, set()).update(item.names)
+    return module.replaced(
+        imports=[
+            TsImport(module=source, names=sorted(names))
+            for source, names in sorted(imports.items())
+        ]
+    )
 
 
 def _merged(modules: list[TsModule], served_names: list[str]) -> TsModule:

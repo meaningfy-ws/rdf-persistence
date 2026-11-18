@@ -28,12 +28,12 @@ from rdf_persistence.core.domain.generated.rp_workflow import (
 from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.core.services.yaml_files import SHOWN
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.provenance.services.provenance import new_activity_id
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.discussion import mint_iri, moment_of
 from rdf_persistence.services.generated.service.rp_service import CallerAccess, VerifiedCaller
 from rdf_persistence.services.mapper import Mapper
-from rdf_persistence.services.provenance import new_activity_id
 from rdf_persistence.services.session import Session, changed_text
 from rdf_persistence.services.workflows import Workflows, state_iri
 

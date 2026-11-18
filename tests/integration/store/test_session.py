@@ -12,7 +12,7 @@ from rdf_persistence.core.domain.exceptions import Conflict, DatabaseGone, Inval
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.session import Session, open_session
 from rdf_persistence.testkit import assert_isomorphic
 from tests.integration.store.sessions import (
@@ -376,8 +376,8 @@ async def test_open_session_yields_a_working_session(store, database):
 
 
 async def test_find_returns_the_aggregate_with_the_value_on_a_real_store(store, database):
+    from rdf_persistence.schema.services.schema import load_schema
     from rdf_persistence.services.listing import Listings
-    from rdf_persistence.services.schema import load_schema
     from tests.fixtures.library.generated.scans import Scan
     from tests.toy import TOY_SCHEMA, toy_mapper
 

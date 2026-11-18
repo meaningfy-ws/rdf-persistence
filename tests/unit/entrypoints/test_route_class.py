@@ -13,7 +13,7 @@ import pytest
 from rdflib import RDF, URIRef
 
 from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy
-from rdf_persistence.services.vocabulary import ANNOTATION, HAS_TARGET
+from rdf_persistence.schema.services.vocabulary import ANNOTATION, HAS_TARGET
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 
 FLAT_POLICY = IriPolicy(aggregate_template="{tenant}/{id}")

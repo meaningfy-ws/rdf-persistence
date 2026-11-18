@@ -28,7 +28,7 @@ from rdf_persistence.core.domain.sparql import (
     value_patterns,
     value_variables,
 )
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 
 # One claimed value is held by an aggregate other than the excluded roots (PD-7). The value comes
 # first, so a store finds it through an index instead of walking every registered graph; only an

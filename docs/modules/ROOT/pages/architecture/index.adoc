@@ -303,7 +303,7 @@ classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Mo
 |`rdf_persistence.services`
 |session and unit of work, mapper, tenancy, access check, collaboration, workflows, sweep; the IRI
 policy and `Iris` (`iris/services/iris.py`; `tenant_move.py` is beside the services); the factories that build the SPARQL
-term bundles (`services/vocabulary.py`); the message bus; the ports
+term bundles (`schema/services/vocabulary.py`); the message bus; the ports
 |the technical models of the services, loaded lazily from the top level, each group a folder of
 `services/generated/`: `service/` (from `model/technical/service/rp_service.yaml`: the service
 records), `settings/` (`rp_settings.yaml`: the deployment values), `templates/` (`rp_templates.yaml`:

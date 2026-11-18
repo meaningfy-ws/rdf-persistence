@@ -3,8 +3,8 @@
 from pathlib import Path
 
 from rdf_persistence.core.domain.generated.rp_core import AggregateKey
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import aggregate_keys
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from tests.toy import TOY_SCHEMA
 
 BIBO = "http://purl.org/ontology/bibo/"

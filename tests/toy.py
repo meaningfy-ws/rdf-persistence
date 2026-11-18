@@ -28,8 +28,8 @@ from rdf_persistence.core.domain.generated import (
     rp_workflow,
 )
 from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
-from rdf_persistence.services.schema import load_schema
 from tests.fixtures.library.generated import (
     books,
     books_activities,

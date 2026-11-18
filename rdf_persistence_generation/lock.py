@@ -14,14 +14,14 @@ from rdflib import URIRef
 
 from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.core.domain.sparql import term
-from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
-from rdf_persistence.services.schema_structure import (
+from rdf_persistence.schema.services.schema_structure import (
     annotation_text,
     database_of,
     holds_owned_part,
     iri_type_of,
     root_classes,
 )
+from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence_generation.generated.rp_generation import (
     LockChange,
     LockedClass,

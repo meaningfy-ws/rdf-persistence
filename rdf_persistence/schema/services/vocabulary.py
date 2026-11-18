@@ -17,7 +17,7 @@ from rdflib import Literal, URIRef
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind, RpAnnotation
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.sparql import SparqlTerm, term, term_list
-from rdf_persistence.services.generated.templates.rp_templates import (
+from rdf_persistence.schema.services.generated.templates.rp_schema_templates import (
     KeyBranchTerms,
     KeyHeldTerms,
     ListingTerms,
@@ -25,9 +25,14 @@ from rdf_persistence.services.generated.templates.rp_templates import (
     RegistryTerms,
     StampGuardTerms,
 )
-from rdf_persistence.services.schema import IRIS_SCHEMA, PACKAGE_DIR, SERVICE_SCHEMA, load_schema
-from rdf_persistence.services.schema_structure import ACTIVITY as ACTIVITY_NAME
-from rdf_persistence.services.schema_structure import annotation_text, flag, is_bookkeeping
+from rdf_persistence.schema.services.schema import (
+    IRIS_SCHEMA,
+    PACKAGE_DIR,
+    SERVICE_SCHEMA,
+    load_schema,
+)
+from rdf_persistence.schema.services.schema_structure import ACTIVITY as ACTIVITY_NAME
+from rdf_persistence.schema.services.schema_structure import annotation_text, flag, is_bookkeeping
 
 METAMODEL = PACKAGE_DIR / "model" / "rp.yaml"
 TOOLKIT_MIGRATIONS = PACKAGE_DIR / "model" / "migrations"  # the toolkit's own chain (PD-13)

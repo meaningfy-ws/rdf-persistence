@@ -14,7 +14,7 @@ from rdf_persistence.core.domain.exceptions import Conflict, DatabaseGone, Inval
 from rdf_persistence.core.domain.generated.rp_provenance import Add
 from rdf_persistence.iris.domain.layout import application_database_name
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.services import vocabulary as v
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE

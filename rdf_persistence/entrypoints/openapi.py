@@ -56,6 +56,7 @@ from rdf_persistence.entrypoints.negotiation import (
     allowed_actions_value,
 )
 from rdf_persistence.entrypoints.problems import WWW_AUTHENTICATE
+from rdf_persistence.schema.services.schema_structure import DESCRIPTION
 from rdf_persistence.services.access import ACTIONS
 from rdf_persistence.services.components import JsonSchema, component_schemas, served_folders
 from rdf_persistence.services.generated.service.rp_service import (
@@ -76,7 +77,6 @@ from rdf_persistence.services.listing import (
     listable_slots,
     sort_keys,
 )
-from rdf_persistence.services.schema_structure import DESCRIPTION
 
 BEARER_AUTH = "bearerAuth"
 # The toolkit's own bodies, by the class of rp_service.yaml; every route that has one names it here.

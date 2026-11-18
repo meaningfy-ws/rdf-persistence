@@ -8,7 +8,7 @@ from rdflib import Graph
 from rdflib.compare import to_canonical_graph
 from rdflib.namespace import RDF, SH
 
-from rdf_persistence.services.schema import load_schema
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions.shacl import render
 from rdf_persistence_generation.extensions.shacl_constraints import (
