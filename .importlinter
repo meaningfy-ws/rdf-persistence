@@ -106,6 +106,8 @@ source_modules =
     rdf_persistence.schema
     rdf_persistence.files
     rdf_persistence.provenance
+    rdf_persistence.persistence
+    rdf_persistence.migrations
 forbidden_modules =
     rdf_persistence.domain
     rdf_persistence.services

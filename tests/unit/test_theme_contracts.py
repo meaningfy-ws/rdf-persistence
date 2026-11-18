@@ -29,9 +29,10 @@ OLD_LAYOUT = "themes-never-import-the-old-layout"
 TECHNICAL_MODELS = "domain-never-imports-technical-models"
 
 
-def _contracts() -> dict[str, dict[str, list[str]]]:
+def _contracts(text: str | None = None) -> dict[str, dict[str, list[str]]]:
+    """The contracts of ``.importlinter``, or of ``text`` when given."""
     parser = configparser.ConfigParser(inline_comment_prefixes=None, interpolation=None)
-    parser.read(ROOT / ".importlinter", encoding="utf-8")
+    parser.read_string(text if text is not None else (ROOT / ".importlinter").read_text("utf-8"))
     return {
         section.removeprefix("importlinter:contract:"): {
             key: [
@@ -274,3 +275,67 @@ def test_an_old_layer_importing_up_into_a_new_theme_breaks_its_contract(
     tmp_path, contract, where, imports
 ):
     assert _breaks(tmp_path, contract, {where: _importing(imports)})
+
+
+# --- the theme contracts name every turned-on theme (thematic-structure D-17 W2), on a modified config text ---
+
+LAYERED = "themes-layered"
+ORDERED = "themes-ordered"
+
+
+def _config_text() -> str:
+    return (ROOT / ".importlinter").read_text(encoding="utf-8")
+
+
+def _themes_missing_from_the_theme_contracts(text: str) -> list[str]:
+    """The ``contract: theme`` pairs where a turned-on theme is absent from the containers or the layers."""
+    contracts = _contracts(text)
+    containers = set(contracts[LAYERED].get("containers", []))
+    ordered = {
+        module.strip()
+        for line in contracts[ORDERED].get("layers", [])
+        for module in line.split("|")
+    }
+    return [
+        f"{name}: {theme}"
+        for theme in THEMES
+        for name, present in ((LAYERED, containers), (ORDERED, ordered))
+        if f"rdf_persistence.{theme}" not in present
+    ]
+
+
+def _without_line(text: str, section: str, line: str) -> str:
+    """``text`` with the one ``line`` of the contract ``section`` removed."""
+    start = text.index(f"[importlinter:contract:{section}]")
+    end = text.find("\n[importlinter:contract:", start + 1)
+    block = text[start : end if end != -1 else len(text)]
+    assert block.count(line) == 1, f"{line!r} is not once in {section}"
+    return text[:start] + block.replace(line, "", 1) + (text[end:] if end != -1 else "")
+
+
+def test_the_theme_contracts_name_every_turned_on_theme():
+    assert _themes_missing_from_the_theme_contracts(_config_text()) == []
+
+
+@pytest.mark.parametrize("theme", THEMES)
+def test_a_turned_on_theme_missing_from_the_containers_is_found(theme):
+    text = _without_line(_config_text(), LAYERED, f"    rdf_persistence.{theme}\n")
+
+    assert _themes_missing_from_the_theme_contracts(text) == [f"{LAYERED}: {theme}"]
+
+
+@pytest.mark.parametrize("theme", THEMES)
+def test_a_turned_on_theme_missing_from_the_ordered_layers_is_found(theme):
+    text = _config_text()
+    module = f"rdf_persistence.{theme}"
+    start = text.index(f"[importlinter:contract:{ORDERED}]")
+    block = text[start:]
+    line = next(
+        entry
+        for entry in block.splitlines()
+        if entry.startswith("    ") and module in (m.strip() for m in entry.split("|"))
+    )
+    kept = " | ".join(m.strip() for m in line.split("|") if m.strip() != module)
+    text = text[:start] + block.replace(line + "\n", f"    {kept}\n" if kept else "", 1)
+
+    assert _themes_missing_from_the_theme_contracts(text) == [f"{ORDERED}: {theme}"]
