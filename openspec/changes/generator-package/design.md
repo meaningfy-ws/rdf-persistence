@@ -398,3 +398,26 @@ package name are leader's choices (DEC-2, DEC-5).
   test that the name is one object through the generator's `roundtrip` imports the generator from
   `tests/unit/testkit/`, which the PD-9 checker refuses; it moves to
   `tests/generator/unit/test_testkit_moved.py`. The no-warning test stays in the library.
+- **D-19 Stage 2 review (L2+L3), accepted findings** (lead). C1 (`.test_durations` keeps moved
+  ids) is D-14's fix, `--clean-durations`. Re-labelled Critical, with the reason:
+  - W1 → Critical: `event-bus-libraries-in-one-module` and `sparql-parser-only-through-the-wrappers`
+    have `source_modules = rdf_persistence`, which no longer covers the generator. The move
+    narrowed two enforced contracts, which is a weakened gate. Both add `rdf_persistence_generation`.
+  - W2 → Critical: the `unit` job (library floor, SonarCloud) `needs` `test-generator`, so a
+    generator-only failure skips it, against the `rp-developer-checks` scenarios "a generator
+    change" and "parallel jobs" of this change. The scan moves to its own job that needs both
+    (`unit` needs only `unit-shard` again); D-15 holds through that job.
+  - Lead's check: `tests/generator/unit/test_roots_call_sites.py` runs the `ast-grep` binary,
+    which is neither a dependency nor installed in CI, so `test-generator` would fail in CI. The
+    guard is rewritten with Python's `ast` (PD-5 allows an equivalent walk): a call of the three
+    functions, by name or through a module attribute, with no `roots` keyword is a problem, and
+    no call at all is no problem. This also closes #164 item 1.
+  Owed to the docs stage (`evidence/docs-owed.md`): W3 `howto/adopt.adoc` says the `generate`
+  extra installs the generator (one wheel ships both; the plugin needs no extra); W4 `AGENTS.md:45`
+  and `CONTRIBUTING.md:46` describe the old layout; W5 `develop/index.adoc` commands table (three
+  lanes, `test-generator`, `refresh-map` moves); W6 `architecture/index.adoc:209` and
+  `questions.adoc:216` place the freshness plugin in the library. Under the floor: S1 (TC-14c also
+  allows the tests that prove the old path absent), S2 ("the testkit alone" does not assert no
+  generator module loads), S3 (three docstrings name `generation`), S4 (the model guard's
+  `layers=("",)` and the generator half of `test_model_guard.py`), S5 (`test_generation_shape.py`
+  imports helpers from a library test).
