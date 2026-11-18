@@ -115,7 +115,7 @@ check-generated: generate ## Regenerate and fail if the result differs from what
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated output is fresh$(END_BUILD_PRINT)"
 
 refresh-snapshot: ## Rewrite the reviewed model-shape snapshot after a deliberate model change (review the diff)
-	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/testkit/test_shape_snapshot.py tests/generator/unit/test_generation_shape.py -q
+	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/testkit/test_shape_snapshot.py tests/generator/unit/test_generation_shape.py tests/unit/test_public_surface.py -q
 
 refresh-map: ## Re-key the scenario-map rows of renamed test files (against BASE, default develop), drop those of vanished tests and list the collected tests with no row (exit 1 while some are unmapped)
 	@ uv run python -m tests.audit.refresh_map --base $(BASE)
