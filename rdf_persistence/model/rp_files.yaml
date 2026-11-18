@@ -15,6 +15,8 @@ imports:
   - rp_core
   - rp_annotations
   - rp_provenance
+annotations:
+  python_package: rdf_persistence.domain.generated
 
 classes:
   DeleteFile:

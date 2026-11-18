@@ -3,8 +3,9 @@
 The stock generator lacks eleven things the toolkit needs, and this module adds them:
 
 * the metamodel's classes are imported from the toolkit's package, never regenerated: from
-  ``rdf_persistence.domain.generated.<module>`` inside the toolkit's own runs and from the public
-  top-level package (DEC-6) in an application's run;
+  ``<python_package>.<module>`` inside the toolkit's own runs, the ``python_package`` annotation of
+  the module saying where its classes live, and from the ``public_package`` of ``rp.yaml`` (DEC-6,
+  DEC-7) in an application's run;
 * enum members are named after the permissible-value keys in UPPER_SNAKE case, not after the titles;
 * ``exactly_one_of``, ``any_of`` and ``unique_keys`` become model validators (``pydantic_validators``);
 * a slot annotated ``internal: true`` carries ``json_schema_extra={"rp_internal": True}`` (the
@@ -30,6 +31,7 @@ import keyword
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 
 from linkml.generators.common.build import ClassResult
@@ -71,8 +73,6 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "pydantic"
-PUBLIC_PACKAGE = "rdf_persistence"
-TOOLKIT_PACKAGE = "rdf_persistence.domain.generated"
 METAMODEL_DIR = PACKAGE_DIR / "model"
 INIT = "__init__.py"
 _LIST_DEFAULT = re.compile(
@@ -90,9 +90,30 @@ class InternalAttribute(PydanticAttribute):
     default_factory: str | None = None
 
 
-def metamodel_module(name: str, *, toolkit: bool) -> str:
-    """The module a class of the metamodel module ``name`` is imported from."""
-    return f"{TOOLKIT_PACKAGE}.{name}" if toolkit else PUBLIC_PACKAGE
+@cache
+def public_package() -> str:
+    """The package an application imports the metamodel's classes from: the ``public_package`` of ``rp.yaml`` (DEC-7)."""
+    root = load_schema(METAMODEL_DIR / "rp.yaml").schema
+    return _required_annotation(root, GenerationAnnotation.PUBLIC_PACKAGE)
+
+
+def _required_annotation(schema: SchemaDefinition, tag: GenerationAnnotation) -> str:
+    text = annotation_text(schema, tag)
+    if text is None:
+        raise SchemaGenerationError(f"{schema.name} has no {tag.value} annotation")
+    return text
+
+
+def metamodel_module(schema: SchemaDefinition, *, toolkit: bool) -> str:
+    """The module a class of the metamodel's ``schema`` module is imported from.
+
+    A toolkit run imports it from the package the module says it lives in (``python_package``),
+    an application's run from the public package, which ``rp.yaml`` names (DEC-7, PD-6).
+    """
+    if not toolkit:
+        return public_package()
+    package = _required_annotation(schema, GenerationAnnotation.PYTHON_PACKAGE)
+    return f"{package}.{schema.name}"
 
 
 @dataclass
@@ -111,7 +132,7 @@ class SplitPydanticGenerator(PydanticGenerator):
             raise SchemaGenerationError(
                 f"{schema.name} is neither beside the root schema nor in the metamodel"
             )
-        return metamodel_module(module.lstrip("."), toolkit=self.toolkit)
+        return metamodel_module(schema, toolkit=self.toolkit)
 
     def _get_imports(self, element: ClassDefinition | SlotDefinition | None = None) -> Imports:
         """The stock class imports, plus the enums of other modules that a slot ranges over, plus

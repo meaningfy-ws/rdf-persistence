@@ -17,6 +17,7 @@ from rdf_persistence.services.schema_structure import own_schemas
 from rdf_persistence_generation import components
 from rdf_persistence_generation.checks.boundary import boundary_problems, target_kind_problems
 from rdf_persistence_generation.checks.hard import hard_problems, stored_schema_problems
+from rdf_persistence_generation.checks.python_package import python_package_problems
 from rdf_persistence_generation.checks.rules import rules_problems
 from rdf_persistence_generation.config import migrations_folder
 from rdf_persistence_generation.extensions import (
@@ -106,6 +107,7 @@ def _hard_problems(run: Run) -> list[CheckProblem]:
     return [
         *hard_problems(run.view, folder),
         *stored_schema_problems(run.view, folder, migrations_folder(run.target)),
+        *python_package_problems(run.view, folder, run.target.package),
     ]
 
 

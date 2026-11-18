@@ -2,17 +2,19 @@
 
 import ast
 import importlib
+import shutil
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 from rdf_persistence.domain.generated.rp_files import StoredFile
+from rdf_persistence.services.schema import load_schema
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions.pydantic_split import (
-    TOOLKIT_PACKAGE,
+    METAMODEL_DIR,
     metamodel_module,
 )
 from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
@@ -20,6 +22,7 @@ from rdf_persistence_generation.steps import PYTHON_STEP
 
 from .golden import assert_matches_toy, run_toy
 
+TOOLKIT_DOMAIN = "rdf_persistence.domain.generated"
 TOY_MODULES = [
     "__init__.py",
     "books.py",
@@ -82,17 +85,87 @@ def test_an_application_imports_the_metamodel_from_the_top_level_package(
     )
 
 
-@pytest.mark.parametrize(
-    ("name", "toolkit", "expected"),
-    [
-        ("rp_core", True, f"{TOOLKIT_PACKAGE}.rp_core"),
-        ("rp_core", False, "rdf_persistence"),
-    ],
-)
-def test_the_metamodel_module_to_import_from(name: str, toolkit: bool, expected: str) -> None:
-    assert metamodel_module(name, toolkit=toolkit) == expected, (
-        f"{name} in a {'toolkit' if toolkit else 'application'} run"
+@pytest.fixture
+def metamodel_copy(tmp_path: Path) -> Callable[[str, str], Path]:
+    """A function that copies the metamodel's folder and rewrites one module's ``python_package``."""
+
+    def copy(module: str, package: str) -> Path:
+        folder = tmp_path / "model"
+        shutil.copytree(METAMODEL_DIR, folder, ignore=shutil.ignore_patterns("migrations"))
+        path = folder / f"{module}.yaml"
+        text = path.read_text(encoding="utf-8")
+        assert f"python_package: {TOOLKIT_DOMAIN}" in text, f"{module} carries no python_package"
+        path.write_text(
+            text.replace(f"python_package: {TOOLKIT_DOMAIN}", f"python_package: {package}", 1),
+            encoding="utf-8",
+        )
+        return folder
+
+    return copy
+
+
+def test_a_toolkit_run_imports_a_metamodel_class_from_the_package_its_module_says() -> None:
+    """TC-32"""
+    schema = load_schema(METAMODEL_DIR / "rp_core.yaml").schema
+    assert metamodel_module(schema, toolkit=True) == f"{TOOLKIT_DOMAIN}.rp_core", (
+        "the module's python_package, then its name"
     )
+
+
+def test_an_application_run_imports_a_metamodel_class_from_the_public_package() -> None:
+    """TC-33: the public package is read from rp.yaml's public_package."""
+    schema = load_schema(METAMODEL_DIR / "rp_core.yaml").schema
+    assert metamodel_module(schema, toolkit=False) == "rdf_persistence", "rp.yaml's public_package"
+
+
+def test_a_moved_metamodel_module_is_imported_from_where_it_says_it_lives(
+    metamodel_copy: Callable[[str, str], Path],
+) -> None:
+    """TC-34: no code names the package; the annotation does."""
+    folder = metamodel_copy("rp_core", "rdf_persistence.kernel.generated")
+    schema = load_schema(folder / "rp_core.yaml").schema
+    assert metamodel_module(schema, toolkit=True) == "rdf_persistence.kernel.generated.rp_core", (
+        "the copy's python_package"
+    )
+
+
+def test_an_application_run_ignores_the_python_package_of_a_moved_module(
+    metamodel_copy: Callable[[str, str], Path],
+) -> None:
+    """TC-37 (import side): an application imports from the public package, wherever the module is."""
+    folder = metamodel_copy("rp_core", "x.generated")
+    schema = load_schema(folder / "rp_core.yaml").schema
+    assert metamodel_module(schema, toolkit=False) == "rdf_persistence", "the public package"
+
+
+def test_the_generator_does_not_name_the_metamodels_packages() -> None:
+    """TC-39: the two constants are gone; the metamodel says where its classes live (DEC-7).
+
+    A name check, not a text one: the generated ``GenerationAnnotation.PUBLIC_PACKAGE`` member is
+    the annotation's key, and stays.
+    """
+    folder = Path(__file__).parents[3] / "rdf_persistence_generation"
+    constants = {"TOOLKIT_PACKAGE", "PUBLIC_PACKAGE"}
+    found = []
+    for path in folder.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        module_level = [  # a module-level assignment or import; a class's own members are not
+            alias.asname or alias.name
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            for alias in node.names
+        ] + [
+            target.id
+            for node in tree.body
+            if isinstance(node, ast.Assign | ast.AnnAssign)
+            for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+            if isinstance(target, ast.Name)
+        ]
+        used = [
+            n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)
+        ]
+        found += [f"{path.name}: {name}" for name in (*module_level, *used) if name in constants]
+    assert found == [], "the generator still names a metamodel package as a constant"
 
 
 @pytest.mark.parametrize(

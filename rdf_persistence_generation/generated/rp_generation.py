@@ -88,6 +88,10 @@ class HardRule(str, Enum):
     "A class of the application does not give `slot_usage`, `ifabsent` or an attribute of its own to a slot annotated `toolkit_filled`, gives no slot of its own the `slot_uri` of one, and has no slot that is both `payload` and required."
     DEFAULT_INSTANCE = "default_instance"
     "A slot annotated `default_instance` ranges over a class, and every required slot of that class has an `ifabsent`, so the class can be built with no argument."
+    PYTHON_PACKAGE = "python_package"
+    "A schema module of the toolkit\u0027s own targets carries the `python_package` annotation."
+    PYTHON_PACKAGE_MISMATCH = "python_package_mismatch"
+    "The `python_package` of a schema module of the toolkit\u0027s own targets equals the `package` of the `[[tool.rp-generate]]` entry that generates it."
 
 
 class LockRule(str, Enum):
@@ -166,6 +170,10 @@ class GenerationAnnotation(str, Enum):
     "On a slot whose range is a class, `true` when the slot\u0027s default is a new instance of that class (`Field(default_factory=\u003cRange\u003e)`), so it is never absent. The hard check refuses it on a slot whose range is not a class, or whose range class has a required slot with no `ifabsent`."
     FIELD_NAME = "field_name"
     "On a slot with an `alias`, `slot` when the generated field is named after the slot and keeps the alias as its pydantic alias. Without it the field is named after the alias when that is a Python identifier (the stock behaviour, which the wire and service schemas rely on)."
+    PYTHON_PACKAGE = "python_package"
+    "On a schema module of the toolkit, the Python package its classes are generated into: a toolkit run imports them from `\u003cpython_package\u003e.\u003cmodule name\u003e`. It equals the `package` of the `[[tool.rp-generate]]` entry that generates the module, which the hard check compares."
+    PUBLIC_PACKAGE = "public_package"
+    "On the root schema of the metamodel (`rp.yaml`), the package an application\u0027s generated code imports the metamodel\u0027s classes from, which re-exports them."
 
 
 

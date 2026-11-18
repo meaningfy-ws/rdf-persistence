@@ -1,5 +1,6 @@
 """The hard check (task 1.6, PD-11, PD-23): IRIs, titles, descriptions, meanings, paths, mixins."""
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import pytest
 
 from rdf_persistence.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import aggregate_keys, keyed_slots
+from rdf_persistence.services.schema_structure import aggregate_keys, annotation_text, keyed_slots
 from rdf_persistence_generation import steps
 from rdf_persistence_generation.checks.application import ROWS
 from rdf_persistence_generation.checks.hard import (
@@ -561,7 +562,8 @@ def test_a_fault_names_only_the_broken_element(break_toy: Breaker) -> None:
 
 
 def test_every_rule_has_a_row_in_the_table() -> None:
-    planted = {f.rule for f in FAULTS} | STORED_SCHEMA_RULES  # those two need the target's settings
+    # the stored-schema rules need the target's settings, the package rules a toolkit target
+    planted = {f.rule for f in FAULTS} | STORED_SCHEMA_RULES | PACKAGE_RULES
     assert planted == set(HardRule), "a hard rule has no planted fault"
 
 
@@ -1051,3 +1053,115 @@ def test_default_instance_that_is_not_a_boolean_is_refused_naming_the_slot(
     """D-55 (5): a value that is not a boolean is no silent off; the problem names `group`."""
     found = _flag_problems(tmp_path, written)
     assert any("default_instance" in p and "group" in p for p in found), f"{written}: {found}"
+
+
+# ---- where the metamodel's classes live (DEC-7, PD-6, TC-35 to TC-38) ------------------------------
+
+TOOLKIT_DOMAIN = "rdf_persistence.domain.generated"
+PACKAGE_CHECK = "rdf_persistence_generation.checks.python_package"
+MODEL_COPY = "model"
+PACKAGE_RULES = {HardRule.PYTHON_PACKAGE, HardRule.PYTHON_PACKAGE_MISMATCH}  # need a toolkit target
+
+
+@pytest.fixture
+def toolkit_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A copy of the metamodel's folder that the generator treats as the toolkit's own."""
+    shutil.copytree(
+        METAMODEL.parent, tmp_path / MODEL_COPY, ignore=shutil.ignore_patterns("migrations")
+    )
+    monkeypatch.setattr(f"{PACKAGE_CHECK}.TOOLKIT_ROOTS", (tmp_path.resolve(),))
+    return tmp_path
+
+
+def _rewrite(base: Path, module: str, old: str, new: str) -> None:
+    path = base / MODEL_COPY / f"{module}.yaml"
+    text = path.read_text(encoding="utf-8")
+    assert old in text, f"{old!r} is not in {module}: the planted fault would plant nothing"
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def _package_rules() -> set[str]:
+    return {rule.value for rule in PACKAGE_RULES}
+
+
+def _package_problems(base: Path) -> list[str]:
+    """The problems of the two python_package rules of the toolkit target over the copy."""
+    target = GenerationTarget(schema_file=f"{MODEL_COPY}/rp.yaml", package=TOOLKIT_DOMAIN)
+    found = generate([target], base, (steps.HARD_STEP,), check=True)
+    return [format_problem(p) for p in found if p.rule in _package_rules()]
+
+
+def test_the_metamodel_copy_passes_both_python_package_rules(toolkit_copy: Path) -> None:
+    """The control of TC-35 and TC-36: the copy as it is raises no problem."""
+    assert _package_problems(toolkit_copy) == [], "the unbroken copy"
+
+
+def test_a_toolkit_module_without_python_package_is_refused_naming_it(toolkit_copy: Path) -> None:
+    """TC-35"""
+    _rewrite(toolkit_copy, "rp_files", f"python_package: {TOOLKIT_DOMAIN}", "unrelated: note")
+    [line] = _package_problems(toolkit_copy)
+    assert f"[{HardRule.PYTHON_PACKAGE.value}]" in line, "rule (a) is named"
+    assert "rp_files" in line, "the module is named"
+    assert "python_package" in line, "the missing annotation is named"
+
+
+def test_a_module_in_another_package_than_its_target_is_refused_naming_both(
+    toolkit_copy: Path,
+) -> None:
+    """TC-36"""
+    _rewrite(
+        toolkit_copy, "rp_core", f"python_package: {TOOLKIT_DOMAIN}", "python_package: x.generated"
+    )
+    [line] = _package_problems(toolkit_copy)
+    assert f"[{HardRule.PYTHON_PACKAGE_MISMATCH.value}]" in line, "rule (b) is named"
+    for named in ("rp_core", "x.generated", TOOLKIT_DOMAIN):
+        assert named in line, f"{named} is named"
+
+
+def test_an_application_run_never_checks_the_package_of_its_target(toy_copy: Path) -> None:
+    """TC-37: the toy is no toolkit schema, has no python_package, and its package is its own."""
+    target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.generated")
+    found = generate([target], toy_copy, (steps.HARD_STEP,), check=True)
+    assert [p for p in found if p.rule in _package_rules()] == [], (
+        "a consumer's run reads, never checks"
+    )
+
+
+TOOLKIT_PACKAGES = [
+    ("rdf_persistence/model/rp_core.yaml", TOOLKIT_DOMAIN),
+    ("rdf_persistence/model/technical/wire/rp_wire.yaml", "rdf_persistence.adapters.generated"),
+    (
+        "rdf_persistence/model/technical/service/rp_service.yaml",
+        "rdf_persistence.services.generated.service",
+    ),
+    (
+        "rdf_persistence/model/technical/testkit/rp_testkit.yaml",
+        "rdf_persistence.testkit.generated",
+    ),
+    ("rdf_persistence_generation/model/rp_generation.yaml", "rdf_persistence_generation.generated"),
+]
+
+
+@pytest.mark.parametrize(("schema", "expected"), TOOLKIT_PACKAGES)
+def test_a_toolkit_schema_says_the_package_it_is_generated_into(schema: str, expected: str) -> None:
+    """TC-38"""
+    module = load_schema(REPO / schema).schema
+    found = annotation_text(module, GenerationAnnotation.PYTHON_PACKAGE)
+    assert found == expected, f"python_package of {schema}"
+
+
+def test_the_public_package_is_named_by_the_root_of_the_metamodel() -> None:
+    """TC-33's source: rp.yaml carries public_package."""
+    module = load_schema(METAMODEL).schema
+    assert annotation_text(module, GenerationAnnotation.PUBLIC_PACKAGE) == "rdf_persistence", (
+        "public_package of rp.yaml"
+    )
+
+
+def test_every_toolkit_target_is_generated_into_the_package_its_modules_say() -> None:
+    """TC-38: each [[tool.rp-generate]] entry of the toolkit's pyproject raises neither rule."""
+    targets = read_targets(REPO / "pyproject.toml")
+    found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
+    assert [format_problem(p) for p in found if p.rule in _package_rules()] == [], (
+        "no package problem"
+    )

@@ -3,23 +3,23 @@
   "inputs": [
     {
       "path": "rdf_persistence/model/rp_access.yaml",
-      "sha256": "4bc4117cbd93d3049fa5372ee447522415a80a050102233559d9a59b1bc13288"
+      "sha256": "77a364ceed0497cd667fff5b27793eb3403f88df48125c585f5f5e3a5ac2378b"
     },
     {
       "path": "rdf_persistence/model/rp_annotations.yaml",
-      "sha256": "1e6d48ad197c8d3a39feec316b9dc9011b5dd9f143df5493ac528b53e986d3ab"
+      "sha256": "34f7c0365474ad4c113c186c2a50493ed9822c21b88f76691336600a1972aeba"
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "d0fbee1ee26f8d152d22134886324e112334beee1ac5d375373c87a9dd104bca"
+      "sha256": "6ad42565e5de1cf4ad9b1af9c57b7a87547982c2b8c109ac07fba4f12091788e"
     },
     {
       "path": "rdf_persistence/model/rp_tenancy.yaml",
-      "sha256": "2ef6df033f9dda432e61478c584f4b0533d53a8f49a1daad17d3dff16a5af31d"
+      "sha256": "7b72807be4ac80f423d82c686c7912aa3f428459944d8f5ccd27764fa850c209"
     },
     {
       "path": "rdf_persistence/model/technical/service/rp_service.yaml",
-      "sha256": "a75b28b2eb7871cc147cab50c43c3f337a5eb3a310f006f4091d4138d9102128"
+      "sha256": "45ca17c7224d463101d975a1553baef43c01131e671bfca5dd4da513c038c188"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -52,6 +52,10 @@
     {
       "path": "rdf_persistence_generation/checks/hard.py",
       "sha256": "cb82e69319d0fa9da0a626d5ec2c9d4e5416dc1b1c10086484d7b9cb3dfd4dac"
+    },
+    {
+      "path": "rdf_persistence_generation/checks/python_package.py",
+      "sha256": "1880440b2b0cdc50d524a102397f2892ead4631aa49890d67eb85a7b625aefc2"
     },
     {
       "path": "rdf_persistence_generation/checks/rules.py",
@@ -91,7 +95,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_split.py",
-      "sha256": "74318712df625dc3513ddc655c904df83e0b2f7b9dcc7cd80efc48560dca3b2b"
+      "sha256": "a5c82d0a559df02a6b3e41350f4aa0f44cbcee7fea6d6056e2a2adb3aba8e037"
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_validators.py",
@@ -131,7 +135,7 @@
     },
     {
       "path": "rdf_persistence_generation/steps.py",
-      "sha256": "be0743fb27474fa9e7404d68f398ce6bf698a8b16f9086bb67b323c686f3979d"
+      "sha256": "7291207f829087f9e423cd0100be98c525b172f490864c64a629acf6e67ecf30"
     },
     {
       "path": "rdf_persistence_generation/templates/mermaid/module.mmd.jinja",

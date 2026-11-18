@@ -14,6 +14,8 @@ default_prefix: rp
 default_range: string
 imports:
   - linkml:types
+annotations:
+  python_package: rdf_persistence.domain.generated
 
 classes:
   AggregateRoot:

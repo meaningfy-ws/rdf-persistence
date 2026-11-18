@@ -14,6 +14,7 @@ imports:
   - linkml:types
 annotations:
   module_kind: technical
+  python_package: rdf_persistence_generation.generated
 
 classes:
   GenerationTarget:
@@ -886,6 +887,17 @@ enums:
           A slot annotated `default_instance` ranges over a class, and every required slot of that
           class has an `ifabsent`, so the class can be built with no argument.
         meaning: rp:HardRuleDefaultInstance
+      python_package:
+        title: Python package
+        description: >-
+          A schema module of the toolkit's own targets carries the `python_package` annotation.
+        meaning: rp:HardRulePythonPackage
+      python_package_mismatch:
+        title: Python package mismatch
+        description: >-
+          The `python_package` of a schema module of the toolkit's own targets equals the `package` of
+          the `[[tool.rp-generate]]` entry that generates it.
+        meaning: rp:HardRulePythonPackageMismatch
   LockRule:
     title: Lock rule
     description: How a change between two locks is treated.
@@ -1040,3 +1052,16 @@ enums:
           the alias as its pydantic alias. Without it the field is named after the alias when that is a
           Python identifier (the stock behaviour, which the wire and service schemas rely on).
         meaning: rp:GenerationAnnotationFieldName
+      python_package:
+        title: Python package
+        description: >-
+          On a schema module of the toolkit, the Python package its classes are generated into: a
+          toolkit run imports them from `<python_package>.<module name>`. It equals the `package` of the
+          `[[tool.rp-generate]]` entry that generates the module, which the hard check compares.
+        meaning: rp:GenerationAnnotationPythonPackage
+      public_package:
+        title: Public package
+        description: >-
+          On the root schema of the metamodel (`rp.yaml`), the package an application's generated code
+          imports the metamodel's classes from, which re-exports them.
+        meaning: rp:GenerationAnnotationPublicPackage

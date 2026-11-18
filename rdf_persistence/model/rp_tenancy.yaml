@@ -15,6 +15,7 @@ imports:
   - rp_access
 annotations:
   module_kind: access
+  python_package: rdf_persistence.domain.generated
 
 classes:
   TenantLabelled:
