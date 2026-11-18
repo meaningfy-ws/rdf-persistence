@@ -495,3 +495,8 @@ consumers later.
   `slow`), S2 (`SERVED_SCHEMAS` vs the `openapi = true` targets), S3 (a stale comment); tester F5
   (concatenated `mock.patch` strings), F6 (the `LAYOUT` guard misses modules in subpackages), F7
   (relative imports of an old module).
+- **D-10 Imports between merged served schemas** (lead, from the fix pass of D-9). Every served
+  schema's TypeScript now lands in `rp_service.ts`; a type that refers to a type of another served
+  schema would still import from `./<that schema>`, a file that is no longer written. Harmless while
+  only `rp_service` is served; the stage that serves a second schema (stage 3, the split of
+  `rp_service.yaml`) rewrites such imports to the merged file, with a test, before its TC-07 check.

@@ -22,7 +22,7 @@ commits a schema change: `make check-generated`.
   created that PD-1's map lacks) and amend design.md PD-1/PD-2/PD-3 where they differ, before any
   code. No test; the lead reviews the amendment. Done 2026-11-18 on 79c6837: ASM-1 to ASM-3 hold;
   design.md amended (D-1).
-- [ ] 1.2 PD-3: cross-target imports in `rdf_persistence_generation/extensions/pydantic_split.py`
+- [x] 1.2 PD-3: cross-target imports in `rdf_persistence_generation/extensions/pydantic_split.py`
   (the module→package map over every `python_package`). Tests in
   `tests/generator/unit/test_ext_pydantic_split.py` and a two-target fixture under
   `tests/fixtures/`. Gate: `make test-changed check-quality`.
@@ -33,7 +33,7 @@ commits a schema change: `make check-generated`.
 | TC-11 | the same, `a` without `python_package` | as today: `a`'s classes are generated into B |
 | TC-12 | a toolkit per-theme technical module whose `python_package` differs from its target's `package` | `generator-package` PD-6 (b)'s hard-check problem (`checks/python_package.py:29`), unchanged (no new check here); nothing written |
 
-- [ ] 1.3 PD-4: `kind_folder_problems` in `rdf_persistence_generation/checks/boundary.py`, wired
+- [x] 1.3 PD-4: `kind_folder_problems` in `rdf_persistence_generation/checks/boundary.py`, wired
   into `steps.py`'s `_boundary_problems` (lines 96-101) for the toolkit's run; the model guard's
   per-theme scan in `tests/unit/testkit/test_model_guard.py` (moved there by `generator-package`;
   the generator's own call there stays, PD-4 (c)). Tests in `tests/generator/unit/test_boundary_check.py` and
@@ -49,7 +49,7 @@ commits a schema change: `make check-generated`.
 | TC-17 | a pydantic class in a fixture module `<pkg>/tenancy/services/x.py` outside `generated`, guard called with `layers=("tenancy",)` | the guard fails naming it; the same class under `<pkg>/tenancy/services/generated/` passes |
 | TC-72 | `make generate` on the toolkit as `develop` has it (old layout: `rdf_persistence.services.generated.service`, `rdf_persistence.adapters.generated`, `rdf_persistence.testkit.generated`, `rdf_persistence_generation.generated`), then one target's `package` edited to `rdf_persistence.domain.generated.service` | first passes (the testkit and generator packages are exempt); second fails naming that target (the check is wired) |
 
-- [ ] 1.4 PD-8 template: a consumer run writes `from rdf_persistence import RpModel as ...`; the
+- [x] 1.4 PD-8 template: a consumer run writes `from rdf_persistence import RpModel as ...`; the
   toolkit run writes the `core` path (in stage 1 still `rdf_persistence.domain.base`, read from the
   metamodel's `python_package` owner). `make generate` refreshes the toy library. Tests in
   `tests/generator/unit/test_templates.py` (new; it does not exist yet).
@@ -59,7 +59,7 @@ commits a schema change: `make check-generated`.
 | TC-18 | the toy library generated | every module imports `RpModel` from `rdf_persistence`; it type-checks (`mypy-generated.ini`) |
 | TC-19 | the toolkit's metamodel generated | it imports `RpModel` by its module path (`rdf_persistence.domain.base` now, the `core` path from stage 2), never from `rdf_persistence` |
 
-- [ ] 1.5 PD-10: components merged over the served targets; `SERVED_SCHEMAS`; the TypeScript step
+- [x] 1.5 PD-10: components merged over the served targets; `SERVED_SCHEMAS`; the TypeScript step
   over all of them. While only `rp_service` is served, output is unchanged. Tests in
   `tests/unit/services/test_components_folder.py` (extended: it holds TC-54, the toolkit folder;
   the merge of several folders, TC-20 and TC-21, goes beside it, since `services/components.py`
@@ -72,7 +72,7 @@ commits a schema change: `make check-generated`.
 | TC-21 | two component files declaring `Page` | error naming `Page` and both files |
 | TC-07 | `/openapi.json` of the toy service, and the toy's TypeScript, before and after | byte-identical (golden files under `tests/fixtures/`, written by this task before any split) |
 
-- [ ] 1.6 The guards of the move: `tests/unit/test_theme_layout.py` (`LAYOUT`, every row off),
+- [x] 1.6 The guards of the move: `tests/unit/test_theme_layout.py` (`LAYOUT`, every row off),
   `tests/unit/test_public_surface.py` (the 149 names snapshot: name → defining module and object
   identity through the lazy map; `tests/unit/test_public_api.py` stays as it is),
   `tests/unit/test_no_old_module_paths.py` (ast and text search for the old module paths of rows
@@ -236,7 +236,7 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 
 ## Roadmap
 
-- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 ·
   [ ] 4.1 · [ ] 4.2 · [ ] 5.1 · [ ] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
 
 ## Verification
