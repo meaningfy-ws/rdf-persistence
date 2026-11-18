@@ -1,7 +1,7 @@
 """The toy service's ``/openapi.json`` is byte-identical to its golden file, whichever targets are served (TC-07, PD-10).
 
 The golden was written before the technical schemas were split into themes; a merged document that
-differs after a split is a failure to fix in the schemas, never a new golden. ``make refresh-golden``
+differs after a split is a failure to fix in the schemas, never a new golden. ``make refresh-served-golden``
 rewrites it (``RP_REFRESH_GOLDEN``), for a deliberate change of the toy's API only.
 """
 

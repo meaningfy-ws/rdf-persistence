@@ -111,7 +111,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/typescript.py",
-      "sha256": "3a63c80c07bf04beec5d535bfcdd52366c8053173a2477a909d9a122f34be42b"
+      "sha256": "6d7ccd68feb5dfdffda20f809de1666de66a03607e2f66634be855c40dc22782"
     },
     {
       "path": "rdf_persistence_generation/lock.py",

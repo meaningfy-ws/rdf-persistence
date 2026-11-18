@@ -747,8 +747,9 @@ first.
   Python only (#59) and an unlabelled class's label being required in the JSON Schema only.
 . *A model change fails the tests until acknowledged*: `tests/fixtures/model-shape.yaml` holds the
   last reviewed shape of every class (`ClassShape` rows). Any model change fails the test until
-  `make refresh-snapshot` rewrites the file (and `tests/fixtures/public-surface.json`, the public
-  surface's snapshot) and its diff is reviewed in the PR.
+  `make refresh-snapshot` rewrites the file and its diff is reviewed in the PR. The public
+  surface's snapshot, `tests/fixtures/public-surface.json`, is a baseline of the thematic move and
+  has its own target, `make refresh-surface`.
 . *Generated code compiles*: every generated module imports and passes mypy with the
   `mypy-generated.ini` profile (the main run excludes generated folders); the TypeScript output
   passes `tsc --noEmit --strict` in CI.

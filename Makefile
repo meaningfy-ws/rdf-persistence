@@ -80,7 +80,7 @@ help: ## Display available targets
 #-----------------------------------------------------------------------------
 # Install / build (mutating)
 #-----------------------------------------------------------------------------
-.PHONY: install-uv install lock generate check-freshness check-generated refresh-snapshot refresh-golden refresh-served-golden refresh-map build
+.PHONY: install-uv install lock generate check-freshness check-generated refresh-snapshot refresh-surface refresh-golden refresh-served-golden refresh-map build
 
 install-uv: ## Install uv if not present
 	@ command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -114,8 +114,11 @@ check-generated: generate ## Regenerate and fail if the result differs from what
 	@ git ls-files --others --exclude-standard -- $(GENERATED_GLOBS) | grep . && exit 1 || true
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated output is fresh$(END_BUILD_PRINT)"
 
-refresh-snapshot: ## Rewrite the reviewed model-shape snapshot and public-surface.json after a deliberate model or public-surface change (review the diff)
-	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/testkit/test_shape_snapshot.py tests/generator/unit/test_generation_shape.py tests/unit/test_public_surface.py -q
+refresh-snapshot: ## Rewrite the reviewed model-shape snapshots after a deliberate model change (review the diff); the public-surface baseline: make refresh-surface
+	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/testkit/test_shape_snapshot.py tests/generator/unit/test_generation_shape.py -q
+
+refresh-surface: ## Rewrite public-surface.json; this resets the move's public-surface baseline (TC-03), so run it only when a stage deliberately moves a public name (review the diff)
+	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/test_public_surface.py -q
 
 refresh-map: ## Re-key the scenario-map rows of renamed test files (against BASE, default develop), drop those of vanished tests and list the collected tests with no row (exit 1 while some are unmapped)
 	@ uv run python -m tests.audit.refresh_map --base $(BASE)

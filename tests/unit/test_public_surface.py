@@ -3,8 +3,8 @@
 ``tests/fixtures/public-surface.json`` maps each name of ``rdf_persistence.__all__`` to the module
 that defines it **before the move**. The guard maps that module through the rows of ``LAYOUT`` that
 are on to where it must stand now, and checks, for every name, that ``rdf_persistence.<name>`` is the
-very object of that module and that the module defines it. ``make refresh-snapshot`` rewrites the file
-(it stores old paths, so a stage that turns a row on leaves it as it is).
+very object of that module and that the module defines it. ``make refresh-surface`` rewrites the file
+(only when a stage deliberately moves a public name; ``make refresh-snapshot`` leaves it alone; it stores old paths, so a stage that turns a row on leaves it as it is).
 """
 
 import json
@@ -111,7 +111,7 @@ def _write(snapshot: dict[str, str]) -> None:
 
 @pytest.fixture(scope="module", autouse=True)
 def refreshed_on_request() -> None:
-    """``make refresh-snapshot`` rewrites the file before any test of this module reads it."""
+    """``make refresh-surface`` rewrites the file before any test of this module reads it."""
     if os.environ.get(REFRESH):
         _write(current_snapshot(rdf_persistence, turned_on_pairs(), turned_on_classes()))
 

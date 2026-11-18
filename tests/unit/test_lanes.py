@@ -316,6 +316,22 @@ def test_refresh_golden_leaves_the_served_baselines_of_the_move_alone() -> None:
     assert f"not {GOLDEN_RESET}" in recipe, "the toy TypeScript golden is refreshed apart"
 
 
+def test_refresh_snapshot_leaves_the_public_surface_baseline_of_the_move_alone() -> None:
+    """TC-03's baseline guards the thematic move: the refresh every model change runs must not rewrite it."""
+    recipe = "\n".join(recipe_of("refresh-snapshot"))
+    assert "test_public_surface" not in recipe, "the public-surface baseline is refreshed apart"
+    assert "RP_REFRESH_SNAPSHOT" in recipe, "the model-shape snapshot is still rewritten here"
+
+
+def test_the_public_surface_has_a_refresh_target_of_its_own() -> None:
+    recipe = "\n".join(recipe_of("refresh-surface"))
+    assert "test_public_surface" in recipe, "the public-surface snapshot is rewritten here"
+    assert "RP_REFRESH_SNAPSHOT" in recipe, "the refresh switch is set here"
+    assert "baseline" in MAKEFILE.split("refresh-surface:")[1].splitlines()[0], (
+        "the help string says it resets the move's baseline"
+    )
+
+
 def test_the_served_golden_has_a_refresh_target_of_its_own() -> None:
     recipe = "\n".join(recipe_of("refresh-served-golden"))
     assert "test_openapi_served" in recipe, "the served OpenAPI golden is rewritten here"

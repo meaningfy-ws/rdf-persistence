@@ -235,7 +235,7 @@ def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
         for module in _generator(served).modules():
             if module.name == name:
                 own.append(module)
-            else:
+            elif module.name not in served_names:
                 by_name.setdefault(module.name, module)
     if own:
         by_name[served_names[0]] = _merged(own, served_names)
