@@ -17,7 +17,10 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = "rdf_persistence"
 LAYERS = ("domain", "services", "adapters", "entrypoints")
 # A stage adds its themes here (PD-1: the stage turns its rows on, and TC-01 then holds them).
-TURNED_ON: frozenset[str] = frozenset()
+TURNED_ON: frozenset[str] = frozenset({"core"})
+# Old paths that hold a deprecation shim, not a leftover (PD-8): the module re-exports the moved one and
+# stands until the release that removes it (stage 8). A stage that adds a shim lists it here.
+SHIMS: frozenset[str] = frozenset({f"{PACKAGE}.domain.base"})
 
 
 @dataclass(frozen=True)
@@ -326,16 +329,27 @@ def _hand_written_modules(root: Path) -> set[str]:
     }
 
 
-def layout_problems(rows: tuple[Move, ...], root: Path) -> list[str]:
-    """What is wrong with the tree at ``root`` against the rows; empty when it matches."""
+def layout_problems(
+    rows: tuple[Move, ...], root: Path, shims: frozenset[str] | None = None
+) -> list[str]:
+    """What is wrong with the tree at ``root`` against the rows; empty when it matches.
+
+    ``shims`` (default ``SHIMS``) are old paths of rows that are on and hold a deprecation shim: each
+    must exist, and none is a leftover or a module without a row.
+    """
+    shims = SHIMS if shims is None else shims
     problems = []
     for row in rows:
-        if row.on and row.old and _exists(row.old, root):
+        if row.on and row.old in shims:
+            if not _exists(row.old, root):
+                problems.append(f"{row.old} is a listed shim and is missing")
+        elif row.on and row.old and _exists(row.old, root):
             problems.append(f"{row.old} is still at its old path; it belongs at {row.new}")
         elif row.standing and not _exists(row.standing, root):
             problems.append(f"{row.standing} is missing (row {row.old} -> {row.new})")
     # a ``generated`` row is a package, not a module file: only module files are listed here
     expected = {row.standing for row in rows if row.standing and row.module != "generated"}
+    expected |= {row.old for row in rows if row.on and row.old in shims}
     problems += [
         f"{module} has no row in LAYOUT"
         for module in sorted(_hand_written_modules(root) - expected)
@@ -443,14 +457,51 @@ def core_on(monkeypatch):
     monkeypatch.setattr(f"{__name__}.TURNED_ON", frozenset({"core"}))
 
 
+@pytest.fixture
+def nothing_on(monkeypatch):
+    monkeypatch.setattr(f"{__name__}.TURNED_ON", frozenset())
+
+
 BASE_ROW = (Move("core", "domain", "base"),)
+SHIM = frozenset({"rdf_persistence.domain.base"})
+
+
+def test_a_deprecation_shim_may_stand_at_the_old_path_of_a_row_that_is_on(tmp_path, core_on):
+    """PD-8: the old path of a moved module may hold the shim that re-exports it."""
+    root = _tree(tmp_path, "rdf_persistence.core.domain.base", "rdf_persistence.domain.base")
+
+    assert layout_problems(BASE_ROW, root, shims=SHIM) == [], "the shim is no leftover"
+
+
+def test_a_module_at_the_old_path_is_still_a_leftover_when_it_is_not_a_listed_shim(
+    tmp_path, core_on
+):
+    root = _tree(tmp_path, "rdf_persistence.core.domain.base", "rdf_persistence.domain.base")
+
+    problems = layout_problems(BASE_ROW, root, shims=frozenset())
+
+    assert any("still at its old path" in p for p in problems), problems
+
+
+def test_a_listed_shim_that_is_missing_is_named(tmp_path, core_on):
+    root = _tree(tmp_path, "rdf_persistence.core.domain.base")
+
+    problems = layout_problems(BASE_ROW, root, shims=SHIM)
+
+    assert problems == ["rdf_persistence.domain.base is a listed shim and is missing"], problems
+
+
+def test_the_shims_are_the_old_paths_of_rows_of_the_layout():
+    olds = {row.old for row in LAYOUT}
+
+    assert olds >= SHIMS, "a shim names the old path of a row"
 
 
 def test_a_row_turned_on_whose_module_is_still_at_its_old_path_fails_naming_both(tmp_path, core_on):
     """TC-01: the failure names the old path and the new path."""
     root = _tree(tmp_path, "rdf_persistence.domain.base")
 
-    problems = layout_problems(BASE_ROW, root)
+    problems = layout_problems(BASE_ROW, root, shims=frozenset())
 
     assert any(
         "rdf_persistence.domain.base" in p and "rdf_persistence.core.domain.base" in p
@@ -461,10 +512,12 @@ def test_a_row_turned_on_whose_module_is_still_at_its_old_path_fails_naming_both
 def test_a_row_turned_on_holds_when_the_module_stands_at_its_new_path(tmp_path, core_on):
     root = _tree(tmp_path, "rdf_persistence.core.domain.base")
 
-    assert layout_problems(BASE_ROW, root) == [], "the moved module satisfies its row"
+    assert layout_problems(BASE_ROW, root, shims=frozenset()) == [], (
+        "the moved module satisfies its row"
+    )
 
 
-def test_a_row_turned_off_fails_when_the_module_has_moved_early(tmp_path):
+def test_a_row_turned_off_fails_when_the_module_has_moved_early(tmp_path, nothing_on):
     root = _tree(tmp_path, "rdf_persistence.core.domain.base")
 
     problems = layout_problems(BASE_ROW, root)
@@ -473,7 +526,7 @@ def test_a_row_turned_off_fails_when_the_module_has_moved_early(tmp_path):
     assert any("rdf_persistence.core.domain.base has no row" in p for p in problems), problems
 
 
-def test_a_module_without_a_row_fails_by_name(tmp_path):
+def test_a_module_without_a_row_fails_by_name(tmp_path, nothing_on):
     root = _tree(tmp_path, "rdf_persistence.domain.base", "rdf_persistence.services.newcomer")
 
     problems = layout_problems(BASE_ROW, root)

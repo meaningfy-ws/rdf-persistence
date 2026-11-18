@@ -12,12 +12,12 @@ from types import SimpleNamespace
 import pytest
 
 from rdf_persistence import bootstrap
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     MessageLimitExceeded,
     StoreUnavailable,
     TenantBehind,
 )
-from rdf_persistence.domain.generated.rp_provenance import Activity, Add, Replace
+from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add, Replace
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.mapper import UnitOfWork
 from rdf_persistence.services.messagebus import Work, command

@@ -18,6 +18,10 @@
       "rp.blob.count": {
          "@id": "blobCount"
       },
+      "connect_timeout_seconds": {
+         "@type": "xsd:float",
+         "@id": "connect_timeout_seconds"
+      },
       "db.namespace": {
          "@id": "dbNamespace"
       },
@@ -48,6 +52,9 @@
       "http.response.status_code": {
          "@id": "httpResponseStatusCode"
       },
+      "max_attempts": {
+         "@id": "max_attempts"
+      },
       "rp.message.limit": {
          "@id": "messageLimit"
       },
@@ -66,6 +73,10 @@
       "rp.iri_policy.fields": {
          "@container": "@set",
          "@id": "policyFields"
+      },
+      "read_timeout_seconds": {
+         "@type": "xsd:float",
+         "@id": "read_timeout_seconds"
       },
       "rp.resource": {
          "@id": "resource"
@@ -97,6 +108,9 @@
       },
       "@version": 1.1,
       "type": "@type",
+      "HttpSettings": {
+         "@id": "HttpSettings"
+      },
       "LogContext": {
          "@id": "LogContext"
       }

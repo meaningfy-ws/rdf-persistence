@@ -16,7 +16,6 @@ import httpx
 import jwt
 from pydantic import BaseModel, ValidationError
 
-from rdf_persistence.adapters._http import json_body
 from rdf_persistence.adapters.generated.rp_wire import (
     ZitadelAssertion,
     ZitadelCreated,
@@ -34,7 +33,8 @@ from rdf_persistence.adapters.generated.rp_wire import (
 )
 from rdf_persistence.adapters.jwks import RS256
 from rdf_persistence.adapters.zitadel import MANAGEMENT, ORG_HEADER, user_grant_path
-from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
+from rdf_persistence.core.adapters._http import json_body
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 from rdf_persistence.services.tokens import EpochClock
 from rdf_persistence.testkit.exceptions import ProvisioningError, TokenRefusedError
 from rdf_persistence.testkit.generated.rp_testkit import (

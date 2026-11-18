@@ -12,8 +12,8 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import URIRef
 
-from rdf_persistence.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.domain.sparql import term
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
+from rdf_persistence.core.domain.sparql import term
 from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
 from rdf_persistence.services.schema_structure import (
     annotation_text,

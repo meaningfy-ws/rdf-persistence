@@ -10,9 +10,9 @@ from pydantic import ValidationError
 from rdflib import Graph, URIRef
 from rdflib.query import Result
 
-from rdf_persistence.adapters._http import HttpAdapter
 from rdf_persistence.adapters.generated.rp_wire import FusekiDatasetList
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.adapters._http import HttpAdapter
+from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
@@ -20,10 +20,9 @@ from rdf_persistence.domain.exceptions import (
     PersistenceError,
     StoreUnavailable,
 )
-from rdf_persistence.domain.media import ACCEPT, CONTENT_TYPE, N_QUADS, TURTLE
-from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
-from rdf_persistence.services.telemetry import log_extra
+from rdf_persistence.core.domain.media import ACCEPT, CONTENT_TYPE, N_QUADS, TURTLE
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings, LogContext
+from rdf_persistence.core.services.telemetry import log_extra
 
 SPARQL_QUERY = "application/sparql-query"
 SPARQL_UPDATE = "application/sparql-update"

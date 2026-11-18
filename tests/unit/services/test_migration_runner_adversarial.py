@@ -15,7 +15,7 @@ from types import SimpleNamespace
 import pytest
 from rdflib import URIRef
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     MigrationFailed,
     StoredDataInvalid,

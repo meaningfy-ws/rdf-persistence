@@ -15,18 +15,18 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
 from rdflib import Graph
 
-from rdf_persistence.domain.exceptions import DatabaseGone
-from rdf_persistence.domain.generated.rp_provenance import Activity
-from rdf_persistence.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.core.domain.exceptions import DatabaseGone
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import error_type, log_extra, traced
 from rdf_persistence.services.decoding import decode_activity, error_text
 from rdf_persistence.services.event_hub import Offer
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.generated.service.rp_service import EventEnvelope
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.session import Session
-from rdf_persistence.services.telemetry import error_type, log_extra, traced
 from rdf_persistence.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)

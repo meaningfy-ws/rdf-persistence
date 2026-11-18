@@ -39,12 +39,12 @@ from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.compare import isomorphic
 from rdflib.term import Node
 
-from rdf_persistence.domain.base import RpModel
-from rdf_persistence.domain.exceptions import CommitTooLarge, NotFound, PersistenceError
-from rdf_persistence.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.base import RpModel
+from rdf_persistence.core.domain.exceptions import CommitTooLarge, NotFound, PersistenceError
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.domain.layout import is_skolem_of
-from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris

@@ -22,7 +22,7 @@ from pyshacl import validate
 from rdflib import RDF, SH, Graph, URIRef
 from rdflib.namespace import Namespace
 
-from rdf_persistence.domain import sparql_parsing
+from rdf_persistence.core.domain import sparql_parsing
 
 _WARM = Namespace("urn:rdf-persistence:warm-up:")
 _INSTANCES = 2  # one focus node and several take different paths through the generated queries

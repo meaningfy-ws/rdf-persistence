@@ -35,8 +35,8 @@ SELECTS = [
     (8, "tests/unit/services/helpers.py", ("tests/unit/services/",)),
     (8, "tests/unit/entrypoints/test_router.py", ("tests/unit/entrypoints/",)),
     (9, "tests/feature/steps/test_steps.py", ("tests/feature/",)),
-    (10, "rdf_persistence/services/artifacts.py", ("tests/unit/services/",)),
-    (10, "rdf_persistence/domain/generated/models.py", ("tests/unit/domain/",)),
+    (10, "rdf_persistence/services/session.py", ("tests/unit/services/",)),
+    (10, "rdf_persistence/domain/layout.py", ("tests/unit/domain/",)),
     (10, "rdf_persistence/testkit/containers/fuseki.py", ("tests/unit/testkit/",)),
     (11, "rdf_persistence/__init__.py", ROOT_TESTS),
 ]
@@ -190,7 +190,7 @@ def test_main_exits_with_the_fallback_status_when_core_changed(monkeypatch, caps
 def test_the_layer_rule_and_the_generator_rule_are_kept():
     """The themes add a rule; today's layers and the generator's folder still map as before."""
     selection = _select(
-        ["rdf_persistence/services/artifacts.py", "rdf_persistence_generation/manifest.py"]
+        ["rdf_persistence/services/session.py", "rdf_persistence_generation/manifest.py"]
     )
 
     assert selection.paths == ("tests/generator/", "tests/unit/services/"), "layer and generator"
@@ -231,7 +231,7 @@ def test_the_root_level_unit_test_files_are_the_real_ones(monkeypatch):
 
 def test_the_worked_example_selects_one_folder_and_hints_at_the_container_test():
     changed = [
-        "rdf_persistence/services/artifacts.py",
+        "rdf_persistence/services/session.py",
         "tests/unit/services/test_replace_internal_values.py",
         "openspec/changes/x/design.md",
         CONTAINER_TEST,

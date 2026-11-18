@@ -308,8 +308,8 @@ term bundles (`services/vocabulary.py`); the message bus; the ports
 `services/generated/`: `service/` (from `model/technical/service/rp_service.yaml`: the service
 records), `settings/` (`rp_settings.yaml`: the deployment values), `templates/` (`rp_templates.yaml`:
 the SPARQL term bundles, fields of `SparqlTerm`, and the IRI models `IriTemplateVariables` and
-`IriParts`, plain strings read by `services/iris.py`) and `telemetry/` (`rp_telemetry.yaml`:
-`LogContext`)
+`IriParts`, plain strings read by `services/iris.py`); `LogContext` and `HttpSettings` are in
+`core/services/generated/` (`model/technical/core/rp_core_services.yaml`)
 |`open_session`, `Session`, `Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`; the service records
 (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`,
 `GrantSet`, `Page`, `Problem`, `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`,

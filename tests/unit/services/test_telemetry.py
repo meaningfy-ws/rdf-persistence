@@ -16,9 +16,9 @@ from opentelemetry.semconv.attributes import (
 from opentelemetry.trace import SpanKind, StatusCode
 from pydantic import ValidationError
 
-from rdf_persistence.domain.exceptions import NotFound
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
-from rdf_persistence.services.telemetry import error_type, log_extra, traced
+from rdf_persistence.core.domain.exceptions import NotFound
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import error_type, log_extra, traced
 from tests.logs import attributes, records_of
 from tests.spans import assert_no_text_in_spans
 
@@ -126,7 +126,7 @@ def test_a_development_alias_is_the_name_pinned_at_v1_45_0(slot):
 @pytest.mark.parametrize(
     ("error", "spelling"),
     [
-        (NotFound("n"), "rdf_persistence.domain.exceptions.NotFound"),
+        (NotFound("n"), "rdf_persistence.core.domain.exceptions.NotFound"),
         (ValueError(), "builtins.ValueError"),
     ],
 )
@@ -138,8 +138,8 @@ NO_PROVIDER = textwrap.dedent(
     """
     from opentelemetry import trace
 
-    from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
-    from rdf_persistence.services.telemetry import traced
+    from rdf_persistence.core.services.generated.rp_core_services import LogContext
+    from rdf_persistence.core.services.telemetry import traced
 
     with traced("rp.x", LogContext(step="x")):
         assert not trace.get_current_span().is_recording()
@@ -182,9 +182,9 @@ def test_traced_marks_the_span_failed_and_reraises_the_same_error(spans) -> None
     (event,) = span.events
     assert event.name == "exception"
     assert dict(event.attributes) == {
-        "exception.type": "rdf_persistence.domain.exceptions.NotFound"
+        "exception.type": "rdf_persistence.core.domain.exceptions.NotFound"
     }
-    assert span.attributes["error.type"] == "rdf_persistence.domain.exceptions.NotFound"
+    assert span.attributes["error.type"] == "rdf_persistence.core.domain.exceptions.NotFound"
 
 
 def test_traced_leaves_a_cancellation_unmarked(spans) -> None:  # D-10

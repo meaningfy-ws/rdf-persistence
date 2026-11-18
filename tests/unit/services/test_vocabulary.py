@@ -8,9 +8,9 @@ import yaml
 from rdflib import URIRef, plugin
 from rdflib.parser import Parser
 
-from rdf_persistence.domain.generated.rp_core import RegistryEntry, RegistryKind
-from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.core.domain.generated.rp_core import RegistryEntry, RegistryKind
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema
 from rdf_persistence.services.schema_structure import is_bookkeeping
@@ -61,7 +61,7 @@ def test_the_commit_marker_class_iri_is_the_class_uri_of_the_schema(view):
 def test_a_commit_marker_is_an_id_and_the_time_the_transaction_started():
     from datetime import UTC, datetime
 
-    from rdf_persistence.domain.generated.rp_core import CommitMarker
+    from rdf_persistence.core.domain.generated.rp_core import CommitMarker
 
     started = datetime(2026, 11, 13, tzinfo=UTC)
     marker = CommitMarker(id="urn:uuid:00000000-0000-0000-0000-000000000001", started_at=started)

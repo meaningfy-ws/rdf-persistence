@@ -6,7 +6,7 @@ kept byte for byte under a key the caller makes up (a random one, per the file-s
 
 from typing import Protocol
 
-from rdf_persistence.domain.generated.rp_files import BlobEntry
+from rdf_persistence.core.domain.generated.rp_files import BlobEntry
 
 
 class FileStore(Protocol):

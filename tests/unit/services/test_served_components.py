@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.services.artifacts import COMPONENTS_FILE, SCHEMAS
+from rdf_persistence.core.services.artifacts import COMPONENTS_FILE, SCHEMAS
 from rdf_persistence.services.components import (
     DuplicateComponentError,
     component_schemas,

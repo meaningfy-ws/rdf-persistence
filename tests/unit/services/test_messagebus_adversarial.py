@@ -15,15 +15,15 @@ import pytest
 from rdflib import RDF, URIRef
 
 from rdf_persistence import bootstrap
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     InvalidBody,
     MessageLimitExceeded,
     PersistenceError,
 )
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_provenance import Activity, Add, Remove, Replace
-from rdf_persistence.domain.generated.rp_workflow import Transition
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add, Remove, Replace
+from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.mapper import UnitOfWork

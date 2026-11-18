@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from rdflib import RDF, BNode, Literal, URIRef
 
 from rdf_persistence import Action, StoredDataInvalid, generated_models
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     CommitTooLarge,
     Conflict,
@@ -27,8 +27,8 @@ from rdf_persistence.domain.exceptions import (
     SparqlError,
     StoreUnavailable,
 )
-from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
-from rdf_persistence.domain.sparql import term
+from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
+from rdf_persistence.core.domain.sparql import term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Filter, ListRequest, MemberList
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings

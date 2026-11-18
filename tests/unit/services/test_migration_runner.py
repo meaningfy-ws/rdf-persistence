@@ -14,7 +14,7 @@ import pytest
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCTERMS
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     MigrationFailed,
     StoredDataInvalid,
@@ -22,7 +22,7 @@ from rdf_persistence.domain.exceptions import (
     StoreUnavailable,
     TenantBehind,
 )
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.domain.layout import graph_iri, skolem_iri, stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import Documents

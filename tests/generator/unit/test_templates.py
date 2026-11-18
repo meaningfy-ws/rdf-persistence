@@ -15,7 +15,7 @@ from .conftest import TOY
 TOY_GENERATED = TOY / "generated"
 TOP_PACKAGE = "rdf_persistence"
 BASE_MODEL = "RpModel"
-TOOLKIT_BASE_MODULE = "rdf_persistence.domain.base"  # stage 1; the `core` path from stage 2
+TOOLKIT_BASE_MODULE = "rdf_persistence.core.domain.base"  # the `core` path (PD-8)
 MYPY_GENERATED = Path(__file__).parents[3] / "mypy-generated.ini"
 
 

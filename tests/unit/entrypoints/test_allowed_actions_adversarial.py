@@ -7,10 +7,10 @@ import httpx
 import pytest
 
 from rdf_persistence import GrantSet, Page, TenantSummary
-from rdf_persistence.domain.exceptions import StoreUnavailable
-from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
+from rdf_persistence.core.domain.exceptions import StoreUnavailable
+from rdf_persistence.core.domain.generated.rp_access import Action, Grant, Prohibition
+from rdf_persistence.core.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.services.access import ACTIONS
 from tests.toy_service import DUNE_BODY, principal_of

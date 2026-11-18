@@ -15,8 +15,8 @@ from pydantic_core import core_schema
 from pyparsing import ParseBaseException, ParseResults
 from rdflib import RDF, BNode, Literal, URIRef, Variable
 
-from rdf_persistence.domain.exceptions import SparqlError
-from rdf_persistence.domain.sparql_parsing import CompValue, parse_query, parse_update
+from rdf_persistence.core.domain.exceptions import SparqlError
+from rdf_persistence.core.domain.sparql_parsing import CompValue, parse_query, parse_update
 
 FORBIDDEN_IRI_CHARS = re.compile(r'[\x00-\x20<>"{}|\\^`\x7f]')
 _BLANK_LABEL = re.compile(r"[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9_-])?")  # may not end in "."

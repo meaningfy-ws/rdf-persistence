@@ -1,12 +1,16 @@
-id: https://meaningfy.ws/ns/rdf-persistence/telemetry
-name: rp_telemetry
-title: RDF persistence telemetry module
+id: https://meaningfy.ws/ns/rdf-persistence/core-services
+name: rp_core_services
+title: RDF persistence core services module
 description: >-
-  The attributes a log record or a span of the toolkit carries. A log call passes one `LogContext`
-  through `log_extra`, a span takes the same one, so a record and a span of one step name their
-  data alike. Each slot's alias is the attribute name, which is dotted and so never collides with
-  a `LogRecord` attribute. The stable names follow the OpenTelemetry semantic conventions; the
-  `rp.` names are the toolkit's own. Nothing here is served by the HTTP service.
+  The technical models of the `core` theme, which every other theme may use: `HttpSettings`, the
+  timeouts and attempts of every HTTP client of the toolkit, and `LogContext`, the attributes a log
+  record or a span of the toolkit carries. A log call passes one `LogContext` through `log_extra`,
+  a span takes the same one, so a record and a span of one step name their data alike. Each
+  telemetry slot's alias is the attribute name, which is dotted and so never collides with a
+  `LogRecord` attribute. The stable names follow the OpenTelemetry semantic conventions; the `rp.`
+  names are the toolkit's own. Every slot of `HttpSettings` defaults to the value the toolkit used
+  before it had settings. Nothing here is served by the HTTP service (technical-models PD-6, DEC-5;
+  thematic-structure PD-2).
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
@@ -16,9 +20,32 @@ imports:
   - linkml:types
 annotations:
   module_kind: technical
-  python_package: rdf_persistence.services.generated.telemetry
+  python_package: rdf_persistence.core.services.generated
 
 slots:
+  connect_timeout_seconds:
+    title: Connect timeout
+    description: The seconds an HTTP client waits to open a connection.
+    range: float
+    required: true
+    ifabsent: float(5.0)
+    minimum_value: 0.001
+    maximum_value: 31536000
+  read_timeout_seconds:
+    title: Read timeout
+    description: The seconds an HTTP client waits for the answer.
+    range: float
+    required: true
+    ifabsent: float(30.0)
+    minimum_value: 0.001
+    maximum_value: 31536000
+  max_attempts:
+    title: Maximum attempts
+    description: The most times the object store client tries a request.
+    range: integer
+    required: true
+    ifabsent: int(3)
+    minimum_value: 1
   step:
     title: Step
     description: >-
@@ -202,6 +229,15 @@ slots:
     alias: messaging.destination.name
 
 classes:
+  HttpSettings:
+    title: HTTP settings
+    description: >-
+      The timeouts and the attempts of every HTTP client of the toolkit: the SPARQL store, the identity
+      provider and the object store.
+    slots:
+      - connect_timeout_seconds
+      - read_timeout_seconds
+      - max_attempts
   LogContext:
     title: Log context
     description: >-

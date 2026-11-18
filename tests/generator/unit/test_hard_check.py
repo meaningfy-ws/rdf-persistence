@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.domain.generated.rp_core import RpAnnotation
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import aggregate_keys, annotation_text, keyed_slots
 from rdf_persistence_generation import steps
@@ -1057,7 +1057,7 @@ def test_default_instance_that_is_not_a_boolean_is_refused_naming_the_slot(
 
 # ---- where the metamodel's classes live (DEC-7, PD-6, TC-35 to TC-38) ------------------------------
 
-TOOLKIT_DOMAIN = "rdf_persistence.domain.generated"
+TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
 PACKAGE_CHECK = "rdf_persistence_generation.checks.python_package"
 MODEL_COPY = "model"
 PACKAGE_RULES = {HardRule.PYTHON_PACKAGE, HardRule.PYTHON_PACKAGE_MISMATCH}  # need a toolkit target

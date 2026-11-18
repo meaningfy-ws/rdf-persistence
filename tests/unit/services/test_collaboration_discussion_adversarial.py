@@ -21,7 +21,7 @@ import pytest
 from rdflib import Literal, Namespace, URIRef
 
 from rdf_persistence import Action, generated_models
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
     InvalidIri,
@@ -29,10 +29,10 @@ from rdf_persistence.domain.exceptions import (
     PersistenceError,
     UnknownRole,
 )
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.domain.layout import skolem_iri
-from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration

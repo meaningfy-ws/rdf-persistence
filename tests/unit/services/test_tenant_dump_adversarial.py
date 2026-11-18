@@ -18,14 +18,14 @@ from hypothesis import strategies as st
 from rdflib import Dataset, Literal, URIRef
 from rdflib.namespace import DCTERMS
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     InvalidBody,
     NotFound,
     PersistenceError,
     StoreUnavailable,
 )
+from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.domain.layout import stamps_graph_iri
-from rdf_persistence.domain.media import N_QUADS
 from rdf_persistence.services.generated.service.rp_service import IriPolicy, TenantDump
 from rdf_persistence.services.sweep import sweep
 from rdf_persistence.services.tenant_dump import dump

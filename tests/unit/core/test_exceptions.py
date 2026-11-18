@@ -4,8 +4,8 @@ import inspect
 
 import pytest
 
-from rdf_persistence.domain import exceptions
-from rdf_persistence.domain.exceptions import PersistenceError
+from rdf_persistence.core.domain import exceptions
+from rdf_persistence.core.domain.exceptions import PersistenceError
 
 ERRORS = [
     cls

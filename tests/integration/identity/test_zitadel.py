@@ -15,7 +15,7 @@ from rdf_persistence.adapters.generated.rp_wire import (
 )
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
-from rdf_persistence.domain.exceptions import InvalidToken, NotFound
+from rdf_persistence.core.domain.exceptions import InvalidToken, NotFound
 from rdf_persistence.testkit.bootstrap import wait_until_async
 from rdf_persistence.testkit.exceptions import TokenRefusedError
 from rdf_persistence.testkit.identity_conformance import CASES, run_case

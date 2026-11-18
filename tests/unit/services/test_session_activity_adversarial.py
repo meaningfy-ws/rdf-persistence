@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from rdflib import RDF, BNode, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     CommitTooLarge,
     Conflict,
     InvalidIri,
@@ -21,16 +21,16 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
     PersistenceError,
 )
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.rp_provenance import (
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.generated.rp_provenance import (
     Activity,
     Add,
     Generation,
     Remove,
     Replace,
 )
-from rdf_persistence.domain.sparql import SparqlError
+from rdf_persistence.core.domain.sparql import SparqlError
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import Listings

@@ -2,7 +2,7 @@
 
 import asyncio
 
-from rdf_persistence.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.services.event_hub import CLOSED, EventHub
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 

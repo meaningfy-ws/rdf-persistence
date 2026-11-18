@@ -9,7 +9,7 @@ from collections.abc import AsyncIterator
 import pytest
 
 from rdf_persistence import Conflict, FusekiStore, InvalidIri, ToolkitSettings, UnitOfWork
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.domain.layout import application_database_name, graph_iri
 from rdf_persistence.services.sweep import sweep
 from tests.fixtures.library.generated.books import Book

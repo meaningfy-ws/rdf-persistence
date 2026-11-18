@@ -4,7 +4,7 @@ import inspect
 
 import pytest
 
-from rdf_persistence.domain.exceptions import IdentityUnavailable, NotFound
+from rdf_persistence.core.domain.exceptions import IdentityUnavailable, NotFound
 from rdf_persistence.services.generated.service.rp_service import AccountSummary
 from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
 from rdf_persistence.testkit.fakes import FakeIdentity

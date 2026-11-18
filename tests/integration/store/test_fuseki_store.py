@@ -7,14 +7,14 @@ import pytest
 from rdflib import Graph, Literal, URIRef
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
     NotFound,
     StoreUnavailable,
 )
-from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.testkit import assert_isomorphic
 
 EX = "http://example.org/"

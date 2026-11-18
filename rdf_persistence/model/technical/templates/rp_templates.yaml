@@ -23,13 +23,13 @@ types:
   sparql_term:
     title: SPARQL term
     description: >-
-      A piece of SPARQL text that `rdf_persistence.domain.sparql` rendered from an RDF term or a
+      A piece of SPARQL text that `rdf_persistence.core.domain.sparql` rendered from an RDF term or a
       pattern, the only kind of value a query template accepts.
     typeof: string
     repr: SparqlTerm
     uri: rp:SparqlTerm
     annotations:
-      python_import: rdf_persistence.domain.sparql
+      python_import: rdf_persistence.core.domain.sparql
 
 slots:
   registry:

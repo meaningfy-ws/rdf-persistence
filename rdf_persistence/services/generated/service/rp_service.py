@@ -28,7 +28,7 @@ from pydantic import (
     model_serializer,
     model_validator
 )
-from rdf_persistence.domain.generated.rp_access import (
+from rdf_persistence.core.domain.generated.rp_access import (
     Action,
     Grant,
     Policy,
@@ -37,11 +37,11 @@ from rdf_persistence.domain.generated.rp_access import (
     RoleLevel,
     Rule
 )
-from rdf_persistence.domain.generated.rp_annotations import (
+from rdf_persistence.core.domain.generated.rp_annotations import (
     Described,
     Tracked
 )
-from rdf_persistence.domain.generated.rp_core import (
+from rdf_persistence.core.domain.generated.rp_core import (
     AggregateKey,
     AggregateRoot,
     CommitMarker,
@@ -57,7 +57,7 @@ from rdf_persistence.domain.generated.rp_core import (
     UniqueScope,
     WritesKind
 )
-from rdf_persistence.domain.generated.rp_tenancy import (
+from rdf_persistence.core.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantLabelled,
     TenantState,
@@ -69,7 +69,7 @@ metamodel_version = "1.12.0"
 version = "None"
 
 
-from rdf_persistence.domain.base import RpModel as ConfiguredBaseModel
+from rdf_persistence.core.domain.base import RpModel as ConfiguredBaseModel
 
 
 

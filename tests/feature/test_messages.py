@@ -20,12 +20,12 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from rdflib import RDF, Graph, Literal, URIRef
 
 from rdf_persistence import bootstrap, generated_models
-from rdf_persistence.domain.exceptions import Conflict, InvalidBody, MessageLimitExceeded
-from rdf_persistence.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_files import DeleteFile
-from rdf_persistence.domain.generated.rp_provenance import Activity
-from rdf_persistence.domain.generated.rp_workflow import Transition
+from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, MessageLimitExceeded
+from rdf_persistence.core.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_files import DeleteFile
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
@@ -591,7 +591,7 @@ def _replacement_recorded(run: Run) -> None:
 
 @then("the observer receives no replacement")
 def _no_replacement(run: Run) -> None:
-    from rdf_persistence.domain.generated.rp_provenance import Replace
+    from rdf_persistence.core.domain.generated.rp_provenance import Replace
 
     assert _first_observer(run, Activity).of(Replace) == [], "no replacement was sent"
 

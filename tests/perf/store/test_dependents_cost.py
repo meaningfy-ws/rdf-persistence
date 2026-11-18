@@ -14,7 +14,7 @@ from collections.abc import AsyncIterator
 import pytest
 
 from rdf_persistence import generated_models
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.services import session as session_module
 from rdf_persistence.services.discussion import dependents
 from rdf_persistence.services.listing import Listings

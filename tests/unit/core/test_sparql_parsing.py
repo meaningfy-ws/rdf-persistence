@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from rdf_persistence.domain import sparql_parsing
+from rdf_persistence.core.domain import sparql_parsing
 
 QUERY = "SELECT ?s WHERE { ?s ?p ?o }"
 UPDATE = "INSERT DATA { <urn:a> <urn:b> <urn:c> }"

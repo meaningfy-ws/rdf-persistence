@@ -10,13 +10,13 @@ from typing import BinaryIO, cast
 
 from pydantic import BaseModel, ValidationError
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     DatabaseGone,
     MessageLimitExceeded,
     NotFound,
     StoreNotWired,
 )
-from rdf_persistence.domain.generated import (
+from rdf_persistence.core.domain.generated import (
     rp_access,
     rp_collections,
     rp_core,
@@ -26,20 +26,22 @@ from rdf_persistence.domain.generated import (
     rp_tenancy,
     rp_workflow,
 )
-from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_provenance import Activity
-from rdf_persistence.domain.generated.rp_tenancy import (
+from rdf_persistence.core.domain.generated.rp_access import Action
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantState,
     TenantSweepReport,
 )
+from rdf_persistence.core.services.artifacts import CONTEXT_FILE
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import error_type, log_extra
 from rdf_persistence.domain.layout import system_database_name
 from rdf_persistence.entrypoints.auth import Gate
 from rdf_persistence.services import file_removal, tenant_dump, tenant_sweep
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.aggregates import Aggregates
-from rdf_persistence.services.artifacts import CONTEXT_FILE
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.decoding import error_text
 from rdf_persistence.services.discussion import dependents as discussion_dependents
@@ -57,7 +59,6 @@ from rdf_persistence.services.generated.service.rp_service import (
     VerifiedCaller,
 )
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.identity import Identity
 from rdf_persistence.services.iris import IdSource, Iris, draw_id
 from rdf_persistence.services.listing import Listings
@@ -73,7 +74,6 @@ from rdf_persistence.services.schema_structure import (
 )
 from rdf_persistence.services.session import Session
 from rdf_persistence.services.store import Store, ToolkitStore, TracedStore, system_name_of
-from rdf_persistence.services.telemetry import error_type, log_extra
 from rdf_persistence.services.tenancy import (
     DEFAULT_STORE,
     GrantValidator,

@@ -7,14 +7,14 @@ wrapping one operation of the store: ``before`` runs it once, just before the fi
 import pytest
 
 from rdf_persistence import Action, StoredDataInvalid, generated_models
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     CommitTooLarge,
     Conflict,
     Forbidden,
     InvalidBody,
     InvalidIri,
 )
-from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
+from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings

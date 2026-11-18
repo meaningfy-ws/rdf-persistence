@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 from rdflib import BNode, Literal, URIRef
 
+from rdf_persistence.core.domain.exceptions import InvalidIri
 from rdf_persistence.domain import layout
-from rdf_persistence.domain.exceptions import InvalidIri
 from rdf_persistence.domain.layout import (
     application_database_name,
     graph_iri,
@@ -55,7 +55,8 @@ def test_the_layout_module_defines_the_twelve_policy_free_functions():
 
 def test_the_layout_module_imports_nothing_of_the_toolkit_outside_the_domain():
     toolkit = [name for name in _IMPORTED_MODULES if name.split(".")[0] == "rdf_persistence"]
-    outside = [name for name in toolkit if not name.startswith("rdf_persistence.domain")]
+    inside = ("rdf_persistence.domain", "rdf_persistence.core.domain")  # core is below every theme
+    outside = [name for name in toolkit if not name.startswith(inside)]
     assert outside == [], f"domain.layout imports outside the domain: {outside}"
 
 

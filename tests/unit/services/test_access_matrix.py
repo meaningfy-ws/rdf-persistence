@@ -5,7 +5,7 @@ from itertools import product
 import pytest
 
 from rdf_persistence import Action, TenantState
-from rdf_persistence.domain.exceptions import Forbidden, NotFound
+from rdf_persistence.core.domain.exceptions import Forbidden, NotFound
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from tests.toy import ROLES, TENANT, ban, book_iri, caller, direct, graph_of, held, role
 

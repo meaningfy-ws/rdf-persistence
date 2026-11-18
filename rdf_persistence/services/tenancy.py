@@ -17,7 +17,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
 from rdflib import RDF, Dataset, Graph, URIRef
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     InvalidBody,
     InvalidIri,
@@ -27,9 +27,13 @@ from rdf_persistence.domain.exceptions import (
     StoreNotWired,
     TenantBehind,
 )
-from rdf_persistence.domain.generated.rp_access import Action, Grant
-from rdf_persistence.domain.generated.rp_core import DatabaseKind, Principal, RpAnnotation
-from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
+from rdf_persistence.core.domain.generated.rp_access import Action, Grant
+from rdf_persistence.core.domain.generated.rp_core import DatabaseKind, Principal, RpAnnotation
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantAccess, TenantState
+from rdf_persistence.core.domain.media import N_QUADS
+from rdf_persistence.core.domain.sparql import Triple, fill, term
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import log_extra
 from rdf_persistence.domain.layout import (
     application_database_name,
     graph_iri,
@@ -37,8 +41,6 @@ from rdf_persistence.domain.layout import (
     system_database_name,
     toolkit_principal_iri,
 )
-from rdf_persistence.domain.media import N_QUADS
-from rdf_persistence.domain.sparql import Triple, fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.files import FileStore
@@ -50,7 +52,6 @@ from rdf_persistence.services.generated.service.rp_service import (
     TenantSummary,
     VerifiedCaller,
 )
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import Mapper, UnitOfWork
@@ -75,7 +76,6 @@ from rdf_persistence.services.session import (
     utc_now,
 )
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.telemetry import log_extra
 from rdf_persistence.services.tenant_move import check_graphs, rewrite
 
 log = logging.getLogger(__name__)

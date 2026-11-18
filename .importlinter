@@ -28,6 +28,61 @@ layers =
     (rdf_persistence.services)
     (rdf_persistence.domain)
 
+; The thematic layout (thematic-structure PD-6). A stage adds its themes to `containers` and to
+; `themes-ordered` (a theme not yet moved is absent, not empty); the old `layers` contract runs beside
+; these until stage 7. `themes-ordered` lists the highest theme first.
+[importlinter:contract:themes-layered]
+name = Themes: in each theme, entrypoints | adapters > services > domain, and nothing outside the layers
+type = layers
+containers =
+    rdf_persistence.core
+layers =
+    (entrypoints) | (adapters)
+    (services)
+    (domain)
+exhaustive = true
+
+[importlinter:contract:themes-ordered]
+name = Themes: a theme imports only the themes below it (core is the lowest)
+type = layers
+layers =
+    rdf_persistence.core
+
+[importlinter:contract:domain-of-a-theme-imports-no-upper-layer]
+name = layers-across-themes (1/3) the domain of a theme imports no services, adapters or entrypoints of any theme
+type = forbidden
+source_modules =
+    rdf_persistence.*.domain
+forbidden_modules =
+    rdf_persistence.*.services
+    rdf_persistence.*.adapters
+    rdf_persistence.*.entrypoints
+
+[importlinter:contract:services-of-a-theme-import-no-adapters-or-entrypoints]
+name = layers-across-themes (2/3) the services of a theme import no adapters or entrypoints of any theme
+type = forbidden
+source_modules =
+    rdf_persistence.*.services
+forbidden_modules =
+    rdf_persistence.*.adapters
+    rdf_persistence.*.entrypoints
+
+[importlinter:contract:adapters-and-entrypoints-of-themes-are-independent]
+name = layers-across-themes (3/3) the adapters and the entrypoints of the themes import neither the other
+type = forbidden
+source_modules =
+    rdf_persistence.*.adapters
+forbidden_modules =
+    rdf_persistence.*.entrypoints
+
+[importlinter:contract:entrypoints-of-themes-import-no-adapters]
+name = layers-across-themes (3/3) the entrypoints of the themes import no adapters
+type = forbidden
+source_modules =
+    rdf_persistence.*.entrypoints
+forbidden_modules =
+    rdf_persistence.*.adapters
+
 ; Technical models (service settings, wire shapes) are generated outside the domain and the domain never
 ; imports them, directly or through a chain (technical-models PD-2, Q-2). The `thematic-structure` change
 ; replaces this contract with one over the thematic layout.
@@ -46,6 +101,7 @@ name = domain imports no I/O, web, token or validation library
 type = forbidden
 source_modules =
     rdf_persistence.domain
+    rdf_persistence.*.domain
 forbidden_modules =
     httpx
     boto3
@@ -62,6 +118,10 @@ source_modules =
     rdf_persistence.services
     rdf_persistence.adapters
     rdf_persistence.entrypoints
+    rdf_persistence.*.domain
+    rdf_persistence.*.services
+    rdf_persistence.*.adapters
+    rdf_persistence.*.entrypoints
 forbidden_modules =
     rdf_persistence.testkit
     rdf_persistence_generation
@@ -154,7 +214,7 @@ type = forbidden
 source_modules =
     rdf_persistence.services.access
     rdf_persistence.services.aggregates
-    rdf_persistence.services.artifacts
+    rdf_persistence.core.services.artifacts
     rdf_persistence.services.collaboration
     rdf_persistence.services.components
     rdf_persistence.services.decoding
@@ -185,7 +245,7 @@ source_modules =
     rdf_persistence.services.tenant_dump
     rdf_persistence.services.tenant_move
     rdf_persistence.services.tenant_sweep
-    rdf_persistence.services.telemetry
+    rdf_persistence.core.services.telemetry
     rdf_persistence.services.tokens
     rdf_persistence.services.transitions
     rdf_persistence.services.unique_keys
@@ -193,7 +253,7 @@ source_modules =
     rdf_persistence.services.vocabulary
     rdf_persistence.services.workflows
     rdf_persistence.services.write_guards
-    rdf_persistence.services.yaml_files
+    rdf_persistence.core.services.yaml_files
 forbidden_modules =
     rdf_persistence.services.messagebus
 
@@ -217,10 +277,17 @@ type = forbidden
 allow_indirect_imports = True
 source_modules =
     tests.unit.domain
+    tests.unit.core.test_rp_model
+    tests.unit.core.test_exceptions
+    tests.unit.core.test_sparql
+    tests.unit.core.test_sparql_parsing
 forbidden_modules =
     rdf_persistence.services
     rdf_persistence.adapters
     rdf_persistence.entrypoints
+    rdf_persistence.*.services
+    rdf_persistence.*.adapters
+    rdf_persistence.*.entrypoints
     rdf_persistence.testkit
     tests.toy
     tests.toy_service
@@ -238,6 +305,6 @@ forbidden_modules =
     rdflib.plugins.sparql
     pyshacl
 ignore_imports =
-    rdf_persistence.domain.sparql_parsing -> rdflib.plugins.sparql
-    rdf_persistence.domain.sparql_parsing -> rdflib.plugins.sparql.**
+    rdf_persistence.core.domain.sparql_parsing -> rdflib.plugins.sparql
+    rdf_persistence.core.domain.sparql_parsing -> rdflib.plugins.sparql.**
     rdf_persistence.services.shacl -> pyshacl

@@ -26,15 +26,15 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import XSD, Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.domain.exceptions import InvalidBody
-from rdf_persistence.domain.generated.rp_core import (
+from rdf_persistence.core.domain.exceptions import InvalidBody
+from rdf_persistence.core.domain.generated.rp_core import (
     AggregateKey,
     DatabaseKind,
     GraphKind,
     RpAnnotation,
     WritesKind,
 )
-from rdf_persistence.domain.generated.rp_files import StoredFile
+from rdf_persistence.core.domain.generated.rp_files import StoredFile
 from rdf_persistence.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"

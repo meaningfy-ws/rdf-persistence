@@ -7,7 +7,7 @@ import httpx
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from rdf_persistence.domain.media import JSON
+from rdf_persistence.core.domain.media import JSON
 from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService
 
 scenarios("iri_policy.feature")

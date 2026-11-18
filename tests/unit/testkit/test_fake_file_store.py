@@ -4,7 +4,7 @@ import inspect
 
 import pytest
 
-from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable, TenantGone
+from rdf_persistence.core.domain.exceptions import Conflict, NotFound, StoreUnavailable, TenantGone
 from rdf_persistence.testkit import FakeFileStore, no_network  # noqa: F401  (fixture)
 from rdf_persistence.testkit.file_store_conformance import CASES, run_case
 

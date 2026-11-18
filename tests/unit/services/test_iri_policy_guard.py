@@ -6,8 +6,8 @@ import logging
 import pytest
 from rdflib import Graph, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import IriPolicyChanged
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.exceptions import IriPolicyChanged
+from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.domain.layout import POLICY_SEGMENT
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import IdKind, IdSpec, IriPolicy

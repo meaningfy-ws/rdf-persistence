@@ -17,17 +17,17 @@ from fastapi.routing import APIRoute
 from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence import GrantSet, Problem, bootstrap
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     CommitTooLarge,
     Forbidden,
     InvalidBody,
     InvalidRoleDefinition,
     NotFound,
 )
-from rdf_persistence.domain.generated.rp_access import Action, Grant
-from rdf_persistence.domain.generated.rp_provenance import Activity, Replace
-from rdf_persistence.domain.generated.rp_workflow import Transition
-from rdf_persistence.domain.media import PROBLEM_JSON
+from rdf_persistence.core.domain.generated.rp_access import Action, Grant
+from rdf_persistence.core.domain.generated.rp_provenance import Activity, Replace
+from rdf_persistence.core.domain.generated.rp_workflow import Transition
+from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.router import build_router
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services.event_hub import CLOSED

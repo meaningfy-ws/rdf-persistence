@@ -17,14 +17,14 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException
 
-from rdf_persistence.domain import exceptions as errors
-from rdf_persistence.domain.exceptions import PersistenceError
-from rdf_persistence.domain.media import PROBLEM_JSON
+from rdf_persistence.core.domain import exceptions as errors
+from rdf_persistence.core.domain.exceptions import PersistenceError
+from rdf_persistence.core.domain.media import PROBLEM_JSON
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import error_type, log_extra
 from rdf_persistence.entrypoints.auth import BEARER_SCHEME
 from rdf_persistence.services.decoding import error_text
 from rdf_persistence.services.generated.service.rp_service import Problem, ProblemKind, ProblemSlug
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
-from rdf_persistence.services.telemetry import error_type, log_extra
 
 WWW_AUTHENTICATE = "WWW-Authenticate"
 BEARER = BEARER_SCHEME.capitalize()

@@ -6,7 +6,7 @@ import pytest
 import yaml
 from fastapi import FastAPI
 
-from rdf_persistence.domain.exceptions import InvalidMigration
+from rdf_persistence.core.domain.exceptions import InvalidMigration
 from rdf_persistence.entrypoints.service import install_service
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Migration

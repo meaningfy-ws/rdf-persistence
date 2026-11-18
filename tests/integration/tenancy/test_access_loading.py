@@ -5,7 +5,7 @@ from uuid import UUID
 import pytest
 
 from rdf_persistence import Action, Grant, Principal, TenantState
-from rdf_persistence.domain.exceptions import NotFound
+from rdf_persistence.core.domain.exceptions import NotFound
 from rdf_persistence.domain.layout import system_database_name
 from rdf_persistence.services.access import load_caller_access
 from rdf_persistence.services.iris import DEFAULT_IRIS

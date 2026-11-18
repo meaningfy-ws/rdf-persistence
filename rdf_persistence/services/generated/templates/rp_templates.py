@@ -27,14 +27,14 @@ from pydantic import (
     field_validator,
     model_serializer
 )
-from rdf_persistence.domain.sparql import SparqlTerm
+from rdf_persistence.core.domain.sparql import SparqlTerm
 
 
 metamodel_version = "1.12.0"
 version = "None"
 
 
-from rdf_persistence.domain.base import RpModel as ConfiguredBaseModel
+from rdf_persistence.core.domain.base import RpModel as ConfiguredBaseModel
 
 
 

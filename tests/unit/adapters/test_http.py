@@ -3,11 +3,11 @@
 import httpx
 import pytest
 
-from rdf_persistence.adapters._http import HttpAdapter
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
-from rdf_persistence.domain.exceptions import PersistenceError
-from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
+from rdf_persistence.core.adapters._http import HttpAdapter
+from rdf_persistence.core.domain.exceptions import PersistenceError
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 from rdf_persistence.testkit.tokens import ISSUER
 
 

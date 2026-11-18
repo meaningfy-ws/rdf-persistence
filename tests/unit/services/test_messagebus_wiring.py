@@ -15,13 +15,13 @@ from rdflib import RDF, Graph, URIRef
 from rdflib.namespace import PROV
 
 from rdf_persistence import bootstrap, generated_models
-from rdf_persistence.domain.exceptions import NotFound
-from rdf_persistence.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_discussion import Comment, PostComment, PostReply
-from rdf_persistence.domain.generated.rp_files import DeleteFile
-from rdf_persistence.domain.generated.rp_provenance import Activity, Add
-from rdf_persistence.domain.generated.rp_workflow import Transition
+from rdf_persistence.core.domain.exceptions import NotFound
+from rdf_persistence.core.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_discussion import Comment, PostComment, PostReply
+from rdf_persistence.core.domain.generated.rp_files import DeleteFile
+from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add
+from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration

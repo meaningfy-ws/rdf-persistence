@@ -3,7 +3,7 @@
 import pytest
 from rdflib import Dataset, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import InvalidBody
+from rdf_persistence.core.domain.exceptions import InvalidBody
 from rdf_persistence.domain.layout import stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.iris import Iris

@@ -20,7 +20,7 @@ import yaml
 from rdflib import RDF, XSD, BNode, Literal, URIRef
 
 from rdf_persistence import Action, UnitOfWork, generated_models
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
     InvalidBody,
@@ -30,10 +30,10 @@ from rdf_persistence.domain.exceptions import (
     StoredDataInvalid,
     StoreUnavailable,
 )
-from rdf_persistence.domain.generated.rp_access import Grant
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_workflow import Transition, WorkflowTransition
-from rdf_persistence.domain.sparql import Triple, fill, term
+from rdf_persistence.core.domain.generated.rp_access import Grant
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_workflow import Transition, WorkflowTransition
+from rdf_persistence.core.domain.sparql import Triple, fill, term
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions

@@ -7,9 +7,9 @@ import pytest
 from rdflib import Graph, URIRef
 
 from rdf_persistence import InvalidGraph
-from rdf_persistence.domain.exceptions import InvalidBody
-from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.media import JSON, JSON_LD
+from rdf_persistence.core.domain.exceptions import InvalidBody
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.media import JSON, JSON_LD
 from rdf_persistence.services import jsonld as one_path
 from rdf_persistence.services.jsonld import NO_BASE, triples_of
 from rdf_persistence.services.loading import NOT_INLINE, parse_graph

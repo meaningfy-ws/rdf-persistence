@@ -13,16 +13,16 @@ from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
 
 from rdf_persistence import generated_models
-from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
-from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
-from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
-from rdf_persistence.domain.generated.rp_provenance import (
+from rdf_persistence.core.domain.generated.rp_access import Action, Grant, Prohibition
+from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
+from rdf_persistence.core.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.core.domain.generated.rp_provenance import (
     Activity,
     Generation,
     Invalidation,
     Replace,
 )
-from rdf_persistence.domain.generated.rp_workflow import Transition, Workflow
+from rdf_persistence.core.domain.generated.rp_workflow import Transition, Workflow
 from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings

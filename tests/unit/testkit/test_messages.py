@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, cast
 
-from rdf_persistence.domain.generated.rp_provenance import Activity, Add, Replace
+from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add, Replace
 from rdf_persistence.services.messagebus import MessageBus, Work, _name
 from rdf_persistence.testkit import RecordingObserver
 

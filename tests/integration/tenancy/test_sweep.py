@@ -2,8 +2,8 @@
 
 import pytest
 
-from rdf_persistence.domain.exceptions import StoreUnavailable
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.exceptions import StoreUnavailable
+from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.domain.layout import system_database_name
 from rdf_persistence.services.iris import tenant_resource_name
 from rdf_persistence.services.sweep import sweep

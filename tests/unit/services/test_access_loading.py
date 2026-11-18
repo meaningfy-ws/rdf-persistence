@@ -4,7 +4,7 @@ import pytest
 from rdflib import Literal, URIRef
 
 from rdf_persistence import Action, Principal, TenantState
-from rdf_persistence.domain.exceptions import NotFound
+from rdf_persistence.core.domain.exceptions import NotFound
 from rdf_persistence.domain.layout import graph_iri, system_database_name
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import load_caller_access

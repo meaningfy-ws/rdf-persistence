@@ -9,9 +9,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ValidationError
 
 from rdf_persistence import LabelUpdate, Problem, ProblemKind
-from rdf_persistence.domain import exceptions
-from rdf_persistence.domain.exceptions import PersistenceError
-from rdf_persistence.domain.media import PROBLEM_JSON
+from rdf_persistence.core.domain import exceptions
+from rdf_persistence.core.domain.exceptions import PersistenceError
+from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.problems import (
     KINDS,
     install_problem_handlers,
@@ -267,7 +267,7 @@ async def test_a_500_from_stored_data_the_schema_refuses_logs_no_traceback_and_n
     assert not record.exc_text, "and no rendered one"
     assert attributes(record) == {
         "rp.step": "answer-internal-error",
-        "error.type": "rdf_persistence.domain.exceptions.StoredDataInvalid",
+        "error.type": "rdf_persistence.core.domain.exceptions.StoredDataInvalid",
         "rp.error.detail": error_text(cause),
     }, "the type and the fault named without the value"
     assert marker not in "".join(

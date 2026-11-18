@@ -9,9 +9,9 @@ import pytest
 from fastapi import HTTPException
 
 from rdf_persistence import Page
-from rdf_persistence.domain.exceptions import BadQuery, SparqlError
+from rdf_persistence.core.domain.exceptions import BadQuery, SparqlError
+from rdf_persistence.core.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.domain.layout import system_database_name
-from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings

@@ -15,9 +15,9 @@ from pyparsing import ParseBaseException
 from rdflib import Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError, StoredDataInvalid
-from rdf_persistence.domain.generated.rp_core import RegistryKind
-from rdf_persistence.domain.sparql import (
+from rdf_persistence.core.domain.exceptions import InvalidMigration, SparqlError, StoredDataInvalid
+from rdf_persistence.core.domain.generated.rp_core import RegistryKind
+from rdf_persistence.core.domain.sparql import (
     CODEPOINT_ESCAPE,
     SparqlTerm,
     checked_group,
@@ -26,18 +26,18 @@ from rdf_persistence.domain.sparql import (
     fragment_terms,
     term,
 )
-from rdf_persistence.domain.sparql_parsing import parse_update
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
-from rdf_persistence.services.generated.templates.rp_templates import StampGuardTerms
-from rdf_persistence.services.store import Store
-from rdf_persistence.services.yaml_files import (
+from rdf_persistence.core.domain.sparql_parsing import parse_update
+from rdf_persistence.core.services.yaml_files import (
     MOST_PROBLEMS,
     SHOWN,
     problems_of,
     read_mapping,
     shown,
 )
+from rdf_persistence.services import vocabulary as v
+from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep
+from rdf_persistence.services.generated.templates.rp_templates import StampGuardTerms
+from rdf_persistence.services.store import Store
 
 # The toolkit's own predicates: a step may read them, never write them (PD-22 item 3).
 _OWN_PREDICATES = (v.VERSION, v.REGISTRY_KIND, v.DATA_SCHEMA_VERSION)

@@ -10,14 +10,14 @@ import pytest
 from rdflib import Graph, Literal, URIRef
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
     NotFound,
     StoreUnavailable,
 )
-from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 from rdf_persistence.testkit import assert_isomorphic
 from tests.logs import attributes, records_of
 

@@ -7,7 +7,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
 from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.services.provenance import activity_class_of
 

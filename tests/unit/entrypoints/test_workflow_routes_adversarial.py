@@ -4,7 +4,7 @@ import pytest
 from rdflib import Graph, URIRef
 
 from rdf_persistence import Action
-from rdf_persistence.domain.generated.rp_access import Grant
+from rdf_persistence.core.domain.generated.rp_access import Grant
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.generated.service.rp_service import (

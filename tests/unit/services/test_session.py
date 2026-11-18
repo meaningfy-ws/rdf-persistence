@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.services.session import open_session
 
 TENANT = "http://example.org/libraries/6f1c"

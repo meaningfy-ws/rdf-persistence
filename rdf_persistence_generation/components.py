@@ -16,7 +16,7 @@ from typing import Any
 from linkml.generators.jsonschemagen import JsonSchemaGenerator
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.services.artifacts import (
+from rdf_persistence.core.services.artifacts import (
     COMPONENT_REFERENCES,
     COMPONENTS_FILE,
     DEFINITIONS,

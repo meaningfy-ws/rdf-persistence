@@ -5,7 +5,7 @@ import asyncio
 import pytest
 from fastapi import FastAPI
 
-from rdf_persistence.domain.generated.rp_provenance import Add
+from rdf_persistence.core.domain.generated.rp_provenance import Add
 from rdf_persistence.services.generated.service.rp_service import ServiceSettings
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of

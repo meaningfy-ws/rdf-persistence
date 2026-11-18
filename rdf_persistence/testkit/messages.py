@@ -4,7 +4,7 @@ Register it on the real ``MessageBus`` and assert which activities a command led
 fake bus.
 """
 
-from rdf_persistence.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.services.messagebus import Work
 
 

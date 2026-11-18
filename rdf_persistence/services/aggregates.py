@@ -10,10 +10,10 @@ from typing import cast
 from linkml_runtime.linkml_model.meta import ClassDefinition
 from rdflib import RDF, URIRef
 
-from rdf_persistence.domain.exceptions import InvalidBody, NotFound
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.media import JSON
-from rdf_persistence.domain.sparql import Triple
+from rdf_persistence.core.domain.exceptions import InvalidBody, NotFound
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.media import JSON
+from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.schema_structure import iri_type_of

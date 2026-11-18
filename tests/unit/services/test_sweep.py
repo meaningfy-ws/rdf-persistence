@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import pytest
 from rdflib import Graph
 
-from rdf_persistence.domain.exceptions import NotFound, StoreNotWired, StoreUnavailable
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.exceptions import NotFound, StoreNotWired, StoreUnavailable
+from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.domain.layout import system_database_name
 from rdf_persistence.services.iris import tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork

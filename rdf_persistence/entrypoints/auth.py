@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Annotated, Final
 
 from fastapi import Depends, Header
 
-from rdf_persistence.domain.exceptions import InvalidToken
-from rdf_persistence.domain.generated.rp_access import Action
+from rdf_persistence.core.domain.exceptions import InvalidToken
+from rdf_persistence.core.domain.generated.rp_access import Action
 from rdf_persistence.services.access import load_caller_access
 from rdf_persistence.services.generated.service.rp_service import (
     Authorised,

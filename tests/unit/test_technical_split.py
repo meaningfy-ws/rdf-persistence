@@ -46,7 +46,7 @@ def test_no_schema_directly_under_model_is_annotated_technical():  # TC-07
 
 
 def test_the_service_models_generate_outside_the_domain():  # TC-08
-    domain_generated = import_module("rdf_persistence.domain.generated")
+    domain_generated = import_module("rdf_persistence.core.domain.generated")
     assert not (Path(domain_generated.__path__[0]) / "service").exists(), (
         "no service subpackage is left under domain.generated"
     )
@@ -219,9 +219,9 @@ def test_a_service_or_entrypoint_reaching_a_wire_model_breaks_layers(tmp_path, p
     [
         "rdf_persistence.domain.iris",
         "rdf_persistence.domain.tenant_move",
-        "rdf_persistence.domain.generated.service.rp_service",
+        "rdf_persistence.core.domain.generated.service.rp_service",
         "rdf_persistence.adapters.rp_wire",
-        "rdf_persistence.domain.generated.rp_service",
+        "rdf_persistence.core.domain.generated.rp_service",
     ],
 )
 def test_an_old_import_path_is_a_module_not_found_error(dotted):

@@ -40,7 +40,8 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import Field
 
-from rdf_persistence.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS
+from rdf_persistence.core.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS
+from rdf_persistence.core.services.artifacts import COMPONENT_REFERENCES, PROPERTIES, REF
 from rdf_persistence.entrypoints import problems
 from rdf_persistence.entrypoints.auth import BEARER_SCHEME
 from rdf_persistence.entrypoints.kit import ServiceKit
@@ -56,7 +57,6 @@ from rdf_persistence.entrypoints.negotiation import (
 )
 from rdf_persistence.entrypoints.problems import WWW_AUTHENTICATE
 from rdf_persistence.services.access import ACTIONS
-from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, PROPERTIES, REF
 from rdf_persistence.services.components import JsonSchema, component_schemas, served_folders
 from rdf_persistence.services.generated.service.rp_service import (
     GrantSet,

@@ -8,8 +8,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from rdflib import Graph
 
-from rdf_persistence.domain.exceptions import Forbidden, NotFound
-from rdf_persistence.domain.generated.rp_provenance import Activity, Generation
+from rdf_persistence.core.domain.exceptions import Forbidden, NotFound
+from rdf_persistence.core.domain.generated.rp_provenance import Activity, Generation
 from rdf_persistence.services.event_hub import EventHub
 from rdf_persistence.services.event_stream import KEEP_ALIVE, RESET, event_stream
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings

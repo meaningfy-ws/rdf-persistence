@@ -10,10 +10,10 @@ from collections.abc import Sequence
 
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.domain.exceptions import BadQuery, InvalidIri
-from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_discussion import Comment, PostComment
-from rdf_persistence.domain.generated.rp_workflow import Transition
+from rdf_persistence.core.domain.exceptions import BadQuery, InvalidIri
+from rdf_persistence.core.domain.generated.rp_access import Action
+from rdf_persistence.core.domain.generated.rp_discussion import Comment, PostComment
+from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.discussion import Discussion
 from rdf_persistence.services.generated.service.rp_service import (

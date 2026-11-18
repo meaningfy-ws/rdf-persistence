@@ -17,10 +17,10 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel
 from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.domain.exceptions import InvalidBody, InvalidIri, NotFound, UnknownRole
-from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.domain.generated.rp_discussion import (
+from rdf_persistence.core.domain.exceptions import InvalidBody, InvalidIri, NotFound, UnknownRole
+from rdf_persistence.core.domain.generated.rp_access import Action
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
+from rdf_persistence.core.domain.generated.rp_discussion import (
     Comment,
     Motivation,
     PostComment,

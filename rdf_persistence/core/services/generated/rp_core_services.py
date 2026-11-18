@@ -33,7 +33,7 @@ metamodel_version = "1.12.0"
 version = "None"
 
 
-from rdf_persistence.domain.base import RpModel as ConfiguredBaseModel
+from rdf_persistence.core.domain.base import RpModel as ConfiguredBaseModel
 
 
 
@@ -55,6 +55,13 @@ class LinkMLMeta(RootModel):
 
 
 linkml_meta = None
+
+
+class HttpSettings(ConfiguredBaseModel):
+    "The timeouts and the attempts of every HTTP client of the toolkit: the SPARQL store, the identity provider and the object store."
+    connect_timeout_seconds: float = Field(default=5.0, title="Connect timeout", description="The seconds an HTTP client waits to open a connection.", ge=0.001, le=31536000)
+    read_timeout_seconds: float = Field(default=30.0, title="Read timeout", description="The seconds an HTTP client waits for the answer.", ge=0.001, le=31536000)
+    max_attempts: int = Field(default=3, title="Maximum attempts", description="The most times the object store client tries a request.", ge=1)
 
 
 class LogContext(ConfiguredBaseModel):
@@ -92,4 +99,5 @@ class LogContext(ConfiguredBaseModel):
 
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
+HttpSettings.model_rebuild()
 LogContext.model_rebuild()

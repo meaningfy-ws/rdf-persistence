@@ -16,7 +16,7 @@ from typing import cast
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     CommitTooLarge,
     Forbidden,
@@ -24,8 +24,8 @@ from rdf_persistence.domain.exceptions import (
     NotFound,
     StoredDataInvalid,
 )
-from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_collections import ReferenceCollection
+from rdf_persistence.core.domain.generated.rp_access import Action
+from rdf_persistence.core.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules

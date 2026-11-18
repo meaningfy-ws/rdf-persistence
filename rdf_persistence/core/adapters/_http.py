@@ -11,9 +11,9 @@ from typing import Any, ClassVar, Self
 import httpx
 from pydantic import BaseModel
 
-from rdf_persistence.domain.exceptions import PersistenceError
-from rdf_persistence.domain.media import CONTENT_TYPE, JSON
-from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
+from rdf_persistence.core.domain.exceptions import PersistenceError
+from rdf_persistence.core.domain.media import CONTENT_TYPE, JSON
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 
 EMPTY_JSON_OBJECT = "{}"
 

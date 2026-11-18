@@ -14,7 +14,7 @@ from opentelemetry.context import Context
 from opentelemetry.trace import Span, SpanKind, Status, StatusCode
 from opentelemetry.util.types import AnyValue, Attributes
 
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
 
 tracer = trace.get_tracer("rdf_persistence", version("rdf-persistence"))
 

@@ -2,8 +2,8 @@
   "linkml": "1.12.1",
   "inputs": [
     {
-      "path": "rdf_persistence/model/technical/telemetry/rp_telemetry.yaml",
-      "sha256": "882d00cf53f6d4480898df01f27851f5953cf1e0cd00a064e097fa968d12aa43"
+      "path": "rdf_persistence/model/technical/core/rp_core_services.yaml",
+      "sha256": "5fbe977a181eb6b5594be12949513057c9384cc190b5c4265d95af18c198224c"
     },
     {
       "path": "rdf_persistence/services/schema.py",
@@ -11,7 +11,7 @@
     },
     {
       "path": "rdf_persistence/services/schema_structure.py",
-      "sha256": "d2167ff23845eadc0fbd504f3f9b95fe3d894ef1394170e008d745ec2f083643"
+      "sha256": "2480ed6e2260e6214e8df1c71b68a1acc000da7a2f8c67044564da10a8bb3ba3"
     },
     {
       "path": "rdf_persistence_generation/__init__.py",
@@ -23,11 +23,11 @@
     },
     {
       "path": "rdf_persistence_generation/checks/application.py",
-      "sha256": "a5b6bac1820a9f5292d0ae336a957a89554d7738ffdb7b5d4f3eab7a5a24c281"
+      "sha256": "5dce5f3f8a08962a962a6472b2d90cf83c8ebbd06c035536537463c9d11b6d1f"
     },
     {
       "path": "rdf_persistence_generation/checks/boundary.py",
-      "sha256": "f520a6d3add4815640531b095f716dd755f086d9a62611dab776ab5b348c51e4"
+      "sha256": "5507acefde49945ced733b1d92c0b61942e0dd3b5bd960f8a3216ff726279edb"
     },
     {
       "path": "rdf_persistence_generation/checks/default_instance.py",
@@ -35,7 +35,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/hard.py",
-      "sha256": "cb82e69319d0fa9da0a626d5ec2c9d4e5416dc1b1c10086484d7b9cb3dfd4dac"
+      "sha256": "c97821329ef8221ca7a193387fbdf1fbffacb21523399084ae1d0249b2d0fd47"
     },
     {
       "path": "rdf_persistence_generation/checks/python_package.py",
@@ -47,7 +47,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/toolkit_filled.py",
-      "sha256": "1ab8d1e4c0c30eac2de9c7c4c78dc9207e8616ca230d7217ed48d1920904c91b"
+      "sha256": "03660067500fff46883f27e771b4181d8c8e539bae60da29192d1986a8175842"
     },
     {
       "path": "rdf_persistence_generation/cli.py",
@@ -55,7 +55,7 @@
     },
     {
       "path": "rdf_persistence_generation/components.py",
-      "sha256": "51c8e89a80780e319cb658ead50d90b1593f2fafeaa7263c11c237b9f19bb183"
+      "sha256": "6579aac2078c105cb8a3cd1503d8c15aac61b2d1afcd3ca3a7d280a7afe6d16d"
     },
     {
       "path": "rdf_persistence_generation/config.py",
@@ -71,7 +71,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/jsonld_context.py",
-      "sha256": "ca5b405d4c603645c5560c7a747a58c31ba3c8d4d1144cd6e766f1a71be88efb"
+      "sha256": "e1cc7f5e70fe044a50a82c216d7b61ecf87c053cda80fe82aaff610fe269729f"
     },
     {
       "path": "rdf_persistence_generation/extensions/mermaid.py",
@@ -79,7 +79,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_split.py",
-      "sha256": "698c3a76db8d8824fec1011e38e00660bae9bd21b4d122824002b3b803bb427e"
+      "sha256": "c4f17ce6015a6dac3806ea1ae906863f2a6967e4687416c8f5fc2bde53d17dbe"
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_validators.py",
@@ -87,7 +87,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/shacl.py",
-      "sha256": "f60e1e26d10ae46a16fde906b8b560cae0ce3916f9ed3de536a0932e5244a51c"
+      "sha256": "d626a8db16a66afd24920ea175dae5bd66c0fd02cf9df8268167ac1b3233c959"
     },
     {
       "path": "rdf_persistence_generation/extensions/shacl_constraints.py",
@@ -99,11 +99,11 @@
     },
     {
       "path": "rdf_persistence_generation/lock.py",
-      "sha256": "e2bad4aa22e7ca9bc3543c974ed3bc7bb71621215bd0ae08f8dd92f60a7c128d"
+      "sha256": "b4b18ba0c970c56efc6521e6d61e0b19041cfaa807873606c4aeaa1671465ec5"
     },
     {
       "path": "rdf_persistence_generation/lock_step.py",
-      "sha256": "35a11b721fc1c344448141002a1a612056c26218f4515e6bb8a49bacc00142dc"
+      "sha256": "cdc3d85bc7b80835873ce489ee5e907dbb8f4191a5b03628bdc6915dd4f4ba90"
     },
     {
       "path": "rdf_persistence_generation/manifest.py",
@@ -168,20 +168,20 @@
   ],
   "outputs": [
     {
-      "path": "rdf_persistence/services/generated/telemetry/__init__.py",
+      "path": "rdf_persistence/core/services/generated/__init__.py",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "rdf_persistence/services/generated/telemetry/context.jsonld",
-      "sha256": "1938e331a16e31c8a2e7fd2f244051df414b3a97ca75134c0e5f5c9bfa520743"
+      "path": "rdf_persistence/core/services/generated/context.jsonld",
+      "sha256": "a3e3f497f7e43fb04d2811da9330e4506d1bbfb28f00cdaa42fd21ff8a7f3d72"
     },
     {
-      "path": "rdf_persistence/services/generated/telemetry/rp_telemetry.py",
-      "sha256": "9231d724323f379d0936a59f7efb85559a42beda8b828ff6be91be27b3329e26"
+      "path": "rdf_persistence/core/services/generated/rp_core_services.py",
+      "sha256": "c68134bdcd675213bf4098eecc7d8d299362785f93b0cec244d5e2b581151bee"
     },
     {
-      "path": "rdf_persistence/services/generated/telemetry/shapes.ttl",
-      "sha256": "e84703f62104a9db91622ccfdebabc0fea1f75ad8fdf68339ebbc81b7fcebff0"
+      "path": "rdf_persistence/core/services/generated/shapes.ttl",
+      "sha256": "8583a404963b96a08372c977a83b2f5b1a19ec9c4e7d7b4f1c66e9ab2d71c083"
     }
   ]
 }

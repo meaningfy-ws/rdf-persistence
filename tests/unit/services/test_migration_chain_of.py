@@ -4,7 +4,7 @@ import copy
 
 import pytest
 
-from rdf_persistence.domain.exceptions import InvalidMigration
+from rdf_persistence.core.domain.exceptions import InvalidMigration
 from rdf_persistence.services.migrations import chain_of, current_version, first_version, versions
 from rdf_persistence.services.schema import load_schema
 from tests.toy import TOY_SCHEMA

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from rdf_persistence.domain.exceptions import InvalidMigration
+from rdf_persistence.core.domain.exceptions import InvalidMigration
 from rdf_persistence.services.migrations import (
     first_version,
     load_chain,

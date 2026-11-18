@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from linkml_runtime.linkml_model.meta import ClassDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.domain.generated.rp_core import DatabaseKind, RpAnnotation
+from rdf_persistence.core.domain.generated.rp_core import DatabaseKind, RpAnnotation
 from rdf_persistence.services.schema_structure import (
     STORED_FILE,
     annotation,

@@ -10,9 +10,21 @@
          "@type": "xsd:float",
          "@id": "access_ttl_seconds"
       },
+      "rp.activity.class": {
+         "@id": "activityClass"
+      },
+      "rp.activity.class_iri": {
+         "@id": "activityClassIri"
+      },
+      "rp.activity.id": {
+         "@id": "activityId"
+      },
       "allowed_algorithms": {
          "@container": "@set",
          "@id": "allowed_algorithms"
+      },
+      "rp.blob.count": {
+         "@id": "blobCount"
       },
       "claim_idle_seconds": {
          "@type": "xsd:float",
@@ -22,17 +34,47 @@
          "@type": "xsd:float",
          "@id": "connect_timeout_seconds"
       },
+      "db.namespace": {
+         "@id": "dbNamespace"
+      },
+      "db.operation.name": {
+         "@id": "dbOperationName"
+      },
+      "db.response.status_code": {
+         "@id": "dbResponseStatusCode"
+      },
+      "db.system.name": {
+         "@id": "dbSystemName"
+      },
       "directory": {
          "@type": "@id",
          "@id": "directory"
+      },
+      "rp.error.detail": {
+         "@id": "errorDetail"
+      },
+      "error.type": {
+         "@id": "errorType"
+      },
+      "rp.event.origin": {
+         "@id": "eventOrigin"
       },
       "events": {
          "@type": "@id",
          "@id": "events"
       },
+      "exception.type": {
+         "@id": "exceptionType"
+      },
+      "rp.store.found_name": {
+         "@id": "foundStoreName"
+      },
       "http": {
          "@type": "@id",
          "@id": "http"
+      },
+      "http.response.status_code": {
+         "@id": "httpResponseStatusCode"
       },
       "hub_queue_size": {
          "@id": "hub_queue_size"
@@ -72,8 +114,27 @@
       "max_roots": {
          "@id": "max_roots"
       },
+      "rp.message.limit": {
+         "@id": "messageLimit"
+      },
+      "messaging.destination.name": {
+         "@id": "messagingDestinationName"
+      },
+      "messaging.system.name": {
+         "@id": "messagingSystemName"
+      },
+      "rp.migration.name": {
+         "@id": "migrationName"
+      },
+      "rp.observer.name": {
+         "@id": "observerName"
+      },
       "page_size": {
          "@id": "page_size"
+      },
+      "rp.iri_policy.fields": {
+         "@container": "@set",
+         "@id": "policyFields"
       },
       "polling_interval_ms": {
          "@id": "polling_interval_ms"
@@ -90,6 +151,16 @@
          "@type": "xsd:float",
          "@id": "relay_interval_seconds"
       },
+      "rp.resource": {
+         "@id": "resource"
+      },
+      "rp.sweep.resources": {
+         "@container": "@set",
+         "@id": "resources"
+      },
+      "rp.store.response_body": {
+         "@id": "responseBody"
+      },
       "resume_window_seconds": {
          "@type": "xsd:float",
          "@id": "resume_window_seconds"
@@ -98,12 +169,30 @@
          "@type": "xsd:float",
          "@id": "retention_seconds"
       },
+      "rp.schema.id": {
+         "@id": "schemaId"
+      },
+      "rp.restore.source_tenant.id": {
+         "@id": "sourceTenantId"
+      },
       "sse": {
          "@type": "@id",
          "@id": "sse"
       },
+      "rp.step": {
+         "@id": "step"
+      },
+      "rp.store.name": {
+         "@id": "storeName"
+      },
       "stream": {
          "@id": "stream"
+      },
+      "rp.sweep.system_created": {
+         "@id": "systemCreated"
+      },
+      "rp.tenant.id": {
+         "@id": "tenantId"
       },
       "ttl_seconds": {
          "@type": "xsd:float",
@@ -129,6 +218,9 @@
       },
       "LimitSettings": {
          "@id": "LimitSettings"
+      },
+      "LogContext": {
+         "@id": "LogContext"
       },
       "SseSettings": {
          "@id": "SseSettings"

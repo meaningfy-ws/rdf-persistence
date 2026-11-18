@@ -11,7 +11,7 @@ import pytest
 
 from rdf_persistence.adapters import zitadel as zitadel_adapter
 from rdf_persistence.adapters.zitadel import ZitadelIdentity
-from rdf_persistence.domain.exceptions import IdentityUnavailable, NotFound
+from rdf_persistence.core.domain.exceptions import IdentityUnavailable, NotFound
 from rdf_persistence.services.generated.settings.rp_settings import DirectorySettings
 from rdf_persistence.testkit import zitadel as zitadel_testkit
 from tests.logs import attributes, records_of

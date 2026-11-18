@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from rdf_persistence.domain.exceptions import InvalidMigration
+from rdf_persistence.core.domain.exceptions import InvalidMigration
 from rdf_persistence.services.generated.service.rp_service import Migration
 from rdf_persistence.services.migrations import load_migration, migration_file_name
 from rdf_persistence.services.schema_structure import generation_view

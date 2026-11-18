@@ -18,7 +18,7 @@ from rdf_persistence import (
     generated_models,
     new_part,
 )
-from rdf_persistence.domain.generated import (
+from rdf_persistence.core.domain.generated import (
     rp_access,
     rp_collections,
     rp_core,

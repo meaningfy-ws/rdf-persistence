@@ -3,7 +3,7 @@
 import random
 from datetime import UTC, datetime, timedelta
 
-from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.core.domain.generated.rp_discussion import Comment, Motivation
 from rdf_persistence.services.discussion import visible
 
 TARGET = "https://example.org/libraries/6f1c0c1e/books/b1"

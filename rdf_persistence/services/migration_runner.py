@@ -18,12 +18,14 @@ from typing import cast
 
 from rdflib import Dataset, URIRef
 
-from rdf_persistence.domain.exceptions import InvalidBody, MigrationFailed, PersistenceError
-from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.sparql_parsing import prepare_update
+from rdf_persistence.core.domain.exceptions import InvalidBody, MigrationFailed, PersistenceError
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.core.domain.sparql_parsing import prepare_update
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import log_extra, traced
+from rdf_persistence.core.services.yaml_files import SHOWN, shown
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Migration
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.migrations import (
     Chain,
     SchemaChain,
@@ -36,9 +38,7 @@ from rdf_persistence.services.migrations import (
     versions,
 )
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.telemetry import log_extra, traced
 from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.services.yaml_files import SHOWN, shown
 
 log = logging.getLogger(__name__)
 

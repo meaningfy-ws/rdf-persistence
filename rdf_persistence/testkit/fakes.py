@@ -13,8 +13,7 @@ from rdflib.namespace import XSD
 from rdflib.query import Result
 from rdflib.term import Node
 
-from rdf_persistence.domain.blob_keys import checked_blob_key
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
@@ -22,11 +21,12 @@ from rdf_persistence.domain.exceptions import (
     PersistenceError,
     TenantGone,
 )
-from rdf_persistence.domain.generated.rp_core import AggregateKey, Principal
-from rdf_persistence.domain.generated.rp_files import BlobEntry
-from rdf_persistence.domain.generated.rp_provenance import Activity
-from rdf_persistence.domain.media import N_QUADS
-from rdf_persistence.domain.sparql_parsing import prepare_query, prepare_update
+from rdf_persistence.core.domain.generated.rp_core import AggregateKey, Principal
+from rdf_persistence.core.domain.generated.rp_files import BlobEntry
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.media import N_QUADS
+from rdf_persistence.core.domain.sparql_parsing import prepare_query, prepare_update
+from rdf_persistence.domain.blob_keys import checked_blob_key
 from rdf_persistence.services.events import Receive
 from rdf_persistence.services.generated.service.rp_service import AccountSummary, EventEnvelope
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris

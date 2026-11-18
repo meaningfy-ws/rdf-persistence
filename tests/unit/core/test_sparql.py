@@ -10,9 +10,9 @@ from rdflib import BNode, Dataset, Graph, Literal, URIRef
 from rdflib.namespace import XSD
 from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 
-from rdf_persistence.domain.base import RpModel
-from rdf_persistence.domain.exceptions import SparqlError
-from rdf_persistence.domain.sparql import (
+from rdf_persistence.core.domain.base import RpModel
+from rdf_persistence.core.domain.exceptions import SparqlError
+from rdf_persistence.core.domain.sparql import (
     SparqlTerm,
     checked_group,
     count,

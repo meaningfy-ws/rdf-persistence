@@ -5,7 +5,7 @@ import socket
 import pytest
 
 from rdf_persistence import Conflict, Principal, Session, UnitOfWork
-from rdf_persistence.domain.exceptions import BadQuery, InvalidIri
+from rdf_persistence.core.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import iri_types

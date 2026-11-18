@@ -12,9 +12,9 @@ from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.exceptions import Conflict, KeyConflict, NotFound
-from rdf_persistence.domain.generated.rp_core import KeyDuplicate
-from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.core.domain.exceptions import Conflict, KeyConflict, NotFound
+from rdf_persistence.core.domain.generated.rp_core import KeyDuplicate
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.services.session import Session
 from tests.integration.store.sessions import (
     BEN,

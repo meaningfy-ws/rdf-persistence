@@ -16,11 +16,12 @@ import httpx
 import jwt
 from pydantic import ValidationError
 
-from rdf_persistence.adapters._http import HttpAdapter
 from rdf_persistence.adapters.generated.rp_wire import DiscoveryDocument, JwtClaims
-from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
+from rdf_persistence.core.adapters._http import HttpAdapter
+from rdf_persistence.core.domain.exceptions import IdentityUnavailable, InvalidToken
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 from rdf_persistence.services.generated.service.rp_service import VerifiedCaller
-from rdf_persistence.services.generated.settings.rp_settings import HttpSettings, JwksSettings
+from rdf_persistence.services.generated.settings.rp_settings import JwksSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.tokens import EpochClock
 

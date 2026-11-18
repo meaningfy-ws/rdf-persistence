@@ -11,8 +11,8 @@ from uuid import UUID
 import pytest
 from rdflib import XSD, Graph, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import DatabaseGone, StoreUnavailable
-from rdf_persistence.domain.sparql import term
+from rdf_persistence.core.domain.exceptions import DatabaseGone, StoreUnavailable
+from rdf_persistence.core.domain.sparql import term
 from tests.toy import library_slots
 from tests.unit.services import test_tenant_sweep as worked
 from tests.unit.services.test_tenant_sweep import (

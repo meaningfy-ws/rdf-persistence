@@ -12,14 +12,14 @@ from botocore.response import StreamingBody
 from botocore.stub import Stubber
 
 from rdf_persistence.adapters.s3 import S3FileStore
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     NotFound,
     StoreUnavailable,
     TenantGone,
 )
-from rdf_persistence.domain.generated.rp_files import BlobEntry
-from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
+from rdf_persistence.core.domain.generated.rp_files import BlobEntry
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
 from tests.logs import attributes, records_of
 

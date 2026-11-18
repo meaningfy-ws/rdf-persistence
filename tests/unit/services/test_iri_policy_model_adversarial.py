@@ -9,7 +9,7 @@ from collections.abc import Callable
 import pytest
 from pydantic import ValidationError
 
-from rdf_persistence.domain.exceptions import InvalidIri, NotFound
+from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.services.generated.service.rp_service import (
     IdKind,
     IdSpec,

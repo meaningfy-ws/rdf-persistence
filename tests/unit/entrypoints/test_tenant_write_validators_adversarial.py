@@ -6,9 +6,9 @@ from contextlib import asynccontextmanager
 import httpx
 
 from rdf_persistence import InvalidBody, Page
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.media import JSON
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.services.iris import tenant_resource_name
 from tests.toy_service import ToyService, principal_of
 from tests.unit.entrypoints.scene import PROBLEMS, Scene, problem_of

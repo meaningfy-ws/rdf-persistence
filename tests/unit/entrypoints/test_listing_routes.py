@@ -8,7 +8,7 @@ import httpx
 import pytest
 
 from rdf_persistence import Page
-from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
+from rdf_persistence.core.domain.generated.rp_access import Action, Grant, Prohibition
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.listing_shelf import Shelf
 

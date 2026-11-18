@@ -11,10 +11,15 @@ import pytest
 from rdflib import XSD, Graph, Literal, URIRef
 
 from rdf_persistence import InvalidGraph
-from rdf_persistence.domain.exceptions import DatabaseGone, InvalidIri, NotFound, StoreUnavailable
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.core.domain.exceptions import (
+    DatabaseGone,
+    InvalidIri,
+    NotFound,
+    StoreUnavailable,
+)
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.loading import NOT_INLINE, parse_graph

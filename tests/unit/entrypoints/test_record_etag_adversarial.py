@@ -3,8 +3,8 @@
 import pytest
 
 from rdf_persistence import GrantSet
-from rdf_persistence.domain.generated.rp_access import Action, Grant
-from rdf_persistence.domain.media import JSON, TURTLE
+from rdf_persistence.core.domain.generated.rp_access import Action, Grant
+from rdf_persistence.core.domain.media import JSON, TURTLE
 from rdf_persistence.entrypoints.negotiation import RECORD_ETAG
 from tests.toy_service import principal_of
 from tests.unit.entrypoints.tenant_requests import rename

@@ -131,8 +131,8 @@ def toolkit_base_module() -> str:
     """The module that holds ``RpModel``, for the toolkit's own run (PD-8).
 
     It sits beside the metamodel's generated package: ``python_package`` of ``rp.yaml`` with its
-    ``generated`` leaf replaced by ``base`` (``rdf_persistence.domain.generated`` gives
-    ``rdf_persistence.domain.base``).
+    ``generated`` leaf replaced by ``base`` (``rdf_persistence.core.domain.generated`` gives
+    ``rdf_persistence.core.domain.base``).
     """
     root = load_schema(METAMODEL_DIR / "rp.yaml").schema
     package = _dotted_package(root)

@@ -9,10 +9,10 @@ from uuid import uuid4
 
 from rdflib import URIRef
 
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.domain.layout import system_database_name
-from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services.access import AccessRules, load_caller_access, load_role_definitions
 from rdf_persistence.services.generated.service.rp_service import (
     IdKind,
