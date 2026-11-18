@@ -167,6 +167,34 @@ def test_the_ci_unit_jobs_run_the_ci_unit_lane_in_shards_and_combine_their_cover
     assert "run: make coverage-combine" in ci, "a CI job must combine the shards' coverage"
 
 
+def _ci_job(name: str) -> str:
+    ci = (TESTS_ROOT_DIR.parent / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
+    match = re.search(rf"^  {re.escape(name)}:\n(.*?)(?=^  \S|\Z)", ci, re.DOTALL | re.MULTILINE)
+    assert match, f"ci.yaml has no job {name}"
+    return match.group(1)
+
+
+def test_the_generator_job_hands_its_coverage_to_the_job_that_scans() -> None:
+    """D-15: the scan job downloads ``unit-shard-*``; the generator's report is uploaded under it."""
+    upload = _ci_job("test-generator")
+    scan = _ci_job("unit")
+
+    assert "actions/upload-artifact@v4" in upload, "test-generator must upload its coverage"
+    assert "name: unit-shard-generator" in upload, "the artifact must match the scan's pattern"
+    assert "coverage-generator.xml" in upload, "the generator's coverage report is uploaded"
+    assert "pattern: unit-shard-*" in scan, "the scan job downloads the shards by this pattern"
+    assert "test-generator" in scan.split("steps:")[0], "the scan job must wait for test-generator"
+
+
+def test_sonar_reads_the_library_and_the_generator_coverage() -> None:
+    """D-15: both reports are listed, so the generator's lines stop counting as uncovered."""
+    sonar = (TESTS_ROOT_DIR.parent / "sonar-project.properties").read_text(encoding="utf-8")
+
+    assert "sonar.python.coverage.reportPaths=coverage.xml,coverage-generator.xml" in sonar, (
+        "sonar must list coverage.xml and coverage-generator.xml"
+    )
+
+
 def test_a_shard_runs_one_balanced_group_without_the_floor() -> None:
     shard = expanded(" ".join(recipe_of("test-unit-ci"))).replace("$(GROUP)", "3")
 

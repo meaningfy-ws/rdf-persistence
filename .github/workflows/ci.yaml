@@ -117,7 +117,7 @@ jobs:
   # The floor and SonarCloud read the shards' union, so they run once, after every shard.
   unit:
     name: Unit tests (coverage floor)
-    needs: unit-shard
+    needs: [unit-shard, test-generator]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -139,6 +139,7 @@ jobs:
           retention-days: 14
           path: |
             coverage.xml
+            coverage-generator.xml
             test-results-*.xml
 
       - name: SonarCloud scan
@@ -169,3 +170,15 @@ jobs:
         with:
           node-version: "20"
       - run: make test-generator
+
+      # Named like the unit shards, so the scan job's `unit-shard-*` download picks it up. Only the
+      # XML reports go: the shards' `.coverage.*` data is what `make coverage-combine` merges.
+      - name: Upload the generator's coverage report and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-shard-generator
+          retention-days: 1
+          path: |
+            coverage-generator.xml
+            test-results-generator.xml

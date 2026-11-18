@@ -6,8 +6,6 @@ from pathlib import Path
 
 import yaml
 
-from rdf_persistence_generation.generated import rp_generation
-
 PACKAGE = Path(__file__).resolve().parents[3] / "rdf_persistence"
 TESTKIT = PACKAGE / "testkit"
 GENERATION_SCHEMA = PACKAGE.parent / "rdf_persistence_generation" / "model" / "rp_generation.yaml"
@@ -80,7 +78,9 @@ def test_the_records_a_library_testkit_module_imports_live_in_the_testkit_models
         for module, name in imports(path)
         if is_under(module, TESTKIT_MODELS)
     }
-    in_generation = {name for name in imported if hasattr(rp_generation, name)}
+    schema = yaml.safe_load(GENERATION_SCHEMA.read_text(encoding="utf-8"))
+    declared = set(schema["classes"]) | set(schema["enums"])
+    in_generation = imported & declared
     missing = {name for name in imported if not hasattr(testkit_models, name)}
     assert imported, "the library testkit imports no record from its models"
     assert in_generation == set(), f"defined in rp_generation: {sorted(in_generation)}"

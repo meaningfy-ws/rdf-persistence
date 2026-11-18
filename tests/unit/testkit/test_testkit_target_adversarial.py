@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 import pytest
-import yaml
 from pydantic import BaseModel, Field
 
 from rdf_persistence.testkit.generated.rp_testkit import ClassShape, FieldFlags, SlotShape
@@ -117,57 +116,3 @@ def test_the_line_text_is_unchanged() -> None:
     """Tries the exact wording of a flag line, which consumers' snapshots may hold."""
     lines = model_shape_diff([shape(False, False)], [Plain])
     assert "field differs: Plain.name: required True in code, False in schema" in lines, lines
-
-
-def test_load_cases_resolves_paths_and_leaves_absent_lists_empty(tmp_path: Path) -> None:
-    """Tries a row with no valid/invalid, one with an absolute path, and a refused extra key."""
-    from rdf_persistence_generation.testkit.conformance import load_cases
-
-    cases = tmp_path / "cases.yaml"
-    cases.write_text(
-        yaml.safe_dump(
-            [
-                {"kind": "pattern", "class_name": "A"},
-                {
-                    "kind": "pattern",
-                    "class_name": "B",
-                    "valid": ["/abs/x.json"],
-                    "invalid": ["y.json"],
-                },
-            ]
-        )
-    )
-    first, second = load_cases(cases)
-    assert first.valid == [], "an absent list is empty"
-    assert first.invalid == [], "an absent list is empty"
-    assert second.valid == ["/abs/x.json"], "an absolute path stays absolute"
-    assert second.invalid == [str(tmp_path / "y.json")], (
-        "a relative path is resolved beside the file"
-    )
-    cases.write_text(yaml.safe_dump([{"kind": "pattern", "class_name": "A", "bogus": 1}]))
-    with pytest.raises(Exception, match="bogus"):
-        load_cases(cases)
-
-
-def test_load_cases_of_an_empty_file_is_empty(tmp_path: Path) -> None:
-    """Tries an empty YAML file."""
-    from rdf_persistence_generation.testkit.conformance import load_cases
-
-    empty = tmp_path / "cases.yaml"
-    empty.write_text("")
-    assert load_cases(empty) == [], "an empty file has no cases"
-
-
-def test_a_check_problem_replaced_keeps_what_it_does_not_name() -> None:
-    """Tries the pipeline's rewrite of a problem: rule, element and message stay; a prior step is overwritten."""
-    from rdf_persistence_generation.generated.rp_generation import CheckProblem
-
-    problem = CheckProblem(rule="r", element="e", message="m", step="old", schema_file="a.yaml")
-    changed = problem.replaced(schema_file="sub/b.yaml", step="new")
-    assert (changed.rule, changed.element, changed.message) == ("r", "e", "m"), (
-        "unnamed fields were lost"
-    )
-    assert (changed.schema_file, changed.step) == ("sub/b.yaml", "new"), (
-        "named fields were not replaced"
-    )
-    assert problem.step == "old", "the original problem was changed"

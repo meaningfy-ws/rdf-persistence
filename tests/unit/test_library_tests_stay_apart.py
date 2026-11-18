@@ -29,6 +29,7 @@ TOOL_USERS = frozenset(
         "tests/unit/services/test_collaboration_discussion_adversarial.py",
         "tests/unit/services/test_activity_shape.py",
         "tests/unit/services/test_mapper.py",
+        "tests/feature/test_technical_models.py",
     }
 )
 
@@ -191,9 +192,9 @@ def test_a_listed_file_that_does_not_exist_is_named_as_stale(tmp_path: Path) -> 
     ], "the missing file was not named"
 
 
-def test_tool_users_are_the_eight_files_of_the_design() -> None:
-    """TC-28: the set is the eight of PD-9, so a ninth is a decision, not an edit."""
-    assert len(TOOL_USERS) == 8, "TOOL_USERS differs from the eight files of design PD-9"
+def test_tool_users_are_the_nine_files_of_the_design() -> None:
+    """TC-28: the eight of PD-9 and the one D-13 adds, so a tenth is a decision, not an edit."""
+    assert len(TOOL_USERS) == 9, "TOOL_USERS differs from the nine files of design PD-9 and D-13"
 
 
 def test_the_repository_tests_keep_the_two_pyramids_apart() -> None:
