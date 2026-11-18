@@ -19,3 +19,6 @@ imports:
   - rp_collections
   - rp_discussion
   - rp_workflow
+annotations:
+  python_package: rdf_persistence.domain.generated
+  public_package: rdf_persistence

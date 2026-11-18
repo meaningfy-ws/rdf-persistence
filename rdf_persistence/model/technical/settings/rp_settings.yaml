@@ -18,6 +18,7 @@ imports:
   - linkml:types
 annotations:
   module_kind: technical
+  python_package: rdf_persistence.services.generated.settings
 
 classes:
   HttpSettings:

@@ -17,6 +17,7 @@ imports:
   - rdf_persistence/model/rp_tenancy
 annotations:
   module_kind: technical
+  python_package: rdf_persistence.services.generated.service
 
 classes:
   Any:

@@ -445,3 +445,38 @@ package name are leader's choices (DEC-2, DEC-5).
   Under the floor: S1 (scenario-map rows, done before the archive per D-17), S3 (a guard that the
   generator's integration tier loads no container plugin: stage 4, task 4.2). S2 (hand-over and
   ticks) is the PR's last commit.
+- **D-21 Stage 4's test tiers are built while stage 3 runs** (lead, under the developer's "run
+  things in parallel"). Tasks 4.1 to 4.3 add only new files under `tests/generator/{feature,
+  integration,e2e}/` and do not depend on F-4, so their builders start from stage 2's merge
+  (b60c963) in parallel with task 3.1. They are committed onto stage 4's branch, cut from
+  `develop` after stage 3 merges, and their gates run there; stage 3 and stage 4 remain one PR
+  each, in order.
+- **D-22 Stage 3's impact is CRITICAL, accepted** (lead). `metamodel_module` has 2 direct callers
+  (`generate_module_import` and its test) and reaches 114 symbols to depth 3 through generation;
+  the output must not change (TC-40), which `make check-generated` checks. GitNexus's MCP index
+  reads the main checkout (still before the move), so its counts are indicative.
+- **D-23 Task 3.1 as built** (builder of 3.1, accepted by the lead). (1) TC-39 cannot hold
+  literally: PD-6's own key `public_package` generates the enum member
+  `GenerationAnnotation.PUBLIC_PACKAGE`; it is an `ast` check that no constant `TOOLKIT_PACKAGE`
+  or `PUBLIC_PACKAGE` is assigned, imported or used. (2) `rp.yaml` also carries
+  `python_package: rdf_persistence.domain.generated`: rule (a) needs it on every module of the
+  toolkit target, and `rp.yaml` is one. (3) The two rules live in `checks/python_package.py`, run
+  by the hard step with the target's `package`; TC-35 to TC-37 assert the problem, and "nothing
+  written" holds by the pipeline's rule that a failing hard step blocks every write.
+- **D-24 Stage 3 is a small stage; its review** (lead). About 450 added lines, one task: one L2+L3
+  pass, the tester, the full gates and CI, no separate checker (as D-6). Review: 7 findings, no
+  Critical. Owed to the docs stage: W1 (`architecture/generation.adoc`: the two `HardRule`
+  members, the toolkit's run checks its own modules' `python_package`, the two annotations in
+  the table), W2 (a new technical group also needs `python_package` on its schema), S3
+  (`develop/index.adoc` "Add a check rule": a rule with its own module joins
+  `steps._hard_problems`). Under the floor: W3 (TC-37 is tested in two halves; the consumer run
+  against a disagreeing metamodel holds by reading, `is_toolkit_schema` returns early), S1 (no
+  end-to-end "writes nothing" test for the two rules), S2 (TC-38 plants no fault in a technical
+  schema), S4 (`pydantic_split.py`'s docstring cites another change's DEC-6).
+- **D-25 Stage 3 tester** (lead; 35 tests, 13 failed first, 3 findings, none accepted). Under the
+  floor, added to #164: (P2) `public_package` is not validated, so a malformed value in `rp.yaml`
+  would make a consumer write a broken import (only the toolkit edits `rp.yaml`); (P3)
+  `metamodel_module` does not validate `python_package` itself (rule (b) catches it on the
+  toolkit's run); (P3) `public_package()` is cached over a module constant, stale only in tests
+  that swap the metamodel. The sort keeps the end-to-end tests of the two error-matrix rows
+  (which also closes the review's S1) and the consumer half of TC-37 (W3).

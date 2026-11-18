@@ -14,6 +14,8 @@ default_range: string
 imports:
   - linkml:types
   - rp_core
+annotations:
+  python_package: rdf_persistence.domain.generated
 
 classes:
   Described:

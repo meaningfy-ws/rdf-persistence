@@ -16,6 +16,7 @@ imports:
   - linkml:types
 annotations:
   module_kind: technical
+  python_package: rdf_persistence.services.generated.telemetry
 
 slots:
   step:
