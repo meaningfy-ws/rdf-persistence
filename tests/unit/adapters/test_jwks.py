@@ -10,7 +10,7 @@ import jwt
 import pytest
 
 from rdf_persistence.adapters.jwks import DISCOVERY_PATH, JwksTokenVerifier
-from rdf_persistence.domain.exceptions import IdentityUnavailable, InvalidToken
+from rdf_persistence.core.domain.exceptions import IdentityUnavailable, InvalidToken
 from rdf_persistence.services.generated.service.rp_service import IriPolicy, ServiceSettings
 from rdf_persistence.services.generated.settings.rp_settings import JwksSettings
 from rdf_persistence.services.iris import Iris

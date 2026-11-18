@@ -4,13 +4,13 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     NotAcceptable,
     PreconditionRequired,
     UnsupportedMediaType,
 )
-from rdf_persistence.domain.media import (
+from rdf_persistence.core.domain.media import (
     JSON,
     JSON_LD,
     N_QUADS,

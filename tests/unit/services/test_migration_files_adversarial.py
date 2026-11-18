@@ -12,9 +12,9 @@ import yaml
 from rdflib import Literal, URIRef
 from rdflib.plugins.sparql.parser import parseUpdate
 
-from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError
-from rdf_persistence.domain.generated.rp_core import RegistryKind
-from rdf_persistence.domain.sparql import term
+from rdf_persistence.core.domain.exceptions import InvalidMigration, SparqlError
+from rdf_persistence.core.domain.generated.rp_core import RegistryKind
+from rdf_persistence.core.domain.sparql import term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Migration
 from rdf_persistence.services.migrations import load_migration, migration_request

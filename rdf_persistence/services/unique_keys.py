@@ -14,9 +14,9 @@ from rdflib import RDF, BNode, Literal, URIRef
 from rdflib.namespace import XSD
 from rdflib.query import ResultRow
 
-from rdf_persistence.domain.exceptions import InvalidBody, KeyConflict
-from rdf_persistence.domain.generated.rp_core import AggregateKey, KeyDuplicate
-from rdf_persistence.domain.sparql import (
+from rdf_persistence.core.domain.exceptions import InvalidBody, KeyConflict
+from rdf_persistence.core.domain.generated.rp_core import AggregateKey, KeyDuplicate
+from rdf_persistence.core.domain.sparql import (
     SparqlTerm,
     Triple,
     count,

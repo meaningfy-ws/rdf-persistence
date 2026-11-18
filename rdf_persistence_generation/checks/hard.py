@@ -16,7 +16,7 @@ from linkml_runtime.linkml_model.meta import (
 )
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.domain.generated.rp_core import (
+from rdf_persistence.core.domain.generated.rp_core import (
     DatabaseKind,
     GraphKind,
     ModuleKind,

@@ -3,7 +3,7 @@
 import pytest
 from rdflib import Literal, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, NotFound
+from rdf_persistence.core.domain.exceptions import Conflict, NotFound
 from rdf_persistence.testkit import FakeStore, fake_session
 from tests.toy import TENANT, book_iri
 

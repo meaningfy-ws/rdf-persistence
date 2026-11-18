@@ -7,7 +7,7 @@ import pytest
 from linkml_runtime.linkml_model.annotations import Annotation
 
 from rdf_persistence import Action
-from rdf_persistence.domain.exceptions import BadQuery
+from rdf_persistence.core.domain.exceptions import BadQuery
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.iris import DEFAULT_IRIS
 from rdf_persistence.services.listing import Listings

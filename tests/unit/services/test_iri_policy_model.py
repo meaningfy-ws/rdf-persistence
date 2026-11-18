@@ -5,7 +5,7 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from rdf_persistence.domain.exceptions import InvalidIri
+from rdf_persistence.core.domain.exceptions import InvalidIri
 from rdf_persistence.services.generated.service.rp_service import IdSpec, IriPolicy, ServiceSettings
 from rdf_persistence.services.iris import check_iri_policy
 

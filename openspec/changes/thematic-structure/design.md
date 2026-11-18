@@ -508,3 +508,56 @@ consumers later.
   schema is merged once, not also written as its own file (with an import edge in the W1 test).
   Under the floor: S4 (the kind/folder problem names only the package; no end-to-end "writes
   nothing"). S5: the new tests' scenario-map rows are added before this change's archive.
+- **D-12 Stage 2 (`core`) as built** (builder of 2.1, accepted by the lead). (1) `rp_settings.yaml`
+  imports `../core/rp_core_services` by a relative path: the library's `metamodel_importmap` maps
+  only `model/*.yaml`, and the relative path needs no library change. (2) The move and the
+  `domain.base` shim are two commits, so `git log --follow` sees `core/domain/base.py` as a rename
+  (TC-02). (3) `test_theme_layout.py` gains a `SHIMS` set (a listed shim may stand at its old path)
+  and `test_no_old_module_paths.py`'s `EXEMPT` lists the five files that name the shim's old path
+  on purpose. (4) `layers-across-themes` is four contracts, not three: a forbidden contract cannot
+  state the entrypoints/adapters independence both ways in one. (5) PD-4 (c) needs no change yet:
+  the library guard already scans every layer folder. (6) `tests/unit/services/test_telemetry.py`
+  and `tests/unit/adapters/test_http.py` stay until their themes' test folders exist (PD-11).
+  (7) The telemetry attribute `error.type` of the toolkit's exceptions now names
+  `rdf_persistence.core.domain.exceptions.X` (RISK-3's family; the release notes say so). (8) The
+  ast-grep pattern `from a.b.c import $$$A` also matched submodules and partial name lists; the
+  builder repaired ~270 lines and checked every import's names against the original — later
+  stages use explicit patterns and read the diff. (9) The model guard misses a consumer class whose
+  base comes through `from rdf_persistence import RpModel`; it predates the move: #173.
+- **D-13 Stage 2 review and tester, accepted** (lead; review 9 findings, tester 87 tests, 11 failed
+  first, 6 findings; one fixer pass). The review disagreed with D-12 (5), (6), (9); the lead agrees
+  and those readings are replaced here. Critical: C1 = tester F2 (since the move nothing forbids
+  `core` importing the unmoved old layout — `themes-ordered` has one theme, the old `layers` and
+  `domain-never-imports-technical-models` name only the old packages — so two old contracts were
+  weakened): a temporary forbidden contract, source `rdf_persistence.core`, forbidden the old
+  `domain`, `services`, `adapters`, `entrypoints` packages (removed at stage 7 when the old layout is
+  gone), and `domain-never-imports-technical-models` gains `rdf_persistence.core.domain` (tester
+  F3); TC-09 and TC-53 plant their imports at `core/domain/generated/`. C2 = tester F1 (the
+  library's model guard no longer scans `core`; D-12 (5) was wrong): `LIBRARY_LAYERS` gains `core`,
+  with a planted record in `core/services`. Accepted below Critical: W1 (TC-24 is not met for a real
+  consumer; D-12 (9) deferred it): `rdf_persistence.RpModel` joins `FORBIDDEN_BASES`, tested on a
+  consumer fixture package, closing #173; W2 (D-12 (6) was wrong, `tests/unit/core/` exists): the
+  telemetry and HTTP tests move there; W3 (docs naming moved paths: `architecture/index.adoc`
+  ~292, ~344, `questions.adoc` ~274, `generation.adoc` ~304, ~320, ~322, `develop/index.adoc` ~26);
+  S2 (`test_technical_split.py`'s historical paths were rewritten into paths that never existed:
+  restored and exempt). The tester's `xfail(strict=True)` tests are not kept as xfails (no new
+  xfail): the fix makes the accepted ones pass; the rest are sorted. Under the floor: review S1
+  (contract labels "3/3"), S3 (two stale docstrings), S4 (the move and the import rewrite were one
+  commit; TC-02 holds; later stages keep them apart); tester F4 (`rp_settings.py` re-exports
+  `HttpSettings` at the old generated path), F5 (TC-06's checker errors without naming a file on a
+  syntax error), F6 (it reads without `utf-8-sig`); a consumer `python_import` naming a gone module
+  is written as is.
+- **D-14 Stage 2 checker: verdict fail, fixed now** (lead; 6 findings). C1 (Critical, agreed: the
+  other direction of D-13 C1): an unmoved module can import upward into `core` (old `domain` into
+  `core.services`/`core.adapters`/`core.services.generated`, old `services` into `core.adapters`,
+  old `entrypoints` into `core.adapters`) with no contract breaking, where the old `layers` and
+  `domain-never-imports-technical-models` broke two. A temporary forbidden contract set (removed at
+  stage 7) states the old layers' order against the moved themes' layers: `rdf_persistence.domain`
+  never imports `rdf_persistence.*.{services,adapters,entrypoints}`; `rdf_persistence.services`
+  never `rdf_persistence.*.{adapters,entrypoints}`; `rdf_persistence.adapters` never
+  `rdf_persistence.*.entrypoints`; `rdf_persistence.entrypoints` never `rdf_persistence.*.adapters`,
+  each with a planted test. W1: `howto/settings.adoc` (~235) names `core/adapters/_http.py`. S1:
+  `test_theme_contracts.py` checks every `core` layer is covered. Under the floor: S2 (TC-53's name
+  vs its plant), S4 (no planted test exercises `themes-layered` or `layers-across-themes` in
+  stage 2; later stages' TC-35, TC-45, TC-51 do). S3: D-12 (7)'s release-note line for `error.type`
+  goes into stage 7's CHANGELOG entry (task 7.2).

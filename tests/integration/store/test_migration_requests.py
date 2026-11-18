@@ -17,10 +17,10 @@ from rdflib import Literal, URIRef
 from rdflib.namespace import DCTERMS, XSD
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.exceptions import PersistenceError
-from rdf_persistence.domain.generated.rp_core import RegistryKind
+from rdf_persistence.core.domain.exceptions import PersistenceError
+from rdf_persistence.core.domain.generated.rp_core import RegistryKind
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.domain.layout import graph_iri, skolem_iri
-from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import MigrationStep
 from rdf_persistence.services.iris import DEFAULT_IRIS

@@ -1,34 +1,19 @@
-"""RpModel, the strict base of every metamodel class and of every consumer's generated class."""
+"""Deprecated: this module moved to ``rdf_persistence.core.domain.base``.
 
-from typing import Self
+``RpModel`` is the same class; the old path keeps working, through the re-export here, until the shim
+is removed in the minor release after the one that ships the thematic layout (thematic-structure
+PD-8, PD-13). Generated code of a consumer is brought up to date by ``rp-generate``.
+"""
 
-from pydantic import BaseModel, ConfigDict
+import warnings
 
+from rdf_persistence.core.domain.base import RpModel
 
-class RpModel(BaseModel):
-    """A pydantic model that refuses unknown fields and validates every assignment.
+warnings.warn(
+    "rdf_persistence.domain.base moved to rdf_persistence.core.domain.base; "
+    "the old path will be removed in the minor release after the one that ships the move",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-    The settings other than ``extra`` and ``validate_assignment`` are those gen-pydantic's own base
-    sets, so generated classes keep their usual behaviour: ``validate_by_name`` and
-    ``serialize_by_alias`` for aliased slots, ``validate_default`` so a default is checked too, and
-    ``use_enum_values`` so enum slots hold plain strings that serialise as they are.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-        validate_assignment=True,
-        validate_by_name=True,
-        serialize_by_alias=True,
-        validate_default=True,
-        use_enum_values=True,
-    )
-
-    def replaced(self, **changes: object) -> Self:
-        """A new model of the same class with ``changes`` applied; ``self`` is untouched.
-
-        The fields that were set are carried over and merged with ``changes`` into one mapping, which
-        the class validates like any construction: a value of the wrong type or a misspelt name is a
-        ``ValidationError``, where ``model_copy(update=...)`` accepts both without a check.
-        """
-        kept = {name: getattr(self, name) for name in self.model_fields_set}
-        return type(self)(**(kept | changes))
+__all__ = ["RpModel"]

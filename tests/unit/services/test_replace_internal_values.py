@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 import pytest
 from rdflib import Literal, URIRef
 
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.media import JSON
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.iris import DEFAULT_IRIS

@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 import pytest
 from rdflib import BNode, Dataset, Graph, Literal, URIRef
 
-from rdf_persistence.domain.generated.rp_annotations import Tracked
-from rdf_persistence.domain.generated.rp_core import RegistryEntry, RegistryKind
+from rdf_persistence.core.domain.generated.rp_annotations import Tracked
+from rdf_persistence.core.domain.generated.rp_core import RegistryEntry, RegistryKind
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.session import (
     add_parts,

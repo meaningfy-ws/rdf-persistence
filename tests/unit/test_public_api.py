@@ -6,7 +6,7 @@ import pkgutil
 import pytest
 
 import rdf_persistence
-from rdf_persistence.domain import generated
+from rdf_persistence.core.domain import generated
 
 INDEXED_NAMES = [
     "RpModel",

@@ -13,10 +13,10 @@ import pytest
 from rdflib import RDF, URIRef
 
 from rdf_persistence import new_part
-from rdf_persistence.domain.exceptions import InvalidBody, InvalidIri
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.media import JSON, JSON_LD
+from rdf_persistence.core.domain.exceptions import InvalidBody, InvalidIri
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.media import JSON, JSON_LD
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.generated.service.rp_service import (

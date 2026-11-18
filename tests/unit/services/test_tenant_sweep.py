@@ -14,11 +14,11 @@ from uuid import UUID
 import pytest
 from rdflib import Graph, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, NotFound, StoreUnavailable, TenantGone
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.rp_tenancy import TenantSweepReport
-from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.core.domain.exceptions import Conflict, NotFound, StoreUnavailable, TenantGone
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantSweepReport
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.services.generated.service.rp_service import (
     IdKind,
     IdSpec,

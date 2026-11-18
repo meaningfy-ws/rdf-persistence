@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from rdf_persistence.domain.generated.rp_workflow import Transition
+from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 from rdf_persistence.services.relay import chain_order
@@ -331,7 +331,11 @@ async def test_an_activity_marked_pending_twice_is_published_once_and_fully_unma
 
 
 def test_a_cycle_in_the_version_chain_still_returns_every_activity_once():
-    from rdf_persistence.domain.generated.rp_provenance import Generation, Invalidation, Replace
+    from rdf_persistence.core.domain.generated.rp_provenance import (
+        Generation,
+        Invalidation,
+        Replace,
+    )
 
     def replace(iri: str, invalidates: str, generates: str) -> Replace:
         part = {"activity": iri, "at_time": NOW, "entity": "urn:e:book"}

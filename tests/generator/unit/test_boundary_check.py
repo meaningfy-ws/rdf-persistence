@@ -613,7 +613,7 @@ def test_the_boundary_step_passes_the_old_layout_package_of_a_technical_target()
 def test_the_boundary_step_refuses_a_technical_target_in_a_domain_folder_naming_it() -> None:
     """TC-72, second half: the check is wired into the step."""
     # TC-72 names the old service package under domain, which test_technical_split bans as a literal
-    package = "rdf_persistence.domain.generated.rp_service"
+    package = "rdf_persistence.core.domain.generated.rp_service"
     found = generate(
         [toolkit_target(TargetKind.TECHNICAL, package)], REPO, (steps.BOUNDARY_STEP,), check=True
     )

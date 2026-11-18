@@ -14,15 +14,15 @@ from rdflib import BNode, Dataset, Graph, Literal, URIRef
 from rdflib.compare import graph_diff, isomorphic
 from rdflib.query import ResultRow
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     Conflict,
     DatabaseGone,
     NotFound,
     StoreUnavailable,
 )
-from rdf_persistence.domain.media import N_QUADS
-from rdf_persistence.domain.sparql import fill, term
+from rdf_persistence.core.domain.media import N_QUADS
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.services.store import Store
 
 EX = "http://example.org/"

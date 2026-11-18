@@ -6,8 +6,8 @@ import pytest
 from opentelemetry.trace import StatusCode
 from rdflib import Literal, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.exceptions import Conflict
+from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.services.session import Session, open_session
 from rdf_persistence.services.store import ToolkitStore, TracedStore
 from rdf_persistence.testkit import FakeStore

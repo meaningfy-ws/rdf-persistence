@@ -15,14 +15,14 @@ import pytest
 from rdflib import RDF, Literal, URIRef
 from rdflib.namespace import XSD
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     InvalidBody,
     InvalidIri,
     KeyConflict,
     NotFound,
 )
-from rdf_persistence.domain.generated.rp_core import AggregateKey, Principal
+from rdf_persistence.core.domain.generated.rp_core import AggregateKey, Principal
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import aggregate_keys
 from rdf_persistence.services.session import Session

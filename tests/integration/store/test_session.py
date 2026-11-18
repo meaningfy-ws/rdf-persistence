@@ -8,9 +8,9 @@ import pytest
 from rdflib import Graph, Literal, URIRef
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, InvalidIri, NotFound
+from rdf_persistence.core.domain.exceptions import Conflict, DatabaseGone, InvalidIri, NotFound
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.iris import DEFAULT_IRIS, loaded_graph_iri
 from rdf_persistence.services.session import Session, open_session

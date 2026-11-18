@@ -6,7 +6,7 @@ import pytest
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import XSD
 
-from rdf_persistence.domain.exceptions import StoreUnavailable
+from rdf_persistence.core.domain.exceptions import StoreUnavailable
 from rdf_persistence.testkit import FakeStore, no_network  # noqa: F401  (fixture)
 from rdf_persistence.testkit.store_conformance import CASES, run_case
 

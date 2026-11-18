@@ -92,7 +92,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 
 ## Stage 2: `core` (PR 2)
 
-- [ ] 2.1 The recipe for `core` (PD-1 row; PD-2 `core/adapters`): `domain/{base,exceptions,media,sparql,sparql_parsing}`,
+- [x] 2.1 The recipe for `core` (PD-1 row; PD-2 `core/adapters`): `domain/{base,exceptions,media,sparql,sparql_parsing}`,
   `services/{artifacts,yaml_files,telemetry}`, `adapters/_http`, and the metamodel target
   `domain/generated/` → `core/domain/generated/` (every `python_package` and `public_package`
   annotation, the `[[tool.rp-generate]]` entry; the `python_import` annotation of
@@ -236,7 +236,7 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 2.1 · [ ] 3.1 · [ ] 3.2 ·
   [ ] 4.1 · [ ] 4.2 · [ ] 5.1 · [ ] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
 
 ## Verification

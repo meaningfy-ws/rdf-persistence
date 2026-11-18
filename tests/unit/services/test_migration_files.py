@@ -11,8 +11,8 @@ import yaml
 from rdflib import RDF, Dataset, Literal, URIRef
 from rdflib.plugins.sparql.parser import parseUpdate
 
-from rdf_persistence.domain.exceptions import InvalidMigration, SparqlError
-from rdf_persistence.domain.generated.rp_core import RegistryKind
+from rdf_persistence.core.domain.exceptions import InvalidMigration, SparqlError
+from rdf_persistence.core.domain.generated.rp_core import RegistryKind
 from rdf_persistence.domain.layout import stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import Migration, MigrationStep

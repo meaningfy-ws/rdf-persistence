@@ -11,21 +11,22 @@ from typing import cast
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
     InvalidBody,
     NotFound,
     StoredDataInvalid,
 )
-from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_discussion import Comment, Motivation
-from rdf_persistence.domain.generated.rp_workflow import (
+from rdf_persistence.core.domain.generated.rp_access import Action
+from rdf_persistence.core.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.core.domain.generated.rp_workflow import (
     Transition,
     Workflow,
     WorkflowTransition,
 )
-from rdf_persistence.domain.sparql import Triple
+from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.core.services.yaml_files import SHOWN
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.discussion import mint_iri, moment_of
@@ -35,7 +36,6 @@ from rdf_persistence.services.mapper import Mapper
 from rdf_persistence.services.provenance import new_activity_id
 from rdf_persistence.services.session import Session, changed_text
 from rdf_persistence.services.workflows import Workflows, state_iri
-from rdf_persistence.services.yaml_files import SHOWN
 
 TRANSITION_CLASS = "Transition"
 COMMENT = "Comment"

@@ -13,16 +13,15 @@ from pyld import jsonld
 from rdflib import Dataset, Graph
 
 from rdf_persistence import Forbidden, GrantSet, InvalidBody, Page, TenantSummary
-from rdf_persistence.domain.generated.rp_access import (
+from rdf_persistence.core.domain.generated.rp_access import (
     Action,
     Grant,
     Prohibition,
     RoleDefinition,
     RoleLevel,
 )
-from rdf_persistence.domain.generated.rp_provenance import Replace
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import (
+from rdf_persistence.core.domain.generated.rp_provenance import Replace
+from rdf_persistence.core.domain.media import (
     DATASET_REPRESENTATIONS,
     JSON,
     JSON_LD,
@@ -31,6 +30,7 @@ from rdf_persistence.domain.media import (
     REPRESENTATIONS,
     TURTLE,
 )
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.access import AccessRules, load_role_definitions

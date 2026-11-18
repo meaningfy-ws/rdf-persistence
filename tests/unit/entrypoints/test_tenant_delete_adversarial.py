@@ -1,6 +1,6 @@
 """Tenant delete by a system role, attacked through the routes: which actions authorise it."""
 
-from rdf_persistence.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
+from rdf_persistence.core.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from tests.toy import ROLES
 

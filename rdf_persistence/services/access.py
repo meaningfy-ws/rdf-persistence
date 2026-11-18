@@ -18,7 +18,7 @@ import yaml
 from pydantic import ValidationError
 from rdflib import Graph, URIRef
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Forbidden,
     InvalidGrant,
     InvalidRoleDefinition,
@@ -26,17 +26,17 @@ from rdf_persistence.domain.exceptions import (
     SparqlError,
     UnknownRole,
 )
-from rdf_persistence.domain.generated import rp_access, rp_core, rp_tenancy
-from rdf_persistence.domain.generated.rp_access import (
+from rdf_persistence.core.domain.generated import rp_access, rp_core, rp_tenancy
+from rdf_persistence.core.domain.generated.rp_access import (
     Action,
     Grant,
     Prohibition,
     RoleDefinition,
     RoleLevel,
 )
-from rdf_persistence.domain.generated.rp_tenancy import TenantAccess, TenantState
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantAccess, TenantState
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import (
     CallerAccess,

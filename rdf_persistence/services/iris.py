@@ -15,7 +15,7 @@ from uuid import uuid4
 
 from rdflib import URIRef
 
-from rdf_persistence.domain.exceptions import InvalidIri, NotFound
+from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.domain.layout import (
     _SEGMENT,
     APPLICATION_ID,

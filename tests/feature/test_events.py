@@ -15,8 +15,8 @@ import pytest
 from pytest_bdd import given, scenarios, then, when
 
 from rdf_persistence import generated_models
-from rdf_persistence.domain.exceptions import Conflict
-from rdf_persistence.domain.generated.rp_provenance import Replace
+from rdf_persistence.core.domain.exceptions import Conflict
+from rdf_persistence.core.domain.generated.rp_provenance import Replace
 from rdf_persistence.services.events import context_link
 from rdf_persistence.services.iris import Iris
 from rdf_persistence.services.relay import Relay

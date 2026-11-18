@@ -16,7 +16,7 @@ from schemathesis.specs.openapi.checks import (
     status_code_conformance,
 )
 
-from rdf_persistence.domain.media import JSON
+from rdf_persistence.core.domain.media import JSON
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 
 CHECKS: list[CheckFunction] = [

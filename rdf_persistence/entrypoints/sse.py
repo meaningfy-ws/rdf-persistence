@@ -13,8 +13,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 
-from rdf_persistence.domain.generated.rp_access import Action
-from rdf_persistence.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.generated.rp_access import Action
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.negotiation import LAST_EVENT_ID, LINK
 from rdf_persistence.entrypoints.openapi import TenantOpenApi

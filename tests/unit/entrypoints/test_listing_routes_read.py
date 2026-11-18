@@ -12,7 +12,7 @@ import pytest
 import pytest_asyncio
 
 from rdf_persistence import GrantSet, Page
-from rdf_persistence.domain.media import JSON, JSON_LD, TURTLE
+from rdf_persistence.core.domain.media import JSON, JSON_LD, TURTLE
 from tests.toy_service import ToyService, assert_problem
 from tests.unit.entrypoints.listing_shelf import BOOKS, PROBLEM_BAD_QUERY, Shelf, unordered
 

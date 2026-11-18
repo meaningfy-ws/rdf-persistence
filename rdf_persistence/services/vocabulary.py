@@ -14,9 +14,9 @@ from functools import cache
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import Literal, URIRef
 
-from rdf_persistence.domain.generated.rp_core import RegistryKind, RpAnnotation
-from rdf_persistence.domain.generated.rp_tenancy import TenantState
-from rdf_persistence.domain.sparql import SparqlTerm, term, term_list
+from rdf_persistence.core.domain.generated.rp_core import RegistryKind, RpAnnotation
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.core.domain.sparql import SparqlTerm, term, term_list
 from rdf_persistence.services.generated.templates.rp_templates import (
     KeyBranchTerms,
     KeyHeldTerms,

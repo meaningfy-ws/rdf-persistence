@@ -16,8 +16,8 @@ from opentelemetry import trace
 from opentelemetry.trace import StatusCode
 
 from rdf_persistence import generated_models
-from rdf_persistence.domain.exceptions import StoreUnavailable
-from rdf_persistence.domain.generated.rp_provenance import Generation, Invalidation, Replace
+from rdf_persistence.core.domain.exceptions import StoreUnavailable
+from rdf_persistence.core.domain.generated.rp_provenance import Generation, Invalidation, Replace
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.events import context_link
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings

@@ -4,8 +4,7 @@ import httpx
 from pyld import jsonld
 from rdflib import Dataset, Graph
 
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import (
+from rdf_persistence.core.domain.media import (
     DATASET_REPRESENTATIONS,
     JSON,
     JSON_LD,
@@ -13,6 +12,7 @@ from rdf_persistence.domain.media import (
     REPRESENTATIONS,
     TURTLE,
 )
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.testkit import assert_isomorphic
 from tests.integration.api.conftest import make_book

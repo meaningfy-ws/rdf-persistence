@@ -11,9 +11,9 @@ from opentelemetry.trace import Span, SpanKind
 from rdflib import Graph, URIRef
 from rdflib.query import Result
 
-from rdf_persistence.domain.exceptions import BadQuery, SparqlError
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
-from rdf_persistence.services.telemetry import traced
+from rdf_persistence.core.domain.exceptions import BadQuery, SparqlError
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import traced
 
 GENERIC_SYSTEM_NAME = "sparql"
 

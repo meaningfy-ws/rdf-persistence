@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from rdf_persistence import Action, Grant, GrantSet, Prohibition, RoleLevel
-from rdf_persistence.domain.exceptions import InvalidGrant, InvalidRoleDefinition, UnknownRole
+from rdf_persistence.core.domain.exceptions import InvalidGrant, InvalidRoleDefinition, UnknownRole
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from tests.toy import ROLES, TENANT, ban, book_iri, direct, graph_of, role
 

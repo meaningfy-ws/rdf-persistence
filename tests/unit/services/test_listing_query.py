@@ -11,8 +11,8 @@ from rdflib import RDFS, Literal, URIRef
 from rdflib.plugins.sparql import prepareQuery
 
 from rdf_persistence import new_part
+from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.sparql import Triple
 from rdf_persistence.services.generated.service.rp_service import (
     IdKind,
     IdSpec,

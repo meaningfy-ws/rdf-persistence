@@ -16,9 +16,9 @@ import pytest
 from pydantic import ValidationError
 from rdflib import Literal, URIRef
 
-from rdf_persistence.domain.exceptions import SparqlError
-from rdf_persistence.domain.generated.rp_core import AggregateKey, RegistryEntry, RegistryKind
-from rdf_persistence.domain.sparql import (
+from rdf_persistence.core.domain.exceptions import SparqlError
+from rdf_persistence.core.domain.generated.rp_core import AggregateKey, RegistryEntry, RegistryKind
+from rdf_persistence.core.domain.sparql import (
     SparqlTerm,
     count,
     match_patterns,

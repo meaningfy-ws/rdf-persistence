@@ -6,7 +6,7 @@ from fastapi import Response
 from linkml_runtime.linkml_model.meta import ClassDefinition
 from pydantic import BaseModel
 
-from rdf_persistence.domain.media import ACCEPT, JSON
+from rdf_persistence.core.domain.media import ACCEPT, JSON
 from rdf_persistence.entrypoints.negotiation import ETAG, LINK, LOCATION, VARY, etag_of
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.generated.service.rp_service import Page

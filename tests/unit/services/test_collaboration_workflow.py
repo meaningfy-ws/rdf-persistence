@@ -15,15 +15,15 @@ import pytest
 from rdflib import RDF, XSD, Graph, URIRef
 
 from rdf_persistence import Action, generated_models
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
     InvalidBody,
     NotFound,
 )
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_discussion import Motivation
-from rdf_persistence.domain.generated.rp_workflow import Transition
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_discussion import Motivation
+from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration

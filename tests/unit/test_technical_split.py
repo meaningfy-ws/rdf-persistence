@@ -46,7 +46,7 @@ def test_no_schema_directly_under_model_is_annotated_technical():  # TC-07
 
 
 def test_the_service_models_generate_outside_the_domain():  # TC-08
-    domain_generated = import_module("rdf_persistence.domain.generated")
+    domain_generated = import_module("rdf_persistence.core.domain.generated")
     assert not (Path(domain_generated.__path__[0]) / "service").exists(), (
         "no service subpackage is left under domain.generated"
     )
@@ -64,6 +64,9 @@ LAYOUT = {
     "domain/generated/__init__.py": "",
     "domain/generated/rp_core.py": "",
     "domain/layout.py": "",
+    "core/__init__.py": "",
+    "core/domain/__init__.py": "",
+    "core/domain/generated/__init__.py": "",
     "services/__init__.py": "",
     "services/session.py": "",
     "services/generated/__init__.py": "",
@@ -126,7 +129,7 @@ def test_the_scratch_layout_itself_keeps_every_contract(tmp_path):
 def test_a_domain_module_importing_the_service_models_breaks_the_domain_contract(tmp_path):  # TC-09
     result = _lint(
         tmp_path,
-        {"domain/generated/rp_core.py": f"import {SERVICE_SCHEMA_PACKAGE}\n"},
+        {"core/domain/generated/rp_core.py": f"import {SERVICE_SCHEMA_PACKAGE}\n"},
     )
     assert result.returncode != 0, result.stdout
     assert any(DOMAIN_CONTRACT_NAME in line for line in _broken_contracts(result)), result.stdout
@@ -146,7 +149,7 @@ def test_the_policy_free_layout_importing_the_service_models_breaks_the_domain_c
 ):  # TC-53
     result = _lint(
         tmp_path,
-        {"domain/layout.py": f"import {SERVICE_SCHEMA_PACKAGE}\n"},
+        {"core/domain/generated/rp_layout.py": f"import {SERVICE_SCHEMA_PACKAGE}\n"},
     )
     assert result.returncode != 0, result.stdout
     assert any(DOMAIN_CONTRACT_NAME in line for line in _broken_contracts(result)), result.stdout

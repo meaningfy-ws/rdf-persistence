@@ -22,9 +22,9 @@ from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
-from rdf_persistence.domain.exceptions import Conflict, Forbidden, InvalidIri, NotFound
-from rdf_persistence.domain.generated.rp_annotations import Tracked
-from rdf_persistence.domain.generated.rp_core import (
+from rdf_persistence.core.domain.exceptions import Conflict, Forbidden, InvalidIri, NotFound
+from rdf_persistence.core.domain.generated.rp_annotations import Tracked
+from rdf_persistence.core.domain.generated.rp_core import (
     AggregateKey,
     CommitMarker,
     KeyDuplicate,
@@ -33,10 +33,9 @@ from rdf_persistence.domain.generated.rp_core import (
     RegistryEntry,
     RegistryKind,
 )
-from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.rp_provenance import Activity
-from rdf_persistence.domain.layout import graph_iri, skolem_iri
-from rdf_persistence.domain.sparql import (
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.sparql import (
     SparqlTerm,
     Triple,
     count,
@@ -49,6 +48,9 @@ from rdf_persistence.domain.sparql import (
     term_list,
     triples_block,
 )
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import log_extra, traced
+from rdf_persistence.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import (
     AggregateHead,
@@ -57,7 +59,6 @@ from rdf_persistence.services.generated.service.rp_service import (
     ListPlan,
     ListRequest,
 )
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
 from rdf_persistence.services.generated.templates.rp_templates import OwnerTerms
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.listing import (
@@ -78,7 +79,6 @@ from rdf_persistence.services.provenance import (
     first_class,
 )
 from rdf_persistence.services.store import Store
-from rdf_persistence.services.telemetry import log_extra, traced
 from rdf_persistence.services.unique_keys import (
     KeyClaim,
     claims_of,

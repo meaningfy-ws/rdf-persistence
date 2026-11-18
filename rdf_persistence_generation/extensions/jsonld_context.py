@@ -15,7 +15,12 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, EnumDefinition, Sl
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.services.artifacts import CONTEXT_FILE, CONTEXT_KEY, FRAME_SUFFIX, TYPE_KEY
+from rdf_persistence.core.services.artifacts import (
+    CONTEXT_FILE,
+    CONTEXT_KEY,
+    FRAME_SUFFIX,
+    TYPE_KEY,
+)
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.schema_structure import (
     ACTIVITY,

@@ -1,7 +1,7 @@
 """RDF Persistence.
 
 The domain and the generated classes are imported at once. The adapters and the services are loaded
-on first use (``__getattr__``), so importing ``rdf_persistence.domain``, as every consumer's
+on first use (``__getattr__``), so importing ``rdf_persistence.core.domain``, as every consumer's
 generated module does, loads no HTTP client or service (PD-8c).
 """
 
@@ -9,8 +9,8 @@ from importlib import import_module
 from importlib.metadata import version
 from typing import TYPE_CHECKING, Any
 
-from rdf_persistence.domain.base import RpModel
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.base import RpModel
+from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     CommitTooLarge,
     Conflict,
@@ -41,7 +41,7 @@ from rdf_persistence.domain.exceptions import (
     UnknownRole,
     UnsupportedMediaType,
 )
-from rdf_persistence.domain.generated.rp_access import (
+from rdf_persistence.core.domain.generated.rp_access import (
     Action,
     Grant,
     Policy,
@@ -50,16 +50,16 @@ from rdf_persistence.domain.generated.rp_access import (
     RoleLevel,
     Rule,
 )
-from rdf_persistence.domain.generated.rp_annotations import (
+from rdf_persistence.core.domain.generated.rp_annotations import (
     Described,
     Tracked,
 )
-from rdf_persistence.domain.generated.rp_collections import (
+from rdf_persistence.core.domain.generated.rp_collections import (
     MembershipRule,
     ReferenceCollection,
     SlotEquality,
 )
-from rdf_persistence.domain.generated.rp_core import (
+from rdf_persistence.core.domain.generated.rp_core import (
     AggregateKey,
     AggregateRoot,
     CommitMarker,
@@ -75,19 +75,19 @@ from rdf_persistence.domain.generated.rp_core import (
     UniqueScope,
     WritesKind,
 )
-from rdf_persistence.domain.generated.rp_discussion import (
+from rdf_persistence.core.domain.generated.rp_discussion import (
     Comment,
     Motivation,
     PostComment,
     PostReply,
 )
-from rdf_persistence.domain.generated.rp_files import (
+from rdf_persistence.core.domain.generated.rp_files import (
     BlobEntry,
     DeleteFile,
     RdfFormat,
     StoredFile,
 )
-from rdf_persistence.domain.generated.rp_provenance import (
+from rdf_persistence.core.domain.generated.rp_provenance import (
     Activity,
     Add,
     Generation,
@@ -96,13 +96,13 @@ from rdf_persistence.domain.generated.rp_provenance import (
     Remove,
     Replace,
 )
-from rdf_persistence.domain.generated.rp_tenancy import (
+from rdf_persistence.core.domain.generated.rp_tenancy import (
     TenantAccess,
     TenantLabelled,
     TenantState,
     TenantSweepReport,
 )
-from rdf_persistence.domain.generated.rp_workflow import (
+from rdf_persistence.core.domain.generated.rp_workflow import (
     Transition,
     UnderWorkflow,
     Workflow,
@@ -114,6 +114,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.adapters.jwks import JwksTokenVerifier
     from rdf_persistence.adapters.s3 import S3FileStore
     from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
+    from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
     from rdf_persistence.entrypoints.environment import settings_from_env
     from rdf_persistence.entrypoints.kit import ServiceKit
     from rdf_persistence.entrypoints.router import limited_body
@@ -152,7 +153,6 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.services.generated.settings.rp_settings import (
         DirectorySettings,
         EventSettings,
-        HttpSettings,
         JwksSettings,
         LimitSettings,
         SseSettings,
@@ -179,11 +179,11 @@ _ENTRYPOINTS = "rdf_persistence.entrypoints"
 _SERVICE_MODELS = f"{_SERVICES}.generated.service.rp_service"
 _SETTINGS_MODELS = f"{_SERVICES}.generated.settings.rp_settings"
 _LAZY_MODULES = {
+    "HttpSettings": "rdf_persistence.core.services.generated.rp_core_services",
     **dict.fromkeys(
         (
             "DirectorySettings",
             "EventSettings",
-            "HttpSettings",
             "JwksSettings",
             "LimitSettings",
             "SseSettings",

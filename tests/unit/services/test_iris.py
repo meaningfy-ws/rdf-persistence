@@ -8,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 from rdflib import URIRef
 
-from rdf_persistence.domain.exceptions import InvalidIri, NotFound
+from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.domain.layout import (
     graph_iri,
     system_database_name,

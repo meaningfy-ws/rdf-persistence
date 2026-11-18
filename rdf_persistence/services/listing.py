@@ -17,10 +17,9 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
 from rdflib import Graph, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import BadQuery
-from rdf_persistence.domain.generated.rp_core import DatabaseKind
-from rdf_persistence.domain.layout import root_of_graph
-from rdf_persistence.domain.sparql import (
+from rdf_persistence.core.domain.exceptions import BadQuery
+from rdf_persistence.core.domain.generated.rp_core import DatabaseKind
+from rdf_persistence.core.domain.sparql import (
     FORBIDDEN_IRI_CHARS,
     count,
     fill_terms,
@@ -28,6 +27,7 @@ from rdf_persistence.domain.sparql import (
     order_by,
     term_list,
 )
+from rdf_persistence.domain.layout import root_of_graph
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import (
     Condition,

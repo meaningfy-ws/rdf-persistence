@@ -20,5 +20,5 @@ imports:
   - rp_discussion
   - rp_workflow
 annotations:
-  python_package: rdf_persistence.domain.generated
+  python_package: rdf_persistence.core.domain.generated
   public_package: rdf_persistence

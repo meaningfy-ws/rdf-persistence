@@ -18,8 +18,8 @@ from types import SimpleNamespace
 from rdflib import RDF, Graph
 from rdflib.namespace import Namespace
 
-from rdf_persistence.domain.sparql import checked_group
-from rdf_persistence.domain.sparql_parsing import prepare_query
+from rdf_persistence.core.domain.sparql import checked_group
+from rdf_persistence.core.domain.sparql_parsing import prepare_query
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.migration_runner import migrate_dataset
 from rdf_persistence.services.shacl import warm_up

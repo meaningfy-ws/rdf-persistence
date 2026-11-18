@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from rdf_persistence.domain.exceptions import InvalidIri
+from rdf_persistence.core.domain.exceptions import InvalidIri
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.openapi import install_openapi
 from rdf_persistence.entrypoints.problems import install_problem_handlers

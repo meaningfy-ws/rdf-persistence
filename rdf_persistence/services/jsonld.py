@@ -14,7 +14,7 @@ from pyld import jsonld
 from rdflib import RDF, XSD, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS
+from rdf_persistence.core.domain.sparql import FORBIDDEN_IRI_CHARS
 
 N_QUADS = "application/n-quads"  # the format PyLD writes and rdflib registers under this media type
 # A reserved TLD: nothing resolves it. PyLD drops a triple whose IRI stays relative, so every

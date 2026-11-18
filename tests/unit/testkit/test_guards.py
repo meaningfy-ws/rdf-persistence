@@ -42,6 +42,11 @@ MODEL_CASES = [
         "Thing",
     ),
     (
+        "rpmodel-core",
+        "from rdf_persistence.core.domain.base import RpModel\nclass Thing(RpModel):\n    pass\n",
+        "Thing",
+    ),
+    (
         "rpmodel-module",
         "from rdf_persistence.domain import base\nclass Thing(base.RpModel):\n    pass\n",
         "Thing",
@@ -310,6 +315,50 @@ def test_relative_import_inside_toolkit_package_is_resolved(tmp_path):
     )
     with pytest.raises(AssertionError, match="Thing"):
         assert_models_generated(root, roots=[])
+
+
+CORE_BASE = "rdf_persistence.core.domain.base"
+BOOK = "from rdf_persistence import RpModel\n\n\nclass Book(RpModel):\n    title: str\n"
+
+
+def test_a_class_derived_from_the_public_rpmodel_is_named_once_rpmodel_lives_in_core(tmp_path):
+    """TC-24: the package export resolves to where ``RpModel`` is defined, and that name is forbidden."""
+    plant(tmp_path, "rdf_persistence/__init__.py", f"from {CORE_BASE} import RpModel\n")
+    plant(tmp_path, "rdf_persistence/domain/book.py", BOOK)
+
+    with pytest.raises(AssertionError, match=r"domain/book\.py:4.*class Book .*derives from"):
+        assert_models_generated(tmp_path / "rdf_persistence", roots=[])
+
+
+def test_a_consumer_class_derived_from_the_public_rpmodel_is_named(tmp_path):
+    """TC-24 as a consumer meets it: its own package, ``from rdf_persistence import RpModel``."""
+    plant(tmp_path, "consumer/__init__.py", "")
+    plant(tmp_path, "consumer/domain/__init__.py", "")
+    plant(tmp_path, "consumer/domain/book.py", BOOK)
+
+    with pytest.raises(AssertionError, match=r"domain/book\.py:4.*class Book .*derives from"):
+        assert_models_generated(tmp_path / "consumer", roots=[])
+
+
+def test_rpmodel_defined_in_core_domain_base_is_allowed_by_default(tmp_path):
+    plant(
+        tmp_path,
+        "rdf_persistence/core/domain/base.py",
+        "from pydantic import BaseModel\nclass RpModel(BaseModel): ...\n",
+    )
+
+    assert assert_models_generated(tmp_path / "rdf_persistence", roots=[], layers=("core",)) is None
+
+
+def test_rpmodel_imported_from_core_domain_base_is_named_elsewhere(tmp_path):
+    plant(
+        tmp_path,
+        "rdf_persistence/domain/other.py",
+        f"from {CORE_BASE} import RpModel\nclass Thing(RpModel): ...\n",
+    )
+
+    with pytest.raises(AssertionError, match="Thing"):
+        assert_models_generated(tmp_path / "rdf_persistence", roots=[])
 
 
 FILE_BAD = [

@@ -5,8 +5,8 @@ from pydantic import ValidationError
 from rdflib import Literal, URIRef
 from rdflib.namespace import RDF
 
-from rdf_persistence.domain.exceptions import Conflict, InvalidBody, NotFound
-from rdf_persistence.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, NotFound
+from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.services import vocabulary
 from rdf_persistence.services.iris import tenant_resource_name
 from rdf_persistence.services.mapper import UnitOfWork

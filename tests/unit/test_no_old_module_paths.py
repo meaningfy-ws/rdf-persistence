@@ -35,7 +35,23 @@ SKIPPED_SUFFIXES = frozenset({".pyc", ".png", ".svg", ".whl", ".json", ".csv", "
 SKIPPED_PARTS = frozenset({"__pycache__", "node_modules", ".venv", "golden", "generated"})
 THIS_FILE = "tests/unit/test_no_old_module_paths.py"
 # Files that may name an old path: each stage that adds a shim lists the shim's test here, with the why.
-EXEMPT: frozenset[str] = frozenset({THIS_FILE, "CHANGELOG.md"})
+EXEMPT: frozenset[str] = frozenset(
+    {
+        THIS_FILE,
+        "CHANGELOG.md",
+        # stage 2: the `domain.base` shim (PD-8) names its own path, so do its test, the model guard that
+        # still forbids the shim's `RpModel` as a base until stage 8 (PD-4 a), and that guard's test; and
+        # the layout guard's own test, which plants old paths in synthetic trees.
+        "rdf_persistence/domain/base.py",
+        "tests/unit/core/test_domain_base_shim.py",
+        "rdf_persistence/testkit/guards.py",
+        "tests/unit/testkit/test_guards.py",
+        "tests/unit/test_theme_layout.py",
+        # stage 2 (D-13 S2): the probe that an old import path is a ModuleNotFoundError names the paths
+        # that never existed or are gone, which is the point of the probe.
+        "tests/unit/test_technical_split.py",
+    }
+)
 
 
 def _files(root: Path) -> list[Path]:

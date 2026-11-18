@@ -7,7 +7,7 @@ import pytest
 from rdflib import RDF, Graph, URIRef
 from rdflib.namespace import PROV
 
-from rdf_persistence.domain.generated.rp_provenance import (
+from rdf_persistence.core.domain.generated.rp_provenance import (
     Activity,
     Add,
     Generation,

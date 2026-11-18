@@ -3,8 +3,8 @@
 import httpx
 
 from rdf_persistence import GrantSet, Problem
-from rdf_persistence.domain.generated.rp_access import Grant
-from rdf_persistence.domain.media import JSON, PROBLEM_JSON
+from rdf_persistence.core.domain.generated.rp_access import Grant
+from rdf_persistence.core.domain.media import JSON, PROBLEM_JSON
 from tests.toy import SETTINGS
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 

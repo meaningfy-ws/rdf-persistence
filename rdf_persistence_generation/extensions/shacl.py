@@ -30,7 +30,7 @@ from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.collection import Collection
 from rdflib.namespace import SH
 
-from rdf_persistence.services.artifacts import SHAPES_FILE
+from rdf_persistence.core.services.artifacts import SHAPES_FILE
 from rdf_persistence.services.schema import metamodel_importmap
 from rdf_persistence.services.schema_structure import (
     apply_defaults,

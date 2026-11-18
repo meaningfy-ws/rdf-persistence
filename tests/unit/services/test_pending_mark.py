@@ -10,8 +10,8 @@ from datetime import UTC, datetime
 import pytest
 from rdflib import RDF, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, DatabaseGone, InvalidIri, KeyConflict
-from rdf_persistence.domain.generated.rp_provenance import Add
+from rdf_persistence.core.domain.exceptions import Conflict, DatabaseGone, InvalidIri, KeyConflict
+from rdf_persistence.core.domain.generated.rp_provenance import Add
 from rdf_persistence.domain.layout import application_database_name
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.iris import Iris

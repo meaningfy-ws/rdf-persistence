@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 from rdflib import URIRef
 
-from rdf_persistence.domain.exceptions import InvalidIri
+from rdf_persistence.core.domain.exceptions import InvalidIri
 
 # The patterns of the schema's ``url_segment`` and ``ServiceSettings.prefix`` slots; a test pins them.
 _SEGMENT = re.compile(r"[a-z][a-z0-9-]*")

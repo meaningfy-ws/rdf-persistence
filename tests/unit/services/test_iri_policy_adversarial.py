@@ -6,7 +6,7 @@ import pytest
 from rdflib import URIRef
 
 from rdf_persistence import Action, GrantSet, RdfFormat
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     InvalidBody,
     InvalidGrant,
     InvalidIri,

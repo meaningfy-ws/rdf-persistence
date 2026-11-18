@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from rdflib import RDF, URIRef
 
-from rdf_persistence.domain.exceptions import DatabaseGone
+from rdf_persistence.core.domain.exceptions import DatabaseGone
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE

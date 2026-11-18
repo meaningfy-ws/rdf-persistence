@@ -4,7 +4,7 @@ from uuid import UUID
 
 import pytest
 
-from rdf_persistence.domain.exceptions import PersistenceError
+from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.services.tenancy import MAX_TENANT_CLASH_DRAWS
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.toy import library_slots

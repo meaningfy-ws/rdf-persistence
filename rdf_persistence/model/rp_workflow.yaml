@@ -18,7 +18,7 @@ imports:
   - rp_provenance
   - rp_discussion
 annotations:
-  python_package: rdf_persistence.domain.generated
+  python_package: rdf_persistence.core.domain.generated
 
 classes:
   Workflow:

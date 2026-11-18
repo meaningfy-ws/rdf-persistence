@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from rdf_persistence.domain.exceptions import Conflict, NotFound, TenantGone
+from rdf_persistence.core.domain.exceptions import Conflict, NotFound, TenantGone
 from rdf_persistence.services.files import FileStore
 
 KEY = "blob"

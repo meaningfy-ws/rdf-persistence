@@ -10,7 +10,12 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
-from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, COMPONENTS_FILE, REF, SCHEMAS
+from rdf_persistence.core.services.artifacts import (
+    COMPONENT_REFERENCES,
+    COMPONENTS_FILE,
+    REF,
+    SCHEMAS,
+)
 from rdf_persistence.services.schema import SERVED_SCHEMAS, generated_folder
 
 # One component schema: JSON data of the OpenAPI document, not a model of ours.

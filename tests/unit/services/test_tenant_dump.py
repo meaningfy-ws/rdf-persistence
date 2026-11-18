@@ -19,7 +19,7 @@ import pytest
 from rdflib import Dataset, Literal, URIRef
 from rdflib.namespace import SKOS
 
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     InvalidBody,
     NotFound,
@@ -27,9 +27,9 @@ from rdf_persistence.domain.exceptions import (
     StoreNotWired,
     StoreUnavailable,
 )
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_files import RdfFormat
-from rdf_persistence.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.domain.layout import stamps_graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import (

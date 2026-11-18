@@ -21,10 +21,10 @@ from rdflib import URIRef
 
 from rdf_persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
-from rdf_persistence.domain.sparql import term
+from rdf_persistence.core.domain.sparql import term
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 from rdf_persistence.entrypoints.environment import settings_from_env
 from rdf_persistence.services.generated.settings.rp_settings import (
-    HttpSettings,
     JwksSettings,
     ToolkitSettings,
 )
@@ -40,6 +40,14 @@ scenarios("technical_models.feature")
 ROOT = Path(__file__).parents[2]
 TOY = ROOT / "tests" / "fixtures" / "library"
 DOMAIN_GENERATED = "domain/generated/rp_core.py"
+DOMAIN_EXCEPTIONS = "domain/exceptions.py"
+
+
+def _scratch_module(planted_path: str) -> str:
+    """The module a file planted in the scratch copy of the old layout (the layers contract) is."""
+    return "rdf_persistence." + planted_path.removesuffix(".py").replace("/", ".")
+
+
 SERVICE_SETTINGS = "rdf_persistence.services.generated.service.rp_service"
 WIRE = "rdf_persistence.adapters.generated.rp_wire"
 SETTINGS_MODULE = "rdf_persistence.services.generated.settings.rp_settings"
@@ -90,7 +98,7 @@ def _generated_domain(run: Run) -> None:
         run,
         DOMAIN_GENERATED,
         SERVICE_SETTINGS,
-        ("rdf_persistence.domain.generated.rp_core", SERVICE_SETTINGS),
+        (_scratch_module(DOMAIN_GENERATED), SERVICE_SETTINGS),
     )
 
 
@@ -122,9 +130,9 @@ def _domain_settings(run: Run) -> None:
     run.planted = {
         "services/generated/settings/__init__.py": "",
         "services/generated/settings/rp_settings.py": "",
-        "domain/exceptions.py": f"import {SETTINGS_MODULE}\n",
+        DOMAIN_EXCEPTIONS: f"import {SETTINGS_MODULE}\n",
     }
-    run.modules = ("rdf_persistence.domain.exceptions", SETTINGS_MODULE)
+    run.modules = (_scratch_module(DOMAIN_EXCEPTIONS), SETTINGS_MODULE)
 
 
 @when("the architecture is checked")

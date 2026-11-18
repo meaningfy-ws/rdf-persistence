@@ -74,7 +74,25 @@ HAND_WRITTEN = (
 )
 
 
-LIBRARY_LAYERS = (*SCANNED_LAYERS, "adapters", "testkit")
+LIBRARY_LAYERS = (*SCANNED_LAYERS, "adapters", "testkit", "core")
+
+
+@pytest.mark.parametrize("layer", ["domain", "services", "adapters"])
+def test_a_hand_written_record_in_a_core_layer_is_caught_by_the_library_layers(tmp_path, layer):
+    """The toolkit's own guard call names ``core``: a record planted there is flagged (D-13 C2)."""
+    shutil.copytree(
+        REPO / "rdf_persistence",
+        tmp_path / "rdf_persistence",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    (tmp_path / "rdf_persistence" / "core" / layer / "handwritten.py").write_text(
+        "from pydantic import BaseModel\n\n\nclass Handwritten(BaseModel):\n    x: int\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError, match=f"core/{layer}/handwritten.py:4"):
+        assert_models_generated(
+            tmp_path / "rdf_persistence", roots=[], layers=LIBRARY_LAYERS, allow=HAND_WRITTEN
+        )
 
 
 def test_this_repo_has_no_hand_written_model_or_generated_artefact_outside_generated():

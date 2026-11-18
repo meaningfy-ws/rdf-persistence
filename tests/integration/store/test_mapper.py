@@ -7,10 +7,10 @@ from uuid import UUID
 import pytest
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.exceptions import Conflict
-from rdf_persistence.domain.generated.rp_access import Action, Grant, Prohibition
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.exceptions import Conflict
+from rdf_persistence.core.domain.generated.rp_access import Action, Grant, Prohibition
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.services.iris import (
     DEFAULT_IRIS,
 )

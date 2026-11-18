@@ -8,11 +8,11 @@ from uuid import UUID
 import pytest
 from rdflib import RDF, BNode, Graph, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import Conflict, InvalidIri
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.exceptions import Conflict, InvalidIri
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.sparql import fill, term
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.service.rp_service import IriPolicy, ServiceSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris

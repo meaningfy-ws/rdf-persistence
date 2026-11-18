@@ -6,8 +6,8 @@ from collections.abc import AsyncIterator
 import pytest
 
 from rdf_persistence import InvalidGraph
-from rdf_persistence.domain.generated.rp_core import Principal
-from rdf_persistence.domain.generated.rp_files import RdfFormat
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.services.jsonld import ABSOLUTE_IRIS
 from rdf_persistence.services.loading import NOT_INLINE, ONE_GRAPH
 from rdf_persistence.testkit import FakeStore, fake_session, no_network  # noqa: F401  (fixture)

@@ -3,12 +3,12 @@
 import pytest
 from rdflib import RDF, Graph, Namespace
 
-from rdf_persistence.domain import sparql_parsing
+from rdf_persistence.core.domain import sparql_parsing
 from rdf_persistence.services import shacl
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.schema import load_schema
 from tests.toy import TOY_SCHEMA
-from tests.unit.domain.test_sparql_parsing import RecordingLock
+from tests.unit.core.test_sparql_parsing import RecordingLock
 from tests.unit.services.conftest import GENERATED
 
 EX = Namespace("urn:example:")

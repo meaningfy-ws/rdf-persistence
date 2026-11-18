@@ -17,7 +17,7 @@ from hypothesis import strategies as st
 from pydantic import ValidationError
 from rdflib import URIRef
 
-from rdf_persistence.domain.exceptions import InvalidIri, NotFound
+from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.domain.layout import APPLICATION_ID, graph_iri
 from rdf_persistence.services import iris as iris_module
 from rdf_persistence.services.generated.service.rp_service import (

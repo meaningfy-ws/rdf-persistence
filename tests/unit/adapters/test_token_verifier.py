@@ -10,7 +10,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 
 from rdf_persistence.adapters.jwks import JwksTokenVerifier
-from rdf_persistence.domain.exceptions import InvalidToken
+from rdf_persistence.core.domain.exceptions import InvalidToken
 from rdf_persistence.services.generated.settings.rp_settings import JwksSettings
 from rdf_persistence.services.tokens import TokenVerifier
 from rdf_persistence.testkit import TokenSigner, shared_key

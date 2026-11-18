@@ -16,8 +16,8 @@ from rdf_persistence import (
     generated_models,
     load_role_definitions,
 )
-from rdf_persistence.domain.generated.rp_annotations import Tracked
-from rdf_persistence.domain.generated.rp_collections import MembershipRule, SlotEquality
+from rdf_persistence.core.domain.generated.rp_annotations import Tracked
+from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.listing import Listings
 from rdf_persistence.services.mapper import UnitOfWork

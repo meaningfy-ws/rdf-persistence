@@ -23,10 +23,10 @@ types are allowed only where a field holds a run-time object LinkML cannot expre
 [cols="2,4",options="header"]
 |===
 |Path |What it holds
-|`rdf_persistence/model/` |The metamodel schemas (`rp_core.yaml`, `rp_annotations.yaml`, `rp_provenance.yaml`, `rp_access.yaml`, `rp_tenancy.yaml`, `rp_files.yaml`, imported together by `rp.yaml`), flat, and `technical/<group>/rp_<group>.yaml`, the schemas of the technical models (`service`, `wire`, `settings`, `templates`, `telemetry`, `testkit`)
-|`rdf_persistence/domain/generated/` |The metamodel's generated classes, shapes and context
-|`rdf_persistence/services/generated/`, `adapters/generated/`, `testkit/generated/` |The generated technical models, each in the lowest layer whose code may import them: `service/`, `settings/`, `templates/` and `telemetry/` in `services/generated/`, the wire shapes in `adapters/generated/`, the testkit's records in `testkit/generated/` (xref:architecture/generation.adoc#kinds[Two kinds of model])
-|`rdf_persistence/domain/base.py` |`RpModel`, the strict base class of every generated class
+|`rdf_persistence/model/` |The metamodel schemas (`rp_core.yaml`, `rp_annotations.yaml`, `rp_provenance.yaml`, `rp_access.yaml`, `rp_tenancy.yaml`, `rp_files.yaml`, imported together by `rp.yaml`), flat, and `technical/<group>/rp_<group>.yaml`, the schemas of the technical models (`core`, `service`, `wire`, `settings`, `templates`, `testkit`)
+|`rdf_persistence/core/domain/generated/` |The metamodel's generated classes, shapes and context
+|`rdf_persistence/core/services/generated/`, `services/generated/`, `adapters/generated/`, `testkit/generated/` |The generated technical models, each in the lowest layer whose code may import them: `HttpSettings` and `LogContext` (from `model/technical/core/rp_core_services.yaml`) in `core/services/generated/`, `service/`, `settings/` and `templates/` in `services/generated/`, the wire shapes in `adapters/generated/`, the testkit's records in `testkit/generated/` (xref:architecture/generation.adoc#kinds[Two kinds of model])
+|`rdf_persistence/core/domain/base.py` |`RpModel`, the strict base class of every generated class
 |`rdf_persistence/services/schema.py`, `schema_structure.py` |`load_schema` (with the metamodel import map) and the rules that read a schema's aggregate structure, used by every other part
 |`rdf_persistence_generation/` |`rp-generate`: `cli.py`, `config.py` (the `[tool.rp-generate]` table), `steps.py` (the steps, in order), `pipeline.py` (staging and running them), `manifest.py` (freshness), `lint.yaml`
 |`rdf_persistence_generation/checks/` |The boundary, hard and rules checks

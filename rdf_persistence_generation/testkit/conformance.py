@@ -26,7 +26,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
 from rdflib import Graph
 
-from rdf_persistence.domain.exceptions import InvalidBody
+from rdf_persistence.core.domain.exceptions import InvalidBody
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.services.mapper import generated_models_of
 from rdf_persistence.services.schema_structure import (

@@ -5,7 +5,9 @@ import pytest
 from rdf_persistence.testkit.guards import assert_models_generated
 
 PKG = "fakepkg"
-HAND_WRITTEN = "from rdf_persistence.domain.base import RpModel\n\n\nclass X(RpModel):\n    pass\n"
+HAND_WRITTEN = (
+    "from rdf_persistence.core.domain.base import RpModel\n\n\nclass X(RpModel):\n    pass\n"
+)
 
 
 def _plant(root, rel, text):

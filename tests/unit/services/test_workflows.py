@@ -6,8 +6,8 @@ import pytest
 import yaml
 
 from rdf_persistence import AccessRules, load_role_definitions
-from rdf_persistence.domain.exceptions import InvalidWorkflow
-from rdf_persistence.domain.generated.rp_workflow import WorkflowTransition
+from rdf_persistence.core.domain.exceptions import InvalidWorkflow
+from rdf_persistence.core.domain.generated.rp_workflow import WorkflowTransition
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
 from tests.toy import REVIEW_WORKFLOW, ROLES, TOY_SCHEMA

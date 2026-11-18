@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Protocol
 
-from rdf_persistence.domain.generated.rp_provenance import Activity
+from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings
 
 CLOSED = object()  # the sentinel that ends a subscriber's stream

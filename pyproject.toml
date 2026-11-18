@@ -104,7 +104,7 @@ lint = [
 # served, so only it has OpenAPI components.
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/rp.yaml"
-package = "rdf_persistence.domain.generated"
+package = "rdf_persistence.core.domain.generated"
 regenerate-command = "make generate"
 openapi = false
 migrations = "rdf_persistence/model/migrations"
@@ -131,8 +131,8 @@ openapi = false
 kind = "technical"
 
 [[tool.rp-generate]]
-schema = "rdf_persistence/model/technical/telemetry/rp_telemetry.yaml"
-package = "rdf_persistence.services.generated.telemetry"
+schema = "rdf_persistence/model/technical/core/rp_core_services.yaml"
+package = "rdf_persistence.core.services.generated"
 regenerate-command = "make generate"
 openapi = false
 kind = "technical"

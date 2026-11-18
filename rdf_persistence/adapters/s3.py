@@ -16,18 +16,17 @@ from botocore.client import BaseClient
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
 
-from rdf_persistence.domain.blob_keys import checked_blob_key
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     Conflict,
     NotFound,
     PersistenceError,
     StoreUnavailable,
     TenantGone,
 )
-from rdf_persistence.domain.generated.rp_files import BlobEntry
-from rdf_persistence.services.generated.settings.rp_settings import HttpSettings
-from rdf_persistence.services.generated.telemetry.rp_telemetry import LogContext
-from rdf_persistence.services.telemetry import log_extra
+from rdf_persistence.core.domain.generated.rp_files import BlobEntry
+from rdf_persistence.core.services.generated.rp_core_services import HttpSettings, LogContext
+from rdf_persistence.core.services.telemetry import log_extra
+from rdf_persistence.domain.blob_keys import checked_blob_key
 
 NO_SUCH_BUCKET, NO_SUCH_KEY = "NoSuchBucket", "NoSuchKey"
 BUCKET_EXISTS = frozenset({"BucketAlreadyOwnedByYou", "BucketAlreadyExists"})

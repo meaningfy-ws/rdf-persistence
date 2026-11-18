@@ -17,7 +17,7 @@ from rdf_persistence_generation.problems import format_problem
 from .conftest import ROOT_SCHEMA
 
 METAMODEL_DIR = Path(__file__).parents[3] / "rdf_persistence" / "model"
-TOOLKIT_DOMAIN = "rdf_persistence.domain.generated"
+TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
 PACKAGE_RULES = {HardRule.PYTHON_PACKAGE.value, HardRule.PYTHON_PACKAGE_MISMATCH.value}
 ROOTS_USERS = (
     "rdf_persistence_generation.config",

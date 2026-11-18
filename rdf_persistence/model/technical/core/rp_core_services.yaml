@@ -1,0 +1,279 @@
+id: https://meaningfy.ws/ns/rdf-persistence/core-services
+name: rp_core_services
+title: RDF persistence core services module
+description: >-
+  The technical models of the `core` theme, which every other theme may use: `HttpSettings`, the
+  timeouts and attempts of every HTTP client of the toolkit, and `LogContext`, the attributes a log
+  record or a span of the toolkit carries. A log call passes one `LogContext` through `log_extra`,
+  a span takes the same one, so a record and a span of one step name their data alike. Each
+  telemetry slot's alias is the attribute name, which is dotted and so never collides with a
+  `LogRecord` attribute. The stable names follow the OpenTelemetry semantic conventions; the `rp.`
+  names are the toolkit's own. Every slot of `HttpSettings` defaults to the value the toolkit used
+  before it had settings. Nothing here is served by the HTTP service (technical-models PD-6, DEC-5;
+  thematic-structure PD-2).
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+  python_package: rdf_persistence.core.services.generated
+
+slots:
+  connect_timeout_seconds:
+    title: Connect timeout
+    description: The seconds an HTTP client waits to open a connection.
+    range: float
+    required: true
+    ifabsent: float(5.0)
+    minimum_value: 0.001
+    maximum_value: 31536000
+  read_timeout_seconds:
+    title: Read timeout
+    description: The seconds an HTTP client waits for the answer.
+    range: float
+    required: true
+    ifabsent: float(30.0)
+    minimum_value: 0.001
+    maximum_value: 31536000
+  max_attempts:
+    title: Maximum attempts
+    description: The most times the object store client tries a request.
+    range: integer
+    required: true
+    ifabsent: int(3)
+    minimum_value: 1
+  step:
+    title: Step
+    description: >-
+      The step of the operation a record or a span stands for, one constant per call site.
+    slot_uri: rp:step
+    alias: rp.step
+  tenant_id:
+    title: Tenant id
+    description: >-
+      The id of the tenant the operation works on.
+    slot_uri: rp:tenantId
+    alias: rp.tenant.id
+  resource:
+    title: Resource
+    description: >-
+      The resource an operation of a sweep or a dump works on.
+    slot_uri: rp:resource
+    alias: rp.resource
+  store_name:
+    title: Store name
+    description: >-
+      The name of the store a record concerns, as the registry records it.
+    slot_uri: rp:storeName
+    alias: rp.store.name
+  found_store_name:
+    title: Found store name
+    description: >-
+      The name of the store where the tenant was found instead.
+    slot_uri: rp:foundStoreName
+    alias: rp.store.found_name
+  schema_id:
+    title: Schema id
+    description: >-
+      The id of the schema a migration moves a tenant to.
+    slot_uri: rp:schemaId
+    alias: rp.schema.id
+  migration_name:
+    title: Migration name
+    description: >-
+      The name of the migration step a record concerns.
+    slot_uri: rp:migrationName
+    alias: rp.migration.name
+  blob_count:
+    title: Blob count
+    description: >-
+      The number of blobs an operation removed or kept.
+    slot_uri: rp:blobCount
+    alias: rp.blob.count
+    range: integer
+  source_tenant_id:
+    title: Source tenant id
+    description: >-
+      The id of the tenant a restore reads from.
+    slot_uri: rp:sourceTenantId
+    alias: rp.restore.source_tenant.id
+  policy_fields:
+    title: Policy fields
+    description: >-
+      The fields of the IRI policy that changed.
+    slot_uri: rp:policyFields
+    alias: rp.iri_policy.fields
+    multivalued: true
+  system_created:
+    title: System created
+    description: >-
+      Whether this start-up just created the system database, so the sweep is skipped.
+    slot_uri: rp:systemCreated
+    alias: rp.sweep.system_created
+    range: boolean
+  resources:
+    title: Resources
+    description: >-
+      The resources a sweep reached.
+    slot_uri: rp:resources
+    alias: rp.sweep.resources
+    multivalued: true
+  activity_id:
+    title: Activity id
+    description: >-
+      The id of the activity a record concerns.
+    slot_uri: rp:activityId
+    alias: rp.activity.id
+  activity_class:
+    title: Activity class
+    description: >-
+      The Python class name of the activity.
+    slot_uri: rp:activityClass
+    alias: rp.activity.class
+  activity_class_iri:
+    title: Activity class iri
+    description: >-
+      The class IRI an event envelope carries.
+    slot_uri: rp:activityClassIri
+    alias: rp.activity.class_iri
+  event_origin:
+    title: Event origin
+    description: >-
+      The deployment that published an event.
+    slot_uri: rp:eventOrigin
+    alias: rp.event.origin
+  observer_name:
+    title: Observer name
+    description: >-
+      The name of an observer of the message bus.
+    slot_uri: rp:observerName
+    alias: rp.observer.name
+  message_limit:
+    title: Message limit
+    description: >-
+      The limit on the messages of a commit.
+    slot_uri: rp:messageLimit
+    alias: rp.message.limit
+    range: integer
+  error_detail:
+    title: Error detail
+    description: >-
+      The detail of a validation error, free of the data that failed it.
+    slot_uri: rp:errorDetail
+    alias: rp.error.detail
+  response_body:
+    title: Response body
+    description: >-
+      The body a store answered with; written at DEBUG only.
+    slot_uri: rp:responseBody
+    alias: rp.store.response_body
+  db_system_name:
+    title: Db system name
+    description: >-
+      The database system, an OpenTelemetry stable attribute.
+    slot_uri: rp:dbSystemName
+    alias: db.system.name
+  db_namespace:
+    title: Db namespace
+    description: >-
+      The database name, an OpenTelemetry stable attribute.
+    slot_uri: rp:dbNamespace
+    alias: db.namespace
+  db_operation_name:
+    title: Db operation name
+    description: >-
+      The database operation, an OpenTelemetry stable attribute.
+    slot_uri: rp:dbOperationName
+    alias: db.operation.name
+  db_response_status_code:
+    title: Db response status code
+    description: >-
+      The status code a database answered with, an OpenTelemetry stable attribute.
+    slot_uri: rp:dbResponseStatusCode
+    alias: db.response.status_code
+  error_type:
+    title: Error type
+    description: >-
+      The qualified class name of an exception, or the code a service answered with.
+    slot_uri: rp:errorType
+    alias: error.type
+  exception_type:
+    title: Exception type
+    description: >-
+      The qualified class name of an exception, on the `exception` event of a span; the only
+      attribute of that event, an OpenTelemetry stable attribute.
+    slot_uri: rp:exceptionType
+    alias: exception.type
+  http_response_status_code:
+    title: Http response status code
+    description: >-
+      The HTTP status of a response, an OpenTelemetry stable attribute.
+    slot_uri: rp:httpResponseStatusCode
+    alias: http.response.status_code
+    range: integer
+  messaging_system_name:
+    title: Messaging system name
+    description: >-
+      The messaging system, an OpenTelemetry development attribute (v1.45.0).
+    slot_uri: rp:messagingSystemName
+    alias: messaging.system.name
+  messaging_destination_name:
+    title: Messaging destination name
+    description: >-
+      The messaging destination, an OpenTelemetry development attribute (v1.45.0).
+    slot_uri: rp:messagingDestinationName
+    alias: messaging.destination.name
+
+classes:
+  HttpSettings:
+    title: HTTP settings
+    description: >-
+      The timeouts and the attempts of every HTTP client of the toolkit: the SPARQL store, the identity
+      provider and the object store.
+    slots:
+      - connect_timeout_seconds
+      - read_timeout_seconds
+      - max_attempts
+  LogContext:
+    title: Log context
+    description: >-
+      The data of one step of an operation: the step and whatever else the call site knows. Only
+      the step is required.
+    class_uri: rp:LogContext
+    slots:
+      - step
+      - tenant_id
+      - resource
+      - store_name
+      - found_store_name
+      - schema_id
+      - migration_name
+      - blob_count
+      - source_tenant_id
+      - policy_fields
+      - system_created
+      - resources
+      - activity_id
+      - activity_class
+      - activity_class_iri
+      - event_origin
+      - observer_name
+      - message_limit
+      - error_detail
+      - response_body
+      - db_system_name
+      - db_namespace
+      - db_operation_name
+      - db_response_status_code
+      - error_type
+      - exception_type
+      - http_response_status_code
+      - messaging_system_name
+      - messaging_destination_name
+    slot_usage:
+      step:
+        required: true

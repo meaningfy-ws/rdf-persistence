@@ -10,9 +10,8 @@ import pytest
 from pyld import jsonld
 from rdflib import RDF, SKOS, XSD, BNode, Dataset, Graph, Literal, URIRef
 
-from rdf_persistence.domain.exceptions import InvalidBody, NotAcceptable
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import (
+from rdf_persistence.core.domain.exceptions import InvalidBody, NotAcceptable
+from rdf_persistence.core.domain.media import (
     DATASET_REPRESENTATIONS,
     JSON,
     JSON_LD,
@@ -21,6 +20,7 @@ from rdf_persistence.domain.media import (
     REPRESENTATIONS,
     TURTLE,
 )
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.documents import Documents, dataset_of
 from rdf_persistence.services.generated.service.rp_service import (

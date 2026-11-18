@@ -25,13 +25,11 @@ from pyld import jsonld
 from rdflib import RDF, SH, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.domain.exceptions import InvalidBody, NotAcceptable, PayloadTooLarge
-from rdf_persistence.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import DATASET_REPRESENTATIONS, JSON, JSON_LD, RDF_XML
-from rdf_persistence.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
-from rdf_persistence.services import vocabulary as v
-from rdf_persistence.services.artifacts import (
+from rdf_persistence.core.domain.exceptions import InvalidBody, NotAcceptable, PayloadTooLarge
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
+from rdf_persistence.core.domain.media import DATASET_REPRESENTATIONS, JSON, JSON_LD, RDF_XML
+from rdf_persistence.core.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
+from rdf_persistence.core.services.artifacts import (
     CONTEXT_FILE,
     CONTEXT_KEY,
     FRAME_SUFFIX,
@@ -39,6 +37,8 @@ from rdf_persistence.services.artifacts import (
     SHAPES_FILE,
     TYPE_KEY,
 )
+from rdf_persistence.domain.layout import graph_iri
+from rdf_persistence.services import vocabulary as v
 from rdf_persistence.services.generated.settings.rp_settings import LimitSettings
 from rdf_persistence.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.services.jsonld import (

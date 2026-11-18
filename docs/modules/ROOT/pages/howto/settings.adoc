@@ -232,7 +232,7 @@ The other old duration keywords (`interval`, `publish_timeout`, `keep_alive`) we
 |The timeouts of `FusekiStore`, `JwksTokenVerifier`, `ZitadelIdentity` and `S3FileStore` (fixed before) |`http=HttpSettings(connect_timeout_seconds=, read_timeout_seconds=, max_attempts=)`
 |The page size of `ZitadelIdentity` (fixed before) |`directory=DirectorySettings(page_size=)`
 |The node limit of `Documents`, the manifest cap of `tenant_dump.restore` (fixed before) |`limits=LimitSettings(max_document_nodes=, max_manifest_bytes=)`
-|`CONNECT_TIMEOUT_SECONDS`, `READ_TIMEOUT_SECONDS` (`adapters/_http.py`, `adapters/s3.py`), `MAX_ATTEMPTS` (`adapters/s3.py`) |`HttpSettings.connect_timeout_seconds`, `read_timeout_seconds`, `max_attempts`
+|`CONNECT_TIMEOUT_SECONDS`, `READ_TIMEOUT_SECONDS` (`core/adapters/_http.py`, `adapters/s3.py`), `MAX_ATTEMPTS` (`adapters/s3.py`) |`HttpSettings.connect_timeout_seconds`, `read_timeout_seconds`, `max_attempts`
 |`JWKS_TTL_SECONDS`, `UNKNOWN_KID_COOLDOWN_SECONDS`, `DEFAULT_ALGORITHMS`, `DEFAULT_LEEWAY_SECONDS`, `MAX_LEEWAY_SECONDS` (`adapters/jwks.py`) |`JwksSettings.ttl_seconds`, `unknown_kid_cooldown_seconds`, `allowed_algorithms`, `leeway_seconds` (its bounds are the model's, 0 to 300)
 |`POLLING_INTERVAL_MS` (`adapters/redis_events.py`) |`EventSettings.polling_interval_ms`
 |`PAGE_SIZE` (`adapters/zitadel.py`) |`DirectorySettings.page_size`

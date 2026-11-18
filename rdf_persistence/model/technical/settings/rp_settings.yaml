@@ -16,20 +16,12 @@ default_prefix: rp
 default_range: string
 imports:
   - linkml:types
+  - ../core/rp_core_services
 annotations:
   module_kind: technical
   python_package: rdf_persistence.services.generated.settings
 
 classes:
-  HttpSettings:
-    title: HTTP settings
-    description: >-
-      The timeouts and the attempts of every HTTP client of the toolkit: the SPARQL store, the identity
-      provider and the object store.
-    slots:
-      - connect_timeout_seconds
-      - read_timeout_seconds
-      - max_attempts
   JwksSettings:
     title: JWKS settings
     description: How the token verifier caches the identity provider's keys and which signatures it accepts.
@@ -84,29 +76,6 @@ classes:
       - limits
 
 slots:
-  connect_timeout_seconds:
-    title: Connect timeout
-    description: The seconds an HTTP client waits to open a connection.
-    range: float
-    required: true
-    ifabsent: float(5.0)
-    minimum_value: 0.001
-    maximum_value: 31536000
-  read_timeout_seconds:
-    title: Read timeout
-    description: The seconds an HTTP client waits for the answer.
-    range: float
-    required: true
-    ifabsent: float(30.0)
-    minimum_value: 0.001
-    maximum_value: 31536000
-  max_attempts:
-    title: Maximum attempts
-    description: The most times the object store client tries a request.
-    range: integer
-    required: true
-    ifabsent: int(3)
-    minimum_value: 1
   ttl_seconds:
     title: Key cache lifetime
     description: The seconds a fetched set of signing keys is used before it is fetched again.

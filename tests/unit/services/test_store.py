@@ -6,7 +6,7 @@ from opentelemetry.trace import SpanKind, StatusCode
 from rdflib import Dataset, Graph, URIRef
 
 from rdf_persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.domain.exceptions import (
+from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     DatabaseGone,
     SparqlError,

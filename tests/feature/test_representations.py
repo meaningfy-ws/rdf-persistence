@@ -8,8 +8,7 @@ from pyld import jsonld
 from pytest_bdd import given, parsers, scenarios, then, when
 from rdflib import Dataset, Graph
 
-from rdf_persistence.domain.layout import graph_iri
-from rdf_persistence.domain.media import (
+from rdf_persistence.core.domain.media import (
     JSON,
     JSON_LD,
     N_QUADS,
@@ -18,6 +17,7 @@ from rdf_persistence.domain.media import (
     TRIG,
     TURTLE,
 )
+from rdf_persistence.domain.layout import graph_iri
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, assert_problem
 

@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from rdf_persistence.domain.exceptions import BadQuery
+from rdf_persistence.core.domain.exceptions import BadQuery
 from rdf_persistence.testkit import FakeStore
 
 NAME = "atomic"

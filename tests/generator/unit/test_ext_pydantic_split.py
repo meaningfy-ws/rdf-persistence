@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from rdf_persistence.domain.generated.rp_files import StoredFile
+from rdf_persistence.core.domain.generated.rp_files import StoredFile
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.exceptions import SchemaGenerationError
@@ -26,7 +26,7 @@ from rdf_persistence_generation.steps import PYTHON_STEP
 
 from .golden import assert_matches_toy, run_toy
 
-TOOLKIT_DOMAIN = "rdf_persistence.domain.generated"
+TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
 TOY_MODULES = [
     "__init__.py",
     "books.py",
@@ -208,7 +208,7 @@ def test_enum_members_are_the_permissible_value_keys_in_upper_snake_case(
 
 
 def test_an_enum_member_keeps_the_value_of_its_key() -> None:
-    from rdf_persistence.domain.generated.rp_core import RegistryKind
+    from rdf_persistence.core.domain.generated.rp_core import RegistryKind
 
     assert RegistryKind.LOADED_GRAPH.value == "loaded_graph", "the stored value is the key"
 
@@ -325,7 +325,7 @@ types:
     description: A rendered SPARQL term.
     repr: SparqlTerm
     annotations:
-      python_import: rdf_persistence.domain.sparql
+      python_import: rdf_persistence.core.domain.sparql
 classes:
   Bundle:
     title: Bundle
@@ -343,7 +343,7 @@ def test_a_type_with_a_repr_and_a_python_import_is_imported_and_used_as_the_fiel
     text = {f.name: f.text for f in render_modules(tmp_path / "terms.yaml")}["terms.py"]
     tree = ast.parse(text)
     compile(text, "terms.py", "exec")
-    assert "SparqlTerm" in imports_from(tree, "rdf_persistence.domain.sparql"), (
+    assert "SparqlTerm" in imports_from(tree, "rdf_persistence.core.domain.sparql"), (
         "the module must import SparqlTerm from the annotation's module"
     )
     field = next(
@@ -457,7 +457,7 @@ def test_a_multivalued_slot_whose_ifabsent_is_not_a_list_of_names_is_refused_nam
 
 
 _REPR_LINE = "    repr: SparqlTerm\n"
-_IMPORT_LINES = "    annotations:\n      python_import: rdf_persistence.domain.sparql\n"
+_IMPORT_LINES = "    annotations:\n      python_import: rdf_persistence.core.domain.sparql\n"
 
 
 @pytest.mark.parametrize(
@@ -477,7 +477,7 @@ def test_a_type_with_only_one_of_repr_and_python_import_yields_no_broken_import(
     compile(text, "terms.py", "exec")
     modules = {str(n.module) for n in ast.walk(ast.parse(text)) if isinstance(n, ast.ImportFrom)}
     assert "None" not in modules, "no import of the object None"
-    assert "rdf_persistence.domain.sparql" not in modules, "an import needs both halves"
+    assert "rdf_persistence.core.domain.sparql" not in modules, "an import needs both halves"
 
 
 ALIAS_MODULE = """\
