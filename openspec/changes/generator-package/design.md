@@ -424,3 +424,24 @@ package name are leader's choices (DEC-2, DEC-5).
   generator module loads), S3 (three docstrings name `generation`), S4 (the model guard's
   `layers=("",)` and the generator half of `test_model_guard.py`), S5 (`test_generation_shape.py`
   imports helpers from a library test).
+- **D-20 Stage 2 checker: verdict fail, items fixed now** (lead, under the developer's grant;
+  checker: 6 findings, no Critical). Fixed in one fixer pass, then one full-gates run:
+  - W1 (TC-09 deviates): `_toolkit_files()` takes every module under the generator but
+    `generated/`, so the moved `testkit/` (freshness plugin, conformance, round trip, strategies)
+    became an input of every manifest, and editing it would mark every consumer stale although it
+    never shapes the output. `testkit/` is excluded like `generated/`; the manifests are
+    regenerated (PD-4).
+  - W2: no test fails if `library-never-imports-the-generator` is deleted or its ignores relaxed,
+    or if the event-bus and SPARQL contracts stop covering the generator (D-19 W1); the contracts
+    join the kept-contracts tests of `tests/unit/test_technical_split.py`.
+  - W3, evidence recorded here: TC-31, the test count over `tests/` before and after the moves of
+    task 2.4 was 7765 both (builder of 2.4, `make test-fast` totals); TC-23, a planted
+    `import rdf_persistence_generation.config` in `services/schema.py` broke
+    `library-never-imports-the-generator` and `runtime-without-extras` naming both modules
+    (builders of 2.3 and the tester); TC-24, a planted `import linkml` in the generator's
+    `manifest.py` broke `works-without-the-generate-extra` (same); TC-09, the lead read the
+    regenerated diff of task 2.1: only `rp-manifest.json` files changed (nine targets and the toy),
+    input paths and the hashes of edited generator modules; outputs are R100 renames.
+  Under the floor: S1 (scenario-map rows, done before the archive per D-17), S3 (a guard that the
+  generator's integration tier loads no container plugin: stage 4, task 4.2). S2 (hand-over and
+  ticks) is the PR's last commit.
