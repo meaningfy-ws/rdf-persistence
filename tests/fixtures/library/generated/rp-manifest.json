@@ -135,7 +135,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_split.py",
-      "sha256": "0c170c365d85f89ba1527769af3a11b27567e882af864183761d96f51b2eedf7"
+      "sha256": "a30031f05bb7b4f8f9d155fef1a7b4b59ae0c071680bf020ac06804f46aa403b"
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_validators.py",
@@ -187,7 +187,7 @@
     },
     {
       "path": "rdf_persistence_generation/templates/pydantic/base_model.py.jinja",
-      "sha256": "dca3abc1dff3936a2665e319778c7c6d69e8b8995c673bfb98601041829d86d5"
+      "sha256": "efc7f4afda5331855d8691cc571d359510d863aab11164a4a9de4b486cef9843"
     },
     {
       "path": "rdf_persistence_generation/templates/pydantic/class.py.jinja",
@@ -301,11 +301,11 @@
     },
     {
       "path": "generated/books.py",
-      "sha256": "d9f2f1ac93e736a68d447d60c4a0ae0997c2db9512c9e81bdf173fc98e0e3a00"
+      "sha256": "327ee15a86c5f020171e16e8b5695b28d6d99bea3a3dea0de81b808204f59c7f"
     },
     {
       "path": "generated/books_activities.py",
-      "sha256": "a18e9d0363f323a27947a6a604401fabb63eda755308cdd65d38bcfb2702317e"
+      "sha256": "a65125c257a5c19303251cf4310936ff751ec46a14e0e88e0eacbc1fdcf2905a"
     },
     {
       "path": "generated/context.jsonld",
@@ -337,15 +337,15 @@
     },
     {
       "path": "generated/library.py",
-      "sha256": "1a847283c81b19625f133a75932db19881270ccac4ae378f99e89a633defd899"
+      "sha256": "fdbabf27f0ba55d519108212e9c240699266666d065c7ab65dc734907a7a0d22"
     },
     {
       "path": "generated/library_access.py",
-      "sha256": "7b24fa1429aab4915237a865046272aa06b045ddd662d25b672aaf6edd30d137"
+      "sha256": "7ed40eb0d878c71c9a22d38b3f8b9c664b78e47b0b4ef91b3fdd5c9c16520d6a"
     },
     {
       "path": "generated/library_tenant.py",
-      "sha256": "d2f2b2762463cdfa7fd419798fdb2e86960d595b7123bb624abe8a17192b5d56"
+      "sha256": "a9ccb5a964f35dc22f9d6c140e4f1e760c0b97c65149de34ca13f2a0223c82a6"
     },
     {
       "path": "generated/openapi-components.json",
@@ -353,7 +353,7 @@
     },
     {
       "path": "generated/scans.py",
-      "sha256": "326586879b781b8f6247d027c7637a302d1e4b1c3045fb257ddd14da6bbcb2a5"
+      "sha256": "3bb451d6dca4066fe1c450b924a02fc11927cc9337c53d45dafeb366044e65ef"
     },
     {
       "path": "generated/shapes.ttl",
@@ -361,7 +361,7 @@
     },
     {
       "path": "generated/templates.py",
-      "sha256": "4c9c6e4e39f88c62d67cf9fa5c693ab45e24f01794981f51b79a34b407b6b95c"
+      "sha256": "e6f6e80ced560427e968328c5140a1920337bc1860e30d63b17e1c47dab3f15e"
     },
     {
       "path": "migrations/schema.lock.json",

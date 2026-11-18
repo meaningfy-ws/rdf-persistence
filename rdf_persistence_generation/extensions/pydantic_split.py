@@ -43,7 +43,14 @@ from linkml.generators.pydanticgen.pydanticgen import (
     SplitMode,
     make_valid_python_identifier,
 )
-from linkml.generators.pydanticgen.template import Import, Imports, ObjectImport, PydanticAttribute
+from linkml.generators.pydanticgen.template import (
+    Import,
+    Imports,
+    ObjectImport,
+    PydanticAttribute,
+    PydanticBaseModel,
+    PydanticModule,
+)
 from linkml_runtime.linkml_model.meta import (
     ClassDefinition,
     EnumDefinition,
@@ -76,6 +83,9 @@ from rdf_persistence_generation.generated.rp_generation import (
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "pydantic"
 METAMODEL_DIR = PACKAGE_DIR / "model"
 INIT = "__init__.py"
+BASE_MODEL = "RpModel"
+BASE_MODULE = "base"
+GENERATED_LEAF = "generated"
 _LIST_DEFAULT = re.compile(
     r"string\((.*)\)"
 )  # the ifabsent of a multivalued slot: its names, comma-separated
@@ -116,6 +126,37 @@ def metamodel_module(schema: SchemaDefinition, *, toolkit: bool) -> str:
     return target_module(schema)
 
 
+@cache
+def toolkit_base_module() -> str:
+    """The module that holds ``RpModel``, for the toolkit's own run (PD-8).
+
+    It sits beside the metamodel's generated package: ``python_package`` of ``rp.yaml`` with its
+    ``generated`` leaf replaced by ``base`` (``rdf_persistence.domain.generated`` gives
+    ``rdf_persistence.domain.base``).
+    """
+    root = load_schema(METAMODEL_DIR / "rp.yaml").schema
+    package = _required_annotation(root, GenerationAnnotation.PYTHON_PACKAGE)
+    parent, _, leaf = package.rpartition(".")
+    if leaf != GENERATED_LEAF or not parent:
+        raise SchemaGenerationError(
+            f"the python_package of rp.yaml ({package}) must end in .{GENERATED_LEAF}, "
+            f"so the module of {BASE_MODEL} can be found beside it"
+        )
+    return f"{parent}.{BASE_MODULE}"
+
+
+def base_model_module(*, toolkit: bool) -> str:
+    """The module a generated module imports ``RpModel`` from: the public package for an
+    application, its own module for the toolkit, whose top package imports the generated code (PD-8)."""
+    return toolkit_base_module() if toolkit else public_package()
+
+
+class RpBaseModel(PydanticBaseModel):
+    """The base-model template's data, plus the module ``RpModel`` is imported from."""
+
+    module: str = ""
+
+
 def target_module(schema: SchemaDefinition) -> str:
     """The module a class of ``schema`` is imported from: its ``python_package``, then its name (PD-3)."""
     package = _required_annotation(schema, GenerationAnnotation.PYTHON_PACKAGE)
@@ -142,6 +183,13 @@ class SplitPydanticGenerator(PydanticGenerator):
             f"{schema.name} is neither beside the root schema, nor in the metamodel, "
             f"nor says where its classes live ({GenerationAnnotation.PYTHON_PACKAGE.value})"
         )
+
+    def before_render_template(self, module: PydanticModule, sv: SchemaView) -> PydanticModule:
+        """Name the module ``RpModel`` is imported from (PD-8)."""
+        module.base_model = RpBaseModel(
+            **module.base_model.model_dump(), module=base_model_module(toolkit=self.toolkit)
+        )
+        return module
 
     def _get_imports(self, element: ClassDefinition | SlotDefinition | None = None) -> Imports:
         """The stock class imports, plus the enums of other modules that a slot ranges over, plus
