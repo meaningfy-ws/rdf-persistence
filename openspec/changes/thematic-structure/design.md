@@ -579,3 +579,23 @@ consumers later.
   change with the move (`rdf_persistence.files.adapters.s3` …), RISK-3's list for the CHANGELOG of
   stage 7. (9) `vocabulary.TOTAL` and `IRI_POLICY` read the schema files of higher themes; a file
   read, not an import, as PD-10 states.
+- **D-16 Stage 3 review and tester, accepted** (lead; review 9 findings, tester 242 tests, 18
+  failed first, 4 findings; one fixer pass). Critical, the holes D-13 closed for `core` reopened
+  for the four new themes: C1 = tester F1 (`core-never-imports-the-old-layout` and
+  `domain-never-imports-technical-models` do not cover `iris`, `schema`, `files`, `provenance`), C2
+  = F2 (the model guard does not scan them). So that no later stage repeats it, both lists are
+  derived from the turned-on themes: the contract's sources name every turned-on theme
+  (`rdf_persistence.<theme>`), `domain-never-imports-technical-models` takes
+  `rdf_persistence.*.domain`, `LIBRARY_LAYERS` adds every name of `TURNED_ON`, and a test fails when
+  a turned-on theme is missing from any of them. Accepted below Critical: W1 (the spec delta orders
+  `core`; `iris`, `schema`, `files`; `provenance`, while PD-6 and the contract order
+  `iris | schema` below `provenance | files`: the spec delta is amended to PD-6, the gated design
+  decision the code holds, and stated as the order every later stage keeps); W2 (TC-35 gets planted
+  tests: `files` → `provenance`, `iris` → `schema`, `iris.domain` → `iris.services.generated`); W3
+  (docs naming moved paths: `architecture/index.adoc` ~309, ~322, ~326, ~342–351,
+  `generation.adoc` ~373, `develop/index.adoc` ~26, ~28); W4 (`setup.cfg`'s mutation scope
+  follows the domain modules into the themes, `rdf_persistence/*/domain/*` without `generated`, with
+  their tests; `develop/index.adoc` ~70 says so); W5 (`tests/unit/services/test_aggregate_keys.py`
+  moves to `tests/unit/schema/`); S1 (one planted old-vs-themes case per new theme). Under the
+  floor: F3 (the S3 logger rename silences an old logging configuration: stage 7's CHANGELOG says
+  so, D-15 (8)), F4 (`Iris.resource_name` is stricter than the old function, as designed).
