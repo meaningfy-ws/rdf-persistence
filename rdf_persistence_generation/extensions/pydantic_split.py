@@ -5,7 +5,8 @@ The stock generator lacks eleven things the toolkit needs, and this module adds 
 * the metamodel's classes are imported from the toolkit's package, never regenerated: from
   ``<python_package>.<module>`` inside the toolkit's own runs, the ``python_package`` annotation of
   the module saying where its classes live, and from the ``public_package`` of ``rp.yaml`` (DEC-6,
-  DEC-7) in an application's run;
+  DEC-7) in an application's run; the classes of a module of another target that names its
+  ``python_package`` are imported from there too, never regenerated (PD-3);
 * enum members are named after the permissible-value keys in UPPER_SNAKE case, not after the titles;
 * ``exactly_one_of``, ``any_of`` and ``unique_keys`` become model validators (``pydantic_validators``);
 * a slot annotated ``internal: true`` carries ``json_schema_extra={"rp_internal": True}`` (the
@@ -112,6 +113,11 @@ def metamodel_module(schema: SchemaDefinition, *, toolkit: bool) -> str:
     """
     if not toolkit:
         return public_package()
+    return target_module(schema)
+
+
+def target_module(schema: SchemaDefinition) -> str:
+    """The module a class of ``schema`` is imported from: its ``python_package``, then its name (PD-3)."""
     package = _required_annotation(schema, GenerationAnnotation.PYTHON_PACKAGE)
     return f"{package}.{schema.name}"
 
@@ -128,11 +134,14 @@ class SplitPydanticGenerator(PydanticGenerator):
         source = Path(str(schema.source_file)).resolve()
         if source.parent == self.folder:
             return module
-        if source.parent != METAMODEL_DIR:
-            raise SchemaGenerationError(
-                f"{schema.name} is neither beside the root schema nor in the metamodel"
-            )
-        return metamodel_module(schema, toolkit=self.toolkit)
+        if source.parent == METAMODEL_DIR:
+            return metamodel_module(schema, toolkit=self.toolkit)
+        if annotation_text(schema, GenerationAnnotation.PYTHON_PACKAGE) is not None:
+            return target_module(schema)  # a module of another target (PD-3)
+        raise SchemaGenerationError(
+            f"{schema.name} is neither beside the root schema, nor in the metamodel, "
+            f"nor says where its classes live ({GenerationAnnotation.PYTHON_PACKAGE.value})"
+        )
 
     def _get_imports(self, element: ClassDefinition | SlotDefinition | None = None) -> Imports:
         """The stock class imports, plus the enums of other modules that a slot ranges over, plus

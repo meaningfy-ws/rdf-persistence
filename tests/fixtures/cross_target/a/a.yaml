@@ -1,0 +1,17 @@
+id: https://example.org/ns/cross/a
+name: a
+title: Module a
+description: The module of target A that target B imports; it says where its classes live.
+prefixes: {x: "https://example.org/ns/cross#", linkml: "https://w3id.org/linkml/"}
+default_prefix: x
+default_range: string
+imports: [linkml:types]
+annotations:
+  python_package: xt.a.generated
+
+classes:
+  Thing:
+    title: Thing
+    description: A thing that target B refers to.
+    attributes:
+      label: {title: Label, description: Its label.}
