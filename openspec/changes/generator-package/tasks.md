@@ -42,7 +42,7 @@ Stage 1 closes with `make check-all`, `make test-containers`, the review (one pa
 
 ## Stage 2: the sibling package (PR 2)
 
-- [ ] 2.1 DEC-1, DEC-2, PD-7, PD-4, PD-5: the packaging test first, then the move (design,
+- [x] 2.1 DEC-1, DEC-2, PD-7, PD-4, PD-5: the packaging test first, then the move (design,
   "Stage 2, step by step", 1, 2, 4 and 5). Tests in `tests/unit/test_packaging.py` and
   `tests/unit/generation/test_freshness.py`, `test_generation_inputs.py` (moved in 2.4). Gate:
   `make test-fast check-quality`, then `make check-generated` (the lead reads the diff).
@@ -61,7 +61,7 @@ Stage 1 closes with `make check-all`, `make test-containers`, the review (one pa
 | TC-14b | `class_shapes([rp_generation.yaml], roots=TOOLKIT_ROOTS)` against `rdf_persistence_generation.generated` (`tests/generator/unit/test_generation_shape.py`) | `model_shape_diff` is empty |
 | TC-14c | `grep -rn "rdf_persistence/generation\|rdf_persistence\.generation"` outside `openspec/` and `CHANGELOG.md`, at the close of the stage | nothing |
 
-- [ ] 2.2 PD-2, PD-3: the four modules to `rdf_persistence_generation/testkit/`, its lazy
+- [x] 2.2 PD-2, PD-3: the four modules to `rdf_persistence_generation/testkit/`, its lazy
   `__init__`, the shims; `tests/conftest.py:37` loads `rdf_persistence_generation.testkit.freshness`;
   `tests/unit/services/test_activity_shape.py` and `test_mapper.py` import the new paths. Tests in
   `tests/unit/generation/test_testkit_moved.py` (moved in 2.4), `tests/unit/test_testkit_lazy_import.py`
@@ -78,7 +78,7 @@ Stage 1 closes with `make check-all`, `make test-containers`, the review (one pa
 | TC-20 | `import rdf_persistence.testkit` | no `DeprecationWarning` (the shims load only on use) |
 | TC-21 | `import rdf_persistence_generation.testkit` with `linkml` made unimportable | imports; `Conformance` loads |
 
-- [ ] 2.3 PD-8, DEC-3: `.importlinter` (root packages, `library-never-imports-the-generator`,
+- [x] 2.3 PD-8, DEC-3: `.importlinter` (root packages, `library-never-imports-the-generator`,
   `runtime-without-extras`, `works-without-the-generate-extra`); stage 1's contract removed. Gate:
   `make test-changed check-quality`.
 
@@ -88,7 +88,7 @@ Stage 1 closes with `make check-all`, `make test-containers`, the review (one pa
 | TC-23 | (adversarial tester, reverted) `import rdf_persistence_generation.config` in `rdf_persistence/services/schema.py` | fails naming both modules |
 | TC-24 | (adversarial tester, reverted) `import linkml` in `rdf_persistence_generation/manifest.py` | `works-without-the-generate-extra` fails |
 
-- [ ] 2.4 DEC-8, PD-9, PD-10: move the tests; `_MARKERS_BY_DIR`; `tests/changed.py`; Makefile
+- [x] 2.4 DEC-8, PD-9, PD-10: move the tests; `_MARKERS_BY_DIR`; `tests/changed.py`; Makefile
   lanes and path lists (with `refresh-snapshot`, `refresh-golden`, `ruff.toml:61`,
   `.pre-commit-config.yaml:24`); `sonar-project.properties`; CI job `test-generator`; the `ast`
   test of PD-9 with `TOOL_USERS`; the `generation` parameter of the shape test split out (PD-9). Tests in `tests/unit/test_container_selection.py` (marker rows), `tests/unit/test_changed.py`,
@@ -106,7 +106,7 @@ Stage 1 closes with `make check-all`, `make test-containers`, the review (one pa
 | TC-30 | `make test-generator` | collects only `tests/generator/`; coverage over `rdf_persistence_generation` ≥ 80 % |
 | TC-31 | test count before and after the move (`pytest --collect-only -q` over `tests/`) | equal, plus the new tests of stage 2 |
 
-- [ ] 2.5 Docs: `architecture/generation.adoc` (the package, the plugin path, the shims),
+- [x] 2.5 Docs: `architecture/generation.adoc` (the package, the plugin path, the shims),
   `architecture/index.adoc:314` (the row), `howto/adopt.adoc` (§ freshness: the new
   `pytest_plugins` line; the conformance imports; "after upgrading, regenerate once"),
   `develop/index.adoc:90`, `develop/testing.adoc` (§ Where tests live: the two pyramids). Gate:
@@ -187,7 +187,7 @@ one pass), PR 4, then the reconciliation of `proposal.md` (P-0004) in PR 4 befor
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · PR 1 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · (tester) · [ ] 2.4 · [ ] 2.5 · PR 2 ·
+- [x] 1.1 · [x] 1.2 · PR 1 · [x] 2.1 · [x] 2.2 · [x] 2.3 · (tester) · [x] 2.4 · [x] 2.5 · PR 2 ·
   [ ] 3.1 · PR 3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4 · reconcile · PR 4
 
 ## Verification
