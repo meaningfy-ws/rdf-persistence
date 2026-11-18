@@ -207,23 +207,23 @@ def test_rendering_a_consumer_with_no_rp_core_import_still_resolves_rp_service_i
 
 
 def test_rendering_the_service_schema_equals_its_own_module_files() -> None:
-    own = typescript.with_index(typescript._module_files(typescript.SERVICE_SCHEMA))
-    assert [f.name for f in typescript.render(typescript.SERVICE_SCHEMA)] == [
-        f.name for f in own
-    ], "rendering the service schema adds nothing to its own files"
+    own = typescript.with_index(typescript._module_files(SERVICE_SCHEMA))
+    assert [f.name for f in typescript.render(SERVICE_SCHEMA)] == [f.name for f in own], (
+        "rendering the service schema adds nothing to its own files"
+    )
 
 
 def test_a_relative_path_to_the_service_schema_is_the_same_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.chdir(typescript.SERVICE_SCHEMA.parent)
-    names = [f.name for f in typescript.render(Path(typescript.SERVICE_SCHEMA.name))]
+    monkeypatch.chdir(SERVICE_SCHEMA.parent)
+    names = [f.name for f in typescript.render(Path(SERVICE_SCHEMA.name))]
     assert len(names) == len(set(names)), f"duplicate files for a relative path: {names}"
 
 
 def test_a_symlink_to_the_service_schema_is_the_same_file(tmp_path: Path) -> None:
     link = tmp_path / "linked_service.yaml"
-    link.symlink_to(typescript.SERVICE_SCHEMA)
+    link.symlink_to(SERVICE_SCHEMA)
     names = [f.name for f in typescript.render(link)]
     assert len(names) == len(set(names)), f"duplicate files for a symlink: {names}"
 

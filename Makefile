@@ -121,6 +121,7 @@ refresh-map: ## Re-key the scenario-map rows of renamed test files (against BASE
 	@ uv run python -m tests.audit.refresh_map --base $(BASE)
 
 refresh-golden: ## Rewrite the golden files of schemas that are not the toy (the toy's golden is the committed tree: make generate)
+	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/entrypoints/test_openapi_served.py -q
 	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/generator/unit -k "ext_" -q
 
 build: generate ## Build the package distribution (generates first)

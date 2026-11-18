@@ -17,7 +17,7 @@ from pathlib import Path
 from linkml.generators.typescriptgen import TypescriptGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema, metamodel_importmap
+from rdf_persistence.services.schema import SERVED_SCHEMAS, load_schema, metamodel_importmap
 from rdf_persistence.services.schema_structure import (
     apply_defaults,
     is_internal,
@@ -180,12 +180,13 @@ def _module_files(schema_path: Path) -> list[GeneratedFile]:
 
 
 def _clashes(generator: ToolkitTypescriptGenerator, folder: Path) -> list[str]:
-    """The modules and types of the schemas kept in ``folder`` whose names ``rp_service.ts`` reserves."""
-    service = load_schema(SERVICE_SCHEMA).schema
-    reserved = {*service.classes, *service.enums}
+    """The modules and types of the schemas kept in ``folder`` whose names the served types reserve."""
+    served = [load_schema(path).schema for path in SERVED_SCHEMAS]
+    reserved_modules = {schema.name for schema in served}
+    reserved = {name for schema in served for name in (*schema.classes, *schema.enums)}
     found = []
     for schema in own_schemas(generator.schemaview, folder):
-        if schema.name == service.name:
+        if schema.name in reserved_modules:
             found.append(f"module {schema.name}")
         found += [
             f"{name} ({schema.name})"
@@ -195,24 +196,32 @@ def _clashes(generator: ToolkitTypescriptGenerator, folder: Path) -> list[str]:
     return found
 
 
-def render(schema_path: Path) -> list[GeneratedFile]:
-    """The TypeScript files of the schema at ``schema_path`` plus the toolkit's service types.
+def _is_served(schema_path: Path) -> bool:
+    return schema_path.resolve() in {path.resolve() for path in SERVED_SCHEMAS}
 
-    A consumer's API carries the service types (``rp_service``), so they are written beside the
-    modules the schema imports; the index exports every module once.
+
+def render(schema_path: Path) -> list[GeneratedFile]:
+    """The TypeScript files of the schema at ``schema_path`` plus the types of every served schema.
+
+    A consumer's API carries the service types (``rp_service`` and the other served schemas, PD-10),
+    so they are written beside the modules the schema imports, in the order of ``SERVED_SCHEMAS``;
+    the index exports every module once.
 
     Raises:
-        SchemaGenerationError: When the schema defines a module or type named like one of
-            ``rp_service.yaml``, which both would be exported by ``index.ts``.
+        SchemaGenerationError: When the schema defines a module or type named like one of the served
+            schemas, which both would be exported by ``index.ts``.
     """
     generator = _generator(schema_path)
-    is_service = schema_path.resolve() == SERVICE_SCHEMA.resolve()
-    if not is_service and (clashes := _clashes(generator, schema_path.resolve().parent)):
+    if not _is_served(schema_path) and (
+        clashes := _clashes(generator, schema_path.resolve().parent)
+    ):
         raise SchemaGenerationError(
-            f"{', '.join(clashes)}: reserved by rp_service.ts (the toolkit's service types); rename"
+            f"{', '.join(clashes)}: reserved by the served types (rp_service.ts and its kin); rename"
         )
     files = generator.module_files()
-    if not is_service:
-        written = {file.name for file in files}
-        files += [f for f in _module_files(SERVICE_SCHEMA) if f.name not in written]
+    written = {file.name for file in files}
+    for served in SERVED_SCHEMAS:
+        extra = [f for f in _module_files(served) if f.name not in written]
+        files += extra
+        written |= {file.name for file in extra}
     return with_index(files)

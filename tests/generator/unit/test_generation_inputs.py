@@ -255,3 +255,25 @@ def test_the_library_alone_knows_only_itself() -> None:
     """TC-12 (PD-5): the library never names the generator."""
     assert is_toolkit_schema(PACKAGE_DIR / "model") is True, "the library's own schemas"
     assert is_toolkit_schema(GENERATOR_DIR / "model") is False, "the library knows no generator"
+
+
+def test_every_served_schema_is_an_input_of_a_target_that_renders_typescript(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PD-10: the TypeScript step writes the types of all served schemas, so all are inputs."""
+    from rdf_persistence_generation import manifest
+
+    toy = Path("tests/fixtures/library").resolve()
+    second = GENERATOR_DIR / "model" / "rp_generation.yaml"
+    monkeypatch.setattr(manifest, "SERVED_SCHEMAS", (*manifest.SERVED_SCHEMAS, second))
+    target = read_targets(toy / "pyproject.toml")[0]
+    with_types = {e.path for e in manifest.current_inputs(target, toy)}
+    without_types = {
+        e.path for e in manifest.current_inputs(target.model_copy(update={"typescript": None}), toy)
+    }
+    assert "rdf_persistence_generation/model/rp_generation.yaml" in with_types, (
+        "the second served schema is an input"
+    )
+    assert "rdf_persistence_generation/model/rp_generation.yaml" not in without_types, (
+        "a target without TypeScript does not read it"
+    )

@@ -4,9 +4,11 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence_generation.extensions import typescript
 from rdf_persistence_generation.steps import TYPESCRIPT_STEP
 
-from .golden import TOY_TARGET, assert_matches_toy, run_toy
+from .conftest import ROOT_SCHEMA
+from .golden import TOY_TARGET, assert_matches_golden, assert_matches_toy, run_toy
 
 
 @pytest.fixture(scope="module")
@@ -110,6 +112,53 @@ def test_the_service_types_are_written_with_any_as_unknown(staged: Path) -> None
 def test_the_index_exports_the_service_types_once(staged: Path) -> None:
     index = text(staged, "index")
     assert index.count('export * from "./rp_service";') == 1, "the index exports rp_service once"
+
+
+def test_the_toy_typescript_equals_the_golden_files(rendered: Path) -> None:  # TC-07
+    assert_matches_golden("served_typescript", rendered / str(TOY_TARGET.typescript))
+
+
+EXTRA_SERVED = """id: https://example.org/ns/library/extra_served
+name: extra_served
+title: Extra served
+description: A second served technical module.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+
+classes:
+  ExtraPage:
+    title: Extra page
+    description: A class of the second served schema.
+    attributes:
+      extra_id:
+        description: Identifier.
+        identifier: true
+"""
+
+
+def test_every_served_schema_is_rendered_in_served_order(
+    toy_copy: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    extra = toy_copy / "extra_served.yaml"
+    extra.write_text(EXTRA_SERVED, encoding="utf-8")
+    monkeypatch.setattr(typescript, "SERVED_SCHEMAS", (*typescript.SERVED_SCHEMAS, extra))
+    rendered_files = typescript.render(toy_copy / ROOT_SCHEMA)
+    names = [f.name for f in rendered_files]
+    files = {f.name: f.text for f in rendered_files}
+    assert "export interface ExtraPage " in files["extra_served.ts"], "the second schema is written"
+    assert files["index.ts"].count('export * from "./extra_served";') == 1, (
+        "the index exports it once"
+    )
+    assert names.index("rp_service.ts") < names.index("extra_served.ts"), (
+        "the served schemas keep their order"
+    )
 
 
 @pytest.mark.parametrize(
