@@ -159,7 +159,7 @@
     },
     {
       "path": "rdf_persistence_generation/manifest.py",
-      "sha256": "ef46c8427044355cdf96530665272555be3407b751910426c1703fac0e7e332b"
+      "sha256": "15b8f49152f3e5ec4b773213af9e65d63f8d4ef36488e41c7686c9a3ef3eb898"
     },
     {
       "path": "rdf_persistence_generation/pipeline.py",
@@ -216,26 +216,6 @@
     {
       "path": "rdf_persistence_generation/templating.py",
       "sha256": "43a7c52d6981949ca8f5d302f60d28edcc7cdb92703f03093c7e895cd7a9510f"
-    },
-    {
-      "path": "rdf_persistence_generation/testkit/__init__.py",
-      "sha256": "60e17bf94a46e78929fc9275cf988dbf47a8ca6248a1fb8b79babd5284738628"
-    },
-    {
-      "path": "rdf_persistence_generation/testkit/conformance.py",
-      "sha256": "abd81e9afa38314670e9f22ec80b794a0e1a0751a31fd8c545e0cb05f0363b13"
-    },
-    {
-      "path": "rdf_persistence_generation/testkit/freshness.py",
-      "sha256": "17ee1dfa79c510601ed2a8e53d7bf12bad866bdf271dc0816da30bc538bbfbba"
-    },
-    {
-      "path": "rdf_persistence_generation/testkit/roundtrip.py",
-      "sha256": "404a63e3922ffe330359808dbb08f5ab54075920532acfd293a4cd766bfcd2a4"
-    },
-    {
-      "path": "rdf_persistence_generation/testkit/strategies.py",
-      "sha256": "441fc1d759c37aff9aaf2af6492c394540b19f8dc7b99dfad61393ac3438ebee"
     },
     {
       "path": "scans.yaml",

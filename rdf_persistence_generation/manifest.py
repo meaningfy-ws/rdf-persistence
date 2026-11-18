@@ -27,6 +27,7 @@ MANIFEST_NAME = "rp-manifest.json"
 DEFAULT_REGENERATE = "rp-generate"
 GENERATION_DIR = GENERATOR_DIR
 GENERATED_DIR = GENERATION_DIR / "generated"
+TESTKIT_DIR = GENERATION_DIR / "testkit"  # never shapes the output, so never an input (PD-4)
 TEMPLATES_DIR = GENERATION_DIR / "templates"
 SERVICES_DIR = PACKAGE_DIR / "services"
 SCHEMA_READERS = "schema*.py"  # the modules that decide how a schema is read (PD-26)
@@ -67,7 +68,7 @@ def recorded_path(file: Path, base: Path) -> str:
 def _toolkit_files() -> Iterator[Path]:
     yield from SERVICES_DIR.glob(SCHEMA_READERS)
     for module in GENERATION_DIR.rglob("*.py"):
-        if not module.is_relative_to(GENERATED_DIR):
+        if not module.is_relative_to(GENERATED_DIR) and not module.is_relative_to(TESTKIT_DIR):
             yield module
     yield from (p for p in TEMPLATES_DIR.rglob("*") if p.is_file() and BYTECODE_DIR not in p.parts)
 

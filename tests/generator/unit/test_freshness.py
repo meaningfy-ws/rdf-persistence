@@ -101,6 +101,17 @@ def test_linkml_types_and_the_generated_folder_are_not_inputs(generated: Path) -
     )
 
 
+def test_the_generators_testkit_modules_are_not_inputs(generated: Path) -> None:
+    """The freshness plugin, conformance, round trip and strategies never shape the output (TC-09)."""
+    testkit = sorted(manifest_module.GENERATION_DIR.joinpath("testkit").glob("*.py"))
+    assert testkit, "the scan found no generator testkit module"
+    paths = [entry.path for entry in read_manifest(generated).inputs]
+    assert not [p for p in paths if p.startswith("rdf_persistence_generation/testkit/")], (
+        "a generator testkit module is an input"
+    )
+    assert "rdf_persistence_generation/manifest.py" in paths, "the generator's modules stay inputs"
+
+
 def test_a_schema_changed_without_regenerating_is_stale_and_named(
     generated: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
