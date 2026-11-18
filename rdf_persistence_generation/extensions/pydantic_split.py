@@ -5,7 +5,8 @@ The stock generator lacks eleven things the toolkit needs, and this module adds 
 * the metamodel's classes are imported from the toolkit's package, never regenerated: from
   ``<python_package>.<module>`` inside the toolkit's own runs, the ``python_package`` annotation of
   the module saying where its classes live, and from the ``public_package`` of ``rp.yaml`` (DEC-6,
-  DEC-7) in an application's run;
+  DEC-7) in an application's run; the classes of a module of another target that names its
+  ``python_package`` are imported from there too, never regenerated (PD-3);
 * enum members are named after the permissible-value keys in UPPER_SNAKE case, not after the titles;
 * ``exactly_one_of``, ``any_of`` and ``unique_keys`` become model validators (``pydantic_validators``);
 * a slot annotated ``internal: true`` carries ``json_schema_extra={"rp_internal": True}`` (the
@@ -42,7 +43,14 @@ from linkml.generators.pydanticgen.pydanticgen import (
     SplitMode,
     make_valid_python_identifier,
 )
-from linkml.generators.pydanticgen.template import Import, Imports, ObjectImport, PydanticAttribute
+from linkml.generators.pydanticgen.template import (
+    Import,
+    Imports,
+    ObjectImport,
+    PydanticAttribute,
+    PydanticBaseModel,
+    PydanticModule,
+)
 from linkml_runtime.linkml_model.meta import (
     ClassDefinition,
     EnumDefinition,
@@ -75,6 +83,9 @@ from rdf_persistence_generation.generated.rp_generation import (
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "pydantic"
 METAMODEL_DIR = PACKAGE_DIR / "model"
 INIT = "__init__.py"
+BASE_MODEL = "RpModel"
+BASE_MODULE = "base"
+GENERATED_LEAF = "generated"
 _LIST_DEFAULT = re.compile(
     r"string\((.*)\)"
 )  # the ifabsent of a multivalued slot: its names, comma-separated
@@ -112,8 +123,54 @@ def metamodel_module(schema: SchemaDefinition, *, toolkit: bool) -> str:
     """
     if not toolkit:
         return public_package()
-    package = _required_annotation(schema, GenerationAnnotation.PYTHON_PACKAGE)
-    return f"{package}.{schema.name}"
+    return target_module(schema)
+
+
+@cache
+def toolkit_base_module() -> str:
+    """The module that holds ``RpModel``, for the toolkit's own run (PD-8).
+
+    It sits beside the metamodel's generated package: ``python_package`` of ``rp.yaml`` with its
+    ``generated`` leaf replaced by ``base`` (``rdf_persistence.domain.generated`` gives
+    ``rdf_persistence.domain.base``).
+    """
+    root = load_schema(METAMODEL_DIR / "rp.yaml").schema
+    package = _dotted_package(root)
+    parent, _, leaf = package.rpartition(".")
+    if leaf != GENERATED_LEAF or not parent:
+        raise SchemaGenerationError(
+            f"the python_package of rp.yaml ({package}) must end in .{GENERATED_LEAF}, "
+            f"so the module of {BASE_MODEL} can be found beside it"
+        )
+    return f"{parent}.{BASE_MODULE}"
+
+
+def base_model_module(*, toolkit: bool) -> str:
+    """The module a generated module imports ``RpModel`` from: the public package for an
+    application, its own module for the toolkit, whose top package imports the generated code (PD-8)."""
+    return toolkit_base_module() if toolkit else public_package()
+
+
+class RpBaseModel(PydanticBaseModel):
+    """The base-model template's data, plus the module ``RpModel`` is imported from."""
+
+    module: str = ""
+
+
+def target_module(schema: SchemaDefinition) -> str:
+    """The module a class of ``schema`` is imported from: its ``python_package``, then its name (PD-3)."""
+    return f"{_dotted_package(schema)}.{schema.name}"
+
+
+def _dotted_package(schema: SchemaDefinition) -> str:
+    """The ``python_package`` of ``schema``: a dotted name of identifiers, or a refusal naming it."""
+    tag = GenerationAnnotation.PYTHON_PACKAGE
+    package = _required_annotation(schema, tag)
+    if not all(part.isidentifier() for part in package.split(".")):
+        raise SchemaGenerationError(
+            f"{schema.name}: the {tag.value} annotation ({package!r}) is not a dotted Python name"
+        )
+    return package
 
 
 @dataclass
@@ -128,11 +185,21 @@ class SplitPydanticGenerator(PydanticGenerator):
         source = Path(str(schema.source_file)).resolve()
         if source.parent == self.folder:
             return module
-        if source.parent != METAMODEL_DIR:
-            raise SchemaGenerationError(
-                f"{schema.name} is neither beside the root schema nor in the metamodel"
-            )
-        return metamodel_module(schema, toolkit=self.toolkit)
+        if source.parent == METAMODEL_DIR:
+            return metamodel_module(schema, toolkit=self.toolkit)
+        if annotation_text(schema, GenerationAnnotation.PYTHON_PACKAGE) is not None:
+            return target_module(schema)  # a module of another target (PD-3)
+        raise SchemaGenerationError(
+            f"{schema.name} is neither beside the root schema, nor in the metamodel, "
+            f"nor says where its classes live ({GenerationAnnotation.PYTHON_PACKAGE.value})"
+        )
+
+    def before_render_template(self, module: PydanticModule, sv: SchemaView) -> PydanticModule:
+        """Name the module ``RpModel`` is imported from (PD-8)."""
+        module.base_model = RpBaseModel(
+            **module.base_model.model_dump(), module=base_model_module(toolkit=self.toolkit)
+        )
+        return module
 
     def _get_imports(self, element: ClassDefinition | SlotDefinition | None = None) -> Imports:
         """The stock class imports, plus the enums of other modules that a slot ranges over, plus

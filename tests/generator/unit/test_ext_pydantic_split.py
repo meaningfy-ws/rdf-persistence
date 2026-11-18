@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from rdf_persistence.domain.generated.rp_files import StoredFile
 from rdf_persistence.services.schema import load_schema
+from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions import pydantic_split
 from rdf_persistence_generation.extensions.pydantic_split import (
@@ -20,6 +21,7 @@ from rdf_persistence_generation.extensions.pydantic_split import (
     public_package,
 )
 from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
+from rdf_persistence_generation.manifest import current_inputs
 from rdf_persistence_generation.steps import PYTHON_STEP
 
 from .golden import assert_matches_toy, run_toy
@@ -538,3 +540,95 @@ def test_a_slot_annotated_field_name_slot_is_named_after_the_slot_and_keeps_the_
 
     assert fields["schema_file"] == "schema", "the annotated slot must keep its alias"
     assert "schema" not in fields, "the alias named the field"
+
+
+CROSS_TARGET = Path(__file__).parents[2] / "fixtures" / "cross_target"
+A_PACKAGE = "xt.a.generated"
+
+
+def _cross_target_b() -> Path:
+    return CROSS_TARGET / "b" / "b.yaml"
+
+
+def _class_names(tree: ast.Module) -> set[str]:
+    return {n.name for n in tree.body if isinstance(n, ast.ClassDef)}
+
+
+def _a_without_python_package() -> str:
+    text = (CROSS_TARGET / "a" / "a.yaml").read_text(encoding="utf-8")
+    assert f"python_package: {A_PACKAGE}" in text, "the fixture's module a names its package"
+    return text.replace(f"python_package: {A_PACKAGE}", "note: none")
+
+
+def test_a_class_of_another_targets_module_is_imported_from_that_targets_package() -> None:
+    """TC-10: B imports module ``a`` of target A, whose ``python_package`` says where it lives."""
+    files = {f.name: f.text for f in render_modules(_cross_target_b())}
+    tree = ast.parse(files["b.py"])
+    assert "Thing" in imports_from(tree, f"{A_PACKAGE}.a"), "Thing comes from A's package"
+    assert "Thing" not in _class_names(tree), "Thing is not generated into B"
+    assert "a.py" not in files, "B writes no module for A's schema"
+
+
+def test_the_manifest_of_the_importing_target_lists_the_imported_module_as_an_input() -> None:
+    """TC-10: a change to ``a.yaml`` makes B stale."""
+    target = read_targets(CROSS_TARGET / "pyproject.toml")[1]
+    inputs = {entry.path for entry in current_inputs(target, CROSS_TARGET)}
+    assert {"a/a.yaml", "b/b.yaml"} <= inputs, "both schemas are inputs of B"
+
+
+def test_a_module_without_python_package_beside_the_importer_is_generated_into_it(
+    tmp_path: Path,
+) -> None:
+    """TC-11: as before, a module of the closure kept beside the root schema is part of this target."""
+    (tmp_path / "a.yaml").write_text(_a_without_python_package(), encoding="utf-8")
+    (tmp_path / "b.yaml").write_text(
+        _cross_target_b().read_text(encoding="utf-8").replace("../a/a", "a"), encoding="utf-8"
+    )
+    files = {f.name: f.text for f in render_modules(tmp_path / "b.yaml")}
+    assert "Thing" in _class_names(ast.parse(files["a.py"])), "Thing is generated into B"
+    assert "Thing" in imports_from(ast.parse(files["b.py"]), ".a"), "B imports it from its sibling"
+
+
+def test_a_module_of_another_folder_without_python_package_is_still_refused(
+    tmp_path: Path,
+) -> None:
+    """TC-11: nothing says where its classes live, so there is nothing to import from."""
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    (tmp_path / "a" / "a.yaml").write_text(_a_without_python_package(), encoding="utf-8")
+    shutil.copy(_cross_target_b(), tmp_path / "b" / "b.yaml")
+    with pytest.raises(SchemaGenerationError, match="python_package"):
+        render_modules(tmp_path / "b" / "b.yaml")
+
+
+@pytest.mark.parametrize(
+    "package", ["", "   ", "not a package", "xt.a.generated.", ".xt.a", "xt..a"]
+)
+def test_a_malformed_python_package_of_another_target_is_refused_naming_its_module(
+    tmp_path: Path, package: str
+) -> None:
+    """A cross-target import must not turn an empty or odd package into a relative or broken import."""
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    text = (CROSS_TARGET / "a" / "a.yaml").read_text(encoding="utf-8")
+    (tmp_path / "a" / "a.yaml").write_text(
+        text.replace(f"python_package: {A_PACKAGE}", f'python_package: "{package}"'),
+        encoding="utf-8",
+    )
+    shutil.copy(_cross_target_b(), tmp_path / "b" / "b.yaml")
+    with pytest.raises(SchemaGenerationError, match=r"\ba\b.*python_package"):
+        render_modules(tmp_path / "b" / "b.yaml")
+
+
+def test_a_malformed_python_package_of_the_metamodel_is_refused_on_the_base_model_line(
+    metamodel_copy: Callable[[str, str], Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The ``RpModel`` import is written beside the metamodel's package: a hole in it is refused."""
+    folder = metamodel_copy("rp", "a..generated")
+    monkeypatch.setattr(pydantic_split, "METAMODEL_DIR", folder)
+    pydantic_split.toolkit_base_module.cache_clear()
+    try:
+        with pytest.raises(SchemaGenerationError, match="rp.*python_package"):
+            pydantic_split.toolkit_base_module()
+    finally:
+        pydantic_split.toolkit_base_module.cache_clear()

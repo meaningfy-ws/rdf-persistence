@@ -17,7 +17,7 @@ from pathlib import Path
 from linkml.generators.typescriptgen import TypescriptGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 
-from rdf_persistence.services.schema import SERVICE_SCHEMA, load_schema, metamodel_importmap
+from rdf_persistence.services.schema import SERVED_SCHEMAS, load_schema, metamodel_importmap
 from rdf_persistence.services.schema_structure import (
     apply_defaults,
     is_internal,
@@ -143,23 +143,24 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
             imports=self._imports(schema.name, interfaces),
         )
 
-    def module_files(self) -> list[GeneratedFile]:
-        """One file per module that defines classes or enums."""
-        env = environment(TEMPLATES)
+    def modules(self) -> list[TsModule]:
+        """The modules that define classes or enums, sorted by name."""
         self.schemaview.imports_closure()
         modules = [
             self.module(schema)
             for schema in self.schemaview.schema_map.values()
             if schema.enums or any(_has_interface(cls) for cls in schema.classes.values())
         ]
-        modules.sort(key=lambda module: module.name)
-        return [
-            GeneratedFile(
-                name=f"{module.name}.ts",
-                text=env.get_template(MODULE_TEMPLATE).render(module=module),
-            )
-            for module in modules
-        ]
+        return sorted(modules, key=lambda module: module.name)
+
+    def module_files(self) -> list[GeneratedFile]:
+        """One file per module that defines classes or enums."""
+        return [_file(module) for module in self.modules()]
+
+
+def _file(module: TsModule) -> GeneratedFile:
+    text = environment(TEMPLATES).get_template(MODULE_TEMPLATE).render(module=module)
+    return GeneratedFile(name=f"{module.name}.ts", text=text)
 
 
 def with_index(files: list[GeneratedFile]) -> list[GeneratedFile]:
@@ -180,12 +181,13 @@ def _module_files(schema_path: Path) -> list[GeneratedFile]:
 
 
 def _clashes(generator: ToolkitTypescriptGenerator, folder: Path) -> list[str]:
-    """The modules and types of the schemas kept in ``folder`` whose names ``rp_service.ts`` reserves."""
-    service = load_schema(SERVICE_SCHEMA).schema
-    reserved = {*service.classes, *service.enums}
+    """The modules and types of the schemas kept in ``folder`` whose names the served types reserve."""
+    served = [load_schema(path).schema for path in SERVED_SCHEMAS]
+    reserved_modules = {schema.name for schema in served}
+    reserved = {name for schema in served for name in (*schema.classes, *schema.enums)}
     found = []
     for schema in own_schemas(generator.schemaview, folder):
-        if schema.name == service.name:
+        if schema.name in reserved_modules:
             found.append(f"module {schema.name}")
         found += [
             f"{name} ({schema.name})"
@@ -195,24 +197,64 @@ def _clashes(generator: ToolkitTypescriptGenerator, folder: Path) -> list[str]:
     return found
 
 
-def render(schema_path: Path) -> list[GeneratedFile]:
-    """The TypeScript files of the schema at ``schema_path`` plus the toolkit's service types.
+def _is_served(schema_path: Path) -> bool:
+    return schema_path.resolve() in {path.resolve() for path in SERVED_SCHEMAS}
 
-    A consumer's API carries the service types (``rp_service``), so they are written beside the
-    modules the schema imports; the index exports every module once.
+
+def render(schema_path: Path) -> list[GeneratedFile]:
+    """The TypeScript files of the schema at ``schema_path`` plus the types of every served schema.
+
+    A consumer's API carries the service types (``rp_service`` and the other served schemas, PD-10),
+    so they are written beside the modules the schema imports, in the order of ``SERVED_SCHEMAS``;
+    the index exports every module once.
 
     Raises:
-        SchemaGenerationError: When the schema defines a module or type named like one of
-            ``rp_service.yaml``, which both would be exported by ``index.ts``.
+        SchemaGenerationError: When the schema defines a module or type named like one of the served
+            schemas, which both would be exported by ``index.ts``.
     """
     generator = _generator(schema_path)
-    is_service = schema_path.resolve() == SERVICE_SCHEMA.resolve()
-    if not is_service and (clashes := _clashes(generator, schema_path.resolve().parent)):
+    if not _is_served(schema_path) and (
+        clashes := _clashes(generator, schema_path.resolve().parent)
+    ):
         raise SchemaGenerationError(
-            f"{', '.join(clashes)}: reserved by rp_service.ts (the toolkit's service types); rename"
+            f"{', '.join(clashes)}: reserved by the served types (rp_service.ts and its kin); rename"
         )
-    files = generator.module_files()
-    if not is_service:
-        written = {file.name for file in files}
-        files += [f for f in _module_files(SERVICE_SCHEMA) if f.name not in written]
-    return with_index(files)
+    return with_index(_with_served(generator.modules()))
+
+
+def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
+    """``modules`` and the served schemas' modules; the served schemas' own types share one file.
+
+    The file is named after the first served schema and holds the types of every served schema in
+    ``SERVED_SCHEMAS`` order, so splitting a served schema later does not change its name (TC-07).
+    """
+    served_names = [load_schema(path).schema.name for path in SERVED_SCHEMAS]
+    by_name = {m.name: m for m in modules if m.name not in served_names}
+    own: list[TsModule] = []
+    for served, name in zip(SERVED_SCHEMAS, served_names, strict=True):
+        for module in _generator(served).modules():
+            if module.name == name:
+                own.append(module)
+            elif module.name not in served_names:
+                by_name.setdefault(module.name, module)
+    if own:
+        by_name[served_names[0]] = _merged(own, served_names)
+    return [_file(by_name[name]) for name in sorted(by_name)]
+
+
+def _merged(modules: list[TsModule], served_names: list[str]) -> TsModule:
+    """One module named like the first, with the enums and interfaces of all in order."""
+    imports: dict[str, set[str]] = {}
+    for module in modules:
+        for item in module.imports:
+            imports.setdefault(item.module, set()).update(item.names)
+    return TsModule(
+        name=modules[0].name,
+        enums=[e for module in modules for e in module.enums],
+        interfaces=[i for module in modules for i in module.interfaces],
+        imports=[
+            TsImport(module=source, names=sorted(names))
+            for source, names in sorted(imports.items())
+            if source not in served_names
+        ],
+    )

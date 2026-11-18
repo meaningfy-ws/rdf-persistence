@@ -15,7 +15,11 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdf_persistence.services.schema import metamodel_importmap
 from rdf_persistence.services.schema_structure import own_schemas
 from rdf_persistence_generation import components
-from rdf_persistence_generation.checks.boundary import boundary_problems, target_kind_problems
+from rdf_persistence_generation.checks.boundary import (
+    boundary_problems,
+    kind_folder_problems,
+    target_kind_problems,
+)
 from rdf_persistence_generation.checks.hard import hard_problems, stored_schema_problems
 from rdf_persistence_generation.checks.python_package import python_package_problems
 from rdf_persistence_generation.checks.rules import rules_problems
@@ -99,6 +103,7 @@ def _boundary_problems(run: Run) -> list[CheckProblem]:
     return [
         *boundary_problems(run.view, folder),
         *(target_kind_problems(run.view, folder, kind) if kind else []),
+        *kind_folder_problems(folder, run.target.package, kind),
     ]
 
 

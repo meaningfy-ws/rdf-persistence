@@ -64,7 +64,7 @@ in a `domain/generated/` folder; a technical model (a setting, a wire record, a 
 SPARQL term bundle) is never there.
 
 ```python
-from rdf_persistence import FusekiStore, ServiceKit, Tenancy        # unchanged: the 141 names
+from rdf_persistence import FusekiStore, ServiceKit, Tenancy        # unchanged: the 149 names
 from rdf_persistence.persistence.adapters.fuseki import FusekiStore  # the new home
 from rdf_persistence.adapters.fuseki import FusekiStore               # works for one release, warns
 ```
@@ -111,7 +111,7 @@ base and a Fuseki part, which `second-store` can build on. The `iris.py` wrapper
   same PR (library, generator, testkit, tests, docs), and leaves no internal shim. Rejected: one PR
   for everything (unreviewable, blocks every other branch for its whole life); internal shims at
   every old path (a second import path per module, kept alive by forgetting).
-- **DEC-5** (E-4): **consumers stay stable.** The 141 top-level names stay, each the same object.
+- **DEC-5** (E-4): **consumers stay stable.** The 149 top-level names (141 when shaped; counted again on 2026-11-18, D-1) stay, each the same object.
   The YAML paths stay. Two deep paths get a shim that warns (`DeprecationWarning`) for **one minor
   release**: `rdf_persistence.domain.base` and `rdf_persistence.adapters.fuseki`. From stage 1 the
   generator writes `from rdf_persistence import RpModel` into a consumer's generated code, so a
@@ -134,7 +134,7 @@ base and a Fuseki part, which `second-store` can build on. The `iris.py` wrapper
 - **DEC-8** (E-6): **the 11 wrappers that only call `DEFAULT_IRIS` are retired**; tests call
   `Iris` instances. The 12 policy-free layout functions (`graph_iri`, `skolem_iri`,
   `system_database_name`, ...) stay, in `iris/domain/layout.py`. `mint_aggregate_iri`, one of the
-  141 names, warns for one release and goes with the shims (leader's choice). Rejected: retiring
+  149 names, warns for one release and goes with the shims (leader's choice). Rejected: retiring
   all 23 (the layout functions do not depend on the policy and 7 runtime modules use them).
 - **DEC-9** (leader's choice): **unit tests mirror the themes** (`tests/unit/<theme>/`), moved in
   the stage that moves their theme; `tests/changed.py` maps a theme's folder to its tests. Feature,

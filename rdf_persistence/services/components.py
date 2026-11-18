@@ -11,12 +11,19 @@ from pathlib import Path
 from typing import Any
 
 from rdf_persistence.services.artifacts import COMPONENT_REFERENCES, COMPONENTS_FILE, REF, SCHEMAS
-from rdf_persistence.services.schema import PACKAGE_DIR
-
-TOOLKIT_FOLDER = PACKAGE_DIR / "services" / "generated" / "service"
+from rdf_persistence.services.schema import SERVED_SCHEMAS, generated_folder
 
 # One component schema: JSON data of the OpenAPI document, not a model of ours.
 JsonSchema = dict[str, Any]
+
+
+class DuplicateComponentError(ValueError):
+    """Two served targets declare a component of the same name."""
+
+
+def served_folders() -> tuple[Path, ...]:
+    """The generated folders of the served targets, in the order of ``SERVED_SCHEMAS``."""
+    return tuple(generated_folder(schema) for schema in SERVED_SCHEMAS)
 
 
 def read_components(folder: Path) -> dict[str, JsonSchema]:
@@ -28,6 +35,27 @@ def read_components(folder: Path) -> dict[str, JsonSchema]:
     document = json.loads((folder / COMPONENTS_FILE).read_text(encoding="utf-8"))
     schemas: dict[str, JsonSchema] = document[SCHEMAS]
     return schemas
+
+
+def merge_components(folders: Iterable[Path]) -> dict[str, JsonSchema]:
+    """The component schemas of ``folders`` in one mapping, the first folder's names first.
+
+    Raises:
+        OSError: A folder has no components file.
+        DuplicateComponentError: A name is declared in two folders; it names both files.
+    """
+    merged: dict[str, JsonSchema] = {}
+    declared_in: dict[str, Path] = {}
+    for folder in folders:
+        file = folder / COMPONENTS_FILE
+        for name, schema in read_components(folder).items():
+            if name in declared_in:
+                raise DuplicateComponentError(
+                    f"component {name} is declared in {declared_in[name]} and in {file}: keep one"
+                )
+            declared_in[name] = file
+            merged[name] = schema
+    return merged
 
 
 def _references(node: Any) -> Iterator[str]:
@@ -43,19 +71,22 @@ def _references(node: Any) -> Iterator[str]:
             yield from _references(value)
 
 
-def component_schemas(folders: Iterable[Path], roots: Iterable[str]) -> dict[str, JsonSchema]:
+def component_schemas(
+    served: Iterable[Path], application: Path, roots: Iterable[str]
+) -> dict[str, JsonSchema]:
     """The schemas of the classes ``roots`` and of what they refer to, by name, sorted.
 
-    ``folders`` hold the generated components of the application's schema and of the toolkit's own
-    bodies; a class both describe (the metamodel's) is the same definition, and a later folder wins.
+    ``served`` are the generated folders of the toolkit's served targets, merged; ``application``
+    holds the application's own. A class both describe (the metamodel's) is the same definition, and
+    the application's wins.
 
     Raises:
         OSError: A folder has no components file.
+        DuplicateComponentError: Two served folders declare one name.
         KeyError: A root is a class of none of the folders.
     """
-    available: dict[str, JsonSchema] = {}
-    for folder in folders:
-        available.update(read_components(folder))
+    available = merge_components(served)
+    available.update(read_components(application))
     seen: dict[str, None] = {}
     pending = list(roots)
     while pending:

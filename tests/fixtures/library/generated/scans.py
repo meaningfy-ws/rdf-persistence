@@ -42,7 +42,7 @@ metamodel_version = "1.12.0"
 version = "None"
 
 
-from rdf_persistence.domain.base import RpModel as ConfiguredBaseModel
+from rdf_persistence import RpModel as ConfiguredBaseModel
 
 
 

@@ -8,7 +8,9 @@ import pytest
 
 from tests import changed
 from tests.changed import (
+    FALLBACK_EXIT,
     LAYERS,
+    THEMES,
     GitError,
     Selection,
     changed_files,
@@ -91,10 +93,107 @@ def test_a_changed_generator_file_selects_the_generator_tests(changed):
     assert not selection.fallback_reasons, f"{changed} must not fall back"
 
 
-def test_the_layers_are_the_layer_folders_of_the_package():
+def test_the_layers_and_themes_are_the_folders_of_the_package():
+    """Every layer folder is known, and every other folder is a theme the mapper knows (PD-11)."""
     folders = {p.parent.name for p in (REPO / "rdf_persistence").glob("*/__init__.py")}
 
-    assert folders == LAYERS, "the mapper's layers differ from the package's layer folders"
+    assert folders >= LAYERS, "a layer of the mapper has no folder"
+    assert folders - LAYERS - THEMES == set(), "a folder is neither a layer nor a theme"
+    assert not LAYERS & THEMES, "a name cannot be a layer and a theme"
+
+
+def test_the_themes_are_the_thirteen_of_the_design():
+    """thematic-structure PD-1: the themes of the module map."""
+    expected = {
+        "core",
+        "iris",
+        "schema",
+        "files",
+        "provenance",
+        "persistence",
+        "migrations",
+        "access",
+        "tenancy",
+        "events",
+        "collaboration",
+        "messaging",
+        "api",
+    }
+
+    assert set(THEMES) == expected, "the set of themes"
+
+
+@pytest.mark.parametrize(
+    ("changed", "expected"),
+    [
+        ("rdf_persistence/tenancy/services/sweep.py", ("tests/unit/tenancy/",)),
+        ("rdf_persistence/api/entrypoints/router.py", ("tests/unit/api/",)),
+        ("rdf_persistence/persistence/adapters/fuseki.py", ("tests/unit/persistence/",)),
+        ("rdf_persistence/files/__init__.py", ("tests/unit/files/",)),
+        ("tests/unit/tenancy/test_sweep.py", ("tests/unit/tenancy/",)),
+    ],
+)
+def test_a_changed_theme_file_selects_the_tests_of_its_theme(changed, expected):
+    """TC-22: ``rdf_persistence/<theme>/<layer>/x.py`` maps to ``tests/unit/<theme>/``, no fallback."""
+    selection = _select([changed])
+
+    assert selection.paths == expected, f"{changed} must select its theme's folder"
+    assert not selection.fallback_reasons, f"{changed} must not fall back"
+
+
+def test_a_changed_theme_file_whose_test_folder_does_not_exist_falls_back_with_a_reason():
+    """A theme folder that is gone or never made must not leave an empty selection that exits 0."""
+    selection = select(
+        ["rdf_persistence/tenancy/services/sweep.py"], lambda path: False, ROOT_TESTS
+    )
+
+    assert selection.paths == (), "nothing to run by path"
+    assert "rdf_persistence/tenancy/services/sweep.py" in selection.fallback_reasons[0]
+    assert "tests/unit/tenancy/" in selection.fallback_reasons[0], "the reason names the folder"
+    assert "make test-fast" in selection.fallback_reasons[0], "the reason names the lane"
+
+
+def test_two_changed_themes_select_both_folders():
+    selection = _select(
+        ["rdf_persistence/tenancy/services/sweep.py", "rdf_persistence/events/adapters/x.py"]
+    )
+
+    assert selection.paths == ("tests/unit/events/", "tests/unit/tenancy/"), "both, sorted"
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        "rdf_persistence/core/domain/sparql.py",
+        "rdf_persistence/core/services/telemetry.py",
+        "rdf_persistence/core/__init__.py",
+    ],
+)
+def test_a_changed_core_file_falls_back_to_the_fast_suite(changed):
+    """TC-23: ``core`` is imported by every theme, so a change to it runs ``make test-fast``."""
+    selection = _select([changed])
+
+    assert selection.paths == (), "core selects no folder of its own"
+    assert changed in selection.fallback_reasons[0], "the reason names the path"
+    assert "make test-fast" in selection.fallback_reasons[0], "the reason names the lane"
+
+
+def test_main_exits_with_the_fallback_status_when_core_changed(monkeypatch, capsys):
+    """TC-23 through ``main``: exit 3, which the Makefile turns into ``make test-fast``."""
+    got, out = _run_main(monkeypatch, capsys, ["rdf_persistence/core/domain/sparql.py"])
+
+    assert got == FALLBACK_EXIT, "exit status for a change in core"
+    assert out.out == "", "no pytest arguments are printed"
+    assert "rdf_persistence/core/domain/sparql.py" in out.err, "stderr names the file"
+
+
+def test_the_layer_rule_and_the_generator_rule_are_kept():
+    """The themes add a rule; today's layers and the generator's folder still map as before."""
+    selection = _select(
+        ["rdf_persistence/services/artifacts.py", "rdf_persistence_generation/manifest.py"]
+    )
+
+    assert selection.paths == ("tests/generator/", "tests/unit/services/"), "layer and generator"
 
 
 @pytest.mark.parametrize(("rule", "changed", "expected"), SELECTS)

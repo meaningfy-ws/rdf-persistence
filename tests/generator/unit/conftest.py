@@ -18,7 +18,9 @@ Breaker = Callable[[str, str, str], Path]
 def toy_copy(tmp_path: Path) -> Path:
     """The toy library copied to ``tmp_path``; returns the folder."""
     folder = tmp_path / "library"
-    shutil.copytree(TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated"))
+    shutil.copytree(
+        TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated", "golden")
+    )
     return folder
 
 

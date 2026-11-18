@@ -4,7 +4,7 @@
 `PD-n` is a decision of [design.md](design.md). `LAYOUT` is the table of PD-1 held in
 `tests/unit/test_theme_layout.py`. "The recipe" is design.md's six steps.
 
-**How it succeeds:** after stage 7 every row of `LAYOUT` holds, the contracts of PD-6 pass, the 141
+**How it succeeds:** after stage 7 every row of `LAYOUT` holds, the contracts of PD-6 pass, the 149
 public names are the same objects, `/openapi.json` and the toy's generated output are unchanged
 apart from the template line, and `git log --follow` reaches each moved file's history. **How it
 fails:** a module, import or string on an old path (TC-01, TC-04), a theme importing upward
@@ -17,11 +17,12 @@ commits a schema change: `make check-generated`.
 
 ## Stage 1: the generator and the guards (PR 1, old layout)
 
-- [ ] 1.1 Check ASM-1 to ASM-3 on `develop` (technical groups and paths, the `iris.py` split,
+- [x] 1.1 Check ASM-1 to ASM-3 on `develop` (technical groups and paths, the `iris.py` split,
   `python_package`, the generator's package, logger names, and any module the earlier changes
   created that PD-1's map lacks) and amend design.md PD-1/PD-2/PD-3 where they differ, before any
-  code. No test; the lead reviews the amendment.
-- [ ] 1.2 PD-3: cross-target imports in `rdf_persistence_generation/extensions/pydantic_split.py`
+  code. No test; the lead reviews the amendment. Done 2026-11-18 on 79c6837: ASM-1 to ASM-3 hold;
+  design.md amended (D-1).
+- [x] 1.2 PD-3: cross-target imports in `rdf_persistence_generation/extensions/pydantic_split.py`
   (the module→package map over every `python_package`). Tests in
   `tests/generator/unit/test_ext_pydantic_split.py` and a two-target fixture under
   `tests/fixtures/`. Gate: `make test-changed check-quality`.
@@ -30,11 +31,12 @@ commits a schema change: `make check-generated`.
 |---|---|---|
 | TC-10 | target B's schema imports module `a` of target A, which declares `python_package: pkg.a.generated` | B's code has `from pkg.a.generated.a import X`; no class `X` in B; B's manifest lists `a.yaml` |
 | TC-11 | the same, `a` without `python_package` | as today: `a`'s classes are generated into B |
-| TC-12 | a toolkit per-theme technical module whose `python_package` differs from its target's `package` | `generator-package` PD-6 (b)'s hard-check problem, unchanged (no new check here); nothing written |
+| TC-12 | a toolkit per-theme technical module whose `python_package` differs from its target's `package` | `generator-package` PD-6 (b)'s hard-check problem (`checks/python_package.py:29`), unchanged (no new check here); nothing written |
 
-- [ ] 1.3 PD-4: `kind_folder_problems` in `rdf_persistence_generation/checks/boundary.py`, wired
-  into `steps.py` for the toolkit's run; the model guard's per-theme scan in
-  `tests/unit/testkit/test_model_guard.py` (moved there by `generator-package`). Tests in `tests/generator/unit/test_boundary_check.py` and
+- [x] 1.3 PD-4: `kind_folder_problems` in `rdf_persistence_generation/checks/boundary.py`, wired
+  into `steps.py`'s `_boundary_problems` (lines 96-101) for the toolkit's run; the model guard's
+  per-theme scan in `tests/unit/testkit/test_model_guard.py` (moved there by `generator-package`;
+  the generator's own call there stays, PD-4 (c)). Tests in `tests/generator/unit/test_boundary_check.py` and
   `tests/unit/testkit/test_guards.py`. Gate: `make test-changed check-quality`, then the lead's
   `make check-generated`.
 
@@ -47,19 +49,22 @@ commits a schema change: `make check-generated`.
 | TC-17 | a pydantic class in a fixture module `<pkg>/tenancy/services/x.py` outside `generated`, guard called with `layers=("tenancy",)` | the guard fails naming it; the same class under `<pkg>/tenancy/services/generated/` passes |
 | TC-72 | `make generate` on the toolkit as `develop` has it (old layout: `rdf_persistence.services.generated.service`, `rdf_persistence.adapters.generated`, `rdf_persistence.testkit.generated`, `rdf_persistence_generation.generated`), then one target's `package` edited to `rdf_persistence.domain.generated.service` | first passes (the testkit and generator packages are exempt); second fails naming that target (the check is wired) |
 
-- [ ] 1.4 PD-8 template: a consumer run writes `from rdf_persistence import RpModel as ...`; the
+- [x] 1.4 PD-8 template: a consumer run writes `from rdf_persistence import RpModel as ...`; the
   toolkit run writes the `core` path (in stage 1 still `rdf_persistence.domain.base`, read from the
   metamodel's `python_package` owner). `make generate` refreshes the toy library. Tests in
-  `tests/generator/unit/test_templates.py`.
+  `tests/generator/unit/test_templates.py` (new; it does not exist yet).
 
 | ID | Input | Expected |
 |---|---|---|
 | TC-18 | the toy library generated | every module imports `RpModel` from `rdf_persistence`; it type-checks (`mypy-generated.ini`) |
 | TC-19 | the toolkit's metamodel generated | it imports `RpModel` by its module path (`rdf_persistence.domain.base` now, the `core` path from stage 2), never from `rdf_persistence` |
 
-- [ ] 1.5 PD-10: components merged over the served targets; `SERVED_SCHEMAS`; the TypeScript step
+- [x] 1.5 PD-10: components merged over the served targets; `SERVED_SCHEMAS`; the TypeScript step
   over all of them. While only `rp_service` is served, output is unchanged. Tests in
-  `tests/unit/services/test_components.py`, `tests/generator/unit/test_ext_typescript.py`.
+  `tests/unit/services/test_components_folder.py` (extended: it holds TC-54, the toolkit folder;
+  the merge of several folders, TC-20 and TC-21, goes beside it, since `services/components.py`
+  is what merges), `tests/generator/unit/test_openapi_components.py` (the generator side, if the
+  step changes) and `tests/generator/unit/test_ext_typescript.py`.
 
 | ID | Input | Expected |
 |---|---|---|
@@ -67,16 +72,18 @@ commits a schema change: `make check-generated`.
 | TC-21 | two component files declaring `Page` | error naming `Page` and both files |
 | TC-07 | `/openapi.json` of the toy service, and the toy's TypeScript, before and after | byte-identical (golden files under `tests/fixtures/`, written by this task before any split) |
 
-- [ ] 1.6 The guards of the move: `tests/unit/test_theme_layout.py` (`LAYOUT`, every row off),
-  `tests/unit/test_public_surface.py` (the 141 names snapshot: name → defining module and object
-  identity through the lazy map), `tests/unit/test_no_old_paths.py` (ast and text search for the
-  old module paths of rows turned on), and `tests/changed.py` learning themes (PD-11). Tests in
+- [x] 1.6 The guards of the move: `tests/unit/test_theme_layout.py` (`LAYOUT`, every row off),
+  `tests/unit/test_public_surface.py` (the 149 names snapshot: name → defining module and object
+  identity through the lazy map; `tests/unit/test_public_api.py` stays as it is),
+  `tests/unit/test_no_old_module_paths.py` (ast and text search for the old module paths of rows
+  turned on; not `test_no_old_paths.py`, which would sit beside `generator-package`'s
+  `tests/unit/test_old_paths_gone.py`, the scan for the generator's old path), and `tests/changed.py` learning themes (PD-11). Tests in
   `tests/unit/test_changed.py`.
 
 | ID | Input | Expected |
 |---|---|---|
 | TC-01 | a row of `LAYOUT` turned on whose module is still at its old path | fails naming old and new path |
-| TC-03 | `rdf_persistence.__all__` and `getattr(rdf_persistence, n)` for each name | 141 names, each the object at its `LAYOUT` home |
+| TC-03 | `rdf_persistence.__all__` and `getattr(rdf_persistence, n)` for each name | 149 names, each the object at its `LAYOUT` home |
 | TC-04 | the string `rdf_persistence.services.session` in a test's `mock.patch` once its row is on | fails naming the file and line |
 | TC-22 | `tests.changed` with `rdf_persistence/tenancy/services/sweep.py` changed | `tests/unit/tenancy/` |
 | TC-23 | `tests.changed` with `rdf_persistence/core/domain/sparql.py` changed | exit 3 (`make test-fast`) |
@@ -85,15 +92,17 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 
 ## Stage 2: `core` (PR 2)
 
-- [ ] 2.1 The recipe for `core` (PD-1 row; PD-2 `core/adapters`): `domain/{base,exceptions,media,sparql}`,
+- [ ] 2.1 The recipe for `core` (PD-1 row; PD-2 `core/adapters`): `domain/{base,exceptions,media,sparql,sparql_parsing}`,
   `services/{artifacts,yaml_files,telemetry}`, `adapters/_http`, and the metamodel target
   `domain/generated/` → `core/domain/generated/` (every `python_package` and `public_package`
   annotation, the `[[tool.rp-generate]]` entry; the `python_import` annotation of
   `technical-models`' `SparqlTerm` type). The `domain.base` shim (PD-8). PD-4 (a), (b): the guard's
   `FORBIDDEN_BASES` and `DEFAULT_ALLOW` gain the `core` path. PD-2 `core/services` (`HttpSettings`,
   `LogContext`). `themes-layered` and `themes-ordered` created with `core`; `layers-across-themes`
-  added; the old `layers` contract kept. `tests/unit/domain/test_{rp_model,exceptions,sparql}.py`
-  → `tests/unit/core/`. Gate: `make test-fast check-quality`.
+  added; the old `layers` contract kept. The two `ignore_imports` lines of
+  `sparql-parser-only-through-the-wrappers` that name `domain.sparql_parsing` move with it, and
+  `domain-tests-stay-in-the-domain` gains the moved test modules as sources (PD-6).
+  `tests/unit/domain/test_{rp_model,exceptions,sparql,sparql_parsing}.py` → `tests/unit/core/`. Gate: `make test-fast check-quality`.
 
 | ID | Input | Expected |
 |---|---|---|
@@ -188,8 +197,9 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 
 ## Stage 7: `api`, the end of the old layers, the deprecation release (PR 7)
 
-- [ ] 7.1 The recipe for `api` (`services/{aggregates,documents,file_removal,components}`, all of
-  `entrypoints/`). PD-2 `api/entrypoints`. `services/` and `entrypoints/` deleted;
+- [ ] 7.1 The recipe for `api` (`services/{aggregates,documents,file_removal,components,shacl}`, all of
+  `entrypoints/`; `tests/unit/services/test_shacl.py` → `tests/unit/api/`; the `ignore_imports` line
+  `services.shacl -> pyshacl` of `sparql-parser-only-through-the-wrappers` retargeted, PD-6). PD-2 `api/entrypoints`. `services/` and `entrypoints/` deleted;
   `domain/` and `adapters/` hold only the shims. The old `layers` contract removed; `.importlinter`
   is PD-6's final form, without `technical-models`' `domain-never-imports-technical-models`. The
   emptied `model/technical/<group>/` schemas deleted (all but `testkit`'s). `ruff.toml` per-file
@@ -200,7 +210,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 | TC-01 | every row of `LAYOUT` | holds |
 | TC-70 | `rdf_persistence/` top level | exactly the 13 themes, `domain` and `adapters` (shims), `model`, `testkit`, `__init__.py`, `py.typed` |
 | TC-73 | `make generate` on the toolkit, then one target's `package` edited to `rdf_persistence.access.domain.generated` | first passes on the theme layout; second fails naming that target (PD-4, wired since task 1.3) |
-| TC-03 | the public surface | 141 names, each the same object as before stage 2, except `mint_aggregate_iri` (a warning wrapper since stage 3) |
+| TC-03 | the public surface | 149 names, each the same object as before stage 2, except `mint_aggregate_iri` (a warning wrapper since stage 3) |
 | TC-07 | `/openapi.json`, toy TypeScript | unchanged |
 | TC-71 | the toy end-to-end test (`make test-containers`) | passes; `assert_public_imports` finds only top-level and testkit names |
 
@@ -215,18 +225,18 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 
 - [ ] 8.1 Check that a release containing stage 7 is published (PD-13); then delete
   `rdf_persistence/domain/`, `rdf_persistence/adapters/`, `mint_aggregate_iri` and its export
-  (`__all__` becomes 140 names). CHANGELOG "Removed", **BREAKING**. Gate:
+  (`__all__` becomes 148 names). CHANGELOG "Removed", **BREAKING**. Gate:
   `make test-fast check-quality`.
 
 | ID | Input | Expected |
 |---|---|---|
 | TC-80 | `import rdf_persistence.domain.base` | `ModuleNotFoundError` |
 | TC-81 | `rdf_persistence.mint_aggregate_iri` | `AttributeError` |
-| TC-03 | the public surface | 140 names, the rest unchanged |
+| TC-03 | the public surface | 148 names, the rest unchanged |
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [ ] 2.1 · [ ] 3.1 · [ ] 3.2 ·
   [ ] 4.1 · [ ] 4.2 · [ ] 5.1 · [ ] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
 
 ## Verification

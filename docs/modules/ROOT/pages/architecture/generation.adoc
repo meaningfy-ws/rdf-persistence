@@ -259,7 +259,9 @@ subclass or a template, never a patch to generated output. Each extension has a 
 golden test; a test fails if an extension module has neither. For the toy schema the golden is the
 committed generated tree itself (a test renders afresh and compares: Turtle by meaning, everything
 else by exact text, the file set exactly), so `make generate` is what refreshes it. A schema that is
-not the toy keeps a golden folder, rewritten by `make refresh-golden`. Each extension exposes one
+not the toy keeps a golden folder, rewritten by `make refresh-golden`; the served OpenAPI and
+TypeScript goldens are rewritten only by `make refresh-served-golden`, which resets the baseline that
+guards the thematic move. Each extension exposes one
 `render(schema_path)` that returns the files it makes; `steps.py` composes the steps from them.
 
 [cols="3,2,2,4,2,1",options="header"]
@@ -745,7 +747,9 @@ first.
   Python only (#59) and an unlabelled class's label being required in the JSON Schema only.
 . *A model change fails the tests until acknowledged*: `tests/fixtures/model-shape.yaml` holds the
   last reviewed shape of every class (`ClassShape` rows). Any model change fails the test until
-  `make refresh-snapshot` rewrites the file and its diff is reviewed in the PR.
+  `make refresh-snapshot` rewrites the file and its diff is reviewed in the PR. The public
+  surface's snapshot, `tests/fixtures/public-surface.json`, is a baseline of the thematic move and
+  has its own target, `make refresh-surface`.
 . *Generated code compiles*: every generated module imports and passes mypy with the
   `mypy-generated.ini` profile (the main run excludes generated folders); the TypeScript output
   passes `tsc --noEmit --strict` in CI.

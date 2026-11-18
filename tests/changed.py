@@ -14,6 +14,26 @@ from pathlib import Path, PurePosixPath
 
 FALLBACK_EXIT = 3
 LAYERS = frozenset({"domain", "services", "adapters", "entrypoints", "testkit"})
+# thematic-structure PD-1, PD-11: rdf_persistence/<theme>/<layer>/ is covered by tests/unit/<theme>/.
+# `core` is imported by every theme, so a change in it runs the whole fast suite.
+THEMES = frozenset(
+    {
+        "core",
+        "iris",
+        "schema",
+        "files",
+        "provenance",
+        "persistence",
+        "migrations",
+        "access",
+        "tenancy",
+        "events",
+        "collaboration",
+        "messaging",
+        "api",
+    }
+)
+CORE_THEME = "core"
 NO_TEST_ROOTS = frozenset({"openspec", ".claude", "temp"})
 SHARED_FILES = frozenset({"pytest.ini", "pyproject.toml", "uv.lock", "Makefile", ".coveragerc"})
 DOMAIN_FOLDER = "tests/unit/domain/"
@@ -68,7 +88,7 @@ def _test_folder_of(parts: tuple[str, ...], root_tests: Sequence[str]) -> list[s
         return [GENERATOR_TESTS]
     if parts[0] == "tests" and len(parts) > 2 and parts[1] == "generator":
         return [GENERATOR_TESTS]
-    if parts[0] == "rdf_persistence" and len(parts) > 2 and parts[1] in LAYERS:
+    if parts[0] == "rdf_persistence" and len(parts) > 2 and parts[1] in LAYERS | THEMES:
         return [f"tests/unit/{parts[1]}/"]
     if parts[0] == "rdf_persistence" and len(parts) > 1:
         return list(root_tests)
@@ -85,6 +105,8 @@ def _classify(path: str, root_tests: Sequence[str]) -> Selection:
         return Selection(("tests/unit/test_check_docs.py",), (), ())
     if _is_shared_infrastructure(parts):
         return Selection((), (), (f"{path}: shared test infrastructure or schema",))
+    if parts[0] == "rdf_persistence" and len(parts) > 1 and parts[1] == CORE_THEME:
+        return Selection((), (), (f"{path}: core is imported by every theme; run make test-fast",))
     if len(parts) > 2 and parts[:2] in {("tests", "integration"), ("tests", "e2e")}:
         if name.startswith("test_") and name.endswith(".py"):
             return Selection((), (f"{path}: run make test-containers",), ())
@@ -109,6 +131,11 @@ def select(
         chosen.update(one.paths)
         hints += one.hints
         reasons += one.fallback_reasons
+        reasons += [
+            f"{path}: {folder} does not exist; run make test-fast"
+            for folder in one.paths
+            if folder.endswith("/") and not existing(folder)
+        ]
     folders = [p for p in chosen if p.endswith("/")]
     kept = sorted(
         p for p in chosen if existing(p) and not any(p != f and p.startswith(f) for f in folders)

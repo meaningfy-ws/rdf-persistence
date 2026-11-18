@@ -7,7 +7,11 @@ import pytest
 
 from rdf_persistence.services.schema import load_schema
 from rdf_persistence_generation import steps
-from rdf_persistence_generation.checks.boundary import boundary_problems, target_kind_problems
+from rdf_persistence_generation.checks.boundary import (
+    boundary_problems,
+    kind_folder_problems,
+    target_kind_problems,
+)
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.generated.rp_generation import (
     BoundaryRule,
@@ -515,3 +519,102 @@ def test_a_domain_target_holding_a_technical_module_fails_naming_it_and_writes_n
     assert code != 0, "a domain target holding a technical module must fail"
     assert f"[{BoundaryRule.TARGET_KIND.value}] api" in text, f"rule and module not named: {text}"
     assert files_of(toy_copy) == before, "a failed run wrote a file"
+
+
+# --- kind and folder (PD-4, DEC-3): the toolkit's own run only --------------------------------------
+
+REPO = MODEL_DIR.parent
+SERVICE_SCHEMA = "rdf_persistence/model/technical/service/rp_service.yaml"
+TOOLKIT_FOLDER = REPO / Path(SERVICE_SCHEMA).parent
+
+
+def folder_problems_of(folder: Path, package: str, kind: TargetKind | None) -> list[str]:
+    return [format_problem(p) for p in kind_folder_problems(folder, package, kind)]
+
+
+@pytest.mark.parametrize(
+    ("kind", "package"),
+    [
+        (TargetKind.DOMAIN, "x.core.domain.generated"),  # TC-13
+        (TargetKind.TECHNICAL, "x.access.services.generated"),
+        (TargetKind.TECHNICAL, "x.access.adapters.generated.wire"),  # a group after generated
+        (TargetKind.TECHNICAL, "x.access.entrypoints.generated"),
+    ],
+)
+def test_a_toolkit_target_in_the_folder_its_kind_allows_has_no_problem(
+    kind: TargetKind, package: str
+) -> None:
+    assert folder_problems_of(TOOLKIT_FOLDER, package, kind) == [], "the folder fits the kind"
+
+
+@pytest.mark.parametrize(
+    ("kind", "package"),
+    [
+        (TargetKind.TECHNICAL, "x.access.domain.generated"),  # TC-14
+        (TargetKind.DOMAIN, "x.access.adapters.generated"),  # TC-15
+        (TargetKind.DOMAIN, "x.access.services.generated.service"),
+    ],
+)
+def test_a_toolkit_target_in_the_wrong_folder_is_named_with_its_package(
+    kind: TargetKind, package: str
+) -> None:
+    found = folder_problems_of(TOOLKIT_FOLDER, package, kind)
+    assert len(found) == 1, f"one target, one problem: {found}"
+    assert found[0].startswith(f"[target_kind] {package}:"), f"rule and package not named: {found}"
+    assert kind.value in found[0], f"the kind is not named: {found}"
+
+
+def test_a_toolkit_target_without_a_generated_segment_is_refused() -> None:
+    found = folder_problems_of(TOOLKIT_FOLDER, "x.access.domain", TargetKind.DOMAIN)
+    assert len(found) == 1, f"one target, one problem: {found}"
+    assert "generated" in found[0], f"the missing segment is not named: {found}"
+
+
+@pytest.mark.parametrize(
+    "package", ["rdf_persistence.testkit.generated", "rdf_persistence_generation.generated"]
+)
+def test_the_testkit_and_the_generator_packages_are_exempt(package: str) -> None:
+    """TC-72: they sit outside the themes."""
+    assert folder_problems_of(TOOLKIT_FOLDER, package, TargetKind.TECHNICAL) == []
+
+
+@pytest.mark.parametrize(
+    "package",
+    [
+        "rdf_persistence.testkitx.domain.generated",
+        "rdf_persistence.testkit_extra.access.domain.generated",
+        "rdf_persistence_generationx.access.domain.generated",
+        "rdf_persistence_generation_extra.domain.generated",
+    ],
+)
+def test_a_package_that_only_starts_like_an_exempt_one_is_not_exempt(package: str) -> None:
+    """The exemption matches whole segments: ``rdf_persistence.testkitx`` is not the testkit."""
+    assert len(folder_problems_of(TOOLKIT_FOLDER, package, TargetKind.TECHNICAL)) == 1, package
+
+
+def test_a_consumer_run_keeps_its_own_folder_layout() -> None:
+    """TC-16: a consumer's ``app.generated`` passes, kind or not."""
+    assert folder_problems_of(TOY, "app.generated", TargetKind.TECHNICAL) == [], "consumer run"
+    assert folder_problems_of(TOOLKIT_FOLDER, "app.generated", None) == [], "no kind declared"
+
+
+def toolkit_target(kind: TargetKind, package: str) -> GenerationTarget:
+    return GenerationTarget(schema_file=SERVICE_SCHEMA, package=package, target_kind=kind)
+
+
+@pytest.mark.slow
+def test_the_boundary_step_passes_the_old_layout_package_of_a_technical_target() -> None:
+    """TC-72, first half: the old layout's ``services.generated.service`` (``make generate`` covers the rest)."""
+    target = toolkit_target(TargetKind.TECHNICAL, "rdf_persistence.services.generated.service")
+    assert generate([target], REPO, (steps.BOUNDARY_STEP,), check=True) == []
+
+
+@pytest.mark.slow
+def test_the_boundary_step_refuses_a_technical_target_in_a_domain_folder_naming_it() -> None:
+    """TC-72, second half: the check is wired into the step."""
+    # TC-72 names the old service package under domain, which test_technical_split bans as a literal
+    package = "rdf_persistence.domain.generated.rp_service"
+    found = generate(
+        [toolkit_target(TargetKind.TECHNICAL, package)], REPO, (steps.BOUNDARY_STEP,), check=True
+    )
+    assert [(p.rule, p.element) for p in found] == [(BoundaryRule.TARGET_KIND.value, package)]

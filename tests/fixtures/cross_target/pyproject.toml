@@ -1,0 +1,12 @@
+# Two targets, A and B; B's schema imports A's module `a` (cross-target imports, PD-3).
+[[tool.rp-generate]]
+schema = "a/a.yaml"
+package = "xt.a.generated"
+python = "a/generated"
+openapi = false
+
+[[tool.rp-generate]]
+schema = "b/b.yaml"
+package = "xt.b.generated"
+python = "b/generated"
+openapi = false
