@@ -4219,6 +4219,8 @@ tests/unit/test_changed.py::test_the_themes_are_the_thirteen_of_the_design,requi
 tests/unit/test_changed.py::test_two_changed_themes_select_both_folders,requirement,rp-developer-checks,The tests of the changed files run on their own,,high,name
 tests/unit/test_lanes.py::test_refresh_golden_leaves_the_served_baselines_of_the_move_alone,capability,rp-developer-checks,,,medium,name; docstring TC-07 (Makefile lane; no requirement on golden refresh)
 tests/unit/test_lanes.py::test_the_served_golden_has_a_refresh_target_of_its_own,capability,rp-developer-checks,,,medium,name; docstring TC-07 (Makefile lane; no requirement on golden refresh)
+tests/unit/test_lanes.py::test_refresh_snapshot_leaves_the_public_surface_baseline_of_the_move_alone,capability,rp-developer-checks,,,medium,name; D-11 C1 TC-03 (Makefile lane; no requirement on snapshot refresh)
+tests/unit/test_lanes.py::test_the_public_surface_has_a_refresh_target_of_its_own,capability,rp-developer-checks,,,medium,name; D-11 C1 TC-03 (Makefile lane; no requirement on snapshot refresh)
 tests/unit/test_no_old_module_paths.py::test_a_mock_patch_string_with_the_old_path_fails_naming_the_file_and_line,capability,rp-package-boundaries,,,medium,name; docstring TC-04 (move guard; no requirement on it)
 tests/unit/test_no_old_module_paths.py::test_a_python_file_that_does_not_parse_is_reported_and_still_text_scanned,capability,rp-package-boundaries,,,medium,name; module docstring TC-04 (move guard; no requirement on it)
 tests/unit/test_no_old_module_paths.py::test_a_root_file_naming_the_old_path_is_found,capability,rp-package-boundaries,,,medium,name; module docstring TC-04 (move guard; no requirement on it)
