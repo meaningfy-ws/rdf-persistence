@@ -373,3 +373,17 @@ package name are leader's choices (DEC-2, DEC-5).
   `test-generator` CI job writes `coverage-generator.xml`; it is uploaded and listed in
   `sonar.python.coverage.reportPaths`, so the generator's lines stop counting as uncovered.
   `coverage-generator.xml` is git-ignored like the other reports.
+- **D-16 Stage 2 tester findings** (lead; tester: 100 tests, 16 failed first, 7 findings).
+  Accepted: (1, P1) `test_testkit_moved.py` did not collect after the lead's merge — fixed with
+  D-13; (4, P4) `.test_durations` names moved files — fixed by D-14's refresh, its two tests kept.
+  Under the floor (not fixed; their failed-first tests deleted in the sort):
+  - (2, P3) the `roots=` guard (TC-14a) misses calls through a module attribute and `roots=` in a
+    comment or another keyword, and crashes when a function is no longer called;
+  - (3, P3) the PD-9 checker does not read annotated or augmented `pytest_plugins`,
+    `__import__` or `pytest.importorskip`;
+  - (5, P4) `rp-generate --list-python-folders` needs the `generate` extra although it writes
+    nothing;
+  - (6) `hasattr(testkit, "aggregate")` without hypothesis raises; deliberate, pinned;
+  - (7, nit) the freshness report repeats a stale generator module once per target.
+  Filed together as a follow-up issue (linked in Open of `handover.md`). TC-14c's "nothing" allows
+  the migration note in `howto/adopt.adoc`, which names the old path on purpose.
