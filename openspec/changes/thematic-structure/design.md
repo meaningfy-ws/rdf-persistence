@@ -683,3 +683,17 @@ consumers later.
   The W3 scan found `tests/feature/test_technical_models.py`, which plants the old layout in a
   scratch copy on purpose; it joins `test_technical_split.py` in TC-04's `EXEMPT`, and stage 7
   removes both entries with the old layout.
+- **D-22 Stage 6 (`events`, `collaboration`, `messaging`) as built** (builder of 6.1, accepted by
+  the lead; built on an older base and combined onto stage 5 by an integration fixer). (1) No shim.
+  (2) Schemas: `rp_events_services.yaml` (`EventEnvelope`) and `rp_collaboration_services.yaml`
+  (`Referrer`, `ReferrerList`, `MemberList`) served; `rp_events_settings.yaml` (`EventSettings`)
+  not served (D-15 (1)). `SERVED_SCHEMAS`: iris, persistence, migrations, access, tenancy, events,
+  collaboration, service. (3) `nothing-in-services-imports-the-bus` removed (PD-6; the theme order
+  puts `messaging` above every theme); `collaboration-layers` and `event-bus-libraries-in-one-module`
+  retargeted. (4) TC-60 and TC-61 are planted tests in `test_theme_contracts.py`, merged with the
+  earlier stages' tests on one `_lint` helper; the builder's own "themes are in the order" test is
+  dropped, covered by D-17 W2's derived test. (5) Tests left in `tests/unit/services/` that test
+  several themes (`test_service_model`, `test_settings_model*`, `test_relayed_since`) move with
+  stage 7. (6) Combining: `events`, `collaboration`, `messaging` added to
+  `themes-never-import-the-old-layout`'s sources; `make generate` changed three manifests only; the
+  TypeScript golden refresh is order-only, sorted lines identical to stage 5's.

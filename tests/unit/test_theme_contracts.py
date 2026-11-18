@@ -414,9 +414,7 @@ def test_the_scratch_layout_itself_keeps_both_contracts(tmp_path):
 
 def test_collaboration_importing_the_message_bus_breaks_the_theme_order(tmp_path):
     """TC-60: the bus is in ``messaging``, above ``collaboration``, which it runs."""
-    planted = {
-        "collaboration/services/workflows.py": _importing("messaging.services.messagebus")
-    }
+    planted = {"collaboration/services/workflows.py": _importing("messaging.services.messagebus")}
 
     assert _breaks(tmp_path, ORDERED, planted)
 
