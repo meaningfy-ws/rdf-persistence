@@ -516,3 +516,13 @@ package name are leader's choices (DEC-2, DEC-5).
   folders, TC-41 checks two frames, TC-47's `closed` refusal reason); L4+L5 W1 (three copies of
   "copy and generate the toy"), W2 (three `ast` import walkers), W3 (constraint kinds as bare
   strings in the integration test), S1–S10 (duplicated constants and helpers).
+- **D-28 Stage 4 tester** (lead; 11 planted regressions, 7 caught by the tiers, 4 gaps; 4 tests,
+  all failed first against their plant and pass on the clean tree). Accepted, closed by the kept
+  tests, no production change: (1, P2) TC-42 generates twice in one process and cannot see
+  hash-seed nondeterminism — three generations under different `PYTHONHASHSEED`; (2, P2) TC-41
+  checks two frames — every activity class gets one; (3, P2) the closed shapes' exemption for the
+  session's bookkeeping predicates had no upper-tier test; (4, P3) TC-54 covered only the passing
+  path — cleanup when the body raises or the import fails. Under the floor, already in #164
+  item 11: (5) TC-44's step does not pin the `[description]` tag (D-26), (6) "nothing written"
+  checks two folders. The tester's note that no make target runs one generator tier is a
+  suggestion, not filed.
