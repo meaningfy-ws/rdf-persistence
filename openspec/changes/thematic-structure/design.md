@@ -547,3 +547,17 @@ consumers later.
   `HttpSettings` at the old generated path), F5 (TC-06's checker errors without naming a file on a
   syntax error), F6 (it reads without `utf-8-sig`); a consumer `python_import` naming a gone module
   is written as is.
+- **D-14 Stage 2 checker: verdict fail, fixed now** (lead; 6 findings). C1 (Critical, agreed: the
+  other direction of D-13 C1): an unmoved module can import upward into `core` (old `domain` into
+  `core.services`/`core.adapters`/`core.services.generated`, old `services` into `core.adapters`,
+  old `entrypoints` into `core.adapters`) with no contract breaking, where the old `layers` and
+  `domain-never-imports-technical-models` broke two. A temporary forbidden contract set (removed at
+  stage 7) states the old layers' order against the moved themes' layers: `rdf_persistence.domain`
+  never imports `rdf_persistence.*.{services,adapters,entrypoints}`; `rdf_persistence.services`
+  never `rdf_persistence.*.{adapters,entrypoints}`; `rdf_persistence.adapters` never
+  `rdf_persistence.*.entrypoints`; `rdf_persistence.entrypoints` never `rdf_persistence.*.adapters`,
+  each with a planted test. W1: `howto/settings.adoc` (~235) names `core/adapters/_http.py`. S1:
+  `test_theme_contracts.py` checks every `core` layer is covered. Under the floor: S2 (TC-53's name
+  vs its plant), S4 (no planted test exercises `themes-layered` or `layers-across-themes` in
+  stage 2; later stages' TC-35, TC-45, TC-51 do). S3: D-12 (7)'s release-note line for `error.type`
+  goes into stage 7's CHANGELOG entry (task 7.2).
