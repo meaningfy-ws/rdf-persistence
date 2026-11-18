@@ -372,6 +372,9 @@ package name are leader's choices (DEC-2, DEC-5).
 - **D-15 The generator's coverage reaches SonarCloud** (lead; within PD-10). The new
   `test-generator` CI job writes `coverage-generator.xml`; it is uploaded and listed in
   `sonar.python.coverage.reportPaths`, so the generator's lines stop counting as uncovered.
+  As built (after D-19 W2): the generator uploads `generator-coverage`; a `sonar` job that needs
+  `unit` and `test-generator` (`if: always()` and `SONAR_ENABLED`) downloads both reports and
+  scans; `unit` needs only `unit-shard`.
   `coverage-generator.xml` is git-ignored like the other reports.
 - **D-16 Stage 2 tester findings** (lead; tester: 100 tests, 16 failed first, 7 findings).
   Accepted: (1, P1) `test_testkit_moved.py` did not collect after the lead's merge — fixed with
