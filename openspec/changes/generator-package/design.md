@@ -357,3 +357,19 @@ package name are leader's choices (DEC-2, DEC-5).
 - **D-12 The shims are removed in 0.6.0** (builder of 2.2, PD-3): `VERSION` is 0.4.0, the
   release-please PR proposes 0.5.0, which ships this change. If it ships later, the four shims,
   their warnings and `test_the_removal_release_is_named_in_every_shim` take the new number.
+- **D-13 `TOOL_USERS` after the attack's list** (lead, builder of 2.4 asked). Three library test
+  files outside PD-9's eight import the generator, all added after the PLAN was read:
+  `tests/feature/test_technical_models.py` runs `rp-generate` on scratch technical-group projects,
+  a tool use on the library's own model layout: it joins `TOOL_USERS` (nine entries).
+  `tests/unit/testkit/test_testkit_imports.py` imports `rp_generation` only to check a record is not
+  defined there: it reads `rp_generation.yaml` instead, and leaves the set.
+  `tests/unit/testkit/test_testkit_target_adversarial.py::test_a_check_problem_replaced_keeps_what_it_does_not_name`
+  tests the generator's `CheckProblem`: it moves to `tests/generator/unit/`, as PD-9 split the
+  shape test.
+- **D-14 Path-keyed test data follows the move** (lead). `tests/audit/scenario-map.csv` and
+  `.test_durations` key tests by path; the lead regenerates them with `make refresh-map` and
+  `make test-durations` before the stage's gates, never by hand.
+- **D-15 The generator's coverage reaches SonarCloud** (lead; within PD-10). The new
+  `test-generator` CI job writes `coverage-generator.xml`; it is uploaded and listed in
+  `sonar.python.coverage.reportPaths`, so the generator's lines stop counting as uncovered.
+  `coverage-generator.xml` is git-ignored like the other reports.
