@@ -630,3 +630,19 @@ consumers later.
   the D-17 W2 test that ties `themes-layered`/`themes-ordered` to `TURNED_ON`. (13) Lesson for the
   run: `gh pr merge --delete-branch` run while the PR's branch is checked out in `.worktrees/lead`
   removed that worktree; the lead detaches from the branch before merging.
+- **D-19 Stage 4 review and tester, accepted** (lead; review 7 findings, tester 190 tests, 7
+  failed first, 5 findings; one fixer pass). Re-labelled Critical, with the reason: tester F1 (a
+  class declared, not imported, by two served schemas is left out of both by `render`, so it
+  vanishes from `/openapi.json` and its `$ref`s dangle; PD-10's error matrix says a name in two
+  files is an error, and the guard never fires): `render` leaves out only a class another served
+  schema imports or generates earlier, and a class declared by two served schemas is a
+  `DuplicateComponentError` naming both. Accepted below Critical: F4 (a served schema listed before
+  the one it imports silently loses that one's classes: an error naming both); F2 = review S1
+  (`SparqlProtocolStore` requires `db_system_name` at class definition); F3 (the `adapters.fuseki`
+  shim keeps `BAD_QUERY_MESSAGE` and `UNREADABLE` as PD-8's "the module's other names", with their
+  old values; D-18 (5) is amended); review W1 (TC-45 as a planted test: `persistence` →
+  `migrations`); W2, W3 (the architecture page, `generation.adoc` and `howto/adopt.adoc` state where
+  persistence and migrations live, the four served schemas and the groups' classes); S2 (TC-40
+  checks the Turtle body). Under the floor: review S3 (a commit's trace line), S4 (stage 7's
+  CHANGELOG names the dropped log constant change, D-18 (5)), tester F5 (the 400 log line, as
+  PD-7 intends).
