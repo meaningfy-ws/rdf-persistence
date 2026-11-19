@@ -13,8 +13,14 @@ import pytest
 from opentelemetry.trace import StatusCode
 from pydantic import BaseModel, ValidationError
 
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
 from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, MessageLimitExceeded
-from rdf_persistence.core.domain.generated.rp_provenance import (
+from rdf_persistence.messaging.services.messagebus import MessageBus, Work, command
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
+from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.provenance.domain.generated.rp_provenance import (
     Activity,
     Add,
     Generation,
@@ -22,12 +28,6 @@ from rdf_persistence.core.domain.generated.rp_provenance import (
     Remove,
     Replace,
 )
-from rdf_persistence.core.domain.generated.rp_workflow import Transition
-from rdf_persistence.messaging.services.messagebus import MessageBus, Work, command
-from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
-    LimitSettings,
-)
-from rdf_persistence.persistence.services.mapper import UnitOfWork
 from tests.logs import attributes
 from tests.spans import assert_no_text_in_spans
 from tests.toy import toy_mapper

@@ -18,19 +18,19 @@ from rdf_persistence import (
     generated_models,
     new_part,
 )
-from rdf_persistence.core.domain.generated import (
-    rp_access,
+from rdf_persistence.access.domain.generated import rp_access
+from rdf_persistence.collaboration.domain.generated import (
     rp_collections,
-    rp_core,
     rp_discussion,
-    rp_files,
-    rp_provenance,
     rp_workflow,
 )
+from rdf_persistence.core.domain.generated import rp_core
+from rdf_persistence.files.domain.generated import rp_files
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
     LimitSettings,
 )
+from rdf_persistence.provenance.domain.generated import rp_provenance
 from rdf_persistence.schema.services.schema import load_schema
 from tests.fixtures.library.domain.generated import (
     books,

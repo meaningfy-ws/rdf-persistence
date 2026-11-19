@@ -17,7 +17,8 @@ from rdflib import RDF, BNode, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_provenance import (
+from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.provenance.domain.generated.rp_provenance import (
     Activity,
     Add,
     Generation,
@@ -25,7 +26,6 @@ from rdf_persistence.core.domain.generated.rp_provenance import (
     Remove,
     Replace,
 )
-from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.schema.services import vocabulary as v
 
 ID_PREFIX = "urn:uuid:"

@@ -9,10 +9,10 @@ import pytest
 from rdflib import Graph
 
 from rdf_persistence.core.domain.exceptions import Forbidden, NotFound
-from rdf_persistence.core.domain.generated.rp_provenance import Activity, Generation
 from rdf_persistence.events.services.event_hub import EventHub
 from rdf_persistence.events.services.event_stream import KEEP_ALIVE, RESET, event_stream
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Generation
 
 TENANT = "https://lib.example/tenant/t"
 DUNE = "https://lib.example/book/dune"

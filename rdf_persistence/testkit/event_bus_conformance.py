@@ -13,9 +13,9 @@ from typing import Protocol
 
 import pytest
 
-from rdf_persistence.core.domain.generated.rp_provenance import Activity, Replace
 from rdf_persistence.events.services.events import EventBus
 from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Replace
 from rdf_persistence.testkit.bootstrap import wait_until_async
 
 ENVELOPE = EventEnvelope(

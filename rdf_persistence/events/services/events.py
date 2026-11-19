@@ -8,9 +8,9 @@ and ``testkit`` (in memory).
 from collections.abc import Awaitable, Callable
 from typing import Protocol
 
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.core.services.artifacts import CONTEXT_FILE
 from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 
 Receive = Callable[[EventEnvelope, bytes], Awaitable[None]]
 

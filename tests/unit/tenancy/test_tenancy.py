@@ -11,6 +11,8 @@ from uuid import UUID
 import pytest
 from pydantic import ValidationError
 
+from rdf_persistence.access.domain.generated.rp_access import Action, Grant, Prohibition
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.access.services.generated.rp_access_services import GrantSet
 from rdf_persistence.core.domain.exceptions import (
@@ -22,9 +24,7 @@ from rdf_persistence.core.domain.exceptions import (
     StoredDataInvalid,
     StoreUnavailable,
 )
-from rdf_persistence.core.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.iris.domain.layout import system_database_name
 from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,

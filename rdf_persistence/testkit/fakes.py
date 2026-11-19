@@ -23,13 +23,12 @@ from rdf_persistence.core.domain.exceptions import (
     TenantGone,
 )
 from rdf_persistence.core.domain.generated.rp_core import AggregateKey, Principal
-from rdf_persistence.core.domain.generated.rp_files import BlobEntry
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.core.domain.sparql_parsing import prepare_query, prepare_update
 from rdf_persistence.events.services.events import Receive
 from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
 from rdf_persistence.files.domain.blob_keys import checked_blob_key
+from rdf_persistence.files.domain.generated.rp_files import BlobEntry
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import (
@@ -41,6 +40,7 @@ from rdf_persistence.persistence.services.session import (
     open_session,
     utc_now,
 )
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 
 Message = tuple[EventEnvelope, bytes]
 

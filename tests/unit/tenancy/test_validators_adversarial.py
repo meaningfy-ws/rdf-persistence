@@ -5,9 +5,9 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
+from rdf_persistence.access.domain.generated.rp_access import Grant
 from rdf_persistence.access.services.generated.rp_access_services import GrantSet
 from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, NotFound
-from rdf_persistence.core.domain.generated.rp_access import Grant
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.mapper import UnitOfWork

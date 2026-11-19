@@ -16,7 +16,7 @@ collaboration modules, in `collaboration` or above — except `schema` (task 1.1
 
 ## 2. The move
 
-- [ ] 2.1 PD-6, PD-7, PD-9 (DEC-1 to DEC-5) in one commit: `rp_collaboration.yaml`, the annotations,
+- [x] 2.1 PD-6, PD-7, PD-9 (DEC-1 to DEC-5) in one commit: `rp_collaboration.yaml`, the annotations,
   the four entries, the three `domain/__init__.py`, `make generate`, the eager imports of
   `rdf_persistence/__init__.py`, the deep imports, the guards, `themes-ordered`. TC-01 to TC-05, TC-07.
   Gate: `make test-fast check-quality`.
@@ -31,7 +31,7 @@ collaboration modules, in `collaboration` or above — except `schema` (task 1.1
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [ ] 2.1 · [ ] 3.1
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [ ] 3.1
 
 ## Verification
 

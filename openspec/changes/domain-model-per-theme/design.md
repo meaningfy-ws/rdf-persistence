@@ -186,6 +186,14 @@ The lead's, shown for validation at the end (R-0007).
   lost. Fix: on the toolkit's run, skip the rules only for a target whose root classes are all
   checked on `rp.yaml`'s target (the roots of `rp.yaml`'s closure); any other target keeps them.
   The tester's failing test is kept.
+- **D-6 The conformance testkit reads every package a target's modules name** (task 2.1). With the
+  metamodel over five packages, `Conformance.of(rp.yaml)` saw only `core`'s classes and seven
+  conformance and round-trip tests failed (`KeyError: 'Grant'`). `_models_of` in
+  `rdf_persistence_generation/testkit/conformance.py` adds the classes of each `python_package` of
+  `own_schemas`. The testkit is in this repository, so this is the move's own fix, not a workaround.
+  The theme targets also write a partial `shapes.ttl`, `context.jsonld` and frames beside their
+  modules; as DEC-2 and the anti-patterns say, nothing loads them: the combined ones stay in `core`
+  (TC-03 byte-identical to `v0.6.0`).
 - **Under the floor** (tester, after task 1.2):
   - `_toolkit_packages` raises `ConfigError` on a toolkit `pyproject.toml` without
     `[[tool.rp-generate]]` entries: the toolkit cannot have one (Warning).

@@ -9,13 +9,13 @@ from collections.abc import Awaitable, Callable, Iterable
 
 import mimeparse
 
+from rdf_persistence.access.domain.generated.rp_access import Action
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     NotAcceptable,
     PreconditionRequired,
     UnsupportedMediaType,
 )
-from rdf_persistence.core.domain.generated.rp_access import Action
 from rdf_persistence.core.domain.media import JSON, JSON_LD, REPRESENTATIONS
 
 # The headers of the version of an aggregate, and of where a created one is.

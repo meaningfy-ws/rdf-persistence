@@ -13,7 +13,10 @@ from rdf_persistence_generation.generated.rp_generation import HardRule
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.problems import format_problem
 
-from .conftest import ROOT_SCHEMA, TOOLKIT_DOMAIN
+from .conftest import ROOT_SCHEMA, TOOLKIT_DOMAIN, theme_package
+
+FILES_PACKAGE = theme_package("files")
+ACCESS_PACKAGE = theme_package("access")
 
 PACKAGE_RULES = {HardRule.PYTHON_PACKAGE.value, HardRule.PYTHON_PACKAGE_MISMATCH.value}
 CONSUMER_ANNOTATION = "python_package: somewhere.else"
@@ -46,7 +49,7 @@ def test_rp_generate_refuses_a_module_without_python_package_and_writes_nothing(
     toolkit_project: Path, edit: Edit, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Error matrix: a metamodel module lacks python_package."""
-    edit("rp_files", f"python_package: {TOOLKIT_DOMAIN}", "unrelated: note")
+    edit("rp_files", f"python_package: {FILES_PACKAGE}", "unrelated: note")
     code = main(["--project", str(toolkit_project / "pyproject.toml")])
     err = capsys.readouterr().err
     assert code == 1, f"exit code; stderr was {err}"
@@ -83,10 +86,12 @@ def test_a_toolkit_module_beside_the_root_naming_a_package_no_target_generates_i
     toolkit_project: Path, edit: Edit
 ) -> None:
     """E-2: the module is not generated here, and no toolkit entry generates it either."""
-    edit("rp_files", f"python_package: {TOOLKIT_DOMAIN}", f"python_package: {UNKNOWN_PACKAGE}")
+    edit("rp_access", f"python_package: {ACCESS_PACKAGE}", f"python_package: {UNKNOWN_PACKAGE}")
     found = _toolkit_problems(toolkit_project)
-    expected = f"rp_files names python_package {UNKNOWN_PACKAGE}, which no toolkit target generates"
-    assert [line for line in found if "rp_files" in line], found
+    expected = (
+        f"rp_access names python_package {UNKNOWN_PACKAGE}, which no toolkit target generates"
+    )
+    assert [line for line in found if "rp_access" in line], found
     assert any(
         HardRule.PYTHON_PACKAGE_MISMATCH.value in line and expected in line for line in found
     ), f"{expected!r} is reported: {found}"
@@ -96,15 +101,15 @@ def test_a_toolkit_module_beside_the_root_naming_another_toolkit_targets_package
     toolkit_project: Path, edit: Edit
 ) -> None:
     """E-2: the other side: a toolkit entry generates that package."""
-    edit("rp_files", f"python_package: {TOOLKIT_DOMAIN}", f"python_package: {UNKNOWN_PACKAGE}")
+    edit("rp_access", f"python_package: {ACCESS_PACKAGE}", f"python_package: {UNKNOWN_PACKAGE}")
     pyproject = toolkit_project / "pyproject.toml"
     pyproject.write_text(
         pyproject.read_text(encoding="utf-8")
-        + f'\n[[tool.rp-generate]]\nschema = "model/rp_files.yaml"\npackage = "{UNKNOWN_PACKAGE}"\n'
+        + f'\n[[tool.rp-generate]]\nschema = "model/rp_access.yaml"\npackage = "{UNKNOWN_PACKAGE}"\n'
         'regenerate-command = "make generate"\nopenapi = false\n',
         encoding="utf-8",
     )
-    assert [p for p in _toolkit_problems(toolkit_project) if "rp_files" in p] == [], "allowed"
+    assert [p for p in _toolkit_problems(toolkit_project) if "rp_access" in p] == [], "allowed"
 
 
 def test_a_consumer_python_package_is_never_checked_and_leaves_the_output_unchanged(

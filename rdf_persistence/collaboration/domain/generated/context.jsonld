@@ -1,0 +1,343 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ADMS": "http://www.w3.org/ns/adms#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "linkml": "https://w3id.org/linkml/",
+      "oa": "http://www.w3.org/ns/oa#",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "activity": {
+         "@type": "@id",
+         "@id": "prov:activity"
+      },
+      "at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:atTime"
+      },
+      "body_value": {
+         "@id": "oa:bodyValue"
+      },
+      "comment_audience": {
+         "@container": "@set",
+         "@id": "audience"
+      },
+      "comment_references": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:references"
+      },
+      "comment_required": {
+         "@id": "commentRequired"
+      },
+      "id": "@id",
+      "contributor": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:contributor"
+      },
+      "created": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:created"
+      },
+      "creator": {
+         "@type": "@id",
+         "@id": "dcterms:creator"
+      },
+      "data_schema_version": {
+         "@id": "dataSchemaVersion"
+      },
+      "description": {
+         "@id": "dcterms:description"
+      },
+      "ended_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:endedAtTime"
+      },
+      "entity": {
+         "@type": "@id",
+         "@id": "entity"
+      },
+      "entity_class": {
+         "@type": "@id",
+         "@id": "entityClass"
+      },
+      "entity_version": {
+         "@id": "entityVersion"
+      },
+      "equals_slot": {
+         "@id": "equalsSlot"
+      },
+      "equals_value": {
+         "@id": "equalsValue"
+      },
+      "expected_version": {
+         "@id": "expectedVersion"
+      },
+      "from_state": {
+         "@id": "fromStateName"
+      },
+      "from_state_iri": {
+         "@type": "@id",
+         "@id": "fromState"
+      },
+      "generated_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:generatedAtTime"
+      },
+      "generations": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "generation"
+      },
+      "graph": {
+         "@type": "@id",
+         "@id": "graph"
+      },
+      "had_member": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prov:hadMember"
+      },
+      "has_target": {
+         "@type": "@id",
+         "@id": "oa:hasTarget"
+      },
+      "initial_state": {
+         "@id": "initialState"
+      },
+      "invalidations": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "invalidation"
+      },
+      "key_name": {
+         "@id": "keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "keyValues"
+      },
+      "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "label": {
+         "@id": "skos:prefLabel"
+      },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "listedIn"
+      },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "loadedAt"
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "loadedGraph"
+      },
+      "member_class": {
+         "@id": "memberClass"
+      },
+      "membership_rule": {
+         "@type": "@id",
+         "@id": "membershipRule"
+      },
+      "modified": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:modified"
+      },
+      "motivated_by": {
+         "@id": "oa:motivatedBy",
+         "@type": "@vocab",
+         "@context": {
+            "commenting": "http://www.w3.org/ns/oa#commenting",
+            "replying": "http://www.w3.org/ns/oa#replying"
+         }
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "ownedBy"
+      },
+      "replies_to": {
+         "@type": "@id",
+         "@id": "repliesTo"
+      },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rootClass"
+      },
+      "rule_equalities": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "ruleEquality"
+      },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "startedAt"
+      },
+      "started_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:startedAtTime"
+      },
+      "to_state": {
+         "@id": "toStateName"
+      },
+      "to_state_iri": {
+         "@type": "@id",
+         "@id": "toState"
+      },
+      "transition_comment": {
+         "@type": "@id",
+         "@id": "transitionComment"
+      },
+      "transition_roles": {
+         "@container": "@set",
+         "@id": "transitionRole"
+      },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
+      "used_resource": {
+         "@type": "@id",
+         "@id": "prov:used"
+      },
+      "version": {
+         "@id": "version"
+      },
+      "was_associated_with": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prov:wasAssociatedWith"
+      },
+      "was_attributed_to": {
+         "@type": "@id",
+         "@id": "prov:wasAttributedTo"
+      },
+      "was_derived_from": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prov:wasDerivedFrom"
+      },
+      "was_generated_by": {
+         "@type": "@id",
+         "@id": "prov:wasGeneratedBy"
+      },
+      "workflow_name": {
+         "@id": "workflowName"
+      },
+      "workflow_states": {
+         "@container": "@set",
+         "@id": "workflowState"
+      },
+      "workflow_status": {
+         "@type": "@id",
+         "@id": "ADMS:status"
+      },
+      "workflow_transitions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "workflowTransition"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "Activity": {
+         "@id": "prov:Activity"
+      },
+      "Add": {
+         "@id": "Add"
+      },
+      "AggregateKey": {
+         "@id": "AggregateKey"
+      },
+      "AggregateRoot": {
+         "@id": "AggregateRoot"
+      },
+      "Comment": {
+         "@id": "oa:Annotation"
+      },
+      "CommitMarker": {
+         "@id": "CommitMarker"
+      },
+      "Described": {
+         "@id": "Described"
+      },
+      "Generation": {
+         "@id": "prov:Generation"
+      },
+      "Invalidation": {
+         "@id": "prov:Invalidation"
+      },
+      "KeyDuplicate": {
+         "@id": "KeyDuplicate"
+      },
+      "MembershipRule": {
+         "@id": "MembershipRule"
+      },
+      "PendingLoad": {
+         "@id": "PendingLoad"
+      },
+      "PostComment": {
+         "@id": "PostComment"
+      },
+      "PostReply": {
+         "@id": "PostReply"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Provenanced": {
+         "@id": "Provenanced"
+      },
+      "ReferenceCollection": {
+         "@id": "prov:Collection"
+      },
+      "RegistryEntry": {
+         "@id": "RegistryEntry"
+      },
+      "Remove": {
+         "@id": "Remove"
+      },
+      "Replace": {
+         "@id": "Replace"
+      },
+      "SlotEquality": {
+         "@id": "SlotEquality"
+      },
+      "Tracked": {
+         "@id": "Tracked"
+      },
+      "Transition": {
+         "@id": "Transition"
+      },
+      "UnderWorkflow": {
+         "@id": "UnderWorkflow"
+      },
+      "Workflow": {
+         "@id": "Workflow"
+      },
+      "WorkflowTransition": {
+         "@id": "WorkflowTransition"
+      }
+   }
+}

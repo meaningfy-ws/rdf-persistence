@@ -17,7 +17,7 @@ from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import Authori
 from rdf_persistence.collaboration.services.generated.rp_collaboration_services import ReferrerList
 from rdf_persistence.core.domain.exceptions import BadQuery, Forbidden, InvalidIri, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.testkit import fake_session
 from tests.fixtures.library.domain.generated.books import Book
 from tests.toy import (

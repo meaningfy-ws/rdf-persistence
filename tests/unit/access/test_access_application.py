@@ -3,9 +3,9 @@
 import pytest
 
 from rdf_persistence import Action
+from rdf_persistence.access.domain.generated.rp_access import RoleDefinition, RoleLevel
 from rdf_persistence.access.services.access import AccessRules
 from rdf_persistence.core.domain.exceptions import Forbidden
-from rdf_persistence.core.domain.generated.rp_access import RoleDefinition, RoleLevel
 from tests.toy import caller
 
 DEFINITIONS = [

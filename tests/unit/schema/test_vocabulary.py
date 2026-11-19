@@ -8,9 +8,9 @@ import yaml
 from rdflib import URIRef, plugin
 from rdflib.parser import Parser
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.generated.rp_core import RegistryEntry, RegistryKind
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.schema.services import vocabulary
 from rdf_persistence.schema.services.schema import API_ENTRYPOINTS_SCHEMA, load_schema
 from rdf_persistence.schema.services.schema_structure import is_bookkeeping

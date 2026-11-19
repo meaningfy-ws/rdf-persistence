@@ -11,7 +11,7 @@ import pytest
 
 from rdf_persistence.core.domain.exceptions import DatabaseGone, NotFound, StoreNotWired
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.persistence.services.store import ToolkitStore
 from rdf_persistence.tenancy.services.tenancy import DEFAULT_STORE
 from rdf_persistence.testkit import FakeStore

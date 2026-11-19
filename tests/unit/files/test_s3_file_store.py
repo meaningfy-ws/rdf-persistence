@@ -17,9 +17,9 @@ from rdf_persistence.core.domain.exceptions import (
     StoreUnavailable,
     TenantGone,
 )
-from rdf_persistence.core.domain.generated.rp_files import BlobEntry
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
 from rdf_persistence.files.adapters.s3 import S3FileStore
+from rdf_persistence.files.domain.generated.rp_files import BlobEntry
 from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
 from tests.logs import attributes, records_of
 

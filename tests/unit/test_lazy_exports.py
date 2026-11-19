@@ -12,10 +12,13 @@ HEAVY = (
     "anyio",
     "rdf_persistence.api",
     "rdf_persistence.persistence.adapters",
-    "rdf_persistence.access",
+    # `access` and `collaboration` hold generated domain packages now (domain-model-per-theme), which the
+    # eager imports of `rdf_persistence` load; only their services and adapters are heavy.
+    "rdf_persistence.access.services",
+    "rdf_persistence.access.adapters",
     "rdf_persistence.tenancy",
     "rdf_persistence.events",
-    "rdf_persistence.collaboration",
+    "rdf_persistence.collaboration.services",
     "rdf_persistence.messaging",
     "rdf_persistence.migrations.services.migrations",
     "rdf_persistence.persistence.services.session",

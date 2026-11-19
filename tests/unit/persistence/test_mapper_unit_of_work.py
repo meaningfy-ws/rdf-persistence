@@ -6,10 +6,10 @@ from datetime import UTC, datetime
 import pytest
 from rdflib import URIRef
 
+from rdf_persistence.access.domain.generated.rp_access import Grant
 from rdf_persistence.core.domain.exceptions import BadQuery, CommitTooLarge, Conflict, NotFound
-from rdf_persistence.core.domain.generated.rp_access import Grant
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.services.iris import (
     DEFAULT_IRIS,
 )

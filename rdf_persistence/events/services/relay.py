@@ -15,9 +15,8 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
 from rdflib import Graph
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.exceptions import DatabaseGone
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import error_type, log_extra, traced
 from rdf_persistence.events.services.event_hub import Offer
@@ -27,6 +26,7 @@ from rdf_persistence.events.services.generated.settings.rp_events_settings impor
 from rdf_persistence.persistence.services.decoding import decode_activity, error_text
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.persistence.services.session import Session
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)

@@ -7,8 +7,12 @@ import pytest
 from pydantic import ValidationError
 from rdflib import URIRef
 
-from rdf_persistence.core.domain.generated.rp_provenance import Generation, Invalidation, Replace
-from rdf_persistence.core.domain.generated.rp_workflow import Transition
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
+from rdf_persistence.provenance.domain.generated.rp_provenance import (
+    Generation,
+    Invalidation,
+    Replace,
+)
 from rdf_persistence.schema.services import vocabulary
 from rdf_persistence.schema.services.schema import API_ENTRYPOINTS_SCHEMA, load_schema
 from rdf_persistence.schema.services.schema_structure import is_internal, is_owned

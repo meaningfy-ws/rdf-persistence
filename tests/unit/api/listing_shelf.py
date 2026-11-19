@@ -5,7 +5,7 @@ import json
 import httpx
 
 from rdf_persistence import GrantSet
-from rdf_persistence.core.domain.generated.rp_access import Grant, Prohibition
+from rdf_persistence.access.domain.generated.rp_access import Grant, Prohibition
 from rdf_persistence.core.domain.media import JSON
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 

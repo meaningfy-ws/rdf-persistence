@@ -1,0 +1,260 @@
+{
+  "schema_id": "https://meaningfy.ws/ns/rdf-persistence",
+  "schema_version": "2",
+  "locked_classes": [
+    {
+      "class_uri": "http://www.w3.org/ns/oa#Annotation",
+      "iri_type": "rp-comment",
+      "root_path": "rp-comments",
+      "root_database": "tenant",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/contributor",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/created",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/creator",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/modified",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/references",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/oa#bodyValue",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/oa#hasTarget",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/oa#motivatedBy",
+          "range": "Motivation",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#audience",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#fromState",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#repliesTo",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#toState",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "http://www.w3.org/ns/odrl/2/Permission",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/action",
+          "range": "Action",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/assignee",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/target",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#role",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "http://www.w3.org/ns/odrl/2/Prohibition",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/action",
+          "range": "Action",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/assignee",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/odrl/2/target",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://meaningfy.ws/ns/rdf-persistence#TenantAccess",
+      "iri_type": "tenant-access",
+      "root_path": "access",
+      "root_database": "system",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#databaseName",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#grant",
+          "range": "http://www.w3.org/ns/odrl/2/Permission",
+          "required": false,
+          "multivalued": true,
+          "inlined": true
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#prohibition",
+          "range": "http://www.w3.org/ns/odrl/2/Prohibition",
+          "required": false,
+          "multivalued": true,
+          "inlined": true
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#state",
+          "range": "TenantState",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#storeName",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    }
+  ],
+  "locked_enums": [
+    {
+      "name": "Action",
+      "enum_values": [
+        "http://www.w3.org/ns/odrl/2/annotate",
+        "http://www.w3.org/ns/odrl/2/delete",
+        "http://www.w3.org/ns/odrl/2/modify",
+        "http://www.w3.org/ns/odrl/2/read",
+        "https://meaningfy.ws/ns/rdf-persistence#administer"
+      ]
+    },
+    {
+      "name": "Motivation",
+      "enum_values": [
+        "http://www.w3.org/ns/oa#commenting",
+        "http://www.w3.org/ns/oa#replying"
+      ]
+    },
+    {
+      "name": "TenantState",
+      "enum_values": [
+        "https://meaningfy.ws/ns/rdf-persistence#Active",
+        "https://meaningfy.ws/ns/rdf-persistence#Deleting"
+      ]
+    }
+  ]
+}

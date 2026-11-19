@@ -11,6 +11,7 @@ by trying member classes, the class of a hidden aggregate whose IRI it holds, ne
 
 from rdflib import Graph
 
+from rdf_persistence.collaboration.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.collaboration.services.reference_collections import (
     collection_class,
     collection_classes,
@@ -21,7 +22,6 @@ from rdf_persistence.collaboration.services.reference_collections import (
 from rdf_persistence.collaboration.services.workflows import Workflows
 from rdf_persistence.core.domain.exceptions import BadQuery, InvalidBody, InvalidIri
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
-from rdf_persistence.core.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper

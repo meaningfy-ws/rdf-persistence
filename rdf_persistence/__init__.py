@@ -9,6 +9,38 @@ from importlib import import_module
 from importlib.metadata import version
 from typing import TYPE_CHECKING, Any
 
+from rdf_persistence.access.domain.generated.rp_access import (
+    Action,
+    Grant,
+    Policy,
+    Prohibition,
+    RoleDefinition,
+    RoleLevel,
+    Rule,
+)
+from rdf_persistence.access.domain.generated.rp_tenancy import (
+    TenantAccess,
+    TenantLabelled,
+    TenantState,
+    TenantSweepReport,
+)
+from rdf_persistence.collaboration.domain.generated.rp_collections import (
+    MembershipRule,
+    ReferenceCollection,
+    SlotEquality,
+)
+from rdf_persistence.collaboration.domain.generated.rp_discussion import (
+    Comment,
+    Motivation,
+    PostComment,
+    PostReply,
+)
+from rdf_persistence.collaboration.domain.generated.rp_workflow import (
+    Transition,
+    UnderWorkflow,
+    Workflow,
+    WorkflowTransition,
+)
 from rdf_persistence.core.domain.base import RpModel
 from rdf_persistence.core.domain.exceptions import (
     BadQuery,
@@ -41,23 +73,9 @@ from rdf_persistence.core.domain.exceptions import (
     UnknownRole,
     UnsupportedMediaType,
 )
-from rdf_persistence.core.domain.generated.rp_access import (
-    Action,
-    Grant,
-    Policy,
-    Prohibition,
-    RoleDefinition,
-    RoleLevel,
-    Rule,
-)
 from rdf_persistence.core.domain.generated.rp_annotations import (
     Described,
     Tracked,
-)
-from rdf_persistence.core.domain.generated.rp_collections import (
-    MembershipRule,
-    ReferenceCollection,
-    SlotEquality,
 )
 from rdf_persistence.core.domain.generated.rp_core import (
     AggregateKey,
@@ -75,19 +93,13 @@ from rdf_persistence.core.domain.generated.rp_core import (
     UniqueScope,
     WritesKind,
 )
-from rdf_persistence.core.domain.generated.rp_discussion import (
-    Comment,
-    Motivation,
-    PostComment,
-    PostReply,
-)
-from rdf_persistence.core.domain.generated.rp_files import (
+from rdf_persistence.files.domain.generated.rp_files import (
     BlobEntry,
     DeleteFile,
     RdfFormat,
     StoredFile,
 )
-from rdf_persistence.core.domain.generated.rp_provenance import (
+from rdf_persistence.provenance.domain.generated.rp_provenance import (
     Activity,
     Add,
     Generation,
@@ -95,18 +107,6 @@ from rdf_persistence.core.domain.generated.rp_provenance import (
     Provenanced,
     Remove,
     Replace,
-)
-from rdf_persistence.core.domain.generated.rp_tenancy import (
-    TenantAccess,
-    TenantLabelled,
-    TenantState,
-    TenantSweepReport,
-)
-from rdf_persistence.core.domain.generated.rp_workflow import (
-    Transition,
-    UnderWorkflow,
-    Workflow,
-    WorkflowTransition,
 )
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors

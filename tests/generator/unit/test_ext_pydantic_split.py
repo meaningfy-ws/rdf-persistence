@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from rdf_persistence.core.domain.generated.rp_files import StoredFile
+from rdf_persistence.files.domain.generated.rp_files import StoredFile
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import generated_schemas, own_schemas
 from rdf_persistence_generation.checks.python_package import python_package_problems

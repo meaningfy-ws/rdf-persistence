@@ -14,7 +14,7 @@ imports:
   - linkml:types
   - rp_core
 annotations:
-  python_package: rdf_persistence.core.domain.generated
+  python_package: rdf_persistence.collaboration.domain.generated
 
 classes:
   ReferenceCollection:

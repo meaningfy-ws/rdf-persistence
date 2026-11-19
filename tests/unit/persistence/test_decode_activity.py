@@ -9,9 +9,9 @@ from rdflib import RDF, URIRef
 from rdflib.namespace import PROV
 
 from rdf_persistence import generated_models
-from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add, Remove, Replace
-from rdf_persistence.core.domain.generated.rp_workflow import Transition
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
 from rdf_persistence.persistence.services.decoding import decode_activity
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Add, Remove, Replace
 from rdf_persistence.provenance.services.provenance import activity_class_named, activity_class_of
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema

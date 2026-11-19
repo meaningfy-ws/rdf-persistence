@@ -7,7 +7,7 @@ import anyio.to_thread
 from rdflib import Graph
 
 from rdf_persistence.core.domain.exceptions import InvalidGraph
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.persistence.services.jsonld import (
     ABSOLUTE_IRIS,
     INVALID_IRI,

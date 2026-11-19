@@ -33,8 +33,6 @@ from rdf_persistence.core.domain.generated.rp_core import (
     RegistryEntry,
     RegistryKind,
 )
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.core.domain.sparql import (
     SparqlTerm,
     Triple,
@@ -50,6 +48,7 @@ from rdf_persistence.core.domain.sparql import (
 )
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
@@ -80,6 +79,7 @@ from rdf_persistence.persistence.services.unique_keys import (
     key_conflict,
     same_value,
 )
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.provenance.services.provenance import (
     Change,
     Served,

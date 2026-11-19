@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from rdf_persistence.core.domain.generated.rp_workflow import Transition
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
 from rdf_persistence.events.services.relay import chain_order
 from rdf_persistence.persistence.services.session import open_session
@@ -331,7 +331,7 @@ async def test_an_activity_marked_pending_twice_is_published_once_and_fully_unma
 
 
 def test_a_cycle_in_the_version_chain_still_returns_every_activity_once():
-    from rdf_persistence.core.domain.generated.rp_provenance import (
+    from rdf_persistence.provenance.domain.generated.rp_provenance import (
         Generation,
         Invalidation,
         Replace,

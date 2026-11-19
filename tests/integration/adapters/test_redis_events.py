@@ -12,8 +12,8 @@ from opentelemetry.trace import SpanKind
 from redis.asyncio import Redis
 
 from rdf_persistence import ToolkitSettings
-from rdf_persistence.core.domain.generated.rp_provenance import Replace
 from rdf_persistence.events.adapters.redis_events import RedisEventBus
+from rdf_persistence.provenance.domain.generated.rp_provenance import Replace
 from rdf_persistence.testkit.bootstrap import wait_until_async
 from rdf_persistence.testkit.event_bus_conformance import (
     BODY,

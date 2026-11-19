@@ -27,13 +27,12 @@ from pydantic import (
     field_validator,
     model_serializer
 )
-
-from .rp_annotations import Tracked
-from .rp_core import (
+from rdf_persistence.core.domain.generated.rp_annotations import Tracked
+from rdf_persistence.core.domain.generated.rp_core import (
     AggregateRoot,
     Principal
 )
-from .rp_provenance import (
+from rdf_persistence.provenance.domain.generated.rp_provenance import (
     Activity,
     Generation,
     Invalidation

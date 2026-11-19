@@ -10,13 +10,13 @@ import pytest
 from rdflib import RDF, Dataset, Graph, Literal, URIRef
 
 from rdf_persistence import Conflict, InvalidIri, NotFound
+from rdf_persistence.access.domain.generated.rp_access import Grant
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.access.services.access import _access_mapper
 from rdf_persistence.access.services.generated.rp_access_services import GrantSet
 from rdf_persistence.core.domain.exceptions import DatabaseGone
-from rdf_persistence.core.domain.generated.rp_access import Grant
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.iris.domain.layout import application_database_name, graph_iri
 from rdf_persistence.iris.services.iris import Iris

@@ -11,9 +11,9 @@ import pytest
 from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence.core.domain.exceptions import Conflict, DatabaseGone, InvalidIri, KeyConflict
-from rdf_persistence.core.domain.generated.rp_provenance import Add
 from rdf_persistence.iris.domain.layout import application_database_name
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.provenance.domain.generated.rp_provenance import Add
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.tenancy.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore

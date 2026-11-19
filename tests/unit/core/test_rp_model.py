@@ -1,18 +1,38 @@
 """RpModel is the strict base of every metamodel class and of every consumer's generated class."""
 
+from importlib import import_module
+
 import pytest
 from pydantic import ValidationError
 
 from rdf_persistence import IdKind, IdSpec, Principal, RpModel, TenantAccess
-from rdf_persistence.core.domain.generated import rp as generated
 from tests.unit.builders import ALICE, tenant_access
 
-METAMODEL_CLASSES = sorted(
-    (
+# The generated domain modules of the five domain packages, one per theme (domain-model-per-theme DEC-1).
+DOMAIN_MODULES = (
+    "rdf_persistence.core.domain.generated.rp_core",
+    "rdf_persistence.core.domain.generated.rp_annotations",
+    "rdf_persistence.access.domain.generated.rp_access",
+    "rdf_persistence.access.domain.generated.rp_tenancy",
+    "rdf_persistence.provenance.domain.generated.rp_provenance",
+    "rdf_persistence.files.domain.generated.rp_files",
+    "rdf_persistence.collaboration.domain.generated.rp_collections",
+    "rdf_persistence.collaboration.domain.generated.rp_discussion",
+    "rdf_persistence.collaboration.domain.generated.rp_workflow",
+)
+
+
+def _defined_in(module: str) -> list[type]:
+    """The classes the module defines itself, not the ones it imports from a module below."""
+    return [
         value
-        for value in vars(generated).values()
-        if isinstance(value, type) and issubclass(value, RpModel) and value is not RpModel
-    ),
+        for value in vars(import_module(module)).values()
+        if isinstance(value, type) and issubclass(value, RpModel) and value.__module__ == module
+    ]
+
+
+METAMODEL_CLASSES = sorted(
+    (cls for module in DOMAIN_MODULES for cls in _defined_in(module) if cls is not RpModel),
     key=lambda cls: cls.__name__,
 )
 

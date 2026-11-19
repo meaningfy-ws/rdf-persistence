@@ -16,11 +16,13 @@ from typing import cast
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
+from rdf_persistence.access.domain.generated.rp_access import Action
 from rdf_persistence.access.services.access import AccessRules
 from rdf_persistence.access.services.generated.rp_access_services import (
     CallerAccess,
     VerifiedCaller,
 )
+from rdf_persistence.collaboration.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.collaboration.services.generated.rp_collaboration_services import MemberList
 from rdf_persistence.core.domain.exceptions import (
     BadQuery,
@@ -30,8 +32,6 @@ from rdf_persistence.core.domain.exceptions import (
     NotFound,
     StoredDataInvalid,
 )
-from rdf_persistence.core.domain.generated.rp_access import Action
-from rdf_persistence.core.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (

@@ -12,7 +12,7 @@ import pytest
 from rdflib import URIRef
 
 from rdf_persistence.core.domain.exceptions import InvalidBody
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.tenancy.services.generated.rp_tenancy_services import TenantDump

@@ -28,8 +28,7 @@ from pydantic import (
     model_serializer,
     model_validator
 )
-
-from .rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_core import Principal
 
 
 metamodel_version = "1.12.0"

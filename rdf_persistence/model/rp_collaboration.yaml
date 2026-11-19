@@ -1,0 +1,16 @@
+id: https://meaningfy.ws/ns/rdf-persistence/collaboration
+name: rp_collaboration
+title: RDF persistence collaboration module
+description: The root of the collaboration theme, which generates the collections, discussion and workflow modules together.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rp_collections
+  - rp_discussion
+  - rp_workflow
+annotations:
+  python_package: rdf_persistence.collaboration.domain.generated

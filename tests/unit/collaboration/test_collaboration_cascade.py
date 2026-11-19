@@ -8,6 +8,10 @@ import pytest
 
 from rdf_persistence import Action, StoredDataInvalid, generated_models
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence.collaboration.domain.generated.rp_collections import (
+    MembershipRule,
+    SlotEquality,
+)
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import (
@@ -17,7 +21,6 @@ from rdf_persistence.core.domain.exceptions import (
     InvalidBody,
     InvalidIri,
 )
-from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
     LimitSettings,

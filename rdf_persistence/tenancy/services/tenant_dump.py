@@ -27,9 +27,9 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import Dataset, URIRef
 from rdflib.exceptions import ParserError
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, InvalidIri, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra

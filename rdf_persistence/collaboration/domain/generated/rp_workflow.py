@@ -27,9 +27,8 @@ from pydantic import (
     field_validator,
     model_serializer
 )
-
-from .rp_core import Principal
-from .rp_provenance import (
+from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.provenance.domain.generated.rp_provenance import (
     Activity,
     Generation,
     Invalidation

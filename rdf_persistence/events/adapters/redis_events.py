@@ -20,12 +20,12 @@ from faststream.redis import RedisBroker, StreamSub
 from faststream.redis.annotations import RedisMessage
 from pydantic import ValidationError
 
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra
 from rdf_persistence.events.services.events import Receive
 from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 
 if TYPE_CHECKING:
     # FastStream exports no public name for the type of its broker middlewares

@@ -13,15 +13,15 @@ import pytest
 from fastapi import APIRouter
 
 from rdf_persistence import GrantSet
+from rdf_persistence.access.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import SseSettings
 from rdf_persistence.api.entrypoints.responses import CONTEXT_REL
 from rdf_persistence.api.entrypoints.sse import add_events_route
-from rdf_persistence.core.domain.generated.rp_access import Action, Grant, Prohibition
-from rdf_persistence.core.domain.generated.rp_provenance import Activity, Generation, Replace
 from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.events.services.event_hub import EventHub
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
 from rdf_persistence.iris.domain.layout import graph_iri
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Generation, Replace
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.api.scene import Scene
 

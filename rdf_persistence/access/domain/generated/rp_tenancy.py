@@ -28,14 +28,14 @@ from pydantic import (
     model_serializer,
     model_validator
 )
+from rdf_persistence.core.domain.generated.rp_annotations import Described
+from rdf_persistence.core.domain.generated.rp_core import AggregateRoot
 
 from .rp_access import (
     Grant,
     Policy,
     Prohibition
 )
-from .rp_annotations import Described
-from .rp_core import AggregateRoot
 
 
 metamodel_version = "1.12.0"

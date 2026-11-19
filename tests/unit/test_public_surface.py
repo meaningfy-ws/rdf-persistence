@@ -19,7 +19,7 @@ from types import ModuleType
 import pytest
 
 import rdf_persistence
-from tests.unit.test_theme_layout import turned_on_classes, turned_on_pairs
+from tests.unit.test_theme_layout import MOVED_MODULES, turned_on_classes, turned_on_pairs
 
 ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT = ROOT / "tests" / "fixtures" / "public-surface.json"
@@ -132,6 +132,25 @@ def test_every_public_name_is_the_object_at_its_layout_home():
     )
 
     assert problems == [], "the public surface moved:\n" + "\n".join(problems)
+
+
+def test_a_name_of_a_moved_generated_module_is_the_same_object_at_its_theme():
+    """TC-02 (domain-model-per-theme): only the home module changes; the snapshot keeps the old path."""
+    snapshot = _snapshot()
+    pairs, classes = turned_on_pairs(), turned_on_classes()
+    new_paths = {row.new for row in MOVED_MODULES}
+    standing = {
+        name: standing_of(module, name, pairs, classes) for name, module in snapshot.items()
+    }
+    names = {name: module for name, module in standing.items() if module in new_paths}
+
+    assert names, "the public surface names classes of the moved modules"
+    assert not set(snapshot.values()) & new_paths, "the snapshot keeps the old paths"
+    for name, module in names.items():
+        assert home_of(rdf_persistence, name) == module, f"{name} is not defined in {module}"
+        assert getattr(import_module(module), name) is getattr(rdf_persistence, name), (
+            f"{name} is another object at {module}"
+        )
 
 
 # --- the guard on a planted package ---------------------------------------------------------

@@ -4,10 +4,10 @@ import pytest
 from rdflib import Graph, URIRef
 
 from rdf_persistence import Action
+from rdf_persistence.access.domain.generated.rp_access import Grant
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.access.services.generated.rp_access_services import CallerAccess
 from rdf_persistence.collaboration.services.collaboration import Collaboration
-from rdf_persistence.core.domain.generated.rp_access import Grant
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import assert_isomorphic

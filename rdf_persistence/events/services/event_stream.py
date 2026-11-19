@@ -15,8 +15,8 @@ from typing import Final, Literal, Protocol
 from rdflib import Graph
 
 from rdf_persistence.core.domain.exceptions import Forbidden, NotFound
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.events.services.event_hub import CLOSED, EventHub
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.provenance.services.provenance import is_activity_id
 from rdf_persistence.provenance.services.visible_part import visible_part
 

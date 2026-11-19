@@ -12,7 +12,7 @@ import pytest
 from rdflib import URIRef
 
 from rdf_persistence.api.services.file_removal import remove_with_files
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import open_session

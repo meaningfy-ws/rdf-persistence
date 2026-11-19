@@ -1,0 +1,539 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rp: <https://meaningfy.ws/ns/rdf-persistence#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+rp:Activity a sh:NodeShape ;
+	rdfs:comment "Something that happened and generated or changed entities, carried out by principals." ;
+	rdfs:label "Activity" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n16 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n1 , _:c14n25 , _:c14n26 , _:c14n57 , _:c14n65 , _:c14n8 ;
+	sh:targetClass prov:Activity .
+rp:Add a sh:NodeShape ;
+	rdfs:comment "An activity that added an aggregate." ;
+	rdfs:label "Add" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n59 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n32 , _:c14n45 , _:c14n49 , _:c14n52 , _:c14n55 , _:c14n68 ;
+	sh:targetClass rp:Add .
+rp:AggregateKey a sh:NodeShape ;
+	rdfs:comment "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates." ;
+	rdfs:label "Aggregate key" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n54 ;
+	sh:property _:c14n22 , _:c14n58 , _:c14n66 ;
+	sh:targetClass rp:AggregateKey .
+rp:AggregateRoot a sh:NodeShape ;
+	rdfs:comment "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole." ;
+	rdfs:label "Aggregate root" ;
+	sh:closed false ;
+	sh:ignoredProperties _:c14n51 ;
+	sh:targetClass rp:AggregateRoot .
+rp:CommitMarker a sh:NodeShape ;
+	rdfs:comment "The registry marker of one transaction's commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written." ;
+	rdfs:label "Commit marker" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n44 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n19 , _:c14n50 ;
+	sh:targetClass rp:CommitMarker .
+rp:Generation a sh:NodeShape ;
+	rdfs:comment "The generation of one version of an entity by an activity." ;
+	rdfs:label "Generation" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n34 ;
+	sh:property _:c14n24 , _:c14n33 , _:c14n35 , _:c14n61 , _:c14n67 ;
+	sh:targetClass prov:Generation .
+rp:Invalidation a sh:NodeShape ;
+	rdfs:comment "The invalidation of one version of an entity by an activity." ;
+	rdfs:label "Invalidation" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n56 ;
+	sh:property _:c14n17 , _:c14n2 , _:c14n3 , _:c14n4 , _:c14n40 ;
+	sh:targetClass prov:Invalidation .
+rp:KeyDuplicate a sh:NodeShape ;
+	rdfs:comment "A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant's database by the duplicates report." ;
+	rdfs:label "Key duplicate" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n5 ;
+	sh:property _:c14n13 , _:c14n14 , _:c14n21 , _:c14n43 ;
+	sh:targetClass rp:KeyDuplicate .
+rp:PendingLoad a sh:NodeShape ;
+	rdfs:comment "The registry marker of a load not yet committed: one triple saying when the graph was put. It names no registry entry, so deleting it never deletes an entry." ;
+	rdfs:label "Pending load" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n28 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n18 , _:c14n37 ;
+	sh:targetClass rp:PendingLoad .
+rp:Principal a sh:NodeShape ;
+	rdfs:comment "A reference to a user account in the identity provider, by IRI only." ;
+	rdfs:label "Principal" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n62 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n29 ;
+	sh:targetClass prov:Agent .
+rp:Provenanced a sh:NodeShape ;
+	rdfs:comment "A mixin for entities whose derivation, generating activity and attribution are recorded." ;
+	rdfs:label "Provenanced" ;
+	sh:closed false ;
+	sh:ignoredProperties _:c14n31 ;
+	sh:property _:c14n15 , _:c14n36 , _:c14n38 , _:c14n41 ;
+	sh:targetClass rp:Provenanced .
+rp:RegistryEntry a sh:NodeShape ;
+	rdfs:comment "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application." ;
+	rdfs:label "Registry entry" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n48 ;
+	sh:property _:c14n11 , _:c14n20 , _:c14n64 ;
+	sh:targetClass rp:RegistryEntry .
+rp:Remove a sh:NodeShape ;
+	rdfs:comment "An activity that removed an aggregate." ;
+	rdfs:label "Remove" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n12 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n30 , _:c14n42 , _:c14n53 , _:c14n6 , _:c14n63 , _:c14n9 ;
+	sh:targetClass rp:Remove .
+rp:Replace a sh:NodeShape ;
+	rdfs:comment "An activity that replaced an aggregate with a new version." ;
+	rdfs:label "Replace" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n46 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n0 , _:c14n10 , _:c14n23 , _:c14n39 , _:c14n47 , _:c14n60 ;
+	sh:targetClass rp:Replace .
+_:c14n0 sh:description "A principal that carried out the activity." ;
+	sh:name "Was associated with" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path prov:wasAssociatedWith .
+_:c14n1 sh:description "The versions of entities the activity invalidated." ;
+	sh:name "Invalidations" ;
+	sh:node rp:Invalidation ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 5 ;
+	sh:path rp:invalidation .
+_:c14n10 sh:description "The IRI that identifies the object." ;
+	sh:maxCount 1 ;
+	sh:name "Identifier" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path dcterms:identifier .
+_:c14n11 sh:description "The IRI of a named graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Graph" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path rp:graph .
+_:c14n12 rdf:first rdf:type ;
+	rdf:rest _:c14n85 .
+_:c14n13 sh:datatype xsd:string ;
+	sh:description "The lexical forms of the shared values, in the order of the key." ;
+	sh:minCount 1 ;
+	sh:name "Key values" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:keyValues .
+_:c14n14 sh:description "The IRI of the class of the roots." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Root class" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path rp:rootClass .
+_:c14n15 sh:description "The activity that generated this entity." ;
+	sh:maxCount 1 ;
+	sh:name "Was generated by" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path prov:wasGeneratedBy .
+_:c14n16 rdf:first rdf:type ;
+	rdf:rest _:c14n81 .
+_:c14n17 sh:description "The IRI of the entity whose version was generated or invalidated." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Entity" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path rp:entity .
+_:c14n18 sh:description "The IRI of the graph the load put; the marker's subject, so no rp:graph triple." ;
+	sh:maxCount 1 ;
+	sh:name "Identifier" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path dcterms:identifier .
+_:c14n19 sh:datatype xsd:dateTime ;
+	sh:description "The time a transaction started." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Started at" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:startedAt .
+_:c14n2 sh:datatype xsd:dateTime ;
+	sh:description "The time of the generation or invalidation, the end of its activity." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "At time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path prov:atTime .
+_:c14n20 sh:description "The IRI of the aggregate root that owns the graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Owned by" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path rp:ownedBy .
+_:c14n21 sh:description "The IRIs of the roots that hold the values, sorted." ;
+	sh:minCount 1 ;
+	sh:name "Key roots" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 3 ;
+	sh:path rp:keyRoots .
+_:c14n22 sh:description "The predicates of the key's slots, in the order of the key." ;
+	sh:minCount 1 ;
+	sh:name "Key predicates" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path rp:keyPredicates .
+_:c14n23 sh:description "The versions of entities the activity generated." ;
+	sh:name "Generations" ;
+	sh:node rp:Generation ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 4 ;
+	sh:path rp:generation .
+_:c14n24 sh:description "The IRI of the entity whose version was generated or invalidated." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Entity" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path rp:entity .
+_:c14n25 sh:description "A principal that carried out the activity." ;
+	sh:name "Was associated with" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path prov:wasAssociatedWith .
+_:c14n26 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity ended." ;
+	sh:maxCount 1 ;
+	sh:name "Ended at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path prov:endedAtTime .
+_:c14n27 rdf:first rp:LoadedGraph ;
+	rdf:rest rdf:nil .
+_:c14n28 rdf:first rdf:type ;
+	rdf:rest _:c14n73 .
+_:c14n29 sh:description "The IRI that identifies the object." ;
+	sh:maxCount 1 ;
+	sh:name "Identifier" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path dcterms:identifier .
+_:c14n3 sh:description "The IRI of the entity's class, when it had one." ;
+	sh:maxCount 1 ;
+	sh:name "Entity class" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 3 ;
+	sh:path rp:entityClass .
+_:c14n30 sh:description "The IRI that identifies the object." ;
+	sh:maxCount 1 ;
+	sh:name "Identifier" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path dcterms:identifier .
+_:c14n31 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n32 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity ended." ;
+	sh:maxCount 1 ;
+	sh:name "Ended at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path prov:endedAtTime .
+_:c14n33 sh:datatype xsd:string ;
+	sh:description "The version token of the entity that was generated or invalidated." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Entity version" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:entityVersion .
+_:c14n34 rdf:first rdf:type ;
+	rdf:rest _:c14n89 .
+_:c14n35 sh:datatype xsd:dateTime ;
+	sh:description "The time of the generation or invalidation, the end of its activity." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "At time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path prov:atTime .
+_:c14n36 sh:description "The IRI of an entity this one was derived from." ;
+	sh:name "Was derived from" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path prov:wasDerivedFrom .
+_:c14n37 sh:datatype xsd:dateTime ;
+	sh:description "The time a graph was put to the store by a load." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Loaded at" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:loadedAt .
+_:c14n38 sh:datatype xsd:dateTime ;
+	sh:description "The time this entity was generated." ;
+	sh:maxCount 1 ;
+	sh:name "Generated at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path prov:generatedAtTime .
+_:c14n39 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity ended." ;
+	sh:maxCount 1 ;
+	sh:name "Ended at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path prov:endedAtTime .
+_:c14n4 sh:description "The IRI of the activity this generation or invalidation belongs to." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Activity" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path prov:activity .
+_:c14n40 sh:datatype xsd:string ;
+	sh:description "The version token of the entity that was generated or invalidated." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Entity version" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:entityVersion .
+_:c14n41 sh:description "The principal this entity is attributed to." ;
+	sh:maxCount 1 ;
+	sh:name "Was attributed to" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path prov:wasAttributedTo .
+_:c14n42 sh:description "The versions of entities the activity generated." ;
+	sh:name "Generations" ;
+	sh:node rp:Generation ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 4 ;
+	sh:path rp:generation .
+_:c14n43 sh:datatype xsd:string ;
+	sh:description "The name of a key across aggregates, as declared in `unique_keys`." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Key name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:keyName .
+_:c14n44 rdf:first rdf:type ;
+	rdf:rest _:c14n69 .
+_:c14n45 sh:description "The versions of entities the activity generated." ;
+	sh:name "Generations" ;
+	sh:node rp:Generation ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 4 ;
+	sh:path rp:generation .
+_:c14n46 rdf:first rdf:type ;
+	rdf:rest _:c14n79 .
+_:c14n47 sh:description "The versions of entities the activity invalidated." ;
+	sh:name "Invalidations" ;
+	sh:node rp:Invalidation ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 5 ;
+	sh:path rp:invalidation .
+_:c14n48 rdf:first rdf:type ;
+	rdf:rest _:c14n87 .
+_:c14n49 sh:description "A principal that carried out the activity." ;
+	sh:name "Was associated with" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path prov:wasAssociatedWith .
+_:c14n5 rdf:first rdf:type ;
+	rdf:rest _:c14n77 .
+_:c14n50 sh:description "A fresh urn:uuid IRI, never shared by two transactions." ;
+	sh:maxCount 1 ;
+	sh:name "Identifier" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path dcterms:identifier .
+_:c14n51 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n52 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity started." ;
+	sh:maxCount 1 ;
+	sh:name "Started at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path prov:startedAtTime .
+_:c14n53 sh:description "A principal that carried out the activity." ;
+	sh:name "Was associated with" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path prov:wasAssociatedWith .
+_:c14n54 rdf:first rdf:type ;
+	rdf:rest _:c14n75 .
+_:c14n55 sh:description "The versions of entities the activity invalidated." ;
+	sh:name "Invalidations" ;
+	sh:node rp:Invalidation ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 5 ;
+	sh:path rp:invalidation .
+_:c14n56 rdf:first rdf:type ;
+	rdf:rest _:c14n91 .
+_:c14n57 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity started." ;
+	sh:maxCount 1 ;
+	sh:name "Started at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path prov:startedAtTime .
+_:c14n58 sh:description "The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Root class" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path rp:rootClass .
+_:c14n59 rdf:first rdf:type ;
+	rdf:rest _:c14n83 .
+_:c14n6 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity ended." ;
+	sh:maxCount 1 ;
+	sh:name "Ended at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path prov:endedAtTime .
+_:c14n60 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity started." ;
+	sh:maxCount 1 ;
+	sh:name "Started at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path prov:startedAtTime .
+_:c14n61 sh:description "The IRI of the activity this generation or invalidation belongs to." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Activity" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path prov:activity .
+_:c14n62 rdf:first rdf:type ;
+	rdf:rest _:c14n71 .
+_:c14n63 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity started." ;
+	sh:maxCount 1 ;
+	sh:name "Started at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path prov:startedAtTime .
+_:c14n64 sh:description "The kind of graph a registry entry names." ;
+	sh:in _:c14n7 ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Kind" ;
+	sh:order 1 ;
+	sh:path rp:kind .
+_:c14n65 sh:description "The IRI that identifies the object." ;
+	sh:maxCount 1 ;
+	sh:name "Identifier" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path dcterms:identifier .
+_:c14n66 sh:datatype xsd:string ;
+	sh:description "The name of a key across aggregates, as declared in `unique_keys`." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Key name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:keyName .
+_:c14n67 sh:description "The IRI of the entity's class, when it had one." ;
+	sh:maxCount 1 ;
+	sh:name "Entity class" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 3 ;
+	sh:path rp:entityClass .
+_:c14n68 sh:description "The IRI that identifies the object." ;
+	sh:maxCount 1 ;
+	sh:name "Identifier" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path dcterms:identifier .
+_:c14n69 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n70 .
+_:c14n7 rdf:first rp:Aggregate ;
+	rdf:rest _:c14n27 .
+_:c14n70 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n71 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n72 .
+_:c14n72 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n73 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n74 .
+_:c14n74 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n75 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n76 .
+_:c14n76 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n77 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n78 .
+_:c14n78 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n79 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n80 .
+_:c14n8 sh:description "The versions of entities the activity generated." ;
+	sh:name "Generations" ;
+	sh:node rp:Generation ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 4 ;
+	sh:path rp:generation .
+_:c14n80 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n81 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n82 .
+_:c14n82 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n83 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n84 .
+_:c14n84 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n85 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n86 .
+_:c14n86 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n87 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n88 .
+_:c14n88 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n89 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n90 .
+_:c14n9 sh:description "The versions of entities the activity invalidated." ;
+	sh:name "Invalidations" ;
+	sh:node rp:Invalidation ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 5 ;
+	sh:path rp:invalidation .
+_:c14n90 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n91 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n92 .
+_:c14n92 rdf:first rp:version ;
+	rdf:rest rdf:nil .

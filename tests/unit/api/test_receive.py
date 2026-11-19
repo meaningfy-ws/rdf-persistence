@@ -17,13 +17,13 @@ from rdf_persistence.core.domain.exceptions import (
     StoreUnavailable,
     TenantBehind,
 )
-from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add, Replace
 from rdf_persistence.messaging.services.messagebus import Work, command
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
     LimitSettings,
 )
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import Session
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Add, Replace
 from rdf_persistence.testkit import (
     FakeStore,
     InMemoryBroker,

@@ -794,16 +794,24 @@ def toolkit_target(package: str) -> GenerationTarget:
 
 
 def test_the_toolkit_targets_derive_domain_for_the_metamodel_and_technical_for_the_rest() -> None:
-    """TC-02, permanent form: every target of the toolkit's own ``pyproject.toml`` (20 of them)."""
+    """TC-02, permanent form: every target of the toolkit's own ``pyproject.toml`` (24 of them).
+
+    The metamodel's five domain targets (``rp.yaml`` and the four theme targets of
+    domain-model-per-theme) derive domain; the other 19 derive technical.
+    """
     targets = read_targets(PYPROJECT)
-    assert len(targets) == 20, f"the toolkit's targets: {[t.schema_file for t in targets]}"
+    assert len(targets) == 24, f"the toolkit's targets: {[t.schema_file for t in targets]}"
     derived = {}
     for target in targets:
         root = REPO / target.schema_file
         derived[target.schema_file] = derived_kind(load_schema(root), root.parent)
     assert [f for f, k in derived.items() if k == TargetKind.DOMAIN] == [
-        "rdf_persistence/model/rp.yaml"
-    ], f"only the metamodel derives domain: {derived}"
+        "rdf_persistence/model/rp.yaml",
+        "rdf_persistence/model/rp_tenancy.yaml",
+        "rdf_persistence/model/rp_provenance.yaml",
+        "rdf_persistence/model/rp_files.yaml",
+        "rdf_persistence/model/rp_collaboration.yaml",
+    ], f"only the metamodel's five targets derive domain: {derived}"
     assert sum(k == TargetKind.TECHNICAL for k in derived.values()) == 19, f"{derived}"
 
 

@@ -14,8 +14,8 @@ from rdflib import RDF, Graph, Literal, URIRef
 
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound, StoreUnavailable
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.sparql import fill, term
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.generated.rp_persistence_services import Condition
 from rdf_persistence.persistence.services.session import Session, remove_parts

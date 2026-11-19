@@ -19,6 +19,7 @@ import pytest
 from rdflib import Dataset, Literal, URIRef
 from rdflib.namespace import SKOS
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.access.services.generated.rp_access_services import GrantSet
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
@@ -29,8 +30,7 @@ from rdf_persistence.core.domain.exceptions import (
     StoreUnavailable,
 )
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.domain.layout import stamps_graph_iri
 from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
