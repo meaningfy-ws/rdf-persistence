@@ -125,12 +125,12 @@ xref:architecture/data-flows.adoc[Where data lives and what each operation does]
 
 |Store port
 |v1
-|One asynchronous interface, `Store` (`services/store.py`): SPARQL 1.1 query and update, a Graph Store Protocol `PUT` of one named graph (`put_graph`), dataset administration (create, drop, list), and, on the whole dataset, a Graph Store `GET` (`export_quads`: every named graph as N-Quads in one read) and `POST` (`import_quads`: adds N-Quads). There is no Graph Store get or drop of one graph: a graph is read with `CONSTRUCT` and emptied with an update. `ToolkitStore` wraps it for the SPARQL the toolkit writes: a refusal of such text is a fault of the service (500), not the caller's `BadQuery` (400).
+|One asynchronous interface, `Store` (`persistence/services/store.py`): SPARQL 1.1 query and update, a Graph Store Protocol `PUT` of one named graph (`put_graph`), dataset administration (create, drop, list), and, on the whole dataset, a Graph Store `GET` (`export_quads`: every named graph as N-Quads in one read) and `POST` (`import_quads`: adds N-Quads). There is no Graph Store get or drop of one graph: a graph is read with `CONSTRUCT` and emptied with an update. `ToolkitStore` wraps it for the SPARQL the toolkit writes: a refusal of such text is a fault of the service (500), not the caller's `BadQuery` (400).
 |N-1, N-3, N-5
 
 |Fuseki adapter
 |v1
-|`FusekiStore`: one Fuseki dataset (TDB2) per database, administered through the Fuseki administration API; maps Fuseki's answers (`409` exists, `404` or `405` missing, `400` refused text, `5xx` unavailable) to the port's errors. The store conformance suite checks the port's behaviour, including `DatabaseGone` for a query, an update or a put on a dropped dataset; no case checks what a dropped dataset leaves on disk.
+|`FusekiStore` (`persistence/adapters/fuseki.py`, over the SPARQL 1.1 Protocol base `SparqlProtocolStore` in `persistence/adapters/sparql_protocol.py`): one Fuseki dataset (TDB2) per database, administered through the Fuseki administration API; maps Fuseki's answers (`409` exists, `404` or `405` missing, `400` refused text, `5xx` unavailable) to the port's errors. The store conformance suite checks the port's behaviour, including `DatabaseGone` for a query, an update or a put on a dropped dataset; no case checks what a dropped dataset leaves on disk.
 |N-3
 
 |Mapper
@@ -146,7 +146,7 @@ comes back as its parent: a known limit, lifted when a schema owns a class hiera
 
 |Session and unit of work
 |v1
-|`Session` (`services/session.py`) reads and commits whole graphs of one tenant database for one principal; `UnitOfWork(session, mapper)` (`services/mapper.py`) gives object-level `get`, `add`, `remove` and `commit`, all its roots in one commit. There are no repositories beyond these two. The aggregate's graph IRI is `graph_iri(root)`, `<root>/graph` (background DEC-29), so statements about the graph and about the entity never share a subject. Every write goes through a `Transaction` (`Session.transaction()`; `add_graph`, `replace_graph` and `remove` of the session are one-change transactions), which sends *one* SPARQL update request, built by `request_text`, so a store applies all its changes or none. The request has four parts, joined with `;`. First, a guard operation that writes a commit marker only if every change's guard holds (a replace or a remove: the graph is at the *version token* read; an add: the graph is empty; a claimed key value: no other aggregate of the tenant holds it). Second, the changes' operations, each matching only while the marker is there (a replace empties loaded graphs no longer listed, the root's registry entries and the graph, writes the new triples, a fresh version token and the tracking statements about the graph IRI, and drops the old token last). Third, the activity of the commit, written into the provenance graph while the marker is there (the application database has a provenance graph of its own; a session opened with `record_activities=False`, as the system database's are, writes none). Fourth, a release that deletes the marker. An `ASK` for the new tokens then tells committed from conflict (Fuseki does not fail an update whose `WHERE` matched nothing), and a diagnosis names the roots that conflicted. A session enforces the keys it is given (`keys`; the tenancy passes those of the schema) and `key_duplicates()` reports the duplicates stored. The marker guard and the diagnosis are in xref:architecture/data-flows.adoc#commit[Committing several aggregates at once]. The session also loads and pages (`page`, one `CONSTRUCT` per listing page).
+|`Session` (`persistence/services/session.py`) reads and commits whole graphs of one tenant database for one principal; `UnitOfWork(session, mapper)` (`persistence/services/mapper.py`) gives object-level `get`, `add`, `remove` and `commit`, all its roots in one commit. There are no repositories beyond these two. The aggregate's graph IRI is `graph_iri(root)`, `<root>/graph` (background DEC-29), so statements about the graph and about the entity never share a subject. Every write goes through a `Transaction` (`Session.transaction()`; `add_graph`, `replace_graph` and `remove` of the session are one-change transactions), which sends *one* SPARQL update request, built by `request_text`, so a store applies all its changes or none. The request has four parts, joined with `;`. First, a guard operation that writes a commit marker only if every change's guard holds (a replace or a remove: the graph is at the *version token* read; an add: the graph is empty; a claimed key value: no other aggregate of the tenant holds it). Second, the changes' operations, each matching only while the marker is there (a replace empties loaded graphs no longer listed, the root's registry entries and the graph, writes the new triples, a fresh version token and the tracking statements about the graph IRI, and drops the old token last). Third, the activity of the commit, written into the provenance graph while the marker is there (the application database has a provenance graph of its own; a session opened with `record_activities=False`, as the system database's are, writes none). Fourth, a release that deletes the marker. An `ASK` for the new tokens then tells committed from conflict (Fuseki does not fail an update whose `WHERE` matched nothing), and a diagnosis names the roots that conflicted. A session enforces the keys it is given (`keys`; the tenancy passes those of the schema) and `key_duplicates()` reports the duplicates stored. The marker guard and the diagnosis are in xref:architecture/data-flows.adoc#commit[Committing several aggregates at once]. The session also loads and pages (`page`, one `CONSTRUCT` per listing page).
 |N-1, N-2
 
 |Tenancy
@@ -277,20 +277,94 @@ _Which choices shape everything else?_
 |===
 
 [#public-api]
-== Public API and layer map
+== Public API and theme map
 
 Everything a consumer uses is exported from the top-level package `rdf_persistence`; nothing else
-may be imported (capability `rp-package-boundaries`). Generated consumer code imports the metamodel classes from the
-top level too: `rp-generate`'s split pattern points at `rdf_persistence`.
+may be imported (capability `rp-package-boundaries`). Generated consumer code imports `RpModel` and
+the metamodel classes from the top level too: in a consumer's run, `rp-generate` writes
+`from rdf_persistence import ...`.
+
+[#themes]
+=== Where a module lives
+
+_Where does a module live?_
+
+Every hand-written module of the library sits in a theme, and inside the theme in a layer:
+`rdf_persistence/<theme>/<layer>/<module>.py`. The layer is `domain`, `services`, `adapters` or
+`entrypoints`, and a theme has only the layers it needs. There are thirteen themes. The table lists
+them from the lowest up. A theme imports only the themes of the rows above it; two themes on the
+same row import neither the other.
+
+[cols="1,2,4,5,2,4",options="header"]
+|===
+|Order |Theme |`domain` |`services` |`adapters` |`entrypoints`
+|1 |`core` |`base` (`RpModel`), `exceptions`, `media`, `sparql`, `sparql_parsing`; the metamodel's `generated/` |`artifacts`, `yaml_files`, `telemetry` |`_http` |
+|2 |`iris` |`layout` |`iris` | |
+|2 |`schema` | |`schema`, `schema_structure`, `vocabulary` | |
+|3 |`provenance` | |`provenance`, `visible_part` | |
+|3 |`files` |`blob_keys` |`files` (port) |`s3` |
+|4 |`persistence` | |`store` (port), `session`, `mapper`, `listing`, `loading`, `jsonld`, `decoding`, `unique_keys` |`sparql_protocol`, `fuseki` |
+|5 |`access` | |`access`, `identity` (port), `tokens` (port) |`jwks`, `zitadel` |
+|5 |`migrations` | |`migrations` | |
+|6 |`tenancy` | |`tenancy`, `sweep`, `tenant_sweep`, `tenant_dump`, `tenant_move`, `migration_runner`, `iri_policy_guard` | |
+|7 |`collaboration` | |`collaboration`, `transitions`, `write_guards`, `discussion`, `reference_collections`, `workflows` | |
+|7 |`events` | |`events` (port), `event_hub`, `event_stream`, `relay` |`redis_events` |
+|8 |`messaging` | |`messagebus` | |
+|9 |`api` | |`aggregates`, `documents`, `file_removal`, `components`, `shacl` | |`kit`, `service`, `router`, `auth`, `negotiation`, `responses`, `problems`, `openapi`, `sse`, `environment`
+|===
+
+A new module goes to the lowest theme that uses it, in the layer its imports allow. Its unit tests go
+to `tests/unit/<theme>/`; a test of several themes goes to the folder of the highest. Each
+`__init__.py` of a theme or a layer holds a docstring and nothing else, so importing a theme imports
+nothing more.
+
+Four things sit outside the themes. `testkit/` is outside the layers and may import any of them.
+`model/` holds the schemas, shipped as package data. `rdf_persistence_generation`, the generator, is
+a sibling package. And two deprecation shims stand at old paths, at the top of `rdf_persistence/`:
+`domain/base.py` (`RpModel`) and `adapters/fuseki.py` (`FusekiStore` and the module's constants). Each
+warns with a `DeprecationWarning` naming the new path, and both go in the minor release after the
+one that ships the themes. No library module imports them. Every other old path
+(`rdf_persistence.services.*`, `rdf_persistence.entrypoints.*`, the other modules of
+`rdf_persistence.adapters` and `rdf_persistence.domain`) is gone, with no shim.
+
+[#models-in-themes]
+=== Where a model lives
+
+_Where does a generated model go?_
+
+The kind of a model shows in its path (xref:architecture/generation.adoc#kinds[Two kinds of model]):
+
+* A *domain model*, a class the toolkit stores as RDF, sits only in a `domain/generated/` folder.
+  The metamodel is one generation target, in `core/domain/generated/`: its modules import one
+  another across themes, so it is the vocabulary every theme speaks.
+* A *technical model* (a setting, a wire record, a request or response body, a SPARQL term bundle)
+  sits in `<theme>/<layer>/generated/`, where the layer is `services`, `adapters` or `entrypoints`:
+  the lowest layer every user of the model may import, in the lowest theme that uses it. A wire
+  record only an adapter uses goes to `adapters`; a body only the entrypoints use goes to
+  `entrypoints`; a model that an adapter and an entrypoint both use goes to `services`, since
+  neither imports the other. So every settings group is in a `services` layer, and `ToolkitSettings`,
+  which composes them, is in `api/entrypoints/generated/settings/`.
+
+Hand-written code in a `domain` layer that needs a technical model is not domain code: it moves up
+a layer. That is why the IRI layout that no policy changes is in `iris/domain/layout.py`, and `Iris`,
+its policy and its templates are in `iris/services/iris.py`. Two checks hold the rule: `rp-generate`
+refuses a toolkit target whose `kind` disagrees with its folder (rule `TARGET_KIND`,
+xref:architecture/generation.adoc#target-kind[The `kind` key]), and the contracts
+`layers-across-themes` forbid every `rdf_persistence.*.domain` from importing a `services`,
+`adapters` or `entrypoints` package, `generated` ones included. The folder of each technical target
+is in xref:architecture/generation.adoc#kinds[Two kinds of model].
+
+[#exports]
+=== What a consumer imports
 
 _What may a consumer import?_
 
-[cols="2,3,3,4",options="header"]
+Everything below is exported from `rdf_persistence`, whichever theme defines it.
+
+[cols="1,6",options="header"]
 |===
-|Layer (module) |Hand-written blocks |Generated models inside the layer |Exported at top level
-|`rdf_persistence.domain`, `rdf_persistence.core.domain`, `rdf_persistence.iris.domain`
-|the fixed IRI layout (`iris/domain/layout.py`: graph and skolem IRIs, database and resource names, which no policy changes), SPARQL terms (`core/domain/sparql.py`), the SPARQL parser (`core/domain/sparql_parsing.py`: every rdflib SPARQL parse goes through it, under one lock), the strict base model (`core/domain/base.py`), the errors (`core/domain/exceptions.py`)
-|the metamodel's classes, shapes and context, generated from `model/rp.yaml` into `core/domain/generated/`; no technical model
+|Theme |Exported at top level
+|`core`
 |`RpModel`; `AggregateRoot`, `Described`, `Tracked`,
 `Provenanced`, `Activity`, `Principal`, `RegistryEntry`, `StoredFile`, `RdfFormat`; `Policy`,
 `Rule`, `Grant`, `Prohibition`, `RoleDefinition`, `RoleLevel`, `Action`; `TenantAccess`,
@@ -299,87 +373,92 @@ classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Mo
 `Workflow`, `WorkflowTransition`, `Transition`); the annotation enums (`RpAnnotation`, `ModuleKind`, `DatabaseKind`,
 `GraphKind`, `RegistryKind`, `WritesKind`); the errors
 (`PersistenceError` and its subclasses: `Conflict`, `NotFound`, `DatabaseGone`, `TenantGone`,
-`Forbidden`, `InvalidBody`, `InvalidIri`, `InvalidToken`, `InvalidWorkflow`, `StoredDataInvalid`, …)
-|`rdf_persistence.services`
-|the `persistence` theme (`persistence/services/`: session and unit of work, mapper, the `Store` port, listing, unique keys, JSON-LD and loading) and the `migrations` theme (`migrations/services/migrations.py`: the migration files and their chain), the `tenancy` theme (`tenancy/services/`: the tenant catalogue, sweep, dump and restore, tenant move) and the `access` theme (`access/services/access.py`: the access check); collaboration, workflows, sweep; the IRI
-policy and `Iris` (`iris/services/iris.py`; `tenant_move.py` is beside the services); the factories that build the SPARQL
-term bundles (`schema/services/vocabulary.py`); the activity shape and the visible part (`provenance/services/`); the file ports and the file-key rules (`files/services/files.py`, `files/domain/blob_keys.py`); the message bus; the other ports
-|the technical models of the services, loaded lazily from the top level, each group a folder of
-`services/generated/`: `service/` (from `model/technical/service/rp_service.yaml`: the service
-records) and `settings/` (`rp_settings.yaml`: the deployment values, `SseSettings` and `ToolkitSettings`); the SPARQL term bundles, fields
-of `SparqlTerm`, are in `schema/services/generated/templates/` (`model/technical/schema/rp_schema_templates.yaml`);
-`LogContext` and `HttpSettings` are in
-`core/services/generated/` (`model/technical/core/rp_core_services.yaml`), and the settings and the
-IRI policy of the `iris` theme (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`) in
-`iris/services/generated/` (`model/technical/iris/rp_iris_services.yaml`), with the IRI models
-`IriTemplateVariables` and `IriParts`, plain strings read by `iris/services/iris.py`, in
-`iris/services/generated/templates/` (`rp_iris_templates.yaml`); the `persistence` theme's request and plan
-records (`Page`, `Filter`, `ListRequest`, `Condition`, `ListPlan`, `AggregateHead`) in
-`persistence/services/generated/` (`model/technical/persistence/rp_persistence_services.yaml`) and its
-`LimitSettings` in `persistence/services/generated/settings/` (`rp_persistence_settings.yaml`); the
-`migrations` theme's `Migration` and `MigrationStep` in `migrations/services/generated/`
-(`model/technical/migrations/rp_migrations_services.yaml`); the `access` theme's `VerifiedCaller`, `GrantSet`,
-`CallerAccess` and `AccountSummary` in `access/services/generated/` (`model/technical/access/rp_access_services.yaml`)
-and its `JwksSettings` and `DirectorySettings` in `access/services/generated/settings/` (`rp_access_settings.yaml`); the `tenancy`
-theme's `TenantDump` and `TenantSummary` in `tenancy/services/generated/` (`model/technical/tenancy/rp_tenancy_services.yaml`); the
-`events` theme's `EventEnvelope` in `events/services/generated/` (`model/technical/events/rp_events_services.yaml`) and its
-`EventSettings` in `events/services/generated/settings/` (`rp_events_settings.yaml`); the `collaboration` theme's `Referrer`,
-`ReferrerList` and `MemberList` in `collaboration/services/generated/` (`model/technical/collaboration/rp_collaboration_services.yaml`)
-|`open_session`, `Session`, `Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`; the service records
-(`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`,
-`GrantSet`, `Page`, `Problem`, `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`,
-`AccountSummary`, `Referrer`, `ReferrerList`, `MemberList`, `TenantDump`, `EventEnvelope`); the settings groups (`ToolkitSettings`,
-`HttpSettings`, `JwksSettings`, `DirectorySettings`, `EventSettings`, `SseSettings`, `LimitSettings`); `UnitOfWork`, `Mapper`, `generated_models`, `new_part`, `load_schema`,
-`Tenancy`, `sweep`, `sweep_tenant`, `remove_with_files`, `AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`;
-`Collaboration` (opened with `kit.collaboration`), `Workflows`, `Listings`; `MessageBus`, `bootstrap`, `command`, `Work`;
-the ports `Store`, `FileStore` (with `list_blobs`), `Identity`, `TokenVerifier`, `EventBus` (with `Receive`, `context_link`); `Session.named_file_keys`
-|`rdf_persistence.adapters` |the Redis Streams adapter; the Zitadel adapter and the JWKS token verification are in the `access` theme (`access/adapters/zitadel.py`, `access/adapters/jwks.py`), the S3 adapter is `files/adapters/s3.py`, the Fuseki store is `persistence/adapters/fuseki.py` over the protocol base `persistence/adapters/sparql_protocol.py`, and the module of the same name under `adapters/` is a deprecation shim |the wire shapes of the identity provider and the token, in `access/adapters/generated/` (from `model/technical/access/rp_access_adapters.yaml`); `FusekiDatasetList` and `FusekiDataset` are in `persistence/adapters/generated/` (`rp_persistence_adapters.yaml`); only the adapters and the testkit import them |`FusekiStore`, `S3FileStore`, `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`
-|`rdf_persistence.entrypoints` |service kit (generic router, FastAPI dependencies, problem handlers, ETags, OpenAPI hook, start-up), the events route, `settings_from_env` (`entrypoints/environment.py`) |none: it imports the technical models of the services |`install_service` (with `migrations=`, the folder of the migration files, and `workflows=`, the paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and `workflows`), `limited_body`, `settings_from_env` (reads a settings model such as `ToolkitSettings` from `RP_` environment variables; needs the `settings` extra)
-|`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the
-waiting helpers (`wait_until`, `wait_until_async`), the adapter conformance suites, the model-shape
-snapshot, guards; four shims (`freshness`, `conformance`, `roundtrip`, `strategies`) that forward to the generator's testkit |the records its modules use (the model-shape snapshot, the guards' `Violation`, the container and Zitadel records), generated from `model/technical/testkit/rp_testkit.yaml` into `testkit/generated/` |`rdf_persistence.testkit` (a second public module, for tests only)
-|`rdf_persistence_generation` (a sibling top-level package, shipped in the same wheel) |`rp-generate` (build time; lint config, boundary check, templates) and its own testkit (`testkit/`: the freshness plugin, the conformance suites, round-trip strategies) |the generator's own records, from `model/rp_generation.yaml` into `generated/` |the `rp-generate` command (`rdf_persistence_generation.cli:main`); `rdf_persistence_generation.testkit` (for tests only; the old `rdf_persistence.testkit` paths of these modules are shims that warn)
-|`rdf_persistence/model/` |the schemas, shipped as package data: the nine metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion`, `rp_workflow`) and `rp.yaml`, flat; the technical schemas, one folder for each group, `technical/<group>/rp_<group>.yaml` |none: it generates the packages above |the metamodel through the import map; a technical schema cannot be imported
+`Forbidden`, `InvalidBody`, `InvalidIri`, `InvalidToken`, `InvalidWorkflow`, `StoredDataInvalid`, …);
+`HttpSettings`
+|`iris` |`Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri` (deprecated: use `Iris.mint_aggregate`);
+`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`
+|`schema` |`load_schema`
+|`files` |the port `FileStore` (with `list_blobs`); `S3FileStore`
+|`persistence` |`open_session`, `Session` (with `named_file_keys`), `UnitOfWork`, `Mapper`, `generated_models`,
+`new_part`, `Listings`; the port `Store`; `FusekiStore`; `Page`, `LimitSettings`
+|`access` |`AccessRules` (with `with_iris`), `load_role_definitions`, `load_caller_access`; the ports
+`Identity` and `TokenVerifier`; `ZitadelIdentity`, `zitadel_roles_claim`, `JwksTokenVerifier`;
+`VerifiedCaller`, `CallerAccess`, `GrantSet`, `AccountSummary`, `JwksSettings`, `DirectorySettings`
+|`tenancy` |`Tenancy`, `GrantValidator`, `RootValidator`, `sweep`, `sweep_tenant`; `TenantDump`, `TenantSummary`
+|`events` |the port `EventBus` (with `Receive`, `context_link`); `EventEnvelope`, `EventSettings`
+|`collaboration` |`Collaboration` (opened with `kit.collaboration`), `Workflows`; `Referrer`, `ReferrerList`, `MemberList`
+|`messaging` |`MessageBus`, `bootstrap`, `command`, `Work`
+|`api` |`install_service` (with `migrations=`, the folder of the migration files, and `workflows=`, the
+paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and `workflows`),
+`limited_body`, `remove_with_files`, `settings_from_env` (reads a settings model such as
+`ToolkitSettings` from `RP_` environment variables; needs the `settings` extra); `TenantCreate`,
+`LabelUpdate`, `Authorised`, `Problem`, `ProblemKind`, `SseSettings`, `ToolkitSettings`
 |===
 
-The adapters, services and entrypoints are loaded on first use, so importing
-`rdf_persistence.domain`, as every consumer's generated module does, loads no HTTP client or
-service. Graph loading has no function of its own: it is `Session.load_graph`.
+`migrations` and `provenance` export nothing of their own. Outside the themes:
+
+[cols="2,3,4",options="header"]
+|===
+|Package |What it holds |Public
+|`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the
+waiting helpers (`wait_until`, `wait_until_async`), the adapter conformance suites, the model-shape
+snapshot, guards; four shims (`freshness`, `conformance`, `roundtrip`, `strategies`) that forward to the generator's testkit; its records, generated from `model/technical/testkit/rp_testkit.yaml` into `testkit/generated/` |`rdf_persistence.testkit` (a second public module, for tests only)
+|`rdf_persistence_generation` (a sibling top-level package, shipped in the same wheel) |`rp-generate` (build time; lint config, boundary check, templates) and its own testkit (`testkit/`: the freshness plugin, the conformance suites, round-trip strategies); its own records, from `model/rp_generation.yaml` into `generated/` |the `rp-generate` command (`rdf_persistence_generation.cli:main`); `rdf_persistence_generation.testkit` (for tests only; the old `rdf_persistence.testkit` paths of these modules are shims that warn)
+|`rdf_persistence/model/` |the schemas, shipped as package data: the nine metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion`, `rp_workflow`) and `rp.yaml`, flat; the technical schemas, `technical/<theme>/rp_<theme>_<layer>.yaml` (and `technical/testkit/rp_testkit.yaml`) |the metamodel through the import map; a technical schema cannot be imported
+|===
+
+The metamodel's classes and the errors are imported at once; every other name is loaded on first
+use. So importing `rdf_persistence`, as every consumer's generated module does, loads no HTTP client
+or service. Graph loading has no function of its own: it is `Session.load_graph`.
 
 [#layering]
-Layers import downward only: entrypoints → services → domain; adapters → services' ports and
-domain; `testkit` and the generator package may import any layer. The consumer's composition root imports the
-adapters from the top level. The library never imports the generator: the contract
-`library-never-imports-the-generator` forbids it, with the four testkit shims as the only
-exceptions (xref:architecture/generation.adoc#generator-package[The generator's package]). The
-contracts `runtime-without-extras` and `works-without-the-generate-extra` keep the runtime free of
-the extras.
+=== The contracts
 
-*Technical models in the layers.* A model's kind shows in its path (xref:architecture/generation.adoc#kinds[Two kinds of model]):
-the metamodel is generated into `core/domain/generated/`, and each technical group into the `generated/`
-folder of the lowest layer whose code may import it, so the `layers` contract of import-linter orders
-the `generated` packages of the three old runtime layers without a line of its own; the moved themes
-(`core`, `iris`, `schema`, `files`, `provenance`, `persistence`, `migrations`, `access`, `tenancy`, `events`, `collaboration`, `messaging`) are not in that contract, `themes-layered`,
-`themes-ordered` and `layers-across-themes` order them. `testkit.generated`
-is outside that contract: the contract `runtime-without-extras` keeps it out of the runtime. Two groups sit in `services/generated/`
-(`service` and `settings`), the `core` group (`HttpSettings` and `LogContext`, from
-`model/technical/core/rp_core_services.yaml`) in `core/services/generated/`, the `iris` and `schema` groups in
-`iris/services/generated/` and `schema/services/generated/templates/`, the `persistence` groups in
-`persistence/services/generated/`, `persistence/services/generated/settings/` and
-`persistence/adapters/generated/`, the `migrations` group in `migrations/services/generated/`, the `access` groups in
-`access/services/generated/`, `access/services/generated/settings/` and `access/adapters/generated/` (the wire shapes of the identity provider and the token),
-the `tenancy` group in `tenancy/services/generated/`, the `events` groups in `events/services/generated/` and
-`events/services/generated/settings/`, the `collaboration` group in `collaboration/services/generated/`
-and the `testkit` group in `testkit/generated/`. The domain layer imports none of them:
-the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` and the domain of
-every theme (`rdf_persistence.*.domain`) from importing
-any `generated` package of the services, the adapters or the testkit, directly or through a chain, so a failure names the rule that
-broke. Two hand-written modules used the service records, so they moved to the services layer: the
-layout functions that no policy changes stay in the domain (`iris/domain/layout.py`), and `Iris`, its
-policy and its templates are in `iris/services/iris.py`; `mint_aggregate_iri` stays there, warning,
-until it is removed (use `Iris.mint_aggregate`).
-Every name still imports from `rdf_persistence`; only a deep import of one of the old module paths
-breaks, and `CHANGELOG.md` lists them with their new ones.
+_What keeps the themes and the layers in order?_
+
+Inside each theme, layers import downward only: `entrypoints | adapters` → `services` → `domain`.
+The ports live in `services` and their implementations in `adapters`; `entrypoints` and `adapters`
+import neither the other, so the consumer's composition root wires them, importing the adapters from
+the top level. Between themes, a theme imports only the themes below it (<<themes>>). `testkit` and
+the generator package may import any layer.
+
+`.importlinter` holds these contracts; `make check-architecture` runs them:
+
+[cols="2,5",options="header"]
+|===
+|Contract |What it forbids
+|`themes-layered` |In each of the thirteen themes, a lower layer importing a higher one. It is
+exhaustive: a theme holds no module outside its four layers.
+|`themes-ordered` |A theme importing a theme above it, or a theme of its own row (the order of <<themes>>).
+|`layers-across-themes` (four forbidden contracts) |The `domain` of any theme importing the `services`,
+`adapters` or `entrypoints` of any theme; the `services` of any theme importing `adapters` or
+`entrypoints`; the `adapters` importing `entrypoints`, and the `entrypoints` importing `adapters`.
+Since every technical model sits in a `services`, `adapters` or `entrypoints` folder, no domain
+imports one (<<models-in-themes>>).
+|`domain-pure` |A `domain` importing an I/O, web, token or validation library (`httpx`, `boto3`,
+`fastapi`, `jwt`, `pyshacl`, `anyio`).
+|`runtime-without-extras` |The runtime layers (and the two shims) importing the testkit, the
+generator, `pytest`, `testcontainers` or `linkml`.
+|`works-without-the-generate-extra` |What is installed without the `generate` extra importing `linkml`.
+|`library-never-imports-the-generator` |`rdf_persistence` importing `rdf_persistence_generation`,
+but through the four testkit shims (xref:architecture/generation.adoc#generator-package[The generator's package]).
+|`collaboration-layers` |The order inside the collaboration services: message bus, collaboration,
+transitions and write guards, discussion, reference collections and workflows, access, session.
+|`session-and-provenance-without-mapper` |The session or the activity shape importing the mapper,
+which imports the session.
+|`tenancy-without-the-runner` |The tenancy importing the migration runner, which imports the tenancy.
+|`event-bus-libraries-in-one-module` |Any module but the Redis adapter importing `faststream`, and
+any module importing `redis`.
+|`api-services-never-import-the-bus` |The four `api` services modules (`aggregates`, `components`,
+`documents`, `file_removal`) importing the message bus. `api` sits above `messaging`, so the theme
+order alone allows it.
+|`domain-tests-stay-in-the-domain` |The domain tests importing anything above the domain.
+|`sparql-parser-only-through-the-wrappers` |Any module but the wrappers (`core/domain/sparql_parsing.py`,
+`api/services/shacl.py`) importing `rdflib.plugins.sparql` or `pyshacl`.
+|===
+
+The file has seventeen contract sections: `layers-across-themes` is four of them. A failure names
+the contract that broke and the import chain.
 
 == Layering and boundaries
 

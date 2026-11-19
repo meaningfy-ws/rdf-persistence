@@ -227,7 +227,7 @@ Who writes what:
 == The gate every route passes
 
 Every generic route under `/libraries` runs these steps as FastAPI dependencies, before its own
-code (`entrypoints/auth.py`, `Gate`). Each failure answers at once.
+code (`api/entrypoints/auth.py`, `Gate`). Each failure answers at once.
 
 . *Token.* `Gate.caller` verifies the bearer token with the `TokenVerifier` (signature, issuer,
   audience, expiry) and reads the global roles. 401 if it fails.
@@ -304,9 +304,9 @@ flowchart TB
 [#aggregates]
 == Aggregate operations
 
-The HTTP routes are `/libraries/{t}/books` and `/libraries/{t}/books/{id}` (`entrypoints/router.py`,
-`DocumentApi`); the use cases are in `services/aggregates.py`, `Aggregates`; the SPARQL is in
-`services/session.py`, `Session`. From Python, the same operations are `UnitOfWork.get`, `add`, `remove` and
+The HTTP routes are `/libraries/{t}/books` and `/libraries/{t}/books/{id}` (`api/entrypoints/router.py`,
+`DocumentApi`); the use cases are in `api/services/aggregates.py`, `Aggregates`; the SPARQL is in
+`persistence/services/session.py`, `Session`. From Python, the same operations are `UnitOfWork.get`, `add`, `remove` and
 `commit` over `kit.session(...)`, which skip the HTTP steps and the gate. Every write below is a
 one-change transaction; <<commit>> shows how several changes share one request.
 
@@ -551,7 +551,7 @@ the member must still be of the member class and still meet the rule when the re
 version moved, so the `Conflict` names no root (`iris` is empty).
 
 *Delete removes dependents.* A remove carries one more marked operation (`_DROP_DEPENDENTS`,
-`services/session.py`). It drops, with the removed aggregate, the comments that target it: the
+`persistence/services/session.py`). It drops, with the removed aggregate, the comments that target it: the
 graph and the registry entry of every registered aggregate whose root is an `oa:Annotation` with
 `oa:hasTarget` the removed root. It is one operation whatever their number, so the root limit of
 a commit does not count them, and it has no version guard of its own, because a comment is never
@@ -1030,7 +1030,7 @@ _What does the service do at start-up when the schema has changed? What happens 
 fails?_
 
 `install_service` makes the lifespan bring every database to the version of the running schema
-before it serves (`entrypoints/service.py`, `tenancy/services/migration_runner.py`). The page
+before it serves (`api/entrypoints/service.py`, `tenancy/services/migration_runner.py`). The page
 xref:howto/migrate.adoc[Change a schema that has stored data] says what a developer writes; this
 section says what runs.
 

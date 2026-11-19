@@ -295,7 +295,7 @@ and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts
 (`rp_iris_services.yaml` of the `iris` theme, `rp_persistence_services.yaml` of `persistence`,
 `rp_migrations_services.yaml` of `migrations`, `rp_access_services.yaml` of `access`,
 `rp_tenancy_services.yaml` of `tenancy`, `rp_events_services.yaml` of `events`,
-`rp_collaboration_services.yaml` of `collaboration` and `rp_service.yaml`), among them the API's wire
+`rp_collaboration_services.yaml` of `collaboration` and `rp_api_entrypoints.yaml` of `api`), among them the API's wire
 types (`TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Migration`, `MigrationStep`, `EventEnvelope`, `Referrer` and `Problem`); and one
 `.mmd` diagram per module. The module name `rp_service` and the names of the classes and enums of
 the served schemas are reserved when a target renders TypeScript: a schema that uses one is refused,

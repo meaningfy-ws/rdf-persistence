@@ -131,7 +131,7 @@ flowchart LR
 _In which order is a request refused, and with which status?_
 
 Each route declares its action; the check runs as a route dependency, after the token is verified
-and before the handler (`entrypoints/auth.py`, `Gate.check`). It loads the caller's access to the
+and before the handler (`api/entrypoints/auth.py`, `Gate.check`). It loads the caller's access to the
 tenant in one query (`load_caller_access`) and decides in `AccessRules.require`
 (`rdf_persistence/access/services/access.py`), in this order:
 

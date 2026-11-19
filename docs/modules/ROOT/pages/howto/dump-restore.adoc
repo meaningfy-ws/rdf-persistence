@@ -216,7 +216,7 @@ consistent, and a result that no longer fits the policy is refused.
 == 6. What a caller sees
 
 Over HTTP the toolkit answers each error with a status (the table of
-xref:architecture/data-flows.adoc#rules[Rules]; `problem_for` in `entrypoints/problems.py` builds the
+xref:architecture/data-flows.adoc#rules[Rules]; `problem_for` in `api/entrypoints/problems.py` builds the
 body). The calls here are Python, so they raise the errors, and a route of yours maps them the same
 way:
 

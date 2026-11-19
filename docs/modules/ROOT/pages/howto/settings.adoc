@@ -7,9 +7,13 @@ size limits, the event stream? Where do I set them, and can I read them from the
 The toolkit's deployment values are generated settings models, one group for each concern, with the
 value the toolkit always used as the default. Your composition root builds them once and passes
 each group to the adapter or service that uses it. If you pass nothing, nothing changes. The models
-are generated from `rdf_persistence/model/technical/settings/rp_settings.yaml`, one of the technical
-groups of xref:architecture/generation.adoc#kinds[Two kinds of model]. This page describes `develop`
-as of 2026-11-17 (the change `technical-models`).
+are generated from the settings schemas of the themes that use them, under
+`rdf_persistence/model/technical/` (xref:architecture/generation.adoc#kinds[Two kinds of model]):
+`HttpSettings` in `core`, `LimitSettings` in `persistence`, `JwksSettings` and `DirectorySettings`
+in `access`, `EventSettings` in `events`, and `SseSettings` and `ToolkitSettings` in `api`
+(`api/rp_api_settings.yaml`). Every one of them imports from `rdf_persistence`. This page describes
+`develop` as of 2026-11-17 (the change `technical-models`), with the module paths of the thematic
+layout (the change `thematic-structure`).
 
 [#groups]
 == 1. The groups and their defaults
@@ -237,13 +241,14 @@ The other old duration keywords (`interval`, `publish_timeout`, `keep_alive`) we
 |`POLLING_INTERVAL_MS` (`events/adapters/redis_events.py`) |`EventSettings.polling_interval_ms`
 |`PAGE_SIZE` (`access/adapters/zitadel.py`) |`DirectorySettings.page_size`
 |`ACTIVE_STATE`, `INACTIVE_STATE` (`access/adapters/zitadel.py`) |none for a consumer: the adapter compares the answer with the enum `ZitadelUserState` (`USER_STATE_ACTIVE`, `USER_STATE_INACTIVE`, and four more), in `rdf_persistence.access.adapters.generated.rp_access_adapters`. An answer with a state outside the six is unreadable (`IdentityUnavailable`)
-|`MAX_LIFETIME`, `ACCESS_TTL`, `KEEP_ALIVE_SECONDS`, `RESUME_WINDOW` (`entrypoints/sse.py`) |`SseSettings.max_lifetime_seconds`, `access_ttl_seconds`, `keep_alive_seconds`, `resume_window_seconds`
-|`MAX_NODES` (`services/documents.py`) |`LimitSettings.max_document_nodes`
-|`DEFAULT_MAX_ROOTS` (`services/mapper.py`) |`LimitSettings.max_roots`
+|`MAX_LIFETIME`, `ACCESS_TTL`, `KEEP_ALIVE_SECONDS`, `RESUME_WINDOW` (`api/entrypoints/sse.py`) |`SseSettings.max_lifetime_seconds`, `access_ttl_seconds`, `keep_alive_seconds`, `resume_window_seconds`
+|`MAX_NODES` (`api/services/documents.py`) |`LimitSettings.max_document_nodes`
+|`DEFAULT_MAX_ROOTS` (`persistence/services/mapper.py`) |`LimitSettings.max_roots`
 |`MAX_MANIFEST_BYTES` (`tenancy/services/tenant_dump.py`) |`LimitSettings.max_manifest_bytes`
 |`PROJECTS`, `MACHINE_USERS`, `OWN_ORGANISATION`, `TOKEN_PATH` (`rdf_persistence.access.adapters.zitadel`) |the same names in `rdf_persistence.testkit.zitadel`; only the testkit used them
 |===
 
 Modules moved with it: the IRI and tenant-move modules, and the generated service records, left the
-domain layer for `rdf_persistence.services`. `CHANGELOG.md` lists each old path with its new one.
-Every name still imports from `rdf_persistence`, so only a deep import breaks.
+domain layer; since the change `thematic-structure` they live in the `iris`, `tenancy` and other
+themes (xref:architecture/index.adoc#themes[Where a module lives]). `CHANGELOG.md` lists the old
+paths. Every name still imports from `rdf_persistence`, so only a deep import breaks.
