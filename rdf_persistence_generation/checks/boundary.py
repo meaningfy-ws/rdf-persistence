@@ -7,6 +7,7 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.core.domain.generated.rp_core import ModuleKind, RpAnnotation
+from rdf_persistence.schema.services.schema import PACKAGE, PACKAGE_DIR
 from rdf_persistence.schema.services.schema_structure import (
     ACTIVITY,
     AGGREGATE_ROOT,
@@ -36,6 +37,7 @@ FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
 GENERATED = "generated"
 DOMAIN_FOLDERS = ("domain",)
 TECHNICAL_FOLDERS = ("services", "adapters", "entrypoints")
+THEME_PATH = (PACKAGE,)  # a theme sits directly under the library package
 FOLDER_EXEMPT = ("rdf_persistence.testkit", "rdf_persistence_generation")
 
 
@@ -221,11 +223,33 @@ def _is_exempt(package: str) -> bool:
     return any(package == p or package.startswith(f"{p}.") for p in FOLDER_EXEMPT)
 
 
+def toolkit_themes() -> frozenset[str]:
+    """The themes of the library: its subpackages, the testkit (outside the themes) apart.
+
+    The package folders are the one list; ``tests`` check that they are the thirteen of the design.
+    """
+    return frozenset(
+        init.parent.name
+        for init in PACKAGE_DIR.glob("*/__init__.py")
+        if f"{PACKAGE}.{init.parent.name}" not in FOLDER_EXEMPT
+    )
+
+
+def _in_a_theme(segments: list[str]) -> bool:
+    """Whether ``segments`` (the package before the layer) are ``<library package>.<theme>``."""
+    return (
+        len(segments) == len(THEME_PATH) + 1
+        and segments[:1] == list(THEME_PATH)
+        and segments[1] in toolkit_themes()
+    )
+
+
 def kind_folder_problems(folder: Path, package: str, kind: TargetKind | None) -> list[CheckProblem]:
     """The ``package`` of a toolkit target that sits in a folder its ``kind`` does not allow (PD-4, DEC-3).
 
     The segment before ``generated`` is ``domain`` for a domain target and a technical layer for a
-    technical one; a group after ``generated`` is allowed. The testkit and the generator sit outside
+    technical one, and the one before that is a theme of the library (``rdf_persistence.<theme>.<layer>``);
+    a group after ``generated`` is allowed. The testkit and the generator sit outside
     the themes. Only the toolkit's own run is checked: a consumer keeps its layout.
     """
     if kind is None or not is_toolkit_schema(folder, roots=TOOLKIT_ROOTS):
@@ -237,10 +261,15 @@ def kind_folder_problems(folder: Path, package: str, kind: TargetKind | None) ->
     segments = package.split(".")
     if GENERATED not in segments:
         message = f"has no {GENERATED} segment: a {kind.value} target's package ends in <{'|'.join(allowed)}>.{GENERATED}"
-    elif segments[segments.index(GENERATED) - 1] in allowed:
-        return []
-    else:
+    elif segments[segments.index(GENERATED) - 1] not in allowed:
         message = f"is not in a folder a {kind.value} target allows: {' or '.join(allowed)} before {GENERATED}"
+    elif not _in_a_theme(segments[: segments.index(GENERATED) - 1]):
+        message = (
+            f"is not in a theme: the layer folder is {PACKAGE}.<theme>.<layer>, and the theme is one of "
+            f"{', '.join(sorted(toolkit_themes()))}"
+        )
+    else:
+        return []
     return [rule_problem(BoundaryRule.TARGET_KIND, package, message)]
 
 

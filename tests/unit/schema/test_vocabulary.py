@@ -12,7 +12,7 @@ from rdf_persistence.core.domain.generated.rp_core import RegistryEntry, Registr
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.schema.services import vocabulary
-from rdf_persistence.schema.services.schema import SERVICE_SCHEMA, load_schema
+from rdf_persistence.schema.services.schema import API_ENTRYPOINTS_SCHEMA, load_schema
 from rdf_persistence.schema.services.schema_structure import is_bookkeeping
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
@@ -89,7 +89,7 @@ def test_each_enum_member_maps_to_the_meaning_the_schema_declares(view, enum, ma
 
 
 def test_the_total_of_a_listing_is_the_predicate_of_the_page_slot_of_that_name():
-    service = load_schema(SERVICE_SCHEMA)
+    service = load_schema(API_ENTRYPOINTS_SCHEMA)
     assert URIRef(service.expand_curie(service.get_slot("total").slot_uri)) == vocabulary.TOTAL, (
         "the listing total is the predicate of the page slot"
     )
