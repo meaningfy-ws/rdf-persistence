@@ -71,15 +71,16 @@ review the whole generated diff, then run `make check-all`.
 
 _How do I add a check rule?_
 
-`rp-generate` runs three check steps after the lint, in this order (`STEPS` in
+`rp-generate` runs four check steps after the lint, in this order (`STEPS` in
 `rdf_persistence_generation/steps.py`):
 
 [cols="1,2,3",options="header"]
 |===
 |Step |Runs |Checks
-|Boundary check (`BOUNDARY_STEP`) |`steps._boundary_problems`: `boundary_problems` and `target_kind_problems` of `rdf_persistence_generation/checks/boundary.py` |The aggregate boundaries: ownership, references, the direction of activities, module kinds, technical modules, the target's kind; rules of `BoundaryRule`
+|Boundary check (`BOUNDARY_STEP`) |`steps._boundary_problems`: `boundary_problems`, `target_kind_problems` and `kind_folder_problems` of `rdf_persistence_generation/checks/boundary.py` |The aggregate boundaries: ownership, references, the direction of activities, module kinds, technical modules, the target's kind; in the toolkit's own run only, that a target's package sits in a folder its kind allows; rules of `BoundaryRule`
 |Hard check (`HARD_STEP`) |`steps._hard_problems`: `hard_problems` and `stored_schema_problems` of `checks/hard.py`, and `python_package_problems` of `checks/python_package.py` |What every element needs (title, description, IRI, meaning), the annotations, the root and owned classes, the `migrations` folder and quoted `version` of a stored schema, the toolkit's `python_package`; rules of `HardRule`
 |Rules check (`RULES_STEP`) |`steps._rules_problems`: `rules_problems` of `checks/rules.py` |LinkML constructs the generated classes and shapes would silently ignore (`rules`, `all_of`, `none_of`, and some slot forms); no rule enum
+|Lock check (`LOCK_CHECK_STEP`) |`lock_problems` of `rdf_persistence_generation/lock_step.py` |For a target with `migrations`: the migration files load, the version is not one the chain already left, the lock is the schema's, and the change since the lock is migratable and comes with a new `version`
 |===
 
 A new rule about a boundary joins the boundary check; any other rule an element must meet joins the

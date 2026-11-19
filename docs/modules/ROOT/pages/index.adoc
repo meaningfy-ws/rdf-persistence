@@ -16,6 +16,7 @@ events. Your application writes only what is specific to it.
 |see it work |xref:tutorials/getting-started.adoc[Getting started] |one class, generated, stored and read back, in ten minutes
 |build an application |xref:user-manual/index.adoc[User manual] |the steps in order: install, model, generate, store, tenants, files, access, serve, test
 |use one feature |xref:howto/index.adoc[How-to guides] |comments, workflows, collections, events, migrations, backups, stores, settings, telemetry
+|call the API |xref:reference/http-api.adoc[The HTTP API] |for a front end or another system: the token, the routes, the headers, the bodies, the problems and the event stream
 |look up a name or option |xref:reference/index.adoc[Reference] |the public Python API and the `rp-generate` command
 |understand the design |xref:architecture/index.adoc[Architecture] |the components, the models, where data lives, the API, access, and the decision records
 |know what it commits to |xref:requirements/use-cases.adoc[Use cases] and xref:requirements/capabilities.adoc[Capabilities] |who it serves, and each capability with the pages that explain it

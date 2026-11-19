@@ -252,39 +252,19 @@ tenant and both stores, and leaves the tenant alone.
 * Both are created and migrated on `default` only. Another store holds tenant databases and
   nothing else.
 
-The start-up functions you may call yourself (`migrate_shared`, `sweep`, `migrate_tenants`) keep
-the signatures they had before 0.4.0. `migrate_shared` uses the `store` you pass (the `default`
-store, `kit.store`). `sweep` and `migrate_tenants` take their stores from `kit.tenancy`; their
-`store` argument is kept for compatibility and unused, so pass `kit.store`.
+`sweep`, exported from `rdf_persistence`, keeps the signature it had before 0.4.0: it takes its
+stores from `kit.tenancy`, and its `store` argument is kept for compatibility and unused, so pass
+`kit.store`.
 
 [#startup]
 == 9. What the start-up does
 
-`install_service` runs these steps before the app serves, in this order. A consumer with its own
-start-up calls the same functions in the same order (see
-xref:howto/application-data.adoc#startup[Start-up]).
-
-. *Create the system database* on `default` if it is missing.
-. *Guard the IRI policy* (`IriPolicyChanged` stops the start).
-. *Create the application database* on `default`, if the schema has an application class.
-. *Migrate the shared databases* on `default` (`MigrationFailed` stops the start).
-. *Sweep* (`sweep`):
-.. read every access record;
-.. raise `StoreNotWired`, naming every unwired store the records name, sorted, if there is one;
-   nothing has been changed yet;
-.. list the databases of *every* wired store; a store that cannot be reached raises
-   `StoreUnavailable` here, and the start stops before anything is changed on any store;
-.. log `misplaced-tenant` for each record whose database is on another store than its own;
-.. if the system database was just created and tenant databases already exist on a store, skip the
-   rest with a warning;
-.. finish each interrupted deletion on the tenant's own store;
-.. drop each `{prefix}-t-…` database, on any wired store, that no access record names; then the
-   orphan buckets.
-. *Migrate the tenants* (`migrate_tenants`), each on its own store. A tenant whose migration fails
-  is set aside and answers 503 (`tenant-behind`); a tenant whose store is not wired
-  stops the start with `StoreNotWired`, even when your own start-up skipped the sweep.
-
-Before any of this, building the kit refuses a bad `stores` mapping with `ValueError` (<<wire>>).
+`install_service` sweeps and migrates every wired store before the app serves: the sweep lists the
+databases of every wired store (an unreachable one stops the start with `StoreUnavailable`, an
+unwired one named by a record with `StoreNotWired`, before anything is changed), and each tenant is
+migrated on its own store. The full list of steps, in order, is in
+xref:architecture/data-flows.adoc#migrations[Start-up migrations]; building the kit refuses a bad
+`stores` mapping with `ValueError` before any of them (<<wire>>).
 
 [#errors]
 == 10. What a caller sees

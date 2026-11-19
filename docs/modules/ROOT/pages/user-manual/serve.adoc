@@ -202,6 +202,30 @@ aggregate IRI that was checked
 policy does not mint such an id
 |`iris` |The one `Iris` of the service, built from the settings and the schema; the services the kit
 wires and its `rules` all use it
+|`collaboration(authorised)` |An async context manager: comments, transitions, collections and
+reverse references for the caller `require` authorised, each call checked (xref:howto/discussion.adoc[Comment on a resource], xref:howto/workflow.adoc[Put a resource through review])
+|`remove_with_files(tenant, principal, iri, if_version)` |Remove an aggregate and the blobs only it
+names (xref:user-manual/files.adoc#keep-a-files-bytes[Keep a file's bytes])
+|`sweep_tenant(tenant, ...)` |Find, and optionally delete, the loaded graphs and blobs nothing
+owns in a live tenant; a dry run by default (xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant])
+|`dump_tenant(tenant, out)`, `restore_tenant(src, creator, store=...)` |Write a tenant to one
+archive; create a new tenant from one (xref:howto/dump-restore.adoc[Back up or copy a tenant])
+|`store_of(tenant)` |The store that holds the tenant's database (xref:howto/tenant-stores.adoc[Put tenants on several stores])
+|`require_application(authorization, action)`, `application_session(principal)`,
+`application_iri(cls)` |The check, the session and a new IRI for data that belongs to no tenant
+(xref:howto/application-data.adoc[Keep data that belongs to no tenant])
+|`bus` |The message bus commits are published to; set it once its handlers exist
+(xref:howto/event-driven.adoc[React to changes])
+|`event_bus`, `relay`, `hub`, `receive` |The event bus given to `install_service`, the relay that
+carries every commit to it and to the event stream, the hub of the live streams, and what the event
+bus delivers to (xref:howto/event-driven.adoc#relay[Carry commits to other deployments])
+|`mapper`, `models` |The mapper and the generated classes, for a `UnitOfWork` (xref:user-manual/store-and-read.adoc[Store and read aggregates])
+|`workflows` |The loaded workflow files (xref:howto/workflow.adoc[Put a resource through review])
+|`gate`, `rules`, `verifier` |The token and access checks the routes run, the access rules, the
+token verifier (`gate.caller` verifies a token where there is no tenant yet, as
+xref:howto/dump-restore.adoc[the restore] does)
+|`toolkit`, `max_body_bytes`, `max_restore_bytes` |The `ToolkitSettings` and the two size limits
+of the settings (xref:howto/settings.adoc[Configure the deployment values])
 |===
 
 A route of your own that calls a domain service needs the caller's principal IRI as well. The
@@ -233,8 +257,13 @@ model is served after a restart:
 |`/{tenant_segment}/{t}/label` |`PUT` the label
 |`/{tenant_segment}/{t}/{rp_path}` |`GET` a listing; `POST` a new aggregate
 |`/{tenant_segment}/{t}/{rp_path}/{id}` |`GET`, `PUT`, `DELETE` one aggregate
+|`/{tenant_segment}/{t}/rp-events` |`GET` the tenant's changes as server-sent events (xref:howto/event-driven.adoc#sse[Follow a tenant in the browser])
 |`/context.jsonld` |`GET` the generated JSON-LD context
+|`/openapi.json` |`GET` the OpenAPI document (FastAPI's path, not under `prefix`)
 |===
+
+What a client sends and gets on each route (the token, the headers, the bodies, paging, the
+problems and the event stream) is in xref:reference/http-api.adoc[The HTTP API].
 
 A client creates a book with `POST /libraries/{t}/books` and a plain JSON body without ids:
 

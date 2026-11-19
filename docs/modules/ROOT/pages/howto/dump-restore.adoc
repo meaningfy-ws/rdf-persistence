@@ -104,7 +104,7 @@ One gzipped tar. The members come in this order, and restore reads them in this 
 |Member |Content
 
 |`manifest.json`
-|The `TenantDump` record, as JSON. At most 64 KiB.
+|The `TenantDump` record, as JSON. At most `max_manifest_bytes` (64 KiB by default).
 
 |`graphs.nq`
 |Every named graph of the tenant's database as plain N-Quads, so any triple store tool can read it.
@@ -275,7 +275,7 @@ archive in `out`: discard it. (It has no `end` member, so a restore refuses it a
 a member that is not a regular file; a member name that is not UTF-8
 |Nothing created.
 
-|A manifest over 64 KiB, or one that does not validate
+|A manifest over `max_manifest_bytes`, or one that does not validate
 |Nothing created.
 
 |Another format version, schema id or IRI policy; a manifest with no `schema_version`, or one that

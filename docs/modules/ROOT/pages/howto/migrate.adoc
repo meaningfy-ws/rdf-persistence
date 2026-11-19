@@ -488,14 +488,10 @@ Do not rework a version that has been merged and deployed: add the next version 
 [#startup]
 == 7. What happens at start-up
 
-`install_service` builds both chains when the service kit is built: the toolkit's own and yours. A
-bad chain stops the service with `InvalidMigration`, before it serves. At start-up the system
-database, then the application database, are migrated (a failure there stops start-up with
-`MigrationFailed`), then the sweep runs, then every tenant is migrated in order of IRI, except
-tenants being deleted. For each database the toolkit's chain runs first and yours second, and each
-pending migration is one atomic request: its steps, a new version token for every graph that
-has one (when the migration has a step), and the move of the stamp. A failure leaves the database as it was before that
-migration; the migrations before it stay. The full sequence, and why the order is fixed, is in
+A bad chain stops the service with `InvalidMigration` before it serves; then every database is
+migrated, the toolkit's chain first and yours second, one atomic request per pending migration, so
+a failure leaves the database as it was before that migration. The steps in order, and what a
+failure does (`MigrationFailed`, `tenant-behind`), are in
 xref:architecture/data-flows.adoc#migrations[Start-up migrations].
 
 What follows for you:

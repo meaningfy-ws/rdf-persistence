@@ -455,7 +455,8 @@ provenance graph (<<commit>>, _The activity_), with version tokens and no conten
 *Some aggregates have no write routes.* A class annotated `rp_writes: service`, or a file
 aggregate, gets only `GET` routes; a `POST`, `PUT` or `DELETE` on them answers 405. The consumer
 writes it through a session in its own route (`is_service_written`,
-`schema/services/schema_structure.py`).
+`schema/services/schema_structure.py`). A class annotated `rp_writes: toolkit` (the toolkit's
+`Comment`) gets no route at all, so its path answers 404 (`is_toolkit_written`).
 
 [#commit]
 == Committing several aggregates at once
@@ -1008,7 +1009,7 @@ dumped. A dump that fails half-way has no `end`, so a restore refuses it.
 
 |Restore, checks
 |`kit.restore_tenant(src, creator)`
-|Before anything is created: the first member is `manifest.json` (at most 64 KiB) and the second
+|Before anything is created: the first member is `manifest.json` (at most `max_manifest_bytes`, 64 KiB by default) and the second
 `graphs.nq`, both regular files with UTF-8 names; the manifest's format, schema id and effective IRI policy equal the
 service's, its version is one of the versions of the service's chain for that schema and agrees with the
 dump's own stamp, and its `source_tenant_id` is the id of its
@@ -1073,8 +1074,39 @@ flowchart TD
   F --> G["the app serves"]
 ....
 
-The order is fixed. The shared databases come before the sweep because the sweep decodes the
-access records, and they must be in the shape the current model reads.
+Before any of this, building the kit checks both chains of migration files (`InvalidMigration`)
+and the `stores` mapping (`ValueError`). Then the lifespan runs these steps, in this fixed order,
+before the application's own lifespan:
+
+. *Create the system database* on the `default` store if it is missing.
+. *Guard the IRI policy.* The effective policy is recorded in the system database's graph
+  `{base}toolkit/iri-policy`; a policy that differs from the recorded one stops the start with
+  `IriPolicyChanged`, naming the differing fields.
+. *Create the application database* on `default`, if the schema has an application class.
+. *Migrate the shared databases* on `default`: the system database, then the application database
+  (`MigrationFailed` stops the start).
+. *Sweep* (`sweep`):
+.. read every access record;
+.. raise `StoreNotWired`, naming every unwired store the records name, sorted, if there is one;
+   nothing has been changed yet;
+.. list the databases of *every* wired store; a store that cannot be reached raises
+   `StoreUnavailable`, and the start stops before anything is changed on any store;
+.. log `misplaced-tenant` for each record whose database is on another store than its own;
+.. if the system database was just created, or holds no access record, while tenant databases or
+   buckets exist, skip the rest with a warning: nothing is dropped;
+.. finish each interrupted deletion on the tenant's own store;
+.. drop each `{prefix}-t-…` database, on any wired store, that no access record names; then the
+   orphan buckets.
+. *Migrate the tenants*, each on its own store, in order of IRI, except those being deleted. A
+  tenant whose migration fails is set aside (below); a tenant whose store is not wired stops the
+  start with `StoreNotWired`.
+. *Start the events*: the event bus's consumer, when one is wired, then the relay, which runs
+  whether or not there is an event bus (xref:howto/event-driven.adoc#relay-limits[Limits of the
+  relay]).
+
+The reasons for the order: the IRI policy comes first because the sweep reads the access records
+through it, and the shared databases are migrated before the sweep because the sweep decodes the
+access records, which must be in the shape the current model reads.
 
 For one database, the runner takes each schema in turn, the toolkit's first and the consumer's
 second, and does this:

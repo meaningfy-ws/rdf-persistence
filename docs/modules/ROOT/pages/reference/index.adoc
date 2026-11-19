@@ -15,7 +15,8 @@ xref:user-manual/index.adoc[user manual]. The two tables below are generated fro
 
 |`[tool.rp-generate]` keys, outputs and exit codes |xref:user-manual/generate.adoc[Generate the code]
 |The settings groups and their defaults |xref:howto/settings.adoc#groups[Configure the deployment values]
-|The service's routes and media types |xref:user-manual/serve.adoc[Serve the application], and the OpenAPI document the service publishes
+|What a client of the service sends and gets: the token, routes, headers, bodies, paging, problems and events |xref:reference/http-api.adoc[The HTTP API], and the OpenAPI document the service publishes
+|How to serve the routes from Python |xref:user-manual/serve.adoc[Serve the application]
 |The spans and attributes |xref:howto/observability.adoc[See what the toolkit is doing]
 |The metamodel's classes and annotations |xref:architecture/models.adoc[Models], xref:architecture/generation.adoc#annotations[Annotations]
 |The Make targets of the repository |`make help`, and xref:develop/index.adoc#make-targets[Make targets]

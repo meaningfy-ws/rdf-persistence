@@ -94,9 +94,12 @@ The toolkit has no HTTP route for application data. You write the route and call
 [#startup]
 == 4. Start-up
 
-With `install_service` there is nothing to do: the service creates the application database at
-start-up when the schema has an application class. A consumer that does not use `install_service`
-calls this once before it serves:
+Serve through `install_service`: its start-up creates the application database on the `default`
+store when the schema has an application class, and migrates it with the other databases
+(xref:architecture/data-flows.adoc#migrations[Start-up migrations]).
+
+A kit you build without serving (xref:user-manual/store-and-read.adoc#kit-without-http[Get a kit
+without serving], for a script or a test) can create the database itself, once before it is used:
 
 [source,python]
 ----
@@ -104,21 +107,9 @@ await kit.tenancy.ensure_application_database()   # True if it created the datab
 ----
 
 It is safe to call on every start: it answers `False` when the database exists, and when the schema
-has no application class it does nothing.
-
-A consumer that calls it itself must also run the migrations at start-up, as `install_service`
-does: `migrate_shared(kit.tenancy, kit.store, kit.chains)` (the system database, then the
-application database), then its sweep, then `migrate_tenants(kit.tenancy, kit.store, kit.chains)`, in
-that order, after the IRI policy guard and this call. Both are in
-`rdf_persistence.tenancy.services.migration_runner`. Without them the
-databases keep the stamps they were created with, and a schema change is never applied. See
-xref:howto/migrate.adoc#startup[Change a schema that has stored data].
-
-The `store` argument of these start-up functions is the `default` store, `kit.store`, which holds
-the system and application databases. A service that wires other stores (`stores=`) passes the
-same `kit.store`: tenants on the other stores are found through `kit.tenancy`, which sweeps and
-migrates each one on its own store. See xref:howto/tenant-stores.adoc#startup[Put tenants on
-several stores].
+has no application class it does nothing. Such a kit runs no IRI policy guard and no migration: those
+start-up steps are not part of the public API, so a deployment whose data must follow schema
+changes serves through `install_service`.
 
 [#access]
 == 5. Who may do what

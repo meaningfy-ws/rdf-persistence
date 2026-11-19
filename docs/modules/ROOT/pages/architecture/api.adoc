@@ -97,14 +97,10 @@ xref:user-manual/serve.adoc[Serve the application]. The routes are built from th
 service starts, so a class added to the model is served after a restart. A route of the
 application's own checks its caller through the kit, so the toolkit's access rules apply to it too.
 
-*Start-up.* Before the application's own lifespan, the service runs its start-up steps in a fixed
-order (listed in xref:howto/tenant-stores.adoc#startup[What the start-up does]), and the order has
-reasons. The IRI policy is guarded first, because the sweep reads the access records through it:
-the effective policy is recorded in the system database's graph `{base}toolkit/iri-policy`, and a
-policy that differs stops the start with `IriPolicyChanged` naming the differing fields. The shared
-databases are migrated before the sweep, because the sweep decodes the access records in their
-current shape. A tenant whose migration fails is set aside and answers `503` `tenant-behind`, while
-the other tenants are served (xref:howto/migrate.adoc#startup[Change a schema that has stored data]).
+*Start-up.* Before the application's own lifespan, the service guards the IRI policy, migrates
+every database, sweeps and starts the events relay, in a fixed order whose steps, reasons and
+failures (`503` `tenant-behind` for a tenant whose migration failed) are in
+xref:architecture/data-flows.adoc#migrations[Start-up migrations].
 
 *Routes.* The routes are listed in xref:user-manual/serve.adoc#routes[The routes]; `{t}` is the id in
 the tenant's IRI, as the IRI policy mints it (a UUID by default). Deleting a tenant needs
@@ -115,7 +111,9 @@ the tenant's IRI, as the IRI policy mints it (a UUID by default). Deleting a ten
 record and the bytes of a file must change together, which only the consumer's own route can do, in
 a session (xref:user-manual/serve.adoc#the-composition-root[the composition root] shows the kit calls). The routes are not mounted, so they are also absent from
 the OpenAPI document, and the framework answers 405 with `Allow: GET`. There is no way to opt back
-in. See xref:user-manual/files.adoc[Keep files].
+in. See xref:user-manual/files.adoc[Keep files]. The annotation's other value, `rp_writes: toolkit`
+(on the toolkit's `Comment`), marks a root the toolkit writes and reads itself: no route is mounted
+for it at all, so its path answers 404.
 
 A read of one object answers with its `ETag`; the read of a tenant's root also answers with `Record-ETag`, the version of its access record, to send as `If-Match` to the label route. The read of a tenant's root and of an aggregate also answers `Allowed-Actions`, the actions the caller may take on it (`read, modify, delete, administer`, in that order; on a tenant `delete` means deleting the tenant and needs `administer`, on an aggregate `administer` is not listed; no header on a refused read), and each item of the tenant listing carries the same list as `allowed_actions`. A root `PUT` whose label is not the tenant's gets 422: a tenant is renamed through its label route. Every `PUT` and `DELETE` needs `If-Match` (428 without it, 409 on a
 stale version); a create answers 201 with a `Location`. Plain JSON points at the context by a `Link`
@@ -137,8 +135,9 @@ no XML local name, nor a value holding a character XML 1.0 forbids; an aggregate
 answers 406 naming the type, and the other six forms still work. On a create or a replace the 406
 comes before anything is written, so the client is never told a stored write failed. The OpenAPI document lists each type as a string response.
 
-*Bodies are strict.* A body larger than `max_body_bytes`, or holding more than 10 000
-objects and list values together (a list of strings counts each string), is refused with 413. A plain-JSON body may use only its class's slot names and the JSON-LD
+*Bodies are strict.* A body larger than `max_body_bytes`, or holding more than
+`max_document_nodes` objects and list values together (10 000 by default,
+xref:howto/settings.adoc[a toolkit setting]) (a list of strings counts each string), is refused with 413. A plain-JSON body may use only its class's slot names and the JSON-LD
 keywords, at every level. Only the root and the owned parts reached from it, each typed with a class
 of the schema, may appear; any other subject is 422. An `internal` slot is refused in a body (422
 naming it) and never appears in a response. A replace keeps the stored values of the `internal`
@@ -262,7 +261,8 @@ it outgrows the limit.
 |415, 413
 
 |8
-|Parse the JSON, and count its objects and list values against the cap of 10 000.
+|Parse the JSON, and count its objects and list values against `max_document_nodes` (10 000 by
+default).
 |`api/services/documents.py`, `Documents._document` and `_bound`, called by `Documents.parse` from
 `Aggregates.replace` (`api/services/aggregates.py`)
 |422, 413

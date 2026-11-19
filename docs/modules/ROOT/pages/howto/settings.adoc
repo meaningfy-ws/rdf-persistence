@@ -61,7 +61,7 @@ refused); every count and size is at least 1; the leeway is 0 to 300; the JWKS c
 .4+|`limits` (`LimitSettings`)
 |`max_messages` |100 |The commands one `handle` call of the message bus runs
 |`max_roots` |500 |The roots one commit holds (`CommitTooLarge` above it)
-|`max_document_nodes` |10000 |The objects of a JSON-LD body
+|`max_document_nodes` |10000 |The objects and list values of a request body, plain JSON or JSON-LD (413 above it)
 |`max_manifest_bytes` |65536 |The manifest of a tenant dump a restore reads
 |===
 

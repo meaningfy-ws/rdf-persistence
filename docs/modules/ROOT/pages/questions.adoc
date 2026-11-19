@@ -113,6 +113,11 @@ Call `install_service` once in your composition root; it serves every aggregate 
 that has an `rp_path`, and returns a `ServiceKit` for your own routes. See xref:user-manual/serve.adoc[step 12] and
 xref:architecture/api.adoc#serving[Serving it].
 
+*I write the front end: how do I call the service?*::
+With a bearer token from the identity provider, plain JSON bodies, the `ETag` echoed in `If-Match`
+on every write, and problem responses to read on failure. See xref:reference/http-api.adoc[The
+HTTP API], the whole client contract on one page.
+
 *How do I read back a graph I loaded?*::
 Check the read with `kit.require_aggregate(..., Action.READ)`, then call
 `session.loaded_graph(root_iri, graph_iri)` for a plain rdflib `Graph`; the session checks no access
@@ -214,7 +219,9 @@ See xref:howto/event-driven.adoc#relay[Carry commits to other deployments and to
 
 *How do I change a timeout, a cache time or a limit of the toolkit, and read it from the environment?*::
 Build a `ToolkitSettings` with the groups you need at the composition root and pass it as
-`install_service(..., toolkit=settings)`; with the `settings` extra, `settings_from_env` reads the
+`install_service(..., toolkit=settings)`. Each adapter you build takes its own group as well:
+`http=` for the store, the file store, the verifier and the identity provider, `jwks=` for the
+verifier, `directory=` for the identity provider and `events=` for `RedisEventBus`. With the `settings` extra, `settings_from_env` reads the
 values from `RP_*` variables. See xref:howto/settings.adoc[Configure the toolkit's deployment
 values].
 
@@ -375,7 +382,8 @@ serves needs it: `install_service` stops without it.
 |`true`
 
 |`max_body_bytes`
-|Larger bodies cost memory and parse time; the 10 000-node cap applies whatever the size.
+|Larger bodies cost memory and parse time; the node cap (`max_document_nodes` of the `limits`
+group, 10 000 by default) applies whatever the size.
 |1 MiB (1 048 576 bytes)
 |===
 
