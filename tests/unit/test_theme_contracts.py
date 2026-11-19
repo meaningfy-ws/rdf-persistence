@@ -112,6 +112,7 @@ SCRATCH_PACKAGES = (
     *(theme for theme in THEMES),
     *(f"{theme}/{layer}" for theme in THEMES for layer in THEME_LAYERS),
     "iris/services/generated",
+    "access/adapters/generated",
 )
 
 
@@ -255,6 +256,12 @@ def test_a_turned_on_theme_importing_an_old_layer_breaks_the_old_layout_contract
             "persistence/services/x.py",
             "migrations.services",
             id="persistence-to-migrations",
+        ),
+        pytest.param(
+            "themes-ordered",
+            "persistence/services/x.py",
+            "access.services",
+            id="persistence-to-access",
         ),  # TC-45
     ],
 )
@@ -262,6 +269,23 @@ def test_a_planted_import_between_the_new_themes_breaks_its_contract(
     tmp_path, contract, where, imports
 ):  # TC-35
     assert _breaks(tmp_path, contract, {where: _importing(imports)})
+
+
+SERVICES_NO_ADAPTERS = "services-of-a-theme-import-no-adapters-or-entrypoints"
+
+
+def test_a_service_of_a_theme_importing_a_wire_model_of_a_theme_breaks_layers_across_themes(
+    tmp_path,
+):  # TC-51
+    planted = {"tenancy/services/x.py": _importing("access.adapters.generated")}
+
+    assert _breaks(tmp_path, SERVICES_NO_ADAPTERS, planted)
+
+
+def test_a_service_of_a_theme_importing_an_adapter_of_a_theme_breaks_layers_across_themes(tmp_path):
+    planted = {"persistence/services/x.py": _importing("access.adapters")}
+
+    assert _breaks(tmp_path, SERVICES_NO_ADAPTERS, planted)
 
 
 @pytest.mark.parametrize(
@@ -274,6 +298,12 @@ def test_a_planted_import_between_the_new_themes_breaks_its_contract(
         ),
         pytest.param(
             ENTRYPOINTS_SIDEWAYS, "entrypoints/x.py", "iris.adapters", id="old-entrypoints-to-iris"
+        ),
+        pytest.param(
+            ENTRYPOINTS_SIDEWAYS,
+            "entrypoints/x.py",
+            "access.adapters",
+            id="old-entrypoints-to-access",
         ),
     ],
 )

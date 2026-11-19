@@ -3,7 +3,7 @@
 Plain ``httpx`` and ``PyJWT``, so this needs neither Docker nor the extra ``testkit``. The
 container fixtures call ``provision_project``; a test calls ``create_machine_user`` for a service
 account of its own and ``access_token`` for the token of any machine user. Requests and answers are
-the records of ``rdf_persistence.adapters.generated.rp_wire``.
+the records of ``rdf_persistence.access.adapters.generated.rp_access_adapters``.
 """
 
 import base64
