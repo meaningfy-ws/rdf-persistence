@@ -234,7 +234,7 @@ and buckets, and the sweep inside a live tenant is the next building block (belo
 
 |Test kit
 |built
-|`rdf_persistence.testkit`: `FakeStore`, `FakeFileStore`, `FakeIdentity` and `fake_session` (pure Python) for consumers' unit tests; `TokenSigner` for test tokens; four conformance suites, for a store, a file store, an identity adapter and an event bus, run on the fakes and on Fuseki, Garage, Zitadel and Redis in containers; the model guards; the freshness plugin lives in `rdf_persistence_generation.testkit.freshness` (the old path is a shim). The toolkit's own tests use a toy domain.
+|`rdf_persistence.testkit`: `FakeStore`, `FakeFileStore`, `FakeIdentity` and `fake_session` (pure Python) for consumers' unit tests; `TokenSigner` for test tokens; four conformance suites, for a store, a file store, an identity adapter and an event bus, run on the fakes and on Fuseki, Garage, Zitadel and Redis in containers; the model guards; the freshness plugin lives in `rdf_persistence_generation.testkit.freshness`. The toolkit's own tests use a toy domain.
 |N-10
 
 |Model to code
@@ -478,8 +478,8 @@ paths of the workflow files), `ServiceKit` (with `collaboration(authorised)` and
 |Package |What it holds |Public
 |`rdf_persistence.testkit` |fakes, token signer, Zitadel provisioning, container fixtures, the
 waiting helpers (`wait_until`, `wait_until_async`), the adapter conformance suites, the model-shape
-snapshot, guards; four shims (`freshness`, `conformance`, `roundtrip`, `strategies`) that forward to the generator's testkit; its records, generated from `model/technical/testkit/rp_testkit.yaml` into `testkit/generated/` |`rdf_persistence.testkit` (a second public module, for tests only)
-|`rdf_persistence_generation` (a sibling top-level package, shipped in the same wheel) |`rp-generate` (build time; lint config, boundary check, templates) and its own testkit (`testkit/`: the freshness plugin, the conformance suites, round-trip strategies); its own records, from `model/rp_generation.yaml` into `generated/` |the `rp-generate` command (`rdf_persistence_generation.cli:main`); `rdf_persistence_generation.testkit` (for tests only; the old `rdf_persistence.testkit` paths of these modules are shims that warn)
+snapshot, guards; its records, generated from `model/technical/testkit/rp_testkit.yaml` into `testkit/generated/` |`rdf_persistence.testkit` (a second public module, for tests only)
+|`rdf_persistence_generation` (a sibling top-level package, shipped in the same wheel) |`rp-generate` (build time; lint config, boundary check, templates) and its own testkit (`testkit/`: the freshness plugin, the conformance suites, round-trip strategies); its own records, from `model/rp_generation.yaml` into `generated/` |the `rp-generate` command (`rdf_persistence_generation.cli:main`); `rdf_persistence_generation.testkit` (for tests only; the old `rdf_persistence.testkit` paths of these modules were removed in 0.6.0)
 |`rdf_persistence/model/` |the schemas, shipped as package data: the nine metamodel modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`, `rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion`, `rp_workflow`) and `rp.yaml`, flat; the technical schemas, `technical/<theme>/rp_<theme>_<layer>.yaml`, or `rp_<theme>_settings.yaml` / `rp_<theme>_templates.yaml` for a non-served group (and `technical/testkit/rp_testkit.yaml`) |the metamodel through the import map; a technical schema cannot be imported
 |===
 
@@ -516,8 +516,8 @@ library (`httpx`, `boto3`, `fastapi`, `jwt`, `pyshacl`, `anyio`).
 |`runtime-without-extras` |The runtime layers (and the two shims) importing the testkit, the
 generator, `pytest`, `testcontainers` or `linkml`.
 |`works-without-the-generate-extra` |What is installed without the `generate` extra importing `linkml`.
-|`library-never-imports-the-generator` |`rdf_persistence` importing `rdf_persistence_generation`,
-but through the four testkit shims (xref:architecture/generation.adoc#generator-package[The generator's package]).
+|`library-never-imports-the-generator` |`rdf_persistence` importing `rdf_persistence_generation`
+(xref:architecture/generation.adoc#generator-package[The generator's package]).
 |`collaboration-layers` |The order inside the collaboration services: message bus, collaboration,
 transitions and write guards, discussion, reference collections and workflows, access, session.
 |`session-and-provenance-without-mapper` |The session or the activity shape importing the mapper,

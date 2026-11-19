@@ -84,6 +84,19 @@ def test_roots_in_a_comment_does_not_count(tmp_path: Path) -> None:
     assert [f.split(": ")[0] for f in found] == [f"{planted}:1", f"{planted}:2"], found
 
 
+def test_another_keyword_ending_in_roots_does_not_count(tmp_path: Path) -> None:
+    planted = tmp_path / "other_keyword.py"
+    planted.write_text(
+        "bad = is_toolkit_schema(folder, extra_roots=ROOTS)\n"
+        "worse = generation_view(path, **{'roots': ROOTS})\n",
+        encoding="utf-8",
+    )
+
+    found = calls_without_roots(tmp_path)
+
+    assert [f.split(": ")[0] for f in found] == [f"{planted}:1", f"{planted}:2"], found
+
+
 def test_a_folder_without_the_calls_has_no_problem(tmp_path: Path) -> None:
     (tmp_path / "other.py").write_text("print(len([1]))\n", encoding="utf-8")
 

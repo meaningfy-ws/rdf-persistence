@@ -96,9 +96,9 @@ waits for that call again on the next poll, so at most one hung call is left beh
 ### Requirement: The model guards are public names of the testkit
 
 `rdf_persistence.testkit` SHALL export `assert_models_generated`, `assert_isomorphic`,
-`class_shapes`, `read_snapshot`, `write_snapshot`, `snapshot_diff` and `model_shape_diff`, and,
-for one minor release, `Conformance`, `conformance_problems`, `round_trip` and `aggregate` through
-the deprecation shims; `rdf_persistence_generation.testkit` SHALL export those four. Those whose
+`class_shapes`, `read_snapshot`, `write_snapshot`, `snapshot_diff` and `model_shape_diff`;
+`rdf_persistence_generation.testkit` SHALL export `Conformance`, `conformance_problems`,
+`round_trip` and `aggregate`, which `rdf_persistence.testkit` no longer exports (#165). Those whose
 modules load `hypothesis` or `pyshacl` SHALL load on first use, so `import rdf_persistence.testkit`
 loads neither library. The adoption guide SHALL import the four from
 `rdf_persistence_generation.testkit` and the others from `rdf_persistence.testkit`.
@@ -174,20 +174,15 @@ signing key but not a distinct one; `wait_until` and `wait_until_async` SHALL ta
 The freshness plugin, the conformance suite, the round trip and the instance strategies SHALL live
 in `rdf_persistence_generation.testkit`, which SHALL export `Conformance`, `conformance_problems`,
 `round_trip` and `aggregate`. The graph comparison `assert_isomorphic`, which the round trip uses,
-SHALL stay in `rdf_persistence.testkit`. For one minor release, their former paths under
-`rdf_persistence.testkit` SHALL still work and SHALL raise a `DeprecationWarning` naming the new
-path; the release after SHALL remove them. The freshness plugin SHALL be enabled only by the
-project's `pytest_plugins`.
+SHALL stay in `rdf_persistence.testkit`. Their former paths under `rdf_persistence.testkit`
+(`freshness`, `conformance`, `roundtrip`, `strategies`) warned for 0.5.0 and are removed in 0.6.0
+(#165). The freshness plugin SHALL be enabled only by the project's `pytest_plugins`.
 
-#### Scenario: the old plugin path
-- **GIVEN** a consumer whose root conftest has `pytest_plugins = ["rdf_persistence.testkit.freshness"]`
-- **WHEN** its generated code is stale and a test session starts
-- **THEN** the session stops with the stale message and the regenerate command, and a
-  `DeprecationWarning` names `rdf_persistence_generation.testkit.freshness`
-
-#### Scenario: the old conformance import
-- **WHEN** a consumer imports `conformance_problems` from `rdf_persistence.testkit`
-- **THEN** it gets the generator's function and a `DeprecationWarning` naming the new path
+#### Scenario: the old paths are gone
+- **WHEN** a consumer imports `rdf_persistence.testkit.freshness`, or `conformance_problems` from
+  `rdf_persistence.testkit`
+- **THEN** it fails with `ModuleNotFoundError`, resp. `ImportError`; the generator's
+  `rdf_persistence_generation.testkit` serves both
 
 #### Scenario: the testkit alone
 - **WHEN** a consumer imports `rdf_persistence.testkit` and uses only the fakes

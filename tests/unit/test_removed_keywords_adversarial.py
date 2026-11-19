@@ -57,7 +57,9 @@ def modules():
     for info in pkgutil.walk_packages(rdf_persistence.__path__, "rdf_persistence."):
         if ".generated" in info.name:
             continue
-        with warnings.catch_warnings():  # the testkit shims warn on import (generator-package PD-3)
+        with (
+            warnings.catch_warnings()
+        ):  # the deprecation shims warn on import (thematic-structure PD-8)
             warnings.simplefilter("ignore", DeprecationWarning)
             module = importlib.import_module(info.name)
         yield module

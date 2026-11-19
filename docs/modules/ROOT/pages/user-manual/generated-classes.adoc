@@ -86,7 +86,7 @@ pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]
 
 The plugin lives in the generator's package, `rdf_persistence_generation`, which the
 `rdf-persistence` wheel ships beside the library. The old line,
-`rdf_persistence.testkit.freshness`, still works until 0.6.0 but warns; see
+`rdf_persistence.testkit.freshness`, is gone since 0.6.0; see
 xref:user-manual/change-model.adoc#upgrade-generator-package[Upgrading to the generator package (0.5.0)].
 
 At the start of every test run the plugin reads the `[tool.rp-generate]` entries of the

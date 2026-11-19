@@ -4,7 +4,8 @@ The generator has its own pyramid under ``tests/generator/``, measured against i
 test of the library that imports ``rdf_persistence_generation`` would blur the two, so each such
 file is named in ``TOOL_USERS``, the files that run the generator on the library's own schemas as
 a tool. The checker reads every test file outside ``tests/generator/`` with ``ast``: ``import``
-statements, and the string constants of ``pytest_plugins`` and of ``import_module`` calls. It fails
+statements, the string constants of ``pytest_plugins`` (assigned, annotated or extended with
+``+=``) and the first argument of ``import_module``, ``__import__`` and ``importorskip``. It fails
 on a file that imports the generator without being listed, and on a listed file that no longer does.
 """
 
@@ -17,7 +18,7 @@ REPO = Path(__file__).resolve().parents[2]
 GENERATOR = "rdf_persistence_generation"
 GENERATOR_TESTS = "tests/generator/"
 PLUGINS_NAME = "pytest_plugins"
-IMPORT_FUNCTIONS = frozenset({"import_module"})
+IMPORT_FUNCTIONS = frozenset({"import_module", "__import__", "importorskip"})
 
 TOOL_USERS = frozenset(
     {
@@ -51,6 +52,11 @@ def _called_name(call: ast.Call) -> str:
     return function.id if isinstance(function, ast.Name) else ""
 
 
+def _targets(node: ast.Assign | ast.AnnAssign | ast.AugAssign) -> list[ast.expr]:
+    """The names an assignment, an annotated assignment or ``+=`` binds."""
+    return node.targets if isinstance(node, ast.Assign) else [node.target]
+
+
 def _named_modules(tree: ast.AST) -> list[str]:
     """Every module a tree imports, loads as a plugin, or passes to ``import_module``."""
     modules: list[str] = []
@@ -59,10 +65,10 @@ def _named_modules(tree: ast.AST) -> list[str]:
             modules += [alias.name for alias in node.names]
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             modules.append(node.module)
-        elif isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == PLUGINS_NAME for t in node.targets
+        elif isinstance(node, ast.Assign | ast.AnnAssign | ast.AugAssign) and any(
+            isinstance(t, ast.Name) and t.id == PLUGINS_NAME for t in _targets(node)
         ):
-            modules += _string_constants(node.value)
+            modules += _string_constants(node.value) if node.value else []
         elif isinstance(node, ast.Call) and _called_name(node) in IMPORT_FUNCTIONS:
             modules += [c for arg in node.args[:1] for c in _string_constants(arg)]
     return modules
@@ -113,6 +119,11 @@ def _tests_tree(root: Path, files: dict[str, str]) -> None:
         f'import importlib\nmodule = importlib.import_module("{GENERATOR}.config")\n',
         f'from importlib import import_module\nmodule = import_module("{GENERATOR}")\n',
         f"def test_x() -> None:\n    from {GENERATOR}.generated import rp_generation\n",
+        f'pytest_plugins: list[str] = ["{GENERATOR}.testkit.freshness"]\n',
+        f'pytest_plugins = ["pytester"]\npytest_plugins += ["{GENERATOR}.testkit.freshness"]\n',
+        f'module = __import__("{GENERATOR}.config")\n',
+        f'import pytest\nmodule = pytest.importorskip("{GENERATOR}.config")\n',
+        f'from pytest import importorskip\nmodule = importorskip("{GENERATOR}")\n',
     ],
     ids=[
         "import",
@@ -123,6 +134,11 @@ def _tests_tree(root: Path, files: dict[str, str]) -> None:
         "importlib-call",
         "import-module-call",
         "import-inside-a-function",
+        "annotated-plugin-list",
+        "augmented-plugin-list",
+        "dunder-import-call",
+        "importorskip-call",
+        "importorskip-by-name",
     ],
 )
 def test_a_library_test_naming_the_generator_is_named_by_the_checker(

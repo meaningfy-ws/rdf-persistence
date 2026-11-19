@@ -3536,8 +3536,6 @@ tests/unit/collaboration/test_write_guards.py::test_the_decision_table_of_a_repl
 tests/unit/collaboration/test_write_guards.py::test_the_decision_table_of_an_add,requirement,rp-workflow,The toolkit owns the current state of an aggregate under a workflow,,high,name; covered code
 tests/unit/collaboration/test_write_guards.py::test_the_guard_leaves_a_non_collection_untouched,requirement,rp-reference-collections,A reference collection holds typed references it does not own,,medium,covered code
 tests/unit/test_adopt_validators.py::test_the_guides_install_call_passes_the_validators_by_keyword,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,high,"name,spec id PD-7 R2-5"
-tests/unit/test_adopt_validators.py::test_the_guides_rule_passes_a_grant_set_that_keeps_an_owner,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,high,"name,spec id PD-7 R2-5"
-tests/unit/test_adopt_validators.py::test_the_guides_rule_refuses_a_grant_set_without_an_owner,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,high,"name,spec id PD-7 R2-5"
 tests/unit/test_changed.py::test_a_changed_container_test_alone_gives_no_arguments,scenario,rp-developer-checks,The tests of the changed files run on their own,a changed container test,high,"name,spec id test-lanes PD-1..5"
 tests/unit/test_changed.py::test_a_changed_path_selects_what_its_rule_says,requirement,rp-developer-checks,The tests of the changed files run on their own,,high,"name,spec id test-lanes PD-1..5"
 tests/unit/test_changed.py::test_a_file_outside_the_selected_folder_is_kept_and_paths_are_sorted,requirement,rp-developer-checks,The tests of the changed files run on their own,,high,"name,spec id test-lanes PD-1..5"
@@ -3731,7 +3729,6 @@ tests/unit/testkit/test_in_memory_event_bus.py::test_the_broker_keeps_every_sent
 tests/unit/testkit/test_in_memory_event_bus.py::test_the_in_memory_bus_conforms,requirement,rp-testkit,Consumers test without servers,,medium,"covered code (TC-07..09 names the conformance suite, not a requirement)"
 tests/unit/testkit/test_lazy_guard_names_adversarial.py::test_a_lazy_name_is_kept_after_the_first_touch,requirement,rp-testkit,The model guards are public names of the testkit,,medium,spec id PD-4
 tests/unit/testkit/test_lazy_guard_names_adversarial.py::test_a_lazy_name_loads_nothing_until_it_is_touched,scenario,rp-testkit,The model guards are public names of the testkit,importing the testkit stays light,high,"name,spec id PD-4"
-tests/unit/testkit/test_lazy_guard_names_adversarial.py::test_conformance_problems_is_the_run_function_of_the_conformance_module,requirement,rp-testkit,The model guards are public names of the testkit,,medium,spec id PD-4
 tests/unit/testkit/test_lazy_guard_names_adversarial.py::test_each_guard_name_resolves_in_a_fresh_interpreter,requirement,rp-testkit,The model guards are public names of the testkit,,high,"name,spec id PD-4"
 tests/unit/testkit/test_messages.py::test_a_bus_publish_reaches_it,capability,rp-testkit,,,high,"covered code,spec id message-bus PD-22"
 tests/unit/testkit/test_messages.py::test_it_records_the_activities_in_call_order,capability,rp-testkit,,,high,"covered code,spec id message-bus PD-22"
@@ -4134,17 +4131,8 @@ tests/generator/unit/test_roots_call_sites.py::test_a_call_without_roots_is_name
 tests/generator/unit/test_roots_call_sites.py::test_a_folder_without_the_calls_has_no_problem,capability,rp-generation,,,medium,name (roots= guard PD-5 TC-14a)
 tests/generator/unit/test_roots_call_sites.py::test_every_generator_call_of_a_toolkit_schema_function_passes_roots,capability,rp-generation,,,medium,name (roots= guard PD-5 TC-14a)
 tests/generator/unit/test_roots_call_sites.py::test_roots_in_a_comment_does_not_count,capability,rp-generation,,,medium,name (roots= guard PD-5 TC-14a)
-tests/generator/unit/test_testkit_moved.py::test_assert_isomorphic_is_one_object_through_every_path,requirement,rp-testkit,The generator's test helpers live with the generator,,medium,name; docstring D-10 D-18
-tests/generator/unit/test_testkit_moved.py::test_each_old_module_warns_naming_its_own_new_module,requirement,rp-testkit,The generator's test helpers live with the generator,,high,name; docstring TC-16
-tests/generator/unit/test_testkit_moved.py::test_importing_the_old_conformance_module_warns_once_and_re_exports,scenario,rp-testkit,The generator's test helpers live with the generator,the old conformance import,high,name; docstring TC-15
 tests/generator/unit/test_testkit_moved.py::test_the_generator_testkit_exports_the_four_names_lazily,requirement,rp-testkit,The generator's test helpers live with the generator,,high,name; docstring TC-17 (the four exported names)
 tests/generator/unit/test_testkit_moved.py::test_the_generator_testkit_imports_without_linkml,requirement,rp-testkit,The generator's test helpers live with the generator,,medium,name; docstring TC-21
-tests/generator/unit/test_testkit_moved.py::test_the_lazy_public_names_are_the_moved_objects_and_warn,scenario,rp-testkit,The generator's test helpers live with the generator,the old conformance import,high,name; docstring TC-17
-tests/generator/unit/test_testkit_moved.py::test_the_new_plugin_path_stops_a_stale_session_without_a_warning,requirement,rp-testkit,The generator's test helpers live with the generator,,high,name; docstring TC-19
-tests/generator/unit/test_testkit_moved.py::test_the_old_plugin_path_still_stops_a_stale_session,scenario,rp-testkit,The generator's test helpers live with the generator,the old plugin path,high,name; docstring TC-18
-tests/generator/unit/test_testkit_moved.py::test_the_old_plugin_path_warns_naming_the_new_one,scenario,rp-testkit,The generator's test helpers live with the generator,the old plugin path,high,name; docstring TC-18
-tests/generator/unit/test_testkit_moved.py::test_the_removal_release_is_named_in_every_shim,requirement,rp-testkit,The generator's test helpers live with the generator,,high,name; docstring TC-16 PD-3 (the release after removes them)
-tests/generator/unit/test_testkit_moved.py::test_the_testkit_root_does_not_warn_nor_load_the_shims,scenario,rp-testkit,The generator's test helpers live with the generator,the testkit alone,high,name; docstring TC-20
 tests/unit/test_changed.py::test_a_changed_generator_file_selects_the_generator_tests,requirement,rp-developer-checks,The tests of the changed files run on their own,,high,name; docstring TC-26
 tests/unit/test_container_selection.py::test_a_generator_folder_stamps_its_test_type_and_containers,requirement,rp-generation,The generator has its own test pyramid,,high,name; docstring TC-25 (each tier stamped by its folder)
 tests/unit/testkit/test_testkit_lazy_import.py::test_assert_isomorphic_loads_without_a_warning_or_the_generator,scenario,rp-testkit,The generator's test helpers live with the generator,the testkit alone,high,name; docstring D-10
@@ -4181,7 +4169,6 @@ tests/unit/test_refresh_map.py::test_renames_parses_only_rename_lines_with_a_sco
 tests/unit/test_refresh_map.py::test_rows_re_keyed_by_a_move_do_not_count_towards_the_twenty_percent_share,capability,rp-developer-checks,,,medium,name (audit tooling; PD-16 moved)
 tests/unit/test_refresh_map.py::test_without_the_move_the_same_rows_are_refused,capability,rp-developer-checks,,,medium,name (audit tooling; PD-16 moved)
 tests/unit/test_technical_split.py::test_the_event_bus_and_sparql_contracts_cover_the_generator,requirement,rp-package-boundaries,Layers import downward only,,medium,name (the generator is outside the layers and the contracts list it)
-tests/unit/test_technical_split.py::test_the_library_never_imports_the_generator_but_through_the_four_shims,requirement,rp-package-boundaries,The library never imports the generator,,high,name; spec requirement text (the shims are the only exceptions)
 tests/generator/e2e/test_generated_library_served_adversarial.py::test_a_failing_test_body_leaves_neither_modules_nor_path_behind,requirement,rp-generation,The generator has its own test pyramid,,medium,name; hygiene of the e2e helper (as TC-54)
 tests/generator/e2e/test_generated_library_served_adversarial.py::test_a_generated_package_that_cannot_be_imported_leaves_nothing_behind,requirement,rp-generation,The generator has its own test pyramid,,medium,name; hygiene of the e2e helper (as TC-54)
 tests/generator/feature/test_generation_adversarial.py::test_every_activity_class_of_the_toy_gets_a_frame,requirement,rp-generation,The generator has its own test pyramid,,medium,name; the feature tests generate the toy library
@@ -4355,3 +4342,29 @@ tests/unit/test_theme_contracts.py::test_the_domain_contract_covers_the_domain_o
 tests/unit/test_theme_layout.py::test_a_shim_folder_holds_its_init_and_its_shim_and_no_other_module,requirement,rp-package-boundaries,A moved public path warns for one release,,medium,name; TC-70 PD-8 (the two shim folders hold only their shims)
 tests/unit/test_theme_layout.py::test_every_row_of_the_layout_is_on,requirement,rp-package-boundaries,Layers import downward only,,high,name; TC-01 (no theme is left on its old path at the end of the move)
 tests/unit/test_theme_layout.py::test_the_top_level_of_the_package_holds_the_themes_the_shims_and_nothing_else,requirement,rp-package-boundaries,Layers import downward only,,high,name; TC-70 (the top level holds the thirteen themes the shims and nothing else)
+tests/generator/unit/test_testkit_moved.py::test_the_plugin_path_stops_a_stale_session,requirement,rp-testkit,The generator's test helpers live with the generator,,high,name; docstring TC-19
+tests/unit/test_technical_split.py::test_the_library_never_imports_the_generator,requirement,rp-package-boundaries,The library never imports the generator,,high,name; spec requirement text (no exception since #165)
+tests/unit/testkit/test_generator_shims_removed.py::test_importing_a_removed_shim_path_raises_module_not_found,requirement,rp-testkit,The generator's test helpers live with the generator,,high,name; docstring #165 (the old paths are gone)
+tests/unit/testkit/test_generator_shims_removed.py::test_a_removed_lazy_name_is_no_longer_exported,requirement,rp-testkit,The generator's test helpers live with the generator,,high,name; docstring #165 (the old names are gone)
+tests/unit/testkit/test_generator_shims_removed.py::test_assert_isomorphic_stays_in_the_library_testkit,requirement,rp-testkit,The model guards are public names of the testkit,,high,name; docstring D-10 (assert_isomorphic stays)
+tests/generator/unit/test_freshness.py::test_a_problem_of_one_target_keeps_its_line_unchanged,requirement,rp-generation,Stale or edited generated output is detected,,medium,name (issue #164 item 4)
+tests/generator/unit/test_freshness.py::test_a_problem_shared_by_several_targets_is_reported_once_naming_them,requirement,rp-generation,Stale or edited generated output is detected,,medium,name; docstring issue #164 item 4
+tests/generator/unit/test_freshness.py::test_a_schema_shared_by_two_targets_is_reported_once_through_the_check,requirement,rp-generation,Stale or edited generated output is detected,,medium,name; issue #164 item 4 (through rp-generate --check)
+tests/generator/unit/test_generate_cli.py::test_listing_the_python_folders_needs_no_linkml,capability,rp-generation,,,medium,covered code (cli.py); issue #164 item 3
+tests/generator/unit/test_roots_call_sites.py::test_another_keyword_ending_in_roots_does_not_count,capability,rp-generation,,,medium,name (roots= guard PD-5 TC-14a; issue #164 item 1)
+tests/generator/integration/test_getting_started_example.py::test_every_element_of_the_example_is_defined_identically_in_the_toy,capability,rp-generation,,,medium,name (the docs' example against the toy)
+tests/generator/integration/test_getting_started_example.py::test_the_example_stores_a_book_and_reads_it_back,capability,rp-generation,,,medium,name (the docs' example runs)
+tests/unit/test_adopt_validators.py::test_the_guides_rule_passes_a_grant_set_that_keeps_a_librarian,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,medium,name (the guide's rule)
+tests/unit/test_adopt_validators.py::test_the_guides_rule_refuses_a_grant_set_without_a_librarian,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,medium,name (the guide's rule)
+tests/unit/test_check_docs.py::test_a_broken_link_in_the_nav_is_reported,capability,rp-developer-checks,,,medium,name (check-docs link check)
+tests/unit/test_check_docs.py::test_a_broken_link_is_reported,capability,rp-developer-checks,,,medium,name (check-docs link check)
+tests/unit/test_check_docs.py::test_an_explicit_id_replaces_the_title_id,capability,rp-developer-checks,,,medium,name (check-docs section ids)
+tests/unit/test_check_docs.py::test_links_in_listings_and_comments_are_ignored,capability,rp-developer-checks,,,medium,name (check-docs link check)
+tests/unit/test_check_docs.py::test_mermaid_markdown_expands_included_partials,capability,rp-developer-checks,,,medium,name (check-docs mermaid)
+tests/unit/test_check_docs.py::test_repeated_titles_get_numbered_ids,capability,rp-developer-checks,,,medium,name (check-docs section ids)
+tests/unit/test_check_docs.py::test_resolving_links_pass,capability,rp-developer-checks,,,medium,name (check-docs link check)
+tests/unit/test_check_docs.py::test_section_ids_follow_asciidoctor_defaults,capability,rp-developer-checks,,,medium,name (check-docs section ids)
+tests/unit/test_check_docs.py::test_section_ids_follow_the_site_settings,capability,rp-developer-checks,,,medium,name (check-docs section ids)
+tests/unit/test_docs_reference.py::test_check_fails_on_a_stale_partial_and_passes_once_written,capability,rp-developer-checks,,,medium,name (docs reference partials)
+tests/unit/test_docs_reference.py::test_the_api_table_has_a_row_per_name_with_its_first_sentence,capability,rp-developer-checks,,,medium,name (docs reference partials)
+tests/unit/test_docs_reference.py::test_the_usage_is_the_parsers_help,capability,rp-developer-checks,,,medium,name (docs reference partials)

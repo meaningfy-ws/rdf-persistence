@@ -38,11 +38,11 @@ def test_the_step_6_imports_are_public(tmp_path: Path) -> None:
 def test_a_testkit_module_import_is_refused_naming_file_line_and_module(tmp_path: Path) -> None:
     written = tmp_path / "test_model.py"
     written.write_text(
-        "import os\nfrom rdf_persistence.testkit.strategies import aggregate\n", encoding="utf-8"
+        "import os\nfrom rdf_persistence.testkit.tokens import TokenSigner\n", encoding="utf-8"
     )
     with pytest.raises(AssertionError) as err:
         assert_public_imports(written)
-    assert "test_model.py:2 imports rdf_persistence.testkit.strategies" in str(err.value), (
+    assert "test_model.py:2 imports rdf_persistence.testkit.tokens" in str(err.value), (
         "the refusal names the file, the line and the module"
     )
 

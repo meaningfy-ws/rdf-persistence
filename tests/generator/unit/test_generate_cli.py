@@ -76,9 +76,9 @@ def test_a_run_leaves_no_staging_folder_behind(tmp_path: Path) -> None:
     )
 
 
-def test_a_missing_extra_exits_2_naming_the_extra(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+@pytest.fixture
+def without_linkml(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``linkml`` cannot be imported and the pipeline's steps are not loaded."""
     for name in [
         m for m in sys.modules if m.startswith("linkml.")
     ]:  # a cached submodule would import
@@ -86,8 +86,29 @@ def test_a_missing_extra_exits_2_naming_the_extra(
     monkeypatch.setitem(sys.modules, "linkml", None)
     monkeypatch.delitem(sys.modules, "rdf_persistence_generation.steps")
     monkeypatch.delattr(generation, "steps")  # a from-import would find the attribute
+
+
+@pytest.mark.usefixtures("without_linkml")
+def test_a_missing_extra_exits_2_naming_the_extra(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     assert main(["--project", str(project(tmp_path))]) == 2, "wrong exit code"
     assert "install rdf-persistence[generate]" in capsys.readouterr().err, "no install hint"
+    assert not (tmp_path / "app").exists(), "something was written"
+
+
+@pytest.mark.usefixtures("without_linkml")
+def test_listing_the_python_folders_needs_no_linkml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The flag writes nothing, so it works without the ``generate`` extra (issue #164)."""
+    monkeypatch.chdir(tmp_path)
+    assert main(["--project", str(project(tmp_path)), "--list-python-folders"]) == 0, (
+        "the listing failed without linkml"
+    )
+    captured = capsys.readouterr()
+    assert captured.out.split() == ["app/generated"], captured.out
+    assert "install rdf-persistence" not in captured.err, "the install hint was printed"
     assert not (tmp_path / "app").exists(), "something was written"
 
 

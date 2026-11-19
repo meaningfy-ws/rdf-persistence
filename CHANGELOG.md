@@ -116,6 +116,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   IRI). Removed, with its top-level export, in the next minor release.
 
 ### Removed
+- **BREAKING: the four generator testkit shims** (`generator-package`, #165). The modules
+  `rdf_persistence.testkit.{freshness,conformance,roundtrip,strategies}` are gone, and so are the
+  names `Conformance`, `conformance_problems`, `round_trip` and `aggregate` of
+  `rdf_persistence.testkit`: an import of an old path fails with `ModuleNotFoundError`. Use
+  `rdf_persistence_generation.testkit.*` (`pytest_plugins =
+  ["rdf_persistence_generation.testkit.freshness"]`). `assert_isomorphic` stays in
+  `rdf_persistence.testkit.graphs`. The contract `library-never-imports-the-generator` now has no
+  ignored edge.
 - **The eleven IRI wrappers that only called `DEFAULT_IRIS`** (`thematic-structure`), from
   `rdf_persistence.services.iris` (none was a top-level name): `mint_tenant_iri`, `tenant_iri`,
   `aggregate_iri`, `is_aggregate_iri`, `is_aggregate_graph_iri`, `is_loaded_graph_of`,

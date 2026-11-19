@@ -35,8 +35,7 @@ types are allowed only where a field holds a run-time object LinkML cannot expre
 |`rdf_persistence_generation/extensions/`, `templates/` |One module per extended LinkML generator, and their Jinja templates
 |`rdf_persistence_generation/model/rp_generation.yaml` |The toolchain's own records (the testkit's are in `rp_testkit.yaml`), generated into `rdf_persistence_generation/generated/`
 |`rdf_persistence_generation/testkit/` |The generator's testkit: the freshness plugin, the conformance suite, round-trip strategies
-|`rdf_persistence/testkit/` |Helpers shipped to applications: the guards, the model-shape snapshot, the fakes, and the container fixtures under `containers/`; four shims forward the old freshness, conformance, round-trip and strategies paths to the generator's testkit
-|`tests/fixtures/library/` |The toy library schema, its `pyproject.toml` and its committed generated tree: the golden of every extension
+|`rdf_persistence/testkit/` |Helpers shipped to applications: the guards, the model-shape snapshot, the fakes, and the container fixtures under `containers/`|`tests/fixtures/library/` |The toy library schema, its `pyproject.toml` and its committed generated tree: the golden of every extension
 |===
 
 The layers import downward only: `entrypoints | adapters > services > domain`.

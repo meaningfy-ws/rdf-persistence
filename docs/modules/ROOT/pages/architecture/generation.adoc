@@ -487,11 +487,10 @@ plugin), `conformance.py`, `roundtrip.py` and `strategies.py`. Its `__init__` lo
 `conformance_problems`, `round_trip` and `aggregate` on first use, so `pyshacl` and `hypothesis` are
 imported only when needed. The plugin path is `rdf_persistence_generation.testkit.freshness`.
 
-*The shims.* The same four modules remain in `rdf_persistence/testkit/` as shims. A shim warns once
-with a `DeprecationWarning` that names the new module, then re-exports its public names, so
-`pytest_plugins = ["rdf_persistence.testkit.freshness"]` and the old imports keep working. They load
-only when used: `import rdf_persistence.testkit` does not warn. Each shim's docstring names the
-release that removes it, the minor release after the one that ships the move.
+*The old paths.* Version 0.5.0 kept the same four modules in `rdf_persistence/testkit/` as shims;
+0.6.0 removed them. `rdf_persistence.testkit` has no `freshness`, `conformance`, `roundtrip` or
+`strategies` module and exports none of their names; only `assert_isomorphic` stays, in
+`rdf_persistence.testkit.graphs`.
 
 *Toolkit schemas.* The library's `is_toolkit_schema`, `apply_defaults` and `generation_view` take a
 `roots` argument, the folders that count as the toolkit's. It defaults to the library's own folder.
@@ -502,8 +501,7 @@ library never has to name the generator. Manifests record a library file as
 *Contracts.* Three import-linter contracts keep the two packages apart (`make check-architecture`):
 
 * `library-never-imports-the-generator`: `rdf_persistence` does not import
-  `rdf_persistence_generation`. The only exceptions are the four shims, listed in the contract's
-  `ignore_imports`.
+  `rdf_persistence_generation`, with no exception (`ignore_imports` is empty).
 * `runtime-without-extras`: the runtime layers import neither the testkit, nor
   `rdf_persistence_generation`, nor `pytest`, `testcontainers` or `linkml`.
 * `works-without-the-generate-extra`: the modules that must run without the `generate` extra

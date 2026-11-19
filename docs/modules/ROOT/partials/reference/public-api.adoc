@@ -164,13 +164,10 @@
 |Name |Kind |What it is
 
 |`access_token` |function |Get a JWT access token for a machine user with the JWT-profile grant.
-|`aggregate` |function |Instances of the generated class ``class_name``, owned parts drawn to depth ``MAX_DEPTH``.
 |`assert_isomorphic` |function |Fail, with the triples only one side has, when the two graphs are not isomorphic.
 |`assert_models_generated` |function |Raise one ``AssertionError`` listing every violation, or return None.
 |`assert_public_imports` |function |Raise one ``AssertionError`` listing each import of a module of the toolkit.
 |`class_shapes` |function |The shape of every class (mixins and abstract ones too) in the closure of the schemas.
-|`Conformance` |class |A schema with its generated classes, JSON-LD context and shapes, ready to give verdicts.
-|`conformance_problems` |function |All problems of the conformance suite for ``schema`` and the cases file; empty when it passes.
 |`create_machine_user` |function |Create a machine user whose tokens are JWTs, with a key, and the given global roles.
 |`fake_session` |function |A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 |`FakeFileStore` |class |A ``FileStore`` in memory, with the same failure injection as ``FakeStore``.
@@ -185,7 +182,6 @@
 |`provision_project` |function |Create the project with the role ``admin``, and one machine user per principal.
 |`read_snapshot` |function |Read the shapes written by :func:`write_snapshot`.
 |`RecordingObserver` |class |An observer that appends every activity it is called with; it never raises.
-|`round_trip` |function |``original`` goes to RDF and, framed and compacted, back to an equal object and graph.
 |`shared_key` |function |One signing key per process, for tests that need a key but not a distinct one.
 |`snapshot_diff` |function |Human-readable lines for what differs between two lists of shapes; empty if none.
 |`TokenRefusedError` |class |Zitadel refused a token request (a disabled account, an unknown key, ...).

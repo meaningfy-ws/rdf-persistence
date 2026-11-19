@@ -37,7 +37,7 @@ generated models, not bare dicts. See
 Layers import downward only, `entrypoints | adapters → services → domain`; the ports live in
 `services`, their implementations in `adapters`, and `adapters` and `entrypoints` never import each
 other. The generator, `rdf_persistence_generation/`, is a sibling top-level package that the
-library never imports (except through the four testkit shims). Consumers import only from
+library never imports. Consumers import only from
 `rdf_persistence` (and `rdf_persistence.testkit` in tests). `make check-architecture` enforces this
 with import-linter; the full layer map, with what each layer holds and exports, is in the
 [architecture overview](docs/modules/ROOT/pages/architecture/index.adoc#public-api).

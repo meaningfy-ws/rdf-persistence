@@ -2,11 +2,10 @@
 
 import subprocess
 import sys
-import warnings
 
 import pytest
 
-LAZY = ["Conformance", "conformance_problems", "round_trip", "aggregate"]
+LAZY = ["assert_isomorphic"]
 EAGER = [
     "assert_models_generated",
     "model_shape_diff",
@@ -37,20 +36,8 @@ def test_a_lazy_name_loads_nothing_until_it_is_touched(name: str) -> None:
     assert done.returncode == 0, done.stderr.decode()
 
 
-def test_conformance_problems_is_the_run_function_of_the_conformance_module() -> None:
-    import rdf_persistence.testkit as testkit
-
-    with warnings.catch_warnings():  # the shim warns once per process; its warning is TC-15's
-        warnings.simplefilter("ignore", DeprecationWarning)
-        from rdf_persistence.testkit import conformance
-
-        name = testkit.conformance_problems
-    assert name is conformance.run, "the public name is the run function of the shim module"
-
-
-@pytest.mark.filterwarnings("ignore:.*moved to rdf_persistence_generation:DeprecationWarning")
 def test_a_lazy_name_is_kept_after_the_first_touch() -> None:
     import rdf_persistence.testkit as testkit
 
-    first = testkit.round_trip
-    assert testkit.__dict__["round_trip"] is first, "cached in the module, not re-imported"
+    first = testkit.assert_isomorphic
+    assert testkit.__dict__["assert_isomorphic"] is first, "cached in the module, not re-imported"

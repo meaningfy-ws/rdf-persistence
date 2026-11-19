@@ -13,7 +13,7 @@ import pytest
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.exceptions import ConfigError
 from rdf_persistence_generation.generated.rp_generation import GenerationTarget
-from rdf_persistence_generation.manifest import fix_hint, stale_targets
+from rdf_persistence_generation.manifest import fix_hint, freshness_report, stale_targets
 from rdf_persistence_generation.problems import format_problem
 
 PROJECTS_OPTION = "rp_generate_projects"
@@ -35,7 +35,7 @@ def _project_report(project: Path) -> tuple[list[str], list[GenerationTarget]]:
         stale = stale_targets(read_targets(project), project.parent)
     except ConfigError as error:
         return [str(error)], []
-    lines = [format_problem(problem) for _, problems in stale for problem in problems]
+    lines = [format_problem(problem) for problem in freshness_report(stale)]
     return lines, [target for target, _ in stale]
 
 

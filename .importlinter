@@ -155,21 +155,15 @@ forbidden_modules =
 ignore_imports =
     rdf_persistence_generation.cli -> rdf_persistence_generation.steps
 
-; The library never imports the generator (generator-package PD-8, DEC-3). The only edges are the four
-; shims that keep the old `rdf_persistence.testkit.*` import paths alive, each re-exporting its
-; generator-side module.
+; The library never imports the generator (generator-package PD-8, DEC-3), with no exception: the
+; four testkit shims were removed in 0.6.0 (#165).
 [importlinter:contract:library-never-imports-the-generator]
-name = the library never imports the generator, but through the four testkit shims
+name = the library never imports the generator
 type = forbidden
 source_modules =
     rdf_persistence
 forbidden_modules =
     rdf_persistence_generation
-ignore_imports =
-    rdf_persistence.testkit.freshness -> rdf_persistence_generation.testkit.freshness
-    rdf_persistence.testkit.conformance -> rdf_persistence_generation.testkit.conformance
-    rdf_persistence.testkit.roundtrip -> rdf_persistence_generation.testkit.roundtrip
-    rdf_persistence.testkit.strategies -> rdf_persistence_generation.testkit.strategies
 
 [importlinter:contract:collaboration-layers]
 name = the collaboration modules layer above the session: messagebus > collaboration > transitions | write_guards > discussion | reference_collections | workflows > access > session (PD-28, PD-32)
