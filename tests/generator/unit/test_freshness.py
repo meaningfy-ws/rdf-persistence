@@ -11,7 +11,11 @@ from rdf_persistence.schema.services.schema import PACKAGE_DIR
 from rdf_persistence_generation import manifest as manifest_module
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.config import GENERATOR_DIR, read_targets
-from rdf_persistence_generation.generated.rp_generation import GenerationManifest, GenerationTarget
+from rdf_persistence_generation.generated.rp_generation import (
+    CheckProblem,
+    GenerationManifest,
+    GenerationTarget,
+)
 from rdf_persistence_generation.manifest import recorded_path
 
 from .test_generate_cli import PYPROJECT, SCHEMA, project
@@ -285,6 +289,49 @@ def test_stale_targets_lists_only_the_targets_with_problems(
     assert target.regenerate_command == "make b", "the fresh target is listed"
     assert problems, "a stale target has no problem"
     assert manifest_module.freshness_problems(targets, tmp_path) == problems, "not the flattening"
+
+
+def _problem(message: str) -> CheckProblem:
+    return CheckProblem(message=message)
+
+
+SHARED = "stale input: rdf_persistence_generation/cli.py (changed)"
+
+
+def test_a_problem_shared_by_several_targets_is_reported_once_naming_them() -> None:
+    """Issue #164 item 4: an edited generator module is one line, not one per target."""
+    targets = [GenerationTarget(schema=f"{name}.yaml", package=f"app.{name}") for name in "abc"]
+    stale = [
+        (targets[0], [_problem(SHARED)]),
+        (targets[1], [_problem(SHARED), _problem("edited by hand: app/b/b.py")]),
+        (targets[2], [_problem(SHARED)]),
+    ]
+    report = [problem.message for problem in manifest_module.freshness_report(stale)]
+    assert report == [
+        f"{SHARED} [targets: a.yaml, b.yaml, c.yaml]",
+        "edited by hand: app/b/b.py",
+    ], report
+
+
+def test_a_problem_of_one_target_keeps_its_line_unchanged() -> None:
+    target = GenerationTarget(schema="a.yaml", package="app.a")
+    report = manifest_module.freshness_report([(target, [_problem(SHARED)])])
+    assert [problem.message for problem in report] == [SHARED], "a lone problem was annotated"
+
+
+@pytest.mark.slow
+def test_a_schema_shared_by_two_targets_is_reported_once_through_the_check(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pyproject = project(tmp_path, WITH_PART, NESTED)
+    part = tmp_path / "part.yaml"
+    part.write_text(PART, encoding="utf-8")
+    assert main(["--project", str(pyproject)]) == 0, "the project must generate"
+    part.write_text(PART + "# changed\n", encoding="utf-8")
+    code, error = check(pyproject, capsys)
+    assert code == 1, "a stale input passed the check"
+    lines = [line for line in error.splitlines() if "stale input: part.yaml" in line]
+    assert lines == ["stale input: part.yaml (changed) [targets: m.yaml, part.yaml]"], error
 
 
 def test_fix_hint_dedupes_commands_in_entry_order() -> None:

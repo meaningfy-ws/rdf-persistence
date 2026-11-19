@@ -3536,8 +3536,6 @@ tests/unit/collaboration/test_write_guards.py::test_the_decision_table_of_a_repl
 tests/unit/collaboration/test_write_guards.py::test_the_decision_table_of_an_add,requirement,rp-workflow,The toolkit owns the current state of an aggregate under a workflow,,high,name; covered code
 tests/unit/collaboration/test_write_guards.py::test_the_guard_leaves_a_non_collection_untouched,requirement,rp-reference-collections,A reference collection holds typed references it does not own,,medium,covered code
 tests/unit/test_adopt_validators.py::test_the_guides_install_call_passes_the_validators_by_keyword,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,high,"name,spec id PD-7 R2-5"
-tests/unit/test_adopt_validators.py::test_the_guides_rule_passes_a_grant_set_that_keeps_an_owner,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,high,"name,spec id PD-7 R2-5"
-tests/unit/test_adopt_validators.py::test_the_guides_rule_refuses_a_grant_set_without_an_owner,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,high,"name,spec id PD-7 R2-5"
 tests/unit/test_changed.py::test_a_changed_container_test_alone_gives_no_arguments,scenario,rp-developer-checks,The tests of the changed files run on their own,a changed container test,high,"name,spec id test-lanes PD-1..5"
 tests/unit/test_changed.py::test_a_changed_path_selects_what_its_rule_says,requirement,rp-developer-checks,The tests of the changed files run on their own,,high,"name,spec id test-lanes PD-1..5"
 tests/unit/test_changed.py::test_a_file_outside_the_selected_folder_is_kept_and_paths_are_sorted,requirement,rp-developer-checks,The tests of the changed files run on their own,,high,"name,spec id test-lanes PD-1..5"
@@ -4349,3 +4347,24 @@ tests/unit/test_technical_split.py::test_the_library_never_imports_the_generator
 tests/unit/testkit/test_generator_shims_removed.py::test_importing_a_removed_shim_path_raises_module_not_found,requirement,rp-testkit,The generator's test helpers live with the generator,,high,name; docstring #165 (the old paths are gone)
 tests/unit/testkit/test_generator_shims_removed.py::test_a_removed_lazy_name_is_no_longer_exported,requirement,rp-testkit,The generator's test helpers live with the generator,,high,name; docstring #165 (the old names are gone)
 tests/unit/testkit/test_generator_shims_removed.py::test_assert_isomorphic_stays_in_the_library_testkit,requirement,rp-testkit,The model guards are public names of the testkit,,high,name; docstring D-10 (assert_isomorphic stays)
+tests/generator/unit/test_freshness.py::test_a_problem_of_one_target_keeps_its_line_unchanged,requirement,rp-generation,Stale or edited generated output is detected,,medium,name (issue #164 item 4)
+tests/generator/unit/test_freshness.py::test_a_problem_shared_by_several_targets_is_reported_once_naming_them,requirement,rp-generation,Stale or edited generated output is detected,,medium,name; docstring issue #164 item 4
+tests/generator/unit/test_freshness.py::test_a_schema_shared_by_two_targets_is_reported_once_through_the_check,requirement,rp-generation,Stale or edited generated output is detected,,medium,name; issue #164 item 4 (through rp-generate --check)
+tests/generator/unit/test_generate_cli.py::test_listing_the_python_folders_needs_no_linkml,capability,rp-generation,,,medium,covered code (cli.py); issue #164 item 3
+tests/generator/unit/test_roots_call_sites.py::test_another_keyword_ending_in_roots_does_not_count,capability,rp-generation,,,medium,name (roots= guard PD-5 TC-14a; issue #164 item 1)
+tests/generator/integration/test_getting_started_example.py::test_every_element_of_the_example_is_defined_identically_in_the_toy,capability,rp-generation,,,medium,name (the docs' example against the toy)
+tests/generator/integration/test_getting_started_example.py::test_the_example_stores_a_book_and_reads_it_back,capability,rp-generation,,,medium,name (the docs' example runs)
+tests/unit/test_adopt_validators.py::test_the_guides_rule_passes_a_grant_set_that_keeps_a_librarian,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,medium,name (the guide's rule)
+tests/unit/test_adopt_validators.py::test_the_guides_rule_refuses_a_grant_set_without_a_librarian,requirement,rp-service-api,A consumer enforces its own rules on tenant writes,,medium,name (the guide's rule)
+tests/unit/test_check_docs.py::test_a_broken_link_in_the_nav_is_reported,capability,rp-developer-checks,,,medium,name (check-docs link check)
+tests/unit/test_check_docs.py::test_a_broken_link_is_reported,capability,rp-developer-checks,,,medium,name (check-docs link check)
+tests/unit/test_check_docs.py::test_an_explicit_id_replaces_the_title_id,capability,rp-developer-checks,,,medium,name (check-docs section ids)
+tests/unit/test_check_docs.py::test_links_in_listings_and_comments_are_ignored,capability,rp-developer-checks,,,medium,name (check-docs link check)
+tests/unit/test_check_docs.py::test_mermaid_markdown_expands_included_partials,capability,rp-developer-checks,,,medium,name (check-docs mermaid)
+tests/unit/test_check_docs.py::test_repeated_titles_get_numbered_ids,capability,rp-developer-checks,,,medium,name (check-docs section ids)
+tests/unit/test_check_docs.py::test_resolving_links_pass,capability,rp-developer-checks,,,medium,name (check-docs link check)
+tests/unit/test_check_docs.py::test_section_ids_follow_asciidoctor_defaults,capability,rp-developer-checks,,,medium,name (check-docs section ids)
+tests/unit/test_check_docs.py::test_section_ids_follow_the_site_settings,capability,rp-developer-checks,,,medium,name (check-docs section ids)
+tests/unit/test_docs_reference.py::test_check_fails_on_a_stale_partial_and_passes_once_written,capability,rp-developer-checks,,,medium,name (docs reference partials)
+tests/unit/test_docs_reference.py::test_the_api_table_has_a_row_per_name_with_its_first_sentence,capability,rp-developer-checks,,,medium,name (docs reference partials)
+tests/unit/test_docs_reference.py::test_the_usage_is_the_parsers_help,capability,rp-developer-checks,,,medium,name (docs reference partials)

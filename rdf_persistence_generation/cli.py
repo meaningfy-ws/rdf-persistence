@@ -8,7 +8,7 @@ from pathlib import Path
 from rdf_persistence_generation.config import cli_flags, python_folder, read_targets
 from rdf_persistence_generation.exceptions import ConfigError
 from rdf_persistence_generation.generated.rp_generation import CheckProblem, GenerationTarget
-from rdf_persistence_generation.manifest import fix_hint, stale_targets
+from rdf_persistence_generation.manifest import fix_hint, freshness_report, stale_targets
 from rdf_persistence_generation.pipeline import Step, generate
 from rdf_persistence_generation.problems import format_problem
 
@@ -51,8 +51,10 @@ def _freshness(targets: list[GenerationTarget], base: Path) -> list[CheckProblem
     stale = stale_targets(targets, base)
     if not stale:
         return []
-    found = [problem for _, problems in stale for problem in problems]
-    return [*found, CheckProblem(message=fix_hint(target for target, _ in stale))]
+    return [
+        *freshness_report(stale),
+        CheckProblem(message=fix_hint(target for target, _ in stale)),
+    ]
 
 
 def _list_python_folders(targets: list[GenerationTarget], base: Path) -> int:
@@ -62,21 +64,13 @@ def _list_python_folders(targets: list[GenerationTarget], base: Path) -> int:
     return EXIT_OK
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Run ``rp-generate``; return the exit code: 0 done, 1 problems found, 2 unusable setup."""
-    args = build_parser().parse_args(argv)
-    pipeline_steps = _pipeline_steps()
-    if pipeline_steps is None and not args.check:
-        print(EXTRA_HINT, file=sys.stderr)
-        return EXIT_USAGE
-    try:
-        targets = read_targets(args.project, args)
-    except ConfigError as error:
-        print(f"rp-generate: {error}", file=sys.stderr)
-        return EXIT_USAGE
-    base = args.project.resolve().parent
-    if args.list_python_folders:
-        return _list_python_folders(targets, base)
+def _run(
+    args: argparse.Namespace,
+    targets: list[GenerationTarget],
+    base: Path,
+    pipeline_steps: tuple[Step, ...] | None,
+) -> int:
+    """Generate (or check) the targets and report; the exit code is 0 or 1."""
     problems = generate(targets, base, pipeline_steps or (), check=args.check)
     if args.check:
         problems += _freshness(targets, base)
@@ -88,3 +82,22 @@ def main(argv: list[str] | None = None) -> int:
         f"rp-generate: {'checked' if args.check else 'generated'} {len(targets)} target(s), no problems"
     )
     return EXIT_OK
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run ``rp-generate``; return the exit code: 0 done, 1 problems found, 2 unusable setup."""
+    args = build_parser().parse_args(argv)
+    # the listing writes nothing, so it is decided before the pipeline needs the `generate` extra
+    pipeline_steps = None if args.list_python_folders else _pipeline_steps()
+    if pipeline_steps is None and not (args.check or args.list_python_folders):
+        print(EXTRA_HINT, file=sys.stderr)
+        return EXIT_USAGE
+    try:
+        targets = read_targets(args.project, args)
+    except ConfigError as error:
+        print(f"rp-generate: {error}", file=sys.stderr)
+        return EXIT_USAGE
+    base = args.project.resolve().parent
+    if args.list_python_folders:
+        return _list_python_folders(targets, base)
+    return _run(args, targets, base, pipeline_steps)

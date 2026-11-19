@@ -191,6 +191,26 @@ def stale_targets(
     return [(target, problems) for target, problems in pairs if problems]
 
 
+def freshness_report(
+    stale: Iterable[tuple[GenerationTarget, list[CheckProblem]]],
+) -> list[CheckProblem]:
+    """The problems of ``stale_targets`` as a report: one line per message, in first-seen order.
+
+    A message several targets share (an edited generator module is an input of every target) is
+    reported once and names the schemas of those targets; a message of one target stays as it is.
+    """
+    targets_of: dict[str, list[str]] = {}
+    for target, problems in stale:
+        for problem in problems:
+            targets_of.setdefault(problem.message, []).append(target.schema_file)
+    return [
+        CheckProblem(
+            message=f"{message} [targets: {', '.join(names)}]" if len(names) > 1 else message
+        )
+        for message, names in targets_of.items()
+    ]
+
+
 def freshness_problems(targets: Iterable[GenerationTarget], base: Path) -> list[CheckProblem]:
     """Compare every target's manifest with the files now; one line per stale, edited or missing file."""
     return [problem for _, problems in stale_targets(targets, base) for problem in problems]
