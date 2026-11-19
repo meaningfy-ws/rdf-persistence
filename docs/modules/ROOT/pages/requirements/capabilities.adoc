@@ -50,7 +50,7 @@ xref:requirements/use-cases.adoc[use cases] say which capabilities serve which g
 
 |{specs}/rp-tenancy/spec.md[rp-tenancy]
 |One database per tenant on a wired store, the start-up sweep, orphan removal, dump and restore, application data outside any tenant.
-|xref:user-manual/tenants.adoc[Create tenants], xref:howto/dump-restore.adoc[Back up or copy a project], xref:howto/tenant-stores.adoc[Several stores], xref:howto/application-data.adoc[Application data]
+|xref:user-manual/tenants.adoc[Create tenants], xref:howto/dump-restore.adoc[Back up or copy a tenant], xref:howto/tenant-stores.adoc[Several stores], xref:howto/application-data.adoc[Application data]
 
 |{specs}/rp-access/spec.md[rp-access]
 |Access per tenant and per aggregate; hidden tenants; commenting and tenant deletion as acts of their own; global roles for application data.

@@ -4,9 +4,18 @@
 
 _Who may do what?_
 
+Access is checked per tenant and per aggregate, from roles you define, grants and prohibitions
+stored in the tenant's access record, and the caller's verified token. This page shows how to
+define the roles, grant them, what the check answers, and how to add rules of your own on tenant
+writes. The token verifier itself is set up in xref:user-manual/serve.adoc[Serve the application];
+why access works this way is in xref:architecture/access-control.adoc[Access control and identity].
+
+== Define the roles
+
 *Roles are data.* Write them in a YAML file. Each entry names a role, the level it applies at
 (`system`, `tenant` or `aggregate`) and the actions it permits (`read`, `modify`, `delete`,
-`administer`):
+`administer`). The toy library's file (`tests/fixtures/library/library_roles.yaml` in the
+toolkit's repository) is:
 
 [source,yaml]
 ----
@@ -14,15 +23,26 @@ _Who may do what?_
 - {role: admin, level: system, actions: [read]}
 - {role: librarian, level: tenant, actions: [read, modify, delete, administer]}
 - {role: reader, level: tenant, actions: [read]}
-- {role: member, level: tenant, actions: [read, modify, delete]}
+- {role: app-editor, level: system, actions: [read, modify]}
 ----
 
-A `member` can delete the tenant's aggregates but not the tenant: that needs `administer`.
+A role that may change but not administer a tenant is one more entry; the toy has none. Extended
+with this one, a `member` can delete the tenant's aggregates but not the tenant, which needs
+`administer`:
+
+[source,yaml]
+----
+- {role: member, level: tenant, actions: [read, modify, delete]}
+----
 
 `load_role_definitions(path)` reads and validates the file. A malformed entry, an entry with no
 actions, or a role defined twice at one level raises `InvalidRoleDefinition`, which names the
 entry. A `system` role comes from the token's global roles (the `roles_claim`); it is never
-granted. The set of actions is fixed by the toolkit: an application cannot add one.
+granted. The set of actions is fixed by the toolkit: an application cannot add one. Pass the
+roles to `install_service` as `rules=AccessRules(load_role_definitions(path))`, or as the path
+itself.
+
+== Grant and prohibit
 
 *Grants and prohibitions* live in the tenant's access record. `GET …/grants` answers the
 `GrantSet` with its `ETag`; `PUT …/grants` with `If-Match` replaces it whole:
@@ -49,8 +69,11 @@ granted. The set of actions is fixed by the toolkit: an application cannot add o
 * A *prohibition* forbids one action and wins over every grant. A prohibition of `read` forbids
   every action, since each implies `read`.
 
-*The check* runs on every tenant route, after the token is verified and before the route's own code. It
-answers in this order:
+== What the check answers
+
+*The check* runs on every tenant route, after the token is verified and before the route's own
+code; your own routes run it with `kit.require` and `kit.require_aggregate`
+(xref:user-manual/serve.adoc[Serve the application]). It answers in this order:
 
 . The target is not the tenant or one of its aggregates: 404.
 . The tenant is not `active`: 404.
@@ -77,23 +100,26 @@ and nothing is written.
 
 [source,python]
 ----
+from pathlib import Path
+
 from rdf_persistence import GrantSet, InvalidBody, Principal, install_service
 
 
-def keep_an_owner(old: GrantSet, new: GrantSet, who: Principal) -> None:
-    if not any(g.role == "owner" for g in new.grants or []):
-        raise InvalidBody("a project keeps at least one owner")
+def keep_a_librarian(old: GrantSet, new: GrantSet, who: Principal) -> None:
+    if not any(g.role == "librarian" for g in new.grants or []):
+        raise InvalidBody("a library keeps at least one librarian")
 
 
 install_service(
     app,
-    grant_validators=[keep_an_owner],
+    grant_validators=[keep_a_librarian],
     migrations=Path("migrations"),
-    # ... and the other keyword arguments of step 12
+    # ... and the other keyword arguments of the composition root
 )
 ----
 
-The other arguments are those of xref:user-manual/serve.adoc[Serve the application]; pass every argument by keyword.
+The other arguments are those of the composition root in
+xref:user-manual/serve.adoc[Serve the application]; pass every argument by keyword.
 
 Validators run in the order given, before the write; the first refusal stops it. They need no
 lock: the write is conditional on the version the request sent (`If-Match`), so of two writes at

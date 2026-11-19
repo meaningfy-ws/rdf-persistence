@@ -133,6 +133,8 @@ EXPLICIT_IDS = [
 ]
 ALIASES = re.compile(r"^:page-aliases:\s*(.+)$", re.M)
 ROOT_MODULE = "ROOT:"
+MODULE_MARK = ":"  # a target still holding one names another component or module
+ATTRIBUTE_MARK = "{"  # a target built from an attribute cannot be resolved statically
 
 
 def playbook_attribute(name: str, default: str) -> str:
@@ -209,7 +211,7 @@ def check_links() -> list[str]:
     errors = []
     for name, text in sources.items():
         for page, anchor in link_targets(text):
-            if ":" in page or "{" in page + anchor:
+            if MODULE_MARK in page or ATTRIBUTE_MARK in page + anchor:
                 continue  # another component or module, or an attribute: not ours to resolve
             target = page or name
             shown = f"{page}#{anchor}" if page and anchor else page or anchor

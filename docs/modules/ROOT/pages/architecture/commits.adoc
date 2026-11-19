@@ -6,9 +6,19 @@ _What happens when two people edit the same thing? Why did my commit raise `Conf
 of several books all or nothing? Why does it refuse 600 books? What is batch mode, and is it safe to
 run again?_
 
-This page explains how a commit behaves, from the side of the code that calls it. The steps are in
-xref:user-manual/store-and-read.adoc#transaction[Save several aggregates at once]; the mechanism inside the store
-is in xref:architecture/data-flows.adoc#commit[Committing several aggregates at once]. It describes
+This page explains how a commit behaves, from the side of the code that calls it: what it
+guarantees and why. It is one of three views of the same commit:
+
+* the how-to side, the steps to take in a domain service, is in the user manual:
+  xref:user-manual/store-and-read.adoc[Store and read aggregates], in particular
+  xref:user-manual/store-and-read.adoc#transaction[Save several aggregates at once] and
+  xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict];
+* this page, the behaviour a caller can rely on;
+* the mechanism inside the store, the single guarded update request, is in
+  xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
+
+The rules it explains are those of the capability `rp-aggregate-store`
+(xref:requirements/capabilities.adoc[Capabilities]). It describes
 `develop` as of 2026-11-13 (the change `atomic-commit`).
 
 A *root* is the root object of an aggregate: one book with its chapters is one root, stored and
@@ -24,7 +34,7 @@ D is still on the shelf.
 
 Up to and including 0.2.0 each root was written on its own, so a conflict could leave the first
 roots written. What changed for existing code is in
-xref:user-manual/store-and-read.adoc#transaction-change[The behaviour changed]. Now a `Conflict` means one thing:
+xref:user-manual/store-and-read.adoc#transaction-change[Changed in 0.3.0]. Now a `Conflict` means one thing:
 nothing was written, with one rare exception (see <<diagnosis>>).
 
 == The version token: how the store knows you read an old copy

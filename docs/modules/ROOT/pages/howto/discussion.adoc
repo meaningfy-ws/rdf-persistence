@@ -60,7 +60,7 @@ Posting needs the action `annotate` on the target.
   the action.
 
 The role definition is one more line in the roles file you give the access rules
-(xref:user-manual/access.adoc[step 11] of the adoption guide; the toy's is `library_roles.yaml`,
+(the user manual, step 11: xref:user-manual/access.adoc#define-the-roles[Define the roles]; the toy's is `library_roles.yaml`,
 which already defines `librarian` and `reader`):
 
 [source,yaml]

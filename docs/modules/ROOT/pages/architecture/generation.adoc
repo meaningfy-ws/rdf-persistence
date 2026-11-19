@@ -1,19 +1,14 @@
 = Model to code: the generation workflow
 :description: How an application's own LinkML model becomes typed, persistable code with rdf-persistence.
 
-Status: *accepted*; build time *implemented* (2026-11-05); run time *implemented* (2026-11-06). Settles open decision O-1 of
-xref:architecture/index.adoc[architecture v1] with its smallest option, revised in <<revision>>
-(developer, 2026-11-05: decisions D-2 and D-6 to D-9 of
-xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]). The metamodel, `rp-generate`
-and the guards are implemented (stage 1 of the change `toolkit-v1-foundation`). The run-time parts
-(<<run-time>>), first tried in a throwaway spike (LinkML 1.12.1, Fuseki 5.1.0), are implemented
-since stage 2: the mapper, the session and the unit of work. The technical models, kept apart from
-the domain models (<<kinds>>), are implemented by the change `technical-models`. To work on the toolchain itself, see
-xref:develop/index.adoc[Working on the toolkit].
-
 An application using rdf-persistence writes its domain once, in LinkML. A deterministic, build-time
 toolchain turns it into domain classes and shapes; at run time the toolkit reads the same schema to
 map objects to RDF. No generated file is edited by hand, and no LLM sits in the generation path.
+This page explains what is generated, what is written once in the toolkit and why
+(<<decision>>), what the application writes (<<application-schema>>), how the toolchain runs
+(<<toolchain>>), what the run time reads from the schema (<<run-time>>), and how the generated code
+is guarded (<<guarding>>). To work on the toolchain itself, see
+xref:develop/index.adoc[Working on the library]. How the design got here is in <<history>>.
 
 LinkML is the single source of specification
 (xref:architecture/open-decisions.adoc[D-13]): every artefact that restates the model is generated,
@@ -21,8 +16,8 @@ by a stock generator or a toolkit extension (<<extensions>>), and nothing that r
 written or edited by hand (<<guarding>>).
 
 The running example is a toy library application: each library is a tenant holding `Book`
-aggregates, each book with owned chapters and a reference to a scan file; librarians hold the tenant
-role `librarian`.
+aggregates, each book with owned chapters, and `Scan` aggregates that keep a scanned copy of a
+book as a stored file; librarians hold the tenant role `librarian` (`tests/fixtures/library/`).
 
 [#decision]
 == The decision (O-1)
@@ -61,7 +56,7 @@ PD-8a). Any other slot whose range is a class refers to another aggregate root, 
 |`database` (class annotation) |`tenant` (default) or `system`: which database the aggregate lives in.
 |`graph: meta` (class annotation) |The tenant's root object lives in the tenant database's designated `meta` graph instead of a graph of its own.
 |`internal` (slot annotation) |Only the service sets the slot (e.g. file keys, a tenant's database name): it never appears in the API contract or a response, a request body that sets it is refused (422), the tenant-create body included, and a replace keeps its stored value on the root and on the parts that persist, matched by IRI. The mapper writes it, so a domain service can set it.
-|`rp_path` (class annotation) |Required on every aggregate root: its path segment in the API and in its IRIs (`{tenant}/{rp_path}/{uuid}`).
+|`rp_path` (class annotation) |Required on every aggregate root: the collection's segment in the API, and by default in the aggregate's IRI, `{tenant}/{rp_path}/{uuid}` (see `rp_iri_type`).
 |`rp_writes: service` (class annotation) |An aggregate root the consumer writes through a session: the API serves its `GET` and listing but no `POST`, `PUT` or `DELETE`. A root that includes `StoredFile` is service-written without it. There is no value that turns this off.
 |`rp_writes: toolkit` (class annotation) |An aggregate root the toolkit writes and reads itself: a `Comment`. No route serves it (`served_roots` in `schema_structure.py` leaves it out) and the consumer does not write it, because who may see or make one is decided by rules a generic route does not know. The two values are the enum `WritesKind`.
 |`workflow` (class annotation) |On an aggregate root that includes `UnderWorkflow`: the name of the workflow its instances follow. A subclass inherits it along `is_a` (`workflow_name_of` in `schema_structure.py`). The workflow itself is a file given to the service, not part of the schema; see xref:howto/workflow.adoc[Put a resource through review].
@@ -81,7 +76,7 @@ PD-8a). Any other slot whose range is a class refers to another aggregate root, 
 |`version` (slot) |The version token of every aggregate, stated about its graph IRI (not the root), written by the session; not part of any domain class.
 |`module_kind` (schema annotation) |`domain`, `technical` or `access`: what a schema module holds; the boundary check uses it (<<toolchain>>).
 |`bookkeeping` (slot annotation) |The session writes the slot about a graph (`version`, `created`, `modified`, `creator`, `contributor`); closed shapes ignore it.
-|`python_package` (schema annotation) |On a schema module of the toolkit's own targets: the Python package its classes are generated into. A toolkit run imports a metamodel class from `<python_package>.<module name>`. It equals the `package` of the `[[tool.rp-generate]]` entry that generates the module; the hard check compares them (<<hard-check>>).
+|`python_package` (schema annotation) |On a schema module of the toolkit's own targets: the Python package its classes are generated into. A toolkit run imports a metamodel class from `<python_package>.<module name>`. It equals the `package` of the `+[[tool.rp-generate]]+` entry that generates the module; the hard check compares them (<<hard-check>>).
 |`public_package` (schema annotation) |On the metamodel's root schema, `rp.yaml`: the package an application's generated code imports the metamodel's classes from, which re-exports them. Only the toolkit sets it.
 |===
 
@@ -284,7 +279,7 @@ guards the thematic move. Each extension exposes one
 union of ranges passes, since both the classes (`Union[...]`) and the shapes (`sh:or`) render it.
 
 *The toolkit's own data types are generated too.* They are the technical models of <<kinds>>: each
-group is its own `[[tool.rp-generate]]` entry, and `rp.yaml` imports none, so an application's model
+group is its own `+[[tool.rp-generate]]+` entry, and `rp.yaml` imports none, so an application's model
 does not carry them. Like the metamodel, they are exempt from the hard check's class rules, but not
 from the two `python_package` rules (<<hard-check>>). They are schemas, not
 extensions, so they have no row above. Hand-written types remain only where a field holds a foreign
@@ -365,7 +360,7 @@ served schema has OpenAPI components and reaches a consumer's TypeScript, so a s
 record must not join a served one: it would appear in the served OpenAPI document. That is why a
 theme with served records and settings has two targets (`access/services/generated/` and its
 `settings/` folder). A new technical schema is one more file under `model/technical/<theme>/` and one
-more `[[tool.rp-generate]]` entry. Each module of the schema also carries the `python_package`
+more `+[[tool.rp-generate]]+` entry. Each module of the schema also carries the `python_package`
 annotation, set to the `package` of that entry; without it the hard check refuses the run.
 
 [#cross-target]
@@ -385,7 +380,7 @@ declares `python_package`.
 [#target-kind]
 ==== The `kind` key
 
-A `[[tool.rp-generate]]` entry may say what it generates:
+A `+[[tool.rp-generate]]+` entry may say what it generates:
 
 [source,toml]
 ----
@@ -401,7 +396,7 @@ kind = "technical"
 naming the target's module, when a `technical` target holds a module that is not annotated
 `module_kind: technical`, or a `domain` target holds one that is; nothing is written. An entry without `kind`
 generates as before. The toolkit's metamodel target says `kind = "domain"` and every other target
-says `kind = "technical"`. A consumer's own targets may use the key the same way (xref:user-manual/generate.adoc#technical-target[Build an application, a technical target]).
+says `kind = "technical"`. A consumer's own targets may use the key the same way (xref:user-manual/generate.adoc#technical-target[Keep technical models in a target of their own]).
 
 In the toolkit's own run, the same rule (`TARGET_KIND`) also checks the folder: in the target's
 `package`, the segment before `generated` is `domain` for a `domain` target, and `services`,
@@ -466,80 +461,11 @@ guard this; each extension gets a golden test.
 
 _What does an application write by hand?_
 
-One file per module and a root schema that imports them. Every element carries an IRI, a `title`
-and a `description` (<<hard-check>>). This example passes `rp-generate`; the toy library in
+One file per module and a root schema that imports them, each element with an IRI, a `title` and
+a `description` (<<hard-check>>). How to write them, with a `books` module and a root schema that
+pass `rp-generate`, is in xref:user-manual/model.adoc[Write the model]; the toy library in
 `tests/fixtures/library/` is the full version (a tenant root, a stored file, an access module, an
-enum).
-
-[source,yaml]
-----
-# models/books.yaml — one domain module of the application's schema (toy example)
-id: https://example.org/ns/library/books
-name: books
-title: Books module
-description: Books and their chapters; the book is the aggregate root.
-prefixes:
-  lib: https://example.org/ns/library#
-  linkml: https://w3id.org/linkml/
-  dcterms: http://purl.org/dc/terms/
-default_prefix: lib
-default_range: string
-imports:
-  - linkml:types
-  - rdf_persistence/model/rp_core           # resolved through the toolkit's import map
-  - rdf_persistence/model/rp_annotations
-annotations:
-  module_kind: domain
-classes:
-  Book:
-    title: Book
-    description: A book held by a library; an aggregate root that owns its chapters.
-    mixins: [AggregateRoot, Described, Tracked]
-    slots: [author, chapters]
-    annotations:
-      rp_path: books                         # its path segment in the API and in its IRIs
-  Chapter:
-    title: Chapter
-    description: A chapter of a book; part of the book's aggregate.
-    mixins: [Described]
-    slots: [number]
-    annotations:
-      rp_unlabelled: true                    # known by its number, needs no label
-slots:
-  author:
-    title: Author
-    description: The author's name.
-    slot_uri: dcterms:creator
-  number:
-    title: Chapter number
-    description: The position of a chapter in its book.
-    range: integer
-  chapters:
-    title: Chapters
-    description: The book's chapters; they live in the book's graph.
-    range: Chapter
-    multivalued: true
-    inlined_as_list: true
-    annotations:
-      owned: true
-----
-
-[source,yaml]
-----
-# models/library.yaml — the root schema
-id: https://example.org/ns/library
-name: library
-title: Library
-description: The root schema of a toy library application.
-prefixes:
-  lib: https://example.org/ns/library#
-  linkml: https://w3id.org/linkml/
-default_prefix: lib
-default_range: string
-imports:
-  - linkml:types
-  - books
-----
+enum, a workflow).
 
 An application may narrow `Grant.role` to an enum of its own roles by subclassing (`is_a` with
 `slot_usage`); the toy library keeps plain strings, matched against its role definitions.
@@ -680,29 +606,14 @@ the generated types.
 [#run-time]
 == At run time
 
-_How does a domain service read and commit an aggregate?_
+_What does the run time read from the schema?_
 
-[source,python]
-----
-from rdf_persistence import Mapper, UnitOfWork, generated_models, open_session
-
-from library.domain.generated import books
-from library.domain.generated.books import Book
-
-mapper = Mapper(view, generated_models(books))    # view: the schema's SchemaView (kit.view)
-async with open_session(
-    store, database=database, tenant_iri=library_iri, principal=principal, clock=clock
-) as session:
-    work = UnitOfWork(session, mapper)
-    book = await work.get(Book, book_iri)         # loads the book's graph, maps it to Book
-    book.label = "New title"
-    work.add(book)
-    await work.commit()                           # one guarded update; Conflict if the version moved
-----
-
-The signature is `open_session(store, *, database, tenant_iri, principal, clock)`, where `principal` is a `Principal`; `clock` defaults
-to the current UTC time. In a service, `kit.session(tenant, principal)` opens it with the tenant's
-database name (xref:user-manual/store-and-read.adoc[Build an application, step 8]).
+The generated classes carry the fields; the mapping to RDF is not generated. The `Mapper` reads
+the schema at run time, as a `SchemaView` (`kit.view` in a service), beside the generated classes
+it is given. How a domain service stores and reads aggregates with it is in
+xref:user-manual/store-and-read.adoc[Store and read aggregates]; how a commit is guarded, in
+xref:architecture/commits.adoc[How commits and conflicts work]. What the mapper takes from the
+schema:
 
 * *Mapping* (implemented: `rdf_persistence/persistence/services/mapper.py`, `Mapper`): class and slot IRIs come
   from the schema (`class_uri`, `slot_uri`, or the default prefix); owned parts live in the root's
@@ -710,13 +621,7 @@ database name (xref:user-manual/store-and-read.adoc[Build an application, step 8
   (PD-6, PD-8a); references to other aggregates are IRIs; multi-valued slots are sets, so order is
   not kept (model an order slot when order matters). `internal` slots are written; the tracking
   slots are not, since the session writes them about the graph IRI.
-* *Commit* (implemented: `Session.transaction` in `rdf_persistence/persistence/services/session.py`, driven
-  by `UnitOfWork.commit`): every added, replaced and removed root of the commit goes in one SPARQL
-  update request of several `;`-joined operations; the first writes a commit marker only if every
-  root's guard holds (its version for a replace or remove, its absence for an add), and the others run only while the marker is there. Fuseki answers
-  204 even when the guards match nothing, so an `ASK` for the new tokens tells committed from
-  conflict. All or nothing: a conflict on one root leaves every root of the commit unwritten (see
-  xref:architecture/data-flows.adoc#commit[the commit flow]).
+
 * *Kinds*: the mapper reads the class the caller asks for; it does not use `designates_type`. An owned
   part is read as its slot's range class, so a subclass in an owned slot comes back as its parent (a
   known limit of `rdf_persistence/persistence/services/mapper.py`, lifted when a schema owns a class hierarchy).
@@ -829,13 +734,21 @@ Both guards are `testkit.assert_models_generated(package, *, roots, allow=(), ex
 [#adoption]
 == How an application adopts it
 
-_How do I start?_
+An application models its domain on the metamodel, generates with `rp-generate` (and checks
+freshness in CI), writes its use-case services on the generated classes, and serves the schema
+with `install_service`. The steps, with examples that run, are the
+xref:user-manual/index.adoc[user manual]; the shortest walk is
+xref:tutorials/getting-started.adoc[Getting started].
 
-The steps, with examples that run, are in xref:user-manual/index.adoc[Build an application with
-rdf-persistence]. In short:
+[#history]
+== History
 
-. Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;
-  write the application's role definitions (and, optionally, narrow `role` by subclassing `Grant`).
-. Add a target that calls `rp-generate` (any name; set it as `regenerate-command` so a failed freshness check names it), and the freshness check to CI.
-. Write use-case services against a session (`kit.session` or `open_session`), `UnitOfWork` and the generated classes.
-. Serve the schema with `install_service`, and write any extra routes with the `ServiceKit` it returns; publish the OpenAPI contract and the JSON-LD context; use the generated TypeScript types in the client, checked against the contract.
+* Status: *accepted*. The design settles open decision O-1 of
+  xref:architecture/index.adoc[architecture v1] with its smallest option (<<decision>>).
+* 2026-11-05: revised by the developer (<<revision>>; decisions D-2 and D-6 to D-9 of
+  xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]). The metamodel, `rp-generate`
+  and the guards are implemented, in stage 1 of the change `toolkit-v1-foundation`.
+* 2026-11-06: the run-time parts (<<run-time>>: the mapper, the session and the unit of work),
+  first tried in a throwaway spike (LinkML 1.12.1, Fuseki 5.1.0), are implemented, in stage 2.
+* The technical models, kept apart from the domain models (<<kinds>>), are implemented by the
+  change `technical-models`.

@@ -29,7 +29,8 @@ TOOLING = [
     ".test_durations",
 ]
 SOURCE_FOLDERS = ["rdf_persistence", "rdf_persistence_generation", ".github", "docs"]
-MIGRATION_NOTE = "docs/modules/ROOT/pages/howto/adopt.adoc"
+MIGRATION_NOTE = "docs/modules/ROOT/pages/user-manual/change-model.adoc"
+BUILT_SITE = "docs/build"  # the built docs copy the migration note; git ignores the folder
 
 
 def files_to_scan() -> list[Path]:
@@ -42,6 +43,7 @@ def files_to_scan() -> list[Path]:
             and "__pycache__" not in p.parts
             and p.suffix not in {".pyc", ".png", ".svg", ".whl"}
             and p.relative_to(ROOT).as_posix() != MIGRATION_NOTE
+            and not p.relative_to(ROOT).as_posix().startswith(BUILT_SITE + "/")
         ]
     return sorted(found)
 

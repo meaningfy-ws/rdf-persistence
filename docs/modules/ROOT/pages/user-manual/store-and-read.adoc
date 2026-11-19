@@ -4,9 +4,18 @@
 
 _How do I store and read an aggregate?_
 
-Over HTTP the router stores and reads every aggregate for you (xref:user-manual/serve.adoc[Serve the application]). Write code only for
+This page shows how a domain service stores and reads aggregates in Python: one at a time, several
+in one commit, and in batches; and what to do when a commit is refused. You need the generated
+classes (xref:user-manual/generated-classes.adoc[Use the generated classes and guard them]) and a
+`ServiceKit`: the one `install_service` returns when you serve the application
+(xref:user-manual/serve.adoc[Serve the application]), or, without HTTP, one you build yourself
+(<<kit-without-http>>).
+
+Over HTTP the router stores and reads every aggregate for you. Write code only for
 rules that are more than CRUD, such as a check across two objects or a computed value. That code
-works on the generated classes through a *session* and a *unit of work*:
+works on the generated classes through a *session* and a *unit of work*. Both handle whole
+aggregates: a *root* is the aggregate root object, here one book, stored and versioned together
+with the parts it owns, its chapters.
 
 * a `Session` reads and commits whole graphs of one tenant database, on behalf of one principal;
 * a `Mapper` turns a generated object and its owned parts into triples and back;
@@ -34,10 +43,10 @@ def book_mapper(kit: ServiceKit) -> Mapper:
 
 
 async def add_book(kit: ServiceKit, mapper: Mapper, tenant: str, principal: str) -> str:
-    iri = str(kit.iris.mint_aggregate(tenant, "book", "books"))  # by the IRI policy (step 14)
+    iri = str(kit.iris.mint_aggregate(tenant, "book", "books"))  # by the service's IRI policy
     async with kit.session(tenant, principal) as session:
         work = UnitOfWork(session, mapper)
-        work.add(Book(id=iri, label="Dune", description="A planet.", author="Frank Herbert"))
+        work.add(Book(id=iri, label="Dune", description="A planet.", authors=["Frank Herbert"]))
         await work.commit()
     return iri
 
@@ -54,28 +63,32 @@ async def add_chapter(
         await work.commit()                          # Conflict if the book changed meanwhile
 ----
 
-`tenant` is the tenant's IRI and `principal` the caller's IRI (xref:user-manual/access.adoc[Control access] shows where both come
-from). `kit.session(tenant, principal)` opens a session on that tenant's database; `kit.view` is
-the schema the service loaded; outside a service, `load_schema(path)` loads one. Pass `generated_models` every module whose classes the mapper reads:
-the roots you `get` and the parts they own.
+`tenant` is the tenant's IRI and `principal` the caller's IRI (xref:user-manual/serve.adoc[Serve the application]
+shows how a route gets both from `kit.require_aggregate`). `kit.session(tenant, principal)` opens a
+session on that tenant's database; `kit.view` is the schema the service loaded. Pass
+`generated_models` every module whose classes the mapper reads: the roots you `get` and the parts
+they own.
+
+Outside a service, `load_schema(path)` loads the schema, and `open_session(store, *, database,
+tenant_iri, principal, clock)` opens the same session on a `Store` you hold (`principal` is a
+`Principal` there; the kit's `session` takes its IRI as a string and calls `open_session` with the
+tenant's database name).
 
 What a commit does:
 
-* A new root is added with `add_graph`; a root read in this unit of work is replaced with
-  `replace_graph` and the version it was read with; a root removed with `remove(obj)` is deleted
-  with the version it was read with. `commit()` collects all of them into one transaction and
-  sends one SPARQL update request, then an `ASK` that the new versions are there. A version that
-  moved meanwhile raises `Conflict` and changes nothing (<<transaction>>).
-* A commit is all or nothing (one rare exception: xref:architecture/commits.adoc#diagnosis[a false conflict]).
-  With two changed roots, a conflict on the second leaves the first
-  unchanged too. (In 0.2.0 and earlier the first stayed written; see <<transaction-change>>.)
+* `commit()` adds a new root, replaces a root read in this unit of work, and deletes a root removed
+  with `remove(obj)`, each guarded by the version it was read with, in one transaction: all or
+  nothing. A version that moved meanwhile raises `Conflict` and changes nothing
+  (<<handle-a-conflict>>). The guarantees, and the one rare exception, are in
+  xref:architecture/commits.adoc[How commits and conflicts work].
 * The session writes the version and the tracking slots (`created`, `creator`, `modified`,
   `contributor`) as statements about the aggregate's graph, `{root}/graph`. Your code never sets
   them.
 * An aggregate IRI must be one the toolkit would mint, by default `{tenant}/{rp_path}/{uuid4}`; a
   custom IRI policy may use the class's `{type}` instead of `{rp_path}`. Any other is refused
   (`InvalidIri`) before anything is sent. `kit.iris.mint_aggregate(tenant, type, rp_path)` mints one
-  by the service's policy, `type` being the class's `{type}` (step 3). The module function
+  by the service's policy, `type` being the class's `{type}`
+  (xref:user-manual/iri-policy.adoc[Configure the IRI policy]). The module function
   `mint_aggregate_iri(tenant, rp_path)` mints the default layout only, which a custom policy
   refuses.
 * A part's IRI is, by default, `{root}/parts/{uuid4}`. `new_part(Chapter, root, iris=kit.iris,
@@ -104,6 +117,43 @@ cover:
 `add_graph`, `replace_graph` and `remove` are each a transaction of one change, so a single write
 and a multi-aggregate commit follow the same path.
 
+[#kit-without-http]
+== Get a kit without serving
+
+_I have no FastAPI app yet. Where does the kit come from?_ Construct `ServiceKit` yourself, with
+the keyword arguments `install_service` passes it: the root schema, the generated package, the
+store, the file store, the identity provider, a token verifier, the access rules, the settings and
+the migrations folder (each as in xref:user-manual/serve.adoc[Serve the application]). The
+example below, from the toolkit's
+xref:tutorials/getting-started.adoc[Getting started], wires the testkit's in-memory fakes:
+
+[source,python]
+----
+include::example$getting-started/library_app.py[tag=kit]
+----
+
+The schema must have a tenant root and an access class
+(xref:user-manual/model.adoc#more-metamodel[More of the metamodel]); without either, the
+constructor raises `LookupError`. Then, before the first tenant, create the system database, and
+create a tenant to work in:
+
+[source,python]
+----
+from rdf_persistence import Principal
+
+ADA = "https://example.org/people/ada"          # the principal who acts, named by an IRI
+kit = build_kit()
+await kit.tenancy.ensure_system_database()      # creates it unless it exists
+ghent = await kit.tenancy.create("Ghent", {"description": "Books for all."}, Principal(id=ADA))
+tenant = ghent.id                               # the tenant's IRI, for kit.session(tenant, ...)
+----
+
+A kit built this way runs none of the start-up work of `install_service`: the IRI policy guard,
+the application database (`kit.tenancy.ensure_application_database()`, when a class is annotated
+`database: application`), the migrations, the sweep and the event relay
+(xref:user-manual/serve.adoc[Serve the application]). Use it on a fresh store, in a script or in a
+test; against a store a service already uses, go through `install_service`.
+
 [#transaction]
 == Save several aggregates at once
 
@@ -120,7 +170,7 @@ async with kit.session(tenant, principal) as session:
     old = await work.get(Book, old_iri)
     dune.label = "Dune, 2nd edition"
     work.add(dune)                                   # replaced, at the version it was read
-    work.add(Book(id=new_iri, label="Emma", description="A novel.", author="Jane Austen"))
+    work.add(Book(id=new_iri, label="Emma", description="A novel.", authors=["Jane Austen"]))
     work.remove(old)                                 # removed
     try:
         await work.commit()                          # all three, or none
@@ -130,10 +180,11 @@ async with kit.session(tenant, principal) as session:
         print(work.version(dune_iri))                # the new token
 ----
 
+`add` of a root you read replaces it; `add` of a root you did not read creates it.
+
 For triples, open a transaction on the session: each call checks what it can at once (the IRI
 policy, that a replaced or removed root exists), and the block sends one
-request when it ends. (In both, a *root* is the root object of an aggregate: one book with its
-chapters. `add` of a root you read replaces it.)
+request when it ends.
 
 [source,python]
 ----
@@ -145,17 +196,15 @@ async with session.transaction() as t:
 
 What to expect:
 
-* *One request, all or nothing.* Every guard is checked before anything is written: a replaced or
-  removed root must still have the version you read, and an added root must not exist yet. If one
-  guard fails, nothing changes and `Conflict` is raised (rare exception: a false conflict, see
-  xref:architecture/commits.adoc#diagnosis[the diagnosis]). How it works is in
+* *One request, all or nothing.* A replaced or removed root must still have the version you read,
+  and an added root must not exist yet. If one guard fails, nothing changes and `Conflict` is
+  raised. Why, and the rare false conflict, are in xref:architecture/commits.adoc[How commits and
+  conflicts work]; the request itself is in
   xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
-* *`Conflict.iris`* lists the root IRIs whose guard failed, sorted. It is a *diagnosis*: the
-  session reads the stored versions after the refusal, so another writer can change them in
-  between and the list can miss a root, name one too many, or be empty. Use it to tell the user
-  which objects moved; do not treat it as exact. The message words it per root; the three clauses
-  are in xref:architecture/commits.adoc#conflict[what a conflict means]. A `Conflict` raised elsewhere has
-  an empty `iris`.
+* *`Conflict.iris`* lists the root IRIs whose guard failed, sorted. Use it to tell the user which
+  objects moved, but do not treat it as exact: it is worked out after the refusal and can miss a
+  root, name one too many, or be empty (xref:architecture/commits.adoc#diagnosis[The diagnosis can
+  be incomplete]). A `Conflict` raised elsewhere has an empty `iris`.
 * *`UnitOfWork.version(iri)`* returns the version token of a root this unit of work read, or
   after a commit the new token (the same token `Session.get_graph` returns and the HTTP API sends
   as `ETag`). Record it to know which version a process used. A root it neither read nor
@@ -179,9 +228,10 @@ What to expect:
 === Handle a conflict
 
 _My commit raised `Conflict`. What do I do?_ Nothing was written (barring the rare false conflict in
-xref:architecture/commits.adoc#diagnosis[the diagnosis]; reading again shows the true state). Read the
-roots again in a *new* unit of work, apply the edit again if it still makes sense, and commit. Here
-`kit`, `mapper`, `tenant` and `principal` are the ones from xref:user-manual/store-and-read.adoc[step 8]:
+xref:architecture/commits.adoc#diagnosis[The diagnosis can be incomplete]; reading again shows the
+true state). Read the roots again in a *new* unit of work, apply the edit again if it still makes
+sense, and commit. `kit`, `mapper`, `tenant` and `principal` are those of the first example on this
+page:
 
 [source,python]
 ----
@@ -206,12 +256,10 @@ async def rename(kit, mapper, tenant, principal, iri, label):
     raise RuntimeError(f"{iri} keeps changing; give up")
 ----
 
-The message names each root and `conflict.iris` lists the same roots, sorted; for example
-`https://…/books/<id> was changed by someone else since it was read`. When `iris` is empty, show
-the message. The toolkit does not retry
-for you, because only your code knows whether the edit still makes sense on the new copy (the `if`
-above is that check). The three message clauses, and what `iris` can miss, are in
-xref:architecture/commits.adoc#conflict[How commits and conflicts work].
+The message names each root, and `conflict.iris` lists the same roots, sorted. When `iris` is
+empty, show the message. The toolkit does not retry for you, because only your code knows whether
+the edit still makes sense on the new copy (the `if` in the loop is that check). The three message
+clauses are in xref:architecture/commits.adoc#conflict[When a commit raises Conflict].
 
 [#key-conflict]
 === Keep a value unique across aggregates
@@ -291,15 +339,6 @@ async with kit.session(tenant, principal) as session:
         print(duplicate.key_name, duplicate.key_values, duplicate.key_roots)
 ----
 
-[#transaction-change]
-=== The behaviour changed
-
-Up to and including 0.2.0, `UnitOfWork.commit()` wrote each root on its own: with two changed
-roots, a conflict on the second left the first written. It now writes all or none. There is no flag: code that relied on the
-partial write (for example, catching `Conflict` and keeping the first root) has to commit the roots
-in separate units of work. Code that treated a `Conflict` as "nothing changed" is now correct for
-every root.
-
 [#transaction-batches]
 === Save more than 500 aggregates
 
@@ -318,41 +357,33 @@ For a large import, ask for batches:
 ----
 work = UnitOfWork(session, mapper)   # the mapper's max_roots, 500 by default
 for row in rows:
-    work.add(Book(id=book_iri(row), label=row.title, description=row.text, author=row.author))
+    work.add(Book(id=book_iri(row), label=row.title, description=row.text, authors=row.authors))
 try:
     await work.commit(batches=True)      # batches of 500, in the order added
 except Conflict as conflict:
     print(conflict)                      # says how many batches were committed
-    # see "Two ways to carry on" below
+    # two ways to carry on: see below
 ----
 
-What to expect:
+What to expect (why, in xref:architecture/commits.adoc#batch-mode[Batch mode is many commits, not one]):
 
 * *Each batch is one transaction; the whole is not atomic.* Batches commit in the order each root
   was first read or added. If batch 3 of 5 fails, batches 1 and 2 stay written.
-* *A conflict stops at that batch.* It is raised as it is (same type, same `iris`), and the
+* *A failure stops at that batch.* The error is raised as it is (same type, same `iris`), and the
   message adds how many batches were committed (a non-toolkit exception keeps its arguments and
-  gets that as a note). The roots that were committed leave the *pending changes* of the unit of
-  work (it still holds them as read), so the same unit of work can retry the rest, if the cause
-  lies outside it (below).
+  gets that as a note). The committed roots leave the *pending changes* of the unit of work, which
+  still holds them as read.
 * *Batch mode reads before it writes.* To tell a re-run from a clash it reads each root it is to
-  add, once per batch, so it needs read permission on those roots as well as write: use it behind
-  a principal that has both.
-* *A fresh run converges for added roots* (below): a root already stored exactly as you would
-  write it counts as committed. This needs the same IRIs on every run, the book's own and its
-  parts' (not `new_part`, which mints a random one); otherwise those roots conflict, safely. A
-  part IRI you give yourself is stored as written, so derive it from the source row, for example
-  `f"{book_iri}/chapters/{row.chapter}"`; parts without an IRI of their own (blank nodes) need
-  nothing.
-* *Replaces and removes are not idempotent.* After an interruption, read the roots again and build
-  the changes from what is stored now.
+  add, once per batch, so run it behind a principal that may read those roots as well as write
+  them.
+* *Only added roots converge on a re-run*; replaces and removes must be rebuilt from fresh reads.
 
-*Retry in the same unit of work.* The process is still alive. After a store outage, wait and
-commit again. After a conflict, leave the clashing roots out with `work.discard(iri)` (the next
-commit neither writes nor removes a discarded root), or correct the stored book in the store.
-Then call `commit(batches=True)` again: it sends the roots not yet committed. The batches after the failed one were never sent. Like a fresh
-run, it skips an added root already stored exactly as written, so a batch the store applied before
-its reply was lost does no harm.
+There are two ways to carry on after a failed batch.
+
+*Retry in the same unit of work*, while the process is still alive. After a store outage, wait and
+commit again. After a conflict, leave the clashing roots out with `work.discard(iri)`, or correct
+the stored book in the store. Then call `commit(batches=True)` again: it sends the roots not yet
+committed, and skips an added root already stored exactly as written.
 
 [source,python]
 ----
@@ -371,12 +402,18 @@ except StoreUnavailable as outage:       # the store did not answer
     await work.commit(batches=True)
 ----
 
-*Retry with a fresh run.* The process crashed, or you start the import again. Build a new unit of
-work from the same source and commit in batches.
-Roots already stored exactly as you would write them are skipped, so a second run after a full
-success sends no update at all. The book's own IRI must be the same on every run. The default
-policy wants a UUID as the last segment (step 8), so derive the UUID from the source key instead
-of drawing one (other id shapes: xref:user-manual/iri-policy.adoc[Configure the IRI policy]):
+*Retry with a fresh run*, when the process crashed or you start the import again. Build a new unit
+of work from the same source and commit in batches. Roots already stored exactly as you would write
+them are skipped, so a second run after a full success sends no update at all. This holds only if
+every run builds the same IRIs:
+
+* The book's own IRI. The default policy wants a UUID as the last segment, so derive the UUID from
+  the source key instead of drawing one (other id shapes:
+  xref:user-manual/iri-policy.adoc[Configure the IRI policy]).
+* Its parts' IRIs. `new_part` mints a random one, so those books conflict on a re-run (safely:
+  nothing is duplicated, but the import does not converge). A part IRI you give yourself is stored
+  as written, so derive it from the source row, for example `f"{book_iri}/chapters/{row.chapter}"`;
+  parts without an IRI of their own (blank nodes) need nothing.
 
 [source,python]
 ----
@@ -393,15 +430,18 @@ async def import_books(kit, mapper, tenant, principal, rows):
         work = UnitOfWork(session, mapper)
         for row in rows:
             # IRIs derived from the source, not minted at random: the re-run must build the same ones
-            work.add(Book(id=book_iri(tenant, row), label=row.title, description=row.text, author=row.author))
+            work.add(Book(id=book_iri(tenant, row), label=row.title, description=row.text, authors=row.authors))
         await work.commit(batches=True)
 
 await import_books(kit, mapper, tenant, principal, rows)   # crashes after batch 2
 await import_books(kit, mapper, tenant, principal, rows)   # skips what is stored, writes the rest
 ----
 
-Both paths, and when a fresh run does not converge, are explained in
-xref:architecture/commits.adoc#batch-mode[How commits and conflicts work].
+[#transaction-change]
+== Changed in 0.3.0: commits are all or nothing
 
-Outside a service, `open_session(store, *, database, tenant_iri, principal, clock)` opens the
-same session (`principal` is a `Principal`; the kit's `session` takes its IRI as a string) on a `Store` you hold. The kit's `session` calls it with the tenant's database name.
+Up to and including 0.2.0, `UnitOfWork.commit()` wrote each root on its own: with two changed
+roots, a conflict on the second left the first written. It now writes all or none, with no flag to
+restore the old behaviour. Code that relied on the partial write (for example, catching `Conflict`
+and keeping the first root) has to commit the roots in separate units of work. Code that treated a
+`Conflict` as "nothing changed" is now correct for every root.

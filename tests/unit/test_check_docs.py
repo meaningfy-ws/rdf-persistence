@@ -227,7 +227,8 @@ def test_a_broken_link_is_reported(tmp_path, monkeypatch, text, missing):
     errors = check_docs.check_links()
 
     assert len(errors) == 1, errors
-    assert "a.adoc" in errors[0] and missing in errors[0], "the page and the target are named"
+    assert "a.adoc" in errors[0], "the page is named"
+    assert missing in errors[0], "the target is named"
 
 
 def test_a_broken_link_in_the_nav_is_reported(tmp_path, monkeypatch):
@@ -235,7 +236,8 @@ def test_a_broken_link_in_the_nav_is_reported(tmp_path, monkeypatch):
 
     errors = check_docs.check_links()
 
-    assert len(errors) == 1 and "nav.adoc" in errors[0], errors
+    assert len(errors) == 1, errors
+    assert "nav.adoc" in errors[0], "the nav is named"
 
 
 def test_links_in_listings_and_comments_are_ignored(tmp_path, monkeypatch):

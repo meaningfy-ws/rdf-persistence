@@ -31,17 +31,17 @@ database has one stamp per chain.
 *A tenant set aside*:: A tenant whose migration failed at start-up. Its data requests answer `503`
 until a later start-up migrates it (<<behind>>).
 
-Terms the adoption guide explains; read there if one is new to you:
+Terms the xref:user-manual/index.adoc[user manual] explains; read there if one is new to you:
 
-* tenant, and the access record: xref:user-manual/tenants.adoc[Create tenants];
+* tenant, and the access record: step 9, xref:user-manual/tenants.adoc[Create tenants];
 * aggregate, root class, owned part, `rp_path`, `rp_iri_type`:
-  xref:user-manual/model.adoc[Write the model];
+  step 3, xref:user-manual/model.adoc[Write the model];
 * version token (`ETag`) and the conflict a stale one causes:
-  xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict];
+  step 8, xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict];
 * loaded graph and registry:
-  xref:user-manual/files.adoc[Keep files];
-* sweep: xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant];
-* grants and principal: xref:user-manual/access.adoc[Control access].
+  step 10, xref:user-manual/files.adoc[Keep files];
+* sweep: step 10, xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant];
+* grants and principal: step 11, xref:user-manual/access.adoc[Control access].
 
 == Common questions
 
@@ -76,7 +76,7 @@ a restore of dumps makes new tenants and does not change their stamps. See <<beh
 No. There are no down-migrations. Restore a dump taken before it. See <<no-down>>.
 
 *I do not use `install_service`. Do I still migrate?*::
-Yes. See xref:howto/application-data.adoc[Keep data that belongs to no project].
+Yes. See xref:howto/application-data.adoc[Keep data that belongs to no tenant].
 
 [#change]
 == 1. What you do when the schema changes
@@ -565,7 +565,7 @@ the tenant. The toolkit has no separate timeout setting for migrations yet.
 
 `kit` is the `ServiceKit` that `install_service` returns. The two calls below are Python only; the
 toolkit has no HTTP route for them. How to route and guard them is on
-xref:howto/dump-restore.adoc[Back up or copy a project].
+xref:howto/dump-restore.adoc[Back up or copy a tenant].
 
 . *Dump every tenant first.* Do it before you deploy a migration with steps. There is no automatic
   backup, and a wrong step changes the data in one clean transaction. The call is:

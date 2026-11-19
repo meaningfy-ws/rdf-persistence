@@ -3,7 +3,7 @@
 
 Status: *Accepted* (developer, 2026-11-17: serve more serialisations, N-Quads in
 particular). Which routes serve them is the leader's choice. It narrows research decision DEC-27
-and widens D-1 of xref:architecture/open-decisions.adoc[Decisions of 2026-11-05].
+and widens D-1 of xref:architecture/open-decisions.adoc[the decision log of 2026-11-05].
 
 == Context
 

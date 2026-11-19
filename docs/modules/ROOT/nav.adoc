@@ -25,14 +25,14 @@
 *** xref:howto/reverse-references.adoc[Find who points at a resource]
 *** xref:howto/reference-collections.adoc[Group resources you do not own]
 *** xref:howto/migrate.adoc[Change a schema that has stored data]
-*** xref:howto/application-data.adoc[Keep data that belongs to no project]
+*** xref:howto/application-data.adoc[Keep data that belongs to no tenant]
 ** Collaboration and events
 *** xref:howto/discussion.adoc[Comment on a resource]
 *** xref:howto/workflow.adoc[Put a resource through review]
 *** xref:howto/event-driven.adoc[React to changes]
 ** Operations
 *** xref:howto/settings.adoc[Configure the deployment values]
-*** xref:howto/dump-restore.adoc[Back up or copy a project]
+*** xref:howto/dump-restore.adoc[Back up or copy a tenant]
 *** xref:howto/tenant-stores.adoc[Put tenants on several stores]
 *** xref:howto/observability.adoc[See what the toolkit is doing]
 
@@ -53,18 +53,7 @@
 ** xref:adr/adr-004-signing-algorithms.adoc[ADR-004: Signing algorithms and leeway]
 ** xref:adr/adr-005-representations.adoc[ADR-005: Seven representations]
 ** xref:architecture/open-decisions.adoc[Decision log of 2026-11-05]
-
-.Reference
-* xref:reference/index.adoc[Python API and rp-generate]
-
-.Developer manual
-* xref:develop/index.adoc[Working on the library]
-* xref:develop/generator.adoc[Working on the generator]
-* xref:develop/testing.adoc[Testing checklist]
-* xref:develop/agents.adoc[Working with agents]
-
-.Background
-* State of the art (not commitments)
+* Background: state of the art (not commitments)
 ** xref:background/soa/walkthrough.adoc[Walkthrough]
 ** xref:background/soa/index.adoc[Integrated findings]
 ** xref:background/soa/decisions.adoc[Developer decisions]
@@ -101,3 +90,12 @@
 *** xref:background/soa/libraries/ldkit.adoc[LDkit]
 *** xref:background/soa/libraries/neomodel.adoc[neomodel]
 ** xref:background/soa/method.adoc[Method]
+
+.Reference
+* xref:reference/index.adoc[Python API and rp-generate]
+
+.Developer manual
+* xref:develop/index.adoc[Working on the library]
+* xref:develop/generator.adoc[Working on the generator]
+* xref:develop/testing.adoc[Testing checklist]
+* xref:develop/agents.adoc[Working with agents]

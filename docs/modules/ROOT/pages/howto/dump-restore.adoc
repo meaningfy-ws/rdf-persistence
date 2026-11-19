@@ -1,9 +1,9 @@
-= Back up or copy a project
+= Back up or copy a tenant
 :description: How to dump a tenant to one archive and restore it as a new tenant: the two calls, how to route them, the archive format, what is left out, the limits and the errors.
 
-_How do I back up or copy a project? How do I make a new project from an old one's data?_
+_How do I back up or copy a tenant? How do I make a new tenant from an old one's data?_
 
-A tenant (a project) is a database of named graphs and a bucket of files. `kit.dump_tenant` writes
+A tenant is a database of named graphs and a bucket of files. `kit.dump_tenant` writes
 both to one archive. `kit.restore_tenant` reads such an archive and creates a *new* tenant out of it,
 with a new id and new IRIs. A restored backup is therefore a copy, not the original back: a link to
 an IRI of the old tenant does not reach the copy. This page shows the two calls, how to guard them,
@@ -18,7 +18,7 @@ xref:architecture/data-flows.adoc#dump-restore[Where data lives and what each op
 ----
 from rdf_persistence import Action   # used in the next section
 
-# kit: the ServiceKit that install_service returned (see step 12 of the adoption guide)
+# kit: the ServiceKit that install_service returned (see the user manual, step 12)
 # tenant: the tenant IRI, such as kit.tenant_iri(tenant_id)
 # principal: the principal IRI of the person who will own the copy
 
@@ -29,8 +29,8 @@ with open("library.rpdump", "rb") as src:
     copy = await kit.restore_tenant(src, creator=principal)    # -> TenantSummary
 ----
 
-* `kit` is the `ServiceKit` that `install_service` returns. How to get it is in
-  xref:user-manual/serve.adoc[Serve the application].
+* `kit` is the `ServiceKit` that `install_service` returns. How to get it is in the user manual,
+  step 12: xref:user-manual/serve.adoc[Serve the application].
 * `tenant` is the tenant's *IRI*. A route has only the tenant *id* from the URL; turn it into the IRI
   with `kit.tenant_iri(tenant_id)`, or take it from the check in <<routing>>.
 * `creator` and `principal` are a principal IRI, as in
@@ -59,7 +59,7 @@ with open("library.rpdump", "rb") as src:
 == 2. Route them
 
 Both calls are Python only and unguarded, like `kit.sweep_tenant`. You decide who may call them. The
-toolkit has no HTTP route for them, because archives are large and who may copy a project is your
+toolkit has no HTTP route for them, because archives are large and who may copy a tenant is your
 policy.
 
 *A dump* reads the whole tenant, so check `administer` on it first, as you do for grants. `t` is the
@@ -76,13 +76,13 @@ with open(path, "wb") as out:
 ----
 
 *A restore* has no tenant to check yet, so `require` cannot guard it. Verify the token, apply your
-own rule about who may create projects, and pass the caller as `creator`; here `path` is the archive
+own rule about who may create tenants, and pass the caller as `creator`; here `path` is the archive
 file you received:
 
 [source,python]
 ----
 caller = await kit.gate.caller(request.headers.get("authorization"))   # InvalidToken if refused
-# your own check here: may this caller create a project?
+# your own check here: may this caller create a tenant?
 with open(path, "rb") as src:
     copy = await kit.restore_tenant(src, creator=caller.principal)
 ----

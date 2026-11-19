@@ -1,7 +1,11 @@
 # Contributing to RDF Persistence
 
-Thank you for contributing. This guide covers the workflow, the architectural constraints that keep
-the codebase healthy, and the testing and review expectations.
+Thank you for contributing. This guide gives the workflow and the rules a change follows, and links
+to the developer manual for the details:
+[Working on the library](docs/modules/ROOT/pages/develop/index.adoc),
+[Working on the generator](docs/modules/ROOT/pages/develop/generator.adoc) and the
+[testing checklist](docs/modules/ROOT/pages/develop/testing.adoc). Set up your machine first with
+[INSTALL.md](INSTALL.md).
 
 ## Workflow
 
@@ -25,48 +29,26 @@ JSON schemas, diagrams) is generated from the LinkML schemas. To change one, cha
 run `make generate`; never edit a file under a `generated/` folder. Where a stock generator falls
 short, extend it in `rdf_persistence_generation/`, with its own test. Data goes through the
 generated models, not bare dicts. See
-[Working on the toolkit](docs/modules/ROOT/pages/develop/index.adoc).
+[Working on the library](docs/modules/ROOT/pages/develop/index.adoc) and
+[Working on the generator](docs/modules/ROOT/pages/develop/generator.adoc).
 
 ## Architecture constraints
 
-This project uses a **cosmic-python layered architecture**, enforced by `import-linter`
-(`make check-architecture`). Respect the dependency direction:
-
-```
-entrypoints | adapters  →  services  →  domain
-```
-
-- `domain/` holds the generated models, the base model, the errors and pure logic — it imports
-  **nothing** from upper layers and no I/O, web or validation library.
-- `services/` holds the use cases and the **ports** (`Store`, `FileStore`, `Identity`,
-  `TokenVerifier`).
-- `adapters/` implements the ports (Fuseki, S3, Zitadel, JWKS).
-- `entrypoints/` (the service kit) parses input, calls services, formats output.
-- `adapters` and `entrypoints` never import each other; the consumer's composition root wires them.
-- `testkit/` (tests) may import any layer; no runtime layer imports it.
-- `rdf_persistence_generation/` (build time) is a sibling top-level package, shipped in the same
-  wheel. The library never imports it, except through the four testkit shims
-  (`library-never-imports-the-generator`).
-- Consumers import only from the top-level package `rdf_persistence` (and `rdf_persistence.testkit`
-  in tests).
-
-Avoid free strings for symbolic values — use generated enums. Keep observability (logging, tracing)
-out of `domain`.
+Layers import downward only, `entrypoints | adapters → services → domain`; the ports live in
+`services`, their implementations in `adapters`, and `adapters` and `entrypoints` never import each
+other. The generator, `rdf_persistence_generation/`, is a sibling top-level package that the
+library never imports (except through the four testkit shims). Consumers import only from
+`rdf_persistence` (and `rdf_persistence.testkit` in tests). `make check-architecture` enforces this
+with import-linter; the full layer map, with what each layer holds and exports, is in the
+[architecture overview](docs/modules/ROOT/pages/architecture/index.adoc#public-api).
 
 ## Testing expectations
 
-- **Write tests first.** Unit tests precede production code (RED-GREEN-REFACTOR).
-- **Test by layer**: `tests/unit/` mirrors the code tree; `tests/feature/` holds Gherkin
-  (`pytest-bdd`) scenarios written from acceptance criteria, mirroring business capabilities.
-- **Coverage gate ≥ 80%** on the suite; keep new/critical code higher.
-- Follow the [testing checklist](docs/modules/ROOT/pages/develop/testing.adoc).
-- Markers (`unit`, `feature`, `e2e`, `integration`) are applied automatically by path — do not add
-  per-file `pytestmark`.
-
-```bash
-make test           # full suite with coverage
-make test-unit      # fast layer
-```
+Write the tests first, in their tier (`unit`, `feature`, `integration`, `e2e`); the folder stamps
+the marker, so add no per-file `pytestmark`. While you work, run `make test-changed`; before the PR,
+`make check-all`. The [testing checklist](docs/modules/ROOT/pages/develop/testing.adoc) is what
+every test follows, and [Make targets](docs/modules/ROOT/pages/develop/index.adoc#make-targets)
+lists the lanes and their coverage floors.
 
 ## Commits and pull requests
 
@@ -82,5 +64,7 @@ authoritative rules. In short:
 
 ## Documentation
 
-User-facing changes need docs. Documentation lives under `docs/` (Antora/AsciiDoc); see the
-**`technical-writing`** skill for prose conventions. Build locally with `make preview-docs`.
+User-facing changes need docs. Documentation lives under `docs/modules/ROOT/pages/`
+(Antora/AsciiDoc); see the **`technical-writing`** skill for prose conventions. A new page adds the
+question it answers to [Common questions](docs/modules/ROOT/pages/questions.adoc). `make check-docs`
+checks that every link resolves and every page is in the nav; `make build-docs` builds the site.

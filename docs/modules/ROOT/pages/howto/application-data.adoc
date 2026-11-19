@@ -1,10 +1,10 @@
-= Keep data that belongs to no project
+= Keep data that belongs to no tenant
 :description: How to keep application-wide data, such as settings, catalogues or shared templates, in the application database: the schema annotation, the three kit calls, who may do what, references to tenant data, moving an existing class, and the limits.
 
-_Where does data that belongs to no project go?_
+_Where does data that belongs to no tenant go?_
 
-A tenant is a project: its data lives in its own database. Some data belongs to no project: a
-catalogue every project reads, settings for the whole deployment, templates every project shares.
+Each tenant's data lives in its own database. Some data belongs to no tenant: a catalogue every
+tenant reads, settings for the whole deployment, templates every tenant shares.
 The toolkit keeps such data in the *application database*, one per deployment, apart from the
 tenant databases and from the system database that holds the access records. You mark a class
 `database: application` in the schema, and three kit calls do the rest. This page shows them, who
@@ -14,9 +14,9 @@ xref:architecture/data-flows.adoc[Where data lives and what each operation does]
 [#when]
 == 1. When to use it
 
-Use it for data that every project reads or that the deployment owns: settings, catalogues,
+Use it for data that every tenant reads or that the deployment owns: settings, catalogues,
 shared templates. Do not make a "settings tenant" for it: a tenant carries grants, a bucket and a
-sweep that such data does not need, and it shows up among the projects.
+sweep that such data does not need, and it shows up among the tenants.
 
 [#schema]
 == 2. Mark the class in the schema
@@ -63,7 +63,7 @@ from rdf_persistence import Action, UnitOfWork
 
 from library.domain.generated.templates import Template
 
-# mapper: the Mapper built once from the schema (see the adoption guide)
+# mapper: the Mapper built once from the schema (see the user manual, step 8)
 
 authorised = await kit.require_application(authorization, Action.MODIFY)  # Forbidden, InvalidToken
 iri = kit.application_iri(Template)                                       # a new IRI by the policy

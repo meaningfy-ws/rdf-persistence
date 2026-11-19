@@ -1,17 +1,20 @@
 # Development Environment Setup
 
-This guide sets up a full development environment for **RDF Persistence**. For a plain install,
-see the [README](README.md#installation).
+This guide sets up a machine to work on **RDF Persistence** itself. To use the toolkit in an
+application instead, see
+[Install and lay out the application](docs/modules/ROOT/pages/user-manual/install.adoc). Once the
+machine is ready, [Working on the library](docs/modules/ROOT/pages/develop/index.adoc) takes over:
+the package layout, the Make targets, the checks and the release.
 
 ## Prerequisites
 
 | Tool | Version | Why |
 |------|---------|-----|
 | Python | >= 3.12 | Runtime |
-| [uv](https://docs.astral.sh/uv/) | 0.10+ | Dependency & environment management |
-| `make` | any | Task runner / dev UX |
-| Node.js | 18+ | Building the Antora docs site (optional) |
-| Docker + Compose | recent | Running the local stack (optional) |
+| [uv](https://docs.astral.sh/uv/) | 0.10+ | Dependency & environment management (`make install` installs it if missing) |
+| `make` | any | Task runner |
+| Docker + Compose | recent | The container tests, `make test-containers` (optional) |
+| Node.js | 18+ | Building the Antora docs site and type-checking the generated TypeScript (optional) |
 
 ## 1. Clone and install
 
@@ -37,30 +40,18 @@ uv run pre-commit run --all-files   # optional: check the whole tree once
 ## 3. Verify the environment
 
 ```bash
-make check-all      # lint, type-check, architecture, tests
+make check-all      # style, types, architecture, docs, freshness, tests
 ```
 
-A green run means your environment matches CI.
+A green run means your environment matches CI. With Docker, `make test-containers` runs the
+integration and e2e tests against Fuseki, Garage, Zitadel and Redis in containers.
 
-## 4. (Optional) Run the local stack with Docker
-
-If the project ships infra under `infra/`:
-
-```bash
-cp infra/.env.example infra/.env        # then fill in any required values
-make up                                 # start the stack
-make logs                               # follow logs
-make down                               # stop the stack
-```
-
-> The Docker ignore file lives at `infra/docker/Dockerfile.dockerignore` (Docker auto-discovers
-> `<dockerfile>.dockerignore`), not at the repository root.
-
-## 5. (Optional) Build the docs locally
+## 4. (Optional) Build the docs locally
 
 ```bash
 make install-antora # first time only
-make preview-docs   # serve at http://localhost:8081
+make build-docs     # writes the site to docs/build/site/
+make preview-docs   # builds, then serves it at http://localhost:8081
 ```
 
 ## Troubleshooting

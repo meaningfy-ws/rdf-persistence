@@ -60,11 +60,15 @@ How-to guides and guidelines              by capability: data (commits, keys, co
                                           collaboration, events, schema change, operations
 Architecture and specification            architect: overview, use cases, capabilities (rp-* map),
                                           models (metamodel, generated diagrams), data flows,
-                                          generation, API, access, commits, ADRs, decision log
+                                          generation, API, access, commits, ADRs, decision log,
+                                          the state-of-the-art background study (unchanged)
 Reference                                 look-up: public Python API, rp-generate CLI, settings
 Developer manual                          toolkit developer: library, generator, testing, agents
-Background                                the state-of-the-art study, unchanged
 ```
+
+The actors are the application developer (who also runs the application), the API client, the
+system architect who reuses the toolkit in a platform of their own, and the toolkit developer
+(developer, Q-8).
 
 The getting-started example is a real, tested mini application kept as an Antora example; the
 tutorial includes its code by tag, and a test generates and runs it, so the tutorial cannot rot.
@@ -80,13 +84,19 @@ and keeps it safe.
 - **DEC-2** (leader's choice): **`howto/adopt.adoc` is split, not rewritten**, by its own numbered
   steps into `user-manual/*.adoc`, its text moved verbatim except for links. The old URL survives
   as a `page-aliases` entry of the user manual's index. Every link into it is rewritten to the new
-  page and anchor. Rejected: rewriting the manual (out of appetite; the text is reviewed and
+  page and anchor. Each page is then polished to read as a page of its own, coherent and
+  consistent with the others, keeping the explanations that are good (developer, Q-1). Rejected: rewriting the manual (out of appetite; the text is reviewed and
   correct); leaving it whole and adding a table of contents (the nav cannot show what one page
   holds).
-- **DEC-3** (leader's choice): **the tutorial's example is code under
-  `docs/modules/ROOT/examples/getting-started/`, run by a test in the generator's integration
-  tier.** Rejected: a tutorial on the toy library (it has six modules, too much for a first walk);
-  untested snippets in the page (they rot at the first API change).
+- **DEC-3** (developer, 2026-11-19, re-shaped from the leader's first choice): **the tutorial's
+  example is a minimal cut of the toy library** (`Library`, `LibraryAccess`, `Book`), kept under
+  `docs/modules/ROOT/examples/getting-started/` so the page includes it by tag, run by a test in
+  the generator's integration tier that also fails when its text differs from the toy's. The
+  reader goes on into the user manual with the same domain. Re-shaped because the developer asked
+  to reuse the toy rather than invent a second example (inputs/answers-2026-11-19.md, Q-2); the
+  first cut, a separate notes application, was dropped. Rejected: untested snippets in the page
+  (they rot at the first API change); the whole toy as the tutorial (six modules, too much for a
+  first walk).
 - **DEC-4** (leader's choice): **the specification pages summarise and link, never restate.**
   `requirements/use-cases.adoc` lists the actors and the use cases, each pointing at the
   capabilities that realise it; `requirements/capabilities.adoc` lists the 22 capabilities with

@@ -1,6 +1,6 @@
 # tag::project[]
 [project]
-name = "notes"
+name = "library"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = ["rdf-persistence"]
@@ -9,12 +9,12 @@ dependencies = ["rdf-persistence"]
 dev = ["rdf-persistence[generate]"]
 
 [tool.uv.sources]
-rdf-persistence = { git = "https://github.com/meaningfy-ws/rdf-persistence", branch = "develop" }
+rdf-persistence = { git = "https://github.com/meaningfy-ws/rdf-persistence", tag = "v0.5.0" }
 # end::project[]
 
 # tag::generate[]
 [tool.rp-generate]
-schema = "models/notes.yaml"
+schema = "models/library.yaml"
 package = "generated"
 migrations = "migrations"
 # end::generate[]

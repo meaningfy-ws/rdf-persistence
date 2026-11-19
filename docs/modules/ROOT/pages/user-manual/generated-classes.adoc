@@ -4,6 +4,13 @@
 
 _What do the generated classes check?_
 
+This page shows what the classes generated in xref:user-manual/generate.adoc[Generate the code]
+accept and refuse, then adds the test guards that keep the model and the code from drifting apart.
+The examples use the `books` module of xref:user-manual/model.adoc[Write the model].
+
+[#use-the-classes]
+== Use the generated classes
+
 [source,python]
 ----
 from pydantic import ValidationError
@@ -14,7 +21,7 @@ book = Book(
     id="https://example.org/library/books/1",
     label="Dune",
     description="A science-fiction novel.",
-    author="Frank Herbert",
+    authors=["Frank Herbert"],
     chapters=[Chapter(id="https://example.org/library/books/1/chapters/1", number=1)],
 )
 
@@ -23,20 +30,24 @@ Book(id="https://example.org/library/books/2", label="No description")  # valid:
 book.chapters[0].number = "one"
 # ValidationError: number: Input should be a valid integer (checked on assignment too)
 
-Book(id="https://example.org/library/books/3", label="L", description="D", isbn="1")
-# ValidationError: isbn: Extra inputs are not permitted
+Book(id="https://example.org/library/books/3", label="L", description="D", publisher="Ace")
+# ValidationError: publisher: Extra inputs are not permitted
 ----
 
-The fields come from the schema. `author` and `chapters` are in `books.yaml`. The `Described`
+The fields come from the schema. `isbn`, `authors` (a list, since the slot is multivalued) and
+`chapters` are in `books.yaml`. The `Described`
 mixin adds `id`, `label` and `description`: `id` and `label` are required, `description` is optional
 everywhere, an aggregate root included; a class annotated `rp_unlabelled: true` (`Chapter`) needs no `label`. The
 `Tracked` mixin adds `created`, `modified`, `creator` and `contributor`: the session sets them
-(step 8), never you. `AggregateRoot` adds no field; it marks the class as a root.
+when it commits, never you. `AggregateRoot` adds no field; it marks the class as an aggregate root.
 
 The class takes any text as an `id`, so the ids above show the checks, not what you can store: the
-session refuses an aggregate IRI the toolkit would not mint (step 8), such as
-`https://example.org/library/books/1`. Mint one with `kit.iris.mint_aggregate` (the kit comes in
-step 12; outside a service, step 14 builds an `Iris`).
+session refuses an aggregate IRI the toolkit would not mint, such as
+`https://example.org/library/books/1`. Mint one with `kit.iris.mint_aggregate`: the kit comes from
+`install_service` (xref:user-manual/serve.adoc[Serve the application]) or from the constructor
+(xref:user-manual/store-and-read.adoc#kit-without-http[Get a kit without serving]); outside a kit, build an
+`Iris` as in xref:user-manual/iri-policy.adoc[Configure the IRI policy]. Storing comes in
+xref:user-manual/store-and-read.adoc[Store and read aggregates].
 
 Every generated class derives from the toolkit's strict base, `RpModel`. It refuses unknown
 fields, validates on assignment, and enforces the rules declared in the schema: `required`,
@@ -52,14 +63,18 @@ from `rdf_persistence`, never generated into your package.
 
 Use the generated classes in your domain services. Do not declare models of your own: no
 `BaseModel`, enum, dataclass, `TypedDict` or `NamedTuple` in `library/domain`, `library/services`
-or `library/entrypoints`, outside `generated` (<<guard,step 6>> checks this). A model you need goes into the schema.
+or `library/entrypoints`, outside `generated` (<<guard>> checks this). A model you need goes into
+the schema.
 
 [#guard]
 == Guard the model in your tests
 
 _How do I keep the model and the code from drifting apart?_
 
-The testkit adds five checks to your test suite.
+The testkit adds five checks to your test suite: freshness, no hand-written models or artefacts,
+classes and shapes agree, a round trip through RDF, and a model shape that changes only on
+purpose. How the toolkit applies the same guards to itself is in
+xref:architecture/generation.adoc#guarding[Guarding the generated code].
 
 *Freshness.* Stop the test session if generated code is stale or was edited by hand:
 
@@ -70,8 +85,7 @@ pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]
 ----
 
 The plugin lives in the generator's package, `rdf_persistence_generation`, which the
-`rdf-persistence` wheel ships beside the library. It compares manifests and needs no `generate`
-extra; only generating (`rp-generate` without `--check`) needs it, for LinkML. The old line,
+`rdf-persistence` wheel ships beside the library. The old line,
 `rdf_persistence.testkit.freshness`, still works until 0.6.0 but warns; see
 xref:user-manual/change-model.adoc#upgrade-generator-package[Upgrading to the generator package (0.5.0)].
 
@@ -126,7 +140,8 @@ def test_a_book_survives_the_round_trip(data):
 `assert_models_generated` makes two checks. It fails on a hand-written model, found in the
 `domain`, `services` and `entrypoints` folders of the package you pass first (`ROOT / "library"`),
 and names its file, line and class. It also fails on a generated artefact outside a `generated`
-folder (step 2), found in the `roots` folders: shapes, contexts, frames, JSON schemas, OpenAPI files
+folder (xref:user-manual/install.adoc[Install and lay out the application]), found in the `roots`
+folders: shapes, contexts, frames, JSON schemas, OpenAPI files
 and `.ts` files other than `*.test.ts` and `*.spec.ts`. `web/` is not in `roots` because a web
 application holds hand-written `.ts` files; you may add any folder that holds no
 hand-written `.ts` files. If you really need a type
@@ -157,26 +172,29 @@ Without it the two tests that import the package fail with `ModuleNotFoundError:
 valid instances must pass both, and the invalid ones must fail both. It also reports any
 constraint kind your schema uses that no case covers, so the test fails until every kind has one.
 A case names a kind, a class and instance files, whose paths are relative to the cases file. The example
-schema uses four kinds:
+schema uses four kinds: `required` (the `label` that `Described` requires), `range_type` (the
+integer `number` of a chapter, among others), `identifier` (the `id`) and `closed`. The instance
+files below are the toy library's, in `tests/fixtures/conformance/` of the toolkit's repository,
+and the rows are its rows for `Book`:
 
 [source,yaml]
 ----
 # tests/conformance/cases.yaml
 - kind: required
-  class_name: Chapter
-  valid: [instances/chapter-ok.yaml]
-  invalid: [instances/chapter-no-number.yaml]
+  class_name: Book
+  valid: [instances/book-minimal.yaml]
+  invalid: [instances/book-no-label.yaml]
 - kind: range_type
-  class_name: Chapter
-  valid: [instances/chapter-ok.yaml]
-  invalid: [instances/chapter-number-text.yaml]
+  class_name: Book
+  valid: [instances/book-minimal.yaml]
+  invalid: [instances/book-chapter-number-text.yaml]
 - kind: identifier
   class_name: Book
-  valid: [instances/book-ok.yaml]
+  valid: [instances/book-minimal.yaml]
   invalid: [instances/book-no-id.yaml]
 - kind: closed
   class_name: Book
-  valid: [instances/book-ok.yaml]
+  valid: [instances/book-minimal.yaml]
   invalid: [instances/book-unknown-field.yaml]
 ----
 
@@ -184,13 +202,20 @@ Each instance is a small YAML object, for example:
 
 [source,yaml]
 ----
-# tests/conformance/instances/chapter-no-number.yaml
-id: https://example.org/library/books/1/chapters/1
+# tests/conformance/instances/book-chapter-number-text.yaml
+id: https://example.org/library/b1
+label: Dune
+description: A desert planet novel
+chapters:
+  - id: https://example.org/library/b1/c1
+    description: The first chapter
+    number: five
 ----
 
-The others: `chapter-ok.yaml` adds `number: 1`, `chapter-number-text.yaml` has `number: one`,
-`book-ok.yaml` has an `id`, a `label` and a `description`, `book-no-id.yaml` lacks the `id`, and
-`book-unknown-field.yaml` adds a slot the class does not have (`isbn: "1"`).
+The others: `book-minimal.yaml` has an `id`, a `label` and a `description`, `book-no-label.yaml`
+lacks the `label`, `book-no-id.yaml` lacks the `id`, and `book-unknown-field.yaml` adds a slot the
+class does not have (`rack: A3`). The toy's own `range_type` row uses `book-with-chapters.yaml`
+as its valid instance, which sets slots this page's cut-down `Book` does not have.
 
 `round_trip` takes an object, turns it into RDF, frames the RDF back into JSON and builds an object
 from it. It fails with an `AssertionError`, `the objects differ after the round trip` or `the two
@@ -220,11 +245,13 @@ Each kind of constraint comes from one construct of the schema:
 Where each check runs:
 
 * *Tests:* the freshness plugin, which compares the manifest.
-* *CI and pre-commit:* `uv run rp-generate --check` (step 4). It writes nothing and exits 1 when
+* *CI and pre-commit:* `uv run rp-generate --check`
+  (xref:user-manual/generate.adoc#check[Check without writing]). It writes nothing and exits 1 when
   generated code is stale or was edited, and names the files. It makes the same comparison as the
   plugin and also lints the schema and runs its rule checks, which the plugin does not, so keep it
-  in CI even when the tests run the plugin. The lint and rule checks need the `generate` extra (step
-  1: `uv sync` installs it); without it the command compares the manifest only. A pre-commit hook for it:
+  in CI even when the tests run the plugin. The lint and rule checks need the `generate` extra,
+  which the dev group of xref:user-manual/install.adoc[Install and lay out the application]
+  installs; without it the command compares the manifest only. A pre-commit hook for it:
 +
 [source,yaml]
 ----

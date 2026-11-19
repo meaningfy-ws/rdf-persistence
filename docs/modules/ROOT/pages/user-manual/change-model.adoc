@@ -1,8 +1,17 @@
 = Change the model
-:description: Change a schema and regenerate; upgrade from a version before the generator package.
+:description: Change a schema and regenerate; upgrade the toolkit, with the upgrade notes of the versions that need more than a regeneration.
 :page-revised: 2026-11-10 by the developer
 
 _How do I change the model later?_
+
+This page covers the changes that come after the first generation: a change to your schema, and an
+upgrade of the toolkit itself. Both end the same way, with the generated code regenerated and
+committed beside the schema. It assumes the regenerate target of
+xref:user-manual/generate.adoc#run[Generate the code] and the guards of
+xref:user-manual/generated-classes.adoc#guard[Guard the model in your tests].
+
+[#change-the-schema]
+== Change the schema
 
 . Edit the schema.
 . Run your regenerate target.
@@ -10,8 +19,9 @@ _How do I change the model later?_
   kind that has no case.
 . Run the tests, then commit the schema and the generated code together.
 
-When you remove or rename a schema module, the next run deletes the generated files of the old one
-(step 4); you delete nothing by hand, unless that file was edited (step 4: the run keeps it).
+When you remove or rename a schema module, the next run deletes the generated files of the old
+one; you delete nothing by hand, unless that file was edited, in which case the run keeps it
+(xref:user-manual/generate.adoc#outputs[What it writes]).
 
 The toolkit reads and writes the graphs as the model now describes them, so a schema that has
 stored data needs a new `version:` and, for some changes, a migration file. `rp-generate` compares
@@ -19,18 +29,28 @@ the schema with its lock, drafts the migration, and the service applies it at st
 database. Without one, a stored aggregate that lacks a slot you made `required` fails to read with a
 `ValidationError`, and triples of a removed or renamed slot are ignored on read and dropped when the
 aggregate is next committed. See xref:howto/migrate.adoc[Change a schema that has stored data]. The
-service loads the model at start-up, so restart it to serve the new one (step 12).
+service loads the model at start-up, so restart it to serve the new one
+(xref:user-manual/serve.adoc[Serve the application]).
 
-To upgrade rdf-persistence, which is installed from a git branch (step 1), run
+[#upgrade-the-toolkit]
+== Upgrade the toolkit
+
+rdf-persistence is installed from a git branch
+(xref:user-manual/install.adoc#dependencies[Add the dependency]), so upgrade it with
 `uv lock --upgrade-package rdf-persistence` and `uv sync`. Then, until you regenerate, the freshness
 plugin and `rp-generate --check` fail with `stale input: <path> (changed)`, because the
 manifest records the generator files it was made with, and with `stale: generated with linkml ...`
 if the `linkml` version changed. Run your regenerate target and review the generated diff: a new
-toolkit version can change the generated code. The upgrade to 0.5.0 has more to change; see the
-next section.
+toolkit version can change the generated code.
+
+[#upgrade-notes]
+== Upgrade notes
+
+Some versions need more than a regeneration. Each has a note here; skip the notes of versions you
+have already passed.
 
 [#upgrade-generator-package]
-== Upgrading to the generator package (0.5.0)
+=== Upgrading to the generator package (0.5.0)
 
 Version 0.5.0 moves the generator from `rdf_persistence.generation` to the package
 `rdf_persistence_generation`, which ships in the same wheel. `[tool.rp-generate]` and the

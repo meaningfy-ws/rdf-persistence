@@ -4,9 +4,15 @@
 
 _How do I keep uploaded files?_
 
-The toolkit keeps two kinds of file.
+The toolkit keeps two kinds of file: *bytes*, kept as they are in the tenant's bucket, and *RDF*,
+parsed into a named graph that belongs to an aggregate. This page shows how to store, read and
+delete both from your own routes, how to find aggregates by value, and how to sweep the files and
+graphs no commit ever claimed. It builds on the session and unit of work of
+xref:user-manual/store-and-read.adoc[Store and read aggregates].
 
-*Bytes*, kept as they are. A root that includes the `StoredFile` mixin describes a kept file
+== Keep a file's bytes
+
+A root that includes the `StoredFile` mixin describes a kept file
 (`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key`); the toy
 library's `Scan` does. The bytes go to the tenant's bucket through the `FileStore` port:
 `put(bucket, key, data)`, `get(bucket, key)` and `delete(bucket, key)`. The toolkit has no route
@@ -14,7 +20,8 @@ for the bytes, so you add one. `file_key` is `internal`: no request body can set
 shows it, but a domain service can, since the mapper writes internal slots. Store the blob's key in
 `file_key` every time: the sweep (<<sweep-live-tenant>>) and `kit.remove_with_files` find a blob
 through it. The toy library keeps the bytes under the scan's id and sets `file_key` to that same id,
-so the key is the id and `file_key` names it. Its routes are in xref:user-manual/serve.adoc[Serve the application].
+so the key is the id and `file_key` names it. Its routes for the bytes are in the composition root
+of xref:user-manual/serve.adoc[Serve the application].
 
 *A file root is written through a session.* The record and its bytes must change together, so the
 router serves a `StoredFile` root's `GET` and listing but not its `POST`, `PUT` or `DELETE` (a
@@ -69,10 +76,12 @@ await kit.remove_with_files(
 )
 ----
 
-Any other root can opt in with the class annotation `rp_writes: service`; there is no value that
-turns it off.
+A `StoredFile` root is always written through a session this way. Any other root can opt in with
+the class annotation `rp_writes: service`; there is no value that turns it off.
 
-*RDF*, parsed into a graph of its own. `Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
+== Load an RDF file into a graph
+
+`Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
 parses the data in a worker thread and puts it into a new named graph, by default
 `{iri}/content/{uuid4}` (the loaded-graph template of the IRI policy; `Session` takes the policy
 as `iris=`). `data` is the file's `bytes`, and the return is the new graph's IRI as an rdflib
@@ -134,7 +143,10 @@ classes = sum(1 for _ in content.subjects(RDF.type, OWL.Class))
 
 A graph that is not loaded for that aggregate raises `NotFound`, whoever owns it.
 
-*Finding aggregates by value.* `Session.find(cls, **equals)` returns the IRIs of the tenant's
+[#find]
+== Find aggregates by value
+
+`Session.find(cls, **equals)` returns the IRIs of the tenant's
 aggregates of a class whose slots equal the values, in IRI order. To keep a value unique, declare a
 key instead (xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across aggregates]): a check before a write can be beaten by a write made meanwhile, and
 a key is checked in the commit itself. Use `find` to look aggregates up. This is what a uniqueness
@@ -191,20 +203,13 @@ own flag:
 *Pass `remove_blobs=True` only when every blob key you store is also stored in `file_key`.* The sweep
 calls a blob an orphan when no `file_key` names it. A consumer that keys its blobs some other way
 would lose every one of them. That is why blobs have a flag of their own, off by default. The toy
-library sets `file_key` (see the top of this page), so it qualifies.
+library sets `file_key` (<<keep-a-files-bytes>>), so it qualifies.
 
 *The grace period is one hour* (`older_than=timedelta(hours=1)`). A loaded graph's age is the time in
 its load marker; a blob's age is its modification time in the object store. Younger items are left
 alone, so an upload or a load that is still waiting for its commit survives. *Commit within the grace
 period.* A load or upload committed later than that, after a sweep with removal has run, is lost: the
 graph comes back empty, the blob is gone. Raise `older_than` if your commits can be slower.
-
-*Upgrade note.* A graph loaded before the load marker existed has no marker, and counts as old. After
-upgrading, do not sweep with `remove=True` while a deploy is running, as a graph loaded just before
-it could be removed before its commit. Run the first sweep after the deploy has settled, and read the
-dry run first. A graph loaded for the tenant root before `tenant-root-loads` was never registered,
-even if a commit named it, so the dry run lists it as an orphan: to keep it, commit the root again
-with it in `loaded_graphs` before you sweep with `remove=True`.
 
 An operator script, built like the composition root of xref:user-manual/serve.adoc[Serve the application]:
 
@@ -214,7 +219,7 @@ import asyncio
 from datetime import timedelta
 
 async def main(tenant: str) -> None:
-    kit = build_kit()      # your composition root: install_service(...) as in the serve section
+    kit = build_kit()      # your composition root: install_service(...), as when serving
     report = await kit.sweep_tenant(tenant)    # a dry run
     print(report.loaded_graphs, report.blobs)  # the orphans, sorted
     # read the lists; if they are right, remove:
@@ -234,3 +239,14 @@ meanwhile wins and the graph stays. Running the sweep twice is harmless.
 
 It raises `NotFound` if the tenant does not exist and `Conflict` if it is being deleted. On a large
 tenant it reads every graph and every blob, so it is slow; that is fine for an operator command.
+
+=== Changed in 0.2.0: load markers
+
+Graphs loaded before 0.2.0 have no load marker, and count as old. After upgrading from 0.1.x:
+
+* do not sweep with `remove=True` while a deploy is running, as a graph loaded just before it could
+  be removed before its commit; run the first sweep after the deploy has settled, and read the dry
+  run first;
+* a graph loaded for the tenant root before then was never registered, even if a commit named it,
+  so the dry run lists it as an orphan: to keep it, commit the root again with it in
+  `loaded_graphs` before you sweep with `remove=True`.

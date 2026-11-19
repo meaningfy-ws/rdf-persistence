@@ -4,6 +4,14 @@
 
 _How do I test my application without servers?_
 
+The testkit lets you run your whole service, or one domain service, in memory, with no store,
+object store or identity provider running. This page lists its stand-ins, shows the toy library's
+service built over them, and names the conformance suites that check an adapter of your own. The
+guards that keep generated code untouched are in
+xref:user-manual/generated-classes.adoc#guard[Guard the model in your tests].
+
+== The fakes
+
 `rdf_persistence.testkit` has in-memory stand-ins for the four ports:
 
 [cols="2,3",options="header"]
@@ -18,7 +26,12 @@ for a domain service's unit test; pass `iris` to test under your own IRI policy,
 `listings=Listings(view)` (both from `rdf_persistence`) to use `find`
 |===
 
-The toy library's router tests build the whole service over them (`tests/toy_service.py`):
+== The whole service over the fakes
+
+The toy library's router tests build the whole service over them (`tests/toy_service.py`).
+`SCHEMA`, `ROLES`, `REVIEW_WORKFLOW`, `MIGRATIONS`, `generated` and `settings` are those of the composition root in
+xref:user-manual/serve.adoc[Serve the application]; `TENANT_BODY` is a tenant create body as in
+xref:user-manual/tenants.adoc#create-a-tenant[Create a tenant]:
 
 [source,python]
 ----
@@ -28,7 +41,6 @@ from fastapi import FastAPI
 from rdf_persistence import AccessRules, JwksTokenVerifier, install_service, load_role_definitions
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 
-# SCHEMA, ROLES, MIGRATIONS, generated and settings as in the composition root; TENANT_BODY as in step 9
 signer = TokenSigner()
 settings = settings.model_copy(update={"roles_claim": signer.roles_claim})
 verifier = JwksTokenVerifier(
@@ -45,6 +57,7 @@ kit = install_service(
     verifier=verifier,
     rules=AccessRules(load_role_definitions(ROLES)),
     settings=settings,
+    workflows=[REVIEW_WORKFLOW],
     migrations=MIGRATIONS,
 )
 headers = {"Authorization": f"Bearer {signer.issue(sub='ada', roles=[])}"}
@@ -56,6 +69,8 @@ async with app.router.lifespan_context(app):     # start-up: the system database
 
 `https://idp.test` is the issuer `TokenSigner` signs for. `ASGITransport` does not run the app's
 lifespan, so the test enters it itself; without it the system database does not exist.
+
+== Check an adapter of your own
 
 Before you rely on an adapter of your own, run the testkit's conformance suites against it:
 `store_conformance`, `file_store_conformance` and `identity_conformance` under

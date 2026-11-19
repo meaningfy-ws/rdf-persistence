@@ -6,9 +6,14 @@ _How do I make my own IRIs?_
 
 By default the toolkit mints a tenant as `{base}{tenant_segment}/{tenant_id}` and an aggregate as
 `{tenant}/{rp_path}/{id}`, with owned parts and loaded graphs nested under their root, every id a
-UUID (elsewhere on this page `{uuid4}` stands for such an id). If your organisation fixes another
-shape, describe it as an *IRI policy* and put it on the settings. The policy is a record with a
-template per kind of IRI and the rule for each id:
+UUID. If your organisation fixes another shape, describe it as an *IRI policy* and put it on the
+settings. This page shows how to set a policy, what each field may hold, why a policy cannot change
+once a deployment has data, and how to mint IRIs under it in your own code. Choose the policy
+before the first tenant is created.
+
+== Set a policy
+
+The policy is a record with a template per kind of IRI and the rule for each id:
 
 [source,python]
 ----
@@ -16,7 +21,7 @@ from rdf_persistence import (
     IdKind, IdSpec, IriPolicy, Iris, JwksTokenVerifier, ServiceSettings, zitadel_roles_claim,
 )
 
-project_id = "..."                          # your Zitadel project id (step 12)
+project_id = "..."                          # your Zitadel project id, as when serving
 FLAT = "{base}{tenant_id}/{type}/{id}"
 settings = ServiceSettings(
     base="http://mwb.meaningfy.ws/",
@@ -36,7 +41,7 @@ settings = ServiceSettings(
         object_id=IdSpec(kind=IdKind.RANDOM, length=13),
     ),
 )
-# the verifier mints principals: give it the same policy; open it with `async with` as in step 12
+# the verifier mints principals: give it the same policy; open it with `async with`, as when serving
 verifier = JwksTokenVerifier(issuer, project_id, zitadel_roles_claim(project_id), iris=Iris(settings))
 ----
 
@@ -46,7 +51,10 @@ a book `http://mwb.meaningfy.ws/p4x8k2m/book/{13 characters}`, its chapter
 `http://mwb.meaningfy.ws/p4x8k2m/content/{13 characters}`: all flat, none nested under another. The
 aggregate's named graph stays `{root}/graph`. The API paths keep their shape: the tenant is
 `/libraries/p4x8k2m` and the book `/libraries/p4x8k2m/books/{13 characters}`, because the id in a
-path is the last segment of the IRI. A path id the policy does not mint answers 404.
+path is the last segment of the IRI. A path id the policy does not mint answers 404. The settings
+and the verifier are those of xref:user-manual/serve.adoc[Serve the application].
+
+== The fields
 
 The fields of `IriPolicy`, with their defaults and the variables each template may use:
 
@@ -75,26 +83,28 @@ The fields of `IriPolicy`, with their defaults and the variables each template m
 |`{base}`, `{deployment}`, `{issuer}`, `{sub}`; ends in `{sub}`
 |`tenant_id`, `object_id`
 |a UUID
-|an `IdSpec` (below)
+|an `IdSpec` (<<ids-and-types>>)
 |===
 
 `{tenant}` is the tenant's IRI, `{root}` the IRI of the aggregate root a part or a loaded graph
 belongs to, `{tenant_id}` and `{id}` the ids, and `{base}`, `{deployment}` and `{tenant_segment}`
 the settings of the same name. `deployment` (lower case letters and digits) is needed only when a
 template uses `{deployment}`. A template that uses another variable, does not end as the table
-says, or names no tenant is refused when the settings are built. The verifier mints the
-principal, and you build it before the kit: with a `principal_template` of your own, pass it the
-policy as `JwksTokenVerifier(..., iris=Iris(settings))` (`Iris` is exported by `rdf_persistence`).
-Without it the verifier mints the default `{issuer}/users/{sub}`, and grants to your principals
-never match: `install_service` compares the `principal_template` of the verifier's `Iris` with the
-settings' and refuses to start (`InvalidIri`) when they differ. A `principal_template` without
-`{issuer}` gives one principal to the same `sub` of every identity provider; leave `{issuer}` out
-only when one provider issues all your tokens. The verifier refuses a token whose `sub` is empty,
-`.` or `..`. Templates under which a tenant's access, meta, registry or provenance IRI equals
-another of them, the tenant's, or reads as an aggregate or a loaded graph are refused too. The access record is not an aggregate: no session reads or commits its graph, but a
-grant may still target it.
+says, or names no tenant is refused when the settings are built. So are templates under which a
+tenant's access, meta, registry or provenance IRI equals another of them, the tenant's, or reads as
+an aggregate or a loaded graph. The access record is not an aggregate: no session reads or commits
+its graph, but a grant may still target it.
 
-The consumer's table:
+*The principal.* The verifier mints the principal, and you build it before the kit: with a
+`principal_template` of your own, pass it the policy as `JwksTokenVerifier(..., iris=Iris(settings))`.
+Without it the verifier mints the default `{issuer}/users/{sub}`, and grants to your principals
+would never match, so `install_service` compares the `principal_template` of the verifier's `Iris`
+with the settings' and refuses to start (`InvalidIri`) when they differ. A `principal_template`
+without `{issuer}` gives one principal to the same `sub` of every identity provider; leave
+`{issuer}` out only when one provider issues all your tokens. The verifier refuses a token whose
+`sub` is empty, `.` or `..`.
+
+The example policy above, kind by kind:
 
 [cols="3,3,2",options="header"]
 |===
@@ -111,6 +121,9 @@ record, `{tenant}/meta`, `{tenant}/registry` |configurable
 |enforced
 |===
 
+[#policy-cannot-change]
+== The policy cannot change
+
 The policy cannot change once a deployment has data: their IRIs and graphs are stored under the old
 policy. At start-up, before the sweep (which reads the access records through the policy),
 `install_service` records the effective policy in the system database, in the graph
@@ -126,29 +139,25 @@ the start too, saying the record is unreadable. A system database that has acces
 records but no record is taken to hold the default policy: a non-default policy is refused there,
 and the default is recorded. Moving stored data to a new policy is not supported.
 
-*Upgrading from a version without the provenance graph.* Three points. `provenance` is now a
-reserved class IRI type (see step 3), so a class that used it must be renamed. The generated folder
-gains five frames (`Activity`, `Add`, `Remove`, `Replace` and the transition's own), so run your
-regenerate target once and commit the result. A recorded policy from before this version reads as
-the default `{tenant}/provenance`, and that is not a change; but a deployment whose recorded policy
-already uses `{tenant}/provenance` for another graph cannot start, and the only way out is a new
-policy record.
+== Ids and types
 
 What else the policy fixes:
 
-* `{type}` is the class's `rp_iri_type`, else its name in kebab case (step 3), and `content` for a
-  loaded graph.
+* `{type}` is the class's `rp_iri_type`, else its name in kebab case
+  (xref:user-manual/model.adoc[Write the model]), and `content` for a loaded graph.
 * An id is a UUID (`IdKind.UUID4`) or `length` characters of an `alphabet` (`IdKind.RANDOM`; 4 to
   32 characters, by default `0123456789abcdefghijklmnopqrstuvwxyz`). A drawn id that equals a word
   the templates use (a `{type}`, `content`, the deployment) is drawn again, and so is a tenant id
   whose access record or database already exists, at most five times.
 * A schema in which two classes share an `rp_iri_type`, or one equals such a word, is refused.
 
+== Mint IRIs in your own code
+
 One `Iris` serves the whole service. `install_service` builds it from the settings and the schema
 and hands it to every service it wires, to the kit (`kit.iris`) and to the access rules, even
 rules you built yourself: `AccessRules.with_iris(iris)` answers a copy with the same role permits
 under that policy. You never pass one to `install_service`. Inside a domain service, take it from
-the kit: `kit.iris` (step 8). Outside a service, build one from the settings and the types of the
+the kit: `kit.iris` (xref:user-manual/store-and-read.adoc[Store and read aggregates]). Outside a service, build one from the settings and the types of the
 schema (needed only when a template uses `{type}`):
 
 [source,python]
@@ -166,5 +175,15 @@ and pass it to what you build: `new_part(..., iris=iris)`, `open_session(..., ir
 `fake_session(..., iris=iris)`. `DEFAULT_IRIS` is the default policy, which `mint_aggregate_iri`
 and the other module functions use.
 
-The toy library's end-to-end test runs under this table against Fuseki, Garage and Zitadel:
+The toy library's end-to-end test runs under the example policy against Fuseki, Garage and Zitadel:
 `tests/e2e/test_library_policy.py`.
+
+=== Changed in 0.3.0: the provenance graph
+
+Upgrading from 0.2.x, three points. `provenance` is now a reserved class IRI type
+(xref:user-manual/model.adoc[Write the model]), so a class that used it must be renamed. The
+generated folder gains five frames (`Activity`, `Add`, `Remove`, `Replace` and the transition's
+own), so run your regenerate target once and commit the result. A recorded policy from 0.2.x reads
+as the default `{tenant}/provenance`, and that is not a change; but a deployment whose recorded
+policy already uses `{tenant}/provenance` for another graph cannot start, and the only way out is a
+new policy record.

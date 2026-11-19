@@ -44,7 +44,7 @@ workflow_transitions:
 |`initial_state` |The state a new aggregate starts in, one of the states. Required.
 |`workflow_transitions` |The transitions. A state may have none.
 |`from_state`, `to_state` |The names of the two states of a transition. Required.
-|`transition_roles` |The names of the roles of which the caller needs one; at least one. Each is a role the roles file defines (xref:user-manual/access.adoc[step 11] of the adoption guide). Required.
+|`transition_roles` |The names of the roles of which the caller needs one; at least one. Each is a role the roles file defines (the user manual, step 11: xref:user-manual/access.adoc#define-the-roles[Define the roles]). Required.
 |`comment_required` |`true` when the transition needs a comment; `false` when left out.
 |===
 

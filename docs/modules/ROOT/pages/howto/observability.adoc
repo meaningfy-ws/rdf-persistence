@@ -157,8 +157,8 @@ another deployment's CONSUMER span continues the trace; the envelope reads back 
 xref:howto/event-driven.adoc#relay[Carry commits to other deployments and to browsers] for the rest
 of the bus.
 
-The pieces go into the composition root of xref:user-manual/serve.adoc[the adoption guide] in this
-order. The telemetry set-up comes first, because a provider installed after a store is built does
+The pieces go into the composition root of the user manual, step 12
+(xref:user-manual/serve.adoc#the-composition-root[The composition root]), in this order. The telemetry set-up comes first, because a provider installed after a store is built does
 not trace that store's clients:
 
 [source,python]
@@ -170,10 +170,10 @@ bus = RedisEventBus(                                  # step 4: only if the serv
     deployment="library",
     middlewares=[RedisTelemetryMiddleware()],
 )
-kit = install_service(                                # as the adoption guide shows it
+kit = install_service(                                # as the user manual, step 12, shows it
     app,
     event_bus=bus,
-    # ... schema, stores, identity, verifier, settings, as in the adoption guide
+    # ... schema, stores, identity, verifier, settings, as in the user manual, step 12
 )
 ----
 

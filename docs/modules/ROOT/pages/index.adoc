@@ -20,7 +20,7 @@ events. Your application writes only what is specific to it.
 |understand the design |xref:architecture/index.adoc[Architecture] |the components, the models, where data lives, the API, access, and the decision records
 |know what it commits to |xref:requirements/use-cases.adoc[Use cases] and xref:requirements/capabilities.adoc[Capabilities] |who it serves, and each capability with the pages that explain it
 |change the toolkit |xref:develop/index.adoc[Developer manual] |the library, the generator, testing, working with agents
-|know why these choices |xref:background/soa/index.adoc[State of the art] |the study of existing tools that shaped it; background, not commitments
+|know why these choices |xref:background/soa/index.adoc[State of the art] |the study of existing tools that shaped it, in the architecture section; background, not commitments
 |===
 
 Short answers to the usual questions, with links into all of the above, are on

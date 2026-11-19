@@ -4,6 +4,47 @@
 Each answer is short and points to the page with the details. The answers describe the toolkit
 on `develop` as of 2026-11-17.
 
+== Finding your way
+
+*I am new: where do I start?*::
+With the tutorial. You model one aggregate, generate its code, store it and read it back, in
+memory, with no server to run. See xref:tutorials/getting-started.adoc[Getting started].
+
+*How do I build a whole application, step by step?*::
+Follow the user manual: fourteen steps, in the order the work is done, from installing the toolkit
+to configuring the IRI policy. Other pages cite them by number ("step 8"). See
+xref:user-manual/index.adoc[User manual: build an application].
+
+*I know the basics; how do I use feature X?*::
+Find the feature's guide, grouped by capability: data, collaboration and events, operations. Each
+takes one task from start to finish. See xref:howto/index.adoc[How-to guides].
+
+*Who is the toolkit for, and what do they do with it?*::
+Four actors (the application developer, an API client, a system architect and the toolkit
+developer), each with goals written as use cases that name the capabilities serving them. See
+xref:requirements/use-cases.adoc[Use cases].
+
+*What does the toolkit commit to, and where is each part documented?*::
+Its `rp-*` capabilities. The requirements are in `openspec/specs/`; the docs list what each
+capability covers and the pages that explain it. See
+xref:requirements/capabilities.adoc[Capabilities].
+
+*How is the toolkit built, and why?*::
+A library and a generator in one wheel, layered `entrypoints | adapters → services → domain`, with
+ports for the store, the file store, the identity provider, the token verifier and the event bus.
+See xref:architecture/index.adoc[Architecture overview], which maps the rest of the architecture
+section.
+
+*Which models does the toolkit have?*::
+The metamodel, which an application's schema imports and which is stored as RDF, with a generated
+class diagram per module; and the technical schemas of the toolkit's own records, never stored as
+RDF. See xref:architecture/models.adoc[Models].
+
+*What is the exact name of a class, a function or an `rp-generate` option?*::
+Look it up in the reference: the public Python API and the `rp-generate` usage, both generated
+from the code, and where the settings, routes and Make targets are listed. See
+xref:reference/index.adoc[Reference].
+
 == Using the toolkit
 
 *How do I start an application?*::
@@ -17,6 +58,18 @@ aggregate: a root class that includes `AggregateRoot` and `Described` and has an
 classes it owns through slots annotated `owned: true`. `rp-generate` refuses a schema that breaks
 the rules and names the element at fault. See xref:user-manual/model.adoc[step 3] and
 xref:architecture/generation.adoc#metamodel[the metamodel].
+
+*How do I turn the model into code?*::
+Declare the outputs in a `[tool.rp-generate]` table of `pyproject.toml` (`schema` and `package`
+are required; a schema with aggregate roots of its own also needs `migrations`) and run
+`rp-generate`. It checks the schema, then writes the Python classes, shapes, context and frames,
+and, when asked, the TypeScript types and the diagrams. See xref:user-manual/generate.adoc[step 4].
+
+*How do I change the model later?*::
+Edit the schema, run your regenerate target, add a conformance case for any new constraint kind,
+run the tests and commit the schema and the generated code together. If data is already stored,
+the schema also needs a new version and maybe a migration (see below). See
+xref:user-manual/change-model.adoc[step 7].
 
 *How do I store and read an aggregate?*::
 Over HTTP, the generic router does it for you. In a domain service, open a session on the tenant's
@@ -100,7 +153,8 @@ checks no access itself. See xref:user-manual/files.adoc[step 10].
 *How do I check that a name is not taken yet?*::
 Call `session.find(Scan, file_name=name)` and answer 409 when the list is not empty. `find` ignores
 Prohibitions, so check each IRI with `require_aggregate` before you show it to anyone. See
-xref:user-manual/files.adoc[step 10].
+xref:user-manual/files.adoc[step 10]. To have the commit itself refuse a duplicate, declare a
+unique key (see _Can two aggregates share a key value?_ above).
 
 *Who points at this resource?*::
 Check the caller with `kit.require_aggregate(..., Action.READ)`, open `kit.collaboration(checked)`
@@ -182,21 +236,21 @@ and the blobs no `file_key` names, older than one hour, and changes nothing unle
 is stored in `file_key`. Delete a file aggregate with `kit.remove_with_files`, which removes its
 blobs too. See xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant].
 
-*How do I back up or copy a project?*::
+*How do I back up or copy a tenant?*::
 Call `kit.dump_tenant(tenant, out)` to write the tenant's graphs (as N-Quads) and files to one
 archive, and `kit.restore_tenant(src, creator)` to create a new tenant from it, with a new id and
 new IRIs. The restorer alone gets the creator role; grants are not dumped. The archive must come
 from the same schema version and IRI policy, and the graphs are held in memory. See
-xref:howto/dump-restore.adoc[Back up or copy a project].
+xref:howto/dump-restore.adoc[Back up or copy a tenant].
 
-*Where does data that belongs to no project go?*::
+*Where does data that belongs to no tenant go?*::
 Into the application database, one per deployment. Mark the class `database: application` in the
 schema, check the caller with `kit.require_application`, mint IRIs with `kit.application_iri` and
 open `kit.application_session`. Access comes from global roles at level `system`, which also apply
-in every tenant. See xref:howto/application-data.adoc[Keep data that belongs to no project].
+in every tenant. See xref:howto/application-data.adoc[Keep data that belongs to no tenant].
 
 
-*Can a project's data live on another server?*::
+*Can a tenant's data live on another server?*::
 Yes. Wire the other triple stores by name with `install_service(..., stores={"client-a": ...})`
 and create the tenant on one with `kit.tenancy.create(..., store="client-a")`; the generic `POST`
 route always uses the `default` store. From then on the tenant's sessions, sweeps, migrations,
@@ -366,9 +420,9 @@ xref:architecture/api.adoc#representations[the API page].
 
 *Where are decisions recorded?*::
 Settled decisions that outlive their change are the records on
-xref:adr/index.adoc[Architecture decision records] (ADR-001 to ADR-005). Earlier ones are on
-xref:architecture/open-decisions.adoc[Decisions of 2026-11-05] (D-1
-to D-13) and in xref:architecture/index.adoc#decisions-taken[architecture v1] (O-1, O-2). The
+xref:adr/index.adoc[Architecture decision records] (ADR-001 to ADR-005). Earlier ones are in the
+xref:architecture/open-decisions.adoc[decision log of 2026-11-05] (D-1
+to D-13) and in the xref:architecture/index.adoc#decisions-taken[architecture overview] (O-1, O-2). The
 decisions of the work in progress (PD-1 and on) are in `openspec/changes/<id>/design.md`; once a
 change is archived, its requirements live in `openspec/specs/` and the change itself, decisions
 included, in `openspec/changes/archive/` (toolkit v1: `2026-11-06-toolkit-v1-foundation`).
@@ -483,8 +537,6 @@ planned: its PLAN waits for the decisions listed in its `inputs/seed.md`.
 * *Detailed test profiling.* The check timings are rough; a profile of the slowest tests would show
   where the 5 minutes of unit and feature tests go.
 * *A client library* over the generated TypeScript types and the OpenAPI document.
-* *Events*: an outbox, an event bus and server-sent events, deferred until a need reacts to a
-  change in another aggregate.
 * *GraphQL*, read-only over the same schema and context (option C of
   xref:architecture/api.adoc[the API page]), *OpenFGA* as the decision engine, and property- or
   triple-level access.

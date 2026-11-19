@@ -201,7 +201,7 @@ update request, also a `rp:CommitMarker` (see <<commit>>).
 |`A/registry` (`A` is the application IRI), and `X/graph`, one per application aggregate `X` (with its loaded graphs)
 |The aggregates of the classes the schema marks `database: application`, their registry and their loaded graphs, with the
 same bookkeeping as in a tenant database. No bucket, no access record. It is created at start-up when the schema has such a class.
-See xref:howto/application-data.adoc[Keep data that belongs to no project].
+See xref:howto/application-data.adoc[Keep data that belongs to no tenant].
 
 |Every database (system, application, tenant)
 |`{base}toolkit/schema-stamps`, one graph
@@ -923,7 +923,7 @@ including another `DELETE`; the next start-up sweep finishes it.
 
 `kit.dump_tenant` and `kit.restore_tenant` (`tenancy/services/tenant_dump.py`) are Python calls with no
 route and no gate; the consumer decides who may call them (see
-xref:howto/dump-restore.adoc[Back up or copy a project]). A dump is one gzipped tar: `manifest.json`,
+xref:howto/dump-restore.adoc[Back up or copy a tenant]). A dump is one gzipped tar: `manifest.json`,
 `graphs.nq`, then `blobs/<key>`, then an empty member `end` that shows the dump finished. A restore
 always creates a new tenant, in the same order as `create`: database, bucket, data, access record
 last.

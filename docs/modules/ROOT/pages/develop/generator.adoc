@@ -7,8 +7,11 @@ xref:user-manual/generate.adoc[Generate the code]; why the toolchain works this 
 xref:architecture/generation.adoc[Model to code]. The package layout, the Make targets and the
 rest of the library are on xref:develop/index.adoc[Working on the library].
 
-The generator is a sibling top-level package shipped in the same wheel. The library never imports
-it (`library-never-imports-the-generator`, `make check-architecture`); its own tests are in
+The generator is a sibling top-level package shipped in the same wheel. It imports the library;
+the library does not import it, but through four testkit shims (`rdf_persistence.testkit.freshness`,
+`conformance`, `roundtrip` and `strategies`), which forward the old paths to
+`rdf_persistence_generation.testkit`. The import contract `library-never-imports-the-generator`
+(`.importlinter`, run by `make check-architecture`) forbids every other import. Its own tests are in
 `tests/generator/` and run with `make test-generator`, with an 80 % coverage floor over the
 package.
 
@@ -46,7 +49,7 @@ It never patches the generated output.
 
 . Create a module in `rdf_persistence_generation/extensions/`. Its `render(schema_path: Path)`
   returns a `list[GeneratedFile]`. Open schemas only with `load_schema` (or the metamodel import
-  map), and read aggregate structure only through `schema/services/schema_structure.py`.
+  map), and read aggregate structure only through `rdf_persistence/schema/services/schema_structure.py`.
 . Add its step to `STEPS` in `rdf_persistence_generation/steps.py`, with `render_step(name, render,
   folder)`; the folder function picks the target folder.
 . Add a row to the extensions table in
@@ -68,15 +71,31 @@ review the whole generated diff, then run `make check-all`.
 
 _How do I add a check rule?_
 
-. Add the rule's value to `HardRule` or `BoundaryRule` in `rp_generation.yaml`, with a title,
-  description and meaning, and run `make generate`.
+`rp-generate` runs three check steps after the lint, in this order (`STEPS` in
+`rdf_persistence_generation/steps.py`):
+
+[cols="1,2,3",options="header"]
+|===
+|Step |Runs |Checks
+|Boundary check (`BOUNDARY_STEP`) |`steps._boundary_problems`: `boundary_problems` and `target_kind_problems` of `rdf_persistence_generation/checks/boundary.py` |The aggregate boundaries: ownership, references, the direction of activities, module kinds, technical modules, the target's kind; rules of `BoundaryRule`
+|Hard check (`HARD_STEP`) |`steps._hard_problems`: `hard_problems` and `stored_schema_problems` of `checks/hard.py`, and `python_package_problems` of `checks/python_package.py` |What every element needs (title, description, IRI, meaning), the annotations, the root and owned classes, the `migrations` folder and quoted `version` of a stored schema, the toolkit's `python_package`; rules of `HardRule`
+|Rules check (`RULES_STEP`) |`steps._rules_problems`: `rules_problems` of `checks/rules.py` |LinkML constructs the generated classes and shapes would silently ignore (`rules`, `all_of`, `none_of`, and some slot forms); no rule enum
+|===
+
+A new rule about a boundary joins the boundary check; any other rule an element must meet joins the
+hard check. A construct that the generated classes or shapes would silently ignore does not get a
+new rule: it belongs in `checks/rules.py`, so that generation fails instead.
+
+To add a rule to the boundary or the hard check:
+
+. Add the rule's value to `HardRule` or `BoundaryRule` in
+  `rdf_persistence_generation/model/rp_generation.yaml`, with a title, description and meaning, and
+  run `make generate`.
 . Implement it in `rdf_persistence_generation/checks/hard.py` or `boundary.py`, yielding a
-  `CheckProblem` through `rule_problem`. A rule with a module of its own, as `checks/python_package.py`
-  has, joins the list in `steps._hard_problems`, which the hard step runs.
+  `CheckProblem` through `rule_problem`. A rule with a module of its own, as
+  `checks/python_package.py` has, joins the list of its step's function: `steps._hard_problems` for
+  the hard check, `steps._boundary_problems` for the boundary check.
 . Test it in `tests/generator/unit/test_hard_check.py` or `test_boundary_check.py`, with one
   schema that breaks the rule and one that does not.
 . If the rule is normative, add it to the list in
   xref:architecture/generation.adoc#hard-check[the hard check].
-
-A construct that the generated classes or shapes would silently ignore does not get a new rule.
-It belongs in `checks/rules.py`, so that generation fails instead.

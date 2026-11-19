@@ -16,7 +16,7 @@ relies on (xref:requirements/capabilities.adoc[Capabilities]).
 |xref:howto/reverse-references.adoc[Find who points at a resource] |rp-reverse-references
 |xref:howto/reference-collections.adoc[Group resources you do not own] |rp-reference-collections
 |xref:howto/migrate.adoc[Change a schema that has stored data] |rp-schema-migrations
-|xref:howto/application-data.adoc[Keep data that belongs to no project] |rp-tenancy, rp-access
+|xref:howto/application-data.adoc[Keep data that belongs to no tenant] |rp-tenancy, rp-access
 |===
 
 == Collaboration and events
@@ -37,7 +37,7 @@ relies on (xref:requirements/capabilities.adoc[Capabilities]).
 |Guide |Capability
 
 |xref:howto/settings.adoc[Configure the toolkit's deployment values] |rp-settings
-|xref:howto/dump-restore.adoc[Back up or copy a project] |rp-tenancy
+|xref:howto/dump-restore.adoc[Back up or copy a tenant] |rp-tenancy
 |xref:howto/tenant-stores.adoc[Put tenants on several stores] |rp-tenancy
 |xref:howto/observability.adoc[See what the toolkit is doing] |rp-observability
 |===

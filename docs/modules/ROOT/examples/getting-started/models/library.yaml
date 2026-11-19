@@ -1,0 +1,59 @@
+# tag::header[]
+id: https://example.org/ns/library
+name: library
+title: Library
+version: "1"
+description: The first step of the toy library application, in one file.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  schema: http://schema.org/
+  bibo: http://purl.org/ontology/bibo/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+  - rdf_persistence/model/rp_access
+  - rdf_persistence/model/rp_tenancy
+# end::header[]
+
+classes:
+  # tag::book[]
+  Book:
+    title: Book
+    description: A book held by a library; an aggregate root that owns its chapters.
+    class_uri: bibo:Book
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [authors]
+    annotations:
+      rp_path: books
+      database: tenant
+  # end::book[]
+  # tag::tenant[]
+  Library:
+    title: Library
+    description: A library; the tenant root. Its IRI is the tenant IRI and it lives in the tenant's meta graph.
+    class_uri: schema:Library
+    mixins: [Described, Tracked]
+    annotations:
+      graph: meta
+      database: tenant
+  LibraryAccess:
+    title: Library access
+    description: The access record of a library tenant; its grants are the metamodel's.
+    class_uri: lib:LibraryAccess
+    is_a: TenantAccess
+  # end::tenant[]
+
+slots:
+  # tag::slot[]
+  authors:
+    title: Authors
+    description: The names of the book's authors.
+    slot_uri: schema:author
+    range: string
+    multivalued: true
+  # end::slot[]
