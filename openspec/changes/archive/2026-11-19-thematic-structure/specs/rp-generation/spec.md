@@ -91,8 +91,9 @@ SHALL fail, naming the target and the module, when a technical target holds a mo
 `kind` SHALL generate as before. In the toolkit's own run, a target that declares
 `kind = "domain"` SHALL generate into a package whose segment before `generated` is `domain`, and
 one that declares `kind = "technical"` into a package whose segment before `generated` is
-`services`, `adapters` or `entrypoints`; the packages outside the themes, `rdf_persistence.testkit`
-and `rdf_persistence_generation`, are exempt. `rp-generate` SHALL fail, naming the target and the
+`services`, `adapters` or `entrypoints`, and the segment before that is a theme of the library
+(the package is `rdf_persistence.<theme>.<layer>.generated`); the packages outside the themes,
+`rdf_persistence.testkit` and `rdf_persistence_generation`, are exempt. `rp-generate` SHALL fail, naming the target and the
 package, otherwise. A consumer's targets SHALL NOT be checked for their folder.
 
 #### Scenario: a domain module in a technical target
@@ -109,6 +110,11 @@ package, otherwise. A consumer's targets SHALL NOT be checked for their folder.
 - **GIVEN** a toolkit target with `kind = "technical"` and a package ending in `.domain.generated`
 - **WHEN** `rp-generate` runs on the toolkit
 - **THEN** it fails, naming the target and its package, and writes nothing
+
+#### Scenario: a technical target under no theme
+- **GIVEN** a toolkit target with `kind = "technical"` and `package = "rdf_persistence.services.generated"`
+- **WHEN** `rp-generate` runs on the toolkit
+- **THEN** it fails naming the target and the package, which has no theme before its layer
 
 #### Scenario: a domain target in an adapters folder
 - **GIVEN** a toolkit target with `kind = "domain"` and `package = "rdf_persistence.files.adapters.generated"`

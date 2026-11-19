@@ -88,9 +88,8 @@ What a commit does:
   custom IRI policy may use the class's `{type}` instead of `{rp_path}`. Any other is refused
   (`InvalidIri`) before anything is sent. `kit.iris.mint_aggregate(tenant, type, rp_path)` mints one
   by the service's policy, `type` being the class's `{type}`
-  (xref:user-manual/iri-policy.adoc[Configure the IRI policy]). The module function
-  `mint_aggregate_iri(tenant, rp_path)` mints the default layout only, which a custom policy
-  refuses.
+  (xref:user-manual/iri-policy.adoc[Configure the IRI policy]). `DEFAULT_IRIS.mint_aggregate`
+  mints the default layout only, which a custom policy refuses.
 * A part's IRI is, by default, `{root}/parts/{uuid4}`. `new_part(Chapter, root, iris=kit.iris,
   tenant=tenant, ...)` mints it by the policy, and it stays the same across commits. Without `iris`
   it mints the default layout only, which a custom policy refuses. Its `{type}` is the kebab-case

@@ -9,7 +9,7 @@ import pytest
 from tests import changed
 from tests.changed import (
     FALLBACK_EXIT,
-    LAYERS,
+    OUTSIDE_THEMES,
     THEMES,
     GitError,
     Selection,
@@ -23,7 +23,6 @@ REPO = Path(__file__).resolve().parents[2]
 CONTAINER_TEST = "tests/integration/api/test_routes.py"
 ROOT_TESTS = ("tests/unit/test_a.py", "tests/unit/test_b.py")
 LOADGROUP = ("--dist", "loadgroup")
-SHIM_FOLDERS = {"domain", "adapters"}  # the two deprecation shims of PD-8, until stage 8
 
 SELECTS = [
     (1, "openspec/changes/x/design.md", ()),
@@ -94,13 +93,12 @@ def test_a_changed_generator_file_selects_the_generator_tests(changed):
     assert not selection.fallback_reasons, f"{changed} must not fall back"
 
 
-def test_the_folders_of_the_package_are_the_themes_the_testkit_and_the_two_shims():
-    """Every folder is a theme the mapper knows, the testkit, or a deprecation shim (PD-8, PD-11, TC-70)."""
+def test_the_folders_of_the_package_are_the_themes_and_the_testkit():
+    """Every package folder is a theme the mapper knows or the testkit (PD-11, TC-70)."""
     folders = {p.parent.name for p in (REPO / "rdf_persistence").glob("*/__init__.py")}
 
-    assert folders >= LAYERS | THEMES, "a theme or the testkit of the mapper has no folder"
-    assert folders - LAYERS - THEMES == SHIM_FOLDERS, "a folder is neither a theme nor a shim"
-    assert not LAYERS & THEMES, "a name cannot be the testkit and a theme"
+    assert folders == OUTSIDE_THEMES | THEMES, "a folder is neither a theme nor the testkit"
+    assert not OUTSIDE_THEMES & THEMES, "a name cannot be the testkit and a theme"
 
 
 def test_the_themes_are_the_thirteen_of_the_design():
@@ -198,19 +196,18 @@ def test_the_theme_rule_and_the_generator_rule_are_kept():
 
 
 @pytest.mark.parametrize(
-    ("changed", "shim_tests"),
+    "changed",
     [
-        ("rdf_persistence/domain/example.py", "tests/unit/core/"),
-        ("rdf_persistence/adapters/example.py", "tests/unit/persistence/"),
+        "rdf_persistence/domain/example.py",
+        "rdf_persistence/adapters/example.py",
+        "rdf_persistence/__init__.py",
     ],
 )
-def test_a_change_in_a_shim_selects_the_root_tests_and_the_folder_of_the_shims_own_tests(
-    changed, shim_tests
-):
-    """The shims are no theme (PD-8): the root tests, and the folder holding the shim's own tests."""
+def test_a_change_outside_a_theme_and_the_testkit_selects_the_root_tests_only(changed):
+    """8.1: the two shims are gone, so a folder that is no theme has no tests of its own."""
     selection = _select([changed])
 
-    assert selection.paths == tuple(sorted((*ROOT_TESTS, shim_tests))), changed
+    assert selection.paths == ROOT_TESTS, changed
     assert not selection.fallback_reasons, f"{changed} must not fall back"
 
 

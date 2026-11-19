@@ -238,8 +238,8 @@ None.
 
 ## As built
 
-Reconciled at the close of the change, in PR 7 before it merges (P-0004). Delivery decisions are
-design D-1 to D-25. The proposal had no reconciliation table; this one is built from `tasks.md`'s
+Reconciled at the close of the change, in PR 7 and again in PR 8 before it merges (P-0004).
+Delivery decisions are design D-1 to D-27. The proposal had no reconciliation table; this one is built from `tasks.md`'s
 stages.
 
 | Stage | PR | As shaped | As built |
@@ -250,8 +250,8 @@ stages.
 | 4 `persistence`, `migrations`, the store split | #176 | DEC-7, PD-1, PD-2, PD-7, PD-8 (`adapters.fuseki` shim), PD-10 | Delivered: `SparqlProtocolStore` and `FusekiStore`, the `adapters.fuseki` shim, the two themes moved, `migrations-below-the-runner` removed. Built differently: `rp_service.ts` holds the same lines in `SERVED_SCHEMAS` order, not the old file's order; `/openapi.json` stays byte-identical (D-18 (1)); `migrations/services` is served (D-18 (2)); `LimitSettings` is not served (D-18 (4)); the 400 log line is one constant message (D-18 (5)); the shim keeps `BAD_QUERY_MESSAGE` and `UNREADABLE` (D-19 F3); `fuseki.py`'s history is cut, as half of it moved (D-18 (9)). Added: a class declared by two served schemas is a `DuplicateComponentError`; a served schema listed before one it imports is an error (D-19 F1, F4); a test ties `themes-layered` and `themes-ordered` to `TURNED_ON` (D-17 W2, D-18 (12)). Delivery decisions D-18, D-19 |
 | 5 `access`, `tenancy` | #177 | PD-1, PD-2 (`access/services`, `access/adapters`, `tenancy/services`) | Delivered as shaped, no shim (D-20 (1)): `tenant_move` in `tenancy/services`, `tenancy-without-the-runner` retargeted. The wire schema became `rp_access_adapters.yaml`, its generated module byte-identical (TC-50); `rp_access_settings.yaml` is not served (D-20 (2)). `test_http` stays in `tests/unit/core/`, its verifier case split to `access` (D-20 (3)). Review found nothing Critical; the tester found nothing (D-21). Delivery decisions D-20, D-21 |
 | 6 `events`, `collaboration`, `messaging` | #178 | PD-1, PD-2 (`events/services`, `collaboration/services`), PD-6 | Delivered: the three themes moved, `events` and `collaboration` served from their own schemas, `nothing-in-services-imports-the-bus` removed, `collaboration-layers` and `event-bus-libraries-in-one-module` retargeted (D-22 (3)). Added beyond the shape: `api-services-never-import-the-bus`, since `themes-ordered` does not reach the four `api` services modules above `messaging` (D-23 W1, re-labelled Critical). The event-bus contract's title says what it enforces (D-23 F1). Delivery decisions D-22, D-23 |
-| 7 `api`, the end of the old layers, the docs | PR 7 (this PR) | PD-1 (`api`), PD-2 (`api/entrypoints`), PD-6 (final form), PD-13, task 7.2 | Delivered: `api` moved; `services/` and `entrypoints/` gone; `domain/` and `adapters/` hold only the shims; `.importlinter` holds the 17 contracts of PD-6, the five temporary ones removed (D-24 (1)); `api-services-never-import-the-bus` on `api.services` (D-24 (2)); the service's served schema is `rp_api_entrypoints.yaml`, and `rp_service.ts` keeps its name (D-24 (3)); the emptied group schemas deleted, only `testkit`'s left; the docs and the CHANGELOG. Built differently: logger names are listed under Changed (BREAKING), not Deprecated, as they change at once (D-24 (5)); `domain-pure` keeps `rdf_persistence.domain` as a source while the shim lives (D-25, L2 W1 re-labelled Critical); a spec delta for `rp-developer-checks` (D-25). The full review over the EPIC and the tester ran here (D-7, D-25). The minor release of PD-13 follows this merge. Delivery decisions D-24, D-25 |
-| 8 remove the deprecated paths | — | DEC-5, DEC-8, PD-13, task 8.1 | Not yet: it merges only after a published release containing stage 7 (PD-13, RISK-7), so it is outside this run (D-2). It removes `rdf_persistence/domain/`, `rdf_persistence/adapters/` and `mint_aggregate_iri` (148 names), and with them `domain-pure`'s shim source (D-25) |
+| 7 `api`, the end of the old layers, the docs | #179 | PD-1 (`api`), PD-2 (`api/entrypoints`), PD-6 (final form), PD-13, task 7.2 | Delivered: `api` moved; `services/` and `entrypoints/` gone; `domain/` and `adapters/` hold only the shims; `.importlinter` holds the 17 contracts of PD-6, the five temporary ones removed (D-24 (1)); `api-services-never-import-the-bus` on `api.services` (D-24 (2)); the service's served schema is `rp_api_entrypoints.yaml`, and `rp_service.ts` keeps its name (D-24 (3)); the emptied group schemas deleted, only `testkit`'s left; the docs and the CHANGELOG. Built differently: logger names are listed under Changed (BREAKING), not Deprecated, as they change at once (D-24 (5)); `domain-pure` keeps `rdf_persistence.domain` as a source while the shim lives (D-25, L2 W1 re-labelled Critical); a spec delta for `rp-developer-checks` (D-25). The full review over the EPIC and the tester ran here (D-7, D-25). Delivery decisions D-24, D-25 |
+| 8 remove the deprecated paths | PR 8 (this PR) | DEC-5, DEC-8, PD-13, task 8.1 | Delivered before any release, by the developer's decision (D-26): `rdf_persistence/domain/`, `rdf_persistence/adapters/` and `mint_aggregate_iri` removed, the public surface 148 names (TC-03, TC-80, TC-81); the shim sources gone from the contracts, the shim rule from `tests/changed.py`. So 0.6.0 carries the move and the removal together; the shims shipped in no release, and the CHANGELOG lists them under Removed (BREAKING), not Deprecated. The `rp-package-boundaries` requirement on the moved paths is restated accordingly (D-26). The review items D-25 left under the floor are fixed here, and PD-4's folder check also requires a theme before the layer (D-26). The stage's L2 and L3 review found nothing Critical (D-27). Delivery decisions D-26, D-27 |
 
 ### What Changes, Capabilities and Impact as delivered
 
@@ -266,19 +266,20 @@ stages.
   D-20 (3)). The docs touched more pages than listed: `data-flows`, `api`, `access-control`,
   `develop/index`, `howto/settings`, `howto/adopt`, `howto/observability`, `howto/dump-restore`
   and `howto/workflow` too.
-- **BREAKING**, in two steps. Now: logger names follow the new module paths with no warning
-  (D-24 (5)), and `error.type` names the new exception modules (D-12 (7)). After one release
-  (stage 8): `rdf_persistence.domain.base`, `rdf_persistence.adapters.fuseki` and
-  `mint_aggregate_iri` go. The CHANGELOG lists both.
+- **BREAKING**, in one step, not two (D-26): in 0.6.0 logger names follow the new module paths
+  (D-24 (5)), `error.type` names the new exception modules (D-12 (7)), and
+  `rdf_persistence.domain.base`, `rdf_persistence.adapters.fuseki` and `mint_aggregate_iri` are
+  gone, with no deprecation release. The CHANGELOG lists them under Changed and Removed.
 - **Capabilities**: `rp-package-boundaries` and `rp-generation` are modified, as shaped; none is
-  new. `rp-developer-checks` is modified too: `make test-changed` selects by theme, and a shim's
-  change runs the root tests and the shim's own folder (D-25). `rp-generation` also modifies
+  new. `rp-developer-checks` is modified too: `make test-changed` selects by theme (D-25; the
+  shim rule it carried for stage 7 went with the shims, D-26). `rp-generation` also modifies
   "TypeScript targets get the service's types": the types come from every served schema, merged
   into `rp_service.ts` (D-9 W1, D-25).
-- **Impact** as shaped, with three additions. A consumer that imports only `rdf_persistence`
-  gets the same 149 objects, but sees the new logger names and `error.type` values (D-12 (7),
+- **Impact** as shaped, with four differences. A consumer that imports only `rdf_persistence`
+  gets the same objects, 148 of the 149 names (`mint_aggregate_iri` is gone, D-26), but sees the new logger names and `error.type` values (D-12 (7),
   D-24 (5)) and `rp_service.ts` in a new order (D-18 (1)). Its freshness check asks for one
-  `rp-generate`, which removes the deep `RpModel` import (PD-8). The indexes were re-indexed after
+  `rp-generate`, which removes the deep `RpModel` import (PD-8); until it does, that import fails,
+  as no shim shipped (D-26). The indexes were re-indexed after
   each merge (RISK-6).
 
 ### Divergences from the shape
@@ -290,18 +291,22 @@ stages.
   `schema`, which builds them (D-8, D-15 (6)).
 - **DEC-6, PD-6**: `layers-across-themes` is four contracts (D-12 (4)).
   `api-services-never-import-the-bus` is new (D-23). Temporary contracts held the old layout apart
-  during stages 2 to 6 (D-13, D-14, D-16) and went at stage 7 (D-24 (1)). `domain-pure` keeps the
-  shim as a source until stage 8 (D-25).
+  during stages 2 to 6 (D-13, D-14, D-16) and went at stage 7 (D-24 (1)). `domain-pure` kept the
+  shim as a source until stage 8 (D-25); `api-services-never-import-the-bus` covers the whole
+  `api.services` package (D-26).
 - **PD-10, Rabbit-holes**: `/openapi.json` stays byte-identical, but the consumer's `rp_service.ts`
   does not: the same lines, in `SERVED_SCHEMAS` order. No rule over split schemas gives the old
   order (D-18 (1), D-20 (6), D-22 (6)). `migrations/services` is served (D-18 (2)).
-  `SERVICE_SCHEMA` stays beside `SERVED_SCHEMAS`, naming the service's schema (D-25).
+  `API_ENTRYPOINTS_SCHEMA` (stage 7's `SERVICE_SCHEMA`, renamed by D-26) stays beside
+  `SERVED_SCHEMAS`, naming the service's schema (D-25).
 - **PD-4 (a)**: `FORBIDDEN_BASES` also names `rdf_persistence.RpModel`, the name a consumer
-  imports (D-13 W1).
+  imports (D-13 W1). On the toolkit's run, the folder check also requires a theme before the layer
+  (D-26).
 - **PD-7**: the 400 log line is one constant message; the old message names stay in the shim only
   (D-18 (5), D-19 F3).
-- **PD-8**: the shims' warnings name "the minor release after the one that ships the move", not a
-  version number; the number is named when the release is cut (D-25).
+- **PD-8, PD-13, DEC-5**: the shims and `mint_aggregate_iri`'s warning shipped in no release;
+  stage 8 removed them before the release that carries the move, so 0.6.0 breaks the deep paths
+  at once, with no deprecation release (D-26).
 - **DEC-8, TC-33**: a bad tenant segment is refused by `ServiceSettings` with `ValidationError`,
   where a wrapper raised `InvalidIri` (D-15 (4)).
 - **DEC-4, the recipe**: in stages 2, 3, 5 and 6 the move and the import rewrite were one commit,
@@ -312,15 +317,11 @@ stages.
 - **D-7**: each stage had one L2+L3 pass; the five-lens review ran once, on stage 7, over the
   EPIC.
 - **D-3**: the acceptance demo that VERY LARGE makes mandatory was waived by the developer.
-- **D-2, PD-13**: stage 8 is not delivered; it waits for a published release containing stage 7.
+- **D-2, PD-13**: stage 8 was to wait for a published release containing stage 7; the developer
+  waived that, and it was delivered in the same run (D-26).
+- **D-25**: the review items left under the floor at stage 7 were fixed at stage 8 (D-26).
 
 ### Follow-ups
 
-- **Stage 8** (task 8.1): after the release of PD-13, remove the two shims, `mint_aggregate_iri`,
-  `domain-pure`'s shim source and `tests/changed.py`'s shim rule; CHANGELOG "Removed", BREAKING.
-- **Under the review floor** (D-25): one shared `_lint` helper; the names `LAYERS`,
-  `SHIM_FOLDERS`, `_ENTRYPOINTS`, `_SERVICE_MODELS`, `SERVICE_SCHEMA`; the bus contract on the
-  whole `api.services` package; PD-4's folder check requiring a theme before the layer; the
-  shims' warnings naming a version.
 - **RISK-9**: whether the kind/folder rule should bind consumers that declare `kind` is still the
   developer's question (design, Open Questions).

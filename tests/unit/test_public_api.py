@@ -11,7 +11,6 @@ from rdf_persistence.core.domain import generated
 INDEXED_NAMES = [
     "RpModel",
     "InvalidIri",
-    "mint_aggregate_iri",
     "load_schema",
     "AccessRules",
     "Forbidden",
@@ -106,7 +105,7 @@ def test_every_name_in_the_architecture_index_is_exported(name: str) -> None:
     assert name in rdf_persistence.__all__, f"{name} is listed in the architecture but not exported"
 
 
-@pytest.mark.parametrize("name", ["Iris", "DEFAULT_IRIS", "mint_aggregate_iri", "IdSource"])
+@pytest.mark.parametrize("name", ["Iris", "DEFAULT_IRIS", "IdSource"])
 def test_the_iri_names_are_the_objects_of_services_iris(name: str) -> None:
     from rdf_persistence.iris.services import iris
 

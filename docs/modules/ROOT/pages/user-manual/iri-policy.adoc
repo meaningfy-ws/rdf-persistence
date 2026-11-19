@@ -172,8 +172,8 @@ book = iris.mint_aggregate(tenant, "book", "books")
 ----
 
 and pass it to what you build: `new_part(..., iris=iris)`, `open_session(..., iris=iris)`,
-`fake_session(..., iris=iris)`. `DEFAULT_IRIS` is the default policy, which `mint_aggregate_iri`
-and the other module functions use.
+`fake_session(..., iris=iris)`. `DEFAULT_IRIS` is the default policy, which an argument left out
+uses.
 
 The toy library's end-to-end test runs under the example policy against Fuseki, Garage and Zitadel:
 `tests/e2e/test_library_policy.py`.

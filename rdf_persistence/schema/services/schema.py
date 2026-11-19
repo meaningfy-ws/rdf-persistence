@@ -8,7 +8,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 PACKAGE = "rdf_persistence"
 PACKAGE_DIR = Path(str(resources.files(PACKAGE))).resolve()
-SERVICE_SCHEMA = PACKAGE_DIR / "model" / "technical" / "api" / "rp_api_entrypoints.yaml"
+API_ENTRYPOINTS_SCHEMA = PACKAGE_DIR / "model" / "technical" / "api" / "rp_api_entrypoints.yaml"
 IRIS_SCHEMA = PACKAGE_DIR / "model" / "technical" / "iris" / "rp_iris_services.yaml"
 # The technical schemas whose classes the HTTP API serves, in the order their types and components
 # are merged (PD-10): the one place that says what is served. A schema comes before the ones that
@@ -33,7 +33,7 @@ SERVED_SCHEMAS = (
     TENANCY_SCHEMA,
     EVENTS_SCHEMA,
     COLLABORATION_SCHEMA,
-    SERVICE_SCHEMA,
+    API_ENTRYPOINTS_SCHEMA,
 )
 PYTHON_PACKAGE = "python_package"  # the annotation of a toolkit schema: where its code is generated
 MODEL_PREFIX = f"{PACKAGE}/model"

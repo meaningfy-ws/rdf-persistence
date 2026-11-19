@@ -16,16 +16,14 @@ from rdf_persistence.testkit.generated.rp_testkit import Violation
 GENERATED = "generated"
 INIT_MODULE = "__init__"
 SCANNED_LAYERS = ("domain", "services", "entrypoints")
-# The old path stays, with the deprecated module that re-exports ``RpModel``, until its release removes it.
-DEFAULT_ALLOW = (
-    "rdf_persistence/core/domain/base.py:RpModel",
-    "rdf_persistence/domain/base.py:RpModel",
-)
+DEFAULT_ALLOW = ("rdf_persistence/core/domain/base.py:RpModel",)
 
 # Fully qualified names that make a class a hand-written model. ``RpModel`` is listed where it is
-# defined and at the deprecated path a consumer's old generated code still names: the package's
-# ``from rdf_persistence import RpModel`` resolves to the defining module inside the toolkit's own
-# package, and stays ``rdf_persistence.RpModel`` in a consumer's, so that name is listed too (D-13 W1).
+# defined and at the removed path ``rdf_persistence.domain.base``, which a consumer's stale generated
+# code may still name (the guard reads source, so it names such a class although the import now
+# fails). The package's ``from rdf_persistence import RpModel`` resolves to the defining module
+# inside the toolkit's own package, and stays ``rdf_persistence.RpModel`` in a consumer's, so that
+# name is listed too (D-13 W1).
 FORBIDDEN_BASES = frozenset(
     {
         "pydantic.BaseModel",
@@ -72,7 +70,7 @@ def assert_models_generated(
     ``package``: the package root directory, or an import name resolved without importing it.
     ``roots``: folders scanned by the file guard.
     ``allow``: ``"<posix path relative to the package's parent>:<ClassName>"`` entries added to the
-    default exception (``rdf_persistence/domain/base.py:RpModel``).
+    default exception (``rdf_persistence/core/domain/base.py:RpModel``).
     ``exempt``: folders the file guard skips (instance data, request bodies).
     ``layers``: the subpackages the model guard scans, each as a whole (a theme such as
     ``tenancy`` is scanned under every layer folder it holds); a consumer keeps the default, the

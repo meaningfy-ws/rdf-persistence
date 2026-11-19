@@ -7,9 +7,8 @@ files changed against the merge base with `develop` (committed, uncommitted and 
 tests in them included. A file of `rdf_persistence/<theme>/` SHALL select `tests/unit/<theme>/`, and
 a test under `tests/unit/<theme>/` that folder. A change in the `core` theme, which every other
 theme imports, to shared test infrastructure, or to a file no rule maps, SHALL run `make test-fast`
-instead. A change in a deprecation shim, `rdf_persistence/domain/` or `rdf_persistence/adapters/`
-(no theme), SHALL select the root-level unit tests and the folder that holds the shim's own tests,
-`tests/unit/core/` or `tests/unit/persistence/`. Selected folders SHALL run in parallel; a selection
+instead. A change in a file of `rdf_persistence/` that is in no theme and not in the testkit SHALL
+select the root-level unit tests only. Selected folders SHALL run in parallel; a selection
 of test files alone SHALL run on one process. Container tests SHALL NOT run; a changed container test
 SHALL be named with the hint `make test-containers`.
 
@@ -23,11 +22,10 @@ SHALL be named with the hint `make test-containers`.
 - **WHEN** `make test-changed` runs
 - **THEN** it runs `make test-fast` and says that `core` is imported by every theme
 
-#### Scenario: a change in a deprecation shim
-- **GIVEN** a branch whose only change against `develop` is in `rdf_persistence/domain/`
+#### Scenario: a change outside a theme
+- **GIVEN** a branch whose only change against `develop` is `rdf_persistence/__init__.py`
 - **WHEN** `make test-changed` runs
-- **THEN** pytest runs the root-level unit tests and `tests/unit/core/`, where the shim's own tests are,
-  and no other theme folder
+- **THEN** pytest runs the root-level unit tests and no theme folder
 
 #### Scenario: a changed test file
 - **GIVEN** an edited `tests/unit/tenancy/test_tenancy_stores.py` and nothing else

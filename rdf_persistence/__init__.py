@@ -166,7 +166,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         IriPolicy,
         ServiceSettings,
     )
-    from rdf_persistence.iris.services.iris import DEFAULT_IRIS, IdSource, Iris, mint_aggregate_iri
+    from rdf_persistence.iris.services.iris import DEFAULT_IRIS, IdSource, Iris
     from rdf_persistence.messaging.services.messagebus import MessageBus, Work, bootstrap, command
     from rdf_persistence.persistence.adapters.fuseki import FusekiStore
     from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
@@ -200,7 +200,7 @@ _EVENTS_SETTINGS_MODELS = f"{_EVENTS}.generated.settings.rp_events_settings"
 _COLLABORATION = "rdf_persistence.collaboration.services"
 _COLLABORATION_MODELS = f"{_COLLABORATION}.generated.rp_collaboration_services"
 _MESSAGING = "rdf_persistence.messaging.services"
-_ENTRYPOINTS = "rdf_persistence.api.entrypoints"
+_API_ENTRYPOINTS = "rdf_persistence.api.entrypoints"
 _ACCESS = "rdf_persistence.access.services"
 _ACCESS_ADAPTERS = "rdf_persistence.access.adapters"
 _ACCESS_MODELS = f"{_ACCESS}.generated.rp_access_services"
@@ -212,8 +212,8 @@ _IRIS = "rdf_persistence.iris.services.iris"
 _FILES = "rdf_persistence.files.services.files"
 _S3 = "rdf_persistence.files.adapters.s3"
 _SCHEMA = "rdf_persistence.schema.services.schema"
-_SERVICE_MODELS = f"{_ENTRYPOINTS}.generated.rp_api_entrypoints"
-_SETTINGS_MODELS = f"{_ENTRYPOINTS}.generated.settings.rp_api_settings"
+_API_MODELS = f"{_API_ENTRYPOINTS}.generated.rp_api_entrypoints"
+_API_SETTINGS_MODELS = f"{_API_ENTRYPOINTS}.generated.settings.rp_api_settings"
 _PERSISTENCE = "rdf_persistence.persistence.services"
 _PERSISTENCE_MODELS = f"{_PERSISTENCE}.generated.rp_persistence_services"
 _LIMIT_MODELS = f"{_PERSISTENCE}.generated.settings.rp_persistence_settings"
@@ -222,8 +222,8 @@ _LAZY_MODULES = {
     "LimitSettings": _LIMIT_MODELS,
     **dict.fromkeys(("DirectorySettings", "JwksSettings"), _ACCESS_SETTINGS_MODELS),
     "EventSettings": _EVENTS_SETTINGS_MODELS,
-    **dict.fromkeys(("SseSettings", "ToolkitSettings"), _SETTINGS_MODELS),
-    "settings_from_env": f"{_ENTRYPOINTS}.environment",
+    **dict.fromkeys(("SseSettings", "ToolkitSettings"), _API_SETTINGS_MODELS),
+    "settings_from_env": f"{_API_ENTRYPOINTS}.environment",
     **dict.fromkeys(
         ("AccountSummary", "CallerAccess", "GrantSet", "VerifiedCaller"), _ACCESS_MODELS
     ),
@@ -236,7 +236,7 @@ _LAZY_MODULES = {
             "ProblemKind",
             "TenantCreate",
         ),
-        _SERVICE_MODELS,
+        _API_MODELS,
     ),
     "EventEnvelope": _EVENTS_MODELS,
     **dict.fromkeys(("MemberList", "Referrer", "ReferrerList"), _COLLABORATION_MODELS),
@@ -247,11 +247,11 @@ _LAZY_MODULES = {
     "S3FileStore": _S3,
     "ZitadelIdentity": f"{_ACCESS_ADAPTERS}.zitadel",
     "zitadel_roles_claim": f"{_ACCESS_ADAPTERS}.zitadel",
-    "install_service": f"{_ENTRYPOINTS}.service",
-    "ServiceKit": f"{_ENTRYPOINTS}.kit",
-    "limited_body": f"{_ENTRYPOINTS}.router",
+    "install_service": f"{_API_ENTRYPOINTS}.service",
+    "ServiceKit": f"{_API_ENTRYPOINTS}.kit",
+    "limited_body": f"{_API_ENTRYPOINTS}.router",
     "Identity": f"{_ACCESS}.identity",
-    **dict.fromkeys(("DEFAULT_IRIS", "IdSource", "Iris", "mint_aggregate_iri"), _IRIS),
+    **dict.fromkeys(("DEFAULT_IRIS", "IdSource", "Iris"), _IRIS),
     "EventBus": f"{_EVENTS}.events",
     "Receive": f"{_EVENTS}.events",
     "context_link": f"{_EVENTS}.events",
@@ -435,7 +435,6 @@ __all__ = [
     "load_caller_access",
     "load_role_definitions",
     "load_schema",
-    "mint_aggregate_iri",
     "new_part",
     "open_session",
     "sweep",

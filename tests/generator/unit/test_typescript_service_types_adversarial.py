@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.schema.services.schema import (
+    API_ENTRYPOINTS_SCHEMA,
     SERVED_SCHEMAS,
-    SERVICE_SCHEMA,
     load_schema,
 )
 from rdf_persistence_generation.cli import main
@@ -69,7 +69,7 @@ classes:
 
 def service_enums() -> list[str]:
     """The enums `rp_api_entrypoints.yaml` itself defines (not the ones it imports)."""
-    return list(load_schema(SERVICE_SCHEMA).schema.enums)
+    return list(load_schema(API_ENTRYPOINTS_SCHEMA).schema.enums)
 
 
 def render_names(root: Path) -> list[GeneratedFile]:
@@ -213,19 +213,21 @@ def test_rendering_a_consumer_with_no_rp_core_import_still_resolves_rp_service_i
 def test_rendering_the_service_schema_equals_its_own_module_files() -> None:
     """Its own files, but for the other served schemas', which are in ``rp_service.ts``."""
     served_elsewhere = {
-        f"{load_schema(path).schema.name}.ts" for path in SERVED_SCHEMAS if path != SERVICE_SCHEMA
+        f"{load_schema(path).schema.name}.ts"
+        for path in SERVED_SCHEMAS
+        if path != API_ENTRYPOINTS_SCHEMA
     }
     # a module that two served schemas import (the metamodel's) is one file in the output
     kept = {
         f.name: f
-        for f in typescript._module_files(SERVICE_SCHEMA)
+        for f in typescript._module_files(API_ENTRYPOINTS_SCHEMA)
         if f.name not in served_elsewhere
     }
     # the schema's own module is written as ``rp_service.ts`` whatever the schema is called (TC-07)
-    own_file = f"{load_schema(SERVICE_SCHEMA).schema.name}.ts"
+    own_file = f"{load_schema(API_ENTRYPOINTS_SCHEMA).schema.name}.ts"
     merged_file = f"{typescript.SERVICE_MODULE}.ts"
     names = [merged_file if name == own_file else name for name in kept]
-    assert sorted(f.name for f in typescript.render(SERVICE_SCHEMA)) == sorted(
+    assert sorted(f.name for f in typescript.render(API_ENTRYPOINTS_SCHEMA)) == sorted(
         [*names, "index.ts"]
     ), "rendering the service schema adds nothing to its own files"
 
@@ -233,19 +235,19 @@ def test_rendering_the_service_schema_equals_its_own_module_files() -> None:
 def test_a_relative_path_to_the_service_schema_is_the_same_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.chdir(SERVICE_SCHEMA.parent)
-    names = [f.name for f in typescript.render(Path(SERVICE_SCHEMA.name))]
+    monkeypatch.chdir(API_ENTRYPOINTS_SCHEMA.parent)
+    names = [f.name for f in typescript.render(Path(API_ENTRYPOINTS_SCHEMA.name))]
     assert len(names) == len(set(names)), f"duplicate files for a relative path: {names}"
 
 
 def test_a_symlink_to_the_service_schema_is_the_same_file(tmp_path: Path) -> None:
     # the service schema imports the other served schemas by a relative path, so the link keeps them
     (tmp_path / "service").mkdir()
-    for neighbour in (path for path in SERVED_SCHEMAS if path != SERVICE_SCHEMA):
+    for neighbour in (path for path in SERVED_SCHEMAS if path != API_ENTRYPOINTS_SCHEMA):
         (tmp_path / neighbour.parent.name).mkdir(exist_ok=True)
         (tmp_path / neighbour.parent.name / neighbour.name).symlink_to(neighbour)
     link = tmp_path / "service" / "linked_service.yaml"
-    link.symlink_to(SERVICE_SCHEMA)
+    link.symlink_to(API_ENTRYPOINTS_SCHEMA)
     names = [f.name for f in typescript.render(link)]
     assert len(names) == len(set(names)), f"duplicate files for a symlink: {names}"
 

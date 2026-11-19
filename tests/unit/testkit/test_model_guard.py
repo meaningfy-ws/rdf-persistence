@@ -18,25 +18,25 @@ def test_hand_written_domain_class_fails_the_guard_and_names_it(tmp_path):
         tmp_path / "rdf_persistence",
         ignore=shutil.ignore_patterns("__pycache__"),
     )
-    planted = tmp_path / "rdf_persistence" / "domain" / "handwritten.py"
+    planted = tmp_path / "rdf_persistence" / "core" / "domain" / "handwritten.py"
     planted.write_text(
         "from pydantic import BaseModel\n\n\nclass Handwritten(BaseModel):\n    x: int\n",
         encoding="utf-8",
     )
     with pytest.raises(AssertionError) as err:
-        assert_models_generated(tmp_path / "rdf_persistence", roots=[])
+        assert_models_generated(tmp_path / "rdf_persistence", roots=[], layers=("core",))
     assert "Handwritten" in str(err.value), "the class is named"
-    assert "domain/handwritten.py:4" in str(err.value), "the file and line are named"
+    assert "core/domain/handwritten.py:4" in str(err.value), "the file and line are named"
 
 
 @pytest.mark.parametrize(
     ("name", "layer"),
     [
-        ("rdf_persistence", "adapters"),
+        ("rdf_persistence", "persistence"),  # a theme: every layer folder of it
         ("rdf_persistence", "testkit"),
         (GENERATOR, ""),  # the generator is a package of its own: its whole tree is the layer
     ],
-    ids=["adapters", "testkit", "generator"],
+    ids=["theme", "testkit", "generator"],
 )
 def test_a_hand_written_record_in_a_widened_layer_is_caught_only_when_the_layer_is_scanned(
     tmp_path, name, layer

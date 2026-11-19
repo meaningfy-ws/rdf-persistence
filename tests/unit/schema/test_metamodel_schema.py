@@ -10,7 +10,7 @@ from rdflib import URIRef
 from rdf_persistence.core.domain.generated.rp_provenance import Generation, Invalidation, Replace
 from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.schema.services import vocabulary
-from rdf_persistence.schema.services.schema import SERVICE_SCHEMA, load_schema
+from rdf_persistence.schema.services.schema import API_ENTRYPOINTS_SCHEMA, load_schema
 from rdf_persistence.schema.services.schema_structure import is_internal, is_owned
 from tests.toy import ADA, book_iri, toy_mapper
 
@@ -62,7 +62,7 @@ def test_database_name_is_internal() -> None:
     ("schema", "class_name", "slot", "slot_uri"),
     [
         (MODEL / "rp.yaml", "Grant", "target", "ODRL:target"),
-        (SERVICE_SCHEMA, "Page", "items", "rp:items"),
+        (API_ENTRYPOINTS_SCHEMA, "Page", "items", "rp:items"),
         (LIBRARY / "library.yaml", "Grant", "target", "ODRL:target"),
         (MODEL / "rp.yaml", "Comment", "has_target", "oa:hasTarget"),
         (MODEL / "rp.yaml", "Comment", "body_value", "oa:bodyValue"),

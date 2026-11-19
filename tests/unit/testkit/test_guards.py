@@ -258,15 +258,15 @@ def test_missing_layers_are_fine(tmp_path):
     assert check(tmp_path) is None, "a package with none of the three layers passes"
 
 
-def test_rpmodel_in_domain_base_is_allowed_by_default(tmp_path):
+def test_rpmodel_at_the_removed_shim_path_is_no_longer_allowed(tmp_path):
+    """8.1: the one default exception is the base in ``core``; the old shim's path has none."""
     plant(
         tmp_path,
         "rdf_persistence/domain/base.py",
         "from pydantic import BaseModel\nclass RpModel(BaseModel): ...\n",
     )
-    assert assert_models_generated(tmp_path / "rdf_persistence", roots=[]) is None, (
-        "the one default exception"
-    )
+    with pytest.raises(AssertionError, match="RpModel"):
+        assert_models_generated(tmp_path / "rdf_persistence", roots=[])
 
 
 def test_rpmodel_elsewhere_is_not_allowed(tmp_path):

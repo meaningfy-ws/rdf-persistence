@@ -14,6 +14,7 @@ from rdf_persistence.api.services.components import (
 from rdf_persistence.core.services.artifacts import COMPONENTS_FILE, SCHEMAS
 from rdf_persistence.schema.services.schema import (
     ACCESS_SCHEMA,
+    API_ENTRYPOINTS_SCHEMA,
     COLLABORATION_SCHEMA,
     EVENTS_SCHEMA,
     IRIS_SCHEMA,
@@ -21,7 +22,6 @@ from rdf_persistence.schema.services.schema import (
     PACKAGE_DIR,
     PERSISTENCE_SCHEMA,
     SERVED_SCHEMAS,
-    SERVICE_SCHEMA,
     TENANCY_SCHEMA,
 )
 
@@ -73,7 +73,7 @@ def test_the_served_folders_follow_the_served_schemas() -> None:
         TENANCY_SCHEMA,
         EVENTS_SCHEMA,
         COLLABORATION_SCHEMA,
-        SERVICE_SCHEMA,
+        API_ENTRYPOINTS_SCHEMA,
     ), "each theme's schema comes before the ones that import it"
     assert served_folders() == (
         PACKAGE_DIR / "iris" / "services" / "generated",

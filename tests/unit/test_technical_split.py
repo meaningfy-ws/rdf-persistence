@@ -17,6 +17,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from tests.unit.import_contracts import Linted, lint_contracts
+
 ROOT = Path(__file__).parents[2]
 PACKAGE = ROOT / "rdf_persistence"
 MODEL = PACKAGE / "model"
@@ -30,10 +32,6 @@ CONTRACT_DOMAIN = "domain-of-a-theme-imports-no-upper-layer"
 CONTRACT_SERVICES = "services-of-a-theme-import-no-adapters-or-entrypoints"
 CONTRACT_ENTRYPOINTS = "entrypoints-of-themes-import-no-adapters"
 CONTRACT_RUNTIME = "runtime-without-extras"
-DOMAIN_CONTRACT_NAME = "layers-across-themes (1/4)"
-SERVICES_CONTRACT_NAME = "layers-across-themes (2/4)"
-ENTRYPOINTS_CONTRACT_NAME = "layers-across-themes (4/4)"
-RUNTIME_CONTRACT_NAME = "runtime layers import neither the testkit"
 
 
 def _module_kind(path: Path) -> str | None:
@@ -92,99 +90,58 @@ LAYOUT = {
 }
 KEPT_CONTRACTS = (CONTRACT_DOMAIN, CONTRACT_SERVICES, CONTRACT_ENTRYPOINTS, CONTRACT_RUNTIME)
 # the runtime contract also names the generator and test tools, which are no package of the scratch copy
-SCRATCH_RUNTIME_FORBIDDEN = "\nrdf_persistence.testkit"
-SCRATCH_RUNTIME_SOURCES = (
-    "\nrdf_persistence.*.domain\nrdf_persistence.*.services\nrdf_persistence.*.adapters"
-)
+SCRATCH_OVERRIDES = {
+    CONTRACT_RUNTIME: {
+        "forbidden_modules": "\nrdf_persistence.testkit",
+        "source_modules": (
+            "\nrdf_persistence.*.domain\nrdf_persistence.*.services\nrdf_persistence.*.adapters"
+        ),
+    }
+}
 
 
-def _scratch_config(real: Path) -> str:
-    """The repository's own contracts ``KEPT_CONTRACTS``, re-rooted on the scratch package."""
-    source = configparser.ConfigParser()
-    source.read(real, encoding="utf-8")
-    scratch = configparser.ConfigParser()
-    scratch["importlinter"] = {"root_packages": "\nrdf_persistence"}
-    for name in KEPT_CONTRACTS:
-        section = f"importlinter:contract:{name}"
-        assert source.has_section(section), f"{real.name} declares the contract {name}"
-        scratch[section] = dict(source[section])
-    runtime = scratch[f"importlinter:contract:{CONTRACT_RUNTIME}"]
-    runtime["forbidden_modules"] = SCRATCH_RUNTIME_FORBIDDEN
-    runtime["source_modules"] = SCRATCH_RUNTIME_SOURCES
-    path = real.parent / "scratch.importlinter"
-    with path.open("w", encoding="utf-8") as handle:
-        scratch.write(handle)
-    return path.name
+def lint_scratch(tmp_path: Path, planted: dict[str, str]) -> Linted:
+    """The kept contracts on the scratch layout: exit code, broken contracts, report."""
+    return lint_contracts(tmp_path, {**LAYOUT, **planted}, KEPT_CONTRACTS, SCRATCH_OVERRIDES)
 
 
-def _lint(tmp_path: Path, planted: dict[str, str]) -> subprocess.CompletedProcess[str]:
-    for rel, text in {**LAYOUT, **planted}.items():
-        path = tmp_path / "rdf_persistence" / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
-    config = _scratch_config_in(tmp_path)
-    return subprocess.run(
-        [str(Path(sys.executable).parent / "lint-imports"), "--config", config],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-
-def _scratch_config_in(tmp_path: Path) -> str:
-    source = ROOT / ".importlinter"
-    scratch = tmp_path / "source.importlinter"
-    scratch.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-    return _scratch_config(scratch)
-
-
-SUMMARY_LINE = re.compile(r"(?P<name>.+?) (?P<verdict>KEPT|BROKEN)(?= |$)")
-
-
-def _broken_contracts(result: subprocess.CompletedProcess[str]) -> list[str]:
-    """The names of the contracts reported BROKEN; a long name wraps, so the output is read as one text."""
-    summary = " ".join(result.stdout.split()).partition("dependencies.")[2]
-    summary = summary.partition("Contracts:")[0].lstrip("- ")
-    return [
-        m["name"].strip("- ") + " BROKEN"
-        for m in SUMMARY_LINE.finditer(summary)
-        if m["verdict"] == "BROKEN"
-    ]
+def _lint(tmp_path: Path, planted: dict[str, str]) -> tuple[int, list[str]]:
+    """``(exit code, keys of the broken contracts)`` of the kept contracts on the scratch layout."""
+    linted = lint_scratch(tmp_path, planted)
+    return linted.code, linted.broken
 
 
 def test_the_scratch_layout_itself_keeps_every_contract(tmp_path):
-    result = _lint(tmp_path, {})
-    assert result.returncode == 0, result.stdout + result.stderr
+    assert _lint(tmp_path, {}) == (0, [])
 
 
 def test_a_domain_module_importing_the_service_models_breaks_the_domain_contract(tmp_path):  # TC-09
-    result = _lint(
+    code, broken = _lint(
         tmp_path,
         {"core/domain/generated/rp_core.py": f"import {SERVICE_SCHEMA_PACKAGE}\n"},
     )
-    assert result.returncode != 0, result.stdout
-    assert any(DOMAIN_CONTRACT_NAME in line for line in _broken_contracts(result)), result.stdout
+    assert code != 0, broken
+    assert CONTRACT_DOMAIN in broken, broken
 
 
 def test_a_service_module_importing_the_wire_models_breaks_the_services_contract(tmp_path):  # TC-10
-    result = _lint(
+    code, broken = _lint(
         tmp_path,
         {"persistence/services/session.py": f"import {WIRE}\n"},
     )
-    assert result.returncode != 0, result.stdout
-    assert any(SERVICES_CONTRACT_NAME in line for line in _broken_contracts(result)), result.stdout
+    assert code != 0, broken
+    assert CONTRACT_SERVICES in broken, broken
 
 
 def test_the_policy_free_layout_importing_the_service_models_breaks_the_domain_contract(
     tmp_path,
 ):  # TC-53
-    result = _lint(
+    code, broken = _lint(
         tmp_path,
         {"iris/domain/layout.py": f"import {SERVICE_SCHEMA_PACKAGE}\n"},
     )
-    assert result.returncode != 0, result.stdout
-    assert any(DOMAIN_CONTRACT_NAME in line for line in _broken_contracts(result)), result.stdout
+    assert code != 0, broken
+    assert CONTRACT_DOMAIN in broken, broken
 
 
 WIRE = "rdf_persistence.access.adapters.generated.rp_access_adapters"
@@ -201,12 +158,12 @@ HELPER = "from rdf_persistence.{theme}.{layer} import helper\n"
                 "core/domain/generated/rp_core.py": HELPER.format(theme="core", layer="domain"),
                 "core/domain/helper.py": f"from {WIRE} import JwtClaims\n",
             },
-            DOMAIN_CONTRACT_NAME,
+            CONTRACT_DOMAIN,
             id="indirect-to-the-wire-models",
         ),
         pytest.param(
             {"iris/domain/layout.py": f"import {TESTKIT_MODELS}\n", **PLANT_TESTKIT},
-            RUNTIME_CONTRACT_NAME,
+            CONTRACT_RUNTIME,
             id="testkit-generated-direct",
         ),
         pytest.param(
@@ -215,7 +172,7 @@ HELPER = "from rdf_persistence.{theme}.{layer} import helper\n"
                 "iris/domain/helper.py": f"import {TESTKIT_MODELS}\n",
                 **PLANT_TESTKIT,
             },
-            RUNTIME_CONTRACT_NAME,
+            CONTRACT_RUNTIME,
             id="testkit-generated-indirect",
         ),
     ],
@@ -228,9 +185,9 @@ def test_a_domain_module_reaching_a_technical_model_indirectly_breaks_a_contract
     The domain never imports a technical model of an upper layer (``layers-across-themes``) nor the
     testkit's (``runtime-without-extras``), which replace ``domain-never-imports-technical-models``.
     """
-    result = _lint(tmp_path, planted)
-    assert result.returncode != 0, result.stdout
-    assert any(contract in line for line in _broken_contracts(result)), result.stdout
+    code, broken = _lint(tmp_path, planted)
+    assert code != 0, broken
+    assert contract in broken, broken
 
 
 @pytest.mark.parametrize(
@@ -243,12 +200,12 @@ def test_a_domain_module_reaching_a_technical_model_indirectly_breaks_a_contract
                 ),
                 "persistence/services/helper.py": f"import {WIRE}\n",
             },
-            SERVICES_CONTRACT_NAME,
+            CONTRACT_SERVICES,
             id="service-through-a-helper",
         ),
         pytest.param(
             {"api/entrypoints/router.py": f"import {WIRE}\n"},
-            ENTRYPOINTS_CONTRACT_NAME,
+            CONTRACT_ENTRYPOINTS,
             id="entrypoint-direct",
         ),
     ],
@@ -257,9 +214,9 @@ def test_a_service_or_entrypoint_reaching_a_wire_model_breaks_a_layer_contract(
     tmp_path, planted, contract
 ):
     """Row 4: probe of PD-2; the entrypoint, and a service that reaches it through a helper."""
-    result = _lint(tmp_path, planted)
-    assert result.returncode != 0, result.stdout
-    assert any(contract in line for line in _broken_contracts(result)), result.stdout
+    code, broken = _lint(tmp_path, planted)
+    assert code != 0, broken
+    assert contract in broken, broken
 
 
 @pytest.mark.parametrize(

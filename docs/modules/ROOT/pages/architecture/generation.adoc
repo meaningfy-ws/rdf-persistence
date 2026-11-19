@@ -400,7 +400,8 @@ says `kind = "technical"`. A consumer's own targets may use the key the same way
 
 In the toolkit's own run, the same rule (`TARGET_KIND`) also checks the folder: in the target's
 `package`, the segment before `generated` is `domain` for a `domain` target, and `services`,
-`adapters` or `entrypoints` for a `technical` one. A segment after `generated`, such as `settings`,
+`adapters` or `entrypoints` for a `technical` one, and the segment before that layer is a theme of
+the library (`rdf_persistence.<theme>.<layer>.generated`). A segment after `generated`, such as `settings`,
 is allowed. Two packages sit outside the themes and are exempt: `rdf_persistence.testkit` and
 `rdf_persistence_generation`. The problem names the target's package. A consumer's run does not
 apply the folder rule, so a consumer that declares `kind` keeps its own layout.

@@ -11,9 +11,7 @@
 ; is `themes-ordered`. `testkit` sits outside the contracts, and
 ; `rdf_persistence_generation` is a separate root package the library never
 ; imports (library-never-imports-the-generator). Parenthesised layers are
-; optional: a theme need not have every layer. The two deprecation shims,
-; `rdf_persistence.domain` and `rdf_persistence.adapters` (PD-8), stand outside
-; the themes until stage 8 removes them.
+; optional: a theme need not have every layer.
 
 [importlinter]
 root_packages =
@@ -103,9 +101,7 @@ forbidden_modules =
 [importlinter:contract:domain-pure]
 name = domain imports no I/O, web, token or validation library
 type = forbidden
-; `rdf_persistence.domain` is the deprecation shim (PD-8): kept a source until stage 8 removes it.
 source_modules =
-    rdf_persistence.domain
     rdf_persistence.*.domain
 forbidden_modules =
     httpx
@@ -119,8 +115,6 @@ forbidden_modules =
 name = runtime layers import neither the testkit, the generators nor test tooling
 type = forbidden
 source_modules =
-    rdf_persistence.domain
-    rdf_persistence.adapters
     rdf_persistence.*.domain
     rdf_persistence.*.services
     rdf_persistence.*.adapters
@@ -206,16 +200,13 @@ forbidden_modules =
 ignore_imports =
     rdf_persistence.events.adapters.redis_events -> faststream
 
-; The theme order puts `api` above `messaging`, so it cannot keep the four `api` services modules off the
-; bus (thematic-structure D-23); this contract does.
+; The theme order puts `api` above `messaging`, so it cannot keep the `api` services off the bus
+; (thematic-structure D-23); this contract does, for the whole package, so a module added later is covered.
 [importlinter:contract:api-services-never-import-the-bus]
-name = the api services modules (aggregates, components, documents, file_removal) never import the message bus
+name = the api services never import the message bus
 type = forbidden
 source_modules =
-    rdf_persistence.api.services.aggregates
-    rdf_persistence.api.services.components
-    rdf_persistence.api.services.documents
-    rdf_persistence.api.services.file_removal
+    rdf_persistence.api.services
 forbidden_modules =
     rdf_persistence.messaging
 
@@ -235,7 +226,6 @@ source_modules =
     tests.unit.iris.test_layout
     tests.unit.files.test_blob_keys
 forbidden_modules =
-    rdf_persistence.adapters
     rdf_persistence.*.services
     rdf_persistence.*.adapters
     rdf_persistence.*.entrypoints

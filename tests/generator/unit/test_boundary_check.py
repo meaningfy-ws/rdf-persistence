@@ -11,6 +11,7 @@ from rdf_persistence_generation.checks.boundary import (
     boundary_problems,
     kind_folder_problems,
     target_kind_problems,
+    toolkit_themes,
 )
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.config import read_targets
@@ -536,10 +537,10 @@ def folder_problems_of(folder: Path, package: str, kind: TargetKind | None) -> l
 @pytest.mark.parametrize(
     ("kind", "package"),
     [
-        (TargetKind.DOMAIN, "x.core.domain.generated"),  # TC-13
-        (TargetKind.TECHNICAL, "x.access.services.generated"),
-        (TargetKind.TECHNICAL, "x.access.adapters.generated.wire"),  # a group after generated
-        (TargetKind.TECHNICAL, "x.access.entrypoints.generated"),
+        (TargetKind.DOMAIN, "rdf_persistence.core.domain.generated"),  # TC-13
+        (TargetKind.TECHNICAL, "rdf_persistence.access.services.generated"),
+        (TargetKind.TECHNICAL, "rdf_persistence.access.adapters.generated.wire"),  # a group after
+        (TargetKind.TECHNICAL, "rdf_persistence.access.entrypoints.generated"),
     ],
 )
 def test_a_toolkit_target_in_the_folder_its_kind_allows_has_no_problem(
@@ -551,9 +552,9 @@ def test_a_toolkit_target_in_the_folder_its_kind_allows_has_no_problem(
 @pytest.mark.parametrize(
     ("kind", "package"),
     [
-        (TargetKind.TECHNICAL, "x.access.domain.generated"),  # TC-14
-        (TargetKind.DOMAIN, "x.access.adapters.generated"),  # TC-15
-        (TargetKind.DOMAIN, "x.access.services.generated.service"),
+        (TargetKind.TECHNICAL, "rdf_persistence.access.domain.generated"),  # TC-14
+        (TargetKind.DOMAIN, "rdf_persistence.access.adapters.generated"),  # TC-15
+        (TargetKind.DOMAIN, "rdf_persistence.access.services.generated.service"),
     ],
 )
 def test_a_toolkit_target_in_the_wrong_folder_is_named_with_its_package(
@@ -566,9 +567,48 @@ def test_a_toolkit_target_in_the_wrong_folder_is_named_with_its_package(
 
 
 def test_a_toolkit_target_without_a_generated_segment_is_refused() -> None:
-    found = folder_problems_of(TOOLKIT_FOLDER, "x.access.domain", TargetKind.DOMAIN)
+    found = folder_problems_of(TOOLKIT_FOLDER, "rdf_persistence.access.domain", TargetKind.DOMAIN)
     assert len(found) == 1, f"one target, one problem: {found}"
     assert "generated" in found[0], f"the missing segment is not named: {found}"
+
+
+LIBRARY = "rdf_persistence"
+
+
+@pytest.mark.parametrize(
+    ("kind", "package"),
+    [
+        (TargetKind.TECHNICAL, "rdf_persistence.services.generated"),
+        (TargetKind.TECHNICAL, "rdf_persistence.services.generated.settings"),
+        (TargetKind.DOMAIN, f"{LIBRARY}.domain.generated"),  # the old layer folder, no theme
+        (TargetKind.TECHNICAL, "rdf_persistence.nowhere.services.generated"),
+        (TargetKind.DOMAIN, "rdf_persistence.models.domain.generated"),
+        (TargetKind.TECHNICAL, "elsewhere.access.services.generated"),
+        (TargetKind.TECHNICAL, "rdf_persistence.access.extra.services.generated"),
+    ],
+)
+def test_a_toolkit_target_whose_segment_before_the_layer_is_no_theme_is_named(
+    kind: TargetKind, package: str
+) -> None:
+    """PD-4 (D-25): ``<root>.<theme>.<layer>.generated``; a layer straight under the package is no theme."""
+    found = folder_problems_of(TOOLKIT_FOLDER, package, kind)
+
+    assert len(found) == 1, f"one target, one problem: {found}"
+    assert found[0].startswith(f"[target_kind] {package}:"), f"rule and package not named: {found}"
+    assert "theme" in found[0], f"the theme is not asked for: {found}"
+
+
+def test_the_themes_are_the_package_folders_of_the_library_but_the_testkit() -> None:
+    """One source for the theme list: the subpackages of ``rdf_persistence``, the testkit apart."""
+    assert {"core", "access", "api", "messaging"} <= toolkit_themes()
+    assert not {"testkit", "model", "domain", "adapters"} & toolkit_themes()
+
+
+def test_the_themes_of_the_check_are_the_themes_of_the_changed_files_mapper() -> None:
+    """A folder added or dropped without the mapper (or the reverse) fails here."""
+    from tests.changed import THEMES
+
+    assert toolkit_themes() == THEMES
 
 
 @pytest.mark.parametrize(

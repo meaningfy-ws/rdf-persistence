@@ -394,14 +394,12 @@ to `tests/unit/<theme>/`; a test of several themes goes to the folder of the hig
 `__init__.py` of a theme or a layer holds a docstring and nothing else, so importing a theme imports
 nothing more.
 
-Four things sit outside the themes. `testkit/` is outside the layers and may import any of them.
+Three things sit outside the themes. `testkit/` is outside the layers and may import any of them.
 `model/` holds the schemas, shipped as package data. `rdf_persistence_generation`, the generator, is
-a sibling package. And two deprecation shims stand at old paths, at the top of `rdf_persistence/`:
-`domain/base.py` (`RpModel`) and `adapters/fuseki.py` (`FusekiStore` and the module's constants). Each
-warns with a `DeprecationWarning` naming the new path, and both go in the minor release after the
-one that ships the themes. No library module imports them. Every other old path
-(`rdf_persistence.services.*`, `rdf_persistence.entrypoints.*`, the other modules of
-`rdf_persistence.adapters` and `rdf_persistence.domain`) is gone, with no shim.
+a sibling package. Every old path (`rdf_persistence.services.*`, `rdf_persistence.entrypoints.*`,
+`rdf_persistence.adapters.*` and `rdf_persistence.domain.*`, `RpModel` and `FusekiStore` included) is
+gone, with no shim: `RpModel` is `from rdf_persistence import RpModel`, and `FusekiStore` is in
+`rdf_persistence.persistence.adapters.fuseki`.
 
 [#models-in-themes]
 === Where a model lives
@@ -451,7 +449,7 @@ classes (`ReferenceCollection`, `MembershipRule`, `SlotEquality`; `Comment`, `Mo
 (`PersistenceError` and its subclasses: `Conflict`, `NotFound`, `DatabaseGone`, `TenantGone`,
 `Forbidden`, `InvalidBody`, `InvalidIri`, `InvalidToken`, `InvalidWorkflow`, `StoredDataInvalid`, …);
 `HttpSettings`
-|`iris` |`Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri` (deprecated: use `Iris.mint_aggregate`);
+|`iris` |`Iris`, `DEFAULT_IRIS`, `IdSource`;
 `ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`
 |`schema` |`load_schema`
 |`files` |the port `FileStore` (with `list_blobs`); `S3FileStore`
@@ -511,9 +509,9 @@ exhaustive: a theme holds no module outside its four layers.
 `entrypoints`; the `adapters` importing `entrypoints`, and the `entrypoints` importing `adapters`.
 Since every technical model sits in a `services`, `adapters` or `entrypoints` folder, no domain
 imports one (<<models-in-themes>>).
-|`domain-pure` |A `domain` (and the `domain` shim) importing an I/O, web, token or validation
+|`domain-pure` |A `domain` importing an I/O, web, token or validation
 library (`httpx`, `boto3`, `fastapi`, `jwt`, `pyshacl`, `anyio`).
-|`runtime-without-extras` |The runtime layers (and the two shims) importing the testkit, the
+|`runtime-without-extras` |The runtime layers importing the testkit, the
 generator, `pytest`, `testcontainers` or `linkml`.
 |`works-without-the-generate-extra` |What is installed without the `generate` extra importing `linkml`.
 |`library-never-imports-the-generator` |`rdf_persistence` importing `rdf_persistence_generation`

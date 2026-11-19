@@ -1,14 +1,12 @@
 """The IRI policy and ``Iris``, which derive the IRIs and resource names the policy shapes (PD-4, PD-6, PD-6a).
 
-The policy, its templates and ids, ``Iris`` and ``DEFAULT_IRIS`` are here, and ``mint_aggregate_iri``, the
-one wrapper left, which warns; what no policy changes (the layout of graph IRIs, skolem IRIs, database
+The policy, its templates and ids, ``Iris`` and ``DEFAULT_IRIS`` are here; what no policy changes (the layout of graph IRIs, skolem IRIs, database
 names) is in ``iris.domain.layout``, which this module uses. The policy is a technical model, so none
 of this can be in the domain layer.
 """
 
 import re
 import secrets
-import warnings
 from collections.abc import Callable
 from functools import cached_property
 from typing import Any
@@ -45,23 +43,6 @@ _TENANT_ID_PLACEHOLDER = "{tenant_id}"
 _DEPLOYMENT_PLACEHOLDER = "{deployment}"
 _TENANT_GROUP = "tenant"
 _TENANT_ID_GROUP = "tenant_id"
-
-
-def mint_aggregate_iri(tenant_iri: str, rp_path: str) -> URIRef:
-    """A fresh aggregate IRI ``{tenant_iri}/{rp_path}/{uuid4}``.
-
-    Deprecated: use ``Iris.mint_aggregate``, on the ``Iris`` of the service (or on ``DEFAULT_IRIS``
-    for the default policy). It is removed in the minor release after the one that ships the
-    thematic layout (thematic-structure PD-5, PD-13).
-    """
-    warnings.warn(
-        "mint_aggregate_iri is deprecated; use Iris.mint_aggregate "
-        '(DEFAULT_IRIS.mint_aggregate(tenant, cls_type="", rp_path=path) mints the same IRI); '
-        "it will be removed in the minor release after the one that ships the thematic layout",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return DEFAULT_IRIS.mint_aggregate(tenant_iri, cls_type="", rp_path=rp_path)
 
 
 def _resource_name(prefix: str, tenant_id: str) -> str:
