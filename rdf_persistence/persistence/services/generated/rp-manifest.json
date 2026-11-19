@@ -27,7 +27,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/boundary.py",
-      "sha256": "ace58416bd625975eb61e4d360b3bcd0db4a2ceb395ee19cfd3e7086b06864df"
+      "sha256": "6817ae3ec4179f4f17ce0384e3c1fbeceabc5a1b9c33a161751582f8324e2453"
     },
     {
       "path": "rdf_persistence_generation/checks/default_instance.py",
@@ -119,7 +119,7 @@
     },
     {
       "path": "rdf_persistence_generation/steps.py",
-      "sha256": "f0ada6b1e49d05a593bd56474ad7dd80d3532e35a4e99aad5aa51e1ec0645169"
+      "sha256": "476e9f0dca62ea6645a9a8901ab23e930ec6459925d7862ba012495017503114"
     },
     {
       "path": "rdf_persistence_generation/templates/mermaid/module.mmd.jinja",

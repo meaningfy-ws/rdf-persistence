@@ -117,15 +117,15 @@ class BoundaryRule(str, Enum):
     ACTIVITY_DIRECTION = "activity_direction"
     "A slot of a class that is not an activity does not range over an application activity class that is not an aggregate root: the stored model never refers to a use case."
     TARGET_KIND = "target_kind"
-    "The modules of a target match its declared kind: a technical target holds only technical modules, a domain target holds none."
+    "A target\u0027s modules are of one kind, derived from them, and its package sits in a folder that kind allows."
 
 
 class TargetKind(str, Enum):
-    "What the modules of a generation target are, as its `kind` key declares."
+    "The kind of a generation target, derived from the modules it generates."
     DOMAIN = "domain"
-    "No module of the target\u0027s folder is annotated `module_kind: technical`."
+    "Not every module the target generates is `module_kind: technical`."
     TECHNICAL = "technical"
-    "Every module of the target\u0027s folder is annotated `module_kind: technical`."
+    "Every module the target generates is `module_kind: technical`."
 
 
 class ConstraintKind(str, Enum):
@@ -187,7 +187,6 @@ class GenerationTarget(ConfiguredBaseModel):
     openapi: Optional[bool] = Field(default=True, title="OpenAPI components", description="Whether the OpenAPI component schemas of the classes (`openapi-components.json`) are written next to the context. Only a schema whose classes a service serves needs them; on unless set to false.")
     regenerate_command: Optional[str] = Field(default=None, alias="regenerate-command", title="Regenerate command", description="The command that regenerates this entry, named in the hint of a failed freshness check (TOML key `regenerate-command`); `rp-generate` when absent.")
     migrations: Optional[str] = Field(default=None, title="Migrations folder", description="The folder of the target\u0027s migration files and schema lock, relative to the folder of the `pyproject.toml`; absent for a target that stores nothing of its own.")
-    target_kind: Optional[TargetKind] = Field(default=None, alias="kind", title="Target kind", description="What the target\u0027s modules are (TOML key `kind`): `technical` when every module of its folder is annotated `module_kind: technical`, `domain` when none is; absent, the kind is not checked.")
 
     @field_validator("schema_file")
     def pattern_schema_file(cls, v):

@@ -109,132 +109,112 @@ regenerate-command = "make generate"
 openapi = false
 migrations = "rdf_persistence/model/migrations"
 diagrams = "docs/modules/ROOT/partials/model"
-kind = "domain"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence_generation/model/rp_generation.yaml"
 package = "rdf_persistence_generation.generated"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/iris/rp_iris_services.yaml"
 package = "rdf_persistence.iris.services.generated"
 regenerate-command = "make generate"
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/iris/rp_iris_templates.yaml"
 package = "rdf_persistence.iris.services.generated.templates"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/persistence/rp_persistence_services.yaml"
 package = "rdf_persistence.persistence.services.generated"
 regenerate-command = "make generate"
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/persistence/rp_persistence_settings.yaml"
 package = "rdf_persistence.persistence.services.generated.settings"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/persistence/rp_persistence_adapters.yaml"
 package = "rdf_persistence.persistence.adapters.generated"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/migrations/rp_migrations_services.yaml"
 package = "rdf_persistence.migrations.services.generated"
 regenerate-command = "make generate"
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/access/rp_access_services.yaml"
 package = "rdf_persistence.access.services.generated"
 regenerate-command = "make generate"
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/access/rp_access_settings.yaml"
 package = "rdf_persistence.access.services.generated.settings"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/access/rp_access_adapters.yaml"
 package = "rdf_persistence.access.adapters.generated"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/tenancy/rp_tenancy_services.yaml"
 package = "rdf_persistence.tenancy.services.generated"
 regenerate-command = "make generate"
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/events/rp_events_services.yaml"
 package = "rdf_persistence.events.services.generated"
 regenerate-command = "make generate"
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/events/rp_events_settings.yaml"
 package = "rdf_persistence.events.services.generated.settings"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/collaboration/rp_collaboration_services.yaml"
 package = "rdf_persistence.collaboration.services.generated"
 regenerate-command = "make generate"
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml"
 package = "rdf_persistence.api.entrypoints.generated"
 regenerate-command = "make generate"
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/schema/rp_schema_templates.yaml"
 package = "rdf_persistence.schema.services.generated.templates"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/core/rp_core_services.yaml"
 package = "rdf_persistence.core.services.generated"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/api/rp_api_settings.yaml"
 package = "rdf_persistence.api.entrypoints.generated.settings"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/testkit/rp_testkit.yaml"
 package = "rdf_persistence.testkit.generated"
 regenerate-command = "make generate"
 openapi = false
-kind = "technical"
 
 [tool.uv]
 default-groups = ["dev", "test", "lint"]

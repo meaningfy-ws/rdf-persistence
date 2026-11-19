@@ -32,7 +32,6 @@ classes:
       - openapi
       - regenerate_command
       - migrations
-      - target_kind
     slot_usage:
       schema_file:
         required: true
@@ -482,16 +481,6 @@ slots:
       The folder of the target's migration files and schema lock, relative to the folder of the
       `pyproject.toml`; absent for a target that stores nothing of its own.
     slot_uri: rp:migrationsFolder
-  target_kind:
-    title: Target kind
-    description: >-
-      What the target's modules are (TOML key `kind`): `technical` when every module of its folder is
-      annotated `module_kind: technical`, `domain` when none is; absent, the kind is not checked.
-    slot_uri: rp:targetKind
-    alias: kind
-    annotations:
-      field_name: slot
-    range: TargetKind
   schema_id:
     title: Schema id
     description: The id of the schema a lock describes.
@@ -943,22 +932,22 @@ enums:
       target_kind:
         title: Target kind
         description: >-
-          The modules of a target match its declared kind: a technical target holds only technical
-          modules, a domain target holds none.
+          A target's modules are of one kind, derived from them, and its package sits in a folder that
+          kind allows.
         meaning: rp:BoundaryRuleTargetKind
   TargetKind:
     title: Target kind
-    description: What the modules of a generation target are, as its `kind` key declares.
+    description: The kind of a generation target, derived from the modules it generates.
     permissible_values:
       domain:
         title: Domain
         description: >-
-          No module of the target's folder is annotated `module_kind: technical`.
+          Not every module the target generates is `module_kind: technical`.
         meaning: rp:TargetKindDomain
       technical:
         title: Technical
         description: >-
-          Every module of the target's folder is annotated `module_kind: technical`.
+          Every module the target generates is `module_kind: technical`.
         meaning: rp:TargetKindTechnical
   ConstraintKind:
     title: Constraint kind

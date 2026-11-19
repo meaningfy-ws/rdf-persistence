@@ -367,7 +367,8 @@ def test_the_testkit_target_is_technical_and_generates_into_the_testkit():  # PD
         "rp-generate"
     ]
     (row,) = [r for r in rows if r["schema"] == TESTKIT_SCHEMA.relative_to(ROOT).as_posix()]
-    assert (row["package"], row["kind"], row["openapi"]) == (TESTKIT_MODELS, "technical", False), (
+    assert "kind" not in row, "the kind of a target is derived from its modules, never declared"
+    assert (row["package"], row["openapi"]) == (TESTKIT_MODELS, False), (
         "the testkit target of PD-11"
     )
 
