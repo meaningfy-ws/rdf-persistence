@@ -225,7 +225,7 @@ def render(schema_path: Path) -> list[GeneratedFile]:
         clashes := _clashes(generator, schema_path.resolve().parent)
     ):
         raise SchemaGenerationError(
-            f"{', '.join(clashes)}: reserved by the served types (rp_service.ts and its kin); rename"
+            f"{', '.join(clashes)}: reserved by the served types ({SERVICE_MODULE}.ts and its kin); rename"
         )
     return with_index(_with_served(generator.modules()))
 

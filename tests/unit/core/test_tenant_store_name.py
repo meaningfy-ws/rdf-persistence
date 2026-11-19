@@ -1,6 +1,6 @@
 """The store name on the access record and the error for an unwired store (tenant-stores PD-1, PD-2, PD-10; TC-01, TC-02, TC-04).
 
-TC-03 decodes through the mapper, a service: it is in ``tests/unit/services/test_tenancy_stores.py``.
+TC-03 decodes through the mapper, a service: it is in ``tests/unit/tenancy/test_tenancy_stores.py``.
 """
 
 import json

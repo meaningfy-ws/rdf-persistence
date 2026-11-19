@@ -573,7 +573,7 @@ refused with a `Conflict` whose `iris` names the target, and nothing is stored.
 *The three private pieces, side by side.* A transaction has no public method that takes SPARQL or
 lifts a rule. What the collaboration code needs beyond add, replace and remove is three private
 methods of `Transaction`. Each collects no change and has exactly one caller; a test
-(`tests/unit/services/test_private_transaction_pieces.py`) fails when another module uses one, so
+(`tests/unit/collaboration/test_private_transaction_pieces.py`) fails when another module uses one, so
 a new way past a rule has to be argued for.
 
 [cols="2,3,2,3",options="header"]

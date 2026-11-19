@@ -62,7 +62,7 @@ layers =
     rdf_persistence.core
 
 [importlinter:contract:domain-of-a-theme-imports-no-upper-layer]
-name = layers-across-themes (1/3) the domain of a theme imports no services, adapters or entrypoints of any theme
+name = layers-across-themes (1/4) the domain of a theme imports no services, adapters or entrypoints of any theme
 type = forbidden
 source_modules =
     rdf_persistence.*.domain
@@ -72,7 +72,7 @@ forbidden_modules =
     rdf_persistence.*.entrypoints
 
 [importlinter:contract:services-of-a-theme-import-no-adapters-or-entrypoints]
-name = layers-across-themes (2/3) the services of a theme import no adapters or entrypoints of any theme
+name = layers-across-themes (2/4) the services of a theme import no adapters or entrypoints of any theme
 type = forbidden
 source_modules =
     rdf_persistence.*.services
@@ -81,7 +81,7 @@ forbidden_modules =
     rdf_persistence.*.entrypoints
 
 [importlinter:contract:adapters-and-entrypoints-of-themes-are-independent]
-name = layers-across-themes (3/3) the adapters and the entrypoints of the themes import neither the other
+name = layers-across-themes (3/4) the adapters of the themes import no entrypoints
 type = forbidden
 source_modules =
     rdf_persistence.*.adapters
@@ -89,7 +89,7 @@ forbidden_modules =
     rdf_persistence.*.entrypoints
 
 [importlinter:contract:entrypoints-of-themes-import-no-adapters]
-name = layers-across-themes (3/3) the entrypoints of the themes import no adapters
+name = layers-across-themes (4/4) the entrypoints of the themes import no adapters
 type = forbidden
 source_modules =
     rdf_persistence.*.entrypoints
@@ -97,13 +97,15 @@ forbidden_modules =
     rdf_persistence.*.adapters
 
 ; Technical models (service settings, wire shapes) sit in a `services`, `adapters` or `entrypoints`
-; layer, which no domain imports (the three `layers-across-themes` contracts), nor does a domain import
+; layer, which no domain imports (the first two of the four `layers-across-themes` contracts), nor does a domain import
 ; the testkit's (`runtime-without-extras`): that is what `domain-never-imports-technical-models` said
 ; (technical-models PD-2, Q-2; thematic-structure PD-6).
 [importlinter:contract:domain-pure]
 name = domain imports no I/O, web, token or validation library
 type = forbidden
+; `rdf_persistence.domain` is the deprecation shim (PD-8): kept a source until stage 8 removes it.
 source_modules =
+    rdf_persistence.domain
     rdf_persistence.*.domain
 forbidden_modules =
     httpx

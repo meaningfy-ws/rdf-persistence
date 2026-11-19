@@ -30,9 +30,9 @@ CONTRACT_DOMAIN = "domain-of-a-theme-imports-no-upper-layer"
 CONTRACT_SERVICES = "services-of-a-theme-import-no-adapters-or-entrypoints"
 CONTRACT_ENTRYPOINTS = "entrypoints-of-themes-import-no-adapters"
 CONTRACT_RUNTIME = "runtime-without-extras"
-DOMAIN_CONTRACT_NAME = "layers-across-themes (1/3)"
-SERVICES_CONTRACT_NAME = "layers-across-themes (2/3)"
-ENTRYPOINTS_CONTRACT_NAME = "layers-across-themes (3/3)"
+DOMAIN_CONTRACT_NAME = "layers-across-themes (1/4)"
+SERVICES_CONTRACT_NAME = "layers-across-themes (2/4)"
+ENTRYPOINTS_CONTRACT_NAME = "layers-across-themes (4/4)"
 RUNTIME_CONTRACT_NAME = "runtime layers import neither the testkit"
 
 

@@ -1,6 +1,6 @@
 """A JSON-LD file whose context is not inline never reaches a server (needs a local server).
 
-The refusal itself, with its message, is tested in tests/unit/services/test_loading.py.
+The refusal itself, with its message, is tested in tests/unit/persistence/test_loading.py.
 
 rdflib fetches a remote context through ``urllib``, which ``httpx.MockTransport`` cannot catch, so
 the proof that nothing is fetched needs a real listener on 127.0.0.1. No container is started.

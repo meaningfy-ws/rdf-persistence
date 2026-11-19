@@ -83,7 +83,6 @@ SCRATCH_MODULES = {
     "events/services/relay.py": "",
     "events/adapters/redis_events.py": f"import {FASTSTREAM}\n",
     **{f"api/services/{module}.py": "" for module in API_SERVICES},
-    **{f"services/{module}.py": "" for module in API_SERVICES},
 }
 
 
@@ -174,6 +173,20 @@ def test_a_planted_import_between_the_new_themes_breaks_its_contract(
 
 
 SERVICES_NO_ADAPTERS = "services-of-a-theme-import-no-adapters-or-entrypoints"
+
+
+def test_domain_pure_keeps_the_domain_shim_a_source_until_stage_8():
+    sources = _contracts()["domain-pure"]["source_modules"]
+
+    assert "rdf_persistence.domain" in sources
+
+
+def test_a_domain_module_importing_a_service_of_another_theme_breaks_layers_across_themes(
+    tmp_path,
+):
+    planted = {"iris/domain/x.py": _importing("core.services")}
+
+    assert _breaks(tmp_path, DOMAIN_CONTRACT, planted)
 
 
 def test_a_service_of_a_theme_importing_a_wire_model_of_a_theme_breaks_layers_across_themes(

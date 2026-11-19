@@ -604,7 +604,9 @@ def toolkit_target(kind: TargetKind, package: str) -> GenerationTarget:
 
 
 @pytest.mark.slow
-def test_the_boundary_step_passes_the_old_layout_package_of_a_technical_target() -> None:
+def test_the_boundary_step_passes_a_technical_target_in_the_api_entrypoints_generated_package() -> (
+    None
+):
     """TC-72, first half: a technical target in a theme's ``generated`` folder (``make generate`` covers the rest)."""
     target = toolkit_target(TargetKind.TECHNICAL, "rdf_persistence.api.entrypoints.generated")
     assert generate([target], REPO, (steps.BOUNDARY_STEP,), check=True) == []

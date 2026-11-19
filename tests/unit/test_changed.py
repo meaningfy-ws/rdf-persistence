@@ -197,11 +197,21 @@ def test_the_theme_rule_and_the_generator_rule_are_kept():
     assert selection.paths == ("tests/generator/", "tests/unit/api/"), "theme and generator"
 
 
-def test_a_change_in_a_shim_selects_the_root_tests_like_any_file_of_the_package():
-    """The shims are no theme: a file of ``rdf_persistence/domain/`` has no folder of its own (PD-8)."""
-    selection = _select(["rdf_persistence/domain/example.py"])
+@pytest.mark.parametrize(
+    ("changed", "shim_tests"),
+    [
+        ("rdf_persistence/domain/example.py", "tests/unit/core/"),
+        ("rdf_persistence/adapters/example.py", "tests/unit/persistence/"),
+    ],
+)
+def test_a_change_in_a_shim_selects_the_root_tests_and_the_folder_of_the_shims_own_tests(
+    changed, shim_tests
+):
+    """The shims are no theme (PD-8): the root tests, and the folder holding the shim's own tests."""
+    selection = _select([changed])
 
-    assert selection.paths == ROOT_TESTS, "the shim is covered by the root-level tests"
+    assert selection.paths == tuple(sorted((*ROOT_TESTS, shim_tests))), changed
+    assert not selection.fallback_reasons, f"{changed} must not fall back"
 
 
 @pytest.mark.parametrize(("rule", "changed", "expected"), SELECTS)

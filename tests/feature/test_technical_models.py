@@ -48,7 +48,9 @@ def _scratch_module(planted_path: str) -> str:
     return "rdf_persistence." + planted_path.removesuffix(".py").replace("/", ".")
 
 
-SERVICE_SETTINGS = "rdf_persistence.api.entrypoints.generated.rp_api_entrypoints"
+SERVICE_SETTINGS = (
+    "rdf_persistence.iris.services.generated.rp_iris_services"  # holds ServiceSettings
+)
 WIRE = "rdf_persistence.access.adapters.generated.rp_access_adapters"
 SETTINGS_MODULE = "rdf_persistence.api.entrypoints.generated.settings.rp_api_settings"
 ADAPTER = "rdf_persistence.access.adapters.store"
@@ -88,7 +90,12 @@ def run(tmp_path: Path) -> Run:
 
 
 def _plant(run: Run, path: str, imports: str, modules: tuple[str, str]) -> None:
-    run.planted = {path: f"import {imports}\n"}
+    # the imported module is a file of the scratch copy too, so the import is an edge the contract sees
+    imported = imports.removeprefix("rdf_persistence.").replace(".", "/") + ".py"
+    packages = {
+        f"{parent}/__init__.py": "" for parent in map(str, Path(imported).parents) if parent != "."
+    }
+    run.planted = {path: f"import {imports}\n", imported: "", **packages}
     run.modules = modules
 
 

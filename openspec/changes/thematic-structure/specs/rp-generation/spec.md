@@ -47,11 +47,14 @@ generated classes as well as by the shapes.
 
 Each technical schema of the toolkit SHALL live under `rdf_persistence/model/technical/<theme>/`
 as `rp_<theme>_<layer>.yaml` (settings, wire records, template variables, request and response
-bodies), or under `rdf_persistence/model/technical/testkit/` for the testkit records, annotated
+bodies), or as `rp_<theme>_settings.yaml` or `rp_<theme>_templates.yaml` for a non-served group
+(D-15 (1)), or under `rdf_persistence/model/technical/testkit/` for the testkit records, annotated
 `module_kind: technical`, and SHALL be generated into the `generated/` package of the lowest layer
 that every user of its classes may import, in the lowest theme that uses them
 (`<theme>/<layer>/generated/`, `<layer>` being `services`, `adapters` or `entrypoints`, and
-`services` when both an adapter and an entrypoint use them; a testkit record into `testkit`),
+`services` when both an adapter and an entrypoint use them; a `settings` or `templates` group into
+`<theme>/<layer>/generated/settings/` or `<theme>/<layer>/generated/templates/`; a testkit record
+into `testkit`),
 apart from the domain models, which SHALL sit only in a `<theme>/domain/generated/` package. No
 module of a domain layer, generated or hand-written, SHALL import a technical model; a technical
 model MAY import a domain model. The domain schemas SHALL stay at their paths.
@@ -116,3 +119,29 @@ package, otherwise. A consumer's targets SHALL NOT be checked for their folder.
 - **GIVEN** a consumer target with `kind = "technical"` and `package = "app.generated"`
 - **WHEN** `rp-generate` runs on the consumer
 - **THEN** no folder problem is reported
+
+### Requirement: TypeScript targets get the service's types
+
+When a target sets `typescript`, `rp-generate` SHALL also write the classes of the schemas the HTTP
+API serves, among them the service's wire types, which are in
+`rdf_persistence/model/technical/api/rp_api_entrypoints.yaml`, as one module `rp_service.ts`,
+exported from `index.ts`. For such a target, the module name `rp_service`, the names of the served
+schemas' modules and the names of their classes and enums SHALL be reserved, and every served schema
+SHALL be an input of the target's manifest. A technical class that is not served SHALL add nothing
+to `rp_service.ts`.
+
+#### Scenario: a consumer with a web app
+- **GIVEN** a consumer with `typescript` set in `[tool.rp-generate]`
+- **WHEN** `rp-generate` runs
+- **THEN** its TypeScript folder holds `AccountSummary`, `TenantSummary`, `Page`, `Problem` and
+  `GrantSet`, all in `rp_service.ts`, and `tsc --strict` accepts them
+
+#### Scenario: a consumer class named like a service type
+- **GIVEN** a consumer with `typescript` set and a class named `Page`
+- **WHEN** `rp-generate` runs
+- **THEN** it fails with a problem naming `Page` as reserved by `rp_service.ts`
+
+#### Scenario: the service schema changes
+- **GIVEN** a consumer with `typescript` set and a fresh manifest
+- **WHEN** the toolkit's `rp_api_entrypoints.yaml` or another served schema changes
+- **THEN** the freshness check reports that schema as a stale input

@@ -303,7 +303,7 @@ package it generates into.
 |===
 |Kind |Schemas |Generated into
 |domain: the metamodel |`rdf_persistence/model/rp_*.yaml`, flat |`rdf_persistence/core/domain/generated/`
-|technical: a request body, a setting, a wire answer, a query parameter, a testkit record |`rdf_persistence/model/technical/<theme>/rp_<theme>_<layer>.yaml` (the testkit's: `technical/testkit/rp_testkit.yaml`), each annotated `module_kind: technical` |`rdf_persistence/<theme>/<layer>/generated/`, the `generated/` folder of the lowest layer every user may import, in the lowest theme that uses it
+|technical: a request body, a setting, a wire answer, a query parameter, a testkit record |`rdf_persistence/model/technical/<theme>/rp_<theme>_<layer>.yaml`, or `rp_<theme>_settings.yaml` / `rp_<theme>_templates.yaml` for a non-served group (the testkit's: `technical/testkit/rp_testkit.yaml`), each annotated `module_kind: technical` |`rdf_persistence/<theme>/<layer>/generated/`, the `generated/` folder of the lowest layer every user may import, in the lowest theme that uses it; a `settings` or `templates` group in `generated/settings/` or `generated/templates/`
 |===
 
 A technical model is generated into the lowest layer that every one of its users may import, in the

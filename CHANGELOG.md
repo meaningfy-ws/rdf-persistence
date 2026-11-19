@@ -33,8 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metamodel's generated package moved from `rdf_persistence.domain.generated` to
   `rdf_persistence.core.domain.generated`.
 - **The technical schemas are split by theme** (`thematic-structure`). `model/technical/{service,
-  settings,telemetry,templates,wire}/` are now `model/technical/<theme>/rp_<theme>_<layer>.yaml`,
-  each generated into `rdf_persistence/<theme>/<layer>/generated/` (`testkit` is unchanged). The
+  settings,telemetry,templates,wire}/` are now `model/technical/<theme>/rp_<theme>_<layer>.yaml`
+  (`rp_<theme>_settings.yaml` or `rp_<theme>_templates.yaml` for a non-served group), each generated
+  into `rdf_persistence/<theme>/<layer>/generated/` (a group into `generated/settings/` or
+  `generated/templates/`; `testkit` is unchanged). The
   top-level names are unchanged; a deep import moves:
   - from `rdf_persistence.services.generated.service.rp_service`: `ServiceSettings`, `IriPolicy`,
     `IdSpec`, `IdKind` to `rdf_persistence.iris.services.generated.rp_iris_services`; `Page`,

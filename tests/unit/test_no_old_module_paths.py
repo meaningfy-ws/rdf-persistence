@@ -263,3 +263,36 @@ def test_the_pairs_of_a_theme_turned_on_are_its_old_and_new_paths(monkeypatch):
     assert "rdf_persistence.adapters.sparql_protocol" not in pairs, (
         "a created module has no old path"
     )
+
+
+TEST_PATH = re.compile(r"\btests/(?:unit|integration|feature|e2e|perf)/[\w/]+\.(?:py|feature)\b")
+
+
+def _named_test_paths() -> list[tuple[str, str]]:
+    """Test paths named by the docs, the feature files and the docstrings of the test modules."""
+    texts = [(p, p.read_text("utf-8")) for p in (ROOT / "docs").rglob("*.adoc")]
+    texts += [(p, p.read_text("utf-8")) for p in (ROOT / "tests").rglob("*.feature")]
+    for path in (ROOT / "tests").rglob("*.py"):
+        if "__pycache__" in path.parts:
+            continue
+        doc = ast.get_docstring(ast.parse(path.read_text("utf-8")))
+        if doc:
+            texts.append((path, doc))
+    return [
+        (path.relative_to(ROOT).as_posix(), named)
+        for path, text in texts
+        for named in TEST_PATH.findall(text)
+    ]
+
+
+def test_every_test_path_a_doc_or_a_test_docstring_names_exists():
+    """A move of a test file leaves no doc, feature file or docstring pointing at the old place."""
+    missing = sorted(
+        {
+            f"{where} names {named}"
+            for where, named in _named_test_paths()
+            if not (ROOT / named).exists()
+        }
+    )
+
+    assert missing == []
