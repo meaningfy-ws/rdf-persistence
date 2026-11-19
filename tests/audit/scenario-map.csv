@@ -4336,6 +4336,8 @@ tests/generator/unit/test_freshness.py::test_a_problem_of_one_target_keeps_its_l
 tests/generator/unit/test_freshness.py::test_a_problem_shared_by_several_targets_is_reported_once_naming_them,requirement,rp-generation,Stale or edited generated output is detected,,medium,name; docstring issue #164 item 4
 tests/generator/unit/test_freshness.py::test_a_schema_shared_by_two_targets_is_reported_once_through_the_check,requirement,rp-generation,Stale or edited generated output is detected,,medium,name; issue #164 item 4 (through rp-generate --check)
 tests/generator/unit/test_generate_cli.py::test_listing_the_python_folders_needs_no_linkml,capability,rp-generation,,,medium,covered code (cli.py); issue #164 item 3
+tests/generator/unit/test_generate_cli_help.py::test_every_override_flag_help_names_a_key_the_table_accepts,requirement,rp-generation,Each artefact goes to its declared place,,medium,name (override flags name the table keys they override)
+tests/generator/unit/test_generate_cli_help.py::test_the_schema_flag_help_names_the_schema_key,requirement,rp-generation,Each artefact goes to its declared place,,medium,name (override flags name the table keys they override)
 tests/generator/unit/test_roots_call_sites.py::test_another_keyword_ending_in_roots_does_not_count,capability,rp-generation,,,medium,name (roots= guard PD-5 TC-14a; issue #164 item 1)
 tests/generator/integration/test_getting_started_example.py::test_every_element_of_the_example_is_defined_identically_in_the_toy,capability,rp-generation,,,medium,name (the docs' example against the toy)
 tests/generator/integration/test_getting_started_example.py::test_the_example_stores_a_book_and_reads_it_back,capability,rp-generation,,,medium,name (the docs' example runs)
@@ -4352,6 +4354,7 @@ tests/unit/test_check_docs.py::test_section_ids_follow_asciidoctor_defaults,capa
 tests/unit/test_check_docs.py::test_section_ids_follow_the_site_settings,capability,rp-developer-checks,,,medium,name (check-docs section ids)
 tests/unit/test_docs_reference.py::test_check_fails_on_a_stale_partial_and_passes_once_written,capability,rp-developer-checks,,,medium,name (docs reference partials)
 tests/unit/test_docs_reference.py::test_the_api_table_has_a_row_per_name_with_its_first_sentence,capability,rp-developer-checks,,,medium,name (docs reference partials)
+tests/unit/test_docs_reference.py::test_the_problem_table_has_every_kind_with_its_status_and_description,requirement,rp-developer-checks,The generated reference is fresh,,medium,name (docs reference partials)
 tests/unit/test_docs_reference.py::test_the_usage_is_the_parsers_help,capability,rp-developer-checks,,,medium,name (docs reference partials)
 tests/generator/unit/test_boundary_check.py::test_a_toolkit_target_whose_segment_before_the_layer_is_no_theme_is_named,scenario,rp-generation,A target's kind is derived from its modules,a technical target under no theme,high,name; thematic-structure PD-4 D-25 (the theme before the layer)
 tests/generator/unit/test_boundary_check.py::test_the_themes_of_the_check_are_the_themes_of_the_changed_files_mapper,capability,rp-generation,,,medium,name; D-27 (one theme list; no requirement on it)
