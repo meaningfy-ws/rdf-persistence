@@ -8,7 +8,7 @@ import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from rdf_persistence.core.domain.media import JSON
-from tests.toy_service import CONSUMER_POLICY, DUNE_BODY, TENANT_BODY, ToyService
+from tests.toy_service import DUNE_BODY, EXAMPLE_POLICY, TENANT_BODY, ToyService
 
 scenarios("iri_policy.feature")
 
@@ -20,7 +20,7 @@ class Run:
     """One service and what the scenario has seen of it so far."""
 
     def __init__(self) -> None:
-        self.toy = ToyService(iri_policy=CONSUMER_POLICY)
+        self.toy = ToyService(iri_policy=EXAMPLE_POLICY)
         asyncio.run(self.toy.kit.tenancy.ensure_system_database())
         self.headers = self.toy.bearer("ada")
         self.last: httpx.Response | None = None
@@ -46,10 +46,10 @@ def run() -> Run:
     return Run()
 
 
-@given("the library service runs under the project policy")
+@given("the library service runs under the example policy")
 def _service(run: Run) -> None:
-    assert run.toy.kit.iris.settings.iri_policy == CONSUMER_POLICY, (
-        "the service runs under the consumer's policy"
+    assert run.toy.kit.iris.settings.iri_policy == EXAMPLE_POLICY, (
+        "the service runs under the example policy"
     )
 
 
@@ -63,7 +63,7 @@ def _create_library(run: Run) -> None:
 def _library_iri(run: Run, segment: str) -> None:
     assert run.tenant is not None, "the library was created"
     assert re.fullmatch(f"{re.escape(BASE)}{segment}{ID}{{7}}", run.tenant.json()["id"]), (
-        "the library IRI is the project path and a short id"
+        "the library IRI is the library path and a short id"
     )
 
 

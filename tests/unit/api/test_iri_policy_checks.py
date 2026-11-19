@@ -36,7 +36,7 @@ from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import ROLES, TOY_SCHEMA, caller, direct, held
 from tests.unit.conftest import GENERATED
 
-BASE = "http://mwb.meaningfy.ws/"
+BASE = "https://example.org/"
 FLAT = "{base}{tenant_id}/{type}/{id}"
 ADA = Principal(id="https://example.org/people/ada")
 VIEW = load_schema(TOY_SCHEMA)
@@ -46,7 +46,7 @@ TTL = b'<https://e.org/b> <https://e.org/p> "x" .'
 
 def flat_iris() -> Iris:
     policy = IriPolicy(
-        tenant_template="{base}project/{tenant_id}",
+        tenant_template="{base}library/{tenant_id}",
         aggregate_template=FLAT,
         part_template=FLAT,
         loaded_graph_template=FLAT,
@@ -55,7 +55,7 @@ def flat_iris() -> Iris:
     )
     settings = ServiceSettings(
         base=BASE,
-        prefix="mwb",
+        prefix="lib",
         tenant_segment="projects",
         creator_role="owner",
         roles_claim="roles",

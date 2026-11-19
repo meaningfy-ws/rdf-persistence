@@ -65,13 +65,13 @@ class Policy:
 def _flat() -> Policy:
     layout = "{base}{tenant_id}/{type}/{id}"
     settings = ServiceSettings(
-        base="http://mwb.meaningfy.ws/",
-        prefix="mwb",
+        base="https://example.org/",
+        prefix="lib",
         tenant_segment="projects",
         creator_role="owner",
         roles_claim="roles",
         iri_policy=IriPolicy(
-            tenant_template="{base}project/{tenant_id}",
+            tenant_template="{base}library/{tenant_id}",
             aggregate_template=layout,
             part_template=layout,
             loaded_graph_template=layout,

@@ -24,15 +24,15 @@ from rdf_persistence import (
 project_id = "..."                          # your Zitadel project id, as when serving
 FLAT = "{base}{tenant_id}/{type}/{id}"
 settings = ServiceSettings(
-    base="http://mwb.meaningfy.ws/",
+    base="https://example.org/",
     prefix="lib",
     tenant_segment="libraries",
     creator_role="librarian",
     roles_claim=zitadel_roles_claim(project_id),
     deployment="dev",                        # what {deployment} takes; needed only if a template uses it
     iri_policy=IriPolicy(
-        tenant_template="{base}project/{tenant_id}",
-        access_template="{base}{deployment}/project/{tenant_id}",
+        tenant_template="{base}library/{tenant_id}",
+        access_template="{base}{deployment}/library/{tenant_id}",
         principal_template="{base}{deployment}/user/{sub}",
         aggregate_template=FLAT,
         part_template=FLAT,
@@ -45,10 +45,10 @@ settings = ServiceSettings(
 verifier = JwksTokenVerifier(issuer, project_id, zitadel_roles_claim(project_id), iris=Iris(settings))
 ----
 
-A slot you leave out keeps its default. A tenant is then `http://mwb.meaningfy.ws/project/p4x8k2m`,
-a book `http://mwb.meaningfy.ws/p4x8k2m/book/{13 characters}`, its chapter
-`http://mwb.meaningfy.ws/p4x8k2m/chapter/{13 characters}` and a graph loaded into it
-`http://mwb.meaningfy.ws/p4x8k2m/content/{13 characters}`: all flat, none nested under another. The
+A slot you leave out keeps its default. A tenant is then `https://example.org/library/p4x8k2m`,
+a book `https://example.org/p4x8k2m/book/{13 characters}`, its chapter
+`https://example.org/p4x8k2m/chapter/{13 characters}` and a graph loaded into it
+`https://example.org/p4x8k2m/content/{13 characters}`: all flat, none nested under another. The
 aggregate's named graph stays `{root}/graph`. The API paths keep their shape: the tenant is
 `/libraries/p4x8k2m` and the book `/libraries/p4x8k2m/books/{13 characters}`, because the id in a
 path is the last segment of the IRI. A path id the policy does not mint answers 404. The settings
@@ -109,12 +109,12 @@ The example policy above, kind by kind:
 [cols="3,3,2",options="header"]
 |===
 |Kind |Template or setting |Now
-|Tenant |`{base}project/{tenant_id}` |configurable
+|Tenant |`{base}library/{tenant_id}` |configurable
 |Aggregate root, owned part, loaded graph |`{base}{tenant_id}/{type}/{id}` |configurable
 |Tenant id |`random`, 7 characters of `[a-z0-9]` |configurable
 |Object id |`random`, 13 characters of `[a-z0-9]` |configurable
 |Database and bucket |`{prefix}-t-{tenant_id}` |fixed
-|Access record, meta and registry graphs |`{base}{deployment}/project/{tenant_id}` for the access
+|Access record, meta and registry graphs |`{base}{deployment}/library/{tenant_id}` for the access
 record, `{tenant}/meta`, `{tenant}/registry` |configurable
 |Principal |`{base}{deployment}/user/{sub}` |configurable; pass `iris=Iris(settings)` to the verifier
 |Guard against a service started under another policy than its tenants were made under |`install_service` start-up

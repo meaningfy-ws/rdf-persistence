@@ -18,14 +18,14 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
 )
 from rdf_persistence.iris.services.iris import Iris
 
-BASE = "http://mwb.meaningfy.ws/"
+BASE = "https://example.org/"
 FLAT = "{base}{tenant_id}/{type}/{id}"
 ROOTS = frozenset({"ontology-file", "book"})
 OWNED = frozenset({"term", "chapter"})
 
 
 def settings(
-    policy: IriPolicy | None = None, *, prefix: str = "mwb", deployment: str | None = None
+    policy: IriPolicy | None = None, *, prefix: str = "lib", deployment: str | None = None
 ) -> ServiceSettings:
     return ServiceSettings(
         base=BASE,
@@ -40,7 +40,7 @@ def settings(
 
 def flat_policy(tenant_length: int = 7, object_length: int = 13) -> IriPolicy:
     return IriPolicy(
-        tenant_template="{base}project/{tenant_id}",
+        tenant_template="{base}library/{tenant_id}",
         aggregate_template=FLAT,
         part_template=FLAT,
         loaded_graph_template=FLAT,
@@ -229,7 +229,7 @@ def test_a_type_that_is_regex_syntax_matches_only_itself():
 
 # Reserved by membership in one set; one word per source of it: a layout word, a template literal,
 # a type, the deployment.
-@pytest.mark.parametrize("word", ["meta", "project", "ontology-file", "k3f9a2x"])
+@pytest.mark.parametrize("word", ["meta", "library", "ontology-file", "k3f9a2x"])
 def test_a_drawn_id_that_is_a_reserved_word_is_discarded_for_every_kind_of_id(word):
     iris = Iris(
         settings(flat_policy(), deployment="k3f9a2x"),
@@ -282,7 +282,7 @@ def test_the_deployment_slug_is_never_an_id_even_when_the_policy_has_no_template
 
 def both() -> Iris:
     policy = IriPolicy(
-        tenant_template="{base}project/{tenant_id}",
+        tenant_template="{base}library/{tenant_id}",
         access_template="{tenant}/access/{tenant_id}",
         tenant_id=IdSpec(kind=IdKind.RANDOM, length=7),
     )
@@ -444,7 +444,7 @@ def test_a_reserved_word_is_not_a_tenant_id_when_matching():
     with pytest.raises(NotFound):
         iris.tenant(word)
     with pytest.raises(InvalidIri):
-        iris.tenant_id_of(f"{BASE}project/{word}")
+        iris.tenant_id_of(f"{BASE}library/{word}")
 
 
 def test_a_reserved_word_is_not_an_object_id_when_matching():

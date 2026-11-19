@@ -57,8 +57,8 @@ from tests.toy import (
     dune,
 )
 from tests.toy_service import (
-    CONSUMER_POLICY,
     DUNE_BODY,
+    EXAMPLE_POLICY,
     TENANT_BODY,
     ToyService,
     assert_problem,
@@ -378,7 +378,7 @@ async def test_a_tenant_id_that_clashes_is_redrawn_and_the_first_tenant_is_uncha
 
 
 async def test_without_an_id_source_two_creates_draw_different_ids_of_the_policy_length() -> None:
-    toy = ToyService(iri_policy=CONSUMER_POLICY)
+    toy = ToyService(iri_policy=EXAMPLE_POLICY)
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         locations = [
             (await http.post("/libraries", json=TENANT_BODY, headers=toy.bearer("ada")))
@@ -387,7 +387,7 @@ async def test_without_an_id_source_two_creates_draw_different_ids_of_the_policy
             for _ in range(2)
         ]
     assert locations[0] != locations[1], "drawn, not fixed"
-    length = CONSUMER_POLICY.tenant_id.length
+    length = EXAMPLE_POLICY.tenant_id.length
     assert [len(i) for i in locations] == [length, length], "the policy's tenant id length"
 
 

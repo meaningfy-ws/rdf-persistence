@@ -48,10 +48,10 @@ BASE_URL = "http://test"
 LIBRARIAN, READER, OUTSIDER = "librarian", "reader", "outsider"
 
 
-# The consumer's policy: the tenant under ``project/``, every other object flat beside its siblings.
+# The example policy: the tenant under ``library/``, every other object flat beside its siblings.
 FLAT = "{base}{tenant_id}/{type}/{id}"
-CONSUMER_POLICY = IriPolicy(
-    tenant_template="{base}project/{tenant_id}",
+EXAMPLE_POLICY = IriPolicy(
+    tenant_template="{base}library/{tenant_id}",
     aggregate_template=FLAT,
     part_template=FLAT,
     loaded_graph_template=FLAT,

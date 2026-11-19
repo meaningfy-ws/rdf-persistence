@@ -12,7 +12,7 @@ from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import FakeStore, fake_session, no_network  # noqa: F401  (fixture)
 from tests.fixtures.library.generated.books import Book
 from tests.toy import ADA, SETTINGS, TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
-from tests.toy_service import CONSUMER_POLICY
+from tests.toy_service import EXAMPLE_POLICY
 
 BEN = "https://example.org/people/ben"
 
@@ -71,7 +71,7 @@ async def test_two_fake_sessions_over_one_store_see_the_same_data(no_network):  
 
 
 def _consumer_iris() -> Iris:
-    settings = SETTINGS.model_copy(update={"iri_policy": CONSUMER_POLICY})
+    settings = SETTINGS.model_copy(update={"iri_policy": EXAMPLE_POLICY})
     return Iris(settings, *iri_types(load_schema(TOY_SCHEMA)))
 
 
@@ -84,7 +84,7 @@ async def test_the_fake_session_takes_the_iris_a_consumer_policy_mints(no_networ
         work.add(dune(flat_book))
         await work.commit()
         assert (await read(session, flat_book)).label == "Dune", (
-            "the fake session takes the IRIs the consumer's policy mints"
+            "the fake session takes the IRIs the example policy mints"
         )
 
 
