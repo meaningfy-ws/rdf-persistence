@@ -679,3 +679,6 @@ consumers later.
   old-vs-themes case for `access`); S3 (TC-45's original probe `persistence.services` →
   `access.services`). The tester's tests are not kept: none failed first, and three read the base
   commit with `git show`, which fails in a shallow clone; the rows they cover are tested elsewhere.
+  The W3 scan found `tests/feature/test_technical_models.py`, which plants the old layout in a
+  scratch copy on purpose; it joins `test_technical_split.py` in TC-04's `EXEMPT`, and stage 7
+  removes both entries with the old layout.
