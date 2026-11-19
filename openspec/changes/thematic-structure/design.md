@@ -653,8 +653,9 @@ consumers later.
   older base and combined onto stage 4 by an integration fixer). (1) No shim (PD-8 names only
   `domain.base` and `adapters.fuseki`). (2) Schemas: `rp_access_services.yaml` and
   `rp_tenancy_services.yaml` served; `rp_access_settings.yaml` not served (D-15 (1));
-  `rp_access_adapters.yaml` is the former wire schema, a byte-identical rename for the Zitadel
-  records and `JwtClaims` (TC-50); the persistence half of the wire schema went to
+  `rp_access_adapters.yaml` is the former wire schema renamed (its `id`, `name`, `description`
+  and `python_package` changed; the generated module for the Zitadel records and `JwtClaims` is
+  byte-identical, TC-50); the persistence half of the wire schema went to
   `rp_persistence_adapters.yaml` in stage 4. `SERVED_SCHEMAS`: iris, persistence, migrations,
   access, tenancy, service. (3) Tests by PD-11: `test_session_find` to access,
   `test_session_activity` to tenancy; `test_http` stays in `tests/unit/core/` (it tests

@@ -171,7 +171,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 
 ## Stage 5: `access` and `tenancy` (PR 5)
 
-- [ ] 5.1 The recipe for `access` and `tenancy`, with `services/tenant_move.py` (moved out of
+- [x] 5.1 The recipe for `access` and `tenancy`, with `services/tenant_move.py` (moved out of
   `domain` by `technical-models`, DEC-3) → `tenancy/services/tenant_move.py`. PD-2 `access/services`, `access/adapters`,
   `tenancy/services`. `tenancy-without-the-runner` retargeted. Gate: `make test-fast check-quality`.
 
@@ -179,7 +179,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 |---|---|---|
 | TC-01 | `LAYOUT` rows | hold |
 | TC-50 | the `Zitadel*` records and `JwtClaims` | generated in `rdf_persistence.access.adapters.generated`; none under any `domain` |
-| TC-51 | a planted import of `rdf_persistence.access.adapters.generated` from `rdf_persistence.tenancy.services.tenancy` | `layers-across-themes` fails |
+| TC-51 | a planted import of `rdf_persistence.access.adapters.generated` from a module of `rdf_persistence.tenancy.services` | `layers-across-themes` fails |
 | TC-07 | `/openapi.json`, toy TypeScript | unchanged |
 
 ## Stage 6: `events`, `collaboration`, `messaging` (PR 6)
@@ -237,7 +237,7 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 2.1 · [x] 3.1 · [x] 3.2 ·
-  [x] 4.1 · [x] 4.2 · [ ] 5.1 · [ ] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
+  [x] 4.1 · [x] 4.2 · [x] 5.1 · [ ] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
 
 ## Verification
 
