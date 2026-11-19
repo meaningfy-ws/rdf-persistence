@@ -148,12 +148,16 @@ def _stores_its_roots_here(run: Run) -> bool:
 
     On the toolkit's run, ``rp.yaml`` holds every domain module, so its target answers for every
     root class and writes the one lock; a theme target declares no ``migrations``. A toolkit target
-    with a root of its own keeps the rules.
+    with a root of its own, or one that sets ``migrations`` (its version is checked, D-10), keeps
+    the rules.
     """
     folder = run.schema_path.parent
     if not is_toolkit_schema(folder, roots=TOOLKIT_ROOTS) or run.schema_path.name == METAMODEL_ROOT:
         return True
-    return not _root_names(run.view, folder) <= _metamodel_root_names(run)
+    if migrations_folder(run.target):
+        return True
+    roots = _root_names(run.view, folder)
+    return not roots or not roots <= _metamodel_root_names(run)
 
 
 def _hard_problems(run: Run) -> list[CheckProblem]:

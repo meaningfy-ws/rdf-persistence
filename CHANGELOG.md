@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`domain-model-per-theme`). The generator imports a module in the root's folder from its own
   `python_package` when that differs from the root's, and on the toolkit's run checks that a toolkit
   target generates that package.
+- **A stored file is recognised by `class_uri: rp:StoredFile`, not by the class name `StoredFile`**
+  (`domain-model-per-theme`). A consumer's own stored-file mixin must declare that `class_uri`, or
+  mix in the metamodel's `StoredFile`.
 
 ## [0.6.0] - 2026-11-19
 

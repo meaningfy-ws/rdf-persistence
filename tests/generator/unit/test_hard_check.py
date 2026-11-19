@@ -1104,6 +1104,26 @@ def test_a_toolkit_target_other_than_rp_yaml_that_stores_roots_without_migration
     assert any(HardRule.MIGRATIONS_FOLDER.value in p and "Lone" in p for p in found), found
 
 
+def test_a_theme_target_that_sets_migrations_keeps_the_version_rule(toolkit_project: Path) -> None:
+    """D-10: the stored-schema rules are skipped only for a target without `migrations`; one that sets them is checked."""
+    tenancy = toolkit_project / "model" / "rp_tenancy.yaml"
+    text = tenancy.read_text(encoding="utf-8")
+    tenancy.write_text(text.replace("name: rp_tenancy\n", "name: rp_tenancy\nversion: 1.10\n", 1))
+    pyproject = toolkit_project / "pyproject.toml"
+    entry = 'schema = "model/rp_tenancy.yaml"\n'
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace(
+            f"{entry}", f'{entry}migrations = "model/tenancy-migrations"\n', 1
+        ),
+        encoding="utf-8",
+    )
+    found = _hard_problems_of_all(toolkit_project)
+    assert any(
+        HardRule.QUOTED_VERSION.value in p and "rp_tenancy.yaml" in p and "quoted" in p
+        for p in found
+    ), found
+
+
 def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings() -> None:
     """TC-10: rp_service, rp_templates, rp_telemetry, rp_settings, rp_wire, rp_testkit and rp_generation need no migrations folder; rp.yaml has one.
 
