@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "rdf_persistence/model/technical/testkit/rp_testkit.yaml",
-      "sha256": "0f9a88c06242a2b82c3a2e15a6ed788b3ba943e6fe5c6953920251afa3630ae6"
+      "sha256": "11ff9b6930c54c96985cecba691b116d6b8a2b64c8dcec4913f40913ca70e874"
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",

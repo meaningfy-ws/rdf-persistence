@@ -8,10 +8,10 @@ xref:architecture/generation.adoc[Model to code]. The package layout, the Make t
 rest of the library are on xref:develop/index.adoc[Working on the library].
 
 The generator is a sibling top-level package shipped in the same wheel. It imports the library;
-the library does not import it, but through four testkit shims (`rdf_persistence.testkit.freshness`,
-`conformance`, `roundtrip` and `strategies`), which forward the old paths to
-`rdf_persistence_generation.testkit`. The import contract `library-never-imports-the-generator`
-(`.importlinter`, run by `make check-architecture`) forbids every other import. Its own tests are in
+the library does not import it, with no exception: the four testkit shims that forwarded the old
+paths to `rdf_persistence_generation.testkit` were removed in 0.6.0. The import contract
+`library-never-imports-the-generator` (`.importlinter`, run by `make check-architecture`) forbids
+every import. Its own tests are in
 `tests/generator/` and run with `make test-generator`, with an 80 % coverage floor over the
 package.
 

@@ -58,12 +58,13 @@ Version 0.5.0 moves the generator from `rdf_persistence.generation` to the packa
 
 . *What breaks.* `import rdf_persistence.generation` fails with `ModuleNotFoundError`; there is no
   shim. Change every such import to `rdf_persistence_generation`.
-. *What warns until 0.6.0.* These four modules and four names still import from their old place, but
-  each import raises one `DeprecationWarning` that names the new path, and 0.6.0 removes them:
+. *What 0.6.0 removes.* Version 0.5.0 kept these four modules and four names at their old place,
+  each import raising one `DeprecationWarning`; 0.6.0 removes them, and an import of an old path
+  fails with `ModuleNotFoundError` (or `ImportError` for a name):
 +
 [cols="2,2",options="header"]
 |===
-|Old (warns)|New
+|Old (removed)|New
 
 |`pytest_plugins = ["rdf_persistence.testkit.freshness"]`
 |`pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]`
@@ -76,10 +77,9 @@ Version 0.5.0 moves the generator from `rdf_persistence.generation` to the packa
 |===
 +
 `assert_isomorphic` and the model guards (`assert_models_generated`, `class_shapes`,
-`model_shape_diff` and the others) stay in `rdf_persistence.testkit`, with no warning.
-. *`filterwarnings = error`.* A suite that turns warnings into errors fails at the first old import.
-  Switch the imports and the `pytest_plugins` line above before you upgrade, or the run stops before
-  any test.
+`model_shape_diff` and the others) stay in `rdf_persistence.testkit`.
+. *Upgrading from 0.4 to 0.6 or later.* Switch the imports and the `pytest_plugins` line above
+  before you upgrade, or the run stops before any test.
 . *Regenerate once.* Every `rp-manifest.json` records the generator's files by path, and those paths
   changed, so the freshness check reports every target stale until you regenerate. The report
   looks like this:

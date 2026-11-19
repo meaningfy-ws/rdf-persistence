@@ -1,4 +1,4 @@
-"""The testkit reaches the generator only through its four shims (generator-package PD-1, PD-3)."""
+"""The library's testkit never reaches the generator (generator-package PD-1, PD-3; shims gone, #165)."""
 
 import ast
 from importlib import import_module
@@ -11,12 +11,6 @@ TESTKIT = PACKAGE / "testkit"
 GENERATION_SCHEMA = PACKAGE.parent / "rdf_persistence_generation" / "model" / "rp_generation.yaml"
 GENERATOR = "rdf_persistence_generation"
 TESTKIT_MODELS = "rdf_persistence.testkit.generated"
-GENERATOR_LOGIC_USERS = {
-    "freshness.py",
-    "conformance.py",
-    "roundtrip.py",
-    "strategies.py",
-}  # the shims
 TECHNICAL_RECORDS = {
     "ClassShape",
     "SlotShape",
@@ -33,12 +27,11 @@ TECHNICAL_RECORDS = {
 
 
 def library_modules() -> list[Path]:
-    """Every testkit module but the four shims and the generated package."""
+    """Every testkit module but the generated package."""
     return [
         path
         for path in sorted(TESTKIT.rglob("*.py"))
-        if path.name not in GENERATOR_LOGIC_USERS
-        and "generated" not in path.relative_to(TESTKIT).parts
+        if "generated" not in path.relative_to(TESTKIT).parts
     ]
 
 
@@ -58,7 +51,7 @@ def is_under(module: str, package: str) -> bool:
 
 
 def test_no_library_testkit_module_imports_the_generator():
-    """TC-01: no testkit module but the four shims imports rdf_persistence_generation."""
+    """TC-01: no testkit module imports rdf_persistence_generation."""
     offenders = [
         f"{path.relative_to(PACKAGE)} imports {module}" + (f" {name}" if name else "")
         for path in library_modules()

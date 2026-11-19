@@ -465,10 +465,6 @@ def test_no_testkit_or_generation_module_copies_a_model_with_model_copy_update()
 
 GENERATOR_PACKAGE = "rdf_persistence_generation"
 CONTRACT_NEVER_IMPORTS_GENERATOR = "library-never-imports-the-generator"
-SHIM_MODULES = ("freshness", "conformance", "roundtrip", "strategies")
-SHIM_EDGES = {
-    f"rdf_persistence.testkit.{m} -> {GENERATOR_PACKAGE}.testkit.{m}" for m in SHIM_MODULES
-}
 
 
 def _contract(name: str) -> configparser.SectionProxy:
@@ -483,14 +479,12 @@ def _lines(contract: configparser.SectionProxy, key: str) -> list[str]:
     return [line.strip() for line in contract.get(key, "").splitlines() if line.strip()]
 
 
-def test_the_library_never_imports_the_generator_but_through_the_four_shims():
+def test_the_library_never_imports_the_generator():
     contract = _contract(CONTRACT_NEVER_IMPORTS_GENERATOR)
     assert contract["type"] == "forbidden"
     assert _lines(contract, "source_modules") == ["rdf_persistence"]
     assert _lines(contract, "forbidden_modules") == [GENERATOR_PACKAGE]
-    ignored = _lines(contract, "ignore_imports")
-    assert len(ignored) == len(set(ignored)), "an ignored edge is listed twice"
-    assert set(ignored) == SHIM_EDGES, "the ignored edges are not exactly the four testkit shims"
+    assert _lines(contract, "ignore_imports") == [], "the contract ignores an edge"
 
 
 WITHOUT_GENERATE_EXTRA_SOURCES = {

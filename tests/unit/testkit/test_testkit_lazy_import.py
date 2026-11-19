@@ -51,7 +51,7 @@ def test_the_token_and_provisioning_names_load_on_first_use(name: str) -> None:
 
 
 def test_assert_isomorphic_loads_without_a_warning_or_the_generator() -> None:
-    """D-10: the graph comparison lives in the library, so a consumer of it never meets the shim."""
+    """D-10: the graph comparison lives in the library, so a consumer of it never meets the generator."""
     code = (
         "import sys, warnings; warnings.simplefilter('error'); "
         "from rdf_persistence.testkit import assert_isomorphic; "
@@ -103,10 +103,7 @@ def test_testkit_root_does_not_import_the_heavy_libraries(heavy: str) -> None:
         "read_snapshot",
         "write_snapshot",
         "snapshot_diff",
-        "Conformance",
-        "conformance_problems",
-        "round_trip",
-        "aggregate",
+        "assert_isomorphic",
     ],
 )
 def test_the_guard_api_is_in_all(name: str) -> None:
