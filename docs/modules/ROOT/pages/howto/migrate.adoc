@@ -622,7 +622,7 @@ A tenant set aside still serves what does not read or write its data in the tena
 
 A rename answers `503` too, because it writes the tenant's root.
 
-*See it in the log.* The logger is `rdf_persistence.services.migration_runner`. Every record has the
+*See it in the log.* The logger is `rdf_persistence.tenancy.services.migration_runner`. Every record has the
 extra fields `step`, `schema` and `migration`:
 
 [cols="2,1,4",options="header"]
@@ -677,7 +677,7 @@ back. Without such a backup, fix forward: release a corrected migration.
 What exists:
 
 * Each migration that is applied writes one `info` record from the logger
-  `rdf_persistence.services.migration_runner`, message `migrated a database`, with `step`
+  `rdf_persistence.tenancy.services.migration_runner`, message `migrated a database`, with `step`
   `migrate` and the fields `database`, `schema` and `migration`. The log of a start-up lists the
   steps taken.
 * A failed migration writes an `error` record (the table above) with the cause.

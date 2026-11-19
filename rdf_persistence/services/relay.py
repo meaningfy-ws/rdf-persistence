@@ -27,7 +27,7 @@ from rdf_persistence.services.event_hub import Offer
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.generated.service.rp_service import EventEnvelope
 from rdf_persistence.services.generated.settings.rp_settings import EventSettings
-from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.tenancy.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)
 

@@ -44,6 +44,10 @@ MIGRATIONS = (
     ROOT / "rdf_persistence" / "model" / "technical" / "migrations" / "rp_migrations_services.yaml"
 )
 MIGRATIONS_PACKAGE = "rdf_persistence.migrations.services.generated"
+ACCESS = ROOT / "rdf_persistence" / "model" / "technical" / "access" / "rp_access_services.yaml"
+ACCESS_PACKAGE = "rdf_persistence.access.services.generated"
+TENANCY = ROOT / "rdf_persistence" / "model" / "technical" / "tenancy" / "rp_tenancy_services.yaml"
+TENANCY_PACKAGE = "rdf_persistence.tenancy.services.generated"
 TESTKIT_PACKAGE = "rdf_persistence.testkit.generated"
 REFRESH = "RP_REFRESH_SNAPSHOT"
 
@@ -88,7 +92,10 @@ def toy_copy(tmp_path: Path) -> Path:
 
 
 def test_the_current_shapes_equal_the_reviewed_snapshot() -> None:
-    current = class_shapes([METAMODEL, SERVICE, TOY])
+    # every served schema, so a class of a theme the service schema does not import is in the snapshot too
+    current = class_shapes(
+        [METAMODEL, IRIS, PERSISTENCE, MIGRATIONS, ACCESS, TENANCY, SERVICE, TOY]
+    )
     if os.environ.get(REFRESH):
         write_snapshot(SNAPSHOT, current)
     reviewed = read_snapshot(SNAPSHOT)
@@ -221,6 +228,8 @@ def test_snapshot_diff_describes_each_kind_of_change(
         pytest.param(IRIS, IRIS_PACKAGE, id="iris"),
         pytest.param(PERSISTENCE, PERSISTENCE_PACKAGE, id="persistence"),
         pytest.param(MIGRATIONS, MIGRATIONS_PACKAGE, id="migrations"),
+        pytest.param(ACCESS, ACCESS_PACKAGE, id="access"),
+        pytest.param(TENANCY, TENANCY_PACKAGE, id="tenancy"),
         pytest.param(SERVICE, SERVICE_PACKAGE, id="service"),
         pytest.param(TESTKIT, TESTKIT_PACKAGE, id="testkit"),
     ],
@@ -233,6 +242,8 @@ def test_generated_classes_match_the_induced_slots(schema: Path, package: str) -
         + generated_models(IRIS_PACKAGE)
         + generated_models(PERSISTENCE_PACKAGE)
         + generated_models(MIGRATIONS_PACKAGE)
+        + generated_models(ACCESS_PACKAGE)
+        + generated_models(TENANCY_PACKAGE)
     )
     shapes = class_shapes([schema])
     own = {m.__name__ for m in generated_models(package)}

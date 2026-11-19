@@ -9,8 +9,8 @@ from rdf_persistence.core.domain.exceptions import DatabaseGone
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.unit.services.test_pending_mark import PLUMBING, three_commits
-from tests.unit.services.test_session_activity import PROVENANCE, X, activities, opened
+from tests.unit.tenancy.test_pending_mark import PLUMBING, three_commits
+from tests.unit.tenancy.test_session_activity import PROVENANCE, X, activities, opened
 
 NOW = datetime(2026, 11, 16, 12, 0, tzinfo=UTC)
 WEEK = timedelta(days=7)

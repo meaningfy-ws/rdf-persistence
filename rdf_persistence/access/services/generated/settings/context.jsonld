@@ -1,0 +1,37 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "linkml": "https://w3id.org/linkml/",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "allowed_algorithms": {
+         "@container": "@set",
+         "@id": "allowed_algorithms"
+      },
+      "leeway_seconds": {
+         "@type": "xsd:float",
+         "@id": "leeway_seconds"
+      },
+      "page_size": {
+         "@id": "page_size"
+      },
+      "ttl_seconds": {
+         "@type": "xsd:float",
+         "@id": "ttl_seconds"
+      },
+      "unknown_kid_cooldown_seconds": {
+         "@type": "xsd:float",
+         "@id": "unknown_kid_cooldown_seconds"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "DirectorySettings": {
+         "@id": "DirectorySettings"
+      },
+      "JwksSettings": {
+         "@id": "JwksSettings"
+      }
+   }
+}

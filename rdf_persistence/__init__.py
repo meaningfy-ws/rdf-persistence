@@ -110,8 +110,25 @@ from rdf_persistence.core.domain.generated.rp_workflow import (
 )
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
-    from rdf_persistence.adapters.jwks import JwksTokenVerifier
-    from rdf_persistence.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
+    from rdf_persistence.access.adapters.jwks import JwksTokenVerifier
+    from rdf_persistence.access.adapters.zitadel import ZitadelIdentity, zitadel_roles_claim
+    from rdf_persistence.access.services.access import (
+        AccessRules,
+        load_caller_access,
+        load_role_definitions,
+    )
+    from rdf_persistence.access.services.generated.rp_access_services import (
+        AccountSummary,
+        CallerAccess,
+        GrantSet,
+        VerifiedCaller,
+    )
+    from rdf_persistence.access.services.generated.settings.rp_access_settings import (
+        DirectorySettings,
+        JwksSettings,
+    )
+    from rdf_persistence.access.services.identity import Identity
+    from rdf_persistence.access.services.tokens import TokenVerifier
     from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
     from rdf_persistence.entrypoints.environment import settings_from_env
     from rdf_persistence.entrypoints.kit import ServiceKit
@@ -141,20 +158,12 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.persistence.services.session import Session, open_session
     from rdf_persistence.persistence.services.store import Store
     from rdf_persistence.schema.services.schema import load_schema
-    from rdf_persistence.services.access import (
-        AccessRules,
-        load_caller_access,
-        load_role_definitions,
-    )
     from rdf_persistence.services.collaboration import Collaboration
     from rdf_persistence.services.events import EventBus, Receive, context_link
     from rdf_persistence.services.file_removal import remove_with_files
     from rdf_persistence.services.generated.service.rp_service import (
-        AccountSummary,
         Authorised,
-        CallerAccess,
         EventEnvelope,
-        GrantSet,
         LabelUpdate,
         MemberList,
         Problem,
@@ -162,29 +171,32 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         Referrer,
         ReferrerList,
         TenantCreate,
-        TenantDump,
-        TenantSummary,
-        VerifiedCaller,
     )
     from rdf_persistence.services.generated.settings.rp_settings import (
-        DirectorySettings,
         EventSettings,
-        JwksSettings,
         SseSettings,
         ToolkitSettings,
     )
-    from rdf_persistence.services.identity import Identity
     from rdf_persistence.services.messagebus import MessageBus, Work, bootstrap, command
-    from rdf_persistence.services.sweep import sweep
-    from rdf_persistence.services.tenancy import GrantValidator, RootValidator, Tenancy
-    from rdf_persistence.services.tenant_sweep import sweep_tenant
-    from rdf_persistence.services.tokens import TokenVerifier
     from rdf_persistence.services.workflows import Workflows
+    from rdf_persistence.tenancy.services.generated.rp_tenancy_services import (
+        TenantDump,
+        TenantSummary,
+    )
+    from rdf_persistence.tenancy.services.sweep import sweep
+    from rdf_persistence.tenancy.services.tenancy import GrantValidator, RootValidator, Tenancy
+    from rdf_persistence.tenancy.services.tenant_sweep import sweep_tenant
 
 __version__ = version("rdf-persistence")
 
-_ADAPTERS, _SERVICES = "rdf_persistence.adapters", "rdf_persistence.services"
+_SERVICES = "rdf_persistence.services"
 _ENTRYPOINTS = "rdf_persistence.entrypoints"
+_ACCESS = "rdf_persistence.access.services"
+_ACCESS_ADAPTERS = "rdf_persistence.access.adapters"
+_ACCESS_MODELS = f"{_ACCESS}.generated.rp_access_services"
+_ACCESS_SETTINGS_MODELS = f"{_ACCESS}.generated.settings.rp_access_settings"
+_TENANCY = "rdf_persistence.tenancy.services"
+_TENANCY_MODELS = f"{_TENANCY}.generated.rp_tenancy_services"
 _IRIS_MODELS = "rdf_persistence.iris.services.generated.rp_iris_services"
 _IRIS = "rdf_persistence.iris.services.iris"
 _FILES = "rdf_persistence.files.services.files"
@@ -198,24 +210,17 @@ _LIMIT_MODELS = f"{_PERSISTENCE}.generated.settings.rp_persistence_settings"
 _LAZY_MODULES = {
     "HttpSettings": "rdf_persistence.core.services.generated.rp_core_services",
     "LimitSettings": _LIMIT_MODELS,
-    **dict.fromkeys(
-        (
-            "DirectorySettings",
-            "EventSettings",
-            "JwksSettings",
-            "SseSettings",
-            "ToolkitSettings",
-        ),
-        _SETTINGS_MODELS,
-    ),
+    **dict.fromkeys(("DirectorySettings", "JwksSettings"), _ACCESS_SETTINGS_MODELS),
+    **dict.fromkeys(("EventSettings", "SseSettings", "ToolkitSettings"), _SETTINGS_MODELS),
     "settings_from_env": f"{_ENTRYPOINTS}.environment",
     **dict.fromkeys(
+        ("AccountSummary", "CallerAccess", "GrantSet", "VerifiedCaller"), _ACCESS_MODELS
+    ),
+    **dict.fromkeys(("TenantDump", "TenantSummary"), _TENANCY_MODELS),
+    **dict.fromkeys(
         (
-            "AccountSummary",
             "Authorised",
-            "CallerAccess",
             "EventEnvelope",
-            "GrantSet",
             "LabelUpdate",
             "MemberList",
             "Problem",
@@ -223,31 +228,28 @@ _LAZY_MODULES = {
             "Referrer",
             "ReferrerList",
             "TenantCreate",
-            "TenantDump",
-            "TenantSummary",
-            "VerifiedCaller",
         ),
         _SERVICE_MODELS,
     ),
     **dict.fromkeys(("IdKind", "IdSpec", "IriPolicy", "ServiceSettings"), _IRIS_MODELS),
     "Page": _PERSISTENCE_MODELS,
     "FusekiStore": "rdf_persistence.persistence.adapters.fuseki",
-    "JwksTokenVerifier": f"{_ADAPTERS}.jwks",
+    "JwksTokenVerifier": f"{_ACCESS_ADAPTERS}.jwks",
     "S3FileStore": _S3,
-    "ZitadelIdentity": f"{_ADAPTERS}.zitadel",
-    "zitadel_roles_claim": f"{_ADAPTERS}.zitadel",
+    "ZitadelIdentity": f"{_ACCESS_ADAPTERS}.zitadel",
+    "zitadel_roles_claim": f"{_ACCESS_ADAPTERS}.zitadel",
     "install_service": f"{_ENTRYPOINTS}.service",
     "ServiceKit": f"{_ENTRYPOINTS}.kit",
     "limited_body": f"{_ENTRYPOINTS}.router",
-    "Identity": f"{_SERVICES}.identity",
+    "Identity": f"{_ACCESS}.identity",
     **dict.fromkeys(("DEFAULT_IRIS", "IdSource", "Iris", "mint_aggregate_iri"), _IRIS),
     "EventBus": f"{_SERVICES}.events",
     "Receive": f"{_SERVICES}.events",
     "context_link": f"{_SERVICES}.events",
-    "AccessRules": f"{_SERVICES}.access",
-    "load_caller_access": f"{_SERVICES}.access",
-    "load_role_definitions": f"{_SERVICES}.access",
-    "TokenVerifier": f"{_SERVICES}.tokens",
+    "AccessRules": f"{_ACCESS}.access",
+    "load_caller_access": f"{_ACCESS}.access",
+    "load_role_definitions": f"{_ACCESS}.access",
+    "TokenVerifier": f"{_ACCESS}.tokens",
     "FileStore": _FILES,
     "Mapper": f"{_PERSISTENCE}.mapper",
     "UnitOfWork": f"{_PERSISTENCE}.mapper",
@@ -258,12 +260,12 @@ _LAZY_MODULES = {
     "Session": f"{_PERSISTENCE}.session",
     "open_session": f"{_PERSISTENCE}.session",
     "Store": f"{_PERSISTENCE}.store",
-    "sweep": f"{_SERVICES}.sweep",
-    "sweep_tenant": f"{_SERVICES}.tenant_sweep",
+    "sweep": f"{_TENANCY}.sweep",
+    "sweep_tenant": f"{_TENANCY}.tenant_sweep",
     "remove_with_files": f"{_SERVICES}.file_removal",
-    "Tenancy": f"{_SERVICES}.tenancy",
-    "GrantValidator": f"{_SERVICES}.tenancy",
-    "RootValidator": f"{_SERVICES}.tenancy",
+    "Tenancy": f"{_TENANCY}.tenancy",
+    "GrantValidator": f"{_TENANCY}.tenancy",
+    "RootValidator": f"{_TENANCY}.tenancy",
     "Collaboration": f"{_SERVICES}.collaboration",
     "Workflows": f"{_SERVICES}.workflows",
     "MessageBus": f"{_SERVICES}.messagebus",

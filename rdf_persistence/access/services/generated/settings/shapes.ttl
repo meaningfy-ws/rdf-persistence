@@ -1,0 +1,75 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rp: <https://meaningfy.ws/ns/rdf-persistence#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+rp:DirectorySettings a sh:NodeShape ;
+	rdfs:comment "How the user directory of the identity provider is read." ;
+	rdfs:label "Directory settings" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n2 ;
+	sh:property _:c14n6 ;
+	sh:targetClass rp:DirectorySettings .
+rp:JwksSettings a sh:NodeShape ;
+	rdfs:comment "How the token verifier caches the identity provider's keys and which signatures it accepts." ;
+	rdfs:label "JWKS settings" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n1 ;
+	sh:property _:c14n0 , _:c14n3 , _:c14n4 , _:c14n5 ;
+	sh:targetClass rp:JwksSettings .
+_:c14n0 sh:datatype xsd:float ;
+	sh:defaultValue "600.0"^^xsd:float ;
+	sh:description "The seconds a fetched set of signing keys is used before it is fetched again." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive "0.001"^^xsd:double ;
+	sh:name "Key cache lifetime" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:ttl_seconds .
+_:c14n1 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n2 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n3 sh:datatype xsd:float ;
+	sh:defaultValue "10.0"^^xsd:float ;
+	sh:description "The most often, in seconds, that the keys are fetched again, whether they are stale or a token names a key id that is not in the cache." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 31536000 ;
+	sh:minCount 1 ;
+	sh:minInclusive 1 ;
+	sh:name "Key refresh cooldown" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:unknown_kid_cooldown_seconds .
+_:c14n4 sh:datatype xsd:float ;
+	sh:defaultValue "30.0"^^xsd:float ;
+	sh:description "The seconds a token's expiry and not-before times may be off, to allow for clock drift." ;
+	sh:maxCount 1 ;
+	sh:maxInclusive 300 ;
+	sh:minCount 1 ;
+	sh:minInclusive 0 ;
+	sh:name "Clock leeway" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:leeway_seconds .
+_:c14n5 sh:datatype xsd:string ;
+	sh:defaultValue "RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512, EdDSA" ;
+	sh:description "The JWS algorithms a token may be signed with. Any name but `none` and the shared-secret `HS*` family is accepted here; the token verifier checks each name against the installed JWT library when it is built." ;
+	sh:minCount 1 ;
+	sh:name "Allowed algorithms" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:allowed_algorithms ;
+	sh:pattern "^(?:(?i)^(?!none$|hs)\\S+$)(?![\\s\\S])" .
+_:c14n6 sh:datatype xsd:integer ;
+	sh:defaultValue 100 ;
+	sh:description "The users read from the directory in one request." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:minInclusive 1 ;
+	sh:name "Page size" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:page_size .

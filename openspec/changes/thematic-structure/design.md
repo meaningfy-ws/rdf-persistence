@@ -646,4 +646,40 @@ consumers later.
   persistence and migrations live, the four served schemas and the groups' classes); S2 (TC-40
   checks the Turtle body). Under the floor: review S3 (a commit's trace line), S4 (stage 7's
   CHANGELOG names the dropped log constant change, D-18 (5)), tester F5 (the 400 log line, as
-  PD-7 intends).
+  PD-7 intends). Stage 4's checker: pass (3 findings); W-1 corrected the F2 wording above; under
+  the floor S-1 (TC-45's test checks the contract broke, not that both modules are named), S-2
+  (the move commit adds the shim test before the shim's own commit).
+- **D-20 Stage 5 (`access`, `tenancy`) as built** (builder of 5.1, accepted by the lead; built on an
+  older base and combined onto stage 4 by an integration fixer). (1) No shim (PD-8 names only
+  `domain.base` and `adapters.fuseki`). (2) Schemas: `rp_access_services.yaml` and
+  `rp_tenancy_services.yaml` served; `rp_access_settings.yaml` not served (D-15 (1));
+  `rp_access_adapters.yaml` is the former wire schema renamed (its `id`, `name`, `description`
+  and `python_package` changed; the generated module for the Zitadel records and `JwtClaims` is
+  byte-identical, TC-50); the persistence half of the wire schema went to
+  `rp_persistence_adapters.yaml` in stage 4. `SERVED_SCHEMAS`: iris, persistence, migrations,
+  access, tenancy, service. (3) Tests by PD-11: `test_session_find` to access,
+  `test_session_activity` to tenancy; `test_http` stays in `tests/unit/core/` (it tests
+  `core/adapters/_http.py`), its verifier-timeout case split to `tests/unit/access/test_jwks.py`
+  and its store half dropped as already asserted by TC-28 in `test_fuseki_store.py`.
+  (4) `domain-never-imports-technical-models` keeps a forbidden entry for the gone
+  `rdf_persistence.adapters.generated` (scratch tests need it); stage 7 removes the contract.
+  (5) The ast-grep single-name rule dropped a second imported name in five files (D-12 (8) again),
+  repaired. (6) Combining: the D-16 derived test found `access`/`tenancy` missing from
+  `themes-never-import-the-old-layout`'s sources — added; `make generate` changed three manifests
+  only (stage 4's `components.py` fix postdates stage 5's base); the TypeScript golden refresh is
+  order-only, sorted lines identical to stage 4's. (7) As D-17 W1: the move and the import rewrite
+  are one commit; rename detection holds.
+- **D-21 Stage 5 review and tester** (lead; review 6 findings, none Critical; tester 183 tests, 0
+  failed first, 0 findings). Accepted below Critical, one fixer pass: review W1 (TC-51 and the
+  "a service imports an adapter" scenario planted on the theme layout in
+  `test_theme_contracts.py`; the scenario-map rows of those scenarios point at the new tests, as the
+  old-layout ones go with stage 7); W2 (`architecture/index.adoc` ~159, ~189 name
+  `tenancy/services/migration_runner.py` and `access/services/access.py`); W3 (`testkit/zitadel.py`'s
+  docstring names `access.adapters.generated.rp_access_adapters`, and TC-04's scan also covers
+  moved generated modules such as `rdf_persistence.adapters.generated.rp_wire`); S2 (one
+  old-vs-themes case for `access`); S3 (TC-45's original probe `persistence.services` →
+  `access.services`). The tester's tests are not kept: none failed first, and three read the base
+  commit with `git show`, which fails in a shallow clone; the rows they cover are tested elsewhere.
+  The W3 scan found `tests/feature/test_technical_models.py`, which plants the old layout in a
+  scratch copy on purpose; it joins `test_technical_split.py` in TC-04's `EXEMPT`, and stage 7
+  removes both entries with the old layout.

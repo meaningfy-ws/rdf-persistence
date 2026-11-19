@@ -20,8 +20,8 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.store import Store
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
-from rdf_persistence.services.sweep import sweep
-from rdf_persistence.services.tenancy import DEFAULT_STORE, Tenancy
+from rdf_persistence.tenancy.services.sweep import sweep
+from rdf_persistence.tenancy.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.testkit import FakeFileStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess

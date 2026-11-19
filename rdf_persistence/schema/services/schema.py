@@ -19,7 +19,16 @@ PERSISTENCE_SCHEMA = (
 MIGRATIONS_SCHEMA = (
     PACKAGE_DIR / "model" / "technical" / "migrations" / "rp_migrations_services.yaml"
 )
-SERVED_SCHEMAS = (IRIS_SCHEMA, PERSISTENCE_SCHEMA, MIGRATIONS_SCHEMA, SERVICE_SCHEMA)
+ACCESS_SCHEMA = PACKAGE_DIR / "model" / "technical" / "access" / "rp_access_services.yaml"
+TENANCY_SCHEMA = PACKAGE_DIR / "model" / "technical" / "tenancy" / "rp_tenancy_services.yaml"
+SERVED_SCHEMAS = (
+    IRIS_SCHEMA,
+    PERSISTENCE_SCHEMA,
+    MIGRATIONS_SCHEMA,
+    ACCESS_SCHEMA,
+    TENANCY_SCHEMA,
+    SERVICE_SCHEMA,
+)
 PYTHON_PACKAGE = "python_package"  # the annotation of a toolkit schema: where its code is generated
 MODEL_PREFIX = f"{PACKAGE}/model"
 # What opening a schema raises when the file or an import is missing, is not YAML, or is not a LinkML

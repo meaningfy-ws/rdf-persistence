@@ -30,8 +30,8 @@ from rdf_persistence.migrations.services.migrations import (
 )
 from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.services.migration_runner import migrate_database
-from tests.unit.services.test_migration_runner import (
+from rdf_persistence.tenancy.services.migration_runner import migrate_database
+from tests.unit.tenancy.test_migration_runner import (
     ISBN,
     LIB,
     MID_ISBN,

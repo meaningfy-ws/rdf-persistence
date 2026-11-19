@@ -18,24 +18,12 @@ imports:
   - linkml:types
   - ../core/rp_core_services
   - ../persistence/rp_persistence_settings
+  - ../access/rp_access_settings
 annotations:
   module_kind: technical
   python_package: rdf_persistence.services.generated.settings
 
 classes:
-  JwksSettings:
-    title: JWKS settings
-    description: How the token verifier caches the identity provider's keys and which signatures it accepts.
-    slots:
-      - ttl_seconds
-      - unknown_kid_cooldown_seconds
-      - allowed_algorithms
-      - leeway_seconds
-  DirectorySettings:
-    title: Directory settings
-    description: How the user directory of the identity provider is read.
-    slots:
-      - page_size
   EventSettings:
     title: Event settings
     description: The event bus, the relay that publishes from the outbox, and the hub that fans events out.
@@ -69,51 +57,6 @@ classes:
       - limits
 
 slots:
-  ttl_seconds:
-    title: Key cache lifetime
-    description: The seconds a fetched set of signing keys is used before it is fetched again.
-    range: float
-    required: true
-    ifabsent: float(600.0)
-    minimum_value: 0.001
-    maximum_value: 31536000
-  unknown_kid_cooldown_seconds:
-    title: Key refresh cooldown
-    description: >-
-      The most often, in seconds, that the keys are fetched again, whether they are stale or a token
-      names a key id that is not in the cache.
-    range: float
-    required: true
-    ifabsent: float(10.0)
-    minimum_value: 1
-    maximum_value: 31536000
-  allowed_algorithms:
-    title: Allowed algorithms
-    description: >-
-      The JWS algorithms a token may be signed with. Any name but `none` and the shared-secret `HS*`
-      family is accepted here; the token verifier checks each name against the installed JWT library
-      when it is built.
-    range: string
-    multivalued: true
-    required: true
-    minimum_cardinality: 1
-    ifabsent: string(RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512, EdDSA)
-    pattern: '(?i)^(?!none$|hs)\S+$'
-  leeway_seconds:
-    title: Clock leeway
-    description: The seconds a token's expiry and not-before times may be off, to allow for clock drift.
-    range: float
-    required: true
-    ifabsent: float(30.0)
-    minimum_value: 0
-    maximum_value: 300
-  page_size:
-    title: Page size
-    description: The users read from the directory in one request.
-    range: integer
-    required: true
-    ifabsent: int(100)
-    minimum_value: 1
   stream:
     title: Stream
     description: The name of the event stream.

@@ -13,6 +13,7 @@ import pytest
 from rdflib import RDF, URIRef
 
 from rdf_persistence import Action, GrantSet
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import InvalidBody, InvalidGrant, InvalidIri, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
@@ -28,7 +29,6 @@ from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.services.documents import Documents
 from rdf_persistence.testkit import FakeStore

@@ -1027,13 +1027,15 @@ def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings(
     The name says seven; `rp_testkit` is the eighth target (PD-11), and the `iris` theme's two schemas,
     `rp_iris_services` and `rp_iris_templates`, are the ninth and the tenth (thematic-structure 3.1); the
     `persistence` theme's three (`rp_persistence_services`, `_settings`, `_adapters`) and the `migrations`
-    theme's one are the eleventh to the fourteenth (4.2).
+    theme's one are the eleventh to the fourteenth (4.2). `rp_wire` is the `access` theme's
+    `rp_access_adapters` from stage 5, beside `rp_access_services`, `rp_access_settings` and the
+    `tenancy` theme's `rp_tenancy_services`: seventeen in all (5.1).
     """
     targets = read_targets(REPO / "pyproject.toml")
-    assert len(targets) == 14, [t.schema_file for t in targets]
+    assert len(targets) == 17, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
     assert [format_problem(p) for p in found] == [], (
-        "the toolkit's fourteen targets raise no problem"
+        "the toolkit's seventeen targets raise no problem"
     )
 
 
@@ -1138,7 +1140,22 @@ def test_an_application_run_never_checks_the_package_of_its_target(toy_copy: Pat
 
 TOOLKIT_PACKAGES = [
     ("rdf_persistence/model/rp_core.yaml", TOOLKIT_DOMAIN),
-    ("rdf_persistence/model/technical/wire/rp_wire.yaml", "rdf_persistence.adapters.generated"),
+    (
+        "rdf_persistence/model/technical/access/rp_access_adapters.yaml",
+        "rdf_persistence.access.adapters.generated",
+    ),
+    (
+        "rdf_persistence/model/technical/access/rp_access_services.yaml",
+        "rdf_persistence.access.services.generated",
+    ),
+    (
+        "rdf_persistence/model/technical/access/rp_access_settings.yaml",
+        "rdf_persistence.access.services.generated.settings",
+    ),
+    (
+        "rdf_persistence/model/technical/tenancy/rp_tenancy_services.yaml",
+        "rdf_persistence.tenancy.services.generated",
+    ),
     (
         "rdf_persistence/model/technical/service/rp_service.yaml",
         "rdf_persistence.services.generated.service",

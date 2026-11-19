@@ -3,12 +3,9 @@
 import httpx
 import pytest
 
-from rdf_persistence.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.core.adapters._http import HttpAdapter
 from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
-from rdf_persistence.persistence.adapters.fuseki import FusekiStore
-from rdf_persistence.testkit.tokens import ISSUER
 
 
 class ProbeUnavailableError(PersistenceError):
@@ -71,21 +68,3 @@ async def test_leaving_the_context_closes_the_client() -> None:
     async with probe_answering(lambda _r: httpx.Response(200)) as probe:
         pass
     assert probe.client.is_closed, "the client is closed on leaving the context"
-
-
-async def test_a_read_timeout_set_by_the_consumer_reaches_the_store_and_the_token_verifier() -> (
-    None
-):
-    """A consumer's one HttpSettings(read_timeout_seconds=60) reaches both adapters it is given to.
-
-    Attacks the wiring: a verifier that drops ``http=`` waits the default 30 seconds.
-    """
-    http = HttpSettings(read_timeout_seconds=60)
-    transport = httpx.MockTransport(lambda _r: httpx.Response(200))
-    store = FusekiStore("http://fuseki.test:3030", "u", "p", http=http, transport=transport)
-    verifier = JwksTokenVerifier(ISSUER, "aud", "roles", http=http, transport=transport)
-    async with store, verifier:
-        assert store.client.timeout.read == 60.0, "the store reads for the consumer's 60 seconds"
-        assert verifier.client.timeout.read == 60.0, (
-            "the verifier reads for the consumer's 60 seconds"
-        )

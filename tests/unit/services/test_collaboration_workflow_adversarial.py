@@ -20,6 +20,7 @@ import yaml
 from rdflib import RDF, XSD, BNode, Literal, URIRef
 
 from rdf_persistence import Action, UnitOfWork, generated_models
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
@@ -32,6 +33,7 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.core.domain.generated.rp_access import Grant
 from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.generated.rp_workflow import Transition, WorkflowTransition
 from rdf_persistence.core.domain.sparql import Triple, fill, term
 from rdf_persistence.entrypoints.kit import ServiceKit
@@ -40,13 +42,11 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import Session, Transaction
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
-from rdf_persistence.services.generated.service.rp_service import TenantState
-from rdf_persistence.services.tenancy import Tenancy
 from rdf_persistence.services.transitions import Transitions
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
 from rdf_persistence.services.write_guards import WriteGuards
+from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from rdf_persistence_generation.checks.hard import hard_problems

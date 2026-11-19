@@ -5,12 +5,14 @@ from pydantic import ValidationError
 
 from rdf_persistence import (
     GrantSet,
+    IriPolicy,
     LabelUpdate,
     Page,
     Problem,
     ProblemKind,
     ServiceSettings,
     TenantCreate,
+    TenantDump,
     TenantState,
     TenantSummary,
     VerifiedCaller,
@@ -270,7 +272,7 @@ def test_a_restore_bound_below_one_byte_is_refused() -> None:
         settings(max_restore_bytes=0)
 
 
-def tenant_dump(**changes: object) -> "rp_service.TenantDump":
+def tenant_dump(**changes: object) -> TenantDump:
     fields: dict[str, object] = {
         "format_version": 1,
         "created_at": "2026-11-13T10:00:00Z",
@@ -279,15 +281,15 @@ def tenant_dump(**changes: object) -> "rp_service.TenantDump":
         "source_tenant": TENANT,
         "source_tenant_id": "abc123",
         "label": "Acme",
-        "iri_policy": rp_service.IriPolicy(),
+        "iri_policy": IriPolicy(),
     }
     fields.update(changes)
-    return rp_service.TenantDump(**fields)
+    return TenantDump(**fields)
 
 
 def test_a_tenant_dump_manifest_round_trips_through_its_json() -> None:
     manifest = tenant_dump(schema_version="2")
-    again = rp_service.TenantDump.model_validate_json(manifest.model_dump_json())
+    again = TenantDump.model_validate_json(manifest.model_dump_json())
     assert again == manifest, "the manifest must survive its own JSON"
     assert again.iri_policy.tenant_template == "{base}{tenant_segment}/{tenant_id}", (
         "the effective policy must travel in the manifest"
@@ -309,4 +311,4 @@ def test_a_tenant_dump_may_leave_out_the_schema_version_only() -> None:
         fields = tenant_dump().model_dump()
         del fields[name]
         with pytest.raises(ValidationError, match=name):
-            rp_service.TenantDump(**fields)
+            TenantDump(**fields)

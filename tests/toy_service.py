@@ -27,7 +27,7 @@ from rdf_persistence.iris.services.generated.rp_iris_services import IdKind, IdS
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris, draw_id
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
-from rdf_persistence.services.tenancy import GrantValidator, RootValidator
+from rdf_persistence.tenancy.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 from rdf_persistence.testkit.tokens import ISSUER, shared_key
 from tests.fixtures.library import generated

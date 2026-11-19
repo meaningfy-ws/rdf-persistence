@@ -6,8 +6,8 @@ from rdf_persistence.core.domain.exceptions import StoreUnavailable
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.iris.domain.layout import system_database_name
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.services.sweep import sweep
-from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.tenancy.services.sweep import sweep
+from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import assert_isomorphic
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess

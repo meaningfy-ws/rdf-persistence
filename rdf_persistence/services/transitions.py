@@ -11,6 +11,11 @@ from typing import cast
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
+from rdf_persistence.access.services.access import AccessRules
+from rdf_persistence.access.services.generated.rp_access_services import (
+    CallerAccess,
+    VerifiedCaller,
+)
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
@@ -32,9 +37,7 @@ from rdf_persistence.persistence.services.mapper import Mapper
 from rdf_persistence.persistence.services.session import Session, changed_text
 from rdf_persistence.provenance.services.provenance import new_activity_id
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.discussion import mint_iri, moment_of
-from rdf_persistence.services.generated.service.rp_service import CallerAccess, VerifiedCaller
 from rdf_persistence.services.workflows import Workflows, state_iri
 
 TRANSITION_CLASS = "Transition"

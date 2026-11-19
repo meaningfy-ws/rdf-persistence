@@ -11,7 +11,7 @@ from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.persistence.services.mapper import Mapper
 from rdf_persistence.provenance.services.provenance import new_activity_id
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.tenancy.services.tenancy import Tenancy
 
 log = logging.getLogger(__name__)
 

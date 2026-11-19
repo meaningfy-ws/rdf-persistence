@@ -15,6 +15,7 @@ import pytest
 from rdflib import RDF, XSD, Graph, URIRef
 
 from rdf_persistence import Action, generated_models
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
@@ -29,7 +30,6 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.discussion import dependents as discussion_dependents
 from rdf_persistence.services.workflows import Workflows

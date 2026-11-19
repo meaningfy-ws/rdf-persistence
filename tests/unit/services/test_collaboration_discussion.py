@@ -15,6 +15,7 @@ import pytest
 from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence import Action, generated_models
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
@@ -37,7 +38,6 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.discussion import dependents
 from rdf_persistence.services.write_guards import WriteGuards
@@ -63,7 +63,7 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
-from tests.unit.services.test_session_activity import stored_graph
+from tests.unit.tenancy.test_session_activity import stored_graph
 
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 S1 = shelf_iri(1)

@@ -13,6 +13,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 
+from rdf_persistence.access.services.generated.rp_access_services import (
+    CallerAccess,
+    VerifiedCaller,
+)
 from rdf_persistence.core.domain.generated.rp_access import Action
 from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.entrypoints.kit import ServiceKit
@@ -28,7 +32,6 @@ from rdf_persistence.services.event_stream import (
     Signal,
     event_stream,
 )
-from rdf_persistence.services.generated.service.rp_service import CallerAccess, VerifiedCaller
 from rdf_persistence.services.generated.settings.rp_settings import SseSettings
 
 EVENTS_ROUTE = (

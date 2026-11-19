@@ -4,7 +4,7 @@ import pytest
 
 from rdf_persistence.core.domain.exceptions import IriPolicyChanged
 from rdf_persistence.iris.services.generated.rp_iris_services import IdKind, IdSpec, IriPolicy
-from rdf_persistence.services.iri_policy_guard import guard_iri_policy
+from rdf_persistence.tenancy.services.iri_policy_guard import guard_iri_policy
 from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 
 

@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from tests.unit import test_theme_layout
-from tests.unit.test_theme_layout import turned_on_pairs
+from tests.unit.test_theme_layout import PLACED, Placed, turned_on_pairs
 
 ROOT = Path(__file__).resolve().parents[2]
 SCANNED = ("rdf_persistence", "rdf_persistence_generation", "tests", "docs", ".github")
@@ -53,6 +53,9 @@ EXEMPT: frozenset[str] = frozenset(
         # stage 4: the `adapters.fuseki` shim (PD-8) names its own path, so does its test.
         "rdf_persistence/adapters/fuseki.py",
         "tests/unit/persistence/test_fuseki_shim.py",
+        # stage 5: the technical-models feature plants the old layout (`rp_wire` among it) in a scratch
+        # copy to break the layers contract, like `test_technical_split.py` above; stage 7 removes both.
+        "tests/feature/test_technical_models.py",
     }
 )
 
@@ -126,8 +129,22 @@ def old_path_hits(root: Path, pairs: tuple[tuple[str, str], ...]) -> list[str]:
     return hits
 
 
+def moved_generated_pairs(
+    placed: tuple[Placed, ...] = PLACED,
+) -> tuple[tuple[str, str], ...]:
+    """The (old, new) generated module of each group whose every row is on: the old module is gone.
+
+    A group with a row still off keeps its old module for the classes not yet moved, so it is not scanned.
+    """
+    standing: dict[str, str] = {}
+    for row in placed:
+        if all(other.on for other in placed if other.old == row.old):
+            standing.setdefault(row.old, row.new)
+    return tuple(standing.items())
+
+
 def test_no_file_names_the_old_path_of_a_row_that_is_on():
-    hits = old_path_hits(ROOT, turned_on_pairs())
+    hits = old_path_hits(ROOT, turned_on_pairs() + moved_generated_pairs())
 
     assert hits == [], "old module paths still in use:\n" + "\n".join(hits)
 
@@ -215,6 +232,28 @@ def test_a_row_that_is_off_is_not_searched(tmp_path):
     _plant(tmp_path, "rdf_persistence/api/a.py", f"import {OLD}\n")
 
     assert old_path_hits(tmp_path, ()) == [], "no pair, no hit"
+
+
+OLD_WIRE = "rdf_persistence.adapters.generated.rp_wire"
+
+
+def test_a_moved_generated_module_path_is_found(tmp_path):
+    """The old ``rp_wire`` of the persistence and access themes: a docstring naming it is a hit."""
+    _plant(tmp_path, "rdf_persistence/testkit/x.py", f'"""Records of ``{OLD_WIRE}``."""\n')
+
+    hits = old_path_hits(tmp_path, moved_generated_pairs())
+
+    assert hits == [f"rdf_persistence/testkit/x.py:1: {OLD_WIRE}"]
+
+
+def test_a_generated_module_with_a_group_still_off_is_not_scanned(monkeypatch):
+    monkeypatch.setattr(test_theme_layout, "TURNED_ON", frozenset({"persistence"}))
+
+    assert OLD_WIRE not in dict(moved_generated_pairs()), "access still has classes in rp_wire"
+
+    monkeypatch.setattr(test_theme_layout, "TURNED_ON", frozenset({"persistence", "access"}))
+
+    assert OLD_WIRE in dict(moved_generated_pairs()), "every row of rp_wire is on"
 
 
 def test_the_pairs_of_a_theme_turned_on_are_its_old_and_new_paths(monkeypatch):

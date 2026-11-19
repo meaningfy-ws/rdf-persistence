@@ -11,7 +11,7 @@ import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from rdf_persistence import JwksSettings
-from rdf_persistence.adapters.jwks import RS256, JwksTokenVerifier
+from rdf_persistence.access.adapters.jwks import RS256, JwksTokenVerifier
 from rdf_persistence.testkit import TokenSigner, shared_key
 from rdf_persistence.testkit.tokens import AUDIENCE, ISSUER
 from tests.toy_service import TENANT_BODY, ToyService, assert_problem

@@ -20,6 +20,7 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from rdflib import RDF, Graph, Literal, URIRef
 
 from rdf_persistence import bootstrap, generated_models
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, MessageLimitExceeded
 from rdf_persistence.core.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
 from rdf_persistence.core.domain.generated.rp_core import Principal
@@ -35,7 +36,6 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.provenance.services.provenance import Served
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.messagebus import Work, command
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri

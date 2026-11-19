@@ -10,6 +10,11 @@ from collections.abc import Sequence
 
 from linkml_runtime.utils.schemaview import SchemaView
 
+from rdf_persistence.access.services.access import AccessRules
+from rdf_persistence.access.services.generated.rp_access_services import (
+    CallerAccess,
+    VerifiedCaller,
+)
 from rdf_persistence.core.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.core.domain.generated.rp_access import Action
 from rdf_persistence.core.domain.generated.rp_discussion import Comment, PostComment
@@ -18,14 +23,11 @@ from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.persistence.services.session import ReferrerRow, Session
-from rdf_persistence.services.access import AccessRules
 from rdf_persistence.services.discussion import Discussion
 from rdf_persistence.services.generated.service.rp_service import (
-    CallerAccess,
     MemberList,
     Referrer,
     ReferrerList,
-    VerifiedCaller,
 )
 from rdf_persistence.services.reference_collections import ReferenceCollections
 from rdf_persistence.services.transitions import Transitions

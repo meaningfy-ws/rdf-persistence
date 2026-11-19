@@ -15,6 +15,7 @@ from rdflib import RDF, Graph, URIRef
 from rdflib.namespace import PROV
 
 from rdf_persistence import bootstrap, generated_models
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import NotFound
 from rdf_persistence.core.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
 from rdf_persistence.core.domain.generated.rp_core import Principal
@@ -27,7 +28,6 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.messagebus import MessageBus, Work, command
 from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
@@ -58,7 +58,7 @@ from tests.unit.provenance.test_activity_shape import (
     unordered,
     with_class_iris_expanded,
 )
-from tests.unit.services.test_session_activity import activities, stored_graph
+from tests.unit.tenancy.test_session_activity import activities, stored_graph
 
 B1, B2, B3 = book_iri(1), book_iri(2), book_iri(3)
 VIEW = load_schema(TOY_SCHEMA)

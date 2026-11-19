@@ -1,0 +1,449 @@
+{
+  "schemas": {
+    "AccountSummary": {
+      "additionalProperties": false,
+      "description": "What the identity port reports about one account of the identity provider: its id, its login name, its email (a service account has none), whether it may sign in, and its global roles.",
+      "properties": {
+        "account_id": {
+          "description": "The identity provider's id of the account.",
+          "pattern": "^.+$",
+          "type": "string"
+        },
+        "active": {
+          "description": "Whether the account may sign in; a disabled account is refused new tokens.",
+          "type": "boolean"
+        },
+        "email": {
+          "description": "The email address of a person's account.",
+          "type": "string"
+        },
+        "global_roles": {
+          "description": "The system-level roles the token grants the principal.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
+        "user_name": {
+          "description": "The name the account signs in with.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "account_id",
+        "user_name",
+        "active"
+      ],
+      "title": "AccountSummary",
+      "type": "object"
+    },
+    "Action": {
+      "description": "The actions a rule can name.",
+      "enum": [
+        "read",
+        "modify",
+        "delete",
+        "administer",
+        "annotate"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "CallerAccess": {
+      "additionalProperties": false,
+      "description": "What the access check needs to know about one caller in one tenant: the tenant's state, and the grants and prohibitions of the access record that name the caller.",
+      "properties": {
+        "grants": {
+          "description": "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "type": "array"
+        },
+        "prohibitions": {
+          "description": "The actions forbidden in the tenant; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Prohibition"
+          },
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/components/schemas/TenantState",
+          "description": "Where the tenant is in its life."
+        },
+        "tenant": {
+          "description": "The IRI of the tenant.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant",
+        "state"
+      ],
+      "title": "CallerAccess",
+      "type": "object"
+    },
+    "Grant": {
+      "additionalProperties": false,
+      "description": "A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given.",
+      "oneOf": [
+        {
+          "properties": {
+            "role": {}
+          },
+          "required": [
+            "role"
+          ]
+        },
+        {
+          "properties": {
+            "action": {}
+          },
+          "required": [
+            "action"
+          ]
+        }
+      ],
+      "properties": {
+        "action": {
+          "$ref": "#/components/schemas/Action",
+          "description": "The action a direct permission allows, or a prohibition forbids."
+        },
+        "assignee": {
+          "description": "The principal the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "role": {
+          "description": "The name of a role, matched against the application's role definitions.",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignee",
+        "target"
+      ],
+      "title": "Grant",
+      "type": "object"
+    },
+    "GrantSet": {
+      "additionalProperties": false,
+      "description": "The body that replaces the grants and prohibitions of a tenant; two grants with the same assignee, target and role or action are refused.",
+      "properties": {
+        "grants": {
+          "description": "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "type": "array"
+        },
+        "prohibitions": {
+          "description": "The actions forbidden in the tenant; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Prohibition"
+          },
+          "type": "array"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "title": "GrantSet",
+      "type": "object"
+    },
+    "Policy": {
+      "additionalProperties": false,
+      "description": "A set of permissions and prohibitions.",
+      "title": "Policy",
+      "type": "object"
+    },
+    "Prohibition": {
+      "additionalProperties": false,
+      "description": "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission.",
+      "properties": {
+        "action": {
+          "$ref": "#/components/schemas/Action",
+          "description": "The action a direct permission allows, or a prohibition forbids."
+        },
+        "assignee": {
+          "description": "The principal the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignee",
+        "target",
+        "action"
+      ],
+      "title": "Prohibition",
+      "type": "object"
+    },
+    "RoleDefinition": {
+      "additionalProperties": false,
+      "description": "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored.",
+      "properties": {
+        "actions": {
+          "description": "The actions the role permits.",
+          "items": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "type": "array"
+        },
+        "level": {
+          "$ref": "#/components/schemas/RoleLevel",
+          "description": "Where the role applies."
+        },
+        "role": {
+          "description": "The name of a role, matched against the application's role definitions.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "level",
+        "actions"
+      ],
+      "title": "RoleDefinition",
+      "type": "object"
+    },
+    "RoleLevel": {
+      "description": "The levels at which a role applies.",
+      "enum": [
+        "system",
+        "tenant",
+        "aggregate"
+      ],
+      "title": "RoleLevel",
+      "type": "string"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "description": "An ODRL rule that gives an assignee a ruling on an action over a target.",
+      "properties": {
+        "action": {
+          "$ref": "#/components/schemas/Action",
+          "description": "The action a direct permission allows, or a prohibition forbids."
+        },
+        "assignee": {
+          "description": "The principal the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "target": {
+          "description": "The IRI of the tenant, or of an aggregate's graph, the rule applies to.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignee",
+        "target"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "TenantAccess": {
+      "additionalProperties": false,
+      "description": "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "grants": {
+          "description": "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Grant"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        },
+        "prohibitions": {
+          "description": "The actions forbidden in the tenant; they live in the access record's graph.",
+          "items": {
+            "$ref": "#/components/schemas/Prohibition"
+          },
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/components/schemas/TenantState",
+          "description": "Where the tenant is in its life."
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "id",
+        "label"
+      ],
+      "title": "TenantAccess",
+      "type": "object"
+    },
+    "TenantLabelled": {
+      "additionalProperties": false,
+      "description": "A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service's request bodies share it, so the label is checked the same everywhere.",
+      "properties": {
+        "label": {
+          "description": "The preferred label of the object.",
+          "pattern": "^\\S(?:.{0,198}\\S)?$",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "TenantLabelled",
+      "type": "object"
+    },
+    "TenantState": {
+      "description": "The states of a tenant.",
+      "enum": [
+        "active",
+        "deleting"
+      ],
+      "title": "TenantState",
+      "type": "string"
+    },
+    "TenantSweepReport": {
+      "additionalProperties": false,
+      "description": "The outcome of a sweep of one live tenant: the loaded graphs and bucket objects found orphaned past the grace period, and whether each list was removed.",
+      "properties": {
+        "blobs": {
+          "description": "The keys of the orphaned bucket objects found, sorted.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "loaded_graphs": {
+          "description": "The IRIs of the orphaned loaded graphs found, sorted.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "older_than_seconds": {
+          "description": "The grace period in seconds; only what is older is reported.",
+          "type": "integer"
+        },
+        "removed_blobs": {
+          "description": "Whether the orphaned bucket objects were removed.",
+          "type": "boolean"
+        },
+        "removed_loaded_graphs": {
+          "description": "Whether the orphaned loaded graphs were removed.",
+          "type": "boolean"
+        },
+        "skipped_blobs": {
+          "description": "The keys of orphaned objects the object store would not delete.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tenant": {
+          "description": "The IRI of the tenant.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant",
+        "older_than_seconds",
+        "loaded_graphs",
+        "blobs",
+        "removed_loaded_graphs",
+        "removed_blobs",
+        "skipped_blobs"
+      ],
+      "title": "TenantSweepReport",
+      "type": "object"
+    },
+    "VerifiedCaller": {
+      "additionalProperties": false,
+      "description": "What a token verifier returns for a valid token, the principal and its global roles.",
+      "properties": {
+        "global_roles": {
+          "description": "The system-level roles the token grants the principal.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "principal": {
+          "description": "The user account the token identifies.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "principal"
+      ],
+      "title": "VerifiedCaller",
+      "type": "object"
+    }
+  }
+}

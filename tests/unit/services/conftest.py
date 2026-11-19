@@ -5,11 +5,11 @@ from collections.abc import Callable
 import pytest
 
 from rdf_persistence import CallerAccess, VerifiedCaller, generated_models
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from tests.toy import MODULES, ROLES, TOY_SCHEMA, toy_mapper
 

@@ -2,10 +2,11 @@ id: https://meaningfy.ws/ns/rdf-persistence/service
 name: rp_service
 title: RDF persistence service module
 description: >-
-  The toolkit's own data types for the HTTP service: the caller a token verifier returns, and the
-  request and response bodies of the tenant routes (the settings of `install_service` and the IRI policy
-  are in the `iris` theme's schema, which this one imports). They are generated into their own package,
-  so an application's models do not carry them.
+  The toolkit's own data types for the HTTP service that no theme below `api` owns yet: the request
+  bodies of the tenant routes, the answer of an access check, the problem details, the referrers and
+  the event envelope (the caller a token verifier returns is in the `access` theme's schema, the tenant
+  dump and summary in the `tenancy` theme's, which this one imports). They are generated into their own
+  package, so an application's models do not carry them.
 prefixes:
   rp: https://meaningfy.ws/ns/rdf-persistence#
   linkml: https://w3id.org/linkml/
@@ -16,62 +17,13 @@ imports:
   - rdf_persistence/model/rp_core
   - rdf_persistence/model/rp_access
   - rdf_persistence/model/rp_tenancy
-  - ../iris/rp_iris_services
   - ../persistence/rp_persistence_services
-  - ../migrations/rp_migrations_services
+  - ../access/rp_access_services
 annotations:
   module_kind: technical
   python_package: rdf_persistence.services.generated.service
 
 classes:
-  TenantDump:
-    title: Tenant dump
-    description: >-
-      The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`:
-      where and when the dump was taken, which schema and toolkit it came from, the tenant it holds
-      and the IRI policy that minted its IRIs, so a restore can check that the dump was made under the
-      same schema and policy.
-    class_uri: rp:TenantDump
-    slots:
-      - format_version
-      - dump_created_at
-      - toolkit_version
-      - schema_id
-      - schema_version
-      - source_tenant
-      - source_tenant_id
-      - label
-      - iri_policy
-    slot_usage:
-      format_version:
-        required: true
-      dump_created_at:
-        required: true
-      toolkit_version:
-        required: true
-      schema_id:
-        required: true
-        description: The id of the LinkML schema whose data the dump holds; a restore checks it against its own.
-      source_tenant:
-        required: true
-      source_tenant_id:
-        required: true
-      label:
-        required: true
-      iri_policy:
-        required: true
-        inlined: true
-  VerifiedCaller:
-    title: Verified caller
-    description: >-
-      What a token verifier returns for a valid token, the principal and its global roles.
-    class_uri: rp:VerifiedCaller
-    slots:
-      - principal
-      - global_roles
-    slot_usage:
-      principal:
-        required: true
   TenantCreate:
     title: Tenant create
     description: The body that creates a tenant, its label and the slots of the tenant's root object.
@@ -83,53 +35,12 @@ classes:
     slot_usage:
       root:
         required: true
-  TenantSummary:
-    title: Tenant summary
-    description: What the service answers about one tenant, in a listing or after creating it.
-    class_uri: rp:TenantSummary
-    slots:
-      - id
-      - label
-      - state
-      - allowed_actions
-    slot_usage:
-      id:
-        required: true
-      label:
-        required: true
-      state:
-        required: true
   LabelUpdate:
     title: Label update
     description: The body that replaces the label of a tenant.
     class_uri: rp:LabelUpdate
     mixins:
       - TenantLabelled
-  GrantSet:
-    title: Grant set
-    description: >-
-      The body that replaces the grants and prohibitions of a tenant; two grants with the same
-      assignee, target and role or action are refused.
-    class_uri: rp:GrantSet
-    slots:
-      - grants
-      - prohibitions
-  CallerAccess:
-    title: Caller access
-    description: >-
-      What the access check needs to know about one caller in one tenant: the tenant's state, and the
-      grants and prohibitions of the access record that name the caller.
-    class_uri: rp:CallerAccess
-    slots:
-      - tenant
-      - state
-      - grants
-      - prohibitions
-    slot_usage:
-      tenant:
-        required: true
-      state:
-        required: true
   Authorised:
     title: Authorised
     description: >-
@@ -185,25 +96,6 @@ classes:
       problem_status:
         required: true
 
-  AccountSummary:
-    title: Account summary
-    description: >-
-      What the identity port reports about one account of the identity provider: its id, its login
-      name, its email (a service account has none), whether it may sign in, and its global roles.
-    class_uri: rp:AccountSummary
-    slots:
-      - account_id
-      - user_name
-      - email
-      - active
-      - global_roles
-    slot_usage:
-      account_id:
-        required: true
-      user_name:
-        required: true
-      active:
-        required: true
   Referrer:
     title: Referrer
     description: >-
@@ -270,14 +162,6 @@ classes:
         required: true
 
 slots:
-  allowed_actions:
-    title: Allowed actions
-    description: >-
-      The actions the caller who asked may take on the tenant, in the order read, modify, delete,
-      administer. Only a listing fills it.
-    slot_uri: rp:allowedActions
-    range: Action
-    multivalued: true
   origin:
     title: Origin
     description: The deployment that published the message, as its `deployment` setting names it.
@@ -293,37 +177,6 @@ slots:
     description: A link to the JSON-LD context that reads the message body.
     slot_uri: rp:contextLink
     range: string
-  format_version:
-    title: Format version
-    description: The version of the dump archive layout; a restore refuses a version it does not know.
-    slot_uri: rp:dumpFormatVersion
-    range: integer
-  dump_created_at:
-    title: Dump created at
-    description: When the dump was taken, so a person choosing among dumps can tell them apart.
-    slot_uri: rp:dumpCreatedAt
-    alias: created_at
-    range: datetime
-  toolkit_version:
-    title: Toolkit version
-    description: The version of the toolkit that wrote the dump.
-    slot_uri: rp:toolkitVersion
-    range: string
-  schema_version:
-    title: Schema version
-    description: The version of that schema, when it declares one.
-    slot_uri: rp:dumpSchemaVersion
-    range: string
-  source_tenant:
-    title: Source tenant
-    description: The IRI of the tenant the dump was taken from.
-    slot_uri: rp:sourceTenant
-    range: uri
-  source_tenant_id:
-    title: Source tenant id
-    description: The id part of the source tenant's IRI, which a restore replaces by the new tenant's id.
-    slot_uri: rp:sourceTenantId
-    range: string
   caller_access:
     title: Caller access
     description: The caller's access to the tenant, as the access check loaded it.
@@ -334,17 +187,6 @@ slots:
     description: The IRI of the tenant or aggregate the access check was made on, which the route acts on.
     slot_uri: rp:checkedTarget
     range: uri
-  principal:
-    title: Principal
-    description: The user account the token identifies.
-    slot_uri: rp:principal
-    range: Principal
-  global_roles:
-    title: Global roles
-    description: The system-level roles the token grants the principal.
-    slot_uri: rp:globalRole
-    range: string
-    multivalued: true
   root:
     title: Root
     description: The slots of the tenant's root object, as the application's schema defines them.
@@ -424,27 +266,6 @@ slots:
     slot_uri: rp:problemInstance
     alias: instance
     range: uri
-  account_id:
-    title: Account id
-    description: The identity provider's id of the account.
-    slot_uri: rp:accountId
-    range: string
-    pattern: "^.+$"
-  user_name:
-    title: User name
-    description: The name the account signs in with.
-    slot_uri: rp:userName
-    range: string
-  email:
-    title: Email
-    description: The email address of a person's account.
-    slot_uri: rp:email
-    range: string
-  active:
-    title: Active
-    description: Whether the account may sign in; a disabled account is refused new tokens.
-    slot_uri: rp:accountActive
-    range: boolean
 
 enums:
   ProblemSlug:

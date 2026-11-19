@@ -21,7 +21,7 @@ from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.services.events import context_link
 from rdf_persistence.services.relay import Relay
-from rdf_persistence.services.tenant_dump import dump, restore
+from rdf_persistence.tenancy.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus
 from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, toy_mapper
 from tests.toy_service import ToyService
@@ -37,10 +37,10 @@ from tests.unit.entrypoints.test_events_route import (
     reshape_grants,
     with_carol,
 )
-from tests.unit.services.test_pending_mark import RESTORER, TOY_CHAINS
 from tests.unit.services.test_relay import add_one, book, commit, pending, triples
-from tests.unit.services.test_tenant_dump import BASE_STAMPS
-from tests.unit.services.test_tenant_sweep import make_world
+from tests.unit.tenancy.test_pending_mark import RESTORER, TOY_CHAINS
+from tests.unit.tenancy.test_tenant_dump import BASE_STAMPS
+from tests.unit.tenancy.test_tenant_sweep import make_world
 
 scenarios("events.feature")
 

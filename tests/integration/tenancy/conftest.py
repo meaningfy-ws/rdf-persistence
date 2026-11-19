@@ -13,7 +13,7 @@ from rdf_persistence import ToolkitSettings
 from rdf_persistence.files.adapters.s3 import S3FileStore
 from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
-from rdf_persistence.services.tenancy import Tenancy
+from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore
 from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess

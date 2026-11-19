@@ -9,6 +9,7 @@ import pytest
 from rdflib import URIRef
 
 from rdf_persistence import Action, CallerAccess, VerifiedCaller, generated_models
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import Conflict, Forbidden
 from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.core.domain.generated.rp_core import Principal
@@ -19,7 +20,6 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.collaboration import Collaboration
 from rdf_persistence.services.discussion import dependents
 from rdf_persistence.services.generated.service.rp_service import ReferrerList

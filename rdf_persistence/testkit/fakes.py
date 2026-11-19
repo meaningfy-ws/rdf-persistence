@@ -13,6 +13,7 @@ from rdflib.namespace import XSD
 from rdflib.query import Result
 from rdflib.term import Node
 
+from rdf_persistence.access.services.generated.rp_access_services import AccountSummary
 from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     Conflict,
@@ -39,7 +40,7 @@ from rdf_persistence.persistence.services.session import (
     utc_now,
 )
 from rdf_persistence.services.events import Receive
-from rdf_persistence.services.generated.service.rp_service import AccountSummary, EventEnvelope
+from rdf_persistence.services.generated.service.rp_service import EventEnvelope
 
 Message = tuple[EventEnvelope, bytes]
 

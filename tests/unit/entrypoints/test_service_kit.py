@@ -66,7 +66,7 @@ from tests.toy_service import (
 )
 from tests.unit.entrypoints.scene import Scene
 from tests.unit.entrypoints.test_events_route import follow, parsed
-from tests.unit.services.test_session_activity import activities
+from tests.unit.tenancy.test_session_activity import activities
 
 PROBLEMS = f"{SETTINGS.base}problems/"
 FILE_KEY = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")

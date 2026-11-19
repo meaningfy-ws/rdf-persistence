@@ -15,9 +15,9 @@ from rdf_persistence.core.domain.exceptions import InvalidBody
 from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import open_session
-from rdf_persistence.services.generated.service.rp_service import TenantDump
-from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.services.tenant_dump import dump, restore
+from rdf_persistence.tenancy.services.generated.rp_tenancy_services import TenantDump
+from rdf_persistence.tenancy.services.tenancy import Tenancy
+from rdf_persistence.tenancy.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import assert_isomorphic
 from tests.fixtures.library.generated.books import Book
 from tests.fixtures.library.generated.library import Library
@@ -25,7 +25,7 @@ from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.fixtures.library.generated.scans import Scan
 from tests.toy import SETTINGS, dune, library_slots, toy_mapper
 from tests.toy_service import SCAN_BODY, drop_buckets, drop_databases
-from tests.unit.services.test_tenant_dump import (
+from tests.unit.tenancy.test_tenant_dump import (
     BASE_STAMPS,
     BLOB_BYTES,
     MANIFEST,
@@ -37,7 +37,7 @@ from tests.unit.services.test_tenant_dump import (
     iris_of,
     moved,
 )
-from tests.unit.services.test_tenant_sweep import BOOK_TYPE, CREATOR, TURTLE
+from tests.unit.tenancy.test_tenant_sweep import BOOK_TYPE, CREATOR, TURTLE
 
 SCAN_TYPE = "scan"
 

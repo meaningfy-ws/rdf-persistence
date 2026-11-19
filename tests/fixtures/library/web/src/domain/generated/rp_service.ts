@@ -204,6 +204,48 @@ export interface Migration {
   steps?: MigrationStep[];
 }
 
+/** What a token verifier returns for a valid token, the principal and its global roles. */
+export interface VerifiedCaller {
+  /** The user account the token identifies. */
+  principal: string;
+  /** The system-level roles the token grants the principal. */
+  global_roles?: string[];
+}
+
+/** The body that replaces the grants and prohibitions of a tenant; two grants with the same assignee, target and role or action are refused. */
+export interface GrantSet {
+  /** The permissions given in the tenant, by role or as direct actions; they live in the access record's graph. */
+  grants?: Grant[];
+  /** The actions forbidden in the tenant; they live in the access record's graph. */
+  prohibitions?: Prohibition[];
+}
+
+/** What the access check needs to know about one caller in one tenant: the tenant's state, and the grants and prohibitions of the access record that name the caller. */
+export interface CallerAccess {
+  /** The IRI of the tenant. */
+  tenant: string;
+  /** Where the tenant is in its life. */
+  state: TenantState;
+  /** The permissions given in the tenant, by role or as direct actions; they live in the access record's graph. */
+  grants?: Grant[];
+  /** The actions forbidden in the tenant; they live in the access record's graph. */
+  prohibitions?: Prohibition[];
+}
+
+/** What the identity port reports about one account of the identity provider: its id, its login name, its email (a service account has none), whether it may sign in, and its global roles. */
+export interface AccountSummary {
+  /** The identity provider's id of the account. */
+  account_id: string;
+  /** The name the account signs in with. */
+  user_name: string;
+  /** The email address of a person's account. */
+  email?: string;
+  /** Whether the account may sign in; a disabled account is refused new tokens. */
+  active: boolean;
+  /** The system-level roles the token grants the principal. */
+  global_roles?: string[];
+}
+
 /** The manifest of a tenant dump archive, written by `dump_tenant` and read by `restore_tenant`: where and when the dump was taken, which schema and toolkit it came from, the tenant it holds and the IRI policy that minted its IRIs, so a restore can check that the dump was made under the same schema and policy. */
 export interface TenantDump {
   /** The version of the dump archive layout; a restore refuses a version it does not know. */
@@ -226,22 +268,6 @@ export interface TenantDump {
   iri_policy: IriPolicy;
 }
 
-/** What a token verifier returns for a valid token, the principal and its global roles. */
-export interface VerifiedCaller {
-  /** The user account the token identifies. */
-  principal: string;
-  /** The system-level roles the token grants the principal. */
-  global_roles?: string[];
-}
-
-/** The body that creates a tenant, its label and the slots of the tenant's root object. */
-export interface TenantCreate {
-  /** The slots of the tenant's root object, as the application's schema defines them. */
-  root: unknown;
-  /** The preferred label of the object. */
-  label: string;
-}
-
 /** What the service answers about one tenant, in a listing or after creating it. */
 export interface TenantSummary {
   /** The IRI that identifies the object. */
@@ -254,30 +280,18 @@ export interface TenantSummary {
   allowed_actions?: Action[];
 }
 
-/** The body that replaces the label of a tenant. */
-export interface LabelUpdate {
+/** The body that creates a tenant, its label and the slots of the tenant's root object. */
+export interface TenantCreate {
+  /** The slots of the tenant's root object, as the application's schema defines them. */
+  root: unknown;
   /** The preferred label of the object. */
   label: string;
 }
 
-/** The body that replaces the grants and prohibitions of a tenant; two grants with the same assignee, target and role or action are refused. */
-export interface GrantSet {
-  /** The permissions given in the tenant, by role or as direct actions; they live in the access record's graph. */
-  grants?: Grant[];
-  /** The actions forbidden in the tenant; they live in the access record's graph. */
-  prohibitions?: Prohibition[];
-}
-
-/** What the access check needs to know about one caller in one tenant: the tenant's state, and the grants and prohibitions of the access record that name the caller. */
-export interface CallerAccess {
-  /** The IRI of the tenant. */
-  tenant: string;
-  /** Where the tenant is in its life. */
-  state: TenantState;
-  /** The permissions given in the tenant, by role or as direct actions; they live in the access record's graph. */
-  grants?: Grant[];
-  /** The actions forbidden in the tenant; they live in the access record's graph. */
-  prohibitions?: Prohibition[];
+/** The body that replaces the label of a tenant. */
+export interface LabelUpdate {
+  /** The preferred label of the object. */
+  label: string;
 }
 
 /** What a route's access check settled: the caller's principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on, and the global roles the token granted the caller. */
@@ -314,20 +328,6 @@ export interface ProblemKind {
   title: string;
   /** The HTTP status code of the answer. */
   status: number;
-}
-
-/** What the identity port reports about one account of the identity provider: its id, its login name, its email (a service account has none), whether it may sign in, and its global roles. */
-export interface AccountSummary {
-  /** The identity provider's id of the account. */
-  account_id: string;
-  /** The name the account signs in with. */
-  user_name: string;
-  /** The email address of a person's account. */
-  email?: string;
-  /** Whether the account may sign in; a disabled account is refused new tokens. */
-  active: boolean;
-  /** The system-level roles the token grants the principal. */
-  global_roles?: string[];
 }
 
 /** One aggregate that points at another: its IRI, its schema class and the slot that holds the reference. */

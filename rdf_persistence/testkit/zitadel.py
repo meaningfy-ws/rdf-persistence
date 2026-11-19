@@ -3,7 +3,7 @@
 Plain ``httpx`` and ``PyJWT``, so this needs neither Docker nor the extra ``testkit``. The
 container fixtures call ``provision_project``; a test calls ``create_machine_user`` for a service
 account of its own and ``access_token`` for the token of any machine user. Requests and answers are
-the records of ``rdf_persistence.adapters.generated.rp_wire``.
+the records of ``rdf_persistence.access.adapters.generated.rp_access_adapters``.
 """
 
 import base64
@@ -16,7 +16,7 @@ import httpx
 import jwt
 from pydantic import BaseModel, ValidationError
 
-from rdf_persistence.adapters.generated.rp_wire import (
+from rdf_persistence.access.adapters.generated.rp_access_adapters import (
     ZitadelAssertion,
     ZitadelCreated,
     ZitadelGrantRequest,
@@ -31,11 +31,11 @@ from rdf_persistence.adapters.generated.rp_wire import (
     ZitadelTokenAnswer,
     ZitadelTokenRequest,
 )
-from rdf_persistence.adapters.jwks import RS256
-from rdf_persistence.adapters.zitadel import MANAGEMENT, ORG_HEADER, user_grant_path
+from rdf_persistence.access.adapters.jwks import RS256
+from rdf_persistence.access.adapters.zitadel import MANAGEMENT, ORG_HEADER, user_grant_path
+from rdf_persistence.access.services.tokens import EpochClock
 from rdf_persistence.core.adapters._http import json_body
 from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
-from rdf_persistence.services.tokens import EpochClock
 from rdf_persistence.testkit.exceptions import ProvisioningError, TokenRefusedError
 from rdf_persistence.testkit.generated.rp_testkit import (
     MachineUser,

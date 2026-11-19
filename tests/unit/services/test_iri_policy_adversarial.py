@@ -6,6 +6,7 @@ import pytest
 from rdflib import URIRef
 
 from rdf_persistence import Action, GrantSet, RdfFormat
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import (
     InvalidBody,
     InvalidGrant,
@@ -13,7 +14,6 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.aggregates import Aggregates
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE

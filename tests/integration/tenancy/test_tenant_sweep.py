@@ -16,13 +16,13 @@ from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.services.file_removal import remove_with_files
-from rdf_persistence.services.tenancy import Tenancy
-from rdf_persistence.services.tenant_sweep import sweep_tenant
+from rdf_persistence.tenancy.services.tenancy import Tenancy
+from rdf_persistence.tenancy.services.tenant_sweep import sweep_tenant
 from tests.fixtures.library.generated.scans import Scan
 from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 from tests.toy import SETTINGS, library_slots, toy_mapper
 from tests.toy_service import SCAN_BODY
-from tests.unit.services.test_tenant_sweep import CREATOR, TURTLE
+from tests.unit.tenancy.test_tenant_sweep import CREATOR, TURTLE
 
 HOUR = timedelta(hours=1)
 

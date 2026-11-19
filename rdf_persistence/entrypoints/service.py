@@ -9,6 +9,9 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence.access.services.identity import Identity
+from rdf_persistence.access.services.tokens import TokenVerifier
 from rdf_persistence.core.domain.exceptions import InvalidIri
 from rdf_persistence.entrypoints.kit import ServiceKit
 from rdf_persistence.entrypoints.openapi import install_openapi
@@ -18,16 +21,13 @@ from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.iris.services.iris import IdSource, draw_id
 from rdf_persistence.persistence.services.store import Store
-from rdf_persistence.services.access import AccessRules, load_role_definitions
 from rdf_persistence.services.events import EventBus
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
-from rdf_persistence.services.identity import Identity
-from rdf_persistence.services.iri_policy_guard import guard_iri_policy
 from rdf_persistence.services.messagebus import MessageBus
-from rdf_persistence.services.migration_runner import migrate_shared, migrate_tenants
-from rdf_persistence.services.sweep import sweep
-from rdf_persistence.services.tenancy import GrantValidator, RootValidator
-from rdf_persistence.services.tokens import TokenVerifier
+from rdf_persistence.tenancy.services.iri_policy_guard import guard_iri_policy
+from rdf_persistence.tenancy.services.migration_runner import migrate_shared, migrate_tenants
+from rdf_persistence.tenancy.services.sweep import sweep
+from rdf_persistence.tenancy.services.tenancy import GrantValidator, RootValidator
 
 
 def install_service(

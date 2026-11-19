@@ -40,6 +40,8 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import Field
 
+from rdf_persistence.access.services.access import ACTIONS
+from rdf_persistence.access.services.generated.rp_access_services import GrantSet
 from rdf_persistence.core.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS
 from rdf_persistence.core.services.artifacts import COMPONENT_REFERENCES, PROPERTIES, REF
 from rdf_persistence.entrypoints import problems
@@ -69,16 +71,14 @@ from rdf_persistence.persistence.services.listing import (
     sort_keys,
 )
 from rdf_persistence.schema.services.schema_structure import DESCRIPTION
-from rdf_persistence.services.access import ACTIONS
 from rdf_persistence.services.components import JsonSchema, component_schemas, served_folders
 from rdf_persistence.services.generated.service.rp_service import (
-    GrantSet,
     LabelUpdate,
     Problem,
     ProblemKind,
     TenantCreate,
-    TenantSummary,
 )
+from rdf_persistence.tenancy.services.generated.rp_tenancy_services import TenantSummary
 
 BEARER_AUTH = "bearerAuth"
 # The toolkit's own bodies, by the class of rp_service.yaml; every route that has one names it here.
