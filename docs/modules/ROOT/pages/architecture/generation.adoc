@@ -76,7 +76,7 @@ PD-8a). Any other slot whose range is a class refers to another aggregate root, 
 |`version` (slot) |The version token of every aggregate, stated about its graph IRI (not the root), written by the session; not part of any domain class.
 |`module_kind` (schema annotation) |`domain`, `technical` or `access`: what a schema module holds; the boundary check uses it (<<toolchain>>).
 |`bookkeeping` (slot annotation) |The session writes the slot about a graph (`version`, `created`, `modified`, `creator`, `contributor`); closed shapes ignore it.
-|`python_package` (schema annotation) |On a schema module of the toolkit's own targets: the Python package its classes are generated into. A toolkit run imports a metamodel class from `<python_package>.<module name>`. It equals the `package` of the `+[[tool.rp-generate]]+` entry that generates the module; the hard check compares them (<<hard-check>>).
+|`python_package` (schema annotation) |On a schema module of the toolkit's own targets: the Python package its classes are generated into. A toolkit run imports a metamodel class from `<python_package>.<module name>`. It equals the `package` of the `\[[tool.rp-generate]]` entry that generates the module; the hard check compares them (<<hard-check>>).
 |`public_package` (schema annotation) |On the metamodel's root schema, `rp.yaml`: the package an application's generated code imports the metamodel's classes from, which re-exports them. Only the toolkit sets it.
 |===
 
@@ -279,7 +279,7 @@ guards the thematic move. Each extension exposes one
 union of ranges passes, since both the classes (`Union[...]`) and the shapes (`sh:or`) render it.
 
 *The toolkit's own data types are generated too.* They are the technical models of <<kinds>>: each
-group is its own `+[[tool.rp-generate]]+` entry, and `rp.yaml` imports none, so an application's model
+group is its own `\[[tool.rp-generate]]` entry, and `rp.yaml` imports none, so an application's model
 does not carry them. Like the metamodel, they are exempt from the hard check's class rules, but not
 from the two `python_package` rules (<<hard-check>>). They are schemas, not
 extensions, so they have no row above. Hand-written types remain only where a field holds a foreign
@@ -309,7 +309,7 @@ no technical model: not a generated one, and no hand-written domain module eithe
 the import-linter contracts `layers-across-themes` (xref:architecture/index.adoc#layering[The
 contracts]) check it three ways.
 
-*Targets per theme.* Each technical schema is its own `[[tool.rp-generate]]` entry. Served schemas
+*Targets per theme.* Each technical schema is its own `\[[tool.rp-generate]]` entry. Served schemas
 have OpenAPI components; the others say `openapi = false`.
 
 [cols="2,3,4,1",options="header"]
@@ -360,7 +360,7 @@ served schema has OpenAPI components and reaches a consumer's TypeScript, so a s
 record must not join a served one: it would appear in the served OpenAPI document. That is why a
 theme with served records and settings has two targets (`access/services/generated/` and its
 `settings/` folder). A new technical schema is one more file under `model/technical/<theme>/` and one
-more `+[[tool.rp-generate]]+` entry. Each module of the schema also carries the `python_package`
+more `\[[tool.rp-generate]]` entry. Each module of the schema also carries the `python_package`
 annotation, set to the `package` of that entry; without it the hard check refuses the run.
 
 [#cross-target]
@@ -380,7 +380,7 @@ declares `python_package`.
 [#target-kind]
 ==== The `kind` key
 
-A `+[[tool.rp-generate]]+` entry may say what it generates:
+A `\[[tool.rp-generate]]` entry may say what it generates:
 
 [source,toml]
 ----

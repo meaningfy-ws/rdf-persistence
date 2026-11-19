@@ -53,7 +53,7 @@ xref:develop/testing.adoc#slow[the testing checklist].
 |===
 |Target |Use it to
 |`make install` |Install every dependency group and extra (`uv sync --all-extras`)
-|`make generate` |Regenerate every `+[[tool.rp-generate]]+` entry of this repository and the toy library
+|`make generate` |Regenerate every `\[[tool.rp-generate]]` entry of this repository and the toy library
 |`make check-freshness` |Run `rp-generate --check` on both projects: lint, checks, and the manifest comparison
 |`make check-generated` |Regenerate from scratch and fail if anything differs from what is committed
 |`make refresh-snapshot` |Rewrite `tests/fixtures/model-shape.yaml` after a deliberate model change; it leaves the public-surface baseline alone

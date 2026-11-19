@@ -188,7 +188,7 @@ folder and a package of their own, so a reader tells them apart by the path; the
 for its own models (xref:architecture/generation.adoc#kinds[Two kinds of model]).
 
 Write them in a schema annotated `module_kind: technical`, in a folder beside the domain schemas,
-and give it its own entry. With two entries, `[tool.rp-generate]` becomes `+[[tool.rp-generate]]+` on
+and give it its own entry. With two entries, `[tool.rp-generate]` becomes `\[[tool.rp-generate]]` on
 each of them (an array of tables), and each takes `kind`. If your `models/` folder holds a
 `technical` module (xref:user-manual/model.adoc#more-metamodel[More of the metamodel]), move it
 into the new folder first (`technical/export.yaml` below): the check reads every schema of an

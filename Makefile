@@ -373,7 +373,8 @@ clean-code: ## Xenon threshold checks
 
 DOCS_DIR  = $(REPO_ROOT)/docs
 DOCS_SITE = $(DOCS_DIR)/build/site
-DOCS_PORT ?= 8081
+# An unregistered port, so the preview does not clash with the usual dev ports; override with DOCS_PORT=
+DOCS_PORT ?= 47381
 # One mermaid for the site (both playbooks; check-docs enforces it) and for check-diagrams.
 MERMAID_VERSION = 12.3.0
 MERMAID_CLI_VERSION = 12.2.0
@@ -388,7 +389,7 @@ build-docs: ## Build the documentation site to docs/build/site/
 	@ cd $(DOCS_DIR) && npx antora --fetch antora-playbook.local.yml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Docs built at $(DOCS_SITE)$(END_BUILD_PRINT)"
 
-preview-docs: build-docs ## Build then serve docs at http://localhost:$(DOCS_PORT) (8081, beside MWB2's 8080)
+preview-docs: build-docs ## Build then serve docs at http://localhost:$(DOCS_PORT) (47381 by default)
 	@ python3 -m http.server --directory $(DOCS_SITE) $(DOCS_PORT)
 
 check-docs: ## No consumer terms in architecture pages, the package or the tests; every page in the nav; one mermaid version; every link resolves; the generated reference is fresh
