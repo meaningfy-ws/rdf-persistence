@@ -10,6 +10,13 @@ from typing import BinaryIO, cast
 
 from pydantic import BaseModel, ValidationError
 
+from rdf_persistence.access.domain.generated import rp_access, rp_tenancy
+from rdf_persistence.access.domain.generated.rp_access import Action
+from rdf_persistence.access.domain.generated.rp_tenancy import (
+    TenantAccess,
+    TenantState,
+    TenantSweepReport,
+)
 from rdf_persistence.access.services.access import AccessRules
 from rdf_persistence.access.services.generated.rp_access_services import (
     CallerAccess,
@@ -23,6 +30,11 @@ from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import T
 from rdf_persistence.api.services import file_removal
 from rdf_persistence.api.services.aggregates import Aggregates
 from rdf_persistence.api.services.documents import Documents
+from rdf_persistence.collaboration.domain.generated import (
+    rp_collections,
+    rp_discussion,
+    rp_workflow,
+)
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.discussion import dependents as discussion_dependents
 from rdf_persistence.collaboration.services.workflows import Workflows
@@ -33,24 +45,8 @@ from rdf_persistence.core.domain.exceptions import (
     NotFound,
     StoreNotWired,
 )
-from rdf_persistence.core.domain.generated import (
-    rp_access,
-    rp_collections,
-    rp_core,
-    rp_discussion,
-    rp_files,
-    rp_provenance,
-    rp_tenancy,
-    rp_workflow,
-)
-from rdf_persistence.core.domain.generated.rp_access import Action
+from rdf_persistence.core.domain.generated import rp_core
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
-from rdf_persistence.core.domain.generated.rp_tenancy import (
-    TenantAccess,
-    TenantState,
-    TenantSweepReport,
-)
 from rdf_persistence.core.services.artifacts import CONTEXT_FILE
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import error_type, log_extra
@@ -58,6 +54,7 @@ from rdf_persistence.events.services.event_hub import EventHub
 from rdf_persistence.events.services.events import EventBus, context_link
 from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
 from rdf_persistence.events.services.relay import Relay
+from rdf_persistence.files.domain.generated import rp_files
 from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.domain.layout import system_database_name
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
@@ -74,6 +71,8 @@ from rdf_persistence.persistence.services.store import (
     TracedStore,
     system_name_of,
 )
+from rdf_persistence.provenance.domain.generated import rp_provenance
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.provenance.services.provenance import activity_class_named
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import (

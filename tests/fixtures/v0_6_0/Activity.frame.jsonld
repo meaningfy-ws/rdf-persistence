@@ -1,0 +1,30 @@
+{
+  "@context": "context.jsonld",
+  "@omitGraph": true,
+  "@embed": "@always",
+  "@omitDefault": true,
+  "@type": [
+    "Activity",
+    "Add",
+    "Replace",
+    "Remove",
+    "PostComment",
+    "Transition",
+    "PostReply",
+    "DeleteFile"
+  ],
+  "was_associated_with": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "generations": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "Generation"
+  },
+  "invalidations": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "Invalidation"
+  }
+}

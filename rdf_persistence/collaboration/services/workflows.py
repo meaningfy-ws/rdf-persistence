@@ -15,9 +15,9 @@ from rdflib import RDF, BNode, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.access.services.access import AccessRules
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Workflow
 from rdf_persistence.core.domain.exceptions import Forbidden, InvalidWorkflow
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
-from rdf_persistence.core.domain.generated.rp_workflow import Workflow
 from rdf_persistence.core.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
 from rdf_persistence.core.services.yaml_files import SHOWN, problems_of, read_mapping, shown
 from rdf_persistence.persistence.services.session import Session

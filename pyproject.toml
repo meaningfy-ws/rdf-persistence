@@ -111,6 +111,30 @@ migrations = "rdf_persistence/model/migrations"
 diagrams = "docs/modules/ROOT/partials/model"
 
 [[tool.rp-generate]]
+schema = "rdf_persistence/model/rp_tenancy.yaml"
+package = "rdf_persistence.access.domain.generated"
+regenerate-command = "make generate"
+openapi = false
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/rp_provenance.yaml"
+package = "rdf_persistence.provenance.domain.generated"
+regenerate-command = "make generate"
+openapi = false
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/rp_files.yaml"
+package = "rdf_persistence.files.domain.generated"
+regenerate-command = "make generate"
+openapi = false
+
+[[tool.rp-generate]]
+schema = "rdf_persistence/model/rp_collaboration.yaml"
+package = "rdf_persistence.collaboration.domain.generated"
+regenerate-command = "make generate"
+openapi = false
+
+[[tool.rp-generate]]
 schema = "rdf_persistence_generation/model/rp_generation.yaml"
 package = "rdf_persistence_generation.generated"
 regenerate-command = "make generate"

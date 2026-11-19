@@ -4,9 +4,9 @@ import logging
 
 from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import DeleteFile
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra
+from rdf_persistence.files.domain.generated.rp_files import DeleteFile
 from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.persistence.services.mapper import Mapper
 from rdf_persistence.provenance.services.provenance import new_activity_id

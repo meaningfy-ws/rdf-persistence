@@ -18,8 +18,8 @@ from rdf_persistence.api.services.aggregates import Aggregates
 from rdf_persistence.api.services.documents import Documents
 from rdf_persistence.core.domain.exceptions import InvalidBody, InvalidGrant, InvalidIri, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.media import JSON
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,

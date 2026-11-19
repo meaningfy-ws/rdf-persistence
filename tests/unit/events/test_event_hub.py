@@ -2,9 +2,9 @@
 
 import asyncio
 
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.events.services.event_hub import CLOSED, EventHub
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 
 TENANT = "https://lib.example/tenant/a"
 OTHER = "https://lib.example/tenant/b"

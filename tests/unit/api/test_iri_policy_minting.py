@@ -17,8 +17,8 @@ from rdf_persistence.api.services.aggregates import Aggregates
 from rdf_persistence.api.services.documents import Documents
 from rdf_persistence.core.domain.exceptions import InvalidBody, InvalidIri
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.media import JSON, JSON_LD
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
     IdSpec,

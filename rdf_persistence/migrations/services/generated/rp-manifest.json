@@ -19,7 +19,7 @@
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
-      "sha256": "ecc630c1d607cac4a74c2d9e314e6fc4be25996f8858bad55a4f5ab4de619738"
+      "sha256": "44c0a241000640e1625d96ff6124cbc55789a5dbe6cd93acc5148ac3a5c5da8d"
     },
     {
       "path": "rdf_persistence_generation/__init__.py",
@@ -31,7 +31,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/application.py",
-      "sha256": "695066367b23cb91bac3c098147ee8ad08e3706d2a93d557608c7d995e9112f6"
+      "sha256": "2203afbbd24983c6b24f1ecee81826f258f0fefba0a2aee257e05dd9b7de4f1b"
     },
     {
       "path": "rdf_persistence_generation/checks/boundary.py",
@@ -47,7 +47,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/python_package.py",
-      "sha256": "8cd366dec87e4ea97734cb24eb58703902bfefd35b0eda71611986964af8038b"
+      "sha256": "1b5bef27110e472f274d9812cbb604898ddf4e77ff6dad5ad00c00497290c073"
     },
     {
       "path": "rdf_persistence_generation/checks/rules.py",
@@ -67,7 +67,7 @@
     },
     {
       "path": "rdf_persistence_generation/config.py",
-      "sha256": "c2bbf695466a7124da8b925e7825e87c45460899f673eb6a4415442b9a4b18f3"
+      "sha256": "fd1f5ff593dcdfc70bec8bff0109884f338fca3bc8e27e0f0160b384d9fa4ab8"
     },
     {
       "path": "rdf_persistence_generation/exceptions.py",
@@ -87,7 +87,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_split.py",
-      "sha256": "c1e56f18649eb577821d7358ad1118301117bac70b8153f59ebc04aa56dd1a92"
+      "sha256": "6f3657abf0e69783e234b7967192d2e898937848897005a67af92f8f58c09d85"
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_validators.py",
@@ -127,7 +127,7 @@
     },
     {
       "path": "rdf_persistence_generation/steps.py",
-      "sha256": "476e9f0dca62ea6645a9a8901ab23e930ec6459925d7862ba012495017503114"
+      "sha256": "f871f5eccebaf00a3bf0308d578bbf0ab24ba3e09e60ec9f50334201b5029f88"
     },
     {
       "path": "rdf_persistence_generation/templates/mermaid/module.mmd.jinja",

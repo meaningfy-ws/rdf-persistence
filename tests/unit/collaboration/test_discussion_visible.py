@@ -3,8 +3,8 @@
 import random
 from datetime import UTC, datetime, timedelta
 
+from rdf_persistence.collaboration.domain.generated.rp_discussion import Comment, Motivation
 from rdf_persistence.collaboration.services.discussion import visible
-from rdf_persistence.core.domain.generated.rp_discussion import Comment, Motivation
 
 TARGET = "https://example.org/libraries/6f1c0c1e/books/b1"
 T0 = datetime(2026, 11, 14, 9, tzinfo=UTC)

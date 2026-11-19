@@ -55,7 +55,8 @@ layers =
     rdf_persistence.tenancy
     rdf_persistence.access | rdf_persistence.migrations
     rdf_persistence.persistence
-    rdf_persistence.provenance | rdf_persistence.files
+    rdf_persistence.files
+    rdf_persistence.provenance
     rdf_persistence.iris | rdf_persistence.schema
     rdf_persistence.core
 

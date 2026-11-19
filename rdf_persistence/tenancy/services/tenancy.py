@@ -17,6 +17,8 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
 from rdflib import RDF, Dataset, Graph, URIRef
 
+from rdf_persistence.access.domain.generated.rp_access import Action, Grant
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.access.services.access import AccessRules
 from rdf_persistence.access.services.generated.rp_access_services import (
     CallerAccess,
@@ -33,9 +35,7 @@ from rdf_persistence.core.domain.exceptions import (
     StoreNotWired,
     TenantBehind,
 )
-from rdf_persistence.core.domain.generated.rp_access import Action, Grant
 from rdf_persistence.core.domain.generated.rp_core import DatabaseKind, Principal, RpAnnotation
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.core.domain.sparql import Triple, fill, term
 from rdf_persistence.core.services.generated.rp_core_services import LogContext

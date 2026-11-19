@@ -22,6 +22,9 @@ GENERATOR_DIR = Path(str(resources.files(GENERATOR_PACKAGE))).resolve()
 # The folders whose schemas are the toolkit's own (PD-5); passed as ``roots=`` at every call of
 # ``is_toolkit_schema``, ``apply_defaults`` and ``generation_view``, since the library knows only itself.
 TOOLKIT_ROOTS = (PACKAGE_DIR, GENERATOR_DIR)
+# The root of the combined metamodel: its closure holds every domain module, so on the toolkit's own
+# run it is the one target whose roots are checked against `migrations` and written to the lock (PD-4).
+METAMODEL_ROOT = "rp.yaml"
 GENERATION_MODEL = GENERATOR_DIR / "model" / "rp_generation.yaml"
 TARGET_CLASS = "GenerationTarget"
 

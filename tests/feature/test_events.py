@@ -16,10 +16,10 @@ from pytest_bdd import given, scenarios, then, when
 
 from rdf_persistence import generated_models
 from rdf_persistence.core.domain.exceptions import Conflict
-from rdf_persistence.core.domain.generated.rp_provenance import Replace
 from rdf_persistence.events.services.events import context_link
 from rdf_persistence.events.services.relay import Relay
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.provenance.domain.generated.rp_provenance import Replace
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.tenancy.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus

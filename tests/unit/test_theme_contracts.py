@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.import_contracts import run_contracts
+from tests.unit.import_contracts import lint_contracts, run_contracts
 from tests.unit.test_theme_layout import TURNED_ON
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -110,7 +110,19 @@ def _breaks(tmp_path: Path, contract: str, planted: dict[str, str]) -> bool:
     ("contract", "where", "imports"),
     [
         pytest.param(
-            "themes-ordered", "files/services/x.py", "provenance.services", id="files-to-provenance"
+            "themes-ordered", "provenance/services/x.py", "files.services", id="provenance-to-files"
+        ),  # E-9, DEC-3: provenance ranks below files, as rp_files imports rp_provenance
+        pytest.param(
+            "themes-ordered",
+            "provenance/domain/x.py",
+            "files.domain",
+            id="provenance-domain-to-files",
+        ),
+        pytest.param(
+            "themes-ordered", "schema/services/x.py", "files.services", id="schema-to-files"
+        ),
+        pytest.param(
+            "themes-ordered", "schema/services/x.py", "access.services", id="schema-to-access"
         ),
         pytest.param(
             "themes-ordered", "iris/services/x.py", "schema.services", id="iris-to-schema"
@@ -139,6 +151,26 @@ def test_a_planted_import_between_the_new_themes_breaks_its_contract(
     tmp_path, contract, where, imports
 ):  # TC-35
     assert _breaks(tmp_path, contract, {where: _importing(imports)})
+
+
+def test_files_importing_provenance_keeps_the_theme_order(tmp_path):
+    """E-8, DEC-3: ``files.domain`` imports ``provenance.domain`` (``rp_files`` imports ``rp_provenance``)."""
+    planted = {"files/domain/x.py": _importing("provenance.domain")}
+
+    assert _lint(tmp_path, planted, ("themes-ordered",)) == (0, [])
+
+
+def test_provenance_importing_files_names_both_themes_in_the_failure(tmp_path):
+    """E-9: the failure of ``themes-ordered`` names the importing and the imported module."""
+    planted = {"provenance/domain/x.py": _importing("files.domain")}
+
+    files = {f"{package}/__init__.py".removeprefix("/"): "" for package in SCRATCH_PACKAGES}
+    linted = lint_contracts(tmp_path, {**files, **SCRATCH_MODULES, **planted}, ("themes-ordered",))
+
+    assert linted.code != 0, "the contract is broken"
+    assert linted.broken == ["themes-ordered"], linted.broken
+    assert "rdf_persistence.provenance.domain.x" in linted.report, "the importer is named"
+    assert "rdf_persistence.files.domain" in linted.report, "the imported module is named"
 
 
 SERVICES_NO_ADAPTERS = "services-of-a-theme-import-no-adapters-or-entrypoints"

@@ -5,8 +5,8 @@ from contextlib import asynccontextmanager
 
 import pytest
 
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus
 from rdf_persistence.testkit.event_bus_conformance import CASES, run_case
 

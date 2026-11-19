@@ -15,7 +15,7 @@ import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from rdf_persistence import GrantSet
-from rdf_persistence.core.domain.generated.rp_access import Grant
+from rdf_persistence.access.domain.generated.rp_access import Grant
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.migrations.services.migrations import stamps
 from rdf_persistence.schema.services import vocabulary as v

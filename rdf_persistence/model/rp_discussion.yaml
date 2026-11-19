@@ -17,7 +17,7 @@ imports:
   - rp_annotations
   - rp_provenance
 annotations:
-  python_package: rdf_persistence.core.domain.generated
+  python_package: rdf_persistence.collaboration.domain.generated
 
 classes:
   PostComment:

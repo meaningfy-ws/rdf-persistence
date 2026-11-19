@@ -16,11 +16,14 @@ from rdf_persistence import (
     generated_models,
     load_role_definitions,
 )
+from rdf_persistence.collaboration.domain.generated.rp_collections import (
+    MembershipRule,
+    SlotEquality,
+)
 from rdf_persistence.collaboration.services.reference_collections import member_class_iris
 from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
-from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import Session, Transaction

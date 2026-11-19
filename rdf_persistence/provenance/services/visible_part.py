@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Protocol
 
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 
 
 class Entity(Protocol):

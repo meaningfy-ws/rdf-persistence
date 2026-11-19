@@ -10,8 +10,8 @@ from rdflib import RDF, BNode, Graph, Literal, URIRef
 
 from rdf_persistence.core.domain.exceptions import Conflict, InvalidIri
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import RdfFormat
 from rdf_persistence.core.domain.sparql import fill, term
+from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy, ServiceSettings
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris

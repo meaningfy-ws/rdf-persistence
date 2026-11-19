@@ -16,6 +16,12 @@ from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence import Action, generated_models
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence.collaboration.domain.generated.rp_discussion import (
+    Comment,
+    Motivation,
+    PostComment,
+    PostReply,
+)
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.discussion import dependents
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
@@ -28,12 +34,6 @@ from rdf_persistence.core.domain.exceptions import (
     UnknownRole,
 )
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_discussion import (
-    Comment,
-    Motivation,
-    PostComment,
-    PostReply,
-)
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.listing import Listings

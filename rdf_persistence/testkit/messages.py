@@ -4,8 +4,8 @@ Register it on the real ``MessageBus`` and assert which activities a command led
 fake bus.
 """
 
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.messaging.services.messagebus import Work
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 
 
 class RecordingObserver:

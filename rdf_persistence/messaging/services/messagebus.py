@@ -13,11 +13,10 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from contextvars import ContextVar
 from typing import Any
 
+from rdf_persistence.collaboration.domain.generated.rp_discussion import PostComment, PostReply
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.core.domain.exceptions import InvalidBody, MessageLimitExceeded
-from rdf_persistence.core.domain.generated.rp_discussion import PostComment, PostReply
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
-from rdf_persistence.core.domain.generated.rp_workflow import Transition
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
@@ -25,6 +24,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
 )
 from rdf_persistence.persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.persistence.services.session import Session
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.provenance.services.provenance import Served, new_activity_id
 from rdf_persistence.schema.services import vocabulary as v
 

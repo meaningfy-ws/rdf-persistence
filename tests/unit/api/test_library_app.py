@@ -7,8 +7,8 @@ import httpx
 import pytest
 
 from rdf_persistence import Grant, GrantSet, JwksTokenVerifier
+from rdf_persistence.access.domain.generated.rp_access import Action, Prohibition
 from rdf_persistence.core.domain.exceptions import NotFound, StoreUnavailable
-from rdf_persistence.core.domain.generated.rp_access import Action, Prohibition
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner

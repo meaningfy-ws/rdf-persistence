@@ -27,7 +27,11 @@ TOY = FIXTURES / "library" / "library.yaml"
 SERVICE = ROOT / "rdf_persistence" / "model" / "technical" / "api" / "rp_api_entrypoints.yaml"
 TESTKIT = ROOT / "rdf_persistence" / "model" / "technical" / "testkit" / "rp_testkit.yaml"
 TOY_PACKAGE = "tests.fixtures.library.domain.generated"
-METAMODEL_PACKAGE = "rdf_persistence.core.domain.generated"
+# The metamodel's classes generate into one package per theme (domain-model-per-theme DEC-1).
+METAMODEL_PACKAGE = tuple(
+    f"rdf_persistence.{theme}.domain.generated"
+    for theme in ("core", "access", "provenance", "files", "collaboration")
+)
 SERVICE_PACKAGE = "rdf_persistence.api.entrypoints.generated"
 IRIS = ROOT / "rdf_persistence" / "model" / "technical" / "iris" / "rp_iris_services.yaml"
 IRIS_PACKAGE = "rdf_persistence.iris.services.generated"
@@ -73,8 +77,10 @@ def shape(name: str, *slots: SlotShape) -> ClassShape:
     return ClassShape(class_name=name, slots=list(slots))
 
 
-def generated_models(package: str) -> list[type[BaseModel]]:
-    """The pydantic classes each module of a generated package declares itself."""
+def generated_models(package: str | tuple[str, ...]) -> list[type[BaseModel]]:
+    """The pydantic classes each module of a generated package (or of each of several) declares itself."""
+    if isinstance(package, tuple):
+        return [model for one in package for model in generated_models(one)]
     root = importlib.import_module(package)
     modules = [
         importlib.import_module(f"{package}.{info.name}")

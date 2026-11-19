@@ -11,6 +11,8 @@ import pytest
 from rdflib import URIRef
 
 from rdf_persistence import TenantAccess
+from rdf_persistence.access.domain.generated import rp_tenancy
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.access.services.generated.rp_access_services import GrantSet
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
@@ -19,9 +21,8 @@ from rdf_persistence.core.domain.exceptions import (
     StoreUnavailable,
     TenantBehind,
 )
-from rdf_persistence.core.domain.generated import rp_core, rp_tenancy
+from rdf_persistence.core.domain.generated import rp_core
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.iris.domain.layout import graph_iri, system_database_name
 from rdf_persistence.iris.services.iris import Iris

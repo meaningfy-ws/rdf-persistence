@@ -20,16 +20,15 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from rdflib import RDF, Graph, Literal, URIRef
 
 from rdf_persistence import bootstrap, generated_models
+from rdf_persistence.access.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import Conflict, InvalidBody, MessageLimitExceeded
-from rdf_persistence.core.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_files import DeleteFile
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
-from rdf_persistence.core.domain.generated.rp_workflow import Transition
+from rdf_persistence.files.domain.generated.rp_files import DeleteFile
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.messaging.services.messagebus import Work, command
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
@@ -37,6 +36,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
 )
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.provenance.services.provenance import Served
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
@@ -593,7 +593,7 @@ def _replacement_recorded(run: Run) -> None:
 
 @then("the observer receives no replacement")
 def _no_replacement(run: Run) -> None:
-    from rdf_persistence.core.domain.generated.rp_provenance import Replace
+    from rdf_persistence.provenance.domain.generated.rp_provenance import Replace
 
     assert _first_observer(run, Activity).of(Replace) == [], "no replacement was sent"
 

@@ -1,0 +1,184 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "activity": {
+         "@type": "@id",
+         "@id": "prov:activity"
+      },
+      "at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:atTime"
+      },
+      "id": "@id",
+      "data_schema_version": {
+         "@id": "dataSchemaVersion"
+      },
+      "ended_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:endedAtTime"
+      },
+      "entity": {
+         "@type": "@id",
+         "@id": "entity"
+      },
+      "entity_class": {
+         "@type": "@id",
+         "@id": "entityClass"
+      },
+      "entity_version": {
+         "@id": "entityVersion"
+      },
+      "generated_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:generatedAtTime"
+      },
+      "generations": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "generation"
+      },
+      "graph": {
+         "@type": "@id",
+         "@id": "graph"
+      },
+      "invalidations": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "invalidation"
+      },
+      "key_name": {
+         "@id": "keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "keyValues"
+      },
+      "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "listedIn"
+      },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "loadedAt"
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "loadedGraph"
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "ownedBy"
+      },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rootClass"
+      },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "startedAt"
+      },
+      "started_at_time": {
+         "@type": "xsd:dateTime",
+         "@id": "prov:startedAtTime"
+      },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
+      "used_resource": {
+         "@type": "@id",
+         "@id": "prov:used"
+      },
+      "version": {
+         "@id": "version"
+      },
+      "was_associated_with": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prov:wasAssociatedWith"
+      },
+      "was_attributed_to": {
+         "@type": "@id",
+         "@id": "prov:wasAttributedTo"
+      },
+      "was_derived_from": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prov:wasDerivedFrom"
+      },
+      "was_generated_by": {
+         "@type": "@id",
+         "@id": "prov:wasGeneratedBy"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "Activity": {
+         "@id": "prov:Activity"
+      },
+      "Add": {
+         "@id": "Add"
+      },
+      "AggregateKey": {
+         "@id": "AggregateKey"
+      },
+      "AggregateRoot": {
+         "@id": "AggregateRoot"
+      },
+      "CommitMarker": {
+         "@id": "CommitMarker"
+      },
+      "Generation": {
+         "@id": "prov:Generation"
+      },
+      "Invalidation": {
+         "@id": "prov:Invalidation"
+      },
+      "KeyDuplicate": {
+         "@id": "KeyDuplicate"
+      },
+      "PendingLoad": {
+         "@id": "PendingLoad"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Provenanced": {
+         "@id": "Provenanced"
+      },
+      "RegistryEntry": {
+         "@id": "RegistryEntry"
+      },
+      "Remove": {
+         "@id": "Remove"
+      },
+      "Replace": {
+         "@id": "Replace"
+      }
+   }
+}

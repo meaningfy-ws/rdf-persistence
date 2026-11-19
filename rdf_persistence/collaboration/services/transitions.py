@@ -11,10 +11,17 @@ from typing import cast
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import RDF, Graph, URIRef
 
+from rdf_persistence.access.domain.generated.rp_access import Action
 from rdf_persistence.access.services.access import AccessRules
 from rdf_persistence.access.services.generated.rp_access_services import (
     CallerAccess,
     VerifiedCaller,
+)
+from rdf_persistence.collaboration.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.collaboration.domain.generated.rp_workflow import (
+    Transition,
+    Workflow,
+    WorkflowTransition,
 )
 from rdf_persistence.collaboration.services.discussion import mint_iri, moment_of
 from rdf_persistence.collaboration.services.workflows import Workflows, state_iri
@@ -24,13 +31,6 @@ from rdf_persistence.core.domain.exceptions import (
     InvalidBody,
     NotFound,
     StoredDataInvalid,
-)
-from rdf_persistence.core.domain.generated.rp_access import Action
-from rdf_persistence.core.domain.generated.rp_discussion import Comment, Motivation
-from rdf_persistence.core.domain.generated.rp_workflow import (
-    Transition,
-    Workflow,
-    WorkflowTransition,
 )
 from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.core.services.yaml_files import SHOWN

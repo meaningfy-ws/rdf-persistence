@@ -2,8 +2,12 @@
 
 from datetime import UTC, datetime
 
-from rdf_persistence.core.domain.generated.rp_discussion import PostComment
-from rdf_persistence.core.domain.generated.rp_provenance import Activity, Generation, Invalidation
+from rdf_persistence.collaboration.domain.generated.rp_discussion import PostComment
+from rdf_persistence.provenance.domain.generated.rp_provenance import (
+    Activity,
+    Generation,
+    Invalidation,
+)
 from rdf_persistence.provenance.services.visible_part import visible_part
 
 DUNE = "https://lib.example/book/dune"

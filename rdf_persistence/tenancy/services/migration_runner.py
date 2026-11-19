@@ -18,8 +18,8 @@ from typing import cast
 
 from rdflib import Dataset, URIRef
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.exceptions import InvalidBody, MigrationFailed, PersistenceError
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.sparql_parsing import prepare_update
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced

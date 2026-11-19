@@ -13,22 +13,25 @@ from pydantic import BaseModel
 from rdflib import RDF, BNode, Graph, Literal, URIRef
 
 from rdf_persistence import generated_models
-from rdf_persistence.core.domain.generated.rp_access import Action, Grant, Prohibition
-from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
-from rdf_persistence.core.domain.generated.rp_discussion import Comment, Motivation
-from rdf_persistence.core.domain.generated.rp_provenance import (
-    Activity,
-    Generation,
-    Invalidation,
-    Replace,
+from rdf_persistence.access.domain.generated.rp_access import Action, Grant, Prohibition
+from rdf_persistence.collaboration.domain.generated.rp_collections import (
+    MembershipRule,
+    SlotEquality,
 )
-from rdf_persistence.core.domain.generated.rp_workflow import Transition, Workflow
+from rdf_persistence.collaboration.domain.generated.rp_discussion import Comment, Motivation
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition, Workflow
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
     LimitSettings,
 )
 from rdf_persistence.persistence.services.mapper import Mapper, new_part
+from rdf_persistence.provenance.domain.generated.rp_provenance import (
+    Activity,
+    Generation,
+    Invalidation,
+    Replace,
+)
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import is_bookkeeping, is_internal

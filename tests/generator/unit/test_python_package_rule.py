@@ -1,6 +1,5 @@
 """The ``python_package`` rules end to end through ``rp-generate`` (generator-package stage 3, DEC-7, PD-6)."""
 
-import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -14,43 +13,15 @@ from rdf_persistence_generation.generated.rp_generation import HardRule
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.problems import format_problem
 
-from .conftest import ROOT_SCHEMA
+from .conftest import ROOT_SCHEMA, TOOLKIT_DOMAIN, theme_package
 
-METAMODEL_DIR = Path(__file__).parents[3] / "rdf_persistence" / "model"
-TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
+FILES_PACKAGE = theme_package("files")
+ACCESS_PACKAGE = theme_package("access")
+
 PACKAGE_RULES = {HardRule.PYTHON_PACKAGE.value, HardRule.PYTHON_PACKAGE_MISMATCH.value}
-ROOTS_USERS = (
-    "rdf_persistence_generation.config",
-    "rdf_persistence_generation.checks.python_package",
-    "rdf_persistence_generation.checks.hard",
-    "rdf_persistence_generation.checks.boundary",
-    "rdf_persistence_generation.components",
-    "rdf_persistence_generation.lock_step",
-    "rdf_persistence_generation.extensions.shacl",
-    "rdf_persistence_generation.extensions.typescript",
-    "rdf_persistence_generation.extensions.pydantic_split",
-)
 CONSUMER_ANNOTATION = "python_package: somewhere.else"
 
 Edit = Callable[[str, str, str], None]
-
-
-@pytest.fixture
-def toolkit_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A project folder holding a copy of the metamodel, treated as the toolkit's own, and a pyproject for it."""
-    shutil.copytree(
-        METAMODEL_DIR,
-        tmp_path / "model",
-        ignore=shutil.ignore_patterns("migrations", "__pycache__", "generated"),
-    )
-    for module in ROOTS_USERS:
-        monkeypatch.setattr(f"{module}.TOOLKIT_ROOTS", (tmp_path.resolve(),))
-    (tmp_path / "pyproject.toml").write_text(
-        f'[[tool.rp-generate]]\nschema = "model/rp.yaml"\npackage = "{TOOLKIT_DOMAIN}"\n'
-        'regenerate-command = "make generate"\nopenapi = false\n',
-        encoding="utf-8",
-    )
-    return tmp_path
 
 
 @pytest.fixture
@@ -78,7 +49,7 @@ def test_rp_generate_refuses_a_module_without_python_package_and_writes_nothing(
     toolkit_project: Path, edit: Edit, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Error matrix: a metamodel module lacks python_package."""
-    edit("rp_files", f"python_package: {TOOLKIT_DOMAIN}", "unrelated: note")
+    edit("rp_files", f"python_package: {FILES_PACKAGE}", "unrelated: note")
     code = main(["--project", str(toolkit_project / "pyproject.toml")])
     err = capsys.readouterr().err
     assert code == 1, f"exit code; stderr was {err}"
@@ -91,16 +62,54 @@ def test_rp_generate_refuses_a_module_without_python_package_and_writes_nothing(
 def test_rp_generate_refuses_a_disagreeing_package_naming_both_values_and_writes_nothing(
     toolkit_project: Path, edit: Edit, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Error matrix: python_package disagrees with the toolkit target's package."""
-    edit("rp_core", f"python_package: {TOOLKIT_DOMAIN}", "python_package: x.generated")
+    """Error matrix: the root's python_package disagrees with the toolkit target's package."""
+    edit("rp", f"python_package: {TOOLKIT_DOMAIN}", "python_package: x.generated")
     code = main(["--project", str(toolkit_project / "pyproject.toml")])
     err = capsys.readouterr().err
     assert code == 1, f"exit code; stderr was {err}"
-    for named in ("rp_core", "x.generated", TOOLKIT_DOMAIN):
+    for named in ("rp", "x.generated", TOOLKIT_DOMAIN):
         assert named in err, f"{named} is named"
     assert sorted(p.name for p in toolkit_project.iterdir()) == ["model", "pyproject.toml"], (
         "nothing written"
     )
+
+
+UNKNOWN_PACKAGE = "x.unknown.domain.generated"
+
+
+def _toolkit_problems(project: Path) -> list[str]:
+    targets = read_targets(project / "pyproject.toml")
+    return [format_problem(p) for p in generate(targets, project, (steps.HARD_STEP,), check=True)]
+
+
+def test_a_toolkit_module_beside_the_root_naming_a_package_no_target_generates_is_refused(
+    toolkit_project: Path, edit: Edit
+) -> None:
+    """E-2: the module is not generated here, and no toolkit entry generates it either."""
+    edit("rp_access", f"python_package: {ACCESS_PACKAGE}", f"python_package: {UNKNOWN_PACKAGE}")
+    found = _toolkit_problems(toolkit_project)
+    expected = (
+        f"rp_access names python_package {UNKNOWN_PACKAGE}, which no toolkit target generates"
+    )
+    assert [line for line in found if "rp_access" in line], found
+    assert any(
+        HardRule.PYTHON_PACKAGE_MISMATCH.value in line and expected in line for line in found
+    ), f"{expected!r} is reported: {found}"
+
+
+def test_a_toolkit_module_beside_the_root_naming_another_toolkit_targets_package_passes(
+    toolkit_project: Path, edit: Edit
+) -> None:
+    """E-2: the other side: a toolkit entry generates that package."""
+    edit("rp_access", f"python_package: {ACCESS_PACKAGE}", f"python_package: {UNKNOWN_PACKAGE}")
+    pyproject = toolkit_project / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8")
+        + f'\n[[tool.rp-generate]]\nschema = "model/rp_access.yaml"\npackage = "{UNKNOWN_PACKAGE}"\n'
+        'regenerate-command = "make generate"\nopenapi = false\n',
+        encoding="utf-8",
+    )
+    assert [p for p in _toolkit_problems(toolkit_project) if "rp_access" in p] == [], "allowed"
 
 
 def test_a_consumer_python_package_is_never_checked_and_leaves_the_output_unchanged(

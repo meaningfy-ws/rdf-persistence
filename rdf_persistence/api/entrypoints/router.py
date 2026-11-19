@@ -19,6 +19,8 @@ from linkml_runtime.linkml_model.meta import ClassDefinition
 from pydantic import BaseModel
 from rdflib import Graph, URIRef
 
+from rdf_persistence.access.domain.generated.rp_access import Action
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.access.services.generated.rp_access_services import (
     CallerAccess,
     GrantSet,
@@ -50,9 +52,7 @@ from rdf_persistence.api.entrypoints.responses import (
 )
 from rdf_persistence.api.entrypoints.sse import add_events_route
 from rdf_persistence.core.domain.exceptions import BadQuery, InvalidBody, PayloadTooLarge
-from rdf_persistence.core.domain.generated.rp_access import Action
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.media import ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, JSON, JSON_LD
 from rdf_persistence.core.services.artifacts import CONTEXT_FILE, CONTEXT_KEY
 from rdf_persistence.iris.domain.layout import graph_iri

@@ -7,10 +7,10 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.core.domain.generated.rp_core import DatabaseKind, RpAnnotation
 from rdf_persistence.schema.services.schema_structure import (
-    STORED_FILE,
     annotation,
     database_of,
     database_roots,
+    is_stored_file,
     is_tenant_root,
     owned_classes,
 )
@@ -41,7 +41,7 @@ def _application_row(
         (is_tenant_root(cls), TENANT_ROOT_ROW),
         (cls.name in owned, OWNED_ROW),
         (cls not in roots, NOT_ROOT_ROW),
-        (STORED_FILE in view.class_ancestors(cls.name), STORED_FILE_ROW),
+        (is_stored_file(view, cls), STORED_FILE_ROW),
         (bool(clash), f"{SHARED_IRI_ROW} {clash}"),
     )
     return next((message for broken, message in rows if broken), None)

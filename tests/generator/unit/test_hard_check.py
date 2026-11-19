@@ -32,7 +32,13 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.problems import format_problem
 
-from .conftest import ROOT_SCHEMA, Breaker
+from .conftest import (
+    ROOT_SCHEMA,
+    TOOLKIT_DOMAIN,
+    Breaker,
+    theme_package,
+    toolkit_domain_targets,
+)
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
 GENERATION_MODEL = (
@@ -851,7 +857,10 @@ APPLICATION_ROWS = (
     ),
     ApplicationRow(
         "stored-file",
-        "  StoredFile:\n    mixin: true\n  Tpl:\n" + _ROOT + "    mixins: [StoredFile]\n" + _APP,
+        "  StoredFile:\n    class_uri: rp:StoredFile\n    mixin: true\n  Tpl:\n"
+        + _ROOT
+        + "    mixins: [StoredFile]\n"
+        + _APP,
         "Tpl",
         "an application class cannot be a stored file: the application space has no bucket",
     ),
@@ -1021,6 +1030,100 @@ def test_the_toy_with_migrations_and_a_quoted_version_passes(toy_copy: Path) -> 
     assert _stored_schema_problems(toy_copy / ROOT_SCHEMA, "migrations") == [], "the toy is stored"
 
 
+def _combined_target_stores_its_migrations(project: Path) -> None:
+    """Give the ``rp.yaml`` target its ``migrations`` folder; the four theme targets set none (PD-4)."""
+    pyproject = project / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace(
+            "openapi = false\n", 'openapi = false\nmigrations = "model/migrations"\n', 1
+        ),
+        encoding="utf-8",
+    )
+
+
+def _hard_problems_of_all(project: Path) -> list[str]:
+    targets = read_targets(project / "pyproject.toml")
+    found = generate(targets, project, (steps.HARD_STEP,), check=True)
+    return [format_problem(p) for p in found]
+
+
+def test_a_theme_target_that_generates_a_tenant_root_needs_no_migrations_folder(
+    toolkit_project: Path,
+) -> None:
+    """E-6: the access target generates ``TenantAccess`` and sets no `migrations`: `rp.yaml` is where it is checked (PD-4)."""
+    _combined_target_stores_its_migrations(toolkit_project)
+    assert _hard_problems_of_all(toolkit_project) == [], "the five domain targets pass"
+
+
+def test_a_theme_target_that_generates_an_aggregate_root_needs_no_migrations_folder(
+    toolkit_project: Path,
+) -> None:
+    """E-7: the collaboration target generates ``Comment`` and sets no `migrations`."""
+    _combined_target_stores_its_migrations(toolkit_project)
+    found = _hard_problems_of_all(toolkit_project)
+    assert [p for p in found if "rp_collaboration" in p or "Comment" in p] == [], found
+
+
+def test_the_target_of_rp_yaml_still_needs_migrations_for_the_roots_of_every_theme(
+    toolkit_project: Path,
+) -> None:
+    """PD-4: the combined target is the one that is checked, so dropping its folder is refused."""
+    found = _hard_problems_of_all(toolkit_project)
+    assert len(found) == 1 and "TenantAccess" in found[0], found  # noqa: PT018
+    assert HardRule.MIGRATIONS_FOLDER.value in found[0], "the rule is named"
+
+
+def test_a_toolkit_target_other_than_rp_yaml_that_stores_roots_without_migrations_is_still_refused(
+    toolkit_project: Path,
+) -> None:
+    """D-5: only a target whose roots `rp.yaml` already checks may skip the stored-schema rules; a new one with its own root may not."""
+    model = toolkit_project / "model"
+    (model / "rp_extra.yaml").write_text(
+        "id: https://meaningfy.ws/ns/rdf-persistence/extra\nname: rp_extra\n"
+        "title: Extra\ndescription: A target that defines a root.\n"
+        "prefixes: {rp: 'https://meaningfy.ws/ns/rdf-persistence#', linkml: 'https://w3id.org/linkml/'}\n"
+        "default_prefix: rp\ndefault_range: string\n"
+        "imports: [linkml:types, rp_core]\n"
+        f"annotations:\n  python_package: {TOOLKIT_DOMAIN}.extra\n"
+        "classes:\n  Lone:\n    title: Lone\n    description: A root.\n"
+        "    mixins: [AggregateRoot]\n    attributes:\n"
+        "      label: {title: Label, description: Its label.}\n",
+        encoding="utf-8",
+    )
+    pyproject = toolkit_project / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8")
+        + f'\n[[tool.rp-generate]]\nschema = "model/rp_extra.yaml"\npackage = "{TOOLKIT_DOMAIN}.extra"\n'
+        'regenerate-command = "make generate"\nopenapi = false\n',
+        encoding="utf-8",
+    )
+    extra = [t for t in read_targets(pyproject) if t.schema_file == "model/rp_extra.yaml"]
+    found = [
+        format_problem(p) for p in generate(extra, toolkit_project, (steps.HARD_STEP,), check=True)
+    ]
+    assert any(HardRule.MIGRATIONS_FOLDER.value in p and "Lone" in p for p in found), found
+
+
+def test_a_theme_target_that_sets_migrations_keeps_the_version_rule(toolkit_project: Path) -> None:
+    """D-10: the stored-schema rules are skipped only for a target without `migrations`; one that sets them is checked."""
+    tenancy = toolkit_project / "model" / "rp_tenancy.yaml"
+    text = tenancy.read_text(encoding="utf-8")
+    tenancy.write_text(text.replace("name: rp_tenancy\n", "name: rp_tenancy\nversion: 1.10\n", 1))
+    pyproject = toolkit_project / "pyproject.toml"
+    entry = 'schema = "model/rp_tenancy.yaml"\n'
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace(
+            f"{entry}", f'{entry}migrations = "model/tenancy-migrations"\n', 1
+        ),
+        encoding="utf-8",
+    )
+    found = _hard_problems_of_all(toolkit_project)
+    assert any(
+        HardRule.QUOTED_VERSION.value in p and "rp_tenancy.yaml" in p and "quoted" in p
+        for p in found
+    ), found
+
+
 def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings() -> None:
     """TC-10: rp_service, rp_templates, rp_telemetry, rp_settings, rp_wire, rp_testkit and rp_generation need no migrations folder; rp.yaml has one.
 
@@ -1031,12 +1134,14 @@ def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings(
     `rp_access_adapters` from stage 5, beside `rp_access_services`, `rp_access_settings` and the
     `tenancy` theme's `rp_tenancy_services`: seventeen in all (5.1). The `events` theme's two
     (`rp_events_services`, `rp_events_settings`) and the `collaboration` theme's one
-    (`rp_collaboration_services`) make twenty (6.1).
+    (`rp_collaboration_services`) make twenty (6.1). The four theme targets of the domain model
+    (`rp_tenancy`, `rp_provenance`, `rp_files`, `rp_collaboration`; domain-model-per-theme 2.1) make
+    twenty-four.
     """
     targets = read_targets(REPO / "pyproject.toml")
-    assert len(targets) == 20, [t.schema_file for t in targets]
+    assert len(targets) == 24, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
-    assert [format_problem(p) for p in found] == [], "the toolkit's twenty targets raise no problem"
+    assert [format_problem(p) for p in found] == [], "the toolkit's 24 targets raise no problem"
 
 
 def _flag_problems(tmp_path: Path, written: str) -> list[str]:
@@ -1068,7 +1173,6 @@ def test_default_instance_that_is_not_a_boolean_is_refused_naming_the_slot(
 
 # ---- where the metamodel's classes live (DEC-7, PD-6, TC-35 to TC-38) ------------------------------
 
-TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
 PACKAGE_CHECK = "rdf_persistence_generation.checks.python_package"
 MODEL_COPY = "model"
 PACKAGE_RULES = {HardRule.PYTHON_PACKAGE, HardRule.PYTHON_PACKAGE_MISMATCH}  # need a toolkit target
@@ -1081,6 +1185,8 @@ def toolkit_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         METAMODEL.parent, tmp_path / MODEL_COPY, ignore=shutil.ignore_patterns("migrations")
     )
     monkeypatch.setattr(f"{PACKAGE_CHECK}.TOOLKIT_ROOTS", (tmp_path.resolve(),))
+    monkeypatch.setattr("rdf_persistence_generation.steps.TOOLKIT_ROOTS", (tmp_path.resolve(),))
+    (tmp_path / "pyproject.toml").write_text(toolkit_domain_targets(), encoding="utf-8")
     return tmp_path
 
 
@@ -1109,7 +1215,9 @@ def test_the_metamodel_copy_passes_both_python_package_rules(toolkit_copy: Path)
 
 def test_a_toolkit_module_without_python_package_is_refused_naming_it(toolkit_copy: Path) -> None:
     """TC-35"""
-    _rewrite(toolkit_copy, "rp_files", f"python_package: {TOOLKIT_DOMAIN}", "unrelated: note")
+    _rewrite(
+        toolkit_copy, "rp_files", f"python_package: {theme_package('files')}", "unrelated: note"
+    )
     [line] = _package_problems(toolkit_copy)
     assert f"[{HardRule.PYTHON_PACKAGE.value}]" in line, "rule (a) is named"
     assert "rp_files" in line, "the module is named"
@@ -1119,13 +1227,12 @@ def test_a_toolkit_module_without_python_package_is_refused_naming_it(toolkit_co
 def test_a_module_in_another_package_than_its_target_is_refused_naming_both(
     toolkit_copy: Path,
 ) -> None:
-    """TC-36"""
-    _rewrite(
-        toolkit_copy, "rp_core", f"python_package: {TOOLKIT_DOMAIN}", "python_package: x.generated"
-    )
-    [line] = _package_problems(toolkit_copy)
+    """TC-36: the root's package is the reference, so a root that disagrees with its target is the case."""
+    _rewrite(toolkit_copy, "rp", f"python_package: {TOOLKIT_DOMAIN}", "python_package: x.generated")
+    lines = _package_problems(toolkit_copy)
+    [line] = [line for line in lines if "rp:" in line]
     assert f"[{HardRule.PYTHON_PACKAGE_MISMATCH.value}]" in line, "rule (b) is named"
-    for named in ("rp_core", "x.generated", TOOLKIT_DOMAIN):
+    for named in ("rp", "x.generated", TOOLKIT_DOMAIN):
         assert named in line, f"{named} is named"
 
 
@@ -1140,6 +1247,14 @@ def test_an_application_run_never_checks_the_package_of_its_target(toy_copy: Pat
 
 TOOLKIT_PACKAGES = [
     ("rdf_persistence/model/rp_core.yaml", TOOLKIT_DOMAIN),
+    ("rdf_persistence/model/rp_access.yaml", theme_package("access")),
+    ("rdf_persistence/model/rp_tenancy.yaml", theme_package("access")),
+    ("rdf_persistence/model/rp_provenance.yaml", theme_package("provenance")),
+    ("rdf_persistence/model/rp_files.yaml", theme_package("files")),
+    ("rdf_persistence/model/rp_collections.yaml", theme_package("collaboration")),
+    ("rdf_persistence/model/rp_discussion.yaml", theme_package("collaboration")),
+    ("rdf_persistence/model/rp_workflow.yaml", theme_package("collaboration")),
+    ("rdf_persistence/model/rp_collaboration.yaml", theme_package("collaboration")),
     (
         "rdf_persistence/model/technical/access/rp_access_adapters.yaml",
         "rdf_persistence.access.adapters.generated",

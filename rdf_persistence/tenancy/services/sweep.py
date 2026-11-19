@@ -17,8 +17,8 @@ before the service takes requests: a tenant being created at that moment has a d
 import logging
 from contextlib import suppress
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.core.domain.exceptions import NotFound, StoreNotWired
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantAccess, TenantState
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced
 from rdf_persistence.files.services.files import FileStore

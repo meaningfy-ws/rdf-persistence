@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 from rdflib import URIRef
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.exceptions import (
     DatabaseGone,
     NotFound,
@@ -17,7 +18,6 @@ from rdf_persistence.core.domain.exceptions import (
     StoreNotWired,
     StoreUnavailable,
 )
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.tenancy.services.migration_runner import migrate_tenants

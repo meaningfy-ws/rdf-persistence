@@ -11,7 +11,7 @@ import pytest
 from pytest_bdd import given, scenarios, then, when
 
 from rdf_persistence import bootstrap
-from rdf_persistence.core.domain.generated.rp_provenance import Replace
+from rdf_persistence.provenance.domain.generated.rp_provenance import Replace
 from rdf_persistence.testkit import (
     FakeStore,
     InMemoryBroker,

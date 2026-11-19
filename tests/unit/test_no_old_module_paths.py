@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from tests.unit import test_theme_layout
-from tests.unit.test_theme_layout import PLACED, Placed, turned_on_pairs
+from tests.unit.test_theme_layout import MOVED_MODULES, PLACED, Placed, turned_on_pairs
 
 ROOT = Path(__file__).resolve().parents[2]
 SCANNED = ("rdf_persistence", "rdf_persistence_generation", "tests", "docs", ".github")
@@ -136,6 +136,13 @@ def moved_generated_pairs(
         if all(other.on for other in placed if other.old == row.old):
             standing.setdefault(row.old, row.new)
     return tuple(standing.items())
+
+
+def test_the_old_path_of_every_moved_generated_module_is_scanned_for():
+    """The ``MovedModule`` rows have no on switch: their old paths are always among the pairs."""
+    pairs = dict(turned_on_pairs())
+
+    assert all(row.old in pairs and pairs[row.old] == row.new for row in MOVED_MODULES)
 
 
 def test_no_file_names_the_old_path_of_a_row_that_is_on():

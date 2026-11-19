@@ -8,6 +8,7 @@ so no LinkML class fits it.
 """
 
 import ast
+import importlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -88,6 +89,9 @@ LAYOUT: tuple[Move, ...] = (
     *_rows("files", "domain", "blob_keys"),
     *_rows("files", "services", "files"),
     *_rows("files", "adapters", "s3"),
+    # domain-model-per-theme PD-9: a theme that owns domain concepts generates them into its own
+    # `domain/generated/` (the package is created by `make generate`, beside a hand-written `__init__`).
+    *_rows("provenance", "domain", created=("generated",)),
     *_rows("provenance", "services", "provenance", "visible_part"),
     *_rows(
         "persistence",
@@ -103,6 +107,7 @@ LAYOUT: tuple[Move, ...] = (
     ),
     *_rows("persistence", "adapters", "fuseki", created=("sparql_protocol",)),
     *_rows("migrations", "services", "migrations"),
+    *_rows("access", "domain", created=("generated",)),
     *_rows("access", "services", "access", "identity", "tokens"),
     *_rows("access", "adapters", "jwks", "zitadel"),
     *_rows(
@@ -118,6 +123,7 @@ LAYOUT: tuple[Move, ...] = (
     ),
     *_rows("events", "services", "events", "event_hub", "event_stream", "relay"),
     *_rows("events", "adapters", "redis_events"),
+    *_rows("collaboration", "domain", created=("generated",)),
     *_rows(
         "collaboration",
         "services",
@@ -145,6 +151,42 @@ LAYOUT: tuple[Move, ...] = (
         "sse",
     ),
 )
+
+
+@dataclass(frozen=True)
+class MovedModule:
+    """One generated domain module that left ``core`` for its theme (domain-model-per-theme PD-9).
+
+    The old path is the module of ``core/domain/generated``; the new one is the same module name in
+    ``<theme>/domain/generated``. A row has no on switch: it stands at ``new`` from task 2.1.
+    """
+
+    theme: str
+    module: str
+
+    @property
+    def old(self) -> str:
+        return f"{PACKAGE}.core.domain.generated.{self.module}"
+
+    @property
+    def new(self) -> str:
+        return f"{PACKAGE}.{self.theme}.domain.generated.{self.module}"
+
+
+# DEC-1: the seven modules that leave `core`; `rp_core` and `rp_annotations` stay, `rp.py` is no longer
+# written (D-1: the root has no classes of its own, so it writes no module).
+MOVED_MODULES: tuple[MovedModule, ...] = (
+    MovedModule("access", "rp_access"),
+    MovedModule("access", "rp_tenancy"),
+    MovedModule("provenance", "rp_provenance"),
+    MovedModule("files", "rp_files"),
+    MovedModule("collaboration", "rp_collections"),
+    MovedModule("collaboration", "rp_discussion"),
+    MovedModule("collaboration", "rp_workflow"),
+)
+# What stays generated in `core`: the two shared modules; the combined RDF artefacts are not Python.
+CORE_GENERATED_MODULES = frozenset({"rp_core", "rp_annotations"})
+GENERATED_REMOVED = f"{PACKAGE}.core.domain.generated.rp"
 
 
 # The generated technical packages (PD-1's six groups; the testkit group stays: outside the themes) and
@@ -363,9 +405,33 @@ def placed_problems(placed: tuple[Placed, ...], root: Path) -> list[str]:
     return problems
 
 
-def turned_on_pairs(rows: tuple[Move, ...] = LAYOUT) -> tuple[tuple[str, str], ...]:
-    """The (old, new) module paths of the rows that are on; the guards of the move read these."""
-    return tuple((row.old, row.new) for row in rows if row.on and row.old)
+def turned_on_pairs(
+    rows: tuple[Move, ...] = LAYOUT, moved: tuple[MovedModule, ...] = MOVED_MODULES
+) -> tuple[tuple[str, str], ...]:
+    """The (old, new) module paths of the rows that are on, and of every moved generated module.
+
+    The guards of the move read these; a ``MovedModule`` has no on switch, so it is always listed.
+    """
+    pairs = tuple((row.old, row.new) for row in rows if row.on and row.old)
+    return pairs + tuple((module.old, module.new) for module in moved)
+
+
+def moved_module_problems(moved: tuple[MovedModule, ...], root: Path) -> list[str]:
+    """What is wrong with the generated modules at ``root`` against the ``MovedModule`` rows."""
+    problems = []
+    for row in moved:
+        if _exists(row.old, root):
+            problems.append(f"{row.old} is still in core; it belongs at {row.new}")
+        if not _exists(row.new, root):
+            problems.append(f"{row.new} is missing (row {row.old} -> {row.new})")
+    generated = root / PACKAGE / "core" / "domain" / "generated"
+    kept = {p.stem for p in generated.glob("*.py")} - {"__init__"} if generated.is_dir() else set()
+    problems += [
+        f"{PACKAGE}.core.domain.generated.{name} is not a module core keeps"
+        for name in sorted(kept - CORE_GENERATED_MODULES)
+        if name not in {row.module for row in moved}
+    ]
+    return problems
 
 
 def _file_of(module: str, root: Path) -> Path:
@@ -431,6 +497,70 @@ def test_every_row_of_the_layout_is_on():
 
     assert off == [], f"themes still off: {off}"
     assert len({row.theme for row in LAYOUT}) == 13, "PD-1 has thirteen themes"
+
+
+# --- domain-model-per-theme: the generated domain modules in their themes (TC-01, TC-07) ---------
+
+
+def test_each_moved_generated_module_stands_in_its_theme_and_not_in_core():
+    """TC-01: seven modules, each in ``<theme>/domain/generated``; core keeps only two modules."""
+    problems = moved_module_problems(MOVED_MODULES, ROOT)
+
+    assert len(MOVED_MODULES) == 7, "DEC-1 moves seven modules"
+    assert problems == [], "the generated modules and MOVED_MODULES differ:\n" + "\n".join(problems)
+
+
+def test_core_generated_holds_only_the_shared_modules_and_the_combined_artefacts():
+    generated = ROOT / PACKAGE / "core" / "domain" / "generated"
+
+    modules = {p.stem for p in generated.glob("*.py")}
+    artefacts = {p.name for p in generated.iterdir() if p.suffix != ".py"} - {"__pycache__"}
+
+    assert modules == CORE_GENERATED_MODULES | {"__init__"}, f"modules in core: {sorted(modules)}"
+    assert {"shapes.ttl", "context.jsonld"} <= artefacts, "the combined set stays in core (DEC-2)"
+
+
+@pytest.mark.parametrize("theme", ["access", "provenance", "collaboration"])
+def test_a_theme_that_gains_a_domain_has_its_generated_package_as_a_created_row(theme):
+    rows = [r for r in LAYOUT if (r.theme, r.layer, r.module) == (theme, "domain", "generated")]
+
+    assert [r.created for r in rows] == [True], f"{theme} needs one created domain/generated row"
+    assert (ROOT / PACKAGE / theme / "domain" / "__init__.py").is_file(), "the hand-written package"
+
+
+def test_the_pairs_of_the_guards_include_each_moved_module():
+    pairs = dict(turned_on_pairs())
+
+    assert all(pairs[row.old] == row.new for row in MOVED_MODULES)
+
+
+def test_a_moved_module_left_in_core_or_missing_from_its_theme_is_named(tmp_path):
+    row = MovedModule("access", "rp_access")
+
+    left = moved_module_problems((row,), _tree(tmp_path / "a", row.old))
+    missing = moved_module_problems((row,), _tree(tmp_path / "b", "rdf_persistence.core.x"))
+
+    assert any(row.old in p and row.new in p for p in left), left
+    assert any(row.new in p and "missing" in p for p in missing), missing
+
+
+def test_a_module_core_does_not_keep_is_named(tmp_path):
+    root = _tree(tmp_path, "rdf_persistence.core.domain.generated.rp")
+
+    problems = moved_module_problems((), root)
+
+    assert problems == [f"{GENERATED_REMOVED} is not a module core keeps"], problems
+
+
+@pytest.mark.parametrize(
+    "old",
+    [*(row.old for row in MOVED_MODULES), GENERATED_REMOVED],
+    ids=lambda old: old.rsplit(".", 1)[1],
+)
+def test_the_old_deep_path_of_a_moved_module_cannot_be_imported(old):
+    """TC-07: no shim at the old path (DEC-8); the module is gone, so the import fails by name."""
+    with pytest.raises(ModuleNotFoundError, match=old.rsplit(".", 1)[1]):
+        importlib.import_module(old)
 
 
 # TC-70: what stands at the top of the package once the move is done (PD-1).

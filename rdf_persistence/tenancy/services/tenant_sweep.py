@@ -15,8 +15,8 @@ from datetime import UTC, datetime, timedelta
 from rdflib import Literal, URIRef
 from rdflib.query import ResultRow
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantState, TenantSweepReport
 from rdf_persistence.core.domain.exceptions import Conflict
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState, TenantSweepReport
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import log_extra, traced

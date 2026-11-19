@@ -28,7 +28,7 @@ from pydantic import (
     model_serializer,
     model_validator
 )
-from rdf_persistence.core.domain.generated.rp_access import (
+from rdf_persistence.access.domain.generated.rp_access import (
     Action,
     Grant,
     Policy,
@@ -36,6 +36,12 @@ from rdf_persistence.core.domain.generated.rp_access import (
     RoleDefinition,
     RoleLevel,
     Rule
+)
+from rdf_persistence.access.domain.generated.rp_tenancy import (
+    TenantAccess,
+    TenantLabelled,
+    TenantState,
+    TenantSweepReport
 )
 from rdf_persistence.core.domain.generated.rp_annotations import (
     Described,
@@ -56,12 +62,6 @@ from rdf_persistence.core.domain.generated.rp_core import (
     RpAnnotation,
     UniqueScope,
     WritesKind
-)
-from rdf_persistence.core.domain.generated.rp_tenancy import (
-    TenantAccess,
-    TenantLabelled,
-    TenantState,
-    TenantSweepReport
 )
 
 

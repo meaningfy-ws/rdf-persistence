@@ -13,6 +13,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 
+from rdf_persistence.access.domain.generated.rp_access import Action
 from rdf_persistence.access.services.generated.rp_access_services import (
     CallerAccess,
     VerifiedCaller,
@@ -22,8 +23,6 @@ from rdf_persistence.api.entrypoints.kit import ServiceKit
 from rdf_persistence.api.entrypoints.negotiation import LAST_EVENT_ID, LINK
 from rdf_persistence.api.entrypoints.openapi import TenantOpenApi
 from rdf_persistence.api.entrypoints.responses import CONTEXT_REL
-from rdf_persistence.core.domain.generated.rp_access import Action
-from rdf_persistence.core.domain.generated.rp_provenance import Activity
 from rdf_persistence.events.services.event_stream import (
     KEEP_ALIVE,
     RESET,
@@ -33,6 +32,7 @@ from rdf_persistence.events.services.event_stream import (
 )
 from rdf_persistence.persistence.services.decoding import decode_activity
 from rdf_persistence.persistence.services.session import utc_now
+from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 
 EVENTS_ROUTE = (
     "rp-events"  # under the toolkit's reserved prefix, so no aggregate can shadow it (D-15)

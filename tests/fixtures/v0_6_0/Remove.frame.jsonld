@@ -1,0 +1,24 @@
+{
+  "@context": "context.jsonld",
+  "@omitGraph": true,
+  "@embed": "@always",
+  "@omitDefault": true,
+  "@type": [
+    "Remove",
+    "DeleteFile"
+  ],
+  "was_associated_with": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "generations": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "Generation"
+  },
+  "invalidations": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "Invalidation"
+  }
+}

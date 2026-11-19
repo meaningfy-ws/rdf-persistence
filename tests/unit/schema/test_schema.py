@@ -11,6 +11,7 @@ METAMODEL_MODULES = (
     "rp",
     "rp_access",
     "rp_annotations",
+    "rp_collaboration",  # the new root of the collaboration theme (domain-model-per-theme DEC-5)
     "rp_collections",
     "rp_core",
     "rp_discussion",

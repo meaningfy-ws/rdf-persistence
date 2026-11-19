@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Annotated, Final
 
 from fastapi import Depends, Header
 
+from rdf_persistence.access.domain.generated.rp_access import Action
 from rdf_persistence.access.services.access import load_caller_access
 from rdf_persistence.access.services.generated.rp_access_services import (
     CallerAccess,
@@ -15,7 +16,6 @@ from rdf_persistence.access.services.generated.rp_access_services import (
 )
 from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import Authorised
 from rdf_persistence.core.domain.exceptions import InvalidToken
-from rdf_persistence.core.domain.generated.rp_access import Action
 
 if TYPE_CHECKING:  # the kit builds its gate, so it cannot be imported here at run time
     from rdf_persistence.api.entrypoints.kit import ServiceKit

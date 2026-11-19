@@ -24,6 +24,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     of its own whose package is in `services`, `adapters` or `entrypoints`; a technical module left
     unannotated is derived as `domain`, and the error says to annotate it. Then run `rp-generate`.
 
+- **BREAKING: the domain model is generated per theme** (`domain-model-per-theme`). Each theme that
+  owns domain concepts has its own `<theme>.domain.generated` package, and seven modules moved out
+  of `rdf_persistence.core.domain.generated`:
+  - `rp_access`, `rp_tenancy`: `rdf_persistence.core.domain.generated.<module>` →
+    `rdf_persistence.access.domain.generated.<module>`
+  - `rp_provenance` → `rdf_persistence.provenance.domain.generated.rp_provenance`
+  - `rp_files` → `rdf_persistence.files.domain.generated.rp_files`
+  - `rp_collections`, `rp_discussion`, `rp_workflow`:
+    `rdf_persistence.core.domain.generated.<module>` →
+    `rdf_persistence.collaboration.domain.generated.<module>`
+
+  `rdf_persistence.core.domain.generated` keeps `rp_core` and `rp_annotations`;
+  `rdf_persistence.core.domain.generated.rp`, the module that re-exported every class, is gone. The
+  names exported from `rdf_persistence` are the same objects (148): only a deep import of a moved
+  path breaks, with `ModuleNotFoundError`, and no old path keeps a re-export shim. The combined
+  `shapes.ttl`, `context.jsonld` and frames stay in `core/domain/generated/` and are the ones to
+  load; the new theme targets write partial copies beside their classes, which are not loaded.
+  `rp_tenancy` generates in `access`, and `themes-ordered` ranks `files` above `provenance`. A
+  consumer's generated code does not change; run `rp-generate` once and rewrite any deep import of
+  a moved path.
+- **A module beside the root that names another package is imported from it**
+  (`domain-model-per-theme`). The generator imports a module in the root's folder from its own
+  `python_package` when that differs from the root's, and on the toolkit's run checks that a toolkit
+  target generates that package.
+- **A stored file is recognised by `class_uri: rp:StoredFile`, not by the class name `StoredFile`**
+  (`domain-model-per-theme`). A consumer's own stored-file mixin must declare that `class_uri`, or
+  mix in the metamodel's `StoredFile`.
+
 ## [0.6.0] - 2026-11-19
 
 ### Added
