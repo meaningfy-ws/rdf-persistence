@@ -3,13 +3,17 @@
 
 _Where does data that belongs to no tenant go?_
 
-Each tenant's data lives in its own database. Some data belongs to no tenant: a catalogue every
-tenant reads, settings for the whole deployment, templates every tenant shares.
-The toolkit keeps such data in the *application database*, one per deployment, apart from the
-tenant databases and from the system database that holds the access records. You mark a class
-`database: application` in the schema, and three kit calls do the rest. This page shows them, who
-may do what, and the limits. The flows are on
-xref:architecture/data-flows.adoc[Where data lives and what each operation does].
+Each tenant's data lives in its own database (xref:user-manual/tenants.adoc[step 9]). Some data
+belongs to no tenant: a catalogue every tenant reads, settings for the whole deployment, templates
+every tenant shares. The toolkit keeps such data in the *application database*, one per
+deployment, apart from the tenant databases and from the system database that holds the access
+records. You mark a class `database: application` in the schema, and three calls of the service
+kit do the rest.
+
+This guide assumes the model of xref:user-manual/model.adoc[step 3], the session and unit of work
+of xref:user-manual/store-and-read.adoc[step 8], and the service kit of
+xref:user-manual/serve.adoc#the-service-kit[step 12]. Where each database lives is explained in
+xref:architecture/data-flows.adoc[Where data lives].
 
 [#when]
 == 1. When to use it
@@ -36,7 +40,7 @@ classes:
       database: application
 ----
 
-Then run `make generate`. The annotation is inherited along `is_a`: a subclass of an application
+Then regenerate (xref:user-manual/generate.adoc[step 4]). The annotation is inherited along `is_a`: a subclass of an application
 class is an application class too. It is never inherited through a mixin. Generation refuses:
 
 * an application class that is the tenant root;
@@ -51,11 +55,10 @@ and the application IRI itself as an aggregate IRI, all with `InvalidIri` before
 to the store.
 
 [#calls]
-== 3. The three kit calls
+== 3. The three calls of the service kit
 
-`kit` is the `ServiceKit` that `install_service` returns (see
-xref:user-manual/serve.adoc[Serve the application]). `Authorised.principal` is the principal's IRI,
-a `str`. The mapper is built once, as in xref:user-manual/store-and-read.adoc[Store and read aggregates in a domain service].
+`kit` is the service kit that `install_service` returns. `Authorised.principal` is the principal's
+IRI, a `str`. The mapper is built once, as in xref:user-manual/store-and-read.adoc[step 8].
 
 [source,python]
 ----
@@ -176,6 +179,6 @@ change them.
   policy record can use only the default, `{base}app`; a different `application_template` makes
   the start-up check fail with `IriPolicyChanged`. The word `app` is reserved: no tenant takes it
   as an id.
-* An older toolkit version cannot read the policy record that this version writes, nor a dump
-  written by it: the older version refuses to start, or refuses the dump. Do not go back after the
-  first start on this version.
+* Changed in 0.3.0: a toolkit older than 0.3.0 cannot read the IRI policy record, nor a dump, that
+  0.3.0 writes: it refuses to start, or refuses the dump. Do not go back to an older release after
+  the first start on 0.3.0.

@@ -4,11 +4,11 @@
 _Who points at this resource? Which books stand on this shelf? Is it still in use before I delete
 it? Why is the list shorter than I expect, and what is `hidden_count`?_
 
-This page shows how to ask a tenant which aggregates refer to one resource. It describes
-`develop` as of 2026-11-14 (the change `collaboration-and-reference-collections`). The terms
-tenant, aggregate, kit and IRI policy, and the names `kit`, `t` and `Action` in the snippets, are
-those of xref:user-manual/index.adoc[Build an application]; the errors are imported from
-`rdf_persistence`.
+This guide lists the aggregates of a tenant that refer to one resource. You need the service kit
+(`kit`) of a served application and a route that checks its caller with `kit.require_aggregate`:
+both are in xref:user-manual/serve.adoc#the-service-kit[step 12]; what the check answers is in
+xref:user-manual/access.adoc[step 11]. In the snippets, `t` is the tenant id taken from the path;
+`Action` and the errors are imported from `rdf_persistence`.
 
 A *referrer* of a resource is an aggregate that has a stored slot holding the IRI of that resource.
 The running example is the toy library: a book has a `shelf` slot that holds the IRI of a shelf, so
@@ -36,9 +36,9 @@ for item in found.referrers or []:
 print(found.hidden_count)    # 0
 ----
 
-`kit.collaboration` takes the answer of `kit.require` or of `kit.require_aggregate`. The
-collaboration acts as that caller, on that tenant. `referrers` checks again, itself, that the
-caller may read the resource.
+`kit.collaboration` takes the answer of `kit.require` or of `kit.require_aggregate`, never one
+built by hand. The collaboration acts as that caller, on that tenant, and checks access itself on
+every call: `referrers` checks again that the caller may read the resource.
 
 == What comes back
 

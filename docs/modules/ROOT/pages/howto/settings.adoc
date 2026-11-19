@@ -4,16 +4,16 @@
 _Which values of the toolkit can I tune: the HTTP timeouts, the key cache of the token verifier, the
 size limits, the event stream? Where do I set them, and can I read them from the environment?_
 
-The toolkit's deployment values are generated settings models, one group for each concern, with the
-value the toolkit always used as the default. Your composition root builds them once and passes
-each group to the adapter or service that uses it. If you pass nothing, nothing changes. The models
-are generated from the settings schemas of the themes that use them, under
-`rdf_persistence/model/technical/` (xref:architecture/generation.adoc#kinds[Two kinds of model]):
-`HttpSettings` in `core`, `LimitSettings` in `persistence`, `JwksSettings` and `DirectorySettings`
-in `access`, `EventSettings` in `events`, and `SseSettings` and `ToolkitSettings` in `api`
-(`api/rp_api_settings.yaml`). Every one of them imports from `rdf_persistence`. This page describes
-`develop` as of 2026-11-17 (the change `technical-models`), with the module paths of the thematic
-layout (the change `thematic-structure`).
+The toolkit's deployment values are generated settings models, one group for each concern, each
+slot defaulting to the value the toolkit always used. Your composition root builds them once and
+passes each group to the adapter or service that uses it. If you pass nothing, nothing changes.
+
+*Before you start:* a composition root that calls `install_service`, as in step 12 of the user
+manual, xref:user-manual/serve.adoc[Serve the application].
+
+Every group imports from `rdf_persistence`. The groups are generated from the settings schemas of
+the themes that use them, under `rdf_persistence/model/technical/`
+(xref:architecture/generation.adoc#kinds[Two kinds of model]).
 
 [#groups]
 == 1. The groups and their defaults
@@ -66,7 +66,7 @@ refused); every count and size is at least 1; the leeway is 0 to 300; the JWKS c
 |===
 
 `max_body_bytes` and `max_restore_bytes` are not here: they stay in `ServiceSettings`, the settings
-you give `install_service` (its arguments are in xref:architecture/api.adoc#serving[Serving it]). The protocol
+you give `install_service` (xref:user-manual/serve.adoc[Serve the application]). The protocol
 constants of the identity provider and the store (slugs, header names, paths) are not settings.
 
 [#composition-root]
@@ -121,7 +121,7 @@ from rdf_persistence import install_service
 
 kit = install_service(
     app,
-    # ... the other keyword arguments of step 12 (see below)
+    # ... the other keyword arguments of step 12
     store=store,
     verifier=verifier,
     identity=identity,
@@ -129,9 +129,6 @@ kit = install_service(
     toolkit=settings,
 )
 ----
-
-The other keyword arguments are those of xref:user-manual/serve.adoc[step 12 of "Build an
-application"].
 
 An adapter you build yourself, and the Redis event bus you hand to `install_service`, take their group
 from you. Give them the same objects as the kit:
@@ -203,7 +200,7 @@ if you want one, read it yourself and build the settings from its values.
 
 _My code passes a keyword that no longer exists._
 
-Every per-value keyword and module constant that a group replaces is gone: there are no two ways to
+Changed in 0.5.0: the groups replaced the per-value keywords and module constants. Every per-value keyword and module constant that a group replaces is gone: there are no two ways to
 say one value. A constructor given an old keyword raises `TypeError`; an old constant raises
 `ImportError`. `bootstrap` takes handler dependencies by keyword, so `bootstrap(limit=...)` raises
 `ValueError` ("no handler or observer names the dependency limit"), unless a handler declares a
@@ -248,7 +245,6 @@ The other old duration keywords (`interval`, `publish_timeout`, `keep_alive`) we
 |`PROJECTS`, `MACHINE_USERS`, `OWN_ORGANISATION`, `TOKEN_PATH` (`rdf_persistence.access.adapters.zitadel`) |the same names in `rdf_persistence.testkit.zitadel`; only the testkit used them
 |===
 
-Modules moved with it: the IRI and tenant-move modules, and the generated service records, left the
-domain layer; since the change `thematic-structure` they live in the `iris`, `tenancy` and other
-themes (xref:architecture/index.adoc#themes[Where a module lives]). `CHANGELOG.md` lists the old
-paths. Every name still imports from `rdf_persistence`, so only a deep import breaks.
+Changed after 0.5.0: the modules moved into themes, so the paths above are the new ones
+(xref:architecture/index.adoc#themes[Where a module lives]; `CHANGELOG.md` lists the old paths).
+Every name still imports from `rdf_persistence`, so only a deep import breaks.

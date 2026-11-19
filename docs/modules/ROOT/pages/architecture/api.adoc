@@ -1,21 +1,16 @@
 = A lightweight API over a triple store
-:description: How the toolkit serves CRUD and access control over a generic triple store with as little generated code as possible: options, the recommendation and what it means for the mapper.
-
-Status: *Accepted* (developer, 2026-11-05: decisions D-1 to D-3 of
-xref:architecture/open-decisions.adoc[the decisions of 2026-11-05]): options A and B together; option C
-kept as the backup for a later implementation. Research behind this page: the
-xref:background/soa/angles/service.adoc[service angle] of the background study, updated on 2026-11-05.
-Options A and B are *implemented* (stage 5 of the change `toolkit-v1-foundation`); <<serving>>
-describes the service as built, and <<anatomy>> traces one request through it.
-
-== The question
-
-_How light can the API over a triple store be?_
+:description: How the toolkit serves CRUD and access control over a triple store from the schema alone: one generic router, the contract a client meets, one request traced through the code, and why it is built this way.
 
 An application on this toolkit controls three things: its *model* (LinkML), how the model is
-*served* (an HTTP API), and *who may do what* (access control). Everything else should be generic.
-So: how light can the API be, which contract should it speak (plain JSON, JSON-LD, GraphQL), and
-does the API need generated Python classes and a mapper at all?
+*served* (an HTTP API), and *who may do what* (access control). Everything else is generic: one
+router, driven by the schema at run time, serves every aggregate root that has an `rp_path`, as
+plain JSON by default, and
+as JSON-LD or an RDF serialisation by content negotiation. No route is generated.
+
+How to wire the service is step 12 of the user manual,
+xref:user-manual/serve.adoc[Serve the application]. This page explains what the service does:
+<<serving>> describes the contract a client meets, <<anatomy>> traces one request through the code,
+and <<why>> gives the reasons.
 
 == What is generic and what is not
 
@@ -43,52 +38,7 @@ The router reads the model at run time, so adding a class to the model adds its 
 written only where an application has rules that are more than CRUD, and that code calls the same
 session.
 
-== Options
-
-[cols="1,4",options="header"]
-|===
-|Option |How it works
-|*A. JSON-LD documents* |One generic router over aggregates, scoped by tenant (`/{tenant_segment}/{t}/{rp_path}/{id}`; the path segment of each type is the annotation `rp_path`). `GET` returns the aggregate's graph as compacted JSON-LD (or Turtle); `PUT` replaces it under `If-Match`; a listing per type with equality filters and paging. Bodies are validated with SHACL. No Python classes on the API path.
-|*B. Plain JSON resources* |The same routes, typed by generated Pydantic classes; the JSON-LD context is linked by a `Link` header, so the plain JSON is also JSON-LD (current O-2). OpenAPI describes it.
-|*C. GraphQL with the JSON-LD context* |A GraphQL schema built at run time from LinkML (Ariadne, schema-first); queries compiled to SPARQL `CONSTRUCT`; mutations replace an aggregate and carry a `version` argument. Field names follow the JSON-LD context, as GraphQL-LD does.
-|*D. JSON:API from configuration* |A resource configuration derived from LinkML, in the semantic.works mu-cl-resources style; filtering, `include` and paging.
-|===
-
-[cols="1,2,2,2,1,2,2",options="header"]
-|===
-|Option |Generated artefacts |Maturity of the parts |Access check seam |JSON-LD native |Client ergonomics |Main risk
-|A |context, shapes |high (RDFLib, PyLD, FastAPI) |one dependency per route |yes |medium: JSON-LD aware clients |the listing and filter grammar is ours; nested parts need framing
-|B |classes, context, TypeScript types, shapes |high |one dependency per route |by `Link` |best: OpenAPI → typed client |two shapes to keep aligned (class and graph)
-|C |context; schema built at run time |parts mature, the RDF binding is ours |per resolver, per field |context reused; wire format is not JSON-LD |good |no HTTP ETags or status codes; the SPARQL compiler and its N+1 queries are ours
-|D |resource configuration |low (18★, Common Lisp, no releases) |a proxy |no |good for JSON:API clients |opaque ids instead of IRIs; dialect lock-in
-|===
-
-=== What already exists, and why none of it is the whole answer
-
-* *SPARQL Graph Store Protocol* is aggregate CRUD on its own (`GET`/`PUT`/`DELETE` a named graph),
-  but Fuseki sends no `ETag` and does not check `If-Match`
-  (https://github.com/apache/jena/issues/2305[Jena issue #2305], open), it has no listing, paging or
-  problem responses, and it authenticates only with its own users. A thin layer must hold the version
-  token, which the aggregate session already does.
-* *LinkedDataHub* (Java, Apache-2.0, active) shows the whole pattern done right: the Graph Store
-  Protocol with `If-Match` and SPARQL-based access control. It is an application, not a library.
-* *Prez* (Python, FastAPI, profile-driven) is read-only.
-* *Community Solid Server* has `ETag`/`If-Match` and document-level access rules, but no listing by
-  class, and Solid-OIDC instead of a plain OIDC provider.
-* *HyperGraphQL* is dormant; *GraphQL-LD* (Comunica) is query-only and runs in the client against an
-  open SPARQL endpoint.
-* *linkml-store* has no write routes, no authentication and no RDF backend. *linkml-openapi* emits a
-  complete OpenAPI 3.1 document from LinkML, with CRUD paths, paging, problem responses and
-  `application/ld+json`, but it is a few months old with one author and no runtime. A spike found it
-  cannot replace our own OpenAPI hook (<<linkml-openapi>>).
-
-No maintained Python library serves read-write CRUD with access control over a triple store from
-configuration. The parts to build it are mature.
-
-== Decision
-
-*A and B together: one generic router, driven by the schema, serving plain JSON by default and JSON-LD
-or Turtle by content negotiation.* No generated routes.
+A write, in short:
 
 [mermaid]
 ....
@@ -107,27 +57,26 @@ sequenceDiagram
 ....
 
 * *The wire stays simple.* Plain JSON with `id` as the IRI is also JSON-LD with the generated context,
-  so a JSON-LD client reads it as RDF. `Accept: text/turtle` returns the graph itself.
-* *The fewest generated artefacts.* Context and shapes are generated already. OpenAPI comes from a
-  small hook of our own over the schema (D-3); a spike showed linkml-openapi cannot replace it
-  (<<linkml-openapi>>).
+  so a JSON-LD client reads it as RDF; an RDF client asks for Turtle, N-Quads or another
+  serialisation (<<representations>>).
+* *Few generated artefacts.* The API path reads only the context, the frames, the shapes and the
+  OpenAPI component schemas that `rp-generate` writes; no route and no class is generated for it
+  (<<serving>>).
 * *Access control stays in one place*: one dependency per route action
   (xref:architecture/access-control.adoc[access control]).
-* *Option C is the backup* for a later implementation: when a client needs deep nested reads, a
-  read-only GraphQL endpoint over the same schema and context.
 
 [#mapper]
-== Do we need a mapper and Python classes?
+== Where classes and the mapper are needed
 
 _Does the API path need generated Python classes?_
 
-*Not on the API path.* With the recommendation, the router turns JSON into triples with the JSON-LD
-context and validates them with the shapes; reading returns the graph. Nothing there needs a class.
+*Not on the API path.* The router turns JSON into triples with the JSON-LD context and validates
+them with the shapes; reading returns the graph. Nothing there needs a class.
 
-*Yes for domain services* (D-2). Where an application writes rules that are more than CRUD (a check across
+*Yes for domain services.* Where an application writes rules that are more than CRUD (a check across
 two objects, a computed value), typed classes make that code safe and testable without a store. The
-generated Pydantic classes and the mapper (O-1) stay for that, and they are optional: an application
-with only CRUD needs none.
+generated Pydantic classes and the mapper serve that, and they are optional: an application with
+only CRUD needs none.
 
 [cols="2,1,1",options="header"]
 |===
@@ -137,99 +86,34 @@ with only CRUD needs none.
 |Client code |TypeScript types (generated) |no
 |===
 
-== Consequences
-
-* Decision O-1 narrows: the mapper serves domain services, not the API.
-* Decision O-2 widens: JSON-LD and Turtle by content negotiation, not only the `Link` header.
-* The listing and filter grammar is ours to define: equality filters, paging, sort, as in v1.
-* JSON-LD and Turtle by content negotiation are in v1; GraphQL (option C) is the backup, deferred.
-
 [#serving]
 == Serving it
 
-_How do I serve my schema over HTTP, and what does a client meet?_
+_What does a client meet?_
 
-An application serves its schema with one call to `install_service` in its composition root. The
-call builds the routes from the schema, so a class added to the model is served after a restart.
+An application serves its schema with one call to `install_service` in its composition root; the
+call, its arguments, what it does at start-up and the `ServiceKit` it returns are in
+xref:user-manual/serve.adoc[Serve the application]. The routes are built from the schema when the
+service starts, so a class added to the model is served after a restart. A route of the
+application's own checks its caller through the kit, so the toolkit's access rules apply to it too.
 
-[source,python]
-----
-from rdf_persistence import install_service
+*Start-up.* Before the application's own lifespan, the service runs its start-up steps in a fixed
+order (listed in xref:howto/tenant-stores.adoc#startup[What the start-up does]), and the order has
+reasons. The IRI policy is guarded first, because the sweep reads the access records through it:
+the effective policy is recorded in the system database's graph `{base}toolkit/iri-policy`, and a
+policy that differs stops the start with `IriPolicyChanged` naming the differing fields. The shared
+databases are migrated before the sweep, because the sweep decodes the access records in their
+current shape. A tenant whose migration fails is set aside and answers `503` `tenant-behind`, while
+the other tenants are served (xref:howto/migrate.adoc#startup[Change a schema that has stored data]).
 
-kit = install_service(
-    app,                                  # the application's FastAPI app
-    schema=Path("models/library.yaml"),   # the root schema
-    generated=library.domain.generated,   # the package rp-generate wrote
-    store=store, files=files, identity=identity, verifier=verifier,
-    rules=Path("models/library_roles.yaml"),
-    settings=settings,
-    migrations=Path("migrations"),        # the application's migration files
-    prefix="",                            # optional mount prefix
-)
-----
+*Routes.* The routes are listed in xref:user-manual/serve.adoc#routes[The routes]; `{t}` is the id in
+the tenant's IRI, as the IRI policy mints it (a UUID by default). Deleting a tenant needs
+`administer`.
 
-[cols="1,4",options="header"]
-|===
-|Argument |Meaning
-|`schema` |The application's root LinkML file.
-|`generated` |The package `rp-generate` wrote for it. The context, frames, shapes and `openapi-components.json` are read from its folder; a missing file stops the call with `OSError`.
-|`store`, `files`, `identity`, `verifier` |The adapters: a `Store` (Fuseki), a `FileStore` (S3), an `Identity` (the identity provider) and a `TokenVerifier` (JWT access tokens). The verifier exposes the `Iris` it mints principals with (`iris`); `install_service` refuses with `InvalidIri` when its principal template differs from the settings' policy.
-|`rules` |An `AccessRules`, or the path of the role-definitions file. A path is loaded and validated in the call, so an invalid file stops the service before anything touches the store.
-|`settings` |A `ServiceSettings`: `base` (the IRI under which identifiers and problem types are minted), `prefix` (the database and bucket name prefix), `tenant_segment`, `creator_role`, `roles_claim` (the token claim that carries the global roles, specific to the identity provider) `max_body_bytes` (the largest request body, default 1 MiB), `iri_policy` (how IRIs are minted; unset is the default policy) and `deployment` (the slug a template's `{deployment}` takes).
-|`migrations` |The folder of the application's migration files, required. The service loads its chain and the toolkit's own; a chain that is not valid stops the call with `InvalidMigration`.
-|`prefix` |A path prefix under which the routes are mounted.
-|===
-
-At start-up, before the application's own lifespan, the service creates the system database if it is
-missing, records the IRI policy or, when it differs from the recorded one, refuses to start with
-`IriPolicyChanged` naming the differing fields, then migrates the shared databases, runs the sweep and
-migrates the tenants. The record is the effective policy, kept in the system database's graph `{base}toolkit/iri-policy`. The policy is checked first
-because the sweep reads the access records through it. When the schema has an application class, the
-application database is created after the policy guard and before the migrations. The shared
-databases are migrated before the sweep, which decodes the access records in their current shape. A
-failed migration of a shared database stops the start with `MigrationFailed`. A tenant whose migration
-failed is set aside: its requests for data (its aggregates, files and listings) answer `503` with the
-problem `tenant-behind`. Its record can still be read, its grants changed and the tenant deleted. A rename answers `503`
-too, because it writes the tenant's root. A dump and the live sweep still work. The other tenants
-are served.
-`install_service` returns a `ServiceKit` (its tenancy, store, files and
-identity, and `bucket_of` for a tenant's bucket) for the application's own routes. Such a route
-checks its caller through the kit, so the toolkit's access rules apply to it too:
-
-[source,python]
-----
-@app.get("/libraries/{t}/scan-files/{scan_id}")
-async def get_file(t: str, scan_id: str, request: Request) -> Response:
-    checked = await kit.require_aggregate(
-        request.headers.get("authorization"), t, "scans", scan_id, Action.READ
-    )                                     # 401, 404 or 403 as a problem response, or an Authorised
-    bucket = await kit.bucket_of(checked.caller_access.tenant)
-    return Response(await kit.files.get(bucket, scan_id), media_type="application/octet-stream")
-----
-
-`kit.require(authorization, tenant_id, action)` does the same for an action in the tenant. Both
-return an `Authorised` carrying the caller's `principal` (for a domain service) and its access; `require_aggregate` also applies a prohibition on the aggregate and
-returns, in `checked_target`, the IRI it checked, which the route then acts on.
-
-*Routes* (PD-13), with `{t}` the id in the tenant's IRI, as the IRI policy mints it (a UUID by
-default):
-
-[cols="2,3",options="header"]
-|===
-|Route |Methods
-|`/{tenant_segment}` |`GET` the caller's tenants; `POST` a new tenant
-|`/{tenant_segment}/{t}` |`GET`, `PUT` the tenant's root object; `DELETE` the tenant (needs `administer`)
-|`/{tenant_segment}/{t}/grants` |`GET`, `PUT` the tenant's grant set
-|`/{tenant_segment}/{t}/label` |`PUT` the tenant's label
-|`/{tenant_segment}/{t}/{rp_path}` |`GET` a listing; `POST` a new aggregate (not for a service-written root)
-|`/{tenant_segment}/{t}/{rp_path}/{id}` |`GET`, `PUT`, `DELETE` one aggregate (`GET` only for a service-written root)
-|`/context.jsonld` |`GET` the generated JSON-LD context
-|===
-
-*Service-written roots* (PD-3). A root annotated `rp_writes: service`, and every root that includes
+*Service-written roots.* A root annotated `rp_writes: service`, and every root that includes
 `StoredFile`, gets the listing and the read but not the generic `POST`, `PUT` and `DELETE`: the
 record and the bytes of a file must change together, which only the consumer's own route can do, in
-a session (the route example above shows the kit calls). The routes are not mounted, so they are also absent from
+a session (xref:user-manual/serve.adoc#the-composition-root[the composition root] shows the kit calls). The routes are not mounted, so they are also absent from
 the OpenAPI document, and the framework answers 405 with `Allow: GET`. There is no way to opt back
 in. See xref:user-manual/files.adoc[Keep files].
 
@@ -245,7 +129,7 @@ them, 415 for a body in another type.
 one aggregate (read, create, replace and the tenant root) serves seven media types:
 `application/json` (the default), `application/ld+json`, `text/turtle`, `application/n-triples`,
 `application/n-quads`, `application/trig` and `application/rdf+xml`. On a tie the order is that
-one. JSON and JSON-LD are framed as before. The other five serialise the aggregate's triples, and
+one. JSON and JSON-LD are framed with the generated frames. The other five serialise the aggregate's triples, and
 N-Quads and TriG name the aggregate's own graph, so a reader gets the triples together with the
 graph they came from. A listing stays JSON and JSON-LD: a page carries its total and paging, which
 no RDF serialisation holds, so any other type answers 406. RDF/XML cannot write a predicate that has
@@ -253,7 +137,7 @@ no XML local name, nor a value holding a character XML 1.0 forbids; an aggregate
 answers 406 naming the type, and the other six forms still work. On a create or a replace the 406
 comes before anything is written, so the client is never told a stored write failed. The OpenAPI document lists each type as a string response.
 
-*Bodies are strict* (PD-14b). A body larger than `max_body_bytes`, or holding more than 10 000
+*Bodies are strict.* A body larger than `max_body_bytes`, or holding more than 10 000
 objects and list values together (a list of strings counts each string), is refused with 413. A plain-JSON body may use only its class's slot names and the JSON-LD
 keywords, at every level. Only the root and the owned parts reached from it, each typed with a class
 of the schema, may appear; any other subject is 422. An `internal` slot is refused in a body (422
@@ -278,7 +162,7 @@ store refuses (`ToolkitStore` in `persistence/services/store.py` turns the store
 `SparqlError`), or stored data that does not validate. A bad query string from the caller stays 400
 `bad-query`; so does a filter on an IRI-valued slot whose value is not an IRI SPARQL can carry.
 
-*Listings* (PD-15, PD-15a). A query takes `limit` (1 to 200, default 50), `offset` (default 0),
+*Listings.* A query takes `limit` (1 to 200, default 50), `offset` (default 0),
 `sort` (a slot name, descending with a leading `-`; by IRI when absent) and `?<slot>=<value>`
 equality filters. Filters are typed by the slot's range: an enum value is matched by its meaning
 IRI, a reference by its IRI, anything else as a typed literal. The `id`, bookkeeping, `internal` and
@@ -439,23 +323,53 @@ A `POST` takes the same path without step 6, with `modify` on the tenant instead
 aggregate in step 4, a minted IRI in step 10 (a body that names an `id` is refused) and
 `Session.add_graph` in step 13; it answers 201 with a `Location`.
 
+[#why]
+== Why it is built this way
+
+_Why one generic router, and not GraphQL, JSON:API or an existing server?_
+
+The developer took the decisions on 2026-11-05: D-1 to D-3 of the
+xref:architecture/open-decisions.adoc[decision log], which lists the options weighed.
+xref:adr/adr-003-fastapi-not-connexion.adoc[ADR-003] explains FastAPI over a spec-first library, and
+xref:adr/adr-005-representations.adoc[ADR-005] widened the representations to seven. The research
+behind them is the xref:background/soa/angles/service.adoc[service angle] of the background study.
+
+Four contracts were weighed: JSON-LD documents from a generic router (A), plain JSON typed by the
+generated classes with the context linked by a `Link` header (B), GraphQL with the JSON-LD context
+(C), and JSON:API from a configuration derived from LinkML (D). *A and B were taken together*:
+they need the fewest generated artefacts, their parts are mature (RDFLib, PyLD, FastAPI), and each
+route checks access through one dependency. C is the backup, for a client that needs deep nested
+reads: a read-only GraphQL endpoint over the same schema and context. It would bring no HTTP
+`ETag` or status codes, and its SPARQL compiler would be ours. D was too immature (one small Common
+Lisp project with no releases) and names resources by opaque ids instead of IRIs.
+
+Nothing that exists does the whole job. The SPARQL Graph Store Protocol gives aggregate CRUD, but
+Fuseki sends no `ETag` and does not check `If-Match`
+(https://github.com/apache/jena/issues/2305[Jena issue #2305]), and the protocol has no listing,
+paging or problem responses. LinkedDataHub does the whole pattern, but as an application, not a
+library; Prez is read-only; the Community Solid Server has no listing by class and needs Solid-OIDC;
+linkml-store has no write routes and no RDF backend. No maintained Python library serves read-write
+CRUD with access control over a triple store from configuration; the parts to build it are mature.
+
+The decisions narrowed and widened two earlier ones of the
+xref:architecture/index.adoc#decisions-taken[architecture overview]: the mapper serves domain
+services, not the API (O-1), and the API serves more than plain JSON by content negotiation (O-2).
+
 [#linkml-openapi]
-== linkml-openapi: not used (spike, task 5.6)
+=== linkml-openapi: not used
 
-A spike on 2026-11-06 ran linkml-openapi 0.12.0 on the toy library. *Verdict: do not depend on
-it.*
+The OpenAPI document is completed from the schema by a small hook of the toolkit's own (D-3), with
+component schemas from `gen-json-schema` (<<serving>>). A spike on 2026-11-06 ran linkml-openapi 0.12.0 on the toy library and found that it cannot
+replace the hook:
 
-* *Versions.* 0.12.0 is the newest release that installs beside `linkml` 1.12.1: from 0.13 on it
-  requires `pydantic` below 2.13, and the toolkit pins 2.14.2.
-* *Run unchanged*, it stops on the shared `contributor` slot: `Principal` is reachable from
-  several classes, and the tool wants one parent path per class.
-* *Restricted to the aggregate classes*, it emits a document we would not serve:
-** untenanted paths (`/books/\{id}`) and nested sub-resource routes;
-** only 404 and 422 problem responses;
-** no `ETag` or `If-Match` headers;
-** JSON bodies only;
-** the LinkML bookkeeping and the metamodel classes left in.
+* 0.12.0 is the newest release that installs beside `linkml` 1.12.1; from 0.13 on it requires
+  `pydantic` below 2.13, and the toolkit pins 2.14.2.
+* Run unchanged, it stops on the shared `contributor` slot: `Principal` is reachable from several
+  classes, and the tool wants one parent path per class.
+* Restricted to the aggregate classes, it emits a document the toolkit would not serve: untenanted
+  paths (`/books/\{id}`) and nested sub-resource routes, only 404 and 422 problem responses, no
+  `ETag` or `If-Match` headers, JSON bodies only, and the LinkML bookkeeping and metamodel classes
+  left in.
 
 Closing those gaps would need tool-specific annotations in every consumer's model, plus a
-post-processor: more code than our own hook. The toolkit therefore keeps the small OpenAPI hook of
-task 5.5, whose component schemas come from `gen-json-schema` (PD-24).
+post-processor: more code than the toolkit's own hook.

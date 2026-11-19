@@ -5,16 +5,19 @@ _What is a command? How do I make something happen after a book is approved? Whe
 who did what? Why did my observer not run? Can an observer write? How do other deployments or a
 browser follow my commits? Is a message delivered once?_
 
-This page shows how to build an event-driven application on the toolkit: a *command* asks for a
-change, a *handler* makes it, and an *observer* reacts to what was committed. It describes
-`develop` as of 2026-11-16 (the changes `message-bus` and `aggregate-events`; the second is
-<<relay>>). The terms tenant, aggregate, kit, session,
-unit of work and IRI policy, and the names `kit`, `t`, `mapper` and `Action` in the snippets, are
-those of xref:user-manual/index.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
-xref:howto/reverse-references.adoc[Find who points at a resource]; a workflow is the one of
-xref:howto/workflow.adoc[Put a resource through review]. `MessageBus`, `bootstrap`, `command`,
-`Work`, `Activity`, `Transition`, `UnitOfWork` and the errors are imported from `rdf_persistence`.
-The running example is the toy library: a librarian approves a book and shelves books.
+This guide builds an event-driven application on the toolkit: a *command* asks for a change, a
+*handler* makes it, and an *observer* reacts to what was committed. The second part, <<relay>>,
+carries the commits to other deployments and to browsers.
+
+It assumes the model of xref:user-manual/model.adoc[step 3], the unit of work of
+xref:user-manual/store-and-read.adoc[step 8], the service kit (`kit`) of
+xref:user-manual/serve.adoc#the-service-kit[step 12] and the fakes of
+xref:user-manual/test.adoc[step 13]. A *collaboration* (`collab`) is opened as in
+xref:howto/reverse-references.adoc[Find who points at a resource]; the workflow is the one of
+xref:howto/workflow.adoc[Put a resource through review]. In the snippets, `t` is the tenant id
+taken from the path; `Action`, `MessageBus`, `bootstrap`, `command`, `Work`, `Activity`,
+`Transition`, `UnitOfWork` and the errors are imported from `rdf_persistence`. The running example
+is the toy library: a librarian approves a book and shelves books.
 
 == The parts
 
@@ -48,7 +51,8 @@ bus.handle(command, collab) → handler → commit + activity record → observe
 
 Put each use case that changes state in a module of its own, `<domain>_activities.yaml`, that
 imports the domain module; the domain module never imports it, so the stored model stays free of
-process concerns (this is the rule P-0001 of this repository, `docs/rules/`). The toy's is `books_activities.yaml`, shown as it is in the repository: a module also needs its `title`, `description`, `prefixes` and `module_kind`.
+process concerns. The toy's is `books_activities.yaml`, shown as it is in the repository: a module
+also needs its `title`, `description`, `prefixes` and `module_kind`.
 
 [source,yaml]
 ----
@@ -100,7 +104,8 @@ slots:
   If a command is about several books, declare a slot of your own for them, as `shelf_note` is a
   slot of its own.
 * *Add the module to the root schema*: list `books_activities` under its `imports` (as for any
-  module, see xref:user-manual/model.adoc[step 3]), then regenerate (`make generate`). The module declares
+  module, see xref:user-manual/model.adoc[step 3]), then regenerate
+  (xref:user-manual/generate.adoc[step 4]). The module declares
   no stored class, so it needs no generation target of its own.
 * *Model no event classes.* The events are the toolkit's fixed set of PROV generations and
   invalidations; an observer reads them from the activity.
@@ -353,7 +358,8 @@ Terms used below:
   record, with the store's own clock. It says "not yet relayed"; the relay replaces it by a
   "relayed" time.
 * *Application database*: the database for data that belongs to no tenant (see
-  xref:user-manual/index.adoc[Build an application]). It has a relay mark too, but no browser follows it.
+  xref:howto/application-data.adoc[Keep data that belongs to no tenant]). It has a relay mark too,
+  but no browser follows it.
 * *Consumer group*: a Redis Streams name under which a reader shares the position in the stream.
   Each deployment reads the stream as one group, so it gets every entry once and the entries of
   one deployment are not split across others.
@@ -377,8 +383,8 @@ Terms used below:
   the order the store applied the commits. Nothing is promised across aggregates, and a store clock
   stepped back can misorder one pair of changes.
 * *Crash safety.* The mark is in the store with the record, so a commit is never lost to the relay:
-  a process that stops after the commit is caught up by the next one. Only records marked by this
-  version are relayed; history from before is not published.
+  a process that stops after the commit is caught up by the next one. Only records marked by 0.4.0
+  or later are relayed; history from before is not published.
 * A record that cannot be decoded is marked as failed and logged at ERROR; the relay goes on with
   the next one.
 * With no event bus the relay still runs: it feeds the server-sent events of <<sse>>.
@@ -391,9 +397,8 @@ or later*: redelivery uses a command older servers lack, and the consumer stops 
 `StreamClaimUnsupportedError` on one. A consumer without the extra imports the toolkit unchanged;
 only `rdf_persistence.events.adapters.redis_events` needs it.
 
-In the examples, the `...` comments stand for what
-xref:user-manual/serve.adoc[Serve the application] in _Build an application_ passes to
-`ServiceSettings` and `install_service`.
+In the examples, the `...` comments stand for what xref:user-manual/serve.adoc[step 12] passes
+to `ServiceSettings` and `install_service`.
 
 [source,python]
 ----
@@ -562,7 +567,7 @@ applied the commits; nothing is promised across aggregates.
 |Lost
 |The broker trims entries older than that after each publish. A receiver that comes back later misses them, and nothing republishes them. Keep the outage shorter, or read the provenance graph.
 
-|Records from before this version
+|Records from before 0.4.0
 |Lost
 |They have no pending mark, so the relay never publishes them and no browser can resume to them.
 
@@ -580,7 +585,7 @@ applied the commits; nothing is promised across aggregates.
 
 |Several instances of one deployment
 |Repeated and missed
-|Each instance runs a relay, so each publishes every activity: the broker carries it twice (RISK-4). A browser sees only the activities relayed by the instance it is connected to. Run one instance: see <<relay-limits>>.
+|Each instance runs a relay, so each publishes every activity: the broker carries it twice. A browser sees only the activities relayed by the instance it is connected to. Run one instance: see <<relay-limits>>.
 |===
 
 A change that applied but returned the false `Conflict` is relayed anyway (the change happened),
@@ -595,16 +600,16 @@ process only. Make an observer react only to the kinds of activity it does not i
 [#sse]
 === Follow a tenant in the browser
 
-The route `GET {prefix}/tenants/{tenant}/rp-events` answers `text/event-stream`. `{prefix}` is the
-`prefix` argument of `install_service` (empty by default), and `tenants` is
-`settings.tenant_segment`. The route needs no broker and no extra: the relay feeds it.
+The route `GET {prefix}/{tenant_segment}/{t}/rp-events` answers `text/event-stream`. `{prefix}` is
+the `prefix` argument of `install_service` (empty by default), and `{tenant_segment}` is
+`settings.tenant_segment`, `libraries` in the toy. The route needs no broker and no extra: the relay feeds it.
 
 [source,bash]
 ----
 # the sender above mounted its routes under prefix="/api"
 curl -N -H "Authorization: Bearer $TOKEN" \
      -H "Last-Event-ID: urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c" \
-     https://library.example.org/api/tenants/t1/rp-events
+     https://library.example.org/api/libraries/t1/rp-events
 ----
 
 The segment `rp-events` is under the toolkit's reserved `rp-` prefix, which the generator's
@@ -642,7 +647,7 @@ data: {"id":"urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c",
 * *Resume with `Last-Event-ID`.* Send the `id` of the last event you got and the route sends what
   was relayed after it, then live events. The 7-day window is counted from the relay marks in the
   store (when the activity was relayed), so it holds with no broker and does not depend on the
-  broker's retention. An id the server does not know, one from before this feature, or one older
+  broker's retention. An id the server does not know, one from before 0.4.0, or one older
   than the window gets one `event: reset` with an empty `data:` line (an `EventSource`-style client
   does dispatch it). The client reloads what it shows, then keeps reading. A `Last-Event-ID` that
   is not an activity id (not `urn:uuid:` and a UUID) is treated as unknown: one `reset`, then live
@@ -666,7 +671,7 @@ leak into access logs.
 ----
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 
-const url = "https://library.example.org/api/tenants/t1/rp-events";
+const url = "https://library.example.org/api/libraries/t1/rp-events";
 const seen = new Set<string>();          // ids already handled
 let lastId: string | undefined;          // where to resume
 
@@ -711,10 +716,10 @@ where the page can read it back.
 
 * *One instance.* Run one instance of a deployment: one process running the service (one uvicorn
   worker, one pod). Several workers or pods each run a relay, and each would publish every
-  activity (RISK-4); each browser would also see only the activities its own instance relayed.
+  activity; each browser would also see only the activities its own instance relayed.
 * *What a message reveals.* It names the IRIs of the aggregates, their versions, the principal, the
   time and the command's own slots that are not `payload`. Every deployment on the broker sees all
   of it, so the broker is inside your trust boundary. On server-sent events the filter removes the
   aggregates a reader may not see; an IRI that a slot names (a comment's) stays, as a reference.
-* *No history before the feature*, no replay of old records, and a restore never re-publishes the
+* *No history before 0.4.0*, no replay of old records, and a restore never re-publishes the
   source's activities.

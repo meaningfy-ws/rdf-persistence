@@ -5,23 +5,24 @@ _How do I group resources I do not own? Can a shelf list its books without holdi
 membership follow a rule? Which collections is this book in? How do I delete a shelf together with
 its books?_
 
-This page shows how to keep a collection of aggregates that live on their own. It describes
-`develop` as of 2026-11-14 (the change `collaboration-and-reference-collections`). The terms
-tenant, aggregate, kit, session and IRI policy, and the names `kit`, `t`, `session`, `mapper` and
-`Action` in the snippets, are those of xref:user-manual/index.adoc[Build an application]; a
+This guide keeps a collection of aggregates that live on their own. It assumes a model you
+generate (xref:user-manual/model.adoc[step 3], xref:user-manual/generate.adoc[step 4]), aggregates
+you save with a session and a unit of work (`session`, `mapper`:
+xref:user-manual/store-and-read.adoc[step 8]), and the service kit (`kit`) of a served application
+whose routes check their caller (xref:user-manual/serve.adoc#the-service-kit[step 12]). A
 *collaboration* (`collab`) is opened as in
 xref:howto/reverse-references.adoc[Find who points at a resource]. `UnitOfWork`, `MembershipRule`,
-`SlotEquality`, `MemberList` and the errors are imported from `rdf_persistence`.
+`SlotEquality`, `MemberList`, `Action` and the errors are imported from `rdf_persistence`.
 
 A *reference collection* is an aggregate of your own schema that names other aggregates of one
 class as its *members*. It holds their IRIs, never their triples: a member stays its own aggregate,
 with its own version and its own access rules. The running example is the toy library: a shelf is a
-collection of books.
+collection of books (`Shelf` in `tests/fixtures/library/books.yaml`).
 
 == Make a class a collection
 
 Import the module `rp_collections` and mix `ReferenceCollection` into an aggregate root, then
-regenerate (`make generate`):
+regenerate (xref:user-manual/generate.adoc[step 4]):
 
 [source,yaml]
 ----

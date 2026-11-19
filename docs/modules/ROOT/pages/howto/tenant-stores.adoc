@@ -8,12 +8,15 @@ A tenant is one database. By default every tenant database lives on the one trip
 you give `install_service`. You can also wire *named stores* beside it, for example a server that
 holds one client's tenants, and create a tenant on one of them. The toolkit records the store's
 name in the tenant's access record and from then on reads, writes, sweeps, migrates, dumps and
-deletes that tenant only on its own store. This page shows how to wire the stores, how to choose
-one, what follows the tenant, and the rules a deployment with several stores must keep. It
-describes `develop` as of 2026-11-15 (the change `tenant-stores`).
+deletes that tenant only on its own store. Every store runs the same product (Fuseki). The files of
+every tenant stay in the one object store you wire, whatever triple store its database is on.
 
-Every store runs the same product (Fuseki). The files of every tenant stay in the one object store
-you wire, whatever triple store its database is on.
+*Before you start:* a composition root that calls `install_service` (step 12 of the user manual,
+xref:user-manual/serve.adoc[Serve the application]), and the way tenants are created
+(xref:user-manual/tenants.adoc[Create tenants]).
+
+This page shows how to wire the stores, how to choose one, what follows the tenant, and the rules a
+deployment with several stores must keep.
 
 [#wire]
 == 1. Wire the stores
@@ -38,9 +41,7 @@ async with (
     )
 ----
 
-The composition root is described in the user manual, step 12:
-xref:user-manual/serve.adoc[Serve the application]. A
-service with one store passes no `stores` and sees no change.
+A service with one store passes no `stores` and sees no change.
 
 A store name:
 
@@ -63,7 +64,7 @@ outside what the toolkit is tested for.
 database whose name starts with `{prefix}-t-` and that no access record of *this* deployment names,
 on *every* wired store (see <<startup>>). If another deployment uses the same `prefix` (a
 `ServiceSettings` field) on a server you wire, its tenant databases are dropped at your next start.
-This is the same rule as for the default store today; with several stores it reaches further.
+The rule is the one the default store follows; with several stores it reaches further.
 Give each deployment its own prefix, and never wire a server another deployment owns unless the
 prefixes differ.
 
@@ -80,8 +81,8 @@ async with kit.session(summary.id, principal) as session:     # opens on client-
 ----
 
 `store` defaults to `"default"`. A tenant created on `default` gets an access record with no store
-name, exactly as before; a record with no store name means `default`, so records written before
-this change need no migration. The access record itself always lives in the system database, on
+name, and a record with no store name means `default`, so records written before 0.4.0 need no
+migration. The access record itself always lives in the system database, on
 `default`.
 
 *The generic HTTP create route always uses `default`.* `POST /{tenant_segment}` takes no store,
@@ -252,9 +253,9 @@ tenant and both stores, and leaves the tenant alone.
   nothing else.
 
 The start-up functions you may call yourself (`migrate_shared`, `sweep`, `migrate_tenants`) keep
-their signatures. `migrate_shared` uses the `store` you pass (the `default` store, `kit.store`).
-`sweep` and `migrate_tenants` take their stores from `kit.tenancy`; their `store` argument is kept
-for compatibility and unused, so pass `kit.store` as before.
+the signatures they had before 0.4.0. `migrate_shared` uses the `store` you pass (the `default`
+store, `kit.store`). `sweep` and `migrate_tenants` take their stores from `kit.tenancy`; their
+`store` argument is kept for compatibility and unused, so pass `kit.store`.
 
 [#startup]
 == 9. What the start-up does
@@ -275,12 +276,12 @@ xref:howto/application-data.adoc#startup[Start-up]).
    `StoreUnavailable` here, and the start stops before anything is changed on any store;
 .. log `misplaced-tenant` for each record whose database is on another store than its own;
 .. if the system database was just created and tenant databases already exist on a store, skip the
-   rest with a warning, as before;
+   rest with a warning;
 .. finish each interrupted deletion on the tenant's own store;
 .. drop each `{prefix}-t-…` database, on any wired store, that no access record names; then the
-   orphan buckets, as before.
+   orphan buckets.
 . *Migrate the tenants* (`migrate_tenants`), each on its own store. A tenant whose migration fails
-  is set aside and answers 503 (`tenant-behind`), as before; a tenant whose store is not wired
+  is set aside and answers 503 (`tenant-behind`); a tenant whose store is not wired
   stops the start with `StoreNotWired`, even when your own start-up skipped the sweep.
 
 Before any of this, building the kit refuses a bad `stores` mapping with `ValueError` (<<wire>>).

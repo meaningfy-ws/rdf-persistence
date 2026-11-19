@@ -4,23 +4,24 @@
 _Can a reviewer comment without editing? Who sees a comment? How do I reply? Can a comment point
 at another book? What happens to the comments when the book is deleted?_
 
-This page shows how to keep a discussion on an aggregate. It describes `develop` as of 2026-11-14
-(the change `collaboration-and-reference-collections`). The terms tenant, aggregate, kit, session
-and IRI policy, and the names `kit`, `t` and `Action` in the snippets, are those of
-xref:user-manual/index.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
-xref:howto/reverse-references.adoc[Find who points at a resource]. `Comment`, `Motivation` and the
-errors are imported from `rdf_persistence`, except `LookupError`, which is Python's own.
+This guide keeps a discussion on an aggregate. It assumes the model of
+xref:user-manual/model.adoc[step 3], the roles of xref:user-manual/access.adoc[step 11] and the
+service kit (`kit`) of xref:user-manual/serve.adoc#the-service-kit[step 12], whose routes check
+their caller with `kit.require_aggregate`. A *collaboration* (`collab`) is opened as in
+xref:howto/reverse-references.adoc[Find who points at a resource]. In the snippets, `t` is the
+tenant id taken from the path; `Action`, `Comment`, `Motivation` and the errors are imported from
+`rdf_persistence`, except `LookupError`, which is Python's own.
 
 A *comment* is a remark on one aggregate, its *target*. It is an aggregate of its own, a W3C Web
-Annotation (`oa:Annotation`), and the target is never written. The toolkit writes and reads
-comments itself: no generic route serves them, because a comment can be limited to an audience.
-A generic route answers only for an aggregate of its own class, so none answers for a comment,
-whatever the IRI policy: asked for one by its id, it says 404, as for a missing aggregate. So you write your own routes for posting and for reading, with the kit, as for the other
-collaboration calls. The running example is the toy library: a reviewer comments on a book.
+Annotation (`oa:Annotation`), and the target is never written. No generic route serves comments,
+because a comment can be limited to an audience: asked for a comment by its id, a generic route
+answers 404, as for a missing aggregate. You write your own routes for posting and reading, with
+the collaboration. The running example is the toy library: a reviewer comments on a book.
 
 == Add comments to your schema
 
-Import the module `rp_discussion`, then regenerate (`make generate`):
+Import the module `rp_discussion` (the toy imports it in `library.yaml`), then regenerate
+(xref:user-manual/generate.adoc[step 4]):
 
 [source,yaml]
 ----
@@ -60,8 +61,8 @@ Posting needs the action `annotate` on the target.
   the action.
 
 The role definition is one more line in the roles file you give the access rules
-(the user manual, step 11: xref:user-manual/access.adoc#define-the-roles[Define the roles]; the toy's is `library_roles.yaml`,
-which already defines `librarian` and `reader`):
+(xref:user-manual/access.adoc#define-the-roles[step 11]; the toy's is `library_roles.yaml`, which
+already defines `librarian` and `reader`):
 
 [source,yaml]
 ----
@@ -98,8 +99,9 @@ async with kit.collaboration(checked) as collab:
 `b2_iri` is the IRI of another book of the tenant. `librarian` is a role the toy's roles file
 defines; a name it does not define raises `UnknownRole`.
 
-`collab.comment(iri, text, audience=(), references=(), reply_to=None)` returns the IRI of the new
-comment. `comment` and `thread` check the caller's rights again, themselves, on the IRI they are
+`collab.comment(iri, text, *, audience=(), references=(), reply_to=None, command=None)` returns
+the IRI of the new comment; `command` carries a command sent through the message bus
+(xref:howto/event-driven.adoc[React to changes]). `comment` and `thread` check the caller's rights again, themselves, on the IRI they are
 given (`annotate` and `read`). So one collaboration serves the other aggregates of the tenant
 too, each with its own check.
 
