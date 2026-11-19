@@ -33,7 +33,7 @@ after an attack; until then it is the planner's own score.
 | 2 | `release-pipeline` | SMALL | none | delivered 2026-11-13 (#86, v0.2.0) | none | versioning, release notes, the 0.2.0 cut |
 | 3 | `atomic-commit` | MEDIUM (2 stages) | #83, #76 | delivered 2026-11-13 (#91, #93, #94) | none | `Session.transaction()`: one guarded update request for many aggregates; `UnitOfWork.remove`/`version`; the root limit and batch mode; the tenant-root comparison |
 | 4 | `collaboration-and-reference-collections` | LARGE (4 stages) | #78, #79, #80, #81 | delivered 2026-11-14 (#95, #98, #99, #100, #101) | 3 | reverse references, reference collections, discussion, workflow, the `annotate` action |
-| 5 | `cross-aggregate-unique-keys` | MEDIUM | none | yes | 3 | key guards added to the transaction; `KeyConflict` |
+| 5 | `cross-aggregate-unique-keys` | MEDIUM | none | delivered 2026-11-14, archived | 3 | key guards added to the transaction; `KeyConflict` |
 | 6 | `tenant-dump-restore` | MEDIUM | none | delivered 2026-11-13 (#89) | none | the dump format (manifest with schema version), restore into a new tenant |
 | 7 | `app-level-data` | MEDIUM | none | delivered 2026-11-14 (#102) | none | the application database and its aggregates |
 | 8 | `tenant-stores` | MEDIUM (2 stages) | none | delivered 2026-11-16 (#122, #123), accepted, archived | 6 (copies are dump + restore) | several wired stores; the access record names a tenant's store |
@@ -44,6 +44,25 @@ after an attack; until then it is the planner's own score.
 | 13 | `typescript-client` | LARGE | none | no | 2 | the generated client |
 | 14 | `fine-grained-access` | VERY LARGE (staged) | none | no | 10 | OpenFGA, property- and triple-level access |
 | — | `graphql-read-api` | LARGE | none | no | — | deferred by the developer (2026-11-06) |
+
+### Where the backlog stands (2026-11-19)
+
+Every row of the table above is delivered and archived, except 12 to 14 and `graphql-read-api`.
+Work outside the table, all delivered and archived: `test-suite-grooming`, `align-project-setup`
+(2026-11-16); `manual-revision-notes`, `otel-observability`, `technical-models` (2026-11-17);
+`generator-package` (2026-11-18); `documentation-improvements`, `thematic-structure`,
+`target-kind-from-the-model` (#188) and `domain-model-per-theme` (#191) (2026-11-19, released as
+0.7.0). In flight now:
+
+| Id | Appetite | PLAN | Next |
+|---|---|---|---|
+| `test-debt-paydown` | LARGE (three stages, one PR) | gated 9.2 (2026-11-17) | ready for an epic session |
+| `ldes-view` | MEDIUM | no | a shaping session |
+| `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
+
+Open follow-ups, each under the floor of its review: #125 (`aggregate-events`), #189
+(`target-kind-from-the-model`), #192 (`domain-model-per-theme`). Not shaped yet; the consumer's
+upgrade to 0.7.0 is planned in MWBv2 (D-12).
 
 ### Why this order
 
@@ -85,7 +104,7 @@ review items are decisions the lead took on the developer's behalf and the devel
 | `boundary-owned-hint` | 9 | delivered, archived | none |
 | `release-pipeline` | 8 → 9 | delivered, archived | PD-1: `main` is moved to the tag by hand after each release (`GITHUB_TOKEN` cannot push workflow changes); PD-4: CHANGELOG kept by hand, release-please writes only the notes; PD-5: PyPI jobs removed; PD-9: 0.2.0 cut by the first run |
 | `atomic-commit` | 8 → 8.5 → fixed | delivered, archived | DEC-4: default limit 500 roots and batch mode built now; the all-or-nothing behaviour change ships without a flag; #76 folded in |
-| `cross-aggregate-unique-keys` | 8 → 9 | ready (`atomic-commit` is delivered) | PD-2: an unscoped `unique_keys` declared on a root now fails generation; PD-11: duplicates are found by an operator call `key_duplicates()`, not by generation (generation never sees data); PD-8/PD-9: 409 `key-conflict`, version conflicts reported first |
+| `cross-aggregate-unique-keys` | 8 → 9 | delivered, archived | PD-2: an unscoped `unique_keys` declared on a root now fails generation; PD-11: duplicates are found by an operator call `key_duplicates()`, not by generation (generation never sees data); PD-8/PD-9: 409 `key-conflict`, version conflicts reported first |
 | `tenant-dump-restore` | 7.5 → 9 | delivered, archived | DEC-1: restore always into a new tenant; DEC-2: the tenant id is rewritten in every IRI, policies that glue the id to other characters are refused; DEC-4: grants not dumped, the restorer is the only grantee |
 | `collaboration-and-reference-collections` | 8 → 8.5 → fixed | delivered, archived | a `Collaboration` service opened from the kit (not `session.*` methods); comments and transition records are toolkit-written aggregates no generic route serves; replies target the aggregate; undefined transition → `Conflict`, state changed by a plain write → `Forbidden`; deleting a resource deletes its comments and records |
 | `app-level-data` | 7.8 → 9 | delivered, archived | DEC-1: a database of its own, `{prefix}-app`; DEC-2: access from global roles at level `system` only, so an application editor can edit every tenant; DEC-3: Python only (`require_application`, `application_iri`, `application_session`); the application IRI never answers as a tenant; the annotation is inherited along `is_a`; a session refuses the other space's classes by `rdf:type` |
