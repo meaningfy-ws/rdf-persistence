@@ -17,6 +17,10 @@ from rdf_persistence.access.services.generated.rp_access_services import (
 )
 from rdf_persistence.access.services.identity import Identity
 from rdf_persistence.access.services.tokens import TokenVerifier
+from rdf_persistence.collaboration.services.collaboration import Collaboration
+from rdf_persistence.collaboration.services.discussion import dependents as discussion_dependents
+from rdf_persistence.collaboration.services.workflows import Workflows
+from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import (
     DatabaseGone,
     MessageLimitExceeded,
@@ -45,10 +49,15 @@ from rdf_persistence.core.services.artifacts import CONTEXT_FILE
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import error_type, log_extra
 from rdf_persistence.entrypoints.auth import Gate
+from rdf_persistence.events.services.event_hub import EventHub
+from rdf_persistence.events.services.events import EventBus, context_link
+from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
+from rdf_persistence.events.services.relay import Relay
 from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.domain.layout import system_database_name
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.iris.services.iris import IdSource, Iris, draw_id
+from rdf_persistence.messaging.services.messagebus import MessageBus
 from rdf_persistence.migrations.services.migrations import chain_of, current_version
 from rdf_persistence.persistence.services.decoding import error_text
 from rdf_persistence.persistence.services.listing import Listings
@@ -69,17 +78,9 @@ from rdf_persistence.schema.services.schema_structure import (
 from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.services import file_removal
 from rdf_persistence.services.aggregates import Aggregates
-from rdf_persistence.services.collaboration import Collaboration
-from rdf_persistence.services.discussion import dependents as discussion_dependents
 from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.event_hub import EventHub
-from rdf_persistence.services.events import EventBus, context_link
-from rdf_persistence.services.generated.service.rp_service import Authorised, EventEnvelope
+from rdf_persistence.services.generated.service.rp_service import Authorised
 from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
-from rdf_persistence.services.messagebus import MessageBus
-from rdf_persistence.services.relay import Relay
-from rdf_persistence.services.workflows import Workflows
-from rdf_persistence.services.write_guards import WriteGuards
 from rdf_persistence.tenancy.services import tenant_dump, tenant_sweep
 from rdf_persistence.tenancy.services.generated.rp_tenancy_services import (
     TenantDump,

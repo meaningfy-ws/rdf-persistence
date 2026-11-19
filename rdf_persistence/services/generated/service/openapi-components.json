@@ -38,42 +38,6 @@
       "title": "Authorised",
       "type": "object"
     },
-    "EventEnvelope": {
-      "additionalProperties": false,
-      "description": "What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it.",
-      "properties": {
-        "activity_class": {
-          "description": "The IRI of the class of the activity the message carries.",
-          "format": "uri",
-          "type": "string"
-        },
-        "context": {
-          "description": "A link to the JSON-LD context that reads the message body.",
-          "type": "string"
-        },
-        "origin": {
-          "description": "The deployment that published the message, as its `deployment` setting names it.",
-          "type": "string"
-        },
-        "tenant": {
-          "description": "The IRI of the tenant, or of the application, the activity happened in.",
-          "format": "uri",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "tenant",
-        "origin",
-        "activity_class",
-        "context"
-      ],
-      "title": "EventEnvelope",
-      "type": "object"
-    },
     "LabelUpdate": {
       "additionalProperties": false,
       "description": "The body that replaces the label of a tenant.",
@@ -92,34 +56,6 @@
         "label"
       ],
       "title": "LabelUpdate",
-      "type": "object"
-    },
-    "MemberList": {
-      "additionalProperties": false,
-      "description": "The members of a collection that the caller may read, and the number of members left out because the caller may not read them.",
-      "properties": {
-        "hidden_count": {
-          "description": "The number of referrers or members the caller may not read, so are not listed.",
-          "minimum": 0,
-          "type": "integer"
-        },
-        "member_iris": {
-          "description": "The IRIs of the members of a collection.",
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "hidden_count"
-      ],
-      "title": "MemberList",
       "type": "object"
     },
     "Problem": {
@@ -208,63 +144,6 @@
       ],
       "title": "ProblemSlug",
       "type": "string"
-    },
-    "Referrer": {
-      "additionalProperties": false,
-      "description": "One aggregate that points at another: its IRI, its schema class and the slot that holds the reference.",
-      "properties": {
-        "referrer": {
-          "description": "The IRI of the aggregate that holds the reference.",
-          "format": "uri",
-          "type": "string"
-        },
-        "referrer_class": {
-          "description": "The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class.",
-          "type": "string"
-        },
-        "referrer_slot": {
-          "description": "The name of the slot that holds the reference; its IRI when the schema does not know the slot.",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "referrer",
-        "referrer_class",
-        "referrer_slot"
-      ],
-      "title": "Referrer",
-      "type": "object"
-    },
-    "ReferrerList": {
-      "additionalProperties": false,
-      "description": "The aggregates that point at one resource and that the caller may read, and the number of referrers left out because the caller may not read them.",
-      "properties": {
-        "hidden_count": {
-          "description": "The number of referrers or members the caller may not read, so are not listed.",
-          "minimum": 0,
-          "type": "integer"
-        },
-        "referrers": {
-          "description": "The aggregates that point at the resource, ordered by IRI and slot.",
-          "items": {
-            "$ref": "#/components/schemas/Referrer"
-          },
-          "type": "array"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "hidden_count"
-      ],
-      "title": "ReferrerList",
-      "type": "object"
     },
     "TenantCreate": {
       "additionalProperties": false,

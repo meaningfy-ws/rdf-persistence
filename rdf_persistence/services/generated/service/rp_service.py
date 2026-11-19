@@ -215,33 +215,6 @@ class ProblemKind(ConfiguredBaseModel):
         return v
 
 
-class Referrer(ConfiguredBaseModel):
-    "One aggregate that points at another: its IRI, its schema class and the slot that holds the reference."
-    referrer: str = Field(default=..., title="Referrer", description="The IRI of the aggregate that holds the reference.")
-    referrer_class: str = Field(default=..., title="Referrer class", description="The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class.")
-    referrer_slot: str = Field(default=..., title="Referrer slot", description="The name of the slot that holds the reference; its IRI when the schema does not know the slot.")
-
-
-class ReferrerList(ConfiguredBaseModel):
-    "The aggregates that point at one resource and that the caller may read, and the number of referrers left out because the caller may not read them."
-    referrers: Optional[list[Referrer]] = Field(default=None, title="Referrers", description="The aggregates that point at the resource, ordered by IRI and slot.")
-    hidden_count: int = Field(default=..., title="Hidden count", description="The number of referrers or members the caller may not read, so are not listed.", ge=0)
-
-
-class MemberList(ConfiguredBaseModel):
-    "The members of a collection that the caller may read, and the number of members left out because the caller may not read them."
-    member_iris: Optional[list[str]] = Field(default=None, title="Member IRIs", description="The IRIs of the members of a collection.")
-    hidden_count: int = Field(default=..., title="Hidden count", description="The number of referrers or members the caller may not read, so are not listed.", ge=0)
-
-
-class EventEnvelope(ConfiguredBaseModel):
-    "What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it."
-    tenant: str = Field(default=..., title="Tenant", description="The IRI of the tenant, or of the application, the activity happened in.")
-    origin: str = Field(default=..., title="Origin", description="The deployment that published the message, as its `deployment` setting names it.")
-    activity_class: str = Field(default=..., title="Activity class", description="The IRI of the class of the activity the message carries.")
-    context: str = Field(default=..., title="Context", description="A link to the JSON-LD context that reads the message body.")
-
-
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 TenantCreate.model_rebuild()
@@ -249,7 +222,3 @@ LabelUpdate.model_rebuild()
 Authorised.model_rebuild()
 Problem.model_rebuild()
 ProblemKind.model_rebuild()
-Referrer.model_rebuild()
-ReferrerList.model_rebuild()
-MemberList.model_rebuild()
-EventEnvelope.model_rebuild()

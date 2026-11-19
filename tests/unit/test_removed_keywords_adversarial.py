@@ -15,12 +15,12 @@ import pytest
 import rdf_persistence
 from rdf_persistence.access.adapters.jwks import JwksTokenVerifier
 from rdf_persistence.access.adapters.zitadel import ZitadelIdentity
-from rdf_persistence.adapters.redis_events import RedisEventBus
+from rdf_persistence.events.adapters.redis_events import RedisEventBus
+from rdf_persistence.events.services.event_hub import EventHub
 from rdf_persistence.files.adapters.s3 import S3FileStore
+from rdf_persistence.messaging.services.messagebus import MessageBus
 from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.persistence.services.mapper import Mapper
-from rdf_persistence.services.event_hub import EventHub
-from rdf_persistence.services.messagebus import MessageBus
 
 REMOVED = {
     "retention",
@@ -46,8 +46,8 @@ REMOVED = {
 # a name that is still a parameter for a reason that is not a settings value, found by the scan:
 # the service function the events route calls with the group's values, and a byte-counting helper
 ALLOWED = {
-    ("rdf_persistence.services.event_stream", "event_stream"),
-    ("rdf_persistence.services.event_stream", "_live"),
+    ("rdf_persistence.events.services.event_stream", "event_stream"),
+    ("rdf_persistence.events.services.event_stream", "_live"),
     ("rdf_persistence.tenancy.services.tenant_dump", "_Counted"),
     ("rdf_persistence.tenancy.services.tenant_dump", "_Budget"),
 }

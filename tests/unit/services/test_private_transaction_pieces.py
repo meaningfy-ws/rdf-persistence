@@ -14,9 +14,9 @@ import pytest
 PACKAGE = Path(__file__).parents[3] / "rdf_persistence"
 DEFINED_IN = "persistence/services/session.py"
 CALLERS = {
-    "_allow_state": {"services/transitions.py"},
-    "_require_match": {"services/reference_collections.py"},
-    "_require_present": {"services/discussion.py"},
+    "_allow_state": {"collaboration/services/transitions.py"},
+    "_require_match": {"collaboration/services/reference_collections.py"},
+    "_require_present": {"collaboration/services/discussion.py"},
 }
 
 

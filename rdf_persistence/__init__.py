@@ -129,11 +129,23 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     )
     from rdf_persistence.access.services.identity import Identity
     from rdf_persistence.access.services.tokens import TokenVerifier
+    from rdf_persistence.collaboration.services.collaboration import Collaboration
+    from rdf_persistence.collaboration.services.generated.rp_collaboration_services import (
+        MemberList,
+        Referrer,
+        ReferrerList,
+    )
+    from rdf_persistence.collaboration.services.workflows import Workflows
     from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
     from rdf_persistence.entrypoints.environment import settings_from_env
     from rdf_persistence.entrypoints.kit import ServiceKit
     from rdf_persistence.entrypoints.router import limited_body
     from rdf_persistence.entrypoints.service import install_service
+    from rdf_persistence.events.services.events import EventBus, Receive, context_link
+    from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
+    from rdf_persistence.events.services.generated.settings.rp_events_settings import (
+        EventSettings,
+    )
     from rdf_persistence.files.adapters.s3 import S3FileStore
     from rdf_persistence.files.services.files import FileStore
     from rdf_persistence.iris.services.generated.rp_iris_services import (
@@ -143,6 +155,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         ServiceSettings,
     )
     from rdf_persistence.iris.services.iris import DEFAULT_IRIS, IdSource, Iris, mint_aggregate_iri
+    from rdf_persistence.messaging.services.messagebus import MessageBus, Work, bootstrap, command
     from rdf_persistence.persistence.adapters.fuseki import FusekiStore
     from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
     from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
@@ -158,27 +171,18 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.persistence.services.session import Session, open_session
     from rdf_persistence.persistence.services.store import Store
     from rdf_persistence.schema.services.schema import load_schema
-    from rdf_persistence.services.collaboration import Collaboration
-    from rdf_persistence.services.events import EventBus, Receive, context_link
     from rdf_persistence.services.file_removal import remove_with_files
     from rdf_persistence.services.generated.service.rp_service import (
         Authorised,
-        EventEnvelope,
         LabelUpdate,
-        MemberList,
         Problem,
         ProblemKind,
-        Referrer,
-        ReferrerList,
         TenantCreate,
     )
     from rdf_persistence.services.generated.settings.rp_settings import (
-        EventSettings,
         SseSettings,
         ToolkitSettings,
     )
-    from rdf_persistence.services.messagebus import MessageBus, Work, bootstrap, command
-    from rdf_persistence.services.workflows import Workflows
     from rdf_persistence.tenancy.services.generated.rp_tenancy_services import (
         TenantDump,
         TenantSummary,
@@ -190,6 +194,12 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
 __version__ = version("rdf-persistence")
 
 _SERVICES = "rdf_persistence.services"
+_EVENTS = "rdf_persistence.events.services"
+_EVENTS_MODELS = f"{_EVENTS}.generated.rp_events_services"
+_EVENTS_SETTINGS_MODELS = f"{_EVENTS}.generated.settings.rp_events_settings"
+_COLLABORATION = "rdf_persistence.collaboration.services"
+_COLLABORATION_MODELS = f"{_COLLABORATION}.generated.rp_collaboration_services"
+_MESSAGING = "rdf_persistence.messaging.services"
 _ENTRYPOINTS = "rdf_persistence.entrypoints"
 _ACCESS = "rdf_persistence.access.services"
 _ACCESS_ADAPTERS = "rdf_persistence.access.adapters"
@@ -211,7 +221,8 @@ _LAZY_MODULES = {
     "HttpSettings": "rdf_persistence.core.services.generated.rp_core_services",
     "LimitSettings": _LIMIT_MODELS,
     **dict.fromkeys(("DirectorySettings", "JwksSettings"), _ACCESS_SETTINGS_MODELS),
-    **dict.fromkeys(("EventSettings", "SseSettings", "ToolkitSettings"), _SETTINGS_MODELS),
+    "EventSettings": _EVENTS_SETTINGS_MODELS,
+    **dict.fromkeys(("SseSettings", "ToolkitSettings"), _SETTINGS_MODELS),
     "settings_from_env": f"{_ENTRYPOINTS}.environment",
     **dict.fromkeys(
         ("AccountSummary", "CallerAccess", "GrantSet", "VerifiedCaller"), _ACCESS_MODELS
@@ -220,17 +231,15 @@ _LAZY_MODULES = {
     **dict.fromkeys(
         (
             "Authorised",
-            "EventEnvelope",
             "LabelUpdate",
-            "MemberList",
             "Problem",
             "ProblemKind",
-            "Referrer",
-            "ReferrerList",
             "TenantCreate",
         ),
         _SERVICE_MODELS,
     ),
+    "EventEnvelope": _EVENTS_MODELS,
+    **dict.fromkeys(("MemberList", "Referrer", "ReferrerList"), _COLLABORATION_MODELS),
     **dict.fromkeys(("IdKind", "IdSpec", "IriPolicy", "ServiceSettings"), _IRIS_MODELS),
     "Page": _PERSISTENCE_MODELS,
     "FusekiStore": "rdf_persistence.persistence.adapters.fuseki",
@@ -243,9 +252,9 @@ _LAZY_MODULES = {
     "limited_body": f"{_ENTRYPOINTS}.router",
     "Identity": f"{_ACCESS}.identity",
     **dict.fromkeys(("DEFAULT_IRIS", "IdSource", "Iris", "mint_aggregate_iri"), _IRIS),
-    "EventBus": f"{_SERVICES}.events",
-    "Receive": f"{_SERVICES}.events",
-    "context_link": f"{_SERVICES}.events",
+    "EventBus": f"{_EVENTS}.events",
+    "Receive": f"{_EVENTS}.events",
+    "context_link": f"{_EVENTS}.events",
     "AccessRules": f"{_ACCESS}.access",
     "load_caller_access": f"{_ACCESS}.access",
     "load_role_definitions": f"{_ACCESS}.access",
@@ -266,12 +275,12 @@ _LAZY_MODULES = {
     "Tenancy": f"{_TENANCY}.tenancy",
     "GrantValidator": f"{_TENANCY}.tenancy",
     "RootValidator": f"{_TENANCY}.tenancy",
-    "Collaboration": f"{_SERVICES}.collaboration",
-    "Workflows": f"{_SERVICES}.workflows",
-    "MessageBus": f"{_SERVICES}.messagebus",
-    "Work": f"{_SERVICES}.messagebus",
-    "command": f"{_SERVICES}.messagebus",
-    "bootstrap": f"{_SERVICES}.messagebus",
+    "Collaboration": f"{_COLLABORATION}.collaboration",
+    "Workflows": f"{_COLLABORATION}.workflows",
+    "MessageBus": f"{_MESSAGING}.messagebus",
+    "Work": f"{_MESSAGING}.messagebus",
+    "command": f"{_MESSAGING}.messagebus",
+    "bootstrap": f"{_MESSAGING}.messagebus",
 }
 
 

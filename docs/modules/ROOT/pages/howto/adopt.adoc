@@ -291,10 +291,12 @@ Your regenerate target writes, under `library/domain/generated/`, one Python mod
 (`books.py`, `library.py`), `shapes.ttl`, `context.jsonld`, one `<Root>.frame.jsonld` per
 aggregate root, `openapi-components.json` (the component schemas of the service's OpenAPI document)
 and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts`, and
-`rp_service.ts`, which holds the classes of the toolkit's four served schemas, in this order
+`rp_service.ts`, which holds the classes of the toolkit's eight served schemas, in this order
 (`rp_iris_services.yaml` of the `iris` theme, `rp_persistence_services.yaml` of `persistence`,
-`rp_migrations_services.yaml` of `migrations` and `rp_service.yaml`), among them the API's wire
-types (`TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Migration`, `MigrationStep` and `Problem`); and one
+`rp_migrations_services.yaml` of `migrations`, `rp_access_services.yaml` of `access`,
+`rp_tenancy_services.yaml` of `tenancy`, `rp_events_services.yaml` of `events`,
+`rp_collaboration_services.yaml` of `collaboration` and `rp_service.yaml`), among them the API's wire
+types (`TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`, `Migration`, `MigrationStep`, `EventEnvelope`, `Referrer` and `Problem`); and one
 `.mmd` diagram per module. The module name `rp_service` and the names of the classes and enums of
 the served schemas are reserved when a target renders TypeScript: a schema that uses one is refused,
 naming the clash. Commit them together with the schema. Never edit them: to change

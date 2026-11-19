@@ -521,7 +521,7 @@ read per root and can race with other writers as before; the guards in the reque
 protect the commit.
 
 *Write guards.* After these pre-checks and before the change is collected, each `add_graph` and
-`replace_graph` hands the triples to the session's *write guards* (`services/write_guards.py`,
+`replace_graph` hands the triples to the session's *write guards* (`collaboration/services/write_guards.py`,
 `WriteGuards.prepare`), which return the triples to write or raise. They are not the guards of the
 request: they are checks in Python that read the store. There are two rules. The first is for a root whose
 class mixes in `ReferenceCollection`: its member class is a served aggregate root (`InvalidBody`),
@@ -529,7 +529,7 @@ every member is an aggregate IRI of the tenant (`InvalidIri`) and a stored aggre
 (`InvalidBody`), and its rule is one a listing of that class accepts (`InvalidBody`). A refused
 change is not collected, so nothing of the transaction is sent. A member must therefore be stored
 before the commit that names it. The second keeps the state of an aggregate under a workflow
-(`Workflows.keep_state`, `services/workflows.py`), through the class in both directions. With S the
+(`Workflows.keep_state`, `collaboration/services/workflows.py`), through the class in both directions. With S the
 workflow of the classes of the stored root and N that of the classes written (a set of classes under
 two workflows is refused, `Forbidden`): an add of a root with no N is written as it is, because an
 `adms:status` there is the application's own, and one with an N gets the initial state or may name
@@ -583,20 +583,20 @@ a new way past a rule has to be argued for.
 |`_require_match(iri, class_iri, conditions)` (match)
 |Adds a guard to the request: `iri` is of exactly that class and holds every condition when the
 request is applied.
-|`ReferenceCollections.delete_cascade` (`services/reference_collections.py`), for each member that only meets the rule
+|`ReferenceCollections.delete_cascade` (`collaboration/services/reference_collections.py`), for each member that only meets the rule
 |`Conflict` with empty `iris`: no version moved, so no root is named.
 
 |`_require_present(iri)` (presence)
 |Adds a guard to the request: the graph of `iri` still has a version when the request is applied.
 Not for a graph the same transaction removes: guards are checked before any operation, so it
 would hold and tell nothing.
-|`Discussion.comment` (`services/discussion.py`), on the comment's target
+|`Discussion.comment` (`collaboration/services/discussion.py`), on the comment's target
 |`Conflict` whose `iris` names `iri`.
 
 |`_allow_state(iri, state_iri)` (state allowance)
 |Adds nothing to the request. It lets this transaction's write of `iri` set that one state: the
 transaction hands it to the write guards, which otherwise refuse a state other than the stored one.
-|`Transitions.transition` (`services/transitions.py`)
+|`Transitions.transition` (`collaboration/services/transitions.py`)
 |It refuses nothing (only a call after the block ends, `RuntimeError`, like every change); a write
 that names any other state is still refused (`Forbidden`).
 |===
@@ -614,7 +614,7 @@ update as one transaction (Fuseki does); the store conformance suite checks it.
 == Moving an aggregate through its workflow
 
 _What is written when a book changes state?_ A transition (`Collaboration.transition`, handed to
-`Transitions.transition` in `services/transitions.py`) is the one write that changes the state of
+`Transitions.transition` in `collaboration/services/transitions.py`) is the one write that changes the state of
 an aggregate under a workflow. It has no route. It is one transaction of up to three changes, so
 the state, the record of the move and the comment are stored together or not at all. The caller's
 view is in xref:howto/workflow.adoc#make-a-transition[Make a transition]; who may make the move
@@ -692,7 +692,7 @@ again at the same IRI shows the old history, and a record may name a comment tha
 == A command through the bus
 
 _What happens between `bus.handle(command, collab)` and an observer being called?_ The bus
-(`services/messagebus.py`) runs the command's handler; the handler's commit records one activity;
+(`messaging/services/messagebus.py`) runs the command's handler; the handler's commit records one activity;
 the session's hook hands it back to the bus. The caller's view is in
 xref:howto/event-driven.adoc[React to changes with commands and observers].
 

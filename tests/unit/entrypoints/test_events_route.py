@@ -18,9 +18,10 @@ from rdf_persistence.core.domain.generated.rp_provenance import Activity, Genera
 from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.entrypoints.responses import CONTEXT_REL
 from rdf_persistence.entrypoints.sse import add_events_route
+from rdf_persistence.events.services.event_hub import EventHub
+from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
 from rdf_persistence.iris.domain.layout import graph_iri
-from rdf_persistence.services.event_hub import EventHub
-from rdf_persistence.services.generated.settings.rp_settings import EventSettings, SseSettings
+from rdf_persistence.services.generated.settings.rp_settings import SseSettings
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.entrypoints.scene import Scene
 

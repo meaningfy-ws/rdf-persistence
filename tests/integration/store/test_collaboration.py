@@ -10,6 +10,11 @@ from rdflib import URIRef
 
 from rdf_persistence import Action, CallerAccess, VerifiedCaller, generated_models
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence.collaboration.services.collaboration import Collaboration
+from rdf_persistence.collaboration.services.discussion import dependents
+from rdf_persistence.collaboration.services.generated.rp_collaboration_services import ReferrerList
+from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
+from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import Conflict, Forbidden
 from rdf_persistence.core.domain.generated.rp_collections import MembershipRule, SlotEquality
 from rdf_persistence.core.domain.generated.rp_core import Principal
@@ -20,11 +25,6 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.collaboration import Collaboration
-from rdf_persistence.services.discussion import dependents
-from rdf_persistence.services.generated.service.rp_service import ReferrerList
-from rdf_persistence.services.workflows import Workflows, load_workflow, state_iri
-from rdf_persistence.services.write_guards import WriteGuards
 from tests.fixtures.library.generated.books import Book, Genre
 from tests.toy import (
     ADA,

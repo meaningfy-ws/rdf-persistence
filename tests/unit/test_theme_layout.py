@@ -28,6 +28,9 @@ TURNED_ON: frozenset[str] = frozenset(
         "migrations",
         "access",
         "tenancy",
+        "events",
+        "collaboration",
+        "messaging",
     }
 )
 # Old paths that hold a deprecation shim, not a leftover (PD-8): the module re-exports the moved one and
@@ -295,7 +298,14 @@ PLACED: tuple[Placed, ...] = (
     ),
     Placed("tenancy", "services", "service", ("TenantDump", "TenantSummary")),
     Placed("events", "services", "service", ("EventEnvelope",)),
-    Placed("events", "services", "settings", ("EventSettings",)),
+    # Not served, like `LimitSettings`: a package of its own beside the served `events` services.
+    Placed(
+        "events",
+        "services",
+        "settings",
+        ("EventSettings",),
+        tail="settings.rp_events_settings",
+    ),
     Placed("collaboration", "services", "service", ("Referrer", "ReferrerList", "MemberList")),
     Placed(
         "api",

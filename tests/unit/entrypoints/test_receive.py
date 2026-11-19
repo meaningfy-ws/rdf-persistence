@@ -18,12 +18,12 @@ from rdf_persistence.core.domain.exceptions import (
     TenantBehind,
 )
 from rdf_persistence.core.domain.generated.rp_provenance import Activity, Add, Replace
+from rdf_persistence.messaging.services.messagebus import Work, command
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
     LimitSettings,
 )
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import Session
-from rdf_persistence.services.messagebus import Work, command
 from rdf_persistence.testkit import (
     FakeStore,
     InMemoryBroker,

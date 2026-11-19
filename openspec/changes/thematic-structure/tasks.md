@@ -184,7 +184,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 
 ## Stage 6: `events`, `collaboration`, `messaging` (PR 6)
 
-- [ ] 6.1 The recipe for the three themes. PD-2 `events/services`, `collaboration/services`.
+- [x] 6.1 The recipe for the three themes. PD-2 `events/services`, `collaboration/services`.
   `collaboration-layers`, `session-and-provenance-without-mapper` and
   `event-bus-libraries-in-one-module` retargeted; `nothing-in-services-imports-the-bus` removed.
   Gate: `make test-fast check-quality`.
@@ -201,7 +201,8 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
   `entrypoints/`; `tests/unit/services/test_shacl.py` → `tests/unit/api/`; the `ignore_imports` line
   `services.shacl -> pyshacl` of `sparql-parser-only-through-the-wrappers` retargeted, PD-6). PD-2 `api/entrypoints`. `services/` and `entrypoints/` deleted;
   `domain/` and `adapters/` hold only the shims. The old `layers` contract removed; `.importlinter`
-  is PD-6's final form, without `technical-models`' `domain-never-imports-technical-models`. The
+  is PD-6's final form, without `technical-models`' `domain-never-imports-technical-models`, with
+  `api-services-never-import-the-bus` retargeted to `api.services` and its planted tests re-pointed (D-23). The
   emptied `model/technical/<group>/` schemas deleted (all but `testkit`'s). `ruff.toml` per-file
   ignores and `.coveragerc` on new paths. Gate: `make test-fast check-quality`.
 
@@ -237,7 +238,7 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 2.1 · [x] 3.1 · [x] 3.2 ·
-  [x] 4.1 · [x] 4.2 · [x] 5.1 · [ ] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
+  [x] 4.1 · [x] 4.2 · [x] 5.1 · [x] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
 
 ## Verification
 

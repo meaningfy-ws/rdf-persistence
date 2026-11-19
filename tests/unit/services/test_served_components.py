@@ -8,6 +8,8 @@ import pytest
 from rdf_persistence.core.services.artifacts import COMPONENTS_FILE, SCHEMAS
 from rdf_persistence.schema.services.schema import (
     ACCESS_SCHEMA,
+    COLLABORATION_SCHEMA,
+    EVENTS_SCHEMA,
     IRIS_SCHEMA,
     MIGRATIONS_SCHEMA,
     PACKAGE_DIR,
@@ -69,6 +71,8 @@ def test_the_served_folders_follow_the_served_schemas() -> None:
         MIGRATIONS_SCHEMA,
         ACCESS_SCHEMA,
         TENANCY_SCHEMA,
+        EVENTS_SCHEMA,
+        COLLABORATION_SCHEMA,
         SERVICE_SCHEMA,
     ), "each theme's schema comes before the ones that import it"
     assert served_folders() == (
@@ -77,6 +81,8 @@ def test_the_served_folders_follow_the_served_schemas() -> None:
         PACKAGE_DIR / "migrations" / "services" / "generated",
         PACKAGE_DIR / "access" / "services" / "generated",
         PACKAGE_DIR / "tenancy" / "services" / "generated",
+        PACKAGE_DIR / "events" / "services" / "generated",
+        PACKAGE_DIR / "collaboration" / "services" / "generated",
         PACKAGE_DIR / "services" / "generated" / "service",
     ), "each folder is the package its schema declares"
     assert all((folder / COMPONENTS_FILE).is_file() for folder in served_folders())

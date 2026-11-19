@@ -31,7 +31,7 @@
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
-      "sha256": "dac31f7a6c03ab35545ae1b9ae89c04eb4a51b4f896be55e1a4a83220f3ebf12"
+      "sha256": "4ba22754e9a02463665a2361cdeca6d60cdc6250002de101915255a7cb2ae25f"
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",

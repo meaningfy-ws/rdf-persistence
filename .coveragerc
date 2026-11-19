@@ -8,7 +8,7 @@ source =
 # The adapters are under the floor: their unit tests use fakes of the remote side. Only the two
 # modules that need a real container (PD-16) stay outside it; `make test-containers` covers them.
 omit =
-    rdf_persistence/adapters/redis_events.py
+    rdf_persistence/events/adapters/redis_events.py
     rdf_persistence/testkit/containers/*
 
 [report]

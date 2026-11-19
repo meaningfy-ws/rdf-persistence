@@ -1,0 +1,253 @@
+{
+   "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
+      "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+      "schema": "http://schema.org/",
+      "shex": "http://www.w3.org/ns/shex#",
+      "skos": "http://www.w3.org/2004/02/skos/core#",
+      "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "action": {
+         "@id": "ODRL:action",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
+         }
+      },
+      "actions": {
+         "@container": "@set",
+         "@id": "permits",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
+         }
+      },
+      "activity_class": {
+         "@type": "@id",
+         "@id": "activityClass"
+      },
+      "assignee": {
+         "@type": "@id",
+         "@id": "ODRL:assignee"
+      },
+      "blobs": {
+         "@container": "@set",
+         "@id": "sweptBlob"
+      },
+      "id": "@id",
+      "context": {
+         "@id": "contextLink"
+      },
+      "contributor": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:contributor"
+      },
+      "created": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:created"
+      },
+      "creator": {
+         "@type": "@id",
+         "@id": "dcterms:creator"
+      },
+      "data_schema_version": {
+         "@id": "dataSchemaVersion"
+      },
+      "description": {
+         "@id": "dcterms:description"
+      },
+      "grants": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "grant"
+      },
+      "graph": {
+         "@type": "@id",
+         "@id": "graph"
+      },
+      "key_name": {
+         "@id": "keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "keyValues"
+      },
+      "kind": {
+         "@id": "kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "label": {
+         "@id": "skos:prefLabel"
+      },
+      "level": {
+         "@id": "level",
+         "@type": "@vocab",
+         "@context": {
+            "system": "https://meaningfy.ws/ns/rdf-persistence#SystemLevel",
+            "tenant": "https://meaningfy.ws/ns/rdf-persistence#TenantLevel",
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#AggregateLevel"
+         }
+      },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "listedIn"
+      },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "loadedAt"
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "loadedGraph"
+      },
+      "loaded_graphs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "sweptLoadedGraph"
+      },
+      "modified": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:modified"
+      },
+      "older_than_seconds": {
+         "@id": "olderThanSeconds"
+      },
+      "origin": {
+         "@id": "origin"
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "ownedBy"
+      },
+      "prohibitions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "prohibition"
+      },
+      "removed_blobs": {
+         "@id": "removedBlobs"
+      },
+      "removed_loaded_graphs": {
+         "@id": "removedLoadedGraphs"
+      },
+      "role": {
+         "@id": "role"
+      },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rootClass"
+      },
+      "skipped_blobs": {
+         "@container": "@set",
+         "@id": "skippedBlob"
+      },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "startedAt"
+      },
+      "state": {
+         "@id": "state",
+         "@type": "@vocab",
+         "@context": {
+            "active": "https://meaningfy.ws/ns/rdf-persistence#Active",
+            "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
+         }
+      },
+      "target": {
+         "@type": "@id",
+         "@id": "ODRL:target"
+      },
+      "tenant": {
+         "@type": "@id",
+         "@id": "tenant"
+      },
+      "url_segment": {
+         "@id": "urlSegment"
+      },
+      "version": {
+         "@id": "version"
+      },
+      "@version": 1.1,
+      "type": "@type",
+      "AggregateKey": {
+         "@id": "AggregateKey"
+      },
+      "AggregateRoot": {
+         "@id": "AggregateRoot"
+      },
+      "CommitMarker": {
+         "@id": "CommitMarker"
+      },
+      "Described": {
+         "@id": "Described"
+      },
+      "EventEnvelope": {
+         "@id": "EventEnvelope"
+      },
+      "Grant": {
+         "@id": "ODRL:Permission"
+      },
+      "KeyDuplicate": {
+         "@id": "KeyDuplicate"
+      },
+      "PendingLoad": {
+         "@id": "PendingLoad"
+      },
+      "Policy": {
+         "@id": "ODRL:Set"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Prohibition": {
+         "@id": "ODRL:Prohibition"
+      },
+      "RegistryEntry": {
+         "@id": "RegistryEntry"
+      },
+      "RoleDefinition": {
+         "@id": "RoleDefinition"
+      },
+      "Rule": {
+         "@id": "ODRL:Rule"
+      },
+      "TenantAccess": {
+         "@id": "TenantAccess"
+      },
+      "TenantLabelled": {
+         "@id": "TenantLabelled"
+      },
+      "TenantSweepReport": {
+         "@id": "TenantSweepReport"
+      },
+      "Tracked": {
+         "@id": "Tracked"
+      }
+   }
+}

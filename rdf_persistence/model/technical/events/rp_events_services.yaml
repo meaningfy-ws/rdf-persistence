@@ -1,0 +1,60 @@
+id: https://meaningfy.ws/ns/rdf-persistence/events-services
+name: rp_events_services
+title: RDF persistence events services module
+description: >-
+  The served technical models of the `events` theme: the envelope that travels beside an activity on the
+  event bus. The HTTP service serves it, so the toolkit's OpenAPI document and TypeScript types describe
+  it; it is generated into its own package, so an application's models do not carry it
+  (technical-models DEC-3, DEC-7; thematic-structure PD-2).
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_tenancy
+annotations:
+  module_kind: technical
+  python_package: rdf_persistence.events.services.generated
+
+classes:
+  EventEnvelope:
+    title: Event envelope
+    description: >-
+      What travels beside an activity on the event bus: the tenant it happened in, the deployment that
+      published it, the class of its body and where to find the JSON-LD context that reads it.
+    class_uri: rp:EventEnvelope
+    slots:
+      - tenant
+      - origin
+      - activity_class
+      - context
+    slot_usage:
+      tenant:
+        required: true
+        description: The IRI of the tenant, or of the application, the activity happened in.
+      origin:
+        required: true
+      activity_class:
+        required: true
+      context:
+        required: true
+
+slots:
+  origin:
+    title: Origin
+    description: The deployment that published the message, as its `deployment` setting names it.
+    slot_uri: rp:origin
+    range: string
+  activity_class:
+    title: Activity class
+    description: The IRI of the class of the activity the message carries.
+    slot_uri: rp:activityClass
+    range: uri
+  context:
+    title: Context
+    description: A link to the JSON-LD context that reads the message body.
+    slot_uri: rp:contextLink
+    range: string

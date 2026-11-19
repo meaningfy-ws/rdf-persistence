@@ -233,6 +233,10 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
     `migrations-below-the-runner` (implied by `themes-ordered`), `technical-models`'
     `domain-never-imports-technical-models` (implied by `layers-across-themes`: every technical
     package sits in a `services`, `adapters` or `entrypoints` layer, which no `*.domain` imports).
+    `themes-ordered` implies the bus rule only for the themes below `messaging`; for `api`, above
+    it, `api-services-never-import-the-bus` (D-23) keeps
+    `rdf_persistence.api.services.{aggregates,components,documents,file_removal}` off
+    `rdf_persistence.messaging`, so the contracts end as 16.
 
   The 14 contracts of today therefore end as 15: ten carry over, four are gone, five are new
   (`themes-layered`, `themes-ordered` and the three of `layers-across-themes`).
@@ -683,3 +687,39 @@ consumers later.
   The W3 scan found `tests/feature/test_technical_models.py`, which plants the old layout in a
   scratch copy on purpose; it joins `test_technical_split.py` in TC-04's `EXEMPT`, and stage 7
   removes both entries with the old layout.
+- **D-22 Stage 6 (`events`, `collaboration`, `messaging`) as built** (builder of 6.1, accepted by
+  the lead; built on an older base and combined onto stage 5 by an integration fixer). (1) No shim.
+  (2) Schemas: `rp_events_services.yaml` (`EventEnvelope`) and `rp_collaboration_services.yaml`
+  (`Referrer`, `ReferrerList`, `MemberList`) served; `rp_events_settings.yaml` (`EventSettings`)
+  not served (D-15 (1)). `SERVED_SCHEMAS`: iris, persistence, migrations, access, tenancy, events,
+  collaboration, service. (3) `nothing-in-services-imports-the-bus` removed (PD-6; the theme order
+  puts `messaging` above every theme); `collaboration-layers` and `event-bus-libraries-in-one-module`
+  retargeted. (4) TC-60 and TC-61 are planted tests in `test_theme_contracts.py`, merged with the
+  earlier stages' tests on one `_lint` helper; the builder's own "themes are in the order" test is
+  dropped, covered by D-17 W2's derived test. (5) Tests left in `tests/unit/services/` that test
+  several themes (`test_service_model`, `test_settings_model*`, `test_relayed_since`) move with
+  stage 7. (6) Combining: `events`, `collaboration`, `messaging` added to
+  `themes-never-import-the-old-layout`'s sources; `make generate` changed three manifests only; the
+  TypeScript golden refresh is order-only, sorted lines identical to stage 5's. (7) As D-17 W1: the
+  move, the rewrite and the schema split are one commit; rename detection holds (R093–R100).
+- **D-23 Stage 6 review and tester, accepted** (lead; review 6 findings, tester 158 tests, 1 failed
+  first, 1 finding; one fixer pass). Re-labelled Critical, with the reason: review W1 (removing
+  `nothing-in-services-imports-the-bus` relied on the theme order, which does not reach the four
+  `api` services modules the contract named — `aggregates`, `components`, `documents`,
+  `file_removal` — since `api` sits above `messaging`: a narrowed gate). A narrow forbidden contract
+  keeps them off the bus: sources `rdf_persistence.services.{aggregates,components,documents,file_removal}`
+  (stage 7 moves them to `rdf_persistence.api.services`), forbidden `rdf_persistence.messaging`, with
+  a planted test; D-22 (3) is amended by this line. Accepted below Critical: W2 (the docs name the
+  `events` and `collaboration` themes, their schemas and classes, and eight served schemas in
+  `SERVED_SCHEMAS` order: `architecture/generation.adoc` ~318–319, `architecture/index.adoc`
+  ~314–324 and ~360–369, `develop/index.adoc` ~28, `howto/adopt.adoc` ~294–297); W3
+  (`tests/unit/services/test_relayed_since.py` moves to `tests/unit/tenancy/`, the highest theme
+  it uses; D-22 (5) is amended); S1 (a same-rank planted test: `events` → `collaboration` breaks
+  `themes-ordered`); S2 (TC-60's map row at scenario level); tester F1 (the
+  `event-bus-libraries-in-one-module` title says the Redis adapter may import `faststream` or
+  `redis`, but only `faststream` is exempt: the title is reworded to what the contract enforces,
+  rather than widening the exemption). Under the floor: S3 (recorded in D-22 (7)). The tester's
+  tests are not kept: none failed first on production code but F1's, which the reworded title
+  resolves. The checker found PD-6 and task 7.1 silent on the new contract: both now name it
+  (16 contracts at the end). Under the floor: the stage's unplanted control does not lint the new
+  contract (its four planted tests do); the stage changelog items go to `evidence/docs-owed.md`.
