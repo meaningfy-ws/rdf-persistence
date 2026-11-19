@@ -87,6 +87,12 @@ migration note.
 - `themes-ordered` ranks `provenance` below `files`.
 - The generator imports a module beside the root schema when the module names another package, and
   checks that package exists among the toolkit's targets.
+- On the toolkit's run only `rp.yaml`'s target answers for the migrations and the lock; a theme
+  target without `migrations` whose roots `rp.yaml` checks is skipped (D-5, D-10). A theme root
+  re-exports no class of another theme, and `rp.py` is gone (D-1).
+- `schema` reads the stored-file class (by `class_uri rp:StoredFile`, no longer by name) and the
+  tenant states from the schema (DEC-6).
+- The conformance testkit reads the classes of every package a target's modules name (D-6).
 - A consumer's generated code is unchanged; its freshness check asks it to regenerate once.
 
 ## Capabilities
@@ -98,15 +104,46 @@ None.
 ### Modified Capabilities
 
 - `rp-generation`: "A module of another target is imported, not generated again" (also beside the
-  root); added "Each domain module is generated in its theme".
+  root); "The metamodel declares where its generated classes are imported from" (the reference is
+  the root's `python_package`, D-8); added "Each domain module is generated in its theme".
 - `rp-package-boundaries`: "Themes import in one order" (`provenance` below `files`).
 
 ## Impact
 
-- `rdf_persistence_generation/` (`extensions/pydantic_split.py`, the hard checks
-  `python_package` and `stored_schema`; the mermaid diagrams stay one set, from `rp.yaml`), `rdf_persistence/model/` (annotations, the
+- `rdf_persistence_generation/` (`extensions/pydantic_split.py`, `steps.py`, `config.py`, the hard
+  checks `python_package` and `stored_schema`, `checks/application.py`, `testkit/conformance.py`;
+  the mermaid diagrams stay one set, from `rp.yaml`), `rdf_persistence/model/` (annotations, the
   new root), `pyproject.toml` (four new entries), the generated packages, `.importlinter`,
-  `rdf_persistence/__init__.py`, 38 library modules and 81 test files (imports), the
+  `rdf_persistence/__init__.py`, 43 library modules and 95 test files (imports), the
   theme-layout and public-surface guards, `schema/services/{schema_structure,vocabulary}.py`, docs
-  ("Where a module lives", the model diagrams page), CHANGELOG.
-- Consumers (MWBv2): regenerate once; rewrite any deep import of a moved module.
+  (`architecture/{index,models,generation}.adoc`, `develop/index.adoc`), CHANGELOG,
+  `tests/fixtures/v0_6_0/`, `tests/audit/scenario-map.csv`.
+- Consumers (MWBv2): regenerate once; rewrite any deep import of a moved module; a stored-file mixin
+  of their own declares `class_uri: rp:StoredFile`.
+
+## Reconciliation (as delivered)
+
+Delivered in one PR, #191, one stage (MEDIUM). Challenged by the adversarial tester after task 1.2
+(5 findings, 1 accepted: D-5), one L2+L3 stage pass and the full review (L1, L2, L3 apart, L4+L5;
+D-7): 44 findings, none labelled Critical; four groups re-labelled Critical and fixed (D-8 to D-11),
+the rest under the floor and in #192. Checked by a fresh checker. Acceptance demo waived by the
+developer (`evidence/acceptance.md`).
+
+| Shape item | Final state | Where |
+|---|---|---|
+| DEC-1 one domain target per theme | delivered: five `<theme>.domain.generated` packages, four new `[[tool.rp-generate]]` entries | 06f27442 |
+| DEC-2 one combined set of shapes, context and frames in `core` | delivered, byte-identical to `v0.6.0` (TC-03); the theme targets write partial ones, unused | 06f27442 |
+| DEC-3 `files` above `provenance` in `themes-ordered` | delivered | 06f27442 |
+| DEC-4 `rp_tenancy` in `access` | delivered; the cycle is gone | 06f27442 |
+| DEC-5 the root `rp_collaboration.yaml` | delivered | 06f27442 |
+| DEC-6 `schema` imports no upper theme | delivered: the stored-file class by `class_uri`, the tenant states from the enum's meanings | c8be8cb8 |
+| DEC-7 the hand-written domain files stay | delivered (unchanged) | — |
+| DEC-8 0.7.0 with a CHANGELOG naming every moved path | CHANGELOG delivered (06f27442, 426f7b37, 69946473); the release follows the merge | 426f7b37 |
+| Rabbit-hole: two module sets | delivered: `generated_schemas` for Python and the package check, `own_schemas` for the rest (PD-1) | bc0e1b68 |
+| Rabbit-hole: the import beside the root only when the root names a package | delivered (PD-2) | bc0e1b68 |
+| Rabbit-hole: one commit for the move | delivered: `import rdf_persistence` holds at every commit | 06f27442 |
+| PD-5 a root writes no module without classes | narrowed to a theme root (D-1) | bc0e1b68 |
+| PD-4 migrations on `rp.yaml` only | delivered with two fixes: a toolkit target with its own roots (D-5) or with `migrations` (D-10) keeps the rules | 19170842, 69946473 |
+| E-2 the package check | delivered as PD-3 (one of the toolkit's packages); the closure check is #192 (D-9) | bc0e1b68 |
+
+Not delivered as shaped: none. Promised beyond the shape: the conformance testkit fix (D-6).
