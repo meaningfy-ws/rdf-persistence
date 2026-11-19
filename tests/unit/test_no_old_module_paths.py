@@ -48,14 +48,12 @@ EXEMPT: frozenset[str] = frozenset(
         "tests/unit/testkit/test_guards.py",
         "tests/unit/test_theme_layout.py",
         # stage 2 (D-13 S2): the probe that an old import path is a ModuleNotFoundError names the paths
-        # that never existed or are gone, which is the point of the probe.
+        # that never existed or are gone, which is the point of the probe; it still names
+        # `rdf_persistence.domain.generated` (two lines), so it stays.
         "tests/unit/test_technical_split.py",
         # stage 4: the `adapters.fuseki` shim (PD-8) names its own path, so does its test.
         "rdf_persistence/adapters/fuseki.py",
         "tests/unit/persistence/test_fuseki_shim.py",
-        # stage 5: the technical-models feature plants the old layout (`rp_wire` among it) in a scratch
-        # copy to break the layers contract, like `test_technical_split.py` above; stage 7 removes both.
-        "tests/feature/test_technical_models.py",
     }
 )
 

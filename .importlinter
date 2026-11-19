@@ -210,17 +210,16 @@ forbidden_modules =
 ignore_imports =
     rdf_persistence.events.adapters.redis_events -> faststream
 
-; Temporary (thematic-structure D-23): the theme order puts `messaging` above every theme, so it cannot keep
-; the four `api` services modules that have not moved off the bus (`api` sits above `messaging`). Stage 7
-; moves them and retargets these sources to `rdf_persistence.api.services`.
+; The theme order puts `api` above `messaging`, so it cannot keep the four `api` services modules off the
+; bus (thematic-structure D-23); this contract does.
 [importlinter:contract:api-services-never-import-the-bus]
 name = the api services modules (aggregates, components, documents, file_removal) never import the message bus
 type = forbidden
 source_modules =
-    rdf_persistence.services.aggregates
-    rdf_persistence.services.components
-    rdf_persistence.services.documents
-    rdf_persistence.services.file_removal
+    rdf_persistence.api.services.aggregates
+    rdf_persistence.api.services.components
+    rdf_persistence.api.services.documents
+    rdf_persistence.api.services.file_removal
 forbidden_modules =
     rdf_persistence.messaging
 
