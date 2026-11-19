@@ -34,6 +34,10 @@ OLD_LAYOUT = "themes-never-import-the-old-layout"
 TECHNICAL_MODELS = "domain-never-imports-technical-models"
 EVENT_BUS_LIBRARIES = "event-bus-libraries-in-one-module"
 FASTSTREAM = "faststream"
+API_NO_BUS = "api-services-never-import-the-bus"
+# The `api` services modules not yet moved (stage 7 moves them to `rdf_persistence.api.services`); `api`
+# sits above `messaging`, so the theme order does not keep them off the bus.
+API_SERVICES = ("aggregates", "components", "documents", "file_removal")
 
 
 def _contracts(text: str | None = None) -> dict[str, dict[str, list[str]]]:
@@ -128,6 +132,7 @@ SCRATCH_MODULES = {
     "collaboration/services/workflows.py": "",
     "events/services/relay.py": "",
     "events/adapters/redis_events.py": f"import {FASTSTREAM}\n",
+    **{f"services/{module}.py": "" for module in API_SERVICES},
 }
 
 
@@ -417,6 +422,26 @@ def test_collaboration_importing_the_message_bus_breaks_the_theme_order(tmp_path
     planted = {"collaboration/services/workflows.py": _importing("messaging.services.messagebus")}
 
     assert _breaks(tmp_path, ORDERED, planted)
+
+
+def test_events_importing_collaboration_breaks_the_theme_order(tmp_path):
+    """Same rank: ``events`` and ``collaboration`` are beside each other, so neither imports the other."""
+    planted = {"events/services/relay.py": _importing("collaboration.services.workflows")}
+
+    assert _breaks(tmp_path, ORDERED, planted)
+
+
+@pytest.mark.parametrize("module", API_SERVICES)
+def test_an_api_services_module_importing_the_message_bus_breaks_its_contract(tmp_path, module):
+    """The four unmoved ``api`` services modules stay off the bus, which the theme order cannot say."""
+    planted = {f"services/{module}.py": _importing("messaging.services.messagebus")}
+
+    assert _breaks(tmp_path, API_NO_BUS, planted)
+
+
+def test_the_api_services_modules_exist_where_the_bus_contract_names_them():
+    for module in API_SERVICES:
+        assert (ROOT / "rdf_persistence" / "services" / f"{module}.py").is_file(), module
 
 
 def test_a_services_module_of_events_importing_faststream_breaks_the_one_module_rule(tmp_path):

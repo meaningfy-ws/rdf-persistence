@@ -285,7 +285,7 @@ forbidden_modules =
     rdf_persistence.tenancy.services.migration_runner
 
 [importlinter:contract:event-bus-libraries-in-one-module]
-name = only the Redis adapter imports faststream or redis (aggregate-events PD-8)
+name = only the Redis adapter imports faststream, and nothing imports redis (aggregate-events PD-8)
 type = forbidden
 source_modules =
     rdf_persistence
@@ -295,6 +295,20 @@ forbidden_modules =
     redis
 ignore_imports =
     rdf_persistence.events.adapters.redis_events -> faststream
+
+; Temporary (thematic-structure D-23): the theme order puts `messaging` above every theme, so it cannot keep
+; the four `api` services modules that have not moved off the bus (`api` sits above `messaging`). Stage 7
+; moves them and retargets these sources to `rdf_persistence.api.services`.
+[importlinter:contract:api-services-never-import-the-bus]
+name = the api services modules (aggregates, components, documents, file_removal) never import the message bus
+type = forbidden
+source_modules =
+    rdf_persistence.services.aggregates
+    rdf_persistence.services.components
+    rdf_persistence.services.documents
+    rdf_persistence.services.file_removal
+forbidden_modules =
+    rdf_persistence.messaging
 
 [importlinter:contract:domain-tests-stay-in-the-domain]
 name = the domain tests import nothing above the domain: no services, adapters, entrypoints, testkit or toy service

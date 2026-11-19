@@ -306,7 +306,7 @@ policy and `Iris` (`iris/services/iris.py`; `tenant_move.py` is beside the servi
 term bundles (`schema/services/vocabulary.py`); the activity shape and the visible part (`provenance/services/`); the file ports and the file-key rules (`files/services/files.py`, `files/domain/blob_keys.py`); the message bus; the other ports
 |the technical models of the services, loaded lazily from the top level, each group a folder of
 `services/generated/`: `service/` (from `model/technical/service/rp_service.yaml`: the service
-records) and `settings/` (`rp_settings.yaml`: the deployment values); the SPARQL term bundles, fields
+records) and `settings/` (`rp_settings.yaml`: the deployment values, `SseSettings` and `ToolkitSettings`); the SPARQL term bundles, fields
 of `SparqlTerm`, are in `schema/services/generated/templates/` (`model/technical/schema/rp_schema_templates.yaml`);
 `LogContext` and `HttpSettings` are in
 `core/services/generated/` (`model/technical/core/rp_core_services.yaml`), and the settings and the
@@ -321,7 +321,10 @@ records (`Page`, `Filter`, `ListRequest`, `Condition`, `ListPlan`, `AggregateHea
 (`model/technical/migrations/rp_migrations_services.yaml`); the `access` theme's `VerifiedCaller`, `GrantSet`,
 `CallerAccess` and `AccountSummary` in `access/services/generated/` (`model/technical/access/rp_access_services.yaml`)
 and its `JwksSettings` and `DirectorySettings` in `access/services/generated/settings/` (`rp_access_settings.yaml`); the `tenancy`
-theme's `TenantDump` and `TenantSummary` in `tenancy/services/generated/` (`model/technical/tenancy/rp_tenancy_services.yaml`)
+theme's `TenantDump` and `TenantSummary` in `tenancy/services/generated/` (`model/technical/tenancy/rp_tenancy_services.yaml`); the
+`events` theme's `EventEnvelope` in `events/services/generated/` (`model/technical/events/rp_events_services.yaml`) and its
+`EventSettings` in `events/services/generated/settings/` (`rp_events_settings.yaml`); the `collaboration` theme's `Referrer`,
+`ReferrerList` and `MemberList` in `collaboration/services/generated/` (`model/technical/collaboration/rp_collaboration_services.yaml`)
 |`open_session`, `Session`, `Iris`, `DEFAULT_IRIS`, `IdSource`, `mint_aggregate_iri`; the service records
 (`ServiceSettings`, `IriPolicy`, `IdSpec`, `IdKind`, `TenantCreate`, `TenantSummary`, `LabelUpdate`,
 `GrantSet`, `Page`, `Problem`, `ProblemKind`, `VerifiedCaller`, `CallerAccess`, `Authorised`,
@@ -356,7 +359,7 @@ the extras.
 the metamodel is generated into `core/domain/generated/`, and each technical group into the `generated/`
 folder of the lowest layer whose code may import it, so the `layers` contract of import-linter orders
 the `generated` packages of the three old runtime layers without a line of its own; the moved themes
-(`core`, `iris`, `schema`, `files`, `provenance`, `persistence`, `migrations`, `access`, `tenancy`) are not in that contract, `themes-layered`,
+(`core`, `iris`, `schema`, `files`, `provenance`, `persistence`, `migrations`, `access`, `tenancy`, `events`, `collaboration`, `messaging`) are not in that contract, `themes-layered`,
 `themes-ordered` and `layers-across-themes` order them. `testkit.generated`
 is outside that contract: the contract `runtime-without-extras` keeps it out of the runtime. Two groups sit in `services/generated/`
 (`service` and `settings`), the `core` group (`HttpSettings` and `LogContext`, from
@@ -365,7 +368,8 @@ is outside that contract: the contract `runtime-without-extras` keeps it out of 
 `persistence/services/generated/`, `persistence/services/generated/settings/` and
 `persistence/adapters/generated/`, the `migrations` group in `migrations/services/generated/`, the `access` groups in
 `access/services/generated/`, `access/services/generated/settings/` and `access/adapters/generated/` (the wire shapes of the identity provider and the token),
-the `tenancy` group in `tenancy/services/generated/`
+the `tenancy` group in `tenancy/services/generated/`, the `events` groups in `events/services/generated/` and
+`events/services/generated/settings/`, the `collaboration` group in `collaboration/services/generated/`
 and the `testkit` group in `testkit/generated/`. The domain layer imports none of them:
 the contract `domain-never-imports-technical-models` forbids `rdf_persistence.domain` and the domain of
 every theme (`rdf_persistence.*.domain`) from importing
