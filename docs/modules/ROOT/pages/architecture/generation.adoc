@@ -401,7 +401,7 @@ kind = "technical"
 naming the target's module, when a `technical` target holds a module that is not annotated
 `module_kind: technical`, or a `domain` target holds one that is; nothing is written. An entry without `kind`
 generates as before. The toolkit's metamodel target says `kind = "domain"` and every other target
-says `kind = "technical"`. A consumer's own targets may use the key the same way (xref:howto/adopt.adoc#technical-target[Build an application, a technical target]).
+says `kind = "technical"`. A consumer's own targets may use the key the same way (xref:user-manual/generate.adoc#technical-target[Build an application, a technical target]).
 
 In the toolkit's own run, the same rule (`TARGET_KIND`) also checks the folder: in the target's
 `package`, the segment before `generated` is `domain` for a `domain` target, and `services`,
@@ -702,7 +702,7 @@ async with open_session(
 
 The signature is `open_session(store, *, database, tenant_iri, principal, clock)`, where `principal` is a `Principal`; `clock` defaults
 to the current UTC time. In a service, `kit.session(tenant, principal)` opens it with the tenant's
-database name (xref:howto/adopt.adoc#session[Build an application, step 8]).
+database name (xref:user-manual/store-and-read.adoc[Build an application, step 8]).
 
 * *Mapping* (implemented: `rdf_persistence/persistence/services/mapper.py`, `Mapper`): class and slot IRIs come
   from the schema (`class_uri`, `slot_uri`, or the default prefix); owned parts live in the root's
@@ -831,7 +831,7 @@ Both guards are `testkit.assert_models_generated(package, *, roots, allow=(), ex
 
 _How do I start?_
 
-The steps, with examples that run, are in xref:howto/adopt.adoc[Build an application with
+The steps, with examples that run, are in xref:user-manual/index.adoc[Build an application with
 rdf-persistence]. In short:
 
 . Write `models/<app>.yaml` and one file per module, importing the metamodel; mark aggregate roots, owned slots, databases;

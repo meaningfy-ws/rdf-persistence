@@ -7,7 +7,7 @@ it? Why is the list shorter than I expect, and what is `hidden_count`?_
 This page shows how to ask a tenant which aggregates refer to one resource. It describes
 `develop` as of 2026-11-14 (the change `collaboration-and-reference-collections`). The terms
 tenant, aggregate, kit and IRI policy, and the names `kit`, `t` and `Action` in the snippets, are
-those of xref:howto/adopt.adoc[Build an application]; the errors are imported from
+those of xref:user-manual/index.adoc[Build an application]; the errors are imported from
 `rdf_persistence`.
 
 A *referrer* of a resource is an aggregate that has a stored slot holding the IRI of that resource.
@@ -18,7 +18,7 @@ finds the referrers by reading across the aggregates of the tenant.
 == Ask for the referrers
 
 A *collaboration* is the access-aware service the kit opens for one authorised caller. Check the
-caller first, as for any read (see xref:howto/adopt.adoc#access[step 11]), then open the
+caller first, as for any read (see xref:user-manual/access.adoc[step 11]), then open the
 collaboration with the answer and call `referrers` with the IRI of the resource:
 
 [source,python]

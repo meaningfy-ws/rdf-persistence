@@ -1,8 +1,0 @@
-= User guide
-:description: Placeholder. Everyday tasks for the people who run an application built on rdf-persistence: stores, tenants, backups, upgrades.
-
-NOTE: Placeholder, to be written. The tasks of a developer building an application are in the
-how-to pages, starting with xref:howto/adopt.adoc[Build an application].
-
-This guide will cover running an application built on the toolkit: connecting stores, adding
-tenants, backing up and restoring, and upgrading the toolkit.

@@ -1,0 +1,285 @@
+= Use the generated classes and guard them
+:description: Work with the generated Python classes and fail the tests when anyone edits generated code or writes a model by hand.
+:page-revised: 2026-11-10 by the developer
+
+_What do the generated classes check?_
+
+[source,python]
+----
+from pydantic import ValidationError
+
+from library.domain.generated.books import Book, Chapter
+
+book = Book(
+    id="https://example.org/library/books/1",
+    label="Dune",
+    description="A science-fiction novel.",
+    author="Frank Herbert",
+    chapters=[Chapter(id="https://example.org/library/books/1/chapters/1", number=1)],
+)
+
+Book(id="https://example.org/library/books/2", label="No description")  # valid: a description is optional
+
+book.chapters[0].number = "one"
+# ValidationError: number: Input should be a valid integer (checked on assignment too)
+
+Book(id="https://example.org/library/books/3", label="L", description="D", isbn="1")
+# ValidationError: isbn: Extra inputs are not permitted
+----
+
+The fields come from the schema. `author` and `chapters` are in `books.yaml`. The `Described`
+mixin adds `id`, `label` and `description`: `id` and `label` are required, `description` is optional
+everywhere, an aggregate root included; a class annotated `rp_unlabelled: true` (`Chapter`) needs no `label`. The
+`Tracked` mixin adds `created`, `modified`, `creator` and `contributor`: the session sets them
+(step 8), never you. `AggregateRoot` adds no field; it marks the class as a root.
+
+The class takes any text as an `id`, so the ids above show the checks, not what you can store: the
+session refuses an aggregate IRI the toolkit would not mint (step 8), such as
+`https://example.org/library/books/1`. Mint one with `kit.iris.mint_aggregate` (the kit comes in
+step 12; outside a service, step 14 builds an `Iris`).
+
+Every generated class derives from the toolkit's strict base, `RpModel`. It refuses unknown
+fields, validates on assignment, and enforces the rules declared in the schema: `required`,
+ranges, patterns, `exactly_one_of`, `any_of` and `unique_keys`. Each object, owned parts included,
+has a required `id`: `Chapter(number=1)` fails with `id: Field required`. Only a request body to
+the service may leave a part's `id` out. The service then mints its IRI, by default
+`{root_iri}/parts/{uuid4}`, and keeps it across commits. Under a custom IRI policy the part template
+decides. A JSON body's parts are typed by the schema's context, so nothing more is needed; a
+JSON-LD body must give each part's `@type`, and when the part template has `{type}` an untyped part,
+or one whose class is not owned, is a 422. In a domain service, build a part with `new_part`
+(xref:user-manual/store-and-read.adoc[Store and read aggregates in a domain service]). The metamodel's classes (`AggregateRoot`, `Described`, `Grant`, …) are imported
+from `rdf_persistence`, never generated into your package.
+
+Use the generated classes in your domain services. Do not declare models of your own: no
+`BaseModel`, enum, dataclass, `TypedDict` or `NamedTuple` in `library/domain`, `library/services`
+or `library/entrypoints`, outside `generated` (<<guard,step 6>> checks this). A model you need goes into the schema.
+
+[#guard]
+== Guard the model in your tests
+
+_How do I keep the model and the code from drifting apart?_
+
+The testkit adds five checks to your test suite.
+
+*Freshness.* Stop the test session if generated code is stale or was edited by hand:
+
+[source,python]
+----
+# tests/conftest.py
+pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]
+----
+
+The plugin lives in the generator's package, `rdf_persistence_generation`, which the
+`rdf-persistence` wheel ships beside the library. It compares manifests and needs no `generate`
+extra; only generating (`rp-generate` without `--check`) needs it, for LinkML. The old line,
+`rdf_persistence.testkit.freshness`, still works until 0.6.0 but warns; see
+xref:user-manual/change-model.adoc#upgrade-generator-package[Upgrading to the generator package (0.5.0)].
+
+At the start of every test run the plugin reads the `[tool.rp-generate]` entries of the
+`pyproject.toml` in pytest's rootdir. For other files, list them one per line, relative to the
+rootdir, in the pytest option `rp_generate_projects`. It compares the files with the hashes in each
+`rp-manifest.json`; it regenerates nothing and needs no `generate` extra. When something is stale,
+edited or missing, pytest stops before any test, with exit code 1:
+
+[source,text]
+----
+generated code is not fresh:
+pyproject.toml: edited by hand: library/domain/generated/books.py
+run `make generate` to regenerate, then commit the result
+----
+
+*No hand-written models or artefacts*, *classes and shapes agree*, and *a round trip through
+RDF*:
+
+[source,python]
+----
+# tests/test_model.py
+from pathlib import Path
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+from rdf_persistence.testkit import assert_models_generated
+from rdf_persistence_generation.testkit import (
+    Conformance, aggregate, conformance_problems, round_trip,
+)
+
+ROOT = Path(__file__).parents[1]
+SCHEMA = ROOT / "models" / "library.yaml"
+
+
+def test_no_hand_written_models():
+    assert_models_generated(ROOT / "library", roots=[ROOT / "library", ROOT / "tests"])
+
+
+def test_classes_and_shapes_agree():
+    assert conformance_problems(SCHEMA, ROOT / "tests" / "conformance" / "cases.yaml") == []
+
+
+@settings(max_examples=25, deadline=None)
+@given(data=st.data())
+def test_a_book_survives_the_round_trip(data):
+    conformed = Conformance.of(SCHEMA)
+    round_trip(conformed, data.draw(aggregate(conformed, "Book")), "Book")
+----
+
+`assert_models_generated` makes two checks. It fails on a hand-written model, found in the
+`domain`, `services` and `entrypoints` folders of the package you pass first (`ROOT / "library"`),
+and names its file, line and class. It also fails on a generated artefact outside a `generated`
+folder (step 2), found in the `roots` folders: shapes, contexts, frames, JSON schemas, OpenAPI files
+and `.ts` files other than `*.test.ts` and `*.spec.ts`. `web/` is not in `roots` because a web
+application holds hand-written `.ts` files; you may add any folder that holds no
+hand-written `.ts` files. If you really need a type
+that holds a foreign run-time object, pass it with `allow=["library/domain/<file>.py:<ClassName>"]`,
+a path relative to the folder that holds the package (`ROOT` above).
+
+`conformance_problems(SCHEMA, cases)` finds the generated classes and shapes by itself. It looks up the
+folders above the schema file for a `pyproject.toml` whose `[tool.rp-generate]` entry has this
+`schema` (`LookupError` if there is none), imports that entry's `package`, so it must be importable
+in your tests (see below), and reads the shapes and the context from the Python folder. It returns a list of
+problems, as text; the list is empty when every case passes. `Conformance.of(SCHEMA)` opens the same
+classes and shapes as one object, which `aggregate` and `round_trip` take.
+
+Nothing puts your project folder on the import path, and `library/` needs no `__init__.py`
+(namespace package), so tell pytest where to find it:
+
+[source,toml]
+----
+# pyproject.toml
+[tool.pytest.ini_options]
+pythonpath = ["."]
+----
+
+Without it the two tests that import the package fail with `ModuleNotFoundError: No module named
+'library'`.
+
+`conformance_problems` checks each case against both the generated class and the generated shape: the
+valid instances must pass both, and the invalid ones must fail both. It also reports any
+constraint kind your schema uses that no case covers, so the test fails until every kind has one.
+A case names a kind, a class and instance files, whose paths are relative to the cases file. The example
+schema uses four kinds:
+
+[source,yaml]
+----
+# tests/conformance/cases.yaml
+- kind: required
+  class_name: Chapter
+  valid: [instances/chapter-ok.yaml]
+  invalid: [instances/chapter-no-number.yaml]
+- kind: range_type
+  class_name: Chapter
+  valid: [instances/chapter-ok.yaml]
+  invalid: [instances/chapter-number-text.yaml]
+- kind: identifier
+  class_name: Book
+  valid: [instances/book-ok.yaml]
+  invalid: [instances/book-no-id.yaml]
+- kind: closed
+  class_name: Book
+  valid: [instances/book-ok.yaml]
+  invalid: [instances/book-unknown-field.yaml]
+----
+
+Each instance is a small YAML object, for example:
+
+[source,yaml]
+----
+# tests/conformance/instances/chapter-no-number.yaml
+id: https://example.org/library/books/1/chapters/1
+----
+
+The others: `chapter-ok.yaml` adds `number: 1`, `chapter-number-text.yaml` has `number: one`,
+`book-ok.yaml` has an `id`, a `label` and a `description`, `book-no-id.yaml` lacks the `id`, and
+`book-unknown-field.yaml` adds a slot the class does not have (`isbn: "1"`).
+
+`round_trip` takes an object, turns it into RDF, frames the RDF back into JSON and builds an object
+from it. It fails with an `AssertionError`, `the objects differ after the round trip` or `the two
+graphs differ` with the triples on each side, when the object that comes back is not equal to the
+one that went in. `aggregate(conformed, "Book")` draws random valid books for it. The graph
+comparison it ends with is also public: `assert_isomorphic(before, after)` (from
+`rdf_persistence.testkit`) fails, with the triples only one side has, when two `rdflib` graphs
+differ; use it for your own two graphs.
+
+Each kind of constraint comes from one construct of the schema:
+
+[cols="2,3",options="header"]
+|===
+|Kind |The schema construct
+|`required` |a slot with `required: true`
+|`cardinality` |`minimum_cardinality` or `maximum_cardinality` on a slot
+|`range_type` |a slot whose range is a type (`string`, `integer`, …)
+|`range_enum` |a slot whose range is an enum
+|`pattern` |`pattern` on a slot
+|`value_bounds` |`minimum_value` or `maximum_value` on a slot
+|`identifier` |a slot with `identifier: true`
+|`closed` |every schema with generated classes: they refuse unknown fields
+|`exactly_one_of`, `any_of` |the keys of the same name on a class
+|`unique_keys` |`unique_keys` on a class, or a keyed slot
+|===
+
+Where each check runs:
+
+* *Tests:* the freshness plugin, which compares the manifest.
+* *CI and pre-commit:* `uv run rp-generate --check` (step 4). It writes nothing and exits 1 when
+  generated code is stale or was edited, and names the files. It makes the same comparison as the
+  plugin and also lints the schema and runs its rule checks, which the plugin does not, so keep it
+  in CI even when the tests run the plugin. The lint and rule checks need the `generate` extra (step
+  1: `uv sync` installs it); without it the command compares the manifest only. A pre-commit hook for it:
++
+[source,yaml]
+----
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: rp-generate-check
+        name: rp-generate --check
+        entry: uv run rp-generate --check
+        language: system
+        pass_filenames: false
+        files: ^(models/|.*/generated/)
+----
+
+*The model's shape changes only on purpose.* The last reviewed shape of every class lives in a file
+you commit; a model change fails this test until you refresh the file and review its diff:
+
+[source,python]
+----
+# tests/test_model.py (continued)
+import json
+import os
+
+from rdf_persistence.testkit import (
+    class_shapes, model_schema_diff, model_shape_diff, read_snapshot, snapshot_diff,
+    write_snapshot,
+)
+from rdf_persistence_generation.testkit import Conformance
+
+SNAPSHOT = ROOT / "tests" / "model-shape.yaml"
+COMPONENTS = ROOT / "library" / "domain" / "generated" / "openapi-components.json"
+
+
+def test_the_model_shape_is_the_reviewed_one():
+    current = class_shapes([SCHEMA])
+    if os.environ.get("REFRESH_SNAPSHOT"):  # set it once after a deliberate change
+        write_snapshot(SNAPSHOT, current)
+    assert snapshot_diff(read_snapshot(SNAPSHOT), current) == []
+
+
+def test_the_generated_classes_follow_the_schema():
+    models = {m.__name__: m for m in Conformance.of(SCHEMA).models.values()}
+    # the schema's own classes; those it imports from the toolkit are the toolkit's to check
+    shapes = [s for s in class_shapes([SCHEMA]) if s.class_name in models]
+    assert model_shape_diff(shapes, models.values()) == []
+
+
+def test_python_and_json_schema_agree_on_what_is_required():
+    components = json.loads(COMPONENTS.read_text())["schemas"]
+    assert model_schema_diff(components, Conformance.of(SCHEMA).models.values()) == []
+----
+
+Refresh it with `REFRESH_SNAPSHOT=1 uv run pytest tests/test_model.py`, then review the diff of
+`tests/model-shape.yaml` in your pull request. The second test compares each generated class with
+the schema's induced slots, so stale or edited code fails even before the snapshot does. The third
+compares each class's required fields with the `required` list of its JSON Schema in
+`openapi-components.json`, so the Python and the API document cannot disagree on a required field.

@@ -1,0 +1,24 @@
+classDiagram
+    class Policy {
+    }
+    class Rule {
+        +uri target
+        +Action action
+    }
+    class Grant {
+        <<owned>>
+        +string role
+    }
+    class Prohibition {
+        <<owned>>
+        +Action action
+    }
+    class RoleDefinition {
+        +string role
+        +RoleLevel level
+        +List~Action~ actions
+    }
+    class Principal
+    Rule "1" --> "1" Principal : assignee
+    Rule <|-- Grant
+    Rule <|-- Prohibition

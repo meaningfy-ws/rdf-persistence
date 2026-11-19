@@ -38,7 +38,7 @@ async with (
     )
 ----
 
-The composition root is described in xref:howto/adopt.adoc#serve[Serve the application]. A
+The composition root is described in xref:user-manual/serve.adoc[Serve the application]. A
 service with one store passes no `stores` and sees no change.
 
 A store name:

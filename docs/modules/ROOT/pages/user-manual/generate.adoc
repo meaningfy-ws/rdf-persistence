@@ -1,0 +1,131 @@
+= Generate the code
+:description: Run rp-generate: the [tool.rp-generate] entries, what it writes where, its checks and its exit codes.
+:page-revised: 2026-11-10 by the developer
+
+_How do I turn the model into code?_
+
+Declare where each artefact goes:
+
+[source,toml]
+----
+# pyproject.toml
+[tool.rp-generate]
+schema = "models/library.yaml"
+package = "library.domain.generated"
+migrations = "migrations"
+typescript = "web/src/domain/generated"
+diagrams = "docs/model"
+regenerate-command = "make generate"  # optional
+----
+
+Two keys are always required: `schema` (the root LinkML file) and `package` (the Python import
+path of the generated package). Without one, `rp-generate` exits with code 2 and names the missing
+key. A schema that defines aggregate roots of its own needs a third, `migrations`: the folder for
+the schema lock and the migration files. The root schema then carries a quoted `version:`
+(`version: "1"`), since an unquoted `1.10` is read as a number and loses its zero. Without them the
+hard check fails. `rp-generate` keeps the lock, `schema.lock.json`, in that folder, and when the
+version changes it drafts a migration there for you to review (see
+xref:howto/migrate.adoc[Change a schema that has stored data]). The other keys are optional:
+
+* `typescript` and `diagrams` are folders; nothing is written when they are absent.
+* `python` is the folder that receives every file listed below except the TypeScript and the
+  diagrams. Set it only when that folder is not the `package` path, for example
+  `python = "src/library/domain/generated"`; `package` stays the import path.
+* `openapi = false` leaves out `openapi-components.json`. That is safe only if you never call
+  `install_service` (step 12): it stops with `OSError` when the file is missing.
+* `kind` is `"domain"` or `"technical"`, and says what the entry generates; `rp-generate` then
+  checks it (<<technical-target,below>>). Leave it out and nothing is checked.
+
+`rp-generate` reads the `pyproject.toml` in the folder you run it from. It does not search upward:
+from another folder it exits with code 2, unless you pass `--project path/to/pyproject.toml`.
+Every path in `[tool.rp-generate]` is relative to that file, not to the folder you run the command
+from, and it must stay inside its folder: an absolute path or one with `..` is refused. The Python folder is
+the `package` path with the dots turned into slashes (`library/domain/generated`). It does not have
+to exist: `rp-generate` creates it, and its parent folders, and writes an `__init__.py` into it
+only. `library/` and `library/domain/` get none; Python imports them as namespace packages, so add
+your own `__init__.py` only if a tool needs it.
+
+`rp-generate` prints `rp-generate: generated 1 target(s), no problems` and exits 0 when it is done.
+It exits 1 when it finds problems: a schema that breaks a rule of step 3 (the message names the
+element), or a missing or unreadable `schema` file. It exits 2 when it cannot start: a missing or
+unknown key, a refused path, no `[tool.rp-generate]` entry, or, when generating, no `generate` extra.
+
+Add a make target that runs `uv run rp-generate`; it may have any name, and it may be the target
+that already runs your other generators. Set the optional `regenerate-command` to the command you
+type to run that target, as in the example above: `make generate`. It is only shown, never run: when
+generated code is stale, the freshness check (xref:user-manual/generated-classes.adoc#guard[step 6]) ends with "run `make generate` to
+regenerate, then commit the result". Without it, the check names `rp-generate`, which skips
+`uv run` and anything else your target does. The make target on this page is called `generate`:
+
+[source,makefile]
+----
+generate:
+	uv run rp-generate
+----
+
+Run it: it prints `rp-generate: generated 1 target(s), no problems`.
+
+The freshness check is `uv run rp-generate --check`. It writes nothing. On success it prints
+`rp-generate: checked 1 target(s), no problems` and exits 0. Before the first generation it exits 1
+with `no readable manifest: library/domain/generated/rp-manifest.json`. xref:user-manual/generated-classes.adoc#guard[Step 6] says how to
+run it in your tests and in CI.
+
+Your regenerate target writes, under `library/domain/generated/`, one Python module per schema module
+(`books.py`, `library.py`), `shapes.ttl`, `context.jsonld`, one `<Root>.frame.jsonld` per
+aggregate root, `openapi-components.json` (the component schemas of the service's OpenAPI document)
+and `rp-manifest.json`; the TypeScript types, one file per module plus `index.ts`, and
+`rp_service.ts`, which holds the classes of the toolkit's `rp_service.yaml`, among them the API's wire
+types (`TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page` and `Problem`); and one
+`.mmd` diagram per module. The module name `rp_service` and the names of the classes and enums of
+`rp_service.yaml` are reserved when a target renders TypeScript: a schema that uses one is refused,
+naming the clash. Commit them together with the schema. Never edit them: to change
+the code, change the schema and generate again.
+
+A file an earlier run wrote and this one does not, such as the module of a schema file you removed
+or renamed, is deleted by the next run, unless it was edited since: then the run keeps it and says
+`kept <file>: it changed since it was generated; delete it if it is stale`. Before you regenerate,
+`--check` reports the removed schema file as `stale input: models/<file>.yaml (removed)`.
+
+[#technical-target]
+*Keep technical models in a target of their own.* The toolkit keeps its own technical models (a
+request body, a setting, a wire shape) apart from the domain classes it stores, in a folder and a
+package of their own, so a reader tells them apart by the path
+(xref:architecture/generation.adoc#kinds[Two kinds of model]). You can do the same: write them in a
+schema annotated `module_kind: technical`, in a folder beside the domain schemas, and give it its own
+entry. With two entries, `[tool.rp-generate]` becomes `[[tool.rp-generate]]` on each of them (an
+array of tables), and each takes `kind`. If step 3 left a `technical` module in `models/`, move it
+into the new folder first (`technical/export.yaml` below): the check reads every schema of an
+entry's folder, so a technical module left in `models/` fails the `kind = "domain"` entry.
+
+[source,toml]
+----
+# pyproject.toml
+[[tool.rp-generate]]
+schema = "models/library.yaml"
+package = "library.domain.generated"
+migrations = "migrations"
+kind = "domain"
+
+[[tool.rp-generate]]
+schema = "technical/export.yaml"
+package = "library.technical.generated"
+openapi = false
+kind = "technical"
+----
+
+`rp-generate` generates both. `migrations` is optional on the technical entry: only a schema that
+defines aggregate roots of its own needs it, and a technical module stores nothing.
+If a `kind` and its modules disagree, `rp-generate` exits 1 and names the entry's schema and the module
+(here the second entry says `kind = "domain"` by mistake):
+
+----
+technical/export.yaml: boundary check: [target_kind] export: is a technical module in a target of kind domain
+----
+
+A folder that keeps both kinds of module, as step 3's `technical` module does beside the domain ones,
+cannot take a `kind` at all: leave the key out of that entry, or split the folder as above. Two
+limits. A technical model cannot use a class of your domain target, so one that holds a domain
+value stays in the domain target's folder. And `install_service` reads the components of one
+generated package, the `generated=` you give it, which is the target with your aggregate roots: that
+target needs `openapi` on, and the technical target needs it only if you want its file. A request
+body that your routes use stays in the domain target.

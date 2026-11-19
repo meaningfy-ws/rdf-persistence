@@ -391,8 +391,12 @@ build-docs: ## Build the documentation site to docs/build/site/
 preview-docs: build-docs ## Build then serve docs at http://localhost:$(DOCS_PORT) (8081, beside MWB2's 8080)
 	@ python3 -m http.server --directory $(DOCS_SITE) $(DOCS_PORT)
 
-check-docs: ## No consumer terms in architecture pages, the package or the tests; every page in the nav; one mermaid version
+check-docs: ## No consumer terms in architecture pages, the package or the tests; every page in the nav; one mermaid version; every link resolves; the generated reference is fresh
 	@ python3 -I docs/tools/check_docs.py
+	@ uv run python docs/tools/reference.py --check
+
+docs-reference: ## Rewrite the generated reference partials (public API, rp-generate usage) of the docs
+	@ uv run python docs/tools/reference.py
 
 check-diagrams: ## Render every [mermaid] block of the docs with the site's mermaid (MERMAID_VERSION)
 	@ mkdir -p $(DIAGRAMS_DIR)

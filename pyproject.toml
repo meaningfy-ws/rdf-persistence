@@ -108,6 +108,7 @@ package = "rdf_persistence.core.domain.generated"
 regenerate-command = "make generate"
 openapi = false
 migrations = "rdf_persistence/model/migrations"
+diagrams = "docs/modules/ROOT/partials/model"
 kind = "domain"
 
 [[tool.rp-generate]]

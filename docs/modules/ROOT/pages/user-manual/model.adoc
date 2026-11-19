@@ -1,0 +1,149 @@
+= Write the model
+:description: Write an application's domain as a LinkML schema on the toolkit's metamodel: modules, aggregate roots, owned parts, annotations and unique keys.
+:page-revised: 2026-11-10 by the developer
+
+_How do I model my domain?_
+
+Split the schema into one file per module and a root schema that imports them. A *domain module*
+holds one aggregate: its root class and the classes the root owns.
+
+[source,yaml]
+----
+# models/books.yaml
+id: https://example.org/ns/library/books
+name: books
+title: Books module
+description: Books and their chapters; the book is the aggregate root.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  dcterms: http://purl.org/dc/terms/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core           # the toolkit's metamodel, resolved from the package
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+classes:
+  Book:
+    title: Book
+    description: A book held by a library; an aggregate root that owns its chapters.
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [author, chapters]
+    annotations:
+      rp_path: books                         # its path segment in the API
+  Chapter:
+    title: Chapter
+    description: A chapter of a book; part of the book's aggregate.
+    mixins: [Described]
+    slots: [number]
+    annotations:
+      rp_unlabelled: true                    # known by its number, needs no label
+slots:
+  author:
+    title: Author
+    description: The author's name.
+    slot_uri: dcterms:creator
+  number:
+    title: Chapter number
+    description: The position of a chapter in its book.
+    range: integer
+    required: true
+  chapters:
+    title: Chapters
+    description: The book's chapters; they live in the book's graph.
+    range: Chapter
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+----
+
+`rp_path` names the class's collection in the API (`/libraries/{t}/books`) and nothing else: by
+default it is also a word in the aggregate's IRI, but a custom IRI policy (xref:user-manual/iri-policy.adoc[Configure the IRI policy]) may
+leave it out. The word that stands for the class in an IRI is `{type}`, which is the class's
+`rp_iri_type` annotation, or the class name in kebab case when there is none. Set it under
+`annotations:`, like `rp_path`, on an aggregate root or an owned class, only when the IRIs must say
+something other than the class name:
+
+[source,yaml]
+----
+    annotations:
+      rp_path: books
+      rp_iri_type: volume                    # {type} is "volume", not "book"
+----
+
+It follows the same pattern as `rp_path`: a url segment of lower case letters, digits and hyphens.
+Two classes may not share one, and `content`, `graph`, `parts`, `access`, `meta`, `registry` and `provenance`
+are reserved by the IRI layout, so `rp-generate` refuses them. The toolkit's routes read `rp_iri_type`;
+`new_part` does not (step 8).
+
+[source,yaml]
+----
+# models/library.yaml — the root schema
+id: https://example.org/ns/library
+name: library
+title: Library
+description: The root schema of a library application.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - books
+----
+
+`rp-generate` refuses a schema that breaks these rules, and names the element at fault:
+
+[cols="2,3",options="header"]
+|===
+|Rule |In the example
+|Every class, slot, enum and permissible value has a `title` and a `description`, and every element an IRI (a `default_prefix`, or an explicit `class_uri` or `slot_uri`) |`title:` and `description:` everywhere; `default_prefix: lib`
+|Every permissible value has a `meaning`, an IRI |(no enum here; see `Genre` in the toy library)
+|An aggregate root includes `AggregateRoot` and `Described` and has an `rp_path` |`Book`
+|Every other class is owned by a root, through a slot annotated `owned: true`, and includes `Described`; one without a label of its own says `rp_unlabelled: true` |`Chapter`, through `chapters`
+|A slot that is not owned and ranges over a class points to an aggregate root; it is stored as that root's IRI |(see `scan_of` in the toy library)
+|A module annotated `module_kind: domain` imports no module annotated `technical` or `access` |`books.yaml`
+|No LinkML `rules`, `all_of` or `none_of`: the generated code would not enforce them |—
+|===
+
+More of the metamodel, each shown in the toy library under `tests/fixtures/library/` of the
+toolkit's repository:
+
+* *the tenant root*: one class annotated `graph: meta`, whose instance is the tenant itself
+  (`library_tenant.yaml`);
+* *a stored file*: a root that includes `StoredFile` (`scans.yaml`);
+* *access*: a class with `is_a: TenantAccess`, in a module annotated `module_kind: access`
+  (`library_access.yaml`), and the role definitions (`library_roles.yaml`).
+* *technical*: a module annotated `module_kind: technical` may hold the request and response shapes
+  of your own routes. Its classes need no owning root; they are generated in Python and TypeScript
+  but never stored. A domain module may not import it; the root schema imports it.
+
+*A value unique across aggregates.* Declare a `unique_keys` entry on the root and annotate it
+`rp_unique_scope: tenant`: no two books of a tenant then share an ISBN.
+
+[source,yaml]
+----
+  Book:
+    # …
+    slots: [isbn, authors, chapters]
+    unique_keys:
+      isbn_key:
+        unique_key_slots: [isbn]            # one or more single-valued slots of the root
+        annotations:
+          rp_unique_scope: tenant           # unique among the books of one tenant; a
+                                            # subclass of Book is a scope of its own
+----
+
+`rp-generate` refuses such a key unless it sits on an aggregate root of the tenant databases (or
+on a class those roots inherit from; not the tenant root, of which a tenant has one), and refuses
+one whose slot is multivalued, the identifier, bookkeeping or an owned part. The toolkit enforces the key when a
+session commits (xref:user-manual/store-and-read.adoc#key-conflict[step 8]); it generates no validator or shape
+for it.
+
+The full list of annotations and mixins is in
+xref:architecture/generation.adoc#metamodel[the metamodel].

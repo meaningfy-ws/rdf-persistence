@@ -1,0 +1,10 @@
+classDiagram
+    class MembershipRule {
+        <<owned>>
+    }
+    class SlotEquality {
+        <<owned>>
+        +string equals_slot
+        +string equals_value
+    }
+    MembershipRule "1" *-- "*" SlotEquality : rule_equalities

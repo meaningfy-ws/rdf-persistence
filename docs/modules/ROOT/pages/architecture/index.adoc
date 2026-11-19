@@ -6,7 +6,7 @@ xref:architecture/open-decisions.adoc[decisions of 2026-11-05] (Accepted), worke
 xref:architecture/api.adoc[a lightweight API], xref:architecture/access-control.adoc[access control
 and identity] and the xref:architecture/generation.adoc#revision[model-to-code revision]. Every
 block marked v1 below is *implemented* (stages 1 to 5 of the change `toolkit-v1-foundation`,
-2026-11-06); xref:howto/adopt.adoc[Build an application] shows how a consumer uses them.
+2026-11-06); xref:user-manual/index.adoc[Build an application] shows how a consumer uses them.
 
 This version commits only to what the toolkit's first consumer needs in its first iteration. The
 xref:background/soa/index.adoc[background study] is not a commitment: a block is built only when a
@@ -164,7 +164,7 @@ comes back as its parent: a known limit, lifted when a schema owns a class hiera
 |`Session.load_graph`: parse an RDF file (Turtle, RDF/XML, N-Triples, JSON-LD) in a worker thread;
 refuse it with `InvalidGraph` if it does not parse, writing nothing (a JSON-LD file is also refused
 if it declares a graph of its own, holds a relative or invalid IRI, gives a `@context` that is not
-in the document, or is not an object or array; see xref:howto/adopt.adoc[the how-to] for each
+in the document, or is not an object or array; see xref:user-manual/index.adoc[the how-to] for each
 message); otherwise `PUT` it into a new
 named graph, by default `{root}/content/{uuid4}` (per the IRI policy). A later commit registers it
 by naming it in `loaded_graphs`; the commit is refused (`InvalidIri`, nothing written) if the policy

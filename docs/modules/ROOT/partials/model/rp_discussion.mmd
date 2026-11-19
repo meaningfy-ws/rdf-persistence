@@ -1,0 +1,25 @@
+classDiagram
+    class PostComment {
+        +uri used_resource
+        +string body_value
+        +List~string~ comment_audience
+        +List~uri~ comment_references
+    }
+    class PostReply {
+        +uri replies_to
+    }
+    class Comment {
+        <<root>>
+        +uri id
+        +uri has_target
+        +string body_value
+        +Motivation motivated_by
+        +List~string~ comment_audience
+        +List~uri~ comment_references
+        +uri replies_to
+        +uri from_state_iri
+        +uri to_state_iri
+    }
+    class Activity
+    Activity <|-- PostComment
+    PostComment <|-- PostReply

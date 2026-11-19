@@ -157,7 +157,7 @@ another deployment's CONSUMER span continues the trace; the envelope reads back 
 xref:howto/event-driven.adoc#relay[Carry commits to other deployments and to browsers] for the rest
 of the bus.
 
-The pieces go into the composition root of xref:howto/adopt.adoc#serve[the adoption guide] in this
+The pieces go into the composition root of xref:user-manual/serve.adoc[the adoption guide] in this
 order. The telemetry set-up comes first, because a provider installed after a store is built does
 not trace that store's clients:
 
@@ -576,7 +576,7 @@ What the toolkit cannot guard: an exception that your own code raises, with data
 reaches the log records that keep `exc_info` (a mapped 500 whose cause is not a validation error,
 a failed observer or round) and so as `exception.message` and `exception.stacktrace`. This
 includes the text of an exception your own validator raises on a tenant write
-(xref:howto/adopt.adoc#validators[Enforce your own rules on tenant writes]). Write those messages
+(xref:user-manual/access.adoc#validators[Enforce your own rules on tenant writes]). Write those messages
 without values, or filter `exception.*` in your collector. FastAPI's own `logs` option (step 2) is
 outside the toolkit the same way.
 

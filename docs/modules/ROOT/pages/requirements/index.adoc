@@ -1,6 +1,0 @@
-= Requirements
-:description: Placeholder. What rdf-persistence must do, with the use cases behind it; the testable requirements live in openspec/specs.
-
-NOTE: Placeholder, to be written. The requirements of record are the capabilities under
-`openspec/specs/` (one folder per capability, each requirement with its scenarios); this page will
-summarise them and the use cases they serve, and link to them.

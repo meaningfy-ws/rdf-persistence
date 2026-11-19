@@ -1,0 +1,139 @@
+= Capabilities
+:description: The capabilities of rdf-persistence, what each covers, and the pages that explain and use it; the requirements themselves are in openspec/specs.
+:page-aliases: requirements/index.adoc
+:specs: https://github.com/meaningfy-ws/rdf-persistence/blob/develop/openspec/specs
+
+_What does the toolkit commit to, and where is each part documented?_
+
+A capability is one area of behaviour the toolkit commits to. Its requirements, each a SHALL
+statement with its scenarios, are the truth of record and live in the repository under
+`openspec/specs/<capability>/spec.md`; a change to the toolkit changes them first. This page does
+not restate them: it says what each capability covers and where the docs explain it. The
+xref:requirements/use-cases.adoc[use cases] say which capabilities serve which goal.
+
+== Data and its storage
+
+[cols="2,4,3",options="header"]
+|===
+|Capability |What it covers |Explained in
+
+|{specs}/rp-aggregate-store/spec.md[rp-aggregate-store]
+|One named graph per aggregate; versioned, all-or-nothing commits through a unit of work; loaded RDF graphs; unique keys across a tenant; database export and import.
+|xref:user-manual/store-and-read.adoc[Store and read], xref:architecture/commits.adoc[Commits and conflicts], xref:architecture/data-flows.adoc[Data flows]
+
+|{specs}/rp-iri-policy/spec.md[rp-iri-policy]
+|How every IRI is minted, matched and parsed from a configured policy, and why the policy is fixed once there is data.
+|xref:user-manual/iri-policy.adoc[Configure the IRI policy]
+
+|{specs}/rp-file-store/spec.md[rp-file-store]
+|Files of a tenant kept byte for byte over S3, apart from their RDF.
+|xref:user-manual/files.adoc[Keep files]
+
+|{specs}/rp-reverse-references/spec.md[rp-reverse-references]
+|Which aggregates reference a given one; what the caller may not read is counted, never named.
+|xref:howto/reverse-references.adoc[Find who points at a resource]
+
+|{specs}/rp-reference-collections/spec.md[rp-reference-collections]
+|Aggregates that group others without owning them, by name or by rule.
+|xref:howto/reference-collections.adoc[Group resources you do not own]
+
+|{specs}/rp-schema-migrations/spec.md[rp-schema-migrations]
+|The schema version of each database, the lock that decides what needs a migration, migrations at start-up and on restore.
+|xref:howto/migrate.adoc[Change a schema that has stored data]
+|===
+
+== Tenants, access and identity
+
+[cols="2,4,3",options="header"]
+|===
+|Capability |What it covers |Explained in
+
+|{specs}/rp-tenancy/spec.md[rp-tenancy]
+|One database per tenant on a wired store, the start-up sweep, orphan removal, dump and restore, application data outside any tenant.
+|xref:user-manual/tenants.adoc[Create tenants], xref:howto/dump-restore.adoc[Back up or copy a project], xref:howto/tenant-stores.adoc[Several stores], xref:howto/application-data.adoc[Application data]
+
+|{specs}/rp-access/spec.md[rp-access]
+|Access per tenant and per aggregate; hidden tenants; commenting and tenant deletion as acts of their own; global roles for application data.
+|xref:user-manual/access.adoc[Control access], xref:architecture/access-control.adoc[Access control and identity]
+
+|{specs}/rp-identity/spec.md[rp-identity]
+|A valid token on every request; accounts administered through the identity port.
+|xref:user-manual/access.adoc[Control access], xref:adr/adr-002-jwks-cache.adoc[ADR-002], xref:adr/adr-004-signing-algorithms.adoc[ADR-004]
+|===
+
+== Collaboration and events
+
+[cols="2,4,3",options="header"]
+|===
+|Capability |What it covers |Explained in
+
+|{specs}/rp-discussion/spec.md[rp-discussion]
+|Comments on an aggregate: who may post and see them, threads, deletion with the aggregate.
+|xref:howto/discussion.adoc[Comment on a resource]
+
+|{specs}/rp-workflow/spec.md[rp-workflow]
+|Review workflows from files: state owned by the toolkit, transitions by role, a record of every move.
+|xref:howto/workflow.adoc[Put a resource through review]
+
+|{specs}/rp-messages/spec.md[rp-messages]
+|One PROV activity per commit as the audit trail; the in-process message bus, its handlers and observers.
+|xref:howto/event-driven.adoc[React to changes]
+
+|{specs}/rp-events/spec.md[rp-events]
+|The outbox, the relay to a broker, incoming events, server-sent events per tenant.
+|xref:howto/event-driven.adoc#relay[Carry commits to other deployments]
+|===
+
+== Model, generation and the service
+
+[cols="2,4,3",options="header"]
+|===
+|Capability |What it covers |Explained in
+
+|{specs}/rp-metamodel/spec.md[rp-metamodel]
+|The toolkit's LinkML metamodel: its modules, roots and owned classes, write tracking, access in an ODRL subset.
+|xref:architecture/models.adoc[Models], xref:user-manual/model.adoc[Write the model]
+
+|{specs}/rp-generation/spec.md[rp-generation]
+|`rp-generate`: the checks on a schema, where each artefact goes, reproducible and fresh output, technical and domain models apart.
+|xref:user-manual/generate.adoc[Generate the code], xref:architecture/generation.adoc[Model to code], xref:develop/generator.adoc[Developing the generator]
+
+|{specs}/rp-service-api/spec.md[rp-service-api]
+|One generic router for every aggregate type; JSON, JSON-LD and RDF; versioned writes; listings; the published contract; the consumer's hooks.
+|xref:user-manual/serve.adoc[Serve the application], xref:architecture/api.adoc[A lightweight API], xref:adr/adr-005-representations.adoc[ADR-005]
+
+|{specs}/rp-settings/spec.md[rp-settings]
+|The deployment values as generated, bounded settings groups passed from the composition root.
+|xref:howto/settings.adoc[Configure the deployment values]
+
+|{specs}/rp-observability/spec.md[rp-observability]
+|The spans and log records the toolkit emits through OpenTelemetry, and what it keeps out of them.
+|xref:howto/observability.adoc[See what the toolkit is doing]
+
+|{specs}/rp-testkit/spec.md[rp-testkit]
+|Fakes, containers, waiting with a deadline, model guards and a token signer for a consumer's tests.
+|xref:user-manual/test.adoc[Test the service], xref:user-manual/generated-classes.adoc#guard[Guard the model]
+|===
+
+== The toolkit's own development
+
+[cols="2,4,3",options="header"]
+|===
+|Capability |What it covers |Explained in
+
+|{specs}/rp-package-boundaries/spec.md[rp-package-boundaries]
+|No dependency on a consumer; layers that import downward only; the public API; declared types.
+|xref:architecture/index.adoc[Architecture overview], xref:develop/index.adoc[Developing the library]
+
+|{specs}/rp-developer-checks/spec.md[rp-developer-checks]
+|Deterministic checks, parallel tests, one CI job per make group, the docs checks.
+|xref:develop/testing.adoc[Testing checklist], xref:develop/agents.adoc[Working with agents]
+
+|{specs}/rp-release/spec.md[rp-release]
+|Versions from Conventional Commits, merged by a human; one version file; `main` at the last release.
+|xref:develop/index.adoc#release[Cutting a release]
+
+|{specs}/soa-review/spec.md[soa-review]
+|The state-of-the-art review: evidence for build-versus-reuse, decided choices apart from open ones.
+|xref:background/soa/index.adoc[State of the art]
+|===

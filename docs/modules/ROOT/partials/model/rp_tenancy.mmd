@@ -1,0 +1,20 @@
+classDiagram
+    class TenantAccess {
+        <<root>>
+        +TenantState state
+    }
+    class TenantSweepReport {
+        +uri tenant
+        +integer older_than_seconds
+        +List~uri~ loaded_graphs
+        +List~string~ blobs
+        +boolean removed_loaded_graphs
+        +boolean removed_blobs
+        +List~string~ skipped_blobs
+    }
+    class Grant
+    class Policy
+    class Prohibition
+    TenantAccess "1" *-- "*" Grant : grants
+    TenantAccess "1" *-- "*" Prohibition : prohibitions
+    Policy <|-- TenantAccess

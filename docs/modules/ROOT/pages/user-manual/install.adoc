@@ -1,0 +1,53 @@
+= Install and lay out the application
+:description: Add rdf-persistence and its generator to an application and lay out where the model and the generated code go.
+:page-revised: 2026-11-10 by the developer
+
+_How do I start an application?_
+
+rdf-persistence is installed from its `develop` branch. The generators are needed at build time
+only, so they go in the dev group, together with the test helpers:
+
+[source,toml]
+----
+# pyproject.toml
+[project]
+name = "library"
+version = "0.1.0"
+dependencies = ["rdf-persistence"]
+
+[dependency-groups]
+dev = ["rdf-persistence[generate,testkit]", "hypothesis", "pytest"]
+
+[tool.uv.sources]
+rdf-persistence = { git = "https://github.com/meaningfy-ws/rdf-persistence", branch = "develop" }
+----
+
+The generator is the package `rdf_persistence_generation`. It ships in the same `rdf-persistence`
+wheel, so there is nothing else to install. The two extras add only third-party libraries: `generate`
+adds LinkML, which generating needs, and `testkit` adds the container libraries of the testkit's
+integration fixtures.
+
+Run `uv sync`. The `rp-generate` command and the freshness plugin are always installed. Generating
+(`rp-generate`) needs the `generate` extra: without it, the command exits with code 2 and says so.
+`rp-generate --check` and the freshness plugin only compare the manifests and need no extra (step 6).
+Upgrading from a version before 0.5.0? See xref:user-manual/change-model.adoc#upgrade-generator-package[Upgrading to the generator package (0.5.0)].
+
+== Lay out the application
+
+_Where do the model and the generated files go?_
+
+[source,text]
+----
+models/                       the LinkML schema: a root schema and one file per module
+library/domain/generated/     generated Python, shapes, context and frames (never edited)
+library/services/             your domain services (step 8)
+library/entrypoints/          your composition root and routes (step 12)
+web/src/domain/generated/     generated TypeScript types (never edited)
+docs/model/                   generated diagrams, one per module
+tests/
+----
+
+Generated files go only in folders named `generated`, except the diagrams, which the file guard
+(xref:user-manual/generated-classes.adoc#guard[Guard the model in your tests]) does not look at. It fails on shapes, contexts, frames, JSON schemas, OpenAPI files or
+`.ts` files (other than `*.test.ts` and `*.spec.ts`) found elsewhere in the folders you give it
+(step 6).

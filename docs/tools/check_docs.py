@@ -212,9 +212,9 @@ def check_links() -> list[str]:
             if ":" in page or "{" in page + anchor:
                 continue  # another component or module, or an attribute: not ours to resolve
             target = page or name
-            shown = f"{page}#{anchor}" if page else anchor
+            shown = f"{page}#{anchor}" if page and anchor else page or anchor
             if target not in ids:
-                errors.append(f"{name}: links to a page that does not exist: {shown or page}")
+                errors.append(f"{name}: links to a page that does not exist: {shown}")
             elif anchor and anchor not in ids[target]:
                 errors.append(f"{name}: links to an anchor that does not exist: {shown}")
     return errors
@@ -223,8 +223,11 @@ def check_links() -> list[str]:
 def mermaid_markdown() -> str:
     """Every `[mermaid]` block of every page, as one Markdown file the mermaid CLI renders at once."""
     blocks = re.compile(r"^\[mermaid\]\n\.{4}\n(.*?)\n\.{4}$", re.M | re.S)
+    partial = re.compile(r"^include::partial\$([^\[]+)\[\]$", re.M)
     return "".join(
-        f"<!-- {rel(page)} -->\n```mermaid\n{body}\n```\n\n"
+        f"<!-- {rel(page)} -->\n```mermaid\n"
+        + partial.sub(lambda m: (MODULE / "partials" / m.group(1)).read_text().rstrip(), body)
+        + "\n```\n\n"
         for page in pages()
         for body in blocks.findall(page.read_text())
     )

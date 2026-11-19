@@ -1,0 +1,64 @@
+= Test the service
+:description: Test the service over the testkit's fakes and against containers.
+:page-revised: 2026-11-10 by the developer
+
+_How do I test my application without servers?_
+
+`rdf_persistence.testkit` has in-memory stand-ins for the four ports:
+
+[cols="2,3",options="header"]
+|===
+|Helper |Stands in for
+|`FakeStore()` |a `Store` (a small in-memory SPARQL store)
+|`FakeFileStore()` |a `FileStore`
+|`FakeIdentity()` |an `Identity`
+|`TokenSigner()` |the identity provider's keys: `issue(sub=…, roles=[…])` signs a token, and `transport` serves the keys to a `JwksTokenVerifier`. Generating its RSA key takes ≈ 0.03 to 0.06 s (measured 2026-11-16, 2048 bits); when many tests each build a signer, take one key per process from `shared_key()` (from `rdf_persistence.testkit`, cached) and pass it as `TokenSigner(key=…)` (each signer still starts with its own state). Use `new_key()` only where a test needs a key of its own, for example to show that a token signed by another key is refused
+|`fake_session(store, *, tenant_iri, principal, clock, iris, listings)` |a real `Session` over a `FakeStore`,
+for a domain service's unit test; pass `iris` to test under your own IRI policy, and
+`listings=Listings(view)` (both from `rdf_persistence`) to use `find`
+|===
+
+The toy library's router tests build the whole service over them (`tests/toy_service.py`):
+
+[source,python]
+----
+import httpx
+from fastapi import FastAPI
+
+from rdf_persistence import AccessRules, JwksTokenVerifier, install_service, load_role_definitions
+from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
+
+# SCHEMA, ROLES, MIGRATIONS, generated and settings as in the composition root; TENANT_BODY as in step 9
+signer = TokenSigner()
+settings = settings.model_copy(update={"roles_claim": signer.roles_claim})
+verifier = JwksTokenVerifier(
+    "https://idp.test", signer.audience, signer.roles_claim, transport=signer.transport
+)
+app = FastAPI()
+kit = install_service(
+    app,
+    schema=SCHEMA,
+    generated=generated,
+    store=FakeStore(),
+    files=FakeFileStore(),
+    identity=FakeIdentity(),
+    verifier=verifier,
+    rules=AccessRules(load_role_definitions(ROLES)),
+    settings=settings,
+    migrations=MIGRATIONS,
+)
+headers = {"Authorization": f"Bearer {signer.issue(sub='ada', roles=[])}"}
+async with app.router.lifespan_context(app):     # start-up: the system database, the policy guard, the migrations and the sweep
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        created = await client.post("/libraries", json=TENANT_BODY, headers=headers)
+----
+
+`https://idp.test` is the issuer `TokenSigner` signs for. `ASGITransport` does not run the app's
+lifespan, so the test enters it itself; without it the system database does not exist.
+
+Before you rely on an adapter of your own, run the testkit's conformance suites against it:
+`store_conformance`, `file_store_conformance` and `identity_conformance` under
+`rdf_persistence.testkit`. Each has `CASES` and a `run_case` to run one of them on your adapter.
+The toolkit runs the same suites on its fakes and on Fuseki, Garage, Zitadel and Redis in
+containers; the fourth suite, `event_bus_conformance`, is for an event bus and runs on Redis.

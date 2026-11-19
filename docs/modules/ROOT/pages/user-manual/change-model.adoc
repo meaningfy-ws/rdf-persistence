@@ -1,0 +1,78 @@
+= Change the model
+:description: Change a schema and regenerate; upgrade from a version before the generator package.
+:page-revised: 2026-11-10 by the developer
+
+_How do I change the model later?_
+
+. Edit the schema.
+. Run your regenerate target.
+. Add or adjust conformance cases if you used a new constraint kind; `conformance_problems` names any
+  kind that has no case.
+. Run the tests, then commit the schema and the generated code together.
+
+When you remove or rename a schema module, the next run deletes the generated files of the old one
+(step 4); you delete nothing by hand, unless that file was edited (step 4: the run keeps it).
+
+The toolkit reads and writes the graphs as the model now describes them, so a schema that has
+stored data needs a new `version:` and, for some changes, a migration file. `rp-generate` compares
+the schema with its lock, drafts the migration, and the service applies it at start-up, once per
+database. Without one, a stored aggregate that lacks a slot you made `required` fails to read with a
+`ValidationError`, and triples of a removed or renamed slot are ignored on read and dropped when the
+aggregate is next committed. See xref:howto/migrate.adoc[Change a schema that has stored data]. The
+service loads the model at start-up, so restart it to serve the new one (step 12).
+
+To upgrade rdf-persistence, which is installed from a git branch (step 1), run
+`uv lock --upgrade-package rdf-persistence` and `uv sync`. Then, until you regenerate, the freshness
+plugin and `rp-generate --check` fail with `stale input: <path> (changed)`, because the
+manifest records the generator files it was made with, and with `stale: generated with linkml ...`
+if the `linkml` version changed. Run your regenerate target and review the generated diff: a new
+toolkit version can change the generated code. The upgrade to 0.5.0 has more to change; see the
+next section.
+
+[#upgrade-generator-package]
+== Upgrading to the generator package (0.5.0)
+
+Version 0.5.0 moves the generator from `rdf_persistence.generation` to the package
+`rdf_persistence_generation`, which ships in the same wheel. `[tool.rp-generate]` and the
+`rp-generate` command do not change. Work through this list once:
+
+. *What breaks.* `import rdf_persistence.generation` fails with `ModuleNotFoundError`; there is no
+  shim. Change every such import to `rdf_persistence_generation`.
+. *What warns until 0.6.0.* These four modules and four names still import from their old place, but
+  each import raises one `DeprecationWarning` that names the new path, and 0.6.0 removes them:
++
+[cols="2,2",options="header"]
+|===
+|Old (warns)|New
+
+|`pytest_plugins = ["rdf_persistence.testkit.freshness"]`
+|`pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]`
+
+|`from rdf_persistence.testkit import Conformance, conformance_problems, round_trip, aggregate`
+|`from rdf_persistence_generation.testkit import Conformance, conformance_problems, round_trip, aggregate`
+
+|`rdf_persistence.testkit.conformance`, `.roundtrip`, `.strategies`
+|`rdf_persistence_generation.testkit.conformance`, `.roundtrip`, `.strategies`
+|===
++
+`assert_isomorphic` and the model guards (`assert_models_generated`, `class_shapes`,
+`model_shape_diff` and the others) stay in `rdf_persistence.testkit`, with no warning.
+. *`filterwarnings = error`.* A suite that turns warnings into errors fails at the first old import.
+  Switch the imports and the `pytest_plugins` line above before you upgrade, or the run stops before
+  any test.
+. *Regenerate once.* Every `rp-manifest.json` records the generator's files by path, and those paths
+  changed, so the freshness check reports every target stale until you regenerate. The report
+  looks like this:
++
+[source,text]
+----
+generated code is not fresh:
+pyproject.toml: stale input: rdf_persistence/generation/pipeline.py (removed)
+pyproject.toml: stale input: rdf_persistence_generation/pipeline.py (new)
+run `make generate` to regenerate, then commit the result
+----
++
+Run your regenerate command (`make generate` here, or `uv run rp-generate`), then commit.
+. *What does not change.* The generated Python, shapes, context, frames and TypeScript are the
+  same bytes; only the `rp-manifest.json` files differ in the diff. If other files change, the
+  change comes from another toolkit or `linkml` upgrade, not from the move.

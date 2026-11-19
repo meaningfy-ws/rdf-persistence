@@ -8,7 +8,7 @@ Every example uses the toy library of the toolkit's repository (`tests/fixtures/
 classes `Book`, `Chapter`, `Note` and `Shelf`, in the namespace `https://example.org/ns/library#`.
 `Book` has the class IRI `http://purl.org/ontology/bibo/Book` (`class_uri: bibo:Book`). The page is
 about data that is already stored. For a schema with no data yet, see
-xref:howto/adopt.adoc[Build an application, step 4]. How the lock and its rules are built is
+xref:user-manual/index.adoc[Build an application, step 4]. How the lock and its rules are built is
 on xref:architecture/generation.adoc[Model to code]; where the stamp lives and what start-up does is
 on xref:architecture/data-flows.adoc#migrations[Where data lives and what each operation does].
 
@@ -33,15 +33,15 @@ until a later start-up migrates it (<<behind>>).
 
 Terms the adoption guide explains; read there if one is new to you:
 
-* tenant, and the access record: xref:howto/adopt.adoc#tenancy[Create tenants];
+* tenant, and the access record: xref:user-manual/tenants.adoc[Create tenants];
 * aggregate, root class, owned part, `rp_path`, `rp_iri_type`:
-  xref:howto/adopt.adoc#model[Write the model];
+  xref:user-manual/model.adoc[Write the model];
 * version token (`ETag`) and the conflict a stale one causes:
-  xref:howto/adopt.adoc#handle-a-conflict[Handle a conflict];
+  xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict];
 * loaded graph and registry:
-  xref:howto/adopt.adoc#files[Keep files];
-* sweep: xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant];
-* grants and principal: xref:howto/adopt.adoc#access[Control access].
+  xref:user-manual/files.adoc[Keep files];
+* sweep: xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant];
+* grants and principal: xref:user-manual/access.adoc[Control access].
 
 == Common questions
 

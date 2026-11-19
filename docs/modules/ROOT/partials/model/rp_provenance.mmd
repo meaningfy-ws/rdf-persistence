@@ -1,0 +1,35 @@
+classDiagram
+    class Activity {
+        +uri id
+        +datetime started_at_time
+        +datetime ended_at_time
+    }
+    class Generation {
+        <<owned>>
+        +uri activity
+        +datetime at_time
+        +uri entity
+        +uri entity_class
+        +string entity_version
+    }
+    class Invalidation {
+        <<owned>>
+        +uri activity
+        +datetime at_time
+        +uri entity
+        +uri entity_class
+        +string entity_version
+    }
+    class Add {
+    }
+    class Replace {
+    }
+    class Remove {
+    }
+    class Principal
+    Activity "1" --> "*" Principal : was_associated_with
+    Activity "1" *-- "*" Generation : generations
+    Activity "1" *-- "*" Invalidation : invalidations
+    Activity <|-- Add
+    Activity <|-- Replace
+    Activity <|-- Remove

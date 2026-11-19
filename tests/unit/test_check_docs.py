@@ -143,6 +143,20 @@ def test_mermaid_markdown_holds_every_block_of_every_page(tmp_path, monkeypatch)
     assert "sequenceDiagram\n  A->>B: hi\n```" in markdown, "the sequence block is in the markdown"
 
 
+def test_mermaid_markdown_expands_included_partials(tmp_path, monkeypatch):
+    monkeypatch.setattr(check_docs, "MODULE", tmp_path)
+    (tmp_path / "partials" / "model").mkdir(parents=True)
+    (tmp_path / "partials" / "model" / "m.mmd").write_text("classDiagram\n    class A\n")
+    (tmp_path / "pages").mkdir()
+    (tmp_path / "pages" / "a.adoc").write_text(
+        "= A\n\n[mermaid]\n....\ninclude::partial$model/m.mmd[]\n....\n"
+    )
+
+    markdown = check_docs.mermaid_markdown()
+
+    assert "```mermaid\nclassDiagram\n    class A\n```" in markdown, "the partial's diagram"
+
+
 def _site(tmp_path, monkeypatch, pages: dict[str, str], nav: str = "") -> None:
     """A tmp docs module with the given pages (path -> text) and nav."""
     monkeypatch.setattr(check_docs, "MODULE", tmp_path)

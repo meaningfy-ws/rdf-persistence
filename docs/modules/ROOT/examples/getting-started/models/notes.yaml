@@ -1,0 +1,49 @@
+id: https://example.org/ns/notes
+name: notes
+title: Notes
+version: "1"
+description: The notes application; a note is the aggregate root.
+prefixes:
+  notes: https://example.org/ns/notes#
+  linkml: https://w3id.org/linkml/
+  schema: http://schema.org/
+default_prefix: notes
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+  - rdf_persistence/model/rp_access
+  - rdf_persistence/model/rp_tenancy
+
+classes:
+  # tag::note[]
+  Note:
+    title: Note
+    description: A note a person keeps; an aggregate root.
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [text]
+    annotations:
+      rp_path: notes
+  # end::note[]
+  # tag::tenant[]
+  Notebook:
+    title: Notebook
+    description: A person's notebook; the tenant root, kept in the tenant's meta graph.
+    mixins: [Described, Tracked]
+    annotations:
+      graph: meta
+      database: tenant
+  NotebookAccess:
+    title: Notebook access
+    description: The access record of a notebook; its grants are the metamodel's.
+    is_a: TenantAccess
+  # end::tenant[]
+
+slots:
+  # tag::slot[]
+  text:
+    title: Text
+    description: What the note says.
+    slot_uri: schema:text
+  # end::slot[]

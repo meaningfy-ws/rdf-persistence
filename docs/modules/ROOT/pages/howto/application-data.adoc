@@ -54,8 +54,8 @@ to the store.
 == 3. The three kit calls
 
 `kit` is the `ServiceKit` that `install_service` returns (see
-xref:howto/adopt.adoc#serve[Serve the application]). `Authorised.principal` is the principal's IRI,
-a `str`. The mapper is built once, as in xref:howto/adopt.adoc#session[Store and read aggregates in a domain service].
+xref:user-manual/serve.adoc[Serve the application]). `Authorised.principal` is the principal's IRI,
+a `str`. The mapper is built once, as in xref:user-manual/store-and-read.adoc[Store and read aggregates in a domain service].
 
 [source,python]
 ----

@@ -30,11 +30,11 @@ with open("library.rpdump", "rb") as src:
 ----
 
 * `kit` is the `ServiceKit` that `install_service` returns. How to get it is in
-  xref:howto/adopt.adoc#serve[Serve the application].
+  xref:user-manual/serve.adoc[Serve the application].
 * `tenant` is the tenant's *IRI*. A route has only the tenant *id* from the URL; turn it into the IRI
   with `kit.tenant_iri(tenant_id)`, or take it from the check in <<routing>>.
 * `creator` and `principal` are a principal IRI, as in
-  xref:howto/adopt.adoc#access[Control access].
+  xref:user-manual/access.adoc[Control access].
 * `out` and `src` are binary file objects: a temporary file, a `BytesIO`, or any object with `write` or
   `read`. A stream that cannot seek is fine: the archive is written and read once, front to back.
 * Both calls read and write `out` and `src` with ordinary blocking calls, so they hold the event
@@ -47,13 +47,13 @@ with open("library.rpdump", "rb") as src:
   new tenant's IRI). It never writes over an existing tenant. To replace a tenant, delete it, then
   restore.
 * The new tenant has a *new id and new IRIs*: every IRI of the old tenant that holds its id is
-  rewritten to hold the new one (minted by the xref:howto/adopt.adoc#iri-policy[IRI policy]), so the
+  rewritten to hold the new one (minted by the xref:user-manual/iri-policy.adoc[IRI policy]), so the
   copy can live beside the original. The one exception is the record of the schema versions the
   data follows: it is copied as it is, after any migration, and a restore refuses a dump whose
   record holds anything but one stamp per schema at a version of its chain. Anything outside your data that points at an old IRI, a link in
   an e-mail or another system, points at the original, not the copy.
 * `creator` is the only grantee of the new tenant, with the settings' `creator_role`
-  (see xref:howto/adopt.adoc#tenancy[Create tenants]), as when you create a tenant.
+  (see xref:user-manual/tenants.adoc[Create tenants]), as when you create a tenant.
 
 [#routing]
 == 2. Route them
@@ -203,7 +203,7 @@ exact copy, stop writes to the tenant before the dump (your application's job).
 
 *No deploy and no restart during a restore.* A restore can take minutes. The new database and bucket
 exist before the access record does, and the start-up sweep (see
-xref:howto/adopt.adoc#tenancy[Create tenants]) drops any database or bucket that no record names. A
+xref:user-manual/tenants.adoc[Create tenants]) drops any database or bucket that no record names. A
 service instance that starts meanwhile would drop the half-made tenant. The restore checks that both
 still exist before it writes the record and fails with `PersistenceError` if not. A sweep in the
 milliseconds between that check and the record write is not caught.

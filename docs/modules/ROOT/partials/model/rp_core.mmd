@@ -1,0 +1,28 @@
+classDiagram
+    class Principal {
+        +uri id
+    }
+    class RegistryEntry {
+        +uri graph
+        +RegistryKind kind
+        +uri owned_by
+    }
+    class PendingLoad {
+        +uri id
+        +datetime loaded_at
+    }
+    class CommitMarker {
+        +uri id
+        +datetime started_at
+    }
+    class AggregateKey {
+        +string key_name
+        +uri root_class
+        +List~uri~ key_predicates
+    }
+    class KeyDuplicate {
+        +string key_name
+        +uri root_class
+        +List~string~ key_values
+        +List~uri~ key_roots
+    }
