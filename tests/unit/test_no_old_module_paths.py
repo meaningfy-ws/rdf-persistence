@@ -4,8 +4,8 @@ Python files are read as text (a docstring, a comment and a ``mock.patch("...")`
 through ``ast`` (``from rdf_persistence.services import session`` names the module without writing its
 dotted path). Other files (docs, YAML, TOML, the Makefile, ``.importlinter``) are read as text, for the
 dotted path and the file path, the root ``*.md`` and ``setup.cfg`` among them. ``openspec/``, the
-changelog and this test are out of the scan; a Python file that does not parse is reported; a shim
-that must name its old path, and the test of that shim, are listed in ``EXEMPT`` by the stage that adds it.
+changelog and this test are out of the scan; a Python file that does not parse is reported; a file that
+must name an old path (a probe that it is gone, the guard that still refuses it) is listed in ``EXEMPT``.
 """
 
 import ast
@@ -39,11 +39,9 @@ EXEMPT: frozenset[str] = frozenset(
     {
         THIS_FILE,
         "CHANGELOG.md",
-        # stage 2: the `domain.base` shim (PD-8) names its own path, so do its test, the model guard that
-        # still forbids the shim's `RpModel` as a base until stage 8 (PD-4 a), and that guard's test; and
-        # the layout guard's own test, which plants old paths in synthetic trees.
-        "rdf_persistence/domain/base.py",
-        "tests/unit/core/test_domain_base_shim.py",
+        # the model guard still forbids the removed `rdf_persistence.domain.base.RpModel` as a base, so a
+        # consumer's stale generated code is named (PD-4 a), and that guard's test; the layout guard's own
+        # test, which plants old paths in synthetic trees.
         "rdf_persistence/testkit/guards.py",
         "tests/unit/testkit/test_guards.py",
         "tests/unit/test_theme_layout.py",
@@ -51,9 +49,8 @@ EXEMPT: frozenset[str] = frozenset(
         # that never existed or are gone, which is the point of the probe; it still names
         # `rdf_persistence.domain.generated` (two lines), so it stays.
         "tests/unit/test_technical_split.py",
-        # stage 4: the `adapters.fuseki` shim (PD-8) names its own path, so does its test.
-        "rdf_persistence/adapters/fuseki.py",
-        "tests/unit/persistence/test_fuseki_shim.py",
+        # stage 8: the probe that the two removed shim paths cannot be imported names them.
+        "tests/unit/test_deprecated_paths_removed.py",
     }
 )
 

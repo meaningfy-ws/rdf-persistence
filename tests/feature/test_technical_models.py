@@ -31,7 +31,8 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit.tokens import ISSUER
 from rdf_persistence_generation.cli import main as generate
 from tests.toy_service import ToyService
-from tests.unit.test_technical_split import _broken_contracts, _lint
+from tests.unit.import_contracts import Linted
+from tests.unit.test_technical_split import lint_scratch
 
 scenarios("technical_models.feature")
 
@@ -64,7 +65,7 @@ class Run:
         self.tmp = tmp_path
         self.planted: dict[str, str] = {}
         self.modules: tuple[str, str] = ("", "")
-        self.lint: subprocess.CompletedProcess[str] | None = None
+        self.lint: Linted | None = None
         self.schema_text = ""
         self.project: Path | None = None
         self.files_before: dict[str, bytes] = {}
@@ -140,21 +141,21 @@ def _domain_settings(run: Run) -> None:
 
 @when("the architecture is checked")
 def _check_architecture(run: Run, tmp_path: Path) -> None:
-    run.lint = _lint(tmp_path, run.planted)
+    run.lint = lint_scratch(tmp_path, run.planted)
 
 
 @then("the check fails")
 def _check_fails(run: Run) -> None:
     assert run.lint is not None, "the architecture was checked"
-    assert run.lint.returncode != 0, run.lint.stdout
-    assert _broken_contracts(run.lint), "a contract is broken"
+    assert run.lint.code != 0, run.lint.report
+    assert run.lint.broken, "a contract is broken"
 
 
 @then(parsers.re(r"it names the (?P<first>.+) module and the (?P<second>.+) module"))
 def _names_both(run: Run) -> None:
     assert run.lint is not None, "the architecture was checked"
     for module in run.modules:
-        assert module in run.lint.stdout, f"{module} is not named: {run.lint.stdout}"
+        assert module in run.lint.report, f"{module} is not named: {run.lint.report}"
 
 
 # --- the schemas a consumer imports ---------------------------------------------------------------

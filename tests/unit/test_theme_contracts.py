@@ -12,12 +12,11 @@ plant's doing.
 
 import configparser
 import fnmatch
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
+from tests.unit.import_contracts import run_contracts
 from tests.unit.test_theme_layout import TURNED_ON
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,9 +26,6 @@ DOMAIN_CONTRACT = "domain-of-a-theme-imports-no-upper-layer"
 EVENT_BUS_LIBRARIES = "event-bus-libraries-in-one-module"
 FASTSTREAM = "faststream"
 API_NO_BUS = "api-services-never-import-the-bus"
-# The `api` services modules `api-services-never-import-the-bus` names; `api` sits above `messaging`, so
-# the theme order does not keep them off the bus.
-API_SERVICES = ("aggregates", "components", "documents", "file_removal")
 
 
 def _contracts(text: str | None = None) -> dict[str, dict[str, list[str]]]:
@@ -82,7 +78,6 @@ SCRATCH_MODULES = {
     "collaboration/services/workflows.py": "",
     "events/services/relay.py": "",
     "events/adapters/redis_events.py": f"import {FASTSTREAM}\n",
-    **{f"api/services/{module}.py": "" for module in API_SERVICES},
 }
 
 
@@ -96,37 +91,11 @@ def _lint(
     """Run import-linter on a scratch package with only the named contracts of ``.importlinter``."""
     files = {f"{package}/__init__.py".removeprefix("/"): "" for package in SCRATCH_PACKAGES}
     files |= SCRATCH_MODULES
-    for rel, text in {**files, **planted}.items():
-        path = tmp_path / "rdf_persistence" / rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
-    source = configparser.ConfigParser(inline_comment_prefixes=None, interpolation=None)
-    source.read(ROOT / ".importlinter", encoding="utf-8")
-    scratch = configparser.ConfigParser(interpolation=None)
-    scratch["importlinter"] = {
-        "root_packages": "\nrdf_persistence",
-        "include_external_packages": "True",
+    overrides = {
+        # the scratch layout has no generator package
+        EVENT_BUS_LIBRARIES: {"source_modules": "\nrdf_persistence"}
     }
-    for name in contracts:
-        section = f"importlinter:contract:{name}"
-        assert source.has_section(section), f"contract {name} is gone from .importlinter"
-        # the scratch name is the contract's key: a long name wraps over two lines of the report
-        scratch[section] = {**source[section], "name": name}
-    if EVENT_BUS_LIBRARIES in contracts:  # the scratch layout has no generator package
-        scratch[f"importlinter:contract:{EVENT_BUS_LIBRARIES}"]["source_modules"] = (
-            "\nrdf_persistence"
-        )
-    config = tmp_path / "scratch.importlinter"
-    with config.open("w", encoding="utf-8") as handle:
-        scratch.write(handle)
-    done = subprocess.run(
-        [str(Path(sys.executable).parent / "lint-imports"), "--config", config.name],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return done.returncode, [line for line in done.stdout.splitlines() if line.endswith("BROKEN")]
+    return run_contracts(tmp_path, {**files, **planted}, contracts, overrides)
 
 
 # --- the themes keep their order and their domain stays pure (D-16 C1, W2, S1) ---
@@ -134,7 +103,7 @@ def _lint(
 
 def _breaks(tmp_path: Path, contract: str, planted: dict[str, str]) -> bool:
     code, broken = _lint(tmp_path, planted, (contract,))
-    return code != 0 and any(contract in line for line in broken)
+    return code != 0 and contract in broken
 
 
 @pytest.mark.parametrize(
@@ -175,10 +144,27 @@ def test_a_planted_import_between_the_new_themes_breaks_its_contract(
 SERVICES_NO_ADAPTERS = "services-of-a-theme-import-no-adapters-or-entrypoints"
 
 
-def test_domain_pure_keeps_the_domain_shim_a_source_until_stage_8():
-    sources = _contracts()["domain-pure"]["source_modules"]
+REMOVED_SHIMS = ("rdf_persistence.domain", "rdf_persistence.adapters")
 
-    assert "rdf_persistence.domain" in sources
+
+def test_no_contract_names_a_removed_shim_module():
+    """8.1: the two shims are gone, so no contract lists them as a source, a layer or a forbidden module."""
+    named = [
+        f"{name}: {key} {line}"
+        for name, contract in _contracts().items()
+        for key, lines in contract.items()
+        for line in lines
+        if line.split(" ")[0] in REMOVED_SHIMS
+    ]
+
+    assert named == []
+
+
+def test_domain_pure_and_the_runtime_contract_cover_every_theme_domain():
+    contracts = _contracts()
+
+    assert "rdf_persistence.*.domain" in contracts["domain-pure"]["source_modules"]
+    assert "rdf_persistence.*.domain" in contracts["runtime-without-extras"]["source_modules"]
 
 
 def test_a_domain_module_importing_a_service_of_another_theme_breaks_layers_across_themes(
@@ -293,19 +279,16 @@ def test_events_importing_collaboration_breaks_the_theme_order(tmp_path):
     assert _breaks(tmp_path, ORDERED, planted)
 
 
-@pytest.mark.parametrize("module", API_SERVICES)
+@pytest.mark.parametrize("module", ("aggregates", "components", "a_module_added_later"))
 def test_an_api_services_module_importing_the_message_bus_breaks_its_contract(tmp_path, module):
-    """The four ``api`` services modules stay off the bus, which the theme order cannot say."""
+    """The ``api`` services, any module of the package, stay off the bus, which the theme order cannot say."""
     planted = {f"api/services/{module}.py": _importing("messaging.services.messagebus")}
 
     assert _breaks(tmp_path, API_NO_BUS, planted)
 
 
-def test_the_api_services_modules_exist_where_the_bus_contract_names_them():
-    sources = _contracts()[API_NO_BUS]["source_modules"]
-    for module in API_SERVICES:
-        assert f"rdf_persistence.api.services.{module}" in sources, module
-        assert (ROOT / "rdf_persistence" / "api" / "services" / f"{module}.py").is_file(), module
+def test_the_bus_contract_names_the_whole_api_services_package():
+    assert _contracts()[API_NO_BUS]["source_modules"] == ["rdf_persistence.api.services"]
 
 
 def test_a_services_module_of_events_importing_faststream_breaks_the_one_module_rule(tmp_path):

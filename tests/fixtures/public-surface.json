@@ -140,7 +140,6 @@
   "load_caller_access": "rdf_persistence.services.access",
   "load_role_definitions": "rdf_persistence.services.access",
   "load_schema": "rdf_persistence.services.schema",
-  "mint_aggregate_iri": "rdf_persistence.services.iris",
   "new_part": "rdf_persistence.services.mapper",
   "open_session": "rdf_persistence.services.session",
   "remove_with_files": "rdf_persistence.services.file_removal",
