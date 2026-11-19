@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING: a target's kind is derived from its modules, and its package must sit in a folder that
+  kind allows** (`target-kind-from-the-model`). A target is `technical` when every module it
+  generates is annotated `module_kind: technical`, and `domain` otherwise. The `kind` key of
+  `[[tool.rp-generate]]` is gone, and an entry that still has it is refused as an unknown key. Rule
+  `TARGET_KIND` now applies to every target, a consumer's included: the package has `domain` (a
+  domain target) or `services`, `adapters` or `entrypoints` (a technical one) before `generated`,
+  and a target that generates technical modules beside others fails, naming them. The toolkit's own
+  theme check stays for its own targets. The toy library and the getting-started example moved to
+  `domain/generated/`.
+  - Migrate in three steps. (1) Package: change each `package` to
+    `<your package>.<layer>.generated`, for example `app.generated` to `app.domain.generated`, and
+    move the generated folder (`python`, `diagrams`) to match. (2) The `kind` key: delete it from
+    every entry. (3) A technical module: annotate it `module_kind: technical` and put it in a target
+    of its own whose package is in `services`, `adapters` or `entrypoints`; a technical module left
+    unannotated is derived as `domain`, and the error says to annotate it. Then run `rp-generate`.
+
 ## [0.6.0] - 2026-11-19
 
 ### Added
