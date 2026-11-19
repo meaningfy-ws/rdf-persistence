@@ -197,7 +197,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 
 ## Stage 7: `api`, the end of the old layers, the deprecation release (PR 7)
 
-- [ ] 7.1 The recipe for `api` (`services/{aggregates,documents,file_removal,components,shacl}`, all of
+- [x] 7.1 The recipe for `api` (`services/{aggregates,documents,file_removal,components,shacl}`, all of
   `entrypoints/`; `tests/unit/services/test_shacl.py` → `tests/unit/api/`; the `ignore_imports` line
   `services.shacl -> pyshacl` of `sparql-parser-only-through-the-wrappers` retargeted, PD-6). PD-2 `api/entrypoints`. `services/` and `entrypoints/` deleted;
   `domain/` and `adapters/` hold only the shims. The old `layers` contract removed; `.importlinter`
@@ -215,7 +215,7 @@ Stage 1 closes with the lead's full gates, the review (L1 to L5), the fix pass, 
 | TC-07 | `/openapi.json`, toy TypeScript | unchanged |
 | TC-71 | the toy end-to-end test (`make test-containers`) | passes; `assert_public_imports` finds only top-level and testkit names |
 
-- [ ] 7.2 Docs: `architecture/index.adoc` (the theme map and its order, the rule of DEC-3),
+- [x] 7.2 Docs: `architecture/index.adoc` (the theme map and its order, the rule of DEC-3),
   `architecture/generation.adoc` (targets per theme, cross-target imports), every page naming a
   module path; `questions.adoc` gains "Where does a module live?"; CHANGELOG "Deprecated" (the two
   shims, `mint_aggregate_iri`, logger names). `make check-docs check-diagrams`.
@@ -238,7 +238,7 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 2.1 · [x] 3.1 · [x] 3.2 ·
-  [x] 4.1 · [x] 4.2 · [x] 5.1 · [x] 6.1 · [ ] 7.1 · [ ] 7.2 · [ ] 8.1
+  [x] 4.1 · [x] 4.2 · [x] 5.1 · [x] 6.1 · [x] 7.1 · [x] 7.2 · [ ] 8.1
 
 ## Verification
 
