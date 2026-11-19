@@ -126,7 +126,8 @@ None.
 Delivered in one PR, #191, one stage (MEDIUM). Challenged by the adversarial tester after task 1.2
 (5 findings, 1 accepted: D-5), one L2+L3 stage pass and the full review (L1, L2, L3 apart, L4+L5;
 D-7): 44 findings, none labelled Critical; four groups re-labelled Critical and fixed (D-8 to D-11),
-the rest under the floor and in #192. Checked by a fresh checker. Acceptance demo waived by the
+the rest under the floor and in #192 (the result lines are in the PR body). A fresh checker found
+two small unmet items (a scenario-map row, a commit cited here), fixed as D-12. Acceptance demo waived by the
 developer (`evidence/acceptance.md`).
 
 | Shape item | Final state | Where |
@@ -138,7 +139,7 @@ developer (`evidence/acceptance.md`).
 | DEC-5 the root `rp_collaboration.yaml` | delivered | 06f27442 |
 | DEC-6 `schema` imports no upper theme | delivered: the stored-file class by `class_uri`, the tenant states from the enum's meanings | c8be8cb8 |
 | DEC-7 the hand-written domain files stay | delivered (unchanged) | — |
-| DEC-8 0.7.0 with a CHANGELOG naming every moved path | CHANGELOG delivered (06f27442, 426f7b37, 69946473); the release follows the merge | 426f7b37 |
+| DEC-8 0.7.0 with a CHANGELOG naming every moved path | CHANGELOG delivered (426f7b37, 69946473); the release follows the merge | 426f7b37 |
 | Rabbit-hole: two module sets | delivered: `generated_schemas` for Python and the package check, `own_schemas` for the rest (PD-1) | bc0e1b68 |
 | Rabbit-hole: the import beside the root only when the root names a package | delivered (PD-2) | bc0e1b68 |
 | Rabbit-hole: one commit for the move | delivered: `import rdf_persistence` holds at every commit | 06f27442 |

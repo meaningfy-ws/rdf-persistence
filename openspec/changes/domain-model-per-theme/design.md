@@ -220,6 +220,12 @@ The lead's, shown for validation at the end (R-0007).
   `:381-384` (the false `rp.yaml` example), `:239-246` (the E-2 message), `develop/index.adoc:27,29`
   and `architecture/index.adoc:501` (`rp_collaboration.yaml`, the five domain packages); the
   CHANGELOG adds that a stored file is recognised by `class_uri rp:StoredFile`, not by name.
+- **D-12 The checker's two unmet items, fixed now** (checker, verdict fail, 2 findings; the lead's
+  call per R-0007, shown at the end). The scenario D-8 added ("a module beside the root that names
+  another package") gets a scenario-level row in `tests/audit/scenario-map.csv`; the DEC-8 row of
+  `proposal.md`'s reconciliation no longer cites 06f27442. No code changes, so the re-run is
+  `make check-all`, `make check-spec` and `make refresh-map`; `make test-containers` stands from
+  09a9489d.
 - **Under the floor** (the full review and the stage pass; follow-up issue): the E-2 closure check
   (D-9); `is_stored_file` scans every class per call (L4+L5 W2, L1 S2, L3 S3); `_metamodel_root_names`
   re-reads `pyproject.toml` and `rp.yaml` per target, `--project` ignored, no `is_file()` guard
