@@ -25,7 +25,7 @@ include::example$getting-started/pyproject.toml[tag=project]
 ----
 
 `rdf-persistence` is the library your code runs with. Its `generate` extra adds LinkML, which only
-generating needs, so it goes in the dev group. The source pins the release tag `v0.6.0`; to try the
+generating needs, so it goes in the dev group. The source pins the release tag `v0.7.0`; to try the
 newest changes, use `branch = "develop"` instead. Run `uv sync`.
 
 == 2. Write the model
