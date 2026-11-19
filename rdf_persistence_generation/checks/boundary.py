@@ -37,6 +37,7 @@ FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
 GENERATED = "generated"
 DOMAIN_FOLDERS = ("domain",)
 TECHNICAL_FOLDERS = ("services", "adapters", "entrypoints")
+LAYER_FOLDERS = DOMAIN_FOLDERS + TECHNICAL_FOLDERS
 THEME_PATH = (PACKAGE,)  # a theme sits directly under the library package
 FOLDER_EXEMPT = ("rdf_persistence.testkit", "rdf_persistence_generation")
 
@@ -198,24 +199,25 @@ def _technical_root_problems(
             )
 
 
-def target_kind_problems(view: SchemaView, folder: Path, kind: TargetKind) -> list[CheckProblem]:
-    """The modules of ``folder`` that do not match the ``kind`` the target declares (PD-9).
+def derived_kind(view: SchemaView, folder: Path) -> TargetKind:
+    """The kind of the target that generates ``folder`` (PD-1): technical when every own module is."""
+    schemas = own_schemas(view, folder)
+    if schemas and all(_is_technical(schema) for schema in schemas):
+        return TargetKind.TECHNICAL
+    return TargetKind.DOMAIN
 
-    A technical target holds only modules annotated ``module_kind: technical``; a domain target holds none.
-    """
-    kind = TargetKind(kind)  # a validated model holds the value, a caller may pass the member
-    technical = ModuleKind.TECHNICAL.value
-    problems = []
-    for schema in own_schemas(view, folder):
-        is_technical = annotation(schema, RpAnnotation.MODULE_KIND) == technical
-        if kind == TargetKind.TECHNICAL and not is_technical:
-            message = f"is not annotated module_kind: {technical}, in a target of kind {kind.value}"
-        elif kind == TargetKind.DOMAIN and is_technical:
-            message = f"is a {technical} module in a target of kind {kind.value}"
-        else:
-            continue
-        problems.append(rule_problem(BoundaryRule.TARGET_KIND, schema.name, message))
-    return problems
+
+def mixed_kind_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
+    """A target generates one kind: technical modules beside others are refused (PD-2)."""
+    schemas = own_schemas(view, folder)
+    technical = [schema.name for schema in schemas if _is_technical(schema)]
+    if not technical or len(technical) == len(schemas):
+        return []
+    message = (
+        f"generates technical modules {','.join(technical)} beside domain ones: "
+        "a target generates one kind"
+    )
+    return [rule_problem(BoundaryRule.TARGET_KIND, "", message)]
 
 
 def _is_exempt(package: str) -> bool:
@@ -245,33 +247,42 @@ def _in_a_theme(segments: list[str]) -> bool:
     )
 
 
-def kind_folder_problems(folder: Path, package: str, kind: TargetKind | None) -> list[CheckProblem]:
-    """The ``package`` of a toolkit target that sits in a folder its ``kind`` does not allow (PD-4, DEC-3).
-
-    The segment before ``generated`` is ``domain`` for a domain target and a technical layer for a
-    technical one, and the one before that is a theme of the library (``rdf_persistence.<theme>.<layer>``);
-    a group after ``generated`` is allowed. The testkit and the generator sit outside
-    the themes. Only the toolkit's own run is checked: a consumer keeps its layout.
-    """
-    if kind is None or not is_toolkit_schema(folder, roots=TOOLKIT_ROOTS):
-        return []
-    if _is_exempt(package):
-        return []
-    kind = TargetKind(kind)
+def _folder_message(package: str, kind: TargetKind, toolkit: bool) -> str | None:
+    """What is wrong with the folder of ``package`` for a target of ``kind``; ``None`` when it fits."""
     allowed = DOMAIN_FOLDERS if kind == TargetKind.DOMAIN else TECHNICAL_FOLDERS
     segments = package.split(".")
-    if GENERATED not in segments:
-        message = f"has no {GENERATED} segment: a {kind.value} target's package ends in <{'|'.join(allowed)}>.{GENERATED}"
-    elif segments[segments.index(GENERATED) - 1] not in allowed:
-        message = f"is not in a folder a {kind.value} target allows: {' or '.join(allowed)} before {GENERATED}"
-    elif not _in_a_theme(segments[: segments.index(GENERATED) - 1]):
-        message = (
+    layer = segments.index(GENERATED) - 1 if GENERATED in segments else -1
+    if layer < 0 or segments[layer] not in LAYER_FOLDERS:
+        return f"has no layer before {GENERATED}: a {kind.value} target's package ends in <{'|'.join(allowed)}>.{GENERATED}"
+    if segments[layer] not in allowed:
+        hint = (
+            "; if its modules are technical, annotate them module_kind: technical"
+            if kind == TargetKind.DOMAIN
+            else ""
+        )
+        return f"is not in a folder a {kind.value} target allows: {' or '.join(allowed)} before {GENERATED}{hint}"
+    if toolkit and not _in_a_theme(segments[:layer]):
+        return (
             f"is not in a theme: the layer folder is {PACKAGE}.<theme>.<layer>, and the theme is one of "
             f"{', '.join(sorted(toolkit_themes()))}"
         )
-    else:
+    return None
+
+
+def kind_folder_problems(folder: Path, package: str, kind: TargetKind) -> list[CheckProblem]:
+    """The ``package`` of a target that sits in a folder its ``kind`` does not allow (PD-3, DEC-3).
+
+    The segment before ``generated`` is ``domain`` for a domain target and a technical layer for a
+    technical one; a group after ``generated`` is allowed, the testkit and the generator are exempt.
+    For the toolkit's own run, the one before that is also a theme of the library
+    (``rdf_persistence.<theme>.<layer>``); a consumer's package has no theme to check.
+    """
+    if _is_exempt(package):
         return []
-    return [rule_problem(BoundaryRule.TARGET_KIND, package, message)]
+    message = _folder_message(
+        package, TargetKind(kind), is_toolkit_schema(folder, roots=TOOLKIT_ROOTS)
+    )
+    return [rule_problem(BoundaryRule.TARGET_KIND, package, message)] if message else []
 
 
 def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:

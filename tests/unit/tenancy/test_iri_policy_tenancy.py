@@ -27,8 +27,8 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.toy import ADA, BOB, ROLES, caller, library_slots, toy_mapper
 
 BASE = "https://example.org/"

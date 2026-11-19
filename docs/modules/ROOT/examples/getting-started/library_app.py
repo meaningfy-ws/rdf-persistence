@@ -4,9 +4,9 @@
 import asyncio
 from pathlib import Path
 
-import generated
-from generated import library
-from generated.library import Book
+from domain import generated
+from domain.generated import library
+from domain.generated.library import Book
 
 from rdf_persistence import (
     AccessRules,

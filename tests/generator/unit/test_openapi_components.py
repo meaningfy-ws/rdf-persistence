@@ -29,7 +29,7 @@ def schemas(rendered: Path) -> dict:
 
 
 def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
-    assert_matches_toy(rendered, f"generated/{COMPONENTS_FILE}")
+    assert_matches_toy(rendered, f"domain/generated/{COMPONENTS_FILE}")
 
 
 def test_every_class_of_the_schema_has_a_component_schema(schemas: dict) -> None:

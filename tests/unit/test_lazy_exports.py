@@ -33,7 +33,11 @@ print(",".join(loaded))
 
 @pytest.mark.parametrize(
     "module",
-    ["rdf_persistence.core.domain", "rdf_persistence", "tests.fixtures.library.generated.books"],
+    [
+        "rdf_persistence.core.domain",
+        "rdf_persistence",
+        "tests.fixtures.library.domain.generated.books",
+    ],
 )
 def test_importing_the_domain_or_a_generated_module_loads_nothing_heavy(module: str) -> None:
     result = subprocess.run(

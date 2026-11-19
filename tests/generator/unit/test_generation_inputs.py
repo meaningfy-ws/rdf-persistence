@@ -149,9 +149,11 @@ def test_a_listed_file_that_changed_since_it_was_generated_is_kept_and_reported(
     generated: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
 ) -> None:
     pyproject, _ = generated
-    stale = pyproject.parent / "app/generated/stale.py"
+    stale = pyproject.parent / "app/domain/generated/stale.py"
     stale.write_text("edited by hand", encoding="utf-8")
-    plant(pyproject, ManifestEntry(path="app/generated/stale.py", sha256=sha("as generated")))
+    plant(
+        pyproject, ManifestEntry(path="app/domain/generated/stale.py", sha256=sha("as generated"))
+    )
     capsys.readouterr()
     assert main(["--project", str(pyproject)]) == 1, "an edited stale output did not fail the run"
     assert stale.read_text() == "edited by hand", "an edited file was deleted"
@@ -160,9 +162,11 @@ def test_a_listed_file_that_changed_since_it_was_generated_is_kept_and_reported(
 
 def test_a_listed_file_with_its_recorded_hash_is_deleted(generated: tuple[Path, Path]) -> None:
     pyproject, _ = generated
-    stale = pyproject.parent / "app/generated/stale.py"
+    stale = pyproject.parent / "app/domain/generated/stale.py"
     stale.write_text("as generated", encoding="utf-8")
-    plant(pyproject, ManifestEntry(path="app/generated/stale.py", sha256=sha("as generated")))
+    plant(
+        pyproject, ManifestEntry(path="app/domain/generated/stale.py", sha256=sha("as generated"))
+    )
     assert main(["--project", str(pyproject)]) == 0, "the run failed"
     assert not stale.exists(), "a stale output with its recorded hash was kept"
 

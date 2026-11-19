@@ -31,7 +31,7 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.fixtures.library.generated.books import Chapter
+from tests.fixtures.library.domain.generated.books import Chapter
 from tests.toy import TENANT, TOY_SCHEMA, book_iri
 from tests.unit.conftest import GENERATED
 

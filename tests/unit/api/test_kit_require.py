@@ -7,7 +7,7 @@ from rdf_persistence.core.domain.exceptions import Forbidden, InvalidToken, NotF
 from rdf_persistence.core.domain.generated.rp_access import Action, Prohibition
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.iris.domain.layout import graph_iri
-from tests.fixtures.library.generated.scans import Scan
+from tests.fixtures.library.domain.generated.scans import Scan
 from tests.toy_service import principal_of, store_scan
 from tests.unit.api.scene import Scene
 

@@ -15,9 +15,9 @@ from rdf_persistence.persistence.services.session import _filters
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_TENANT
-from tests.fixtures.library.generated.books import Book, Genre
-from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.fixtures.library.generated.scans import Scan
+from tests.fixtures.library.domain.generated.books import Book, Genre
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.scans import Scan
 from tests.toy import ADA, ROLES, TOY_SCHEMA, ban, caller, graph_of, held, role, toy_mapper
 
 OTHER_TENANT = "https://example.org/libraries/other"
@@ -104,7 +104,7 @@ async def test_find_pages_until_every_match_is_collected(listings):  # T-20
 
 
 async def test_find_refuses_a_class_that_is_not_an_aggregate_root(listings):
-    from tests.fixtures.library.generated.books import Chapter
+    from tests.fixtures.library.domain.generated.books import Chapter
 
     async with fake_session(listings=listings) as session:
         with pytest.raises(ValueError, match="Chapter is not an aggregate root with a path"):

@@ -41,7 +41,6 @@ regenerate-command = "make generate"  # optional
 |`diagrams` |no |the folder of the Mermaid diagrams; none are written when absent
 |`openapi` |no (default `true`) |`false` leaves out `openapi-components.json`
 |`regenerate-command` |no |the command named when the freshness check fails; `rp-generate` when absent
-|`kind` |no |`"domain"` or `"technical"`: what the entry generates, checked when given (<<technical-target>>)
 |===
 
 Without `schema` or `package`, `rp-generate` exits with code 2 and names the missing key; an
@@ -189,10 +188,12 @@ for its own models (xref:architecture/generation.adoc#kinds[Two kinds of model])
 
 Write them in a schema annotated `module_kind: technical`, in a folder beside the domain schemas,
 and give it its own entry. With two entries, `[tool.rp-generate]` becomes `\[[tool.rp-generate]]` on
-each of them (an array of tables), and each takes `kind`. If your `models/` folder holds a
-`technical` module (xref:user-manual/model.adoc#more-metamodel[More of the metamodel]), move it
-into the new folder first (`technical/export.yaml` below): the check reads every schema of an
-entry's folder, so a technical module left in `models/` fails the `kind = "domain"` entry.
+each of them (an array of tables). An entry has no `kind` key: `rp-generate` derives the kind of a
+target from its modules. A target is technical when every module it generates is annotated
+`module_kind: technical`, and domain otherwise. If your `models/` folder holds a `technical` module
+(xref:user-manual/model.adoc#more-metamodel[More of the metamodel]), move it into the new folder
+first (`technical/export.yaml` below): a target generates one kind, and the check reads the modules
+the target generates, which are the modules its root schema imports from its folder.
 
 [source,toml]
 ----
@@ -201,27 +202,40 @@ entry's folder, so a technical module left in `models/` fails the `kind = "domai
 schema = "models/library.yaml"
 package = "library.domain.generated"
 migrations = "migrations"
-kind = "domain"
 
 [[tool.rp-generate]]
 schema = "technical/export.yaml"
-package = "library.technical.generated"
+package = "library.services.generated"
 openapi = false
-kind = "technical"
 ----
 
 `rp-generate` generates both, in order, and writes nothing unless both pass. `migrations` is
 optional on the technical entry: only a schema that defines aggregate roots of its own needs it,
-and a technical module stores nothing. If a `kind` and its modules disagree, `rp-generate` exits 1 and names the entry's schema and the module
-(here the second entry says `kind = "domain"` by mistake):
+and a technical module stores nothing.
+
+The derived kind decides which folder the package may sit in: the segment before `generated` is
+`domain` for a domain target, and `services`, `adapters` or `entrypoints` for a technical one.
+When the package is in the wrong one, `rp-generate` exits 1 and names the entry's schema and the
+package. Here `technical/export.yaml` lacks its `module_kind: technical` annotation, so the target
+is domain, and its package is in a technical layer:
 
 ----
-technical/export.yaml: boundary check: [target_kind] export: is a technical module in a target of kind domain
+technical/export.yaml: boundary check: [target_kind] library.services.generated: is not in a folder a domain target allows: domain before generated; if its modules are technical, annotate them module_kind: technical
 ----
 
-A folder that keeps both kinds of module, such as a `models/` folder with a `technical` module
-beside the domain ones, cannot take a `kind` at all: leave the key out of that entry, or split the
-folder as above.
+A package with no layer before `generated` (`library.generated`) fails the same way:
+
+----
+models/library.yaml: boundary check: [target_kind] library.generated: has no layer before generated: a domain target's package ends in <domain>.generated
+----
+
+A target whose root schema imports both a technical module and a domain one, such as a root in
+`models/` that imports a `technical` module beside the domain ones, fails and names the technical
+modules; split them into targets as above:
+
+----
+models/library.yaml: boundary check: [target_kind] generates technical modules export beside domain ones: a target generates one kind
+----
 
 Two limits:
 

@@ -428,8 +428,8 @@ The kind of a model shows in its path (xref:architecture/generation.adoc#kinds[T
 Hand-written code in a `domain` layer that needs a technical model is not domain code: it moves up
 a layer. That is why the IRI layout that no policy changes is in `iris/domain/layout.py`, and `Iris`,
 its policy and its templates are in `iris/services/iris.py`. Two checks hold the rule: `rp-generate`
-refuses a toolkit target whose `kind` disagrees with its folder (rule `TARGET_KIND`,
-xref:architecture/generation.adoc#target-kind[The `kind` key]), and the contracts
+refuses a target whose package is in a folder its derived kind does not allow (rule `TARGET_KIND`,
+xref:architecture/generation.adoc#target-kind[The kind of a target]), and the contracts
 `layers-across-themes` forbid every `rdf_persistence.*.domain` from importing a `services`,
 `adapters` or `entrypoints` package, `generated` ones included. The folder of each technical target
 is in xref:architecture/generation.adoc#kinds[Two kinds of model].

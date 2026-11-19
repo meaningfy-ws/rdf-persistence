@@ -21,18 +21,18 @@ from rdf_persistence_generation.manifest import recorded_path
 from .test_generate_cli import PYPROJECT, SCHEMA, project
 
 DEFAULT_HINT = "run `rp-generate` to regenerate, then commit the result"
-MANIFEST = Path("app/generated/rp-manifest.json")
-OUTPUT = "app/generated/m.py"
+MANIFEST = Path("app/domain/generated/rp-manifest.json")
+OUTPUT = "app/domain/generated/m.py"
 PART = SCHEMA.replace("name: m", "name: part").replace("Thing:", "Part:").replace("things", "parts")
 NESTED = """
 [[tool.rp-generate]]
 schema = "m.yaml"
-package = "app.generated"
+package = "app.domain.generated"
 migrations = "migrations"
 
 [[tool.rp-generate]]
 schema = "part.yaml"
-package = "app.generated.part"
+package = "app.domain.generated.part"
 migrations = "part_migrations"
 """
 WITH_PART = SCHEMA.replace("  - linkml:types", "  - linkml:types\n  - part")
@@ -213,9 +213,9 @@ def test_a_second_run_deletes_what_it_no_longer_generates_and_keeps_foreign_file
     pyproject = project(tmp_path, WITH_PART)
     (tmp_path / "part.yaml").write_text(PART, encoding="utf-8")
     assert main(["--project", str(pyproject)]) == 0, "the two-module project must generate"
-    part = tmp_path / "app/generated/part.py"
+    part = tmp_path / "app/domain/generated/part.py"
     assert part.is_file(), "the first run did not write the imported module"
-    foreign = tmp_path / "app/generated/notes.txt"
+    foreign = tmp_path / "app/domain/generated/notes.txt"
     foreign.write_text("mine", encoding="utf-8")
     # a class leaves with the part, so the schema needs a new version (PD-3)
     (tmp_path / "m.yaml").write_text(
@@ -231,25 +231,25 @@ def test_nested_target_folders_keep_each_manifest_apart(tmp_path: Path) -> None:
     (tmp_path / "part.yaml").write_text(PART, encoding="utf-8")
     assert main(["--project", str(pyproject)]) == 0, "the two targets must generate"
     outer = GenerationManifest.model_validate_json(
-        (tmp_path / "app/generated/rp-manifest.json").read_text()
+        (tmp_path / "app/domain/generated/rp-manifest.json").read_text()
     )
     assert not [e for e in outer.outputs if "/part/" in e.path], (
         "the outer manifest lists the inner"
     )
-    assert (tmp_path / "app/generated/part/rp-manifest.json").is_file(), "no inner manifest"
+    assert (tmp_path / "app/domain/generated/part/rp-manifest.json").is_file(), "no inner manifest"
 
 
 NAMED = 'regenerate-command = "make generate-models"\n'
 TWO_COMMANDS = """
 [[tool.rp-generate]]
 schema = "m.yaml"
-package = "app.generated"
+package = "app.domain.generated"
 migrations = "migrations"
 regenerate-command = "make a"
 
 [[tool.rp-generate]]
 schema = "part.yaml"
-package = "app.generated.part"
+package = "app.domain.generated.part"
 migrations = "part_migrations"
 regenerate-command = "make b"
 """

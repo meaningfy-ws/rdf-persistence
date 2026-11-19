@@ -19,10 +19,10 @@ from rdf_persistence.tenancy.services.generated.rp_tenancy_services import Tenan
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.tenancy.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import assert_isomorphic
-from tests.fixtures.library.generated.books import Book
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.fixtures.library.generated.scans import Scan
+from tests.fixtures.library.domain.generated.books import Book
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.scans import Scan
 from tests.toy import SETTINGS, dune, library_slots, toy_mapper
 from tests.toy_service import SCAN_BODY, drop_buckets, drop_databases
 from tests.unit.tenancy.test_tenant_dump import (

@@ -19,7 +19,7 @@ def fresh_toy(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """The toy library copied and generated once per session by ``rp-generate``; read-only.
 
     Returns the copy's folder: its schema is ``library.yaml``, its generated documents are in
-    ``generated/``, its TypeScript in ``web/src/domain/generated/``.
+    ``domain/generated/``, its TypeScript in ``web/src/domain/generated/``.
     """
     folder = tmp_path_factory.mktemp("fresh_toy") / "library"
     shutil.copytree(TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated", "web"))

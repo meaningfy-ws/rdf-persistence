@@ -26,7 +26,7 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore, fake_session
-from tests.fixtures.library.generated.books import Genre
+from tests.fixtures.library.domain.generated.books import Genre
 from tests.toy import (
     ADA,
     MODULES,

@@ -47,7 +47,7 @@ from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from rdf_persistence_generation.checks.hard import hard_problems
 from rdf_persistence_generation.problems import format_problem
-from tests.fixtures.library.generated.books import Book
+from tests.fixtures.library.domain.generated.books import Book
 from tests.toy import (
     ADA,
     BOB,

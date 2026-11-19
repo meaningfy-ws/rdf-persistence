@@ -229,7 +229,7 @@ def test_a_key_across_aggregates_is_no_keyed_slot_validator_or_shape() -> None:
         for _, key in keyed_slots(toy, cls)
     }
     assert "isbn_key" not in keys, "isbn_key governs no slot"
-    generated = ROOT / "tests" / "fixtures" / "library" / "generated"
+    generated = ROOT / "tests" / "fixtures" / "library" / "domain" / "generated"
     mentions = [
         p.name
         for p in generated.rglob("*")

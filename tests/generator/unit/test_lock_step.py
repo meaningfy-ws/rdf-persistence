@@ -118,7 +118,7 @@ def test_the_first_run_writes_the_lock_and_no_migration(bootstrapped: Toy) -> No
 
 @pytest.mark.slow
 def test_the_lock_is_a_manifest_output_and_a_second_run_changes_nothing(bootstrapped: Toy) -> None:
-    manifest = (bootstrapped.folder / "generated" / MANIFEST_NAME).read_text("utf-8")
+    manifest = (bootstrapped.folder / "domain" / "generated" / MANIFEST_NAME).read_text("utf-8")
     assert "migrations/schema.lock.json" in manifest, "the lock is listed like a generated file"
     before = bootstrapped.files()
     bootstrapped.passes()
@@ -243,7 +243,7 @@ def test_a_removed_slot_with_a_new_version_drafts_a_drop_and_prints_where(
     (step,) = load_migration(draft).steps or []
     assert step.title.startswith("DROP "), step.title
     assert bootstrapped.locked_version() == "2", "the lock follows the version"
-    manifest = (bootstrapped.folder / "generated" / MANIFEST_NAME).read_text("utf-8")
+    manifest = (bootstrapped.folder / "domain" / "generated" / MANIFEST_NAME).read_text("utf-8")
     assert "1__2.yaml" not in manifest, "a draft is the developer's file, not a manifest output"
     again = bootstrapped.files()
     bootstrapped.passes()

@@ -53,8 +53,8 @@ def build(tmp: Path, modules: dict[str, str]) -> tuple[int, Path, str]:
         (folder / f"{name}.yaml").write_text(body, encoding="utf-8")
     root = next(iter(modules))
     (folder / "pyproject.toml").write_text(
-        f'[tool.rp-generate]\nschema = "{root}.yaml"\npackage = "proj.generated"\n'
-        'python = "generated"\nkind = "technical"\n',
+        f'[tool.rp-generate]\nschema = "{root}.yaml"\npackage = "proj.services.generated"\n'
+        'python = "generated"\n',
         encoding="utf-8",
     )
     code = main(["--project", str(folder / "pyproject.toml")])

@@ -36,7 +36,7 @@ def _book_graph(view: SchemaView, documents: Documents) -> tuple[Graph, URIRef]:
 
 def test_the_fresh_shapes_accept_the_predicates_the_session_writes(fresh_toy: Path) -> None:
     view = generation_view(fresh_toy / "library.yaml", roots=TOOLKIT_ROOTS)
-    documents = Documents(view, fresh_toy / "generated")
+    documents = Documents(view, fresh_toy / "domain" / "generated")
     bookkeeping = [
         (URIRef(str(view.get_uri(slot, expand=True))), _value(view, slot))
         for slot in view.all_slots().values()

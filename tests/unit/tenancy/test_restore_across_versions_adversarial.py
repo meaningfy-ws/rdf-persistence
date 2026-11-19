@@ -24,8 +24,8 @@ from rdf_persistence.tenancy.services.generated.rp_tenancy_services import Tenan
 from rdf_persistence.tenancy.services.migration_runner import migrate_database
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.tenancy.services.tenant_dump import dump
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.toy import SETTINGS, toy_mapper
 from tests.unit.tenancy.migration_helpers import chain_of, migration, rename
 from tests.unit.tenancy.test_tenant_dump import (  # noqa: F401  (the fixtures)

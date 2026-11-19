@@ -22,7 +22,7 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.fixtures.library.generated.books import Book
+from tests.fixtures.library.domain.generated.books import Book
 from tests.toy import TOY_SCHEMA
 
 BOOK = URIRef("http://purl.org/ontology/bibo/Book")

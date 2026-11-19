@@ -98,6 +98,18 @@ def module_body(name: str, kind: str, classes: str, imports: str = "") -> str:
     )
 
 
+def technical_project(folder: Path, name: str, body: str, typescript: bool = True) -> Path:
+    """A project of one technical module and nothing else (PD-2: a mixed target is refused); its pyproject."""
+    (folder / f"{name}.yaml").write_text(body, encoding="utf-8")
+    project = folder / "pyproject.toml"
+    project.write_text(
+        f'[tool.rp-generate]\nschema = "{name}.yaml"\npackage = "app.services.generated"\n'
+        'python = "app/services/generated"\n' + ('typescript = "web"\n' if typescript else ""),
+        encoding="utf-8",
+    )
+    return project
+
+
 def simple_class(name: str, extra: str = "") -> str:
     return (
         f"  {name}:\n    title: {name}\n    description: A test class.\n    attributes:\n"
@@ -136,10 +148,12 @@ def test_no_declared_type_name_is_exported_by_two_files(toy_copy: Path) -> None:
 @pytest.mark.slow
 @pytest.mark.parametrize("clash", ["Page"])  # one class: a reserved class name
 def test_a_consumer_class_named_like_a_service_type_is_refused_naming_the_clash(
-    toy_copy: Path, clash: str, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, clash: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    import_module(toy_copy, "mine", module_body("mine", "technical", simple_class(clash)))
-    assert main(["--project", str(toy_copy / "pyproject.toml")]) == 1, "a clash must fail"
+    body = module_body("mine", "technical", simple_class(clash))
+    assert main(["--project", str(technical_project(tmp_path, "mine", body))]) == 1, (
+        "a clash must fail"
+    )
     error = capsys.readouterr().err
     assert clash in error, f"the clash is not named: {error}"
     assert "rp_service" in error, f"the clash is not named: {error}"
@@ -147,26 +161,25 @@ def test_a_consumer_class_named_like_a_service_type_is_refused_naming_the_clash(
 
 
 def test_a_consumer_enum_named_like_a_service_enum_is_refused(
-    toy_copy: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     enum = next(iter(service_enums()))
     body = module_body("mine", "technical", simple_class("Mine")) + (
         f"\nenums:\n  {enum}:\n    description: Clash.\n    permissible_values:\n      a:\n"
         "        description: A.\n"
     )
-    import_module(toy_copy, "mine", body)
-    assert main(["--project", str(toy_copy / "pyproject.toml")]) == 1, "an enum clash must fail"
+    project = technical_project(tmp_path, "mine", body)
+    assert main(["--project", str(project)]) == 1, "an enum clash must fail"
     assert enum in capsys.readouterr().err, "the clashing enum is not named"
 
 
 @pytest.mark.slow
 def test_a_consumer_module_named_rp_service_is_refused_naming_the_module(
-    toy_copy: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    import_module(
-        toy_copy, "rp_service", module_body("rp_service", "technical", simple_class("Mine"))
-    )
-    assert main(["--project", str(toy_copy / "pyproject.toml")]) == 1, "the module name is reserved"
+    body = module_body("rp_service", "technical", simple_class("Mine"))
+    project = technical_project(tmp_path, "rp_service", body)
+    assert main(["--project", str(project)]) == 1, "the module name is reserved"
     error = capsys.readouterr().err
     assert "rp_service" in error, f"the reason is not given: {error}"
     assert "reserved" in error, f"the reason is not given: {error}"
@@ -174,18 +187,10 @@ def test_a_consumer_module_named_rp_service_is_refused_naming_the_module(
 
 @pytest.mark.slow
 def test_a_clashing_name_is_allowed_when_the_target_renders_no_typescript(
-    toy_copy: Path,
+    tmp_path: Path,
 ) -> None:
-    pyproject = toy_copy / "pyproject.toml"
-    pyproject.write_text(
-        "\n".join(
-            line
-            for line in pyproject.read_text(encoding="utf-8").splitlines()
-            if not line.startswith("typescript")
-        ),
-        encoding="utf-8",
-    )
-    import_module(toy_copy, "mine", module_body("mine", "technical", simple_class("Page")))
+    body = module_body("mine", "technical", simple_class("Page"))
+    pyproject = technical_project(tmp_path, "mine", body, typescript=False)
     assert main(["--project", str(pyproject)]) == 0, "no TypeScript, no reserved names"
 
 

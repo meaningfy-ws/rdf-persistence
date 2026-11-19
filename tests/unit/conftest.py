@@ -16,7 +16,7 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import fake_session
 from tests.toy import TENANT, TOY_SCHEMA
 
-GENERATED = Path(__file__).parents[1] / "fixtures" / "library" / "generated"
+GENERATED = Path(__file__).parents[1] / "fixtures" / "library" / "domain" / "generated"
 
 
 @pytest.fixture(scope="module")

@@ -27,7 +27,7 @@ from rdf_persistence.persistence.services.session import Session, Transaction
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore, fake_session
-from tests.fixtures.library.generated.books import Book
+from tests.fixtures.library.domain.generated.books import Book
 from tests.toy import (
     MODULES,
     REVIEW_WORKFLOW,

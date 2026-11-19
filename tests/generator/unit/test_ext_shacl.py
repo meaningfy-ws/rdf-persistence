@@ -35,7 +35,7 @@ def ignored(shapes: Graph, shape: str) -> set[URIRef]:
 
 @pytest.mark.slow
 def test_the_toy_shapes_equal_the_committed_tree(tmp_path: Path) -> None:
-    assert_matches_toy(run_toy(SHAPES_STEP, tmp_path), "generated/shapes.ttl")
+    assert_matches_toy(run_toy(SHAPES_STEP, tmp_path), "domain/generated/shapes.ttl")
 
 
 def test_shapes_are_written_next_to_the_python_output(generated_toy: Path) -> None:

@@ -50,7 +50,7 @@ def test_every_activity_class_of_the_toy_gets_a_frame(tmp_path: Path) -> None:
     view = generation_view(folder / "library.yaml", roots=TOOLKIT_ROOTS)
     expected = {"Activity", *view.class_descendants("Activity")}
     assert len(expected) > 1, "the toy has no activity class: the test attacks nothing"
-    frames = folder / "generated"
+    frames = folder / "domain" / "generated"
     missing = sorted(n for n in expected if not (frames / f"{n}.frame.jsonld").is_file())
     assert not missing, f"no frame for the activity classes {missing}"
 

@@ -17,8 +17,9 @@ from rdf_persistence.schema.services.schema_structure import own_schemas
 from rdf_persistence_generation import components
 from rdf_persistence_generation.checks.boundary import (
     boundary_problems,
+    derived_kind,
     kind_folder_problems,
-    target_kind_problems,
+    mixed_kind_problems,
 )
 from rdf_persistence_generation.checks.hard import hard_problems, stored_schema_problems
 from rdf_persistence_generation.checks.python_package import python_package_problems
@@ -99,11 +100,15 @@ def _rules_problems(run: Run) -> list[CheckProblem]:
 
 def _boundary_problems(run: Run) -> list[CheckProblem]:
     folder = run.schema_path.parent
-    kind = run.target.target_kind
+    mixed = mixed_kind_problems(
+        run.view, folder
+    )  # a mixed target gets no folder problem: its hint would mislead
     return [
         *boundary_problems(run.view, folder),
-        *(target_kind_problems(run.view, folder, kind) if kind else []),
-        *kind_folder_problems(folder, run.target.package, kind),
+        *(
+            mixed
+            or kind_folder_problems(folder, run.target.package, derived_kind(run.view, folder))
+        ),
     ]
 
 

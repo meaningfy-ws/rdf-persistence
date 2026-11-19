@@ -5,30 +5,29 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence_generation import config, steps
+from rdf_persistence_generation import config
 from rdf_persistence_generation.cli import build_parser
 from rdf_persistence_generation.config import cli_flags, read_targets
 from rdf_persistence_generation.exceptions import ConfigError
-from rdf_persistence_generation.generated.rp_generation import GenerationTarget, TargetKind
-from rdf_persistence_generation.pipeline import generate
+from rdf_persistence_generation.generated.rp_generation import GenerationTarget
 
 from .conftest import TOY
 
 SINGLE = """
 [tool.rp-generate]
 schema = "m.yaml"
-package = "app.generated"
+package = "app.domain.generated"
 typescript = "web"
 """
 
 SEVERAL = """
 [[tool.rp-generate]]
 schema = "a.yaml"
-package = "app.a"
+package = "app.a.domain.generated"
 
 [[tool.rp-generate]]
 schema = "b.yaml"
-package = "app.b"
+package = "app.b.domain.generated"
 python = "out/b"
 """
 
@@ -43,13 +42,16 @@ def read(tmp_path: Path, toml: str | None, *flags: str) -> list[GenerationTarget
 def test_a_table_is_one_target(tmp_path: Path) -> None:
     (target,) = read(tmp_path, SINGLE)
     assert target == GenerationTarget(
-        schema_file="m.yaml", package="app.generated", typescript="web"
+        schema_file="m.yaml", package="app.domain.generated", typescript="web"
     ), "the table did not become one target"
 
 
 def test_an_array_of_tables_is_one_target_per_entry(tmp_path: Path) -> None:
     targets = read(tmp_path, SEVERAL)
-    assert [t.package for t in targets] == ["app.a", "app.b"], "entries lost or reordered"
+    assert [t.package for t in targets] == [
+        "app.a.domain.generated",
+        "app.b.domain.generated",
+    ], "entries lost or reordered"
     assert targets[1].python == "out/b", "a key of the second entry was lost"
 
 
@@ -115,42 +117,25 @@ def test_a_regenerate_command_that_is_not_a_string_is_an_error_naming_the_toml_k
         read(tmp_path, SINGLE + "regenerate-command = 3\n")
 
 
-def test_a_kind_is_read_from_its_toml_key(tmp_path: Path) -> None:
-    (technical,) = read(tmp_path, SINGLE + 'kind = "technical"\n')
-    assert technical.target_kind == TargetKind.TECHNICAL, "the kind key was not read"
-
-
-def test_the_toy_librarys_table_has_no_kind_and_passes_the_boundary_check() -> None:
-    (toy,) = read_targets(TOY / "pyproject.toml")
-    assert toy.target_kind is None, "an absent key leaves the kind unset"
-    assert generate([toy], TOY, (steps.BOUNDARY_STEP,), check=True) == [], "no kind, no kind check"
-
-
-@pytest.mark.parametrize(
-    "literal",
-    [
-        '"access"',
-        '"Technical"',
-        '"TECHNICAL"',
-        '" domain"',
-        '"technical\\n"',
-        '""',
-        "1",
-        "true",
-        "[]",
-    ],
-)
-def test_a_kind_that_is_not_exactly_domain_or_technical_is_an_error_naming_the_toml_key(
+@pytest.mark.parametrize("literal", ['"domain"', '"technical"', '"access"', "1", "[]"])
+def test_an_entry_that_declares_a_kind_is_refused_naming_the_key(
     tmp_path: Path, literal: str
 ) -> None:
-    """Probe of PD-9: no case folding, no trimming, no coercion."""
-    with pytest.raises(ConfigError, match="kind"):
+    """TC-01c: the kind is derived, so the key is an unknown one, whatever its value."""
+    with pytest.raises(ConfigError, match=r"invalid entry: kind: Extra inputs are not permitted"):
         read(tmp_path, SINGLE + f"kind = {literal}\n")
 
 
 def test_a_kind_spelt_target_kind_is_refused_naming_the_key(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="target_kind"):
         read(tmp_path, SINGLE + 'target_kind = "technical"\n')
+
+
+def test_the_toy_librarys_table_declares_no_kind() -> None:
+    """Spec "a target without a kind": the table is read, and the model has no kind to hold."""
+    (toy,) = read_targets(TOY / "pyproject.toml")
+    assert "target_kind" not in GenerationTarget.model_fields, "the model still holds a kind"
+    assert not hasattr(toy, "target_kind"), "the target still holds a kind"
 
 
 def test_the_regenerate_command_is_not_a_flag() -> None:
@@ -197,13 +182,16 @@ def test_the_regenerate_command_flag_is_refused_by_the_parser(
 def test_each_row_of_several_entries_keeps_its_own_regenerate_command(tmp_path: Path) -> None:
     first, second = read(
         tmp_path,
-        SEVERAL.replace('package = "app.a"', 'package = "app.a"\nregenerate-command = "x"'),
+        SEVERAL.replace(
+            'package = "app.a.domain.generated"',
+            'package = "app.a.domain.generated"\nregenerate-command = "x"',
+        ),
     )
     assert (first.regenerate_command, second.regenerate_command) == ("x", None), "rows mixed up"
 
 
 def test_a_row_with_the_aliased_keys_sets_the_fields(tmp_path: Path) -> None:
-    """TC-45: `regenerate-command` is the model's own alias; `schema` and `kind` too (D-52)."""
+    """TC-45: `regenerate-command` is the model's own alias; `schema` too (D-52)."""
     (target,) = read(tmp_path, SINGLE + 'regenerate-command = "make g"\n')
     assert (target.schema_file, target.regenerate_command) == ("m.yaml", "make g"), (
         "an aliased key did not set its field"
@@ -213,10 +201,11 @@ def test_a_row_with_the_aliased_keys_sets_the_fields(tmp_path: Path) -> None:
     )
 
 
-def test_schema_and_kind_are_aliases_not_entries_of_a_key_map() -> None:
-    """TC-45: `schema` and `kind` are aliases of `schema_file` and `target_kind` (D-52), not a key map."""
+def test_schema_is_an_alias_and_kind_is_none_not_entries_of_a_key_map() -> None:
+    """TC-45: `schema` is the alias of `schema_file` (D-52), not a key map; `kind` is no key at all (TC-01c)."""
     aliases = {name: field.alias for name, field in GenerationTarget.model_fields.items()}
-    assert (aliases["schema_file"], aliases["target_kind"]) == ("schema", "kind"), "no such alias"
+    assert aliases["schema_file"] == "schema", "no such alias"
+    assert "kind" not in aliases.values(), "a key `kind` is still an alias of a field"
     assert not hasattr(config, "FIELD_OF_TOML_KEY"), "the key map outlived the aliases"
 
 

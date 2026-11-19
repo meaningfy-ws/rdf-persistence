@@ -52,11 +52,11 @@ def test_a_schema_changed_without_regenerating_stops_the_session_before_any_test
 def test_a_hand_edited_generated_file_stops_the_session_and_is_named(
     session: pytest.Pytester,
 ) -> None:
-    output = session.path / "app/generated/m.py"
+    output = session.path / "app/domain/generated/m.py"
     output.write_text(output.read_text() + "# by hand\n", encoding="utf-8")
     result = session.runpytest()
     assert result.ret == 1, "the session did not stop with exit code 1"
-    result.stdout.fnmatch_lines(["*app/generated/m.py*"])
+    result.stdout.fnmatch_lines(["*app/domain/generated/m.py*"])
 
 
 @pytest.mark.slow

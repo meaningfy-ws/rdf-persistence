@@ -36,8 +36,8 @@ from rdf_persistence.tenancy.services.sweep import sweep
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.tenancy.services.tenant_dump import dump
 from rdf_persistence.testkit import FakeFileStore, FakeStore
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
 from tests.toy import SETTINGS, TOY_SCHEMA, toy_mapper
 from tests.unit.tenancy.test_migration_runner import (

@@ -23,8 +23,8 @@ from rdf_persistence.schema.services.schema_structure import served_roots
 from rdf_persistence.tenancy.services.sweep import sweep
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
-from tests.fixtures.library.generated.books import Book
-from tests.fixtures.library.generated.templates import Template
+from tests.fixtures.library.domain.generated.books import Book
+from tests.fixtures.library.domain.generated.templates import Template
 from tests.toy import ADA, ROLES, SETTINGS, dune, library_slots, template, toy_mapper
 from tests.toy_service import ToyService, principal_of
 

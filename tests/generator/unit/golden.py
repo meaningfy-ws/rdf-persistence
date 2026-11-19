@@ -1,7 +1,7 @@
 """Golden comparison for the extension tests (PD-25, PD-27 item 2).
 
 The golden of the toy library is the committed generated tree itself (``tests/fixtures/library/
-generated`` and ``.../web/src/domain/generated``): a test renders one extension's output afresh and
+domain/generated`` and ``.../web/src/domain/generated``): a test renders one extension's output afresh and
 compares it with that tree, so there is no second copy to keep in step. Turtle is compared by
 meaning, everything else (JSON too) by exact text, and the file set must match exactly. A mismatch
 means the tree is stale: ``make generate`` rewrites it.
@@ -70,7 +70,7 @@ def _assert_same(label: str, produced: Path, golden: Path) -> None:
 def assert_matches_toy(produced: Path, *patterns: str) -> None:
     """Fail unless ``produced`` holds exactly the committed toy files that ``patterns`` select, each equal.
 
-    ``patterns`` are globs relative to the toy folder (``generated/*.py``); ``produced`` is the
+    ``patterns`` are globs relative to the toy folder (``domain/generated/*.py``); ``produced`` is the
     staging folder of a step run laid out the way the toy's folders are.
     """
     committed = sorted({p.relative_to(TOY) for pattern in patterns for p in TOY.glob(pattern)})

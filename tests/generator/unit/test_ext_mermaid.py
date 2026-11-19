@@ -27,7 +27,7 @@ def block(staged: Path, module: str, name: str) -> str:
 
 
 def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
-    assert_matches_toy(rendered, "generated/diagrams/*.mmd")
+    assert_matches_toy(rendered, "domain/generated/diagrams/*.mmd")
 
 
 def test_one_diagram_per_module_of_the_application(staged: Path) -> None:

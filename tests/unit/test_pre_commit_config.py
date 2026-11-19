@@ -45,7 +45,7 @@ def test_the_hook_fires_on_a_manifest_input(path: str) -> None:
     [
         "rdf_persistence/generated/models.py",
         "rdf_persistence_generation/generated/rp_generation.py",
-        "tests/fixtures/library/generated/models.py",
+        "tests/fixtures/library/domain/generated/models.py",
     ],
 )
 def test_the_hook_fires_on_generated_output_on_purpose(path: str) -> None:

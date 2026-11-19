@@ -55,13 +55,13 @@ def generated_toy(tmp_path: Path) -> Iterator[ModuleType]:
     folder = tmp_path / PACKAGE
     shutil.copytree(TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated"))
     exit_code = generate(
-        ["--project", str(folder / "pyproject.toml"), "--package", f"{PACKAGE}.generated"]
+        ["--project", str(folder / "pyproject.toml"), "--package", f"{PACKAGE}.domain.generated"]
     )
     assert exit_code == 0, "the toy copy did not generate"
     sys.path.insert(0, str(tmp_path))
     importlib.invalidate_caches()
     try:
-        yield importlib.import_module(f"{PACKAGE}.generated")
+        yield importlib.import_module(f"{PACKAGE}.domain.generated")
     finally:
         sys.path.remove(str(tmp_path))
         for name in [n for n in sys.modules if n == PACKAGE or n.startswith(f"{PACKAGE}.")]:
@@ -217,7 +217,7 @@ async def test_an_outsider_finds_no_library(tmp_path, fuseki, garage, zitadel_pr
 def test_the_generated_package_leaves_neither_modules_nor_path_behind(tmp_path: Path) -> None:
     """TC-54."""
     with generated_toy(tmp_path) as generated:
-        assert generated.__name__ == f"{PACKAGE}.generated", "imported under the new name"
+        assert generated.__name__ == f"{PACKAGE}.domain.generated", "imported under the new name"
         assert str(tmp_path) in sys.path, "tmp_path is on the path inside the block"
     assert not [n for n in sys.modules if n == PACKAGE or n.startswith(f"{PACKAGE}.")], (
         "toy_e2e is still in sys.modules"

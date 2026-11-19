@@ -23,8 +23,8 @@ from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.tenancy.services.sweep import sweep
 from rdf_persistence.tenancy.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.testkit import FakeFileStore
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
 from tests.toy_service import drop_databases, unique_prefix
 

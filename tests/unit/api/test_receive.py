@@ -30,7 +30,7 @@ from rdf_persistence.testkit import (
     InMemoryEventBus,
     wait_until_async,
 )
-from tests.fixtures.library.generated.templates import Template
+from tests.fixtures.library.domain.generated.templates import Template
 from tests.logs import attributes
 from tests.toy import toy_mapper
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of

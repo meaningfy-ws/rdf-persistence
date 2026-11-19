@@ -4,7 +4,7 @@ One stage, one PR (SMALL).
 
 ## 1. The derived kind and the rule for every target
 
-- [ ] 1.1 Tests first, red: TC-01a to TC-01c, TC-02 (both forms), TC-05. Rewrite or delete the tests
+- [x] 1.1 Tests first, red: TC-01a to TC-01c, TC-02 (both forms), TC-05. Rewrite or delete the tests
   of the old rule:
   - `tests/generator/unit/test_boundary_check.py`: `kind_problems_of` and its tests (438-475) deleted
     (PD-1); the `TargetKind | None` calls (464, 533-705) pass a kind; the consumer case at 638
@@ -28,13 +28,13 @@ One stage, one PR (SMALL).
     generates` (30 rows: 390-400, 3884-3885, 3900-3903, 4185-4192, 4311-4312, 4348) re-keyed to `A
     target's kind is derived from its modules`; rows added for the new and renamed tests, so
     `make refresh-map` exits 0.
-- [ ] 1.2 PD-1 to PD-4: `derived_kind`, `mixed_kind_problems`, `kind_folder_problems` for every target,
+- [x] 1.2 PD-1 to PD-4: `derived_kind`, `mixed_kind_problems`, `kind_folder_problems` for every target,
   `target_kind_problems` and the `target_kind` slot deleted, `TargetKind` reworded, the 20 `kind`
   lines removed from `pyproject.toml`; `make generate`. Gate: `make test-changed check-quality`.
 
 ## 2. Our own targets
 
-- [ ] 2.1 PD-5 in one commit with `make generate`: the toy library (package, `python`, `diagrams`,
+- [x] 2.1 PD-5 in one commit with `make generate`: the toy library (package, `python`, `diagrams`,
   `domain/__init__.py`, the old `generated/` and `golden/`, the 63 references), the getting-started
   example (`pyproject.toml`, `library_app.py`), the cross-target fixture (`pyproject.toml`,
   `a/a.yaml`), the generator tests' inline configs by PD-5's rule. TC-03, TC-04. Gate:
@@ -42,7 +42,7 @@ One stage, one PR (SMALL).
 
 ## 3. Docs and release note
 
-- [ ] 3.1 Each page, and what it becomes:
+- [x] 3.1 Each page, and what it becomes:
   - `architecture/generation.adoc` (308, 381-407, 447): "The `kind` key" becomes "The kind of a target"
     (derived, no mixed target, the folder rule for every target, the theme rule for the toolkit);
     "a consumer keeps its own layout" goes.
@@ -62,7 +62,7 @@ One stage, one PR (SMALL).
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 2.1 · [ ] 3.1
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1
 
 ## Verification
 

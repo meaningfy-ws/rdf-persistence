@@ -15,6 +15,6 @@ rdf-persistence = { git = "https://github.com/meaningfy-ws/rdf-persistence", tag
 # tag::generate[]
 [tool.rp-generate]
 schema = "models/library.yaml"
-package = "generated"
+package = "domain.generated"
 migrations = "migrations"
 # end::generate[]

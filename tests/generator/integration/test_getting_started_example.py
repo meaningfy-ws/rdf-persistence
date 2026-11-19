@@ -16,7 +16,7 @@ from rdf_persistence_generation.cli import main
 EXAMPLE = Path(__file__).parents[3] / "docs" / "modules" / "ROOT" / "examples" / "getting-started"
 TOY = Path(__file__).parents[2] / "fixtures" / "library"
 TOY_MODULES = ("library_tenant.yaml", "books.yaml", "library_access.yaml")
-PROJECT_MODULES = ("library_app", "generated")
+PROJECT_MODULES = ("library_app", "domain")
 KEPT_ELEMENT_KEYS = ("title", "description", "class_uri", "slot_uri", "range", "multivalued")
 
 

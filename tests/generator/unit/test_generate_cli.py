@@ -20,7 +20,7 @@ from rdf_persistence_generation.pipeline import Run, Step, generate
 PYPROJECT = """
 [tool.rp-generate]
 schema = "m.yaml"
-package = "app.generated"
+package = "app.domain.generated"
 migrations = "migrations"
 """
 
@@ -48,7 +48,7 @@ classes:
       rp_path: things
 """
 
-OUTPUT = Path("app/generated/m.py")
+OUTPUT = Path("app/domain/generated/m.py")
 PROJECT_FILES = ["app", "m.yaml", "migrations", "pyproject.toml"]  # what a run leaves in the folder
 
 
@@ -107,7 +107,7 @@ def test_listing_the_python_folders_needs_no_linkml(
         "the listing failed without linkml"
     )
     captured = capsys.readouterr()
-    assert captured.out.split() == ["app/generated"], captured.out
+    assert captured.out.split() == ["app/domain/generated"], captured.out
     assert "install rdf-persistence" not in captured.err, "the install hint was printed"
     assert not (tmp_path / "app").exists(), "something was written"
 
@@ -172,7 +172,7 @@ def test_a_failed_lint_leaves_the_previous_output_byte_identical(tmp_path: Path)
 
 def write_then(outcome: Step) -> tuple[Step, ...]:
     def write(run: Run) -> None:
-        run.staged(Path("app/generated/new.py")).write_text("new", encoding="utf-8")
+        run.staged(Path("app/domain/generated/new.py")).write_text("new", encoding="utf-8")
 
     return (Step("write", write, writes=True), outcome)
 
@@ -180,7 +180,7 @@ def write_then(outcome: Step) -> tuple[Step, ...]:
 def test_a_failure_after_a_write_moves_nothing_into_place(tmp_path: Path) -> None:
 
     pyproject = project(tmp_path)
-    old = tmp_path / "app/generated/old.py"
+    old = tmp_path / "app/domain/generated/old.py"
     old.parent.mkdir(parents=True)
     old.write_text("old", encoding="utf-8")
 
@@ -192,7 +192,7 @@ def test_a_failure_after_a_write_moves_nothing_into_place(tmp_path: Path) -> Non
     assert problems == [CheckProblem(schema_file="m.yaml", step="fail", message="boom")], (
         "the failure was not reported"
     )
-    assert tree(tmp_path / "app") == {Path("generated/old.py"): b"old"}, (
+    assert tree(tmp_path / "app") == {Path("domain/generated/old.py"): b"old"}, (
         "output moved before success"
     )
 
@@ -205,7 +205,7 @@ def test_a_successful_pipeline_moves_every_staged_file(tmp_path: Path) -> None:
     assert generate(targets, tmp_path, write_then(ok), check=False) == [], (
         "a successful pipeline reports no problems"
     )
-    assert (tmp_path / "app/generated/new.py").read_text() == "new", (
+    assert (tmp_path / "app/domain/generated/new.py").read_text() == "new", (
         "the staged file did not arrive"
     )
 

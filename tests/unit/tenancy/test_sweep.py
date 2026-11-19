@@ -16,8 +16,8 @@ from rdf_persistence.persistence.services.store import ToolkitStore, TracedStore
 from rdf_persistence.tenancy.services.sweep import sweep
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
 

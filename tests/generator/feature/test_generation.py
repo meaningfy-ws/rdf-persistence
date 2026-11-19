@@ -16,7 +16,7 @@ scenarios("generation.feature")
 
 TOY = Path(__file__).parents[2] / "fixtures" / "library"
 IGNORED = shutil.ignore_patterns("__pycache__", "generated", "web")
-OUTPUT = "generated"
+OUTPUT = "domain/generated"
 TYPESCRIPT = "web/src/domain/generated"
 MANIFEST = "rp-manifest.json"
 BOOKS = "books.yaml"

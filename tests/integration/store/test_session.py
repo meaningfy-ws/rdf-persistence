@@ -378,7 +378,7 @@ async def test_open_session_yields_a_working_session(store, database):
 async def test_find_returns_the_aggregate_with_the_value_on_a_real_store(store, database):
     from rdf_persistence.persistence.services.listing import Listings
     from rdf_persistence.schema.services.schema import load_schema
-    from tests.fixtures.library.generated.scans import Scan
+    from tests.fixtures.library.domain.generated.scans import Scan
     from tests.toy import TOY_SCHEMA, toy_mapper
 
     session = Session(

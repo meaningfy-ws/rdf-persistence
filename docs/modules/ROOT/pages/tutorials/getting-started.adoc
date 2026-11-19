@@ -90,7 +90,7 @@ uv run rp-generate
 ----
 
 It checks the model, then writes the Python classes, SHACL shapes, a JSON-LD context and the
-OpenAPI components into `generated/`, and the schema lock into `migrations/`. It prints
+OpenAPI components into `domain/generated/`, and the schema lock into `migrations/`. It prints
 `generated 1 target(s), no problems`. You never edit what it writes: change the model and run it
 again.
 
@@ -161,8 +161,7 @@ the session wrote them, because `Book` is `Tracked`.
 The xref:user-manual/index.adoc[user manual] continues with the same toy library, in full, under
 `tests/fixtures/library/` of the repository: a model of several modules, the generator's options,
 chapters and notes owned by a book, conflicts, files, access and serving the model as an HTTP API.
-It lays the application out in layers (`library/domain/generated/` and so on) rather than the flat
-`generated/` of this tutorial.
+It lays the application out in layers (`library/domain/generated/` and so on).
 
 * xref:architecture/data-flows.adoc[Where data lives] shows what each operation writes.
 * xref:questions.adoc[Common questions] answers the usual ones in a line or two.

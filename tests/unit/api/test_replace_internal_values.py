@@ -24,7 +24,7 @@ SERIAL = URIRef("https://example.org/ns/m#serial")
 PYPROJECT = """
 [tool.rp-generate]
 schema = "m.yaml"
-package = "app.generated"
+package = "app.domain.generated"
 migrations = "migrations"
 """
 SCHEMA = """
@@ -67,7 +67,7 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     (project / "pyproject.toml").write_text(PYPROJECT, encoding="utf-8")
     (project / "m.yaml").write_text(SCHEMA, encoding="utf-8")
     assert generate(["--project", str(project / "pyproject.toml")]) == 0, "rp-generate failed"
-    return Documents(load_schema(project / "m.yaml"), project / "app" / "generated")
+    return Documents(load_schema(project / "m.yaml"), project / "app" / "domain" / "generated")
 
 
 async def test_a_replace_keeps_the_internal_value_the_service_stored(documents: Documents) -> None:

@@ -1,7 +1,7 @@
 [tool.rp-generate]
 schema = "library.yaml"
-package = "tests.fixtures.library.generated"
-python = "generated"
+package = "tests.fixtures.library.domain.generated"
+python = "domain/generated"
 typescript = "web/src/domain/generated"
-diagrams = "generated/diagrams"
+diagrams = "domain/generated/diagrams"
 migrations = "migrations"

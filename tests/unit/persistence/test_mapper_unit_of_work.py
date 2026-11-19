@@ -16,9 +16,9 @@ from rdf_persistence.iris.services.iris import (
 from rdf_persistence.persistence.services.mapper import UnitOfWork, new_part
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE, FakeStore, fake_session
-from tests.fixtures.library.generated.books import Book, Chapter
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.books import Book, Chapter
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.toy import (
     ADA,
     TENANT,

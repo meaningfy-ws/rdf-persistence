@@ -9,8 +9,8 @@ from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.tenancy.services.sweep import sweep
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import assert_isomorphic
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.toy import ADA, library_slots, toy_mapper
 
 CREATOR = Principal(id=ADA)

@@ -31,8 +31,8 @@ from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit.fakes import FAKE_DATABASE, FAKE_PRINCIPAL, FAKE_TENANT, FakeStore
-from tests.fixtures.library.generated.books import Book, Chapter, Genre
-from tests.fixtures.library.generated.scans import Scan
+from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre
+from tests.fixtures.library.domain.generated.scans import Scan
 from tests.toy import TOY_SCHEMA, dune, toy_mapper
 
 CHAPTER = URIRef("https://example.org/ns/library#chapter")

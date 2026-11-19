@@ -13,7 +13,7 @@ from rdf_persistence.migrations.services.migrations import stamps, versions
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.vocabulary import metamodel
 from rdf_persistence.testkit import FakeStore
-from tests.fixtures.library import generated
+from tests.fixtures.library.domain import generated
 from tests.toy import REVIEW_WORKFLOW, TOY_SCHEMA
 from tests.toy_service import TENANT_BODY, ToyService
 

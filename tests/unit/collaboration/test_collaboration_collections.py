@@ -28,7 +28,7 @@ from rdf_persistence.persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import fake_session
-from tests.fixtures.library.generated.books import Genre, Shelf
+from tests.fixtures.library.domain.generated.books import Genre, Shelf
 from tests.toy import (
     ADA,
     BOB,

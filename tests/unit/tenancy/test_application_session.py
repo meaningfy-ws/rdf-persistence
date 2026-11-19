@@ -26,8 +26,8 @@ from rdf_persistence.persistence.services.session import open_session, payload_t
 from rdf_persistence.tenancy.services.sweep import sweep
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
-from tests.fixtures.library.generated.books import Book
-from tests.fixtures.library.generated.templates import Template
+from tests.fixtures.library.domain.generated.books import Book
+from tests.fixtures.library.domain.generated.templates import Template
 from tests.toy import ADA, SETTINGS, access, dune, library, template, toy_mapper
 from tests.unit.tenancy.test_tenant_sweep import CREATOR, make_world
 

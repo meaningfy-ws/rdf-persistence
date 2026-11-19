@@ -42,7 +42,7 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore, RecordingObserver, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.fixtures.library.generated.books import Book
+from tests.fixtures.library.domain.generated.books import Book
 from tests.logs import attributes, records_of
 from tests.toy import (
     ADA,

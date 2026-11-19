@@ -8,7 +8,11 @@ from pathlib import Path
 
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import root_classes
-from rdf_persistence_generation.checks.boundary import boundary_problems, target_kind_problems
+from rdf_persistence_generation.checks.boundary import (
+    boundary_problems,
+    derived_kind,
+    mixed_kind_problems,
+)
 from rdf_persistence_generation.checks.hard import hard_problems
 from rdf_persistence_generation.generated.rp_generation import BoundaryRule, TargetKind
 from rdf_persistence_generation.problems import format_problem
@@ -133,15 +137,23 @@ def test_the_kind_is_read_case_insensitively_so_an_upper_case_kind_exempts(tmp_p
     assert exempt != refused or not exempt, "a kind refused as a value still exempts its classes"
 
 
-def test_a_technical_module_in_a_domain_target_is_refused(tmp_path: Path) -> None:
-    """Tries a technical module in a target of kind domain, and a domain module in a technical one."""
+def test_a_technical_module_beside_a_domain_one_in_a_target_is_refused(tmp_path: Path) -> None:
+    """Tries a technical module and a domain one in one target: the mix is refused, whichever it was meant to be."""
     view, folder = project(tmp_path, "technical", "domain", owned=False)
-    (tmp_path / "tech.yaml").write_text(module("tech", "technical", TECH_CLASS), encoding="utf-8")
-    assert target_kind_problems(view, folder, TargetKind.DOMAIN), (
-        "a technical module passed a domain target"
-    )
-    assert target_kind_problems(view, folder, TargetKind.TECHNICAL), (
-        "a domain module passed a technical target"
+    found = [format_problem(p) for p in mixed_kind_problems(view, folder)]
+    assert len(found) == 1, f"a technical module passed beside a domain one: {found}"
+    assert "tech" in found[0], f"the technical module is not named: {found}"
+    assert derived_kind(view, folder) == TargetKind.DOMAIN, "a mixed target is not technical"
+
+
+def test_a_technical_module_outside_the_import_closure_does_not_make_the_target_mixed(
+    tmp_path: Path,
+) -> None:
+    """DEC-1: the kind is derived from the target's own modules, not from every file of its folder."""
+    view, folder = project(tmp_path, "technical", "domain", owned=False, imports=False)
+    assert mixed_kind_problems(view, folder) == [], "a file the root does not import was counted"
+    assert derived_kind(view, folder) == TargetKind.DOMAIN, (
+        "a file the root does not import was counted"
     )
 
 
