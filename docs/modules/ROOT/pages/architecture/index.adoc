@@ -435,8 +435,8 @@ exhaustive: a theme holds no module outside its four layers.
 `entrypoints`; the `adapters` importing `entrypoints`, and the `entrypoints` importing `adapters`.
 Since every technical model sits in a `services`, `adapters` or `entrypoints` folder, no domain
 imports one (<<models-in-themes>>).
-|`domain-pure` |A `domain` importing an I/O, web, token or validation library (`httpx`, `boto3`,
-`fastapi`, `jwt`, `pyshacl`, `anyio`).
+|`domain-pure` |A `domain` (and the `domain` shim) importing an I/O, web, token or validation
+library (`httpx`, `boto3`, `fastapi`, `jwt`, `pyshacl`, `anyio`).
 |`runtime-without-extras` |The runtime layers (and the two shims) importing the testkit, the
 generator, `pytest`, `testcontainers` or `linkml`.
 |`works-without-the-generate-extra` |What is installed without the `generate` extra importing `linkml`.
