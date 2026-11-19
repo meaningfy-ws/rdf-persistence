@@ -233,6 +233,10 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
     `migrations-below-the-runner` (implied by `themes-ordered`), `technical-models`'
     `domain-never-imports-technical-models` (implied by `layers-across-themes`: every technical
     package sits in a `services`, `adapters` or `entrypoints` layer, which no `*.domain` imports).
+    `themes-ordered` implies the bus rule only for the themes below `messaging`; for `api`, above
+    it, `api-services-never-import-the-bus` (D-23) keeps
+    `rdf_persistence.api.services.{aggregates,components,documents,file_removal}` off
+    `rdf_persistence.messaging`, so the contracts end as 16.
 
   The 14 contracts of today therefore end as 15: ten carry over, four are gone, five are new
   (`themes-layered`, `themes-ordered` and the three of `layers-across-themes`).
@@ -716,4 +720,6 @@ consumers later.
   `redis`, but only `faststream` is exempt: the title is reworded to what the contract enforces,
   rather than widening the exemption). Under the floor: S3 (recorded in D-22 (7)). The tester's
   tests are not kept: none failed first on production code but F1's, which the reworded title
-  resolves.
+  resolves. The checker found PD-6 and task 7.1 silent on the new contract: both now name it
+  (16 contracts at the end). Under the floor: the stage's unplanted control does not lint the new
+  contract (its four planted tests do); the stage changelog items go to `evidence/docs-owed.md`.
