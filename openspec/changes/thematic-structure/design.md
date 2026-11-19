@@ -265,6 +265,8 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
   consumer run the base-model template writes `from rdf_persistence import RpModel as ...`; in the
   toolkit's own run it writes `from rdf_persistence.core.domain.base import RpModel as ...`
   (the top package imports the generated metamodel, so the toolkit's own code cannot use it).
+  The shims shipped in no release: stage 8 removed them before the release that carries the move
+  (D-26). The template line stays.
 - **PD-9 Theme packages.** Each `<theme>/__init__.py` and `<theme>/<layer>/__init__.py` holds a
   docstring only, so importing a theme imports nothing else and no cycle can hide in an
   `__init__`. The top `__init__.py` keeps its eager imports (domain and generated) and its
@@ -299,6 +301,7 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
 - **PD-13 The release.** Stage 7 ends with a minor release that carries the shims and the warning
   of `mint_aggregate_iri` (CHANGELOG "Deprecated"). Stage 8 merges only after that release is
   published, and goes into the next minor release (CHANGELOG "Removed"; **BREAKING**).
+  Superseded by D-26: stage 8 ships in the same release as stage 7, with no deprecation release.
 
 ## Algorithm / approach
 
@@ -755,3 +758,30 @@ consumers later.
   folder check requiring a theme before the layer (the tester's probe); the shims' warnings naming
   a version (PD-8; named when the release is cut). The tester's other tests are not kept: none
   failed first on production code.
+- **D-26 Stage 8 now, in the release of the move** (developer, 2026-11-19: "why not just do the
+  stage 8 now? just do everything and the release"). PD-13's precondition, a published release
+  containing stage 7, is waived: stage 8 merges before the release, and 0.6.0 carries the move and
+  the removal together. The two shims and `mint_aggregate_iri` ship in no release; the CHANGELOG
+  lists them under Removed (BREAKING), with their replacements, not under Deprecated. The
+  `rp-package-boundaries` requirement "A moved public path warns for one release" becomes "The
+  public names survive the move, the old deep paths do not": a consumer's stale generated code
+  fails with `ModuleNotFoundError` and its freshness check asks it to regenerate. The review items
+  D-25 left under the floor are fixed in this stage (one shared import-linter test helper; the
+  names `OUTSIDE_THEMES`, `_API_ENTRYPOINTS`, `_API_MODELS`, `_API_SETTINGS_MODELS`,
+  `API_ENTRYPOINTS_SCHEMA`, none public; the bus contract on the whole `api.services` package;
+  PD-4's folder check also requires a theme before the layer on the toolkit's run, the themes read
+  from the library's folders by `toolkit_themes()`). The acceptance of stage 8 is waived with the
+  EPIC's (D-3). The generator's own shims (#165) go in the same release, in their own PR.
+- **D-27 Stage 8 review** (lead; L2 and L3 apart, 10 findings, none Critical). Accepted, one fixer
+  pass: the `rp-developer-checks` delta loses its shim sentence and scenario; the `rp-generation`
+  requirement "A target declares the kind of model it generates" gains the theme rule and a
+  scenario (`rdf_persistence.services.generated` refused, naming the target), and
+  `architecture/generation.adoc`'s `TARGET_KIND` section says it; task 8.1's text names D-26's
+  waiver; TC-80 mapped at scenario level for "a consumer's generated code before it regenerates",
+  and a freshness test of the consumer template line mapped or added for its second half; the
+  148-name note in the map; a test that `toolkit_themes()` equals `tests/changed.THEMES`; the
+  removed-shim contract test matches submodules; `mypy.ini`'s example path; the broken comment in
+  `testkit/guards.py`; `broken_in` matches a contract key exactly. Kept as built (L3 W1):
+  `toolkit_themes()` reads the library's folders; a stray folder is refused by TC-70, by
+  `themes-layered` (exhaustive) and now by the equality test, so one declared list would only
+  duplicate those.

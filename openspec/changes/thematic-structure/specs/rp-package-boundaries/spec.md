@@ -48,18 +48,18 @@ The themes SHALL import only themes below them, in the order `core`; `iris`, `sc
 - **WHEN** a module of `rdf_persistence/events/` imports from `rdf_persistence/collaboration/`
 - **THEN** `make check-architecture` fails and names both modules
 
-### Requirement: A moved public path warns for one release
+### Requirement: The public names survive the move, the old deep paths do not
 
-A deep path a consumer may have imported SHALL keep working after the move, warning, for one
-release: `rdf_persistence.domain.base` and `rdf_persistence.adapters.fuseki` SHALL keep working for one minor release after the move, each
-raising a `DeprecationWarning` that names its new path, and SHALL be removed in the next minor
-release. Every name exported from `rdf_persistence` SHALL stay the same object through the move,
-except `mint_aggregate_iri`, which SHALL warn for the same release and then be removed.
+Every name exported from `rdf_persistence` SHALL stay the same object through the move, except
+`mint_aggregate_iri`, which SHALL be removed. The old deep paths `rdf_persistence.domain.base` and
+`rdf_persistence.adapters.fuseki` SHALL be removed in the release that moves the themes, with no
+deprecation period (D-26); a consumer's generated code SHALL import `RpModel` from
+`rdf_persistence`, and its freshness check SHALL ask it to regenerate once.
 
 #### Scenario: a consumer's generated code before it regenerates
 - **GIVEN** a consumer module with `from rdf_persistence.domain.base import RpModel`
 - **WHEN** it is imported in the release that moves the themes
-- **THEN** it works, a `DeprecationWarning` names `rdf_persistence.core.domain.base`, and `RpModel` is `rdf_persistence.RpModel`
+- **THEN** it fails with `ModuleNotFoundError`, and the consumer's freshness check names its generated code as stale
 
 #### Scenario: the public names
 - **WHEN** a consumer imports `FusekiStore`, `Tenancy` and `ServiceKit` from `rdf_persistence`
