@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-19
+
 ### Added
 - **Imports between generation targets** (`thematic-structure`): a schema that imports a module of
   another target, where that module declares `python_package`, imports its classes from
@@ -101,6 +103,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   module and class, so `rdf_persistence.domain.exceptions.Conflict` is now
   `rdf_persistence.core.domain.exceptions.Conflict`, and so for every toolkit exception. A
   dashboard or alert that matches the old value must change.
+- **The documentation is restructured** (#180, #182) into a tutorial, a user manual, guides and
+  the specification; `howto/adopt.adoc` is split into `user-manual/*` pages (its old address
+  redirects), and `make check-docs` resolves every `xref` and its anchor.
+- **`rp-generate --help` names the real configuration keys** (#182), and the description of
+  `max_document_nodes` says what it limits. The tests' example IRI policy is generic.
 
 ### Removed
 - **BREAKING: the four generator testkit shims** (`generator-package`, #165). The modules
@@ -137,6 +144,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the id through the policy, so it is stricter than `tenant_resource_name(prefix, id)`; a bad tenant segment is refused by `ServiceSettings` (`ValidationError`), where a wrapper raised
   `InvalidIri`. The twelve layout functions that no policy changes stay, in
   `rdf_persistence.iris.domain.layout`.
+
+### Fixed
+- **The generator's guards are harder to fool** (#164): the check that library tests never load
+  the generator reads every form of `pytest_plugins`, `__import__` and `importorskip`;
+  `rp-generate --list-python-folders` works without `linkml` installed; the freshness report names
+  a stale generator module once, with the targets it affects, instead of once per target.
 
 ## [0.5.0] - 2026-11-18
 
@@ -463,7 +476,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.2.0...v0.3.0
