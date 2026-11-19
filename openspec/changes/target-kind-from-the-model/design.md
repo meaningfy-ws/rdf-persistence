@@ -148,3 +148,18 @@ None.
   names the target by its root schema, as PD-2's `<target>` requires.
 - **D-3** (lead, task 2.1): tests that added a technical module to the domain toy (now a mixed
   target, PD-2) generate a separate technical-only project instead, keeping their intent.
+- **D-4** (lead, review W1, re-labelled Critical): `user-manual/generate.adoc` says the check reads
+  every schema of the entry's folder and that a folder of both kinds fails; DEC-1 derives the kind
+  from the target's own modules only (its root's import closure in its folder). Re-labelled because
+  the page is the migration guide every consumer reads for this breaking change, and it states the
+  option DEC-1 rejected. Fix: the page says "the modules the target generates".
+- **D-5** (lead, review W2, re-labelled Critical): the spec scenario "a consumer's settings without
+  the annotation" has no test with an unannotated module; every fixture carries a `module_kind`.
+  Re-labelled because a spec scenario without a test that fails on its regression is unverified.
+  Fix: a module with no `annotations:` derives `domain`, and the boundary step on it with
+  `app.services.generated` names `module_kind: technical`.
+- Under the floor (review S1–S5, not fixed): S1 the feature scenario runs a consumer target where
+  the spec's GIVEN says toolkit (planned in `tasks.md`); S2 the theme message does not name the
+  derived kind (the scenario asks only target and package); S3 technical modules joined by `,`
+  rather than `, `; S4 a redundant `TargetKind(kind)` in `kind_folder_problems`; S5 one `Then`
+  asserts three things.
