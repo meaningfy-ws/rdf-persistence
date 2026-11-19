@@ -6,7 +6,7 @@
 
 |`-h, --help` |show this help message and exit
 |`--project PROJECT` |the pyproject.toml to read
-|`--schema SCHEMA_FILE` |overrides the `schema_file` key
+|`--schema SCHEMA_FILE` |overrides the `schema` key
 |`--package PACKAGE` |overrides the `package` key
 |`--python-out PYTHON` |overrides the `python` key
 |`--typescript-out TYPESCRIPT` |overrides the `typescript` key

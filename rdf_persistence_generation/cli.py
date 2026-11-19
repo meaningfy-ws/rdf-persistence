@@ -5,7 +5,7 @@ import os
 import sys
 from pathlib import Path
 
-from rdf_persistence_generation.config import cli_flags, python_folder, read_targets
+from rdf_persistence_generation.config import cli_flags, python_folder, read_targets, toml_key
 from rdf_persistence_generation.exceptions import ConfigError
 from rdf_persistence_generation.generated.rp_generation import CheckProblem, GenerationTarget
 from rdf_persistence_generation.manifest import fix_hint, freshness_report, stale_targets
@@ -25,7 +25,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--project", type=Path, default=Path("pyproject.toml"), help="the pyproject.toml to read"
     )
     for flag in cli_flags():
-        parser.add_argument(flag.option, dest=flag.field, help=f"overrides the `{flag.field}` key")
+        parser.add_argument(
+            flag.option, dest=flag.field, help=f"overrides the `{toml_key(flag.field)}` key"
+        )
     parser.add_argument("--check", action="store_true", help="lint and check; write nothing")
     parser.add_argument(
         "--list-python-folders",
