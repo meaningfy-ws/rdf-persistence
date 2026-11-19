@@ -157,3 +157,21 @@ None.
 
 - **DEC-9** (developer, 2026-11-19, "yes accept both"): the PLAN proceeds below 9/10 (run 2: 8.9),
   with every gap run 2 listed fixed as the gate stated it (`evidence/clarity-gate.md`).
+
+## Delivery decisions
+
+The lead's, shown for validation at the end (R-0007).
+
+- **D-1 PD-5 applies only to a theme root** (task 1.2). PD-5 as written reaches every toolkit root;
+  applied so, it stripped the re-exports of seven technical targets (`rp_access_services.py` and
+  others) and deleted `rp.py` before the move. PD-5 now reads: on the toolkit's run, a root that
+  shares its folder with modules naming another `python_package` writes no module without classes
+  of its own, and is written in `SplitMode.AUTO` with some; every other root keeps its mode. `rp.py`
+  goes in task 2.1, when `rp.yaml` first shares its folder with the other themes' modules.
+- **D-2 Two package-mismatch tests point at the root** (task 1.2). With PD-3 a module naming a
+  package no toolkit target generates gets E-2's message, which names no target package; the two
+  tests that asserted "naming both" (`test_hard_check.py`, `test_python_package_rule.py`) now edit
+  the root `rp`, where the old message still applies.
+- **D-3 GitNexus rebuilt clean** (Prepare). The incremental re-index failed on a duplicate embedding
+  key; per `develop/agents.adoc#reindex` the lead ran `clean --force` and a forced analyze, and
+  checked task 1.1's impact by reading the code meanwhile (two constants, low).

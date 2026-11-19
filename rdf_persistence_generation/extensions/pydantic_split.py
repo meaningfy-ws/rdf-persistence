@@ -67,6 +67,7 @@ from rdf_persistence.schema.services.schema_structure import (
     TRUE_TEXT,
     annotation_text,
     apply_defaults,
+    generated_schemas,
     is_internal,
     is_switched_on,
     is_toolkit_schema,
@@ -179,12 +180,13 @@ class SplitPydanticGenerator(PydanticGenerator):
 
     toolkit: bool = False
     folder: Path | None = None
+    root_package: str | None = None
 
     def generate_module_import(self, schema: SchemaDefinition, context: dict | None = None) -> str:
         module: str = super().generate_module_import(schema, context)
         source = Path(str(schema.source_file)).resolve()
         if source.parent == self.folder:
-            return module
+            return module if self._generated_here(schema) else target_module(schema)  # PD-2
         if source.parent == METAMODEL_DIR:
             return metamodel_module(schema, toolkit=self.toolkit)
         if annotation_text(schema, GenerationAnnotation.PYTHON_PACKAGE) is not None:
@@ -193,6 +195,11 @@ class SplitPydanticGenerator(PydanticGenerator):
             f"{schema.name} is neither beside the root schema, nor in the metamodel, "
             f"nor says where its classes live ({GenerationAnnotation.PYTHON_PACKAGE.value})"
         )
+
+    def _generated_here(self, schema: SchemaDefinition) -> bool:
+        """Whether a module beside the root is written into the root's package: it names that package, or the root names none."""
+        package = annotation_text(schema, GenerationAnnotation.PYTHON_PACKAGE)
+        return self.root_package is None or package in (None, self.root_package)
 
     def before_render_template(self, module: PydanticModule, sv: SchemaView) -> PydanticModule:
         """Name the module ``RpModel`` is imported from (PD-8)."""
@@ -338,7 +345,9 @@ def _loosens_a_base_slot(slot: SlotDefinition, sv: SchemaView) -> bool:
     )
 
 
-def _generator(path: Path, folder: Path, mode: SplitMode) -> SplitPydanticGenerator:
+def _generator(
+    path: Path, folder: Path, mode: SplitMode, root_package: str | None
+) -> SplitPydanticGenerator:
     generator = SplitPydanticGenerator(
         str(path),
         importmap=metamodel_importmap(),
@@ -349,23 +358,37 @@ def _generator(path: Path, folder: Path, mode: SplitMode) -> SplitPydanticGenera
         split_mode=mode,
         toolkit=is_toolkit_schema(folder, roots=TOOLKIT_ROOTS),
         folder=folder.resolve(),
+        root_package=root_package,
     )
     apply_defaults(generator.schemaview, folder, roots=TOOLKIT_ROOTS)
     return generator
 
 
 def render(schema_path: Path) -> list[GeneratedFile]:
-    """Generate one module per schema module beside ``schema_path``, and an empty package marker.
+    """Generate one module per schema module beside ``schema_path`` that its package holds, and an empty package marker.
 
-    The root schema's module imports every class of the closure, so it is the one place a consumer
-    can import any class from; every other module imports only what its classes use.
+    A consumer's root module imports every class of the closure, so it is the one place a consumer
+    can import any class from; every other module imports only what its classes use. A module
+    naming another package than the root's is left to the target that generates it (PD-1). On the
+    toolkit's run, a root that shares its folder with such modules (a theme target's) re-exports no
+    class of another theme: without classes of its own it writes no module, with some it imports
+    only what it uses (PD-5).
     """
     folder = schema_path.parent
+    view = load_schema(schema_path)
+    root_package = annotation_text(view.schema, GenerationAnnotation.PYTHON_PACKAGE)
+    generated = generated_schemas(view, folder)
+    shared = is_toolkit_schema(folder, roots=TOOLKIT_ROOTS) and len(generated) < len(
+        own_schemas(view, folder)
+    )
     modules = [GeneratedFile(name=INIT, text="")]
-    for schema in own_schemas(load_schema(schema_path), folder):
+    for schema in generated:
         path = Path(str(schema.source_file))
-        mode = SplitMode.FULL if path.resolve() == schema_path.resolve() else SplitMode.AUTO
-        generator = _generator(path, folder, mode)
+        is_root = path.resolve() == schema_path.resolve()
+        if shared and is_root and not schema.classes:
+            continue
+        mode = SplitMode.FULL if is_root and not shared else SplitMode.AUTO
+        generator = _generator(path, folder, mode, root_package)
         name = generator.generate_module_import(generator.schema).lstrip(".")
         modules.append(GeneratedFile(name=f"{name}.py", text=generator.serialize()))
     return sorted(modules, key=lambda module: module.name)

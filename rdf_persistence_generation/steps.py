@@ -13,7 +13,7 @@ from linkml.linter.linter import Linter
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.schema.services.schema import metamodel_importmap
-from rdf_persistence.schema.services.schema_structure import own_schemas
+from rdf_persistence.schema.services.schema_structure import is_toolkit_schema, own_schemas
 from rdf_persistence_generation import components
 from rdf_persistence_generation.checks.boundary import (
     boundary_problems,
@@ -24,7 +24,12 @@ from rdf_persistence_generation.checks.boundary import (
 from rdf_persistence_generation.checks.hard import hard_problems, stored_schema_problems
 from rdf_persistence_generation.checks.python_package import python_package_problems
 from rdf_persistence_generation.checks.rules import rules_problems
-from rdf_persistence_generation.config import migrations_folder
+from rdf_persistence_generation.config import (
+    METAMODEL_ROOT,
+    TOOLKIT_ROOTS,
+    migrations_folder,
+    read_targets,
+)
 from rdf_persistence_generation.extensions import (
     jsonld_context,
     mermaid,
@@ -36,6 +41,7 @@ from rdf_persistence_generation.generated.rp_generation import CheckProblem
 from rdf_persistence_generation.lock_step import lock_problems, write_lock
 from rdf_persistence_generation.pipeline import Run, Step, check_step, render_step
 
+PYPROJECT = "pyproject.toml"
 LINT_CONFIG = Path(__file__).with_name("lint.yaml")
 # The name Linter looks its SchemaView up by; a test pins it so a linkml upgrade cannot break the patch silently.
 LINTER_SCHEMA_VIEW = "linkml.linter.linter.SchemaView"
@@ -112,12 +118,35 @@ def _boundary_problems(run: Run) -> list[CheckProblem]:
     ]
 
 
+def _toolkit_packages(run: Run) -> tuple[str, ...]:
+    """The packages of the toolkit's own targets, from its ``pyproject.toml``; none on an application's run (PD-3)."""
+    project = run.base / PYPROJECT
+    if not is_toolkit_schema(run.schema_path.parent, roots=TOOLKIT_ROOTS) or not project.is_file():
+        return ()
+    return tuple(target.package for target in read_targets(project))
+
+
+def _stores_its_roots_here(run: Run) -> bool:
+    """Whether the stored-schema rules apply to this target: all but the toolkit's theme targets (PD-4).
+
+    On the toolkit's run, ``rp.yaml`` holds every domain module, so its target answers for every
+    root class and writes the one lock; the theme targets declare no ``migrations``.
+    """
+    toolkit = is_toolkit_schema(run.schema_path.parent, roots=TOOLKIT_ROOTS)
+    return not toolkit or run.schema_path.name == METAMODEL_ROOT
+
+
 def _hard_problems(run: Run) -> list[CheckProblem]:
     folder = run.schema_path.parent
+    stored = (
+        stored_schema_problems(run.view, folder, migrations_folder(run.target))
+        if _stores_its_roots_here(run)
+        else []
+    )
     return [
         *hard_problems(run.view, folder),
-        *stored_schema_problems(run.view, folder, migrations_folder(run.target)),
-        *python_package_problems(run.view, folder, run.target.package),
+        *stored,
+        *python_package_problems(run.view, folder, run.target.package, _toolkit_packages(run)),
     ]
 
 

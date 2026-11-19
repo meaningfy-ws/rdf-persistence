@@ -10,7 +10,7 @@ collaboration modules, in `collaboration` or above — except `schema` (task 1.1
 - [x] 1.1 PD-8 (DEC-6): `schema` reads the stored-file class and the tenant-state IRIs from the
   SchemaView; no import of `rp_files`/`rp_tenancy` from `schema`. Test first. Gate:
   `make test-changed check-quality`.
-- [ ] 1.2 PD-1 to PD-5 in the generator, test first: TC-06 with its fixture. Prove the `access` target
+- [x] 1.2 PD-1 to PD-5 in the generator, test first: TC-06 with its fixture. Prove the `access` target
   (`rp_tenancy.yaml` → `rdf_persistence.access.domain.generated`) end to end in a scratch copy
   (RISK-3). Gate: `make test-generator`.
 
@@ -31,7 +31,7 @@ collaboration modules, in `collaboration` or above — except `schema` (task 1.1
 
 ## Roadmap
 
-- [x] 1.1 · [ ] 1.2 · [ ] 2.1 · [ ] 3.1
+- [x] 1.1 · [x] 1.2 · [ ] 2.1 · [ ] 3.1
 
 ## Verification
 

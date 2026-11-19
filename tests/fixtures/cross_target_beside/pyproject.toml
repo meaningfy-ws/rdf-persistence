@@ -1,0 +1,12 @@
+# Two targets: R's root imports module `theme`, kept beside it, which target T generates.
+[[tool.rp-generate]]
+schema = "root.yaml"
+package = "xt.root.domain.generated"
+python = "root/domain/generated"
+openapi = false
+
+[[tool.rp-generate]]
+schema = "theme.yaml"
+package = "xt.theme.domain.generated"
+python = "theme/domain/generated"
+openapi = false

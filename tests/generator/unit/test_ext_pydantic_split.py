@@ -12,6 +12,8 @@ from pydantic import ValidationError
 
 from rdf_persistence.core.domain.generated.rp_files import StoredFile
 from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import generated_schemas, own_schemas
+from rdf_persistence_generation.checks.python_package import python_package_problems
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions import pydantic_split
@@ -632,3 +634,116 @@ def test_a_malformed_python_package_of_the_metamodel_is_refused_on_the_base_mode
             pydantic_split.toolkit_base_module()
     finally:
         pydantic_split.toolkit_base_module.cache_clear()
+
+
+# ---- a module beside the root that another target generates (domain-model-per-theme PD-1 to PD-5) ----
+
+BESIDE = Path(__file__).parents[2] / "fixtures" / "cross_target_beside"
+ROOT_PACKAGE = "xt.root.domain.generated"
+THEME_PACKAGE = "xt.theme.domain.generated"
+
+
+@pytest.fixture
+def beside(tmp_path: Path) -> Path:
+    """A private copy of the fixture whose root names ROOT_PACKAGE and whose module ``theme`` names THEME_PACKAGE."""
+    folder = tmp_path / "beside"
+    shutil.copytree(BESIDE, folder)
+    return folder
+
+
+@pytest.fixture
+def beside_as_toolkit(beside: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """``beside``, treated as the toolkit's own folder."""
+    monkeypatch.setattr(pydantic_split, "TOOLKIT_ROOTS", (beside.resolve(),))
+    return beside
+
+
+def _rendered(root: Path) -> dict[str, str]:
+    return {f.name: f.text for f in render_modules(root)}
+
+
+def test_a_toolkit_module_beside_the_root_naming_another_package_is_imported_from_it(
+    beside_as_toolkit: Path,
+) -> None:
+    """E-1: the root says P, the module beside it says Q: its classes come from Q, no file for it in P."""
+    files = _rendered(beside_as_toolkit / "root.yaml")
+    assert "Thing" in imports_from(ast.parse(files["root.py"]), f"{THEME_PACKAGE}.theme"), (
+        "Thing comes from the theme's package"
+    )
+    assert "theme.py" not in files, "the target of the root writes no module for another's"
+
+
+def test_a_toolkit_root_with_classes_imports_only_what_it_uses(beside_as_toolkit: Path) -> None:
+    """PD-5: the root of a toolkit target is written in AUTO mode, so it re-exports no class of another theme."""
+    tree = ast.parse(_rendered(beside_as_toolkit / "root.yaml")["root.py"])
+    imported = imports_from(tree, f"{THEME_PACKAGE}.theme")
+    assert imported == {"Thing"}, f"only the class the root uses is imported, got {imported}"
+
+
+def test_a_toolkit_root_without_classes_of_its_own_writes_no_module(
+    beside_as_toolkit: Path,
+) -> None:
+    """PD-5: a root that only imports (as ``rp.yaml`` does) has nothing to write."""
+    root = beside_as_toolkit / "root.yaml"
+    text = root.read_text(encoding="utf-8")
+    assert "\nclasses:" in text, "the fixture's root declares classes"
+    root.write_text(text.split("\nclasses:")[0] + "\n", encoding="utf-8")
+    assert sorted(_rendered(root)) == ["__init__.py"], "no module for the root"
+
+
+def test_a_consumer_schema_importing_the_metamodels_access_module_imports_from_the_top_package(
+    generated_toy: Path,
+) -> None:
+    """E-3: the metamodel branch is unchanged, whichever theme package the module is generated into."""
+    names = imports_from(parse(generated_toy, "library_access.py"), "rdf_persistence")
+    assert {"Grant", "Prohibition", "TenantAccess", "TenantState"} <= names, names
+
+
+def test_a_consumer_module_with_a_package_beside_a_root_without_one_is_generated_into_the_target(
+    beside: Path,
+) -> None:
+    """E-4: the root names no package, so every module beside it belongs to its target."""
+    root = beside / "root.yaml"
+    text = root.read_text(encoding="utf-8")
+    root.write_text(text.replace(f"python_package: {ROOT_PACKAGE}", "note: none"), encoding="utf-8")
+    files = _rendered(root)
+    assert "Thing" in _class_names(ast.parse(files["theme.py"])), (
+        "Thing is generated into the target"
+    )
+    assert "Thing" in imports_from(ast.parse(files["root.py"]), ".theme"), (
+        "the root imports it locally"
+    )
+
+
+def test_a_consumer_root_with_a_package_imports_a_module_naming_another_from_it(
+    beside: Path,
+) -> None:
+    """E-5: Q differs from P, so Q's classes are imported (PD-2) and the consumer's root stays FULL."""
+    files = _rendered(beside / "root.yaml")
+    tree = ast.parse(files["root.py"])
+    assert {"Thing", "Spare"} == imports_from(tree, f"{THEME_PACKAGE}.theme"), "FULL: every class"
+    assert "theme.py" not in files, "no module for another package's schema"
+
+
+def test_a_consumer_run_does_not_check_a_module_naming_another_package(beside: Path) -> None:
+    """E-5: the package check is the toolkit's; a consumer's run has nothing to compare with."""
+    view = load_schema(beside / "root.yaml")
+    assert python_package_problems(view, beside, ROOT_PACKAGE, ()) == [], "allowed"
+
+
+def test_the_generated_schemas_are_the_modules_naming_the_roots_package_or_none(
+    beside: Path,
+) -> None:
+    """PD-1: the schemas that become Python files; ``own_schemas`` still holds both."""
+    view = load_schema(beside / "root.yaml")
+    assert {s.name for s in own_schemas(view, beside)} == {"root", "theme"}, "both are own"
+    assert [s.name for s in generated_schemas(view, beside)] == ["root"], "only the root's package"
+
+
+def test_with_no_root_package_every_own_schema_is_generated(beside: Path) -> None:
+    """PD-1: E-4's rule: a root that names no package leaves nothing to differ from."""
+    root = beside / "root.yaml"
+    text = root.read_text(encoding="utf-8")
+    root.write_text(text.replace(f"python_package: {ROOT_PACKAGE}", "note: none"), encoding="utf-8")
+    view = load_schema(root)
+    assert {s.name for s in generated_schemas(view, beside)} == {"root", "theme"}

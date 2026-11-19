@@ -32,7 +32,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.problems import format_problem
 
-from .conftest import ROOT_SCHEMA, Breaker
+from .conftest import ROOT_SCHEMA, TOOLKIT_DOMAIN, Breaker
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
 GENERATION_MODEL = (
@@ -1024,6 +1024,90 @@ def test_the_toy_with_migrations_and_a_quoted_version_passes(toy_copy: Path) -> 
     assert _stored_schema_problems(toy_copy / ROOT_SCHEMA, "migrations") == [], "the toy is stored"
 
 
+ACCESS_PACKAGE = "rdf_persistence.access.domain.generated"
+COLLABORATION_PACKAGE = "rdf_persistence.collaboration.domain.generated"
+COLLABORATION_ROOT = """\
+id: https://meaningfy.ws/ns/rdf-persistence/collaboration
+name: rp_collaboration
+title: RDF persistence collaboration module
+description: The collaboration theme's root, which imports the modules the theme generates.
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports: [linkml:types, rp_collections, rp_discussion, rp_workflow]
+annotations:
+  python_package: {package}
+"""
+
+
+def _theme_target(project: Path, root: str, package: str, modules: tuple[str, ...]) -> None:
+    """Make ``root`` a toolkit target of its own beside ``rp.yaml``: ``modules`` name its ``package``, it sets no migrations."""
+    for module in modules:
+        path = project / "model" / f"{module}.yaml"
+        text = path.read_text(encoding="utf-8")
+        assert f"python_package: {TOOLKIT_DOMAIN}" in text, f"{module} is not annotated yet"
+        path.write_text(
+            text.replace(f"python_package: {TOOLKIT_DOMAIN}", f"python_package: {package}", 1),
+            encoding="utf-8",
+        )
+    pyproject = project / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace(
+            "openapi = false\n", 'openapi = false\nmigrations = "model/migrations"\n', 1
+        )
+        + f'\n[[tool.rp-generate]]\nschema = "model/{root}.yaml"\npackage = "{package}"\n'
+        'regenerate-command = "make generate"\nopenapi = false\n',
+        encoding="utf-8",
+    )
+
+
+def _hard_problems_of_all(project: Path) -> list[str]:
+    targets = read_targets(project / "pyproject.toml")
+    found = generate(targets, project, (steps.HARD_STEP,), check=True)
+    return [format_problem(p) for p in found]
+
+
+def test_a_theme_target_that_generates_a_tenant_root_needs_no_migrations_folder(
+    toolkit_project: Path,
+) -> None:
+    """E-6: the access target generates ``TenantAccess`` and sets no `migrations`: `rp.yaml` is where it is checked (PD-4)."""
+    _theme_target(toolkit_project, "rp_tenancy", ACCESS_PACKAGE, ("rp_access", "rp_tenancy"))
+    assert _hard_problems_of_all(toolkit_project) == [], "both targets pass"
+
+
+def test_a_theme_target_that_generates_an_aggregate_root_needs_no_migrations_folder(
+    toolkit_project: Path,
+) -> None:
+    """E-7: the collaboration target generates ``Comment`` and sets no `migrations`."""
+    (toolkit_project / "model" / "rp_collaboration.yaml").write_text(
+        COLLABORATION_ROOT.format(package=COLLABORATION_PACKAGE), encoding="utf-8"
+    )
+    _theme_target(
+        toolkit_project,
+        "rp_collaboration",
+        COLLABORATION_PACKAGE,
+        ("rp_collections", "rp_discussion", "rp_workflow"),
+    )
+    assert _hard_problems_of_all(toolkit_project) == [], "both targets pass"
+
+
+def test_the_target_of_rp_yaml_still_needs_migrations_for_the_roots_of_every_theme(
+    toolkit_project: Path,
+) -> None:
+    """PD-4: the combined target is the one that is checked, so dropping its folder is refused."""
+    _theme_target(toolkit_project, "rp_tenancy", ACCESS_PACKAGE, ("rp_access", "rp_tenancy"))
+    pyproject = toolkit_project / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace('migrations = "model/migrations"\n', "", 1),
+        encoding="utf-8",
+    )
+    found = _hard_problems_of_all(toolkit_project)
+    assert len(found) == 1 and "TenantAccess" in found[0], found  # noqa: PT018
+    assert HardRule.MIGRATIONS_FOLDER.value in found[0], "the rule is named"
+
+
 def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings() -> None:
     """TC-10: rp_service, rp_templates, rp_telemetry, rp_settings, rp_wire, rp_testkit and rp_generation need no migrations folder; rp.yaml has one.
 
@@ -1071,7 +1155,6 @@ def test_default_instance_that_is_not_a_boolean_is_refused_naming_the_slot(
 
 # ---- where the metamodel's classes live (DEC-7, PD-6, TC-35 to TC-38) ------------------------------
 
-TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
 PACKAGE_CHECK = "rdf_persistence_generation.checks.python_package"
 MODEL_COPY = "model"
 PACKAGE_RULES = {HardRule.PYTHON_PACKAGE, HardRule.PYTHON_PACKAGE_MISMATCH}  # need a toolkit target
@@ -1122,13 +1205,12 @@ def test_a_toolkit_module_without_python_package_is_refused_naming_it(toolkit_co
 def test_a_module_in_another_package_than_its_target_is_refused_naming_both(
     toolkit_copy: Path,
 ) -> None:
-    """TC-36"""
-    _rewrite(
-        toolkit_copy, "rp_core", f"python_package: {TOOLKIT_DOMAIN}", "python_package: x.generated"
-    )
-    [line] = _package_problems(toolkit_copy)
+    """TC-36: the root's package is the reference, so a root that disagrees with its target is the case."""
+    _rewrite(toolkit_copy, "rp", f"python_package: {TOOLKIT_DOMAIN}", "python_package: x.generated")
+    lines = _package_problems(toolkit_copy)
+    [line] = [line for line in lines if "rp:" in line]
     assert f"[{HardRule.PYTHON_PACKAGE_MISMATCH.value}]" in line, "rule (b) is named"
-    for named in ("rp_core", "x.generated", TOOLKIT_DOMAIN):
+    for named in ("rp", "x.generated", TOOLKIT_DOMAIN):
         assert named in line, f"{named} is named"
 
 
