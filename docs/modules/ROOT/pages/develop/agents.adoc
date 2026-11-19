@@ -135,13 +135,14 @@ Here three adjustments override it for any work, measured on a large stage (2026
 * *The adversarial tester runs right after the riskiest task*, the one that adds an invariant, a
   write order or concurrent writes, and again at the end if the stage is large. Both real defects of
   that stage sat in one task, and finding them at the end meant one large late fix.
-* *Review lenses L4 and L5 are one pass; L1, L2 and L3 are never combined with each other*,
-  whichever lenses the appetite's review set runs. About a third of the findings came from more
-  than one lens, mostly L3, L4 and L5 together; L1, L2 and L3 each found something the others did
-  not.
-* *For LARGE and above, the full review runs once* (developer, 2026-11-15, rule P-0005), at the
-  end of the epic or of a series of stages; each stage gets one pass of L2 and L3, which still
-  catches spec and structure drift while it is cheap to fix.
+* *Review lenses L4 and L5 are one pass; in the full review L1, L2 and L3 are never combined with
+  each other*, whichever lenses the appetite's review set runs. About a third of the findings came
+  from more than one lens, mostly L3, L4 and L5 together; L1, L2 and L3 each found something the
+  others did not. The one exception is the stage pass below.
+* *For MEDIUM and above, the full review runs once* (developer, 2026-11-15, widened from LARGE on
+  2026-11-19, rule P-0005), at the end of the epic or of a series of stages; each stage gets one
+  pass of L2 and L3 together, which still catches spec and structure drift while it is cheap to
+  fix. An epic of one stage gets both on the same PR.
 * *The checker reads the lead's `make check-all` result* and checks the briefs and decisions against
   the diff; it does not run the tests again.
 
