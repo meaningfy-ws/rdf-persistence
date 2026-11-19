@@ -251,7 +251,6 @@ def test_the_generated_context_of_the_generation_model_keeps_its_prefix_and_kind
     context = json.loads(context_file.read_text(encoding="utf-8"))["@context"]
     assert not isinstance(context.get("schema"), dict), f"`schema` shadows the prefix: {context}"
     assert "schema_file" in context, "the slot's name is its term"
-    assert "target_kind" in context, "the slot's name is its term"
     assert context["kind"]["@id"] == "constraintKind", (
         f"`kind` is not the slot `kind`'s: {context['kind']}"
     )

@@ -26,10 +26,10 @@ Feature: Technical models are kept apart from the domain
     But a consumer schema that imports "rdf_persistence/model/technical/api/rp_api_settings" is refused
 
   # spec: rp-generation / a domain module in a technical target
-  Scenario: A technical target refuses a domain module
-    Given a copy of the toy library whose target declares the kind "technical"
+  Scenario: A technical layer refuses a domain module
+    Given a copy of the toy library whose package is "tests.fixtures.library.services.generated"
     When the models are generated
-    Then generation fails naming the "books" module
+    Then generation fails naming the package and the derived kind "domain"
     And no output file has changed
 
   # spec: rp-generation / a target without a kind

@@ -68,6 +68,7 @@ class Run:
         self.lint: Linted | None = None
         self.schema_text = ""
         self.project: Path | None = None
+        self.package = ""
         self.files_before: dict[str, bytes] = {}
         self.rule = ""
         self.exit_code: int | None = None
@@ -212,20 +213,21 @@ def _snapshot(folder: Path) -> dict[str, bytes]:
     }
 
 
-def _toy_copy(run: Run, kind: str | None) -> None:
+def _toy_copy(run: Run, package: str | None) -> None:
     folder = run.tmp / "library"
     shutil.copytree(TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated"))
     project = folder / "pyproject.toml"
-    if kind is not None:
-        project.write_text(
-            project.read_text(encoding="utf-8") + f'kind = "{kind}"\n', encoding="utf-8"
-        )
+    if package is not None:
+        text = project.read_text(encoding="utf-8")
+        old = next(line for line in text.splitlines() if line.startswith("package = "))
+        project.write_text(text.replace(old, f'package = "{package}"', 1), encoding="utf-8")
     run.project, run.files_before = project, _snapshot(folder)
+    run.package = package or ""
 
 
-@given(parsers.parse('a copy of the toy library whose target declares the kind "{kind}"'))
-def _toy_with_kind(run: Run, kind: str) -> None:
-    _toy_copy(run, kind)
+@given(parsers.parse('a copy of the toy library whose package is "{package}"'))
+def _toy_with_package(run: Run, package: str) -> None:
+    _toy_copy(run, package)
 
 
 @given("a copy of the toy library whose target declares no kind")
@@ -241,10 +243,11 @@ def _generate(run: Run, capsys: pytest.CaptureFixture[str]) -> None:
     run.output = captured.out + captured.err
 
 
-@then(parsers.parse('generation fails naming the "{name}" module'))
-def _fails_naming_module(run: Run, name: str) -> None:
+@then(parsers.parse('generation fails naming the package and the derived kind "{kind}"'))
+def _fails_naming_package_and_kind(run: Run, kind: str) -> None:
     assert run.exit_code not in (0, None), "generation fails"
-    assert name in run.output, f"the module is not named: {run.output}"
+    assert run.package in run.output, f"the package is not named: {run.output}"
+    assert f"a {kind} target" in run.output, f"the derived kind is not named: {run.output}"
 
 
 @then(parsers.parse('generation fails naming the slot "{name}"'))
@@ -386,8 +389,8 @@ def _project(run: Run, schema_text: str) -> None:
     folder.mkdir()
     (folder / "groups.yaml").write_text(schema_text, encoding="utf-8")
     (folder / "pyproject.toml").write_text(
-        '[tool.rp-generate]\nschema = "groups.yaml"\npackage = "project.generated"\n'
-        'python = "generated"\nkind = "technical"\n',
+        '[tool.rp-generate]\nschema = "groups.yaml"\npackage = "project.services.generated"\n'
+        'python = "generated"\n',
         encoding="utf-8",
     )
     run.project, run.files_before = folder / "pyproject.toml", _snapshot(folder)

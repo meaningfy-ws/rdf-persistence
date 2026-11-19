@@ -47,7 +47,7 @@ def toolkit_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         monkeypatch.setattr(f"{module}.TOOLKIT_ROOTS", (tmp_path.resolve(),))
     (tmp_path / "pyproject.toml").write_text(
         f'[[tool.rp-generate]]\nschema = "model/rp.yaml"\npackage = "{TOOLKIT_DOMAIN}"\n'
-        'regenerate-command = "make generate"\nopenapi = false\nkind = "domain"\n',
+        'regenerate-command = "make generate"\nopenapi = false\n',
         encoding="utf-8",
     )
     return tmp_path

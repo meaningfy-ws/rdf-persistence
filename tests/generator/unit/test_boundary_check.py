@@ -9,8 +9,9 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence_generation import steps
 from rdf_persistence_generation.checks.boundary import (
     boundary_problems,
+    derived_kind,
     kind_folder_problems,
-    target_kind_problems,
+    mixed_kind_problems,
     toolkit_themes,
 )
 from rdf_persistence_generation.cli import main
@@ -217,7 +218,7 @@ def test_an_allowed_variant_passes(break_toy: Breaker, edits: tuple[Edit, ...]) 
 
 
 def test_every_rule_has_a_row_in_the_table() -> None:
-    # target_kind needs a declared kind, which a planted edit cannot give: tested below by its own cases
+    # target_kind is a rule of the target (its kind and its folder), not of a module: tested below by its own cases
     rules = set(BoundaryRule) - {BoundaryRule.TARGET_KIND}
     assert {f.rule for f in FAULTS} == rules, "a boundary rule has no planted fault"
 
@@ -435,72 +436,124 @@ def kind_folder(tmp_path: Path, side_kind: str | None) -> Path:
     return tmp_path
 
 
-def kind_problems_of(folder: Path, kind: TargetKind) -> list[str]:
+def single_module_folder(tmp_path: Path, module_kind: str) -> Path:
+    """A folder whose only module, ``api``, is annotated ``module_kind: <module_kind>``."""
+    (tmp_path / "api.yaml").write_text(API_MODULE.format(kind=module_kind), encoding="utf-8")
+    return tmp_path
+
+
+def derived_of(folder: Path) -> TargetKind:
+    return derived_kind(load_schema(folder / "api.yaml"), folder)
+
+
+def mixed_problems_of(folder: Path) -> list[str]:
     view = load_schema(folder / "api.yaml")
-    return [format_problem(p) for p in target_kind_problems(view, folder, kind)]
+    return [format_problem(p) for p in mixed_kind_problems(view, folder)]
 
 
-def test_a_technical_target_whose_only_module_is_technical_has_no_problem(tmp_path: Path) -> None:
-    folder = kind_folder(tmp_path, None)
-    assert kind_problems_of(folder, TargetKind.TECHNICAL) == [], "a technical module fits"
+def test_a_target_whose_only_module_is_technical_derives_technical_and_is_not_mixed(
+    tmp_path: Path,
+) -> None:
+    """TC-01b: PD-1, every own module technical."""
+    folder = single_module_folder(tmp_path, "technical")
+    assert derived_of(folder) == TargetKind.TECHNICAL, "a technical module makes a technical target"
+    assert mixed_problems_of(folder) == [], "one kind of module is no mix"
 
 
-def test_a_technical_target_refuses_a_domain_module_naming_it(tmp_path: Path) -> None:
-    folder = kind_folder(tmp_path, "domain")
-    found = kind_problems_of(folder, TargetKind.TECHNICAL)
-    assert len(found) == 1, f"one domain module, one problem: {found}"
-    assert found[0].startswith("[target_kind] side"), f"rule and module not named: {found[0]}"
+@pytest.mark.parametrize("module_kind", ["domain", "access"])
+def test_a_target_whose_only_module_is_not_technical_derives_domain_and_is_not_mixed(
+    tmp_path: Path, module_kind: str
+) -> None:
+    """Error matrix: a lone ``module_kind: access`` module derives ``domain`` (PD-1)."""
+    folder = single_module_folder(tmp_path, module_kind)
+    assert derived_of(folder) == TargetKind.DOMAIN, f"a {module_kind} module is no technical one"
+    assert mixed_problems_of(folder) == [], "one kind of module is no mix"
 
 
-def test_a_domain_target_refuses_a_technical_module_naming_it(tmp_path: Path) -> None:
-    folder = kind_folder(tmp_path, "domain")
-    found = kind_problems_of(folder, TargetKind.DOMAIN)
-    assert len(found) == 1, f"one technical module, one problem: {found}"
-    assert found[0].startswith("[target_kind] api"), f"rule and module not named: {found[0]}"
-
-
-def test_the_boundary_step_checks_the_kind_of_its_target(toy_copy: Path) -> None:
-    target = GenerationTarget(
-        schema_file=ROOT_SCHEMA, package="app.generated", target_kind=TargetKind.TECHNICAL
+def test_a_target_whose_modules_are_all_technical_derives_technical(tmp_path: Path) -> None:
+    folder = tmp_path / "all-technical"
+    folder.mkdir()
+    assert derived_of(kind_folder(folder, "technical")) == TargetKind.TECHNICAL, (
+        "every one of the own modules is technical"
     )
+
+
+@pytest.mark.parametrize("side_kind", ["domain", "access"])
+def test_a_target_of_technical_and_other_modules_is_refused_naming_the_technical_one(
+    tmp_path: Path, side_kind: str
+) -> None:
+    """PD-2, spec "a target of both kinds": the problem names the technical module, once."""
+    found = mixed_problems_of(kind_folder(tmp_path, side_kind))
+    assert len(found) == 1, f"one mixed target, one problem: {found}"
+    assert found[0].startswith(f"[{BoundaryRule.TARGET_KIND.value}] "), f"rule not named: {found}"
+    assert "technical modules api" in found[0], f"the technical module is not named: {found}"
+    assert "beside domain ones" in found[0], f"the mix is not named: {found}"
+    assert "a target generates one kind" in found[0], f"the rule is not stated: {found}"
+
+
+def test_a_mixed_target_derives_domain(tmp_path: Path) -> None:
+    """PD-1: ``technical`` only when every own module is technical."""
+    assert derived_of(kind_folder(tmp_path, "domain")) == TargetKind.DOMAIN, (
+        "not every one is technical"
+    )
+
+
+def test_the_boundary_step_reports_a_mixed_target_once_and_no_folder_problem(
+    toy_copy: Path,
+) -> None:
+    """PD-2: when a target mixes kinds, the folder rule does not run (its annotate hint would mislead)."""
+    add_api_module(toy_copy, "technical")
+    target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.services.generated")
     found = generate([target], toy_copy, (steps.BOUNDARY_STEP,), check=True)
-    assert found, "the toy's domain modules must fail a technical target"
-    assert {p.rule for p in found} == {BoundaryRule.TARGET_KIND.value}, f"{found}"
+    assert [p.rule for p in found] == [BoundaryRule.TARGET_KIND.value], (
+        f"one problem expected: {found}"
+    )
+    line = format_problem(found[0])
+    assert "api" in line, f"the technical module is not named: {line}"
+    assert "annotate" not in line, f"the folder hint was given for a mixed target: {line}"
 
 
-def test_a_technical_target_refuses_an_access_module_naming_it(tmp_path: Path) -> None:
-    """Row 1: a module of kind access is not technical, so a technical target refuses it."""
-    found = kind_problems_of(kind_folder(tmp_path, "access"), TargetKind.TECHNICAL)
-    assert len(found) == 1, found
-    assert found[0].startswith("[target_kind] side"), found
+def test_the_boundary_step_derives_the_kind_of_its_target_for_the_folder_rule(
+    toy_copy: Path,
+) -> None:
+    """DEC-1: the toy's modules are domain, so a technical layer is refused with no kind declared."""
+    target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.services.generated")
+    found = generate([target], toy_copy, (steps.BOUNDARY_STEP,), check=True)
+    assert [p.rule for p in found] == [BoundaryRule.TARGET_KIND.value], f"{found}"
+    assert "domain" in format_problem(found[0]), f"the derived kind is not named: {found}"
 
 
-KIND_HEAD = '[tool.rp-generate]\nschema = "library.yaml"\npackage = "tests.fixtures.library.generated"\npython = "generated"\n'
+PROJECT_HEAD = (
+    '[tool.rp-generate]\nschema = "library.yaml"\npackage = "{package}"\npython = "generated"\n'
+)
 
 
 def files_of(folder: Path) -> set[str]:
     return {p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file()}
 
 
-def declare_kind(toy: Path, kind: str) -> Path:
+def write_project(toy: Path, package: str) -> Path:
     project = toy / "pyproject.toml"
-    project.write_text(f'{KIND_HEAD}kind = "{kind}"\n', encoding="utf-8")
+    project.write_text(PROJECT_HEAD.format(package=package), encoding="utf-8")
     return project
 
 
-def test_a_technical_target_over_domain_modules_fails_naming_target_and_module_and_writes_nothing(
+def test_a_domain_target_in_a_technical_layer_fails_naming_target_package_and_kind_and_writes_nothing(
     toy_copy: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Row 1: probe of PD-9; the whole run is refused, no generated file, manifest or staging is left."""
-    project = declare_kind(toy_copy, "technical")
+    """Spec "a consumer's settings without the annotation": the whole run is refused, nothing is left."""
+    package = "tests.fixtures.library.services.generated"
+    project = write_project(toy_copy, package)
     before = files_of(toy_copy)
     code = main(["--project", str(project)])
     captured = capsys.readouterr()
     text = captured.out + captured.err
-    assert code != 0, "a technical target over domain modules must fail"
+    assert code != 0, "a domain target in a technical layer must fail"
     assert BoundaryRule.TARGET_KIND.value in text, f"the rule is not named: {text}"
     assert ROOT_SCHEMA in text, f"the target (its schema) is not named: {text}"
-    assert "books" in text, f"the module is not named: {text}"
+    assert package in text, f"the package is not named: {text}"
+    assert "domain" in text, f"the derived kind is not named: {text}"
+    assert "module_kind: technical" in text, f"the annotation is not named as a fix: {text}"
     assert files_of(toy_copy) == before, "a failed run wrote a file"
     assert not (toy_copy / "generated").exists(), "the output folder was created"
     assert [p.name for p in toy_copy.iterdir() if p.name.startswith(".rp-generate")] == [], (
@@ -508,29 +561,31 @@ def test_a_technical_target_over_domain_modules_fails_naming_target_and_module_a
     )
 
 
-def test_a_domain_target_holding_a_technical_module_fails_naming_it_and_writes_nothing(
+def test_a_target_of_both_kinds_fails_naming_the_target_and_the_technical_module_and_writes_nothing(
     toy_copy: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Row 2: probe of PD-9; a technical module in a domain target."""
+    """Spec "a target of both kinds": a technical module in a target of domain modules."""
     add_api_module(toy_copy, "technical")
-    project = declare_kind(toy_copy, "domain")
+    project = write_project(toy_copy, "tests.fixtures.library.domain.generated")
     before = files_of(toy_copy)
     code = main(["--project", str(project)])
     captured = capsys.readouterr()
     text = captured.out + captured.err
-    assert code != 0, "a domain target holding a technical module must fail"
-    assert f"[{BoundaryRule.TARGET_KIND.value}] api" in text, f"rule and module not named: {text}"
+    assert code != 0, "a target of both kinds must fail"
+    assert ROOT_SCHEMA in text, f"the target (its schema) is not named: {text}"
+    assert "api" in text, f"the technical module is not named: {text}"
+    assert "a target generates one kind" in text, f"the rule is not stated: {text}"
     assert files_of(toy_copy) == before, "a failed run wrote a file"
 
 
-# --- kind and folder (PD-4, DEC-3): the toolkit's own run only --------------------------------------
+# --- kind and folder (PD-3, DEC-3): every target, the theme rule for the toolkit's own run ------------
 
 REPO = MODEL_DIR.parent
 SERVICE_SCHEMA = "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml"
 TOOLKIT_FOLDER = REPO / Path(SERVICE_SCHEMA).parent
 
 
-def folder_problems_of(folder: Path, package: str, kind: TargetKind | None) -> list[str]:
+def folder_problems_of(folder: Path, package: str, kind: TargetKind) -> list[str]:
     return [format_problem(p) for p in kind_folder_problems(folder, package, kind)]
 
 
@@ -569,7 +624,71 @@ def test_a_toolkit_target_in_the_wrong_folder_is_named_with_its_package(
 def test_a_toolkit_target_without_a_generated_segment_is_refused() -> None:
     found = folder_problems_of(TOOLKIT_FOLDER, "rdf_persistence.access.domain", TargetKind.DOMAIN)
     assert len(found) == 1, f"one target, one problem: {found}"
-    assert "generated" in found[0], f"the missing segment is not named: {found}"
+    assert "has no layer before generated" in found[0], f"the missing layer is not named: {found}"
+
+
+def test_a_domain_target_in_a_technical_layer_of_the_toolkit_names_the_annotation() -> None:
+    """PD-3: a derived ``domain`` in a technical layer is told how to be technical."""
+    found = folder_problems_of(
+        TOOLKIT_FOLDER, "rdf_persistence.access.adapters.generated", TargetKind.DOMAIN
+    )
+    assert len(found) == 1, f"one target, one problem: {found}"
+    assert "is not in a folder a domain target allows" in found[0], f"{found}"
+    assert "; if its modules are technical, annotate them module_kind: technical" in found[0], found
+
+
+def test_a_technical_target_in_the_domain_layer_does_not_name_the_annotation() -> None:
+    found = folder_problems_of(
+        TOOLKIT_FOLDER, "rdf_persistence.access.domain.generated", TargetKind.TECHNICAL
+    )
+    assert len(found) == 1, f"one target, one problem: {found}"
+    assert "annotate" not in found[0], f"the hint is for a derived domain only: {found}"
+
+
+# TC-01a: the consumer rows of the error matrix. A consumer's folder is the toy's: no theme check.
+
+
+@pytest.mark.parametrize("package", ["app.generated", "p", "generated"])
+@pytest.mark.parametrize("kind", [TargetKind.DOMAIN, TargetKind.TECHNICAL])
+def test_a_consumer_package_without_a_layer_before_generated_is_refused(
+    kind: TargetKind, package: str
+) -> None:
+    """TC-16 inverted: a consumer keeps no layout of its own; ``app.generated`` fails."""
+    found = folder_problems_of(TOY, package, kind)
+    assert len(found) == 1, f"one target, one problem: {found}"
+    assert found[0].startswith("[target_kind] "), f"rule not named: {found}"
+    assert package in found[0], f"the package is not named: {found}"
+    assert "has no layer before generated" in found[0], f"the missing layer is not named: {found}"
+    assert f"a {kind.value} target's package ends in" in found[0], f"the kind is not named: {found}"
+
+
+@pytest.mark.parametrize(
+    ("kind", "package"),
+    [
+        (TargetKind.DOMAIN, "app.catalogue.domain.generated"),  # no theme check for a consumer
+        (TargetKind.DOMAIN, "app.domain.generated"),
+        (TargetKind.TECHNICAL, "app.services.generated"),
+        (TargetKind.TECHNICAL, "app.adapters.generated.wire"),
+    ],
+)
+def test_a_consumer_package_in_the_layer_of_its_kind_has_no_problem(
+    kind: TargetKind, package: str
+) -> None:
+    assert folder_problems_of(TOY, package, kind) == [], "the layer fits the kind"
+
+
+def test_a_consumer_domain_target_in_a_technical_layer_names_the_annotation() -> None:
+    """Spec "a consumer's settings without the annotation": the derived kind is named, the fix too."""
+    found = folder_problems_of(TOY, "app.services.generated", TargetKind.DOMAIN)
+    assert len(found) == 1, f"one target, one problem: {found}"
+    assert "domain" in found[0], f"the derived kind is not named: {found}"
+    assert "module_kind: technical" in found[0], f"the annotation is not named: {found}"
+
+
+def test_a_consumer_technical_target_in_the_domain_layer_is_refused() -> None:
+    found = folder_problems_of(TOY, "app.domain.generated", TargetKind.TECHNICAL)
+    assert len(found) == 1, f"one target, one problem: {found}"
+    assert "is not in a folder a technical target allows" in found[0], f"{found}"
 
 
 LIBRARY = "rdf_persistence"
@@ -633,14 +752,22 @@ def test_a_package_that_only_starts_like_an_exempt_one_is_not_exempt(package: st
     assert len(folder_problems_of(TOOLKIT_FOLDER, package, TargetKind.TECHNICAL)) == 1, package
 
 
-def test_a_consumer_run_keeps_its_own_folder_layout() -> None:
-    """TC-16: a consumer's ``app.generated`` passes, kind or not."""
-    assert folder_problems_of(TOY, "app.generated", TargetKind.TECHNICAL) == [], "consumer run"
-    assert folder_problems_of(TOOLKIT_FOLDER, "app.generated", None) == [], "no kind declared"
+def toolkit_target(package: str) -> GenerationTarget:
+    return GenerationTarget(schema_file=SERVICE_SCHEMA, package=package)
 
 
-def toolkit_target(kind: TargetKind, package: str) -> GenerationTarget:
-    return GenerationTarget(schema_file=SERVICE_SCHEMA, package=package, target_kind=kind)
+def test_the_toolkit_targets_derive_domain_for_the_metamodel_and_technical_for_the_rest() -> None:
+    """TC-02, permanent form: every target of the toolkit's own ``pyproject.toml`` (20 of them)."""
+    targets = read_targets(PYPROJECT)
+    assert len(targets) == 20, f"the toolkit's targets: {[t.schema_file for t in targets]}"
+    derived = {}
+    for target in targets:
+        root = REPO / target.schema_file
+        derived[target.schema_file] = derived_kind(load_schema(root), root.parent)
+    assert [f for f, k in derived.items() if k == TargetKind.DOMAIN] == [
+        "rdf_persistence/model/rp.yaml"
+    ], f"only the metamodel derives domain: {derived}"
+    assert sum(k == TargetKind.TECHNICAL for k in derived.values()) == 19, f"{derived}"
 
 
 @pytest.mark.slow
@@ -648,7 +775,7 @@ def test_the_boundary_step_passes_a_technical_target_in_the_api_entrypoints_gene
     None
 ):
     """TC-72, first half: a technical target in a theme's ``generated`` folder (``make generate`` covers the rest)."""
-    target = toolkit_target(TargetKind.TECHNICAL, "rdf_persistence.api.entrypoints.generated")
+    target = toolkit_target("rdf_persistence.api.entrypoints.generated")
     assert generate([target], REPO, (steps.BOUNDARY_STEP,), check=True) == []
 
 
@@ -701,7 +828,5 @@ def test_the_boundary_step_refuses_a_technical_target_in_a_domain_folder_naming_
     """TC-72, second half: the check is wired into the step."""
     # TC-72 names the old service package under domain, which test_technical_split bans as a literal
     package = "rdf_persistence.core.domain.generated.rp_service"
-    found = generate(
-        [toolkit_target(TargetKind.TECHNICAL, package)], REPO, (steps.BOUNDARY_STEP,), check=True
-    )
+    found = generate([toolkit_target(package)], REPO, (steps.BOUNDARY_STEP,), check=True)
     assert [(p.rule, p.element) for p in found] == [(BoundaryRule.TARGET_KIND.value, package)]
