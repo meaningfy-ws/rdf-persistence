@@ -9,7 +9,7 @@ dependencies = ["rdf-persistence"]
 dev = ["rdf-persistence[generate]"]
 
 [tool.uv.sources]
-rdf-persistence = { git = "https://github.com/meaningfy-ws/rdf-persistence", tag = "v0.5.0" }
+rdf-persistence = { git = "https://github.com/meaningfy-ws/rdf-persistence", tag = "v0.6.0" }
 # end::project[]
 
 # tag::generate[]
