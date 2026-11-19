@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   YAML as an input. A module without `python_package` is generated as before.
 - **A toolkit target's folder follows its kind** (`thematic-structure`): in the toolkit's own run,
   rule `TARGET_KIND` also refuses a target whose `package` does not have `domain` (for a `domain`
-  target) or `services`, `adapters` or `entrypoints` (for a `technical` one) before `generated`.
+  target) or `services`, `adapters` or `entrypoints` (for a `technical` one) before `generated`,
+  and a theme of the library (`rdf_persistence.<theme>.<layer>.generated`) before that layer.
   `rdf_persistence.testkit` and `rdf_persistence_generation` are exempt. A consumer's run is not
   checked.
 
@@ -23,13 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `rdf_persistence/{domain,services,adapters,entrypoints}/` to
   `rdf_persistence/<theme>/<layer>/`: `core`, `iris`, `schema`, `files`, `provenance`,
   `persistence`, `migrations`, `access`, `tenancy`, `events`, `collaboration`, `messaging` and
-  `api` (the map: `docs/modules/ROOT/pages/architecture/index.adoc`, "Where a module lives"). The 149 names of `rdf_persistence`
-  are the same objects; only a deep import of an old module path breaks, with
-  `ModuleNotFoundError`. Two old paths keep a shim for one release (see Deprecated); every other
-  one, for example `rdf_persistence.services.session`, `rdf_persistence.services.messagebus`,
+  `api` (the map: `docs/modules/ROOT/pages/architecture/index.adoc`, "Where a module lives"). The names of `rdf_persistence`
+  are the same objects (148 once `mint_aggregate_iri` is removed, see Removed); only a deep import
+  of an old module path breaks, with `ModuleNotFoundError`, and no old path keeps a shim:
+  `rdf_persistence.services.session`, `rdf_persistence.services.messagebus`,
   `rdf_persistence.services.{events,event_hub,event_stream,relay}`,
   `rdf_persistence.services.{collaboration,discussion,reference_collections,transitions,workflows,write_guards}`,
-  `rdf_persistence.adapters.redis_events` or `rdf_persistence.entrypoints.kit`, has none. The
+  `rdf_persistence.adapters.redis_events` or `rdf_persistence.entrypoints.kit` are gone. The
   metamodel's generated package moved from `rdf_persistence.domain.generated` to
   `rdf_persistence.core.domain.generated`.
 - **The technical schemas are split by theme** (`thematic-structure`). `model/technical/{service,
@@ -95,25 +96,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The store's 400 log line** (`thematic-structure`): "Fuseki refused a request with 400" is now
   "A SPARQL Protocol store refused a request with 400", under the logger
   `rdf_persistence.persistence.adapters.sparql_protocol`. `BAD_QUERY_MESSAGE` and `UNREADABLE` are
-  no longer in the new module; the `rdf_persistence.adapters.fuseki` shim keeps them, with their
-  old values, with the SPARQL protocol constants (`SPARQL_QUERY`, `SPARQL_UPDATE`,
-  `RESULTS_JSON`, `GRAPH_PARAM`) and Fuseki's own.
+  no longer in the new module, and no old module keeps them (see Removed).
 - **`error.type` names the new module** (`thematic-structure`): the attribute is the exception's
   module and class, so `rdf_persistence.domain.exceptions.Conflict` is now
   `rdf_persistence.core.domain.exceptions.Conflict`, and so for every toolkit exception. A
   dashboard or alert that matches the old value must change.
-
-### Deprecated
-- **`rdf_persistence.domain.base`** (`thematic-structure`): it moved to
-  `rdf_persistence.core.domain.base`. The old path warns (`DeprecationWarning`) and re-exports the
-  same `RpModel`; import it from `rdf_persistence`. Removed in the next minor release.
-- **`rdf_persistence.adapters.fuseki`** (`thematic-structure`): it moved to
-  `rdf_persistence.persistence.adapters.fuseki`. The old path warns and re-exports the same
-  `FusekiStore` and the module's constants; import `FusekiStore` from `rdf_persistence`. Removed in
-  the next minor release.
-- **`mint_aggregate_iri`** (`thematic-structure`): it warns; use `Iris.mint_aggregate` on the
-  service's `Iris` (`DEFAULT_IRIS.mint_aggregate(tenant, cls_type="", rp_path=path)` mints the same
-  IRI). Removed, with its top-level export, in the next minor release.
 
 ### Removed
 - **BREAKING: the four generator testkit shims** (`generator-package`, #165). The modules
@@ -124,6 +111,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ["rdf_persistence_generation.testkit.freshness"]`). `assert_isomorphic` stays in
   `rdf_persistence.testkit.graphs`. The contract `library-never-imports-the-generator` now has no
   ignored edge.
+- **BREAKING: `rdf_persistence.domain.base`, `rdf_persistence.adapters.fuseki` and
+  `mint_aggregate_iri`** (`thematic-structure`). No release ever shipped them as deprecated: they
+  are removed in the release that ships the move, with no deprecation period.
+  - `rdf_persistence.domain.base` is gone (`ModuleNotFoundError`), and with it the `domain/` and
+    `adapters/` folders at the top of the package. `RpModel` is the same class: import it with
+    `from rdf_persistence import RpModel` (it is defined in `rdf_persistence.core.domain.base`). A
+    consumer's old generated code that names `rdf_persistence.domain.base` fails at import: run
+    your regenerate command. The model guard still names a class derived from the old path.
+  - `rdf_persistence.adapters.fuseki` is gone: import `FusekiStore` from `rdf_persistence`, or from
+    `rdf_persistence.persistence.adapters.fuseki`. The module's other names are not re-exported:
+    the SPARQL Protocol constants (`SPARQL_QUERY`, `SPARQL_UPDATE`, `RESULTS_JSON`, `GRAPH_PARAM`)
+    are in `rdf_persistence.persistence.adapters.sparql_protocol`; `BAD_QUERY_MESSAGE` and
+    `UNREADABLE` have no module that holds them any more.
+  - `mint_aggregate_iri` is removed with its top-level export, so `rdf_persistence.__all__` holds
+    148 names. Call `Iris.mint_aggregate` on the service's `Iris`
+    (`DEFAULT_IRIS.mint_aggregate(tenant, cls_type="", rp_path=path)` mints the same IRI).
 - **The eleven IRI wrappers that only called `DEFAULT_IRIS`** (`thematic-structure`), from
   `rdf_persistence.services.iris` (none was a top-level name): `mint_tenant_iri`, `tenant_iri`,
   `aggregate_iri`, `is_aggregate_iri`, `is_aggregate_graph_iri`, `is_loaded_graph_of`,

@@ -224,7 +224,7 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 
 ## Stage 8: remove the deprecated paths (PR 8, after the release of stage 7)
 
-- [ ] 8.1 Check that a release containing stage 7 is published (PD-13); then delete
+- [x] 8.1 Check that a release containing stage 7 is published (PD-13); then delete
   `rdf_persistence/domain/`, `rdf_persistence/adapters/`, `mint_aggregate_iri` and its export
   (`__all__` becomes 148 names). CHANGELOG "Removed", **BREAKING**. Gate:
   `make test-fast check-quality`.
@@ -238,7 +238,7 @@ Stage 7 closes with the lead's full gates, the review, PR 7, and a minor release
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 2.1 · [x] 3.1 · [x] 3.2 ·
-  [x] 4.1 · [x] 4.2 · [x] 5.1 · [x] 6.1 · [x] 7.1 · [x] 7.2 · [ ] 8.1
+  [x] 4.1 · [x] 4.2 · [x] 5.1 · [x] 6.1 · [x] 7.1 · [x] 7.2 · [x] 8.1
 
 ## Verification
 
