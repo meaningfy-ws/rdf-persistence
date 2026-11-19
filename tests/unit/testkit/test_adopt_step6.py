@@ -1,4 +1,5 @@
-"""Step 6 of ``howto/adopt.adoc`` is true: its code uses public names only and runs (PD-4, T-12, T-15).
+"""Step 6 of the user manual (``user-manual/generated-classes.adoc``, ``[#guard]``) is true: its code
+uses public names only and runs (PD-4, T-12, T-15).
 
 The tests read the guide's own listing blocks, so the guide and the tests cannot drift.
 """
@@ -13,7 +14,7 @@ import pytest
 from rdf_persistence.testkit import assert_public_imports
 
 ROOT = Path(__file__).parents[3]
-GUIDE = ROOT / "docs" / "modules" / "ROOT" / "pages" / "howto" / "adopt.adoc"
+GUIDE = ROOT / "docs" / "modules" / "ROOT" / "pages" / "user-manual" / "generated-classes.adoc"
 FIXTURES = ROOT / "tests" / "fixtures"
 CONSUMER_FILE = "# tests/test_model.py"
 LISTING = re.compile(r"\[source,python\]\n----\n(.*?)\n----", re.DOTALL)
@@ -22,7 +23,7 @@ LISTING = re.compile(r"\[source,python\]\n----\n(.*?)\n----", re.DOTALL)
 def step_6_test_model() -> str:
     """The code of every listing of step 6 that belongs to the consumer's ``tests/test_model.py``."""
     text = GUIDE.read_text(encoding="utf-8")
-    step = text.split("[#guard]", 1)[1].split("\n== 7.", 1)[0]
+    step = text.split("[#guard]", 1)[1]  # the guard section runs to the end of the page
     blocks = [b for b in LISTING.findall(step) if b.startswith(CONSUMER_FILE)]
     assert len(blocks) == 2, "step 6 shows the model tests and the fifth check, two listings"
     return "\n\n".join(blocks)

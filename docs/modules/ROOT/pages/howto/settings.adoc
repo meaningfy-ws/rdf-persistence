@@ -130,7 +130,7 @@ kit = install_service(
 )
 ----
 
-The other keyword arguments are those of xref:howto/adopt.adoc#serve[step 12 of "Build an
+The other keyword arguments are those of xref:user-manual/serve.adoc[step 12 of "Build an
 application"].
 
 An adapter you build yourself, and the Redis event bus you hand to `install_service`, take their group

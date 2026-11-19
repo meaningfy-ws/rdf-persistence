@@ -32,10 +32,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: Set up Python 3.12, uv and the dependencies
+        uses: ./.github/actions/setup  # check-docs imports the package to check the generated reference
 
       - name: Set up Node
         uses: actions/setup-node@v4

@@ -1,0 +1,101 @@
+= Working on the generator
+:description: How to change rdf-persistence's generator and models: change a toolkit schema, add or change a generator extension, add a check rule.
+
+This page is for developers changing the generator, `rdf_persistence_generation/`, or the
+toolkit's own schemas. Using the generator in an application is in
+xref:user-manual/generate.adoc[Generate the code]; why the toolchain works this way is in
+xref:architecture/generation.adoc[Model to code]. The package layout, the Make targets and the
+rest of the library are on xref:develop/index.adoc[Working on the library].
+
+The generator is a sibling top-level package shipped in the same wheel. It imports the library;
+the library does not import it, but through four testkit shims (`rdf_persistence.testkit.freshness`,
+`conformance`, `roundtrip` and `strategies`), which forward the old paths to
+`rdf_persistence_generation.testkit`. The import contract `library-never-imports-the-generator`
+(`.importlinter`, run by `make check-architecture`) forbids every other import. Its own tests are in
+`tests/generator/` and run with `make test-generator`, with an 80 % coverage floor over the
+package.
+
+== Change a toolkit schema
+
+_How do I change a toolkit schema?_
+
+This applies to the metamodel, the technical schemas under `model/technical/` and `rp_generation.yaml`.
+
+. Edit the schema. Every element needs a `title`, a `description` and an IRI; every permissible
+  value needs a `meaning`.
+. Run `make generate`. The schema and its generated code are committed together.
+. If a class gained, lost or changed a slot, the model-shape test fails on purpose. Run
+  `make refresh-snapshot` and review the diff of `tests/fixtures/model-shape.yaml` in the PR.
+. If the change introduces a new constraint kind, add a row to
+  `tests/fixtures/conformance/cases.yaml`. The coverage test names any kind that lacks one.
+. Run `make check-all`.
+
+To add a record, declare it in the schema of the layer that uses it, regenerate, and import it from
+the generated package (xref:architecture/generation.adoc#kinds[Two kinds of model]): a record of the
+toolchain (a view-model, a problem) in `rp_generation.yaml`
+(`rdf_persistence_generation.generated`), a record the testkit's own modules use in
+`model/technical/testkit/rp_testkit.yaml` (`rdf_persistence.testkit.generated`), a deployment value in
+the settings schema of the theme whose code uses it (xref:howto/settings.adoc[Configure the toolkit's
+deployment values]), a request or response body in the services schema of the lowest theme that
+uses it, or in `api/rp_api_entrypoints.yaml` when only the entrypoints do. Use enums for value sets,
+never free strings.
+
+== Add or change a generator extension
+
+_How do I add a generator extension?_
+
+An extension closes a gap in a stock LinkML generator by subclassing it or replacing its template.
+It never patches the generated output.
+
+. Create a module in `rdf_persistence_generation/extensions/`. Its `render(schema_path: Path)`
+  returns a `list[GeneratedFile]`. Open schemas only with `load_schema` (or the metamodel import
+  map), and read aggregate structure only through `rdf_persistence/schema/services/schema_structure.py`.
+. Add its step to `STEPS` in `rdf_persistence_generation/steps.py`, with `render_step(name, render,
+  folder)`; the folder function picks the target folder.
+. Add a row to the extensions table in
+  xref:architecture/generation.adoc#extensions[Model to code], with the module path in the first
+  column. `tests/generator/unit/test_extension_register.py` fails without it.
+. Write `tests/generator/unit/test_ext_<module>.py`. Render the step with `run_toy` and compare
+  the result with `assert_matches_toy` (the toy's committed tree is the golden). Use
+  `assert_matches_golden` only for a schema that is not the toy.
+. Run `make generate`, review the change to the toy's generated tree, and run `make check-all`.
+
+Changing a module under `rdf_persistence_generation/` (but not its `generated/` or `testkit/` folders) or a template changes the manifests' inputs, so
+`make check-freshness` reports every target stale until you run `make generate`.
+
+Extensions subclass LinkML internals, which can change in a minor release. That is why `linkml`
+and `linkml-runtime` are pinned together. To bump them, change both pins, run `make generate`,
+review the whole generated diff, then run `make check-all`.
+
+== Add a check rule
+
+_How do I add a check rule?_
+
+`rp-generate` runs three check steps after the lint, in this order (`STEPS` in
+`rdf_persistence_generation/steps.py`):
+
+[cols="1,2,3",options="header"]
+|===
+|Step |Runs |Checks
+|Boundary check (`BOUNDARY_STEP`) |`steps._boundary_problems`: `boundary_problems` and `target_kind_problems` of `rdf_persistence_generation/checks/boundary.py` |The aggregate boundaries: ownership, references, the direction of activities, module kinds, technical modules, the target's kind; rules of `BoundaryRule`
+|Hard check (`HARD_STEP`) |`steps._hard_problems`: `hard_problems` and `stored_schema_problems` of `checks/hard.py`, and `python_package_problems` of `checks/python_package.py` |What every element needs (title, description, IRI, meaning), the annotations, the root and owned classes, the `migrations` folder and quoted `version` of a stored schema, the toolkit's `python_package`; rules of `HardRule`
+|Rules check (`RULES_STEP`) |`steps._rules_problems`: `rules_problems` of `checks/rules.py` |LinkML constructs the generated classes and shapes would silently ignore (`rules`, `all_of`, `none_of`, and some slot forms); no rule enum
+|===
+
+A new rule about a boundary joins the boundary check; any other rule an element must meet joins the
+hard check. A construct that the generated classes or shapes would silently ignore does not get a
+new rule: it belongs in `checks/rules.py`, so that generation fails instead.
+
+To add a rule to the boundary or the hard check:
+
+. Add the rule's value to `HardRule` or `BoundaryRule` in
+  `rdf_persistence_generation/model/rp_generation.yaml`, with a title, description and meaning, and
+  run `make generate`.
+. Implement it in `rdf_persistence_generation/checks/hard.py` or `boundary.py`, yielding a
+  `CheckProblem` through `rule_problem`. A rule with a module of its own, as
+  `checks/python_package.py` has, joins the list of its step's function: `steps._hard_problems` for
+  the hard check, `steps._boundary_problems` for the boundary check.
+. Test it in `tests/generator/unit/test_hard_check.py` or `test_boundary_check.py`, with one
+  schema that breaks the rule and one that does not.
+. If the rule is normative, add it to the list in
+  xref:architecture/generation.adoc#hard-check[the hard check].

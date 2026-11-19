@@ -1,0 +1,43 @@
+= User manual: build an application
+:description: How an application adopts rdf-persistence, in the order the work is done: install, model, generate, store, tenants, files, access, serve, test.
+:page-aliases: howto/adopt.adoc, user-guide/index.adoc
+:page-revised: 2026-11-10 by the developer
+
+You write your domain once, as a LinkML schema. `rp-generate` turns it into Python classes, SHACL
+shapes, a JSON-LD context and frames, TypeScript types and Mermaid diagrams. Your code works with
+the generated classes, and the testkit fails your tests if anyone edits generated code or writes a
+model by hand. The reasons behind this are in xref:architecture/generation.adoc[Model to code].
+
+New to the toolkit? Walk through xref:tutorials/getting-started.adoc[Getting started] first: one
+class, stored and read back. This manual then covers each part in full.
+
+Every example is modelled on the toy library of the toolkit's repository:
+`tests/fixtures/library/` (the model), `tests/e2e/library_app.py` (the composition root) and
+`tests/toy_service.py` (the same service over the fakes). Short answers to the usual questions,
+with links back here, are on xref:questions.adoc[Common questions].
+
+== The steps
+
+Each step is a page. The step numbers are the ones other pages cite ("step 8").
+
+[cols="1,4,5",options="header"]
+|===
+|Step |Page |What it covers
+
+|1–2 |xref:user-manual/install.adoc[Install and lay out the application] |the dependency, the extras, the folders
+|3 |xref:user-manual/model.adoc[Write the model] |modules, aggregate roots, parts, annotations, unique keys
+|4 |xref:user-manual/generate.adoc[Generate the code] |`rp-generate`: its configuration, outputs, checks and exit codes
+|5–6 |xref:user-manual/generated-classes.adoc[Use the generated classes and guard them] |the classes, validators, and the test guards
+|7 |xref:user-manual/change-model.adoc[Change the model] |regenerating; upgrading to the generator package
+|8 |xref:user-manual/store-and-read.adoc[Store and read aggregates] |session, unit of work, several aggregates at once, conflicts, unique keys
+|9 |xref:user-manual/tenants.adoc[Create tenants] |one database per tenant
+|10 |xref:user-manual/files.adoc[Keep files] |files, loaded RDF graphs, sweeping
+|11 |xref:user-manual/access.adoc[Control access] |grants, the token verifier, your own write rules
+|12 |xref:user-manual/serve.adoc[Serve the application] |the generated API, its routes and representations
+|13 |xref:user-manual/test.adoc[Test the service] |fakes and containers
+|14 |xref:user-manual/iri-policy.adoc[Configure the IRI policy] |how IRIs are minted
+|===
+
+Beyond the core steps, each feature has a guide: comments, workflows, reference collections,
+events, schema migrations, settings, backups, several stores and telemetry. They are listed by
+capability in xref:howto/index.adoc[How-to guides].

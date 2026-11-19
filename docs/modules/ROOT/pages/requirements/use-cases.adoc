@@ -1,0 +1,95 @@
+= Use cases
+:description: Who uses rdf-persistence and for what: the actors, their goals as use cases, and the capabilities that serve each.
+
+_Who is the toolkit for, and what do they do with it?_
+
+Each use case is one goal of one actor, at the level of a task that is worth doing on its own. It
+names the xref:requirements/capabilities.adoc[capabilities] that realise it and the page that
+shows how. The requirements behind each capability are in `openspec/specs/`.
+
+== Actors
+
+[cols="1,4",options="header"]
+|===
+|Actor |Who
+
+|Application developer |Models a domain in LinkML and builds, tests and runs an application with the toolkit: its domain services, composition root and deployment.
+|API client |The application's front end, or another system, calling the service the toolkit serves, on behalf of a signed-in person.
+|System architect |Designs a system or platform that reuses the toolkit as its data layer, for example an application platform that lets its users build data-centric applications from a model.
+|Toolkit developer |Changes rdf-persistence itself: the library, the generator, the metamodel.
+|===
+
+== Application developer
+
+=== Build the application
+
+[cols="1,4,3,3",options="header"]
+|===
+|Id |Goal |Capabilities |How
+
+|UC-1 |Model a domain once and get code, shapes, a JSON-LD context and types from it |rp-metamodel, rp-generation |xref:user-manual/model.adoc[Write the model], xref:user-manual/generate.adoc[Generate the code]
+|UC-2 |Store and read aggregates from domain code, safely under concurrent edits |rp-aggregate-store, rp-iri-policy |xref:user-manual/store-and-read.adoc[Store and read]
+|UC-3 |Save several aggregates together, all or nothing |rp-aggregate-store |xref:user-manual/store-and-read.adoc#transaction[Save several aggregates at once]
+|UC-4 |Keep a value unique across the aggregates of a tenant |rp-aggregate-store |xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique]
+|UC-5 |Serve the model as an HTTP API with no route code |rp-service-api |xref:user-manual/serve.adoc[Serve the application]
+|UC-6 |Enforce rules of the application's own on writes |rp-service-api, rp-access |xref:user-manual/access.adoc[Control access]
+|UC-7 |React to changes with commands, handlers and observers |rp-messages |xref:howto/event-driven.adoc[React to changes]
+|UC-8 |Change the schema without losing stored data |rp-schema-migrations |xref:howto/migrate.adoc[Change a schema that has stored data]
+|UC-9 |Test the application without, then with, real services |rp-testkit |xref:user-manual/test.adoc[Test the service]
+|UC-10 |Keep data that belongs to no tenant |rp-tenancy, rp-access |xref:howto/application-data.adoc[Application data]
+|===
+
+=== Run the application
+
+[cols="1,4,3,3",options="header"]
+|===
+|Id |Goal |Capabilities |How
+
+|UC-11 |Create, list and remove tenants |rp-tenancy |xref:user-manual/tenants.adoc[Create tenants]
+|UC-12 |Back up a tenant, or copy it into a new one |rp-tenancy |xref:howto/dump-restore.adoc[Back up or copy a tenant]
+|UC-13 |Spread tenants over several stores, and move one |rp-tenancy |xref:howto/tenant-stores.adoc[Several stores]
+|UC-14 |Set timeouts, limits and cache times per deployment |rp-settings |xref:howto/settings.adoc[Deployment values]
+|UC-15 |Deploy a schema change with its migrations |rp-schema-migrations |xref:howto/migrate.adoc#deploy[Deploying a migration]
+|UC-16 |See what the toolkit is doing in traces and logs |rp-observability |xref:howto/observability.adoc[Observability]
+|===
+
+== API client
+
+[cols="1,4,3,3",options="header"]
+|===
+|Id |Goal |Capabilities |How
+
+|UC-17 |Read, list, create, update and delete aggregates in JSON, JSON-LD or RDF |rp-service-api, rp-access, rp-identity |xref:user-manual/serve.adoc[Serve the application], xref:architecture/data-flows.adoc[Data flows]
+|UC-18 |Attach files to aggregates and load RDF files into them |rp-file-store, rp-aggregate-store |xref:user-manual/files.adoc[Keep files]
+|UC-19 |Comment on a resource without editing it |rp-discussion |xref:howto/discussion.adoc[Comment on a resource]
+|UC-20 |Move a resource through a review workflow |rp-workflow |xref:howto/workflow.adoc[Put a resource through review]
+|UC-21 |Group resources it does not own, by name or by rule |rp-reference-collections |xref:howto/reference-collections.adoc[Group resources]
+|UC-22 |Find what points at a resource before changing it |rp-reverse-references |xref:howto/reverse-references.adoc[Find who points at a resource]
+|UC-23 |Follow a tenant's changes live |rp-events |xref:howto/event-driven.adoc#relay[Server-sent events]
+|===
+
+== System architect
+
+[cols="1,4,3,3",options="header"]
+|===
+|Id |Goal |Capabilities |How
+
+|UC-24 |Decide whether the toolkit fits a platform's data layer, and what it leaves to the platform |all |xref:architecture/index.adoc#platform-fit[Fit and limits for a platform], xref:requirements/capabilities.adoc[Capabilities], xref:background/soa/build-vs-reuse.adoc[Build versus reuse]
+|UC-25 |Turn each model a platform's user defines into a data service of its own: generate from its LinkML schema at build time, then deploy one service per model; a changed model is regenerated, migrated and redeployed |rp-metamodel, rp-generation, rp-service-api |xref:architecture/index.adoc#platform-fit[Fit and limits for a platform], xref:architecture/generation.adoc[Model to code], xref:user-manual/generate.adoc[Generate the code], xref:howto/migrate.adoc[Change a schema that has stored data]
+|UC-26 |Isolate each customer's or application's data, on one store or several |rp-tenancy, rp-access |xref:architecture/data-flows.adoc[Where data lives], xref:howto/tenant-stores.adoc[Several stores]
+|UC-27 |Choose the IRIs and vocabularies so the data is reusable outside the platform |rp-iri-policy, rp-metamodel |xref:user-manual/iri-policy.adoc[IRI policy], xref:architecture/models.adoc[Models]
+|UC-28 |Integrate other systems through the published contract and the events |rp-service-api, rp-events |xref:architecture/api.adoc[A lightweight API], xref:adr/adr-005-representations.adoc[ADR-005], xref:howto/event-driven.adoc#relay[Carry commits to other systems]
+|UC-29 |Plug in the platform's own store, file store or identity provider behind the toolkit's ports |rp-package-boundaries, rp-identity |xref:architecture/index.adoc#platform-fit[Fit and limits for a platform], xref:user-manual/test.adoc#check-an-adapter-of-your-own[Check an adapter of your own], xref:adr/adr-001-sparql-client.adoc[ADR-001]
+|===
+
+== Toolkit developer
+
+[cols="1,4,3,3",options="header"]
+|===
+|Id |Goal |Capabilities |How
+
+|UC-30 |Change the library within its layers and public API |rp-package-boundaries, rp-developer-checks |xref:develop/index.adoc[Working on the library]
+|UC-31 |Extend the generator or add a check rule |rp-generation |xref:develop/generator.adoc[Working on the generator]
+|UC-32 |Change the metamodel or a technical schema |rp-metamodel, rp-generation |xref:develop/generator.adoc#change-a-toolkit-schema[Change a toolkit schema]
+|UC-33 |Cut a release |rp-release |xref:develop/index.adoc#release[Cutting a release]
+|===

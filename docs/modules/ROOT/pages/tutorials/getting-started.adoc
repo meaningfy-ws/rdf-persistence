@@ -1,9 +1,168 @@
 = Getting started
-:description: Placeholder. A first walk from an empty folder to one aggregate stored and read back with rdf-persistence.
+:description: A first walk with rdf-persistence: model a book in LinkML, generate its code, store a book and read it back.
 
-NOTE: Placeholder, to be written. Until then, xref:howto/adopt.adoc[Build an application] covers
-the same ground step by step.
+In this tutorial you build the first step of the toy library, the application the whole
+xref:user-manual/index.adoc[user manual] is written around. You write a model with one aggregate,
+`Book`, generate the code, store one book and read it back. It runs in memory, so you need no
+triple store, no identity provider and no Docker. It takes about ten minutes.
 
-This tutorial will take a newcomer from an empty folder to an application that stores one
-aggregate and reads it back: install, write a one-class LinkML model, generate, start the test
-store, commit and read.
+The application is in the toolkit's repository, under
+`docs/modules/ROOT/examples/getting-started/`. It is a cut of the toy library in
+`tests/fixtures/library/`: the names, IRIs and descriptions are the toy's, and a test checks that
+every class and slot of the example is defined identically there. The test also runs the
+application against the toolkit's current code on every change, so the page and the code move
+together.
+
+You need Python 3.12 and https://docs.astral.sh/uv/[uv].
+
+== 1. Create the project
+
+Make a folder `library/` with this `pyproject.toml`:
+
+[source,toml]
+----
+include::example$getting-started/pyproject.toml[tag=project]
+----
+
+`rdf-persistence` is the library your code runs with. Its `generate` extra adds LinkML, which only
+generating needs, so it goes in the dev group. The source pins the release tag `v0.5.0`; to try the
+newest changes, use `branch = "develop"` instead. Run `uv sync`.
+
+== 2. Write the model
+
+The model is a LinkML schema. Create `models/library.yaml`. It starts with the header the toolkit
+needs: an id, prefixes, a quoted `version`, and the toolkit's metamodel among the imports.
+
+[source,yaml]
+----
+include::example$getting-started/models/library.yaml[tag=header]
+----
+
+Then the classes, under a `classes:` key. A `Book` is an *aggregate root*: a unit the toolkit
+stores, versions and reads whole, in a named graph of its own. The mixins give it an IRI, a label
+and a description (`Described`) and the slots the toolkit fills on every write (`Tracked`: who
+created it and when). `rp_path` is the collection's segment in the API, and by default in the
+aggregate's IRI. `database: tenant` says the book is kept in the tenant's own database (tenants
+are explained below).
+
+[source,yaml]
+----
+include::example$getting-started/models/library.yaml[tag=book]
+----
+
+Under a `slots:` key, every slot has a title, a description and an IRI. The toolkit checks this
+when it generates, so that the data stays meaningful outside the application:
+
+[source,yaml]
+----
+include::example$getting-started/models/library.yaml[tag=slot]
+----
+
+The full toy also gives a book chapters; this first step keeps one slot.
+
+Data lives in *tenants*: each tenant has its own database, and an application says what its
+tenants are. Here a tenant is a library. Two small classes declare it: the tenant root, and the
+record that holds who may access it. Put them in the `classes:` key too.
+
+[source,yaml]
+----
+include::example$getting-started/models/library.yaml[tag=tenant]
+----
+
+NOTE: The toy library keeps these classes in separate files. This example uses one, and so leaves
+out the `module_kind` annotation: the generator refuses a module marked `domain` that imports the
+access modules, which `LibraryAccess` needs.
+
+== 3. Generate the code
+
+Tell `rp-generate` where the schema is and where the code goes:
+
+[source,toml]
+----
+include::example$getting-started/pyproject.toml[tag=generate]
+----
+
+Add it to the same `pyproject.toml`, then run it:
+
+[source,shell]
+----
+uv run rp-generate
+----
+
+It checks the model, then writes the Python classes, SHACL shapes, a JSON-LD context and the
+OpenAPI components into `generated/`, and the schema lock into `migrations/`. It prints
+`generated 1 target(s), no problems`. You never edit what it writes: change the model and run it
+again.
+
+== 4. Store a book and read it back
+
+Create `library_app.py` beside `pyproject.toml`. It is shown here in four parts, in file order.
+First, its imports and two constants: `ADA` is the principal, whoever acts, named by an IRI.
+
+[source,python]
+----
+include::example$getting-started/library_app.py[tag=setup]
+----
+
+Next, the *service kit*. It holds everything the toolkit needs: the schema, the store, the file
+store, the identity provider and the settings. Here each of them is an in-memory fake from the
+testkit; a real deployment passes the Fuseki, S3 and Zitadel adapters instead. The kit also
+requires a token verifier and access rules; only the HTTP routes use them, so the fakes here are
+there to satisfy it. Of the settings, `base` is the IRI under which the service mints
+identifiers, `prefix` starts the names of its databases, and `tenant_segment` names the tenant
+collection in its routes.
+
+[source,python]
+----
+include::example$getting-started/library_app.py[tag=kit]
+----
+
+Then the work itself. It creates a library in Ghent on behalf of Ada, mints an IRI for a new book,
+stores the book in one commit, and reads it back in a new session. The `Mapper` turns generated
+objects into triples and back: it reads the schema, which the kit holds as `kit.view`, and the
+classes of the generated module, which `generated_models` collects. In the IRI, `"book"` is the
+word that stands for the class (its name in lower case) and `"books"` is its `rp_path`.
+
+[source,python]
+----
+include::example$getting-started/library_app.py[tag=store]
+----
+
+The last part lets you run the file:
+
+[source,python]
+----
+include::example$getting-started/library_app.py[tag=run]
+----
+
+Run it:
+
+[source,shell]
+----
+uv run python library_app.py
+----
+
+It prints the book read back. Besides what you set, it carries `creator` (Ada's IRI) and `created`:
+the session wrote them, because `Book` is `Tracked`.
+
+== What happened
+
+* `kit.tenancy.create` made a database for the library, stored its root object and an access
+  record that grants Ada the `librarian` role (`creator_role` in the settings) on it. Nothing
+  here defines what that role may do, and a session checks no rights: the access rules apply to
+  the HTTP routes, which the manual covers.
+* `kit.session(tenant, principal)` opened a session on that database, on Ada's behalf.
+* The `Mapper` turned the `Book` into triples, and the `UnitOfWork` sent them in one transaction,
+  in the book's own named graph, with a version token.
+* `get` read the graph back and the mapper rebuilt the `Book`.
+
+== Where to go next
+
+The xref:user-manual/index.adoc[user manual] continues with the same toy library, in full, under
+`tests/fixtures/library/` of the repository: a model of several modules, the generator's options,
+chapters and notes owned by a book, conflicts, files, access and serving the model as an HTTP API.
+It lays the application out in layers (`library/domain/generated/` and so on) rather than the flat
+`generated/` of this tutorial.
+
+* xref:architecture/data-flows.adoc[Where data lives] shows what each operation writes.
+* xref:questions.adoc[Common questions] answers the usual ones in a line or two.

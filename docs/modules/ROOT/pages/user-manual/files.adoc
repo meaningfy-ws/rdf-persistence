@@ -1,0 +1,252 @@
+= Keep files
+:description: Keep files byte for byte per tenant, load RDF files into graphs and sweep unreferenced files.
+:page-revised: 2026-11-10 by the developer
+
+_How do I keep uploaded files?_
+
+The toolkit keeps two kinds of file: *bytes*, kept as they are in the tenant's bucket, and *RDF*,
+parsed into a named graph that belongs to an aggregate. This page shows how to store, read and
+delete both from your own routes, how to find aggregates by value, and how to sweep the files and
+graphs no commit ever claimed. It builds on the session and unit of work of
+xref:user-manual/store-and-read.adoc[Store and read aggregates].
+
+== Keep a file's bytes
+
+A root that includes the `StoredFile` mixin describes a kept file
+(`file_name`, `media_type`, `byte_size`, `sha256`, `uploaded`, `uploaded_by`, `file_key`); the toy
+library's `Scan` does. The bytes go to the tenant's bucket through the `FileStore` port:
+`put(bucket, key, data)`, `get(bucket, key)` and `delete(bucket, key)`. The toolkit has no route
+for the bytes, so you add one. `file_key` is `internal`: no request body can set it and no response
+shows it, but a domain service can, since the mapper writes internal slots. Store the blob's key in
+`file_key` every time: the sweep (<<sweep-live-tenant>>) and `kit.remove_with_files` find a blob
+through it. The toy library keeps the bytes under the scan's id and sets `file_key` to that same id,
+so the key is the id and `file_key` names it. Its routes for the bytes are in the composition root
+of xref:user-manual/serve.adoc[Serve the application].
+
+*A file root is written through a session.* The record and its bytes must change together, so the
+router serves a `StoredFile` root's `GET` and listing but not its `POST`, `PUT` or `DELETE` (a
+request for one gets 405, and the OpenAPI document does not describe them). Write the record in your
+own route with `kit.session(...)` and a `UnitOfWork`, and the bytes with `kit.files`. The toy
+library's `POST …/scan-files` does both:
+
+[source,python]
+----
+from contextlib import suppress
+from rdf_persistence import limited_body
+
+checked = await kit.require(request.headers.get("authorization"), t, Action.MODIFY)
+tenant = checked.caller_access.tenant
+data = await limited_body(request, kit.max_body_bytes)  # 413 when the body is too large
+iri = str(kit.iris.mint_aggregate(tenant, "scan", "scans"))
+bucket, key = await kit.bucket_of(tenant), iri.rsplit("/", 1)[-1]
+scan = Scan(id=iri, label=label, file_name=name, byte_size=len(data), sha256=digest,
+            file_key=key)                                                             # 422 if invalid
+await kit.files.put(bucket, key, data)                                                # the bytes
+try:
+    async with kit.session(tenant, checked.principal) as session:
+        work = UnitOfWork(session, mapper)
+        work.add(scan)
+        await work.commit()                                                           # the record
+except Exception:
+    with suppress(Exception):         # a failing cleanup must not hide the error that caused it
+        await kit.files.delete(bucket, key)
+    raise
+----
+
+`limited_body` is the bound the generic routes use on a request body. Build the record before the
+bytes are stored: a pydantic `ValidationError` is answered 422 by the toolkit's problem handlers, and
+nothing has been stored yet to take back. If the commit fails, the bytes are removed and the
+original error is answered.
+
+*Deleting a file root.* Your own delete route calls `kit.remove_with_files(tenant, principal, iri,
+if_version)` instead of a bare remove. In one go it removes the aggregate, its loaded graphs and its
+registry entries, as `Session.remove` does, then deletes from the tenant's bucket the blobs named in
+its `file_key` that no other aggregate names. It raises `NotFound` if the aggregate does not exist
+and `Conflict` if it is not at `if_version`; then nothing changes. If the bucket refuses a blob
+delete, the error is logged, not raised: the aggregate is already gone, and the sweep removes the
+blob later.
+
+[source,python]
+----
+checked = await kit.require_aggregate(
+    request.headers.get("authorization"), t, "scans", scan_id, Action.DELETE
+)
+await kit.remove_with_files(
+    checked.caller_access.tenant, checked.principal, checked.checked_target, if_version
+)
+----
+
+A `StoredFile` root is always written through a session this way. Any other root can opt in with
+the class annotation `rp_writes: service`; there is no value that turns it off.
+
+== Load an RDF file into a graph
+
+`Session.load_graph(iri, data, rdf_format=RdfFormat.TURTLE)`
+parses the data in a worker thread and puts it into a new named graph, by default
+`{iri}/content/{uuid4}` (the loaded-graph template of the IRI policy; `Session` takes the policy
+as `iris=`). `data` is the file's `bytes`, and the return is the new graph's IRI as an rdflib
+`URIRef`. Before it puts the graph, it writes a *load marker*, one triple in the tenant's
+registry graph that records when the graph was loaded; the sweep (the check that finds loaded graphs
+no commit has registered, <<sweep-live-tenant>>) uses it to leave young graphs alone.
+Data that does not parse raises `InvalidGraph` (`from rdf_persistence import InvalidGraph`), and
+nothing is written. A route that lets it out answers 422 `invalid-body`. A JSON-LD file is also
+refused with `InvalidGraph`, nothing written, and `str(error)` is the message quoted here, when:
+
+* the document declares a graph of its own (a `@graph` with an `@id`). The loader puts the triples
+  in the graph it mints and takes no other. Message: `a loaded file holds one graph`.
+* an IRI is relative. No base is applied, so every IRI must be absolute, unless the document's own
+  `@base` resolves it. Message: `a JSON-LD document must use absolute IRIs`.
+* an IRI is not valid (it holds a space or a control character). Message:
+  `a JSON-LD document holds an IRI that is not valid`.
+* its `@context` is not given in the document. The loader fetches nothing, so a context URL, alone
+  or in an array, is refused. Message: `a JSON-LD context must be inline: remote, file and relative
+  contexts are not followed`.
+* the document is not a JSON object or array. Message: `a JSON-LD document is an object or an array`.
+
+The graph belongs to the
+aggregate once a commit names it (a graph another aggregate owns is refused with `InvalidIri`):
+
+[source,python]
+----
+from rdf_persistence import RdfFormat
+
+async with kit.session(tenant, principal) as session:
+    loaded = await session.load_graph(scan_iri, data, rdf_format=RdfFormat.TURTLE)
+    graph, _, version = await session.get_graph(scan_iri)
+    await session.replace_graph(scan_iri, graph, version, loaded_graphs=[loaded])
+----
+
+`replace_graph` with `loaded_graphs=None` keeps the loaded graphs already registered; a list
+replaces them, and the graphs left out are emptied. `remove` empties every loaded graph of the
+aggregate. The formats are the members of `RdfFormat`: `RdfFormat.TURTLE` (`"turtle"`),
+`RdfFormat.RDFXML` (`"rdfxml"`), `RdfFormat.NTRIPLES` (`"ntriples"`) and `RdfFormat.JSONLD`
+(`"jsonld"`).
+
+*Reading a loaded graph back.* `Session.loaded_graph(iri, graph_iri)` returns the triples of a graph
+loaded for the aggregate as an rdflib `Graph`. A later request finds the graph's IRI with
+`Session.loaded_graphs(iri)`: the IRIs of the graphs committed with the aggregate, sorted by IRI (not
+in load order), empty if it has none, `NotFound` if the aggregate does not exist. The session checks
+no access, so check the read first, as for any read of the aggregate:
+
+[source,python]
+----
+from rdflib import OWL, RDF
+
+checked = await kit.require_aggregate(
+    request.headers.get("authorization"), t, "scans", scan_id, Action.READ
+)
+async with kit.session(checked.caller_access.tenant, checked.principal) as session:
+    (graph_iri,) = await session.loaded_graphs(checked.checked_target)
+    content = await session.loaded_graph(checked.checked_target, graph_iri)
+classes = sum(1 for _ in content.subjects(RDF.type, OWL.Class))
+----
+
+A graph that is not loaded for that aggregate raises `NotFound`, whoever owns it.
+
+[#find]
+== Find aggregates by value
+
+`Session.find(cls, **equals)` returns the IRIs of the tenant's
+aggregates of a class whose slots equal the values, in IRI order. To keep a value unique, declare a
+key instead (xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across aggregates]): a check before a write can be beaten by a write made meanwhile, and
+a key is checked in the commit itself. Use `find` to look aggregates up. This is what a uniqueness
+check looks like with it, for a value no key covers:
+
+[source,python]
+----
+async with kit.session(tenant, principal) as session:
+    if await session.find(Scan, file_name=name):
+        raise HTTPException(status_code=409, detail=f"a scan named {name} exists")
+----
+
+`find` ignores Prohibitions on purpose: a duplicate you may not see is still a duplicate. So never
+show its result to a caller as it is. Check each IRI with `kit.require_aggregate`, or answer from the
+listing route, which applies the rules. A list value asks for all its items:
+`find(Book, authors=["X", "Y"])` returns the books that have both.
+
+`find` is not a snapshot: it reads page by page, so a write made meanwhile by another request can
+slip past a uniqueness check. Called without filters, it reads every aggregate of the class, so never
+pass a caller's input to it unfiltered. `find` raises:
+
+* `RuntimeError`, when the session was opened without listings. The service kit opens its sessions
+  with them.
+* `ValueError`, when the class is not an aggregate root the service serves, or a list value is
+  empty.
+* `BadQuery`, when a name is not a slot, or a value does not fit its slot.
+
+[#sweep-live-tenant]
+== Sweep a live tenant
+
+_How do I clean up orphans in a live tenant?_
+
+An upload that is never committed leaves a blob; a `load_graph` that is never committed leaves a
+loaded graph. Nothing names them, so nobody sees them, and they stay until the tenant is deleted. The
+start-up sweep does not look inside a tenant. `kit.sweep_tenant(tenant)` does. It finds two kinds of
+orphan in one active tenant, each older than a grace period:
+
+* *Loaded graphs* that no commit has registered for an aggregate.
+* *Blobs* in the tenant's bucket that no graph of the tenant names in `file_key`.
+
+It is a library call, so you run it as an operator command: a script, or an admin route you own. The
+toolkit has no command line for it.
+
+*It changes nothing by default.* With no flags it is a dry run: it only reports. Each kind has its
+own flag:
+
+[cols="2,3",options="header"]
+|===
+|Flag |Effect
+|`remove=True` |Delete the orphan loaded graphs (and the stale load markers).
+|`remove_blobs=True` |Delete the orphan blobs.
+|===
+
+*Pass `remove_blobs=True` only when every blob key you store is also stored in `file_key`.* The sweep
+calls a blob an orphan when no `file_key` names it. A consumer that keys its blobs some other way
+would lose every one of them. That is why blobs have a flag of their own, off by default. The toy
+library sets `file_key` (<<keep-a-files-bytes>>), so it qualifies.
+
+*The grace period is one hour* (`older_than=timedelta(hours=1)`). A loaded graph's age is the time in
+its load marker; a blob's age is its modification time in the object store. Younger items are left
+alone, so an upload or a load that is still waiting for its commit survives. *Commit within the grace
+period.* A load or upload committed later than that, after a sweep with removal has run, is lost: the
+graph comes back empty, the blob is gone. Raise `older_than` if your commits can be slower.
+
+An operator script, built like the composition root of xref:user-manual/serve.adoc[Serve the application]:
+
+[source,python]
+----
+import asyncio
+from datetime import timedelta
+
+async def main(tenant: str) -> None:
+    kit = build_kit()      # your composition root: install_service(...), as when serving
+    report = await kit.sweep_tenant(tenant)    # a dry run
+    print(report.loaded_graphs, report.blobs)  # the orphans, sorted
+    # read the lists; if they are right, remove:
+    done = await kit.sweep_tenant(
+        tenant, remove=True, remove_blobs=True, older_than=timedelta(hours=1)
+    )
+    print(done.removed_loaded_graphs, done.removed_blobs, done.skipped_blobs)
+
+asyncio.run(main("https://example.org/tenants/t"))
+----
+
+The report is a `TenantSweepReport`: `loaded_graphs` and `blobs` (what was found, sorted),
+`removed_loaded_graphs` and `removed_blobs` (whether removal ran for that list), and `skipped_blobs`
+(keys the object store would not delete; the sweep logs them and goes on). It logs one line for each
+item it removes. A removed graph is checked once more in the same update: a commit that registers it
+meanwhile wins and the graph stays. Running the sweep twice is harmless.
+
+It raises `NotFound` if the tenant does not exist and `Conflict` if it is being deleted. On a large
+tenant it reads every graph and every blob, so it is slow; that is fine for an operator command.
+
+=== Changed in 0.2.0: load markers
+
+Graphs loaded before 0.2.0 have no load marker, and count as old. After upgrading from 0.1.x:
+
+* do not sweep with `remove=True` while a deploy is running, as a graph loaded just before it could
+  be removed before its commit; run the first sweep after the deploy has settled, and read the dry
+  run first;
+* a graph loaded for the tenant root before then was never registered, even if a commit named it,
+  so the dry run lists it as an orphan: to keep it, commit the root again with it in
+  `loaded_graphs` before you sweep with `remove=True`.

@@ -1,12 +1,12 @@
 = Put tenants on several stores
 :description: How to wire several triple stores into one service, create a tenant on one of them, reach a tenant's store from your own code, copy a tenant to another store, retire a store, deploy safely, and what the start-up does with several stores.
 
-_Can a project's data live on another server? How do I choose the server when I create a project?
-How do I copy a project to another server, or stop using one?_
+_Can a tenant's data live on another server? How do I choose the server when I create a tenant?
+How do I copy a tenant to another server, or stop using one?_
 
-A tenant (a project) is one database. By default every tenant database lives on the one triple store
+A tenant is one database. By default every tenant database lives on the one triple store
 you give `install_service`. You can also wire *named stores* beside it, for example a server that
-holds one client's projects, and create a tenant on one of them. The toolkit records the store's
+holds one client's tenants, and create a tenant on one of them. The toolkit records the store's
 name in the tenant's access record and from then on reads, writes, sweeps, migrates, dumps and
 deletes that tenant only on its own store. This page shows how to wire the stores, how to choose
 one, what follows the tenant, and the rules a deployment with several stores must keep. It
@@ -28,7 +28,7 @@ from rdf_persistence import FusekiStore, install_service
 async with (
     FusekiStore(fuseki_url, fuseki_user, fuseki_password) as store,
     FusekiStore(client_a_url, client_a_user, client_a_password) as client_a,
-    # identity and verifier as in step 12 of the adoption guide
+    # identity and verifier as in the user manual, step 12
 ):
     kit = install_service(
         app,
@@ -38,7 +38,8 @@ async with (
     )
 ----
 
-The composition root is described in xref:howto/adopt.adoc#serve[Serve the application]. A
+The composition root is described in the user manual, step 12:
+xref:user-manual/serve.adoc[Serve the application]. A
 service with one store passes no `stores` and sees no change.
 
 A store name:
@@ -203,7 +204,7 @@ with open(path, "rb") as src:
 The copy is a *new* tenant: a new id and new IRIs, and the restorer alone holds the creator role.
 Grant the others again, and delete the original if the copy replaces it. Everything else about
 dump and restore, the archive and its limits, is on
-xref:howto/dump-restore.adoc[Back up or copy a project].
+xref:howto/dump-restore.adoc[Back up or copy a tenant].
 
 [#retire]
 == 6. Retire a store
@@ -246,7 +247,7 @@ tenant and both stores, and leaves the tenant alone.
 
 * The system database (the access records and the IRI policy record).
 * The application database (see xref:howto/application-data.adoc[Keep data that belongs to no
-  project]).
+  tenant]).
 * Both are created and migrated on `default` only. Another store holds tenant databases and
   nothing else.
 

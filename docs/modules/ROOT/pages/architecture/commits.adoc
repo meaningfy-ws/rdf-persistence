@@ -1,19 +1,30 @@
 = How commits and conflicts work
+:page-aliases: howto/commits.adoc
 :description: What a commit guarantees, what a version token is, when a commit raises Conflict and what to do then, why one commit holds at most 500 roots, and what batch mode does and does not promise.
 
 _What happens when two people edit the same thing? Why did my commit raise `Conflict`? Is a commit
 of several books all or nothing? Why does it refuse 600 books? What is batch mode, and is it safe to
 run again?_
 
-This page explains how a commit behaves, from the side of the code that calls it. The steps are in
-xref:howto/adopt.adoc#transaction[Save several aggregates at once]; the mechanism inside the store
-is in xref:architecture/data-flows.adoc#commit[Committing several aggregates at once]. It describes
+This page explains how a commit behaves, from the side of the code that calls it: what it
+guarantees and why. It is one of three views of the same commit:
+
+* the how-to side, the steps to take in a domain service, is in the user manual:
+  xref:user-manual/store-and-read.adoc[Store and read aggregates], in particular
+  xref:user-manual/store-and-read.adoc#transaction[Save several aggregates at once] and
+  xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict];
+* this page, the behaviour a caller can rely on;
+* the mechanism inside the store, the single guarded update request, is in
+  xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
+
+The rules it explains are those of the capability `rp-aggregate-store`
+(xref:requirements/capabilities.adoc[Capabilities]). It describes
 `develop` as of 2026-11-13 (the change `atomic-commit`).
 
 A *root* is the root object of an aggregate: one book with its chapters is one root, stored and
 versioned as a whole. The running example is a small library of books A, B, C and D. A, B and D are
 stored; C is new. The snippets run inside `async with kit.session(tenant, principal) as session:`
-(see xref:howto/adopt.adoc#session[step 8]) after `from rdf_persistence import Conflict, UnitOfWork`.
+(see xref:user-manual/store-and-read.adoc[step 8]) after `from rdf_persistence import Conflict, UnitOfWork`.
 
 == A commit is all or nothing
 
@@ -23,7 +34,7 @@ D is still on the shelf.
 
 Up to and including 0.2.0 each root was written on its own, so a conflict could leave the first
 roots written. What changed for existing code is in
-xref:howto/adopt.adoc#transaction-change[The behaviour changed]. Now a `Conflict` means one thing:
+xref:user-manual/store-and-read.adoc#transaction-change[Changed in 0.3.0]. Now a `Conflict` means one thing:
 nothing was written, with one rare exception (see <<diagnosis>>).
 
 == The version token: how the store knows you read an old copy
@@ -102,7 +113,7 @@ The toolkit never does this for you. Only the caller knows whether the edit stil
 changed B's title because the old title was misspelled. Someone else has since changed it to the
 right spelling. Applying your edit again would write a wrong title over a right one. A person, or
 your code, must look at the fresh B and decide. The recipe is in
-xref:howto/adopt.adoc#handle-a-conflict[Handle a conflict].
+xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict].
 
 [#diagnosis]
 === The diagnosis can be incomplete
@@ -173,7 +184,7 @@ Read it as "N of M batches committed before it". A failing batch writes nothing 
 |===
 
 Use the first when the process is still alive: after a store outage (it raises `StoreUnavailable`;
-catch it as in xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]), or after
+catch it as in xref:user-manual/store-and-read.adoc#transaction-batches[Save more than 500 aggregates]), or after
 a conflict, once the clashing stored book is corrected in the store or left out of the commit with
 `work.discard(iri)`. `discard` takes a root out of the pending changes: the next commit neither
 writes nor removes it. Use the fresh run after a crash, when the old unit of work is gone.
@@ -184,7 +195,7 @@ writes nor removes it. Use the fresh run after a crash, when the old unit of wor
 write. It holds when the re-run builds the same IRIs: the book's own IRI must be the same on every
 run, so derive it from the source, never mint it at random. The default policy takes a UUID, so
 derive that from the source key (`uuid5` of the ISBN; the example is in
-xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]). The same goes for the
+xref:user-manual/store-and-read.adoc#transaction-batches[Save more than 500 aggregates]). The same goes for the
 parts of a book: parts without an IRI of their own (blank nodes), or part IRIs you give, which are
 stored as written, derived from the source row (for example the chapter number). It is not the case for `new_part`, which mints a random IRI each time: the
 re-run sees different triples, and those books conflict with the stored ones. That is safe,

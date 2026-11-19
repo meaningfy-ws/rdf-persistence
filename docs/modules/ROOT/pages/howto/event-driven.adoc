@@ -10,7 +10,7 @@ change, a *handler* makes it, and an *observer* reacts to what was committed. It
 `develop` as of 2026-11-16 (the changes `message-bus` and `aggregate-events`; the second is
 <<relay>>). The terms tenant, aggregate, kit, session,
 unit of work and IRI policy, and the names `kit`, `t`, `mapper` and `Action` in the snippets, are
-those of xref:howto/adopt.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
+those of xref:user-manual/index.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
 xref:howto/reverse-references.adoc[Find who points at a resource]; a workflow is the one of
 xref:howto/workflow.adoc[Put a resource through review]. `MessageBus`, `bootstrap`, `command`,
 `Work`, `Activity`, `Transition`, `UnitOfWork` and the errors are imported from `rdf_persistence`.
@@ -100,7 +100,7 @@ slots:
   If a command is about several books, declare a slot of your own for them, as `shelf_note` is a
   slot of its own.
 * *Add the module to the root schema*: list `books_activities` under its `imports` (as for any
-  module, see xref:howto/adopt.adoc#model[step 3]), then regenerate (`make generate`). The module declares
+  module, see xref:user-manual/model.adoc[step 3]), then regenerate (`make generate`). The module declares
   no stored class, so it needs no generation target of its own.
 * *Model no event classes.* The events are the toolkit's fixed set of PROV generations and
   invalidations; an observer reads them from the activity.
@@ -225,7 +225,7 @@ A handler changes aggregates through `work.unit_of_work()` and commits once:
   command's class and slots. A second commit with it is an error (`RuntimeError`). If a use case
   needs two commits, send a second command with `await work.send(...)` (see <<limits>>).
 * *Several aggregates are one commit.* Add and change all the roots in the one unit of work, as in
-  xref:howto/adopt.adoc#transaction[Save several aggregates at once]; one activity records them
+  xref:user-manual/store-and-read.adoc#transaction[Save several aggregates at once]; one activity records them
   all.
 * *Use the collaboration for what it owns.* `work.collaboration` is the caller's collaboration
   (`transition`, `comment`, `delete_cascade`); a handler that calls it instead of the unit of
@@ -297,7 +297,7 @@ async def test_shelving_is_observed(kit_with_fakes, collab):
 ----
 
 `kit_with_fakes` and `collab` are pytest fixtures you write: a kit built over `FakeStore` as in
-xref:howto/adopt.adoc#test-service[step 13] (the test is async, as there) and a collaboration
+xref:user-manual/test.adoc[step 13] (the test is async, as there) and a collaboration
 opened on it. `BOOK_IRI` is a book you stored first. Test a handler by
 its stored result (read the book back) and an observer by what it does; use `RecordingObserver`
 when the thing to check is that it was called, and with what.
@@ -328,7 +328,7 @@ when the thing to check is that it was called, and with what.
   caller's command already succeeded.
 * *The false conflict.* A commit that applied, but whose graphs another writer overwrote before
   the toolkit could confirm it, is reported as a `Conflict` (see
-  xref:howto/commits.adoc#conflict[what a conflict means]). Its activity is recorded and not
+  xref:architecture/commits.adoc#conflict[what a conflict means]). Its activity is recorded and not
   handed to the observers. A commit that applied but was overtaken in part is published once its
   activity is stored. Read again before retrying.
 * *Observers have the session's full reach.* There is no service account: an observer acts as the
@@ -353,7 +353,7 @@ Terms used below:
   record, with the store's own clock. It says "not yet relayed"; the relay replaces it by a
   "relayed" time.
 * *Application database*: the database for data that belongs to no tenant (see
-  xref:howto/adopt.adoc[Build an application]). It has a relay mark too, but no browser follows it.
+  xref:user-manual/index.adoc[Build an application]). It has a relay mark too, but no browser follows it.
 * *Consumer group*: a Redis Streams name under which a reader shares the position in the stream.
   Each deployment reads the stream as one group, so it gets every entry once and the entries of
   one deployment are not split across others.
@@ -392,7 +392,7 @@ or later*: redelivery uses a command older servers lack, and the consumer stops 
 only `rdf_persistence.events.adapters.redis_events` needs it.
 
 In the examples, the `...` comments stand for what
-xref:howto/adopt.adoc#serve[Serve the application] in _Build an application_ passes to
+xref:user-manual/serve.adoc[Serve the application] in _Build an application_ passes to
 `ServiceSettings` and `install_service`.
 
 [source,python]

@@ -1,4 +1,5 @@
-"""The consumer-term scan of docs/tools/check_docs.py catches a planted term (PD-20)."""
+"""The checks of docs/tools/check_docs.py: consumer terms (PD-20), the testkit names, the mermaid
+pin and every link resolving to a page and an anchor (documentation-improvements DEC-7)."""
 
 import importlib.util
 from pathlib import Path
@@ -140,3 +141,107 @@ def test_mermaid_markdown_holds_every_block_of_every_page(tmp_path, monkeypatch)
     assert markdown.count("```mermaid\n") == 2, "both mermaid blocks are in the markdown"
     assert "flowchart LR\n  X --> Y\n```" in markdown, "the flowchart block is in the markdown"
     assert "sequenceDiagram\n  A->>B: hi\n```" in markdown, "the sequence block is in the markdown"
+
+
+def test_mermaid_markdown_expands_included_partials(tmp_path, monkeypatch):
+    monkeypatch.setattr(check_docs, "MODULE", tmp_path)
+    (tmp_path / "partials" / "model").mkdir(parents=True)
+    (tmp_path / "partials" / "model" / "m.mmd").write_text("classDiagram\n    class A\n")
+    (tmp_path / "pages").mkdir()
+    (tmp_path / "pages" / "a.adoc").write_text(
+        "= A\n\n[mermaid]\n....\ninclude::partial$model/m.mmd[]\n....\n"
+    )
+
+    markdown = check_docs.mermaid_markdown()
+
+    assert "```mermaid\nclassDiagram\n    class A\n```" in markdown, "the partial's diagram"
+
+
+def _site(tmp_path, monkeypatch, pages: dict[str, str], nav: str = "") -> None:
+    """A tmp docs module with the given pages (path -> text) and nav."""
+    monkeypatch.setattr(check_docs, "MODULE", tmp_path)
+    for path, text in pages.items():
+        (tmp_path / "pages" / path).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "pages" / path).write_text(text)
+    (tmp_path / "nav.adoc").write_text(nav)
+
+
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        ("Where things are", "where-things-are"),
+        ("1. Install", "1-install"),
+        ("The `Session` and its *unit* of work", "the-session-and-its-unit-of-work"),
+        ("Errors: what a caller sees!", "errors-what-a-caller-sees"),
+        ("Moving from the old keywords (0.4)", "moving-from-the-old-keywords-0-4"),
+    ],
+)
+def test_section_ids_follow_the_site_settings(title, expected):
+    assert check_docs.section_id(title) == expected, "the id the site (idseparator '-') gives"
+
+
+def test_section_ids_follow_asciidoctor_defaults():
+    assert check_docs.section_id("1. Install", "_", "_") == "_1_install", "Asciidoctor's default"
+
+
+def test_resolving_links_pass(tmp_path, monkeypatch):
+    _site(
+        tmp_path,
+        monkeypatch,
+        {
+            "a.adoc": "= A\n\n[#here]\n== Here\n\n"
+            "See <<here>>, <<more,more>> and xref:b.adoc#two[two].\n\n== More\n",
+            "b.adoc": "= B\n:page-aliases: old/b.adoc\n\n== Two\n\n"
+            "[[pin]]text xref:old/b.adoc#pin[] xref:ROOT:a.adoc[]\n",
+        },
+        nav="* xref:a.adoc[A]\n* xref:b.adoc#two[B]\n",
+    )
+
+    assert check_docs.check_links() == [], "every link resolves"
+
+
+def test_an_explicit_id_replaces_the_title_id(tmp_path, monkeypatch):
+    _site(tmp_path, monkeypatch, {"a.adoc": "= A\n\n[#here]\n== Over there\n\n<<over-there>>\n"})
+
+    assert len(check_docs.check_links()) == 1, "the title's own id is not defined"
+
+
+def test_repeated_titles_get_numbered_ids(tmp_path, monkeypatch):
+    _site(tmp_path, monkeypatch, {"a.adoc": "= A\n\n== Limits\n\n== Limits\n\n<<limits-2>>\n"})
+
+    assert check_docs.check_links() == [], "the second title's id ends in -2"
+
+
+@pytest.mark.parametrize(
+    ("text", "missing"),
+    [
+        ("xref:nowhere.adoc[x]", "nowhere.adoc"),
+        ("xref:b.adoc#gone[x]", "b.adoc#gone"),
+        ("<<gone>>", "gone"),
+        ("<<b.adoc#gone,x>>", "b.adoc#gone"),
+    ],
+)
+def test_a_broken_link_is_reported(tmp_path, monkeypatch, text, missing):
+    _site(tmp_path, monkeypatch, {"a.adoc": f"= A\n\n{text}\n", "b.adoc": "= B\n\n== Two\n"})
+
+    errors = check_docs.check_links()
+
+    assert len(errors) == 1, errors
+    assert "a.adoc" in errors[0], "the page is named"
+    assert missing in errors[0], "the target is named"
+
+
+def test_a_broken_link_in_the_nav_is_reported(tmp_path, monkeypatch):
+    _site(tmp_path, monkeypatch, {"a.adoc": "= A\n"}, nav="* xref:a.adoc#nope[A]\n")
+
+    errors = check_docs.check_links()
+
+    assert len(errors) == 1, errors
+    assert "nav.adoc" in errors[0], "the nav is named"
+
+
+def test_links_in_listings_and_comments_are_ignored(tmp_path, monkeypatch):
+    page = "= A\n\n----\nxref:x.adoc[] <<y>>\n----\n\n// xref:z.adoc[]\n\n....\n<<w>>\n....\n"
+    _site(tmp_path, monkeypatch, {"a.adoc": page})
+
+    assert check_docs.check_links() == [], "verbatim blocks and comments are not links"

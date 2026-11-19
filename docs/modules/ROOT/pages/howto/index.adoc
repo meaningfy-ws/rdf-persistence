@@ -1,0 +1,50 @@
+= How-to guides
+:description: Task guides for the features beyond the core steps of the user manual, grouped by capability.
+
+_I know the basics; how do I use feature X?_
+
+Each guide takes one task from start to finish and assumes the core steps of the
+xref:user-manual/index.adoc[user manual]. The capability column names the requirements the guide
+relies on (xref:requirements/capabilities.adoc[Capabilities]).
+
+== Data
+
+[cols="3,2",options="header"]
+|===
+|Guide |Capability
+
+|xref:howto/reverse-references.adoc[Find who points at a resource] |rp-reverse-references
+|xref:howto/reference-collections.adoc[Group resources you do not own] |rp-reference-collections
+|xref:howto/migrate.adoc[Change a schema that has stored data] |rp-schema-migrations
+|xref:howto/application-data.adoc[Keep data that belongs to no tenant] |rp-tenancy, rp-access
+|===
+
+== Collaboration and events
+
+[cols="3,2",options="header"]
+|===
+|Guide |Capability
+
+|xref:howto/discussion.adoc[Comment on a resource without editing it] |rp-discussion
+|xref:howto/workflow.adoc[Put a resource through review] |rp-workflow
+|xref:howto/event-driven.adoc[React to changes with commands and observers] |rp-messages, rp-events
+|===
+
+== Operations
+
+[cols="3,2",options="header"]
+|===
+|Guide |Capability
+
+|xref:howto/settings.adoc[Configure the toolkit's deployment values] |rp-settings
+|xref:howto/dump-restore.adoc[Back up or copy a tenant] |rp-tenancy
+|xref:howto/tenant-stores.adoc[Put tenants on several stores] |rp-tenancy
+|xref:howto/observability.adoc[See what the toolkit is doing] |rp-observability
+|===
+
+== Guidelines
+
+The rules a contributor follows are in the developer manual:
+xref:develop/testing.adoc[Testing checklist] and xref:develop/agents.adoc[Working with agents].
+What a commit guarantees, and what to do on a conflict, is explained in
+xref:architecture/commits.adoc[How commits and conflicts work].

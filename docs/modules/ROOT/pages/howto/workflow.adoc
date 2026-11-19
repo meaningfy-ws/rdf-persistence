@@ -7,7 +7,7 @@ state refused? Where is the history? What happens when I change the workflow fil
 This page shows how to give an aggregate a workflow. It describes `develop` as of 2026-11-14 (the
 change `collaboration-and-reference-collections`). The terms tenant, aggregate, kit, session and
 IRI policy, and the names `kit`, `t`, `mapper` and `Action` in the snippets, are those of
-xref:howto/adopt.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
+xref:user-manual/index.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
 xref:howto/reverse-references.adoc[Find who points at a resource]. `UnitOfWork`,
 `Transition`, `VerifiedCaller` and the errors are imported from `rdf_persistence`, except `LookupError`, which
 is Python's own.
@@ -44,7 +44,7 @@ workflow_transitions:
 |`initial_state` |The state a new aggregate starts in, one of the states. Required.
 |`workflow_transitions` |The transitions. A state may have none.
 |`from_state`, `to_state` |The names of the two states of a transition. Required.
-|`transition_roles` |The names of the roles of which the caller needs one; at least one. Each is a role the roles file defines (xref:howto/adopt.adoc#access[step 11] of the adoption guide). Required.
+|`transition_roles` |The names of the roles of which the caller needs one; at least one. Each is a role the roles file defines (the user manual, step 11: xref:user-manual/access.adoc#define-the-roles[Define the roles]). Required.
 |`comment_required` |`true` when the transition needs a comment; `false` when left out.
 |===
 
@@ -184,7 +184,7 @@ async with kit.collaboration(checked) as collab:
 
 `collab.transition(iri, to, *, if_version, comment=None)` moves the aggregate to the state named
 `to` (a name, not an IRI) and returns its new version token. `if_version` is the version token of
-the aggregate as the client read it (see xref:howto/commits.adoc[How commits and conflicts work]).
+the aggregate as the client read it (see xref:architecture/commits.adoc[How commits and conflicts work]).
 The generic API sends it as the `ETag` of a read, so a route of yours can pass the `If-Match`
 value on, with `expected_version(request.headers.get("If-Match"))` from
 `rdf_persistence.api.entrypoints.negotiation`. It takes one strong entity tag (`"v3"`) and reads

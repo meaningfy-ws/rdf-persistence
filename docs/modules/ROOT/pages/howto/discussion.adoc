@@ -7,7 +7,7 @@ at another book? What happens to the comments when the book is deleted?_
 This page shows how to keep a discussion on an aggregate. It describes `develop` as of 2026-11-14
 (the change `collaboration-and-reference-collections`). The terms tenant, aggregate, kit, session
 and IRI policy, and the names `kit`, `t` and `Action` in the snippets, are those of
-xref:howto/adopt.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
+xref:user-manual/index.adoc[Build an application]; a *collaboration* (`collab`) is opened as in
 xref:howto/reverse-references.adoc[Find who points at a resource]. `Comment`, `Motivation` and the
 errors are imported from `rdf_persistence`, except `LookupError`, which is Python's own.
 
@@ -60,7 +60,7 @@ Posting needs the action `annotate` on the target.
   the action.
 
 The role definition is one more line in the roles file you give the access rules
-(xref:howto/adopt.adoc#access[step 11] of the adoption guide; the toy's is `library_roles.yaml`,
+(the user manual, step 11: xref:user-manual/access.adoc#define-the-roles[Define the roles]; the toy's is `library_roles.yaml`,
 which already defines `librarian` and `reader`):
 
 [source,yaml]
@@ -194,7 +194,7 @@ The toolkit gives callers no way to read a comment except `thread` and `referrer
 listing, and a comment is never a member of a collection. It has no call to edit or to delete one
 comment.
 
-Your own code that opens a session (`kit.session`, xref:howto/adopt.adoc#session[step 8]) is
+Your own code that opens a session (`kit.session`, xref:user-manual/store-and-read.adoc[step 8]) is
 trusted code. It reads and removes a comment like any aggregate (`get_graph`, `remove`), and can
 write a `Comment` too. This is how an application builds "delete my comment" or moderation; the
 session checks no access and no audience, so both are then your code's responsibility. The

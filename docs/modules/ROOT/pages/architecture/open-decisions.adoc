@@ -1,5 +1,10 @@
-= Decisions of 2026-11-05
+= Decision log of 2026-11-05
 :description: The developer's decisions on the API, access control, the metamodel and the generators, taken on 2026-11-05, with the options that were weighed.
+
+This log holds the decisions (D-1 to D-13) taken before the toolkit kept one
+xref:adr/index.adoc[architecture decision record] per settled decision; a later record that
+narrows or widens one of them says so, as xref:adr/adr-005-representations.adoc[ADR-005] does for
+D-1.
 
 The developer reviewed the metamodel on 2026-11-05 and asked for:
 

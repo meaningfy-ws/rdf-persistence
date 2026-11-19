@@ -55,4 +55,4 @@ Rejected. It adds nothing to FastAPI's builder.
 == Sources
 
 The change `manual-revision-notes`, `inputs/analysis.md` §3.2. The decision to write the OpenAPI
-hook ourselves is D-3 of xref:architecture/open-decisions.adoc[Decisions of 2026-11-05].
+hook ourselves is D-3 of xref:architecture/open-decisions.adoc[the decision log of 2026-11-05].

@@ -201,7 +201,7 @@ update request, also a `rp:CommitMarker` (see <<commit>>).
 |`A/registry` (`A` is the application IRI), and `X/graph`, one per application aggregate `X` (with its loaded graphs)
 |The aggregates of the classes the schema marks `database: application`, their registry and their loaded graphs, with the
 same bookkeeping as in a tenant database. No bucket, no access record. It is created at start-up when the schema has such a class.
-See xref:howto/application-data.adoc[Keep data that belongs to no project].
+See xref:howto/application-data.adoc[Keep data that belongs to no tenant].
 
 |Every database (system, application, tenant)
 |`{base}toolkit/schema-stamps`, one graph
@@ -441,7 +441,7 @@ is the guards. Repeating each root's guard in every operation, as a single repla
 across roots: once the new book `C` is inserted, "`C/graph` is empty" is false for every later
 operation, and once `A`'s old token is dropped, "`A` is at its old token" is false. So the guards
 are checked once, at the start, and a marker carries the result through the request. The caller's
-view, with the conflict and the size limit, is in xref:howto/commits.adoc[How commits and conflicts work].
+view, with the conflict and the size limit, is in xref:architecture/commits.adoc[How commits and conflicts work].
 
 The example: the library changes book `A` (stored at `a1`), adds a new book `C`, and removes book
 `B` (stored at `b1`), in one transaction.
@@ -809,7 +809,7 @@ logged and left for the sweep.
 |`Session.load_graph(B, data, rdf_format=…)`: parse in a worker thread (nothing written if it does
 not parse, or if a JSON-LD file declares a graph of its own, holds a relative or invalid IRI, gives a
 `@context` that is not in the document, or is not an object or array: `InvalidGraph`, each message in
-xref:howto/adopt.adoc[the how-to]); mint `B/content/<id>`. The graph belongs to `B` only once a commit names it in
+xref:user-manual/index.adoc[the how-to]); mint `B/content/<id>`. The graph belongs to `B` only once a commit names it in
 `loaded_graphs`.
 |A load marker in `T/registry` first, then a Graph Store `PUT` of `B/content/<id>`.
 |===
@@ -827,7 +827,7 @@ stateDiagram-v2
 ....
 
 A load or an upload that is never committed leaves an orphan. `kit.sweep_tenant(T)` finds and
-removes them; see xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant].
+removes them; see xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant].
 
 [#tenants]
 == Tenant operations
@@ -923,7 +923,7 @@ including another `DELETE`; the next start-up sweep finishes it.
 
 `kit.dump_tenant` and `kit.restore_tenant` (`tenancy/services/tenant_dump.py`) are Python calls with no
 route and no gate; the consumer decides who may call them (see
-xref:howto/dump-restore.adoc[Back up or copy a project]). A dump is one gzipped tar: `manifest.json`,
+xref:howto/dump-restore.adoc[Back up or copy a tenant]). A dump is one gzipped tar: `manifest.json`,
 `graphs.nq`, then `blobs/<key>`, then an empty member `end` that shows the dump finished. A restore
 always creates a new tenant, in the same order as `create`: database, bucket, data, access record
 last.
@@ -1140,7 +1140,7 @@ from the templates; a create body may not name an `id` or a part
 |422
 
 |*IRI policy: the templates themselves*, checked once when the service starts
-|`check_iri_policy`, `Iris` (both in `iris/services/iris.py`); see xref:howto/adopt.adoc#iri-policy[Configure the IRI policy]
+|`check_iri_policy`, `Iris` (both in `iris/services/iris.py`); see xref:user-manual/iri-policy.adoc[Configure the IRI policy]
 |`{deployment}` without a slug, colliding graphs, an id with no length
 |start-up error
 

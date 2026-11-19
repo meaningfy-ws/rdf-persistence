@@ -204,6 +204,38 @@
   ],
   "outputs": [
     {
+      "path": "docs/modules/ROOT/partials/model/rp_access.mmd",
+      "sha256": "9d27db4d8b7825c03f460f44b36fc5de3fc4e5bcb17189cf339177733b38e2c9"
+    },
+    {
+      "path": "docs/modules/ROOT/partials/model/rp_collections.mmd",
+      "sha256": "5a680fc05de53b311afb3fee045121d0b790658d383e8eadc9eea2c8305fd75f"
+    },
+    {
+      "path": "docs/modules/ROOT/partials/model/rp_core.mmd",
+      "sha256": "050ebabeb8e63fca7219adda0b5f20129f10e742a04dadd0dc53cf02f2819dc9"
+    },
+    {
+      "path": "docs/modules/ROOT/partials/model/rp_discussion.mmd",
+      "sha256": "023612abfa296f8f04ec71f3a1c428a90ec811bc2550e652229a97f06a69dd77"
+    },
+    {
+      "path": "docs/modules/ROOT/partials/model/rp_files.mmd",
+      "sha256": "6e44c60262116839f88b43dc16ac6081b077bde8fdeb6c6f5675716883945480"
+    },
+    {
+      "path": "docs/modules/ROOT/partials/model/rp_provenance.mmd",
+      "sha256": "99a0a50d325b42480870857963e18d571ca3642f54d9fddcfe59b96330fd9059"
+    },
+    {
+      "path": "docs/modules/ROOT/partials/model/rp_tenancy.mmd",
+      "sha256": "718f51d6ffe4770f378763ba8d8b17e621ee5453f628a8dd204f2e8457df140c"
+    },
+    {
+      "path": "docs/modules/ROOT/partials/model/rp_workflow.mmd",
+      "sha256": "8ffa13f5f1d27c079558c29db71f65cc1ba7e6e6b622a104b3f370fcb4bf233b"
+    },
+    {
       "path": "rdf_persistence/core/domain/generated/Activity.frame.jsonld",
       "sha256": "324edde046ea42f53dbfa874edb6979fac95bf65ee4007116fd863ebb05aebaf"
     },

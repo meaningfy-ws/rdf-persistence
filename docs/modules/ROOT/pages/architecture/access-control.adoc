@@ -7,7 +7,7 @@ xref:background/soa/angles/authz.adoc[identity and authorization angle] of the b
 updated on 2026-11-05. The access model, the check and the token verification are *implemented*
 (stages 3 and 4 of the change `toolkit-v1-foundation`: `rdf_persistence/model/rp_access.yaml`,
 `rdf_persistence/access/services/access.py`, `rdf_persistence/access/adapters/jwks.py`). How an application
-writes its roles and grants is in xref:howto/adopt.adoc#access[Build an application, step 11].
+writes its roles and grants is in xref:user-manual/access.adoc[Build an application, step 11].
 
 == Decisions
 

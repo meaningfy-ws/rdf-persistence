@@ -1,0 +1,198 @@
+= Write the model
+:description: Write an application's domain as a LinkML schema on the toolkit's metamodel: modules, aggregate roots, owned parts, annotations and unique keys.
+:page-revised: 2026-11-10 by the developer
+
+_How do I model my domain?_
+
+This page writes the model of the example application, a `books` module whose aggregate root
+`Book` owns its chapters, and lists the rules `rp-generate` holds every schema to. You start from
+the folders of xref:user-manual/install.adoc[Install and lay out the application] and end with a
+schema that xref:user-manual/generate.adoc[`rp-generate`] accepts.
+
+Split the schema into one file per module and a root schema that imports them. A *domain module*
+holds one aggregate: its aggregate root and the owned parts the root holds.
+
+The `books.yaml` below is the toy library's (`tests/fixtures/library/books.yaml` in the toolkit's
+repository), cut down to `Book` and its chapters. The lines kept are the toy's, except the
+descriptions that named what was cut and the lists of `mixins`, `slots` and `imports`: the toy's
+book also has a publication date, a genre, a shelf, a sequel, notes on its chapters and a review
+workflow.
+
+[source,yaml]
+----
+# models/books.yaml
+id: https://example.org/ns/library/books
+name: books
+title: Books module
+description: Books and their chapters; the book is the aggregate root.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  schema: http://schema.org/
+  bibo: http://purl.org/ontology/bibo/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core           # the toolkit's metamodel, resolved from the package
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Book:
+    title: Book
+    description: A book held by a library; an aggregate root that owns its chapters.
+    class_uri: bibo:Book
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [isbn, authors, chapters]
+    annotations:
+      rp_path: books                         # the collection's segment in the API (and the IRI)
+      database: tenant                       # stored in each tenant's database (the default)
+  Chapter:
+    title: Chapter
+    description: A chapter of a book, known by its number rather than a label; part of the book's aggregate.
+    class_uri: bibo:Chapter
+    mixins: [Described]
+    slots: [number]
+    annotations:
+      rp_unlabelled: true                    # known by its number, needs no label
+
+slots:
+  isbn:
+    title: ISBN
+    description: The International Standard Book Number of the book.
+    slot_uri: bibo:isbn
+    range: string
+  authors:
+    title: Authors
+    description: The names of the book's authors.
+    slot_uri: schema:author
+    range: string
+    multivalued: true
+  chapters:
+    title: Chapters
+    description: The chapters of the book; they live in the book's graph.
+    slot_uri: lib:chapter
+    range: Chapter
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+  number:
+    title: Chapter number
+    description: The position of a chapter in its book.
+    slot_uri: bibo:chapter
+    range: integer
+----
+
+`rp_path` is the collection's segment in the API (`/libraries/{t}/books`), and by default in the
+aggregate's IRI (see `rp_iri_type`); a custom IRI policy
+(xref:user-manual/iri-policy.adoc[Configure the IRI policy]) may leave it out of the IRI. The word that stands for the class in an IRI is `{type}`, which is the class's
+`rp_iri_type` annotation, or the class name in kebab case when there is none. Set it under
+`annotations:`, like `rp_path`, on an aggregate root or an owned class, only when the IRIs must say
+something other than the class name:
+
+[source,yaml]
+----
+    annotations:
+      rp_path: books
+      rp_iri_type: volume                    # {type} is "volume", not "book"
+----
+
+It follows the same pattern as `rp_path`: a url segment of lower case letters, digits and hyphens.
+Two classes may not share one, and `content`, `graph`, `parts`, `access`, `meta`, `registry` and `provenance`
+are reserved by the IRI layout, so `rp-generate` refuses them. The toolkit's routes read `rp_iri_type`;
+`new_part` does not (xref:user-manual/store-and-read.adoc[Store and read aggregates]).
+
+The root schema imports the modules. It carries a quoted `version:`, because the schema defines
+aggregate roots of its own, so its `rp-generate` entry needs `migrations`
+(xref:user-manual/generate.adoc#configure[Generate the code]); without the version the hard check
+fails with `a target with migrations needs a root version:`. As for `books.yaml`, this is the toy
+library's `library.yaml` with its imports cut down to `books`:
+
+[source,yaml]
+----
+# models/library.yaml — the root schema
+id: https://example.org/ns/library
+name: library
+title: Toy library schema
+version: "1"                                 # quoted: an unquoted 1.10 would be read as a number
+description: The root schema of the toy library application used to test the toolkit.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - books
+----
+
+[#rules]
+== The rules a schema follows
+
+`rp-generate` refuses a schema that breaks these rules, and names the element at fault:
+
+[cols="2,3",options="header"]
+|===
+|Rule |In the example
+|Every class, slot, enum and permissible value has a `title` and a `description`, and every element an IRI (a `default_prefix`, or an explicit `class_uri` or `slot_uri`) |`title:` and `description:` everywhere; `class_uri: bibo:Book`, `slot_uri: schema:author`, and `default_prefix: lib` for the rest
+|Every permissible value has a `meaning`, an IRI |(no enum here; see `Genre` in the toy library)
+|An aggregate root includes `AggregateRoot` and `Described` and has an `rp_path` |`Book`
+|Every other class is owned by a root, through a slot annotated `owned: true`, and includes `Described`; one without a label of its own says `rp_unlabelled: true` |`Chapter`, through `chapters`
+|A slot that is not owned and ranges over a class points to an aggregate root; it is stored as that root's IRI |(see `scan_of` in the toy library)
+|A module annotated `module_kind: domain` imports no module annotated `technical` or `access` |`books.yaml`
+|No LinkML `rules`, `all_of` or `none_of`: the generated code would not enforce them |—
+|===
+
+The full checks, with their rule names, are in
+xref:architecture/generation.adoc#hard-check[The hard check].
+
+[#more-metamodel]
+== More of the metamodel
+
+Each of these is shown in the toy library under `tests/fixtures/library/` of the toolkit's
+repository:
+
+* *The tenant root*: one class annotated `graph: meta`, whose instance is the tenant itself
+  (`library_tenant.yaml`).
+* *A stored file*: an aggregate root that includes `StoredFile` (`scans.yaml`).
+* *Access*: a class with `is_a: TenantAccess`, in a module annotated `module_kind: access`
+  (`library_access.yaml`), and the role definitions (`library_roles.yaml`).
+* *A technical module*: a module annotated `module_kind: technical` may hold the request and response shapes
+  of your own routes. Its classes need no owning root; they are generated in Python and TypeScript
+  but never stored. A domain module may not import it; the root schema imports it. To generate
+  technical models into a package of their own, see
+  xref:user-manual/generate.adoc#technical-target[Keep technical models in a target of their own].
+
+[#unique-across-aggregates]
+== A value unique across aggregates
+
+Declare a `unique_keys` entry on the root and annotate it `rp_unique_scope: tenant`. With this key
+on `Book`, as in the toy library's `books.yaml`, no two books of a tenant share an ISBN:
+
+[source,yaml]
+----
+  Book:
+    # …
+    slots: [isbn, authors, chapters]
+    unique_keys:
+      isbn_key:
+        unique_key_slots: [isbn]            # one or more single-valued slots of the root
+        annotations:
+          rp_unique_scope: tenant           # unique among the books of one tenant; a
+                                            # subclass of Book is a scope of its own
+----
+
+`rp-generate` refuses such a key unless it sits on an aggregate root of the tenant databases (or
+on a class those roots inherit from; not the tenant root, of which a tenant has one), and refuses
+one whose slot is multivalued, the identifier, bookkeeping or an owned part. The toolkit enforces
+the key when a session commits
+(xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across aggregates]); it
+generates no validator or shape for it.
+
+The full list of annotations and mixins is in
+xref:architecture/generation.adoc#metamodel[the metamodel].

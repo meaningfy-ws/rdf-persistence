@@ -1,0 +1,447 @@
+= Store and read aggregates
+:description: Store and read aggregates in a domain service with a session and a unit of work; commit several at once; handle conflicts.
+:page-revised: 2026-11-10 by the developer
+
+_How do I store and read an aggregate?_
+
+This page shows how a domain service stores and reads aggregates in Python: one at a time, several
+in one commit, and in batches; and what to do when a commit is refused. You need the generated
+classes (xref:user-manual/generated-classes.adoc[Use the generated classes and guard them]) and a
+`ServiceKit`: the one `install_service` returns when you serve the application
+(xref:user-manual/serve.adoc[Serve the application]), or, without HTTP, one you build yourself
+(<<kit-without-http>>).
+
+Over HTTP the router stores and reads every aggregate for you. Write code only for
+rules that are more than CRUD, such as a check across two objects or a computed value. That code
+works on the generated classes through a *session* and a *unit of work*. Both handle whole
+aggregates: a *root* is the aggregate root object, here one book, stored and versioned together
+with the parts it owns, its chapters.
+
+* a `Session` reads and commits whole graphs of one tenant database, on behalf of one principal;
+* a `Mapper` turns a generated object and its owned parts into triples and back;
+* a `UnitOfWork(session, mapper)` gives object-level access: `get` a root, `add` a new or changed
+  one, `commit`.
+
+[source,python]
+----
+# library/services/books.py
+from rdf_persistence import (
+    Mapper,
+    ServiceKit,
+    UnitOfWork,
+    generated_models,
+    new_part,
+)
+
+from library.domain.generated import books
+from library.domain.generated.books import Book, Chapter
+
+
+def book_mapper(kit: ServiceKit) -> Mapper:
+    """Build it once: it reads the schema the kit loaded."""
+    return Mapper(kit.view, generated_models(books))
+
+
+async def add_book(kit: ServiceKit, mapper: Mapper, tenant: str, principal: str) -> str:
+    iri = str(kit.iris.mint_aggregate(tenant, "book", "books"))  # by the service's IRI policy
+    async with kit.session(tenant, principal) as session:
+        work = UnitOfWork(session, mapper)
+        work.add(Book(id=iri, label="Dune", description="A planet.", authors=["Frank Herbert"]))
+        await work.commit()
+    return iri
+
+
+async def add_chapter(
+    kit: ServiceKit, mapper: Mapper, tenant: str, principal: str, book_iri: str, number: int
+) -> None:
+    async with kit.session(tenant, principal) as session:
+        work = UnitOfWork(session, mapper)
+        book = await work.get(Book, book_iri)       # NotFound if the book has no graph
+        part = new_part(Chapter, book_iri, iris=kit.iris, tenant=tenant, number=number)
+        book.chapters = [*(book.chapters or []), part]
+        work.add(book)
+        await work.commit()                          # Conflict if the book changed meanwhile
+----
+
+`tenant` is the tenant's IRI and `principal` the caller's IRI (xref:user-manual/serve.adoc[Serve the application]
+shows how a route gets both from `kit.require_aggregate`). `kit.session(tenant, principal)` opens a
+session on that tenant's database; `kit.view` is the schema the service loaded. Pass
+`generated_models` every module whose classes the mapper reads: the roots you `get` and the parts
+they own.
+
+Outside a service, `load_schema(path)` loads the schema, and `open_session(store, *, database,
+tenant_iri, principal, clock)` opens the same session on a `Store` you hold (`principal` is a
+`Principal` there; the kit's `session` takes its IRI as a string and calls `open_session` with the
+tenant's database name).
+
+What a commit does:
+
+* `commit()` adds a new root, replaces a root read in this unit of work, and deletes a root removed
+  with `remove(obj)`, each guarded by the version it was read with, in one transaction: all or
+  nothing. A version that moved meanwhile raises `Conflict` and changes nothing
+  (<<handle-a-conflict>>). The guarantees, and the one rare exception, are in
+  xref:architecture/commits.adoc[How commits and conflicts work].
+* The session writes the version and the tracking slots (`created`, `creator`, `modified`,
+  `contributor`) as statements about the aggregate's graph, `{root}/graph`. Your code never sets
+  them.
+* An aggregate IRI must be one the toolkit would mint, by default `{tenant}/{rp_path}/{uuid4}`; a
+  custom IRI policy may use the class's `{type}` instead of `{rp_path}`. Any other is refused
+  (`InvalidIri`) before anything is sent. `kit.iris.mint_aggregate(tenant, type, rp_path)` mints one
+  by the service's policy, `type` being the class's `{type}`
+  (xref:user-manual/iri-policy.adoc[Configure the IRI policy]). The module function
+  `mint_aggregate_iri(tenant, rp_path)` mints the default layout only, which a custom policy
+  refuses.
+* A part's IRI is, by default, `{root}/parts/{uuid4}`. `new_part(Chapter, root, iris=kit.iris,
+  tenant=tenant, ...)` mints it by the policy, and it stays the same across commits. Without `iris`
+  it mints the default layout only, which a custom policy refuses. Its `{type}` is the kebab-case
+  class name, not `rp_iri_type`, so under a part template with `{type}` a class that sets another
+  `rp_iri_type` is refused (`InvalidIri`).
+
+The session also works below the object level, on triples. Use it for what the mapper does not
+cover:
+
+[cols="2,3",options="header"]
+|===
+|`Session` method |What it does
+|`get_graph(iri)` |The aggregate's triples, its graph IRI and its version token
+|`add_graph(iri, triples, loaded_graphs=())` |Store a new aggregate; returns its first version
+|`replace_graph(iri, triples, if_version, loaded_graphs=None)` |Replace it if it still has `if_version`; returns the new version
+|`load_graph(iri, data, *, rdf_format)` |Parse an RDF file into a new graph of the aggregate (xref:user-manual/files.adoc[Keep files])
+|`loaded_graphs(iri)` |The IRIs of the aggregate's loaded graphs, sorted by IRI
+|`loaded_graph(iri, graph_iri)` |The triples of one loaded graph
+|`remove(iri, if_version)` |Delete the aggregate, its loaded graphs and its registry entries
+|`transaction()` |An `async with` block that collects several of the writes above and sends them as one (<<transaction>>)
+|`named_file_keys(keys)` |The keys, of those given, that some graph of the tenant still names in `file_key`
+|===
+
+`add_graph`, `replace_graph` and `remove` are each a transaction of one change, so a single write
+and a multi-aggregate commit follow the same path.
+
+[#kit-without-http]
+== Get a kit without serving
+
+_I have no FastAPI app yet. Where does the kit come from?_ Construct `ServiceKit` yourself, with
+the keyword arguments `install_service` passes it: the root schema, the generated package, the
+store, the file store, the identity provider, a token verifier, the access rules, the settings and
+the migrations folder (each as in xref:user-manual/serve.adoc[Serve the application]). The
+example below, from the toolkit's
+xref:tutorials/getting-started.adoc[Getting started], wires the testkit's in-memory fakes:
+
+[source,python]
+----
+include::example$getting-started/library_app.py[tag=kit]
+----
+
+The schema must have a tenant root and an access class
+(xref:user-manual/model.adoc#more-metamodel[More of the metamodel]); without either, the
+constructor raises `LookupError`. Then, before the first tenant, create the system database, and
+create a tenant to work in:
+
+[source,python]
+----
+from rdf_persistence import Principal
+
+ADA = "https://example.org/people/ada"          # the principal who acts, named by an IRI
+kit = build_kit()
+await kit.tenancy.ensure_system_database()      # creates it unless it exists
+ghent = await kit.tenancy.create("Ghent", {"description": "Books for all."}, Principal(id=ADA))
+tenant = ghent.id                               # the tenant's IRI, for kit.session(tenant, ...)
+----
+
+A kit built this way runs none of the start-up work of `install_service`: the IRI policy guard,
+the application database (`kit.tenancy.ensure_application_database()`, when a class is annotated
+`database: application`), the migrations, the sweep and the event relay
+(xref:user-manual/serve.adoc[Serve the application]). Use it on a fresh store, in a script or in a
+test; against a store a service already uses, go through `install_service`.
+
+[#transaction]
+== Save several aggregates at once
+
+_Can I save several aggregates at once?_ Yes, and they are stored all together or not at all. In
+code that works on objects, change what you need in one `UnitOfWork` and call `commit()` once:
+
+[source,python]
+----
+from rdf_persistence import Conflict, UnitOfWork
+
+async with kit.session(tenant, principal) as session:
+    work = UnitOfWork(session, mapper)
+    dune = await work.get(Book, dune_iri)
+    old = await work.get(Book, old_iri)
+    dune.label = "Dune, 2nd edition"
+    work.add(dune)                                   # replaced, at the version it was read
+    work.add(Book(id=new_iri, label="Emma", description="A novel.", authors=["Jane Austen"]))
+    work.remove(old)                                 # removed
+    try:
+        await work.commit()                          # all three, or none
+    except Conflict as conflict:
+        print(conflict.iris)                         # for example ('https://…/books/<id>',)
+    else:
+        print(work.version(dune_iri))                # the new token
+----
+
+`add` of a root you read replaces it; `add` of a root you did not read creates it.
+
+For triples, open a transaction on the session: each call checks what it can at once (the IRI
+policy, that a replaced or removed root exists), and the block sends one
+request when it ends.
+
+[source,python]
+----
+async with session.transaction() as t:
+    new_a = await t.replace_graph(a_iri, a_triples, a_version)   # returns the new version
+    await t.add_graph(c_iri, c_triples)
+    await t.remove(b_iri, b_version)
+----
+
+What to expect:
+
+* *One request, all or nothing.* A replaced or removed root must still have the version you read,
+  and an added root must not exist yet. If one guard fails, nothing changes and `Conflict` is
+  raised. Why, and the rare false conflict, are in xref:architecture/commits.adoc[How commits and
+  conflicts work]; the request itself is in
+  xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
+* *`Conflict.iris`* lists the root IRIs whose guard failed, sorted. Use it to tell the user which
+  objects moved, but do not treat it as exact: it is worked out after the refusal and can miss a
+  root, name one too many, or be empty (xref:architecture/commits.adoc#diagnosis[The diagnosis can
+  be incomplete]). A `Conflict` raised elsewhere has an empty `iris`.
+* *`UnitOfWork.version(iri)`* returns the version token of a root this unit of work read, or
+  after a commit the new token (the same token `Session.get_graph` returns and the HTTP API sends
+  as `ETag`). Record it to know which version a process used. A root it neither read nor
+  committed raises `LookupError`.
+* *`UnitOfWork.remove(obj)`* removes a root this unit of work read, in the same commit as the
+  rest. A root it did not read raises `ValueError`, because its version is needed. A new root
+  added here and then removed raises `ValueError`. A root read, added and then removed is
+  removed; `add` after `remove` raises `ValueError`.
+* *`UnitOfWork.discard(iri)`* takes a root out of the pending changes: the next commit neither
+  writes nor removes it. A new root is forgotten; a root read here stays held at the version read.
+  A root the unit of work does not hold raises `LookupError`.
+* *The same root twice* in one transaction raises `ValueError` at the second call, before anything
+  is sent. An exception inside the `async with` block sends nothing; an empty transaction sends
+  nothing.
+* After a `Conflict`, the unit of work is unchanged: read again with a new unit of work and retry.
+  The transaction never retries by itself.
+* *One tenant only.* A transaction does not span tenants or the system database, and a file's
+  bytes keep their own write order (xref:user-manual/files.adoc[Keep files]).
+
+[#handle-a-conflict]
+=== Handle a conflict
+
+_My commit raised `Conflict`. What do I do?_ Nothing was written (barring the rare false conflict in
+xref:architecture/commits.adoc#diagnosis[The diagnosis can be incomplete]; reading again shows the
+true state). Read the roots again in a *new* unit of work, apply the edit again if it still makes
+sense, and commit. `kit`, `mapper`, `tenant` and `principal` are those of the first example on this
+page:
+
+[source,python]
+----
+from rdf_persistence import Conflict, UnitOfWork
+
+
+async def rename(kit, mapper, tenant, principal, iri, label):
+    for _ in range(2):                               # your policy: here, one retry
+        async with kit.session(tenant, principal) as session:
+            work = UnitOfWork(session, mapper)       # new: it reads the current copy
+            book = await work.get(Book, iri)
+            if book.label == label:
+                return                               # someone already did it
+            book.label = label
+            work.add(book)
+            try:
+                await work.commit()
+            except Conflict as conflict:
+                print(conflict)                      # https://…/books/<id> was changed by someone else since it was read
+                continue
+            return
+    raise RuntimeError(f"{iri} keeps changing; give up")
+----
+
+The message names each root, and `conflict.iris` lists the same roots, sorted. When `iris` is
+empty, show the message. The toolkit does not retry for you, because only your code knows whether
+the edit still makes sense on the new copy (the `if` in the loop is that check). The three message
+clauses are in xref:architecture/commits.adoc#conflict[When a commit raises Conflict].
+
+[#key-conflict]
+=== Keep a value unique across aggregates
+
+_Two books must not share an ISBN. What happens when they do?_ Declare the key in the model (xref:user-manual/model.adoc[Write the model]).
+A commit that adds or replaces a book whose ISBN another book of the tenant holds raises
+`KeyConflict`, a subclass of `Conflict`, and writes nothing. Over HTTP it is a 409 problem of type
+`key-conflict`.
+
+[source,python]
+----
+from rdf_persistence import KeyConflict
+
+
+try:
+    await work.commit()
+except KeyConflict as conflict:
+    print(conflict.iris, conflict.keys)      # the roots of this commit that clashed, and the key
+                                             # names (isbn_key), both sorted
+----
+
+`iris` and `keys` name your own roots and the keys, never the aggregate that holds the value, which
+the caller may not be allowed to see. What is guaranteed: of two concurrent writers of one value at
+most one commits, and a refused commit writes nothing. What is not: which roots the error names.
+When the value is held by a stored aggregate, the toolkit finds out what clashed by reading the
+store after the refusal, as it does for `Conflict.iris`, and another writer can change things in
+between. So `iris` can name a root too many or miss one, and if the holder was removed in between,
+the commit raises a plain `Conflict` with an empty `iris` instead. Only a clash between two changes
+of one commit is reported exactly.
+
+After a `KeyConflict`, do not retry the commit as it is: it fails until the value changes or its
+holder goes. Change the value, or tell the user which of their values is taken (the error names
+the root and the key; read the value from your own object). After a plain `Conflict`, read again
+and retry, as in <<handle-a-conflict>>; if the value is still taken, the retry raises the `KeyConflict`.
+
+How a key behaves:
+
+* Values are compared as exact RDF terms: case, whitespace and language all count (`"dune"`,
+  `"Dune"` and `"Dune"@en` are three values). Write numbers in their canonical form, as the
+  mapper and the router do: one written otherwise (`"07"^^xsd:integer`) equals `7` on Fuseki but
+  not on the fake store of the testkit.
+* An aggregate with a slot of the key absent claims nothing, so any number of books may lack an
+  ISBN. A key over several slots claims only when all have a value.
+* The scope is the tenant and the type: the root's own class. A subclass that inherits the key is
+  its own scope, so a `Magazine` and a `Book` may share an ISBN. Another tenant never clashes.
+* `kit.session` and the generic router enforce the keys of the schema. `open_session` enforces
+  none unless you pass `keys=aggregate_keys(mapper.view)` (from
+  `rdf_persistence.schema.services.schema_structure`); a session you open without `keys` accepts
+  duplicates.
+* A 409 tells a writer that the value exists in the tenant, even when the aggregate holding it is
+  hidden from them. So do not make a slot of confidential values a key.
+
+[#key-on-live-data]
+=== Add a key to live data
+
+_A tenant already has two books with one ISBN. How do I add the key?_ Until the duplicates are
+fixed, an edit of one of them that keeps its ISBN is refused with `KeyConflict`; removing it or
+changing the ISBN passes. So order the steps:
+
+. Declare the key and regenerate (`make generate`). Do not deploy the service yet.
+. With the new code, from a script or a shell beside the running service, call
+  `key_duplicates()` on a session of every tenant (below). It only reads, and it counts every
+  aggregate whatever the principal may see. It returns a list of `KeyDuplicate`, one per set of
+  key values held by two aggregates or more: `key_name`, `root_class`, `key_values` (the lexical
+  forms, in the key's slot order) and `key_roots` (the roots, sorted). Values of the same text but
+  another datatype or language are different values, so they are separate entries that look
+  alike. A stored root that has two values for a key slot appears once per value, and must be
+  brought to one value.
+. Fix each duplicate: change the value of, or remove, every root but one.
+. Run the report once more, since the service still running accepts new duplicates; when it is
+  empty, deploy.
+
+[source,python]
+----
+async with kit.session(tenant, principal) as session:
+    for duplicate in await session.key_duplicates():
+        print(duplicate.key_name, duplicate.key_values, duplicate.key_roots)
+----
+
+[#transaction-batches]
+=== Save more than 500 aggregates
+
+_What if I commit more than 500 aggregates at once?_ By default `commit()` refuses. A unit of work
+holds at most `max_roots` changed roots (added, replaced or removed), the limit of its mapper, 500
+unless you pass another: `Mapper(view, models, limits=LimitSettings(max_roots=200))` (a value below
+1 is refused by `LimitSettings`; `install_service(toolkit=...)` builds the kit's mapper from the
+same group). Over the
+limit, `commit()` raises `CommitTooLarge` before it reads or writes anything. The message names the
+count and the limit; over HTTP it is a 413.
+The unit of work is unchanged, so you can raise the limit or commit in batches.
+
+For a large import, ask for batches:
+
+[source,python]
+----
+work = UnitOfWork(session, mapper)   # the mapper's max_roots, 500 by default
+for row in rows:
+    work.add(Book(id=book_iri(row), label=row.title, description=row.text, authors=row.authors))
+try:
+    await work.commit(batches=True)      # batches of 500, in the order added
+except Conflict as conflict:
+    print(conflict)                      # says how many batches were committed
+    # two ways to carry on: see below
+----
+
+What to expect (why, in xref:architecture/commits.adoc#batch-mode[Batch mode is many commits, not one]):
+
+* *Each batch is one transaction; the whole is not atomic.* Batches commit in the order each root
+  was first read or added. If batch 3 of 5 fails, batches 1 and 2 stay written.
+* *A failure stops at that batch.* The error is raised as it is (same type, same `iris`), and the
+  message adds how many batches were committed (a non-toolkit exception keeps its arguments and
+  gets that as a note). The committed roots leave the *pending changes* of the unit of work, which
+  still holds them as read.
+* *Batch mode reads before it writes.* To tell a re-run from a clash it reads each root it is to
+  add, once per batch, so run it behind a principal that may read those roots as well as write
+  them.
+* *Only added roots converge on a re-run*; replaces and removes must be rebuilt from fresh reads.
+
+There are two ways to carry on after a failed batch.
+
+*Retry in the same unit of work*, while the process is still alive. After a store outage, wait and
+commit again. After a conflict, leave the clashing roots out with `work.discard(iri)`, or correct
+the stored book in the store. Then call `commit(batches=True)` again: it sends the roots not yet
+committed, and skips an added root already stored exactly as written.
+
+[source,python]
+----
+from rdf_persistence import Conflict, StoreUnavailable
+
+try:
+    await work.commit(batches=True)
+except Conflict as conflict:
+    print(conflict)                      # … already exists; 1 of 3 batches committed before it
+    for iri in conflict.iris:            # leave the clashing books out
+        work.discard(iri)
+    await work.commit(batches=True)      # sends the roots not yet committed
+except StoreUnavailable as outage:       # the store did not answer
+    print(outage)                        # … 1 of 3 batches committed before it
+    # wait until the store is back, then:
+    await work.commit(batches=True)
+----
+
+*Retry with a fresh run*, when the process crashed or you start the import again. Build a new unit
+of work from the same source and commit in batches. Roots already stored exactly as you would write
+them are skipped, so a second run after a full success sends no update at all. This holds only if
+every run builds the same IRIs:
+
+* The book's own IRI. The default policy wants a UUID as the last segment, so derive the UUID from
+  the source key instead of drawing one (other id shapes:
+  xref:user-manual/iri-policy.adoc[Configure the IRI policy]).
+* Its parts' IRIs. `new_part` mints a random one, so those books conflict on a re-run (safely:
+  nothing is duplicated, but the import does not converge). A part IRI you give yourself is stored
+  as written, so derive it from the source row, for example `f"{book_iri}/chapters/{row.chapter}"`;
+  parts without an IRI of their own (blank nodes) need nothing.
+
+[source,python]
+----
+from uuid import NAMESPACE_URL, uuid5
+
+
+def book_iri(tenant, row):
+    # the same ISBN gives the same UUID, so the same IRI, every run
+    return f"{tenant}/books/{uuid5(NAMESPACE_URL, row.isbn)}"
+
+
+async def import_books(kit, mapper, tenant, principal, rows):
+    async with kit.session(tenant, principal) as session:
+        work = UnitOfWork(session, mapper)
+        for row in rows:
+            # IRIs derived from the source, not minted at random: the re-run must build the same ones
+            work.add(Book(id=book_iri(tenant, row), label=row.title, description=row.text, authors=row.authors))
+        await work.commit(batches=True)
+
+await import_books(kit, mapper, tenant, principal, rows)   # crashes after batch 2
+await import_books(kit, mapper, tenant, principal, rows)   # skips what is stored, writes the rest
+----
+
+[#transaction-change]
+== Changed in 0.3.0: commits are all or nothing
+
+Up to and including 0.2.0, `UnitOfWork.commit()` wrote each root on its own: with two changed
+roots, a conflict on the second left the first written. It now writes all or none, with no flag to
+restore the old behaviour. Code that relied on the partial write (for example, catching `Conflict`
+and keeping the first root) has to commit the roots in separate units of work. Code that treated a
+`Conflict` as "nothing changed" is now correct for every root.

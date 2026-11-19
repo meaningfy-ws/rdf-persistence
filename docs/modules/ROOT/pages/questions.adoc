@@ -4,44 +4,97 @@
 Each answer is short and points to the page with the details. The answers describe the toolkit
 on `develop` as of 2026-11-17.
 
+== Finding your way
+
+*I am new: where do I start?*::
+With the tutorial. You model one aggregate, generate its code, store it and read it back, in
+memory, with no server to run. See xref:tutorials/getting-started.adoc[Getting started].
+
+*How do I build a whole application, step by step?*::
+Follow the user manual: fourteen steps, in the order the work is done, from installing the toolkit
+to configuring the IRI policy. Other pages cite them by number ("step 8"). See
+xref:user-manual/index.adoc[User manual: build an application].
+
+*I know the basics; how do I use feature X?*::
+Find the feature's guide, grouped by capability: data, collaboration and events, operations. Each
+takes one task from start to finish. See xref:howto/index.adoc[How-to guides].
+
+*Who is the toolkit for, and what do they do with it?*::
+Four actors (the application developer, an API client, a system architect and the toolkit
+developer), each with goals written as use cases that name the capabilities serving them. See
+xref:requirements/use-cases.adoc[Use cases].
+
+*What does the toolkit commit to, and where is each part documented?*::
+Its `rp-*` capabilities. The requirements are in `openspec/specs/`; the docs list what each
+capability covers and the pages that explain it. See
+xref:requirements/capabilities.adoc[Capabilities].
+
+*How is the toolkit built, and why?*::
+A library and a generator in one wheel, layered `entrypoints | adapters → services → domain`, with
+ports for the store, the file store, the identity provider, the token verifier and the event bus.
+See xref:architecture/index.adoc[Architecture overview], which maps the rest of the architecture
+section.
+
+*Which models does the toolkit have?*::
+The metamodel, which an application's schema imports and which is stored as RDF, with a generated
+class diagram per module; and the technical schemas of the toolkit's own records, never stored as
+RDF. See xref:architecture/models.adoc[Models].
+
+*What is the exact name of a class, a function or an `rp-generate` option?*::
+Look it up in the reference: the public Python API and the `rp-generate` usage, both generated
+from the code, and where the settings, routes and Make targets are listed. See
+xref:reference/index.adoc[Reference].
+
 == Using the toolkit
 
 *How do I start an application?*::
 Add `rdf-persistence` to your dependencies from its `develop` branch, with the extras `generate`
 and `testkit` in the dev group, and run `uv sync`. Then write the model, generate, and wire the
-service. See xref:howto/adopt.adoc#install[Build an application, step 1].
+service. See xref:user-manual/install.adoc[Build an application, step 1].
 
 *How do I model my domain?*::
 Write one LinkML file per module and a root schema that imports them. Each domain module holds one
 aggregate: a root class that includes `AggregateRoot` and `Described` and has an `rp_path`, and the
 classes it owns through slots annotated `owned: true`. `rp-generate` refuses a schema that breaks
-the rules and names the element at fault. See xref:howto/adopt.adoc#model[step 3] and
+the rules and names the element at fault. See xref:user-manual/model.adoc[step 3] and
 xref:architecture/generation.adoc#metamodel[the metamodel].
+
+*How do I turn the model into code?*::
+Declare the outputs in a `[tool.rp-generate]` table of `pyproject.toml` (`schema` and `package`
+are required; a schema with aggregate roots of its own also needs `migrations`) and run
+`rp-generate`. It checks the schema, then writes the Python classes, shapes, context and frames,
+and, when asked, the TypeScript types and the diagrams. See xref:user-manual/generate.adoc[step 4].
+
+*How do I change the model later?*::
+Edit the schema, run your regenerate target, add a conformance case for any new constraint kind,
+run the tests and commit the schema and the generated code together. If data is already stored,
+the schema also needs a new version and maybe a migration (see below). See
+xref:user-manual/change-model.adoc[step 7].
 
 *How do I store and read an aggregate?*::
 Over HTTP, the generic router does it for you. In a domain service, open a session on the tenant's
 database (`kit.session(tenant, principal)`), wrap it in a `UnitOfWork(session, mapper)`, then
 `get` the root, change it, `add` it and `commit`. A commit made on stale data raises `Conflict`.
-See xref:howto/adopt.adoc#session[step 8].
+See xref:user-manual/store-and-read.adoc[step 8].
 
 *Can I save several aggregates at once?*::
 Yes. Add, change and `remove` the roots in one `UnitOfWork` and call `commit()` once: all are
 stored or none is (a root is the root object of an aggregate), and a stale root raises `Conflict`
-whose `iris` is a diagnosis of the roots that moved (xref:howto/commits.adoc#diagnosis[it can be
+whose `iris` is a diagnosis of the roots that moved (xref:architecture/commits.adoc#diagnosis[it can be
 incomplete]).
 `work.version(iri)` gives a root's version token. For triples, use `async with
 session.transaction()`. A commit that used to leave the first roots written after a conflict now
-leaves nothing. See xref:howto/adopt.adoc#transaction[Save several aggregates at once] and
+leaves nothing. See xref:user-manual/store-and-read.adoc#transaction[Save several aggregates at once] and
 xref:architecture/data-flows.adoc#commit[how the commit works]. One commit holds at most 500
 roots by default (`max_roots`); more raises `CommitTooLarge`, and `commit(batches=True)` takes them
-in several transactions (see xref:howto/adopt.adoc#transaction-batches[Save more than 500 aggregates]).
+in several transactions (see xref:user-manual/store-and-read.adoc#transaction-batches[Save more than 500 aggregates]).
 
 *Can two aggregates share a key value?*::
 Not if the model forbids it. Declare a `unique_keys` entry on the root with
 `rp_unique_scope: tenant`, and a commit that claims a value another aggregate of the tenant (of
 the same type) holds raises `KeyConflict`, a 409 `key-conflict`, and writes nothing. See
-xref:howto/adopt.adoc#key-conflict[Keep a value unique across aggregates] and, for data that
-already has duplicates, xref:howto/adopt.adoc#key-on-live-data[Add a key to live data].
+xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across aggregates] and, for data that
+already has duplicates, xref:user-manual/store-and-read.adoc#key-on-live-data[Add a key to live data].
 
 *What happens when two people edit the same thing?*::
 The second commit is refused: every aggregate has a version token that changes on every write, and
@@ -49,21 +102,21 @@ a commit is stored only if each root it changes is still at the version it read 
 does not exist yet. Nothing is
 overwritten silently, and nothing of the refused commit is written (bar the rare false conflict of a
 removes-only commit). See
-xref:howto/commits.adoc[How commits and conflicts work].
+xref:architecture/commits.adoc[How commits and conflicts work].
 
 *Why did my commit raise `Conflict`?*::
 Another writer changed (or removed) a root you change since you read it, or a root you add already
 exists. Nothing was written (rarely, a false conflict; read again to see the truth).
 `conflict.iris` and the message name the roots. Read them again in a
 new unit of work, apply your edit if it still makes sense, and commit; the toolkit never retries
-for you. See xref:howto/adopt.adoc#handle-a-conflict[Handle a conflict] and
-xref:howto/commits.adoc#conflict[what a conflict means].
+for you. See xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict] and
+xref:architecture/commits.adoc#conflict[what a conflict means].
 
 *How do tenants and access work?*::
 Each tenant has its own database and bucket, and an access record in the system database that
 holds its grants and prohibitions. The caller who creates a tenant gets the settings'
 `creator_role` on it. Every tenant route checks the caller's token, then its access, before it runs. See
-xref:howto/adopt.adoc#tenancy[step 9], xref:howto/adopt.adoc#access[step 11] and
+xref:user-manual/tenants.adoc[step 9], xref:user-manual/access.adoc[step 11] and
 xref:architecture/access-control.adoc[Access control and identity].
 
 *Where is my data stored, and what happens when I create, read, replace or delete it?*::
@@ -77,30 +130,31 @@ xref:architecture/data-flows.adoc[Where data lives and what each operation does]
 *How does my UI know which buttons to show?*::
 Read the `Allowed-Actions` header of a tenant or of an aggregate (for example `read, modify`), or the
 `allowed_actions` of the tenant's item in `GET /{tenant_segment}`. If your web app is on another origin,
-expose the header in your CORS settings. See xref:howto/adopt.adoc#tenancy[step 9] and
+expose the header in your CORS settings. See xref:user-manual/tenants.adoc[step 9] and
 xref:architecture/access-control.adoc[Access control and identity].
 
 *How do I enforce my own rule on tenant writes, such as keeping one owner?*::
 Pass `grant_validators` or `root_validators` to `install_service`. A validator raises
 `InvalidBody` to refuse: the answer is 422 and nothing is written. See
-xref:howto/adopt.adoc#validators[Enforce your own rules on tenant writes].
+xref:user-manual/access.adoc#validators[Enforce your own rules on tenant writes].
 
 *How do I serve it over HTTP?*::
 Call `install_service` once in your composition root, with your FastAPI app, the schema, the
 generated package, the four adapters, the role definitions and a `ServiceSettings`. It returns a
-`ServiceKit` for your own routes. See xref:howto/adopt.adoc#serve[step 12] and
+`ServiceKit` for your own routes. See xref:user-manual/serve.adoc[step 12] and
 xref:architecture/api.adoc#serving[Serving it].
 
 *How do I read back a graph I loaded?*::
 Check the read with `kit.require_aggregate(..., Action.READ)`, then call
 `session.loaded_graph(root_iri, graph_iri)` for a plain rdflib `Graph`. If a later request does not
 hold `graph_iri`, `session.loaded_graphs(root_iri)` lists the aggregate's loaded graphs. The session
-checks no access itself. See xref:howto/adopt.adoc#files[step 10].
+checks no access itself. See xref:user-manual/files.adoc[step 10].
 
 *How do I check that a name is not taken yet?*::
 Call `session.find(Scan, file_name=name)` and answer 409 when the list is not empty. `find` ignores
 Prohibitions, so check each IRI with `require_aggregate` before you show it to anyone. See
-xref:howto/adopt.adoc#files[step 10].
+xref:user-manual/files.adoc[step 10]. To have the commit itself refuse a duplicate, declare a
+unique key (see _Can two aggregates share a key value?_ above).
 
 *Who points at this resource?*::
 Check the caller with `kit.require_aggregate(..., Action.READ)`, open `kit.collaboration(checked)`
@@ -166,13 +220,13 @@ UUID, or so many random characters), and set it on `ServiceSettings.iri_policy`.
 mints, checks and reads back every IRI by the policy, and the API paths follow the last segment.
 The access, meta, registry and provenance graphs have templates of their own (the provenance
 graph holds the records of what was done, `{tenant}/provenance` by default), and the principal IRI keeps its default. See
-xref:howto/adopt.adoc#iri-policy[step 14].
+xref:user-manual/iri-policy.adoc[step 14].
 
 *Why does my file root answer 405 on PUT?*::
 A root that includes `StoredFile`, or carries the class annotation `rp_writes: service`, is written
 only through a session: the router serves its `GET` and listing but not its `POST`, `PUT` or
 `DELETE`, because the record and its bytes must change together. Write it in your own route with
-`kit.session(...)`, a `UnitOfWork` and `kit.files`. See xref:howto/adopt.adoc#files[step 10] and
+`kit.session(...)`, a `UnitOfWork` and `kit.files`. See xref:user-manual/files.adoc[step 10] and
 xref:architecture/api.adoc#serving[Serving it].
 
 *How do I clean up orphans in a live tenant?*::
@@ -180,23 +234,23 @@ Run `kit.sweep_tenant(tenant)` as an operator command. It finds the loaded graph
 and the blobs no `file_key` names, older than one hour, and changes nothing unless you pass
 `remove=True` (graphs) or `remove_blobs=True` (blobs). Pass `remove_blobs` only when every blob key
 is stored in `file_key`. Delete a file aggregate with `kit.remove_with_files`, which removes its
-blobs too. See xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant].
+blobs too. See xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant].
 
-*How do I back up or copy a project?*::
+*How do I back up or copy a tenant?*::
 Call `kit.dump_tenant(tenant, out)` to write the tenant's graphs (as N-Quads) and files to one
 archive, and `kit.restore_tenant(src, creator)` to create a new tenant from it, with a new id and
 new IRIs. The restorer alone gets the creator role; grants are not dumped. The archive must come
 from the same schema version and IRI policy, and the graphs are held in memory. See
-xref:howto/dump-restore.adoc[Back up or copy a project].
+xref:howto/dump-restore.adoc[Back up or copy a tenant].
 
-*Where does data that belongs to no project go?*::
+*Where does data that belongs to no tenant go?*::
 Into the application database, one per deployment. Mark the class `database: application` in the
 schema, check the caller with `kit.require_application`, mint IRIs with `kit.application_iri` and
 open `kit.application_session`. Access comes from global roles at level `system`, which also apply
-in every tenant. See xref:howto/application-data.adoc[Keep data that belongs to no project].
+in every tenant. See xref:howto/application-data.adoc[Keep data that belongs to no tenant].
 
 
-*Can a project's data live on another server?*::
+*Can a tenant's data live on another server?*::
 Yes. Wire the other triple stores by name with `install_service(..., stores={"client-a": ...})`
 and create the tenant on one with `kit.tenancy.create(..., store="client-a")`; the generic `POST`
 route always uses the `default` store. From then on the tenant's sessions, sweeps, migrations,
@@ -218,7 +272,7 @@ Use `FakeStore`, `FakeFileStore` and `FakeIdentity` in place of the adapters, `f
 domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from
 `rdf_persistence.testkit`. Add the model guards and the freshness plugin to your test suite; the
 plugin is `rdf_persistence_generation.testkit.freshness`. See
-xref:howto/adopt.adoc#guard[step 6] and xref:howto/adopt.adoc#test-service[step 13].
+xref:user-manual/generated-classes.adoc#guard[step 6] and xref:user-manual/test.adoc[step 13].
 
 *How do I run a use case as a command?*::
 Model it as a subclass of `Activity` in a sibling `<domain>_activities.yaml` (or of `Transition`,
@@ -291,15 +345,15 @@ Edit the schema under `rdf_persistence/model/` (or a technical schema under
 `rdf_persistence/model/technical/<theme>/`, or
 `rdf_persistence_generation/model/rp_generation.yaml`), run
 `make generate`, refresh the model-shape snapshot if a class changed, and commit the schema and the
-generated code together. See xref:develop/index.adoc#change-a-toolkit-schema[Change a toolkit
+generated code together. See xref:develop/generator.adoc#change-a-toolkit-schema[Change a toolkit
 schema].
 
 *How do I add a generator extension or a check rule?*::
 An extension is a module in `rdf_persistence_generation/extensions/` with a `render` function, a
 step in `steps.py`, a row in the extensions table and its own test against the toy library. A
 check rule is a value in `rp_generation.yaml`, its code in `checks/` and two test schemas. See
-xref:develop/index.adoc#add-or-change-a-generator-extension[Add or change a generator extension]
-and xref:develop/index.adoc#add-a-check-rule[Add a check rule].
+xref:develop/generator.adoc#add-or-change-a-generator-extension[Add or change a generator extension]
+and xref:develop/generator.adoc#add-a-check-rule[Add a check rule].
 
 *Which tests do I run while developing?*::
 `make test-changed`: it runs the tests of the files you changed against `develop`, in a few seconds to a minute. When
@@ -356,7 +410,7 @@ RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 and EdDSA, with 30
 leeway on `exp` and `nbf`. Set `allowed_algorithms` and `leeway_seconds` on `JwksSettings` and pass
 it as `jwks=` to `JwksTokenVerifier`; `none` and `HS*` are always refused. Post-quantum signatures join when the identity provider and PyJWT
 ship them. See xref:adr/adr-004-signing-algorithms.adoc[ADR-004] and
-xref:howto/adopt.adoc#verifier-options[the how-to].
+xref:user-manual/serve.adoc#verifier-options[the how-to].
 
 *Which representations can I ask for an aggregate in?*::
 JSON (the default), JSON-LD, Turtle, N-Triples, N-Quads, TriG and RDF/XML, on a read, a create, a
@@ -366,9 +420,9 @@ xref:architecture/api.adoc#representations[the API page].
 
 *Where are decisions recorded?*::
 Settled decisions that outlive their change are the records on
-xref:adr/index.adoc[Architecture decision records] (ADR-001 to ADR-005). Earlier ones are on
-xref:architecture/open-decisions.adoc[Decisions of 2026-11-05] (D-1
-to D-13) and in xref:architecture/index.adoc#decisions-taken[architecture v1] (O-1, O-2). The
+xref:adr/index.adoc[Architecture decision records] (ADR-001 to ADR-005). Earlier ones are in the
+xref:architecture/open-decisions.adoc[decision log of 2026-11-05] (D-1
+to D-13) and in the xref:architecture/index.adoc#decisions-taken[architecture overview] (O-1, O-2). The
 decisions of the work in progress (PD-1 and on) are in `openspec/changes/<id>/design.md`; once a
 change is archived, its requirements live in `openspec/specs/` and the change itself, decisions
 included, in `openspec/changes/archive/` (toolkit v1: `2026-11-06-toolkit-v1-foundation`).
@@ -389,7 +443,7 @@ contexts, schemas or TypeScript outside a `generated` folder. LinkML stays the o
 *Classes and shapes agree.*::
 `conformance_problems` checks every case against both the generated class and the generated shape, and
 fails until every constraint kind your schema uses has a case. See
-xref:howto/adopt.adoc#guard[step 6].
+xref:user-manual/generated-classes.adoc#guard[step 6].
 
 *No lost update.*::
 Every write to an aggregate is guarded by its version: `If-Match` over HTTP, the version read by a
@@ -483,8 +537,6 @@ planned: its PLAN waits for the decisions listed in its `inputs/seed.md`.
 * *Detailed test profiling.* The check timings are rough; a profile of the slowest tests would show
   where the 5 minutes of unit and feature tests go.
 * *A client library* over the generated TypeScript types and the OpenAPI document.
-* *Events*: an outbox, an event bus and server-sent events, deferred until a need reacts to a
-  change in another aggregate.
 * *GraphQL*, read-only over the same schema and context (option C of
   xref:architecture/api.adoc[the API page]), *OpenFGA* as the decision engine, and property- or
   triple-level access.

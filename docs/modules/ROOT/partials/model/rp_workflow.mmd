@@ -1,0 +1,26 @@
+classDiagram
+    class Workflow {
+        +uri id
+        +string workflow_name
+        +List~string~ workflow_states
+        +string initial_state
+    }
+    class WorkflowTransition {
+        <<owned>>
+        +string from_state
+        +string to_state
+        +List~string~ transition_roles
+        +boolean comment_required
+    }
+    class Transition {
+        +uri used_resource
+        +uri from_state_iri
+        +uri to_state_iri
+        +uri transition_comment
+        +string to_state
+        +string expected_version
+        +string body_value
+    }
+    class Activity
+    Workflow "1" *-- "*" WorkflowTransition : workflow_transitions
+    Activity <|-- Transition

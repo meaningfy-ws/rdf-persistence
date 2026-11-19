@@ -4,86 +4,65 @@
 
 <!-- Badges: replace the placeholders once CI and coverage are wired. -->
 [![CI](https://img.shields.io/github/actions/workflow/status/meaningfy-ws/rdf-persistence/ci.yaml?branch=develop)](https://github.com/meaningfy-ws/rdf-persistence/actions)
-[![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)](#testing)
+[![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)](docs/modules/ROOT/pages/develop/testing.adoc)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 ## Overview
 
-A short paragraph: the problem RDF Persistence solves, the approach it takes, and where it sits in
-the wider system. Link to the [documentation site](#documentation) for depth.
+rdf-persistence is a toolkit for model-driven RDF applications: a library, a code generator and a
+service kit. You write your domain once as a LinkML model; `rp-generate` turns it into Python
+classes, SHACL shapes, a JSON-LD context and frames, TypeScript types and diagrams. The library
+stores the resulting aggregates in a triple store, one named graph each, with all-or-nothing
+commits, a database per tenant, files, access control and events, and serves them over a FastAPI
+service.
 
-## System model
-
-This repository follows the Meaningfy standard layout:
-
-- **Top-level package** `rdf_persistence/` (no `src/`) — the deployable unit.
-- **Cosmic-python layers** inside each component: `entrypoints → services → domain`, and
-  `adapters → domain`. The `domain` layer imports nothing upward. Enforced by `import-linter`.
-- **All tool config in dedicated root files** (`ruff.toml`, `mypy.ini`, `pytest.ini`,
-  `.coveragerc`, `.importlinter`). `pyproject.toml` stays minimal.
-- **Tests** live in a sibling `tests/` tree (`unit/`, `feature/`, `e2e/`, `integration/`).
+The library (`rdf_persistence`) and the generator (`rdf_persistence_generation`) ship in one wheel.
 
 ## Installation
 
-Requires Python >= 3.12, [uv](https://docs.astral.sh/uv/), and `make`.
+An application adds `rdf-persistence` to its dependencies from the `develop` branch; see
+[Install and lay out the application](docs/modules/ROOT/pages/user-manual/install.adoc).
+
+To work on the toolkit itself you need Python 3.12 or later, [uv](https://docs.astral.sh/uv/) and
+`make`:
 
 ```bash
 git clone https://github.com/meaningfy-ws/rdf-persistence.git
 cd rdf-persistence
-make install        # uv sync (all dependency groups)
+make install        # uv sync --all-extras
 ```
 
-See [INSTALL.md](INSTALL.md) for the full development environment setup (pre-commit, Docker).
-
-## Running
-
-```bash
-make run            # or: uv run python -m rdf_persistence
-```
-
-## Development
-
-Common `make` targets (run `make help` for the full list):
-
-| Target | Purpose |
-|--------|---------|
-| `make install` | Install all dependency groups |
-| `make generate` | Regenerate every model artefact from the LinkML schemas |
-| `make format` | Auto-format with Ruff |
-| `make lint` | Lint with Ruff |
-| `make typecheck` | Type-check with mypy |
-| `make check-architecture` | Enforce layer boundaries with import-linter |
-| `make test` | Run the test suite with coverage |
-| `make test-containers` | Run the integration and e2e tests against Fuseki, Garage and Zitadel (needs Docker) |
-| `make check-generated` | Regenerate from scratch and fail if anything differs from what is committed |
-| `make check-all` | Everything CI runs |
-
-## Testing
-
-```bash
-make test           # full suite with coverage (gate: ≥80%)
-make test-unit      # fast unit layer only
-```
-
-Tests are split by directory and stamped with markers automatically (`unit`, `feature`, `e2e`,
-`integration`). See [CONTRIBUTING.md](CONTRIBUTING.md) for the testing expectations.
+[INSTALL.md](INSTALL.md) sets up the rest of a development machine (pre-commit, Docker, the docs
+toolchain).
 
 ## Documentation
 
-Documentation is built with [Antora](https://antora.org) from AsciiDoc under `docs/`.
+The documentation is an [Antora](https://antora.org) site built from the AsciiDoc pages under
+`docs/modules/ROOT/pages/`:
 
 ```bash
-make install-antora # first time only
-make preview-docs   # build + serve at http://localhost:8081
+make install-antora # first time only (needs Node.js)
+make build-docs     # writes the site to docs/build/site/
+make preview-docs   # builds, then serves it at http://localhost:8081
 ```
 
-The published site is the source of truth for API reference, architecture, and user guides.
+Until you build it, read the pages on GitHub:
+
+| You want to | Start at |
+|-------------|----------|
+| know what it is and where to go | [Introduction](docs/modules/ROOT/pages/index.adoc), [Common questions](docs/modules/ROOT/pages/questions.adoc) |
+| try it in ten minutes | [Getting started](docs/modules/ROOT/pages/tutorials/getting-started.adoc) |
+| build an application, step by step | [User manual](docs/modules/ROOT/pages/user-manual/index.adoc) |
+| use one feature | [How-to guides](docs/modules/ROOT/pages/howto/index.adoc) |
+| understand the design | [Architecture overview](docs/modules/ROOT/pages/architecture/index.adoc), [Use cases](docs/modules/ROOT/pages/requirements/use-cases.adoc), [Capabilities](docs/modules/ROOT/pages/requirements/capabilities.adoc), [Decision records](docs/modules/ROOT/pages/adr/index.adoc) |
+| look up a name or an option | [Reference](docs/modules/ROOT/pages/reference/index.adoc) |
+| change the toolkit | [Working on the library](docs/modules/ROOT/pages/develop/index.adoc), [Working on the generator](docs/modules/ROOT/pages/develop/generator.adoc) |
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow, architecture constraints, and commit/PR
-conventions, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. Agents, and the
-people working with them, follow [Working with agents](docs/modules/ROOT/pages/develop/agents.adoc).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and the rules a change follows, and
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations. Agents, and the people working
+with them, follow [Working with agents](docs/modules/ROOT/pages/develop/agents.adoc).
 
 > **Note on agent-instruction files:** `AGENTS.md` is the **single, canonical** agent-instruction
 > file; `CLAUDE.md` is a thin pointer that imports it (`@AGENTS.md`) for Claude Code. Both are

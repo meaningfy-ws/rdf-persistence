@@ -1,14 +1,29 @@
 = RDF Persistence
-:description: A data-centric middleware for building operational applications on triple stores.
+:description: A toolkit for model-driven applications on RDF triple stores: a library, a code generator and a service kit.
 
-RDF Persistence is a library, a toolkit and a method for building operational applications on RDF
-triple stores: the domain is modelled in LinkML, objects are stored as RDF in named graphs, and access,
-files and identities are handled by the toolkit, so an application writes only what is specific to it.
+RDF Persistence is a toolkit for building operational applications on RDF triple stores. You model
+the domain once, in LinkML; the generator turns the model into Python classes, SHACL shapes, a
+JSON-LD context and frames, TypeScript types and an API description; the library stores the
+resulting aggregates as RDF in named graphs, with transactions, tenants, files, access control and
+events. Your application writes only what is specific to it.
 
-* xref:architecture/index.adoc[Architecture v1]: what the toolkit commits to now. Deliberately
-  modest: only what its first consumer needs.
-* xref:background/soa/index.adoc[State of the art]: the earlier study of options and leanings.
-  Background reading, not commitments.
+== Where to start
 
-It is developed inside the repository of its first consumer, in its own subtree, and will be
-extracted into its own repository later.
+[cols="2,3,4",options="header"]
+|===
+|You want to |Read |It holds
+
+|see it work |xref:tutorials/getting-started.adoc[Getting started] |one class, generated, stored and read back, in ten minutes
+|build an application |xref:user-manual/index.adoc[User manual] |the steps in order: install, model, generate, store, tenants, files, access, serve, test
+|use one feature |xref:howto/index.adoc[How-to guides] |comments, workflows, collections, events, migrations, backups, stores, settings, telemetry
+|look up a name or option |xref:reference/index.adoc[Reference] |the public Python API and the `rp-generate` command
+|understand the design |xref:architecture/index.adoc[Architecture] |the components, the models, where data lives, the API, access, and the decision records
+|know what it commits to |xref:requirements/use-cases.adoc[Use cases] and xref:requirements/capabilities.adoc[Capabilities] |who it serves, and each capability with the pages that explain it
+|change the toolkit |xref:develop/index.adoc[Developer manual] |the library, the generator, testing, working with agents
+|know why these choices |xref:background/soa/index.adoc[State of the art] |the study of existing tools that shaped it, in the architecture section; background, not commitments
+|===
+
+Short answers to the usual questions, with links into all of the above, are on
+xref:questions.adoc[Common questions].
+
+The source is at https://github.com/meaningfy-ws/rdf-persistence[github.com/meaningfy-ws/rdf-persistence].

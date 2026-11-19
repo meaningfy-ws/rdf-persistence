@@ -1,12 +1,33 @@
 = Reference
-:description: Placeholder. The look-up pages of rdf-persistence: the public Python API, the generated service API, the rp-generate CLI and the configuration.
+:description: Look-up pages of rdf-persistence: the public Python API, the rp-generate command and its configuration, and where the settings, routes and Make targets are listed.
 
-NOTE: Placeholder, to be written. Reference pages are generated, not hand-written: the service API
-from its OpenAPI document, the Python API from the docstrings of the public names.
+_What is the exact name, option or key?_
 
-This section will hold:
+This page is for looking things up. How to use each part is in the
+xref:user-manual/index.adoc[user manual]. The two tables below are generated from the code
+(`make docs-reference`), so they match the release they are published with.
 
-* the public Python API (`rdf_persistence.__all__` and the testkit's names);
-* the generic service API, generated from the OpenAPI document;
-* the `rp-generate` command: its options, its `[[tool.rp-generate]]` entries and its exit codes;
-* the configuration a consumer sets.
+== Where else to look
+
+[cols="2,5",options="header"]
+|===
+|What |Where
+
+|`[tool.rp-generate]` keys, outputs and exit codes |xref:user-manual/generate.adoc[Generate the code]
+|The settings groups and their defaults |xref:howto/settings.adoc#groups[Configure the deployment values]
+|The service's routes and media types |xref:user-manual/serve.adoc[Serve the application], and the OpenAPI document the service publishes
+|The spans and attributes |xref:howto/observability.adoc[See what the toolkit is doing]
+|The metamodel's classes and annotations |xref:architecture/models.adoc[Models], xref:architecture/generation.adoc#annotations[Annotations]
+|The Make targets of the repository |`make help`, and xref:develop/index.adoc#make-targets[Make targets]
+|===
+
+== The `rp-generate` command
+
+include::partial$reference/rp-generate-usage.adoc[]
+
+== The public Python API
+
+Import these names from the package, never from a module path: only they are kept stable across
+releases (capability `rp-package-boundaries`).
+
+include::partial$reference/public-api.adoc[]

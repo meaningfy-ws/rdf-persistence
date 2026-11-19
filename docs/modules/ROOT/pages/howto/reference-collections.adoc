@@ -8,7 +8,7 @@ its books?_
 This page shows how to keep a collection of aggregates that live on their own. It describes
 `develop` as of 2026-11-14 (the change `collaboration-and-reference-collections`). The terms
 tenant, aggregate, kit, session and IRI policy, and the names `kit`, `t`, `session`, `mapper` and
-`Action` in the snippets, are those of xref:howto/adopt.adoc[Build an application]; a
+`Action` in the snippets, are those of xref:user-manual/index.adoc[Build an application]; a
 *collaboration* (`collab`) is opened as in
 xref:howto/reverse-references.adoc[Find who points at a resource]. `UnitOfWork`, `MembershipRule`,
 `SlotEquality`, `MemberList` and the errors are imported from `rdf_persistence`.
@@ -181,7 +181,7 @@ async with kit.collaboration(checked) as collab:
 ----
 
 `if_version` is the version token of the collection as the caller read it, here from
-`work.version` (see the version token in xref:howto/commits.adoc[How commits and conflicts work]).
+`work.version` (see the version token in xref:architecture/commits.adoc[How commits and conflicts work]).
 The cascade deletes the collection and its members as they are at that moment, in one request:
 those the collection names, and those that meet the rule and that the caller may read. An
 aggregate that only meets the rule and that the caller may not read is left where it is, for the
@@ -203,7 +203,7 @@ book that starts to meet the rule during the cascade is not deleted.
   it is also a `Conflict`, but one that names no member (`Conflict.iris` is empty). A named member
   changed *before* the cascade read its version is deleted at its new version.
 * For a member that is a stored file, the cascade removes its graph only and leaves its blob;
-  `kit.sweep_tenant` removes it later (see xref:howto/adopt.adoc#sweep-live-tenant[Sweep a live tenant]).
+  `kit.sweep_tenant` removes it later (see xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant]).
 
 The errors of a cascade, all raised before anything is deleted:
 
@@ -216,7 +216,7 @@ The errors of a cascade, all raised before anything is deleted:
 |`Forbidden` |The caller may not delete the collection or a member. The message names the refused members the caller may read and counts the others, which the collection names. An aggregate that only matches the rule and that the caller may not read is no member for that caller: it is not deleted and it refuses nothing.
 |`BadQuery` |The aggregate is not a collection.
 |`StoredDataInvalid` |The collection cannot be read back, its member class is not a served root, its rule is no longer accepted, or it names an aggregate that is not of its member class.
-|`CommitTooLarge` |The collection and its members are more than 500 roots, the limit of one commit (see xref:howto/commits.adoc[How commits and conflicts work]). The message gives the limit, not how many members there are.
+|`CommitTooLarge` |The collection and its members are more than 500 roots, the limit of one commit (see xref:architecture/commits.adoc[How commits and conflicts work]). The message gives the limit, not how many members there are.
 |`Conflict` |The collection is not at `if_version`, or another writer replaced a member after its version was read (it is named), or a rule member stopped meeting the rule (no member is named). A member that another writer removed meanwhile is either skipped or named in a `Conflict`, depending on the moment; it is gone either way.
 |`DatabaseGone` |The tenant database does not exist.
 |===
