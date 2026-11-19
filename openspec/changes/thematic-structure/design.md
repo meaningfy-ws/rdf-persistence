@@ -666,4 +666,16 @@ consumers later.
   repaired. (6) Combining: the D-16 derived test found `access`/`tenancy` missing from
   `themes-never-import-the-old-layout`'s sources — added; `make generate` changed three manifests
   only (stage 4's `components.py` fix postdates stage 5's base); the TypeScript golden refresh is
-  order-only, sorted lines identical to stage 4's.
+  order-only, sorted lines identical to stage 4's. (7) As D-17 W1: the move and the import rewrite
+  are one commit; rename detection holds.
+- **D-21 Stage 5 review and tester** (lead; review 6 findings, none Critical; tester 183 tests, 0
+  failed first, 0 findings). Accepted below Critical, one fixer pass: review W1 (TC-51 and the
+  "a service imports an adapter" scenario planted on the theme layout in
+  `test_theme_contracts.py`; the scenario-map rows of those scenarios point at the new tests, as the
+  old-layout ones go with stage 7); W2 (`architecture/index.adoc` ~159, ~189 name
+  `tenancy/services/migration_runner.py` and `access/services/access.py`); W3 (`testkit/zitadel.py`'s
+  docstring names `access.adapters.generated.rp_access_adapters`, and TC-04's scan also covers
+  moved generated modules such as `rdf_persistence.adapters.generated.rp_wire`); S2 (one
+  old-vs-themes case for `access`); S3 (TC-45's original probe `persistence.services` →
+  `access.services`). The tester's tests are not kept: none failed first, and three read the base
+  commit with `git show`, which fails in a shallow clone; the rows they cover are tested elsewhere.
