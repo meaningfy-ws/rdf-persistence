@@ -95,18 +95,13 @@ include::partial$model/rp_workflow.mmd[]
 
 == The technical schemas
 
-Each is generated into the lowest layer whose code may import it
-(xref:architecture/generation.adoc#kinds[Two kinds of model]).
-
-[cols="3,5",options="header"]
-|===
-|Schema |What it holds
-
-|`rdf_persistence/model/technical/service/rp_service.yaml` |The HTTP service's own types: the settings of `install_service`, the verified caller, the bodies of the tenant routes.
-|`rdf_persistence/model/technical/settings/rp_settings.yaml` |The deployment values, grouped by area under `ToolkitSettings` (xref:howto/settings.adoc[Configure the deployment values]).
-|`rdf_persistence/model/technical/telemetry/rp_telemetry.yaml` |The attributes of the toolkit's log records and spans (xref:howto/observability.adoc[Observability]).
-|`rdf_persistence/model/technical/templates/rp_templates.yaml` |The bundles of SPARQL terms the query templates share.
-|`rdf_persistence/model/technical/testkit/rp_testkit.yaml` |The testkit's records: reviewed class shapes, guard violations, container endpoints.
-|`rdf_persistence/model/technical/wire/rp_wire.yaml` |The shapes of the foreign APIs the adapters speak: the identity provider's APIs, token claims, OpenID discovery.
-|`rdf_persistence_generation/model/rp_generation.yaml` |The generator's data: a run's configuration, its manifest, files, problems and template view-models.
-|===
+They sit under `rdf_persistence/model/technical/<theme>/`, one schema per theme and layer
+(`rp_<theme>_<layer>.yaml`, or `rp_<theme>_settings.yaml` and `rp_<theme>_templates.yaml` for the
+records that are not served), plus `technical/testkit/rp_testkit.yaml` for the testkit and
+`rdf_persistence_generation/model/rp_generation.yaml` for the generator. They hold the deployment
+settings (xref:howto/settings.adoc[Configure the deployment values]), the request and response
+bodies of the service, the shapes of the foreign APIs the adapters speak, the attributes of the
+toolkit's spans and log records (xref:howto/observability.adoc[Observability]) and the SPARQL term
+bundles of the query templates. Each is generated into the lowest layer every user of it may
+import, in the lowest theme that uses it; the full list, theme by theme, is in
+xref:architecture/generation.adoc#kinds[Two kinds of model].

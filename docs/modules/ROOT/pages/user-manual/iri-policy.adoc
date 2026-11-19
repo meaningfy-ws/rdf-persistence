@@ -163,7 +163,7 @@ schema (needed only when a template uses `{type}`):
 [source,python]
 ----
 from rdf_persistence import Iris, load_schema
-from rdf_persistence.services.schema_structure import iri_types
+from rdf_persistence.schema.services.schema_structure import iri_types
 
 root_types, owned_types = iri_types(load_schema("models/library.yaml"))
 iris = Iris(settings, root_types, owned_types)

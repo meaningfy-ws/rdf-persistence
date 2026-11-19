@@ -307,7 +307,7 @@ How a key behaves:
   its own scope, so a `Magazine` and a `Book` may share an ISBN. Another tenant never clashes.
 * `kit.session` and the generic router enforce the keys of the schema. `open_session` enforces
   none unless you pass `keys=aggregate_keys(mapper.view)` (from
-  `rdf_persistence.services.schema_structure`); a session you open without `keys` accepts
+  `rdf_persistence.schema.services.schema_structure`); a session you open without `keys` accepts
   duplicates.
 * A 409 tells a writer that the value exists in the tenant, even when the aggregate holding it is
   hidden from them. So do not make a slot of confidential values a key.

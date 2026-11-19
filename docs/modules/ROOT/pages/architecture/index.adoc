@@ -335,7 +335,7 @@ root picks the adapter for each:
 |`FileStore` |`S3FileStore` (any S3-compatible store)
 |`Identity` |`ZitadelIdentity` (Zitadel)
 |`TokenVerifier` |`JwksTokenVerifier` (the published keys of an OpenID Connect issuer)
-|`EventBus` (optional) |`RedisEventBus` (Redis Streams, `rdf_persistence.adapters.redis_events`)
+|`EventBus` (optional) |`RedisEventBus` (Redis Streams, `rdf_persistence.events.adapters.redis_events`)
 |===
 
 To put the platform's own store, file store, identity provider or event bus behind a port, write an

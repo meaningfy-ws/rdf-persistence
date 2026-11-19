@@ -123,9 +123,14 @@ xref:architecture/generation.adoc#hard-check[The hard check].
 |the Mermaid class diagrams
 |===
 
-`rp_service.ts` holds the classes of the toolkit's `rp_service.yaml`, among them the API's wire
-types (`TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page` and `Problem`). The
-module name `rp_service` and the names of the classes and enums of `rp_service.yaml` are reserved
+`rp_service.ts` holds the classes of the toolkit's eight served schemas, in this order
+(`rp_iris_services.yaml` of the `iris` theme, `rp_persistence_services.yaml` of `persistence`,
+`rp_migrations_services.yaml` of `migrations`, `rp_access_services.yaml` of `access`,
+`rp_tenancy_services.yaml` of `tenancy`, `rp_events_services.yaml` of `events`,
+`rp_collaboration_services.yaml` of `collaboration` and `rp_api_entrypoints.yaml` of `api`), among
+them the API's wire types (`TenantCreate`, `TenantSummary`, `LabelUpdate`, `GrantSet`, `Page`,
+`Migration`, `MigrationStep`, `EventEnvelope`, `Referrer` and `Problem`). The module name
+`rp_service` and the names of the classes and enums of the served schemas are reserved
 when a target renders TypeScript: a schema that uses one is refused, naming the clash. What each
 file holds, and the extension that renders it, is in
 xref:architecture/generation.adoc#extensions[Generated artefacts, extensions and where they go].
