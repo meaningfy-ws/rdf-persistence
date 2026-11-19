@@ -271,8 +271,8 @@ def _succeeds(run: Run) -> None:
 @then("it writes the same files as before")
 def _same_files(run: Run) -> None:
     assert run.project is not None, "a project was prepared"
-    written = run.project.parent / "generated"
-    committed = TOY / "generated"
+    written = run.project.parent / "domain" / "generated"
+    committed = TOY / "domain" / "generated"
     names = {p.relative_to(committed).as_posix() for p in committed.rglob("*") if p.is_file()}
     names = {n for n in names if "__pycache__" not in n}
     assert names, "the committed toy output is there to compare with"

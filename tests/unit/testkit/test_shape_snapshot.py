@@ -26,7 +26,7 @@ METAMODEL = ROOT / "rdf_persistence" / "model" / "rp.yaml"
 TOY = FIXTURES / "library" / "library.yaml"
 SERVICE = ROOT / "rdf_persistence" / "model" / "technical" / "api" / "rp_api_entrypoints.yaml"
 TESTKIT = ROOT / "rdf_persistence" / "model" / "technical" / "testkit" / "rp_testkit.yaml"
-TOY_PACKAGE = "tests.fixtures.library.generated"
+TOY_PACKAGE = "tests.fixtures.library.domain.generated"
 METAMODEL_PACKAGE = "rdf_persistence.core.domain.generated"
 SERVICE_PACKAGE = "rdf_persistence.api.entrypoints.generated"
 IRIS = ROOT / "rdf_persistence" / "model" / "technical" / "iris" / "rp_iris_services.yaml"
@@ -315,7 +315,7 @@ def test_a_shape_without_a_generated_class_is_detected() -> None:
 
 
 def toy_components() -> dict[str, dict]:
-    path = FIXTURES / "library" / "generated" / "openapi-components.json"
+    path = FIXTURES / "library" / "domain" / "generated" / "openapi-components.json"
     return json.loads(path.read_text(encoding="utf-8"))["schemas"]
 
 

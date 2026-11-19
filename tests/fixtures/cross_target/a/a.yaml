@@ -7,7 +7,7 @@ default_prefix: x
 default_range: string
 imports: [linkml:types]
 annotations:
-  python_package: xt.a.generated
+  python_package: xt.a.domain.generated
 
 classes:
   Thing:

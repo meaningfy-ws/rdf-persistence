@@ -594,7 +594,7 @@ ISBN_DESCRIPTION = "    description: The International Standard Book Number of t
 def test_the_step_reports_a_slot_without_a_description_by_name(break_toy: Breaker) -> None:
     root = break_toy("books.yaml", ISBN_DESCRIPTION, "")
     target = GenerationTarget(
-        schema_file=ROOT_SCHEMA, package="app.generated", migrations="migrations"
+        schema_file=ROOT_SCHEMA, package="app.domain.generated", migrations="migrations"
     )
     found = generate([target], root.parent, (steps.HARD_STEP,), check=True)
     assert len(found) == 1, f"one broken slot, one line: {found}"
@@ -955,7 +955,7 @@ STORED_SCHEMA_RULES = {HardRule.MIGRATIONS_FOLDER, HardRule.QUOTED_VERSION}
 
 def _stored_schema_problems(root: Path, migrations: str | None) -> list[str]:
     target = GenerationTarget(
-        schema_file=ROOT_SCHEMA, package="app.generated", migrations=migrations
+        schema_file=ROOT_SCHEMA, package="app.domain.generated", migrations=migrations
     )
     found = generate([target], root.parent, (steps.HARD_STEP,), check=True)
     return [format_problem(p) for p in found]
@@ -1131,7 +1131,7 @@ def test_a_module_in_another_package_than_its_target_is_refused_naming_both(
 
 def test_an_application_run_never_checks_the_package_of_its_target(toy_copy: Path) -> None:
     """TC-37: the toy is no toolkit schema, has no python_package, and its package is its own."""
-    target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.generated")
+    target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.domain.generated")
     found = generate([target], toy_copy, (steps.HARD_STEP,), check=True)
     assert [p for p in found if p.rule in _package_rules()] == [], (
         "a consumer's run reads, never checks"

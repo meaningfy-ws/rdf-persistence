@@ -3,7 +3,7 @@
 from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence.schema.services import vocabulary as v
-from tests.fixtures.library.generated.books import Genre
+from tests.fixtures.library.domain.generated.books import Genre
 from tests.toy import book_iri, dune, shelf, shelf_iri, toy_mapper
 from tests.unit.collaboration.test_collaboration_collections import poetry
 

@@ -16,18 +16,18 @@ from .conftest import TOY
 SINGLE = """
 [tool.rp-generate]
 schema = "m.yaml"
-package = "app.generated"
+package = "app.domain.generated"
 typescript = "web"
 """
 
 SEVERAL = """
 [[tool.rp-generate]]
 schema = "a.yaml"
-package = "app.a"
+package = "app.a.domain.generated"
 
 [[tool.rp-generate]]
 schema = "b.yaml"
-package = "app.b"
+package = "app.b.domain.generated"
 python = "out/b"
 """
 
@@ -42,13 +42,16 @@ def read(tmp_path: Path, toml: str | None, *flags: str) -> list[GenerationTarget
 def test_a_table_is_one_target(tmp_path: Path) -> None:
     (target,) = read(tmp_path, SINGLE)
     assert target == GenerationTarget(
-        schema_file="m.yaml", package="app.generated", typescript="web"
+        schema_file="m.yaml", package="app.domain.generated", typescript="web"
     ), "the table did not become one target"
 
 
 def test_an_array_of_tables_is_one_target_per_entry(tmp_path: Path) -> None:
     targets = read(tmp_path, SEVERAL)
-    assert [t.package for t in targets] == ["app.a", "app.b"], "entries lost or reordered"
+    assert [t.package for t in targets] == [
+        "app.a.domain.generated",
+        "app.b.domain.generated",
+    ], "entries lost or reordered"
     assert targets[1].python == "out/b", "a key of the second entry was lost"
 
 
@@ -179,7 +182,10 @@ def test_the_regenerate_command_flag_is_refused_by_the_parser(
 def test_each_row_of_several_entries_keeps_its_own_regenerate_command(tmp_path: Path) -> None:
     first, second = read(
         tmp_path,
-        SEVERAL.replace('package = "app.a"', 'package = "app.a"\nregenerate-command = "x"'),
+        SEVERAL.replace(
+            'package = "app.a.domain.generated"',
+            'package = "app.a.domain.generated"\nregenerate-command = "x"',
+        ),
     )
     assert (first.regenerate_command, second.regenerate_command) == ("x", None), "rows mixed up"
 

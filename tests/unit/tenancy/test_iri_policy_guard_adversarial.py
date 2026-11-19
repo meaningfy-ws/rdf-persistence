@@ -21,8 +21,8 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.tenancy.services.iri_policy_guard import guard_iri_policy
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
 
 SYSTEM = "lib-system"

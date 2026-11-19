@@ -53,7 +53,9 @@ def read(staged: Path, name: str) -> dict:
 
 
 def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
-    assert_matches_toy(rendered, "generated/context.jsonld", "generated/*.frame.jsonld")
+    assert_matches_toy(
+        rendered, "domain/generated/context.jsonld", "domain/generated/*.frame.jsonld"
+    )
 
 
 ACTIVITY_FRAMES = [

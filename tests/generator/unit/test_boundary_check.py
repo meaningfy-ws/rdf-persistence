@@ -228,7 +228,7 @@ def test_a_domain_module_importing_the_access_module_names_both_modules(
     break_toy: Breaker, capsys: pytest.CaptureFixture[str]
 ) -> None:
     root = break_toy("books.yaml", BOOK_IMPORTS, ACCESS_IMPORT)
-    target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.generated")
+    target = GenerationTarget(schema_file=ROOT_SCHEMA, package="app.domain.generated")
     found = generate([target], root.parent, (steps.BOUNDARY_STEP,), check=True)
     assert len(found) == 1, f"one bad import, one line: {found}"
     line = format_problem(found[0])
@@ -290,11 +290,17 @@ def add_api_module(toy: Path, kind: str) -> Path:
 
 
 @pytest.mark.slow
-def test_a_class_of_a_technical_module_needs_no_owning_root(toy_copy: Path) -> None:
-    add_api_module(toy_copy, "technical")
-    assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "rp-generate must succeed"
-    generated = toy_copy / "generated"
-    ts = toy_copy / "web" / "src" / "domain" / "generated" / "api.ts"
+def test_a_class_of_a_technical_module_needs_no_owning_root(tmp_path: Path) -> None:
+    """A target of technical modules only (PD-2: a mixed target is refused, so not beside the toy's)."""
+    (tmp_path / "api.yaml").write_text(API_MODULE.format(kind="technical"), encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.rp-generate]\nschema = "api.yaml"\npackage = "app.services.generated"\n'
+        'python = "app/services/generated"\ntypescript = "web"\n',
+        encoding="utf-8",
+    )
+    assert main(["--project", str(tmp_path / "pyproject.toml")]) == 0, "rp-generate must succeed"
+    generated = tmp_path / "app" / "services" / "generated"
+    ts = tmp_path / "web" / "api.ts"
     py = next(generated.rglob("api.py"))
     assert "export interface Account " in ts.read_text(encoding="utf-8"), "Account is not in api.ts"
     assert "class Account(" in py.read_text(encoding="utf-8"), "Account is not in api.py"

@@ -44,4 +44,4 @@ def generated_toy(tmp_path_factory: pytest.TempPathFactory) -> Path:
     folder = tmp_path_factory.mktemp("toy") / "library"
     shutil.copytree(TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated"))
     assert main(["--project", str(folder / "pyproject.toml")]) == 0, "the toy must generate"
-    return folder / "generated"
+    return folder / "domain" / "generated"

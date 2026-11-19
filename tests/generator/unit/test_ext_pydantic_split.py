@@ -58,7 +58,7 @@ def enum_members(tree: ast.Module, enum: str) -> list[str]:
 
 
 def test_the_toy_python_output_equals_the_committed_tree(tmp_path: Path) -> None:
-    assert_matches_toy(run_toy(PYTHON_STEP, tmp_path), "generated/*.py")
+    assert_matches_toy(run_toy(PYTHON_STEP, tmp_path), "domain/generated/*.py")
 
 
 @pytest.mark.slow
@@ -543,7 +543,7 @@ def test_a_slot_annotated_field_name_slot_is_named_after_the_slot_and_keeps_the_
 
 
 CROSS_TARGET = Path(__file__).parents[2] / "fixtures" / "cross_target"
-A_PACKAGE = "xt.a.generated"
+A_PACKAGE = "xt.a.domain.generated"
 
 
 def _cross_target_b() -> Path:
@@ -602,7 +602,7 @@ def test_a_module_of_another_folder_without_python_package_is_still_refused(
 
 
 @pytest.mark.parametrize(
-    "package", ["", "   ", "not a package", "xt.a.generated.", ".xt.a", "xt..a"]
+    "package", ["", "   ", "not a package", "xt.a.domain.generated.", ".xt.a", "xt..a"]
 )
 def test_a_malformed_python_package_of_another_target_is_refused_naming_its_module(
     tmp_path: Path, package: str

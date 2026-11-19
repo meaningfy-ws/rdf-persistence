@@ -18,7 +18,7 @@ from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
-from tests.fixtures.library.generated.books import Book
+from tests.fixtures.library.domain.generated.books import Book
 from tests.integration.store.test_session import BEN, TENANT, TITLE, book, session_for, title
 from tests.toy import dune, toy_mapper
 

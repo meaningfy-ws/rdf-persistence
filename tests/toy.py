@@ -32,7 +32,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
     LimitSettings,
 )
 from rdf_persistence.schema.services.schema import load_schema
-from tests.fixtures.library.generated import (
+from tests.fixtures.library.domain.generated import (
     books,
     books_activities,
     library,
@@ -41,14 +41,14 @@ from tests.fixtures.library.generated import (
     scans,
     templates,
 )
-from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note, Shelf
-from tests.fixtures.library.generated.books_activities import (
+from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre, Note, Shelf
+from tests.fixtures.library.domain.generated.books_activities import (
     ApproveBook as ApproveBook,
 )  # exported for the bus tests
-from tests.fixtures.library.generated.books_activities import ShelveBooks as ShelveBooks
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.fixtures.library.generated.templates import Template
+from tests.fixtures.library.domain.generated.books_activities import ShelveBooks as ShelveBooks
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.templates import Template
 
 SCANS = "scans"  # the rp_path of the scan roots
 TOY_SCHEMA = Path(__file__).parent / "fixtures" / "library" / "library.yaml"

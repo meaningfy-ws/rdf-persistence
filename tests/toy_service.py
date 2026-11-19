@@ -30,10 +30,10 @@ from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris, draw_id
 from rdf_persistence.tenancy.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 from rdf_persistence.testkit.tokens import ISSUER, shared_key
-from tests.fixtures.library import generated
-from tests.fixtures.library.generated.books import Book, Chapter, Genre, Note
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.scans import Scan
+from tests.fixtures.library.domain import generated
+from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre, Note
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.scans import Scan
 from tests.toy import (
     REVIEW_WORKFLOW,
     ROLES,

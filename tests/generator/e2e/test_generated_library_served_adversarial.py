@@ -35,7 +35,7 @@ def test_a_generated_package_that_cannot_be_imported_leaves_nothing_behind(
     real = importlib.import_module
 
     def broken(name: str, *args: object) -> ModuleType:
-        if name == f"{PACKAGE}.generated":  # the generator itself imports other packages
+        if name == f"{PACKAGE}.domain.generated":  # the generator itself imports other packages
             raise ImportError(f"{name} is broken")
         return real(name, *args)  # type: ignore[arg-type]
 

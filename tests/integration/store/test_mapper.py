@@ -16,10 +16,10 @@ from rdf_persistence.iris.services.iris import (
 from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import Session, open_session
-from tests.fixtures.library.generated.books import Book, Genre
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.fixtures.library.generated.scans import Scan
+from tests.fixtures.library.domain.generated.books import Book, Genre
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.scans import Scan
 from tests.toy import ADA, TENANT, access, book_iri, dune, toy_mapper
 
 

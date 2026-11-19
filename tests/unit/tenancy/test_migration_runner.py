@@ -43,9 +43,9 @@ from rdf_persistence.tenancy.services.migration_runner import (
 )
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
-from tests.fixtures.library.generated.books import Book
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.books import Book
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
 from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
 from tests.unit.conftest import GENERATED

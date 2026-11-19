@@ -1,7 +1,7 @@
 """The artefacts a fresh generation writes hold up outside the generator: shapes, context, frames, TypeScript (PD-12).
 
 The toy library is generated once per session (``fresh_toy``); nothing here reads the committed
-``generated/`` folder.
+``domain/generated/`` folder.
 """
 
 import json
@@ -58,7 +58,7 @@ class Fresh:
 @cache
 def _opened(schema: Path) -> Fresh:
     view = generation_view(schema, roots=TOOLKIT_ROOTS)
-    folder = schema.parent / "generated"
+    folder = schema.parent / "domain" / "generated"
     documents = Documents(view, folder)
     return Fresh(
         Conformance(view=view, models={}, shapes=documents.shapes, documents=documents), folder

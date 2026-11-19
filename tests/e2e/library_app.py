@@ -26,9 +26,9 @@ from rdf_persistence import (
     limited_body,
     load_role_definitions,
 )
-from tests.fixtures.library import generated
-from tests.fixtures.library.generated import scans
-from tests.fixtures.library.generated.scans import Scan
+from tests.fixtures.library.domain import generated
+from tests.fixtures.library.domain.generated import scans
+from tests.fixtures.library.domain.generated.scans import Scan
 from tests.toy import REVIEW_WORKFLOW, ROLES, SCANS, SETTINGS, TOY_MIGRATIONS, TOY_SCHEMA
 
 SCAN_UPLOADS = "/{segment}/{{t}}/scan-files"

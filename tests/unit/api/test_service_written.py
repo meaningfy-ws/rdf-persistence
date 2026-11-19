@@ -51,8 +51,8 @@ classes:
 PYPROJECT = f"""
 [tool.rp-generate]
 schema = "library.yaml"
-package = "{PACKAGE}.generated"
-python = "generated"
+package = "{PACKAGE}.domain.generated"
+python = "domain/generated"
 migrations = "migrations"
 """
 
@@ -121,7 +121,7 @@ def shed_project(tmp_path_factory: pytest.TempPathFactory) -> Iterator[tuple[Pat
     (project / "pyproject.toml").write_text(PYPROJECT)
     assert generate(["--project", str(project / "pyproject.toml")]) == 0, "rp-generate failed"
     sys.path.insert(0, str(root))
-    package = __import__(f"{PACKAGE}.generated", fromlist=["generated"])
+    package = __import__(f"{PACKAGE}.domain.generated", fromlist=["generated"])
     try:
         yield project / "library.yaml", package
     finally:

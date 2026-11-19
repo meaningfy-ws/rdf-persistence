@@ -7,7 +7,7 @@ import pytest
 
 import rdf_persistence.core.domain.generated
 import rdf_persistence_generation.generated
-from tests.fixtures.library import generated as toy_generated
+from tests.fixtures.library.domain import generated as toy_generated
 
 PACKAGES = [
     rdf_persistence.core.domain.generated,

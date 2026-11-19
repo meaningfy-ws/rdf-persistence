@@ -13,8 +13,8 @@ from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes
 from tests.toy import SETTINGS, library_slots, toy_mapper
 from tests.unit.tenancy.test_session_activity import stored_graph

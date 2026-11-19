@@ -40,12 +40,14 @@ def test_a_root_inheriting_from_an_abstract_root_builds_without_a_description(
 ) -> None:
     assert INHERITED_ROOT != SCHEMA, "the planted schema must differ"
     assert main(["--project", str(project(tmp_path, INHERITED_ROOT))]) == 0, "the run failed"
-    spec = importlib.util.spec_from_file_location("inherited_root", tmp_path / "app/generated/m.py")
+    spec = importlib.util.spec_from_file_location(
+        "inherited_root", tmp_path / "app/domain/generated/m.py"
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     thing = module.Thing(id="https://example.org/t/1", label="t")
     assert thing.description is None, "the #59 reproduction: a root needs no description"
-    components = read_components(tmp_path / "app/generated")
+    components = read_components(tmp_path / "app/domain/generated")
     for name in ("Item", "Thing"):
         assert set(components[name]["required"]) == {"id", "label"}, f"{name} in the JSON Schema"
     models = [module.Item, module.Thing]
@@ -55,7 +57,7 @@ def test_a_root_inheriting_from_an_abstract_root_builds_without_a_description(
 @pytest.mark.slow
 def test_the_generated_toy_classes_reflect_the_transform(toy_copy: Path) -> None:
     assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "the toy must generate"
-    tree = ast.parse((toy_copy / "generated" / "books.py").read_text(encoding="utf-8"))
+    tree = ast.parse((toy_copy / "domain" / "generated" / "books.py").read_text(encoding="utf-8"))
     fields = {
         (cls.name, stmt.target.id): ast.unparse(stmt.annotation)
         for cls in tree.body

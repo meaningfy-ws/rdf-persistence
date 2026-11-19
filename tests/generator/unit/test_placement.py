@@ -26,10 +26,10 @@ def test_typescript_goes_to_the_declared_folder_and_nowhere_else(tmp_path: Path)
     assert all(f.startswith("web/src/domain/generated/") for f in typescript), (
         f"TypeScript outside the declared folder: {sorted(typescript)}"
     )
-    assert any(f.startswith("generated/diagrams/") for f in _files(project)), (
+    assert any(f.startswith("domain/generated/diagrams/") for f in _files(project)), (
         "no diagram in the declared folder"
     )
-    assert (project / "generated" / "books.py").is_file(), (
+    assert (project / "domain" / "generated" / "books.py").is_file(), (
         "the classes are not in the python folder"
     )
 

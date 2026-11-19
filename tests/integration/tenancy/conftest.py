@@ -15,8 +15,8 @@ from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.integration.tenancy.file_stores import FILE_STORES, GARAGE
 from tests.toy import SETTINGS, toy_mapper
 from tests.toy_service import drop_buckets, drop_databases, unique_prefix

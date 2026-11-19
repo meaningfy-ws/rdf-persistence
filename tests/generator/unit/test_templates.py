@@ -12,7 +12,7 @@ from rdf_persistence_generation.extensions.pydantic_split import render as rende
 
 from .conftest import TOY
 
-TOY_GENERATED = TOY / "generated"
+TOY_GENERATED = TOY / "domain" / "generated"
 TOP_PACKAGE = "rdf_persistence"
 BASE_MODEL = "RpModel"
 TOOLKIT_BASE_MODULE = "rdf_persistence.core.domain.base"  # the `core` path (PD-8)

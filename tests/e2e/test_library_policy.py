@@ -13,7 +13,7 @@ from rdf_persistence import RdfFormat, TenantCreate, TenantSummary
 from rdf_persistence.testkit import assert_public_imports
 from tests.e2e.test_library import LIBRARIAN, dune
 from tests.e2e.world import World, running_world
-from tests.fixtures.library.generated.library import Library
+from tests.fixtures.library.domain.generated.library import Library
 from tests.toy_service import EXAMPLE_POLICY, body_of
 
 BASE = "https://example.org/"

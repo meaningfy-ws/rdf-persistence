@@ -12,7 +12,7 @@ from rdf_persistence.core.domain.exceptions import BadQuery, Forbidden, InvalidI
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import fake_session
-from tests.fixtures.library.generated.books import Book
+from tests.fixtures.library.domain.generated.books import Book
 from tests.toy import (
     ADA,
     BOB,

@@ -35,11 +35,11 @@ from rdf_persistence.schema.services.schema_structure import is_bookkeeping, is_
 from rdf_persistence.testkit import assert_isomorphic
 from rdf_persistence_generation.testkit.conformance import Conformance
 from rdf_persistence_generation.testkit.strategies import aggregate
-from tests.fixtures.library.generated.books import Book, Chapter, Genre, Shelf
-from tests.fixtures.library.generated.library import Library
-from tests.fixtures.library.generated.library_access import LibraryAccess
-from tests.fixtures.library.generated.scans import Scan
-from tests.fixtures.library.generated.templates import Template
+from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre, Shelf
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
+from tests.fixtures.library.domain.generated.scans import Scan
+from tests.fixtures.library.domain.generated.templates import Template
 from tests.toy import (
     ADA,
     MODULES,

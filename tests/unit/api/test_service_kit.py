@@ -46,7 +46,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.schema.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.testkit import FakeStore, RecordingObserver
-from tests.fixtures.library import generated
+from tests.fixtures.library.domain import generated
 from tests.toy import (
     REVIEW_WORKFLOW,
     ROLES,

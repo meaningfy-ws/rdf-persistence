@@ -12,9 +12,9 @@ from .terms import terms_of
 
 LEAKED = ("TenantAccess", "Grant", "StoredFile", "Provenanced")
 OUTPUTS = {
-    "classes": "generated/partial.py",
-    "shapes": "generated/shapes.ttl",
-    "context": "generated/context.jsonld",
+    "classes": "domain/generated/partial.py",
+    "shapes": "domain/generated/shapes.ttl",
+    "context": "domain/generated/context.jsonld",
     "typescript": "web/partial.ts",
 }
 
@@ -26,8 +26,8 @@ def partial(tmp_path_factory: pytest.TempPathFactory) -> Path:
     project.mkdir()
     shutil.copy(TOY / "partial.yaml", project)
     (project / "pyproject.toml").write_text(
-        '[tool.rp-generate]\nschema = "partial.yaml"\npackage = "partial.generated"\n'
-        'python = "generated"\ntypescript = "web"\nmigrations = "migrations"\n'
+        '[tool.rp-generate]\nschema = "partial.yaml"\npackage = "partial.domain.generated"\n'
+        'python = "domain/generated"\ntypescript = "web"\nmigrations = "migrations"\n'
     )
     assert main(["--project", str(project / "pyproject.toml")]) == 0, "the run failed"
     return project

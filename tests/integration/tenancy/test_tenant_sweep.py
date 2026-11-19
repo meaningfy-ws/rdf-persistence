@@ -18,7 +18,7 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.tenancy.services.tenant_sweep import sweep_tenant
-from tests.fixtures.library.generated.scans import Scan
+from tests.fixtures.library.domain.generated.scans import Scan
 from tests.integration.tenancy.file_stores import FAKE_FILES_ONLY
 from tests.toy import SETTINGS, library_slots, toy_mapper
 from tests.toy_service import SCAN_BODY

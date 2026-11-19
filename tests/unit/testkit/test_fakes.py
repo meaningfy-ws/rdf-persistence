@@ -10,7 +10,7 @@ from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import FakeStore, fake_session, no_network  # noqa: F401  (fixture)
-from tests.fixtures.library.generated.books import Book
+from tests.fixtures.library.domain.generated.books import Book
 from tests.toy import ADA, SETTINGS, TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
 from tests.toy_service import EXAMPLE_POLICY
 
