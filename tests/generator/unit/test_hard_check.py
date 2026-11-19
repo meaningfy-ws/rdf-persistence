@@ -1108,6 +1108,37 @@ def test_the_target_of_rp_yaml_still_needs_migrations_for_the_roots_of_every_the
     assert HardRule.MIGRATIONS_FOLDER.value in found[0], "the rule is named"
 
 
+def test_a_toolkit_target_other_than_rp_yaml_that_stores_roots_without_migrations_is_still_refused(
+    toolkit_project: Path,
+) -> None:
+    """D-5: only a target whose roots `rp.yaml` already checks may skip the stored-schema rules; a new one with its own root may not."""
+    model = toolkit_project / "model"
+    (model / "rp_extra.yaml").write_text(
+        "id: https://meaningfy.ws/ns/rdf-persistence/extra\nname: rp_extra\n"
+        "title: Extra\ndescription: A target that defines a root.\n"
+        "prefixes: {rp: 'https://meaningfy.ws/ns/rdf-persistence#', linkml: 'https://w3id.org/linkml/'}\n"
+        "default_prefix: rp\ndefault_range: string\n"
+        "imports: [linkml:types, rp_core]\n"
+        f"annotations:\n  python_package: {TOOLKIT_DOMAIN}.extra\n"
+        "classes:\n  Lone:\n    title: Lone\n    description: A root.\n"
+        "    mixins: [AggregateRoot]\n    attributes:\n"
+        "      label: {title: Label, description: Its label.}\n",
+        encoding="utf-8",
+    )
+    pyproject = toolkit_project / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8")
+        + f'\n[[tool.rp-generate]]\nschema = "model/rp_extra.yaml"\npackage = "{TOOLKIT_DOMAIN}.extra"\n'
+        'regenerate-command = "make generate"\nopenapi = false\n',
+        encoding="utf-8",
+    )
+    extra = [t for t in read_targets(pyproject) if t.schema_file == "model/rp_extra.yaml"]
+    found = [
+        format_problem(p) for p in generate(extra, toolkit_project, (steps.HARD_STEP,), check=True)
+    ]
+    assert any(HardRule.MIGRATIONS_FOLDER.value in p and "Lone" in p for p in found), found
+
+
 def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings() -> None:
     """TC-10: rp_service, rp_templates, rp_telemetry, rp_settings, rp_wire, rp_testkit and rp_generation need no migrations folder; rp.yaml has one.
 

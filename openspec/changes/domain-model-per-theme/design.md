@@ -174,4 +174,24 @@ The lead's, shown for validation at the end (R-0007).
   the root `rp`, where the old message still applies.
 - **D-3 GitNexus rebuilt clean** (Prepare). The incremental re-index failed on a duplicate embedding
   key; per `develop/agents.adoc#reindex` the lead ran `clean --force` and a forced analyze, and
-  checked task 1.1's impact by reading the code meanwhile (two constants, low).
+  checked task 1.1's impact by reading the code meanwhile (two constants, low). The incremental
+  re-index before task 2.1 failed the same way; rebuilt clean again. An external tool's defect
+  (GitNexus incremental embeddings), no workaround in the code.
+- **D-4 Task 2.1's impact is HIGH, as planned.** `rp_tenancy.py` 15 direct / 44 total,
+  `rp_access.py` 18 / 48: the move the PLAN sized (RISK-4, PD-7) and the developer decided at
+  shaping (DEC-1 to DEC-5); not re-asked.
+- **D-5 PD-4 skips only a theme target** (tester, after task 1.2; Critical, accepted). The
+  stored-schema rules were skipped for every toolkit target but `rp.yaml`'s, so a new toolkit
+  target with roots and no `migrations` would pass where it failed before: a hard check silently
+  lost. Fix: on the toolkit's run, skip the rules only for a target whose root classes are all
+  checked on `rp.yaml`'s target (the roots of `rp.yaml`'s closure); any other target keeps them.
+  The tester's failing test is kept.
+- **Under the floor** (tester, after task 1.2):
+  - `_toolkit_packages` raises `ConfigError` on a toolkit `pyproject.toml` without
+    `[[tool.rp-generate]]` entries: the toolkit cannot have one (Warning).
+  - `stored_file_class` sees only the first of two classes claiming `rp:StoredFile`: one claimant
+    in every schema we ship (Suggestion).
+  - `enum_meanings` turns a value without `meaning` into `URIRef('None')`: it reads only the
+    metamodel's own `TenantState`, whose values all have one (Suggestion).
+  - `enum_meanings` of an unknown name raises an unnamed `AttributeError`: callers pass a constant
+    name (Suggestion).

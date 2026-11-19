@@ -32,11 +32,13 @@ from rdf_persistence.schema.services.schema_structure import (
     is_internal,
     is_owned,
     is_service_written,
+    is_stored_file,
     is_tenant_root,
     json_name,
     keyed_slots,
     presence_alternatives,
     served_roots,
+    stored_file_class,
     workflow_name_of,
 )
 
@@ -210,6 +212,27 @@ def test_the_toys_scan_is_service_written_and_its_book_is_not() -> None:
     view = load_schema(TOY)
     assert is_service_written(view, view.get_class("Scan")), "a file root"
     assert not is_service_written(view, view.get_class("Book")), "a plain root"
+
+
+def test_a_schema_that_never_imports_the_stored_file_has_no_stored_file_class(
+    tmp_path: Path,
+) -> None:
+    """PD-8: a consumer schema without ``rp_files`` has none, and none of its classes is one."""
+    view = view_of(tmp_path, HEAD + "classes:\n  Plain: {title: Plain, description: A class.}\n")
+    assert stored_file_class(view) is None, "no class claims rp:StoredFile"
+    assert not is_stored_file(view, view.get_class("Plain")), "so none is a stored file"
+
+
+def test_a_class_named_stored_file_without_the_class_uri_is_not_the_stored_file(
+    tmp_path: Path,
+) -> None:
+    """PD-8: the class_uri is the criterion, no longer the name."""
+    view = view_of(
+        tmp_path,
+        HEAD + "classes:\n  StoredFile:\n    title: Stored file\n    description: A lookalike.\n"
+        "    class_uri: https://example.org/other#File\n",
+    )
+    assert stored_file_class(view) is None, "a lookalike by name is not the class"
 
 
 def test_every_value_set_of_the_vocabulary_has_members() -> None:

@@ -691,6 +691,82 @@ def test_a_toolkit_root_without_classes_of_its_own_writes_no_module(
     assert sorted(_rendered(root)) == ["__init__.py"], "no module for the root"
 
 
+LOCAL_MODULE = """\
+id: https://example.org/ns/beside/local
+name: local
+title: Local module
+description: A module beside the root that the root's target generates; it uses the theme's classes.
+prefixes: {x: "https://example.org/ns/beside#", linkml: "https://w3id.org/linkml/"}
+default_prefix: x
+default_range: string
+imports: [linkml:types, theme]
+annotations:
+  python_package: xt.root.domain.generated
+
+classes:
+  Worker:
+    title: Worker
+    description: A class of this target that builds on the theme's mixin and uses its enum.
+    mixins: [Tagged]
+    attributes:
+      colour: {range: Colour, title: Colour, description: Its colour.}
+      thing: {range: Thing, title: Thing, description: Its thing.}
+"""
+THEME_MIXIN = """\
+  Tagged:
+    title: Tagged
+    description: A mixin of the theme.
+    mixin: true
+    attributes:
+      tag: {title: Tag, description: Its tag.}
+"""
+THEME_ENUM = """
+enums:
+  Colour:
+    description: A colour.
+    permissible_values:
+      red: {description: Red.}
+      blue: {description: Blue.}
+"""
+
+
+def test_a_module_of_the_roots_package_imports_the_enum_mixin_and_class_of_another_package(
+    beside_as_toolkit: Path,
+) -> None:
+    """E-1, RISK-3: a module generated here uses an enum, a mixin and a class of a module another target generates."""
+    (beside_as_toolkit / "local.yaml").write_text(LOCAL_MODULE, encoding="utf-8")
+    root = beside_as_toolkit / "root.yaml"
+    root.write_text(
+        root.read_text(encoding="utf-8").replace(
+            "imports: [linkml:types, theme]", "imports: [linkml:types, theme, local]", 1
+        ),
+        encoding="utf-8",
+    )
+    theme = beside_as_toolkit / "theme.yaml"
+    theme.write_text(
+        theme.read_text(encoding="utf-8").replace("\nclasses:\n", "\nclasses:\n" + THEME_MIXIN, 1)
+        + THEME_ENUM,
+        encoding="utf-8",
+    )
+    files = _rendered(root)
+    imported = imports_from(ast.parse(files["local.py"]), f"{THEME_PACKAGE}.theme")
+    assert {"Colour", "Tagged", "Thing"} <= imported, imported
+    assert "theme.py" not in files, "the theme module is not written here"
+
+
+def test_a_consumer_root_without_classes_beside_a_module_of_another_package_still_writes_its_module(
+    beside: Path,
+) -> None:
+    """PD-5: the no-module rule is the toolkit's; a consumer's root stays and re-exports."""
+    root = beside / "root.yaml"
+    root.write_text(
+        root.read_text(encoding="utf-8").split("\nclasses:")[0] + "\n", encoding="utf-8"
+    )
+    files = _rendered(root)
+    assert "root.py" in files, "the consumer's root is kept"
+    assert {"Thing", "Spare"} <= imports_from(ast.parse(files["root.py"]), f"{THEME_PACKAGE}.theme")
+
+
 def test_a_consumer_schema_importing_the_metamodels_access_module_imports_from_the_top_package(
     generated_toy: Path,
 ) -> None:

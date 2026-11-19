@@ -12,8 +12,12 @@ from linkml.linter.config.datamodel.config import RuleLevel
 from linkml.linter.linter import Linter
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.schema.services.schema import metamodel_importmap
-from rdf_persistence.schema.services.schema_structure import is_toolkit_schema, own_schemas
+from rdf_persistence.schema.services.schema import load_schema, metamodel_importmap
+from rdf_persistence.schema.services.schema_structure import (
+    is_toolkit_schema,
+    own_schemas,
+    root_classes,
+)
 from rdf_persistence_generation import components
 from rdf_persistence_generation.checks.boundary import (
     boundary_problems,
@@ -126,14 +130,30 @@ def _toolkit_packages(run: Run) -> tuple[str, ...]:
     return tuple(target.package for target in read_targets(project))
 
 
+def _root_names(view: SchemaView, folder: Path) -> set[str]:
+    return {cls.name for cls in root_classes(view, folder)}
+
+
+def _metamodel_root_names(run: Run) -> set[str]:
+    """The root classes checked on ``rp.yaml``'s target: those of its closure, found through the toolkit's targets."""
+    for target in read_targets(run.base / PYPROJECT):
+        if Path(target.schema_file).name == METAMODEL_ROOT:
+            path = run.base / target.schema_file
+            return _root_names(load_schema(path), path.parent)
+    return set()
+
+
 def _stores_its_roots_here(run: Run) -> bool:
-    """Whether the stored-schema rules apply to this target: all but the toolkit's theme targets (PD-4).
+    """Whether the stored-schema rules apply to this target: all but a toolkit target whose roots ``rp.yaml`` checks (PD-4, D-5).
 
     On the toolkit's run, ``rp.yaml`` holds every domain module, so its target answers for every
-    root class and writes the one lock; the theme targets declare no ``migrations``.
+    root class and writes the one lock; a theme target declares no ``migrations``. A toolkit target
+    with a root of its own keeps the rules.
     """
-    toolkit = is_toolkit_schema(run.schema_path.parent, roots=TOOLKIT_ROOTS)
-    return not toolkit or run.schema_path.name == METAMODEL_ROOT
+    folder = run.schema_path.parent
+    if not is_toolkit_schema(folder, roots=TOOLKIT_ROOTS) or run.schema_path.name == METAMODEL_ROOT:
+        return True
+    return not _root_names(run.view, folder) <= _metamodel_root_names(run)
 
 
 def _hard_problems(run: Run) -> list[CheckProblem]:

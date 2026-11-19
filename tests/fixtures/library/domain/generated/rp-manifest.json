@@ -203,7 +203,7 @@
     },
     {
       "path": "rdf_persistence_generation/steps.py",
-      "sha256": "bb007cda9c8ad1244beac1d29065aab4c993e6fd7aa86828a7105f19a6511a5b"
+      "sha256": "67a97ea683673a2d08fbf3530bb5319852da1e51c97cf82180ad3f28347f5008"
     },
     {
       "path": "rdf_persistence_generation/templates/mermaid/module.mmd.jinja",
