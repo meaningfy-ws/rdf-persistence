@@ -51,7 +51,7 @@ integration and e2e tests against Fuseki, Garage, Zitadel and Redis in container
 ```bash
 make install-antora # first time only
 make build-docs     # writes the site to docs/build/site/
-make preview-docs   # builds, then serves it at http://localhost:8081
+make preview-docs   # builds, then serves it at http://localhost:47381 (DOCS_PORT=... to change)
 ```
 
 ## Troubleshooting

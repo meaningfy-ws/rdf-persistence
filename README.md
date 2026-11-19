@@ -43,7 +43,7 @@ The documentation is an [Antora](https://antora.org) site built from the AsciiDo
 ```bash
 make install-antora # first time only (needs Node.js)
 make build-docs     # writes the site to docs/build/site/
-make preview-docs   # builds, then serves it at http://localhost:8081
+make preview-docs   # builds, then serves it at http://localhost:47381 (DOCS_PORT=... to change)
 ```
 
 Until you build it, read the pages on GitHub:
