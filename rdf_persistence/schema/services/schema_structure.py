@@ -34,14 +34,13 @@ from rdf_persistence.core.domain.generated.rp_core import (
     RpAnnotation,
     WritesKind,
 )
-from rdf_persistence.core.domain.generated.rp_files import StoredFile
 from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
 
 AGGREGATE_ROOT = "AggregateRoot"
 ACTIVITY = "Activity"  # the class of the things that happened (rp_provenance)
 UNDER_WORKFLOW = "UnderWorkflow"
 TENANT_ACCESS = "TenantAccess"
-STORED_FILE = StoredFile.__name__
+STORED_FILE_CLASS_URI = "rp:StoredFile"  # the class of a kept file's content (rp_files)
 DESCRIPTION = "description"
 LABEL = "label"
 EXACTLY_ONE_OF = "exactly_one_of"
@@ -187,10 +186,29 @@ def is_tenant_root(cls: ClassDefinition) -> bool:
     return annotation(cls, RpAnnotation.GRAPH) == GraphKind.META.value
 
 
+def stored_file_class(view: SchemaView) -> str | None:
+    """The name of the stored-file class: the one whose ``class_uri`` is ``rp:StoredFile``; None when the schema has none (PD-8)."""
+    wanted = view.expand_curie(STORED_FILE_CLASS_URI)
+    return next(
+        (
+            name
+            for name, cls in view.all_classes().items()
+            if view.get_uri(cls, expand=True) == wanted
+        ),
+        None,
+    )
+
+
+def is_stored_file(view: SchemaView, cls: ClassDefinition) -> bool:
+    """True when ``cls`` is the stored-file class or has it among its ancestors."""
+    stored = stored_file_class(view)
+    return stored is not None and stored in view.class_ancestors(cls.name)
+
+
 def is_service_written(view: SchemaView, cls: ClassDefinition) -> bool:
     """True when the consumer writes the root through a session (PD-3): annotated, or a stored file."""
     annotated = annotation(cls, RpAnnotation.RP_WRITES) == WritesKind.SERVICE.value
-    stored_file = STORED_FILE in view.class_ancestors(cls.name)
+    stored_file = is_stored_file(view, cls)
     return annotated or stored_file
 
 

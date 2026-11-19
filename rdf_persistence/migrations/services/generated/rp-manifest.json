@@ -19,7 +19,7 @@
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
-      "sha256": "ecc630c1d607cac4a74c2d9e314e6fc4be25996f8858bad55a4f5ab4de619738"
+      "sha256": "6311c8fb45ff02c5c4d7843e1631a6a8c9593821636f9a9eac52745e16926a73"
     },
     {
       "path": "rdf_persistence_generation/__init__.py",
@@ -31,7 +31,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/application.py",
-      "sha256": "695066367b23cb91bac3c098147ee8ad08e3706d2a93d557608c7d995e9112f6"
+      "sha256": "2203afbbd24983c6b24f1ecee81826f258f0fefba0a2aee257e05dd9b7de4f1b"
     },
     {
       "path": "rdf_persistence_generation/checks/boundary.py",

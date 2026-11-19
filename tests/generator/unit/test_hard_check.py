@@ -851,7 +851,10 @@ APPLICATION_ROWS = (
     ),
     ApplicationRow(
         "stored-file",
-        "  StoredFile:\n    mixin: true\n  Tpl:\n" + _ROOT + "    mixins: [StoredFile]\n" + _APP,
+        "  StoredFile:\n    class_uri: rp:StoredFile\n    mixin: true\n  Tpl:\n"
+        + _ROOT
+        + "    mixins: [StoredFile]\n"
+        + _APP,
         "Tpl",
         "an application class cannot be a stored file: the application space has no bucket",
     ),

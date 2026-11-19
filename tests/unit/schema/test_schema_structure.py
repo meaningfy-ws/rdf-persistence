@@ -174,6 +174,7 @@ classes:
   StoredFile:
     title: Stored file
     description: The mixin of a root whose content is a stored file.
+    class_uri: rp:StoredFile
     mixin: true
   Plain:
     title: Plain

@@ -15,7 +15,6 @@ from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import Literal, URIRef
 
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind, RpAnnotation
-from rdf_persistence.core.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.sparql import SparqlTerm, term, term_list
 from rdf_persistence.schema.services.generated.templates.rp_schema_templates import (
     KeyBranchTerms,
@@ -79,6 +78,17 @@ def meanings[E: Enum](members: type[E]) -> Mapping[E, URIRef]:
     return {
         member: URIRef(view.expand_curie(values[str(member.value)].meaning)) for member in members
     }
+
+
+def enum_meanings(name: str) -> Mapping[str, URIRef]:
+    """The meaning IRI of each permissible value of the metamodel's enum ``name``, by the value's text.
+
+    For an enum whose generated class lives above ``schema``: a generated enum is a ``str`` enum, so
+    a caller looks a member up in the result as it would by its value.
+    """
+    view = metamodel()
+    values = view.get_enum(name).permissible_values
+    return {text: URIRef(view.expand_curie(str(value.meaning))) for text, value in values.items()}
 
 
 def media_types[E: Enum](members: type[E], view: SchemaView | None = None) -> Mapping[E, str]:
@@ -166,7 +176,8 @@ LISTED_IN = predicate("listed_in")
 REGISTRY_KIND_IRIS = meanings(RegistryKind)
 
 STATE = predicate("state")
-TENANT_STATE_IRIS = meanings(TenantState)
+# By the state's text: a TenantState member is its text, so it finds its IRI here too.
+TENANT_STATE_IRIS = enum_meanings("TenantState")
 
 # A collection names its members, and has a rule that says which others belong (PD-5, PD-7).
 HAD_MEMBER = predicate("had_member")
