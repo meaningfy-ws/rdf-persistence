@@ -25,6 +25,12 @@ archive).
    `tenancy.tenant_session` → `_routed_session` → `Tenancy._session` → `open_session`.
 4. The rp-generate usage is a table built from the parser, identical on Python 3.12 and 3.13; the
    docs workflow installs the project (it imports the package for the reference check).
+5. A second cold review (four readers: app developer, architect, API client, contributor) found
+   12 issues, all fixed: a new `reference/http-api.adoc` with the whole client contract and a
+   generated table of problem types; complete routes and service kit tables; the one-process
+   limit in the platform fit; a warning that the IRI policy is fixed at the first start; the
+   settings behind each limit; one start-up order (`data-flows.adoc#migrations`); the generator's
+   four check steps; `rp_writes: toolkit`; a generic, well-shaped event-stream example.
 
 ## Still open
 
