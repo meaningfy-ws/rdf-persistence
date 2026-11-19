@@ -380,20 +380,23 @@ same row import neither the other.
 [cols="1,2,4,5,2,4",options="header"]
 |===
 |Order |Theme |`domain` |`services` |`adapters` |`entrypoints`
-|1 |`core` |`base` (`RpModel`), `exceptions`, `media`, `sparql`, `sparql_parsing`; the metamodel's `generated/` |`artifacts`, `yaml_files`, `telemetry` |`_http` |
+|1 |`core` |`base` (`RpModel`), `exceptions`, `media`, `sparql`, `sparql_parsing`; `rp_core`, `rp_annotations` and the combined artefacts (`generated/`) |`artifacts`, `yaml_files`, `telemetry` |`_http` |
 |2 |`iris` |`layout` |`iris` | |
 |2 |`schema` | |`schema`, `schema_structure`, `vocabulary` | |
-|3 |`provenance` | |`provenance`, `visible_part` | |
-|3 |`files` |`blob_keys` |`files` (port) |`s3` |
-|4 |`persistence` | |`store` (port), `session`, `mapper`, `listing`, `loading`, `jsonld`, `decoding`, `unique_keys` |`sparql_protocol`, `fuseki` |
-|5 |`access` | |`access`, `identity` (port), `tokens` (port) |`jwks`, `zitadel` |
-|5 |`migrations` | |`migrations` | |
-|6 |`tenancy` | |`tenancy`, `sweep`, `tenant_sweep`, `tenant_dump`, `tenant_move`, `migration_runner`, `iri_policy_guard` | |
-|7 |`collaboration` | |`collaboration`, `transitions`, `write_guards`, `discussion`, `reference_collections`, `workflows` | |
-|7 |`events` | |`events` (port), `event_hub`, `event_stream`, `relay` |`redis_events` |
-|8 |`messaging` | |`messagebus` | |
-|9 |`api` | |`aggregates`, `documents`, `file_removal`, `components`, `shacl` | |`kit`, `service`, `router`, `auth`, `negotiation`, `responses`, `problems`, `openapi`, `sse`, `environment`
+|3 |`provenance` |`rp_provenance` (`generated/`) |`provenance`, `visible_part` | |
+|4 |`files` |`blob_keys`; `rp_files` (`generated/`) |`files` (port) |`s3` |
+|5 |`persistence` | |`store` (port), `session`, `mapper`, `listing`, `loading`, `jsonld`, `decoding`, `unique_keys` |`sparql_protocol`, `fuseki` |
+|6 |`access` |`rp_access`, `rp_tenancy` (`generated/`) |`access`, `identity` (port), `tokens` (port) |`jwks`, `zitadel` |
+|6 |`migrations` | |`migrations` | |
+|7 |`tenancy` | |`tenancy`, `sweep`, `tenant_sweep`, `tenant_dump`, `tenant_move`, `migration_runner`, `iri_policy_guard` | |
+|8 |`collaboration` |`rp_collections`, `rp_discussion`, `rp_workflow` (`generated/`) |`collaboration`, `transitions`, `write_guards`, `discussion`, `reference_collections`, `workflows` | |
+|8 |`events` | |`events` (port), `event_hub`, `event_stream`, `relay` |`redis_events` |
+|9 |`messaging` | |`messagebus` | |
+|10 |`api` | |`aggregates`, `documents`, `file_removal`, `components`, `shacl` | |`kit`, `service`, `router`, `auth`, `negotiation`, `responses`, `problems`, `openapi`, `sse`, `environment`
 |===
+
+Each theme that owns domain concepts has its own domain package, `<theme>.domain.generated`:
+`core`, `access`, `provenance`, `files` and `collaboration` (xref:architecture/index.adoc#models-in-themes[which module is in which]). `files` is above `provenance` because `rp_files` imports `rp_provenance`.
 
 A new module goes to the lowest theme that uses it, in the layer its imports allow. Its unit tests go
 to `tests/unit/<theme>/`; a test of several themes goes to the folder of the highest. Each
@@ -415,8 +418,19 @@ _Where does a generated model go?_
 The kind of a model shows in its path (xref:architecture/generation.adoc#kinds[Two kinds of model]):
 
 * A *domain model*, a class the toolkit stores as RDF, sits only in a `domain/generated/` folder.
-  The metamodel is one generation target, in `core/domain/generated/`: its modules import one
-  another across themes, so it is the vocabulary every theme speaks.
+  The metamodel is generated one theme at a time, each theme into its own
+  `<theme>.domain.generated` package, and a theme's classes import those of the themes below it:
+  `core` (`rp_core`, `rp_annotations`), `access` (`rp_access`, `rp_tenancy`), `provenance`
+  (`rp_provenance`), `files` (`rp_files`) and `collaboration` (`rp_collections`, `rp_discussion`,
+  `rp_workflow`, which the root `rp_collaboration.yaml` imports so that one target generates them).
+  `rp_tenancy` is in `access` because a tenant is an access boundary, and `rp_tenancy` builds on
+  `rp_access`: the two generate together. `files` ranks above `provenance` in the order of
+  <<themes>>, because `rp_files` imports `rp_provenance`. The RDF artefacts stay one set,
+  built from all the domain modules and written to `core/domain/generated/`: `shapes.ttl`,
+  `context.jsonld` and the frames. Load those. The other four targets write partial copies of them
+  in their own folders, which the toolkit never loads, as they miss the shapes of other themes.
+  `schema` imports no generated class of a theme above it: it reads the stored-file class and the
+  tenant states from the schema itself, through the SchemaView.
 * A *technical model* (a setting, a wire record, a request or response body, a SPARQL term bundle)
   sits in `<theme>/<layer>/generated/`, where the layer is `services`, `adapters` or `entrypoints`:
   the lowest layer every user of the model may import, in the lowest theme that uses it. A wire

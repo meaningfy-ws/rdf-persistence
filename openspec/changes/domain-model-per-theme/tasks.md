@@ -23,7 +23,7 @@ collaboration modules, in `collaboration` or above — except `schema` (task 1.1
 
 ## 3. Docs and release note
 
-- [ ] 3.1 `architecture/index.adoc#themes` (the domain packages per theme),
+- [x] 3.1 `architecture/index.adoc#themes` (the domain packages per theme),
   `architecture/models.adoc` (the diagrams stay one set, from `rp.yaml`),
   `architecture/generation.adoc#cross-target` (the import beside the root, the two module sets, the
   combined artefacts); CHANGELOG `[Unreleased]` Changed, BREAKING, with every moved path
@@ -31,7 +31,7 @@ collaboration modules, in `collaboration` or above — except `schema` (task 1.1
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 2.1 · [ ] 3.1
+- [x] 1.1 · [x] 1.2 · [x] 2.1 · [x] 3.1
 
 ## Verification
 

@@ -15,7 +15,9 @@ are generated from it (xref:architecture/generation.adoc[Model to code]). There 
 == The metamodel
 
 `rdf_persistence/model/rp.yaml` imports the nine modules; an application imports it, or only the
-modules it uses (xref:user-manual/model.adoc[Write the model]). How the modules import each other,
+modules it uses (xref:user-manual/model.adoc[Write the model]). The Python classes of the modules
+are generated per theme (xref:architecture/index.adoc#models-in-themes[Where a model lives]); the
+diagrams below stay one set, generated from `rp.yaml`, whichever theme holds a module's classes. How the modules import each other,
 the annotations and the checks at generation are explained in
 xref:architecture/generation.adoc#metamodel[The metamodel].
 
