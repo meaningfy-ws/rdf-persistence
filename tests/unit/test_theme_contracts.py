@@ -144,6 +144,7 @@ def test_a_planted_import_between_the_new_themes_breaks_its_contract(
 SERVICES_NO_ADAPTERS = "services-of-a-theme-import-no-adapters-or-entrypoints"
 
 
+LIBRARY = "rdf_persistence"
 REMOVED_SHIMS = ("rdf_persistence.domain", "rdf_persistence.adapters")
 
 
@@ -154,10 +155,32 @@ def test_no_contract_names_a_removed_shim_module():
         for name, contract in _contracts().items()
         for key, lines in contract.items()
         for line in lines
-        if line.split(" ")[0] in REMOVED_SHIMS
+        if _names_a_removed_shim(line)
     ]
 
     assert named == []
+
+
+def _names_a_removed_shim(line: str) -> bool:
+    """Whether a contract line starts with a removed shim package or one of its submodules."""
+    token = line.split(" ")[0]
+    return any(token == shim or token.startswith(f"{shim}.") for shim in REMOVED_SHIMS)
+
+
+@pytest.mark.parametrize(
+    ("line", "named"),
+    [
+        ("rdf_persistence.domain", True),
+        (f"{LIBRARY}.domain.base", True),
+        (f"{LIBRARY}.adapters.fuseki -> httpx", True),
+        ("rdf_persistence.adapters", True),
+        ("rdf_persistence.*.domain", False),
+        ("rdf_persistence.domains", False),
+        ("rdf_persistence.persistence.adapters.fuseki", False),
+    ],
+)
+def test_the_removed_shim_check_matches_the_package_and_its_submodules_only(line, named):
+    assert _names_a_removed_shim(line) is named
 
 
 def test_domain_pure_and_the_runtime_contract_cover_every_theme_domain():

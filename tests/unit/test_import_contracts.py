@@ -25,6 +25,24 @@ def test_a_name_wrapped_over_lines_is_still_found(report):
     assert broken_in(report, KEYS) == [KEYS[1]]
 
 
+@pytest.mark.parametrize(
+    "report",
+    [
+        "other-domain-pure BROKEN\n",
+        "domain-pure-extra BROKEN\n",
+        "Analyzed 3 files, 2 dependencies.\n----\nmy-domain-pure BROKEN\n",
+    ],
+)
+def test_a_key_is_matched_exactly_and_not_as_part_of_another_contract_name(report):
+    assert broken_in(report, KEYS) == []
+
+
+def test_the_first_contract_after_the_header_is_found_by_its_exact_key():
+    report = "Analyzed 3 files, 2 dependencies.\n-----\ndomain-pure BROKEN\nother KEPT\n"
+
+    assert broken_in(report, KEYS) == ["domain-pure"]
+
+
 def test_a_contract_that_is_kept_or_not_asked_for_is_not_reported():
     report = "domain-pure KEPT\nsome-other-contract BROKEN\n"
 

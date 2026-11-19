@@ -21,9 +21,9 @@ DEFAULT_ALLOW = ("rdf_persistence/core/domain/base.py:RpModel",)
 # Fully qualified names that make a class a hand-written model. ``RpModel`` is listed where it is
 # defined and at the removed path ``rdf_persistence.domain.base``, which a consumer's stale generated
 # code may still name (the guard reads source, so it names such a class although the import now
-# fails): the package's
-# ``from rdf_persistence import RpModel`` resolves to the defining module inside the toolkit's own
-# package, and stays ``rdf_persistence.RpModel`` in a consumer's, so that name is listed too (D-13 W1).
+# fails). The package's ``from rdf_persistence import RpModel`` resolves to the defining module
+# inside the toolkit's own package, and stays ``rdf_persistence.RpModel`` in a consumer's, so that
+# name is listed too (D-13 W1).
 FORBIDDEN_BASES = frozenset(
     {
         "pydantic.BaseModel",

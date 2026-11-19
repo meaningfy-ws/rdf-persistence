@@ -58,7 +58,13 @@ def scratch_config(
 def broken_in(report: str, contracts: tuple[str, ...]) -> list[str]:
     """The keys of ``contracts`` the report names BROKEN, whatever way it wrapped the line."""
     squeezed = re.sub(r"\s+", "", report)
-    return [key for key in contracts if f"{key}{BROKEN}" in squeezed]
+    parts = re.split(r"(KEPT|BROKEN)", squeezed)
+    broken = set()
+    for before, verdict in zip(parts[0::2], parts[1::2], strict=False):
+        name = re.search(r"[\w-]+$", before)  # the name is what ends the text before its verdict
+        if verdict == BROKEN and name:
+            broken.add(name.group().lstrip("-"))
+    return [key for key in contracts if key in broken]
 
 
 class Linted(NamedTuple):

@@ -127,6 +127,32 @@ def test_a_schema_changed_without_regenerating_is_stale_and_named(
     assert DEFAULT_HINT in error, "the fixing command is not named"
 
 
+BASE_TEMPLATE = "rdf_persistence_generation/templates/pydantic/base_model.py.jinja"
+
+
+def test_a_consumer_generated_before_the_template_line_changed_is_stale_and_named(
+    generated: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """thematic-structure D-26: code that imported ``RpModel`` from the old path is asked to regenerate.
+
+    The consumer's generated code imports ``RpModel`` from ``rdf_persistence``; a manifest written
+    when the template said another module records another hash of it, so the check names the template.
+    """
+    output = (generated.parent / OUTPUT).read_text(encoding="utf-8")
+    assert "from rdf_persistence import RpModel" in output, (
+        "a consumer imports RpModel from the top"
+    )
+    path = generated.parent / MANIFEST
+    recorded = next(e.sha256 for e in read_manifest(generated).inputs if e.path == BASE_TEMPLATE)
+    path.write_text(path.read_text(encoding="utf-8").replace(recorded, "0" * 64), encoding="utf-8")
+
+    code, error = check(generated, capsys)
+
+    assert code == 1, "code made by an older template passed the check"
+    assert BASE_TEMPLATE in error, "the changed template is not named"
+    assert DEFAULT_HINT in error, "the fixing command is not named"
+
+
 def test_a_generated_file_edited_by_hand_is_named(
     generated: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

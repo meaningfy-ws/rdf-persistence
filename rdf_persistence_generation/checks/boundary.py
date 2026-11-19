@@ -226,7 +226,8 @@ def _is_exempt(package: str) -> bool:
 def toolkit_themes() -> frozenset[str]:
     """The themes of the library: its subpackages, the testkit (outside the themes) apart.
 
-    The package folders are the one list; ``tests`` check that they are the thirteen of the design.
+    The package folders are the one list; a test holds it equal to the themes of ``tests.changed``,
+    and the layout tests and ``themes-layered`` refuse a folder that is none.
     """
     return frozenset(
         init.parent.name

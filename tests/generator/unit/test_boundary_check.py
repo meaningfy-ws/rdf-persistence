@@ -604,6 +604,13 @@ def test_the_themes_are_the_package_folders_of_the_library_but_the_testkit() -> 
     assert not {"testkit", "model", "domain", "adapters"} & toolkit_themes()
 
 
+def test_the_themes_of_the_check_are_the_themes_of_the_changed_files_mapper() -> None:
+    """A folder added or dropped without the mapper (or the reverse) fails here."""
+    from tests.changed import THEMES
+
+    assert toolkit_themes() == THEMES
+
+
 @pytest.mark.parametrize(
     "package", ["rdf_persistence.testkit.generated", "rdf_persistence_generation.generated"]
 )
