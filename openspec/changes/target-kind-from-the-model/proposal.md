@@ -87,3 +87,31 @@ None.
   the generator tests' inline configs, `architecture/generation.adoc`, `user-manual/generate.adoc`,
   CHANGELOG.
 - Consumers (MWBv2): drop `kind`; move a layer-less package; annotate technical modules.
+
+## Reconciliation (as delivered)
+
+Delivered in one PR, #188, one stage (SMALL). Challenged by one L2+L3 review pass (7 findings;
+two re-labelled Critical and fixed, D-4 and D-5; five under the floor) and a fresh checker.
+Acceptance demo waived by the developer (`evidence/acceptance.md`).
+
+| Shape item | Final state | Where |
+|---|---|---|
+| DEC-1 kind derived from the target's own modules | delivered: `derived_kind` over `own_schemas` | 8cdac35e |
+| DEC-2 the `kind` key refused | delivered: slot removed from the generator's model, refused as an extra key naming `kind` | 8cdac35e |
+| DEC-3 the folder rule binds every target | delivered; "no layer" read as any segment before `generated` that is no layer (D-1) | 8cdac35e |
+| DEC-4 our own targets follow the rule | delivered: toy library, getting-started example, cross-target fixture, every inline config that generates; tests that formed a mixed target use a technical-only project (D-3) | 17fd8eb3 |
+| DEC-5 release 0.7.0 with the CHANGELOG migration note | migration note delivered; the release is not part of this PR | 09f23048 |
+| PD-2 no mixed target | delivered; the problem names the target by its root schema (D-2) | 8cdac35e |
+| Docs (task 3.1) | delivered; the user manual's "every schema of the folder" corrected after review (D-4) | 09f23048, ea2ed003 |
+| `make refresh-map` exits 0 | delivered; three tests already on `develop` had no row and were mapped | dccfd977 |
+
+**Differences from the shape, with the reason:**
+
+- **What Changes, inline configs:** beyond the generator's tests, the configs in
+  `tests/unit/api/test_service_written.py`, `tests/integration/api/test_router.py` and the generator
+  e2e tests moved too: each runs generation and would fail the rule.
+- **Not delivered here:** the 0.7.0 release and moving the getting-started pin off `v0.6.0`.
+  Both follow the release (DEC-5), after `domain-model-per-theme`.
+- **Under the floor, open:** review S1–S5 (`design.md`, Delivery decisions). Examples: the theme
+  message does not name the derived kind, and the modules in the mixed-target message are joined by
+  `,` rather than `, `.
