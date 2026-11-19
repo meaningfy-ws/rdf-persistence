@@ -529,6 +529,37 @@ def test_the_boundary_step_derives_the_kind_of_its_target_for_the_folder_rule(
     assert "domain" in format_problem(found[0]), f"the derived kind is not named: {found}"
 
 
+def unannotated_module_folder(tmp_path: Path) -> Path:
+    """A folder whose only module, ``api``, has no ``annotations:`` block, so no ``module_kind``."""
+    text = API_MODULE.format(kind="domain").replace("annotations:\n  module_kind: domain\n", "", 1)
+    assert "module_kind" not in text, "the fixture must carry no module_kind"
+    (tmp_path / "api.yaml").write_text(text, encoding="utf-8")
+    return tmp_path
+
+
+def test_a_module_without_the_annotation_derives_domain(tmp_path: Path) -> None:
+    """Spec "a consumer's settings without the annotation": no ``module_kind`` is no technical module."""
+    folder = unannotated_module_folder(tmp_path)
+    assert derived_of(folder) == TargetKind.DOMAIN, "an unannotated module is no technical one"
+    assert mixed_problems_of(folder) == [], "one kind of module is no mix"
+
+
+def test_the_boundary_step_on_a_module_without_the_annotation_names_the_annotation_to_add(
+    tmp_path: Path,
+) -> None:
+    """Spec "a consumer's settings without the annotation": domain target in a technical layer."""
+    unannotated_module_folder(tmp_path)
+    target = GenerationTarget(schema_file="api.yaml", package="app.services.generated")
+    found = generate([target], tmp_path, (steps.BOUNDARY_STEP,), check=True)
+    # The lone ``Account`` class is a domain class with no owner, so the ownership rule also speaks;
+    # this test is about the kind rule only.
+    kind_problems = [p for p in found if p.rule == BoundaryRule.TARGET_KIND.value]
+    assert len(kind_problems) == 1, f"one target_kind problem expected: {found}"
+    line = format_problem(kind_problems[0])
+    assert "domain" in line, f"the derived kind is not named: {line}"
+    assert "module_kind: technical" in line, f"the annotation to add is not named: {line}"
+
+
 PROJECT_HEAD = (
     '[tool.rp-generate]\nschema = "library.yaml"\npackage = "{package}"\npython = "generated"\n'
 )

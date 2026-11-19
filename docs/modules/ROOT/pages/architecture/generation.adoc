@@ -382,8 +382,8 @@ declares `python_package`.
 ==== The kind of a target
 
 A `\[[tool.rp-generate]]` entry has no `kind` key: the kind of a target is derived from the modules
-it generates. A target is `technical` when every module of its root schema's folder that the target
-generates is annotated `module_kind: technical`, and `domain` otherwise (an unannotated module, or
+it generates: the modules its root schema imports from its own folder. A target is `technical` when
+every one of them is annotated `module_kind: technical`, and `domain` otherwise (an unannotated module, or
 one annotated `domain` or `access`).
 
 [source,toml]

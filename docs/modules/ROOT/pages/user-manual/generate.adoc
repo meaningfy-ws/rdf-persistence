@@ -192,8 +192,8 @@ each of them (an array of tables). An entry has no `kind` key: `rp-generate` der
 target from its modules. A target is technical when every module it generates is annotated
 `module_kind: technical`, and domain otherwise. If your `models/` folder holds a `technical` module
 (xref:user-manual/model.adoc#more-metamodel[More of the metamodel]), move it into the new folder
-first (`technical/export.yaml` below): a target generates one kind, and the check reads every schema
-of an entry's folder.
+first (`technical/export.yaml` below): a target generates one kind, and the check reads the modules
+the target generates, which are the modules its root schema imports from its folder.
 
 [source,toml]
 ----
@@ -229,8 +229,9 @@ A package with no layer before `generated` (`library.generated`) fails the same 
 models/library.yaml: boundary check: [target_kind] library.generated: has no layer before generated: a domain target's package ends in <domain>.generated
 ----
 
-A folder that keeps both kinds of module, such as a `models/` folder with a `technical` module
-beside the domain ones, fails and names the technical modules; split the folder as above:
+A target whose root schema imports both a technical module and a domain one, such as a root in
+`models/` that imports a `technical` module beside the domain ones, fails and names the technical
+modules; split them into targets as above:
 
 ----
 models/library.yaml: boundary check: [target_kind] generates technical modules export beside domain ones: a target generates one kind
