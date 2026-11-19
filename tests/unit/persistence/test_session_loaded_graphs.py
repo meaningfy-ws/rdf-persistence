@@ -356,13 +356,13 @@ async def test_tc07_a_root_replace_without_a_list_keeps_both_sets(session, store
 
 async def test_tc08_a_root_commit_cannot_claim_a_books_load_under_a_flat_policy(store):
     settings = ServiceSettings(
-        base="http://mwb.meaningfy.ws/",
-        prefix="mwb",
+        base="https://example.org/",
+        prefix="lib",
         tenant_segment="projects",
         creator_role="librarian",
         roles_claim="roles",
         iri_policy=IriPolicy(
-            tenant_template="{base}project/{tenant_id}",
+            tenant_template="{base}library/{tenant_id}",
             aggregate_template=FLAT,
             part_template=FLAT,
             loaded_graph_template=FLAT,

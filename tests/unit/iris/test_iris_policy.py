@@ -15,8 +15,8 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
 )
 from rdf_persistence.iris.services.iris import Iris
 
-BASE = "http://mwb.meaningfy.ws/"
-TENANT = f"{BASE}project/p4x8k2m"
+BASE = "https://example.org/"
+TENANT = f"{BASE}library/p4x8k2m"
 ROOT_TYPES = frozenset({"ontology-file"})
 OWNED_TYPES = frozenset({"term"})
 UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
@@ -26,7 +26,7 @@ FLAT = "{base}{tenant_id}/{type}/{id}"
 def _settings(policy: IriPolicy | None = None, **more: str) -> ServiceSettings:
     return ServiceSettings(
         base=BASE,
-        prefix="mwb",
+        prefix="lib",
         tenant_segment="projects",
         creator_role="owner",
         roles_claim="roles",
@@ -35,9 +35,9 @@ def _settings(policy: IriPolicy | None = None, **more: str) -> ServiceSettings:
     )
 
 
-def _consumer_policy(**more: object) -> IriPolicy:
+def _example_policy(**more: object) -> IriPolicy:
     return IriPolicy(
-        tenant_template="{base}project/{tenant_id}",
+        tenant_template="{base}library/{tenant_id}",
         aggregate_template=FLAT,
         part_template=FLAT,
         loaded_graph_template=FLAT,
@@ -59,7 +59,7 @@ def default() -> Iris:
 
 @pytest.fixture
 def consumer() -> Iris:
-    return Iris(_settings(_consumer_policy(), deployment="k3f9a2x"), ROOT_TYPES, OWNED_TYPES)
+    return Iris(_settings(_example_policy(), deployment="k3f9a2x"), ROOT_TYPES, OWNED_TYPES)
 
 
 # --- without a policy: today's shapes -----------------------------------------------------------
@@ -90,7 +90,7 @@ def test_a_default_policy_names_the_tenant_graphs_and_resource_as_today(default)
     assert default.registry(DEFAULT_TENANT) == URIRef(f"{DEFAULT_TENANT}/registry"), (
         "the default registry graph hangs under the tenant"
     )
-    assert default.resource_name(DEFAULT_TENANT) == "mwb-t-12345678123442348234123456789abc", (
+    assert default.resource_name(DEFAULT_TENANT) == "lib-t-12345678123442348234123456789abc", (
         "the default resource name is the deployment, tenant marker and hex id"
     )
 
@@ -131,11 +131,11 @@ def test_a_principal_is_the_issuer_and_the_subject_in_one_segment(default):
     ), "a principal is the issuer and an encoded subject in one segment"
 
 
-# --- the consumer's policy (proposal table) -----------------------------------------------------
+# --- the example policy (proposal table) -----------------------------------------------------
 
 
 def test_the_consumers_tenant_is_the_project_path_and_a_short_id(consumer):
-    assert re.fullmatch(f"{re.escape(BASE)}project/[a-z0-9]{{7}}", consumer.mint_tenant()), (
+    assert re.fullmatch(f"{re.escape(BASE)}library/[a-z0-9]{{7}}", consumer.mint_tenant()), (
         "the consumer's minted tenant is the project path and a short id"
     )
     assert consumer.tenant("p4x8k2m") == URIRef(TENANT), (
@@ -185,16 +185,16 @@ def test_ids_have_the_configured_length_and_alphabet(consumer):
 
 def test_a_reserved_id_is_drawn_again():
     iris = Iris(
-        _settings(_consumer_policy(), deployment="k3f9a2x"),
-        id_source=_scripted("project", "p4x8k2m"),
+        _settings(_example_policy(), deployment="k3f9a2x"),
+        id_source=_scripted("library", "p4x8k2m"),
     )
-    assert iris.mint_tenant() == URIRef(TENANT), "the literal word 'project' is never an id"
+    assert iris.mint_tenant() == URIRef(TENANT), "the literal word 'library' is never an id"
 
 
 @pytest.mark.parametrize("reserved", ["content", "ontology-file", "term", "k3f9a2x", "parts"])
 def test_a_type_the_deployment_or_a_layout_word_is_never_an_id(reserved):
     iris = Iris(
-        _settings(_consumer_policy(), deployment="k3f9a2x"),
+        _settings(_example_policy(), deployment="k3f9a2x"),
         ROOT_TYPES,
         OWNED_TYPES,
         _scripted(reserved, "a8f3k29dm4x1q"),
@@ -293,7 +293,7 @@ def test_an_aggregate_path_id_of_the_right_form_gives_its_iri(consumer):
     ), "a path id of the right form gives the aggregate IRI"
 
 
-@pytest.mark.parametrize("iri", [f"{BASE}project/P4X8K2M", f"{BASE}projects/p4x8k2m", "nope", ""])
+@pytest.mark.parametrize("iri", [f"{BASE}library/P4X8K2M", f"{BASE}libraries/p4x8k2m", "nope", ""])
 def test_a_tenant_iri_the_policy_cannot_mint_is_invalid(consumer, iri):
     with pytest.raises(InvalidIri, match="tenant IRI"):
         consumer.tenant_id_of(iri)
@@ -315,10 +315,10 @@ def test_an_rp_path_that_is_not_a_segment_is_invalid(consumer):
 
 
 def test_the_tenant_of_an_access_record_comes_back_through_the_templates():
-    policy = _consumer_policy(access_template="{base}{deployment}/project/{tenant_id}")
+    policy = _example_policy(access_template="{base}{deployment}/library/{tenant_id}")
     iris = Iris(_settings(policy, deployment="k3f9a2x"))
     access = iris.access(TENANT)
-    assert access == URIRef(f"{BASE}k3f9a2x/project/p4x8k2m"), (
+    assert access == URIRef(f"{BASE}k3f9a2x/library/p4x8k2m"), (
         "the access record is built through the templates"
     )
     assert iris.tenant_of_access(access) == URIRef(TENANT), (
@@ -341,13 +341,13 @@ def test_an_iri_that_is_not_an_access_record_has_no_tenant(default, iri):
 
 
 def test_a_short_tenant_id_names_the_database_and_bucket(consumer):
-    assert consumer.resource_name(TENANT) == "mwb-t-p4x8k2m", (
+    assert consumer.resource_name(TENANT) == "lib-t-p4x8k2m", (
         "a short tenant id names the database and bucket"
     )
 
 
 def test_a_uuid_tenant_id_names_them_by_its_hex(default):
-    assert default.resource_name(DEFAULT_TENANT) == "mwb-t-12345678123442348234123456789abc", (
+    assert default.resource_name(DEFAULT_TENANT) == "lib-t-12345678123442348234123456789abc", (
         "a uuid tenant id names them by its hex"
     )
 

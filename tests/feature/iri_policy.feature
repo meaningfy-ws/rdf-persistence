@@ -4,12 +4,12 @@ Feature: A service under its own IRI policy
   So that every IRI, id in a path and Location header agrees with it
 
   Background:
-    Given the library service runs under the project policy
+    Given the library service runs under the example policy
 
   # spec: none
   Scenario: A tenant and a book with a chapter live and die under the policy
     When Ada creates a library
-    Then the library IRI is under "project/" and ends in a 7-character id
+    Then the library IRI is under "library/" and ends in a 7-character id
     And its Location path ends in that id
     When Ada adds a book with a chapter to it
     Then the book IRI is flat beside the library id under "book"

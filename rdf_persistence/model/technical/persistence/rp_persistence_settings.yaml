@@ -44,7 +44,7 @@ slots:
     minimum_value: 1
   max_document_nodes:
     title: Maximum document nodes
-    description: The most objects and list values one JSON-LD body may hold.
+    description: The most objects and list values one JSON or JSON-LD body may hold.
     range: integer
     required: true
     ifabsent: int(10000)

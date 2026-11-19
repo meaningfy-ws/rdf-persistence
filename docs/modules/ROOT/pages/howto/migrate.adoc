@@ -4,18 +4,22 @@
 _My schema changed and I have stored data: what do I do? What does the toolkit do for me, and what
 must I write myself?_
 
-Every example uses the toy library of the toolkit's repository (`tests/fixtures/library/`): the
-classes `Book`, `Chapter`, `Note` and `Shelf`, in the namespace `https://example.org/ns/library#`.
-`Book` has the class IRI `http://purl.org/ontology/bibo/Book` (`class_uri: bibo:Book`). The page is
-about data that is already stored. For a schema with no data yet, see
-xref:user-manual/index.adoc[Build an application, step 4]. How the lock and its rules are built is
-on xref:architecture/generation.adoc[Model to code]; where the stamp lives and what start-up does is
-on xref:architecture/data-flows.adoc#migrations[Where data lives and what each operation does].
+This guide takes a schema change from the edit to a deployed release when data is already
+stored. It assumes the `migrations` folder of xref:user-manual/generate.adoc[step 4] and the
+regeneration of xref:user-manual/change-model.adoc[step 7]; a schema with no stored data needs
+neither the version nor a migration. Dumping a tenant before you deploy is in
+xref:howto/dump-restore.adoc[Back up or copy a tenant].
+
+Every example uses the toy library (`tests/fixtures/library/`): the classes `Book`, `Chapter`,
+`Note` and `Shelf`, in the namespace `https://example.org/ns/library#`. `Book` has the class IRI
+`http://purl.org/ontology/bibo/Book` (`class_uri: bibo:Book`). How the lock and its rules are
+built is explained in xref:architecture/generation.adoc[Model to code]; where the stamp lives and
+what start-up runs, in xref:architecture/data-flows.adoc#migrations[Where data lives].
 
 [#terms]
 == Terms
 
-Words this page introduces:
+Words this guide introduces:
 
 *The lock*:: `schema.lock.json`, a file `rp-generate` writes in your `migrations` folder. It records
 what your schema stores. `rp-generate` compares the schema with it to see what changed.
@@ -31,52 +35,16 @@ database has one stamp per chain.
 *A tenant set aside*:: A tenant whose migration failed at start-up. Its data requests answer `503`
 until a later start-up migrates it (<<behind>>).
 
-Terms the xref:user-manual/index.adoc[user manual] explains; read there if one is new to you:
+The other terms (tenant, access record, aggregate, owned part, `rp_path`, `rp_iri_type`, version
+token, loaded graph, sweep, grant, principal) are those of the
+xref:user-manual/index.adoc[user manual], steps 3 and 8 to 11.
 
-* tenant, and the access record: step 9, xref:user-manual/tenants.adoc[Create tenants];
-* aggregate, root class, owned part, `rp_path`, `rp_iri_type`:
-  step 3, xref:user-manual/model.adoc[Write the model];
-* version token (`ETag`) and the conflict a stale one causes:
-  step 8, xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict];
-* loaded graph and registry:
-  step 10, xref:user-manual/files.adoc[Keep files];
-* sweep: step 10, xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant];
-* grants and principal: step 11, xref:user-manual/access.adoc[Control access].
-
-== Common questions
-
-*What do I do when I change a schema that has stored data?*::
-Set a new quoted `version:` in the root schema, run `make generate`, and read what it says.
-See <<change>>.
-
-*Which changes need nothing, and which need me?*::
-Adding a class, an optional slot or an enum value needs nothing. Removing or renaming a slot, or
-making a slot required, needs a migration file. See <<rules>>.
-
-*How do I rename a slot without losing its data?*::
-Turn the drafted `drop` step into a rename by adding an `insert_pattern`. See <<rename>>.
-
-*What can I not migrate?*::
-A root class's IRI type, path or database, and whether a slot's values are owned parts. See
-<<cannot>>.
-
-*When does a migration run?*::
-At start-up, once per database, in order, in one atomic request. See <<startup>>.
-
-*What do I do before I deploy?*::
-Dump every tenant, try the migration by restoring that dump into the new release, and stop the old
-instances before you start the new ones. See <<deploy>>.
-
-*A tenant answers 503 `tenant-behind`. What now?*::
-Its migration failed at start-up. Read the log, fix the cause, ship the fix and restart every
-instance. Rolling back the shared databases needs a backup of the store taken before you deployed;
-a restore of dumps makes new tenants and does not change their stamps. See <<behind>>.
-
-*Can I undo a migration?*::
-No. There are no down-migrations. Restore a dump taken before it. See <<no-down>>.
-
-*I do not use `install_service`. Do I still migrate?*::
-Yes. See xref:howto/application-data.adoc[Keep data that belongs to no tenant].
+In short: set a new quoted `version:` and regenerate (<<change>>); finish the drafted migration
+(<<rules>>, <<file>>, the recipes from <<rename>> on); dump every tenant, try the migration on a
+copy and stop the old instances before starting the new ones (<<deploy>>). A tenant whose
+migration fails answers `503` until you fix the cause and restart (<<behind>>). Without
+`install_service`, you still migrate: see xref:howto/application-data.adoc[Keep data that
+belongs to no tenant].
 
 [#change]
 == 1. What you do when the schema changes
@@ -490,10 +458,12 @@ unless you also write the retype step (<<retype>>):
 classes:
   Volume:
     class_uri: bibo:Book
-    mixins: [AggregateRoot, Described, Tracked]
+    mixins: [AggregateRoot, Described, Tracked, UnderWorkflow]
     annotations:
       rp_path: books
       rp_iri_type: book
+      database: tenant
+      workflow: review
 ----
 
 A migration that changes IRIs is not supported in this version. The lock does not record the IRI
@@ -518,28 +488,13 @@ Do not rework a version that has been merged and deployed: add the next version 
 [#startup]
 == 7. What happens at start-up
 
-`install_service` builds both chains when the kit is built: the toolkit's own and yours. A bad chain
-stops the service with `InvalidMigration`, before it serves. Then the lifespan runs, in this order:
+A bad chain stops the service with `InvalidMigration` before it serves; then every database is
+migrated, the toolkit's chain first and yours second, one atomic request per pending migration, so
+a failure leaves the database as it was before that migration. The steps in order, and what a
+failure does (`MigrationFailed`, `tenant-behind`), are in
+xref:architecture/data-flows.adoc#migrations[Start-up migrations].
 
-. the system database is created if it is missing, and the IRI policy is guarded;
-. the application database is created if the schema has an application class and it is missing;
-. the system database, then the application database, are migrated. A failure here stops start-up
-  with `MigrationFailed`;
-. the sweep runs;
-. every tenant is migrated, in order of IRI, except tenants being deleted.
-
-The shared databases come before the sweep because the sweep reads the access records, and those
-must already be in the shape the current model reads.
-
-For each database, the toolkit's chain runs first and yours second. A database that holds no stamp
-for a schema is stamped with the first version of that chain, then migrated. For each pending
-migration, the toolkit sends one atomic request to the database: every step in order, then (when the
-migration has a step) a new version token for every graph that has one, then the move of the
-stamp from `from` to `to`. It then reads the stamp back. A failure leaves the database as it was
-before that migration. Migrations of the chain that already succeeded stay, each one was its own
-request.
-
-What follows from this:
+What follows for you:
 
 * *Once.* Every operation matches only under the `from` stamp. A second start, or a second instance
   that starts at the same time, applies nothing twice.
@@ -563,7 +518,7 @@ the tenant. The toolkit has no separate timeout setting for migrations yet.
 [#deploy]
 == 8. Deploying a migration
 
-`kit` is the `ServiceKit` that `install_service` returns. The two calls below are Python only; the
+`kit` is the service kit that `install_service` returns. The two calls below are Python only; the
 toolkit has no HTTP route for them. How to route and guard them is on
 xref:howto/dump-restore.adoc[Back up or copy a tenant].
 
@@ -698,8 +653,8 @@ A restore accepts a dump of your schema at any version of the chain, migrates th
 the running version (in memory, with the pending migrations of both chains) before its graphs and
 root are checked and imported, and then the new tenant serves it. The manifest and the stamps are
 checked first. The migration runs in a worker thread, and its cost is bounded only by the steps: a
-step that joins a pattern with itself can grow the data, and a large dump is slow on rdflib
-(design RISK-12). For the toy library, a dump taken at `"1"`
+step that joins a pattern with itself can grow the data, and a large dump is slow on rdflib.
+For the toy library, a dump taken at `"1"`
 restores into a service at `"2"`, with `1__2` applied. The restore creates a new tenant every time.
 
 `kit.restore_tenant` refuses, with `InvalidBody` and nothing created: a dump with no version, a

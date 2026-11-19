@@ -98,9 +98,9 @@ FLAT_OLD, FLAT_NEW = "p4x8k2m", "q5y9l3n"
 def flat_settings() -> ServiceSettings:
     return SETTINGS.model_copy(
         update={
-            "base": "http://mwb.meaningfy.ws/",
+            "base": "https://example.org/",
             "iri_policy": IriPolicy(
-                tenant_template="{base}project/{tenant_id}",
+                tenant_template="{base}library/{tenant_id}",
                 aggregate_template=FLAT,
                 part_template=FLAT,
                 loaded_graph_template=FLAT,

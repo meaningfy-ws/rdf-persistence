@@ -1,6 +1,6 @@
 """The consumer's tenant end to end over the fakes (iri-policy task 5.1, PD-3a, PD-10, PD-12a).
 
-Access record ``{base}{deployment}/project/{tenant_id}``; meta and registry graphs under templates of
+Access record ``{base}{deployment}/library/{tenant_id}``; meta and registry graphs under templates of
 their own. Nothing is read or written at the default ``{tenant}/access|meta|registry``.
 """
 
@@ -31,20 +31,20 @@ from tests.fixtures.library.generated.library import Library
 from tests.fixtures.library.generated.library_access import LibraryAccess
 from tests.toy import ADA, BOB, ROLES, caller, library_slots, toy_mapper
 
-BASE = "http://mwb.meaningfy.ws/"
+BASE = "https://example.org/"
 CREATOR = Principal(id=ADA)
-ACCESS = "{base}{deployment}/project/{tenant_id}"
+ACCESS = "{base}{deployment}/library/{tenant_id}"
 META = "{base}{deployment}/meta/{tenant_id}"
 REGISTRY = "{base}{deployment}/registry/{tenant_id}"
 SETTINGS = ServiceSettings(
     base=BASE,
-    prefix="mwb",
+    prefix="lib",
     tenant_segment="projects",
     creator_role="librarian",
     roles_claim="roles",
     deployment="k3f9a2x",
     iri_policy=IriPolicy(
-        tenant_template="{base}project/{tenant_id}",
+        tenant_template="{base}library/{tenant_id}",
         access_template=ACCESS,
         meta_template=META,
         registry_template=REGISTRY,
@@ -80,11 +80,11 @@ async def test_the_consumers_tenant_is_created_read_listed_and_deleted_by_the_po
 
     summary = await tenancy.create("Ghent", library_slots(), CREATOR)
 
-    assert re.fullmatch(rf"{BASE}project/[a-z0-9]{{7}}", summary.id), "the tenant IRI"
+    assert re.fullmatch(rf"{BASE}library/[a-z0-9]{{7}}", summary.id), "the tenant IRI"
     tenant_id = summary.id.rsplit("/", 1)[-1]
     record, version = await tenancy.get(summary.id)
-    assert record.id == f"{BASE}k3f9a2x/project/{tenant_id}", "the access record"
-    assert record.database_name == f"mwb-t-{tenant_id}", (
+    assert record.id == f"{BASE}k3f9a2x/library/{tenant_id}", "the access record"
+    assert record.database_name == f"lib-t-{tenant_id}", (
         "the tenant database is named by the policy"
     )
     page = await tenancy.visible_tenants(caller(), rules, limit=10, offset=0)

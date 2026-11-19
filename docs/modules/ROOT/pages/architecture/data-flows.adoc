@@ -5,8 +5,21 @@
 _Where does the toolkit keep tenants, their data and its own bookkeeping? What happens, step by
 step, when an aggregate is created, read, listed, replaced or deleted, and when a tenant is?_
 
-This page describes the toolkit on `develop` as of 2026-11-14 (after
-`collaboration-and-reference-collections`).
+This page explains, for an architect or a toolkit developer, where the toolkit keeps its data and
+what each operation writes, from the HTTP route or the Python call down to the triple store and
+the object store. It is the mechanism under three other views:
+
+* the steps to take as an application developer are in the
+  xref:user-manual/index.adoc[user manual] and the xref:howto/index.adoc[how-to guides];
+* what a commit guarantees to its caller, and what to do after a `Conflict`, is in
+  xref:architecture/commits.adoc[How commits and conflicts work]; this page shows the update
+  request that keeps that promise (<<commit>>);
+* the classes behind the stored records (tenant root, access record, activity, stored file) are in
+  xref:architecture/models.adoc[Models].
+
+The requirements of record are the `rp-*` capabilities in `openspec/specs/`, listed in
+xref:requirements/capabilities.adoc[Capabilities]; this page explains how the code meets them and
+restates none.
 
 The examples use the toolkit's own toy library (`tests/toy.py`, `tests/fixtures/library/`):
 settings `base="https://example.org/library/"`, `prefix="lib"`, `tenant_segment="libraries"`,
@@ -24,12 +37,21 @@ IRI policy (`IriPolicy`, generated from `model/technical/iris/rp_iris_services.y
 
 |Tenant
 |One isolated workspace: its own database, its own bucket, and one access record. The toolkit never
-reads across tenants. What a tenant stands for (a library, a customer, a project) is the
+reads across tenants. What a tenant stands for (a library, a customer, a team) is the
 consumer's choice. There is one level: a tenant holds no tenants.
 
-|Aggregate
-|One object tree that is stored, versioned and deleted as a whole: a root (a book) and the parts it
-owns (its chapters). It lives in one named graph.
+|Aggregate, aggregate root, owned part
+|One object tree that is stored, versioned and deleted as a whole: an aggregate root (a book) and
+the owned parts it holds (its chapters). It lives in one named graph.
+
+|Session
+|The `Session` of one tenant (or of the system or application database): the one place that
+writes SPARQL. It applies the IRI policy, the version guards, the registry and the tracking
+statements.
+
+|Unit of work
+|A `UnitOfWork` over a session: the Python caller's view, which reads objects, collects their
+changes and commits them as one transaction.
 
 |Tenant root
 |The tenant's own object (a `Library`), the class annotated `graph: meta` in the schema. It is
@@ -42,13 +64,14 @@ aggregate's, owned by `T`.
 file, and its `rp:fileKey` names the blob in the bucket.
 
 |Version token
-|A fresh UUID written on every commit of an aggregate, of a tenant root and of an access record.
+|A fresh UUID written on every commit of an aggregate, of a tenant root and of an access record
+(what it means to a caller: xref:architecture/commits.adoc[How commits and conflicts work]).
 HTTP shows it as the `ETag`; a write must send it back in `If-Match`, and a stale one is refused
 with 409. A tenant has two: its root's (`ETag` of `GET /libraries/{t}`, sent to replace the root)
 and its access record's (`Record-ETag`, sent to rename, change grants or delete the tenant).
 
-|`kit`
-|The `ServiceKit` that `install_service(app, …)` returns: the consumer's handle on the store, the
+|Service kit (`kit`)
+|The `ServiceKit` that `install_service(app, …)` returns: the consumer's handle on the stores, the
 file store, the IRI policy (`kit.iris`), sessions and the gate.
 
 |Principal
@@ -100,7 +123,7 @@ hour by default), so work still waiting for its commit survives.
 _Who talks to whom?_ A client gets a token from the identity provider and calls the consumer's
 application. Every route, the toolkit's generic ones and the consumer's own, goes through the
 service kit, which reads access from the system database, the tenant's data from its own
-database, the application-wide data from the application database, and files from its own bucket.
+database, the application-wide data from the application database, and files from the tenant's bucket.
 
 [mermaid]
 ....
@@ -133,8 +156,11 @@ flowchart LR
 [#layout]
 == Where everything is stored
 
-One deployment has one triple store (Fuseki) and one object store (S3, for example Garage). The kit
-is wired to one of each. Inside them, for one tenant `T` and one book `B`:
+One deployment has one object store (S3, for example Garage) and one triple store (Fuseki), the
+`default` store. It may wire further named triple stores; a tenant's access record then names the
+store that holds its database, and every read and write of that tenant goes there
+(xref:howto/tenant-stores.adoc[Put tenants on several stores]). Inside them, for one tenant `T`
+and one book `B`:
 
 [mermaid]
 ....
@@ -171,8 +197,8 @@ With `T = https://example.org/library/libraries/<tenant uuid>` and a book `B = T
 |System database `lib-system`
 |`T/access/graph`, one per tenant
 |The tenant's *access record* `T/access`: label, description, state (`active` or `deleting`),
-database name (`lib-t-<uuid without hyphens>`, which is also the bucket's name), grants and
-prohibitions; plus the version token,
+database name (`lib-t-<uuid without hyphens>`, which is also the bucket's name), the name of the
+store that holds the database (absent for `default`), grants and prohibitions; plus the version token,
 created, creator, modified and contributors of the record.
 
 |Tenant database `lib-t-…`
@@ -429,7 +455,8 @@ provenance graph (<<commit>>, _The activity_), with version tokens and no conten
 *Some aggregates have no write routes.* A class annotated `rp_writes: service`, or a file
 aggregate, gets only `GET` routes; a `POST`, `PUT` or `DELETE` on them answers 405. The consumer
 writes it through a session in its own route (`is_service_written`,
-`schema/services/schema_structure.py`).
+`schema/services/schema_structure.py`). A class annotated `rp_writes: toolkit` (the toolkit's
+`Comment`) gets no route at all, so its path answers 404 (`is_toolkit_written`).
 
 [#commit]
 == Committing several aggregates at once
@@ -513,12 +540,11 @@ consistent; a re-read shows the others' versions.
 ====
 
 *Before the request.* Each `add_graph`, `replace_graph` and `remove` of the transaction runs its
-pre-checks at once, as a single call always did: the IRI policy, the loaded graphs the root may
+pre-checks at once: the IRI policy, the loaded graphs the root may
 own, the stored tracking. Giving one root twice (even once as a `str` and once as a `URIRef`) is a
 `ValueError` at the second call; an exception inside the `async with` block sends nothing; an
-empty transaction sends nothing. The pre-checks are reads before the request, so they are one
-read per root and can race with other writers as before; the guards in the request are what
-protect the commit.
+empty transaction sends nothing. The pre-checks are reads before the request, one per root, so
+they can race with other writers; the guards in the request are what protect the commit.
 
 *Write guards.* After these pre-checks and before the change is collected, each `add_graph` and
 `replace_graph` hands the triples to the session's *write guards* (`collaboration/services/write_guards.py`,
@@ -654,7 +680,7 @@ sequenceDiagram
 
 *Before the request.* The access checks come first, then one read of `B`; the replace reads three
 more times (version and tracking, the stored classes and state, the loaded graphs `B` owns). With
-the check after the request that is five reads and one write (PD-32). A version other than
+the check after the request that is five reads and one write. A version other than
 the one the caller read is a `Conflict` at once, before anything is said about the workflow. The
 workflow is found from the classes of the stored root; the current state is the stored
 `adms:status`, or the initial state when the aggregate holds none (for example one stored before
@@ -809,7 +835,7 @@ logged and left for the sweep.
 |`Session.load_graph(B, data, rdf_format=…)`: parse in a worker thread (nothing written if it does
 not parse, or if a JSON-LD file declares a graph of its own, holds a relative or invalid IRI, gives a
 `@context` that is not in the document, or is not an object or array: `InvalidGraph`, each message in
-xref:user-manual/index.adoc[the how-to]); mint `B/content/<id>`. The graph belongs to `B` only once a commit names it in
+xref:user-manual/files.adoc#load-an-rdf-file-into-a-graph[Load an RDF file into a graph]); mint `B/content/<id>`. The graph belongs to `B` only once a commit names it in
 `loaded_graphs`.
 |A load marker in `T/registry` first, then a Graph Store `PUT` of `B/content/<id>`.
 |===
@@ -983,7 +1009,7 @@ dumped. A dump that fails half-way has no `end`, so a restore refuses it.
 
 |Restore, checks
 |`kit.restore_tenant(src, creator)`
-|Before anything is created: the first member is `manifest.json` (at most 64 KiB) and the second
+|Before anything is created: the first member is `manifest.json` (at most `max_manifest_bytes`, 64 KiB by default) and the second
 `graphs.nq`, both regular files with UTF-8 names; the manifest's format, schema id and effective IRI policy equal the
 service's, its version is one of the versions of the service's chain for that schema and agrees with the
 dump's own stamp, and its `source_tenant_id` is the id of its
@@ -1048,8 +1074,39 @@ flowchart TD
   F --> G["the app serves"]
 ....
 
-The order is fixed. The shared databases come before the sweep because the sweep decodes the
-access records, and they must be in the shape the current model reads.
+Before any of this, building the kit checks both chains of migration files (`InvalidMigration`)
+and the `stores` mapping (`ValueError`). Then the lifespan runs these steps, in this fixed order,
+before the application's own lifespan:
+
+. *Create the system database* on the `default` store if it is missing.
+. *Guard the IRI policy.* The effective policy is recorded in the system database's graph
+  `{base}toolkit/iri-policy`; a policy that differs from the recorded one stops the start with
+  `IriPolicyChanged`, naming the differing fields.
+. *Create the application database* on `default`, if the schema has an application class.
+. *Migrate the shared databases* on `default`: the system database, then the application database
+  (`MigrationFailed` stops the start).
+. *Sweep* (`sweep`):
+.. read every access record;
+.. raise `StoreNotWired`, naming every unwired store the records name, sorted, if there is one;
+   nothing has been changed yet;
+.. list the databases of *every* wired store; a store that cannot be reached raises
+   `StoreUnavailable`, and the start stops before anything is changed on any store;
+.. log `misplaced-tenant` for each record whose database is on another store than its own;
+.. if the system database was just created, or holds no access record, while tenant databases or
+   buckets exist, skip the rest with a warning: nothing is dropped;
+.. finish each interrupted deletion on the tenant's own store;
+.. drop each `{prefix}-t-…` database, on any wired store, that no access record names; then the
+   orphan buckets.
+. *Migrate the tenants*, each on its own store, in order of IRI, except those being deleted. A
+  tenant whose migration fails is set aside (below); a tenant whose store is not wired stops the
+  start with `StoreNotWired`.
+. *Start the events*: the event bus's consumer, when one is wired, then the relay, which runs
+  whether or not there is an event bus (xref:howto/event-driven.adoc#relay-limits[Limits of the
+  relay]).
+
+The reasons for the order: the IRI policy comes first because the sweep reads the access records
+through it, and the shared databases are migrated before the sweep because the sweep decodes the
+access records, which must be in the shape the current model reads.
 
 For one database, the runner takes each schema in turn, the toolkit's first and the consumer's
 second, and does this:
@@ -1170,12 +1227,12 @@ start migrates it
 |Over `max_body_bytes` (413); a `Content-Type` other than JSON or JSON-LD (415)
 |413, 415
 
-|*Body shape*: at most 10 000 objects and list values; only slots of the class; no `internal`
+|*Body shape*: at most `max_document_nodes` objects and list values (10 000 by default); only slots of the class; no `internal`
 slot; one root, the path's; every node reached from the root through owned slots; parts only
 those the aggregate stores; no remote JSON-LD context
 |Create and replace (`Documents.parse`); steps 8 to 10 of
 xref:architecture/api.adoc#anatomy[Anatomy of a request]
-|`InvalidBody` (422); over 10 000 objects (413)
+|`InvalidBody` (422); over the node limit (413)
 |422, 413
 
 |*Body content*: the generated SHACL shapes (required slots, ranges, cardinalities, patterns)
@@ -1229,8 +1286,9 @@ granted role exists at its target's level
 |Sweep |What it does
 
 |Start-up sweep (`sweep`)
-|Run once by the consumer before it serves. Finishes the deletion of `deleting` tenants and drops
-databases and buckets no access record names. Never looks inside an active tenant.
+|Run once before the service serves, by the lifespan `install_service` sets up (<<migrations>>).
+Finishes the deletion of `deleting` tenants and drops databases (on every wired store) and buckets
+no access record names. Never looks inside an active tenant.
 
 |Live-tenant sweep (`kit.sweep_tenant`)
 |Run by an operator. Inside one active tenant, finds loaded graphs no registry entry owns and blobs no

@@ -35,7 +35,7 @@ from tests.fixtures.library.generated.books import Chapter
 from tests.toy import TENANT, TOY_SCHEMA, book_iri
 from tests.unit.conftest import GENERATED
 
-BASE = "http://mwb.meaningfy.ws/"
+BASE = "https://example.org/"
 FLAT = "{base}{tenant_id}/{type}/{id}"
 OBJECT_ID = "[a-z0-9]{13}"
 ADA = Principal(id="https://example.org/people/ada")
@@ -46,11 +46,11 @@ CHAPTER_TYPE = "http://purl.org/ontology/bibo/Chapter"
 
 
 def settings(
-    tenant_template: str = "{base}project/{tenant_id}", part: str = FLAT
+    tenant_template: str = "{base}library/{tenant_id}", part: str = FLAT
 ) -> ServiceSettings:
     return ServiceSettings(
         base=BASE,
-        prefix="mwb",
+        prefix="lib",
         tenant_segment="projects",
         creator_role="owner",
         roles_claim="roles",
@@ -126,7 +126,7 @@ async def created(
 
 async def test_a_flat_root_is_minted_under_the_tenant_by_its_class_type():
     iri, _ = await created(FLAT_DOCUMENTS, FLAT_IRIS, FLAT_TENANT)
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/book/{OBJECT_ID}", iri), (
+    assert re.fullmatch(f"https://example\\.org/p4x8k2m/book/{OBJECT_ID}", iri), (
         "the flat root is minted under the tenant by its class segment"
     )
 
@@ -134,7 +134,7 @@ async def test_a_flat_root_is_minted_under_the_tenant_by_its_class_type():
 def test_a_flat_part_is_minted_beside_the_root_not_under_it():
     root = str(FLAT_IRIS.aggregate(FLAT_TENANT, "book", "books", "a" * 13))
     part = new_part(Chapter, root, iris=FLAT_IRIS, tenant=FLAT_TENANT, number=1)
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/chapter/{OBJECT_ID}", part.id), (
+    assert re.fullmatch(f"https://example\\.org/p4x8k2m/chapter/{OBJECT_ID}", part.id), (
         "the flat part is minted beside the root by its class segment"
     )
 
@@ -162,10 +162,10 @@ async def test_a_flat_object_is_stored_beside_its_part_and_its_loaded_graph():
         FLAT_TENANT, ADA, FLAT_DOCUMENTS.aggregates["books"], "books", encoded(body), JSON
     )
     (part,) = {str(s) for s in triples.subjects(RDF.type, URIRef(CHAPTER_TYPE))}
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/book/{OBJECT_ID}", iri), (
+    assert re.fullmatch(f"https://example\\.org/p4x8k2m/book/{OBJECT_ID}", iri), (
         "the flat root is minted by its class segment"
     )
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/chapter/{OBJECT_ID}", part), (
+    assert re.fullmatch(f"https://example\\.org/p4x8k2m/chapter/{OBJECT_ID}", part), (
         "the flat part is minted beside the root"
     )
     loaded = await session.load_graph(
@@ -173,7 +173,7 @@ async def test_a_flat_object_is_stored_beside_its_part_and_its_loaded_graph():
         b'<https://e.org/b> <https://e.org/p> "x" .',
         rdf_format=RdfFormat.NTRIPLES,
     )
-    assert re.fullmatch(f"http://mwb\\.meaningfy\\.ws/p4x8k2m/content/{OBJECT_ID}", str(loaded)), (
+    assert re.fullmatch(f"https://example\\.org/p4x8k2m/content/{OBJECT_ID}", str(loaded)), (
         "the loaded graph is minted under the content segment"
     )
     await session.replace_graph(iri, list(triples), version, loaded_graphs=[loaded])

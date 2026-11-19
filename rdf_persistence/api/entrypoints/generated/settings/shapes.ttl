@@ -36,14 +36,14 @@ rp:LimitSettings a sh:NodeShape ;
 	rdfs:label "Limit settings" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n10 ;
-	sh:property _:c14n12 , _:c14n27 , _:c14n47 , _:c14n65 ;
+	sh:property _:c14n21 , _:c14n27 , _:c14n47 , _:c14n65 ;
 	sh:targetClass rp:LimitSettings .
 rp:LogContext a sh:NodeShape ;
 	rdfs:comment "The data of one step of an operation: the step and whatever else the call site knows. Only the step is required." ;
 	rdfs:label "Log context" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n33 ;
-	sh:property _:c14n11 , _:c14n13 , _:c14n14 , _:c14n15 , _:c14n16 , _:c14n17 , _:c14n18 , _:c14n19 , _:c14n20 , _:c14n21 , _:c14n22 , _:c14n23 , _:c14n25 , _:c14n3 , _:c14n32 , _:c14n35 , _:c14n36 , _:c14n39 , _:c14n42 , _:c14n43 , _:c14n44 , _:c14n45 , _:c14n46 , _:c14n52 , _:c14n53 , _:c14n54 , _:c14n55 , _:c14n58 , _:c14n59 ;
+	sh:property _:c14n11 , _:c14n12 , _:c14n13 , _:c14n14 , _:c14n15 , _:c14n16 , _:c14n17 , _:c14n18 , _:c14n19 , _:c14n20 , _:c14n22 , _:c14n23 , _:c14n25 , _:c14n3 , _:c14n32 , _:c14n35 , _:c14n36 , _:c14n39 , _:c14n42 , _:c14n43 , _:c14n44 , _:c14n45 , _:c14n46 , _:c14n52 , _:c14n53 , _:c14n54 , _:c14n55 , _:c14n58 , _:c14n59 ;
 	sh:targetClass rp:LogContext .
 rp:SseSettings a sh:NodeShape ;
 	rdfs:comment "The lifetime, the access check, the keep-alive and the resume window of the events route." ;
@@ -90,64 +90,61 @@ _:c14n11 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 7 ;
 	sh:path rp:blobCount .
-_:c14n12 sh:datatype xsd:integer ;
-	sh:defaultValue 10000 ;
-	sh:description "The most objects and list values one JSON-LD body may hold." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:minInclusive 1 ;
-	sh:name "Maximum document nodes" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 2 ;
-	sh:path rp:max_document_nodes .
-_:c14n13 sh:datatype xsd:string ;
+_:c14n12 sh:datatype xsd:string ;
 	sh:description "The database name, an OpenTelemetry stable attribute." ;
 	sh:maxCount 1 ;
 	sh:name "Db namespace" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 21 ;
 	sh:path rp:dbNamespace .
-_:c14n14 sh:datatype xsd:string ;
+_:c14n13 sh:datatype xsd:string ;
 	sh:description "The detail of a validation error, free of the data that failed it." ;
 	sh:maxCount 1 ;
 	sh:name "Error detail" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 18 ;
 	sh:path rp:errorDetail .
-_:c14n15 sh:datatype xsd:string ;
+_:c14n14 sh:datatype xsd:string ;
 	sh:description "The deployment that published an event." ;
 	sh:maxCount 1 ;
 	sh:name "Event origin" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 15 ;
 	sh:path rp:eventOrigin .
-_:c14n16 sh:datatype xsd:string ;
+_:c14n15 sh:datatype xsd:string ;
 	sh:description "The fields of the IRI policy that changed." ;
 	sh:name "Policy fields" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 9 ;
 	sh:path rp:policyFields .
-_:c14n17 sh:datatype xsd:integer ;
+_:c14n16 sh:datatype xsd:integer ;
 	sh:description "The HTTP status of a response, an OpenTelemetry stable attribute." ;
 	sh:maxCount 1 ;
 	sh:name "Http response status code" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 26 ;
 	sh:path rp:httpResponseStatusCode .
-_:c14n18 sh:datatype xsd:string ;
+_:c14n17 sh:datatype xsd:string ;
 	sh:description "The body a store answered with; written at DEBUG only." ;
 	sh:maxCount 1 ;
 	sh:name "Response body" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 19 ;
 	sh:path rp:responseBody .
-_:c14n19 sh:datatype xsd:string ;
+_:c14n18 sh:datatype xsd:string ;
 	sh:description "The name of the store a record concerns, as the registry records it." ;
 	sh:maxCount 1 ;
 	sh:name "Store name" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:storeName .
+_:c14n19 sh:datatype xsd:string ;
+	sh:description "The database system, an OpenTelemetry stable attribute." ;
+	sh:maxCount 1 ;
+	sh:name "Db system name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 20 ;
+	sh:path rp:dbSystemName .
 _:c14n2 sh:datatype xsd:float ;
 	sh:defaultValue "600.0"^^xsd:float ;
 	sh:description "The seconds a fetched set of signing keys is used before it is fetched again." ;
@@ -160,19 +157,22 @@ _:c14n2 sh:datatype xsd:float ;
 	sh:order 0 ;
 	sh:path rp:ttl_seconds .
 _:c14n20 sh:datatype xsd:string ;
-	sh:description "The database system, an OpenTelemetry stable attribute." ;
-	sh:maxCount 1 ;
-	sh:name "Db system name" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 20 ;
-	sh:path rp:dbSystemName .
-_:c14n21 sh:datatype xsd:string ;
 	sh:description "The id of the schema a migration moves a tenant to." ;
 	sh:maxCount 1 ;
 	sh:name "Schema id" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 5 ;
 	sh:path rp:schemaId .
+_:c14n21 sh:datatype xsd:integer ;
+	sh:defaultValue 10000 ;
+	sh:description "The most objects and list values one JSON or JSON-LD body may hold." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:minInclusive 1 ;
+	sh:name "Maximum document nodes" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:max_document_nodes .
 _:c14n22 sh:datatype xsd:string ;
 	sh:description "The qualified class name of an exception, or the code a service answered with." ;
 	sh:maxCount 1 ;

@@ -35,8 +35,13 @@ Each step is a page. The step numbers are the ones other pages cite ("step 8").
 |11 |xref:user-manual/access.adoc[Control access] |grants, the token verifier, your own write rules
 |12 |xref:user-manual/serve.adoc[Serve the application] |the generated API, its routes and representations
 |13 |xref:user-manual/test.adoc[Test the service] |fakes and containers
-|14 |xref:user-manual/iri-policy.adoc[Configure the IRI policy] |how IRIs are minted
+|14 |xref:user-manual/iri-policy.adoc[Configure the IRI policy] |how IRIs are minted. *Decide it before the first start of a deployment* (before steps 9 and 12): the first start records it, and it cannot change once that deployment has data
 |===
+
+IMPORTANT: Step 14 comes last in this list but not in time. The service records the IRI policy the
+first time it starts and refuses to start with another one afterwards, so choose it before you
+create a tenant or serve a deployment whose data you keep
+(xref:user-manual/iri-policy.adoc#policy-cannot-change[The policy cannot change]).
 
 Beyond the core steps, each feature has a guide: comments, workflows, reference collections,
 events, schema migrations, settings, backups, several stores and telemetry. They are listed by

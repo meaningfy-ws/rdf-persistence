@@ -378,7 +378,7 @@ def test_an_empty_issuer_audience_or_roles_claim_is_refused(field: str) -> None:
 
 # --- the principal IRI follows the IRI policy (PD-2, PD-3a) --------------------------------------
 
-PRINCIPAL_BASE = "http://mwb.meaningfy.ws/"
+PRINCIPAL_BASE = "https://example.org/"
 
 
 async def test_the_default_principal_is_the_issuer_and_the_subject(
@@ -397,7 +397,7 @@ async def test_a_policy_principal_keeps_the_subject_in_one_segment(
     iris = Iris(
         ServiceSettings(
             base=PRINCIPAL_BASE,
-            prefix="mwb",
+            prefix="lib",
             tenant_segment="projects",
             creator_role="owner",
             roles_claim=signer.roles_claim,

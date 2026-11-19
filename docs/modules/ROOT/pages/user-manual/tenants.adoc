@@ -4,6 +4,10 @@
 
 _How do tenants work?_
 
+IMPORTANT: Set the IRI policy (xref:user-manual/iri-policy.adoc[step 14]) before the first tenant is
+created: the policy mints the IRIs of the tenants and of their graphs, and it cannot change once a deployment
+has data (xref:user-manual/iri-policy.adoc#policy-cannot-change[The policy cannot change]).
+
 A *tenant* is an isolated share of the application's data (in the toy library, one library), with
 its own database and its own bucket.
 This page shows how to declare the tenant in the model, then create, read, rename and delete

@@ -741,14 +741,14 @@ async def test_five_clashing_draws_fail_and_create_nothing(store, files):
 
 async def test_the_consumers_tenant_is_minted_by_its_policy(store, files):
     settings = ServiceSettings(
-        base="http://mwb.meaningfy.ws/",
-        prefix="mwb",
+        base="https://example.org/",
+        prefix="lib",
         tenant_segment="projects",
         creator_role="owner",
         roles_claim="roles",
         deployment="k3f9a2x",
         iri_policy=IriPolicy(
-            tenant_template="{base}project/{tenant_id}",
+            tenant_template="{base}library/{tenant_id}",
             tenant_id=IdSpec(kind=IdKind.RANDOM, length=7),
         ),
     )
@@ -757,14 +757,14 @@ async def test_the_consumers_tenant_is_minted_by_its_policy(store, files):
     )
     await made.ensure_system_database()
     created = await made.create("Ghent", library_slots(), CREATOR)
-    assert re.fullmatch(r"http://mwb\.meaningfy\.ws/project/[a-z0-9]{7}", created.id), (
+    assert re.fullmatch(r"https://example\.org/library/[a-z0-9]{7}", created.id), (
         "the tenant IRI is minted by the policy"
     )
     tenant_id = created.id.rsplit("/", 1)[1]
     record, _ = await made.get(created.id)
-    assert record.database_name == f"mwb-t-{tenant_id}", "the database is named by the policy"
-    assert f"mwb-t-{tenant_id}" in await store.list_datasets(), "the database was created"
-    assert await files.list_buckets("mwb-t-") == [f"mwb-t-{tenant_id}"], "the bucket was created"
+    assert record.database_name == f"lib-t-{tenant_id}", "the database is named by the policy"
+    assert f"lib-t-{tenant_id}" in await store.list_datasets(), "the database was created"
+    assert await files.list_buckets("lib-t-") == [f"lib-t-{tenant_id}"], "the bucket was created"
 
 
 # -- consumer validators on tenant writes (mwb2-adoption-fixes PD-7, DEC-6) --

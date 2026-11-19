@@ -14,12 +14,12 @@ from rdf_persistence.testkit import assert_public_imports
 from tests.e2e.test_library import LIBRARIAN, dune
 from tests.e2e.world import World, running_world
 from tests.fixtures.library.generated.library import Library
-from tests.toy_service import CONSUMER_POLICY, body_of
+from tests.toy_service import EXAMPLE_POLICY, body_of
 
-BASE = "http://mwb.meaningfy.ws/"
+BASE = "https://example.org/"
 DEPLOYMENT = "k3f9a2x"
 ID = r"[a-z0-9]"
-TURTLE = b'<http://mwb.meaningfy.ws/b> <http://purl.org/dc/terms/title> "Dune" .\n'
+TURTLE = b'<https://example.org/b> <http://purl.org/dc/terms/title> "Dune" .\n'
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ async def world(fuseki, garage, zitadel_project) -> AsyncIterator[World]:
         zitadel_project,
         base=BASE,
         deployment=DEPLOYMENT,
-        iri_policy=CONSUMER_POLICY,
+        iri_policy=EXAMPLE_POLICY,
     ) as running:
         yield running
 
@@ -49,8 +49,8 @@ async def test_a_library_and_a_book_live_and_die_under_the_policy(world: World) 
     )
     assert created.status_code == 201, created.text
     tenant = TenantSummary.model_validate(created.json()).id
-    assert re.fullmatch(f"{re.escape(BASE)}project/{ID}{{7}}", tenant), (
-        "the tenant IRI is the project path and a short id"
+    assert re.fullmatch(f"{re.escape(BASE)}library/{ID}{{7}}", tenant), (
+        "the tenant IRI is the library path and a short id"
     )
     tenant_id = tenant[-7:]
     path = created.headers["location"]

@@ -61,7 +61,7 @@ class LimitSettings(ConfiguredBaseModel):
     "The most the toolkit takes in one message bus run, one commit, one body and one restore manifest."
     max_messages: int = Field(default=100, title="Maximum messages", description="The most messages one run of the message bus handles.", ge=1)
     max_roots: int = Field(default=500, title="Maximum roots", description="The most aggregate roots one commit transaction holds.", ge=1)
-    max_document_nodes: int = Field(default=10000, title="Maximum document nodes", description="The most objects and list values one JSON-LD body may hold.", ge=1)
+    max_document_nodes: int = Field(default=10000, title="Maximum document nodes", description="The most objects and list values one JSON or JSON-LD body may hold.", ge=1)
     max_manifest_bytes: int = Field(default=65536, title="Maximum manifest size", description="The most bytes the manifest of a tenant dump may hold.", ge=1)
 
 

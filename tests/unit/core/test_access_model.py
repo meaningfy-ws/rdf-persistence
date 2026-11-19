@@ -65,7 +65,7 @@ def test_grant_with_neither_role_nor_action_is_refused() -> None:
         "lib-t-" + "a" * 32,
         "a" * 20 + "-t-" + "0123456789abcdef" * 2,
         "a1-t-" + "f" * 32,
-        "mwb-t-4fe0bvg",
+        "lib-t-4fe0bvg",
     ],
 )
 def test_database_name_of_the_tenant_naming_rule_is_accepted(name: str) -> None:

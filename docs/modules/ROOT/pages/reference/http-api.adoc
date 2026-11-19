@@ -1,0 +1,220 @@
+= The HTTP API
+:description: The contract a client of the generated service meets: the token, the routes, the headers, the bodies, listings, problem responses and the event stream.
+
+_How does a front end or another system call the service?_
+
+This page lists what a client of a service built with `install_service` sends and gets back. Why
+the service behaves this way is in xref:architecture/api.adoc#serving[A lightweight API], and what
+each call does in the store is in xref:architecture/data-flows.adoc[Where data lives]. The service
+also describes itself in its OpenAPI document (<<routes>>), which lists every route of the
+application's schema with its bodies.
+
+The examples use the toy library of the user manual: tenants under `libraries`, books at
+`books`, scans at `scans`, and the default IRI policy, so an id in a path is a UUID.
+
+[#token]
+== The token
+
+Every route but `/context.jsonld` and the OpenAPI document needs a bearer token:
+
+[source]
+----
+Authorization: Bearer <JWT access token>
+----
+
+The client gets the token from the identity provider (Zitadel) with one of the flows of
+xref:architecture/access-control.adoc#identity[Identity]: authorization code with PKCE through the
+web app's server, the device flow at a command line, or a service account's private-key JWT. It
+must be a JWT access token for the project's audience; an opaque token is refused. A missing or
+refused token answers 401 `invalid-token` with `WWW-Authenticate: Bearer`.
+
+The events route takes the token in this header too, never in the query string (<<events>>).
+
+[#routes]
+== The routes
+
+`{prefix}` is the path the application mounted the service under (empty by default) and `{t}` the
+tenant's id. `{rp_path}` is the path of an aggregate root of the schema (`books`); every root with
+an `rp_path` has these routes.
+
+[cols="3,1,3,2",options="header"]
+|===
+|Route |Method |Does |Needs
+
+|`{prefix}/{tenant_segment}` |`GET` |one page of the tenants the caller may read |a token
+| |`POST` |create a tenant; the caller gets the creator role |a token
+|`{prefix}/{tenant_segment}/{t}` |`GET` |the tenant's root object |`read`
+| |`PUT` |replace the root object (not its label) |`modify`
+| |`DELETE` |delete the tenant |`administer`
+|`{prefix}/{tenant_segment}/{t}/grants` |`GET`, `PUT` |the grant set, read or replaced whole |`administer`
+|`{prefix}/{tenant_segment}/{t}/label` |`PUT` |rename the tenant |`modify`
+|`{prefix}/{tenant_segment}/{t}/{rp_path}` |`GET` |one page of the aggregates of the type |`read` on the tenant
+| |`POST` |create an aggregate |`modify` on the tenant
+|`{prefix}/{tenant_segment}/{t}/{rp_path}/{id}` |`GET` |one aggregate |`read` on it
+| |`PUT` |replace it |`modify` on it
+| |`DELETE` |remove it |`delete` on it
+|`{prefix}/{tenant_segment}/{t}/rp-events` |`GET` |the tenant's changes as server-sent events (<<events>>) |`read` on the tenant
+|`{prefix}/context.jsonld` |`GET` |the generated JSON-LD context |nothing
+|`/openapi.json` |`GET` |the OpenAPI document, completed from the schema (FastAPI's path, not under `{prefix}`) |nothing
+|===
+
+A tenant or aggregate the caller may not see answers 404, like one that does not exist; one it may
+see but not act on answers 403. The order of the checks is in
+xref:user-manual/access.adoc#what-the-check-answers[What the check answers].
+
+*Files.* The toolkit serves no file bytes. A root that holds a file (the toy library's `scans`), or
+one annotated `rp_writes: service`, has only the `GET` routes; `POST`, `PUT` and `DELETE` answer
+405 with `Allow: GET`. The application adds its own routes for the bytes and the record, with the
+same token and checks (the toy library's are under `{t}/scan-files`); see
+xref:user-manual/files.adoc[Keep files].
+
+[#headers]
+== The headers
+
+[cols="2,5",options="header"]
+|===
+|Header |Meaning
+
+|`ETag` |Answered by every read and write of one aggregate: its version, a UUID in quotes
+(`"c41f7a2e-9b3d-4e8a-a6f1-2d5c8b0e7f13"`). The grant and label routes answer the access record's
+version in it.
+|`If-Match` |Required on every `PUT` and `DELETE`: the `ETag` you read, `*`, or a list of tags.
+The comparison is strong, so a weak tag (`W/"…"`) never matches. Missing or malformed: 428. No
+tag names the current version: 409 `conflict`; read again and retry.
+|`Record-ETag` |Answered by `GET /{tenant_segment}/{t}`: the version of the tenant's access record.
+Send it as `If-Match` to the label, grants and tenant `DELETE` routes; the root's own `ETag`
+guards only the root's `PUT`.
+|`Allowed-Actions` |Answered by the read of a tenant and of an aggregate: what the caller may do
+there, in the order `read, modify, delete, administer`. Show a button only for a listed action;
+see xref:user-manual/tenants.adoc#show-only-what-the-caller-may-do[Show only what the caller may do].
+|`Location` |Answered by a create (201): the path of the new tenant or aggregate.
+|`Link` |On plain JSON and on the event stream: the generated context,
+`<{base}context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"` (with the mount prefix before
+`context.jsonld` when there is one), so the JSON is also JSON-LD. It is built from the settings'
+`base`, never from the request's `Host`.
+|`Accept` |The representation to answer (<<representations>>).
+|`Content-Type` |The body's type: `application/json` or `application/ld+json` for an aggregate and
+the tenant's root, `application/json` for the tenant create, label and grants; another type
+answers 415.
+|`Last-Event-ID` |On the event stream: where to resume (<<events>>).
+|===
+
+A browser app on another origin sees `ETag`, `Record-ETag` and `Allowed-Actions` only if the
+application's CORS settings expose them; the toolkit sets none.
+
+[#representations]
+=== Representations
+
+A route that answers one aggregate (read, create, replace, and the tenant's root) serves seven
+media types, chosen by `Accept`: `application/json` (the default), `application/ld+json`,
+`text/turtle`, `application/n-triples`, `application/n-quads`, `application/trig` and
+`application/rdf+xml`; on a tie, in that order. A listing is JSON or JSON-LD only. Any other type
+answers 406. The record is xref:adr/adr-005-representations.adoc[ADR-005]; the details are in
+xref:architecture/api.adoc#representations[Representations].
+
+[#bodies]
+== Bodies
+
+*An aggregate* is sent as plain JSON (`application/json`) or as JSON-LD with its own inline
+context (`application/ld+json`). Plain JSON uses the class's slot names; the generated TypeScript
+types describe it. A create names no `id`; the service mints the IRIs, of the root and of its
+parts:
+
+[source,json]
+----
+{"label": "Dune", "description": "A planet.", "authors": ["Frank Herbert"], "chapters": [{"number": 1}]}
+----
+
+A replace sends the whole aggregate with its `id`, and keeps the parts' `id` values a read gave,
+so their stored internal values are kept.
+
+*Bodies are strict.* A key that is not a slot of its class, an `internal` slot, or a subject that is
+not the root or one of its owned parts answers 422. A body over `max_body_bytes` (1 MiB by default)
+or holding more than `max_document_nodes` objects and list values (10 000 by default) answers 413.
+The full list is in xref:architecture/api.adoc#serving[Bodies are strict].
+
+*The tenant create, label and grants routes* take plain JSON only:
+
+[cols="2,4",options="header"]
+|===
+|Route |Body
+
+|`POST /{tenant_segment}` |`{"label": "Ghent", "root": {"description": "Books for all.", "city": "Ghent"}}`:
+the label, and in `root` the slots of the tenant's root object. Answers 201 with the
+`TenantSummary` (`id`, `label`, `state`); see xref:user-manual/tenants.adoc#create-a-tenant[Create a tenant].
+|`PUT …/{t}/label` |`{"label": "Gent"}`. Answers the `TenantSummary` and the record's new `ETag`.
+|`PUT …/{t}/grants` |The `GrantSet`: `grants` and `prohibitions`, each with an `assignee` (a principal
+IRI), a `target` (the tenant IRI, or an aggregate's graph IRI `{root}/graph`) and a `role` or an
+`action`. Answers the set and the record's new `ETag`; see
+xref:user-manual/access.adoc#grant-and-prohibit[Grant and prohibit].
+|===
+
+A `DELETE` has no body and answers 204.
+
+[#listings]
+== Listings and paging
+
+A listing answers one page:
+
+[source,json]
+----
+{"items": [ ... ], "total": 42, "limit": 50, "offset": 0}
+----
+
+[cols="1,4",options="header"]
+|===
+|Parameter |Meaning
+
+|`limit` |The most items on the page: 1 to 200, 50 by default.
+|`offset` |The position of the page's first item, 0 by default.
+|`sort` |A slot name; descending with a leading `-`. By IRI when absent.
+|`<slot>=<value>` |An equality filter on a slot; several must all hold. The value is read by the
+slot's range: a reference takes an IRI.
+|===
+
+The items are the aggregates as the representation frames them. An aggregate the caller is
+prohibited from reading is left out of the items and the total. The tenant listing takes only
+`limit` and `offset`; its items are `TenantSummary` objects with `allowed_actions`. A bad
+parameter, a value not of the slot's range, or a filter on the `id`, a bookkeeping, an `internal`
+or an owned-part slot answers 400 `bad-query`.
+The rules are in xref:architecture/api.adoc#serving[Listings].
+
+[#problems]
+== Problem responses
+
+Every error answers `application/problem+json` (RFC 9457):
+
+[source,json]
+----
+{"type": "https://example.org/library/problems/invalid-body", "title": "Invalid body", "status": 422, "detail": "label: Field required"}
+----
+
+The `type` is `{base}problems/<slug>`, and its title is fixed. Only 400, 406, 413, 415, 422 and
+428 carry a `detail`, which says what to fix; a refusal (401, 403, 404, 409) or an outage or fault
+(5xx) carries none. A path or a method the service does not have is a problem too (404
+`not-found`, 405 `method-not-allowed` with `Allow`).
+
+include::partial$reference/problem-types.adoc[]
+
+[#events]
+== The event stream
+
+`GET {prefix}/{tenant_segment}/{t}/rp-events` answers `text/event-stream`: each commit in the
+tenant as one event, filtered to what the caller may read.
+
+[source]
+----
+id: urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c
+event: Replace
+data: {"id":"urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c", ... }
+----
+
+* `id` is the activity's IRI, `event` its class's name, `data` its JSON.
+* Send the last `id` you handled as `Last-Event-ID` to resume. An id the service cannot resume
+  from gets one `event: reset`; reload what you show, then keep reading.
+* The service ends a stream after 5 minutes; reconnect with a fresh token and `Last-Event-ID`.
+  Drop an `id` you have already handled.
+* The browser's `EventSource` cannot send the `Authorization` header: use a fetch-based client.
+
+The whole contract, with a browser client, is in
+xref:howto/event-driven.adoc#sse[Follow a tenant in the browser].

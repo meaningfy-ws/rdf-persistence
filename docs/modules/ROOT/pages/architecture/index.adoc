@@ -301,7 +301,7 @@ _Which choices shape everything else?_
 |===
 |Id |Decision
 |O-1 |Generated domain classes, runtime mapper: only the standard LinkML generators run, through the toolkit's templates (extended where needed); no generated mappers, repositories or routes. The classes and the mapper serve domain services only; the API path needs neither (D-2). See xref:architecture/generation.adoc[generation workflow].
-|O-2 |Plain JSON with an `id` field holding the IRI, described by OpenAPI, and JSON-LD through a context generated from the schema: the body stays `application/json`, and a `Link` header (`rel="http://www.w3.org/ns/json-ld#context"`) points to the context. Plain clients are unaffected; JSON-LD processors read the body as RDF. The same routes serve `application/ld+json` and `text/turtle` by content negotiation (D-1).
+|O-2 |Plain JSON with an `id` field holding the IRI, described by OpenAPI, and JSON-LD through a context generated from the schema: the body stays `application/json`, and a `Link` header (`rel="http://www.w3.org/ns/json-ld#context"`) points to the context. Plain clients are unaffected; JSON-LD processors read the body as RDF. By content negotiation (D-1), a route that answers one aggregate serves seven representations: JSON, JSON-LD, Turtle, N-Triples, N-Quads, TriG and RDF/XML; a listing stays JSON and JSON-LD (xref:adr/adr-005-representations.adoc[ADR-005]).
 |===
 
 [#platform-fit]
@@ -324,6 +324,12 @@ a platform's user defines or changes becomes a running data service by the same 
 change: regenerate, write the migration the change needs (xref:howto/migrate.adoc[Change a schema
 that has stored data]; adding a class or an optional slot needs none), and redeploy. The service
 reads the schema at start-up, so a change is served only after a restart.
+
+*One process per deployment.* A deployment runs as one process (one uvicorn worker, one pod). The
+events relay starts with the service whether or not an event bus is wired, so several workers or
+pods would each relay every activity, and each browser would see only the activities of the
+instance it is connected to. The tenants a failed migration set aside (`tenant-behind`) are also
+held in each process's memory. See xref:howto/event-driven.adoc#relay-limits[Limits of the relay].
 
 *What ships, and what you can plug in.* The ports are interfaces of the toolkit; the composition
 root picks the adapter for each:

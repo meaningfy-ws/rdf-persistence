@@ -6,9 +6,14 @@ _How do I back up or copy a tenant? How do I make a new tenant from an old one's
 A tenant is a database of named graphs and a bucket of files. `kit.dump_tenant` writes
 both to one archive. `kit.restore_tenant` reads such an archive and creates a *new* tenant out of it,
 with a new id and new IRIs. A restored backup is therefore a copy, not the original back: a link to
-an IRI of the old tenant does not reach the copy. This page shows the two calls, how to guard them,
-what the archive holds and what it leaves out, and the limits you must respect. It describes `develop`
-as of 2026-11-13 (the change `tenant-dump-restore`). The flows, step by step, are on
+an IRI of the old tenant does not reach the copy.
+
+*Before you start:* a running service and its `ServiceKit` (step 12 of the user manual,
+xref:user-manual/serve.adoc[Serve the application]), and a tenant to dump
+(xref:user-manual/tenants.adoc[Create tenants]).
+
+This page shows the two calls, how to guard them, what the archive holds and what it leaves out,
+and the limits you must respect. The flows, step by step, are on
 xref:architecture/data-flows.adoc#dump-restore[Where data lives and what each operation does].
 
 [#calls]
@@ -29,8 +34,8 @@ with open("library.rpdump", "rb") as src:
     copy = await kit.restore_tenant(src, creator=principal)    # -> TenantSummary
 ----
 
-* `kit` is the `ServiceKit` that `install_service` returns. How to get it is in the user manual,
-  step 12: xref:user-manual/serve.adoc[Serve the application].
+The arguments:
+
 * `tenant` is the tenant's *IRI*. A route has only the tenant *id* from the URL; turn it into the IRI
   with `kit.tenant_iri(tenant_id)`, or take it from the check in <<routing>>.
 * `creator` and `principal` are a principal IRI, as in
@@ -41,11 +46,14 @@ with open("library.rpdump", "rb") as src:
   loop while they do. Run them off it (a worker thread, or a job queue) when the service handles other
   requests.
 
+What each call does:
+
 * *`dump_tenant(tenant, out)`* writes the tenant's graphs and blobs to `out` and answers the
   manifest (the archive's first member).
 * *`restore_tenant(src, creator)`* creates a new tenant and answers its `TenantSummary` (`id` is the
   new tenant's IRI). It never writes over an existing tenant. To replace a tenant, delete it, then
-  restore.
+  restore. With several triple stores, `store=` names the one the new tenant goes on
+  (xref:howto/tenant-stores.adoc#copy[Copy a tenant to another store]).
 * The new tenant has a *new id and new IRIs*: every IRI of the old tenant that holds its id is
   rewritten to hold the new one (minted by the xref:user-manual/iri-policy.adoc[IRI policy]), so the
   copy can live beside the original. The one exception is the record of the schema versions the
@@ -64,9 +72,8 @@ policy.
 
 *A dump* reads the whole tenant, so check `administer` on it first, as you do for grants. `t` is the
 tenant id from the URL; `require` checks the caller against it and answers the tenant's IRI in
-`checked.caller_access.tenant`, which is what `dump_tenant` takes:
-
-`path` is any file path you choose (for example a temporary one made with `tempfile.mkstemp`):
+`checked.caller_access.tenant`, which is what `dump_tenant` takes. `path` is any file path you
+choose (for example a temporary one made with `tempfile.mkstemp`):
 
 [source,python]
 ----
@@ -97,7 +104,7 @@ One gzipped tar. The members come in this order, and restore reads them in this 
 |Member |Content
 
 |`manifest.json`
-|The `TenantDump` record, as JSON. At most 64 KiB.
+|The `TenantDump` record, as JSON. At most `max_manifest_bytes` (64 KiB by default).
 
 |`graphs.nq`
 |Every named graph of the tenant's database as plain N-Quads, so any triple store tool can read it.
@@ -268,7 +275,7 @@ archive in `out`: discard it. (It has no `end` member, so a restore refuses it a
 a member that is not a regular file; a member name that is not UTF-8
 |Nothing created.
 
-|A manifest over 64 KiB, or one that does not validate
+|A manifest over `max_manifest_bytes`, or one that does not validate
 |Nothing created.
 
 |Another format version, schema id or IRI policy; a manifest with no `schema_version`, or one that

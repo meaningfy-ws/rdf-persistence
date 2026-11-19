@@ -531,14 +531,14 @@ BOOK_TYPE = "book"
 
 async def test_under_a_template_without_root_an_old_orphan_is_still_found():
     settings = ServiceSettings(
-        base="http://mwb.meaningfy.ws/",
-        prefix="mwb",
+        base="https://example.org/",
+        prefix="lib",
         tenant_segment="projects",
         creator_role="librarian",
         roles_claim="roles",
         deployment="k3f9a2x",
         iri_policy=IriPolicy(
-            tenant_template="{base}project/{tenant_id}",
+            tenant_template="{base}library/{tenant_id}",
             aggregate_template=FLAT,
             part_template=FLAT,
             loaded_graph_template=FLAT,

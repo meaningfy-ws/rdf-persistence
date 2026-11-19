@@ -55,17 +55,19 @@ shows how. The requirements behind each capability are in `openspec/specs/`.
 
 == API client
 
+What a client sends and gets back on every route is in xref:reference/http-api.adoc[The HTTP API].
+
 [cols="1,4,3,3",options="header"]
 |===
 |Id |Goal |Capabilities |How
 
-|UC-17 |Read, list, create, update and delete aggregates in JSON, JSON-LD or RDF |rp-service-api, rp-access, rp-identity |xref:user-manual/serve.adoc[Serve the application], xref:architecture/data-flows.adoc[Data flows]
-|UC-18 |Attach files to aggregates and load RDF files into them |rp-file-store, rp-aggregate-store |xref:user-manual/files.adoc[Keep files]
+|UC-17 |Read, list, create, update and delete aggregates in JSON, JSON-LD or RDF |rp-service-api, rp-access, rp-identity |xref:reference/http-api.adoc[The HTTP API], xref:user-manual/serve.adoc[Serve the application], xref:architecture/data-flows.adoc[Data flows]
+|UC-18 |Attach files to aggregates and load RDF files into them |rp-file-store, rp-aggregate-store |xref:user-manual/files.adoc[Keep files], xref:reference/http-api.adoc#routes[Files in the HTTP API]
 |UC-19 |Comment on a resource without editing it |rp-discussion |xref:howto/discussion.adoc[Comment on a resource]
 |UC-20 |Move a resource through a review workflow |rp-workflow |xref:howto/workflow.adoc[Put a resource through review]
 |UC-21 |Group resources it does not own, by name or by rule |rp-reference-collections |xref:howto/reference-collections.adoc[Group resources]
 |UC-22 |Find what points at a resource before changing it |rp-reverse-references |xref:howto/reverse-references.adoc[Find who points at a resource]
-|UC-23 |Follow a tenant's changes live |rp-events |xref:howto/event-driven.adoc#relay[Server-sent events]
+|UC-23 |Follow a tenant's changes live |rp-events |xref:reference/http-api.adoc#events[The event stream], xref:howto/event-driven.adoc#sse[Follow a tenant in the browser]
 |===
 
 == System architect

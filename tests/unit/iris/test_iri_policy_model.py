@@ -27,11 +27,11 @@ FLAT = "{base}{tenant_id}/{type}/{id}"
 ID_13 = IdSpec(kind="random", length=13)
 
 
-def mwb2_policy(**changes: object) -> IriPolicy:
-    """The consumer's policy of the proposal's table."""
+def example_policy(**changes: object) -> IriPolicy:
+    """The example policy of the proposal's table."""
     fields = {
-        "tenant_template": "{base}project/{tenant_id}",
-        "access_template": "{base}{deployment}/project/{tenant_id}",
+        "tenant_template": "{base}library/{tenant_id}",
+        "access_template": "{base}{deployment}/library/{tenant_id}",
         "meta_template": "{base}{tenant_id}/meta",
         "registry_template": "{base}{tenant_id}/registry",
         "aggregate_template": FLAT,
@@ -46,8 +46,8 @@ def mwb2_policy(**changes: object) -> IriPolicy:
 
 def settings(**changes: object) -> ServiceSettings:
     fields = {
-        "base": "http://mwb.meaningfy.ws/",
-        "prefix": "mwb",
+        "base": "https://example.org/",
+        "prefix": "lib",
         "tenant_segment": "projects",
         "creator_role": "owner",
         "roles_claim": "urn:zitadel:iam:org:project:42:roles",
@@ -77,7 +77,7 @@ def test_settings_without_a_policy_hold_none_and_no_deployment() -> None:
 
 
 def test_the_consumers_policy_is_accepted() -> None:
-    made = settings(iri_policy=mwb2_policy(), deployment="k3f9a2x")
+    made = settings(iri_policy=example_policy(), deployment="k3f9a2x")
     assert check_iri_policy(made) is None, "the policy of the proposal was refused"
 
 
@@ -128,7 +128,7 @@ def test_any_other_deployment_is_refused(deployment: str) -> None:
 
 def test_a_template_without_its_id_is_refused_naming_the_aggregate_template() -> None:
     with pytest.raises(ValidationError, match="aggregate_template"):
-        mwb2_policy(aggregate_template="{base}{tenant_id}/{type}")
+        example_policy(aggregate_template="{base}{tenant_id}/{type}")
 
 
 @pytest.mark.parametrize(
@@ -196,7 +196,7 @@ def test_a_literal_character_outside_the_allowed_set_is_refused(character: str) 
 
 
 def test_a_deployment_variable_without_a_deployment_is_refused_naming_it() -> None:
-    made = settings(iri_policy=mwb2_policy())
+    made = settings(iri_policy=example_policy())
     with pytest.raises(InvalidIri, match="deployment"):
         check_iri_policy(made)
 

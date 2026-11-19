@@ -1,8 +1,9 @@
 = Common questions
 :description: Short answers to the questions people ask about rdf-persistence, each with a link to the page that goes deeper.
 
-Each answer is short and points to the page with the details. The answers describe the toolkit
-on `develop` as of 2026-11-17.
+Each answer is one or two sentences and links to the page with the details. The questions follow
+the sections of the site: the tutorial and the user manual, the how-to guides, the architecture,
+and the developer manual.
 
 == Finding your way
 
@@ -11,9 +12,8 @@ With the tutorial. You model one aggregate, generate its code, store it and read
 memory, with no server to run. See xref:tutorials/getting-started.adoc[Getting started].
 
 *How do I build a whole application, step by step?*::
-Follow the user manual: fourteen steps, in the order the work is done, from installing the toolkit
-to configuring the IRI policy. Other pages cite them by number ("step 8"). See
-xref:user-manual/index.adoc[User manual: build an application].
+Follow the user manual: fourteen steps, in the order the work is done; other pages cite them by
+number ("step 8"). See xref:user-manual/index.adoc[User manual: build an application].
 
 *I know the basics; how do I use feature X?*::
 Find the feature's guide, grouped by capability: data, collaboration and events, operations. Each
@@ -45,387 +45,251 @@ Look it up in the reference: the public Python API and the `rp-generate` usage, 
 from the code, and where the settings, routes and Make targets are listed. See
 xref:reference/index.adoc[Reference].
 
-== Using the toolkit
+== Building an application
 
 *How do I start an application?*::
 Add `rdf-persistence` to your dependencies from its `develop` branch, with the extras `generate`
-and `testkit` in the dev group, and run `uv sync`. Then write the model, generate, and wire the
-service. See xref:user-manual/install.adoc[Build an application, step 1].
+and `testkit` in the dev group, and run `uv sync`. See xref:user-manual/install.adoc[step 1].
 
 *How do I model my domain?*::
-Write one LinkML file per module and a root schema that imports them. Each domain module holds one
-aggregate: a root class that includes `AggregateRoot` and `Described` and has an `rp_path`, and the
-classes it owns through slots annotated `owned: true`. `rp-generate` refuses a schema that breaks
-the rules and names the element at fault. See xref:user-manual/model.adoc[step 3] and
+Write one LinkML file per module: each domain module holds one aggregate, a root class that includes
+`AggregateRoot` and `Described`, has an `rp_path`, and owns its parts through slots annotated
+`owned: true`. See xref:user-manual/model.adoc[step 3] and
 xref:architecture/generation.adoc#metamodel[the metamodel].
 
 *How do I turn the model into code?*::
-Declare the outputs in a `[tool.rp-generate]` table of `pyproject.toml` (`schema` and `package`
-are required; a schema with aggregate roots of its own also needs `migrations`) and run
-`rp-generate`. It checks the schema, then writes the Python classes, shapes, context and frames,
-and, when asked, the TypeScript types and the diagrams. See xref:user-manual/generate.adoc[step 4].
+Declare the outputs in a `[tool.rp-generate]` table of `pyproject.toml` and run `rp-generate`: it
+checks the schema, then writes the classes, shapes, context and frames, and, when asked, the
+TypeScript types and the diagrams. See xref:user-manual/generate.adoc[step 4].
 
 *How do I change the model later?*::
-Edit the schema, run your regenerate target, add a conformance case for any new constraint kind,
-run the tests and commit the schema and the generated code together. If data is already stored,
-the schema also needs a new version and maybe a migration (see below). See
-xref:user-manual/change-model.adoc[step 7].
+Edit the schema, regenerate, run the tests and commit the schema and the generated code together;
+if data is already stored, the schema also needs a new version (see _My schema changed and I have
+stored data_ below). See xref:user-manual/change-model.adoc[step 7].
 
 *How do I store and read an aggregate?*::
-Over HTTP, the generic router does it for you. In a domain service, open a session on the tenant's
-database (`kit.session(tenant, principal)`), wrap it in a `UnitOfWork(session, mapper)`, then
-`get` the root, change it, `add` it and `commit`. A commit made on stale data raises `Conflict`.
-See xref:user-manual/store-and-read.adoc[step 8].
+Over HTTP the generic router does it. In a domain service, open `kit.session(tenant, principal)`,
+wrap it in a `UnitOfWork(session, mapper)`, `get` the root, change it, `add` it and `commit`. See
+xref:user-manual/store-and-read.adoc[step 8].
 
 *Can I save several aggregates at once?*::
-Yes. Add, change and `remove` the roots in one `UnitOfWork` and call `commit()` once: all are
-stored or none is (a root is the root object of an aggregate), and a stale root raises `Conflict`
-whose `iris` is a diagnosis of the roots that moved (xref:architecture/commits.adoc#diagnosis[it can be
-incomplete]).
-`work.version(iri)` gives a root's version token. For triples, use `async with
-session.transaction()`. A commit that used to leave the first roots written after a conflict now
-leaves nothing. See xref:user-manual/store-and-read.adoc#transaction[Save several aggregates at once] and
-xref:architecture/data-flows.adoc#commit[how the commit works]. One commit holds at most 500
-roots by default (`max_roots`); more raises `CommitTooLarge`, and `commit(batches=True)` takes them
-in several transactions (see xref:user-manual/store-and-read.adoc#transaction-batches[Save more than 500 aggregates]).
+Yes: change, add and `remove` the roots in one `UnitOfWork` and call `commit()` once, and all are
+stored or none is. One commit holds at most 500 roots by default. See
+xref:user-manual/store-and-read.adoc#transaction[Save several aggregates at once] and
+xref:user-manual/store-and-read.adoc#transaction-batches[Save more than 500 aggregates].
 
 *Can two aggregates share a key value?*::
-Not if the model forbids it. Declare a `unique_keys` entry on the root with
-`rp_unique_scope: tenant`, and a commit that claims a value another aggregate of the tenant (of
-the same type) holds raises `KeyConflict`, a 409 `key-conflict`, and writes nothing. See
-xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across aggregates] and, for data that
-already has duplicates, xref:user-manual/store-and-read.adoc#key-on-live-data[Add a key to live data].
-
-*What happens when two people edit the same thing?*::
-The second commit is refused: every aggregate has a version token that changes on every write, and
-a commit is stored only if each root it changes is still at the version it read and each new root
-does not exist yet. Nothing is
-overwritten silently, and nothing of the refused commit is written (bar the rare false conflict of a
-removes-only commit). See
-xref:architecture/commits.adoc[How commits and conflicts work].
+Not if the root declares a `unique_keys` entry with `rp_unique_scope: tenant`: a commit that claims
+a value another aggregate of the tenant holds raises `KeyConflict` (409 `key-conflict`) and writes
+nothing. See xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across
+aggregates] and xref:user-manual/store-and-read.adoc#key-on-live-data[Add a key to live data].
 
 *Why did my commit raise `Conflict`?*::
-Another writer changed (or removed) a root you change since you read it, or a root you add already
-exists. Nothing was written (rarely, a false conflict; read again to see the truth).
-`conflict.iris` and the message name the roots. Read them again in a
-new unit of work, apply your edit if it still makes sense, and commit; the toolkit never retries
-for you. See xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict] and
+Another writer changed or removed a root you change since you read it, or a root you add already
+exists; nothing was written, and the toolkit never retries for you. Read the roots again in a new
+unit of work and apply your edit if it still makes sense. See
+xref:user-manual/store-and-read.adoc#handle-a-conflict[Handle a conflict] and
 xref:architecture/commits.adoc#conflict[what a conflict means].
 
 *How do tenants and access work?*::
-Each tenant has its own database and bucket, and an access record in the system database that
-holds its grants and prohibitions. The caller who creates a tenant gets the settings'
-`creator_role` on it. Every tenant route checks the caller's token, then its access, before it runs. See
+Each tenant has its own database and bucket, and an access record in the system database with its
+grants and prohibitions; every tenant route checks the caller's token, then its access. See
 xref:user-manual/tenants.adoc[step 9], xref:user-manual/access.adoc[step 11] and
 xref:architecture/access-control.adoc[Access control and identity].
 
-*Where is my data stored, and what happens when I create, read, replace or delete it?*::
-Each tenant's aggregates are named graphs in its own database, beside a `meta` graph (the tenant's
-root) and a `registry` graph (which graph belongs to which aggregate); its files are in its own
-bucket; its access record is in the system database. Every write checks the token, the caller's
-access, the IRI policy, the body and the version before it writes; an aggregate is written in one
-SPARQL update. See
-xref:architecture/data-flows.adoc[Where data lives and what each operation does].
-
 *How does my UI know which buttons to show?*::
-Read the `Allowed-Actions` header of a tenant or of an aggregate (for example `read, modify`), or the
-`allowed_actions` of the tenant's item in `GET /{tenant_segment}`. If your web app is on another origin,
-expose the header in your CORS settings. See xref:user-manual/tenants.adoc[step 9] and
-xref:architecture/access-control.adoc[Access control and identity].
+Read the `Allowed-Actions` header of a tenant or of an aggregate, or the `allowed_actions` of the
+tenant's item in `GET /{tenant_segment}`; on another origin, expose the header in your CORS
+settings. See xref:user-manual/tenants.adoc[step 9] and
+xref:architecture/access-control.adoc#check[the check].
 
 *How do I enforce my own rule on tenant writes, such as keeping one owner?*::
-Pass `grant_validators` or `root_validators` to `install_service`. A validator raises
-`InvalidBody` to refuse: the answer is 422 and nothing is written. See
+Pass `grant_validators` or `root_validators` to `install_service`; a validator raises `InvalidBody`
+to refuse, the answer is 422 and nothing is written. See
 xref:user-manual/access.adoc#validators[Enforce your own rules on tenant writes].
 
 *How do I serve it over HTTP?*::
-Call `install_service` once in your composition root, with your FastAPI app, the schema, the
-generated package, the four adapters, the role definitions and a `ServiceSettings`. It returns a
-`ServiceKit` for your own routes. See xref:user-manual/serve.adoc[step 12] and
+Call `install_service` once in your composition root; it serves every aggregate root of the schema
+that has an `rp_path`, and returns a `ServiceKit` for your own routes. See xref:user-manual/serve.adoc[step 12] and
 xref:architecture/api.adoc#serving[Serving it].
+
+*I write the front end: how do I call the service?*::
+With a bearer token from the identity provider, plain JSON bodies, the `ETag` echoed in `If-Match`
+on every write, and problem responses to read on failure. See xref:reference/http-api.adoc[The
+HTTP API], the whole client contract on one page.
 
 *How do I read back a graph I loaded?*::
 Check the read with `kit.require_aggregate(..., Action.READ)`, then call
-`session.loaded_graph(root_iri, graph_iri)` for a plain rdflib `Graph`. If a later request does not
-hold `graph_iri`, `session.loaded_graphs(root_iri)` lists the aggregate's loaded graphs. The session
-checks no access itself. See xref:user-manual/files.adoc[step 10].
+`session.loaded_graph(root_iri, graph_iri)` for a plain rdflib `Graph`; the session checks no access
+itself. See xref:user-manual/files.adoc[step 10].
 
 *How do I check that a name is not taken yet?*::
-Call `session.find(Scan, file_name=name)` and answer 409 when the list is not empty. `find` ignores
-Prohibitions, so check each IRI with `require_aggregate` before you show it to anyone. See
-xref:user-manual/files.adoc[step 10]. To have the commit itself refuse a duplicate, declare a
-unique key (see _Can two aggregates share a key value?_ above).
-
-*Who points at this resource?*::
-Check the caller with `kit.require_aggregate(..., Action.READ)`, open `kit.collaboration(checked)`
-and call `collab.referrers(iri)`. It lists the aggregates whose slots hold that IRI, one item per
-referrer and slot, with the class and slot names; `class_name` and `slot` narrow it. Referrers the
-caller may not read are counted in `hidden_count` and never named. It only informs: a delete is
-never refused because of referrers. See
-xref:howto/reverse-references.adoc[Find who points at a resource].
-
-*How do I group resources I do not own?*::
-Mix `ReferenceCollection` (module `rp_collections`) into an aggregate root of your schema. It then
-names its members by IRI in `had_member`, by a `membership_rule`, or both, and holds none of their
-triples. Store the members before the collection: a save that names a member which is not stored,
-or not of `member_class`, is refused. Read with `collab.members(iri)` and
-`collab.collections_of(iri)`; `collab.delete_cascade(iri, if_version)` deletes the collection with
-its members, all or nothing. See
-xref:howto/reference-collections.adoc[Group resources you do not own].
-
-*Can a reviewer comment without editing?*::
-Yes. Import the module `rp_discussion` and give the reviewer's role the action `annotate`, which
-is not `modify` and does not imply it. `collab.comment(iri, text)` stores a comment as an
-aggregate of its own and leaves the target and its version untouched; `collab.thread(iri)` reads
-the comments the caller sees, oldest first. A comment may be limited to an audience of roles,
-answer another comment, and reference other aggregates. Deleting an aggregate deletes the
-comments on it. See
-xref:howto/discussion.adoc[Comment on a resource without editing it].
-
-*How do I put a resource through review?*::
-Give its class a workflow: a YAML file of states and transitions, each transition with the roles
-that may make it. Mix `UnderWorkflow` (module `rp_workflow`) into the aggregate root, name the
-workflow in the class annotation `workflow`, and pass the file to `install_service` with
-`workflows=`. A new aggregate starts in the initial state; a plain write cannot change the state.
-`collab.transition(iri, to, if_version=...)` moves it, if the caller holds one of the transition's
-roles, and records the move; `collab.transitions(iri)` reads the history. See
-xref:howto/workflow.adoc[Put a resource through review].
-
-*Why does my delete take comments with it, and not the history?*::
-A comment is an aggregate of its own, about one aggregate. Every delete through the kit
-(`session.remove`, `UnitOfWork.remove`, the generic `DELETE`, `kit.remove_with_files`, each member
-of a `delete_cascade`) drops the comments on that aggregate with it, in the same request. A comment
-that only references the deleted aggregate stays. The history stays too: a transition is an
-activity in the provenance graph, kept when its aggregate goes. No collaboration call returns it
-for an aggregate that is no longer stored; code that holds a session can read any activity with
-`Session.activities`, which checks no access. A session opened directly with `open_session` and no
-`dependents` deletes only the aggregate. See xref:howto/discussion.adoc#delete[Delete] and
-xref:howto/workflow.adoc#read-the-history[Read the history]; the request itself is in
-xref:architecture/data-flows.adoc#commit[Committing several aggregates at once].
-
-*Where is the record of who changed what?*::
-Every commit writes one activity into the tenant's provenance graph, in the same request as the
-change: its kind (add, replace, remove or a transition; a commit that mixes kinds, such as an add
-and a remove together, is a plain activity), start and end, the principal, and for each
-aggregate the version it was generated or invalidated at. It names the aggregates and keeps no
-content. The application database has a provenance graph of its own, and a session opened with
-`record_activities=False`, as the system database's sessions are, records none. See
-xref:howto/workflow.adoc#read-the-history[Read the history] for transitions and
-xref:architecture/data-flows.adoc#commit[Committing several aggregates at once] for the request.
+To have the commit refuse a duplicate, declare a unique key (above). To ask first, call
+`session.find(Scan, file_name=name)`, which ignores prohibitions, so check each IRI with
+`require_aggregate` before you show it. See xref:user-manual/files.adoc[step 10].
 
 *How do I make my own IRIs?*::
-Describe their shape as an `IriPolicy`: a template for the tenant, the aggregates, the owned parts
-and the loaded graphs (for example `{base}{tenant_id}/{type}/{id}`) and the rule for each id (a
-UUID, or so many random characters), and set it on `ServiceSettings.iri_policy`. The service then
-mints, checks and reads back every IRI by the policy, and the API paths follow the last segment.
-The access, meta, registry and provenance graphs have templates of their own (the provenance
-graph holds the records of what was done, `{tenant}/provenance` by default), and the principal IRI keeps its default. See
-xref:user-manual/iri-policy.adoc[step 14].
+Describe their shape as an `IriPolicy`, a template for each kind of IRI and a rule for each id, and
+set it on `ServiceSettings.iri_policy`; the service then mints, checks and reads back every IRI by
+it. See xref:user-manual/iri-policy.adoc[step 14].
 
 *Why does my file root answer 405 on PUT?*::
 A root that includes `StoredFile`, or carries the class annotation `rp_writes: service`, is written
-only through a session: the router serves its `GET` and listing but not its `POST`, `PUT` or
-`DELETE`, because the record and its bytes must change together. Write it in your own route with
-`kit.session(...)`, a `UnitOfWork` and `kit.files`. See xref:user-manual/files.adoc[step 10] and
+only in your own route through a session, because the record and its bytes must change together;
+the router serves only its `GET` and listing. See xref:user-manual/files.adoc[step 10] and
 xref:architecture/api.adoc#serving[Serving it].
 
 *How do I clean up orphans in a live tenant?*::
-Run `kit.sweep_tenant(tenant)` as an operator command. It finds the loaded graphs no commit owns
-and the blobs no `file_key` names, older than one hour, and changes nothing unless you pass
-`remove=True` (graphs) or `remove_blobs=True` (blobs). Pass `remove_blobs` only when every blob key
-is stored in `file_key`. Delete a file aggregate with `kit.remove_with_files`, which removes its
-blobs too. See xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant].
-
-*How do I back up or copy a tenant?*::
-Call `kit.dump_tenant(tenant, out)` to write the tenant's graphs (as N-Quads) and files to one
-archive, and `kit.restore_tenant(src, creator)` to create a new tenant from it, with a new id and
-new IRIs. The restorer alone gets the creator role; grants are not dumped. The archive must come
-from the same schema version and IRI policy, and the graphs are held in memory. See
-xref:howto/dump-restore.adoc[Back up or copy a tenant].
-
-*Where does data that belongs to no tenant go?*::
-Into the application database, one per deployment. Mark the class `database: application` in the
-schema, check the caller with `kit.require_application`, mint IRIs with `kit.application_iri` and
-open `kit.application_session`. Access comes from global roles at level `system`, which also apply
-in every tenant. See xref:howto/application-data.adoc[Keep data that belongs to no tenant].
-
-
-*Can a tenant's data live on another server?*::
-Yes. Wire the other triple stores by name with `install_service(..., stores={"client-a": ...})`
-and create the tenant on one with `kit.tenancy.create(..., store="client-a")`; the generic `POST`
-route always uses the `default` store. From then on the tenant's sessions, sweeps, migrations,
-dumps and deletion run on its own store, and `kit.store_of(tenant)` answers it for your own SPARQL.
-A tenant never moves: copy it with `kit.dump_tenant` and `kit.restore_tenant(..., store=)`. Wire a
-new store on every instance before creating on it, and do not downgrade once a tenant lives off
-`default`. See xref:howto/tenant-stores.adoc[Put tenants on several stores].
-
-*My schema changed and I have stored data: what do I do?*::
-Set a new quoted `version:` in the root schema and run `make generate`. `rp-generate` compares the
-schema with its committed lock, refuses a change that needs a new version, and drafts a migration
-file for you to review. The service applies the migration files at start-up, once per database,
-before it serves. A tenant whose migration fails answers `503` (`tenant-behind`) until a later start
-migrates it. Dump every tenant before you deploy a migration with steps. See
-xref:howto/migrate.adoc[Change a schema that has stored data].
+Run `kit.sweep_tenant(tenant)` as an operator command: it finds the loaded graphs no commit owns and
+the blobs no `file_key` names, and removes them only when you pass `remove=True` or
+`remove_blobs=True`. See xref:user-manual/files.adoc#sweep-live-tenant[Sweep a live tenant].
 
 *How do I test my application with the testkit?*::
-Use `FakeStore`, `FakeFileStore` and `FakeIdentity` in place of the adapters, `fake_session` for a
-domain service, and `TokenSigner` with `JwksTokenVerifier` for tokens, all from
-`rdf_persistence.testkit`. Add the model guards and the freshness plugin to your test suite; the
-plugin is `rdf_persistence_generation.testkit.freshness`. See
-xref:user-manual/generated-classes.adoc#guard[step 6] and xref:user-manual/test.adoc[step 13].
+Use the fakes of `rdf_persistence.testkit` (`FakeStore`, `FakeFileStore`, `FakeIdentity`,
+`fake_session`) and its `TokenSigner`, and add the model guards and the freshness plugin to your
+test suite. See xref:user-manual/generated-classes.adoc#guard[step 6] and
+xref:user-manual/test.adoc[step 13].
+
+== Using a feature
+
+The guides are listed by capability in xref:howto/index.adoc[How-to guides].
+
+=== Data
+
+*Who points at this resource?*::
+`collab.referrers(iri)` lists the aggregates whose slots hold that IRI; referrers the caller may not
+read are counted in `hidden_count` and never named. See
+xref:howto/reverse-references.adoc[Find who points at a resource].
+
+*How do I group resources I do not own?*::
+Mix `ReferenceCollection` (module `rp_collections`) into an aggregate root: it names its members by
+IRI, by a rule, or both, and holds none of their triples. See
+xref:howto/reference-collections.adoc[Group resources you do not own].
+
+*My schema changed and I have stored data: what do I do?*::
+Set a new quoted `version:` in the root schema and run `make generate`: `rp-generate` drafts a
+migration file for you to review, and the service applies it at start-up, once per database,
+before it serves. See xref:howto/migrate.adoc[Change a schema that has stored data].
+
+*Where does data that belongs to no tenant go?*::
+Into the application database, one per deployment: mark the class `database: application` in the
+schema; access to it comes from global roles at level `system`. See
+xref:howto/application-data.adoc[Keep data that belongs to no tenant].
+
+=== Collaboration and events
+
+*Can a reviewer comment without editing?*::
+Yes: import the module `rp_discussion` and give the reviewer's role the action `annotate`, which is
+not `modify`. `collab.comment(iri, text)` stores the comment as an aggregate of its own and leaves
+the target untouched. See xref:howto/discussion.adoc[Comment on a resource without editing it].
+
+*How do I put a resource through review?*::
+Give its class a workflow, a YAML file of states and transitions, each with the roles that may make
+it; `collab.transition(iri, to, if_version=...)` moves the resource and records the move. See
+xref:howto/workflow.adoc[Put a resource through review].
+
+*Why does my delete take comments with it, and not the history?*::
+A comment is an aggregate about one aggregate, so every delete through the kit drops the comments
+on it in the same request; a transition is an activity in the provenance graph, kept when its
+aggregate goes. See xref:howto/discussion.adoc#delete[Delete] and
+xref:howto/workflow.adoc#read-the-history[Read the history].
 
 *How do I run a use case as a command?*::
-Model it as a subclass of `Activity` in a sibling `<domain>_activities.yaml` (or of `Transition`,
-to specialise a workflow move), register a handler for it with `bootstrap`, set `kit.bus`, and
-send it with `bus.handle(command(ShelveBooks, ...), collab)`. The handler changes aggregates
-through `work.unit_of_work()`, one command and one commit. See
+Model it as a subclass of `Activity`, register a handler for it with `bootstrap`, set `kit.bus`, and
+send it with `bus.handle(...)`; one command makes one commit. See
 xref:howto/event-driven.adoc[React to changes with commands and observers].
 
 *How do I run code after a commit?*::
-Register an observer for an activity class with `bootstrap(observers=...)`. After each commit it
-gets the completed activity (references to the aggregates it touched, never their content) and
-reads what it needs with `get_graph`. It also runs for commits the generic HTTP routes make. See
-xref:howto/event-driven.adoc#write-observer[Write an observer].
+Register an observer for an activity class with `bootstrap(observers=...)`: after each commit,
+including those of the generic routes, it gets the completed activity, which references the
+aggregates and never holds their content. See xref:howto/event-driven.adoc#write-observer[Write an
+observer].
 
 *Is an observer guaranteed to run?*::
-Not in the process that committed: delivery there is at most once, and if the process stops after
-the commit, the observer never runs. The commit and its activity record are safe. Observers in
-another deployment get at least once through the relay. See
-xref:howto/event-driven.adoc#limits[the limits] and
-xref:howto/event-driven.adoc#relay[the relay].
+Not in the process that committed, where delivery is at most once; observers in another deployment
+get every commit at least once through the relay. See xref:howto/event-driven.adoc#limits[the
+limits] and xref:howto/event-driven.adoc#relay[the relay].
 
 *How do other deployments, or a browser, follow my commits?*::
-Install `rdf-persistence[events]` (Redis 8.4 or later), set `settings.deployment` (unique on the
-broker) and pass `event_bus=RedisEventBus(url, deployment=...)` to `install_service`; the relay then
-publishes every commit and the other deployments' observers receive it, at least once. A browser
-reads `GET /tenants/{tenant}/rp-events` as server-sent events, resumable with `Last-Event-ID` for
-7 days, and needs tenant `read`. See xref:howto/event-driven.adoc#relay[Carry commits to other
-deployments and to browsers].
+Install `rdf-persistence[events]` and pass a `RedisEventBus` to `install_service`: the relay
+publishes every commit to the other deployments, and a browser reads them as server-sent events.
+See xref:howto/event-driven.adoc#relay[Carry commits to other deployments and to browsers].
 
-*How do I see traces and structured logs from the toolkit?*::
-The toolkit uses the OpenTelemetry API only, so its spans are no-ops until the application installs
-the SDK, an exporter, FastAPI's native telemetry, the httpx instrumentation, FastStream's
-`RedisTelemetryMiddleware` (through `RedisEventBus(middlewares=[...])`) and a logging bridge. The
-log attributes were renamed (`step` is now `rp.step`, `tenant` is `rp.tenant.id`) and the messages
-are constant, which is breaking for queries on the old names. See
-xref:howto/observability.adoc[See what the toolkit is doing], with the span and attribute tables,
-xref:howto/observability.adoc#old-to-new[the old-to-new names], and
-xref:howto/observability.adoc#never[what never reaches telemetry].
+=== Operations
 
 *How do I change a timeout, a cache time or a limit of the toolkit, and read it from the environment?*::
-Build a `ToolkitSettings` at the composition root, set the groups you need
-(`ToolkitSettings(http=HttpSettings(read_timeout_seconds=60))`), give each adapter its group and pass the
-whole object as `install_service(..., toolkit=settings)`. Every value defaults to what the toolkit
-always used. With the `settings` extra, `settings_from_env(ToolkitSettings)` reads
-`RP_HTTP__READ_TIMEOUT_SECONDS` and the other variables of that form from the environment. The page also lists the replacement
-of every keyword and constant that no longer exists. See xref:howto/settings.adoc[Configure the toolkit's
-deployment values].
+Build a `ToolkitSettings` with the groups you need at the composition root and pass it as
+`install_service(..., toolkit=settings)`. Each adapter you build takes its own group as well:
+`http=` for the store, the file store, the verifier and the identity provider, `jwks=` for the
+verifier, `directory=` for the identity provider and `events=` for `RedisEventBus`. With the `settings` extra, `settings_from_env` reads the
+values from `RP_*` variables. See xref:howto/settings.adoc[Configure the toolkit's deployment
+values].
 
-== Developing the toolkit
+*How do I back up or copy a tenant?*::
+`kit.dump_tenant(tenant, out)` writes the tenant's graphs and files to one archive, and
+`kit.restore_tenant(src, creator)` creates a new tenant from it, with a new id and new IRIs; grants
+are not dumped. See xref:howto/dump-restore.adoc[Back up or copy a tenant].
 
-*Where does a module live?*::
-In a theme, and inside the theme in a layer: `rdf_persistence/<theme>/<layer>/<module>.py`. There
-are thirteen themes, from `core` up to `api`, and a theme imports only the themes below it. The
-layers are `domain`, `services`, `adapters` and `entrypoints`. A new module goes to the lowest theme
-that uses it; its unit tests go to `tests/unit/<theme>/`. Every name a consumer uses still imports
-from `rdf_persistence`. See xref:architecture/index.adoc#themes[Where a module lives], and
-xref:architecture/index.adoc#layering[The contracts] for the import rules.
+*Can a tenant's data live on another server?*::
+Yes: wire the other triple stores by name with `install_service(..., stores={...})` and create the
+tenant on one with `kit.tenancy.create(..., store=name)`; a tenant never moves afterwards. See
+xref:howto/tenant-stores.adoc[Put tenants on several stores].
 
-*How do I tell a technical model from a domain model?*::
-By its path. A domain model is the metamodel, `rdf_persistence/model/rp_*.yaml`, generated into
-`core/domain/generated/`. A technical model (a request body, a setting, a wire shape, a SPARQL term bundle, a
-testkit record) is a schema under `rdf_persistence/model/technical/<theme>/`, generated into
-`<theme>/<layer>/generated/`: the lowest layer every user may import, in the lowest theme that uses
-it. No domain layer imports one. A target's `kind` key, its folder and the import-linter contracts
-check it. See xref:architecture/index.adoc#models-in-themes[Where a model lives] and
-xref:architecture/generation.adoc#kinds[Two kinds of model].
+*How do I see traces and structured logs from the toolkit?*::
+Install the OpenTelemetry SDK, an exporter and the instrumentations in your composition root: the
+toolkit uses the OpenTelemetry API only, so its spans are no-ops until you do. The log attribute
+names changed in 0.5.0; see xref:howto/observability.adoc[See what the toolkit is doing] and
+xref:howto/observability.adoc#old-to-new[the old-to-new names].
 
-*How do I change a toolkit schema?*::
-Edit the schema under `rdf_persistence/model/` (or a technical schema under
-`rdf_persistence/model/technical/<theme>/`, or
-`rdf_persistence_generation/model/rp_generation.yaml`), run
-`make generate`, refresh the model-shape snapshot if a class changed, and commit the schema and the
-generated code together. See xref:develop/generator.adoc#change-a-toolkit-schema[Change a toolkit
-schema].
+== Architecture and decisions
 
-*How do I add a generator extension or a check rule?*::
-An extension is a module in `rdf_persistence_generation/extensions/` with a `render` function, a
-step in `steps.py`, a row in the extensions table and its own test against the toy library. A
-check rule is a value in `rp_generation.yaml`, its code in `checks/` and two test schemas. See
-xref:develop/generator.adoc#add-or-change-a-generator-extension[Add or change a generator extension]
-and xref:develop/generator.adoc#add-a-check-rule[Add a check rule].
+*Where is my data stored, and what happens when I create, read, replace or delete it?*::
+Each tenant's aggregates are named graphs in its own database, its files are in its own bucket, and
+its access record is in the system database. See
+xref:architecture/data-flows.adoc[Where data lives and what each operation does].
 
-*Which tests do I run while developing?*::
-`make test-changed`: it runs the tests of the files you changed against `develop`, in a few seconds to a minute. When
-you are unsure what a change reaches, run `make test-fast` (about 3 minutes). `make check-all`
-comes once, before the PR. See xref:develop/index.adoc#make-targets[Make targets] and
-xref:develop/testing.adoc#slow[Slow tests].
+*What happens when two people edit the same thing?*::
+The second commit is refused and nothing of it is written: every aggregate has a version token, and
+a commit is stored only if each root it changes is still at the version it read. See
+xref:architecture/commits.adoc[How commits and conflicts work].
 
-*How do I run the checks, and how long do they take?*::
-`make check-all` before every PR (about 6 minutes), and `make test-containers` when you touch
-adapters or containers (about 3.5 minutes, needs Docker). See
-xref:develop/index.adoc#how-long-the-checks-take[How long the checks take].
-
-*How is a release cut?*::
-release-please proposes it as a PR into `develop` from the Conventional Commits; you move the
-changelog entries under the new version, merge the release PR, and fast-forward `main` to the tag
-by hand. See xref:develop/index.adoc#release[Cutting a release].
-
-*How do agents work on this repository?*::
-By skillery's delivery method (the `epic-delivery` skill): a shaping session that ends in EPICs,
-then one epic session per EPIC, where the lead runs a small team through a loop that scales with
-the size of the EPIC, and the developer decides. What is specific here (the rules every brief
-carries, the gates, the release) is on xref:develop/agents.adoc[Working with agents]; every test
-follows the xref:develop/testing.adoc[testing checklist].
-
-*How do we keep review and checking from doubling the work?*::
-The adversarial tester runs right after the riskiest task, lenses L4 and L5 are one review pass,
-and the checker trusts the lead's full-suite run. See
-xref:develop/agents.adoc#challenge[Keeping the challenge cheap].
-
-*Why does a Bash command fail with "Polling loops are blocked"?*::
-A hook denies `sleep` loops so agents stop waiting on their own background runs. Run the command in
-the foreground, in the background with its notice, or use the Monitor tool. See
-xref:develop/agents.adoc#never-poll[Never poll].
+*Where is the record of who changed what?*::
+Every commit writes one activity into the tenant's provenance graph, in the same request as the
+change: its kind, times, principal and the versions of the aggregates it touched, never their
+content. See xref:architecture/data-flows.adoc#commit[Committing several aggregates at once] and
+xref:howto/workflow.adoc#read-the-history[Read the history].
 
 *Why does the toolkit have its own SPARQL client?*::
-The store is a server shared by every worker, so any client is an HTTP client, and rdflib's is
-synchronous while the store port is async, has no test transport and cannot express the guarded
-single-request commit. The Fuseki adapter is about thirty lines over httpx, and rdflib still parses
-what it returns. See xref:adr/adr-001-sparql-client.adoc[ADR-001].
+rdflib's client is synchronous while the store port is async, has no test transport and cannot
+express the guarded single-request commit. See xref:adr/adr-001-sparql-client.adoc[ADR-001].
 
 *Why does the token verifier fetch and cache the keys itself?*::
 PyJWT's `PyJWKClient` blocks the event loop, has no discovery and no transport or clock to inject,
-and counts its cooldown from the last success, so a failing provider is hit on every call. PyJWT
-still checks every signature. See xref:adr/adr-002-jwks-cache.adoc[ADR-002].
+and hits a failing provider on every call; PyJWT still checks every signature. See
+xref:adr/adr-002-jwks-cache.adoc[ADR-002].
 
 *Why FastAPI with a generated OpenAPI document, and not a spec-first library such as connexion?*::
 The routes and the document both come from the LinkML schema, so a spec-first library would still
-need a spec we produce, and it would take FastAPI's access gate and SHACL validation from us.
-schemathesis checks that the code obeys the document instead. See
-xref:adr/adr-003-fastapi-not-connexion.adoc[ADR-003].
+need a spec the toolkit produces, and would take FastAPI's access gate and SHACL validation away.
+See xref:adr/adr-003-fastapi-not-connexion.adoc[ADR-003].
 
 *Which token signature algorithms does the verifier accept, and how do I change them?*::
-RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 and EdDSA, with 30 seconds of clock
-leeway on `exp` and `nbf`. Set `allowed_algorithms` and `leeway_seconds` on `JwksSettings` and pass
-it as `jwks=` to `JwksTokenVerifier`; `none` and `HS*` are always refused. Post-quantum signatures join when the identity provider and PyJWT
-ship them. See xref:adr/adr-004-signing-algorithms.adoc[ADR-004] and
-xref:user-manual/serve.adoc#verifier-options[the how-to].
+RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, ES512 and EdDSA by default, never `none` or
+`HS*`, with 30 seconds of clock leeway; set `allowed_algorithms` and `leeway_seconds` on
+`JwksSettings`. See
+xref:adr/adr-004-signing-algorithms.adoc[ADR-004] and
+xref:user-manual/serve.adoc#verifier-options[the token verifier].
 
 *Which representations can I ask for an aggregate in?*::
-JSON (the default), JSON-LD, Turtle, N-Triples, N-Quads, TriG and RDF/XML, on a read, a create, a
-replace and the tenant root. A listing stays JSON and JSON-LD. See
-xref:adr/adr-005-representations.adoc[ADR-005] and
-xref:architecture/api.adoc#representations[the API page].
+JSON (the default), JSON-LD, Turtle, N-Triples, N-Quads, TriG and RDF/XML for one aggregate; a
+listing stays JSON and JSON-LD. See xref:adr/adr-005-representations.adoc[ADR-005] and
+xref:architecture/api.adoc#representations[Representations].
 
 *Where are decisions recorded?*::
-Settled decisions that outlive their change are the records on
-xref:adr/index.adoc[Architecture decision records] (ADR-001 to ADR-005). Earlier ones are in the
-xref:architecture/open-decisions.adoc[decision log of 2026-11-05] (D-1
-to D-13) and in the xref:architecture/index.adoc#decisions-taken[architecture overview] (O-1, O-2). The
-decisions of the work in progress (PD-1 and on) are in `openspec/changes/<id>/design.md`; once a
-change is archived, its requirements live in `openspec/specs/` and the change itself, decisions
-included, in `openspec/changes/archive/` (toolkit v1: `2026-11-06-toolkit-v1-foundation`).
+Settled decisions are the xref:adr/index.adoc[architecture decision records]; earlier ones are in
+the xref:architecture/open-decisions.adoc[decision log of 2026-11-05] and the
+xref:architecture/index.adoc#decisions-taken[architecture overview], and each change's own in its
+`design.md` under `openspec/changes/`. The ADR index explains the three places.
 
 == What to expect, and the choices you make
 
@@ -437,8 +301,9 @@ edited by hand, and name the files. See
 xref:architecture/generation.adoc#guarding[Guarding the generated code].
 
 *Nothing drifts from the model.*::
-`assert_models_generated` fails on a hand-written model class; the file guard fails on shapes,
-contexts, schemas or TypeScript outside a `generated` folder. LinkML stays the one source.
+`assert_models_generated` fails on a hand-written model class, and the file guard on shapes,
+contexts, schemas or TypeScript outside a `generated` folder. See
+xref:user-manual/generated-classes.adoc#guard[step 6].
 
 *Classes and shapes agree.*::
 `conformance_problems` checks every case against both the generated class and the generated shape, and
@@ -446,37 +311,30 @@ fails until every constraint kind your schema uses has a case. See
 xref:user-manual/generated-classes.adoc#guard[step 6].
 
 *No lost update.*::
-Every write to an aggregate is guarded by its version: `If-Match` over HTTP, the version read by a
-`UnitOfWork` in code. A stale write is 409 or `Conflict`, never a silent overwrite.
+Every write to an aggregate is guarded by its version, `If-Match` over HTTP and the version a
+`UnitOfWork` read in code: a stale write is 409 or `Conflict`, never a silent overwrite. See
+xref:architecture/commits.adoc[How commits and conflicts work].
 
 === Limits and behaviours you will meet
 
 *Status codes.*::
-401 without a valid bearer token; 404 for a tenant or aggregate you may not see, and for one that
-does not exist (they answer alike); 403 when you may see it but not act; 409 on a stale version;
-428 when `If-Match` is missing; 413 for a body over `max_body_bytes` or over 10 000 objects and
-list values; 415 and 406 for media types; 422 for an invalid body; 400 for a bad query string;
-503 when the store or the identity provider is down; 500 `internal-error` for a fault of the
-service. Only 400, 406, 413, 415, 422 and 428 carry a `detail`. See
-xref:architecture/api.adoc#serving[Serving it].
+A hidden tenant or aggregate answers 404 like a missing one, 403 means you may see it but not act,
+and every error is an RFC 9457 problem; only the statuses that say what to fix in the request carry
+a `detail`. See xref:architecture/api.adoc#serving[Serving it].
 
 *Strict bodies.*::
-A plain-JSON body may use only its class's slot names and the JSON-LD keywords. Only the root and
-the owned parts reached from it may appear. A create may not name an `id`; a replace may not name
-another one. An IRI that SPARQL cannot carry (a space, `<`, `>`, a quote) is 422 in a body and 400
-`bad-query` in a listing filter.
+A plain-JSON body may use only its class's slot names and the JSON-LD keywords, and hold only the
+root and the owned parts reached from it. See xref:architecture/api.adoc#serving[Serving it].
 
 *Internal slots.*::
-A slot annotated `internal` (a file key, a database name) is refused in any body, also in the body
-that creates a tenant, and never shown in a response. A replace keeps the stored internal values of
-the root and of the parts that persist, matched by IRI; a part sent without its IRI is a new
-part, by design, so it has none to keep.
+A slot annotated `internal` (a file key, a database name) is refused in any body and never shown in
+a response; a replace keeps its stored value. See xref:architecture/api.adoc#serving[Serving it].
 
 *What the toolkit refuses.*::
 At generation: a schema without titles, descriptions or IRIs, LinkML `rules`, `all_of` and
 `none_of`, and a domain module that imports an access module. At run time: an aggregate IRI the
-toolkit did not mint, a remote JSON-LD context, a grant on a target outside the tenant, and a
-grant of a role that is not defined at the target's level.
+toolkit did not mint, a remote JSON-LD context, and a grant on a target outside the tenant or of a
+role not defined at the target's level.
 
 === Decisions you make
 
@@ -524,10 +382,66 @@ serves needs it: `install_service` stops without it.
 |`true`
 
 |`max_body_bytes`
-|Larger bodies cost memory and parse time; the 10 000-node cap applies whatever the size.
+|Larger bodies cost memory and parse time; the node cap (`max_document_nodes` of the `limits`
+group, 10 000 by default) applies whatever the size.
 |1 MiB (1 048 576 bytes)
 |===
 
+== Developing the toolkit
+
+*Where does a module live?*::
+In a theme, and inside the theme in a layer: `rdf_persistence/<theme>/<layer>/<module>.py`, where a
+new module goes to the lowest theme that uses it. See
+xref:architecture/index.adoc#themes[Where a module lives] and
+xref:architecture/index.adoc#layering[The contracts] for the import rules.
+
+*How do I tell a technical model from a domain model?*::
+By its path: the metamodel is `rdf_persistence/model/rp_*.yaml`, and a technical model (a request
+body, a setting, a wire shape) is a schema under `rdf_persistence/model/technical/<theme>/`, which no
+domain layer imports. See xref:architecture/index.adoc#models-in-themes[Where a model lives] and
+xref:architecture/generation.adoc#kinds[Two kinds of model].
+
+*How do I change a toolkit schema?*::
+Edit the schema, run `make generate`, refresh the model-shape snapshot if a class changed, and
+commit the schema and the generated code together. See
+xref:develop/generator.adoc#change-a-toolkit-schema[Change a toolkit schema].
+
+*How do I add a generator extension or a check rule?*::
+An extension is a module in `rdf_persistence_generation/extensions/` with a `render` function and
+its own test against the toy library; a check rule is a value in `rp_generation.yaml` with its code
+in `checks/`. See xref:develop/generator.adoc#add-or-change-a-generator-extension[Add or change a
+generator extension] and xref:develop/generator.adoc#add-a-check-rule[Add a check rule].
+
+*Which tests do I run while developing?*::
+`make test-changed`, which runs the tests of the files you changed against `develop`; `make
+test-fast` when you are unsure what a change reaches, and `make check-all` once, before the PR. See
+xref:develop/index.adoc#make-targets[Make targets] and xref:develop/testing.adoc#slow[Slow tests].
+
+*How do I run the checks, and how long do they take?*::
+`make check-all` before every PR (about 6 minutes), and `make test-containers` when you touch
+adapters or containers (about 3.5 minutes, needs Docker). See
+xref:develop/index.adoc#how-long-the-checks-take[How long the checks take].
+
+*How is a release cut?*::
+release-please proposes it as a PR into `develop` from the Conventional Commits; you merge it and
+fast-forward `main` to the tag by hand. See xref:develop/index.adoc#release[Cutting a release].
+
+*How do agents work on this repository?*::
+By skillery's delivery method (the `epic-delivery` skill): one epic session per EPIC, where the
+lead runs a small team and the developer decides. What is specific here is on
+xref:develop/agents.adoc[Working with agents].
+
+*How do we keep review and checking from doubling the work?*::
+The adversarial tester runs right after the riskiest task, lenses L4 and L5 are one review pass,
+and the checker trusts the lead's full-suite run. See
+xref:develop/agents.adoc#challenge[Keeping the challenge cheap].
+
+*Why does a Bash command fail with "Polling loops are blocked"?*::
+A hook denies `sleep` loops so agents stop waiting on their own background runs; run the command in
+the foreground or in the background with its notice. See
+xref:develop/agents.adoc#never-poll[Never poll].
+
+[#what-could-strengthen-it-in-the-future]
 == What could strengthen it in the future
 
 These are possibilities, not commitments. Each is shaped as a candidate EPIC in

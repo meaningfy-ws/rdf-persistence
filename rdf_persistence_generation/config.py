@@ -76,7 +76,7 @@ def _refuse_unusable(rows: int, given: dict[str, str], project: Path) -> None:
         )
 
 
-def _toml_key(field: str) -> str:
+def toml_key(field: str) -> str:
     """The TOML key of a model field: its alias, or its own name when it has none."""
     return GenerationTarget.model_fields[field].alias or field
 
@@ -102,7 +102,7 @@ def _toml_entries(project: Path, given: dict[str, str]) -> list[GenerationTarget
         _refuse_field_names(row)
     try:
         return [
-            GenerationTarget.model_validate({**row, **{_toml_key(k): v for k, v in given.items()}})
+            GenerationTarget.model_validate({**row, **{toml_key(k): v for k, v in given.items()}})
             for row in rows or [{}]
         ]
     except ValidationError as error:

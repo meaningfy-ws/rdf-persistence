@@ -19,7 +19,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/persistence/rp_persistence_settings.yaml",
-      "sha256": "49c8f54c1d6a51fae1ad17634a4a136dd4b9f6c359dec923168e2a891da160ff"
+      "sha256": "99f188d89bada26e369927b38a66665cfa41536eef30b7edb89479c72debe4b3"
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
@@ -67,7 +67,7 @@
     },
     {
       "path": "rdf_persistence_generation/cli.py",
-      "sha256": "e5c362f23cfd40111bce601f3dfec6ae0ab53ed3270af7a70b0c74d41c9e0146"
+      "sha256": "03c5fc33ac5b4ebe37a92ad4a0bb6766ceca6c91732b50b93c999ce8a710461a"
     },
     {
       "path": "rdf_persistence_generation/components.py",
@@ -75,7 +75,7 @@
     },
     {
       "path": "rdf_persistence_generation/config.py",
-      "sha256": "cdea9f1f9a6ca4db5332e0805554cd21b76a948f097ca26c8f013f8027486f79"
+      "sha256": "c2bbf695466a7124da8b925e7825e87c45460899f673eb6a4415442b9a4b18f3"
     },
     {
       "path": "rdf_persistence_generation/exceptions.py",
@@ -197,7 +197,7 @@
     },
     {
       "path": "rdf_persistence/api/entrypoints/generated/settings/shapes.ttl",
-      "sha256": "ab4ba3453444edf17b04d32fb68f16329dd5559bce9e35cf621aa623369fbae6"
+      "sha256": "8f715a04b1251cc3934af3bdebf5b9bd4773545b23992562b2d7ee0c42282f29"
     }
   ]
 }

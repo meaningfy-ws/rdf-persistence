@@ -11,14 +11,14 @@ from rdf_persistence.core.domain.exceptions import InvalidIri, IriPolicyChanged,
 from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from tests.toy import ROLES, SETTINGS
-from tests.toy_service import CONSUMER_POLICY, TENANT_BODY, ToyService
+from tests.toy_service import EXAMPLE_POLICY, TENANT_BODY, ToyService
 
 CONSUMER_BASE = "https://example.org/library/"
 
 
 @pytest.fixture
 async def consumer():
-    toy = ToyService(iri_policy=CONSUMER_POLICY)
+    toy = ToyService(iri_policy=EXAMPLE_POLICY)
     async with toy.app.router.lifespan_context(toy.app):
         yield toy
 
@@ -54,7 +54,7 @@ async def test_a_wrong_form_tenant_id_is_a_404_under_the_consumers_policy(
         asked = len(consumer.store.sent("query"))
         response = await http.get(f"/libraries/{tenant_id}", headers=consumer.bearer("ada"))
     assert response.status_code == 404, (
-        "a tenant id of the wrong form is not found under the consumer's policy"
+        "a tenant id of the wrong form is not found under the example policy"
     )
     assert len(consumer.store.sent("query")) == asked, "no query went to the store"
 
@@ -67,16 +67,16 @@ async def test_a_wrong_form_aggregate_id_is_a_404_under_the_consumers_policy(con
             f"{made.headers['location']}/books/NOT-AN-ID", headers=consumer.bearer("ada")
         )
     assert response.status_code == 404, (
-        "an aggregate id of the wrong form is not found under the consumer's policy"
+        "an aggregate id of the wrong form is not found under the example policy"
     )
     assert len(consumer.store.sent("query")) == asked, "no query went to the store"
 
 
 async def test_the_kit_hands_one_policy_to_every_service_it_wires(consumer) -> None:
     kit = consumer.kit
-    assert kit.iris.settings.iri_policy == CONSUMER_POLICY, "the kit holds the consumer's policy"
-    assert str(kit.tenant_iri("p4x8k2m")) == f"{CONSUMER_BASE}project/p4x8k2m", (
-        "the kit mints tenant IRIs from the consumer's policy"
+    assert kit.iris.settings.iri_policy == EXAMPLE_POLICY, "the kit holds the example policy"
+    assert str(kit.tenant_iri("p4x8k2m")) == f"{CONSUMER_BASE}library/p4x8k2m", (
+        "the kit mints tenant IRIs from the example policy"
     )
     assert kit.rules._iris is kit.iris, (
         "the rules the consumer built are rebound to the kit's policy"
@@ -111,7 +111,7 @@ def test_with_iris_keeps_the_permits_and_changes_the_policy() -> None:
 
 
 async def test_start_up_refuses_a_changed_policy_over_the_same_store() -> None:
-    first = ToyService(iri_policy=CONSUMER_POLICY)
+    first = ToyService(iri_policy=EXAMPLE_POLICY)
     async with first.app.router.lifespan_context(first.app):
         pass
     second = ToyService(first.store, first.files, iri_policy=None)
