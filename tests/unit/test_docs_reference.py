@@ -40,6 +40,14 @@ def test_the_usage_is_the_parsers_help():
     assert "--check" in reference.cli_usage(), "the rp-generate options are listed"
 
 
+def test_the_problem_table_has_every_kind_with_its_status_and_description():
+    table = reference.problem_table()
+
+    assert "|`key-conflict` |409 |Key conflict |" in table, "slug, status and title of a kind"
+    assert "another aggregate of its class holds" in table, "the schema's description is shown"
+    assert table.count("\n|`") == 15, "one row per kind of problem"
+
+
 def test_check_fails_on_a_stale_partial_and_passes_once_written(tmp_path, monkeypatch):
     monkeypatch.setattr(reference, "PARTIALS", tmp_path)
     (tmp_path / "public-api.adoc").write_text("stale\n")
