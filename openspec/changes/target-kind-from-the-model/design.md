@@ -136,3 +136,15 @@ None.
 - **DEC-6** (developer, 2026-11-19, "yes accept both"): the PLAN proceeds below 9/10 (run 2: 8.7),
   with every gap run 2 listed fixed as the gate stated it (`evidence/clarity-gate.md`). PD-2 (no
   mixed target) is the lead's choice, open to the developer at review.
+
+## Delivery decisions
+
+- **D-1** (lead, task 1.2): "has no layer before `generated`" covers every package whose segment
+  before `generated` is not one of `domain`, `services`, `adapters`, `entrypoints` (as the error
+  matrix row `app.generated` requires), not only a missing or leading `generated`; a known layer of
+  the wrong kind gets "is not in a folder a <kind> target allows". PD-3 read this way.
+- **D-2** (lead, task 1.2): a mixed target's problem carries no element: the line is
+  `[target_kind] generates technical modules <m> beside domain ones: …`, and the generate output
+  names the target by its root schema, as PD-2's `<target>` requires.
+- **D-3** (lead, task 2.1): tests that added a technical module to the domain toy (now a mixed
+  target, PD-2) generate a separate technical-only project instead, keeping their intent.
