@@ -158,6 +158,13 @@ None.
   Re-labelled because a spec scenario without a test that fails on its regression is unverified.
   Fix: a module with no `annotations:` derives `domain`, and the boundary step on it with
   `app.services.generated` names `module_kind: technical`.
+- **D-6** (lead, checker F1 and F2; developer: "go ahead, fix it"): the scenario map misses the
+  spec scenarios "a domain target in an adapters folder" and "a consumer's own layout", and maps
+  `test_a_technical_module_beside_a_domain_one_in_a_target_is_refused` only to the capability. Fix:
+  a second row for each of the two covering tests, and that test re-mapped to "a target of both
+  kinds". The cold read of the tutorial (12 points, none a path mismatch; one from this change: the
+  page does not mention `domain/__init__.py`, which a namespace package makes optional) is a
+  follow-up, not fixed here.
 - Under the floor (review S1–S5, not fixed): S1 the feature scenario runs a consumer target where
   the spec's GIVEN says toolkit (planned in `tasks.md`); S2 the theme message does not name the
   derived kind (the scenario asks only target and package); S3 technical modules joined by `,`
