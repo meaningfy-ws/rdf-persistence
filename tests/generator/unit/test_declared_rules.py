@@ -8,8 +8,8 @@ import pytest
 from rdflib import Graph, URIRef
 from rdflib.namespace import SH
 
+from rdf_persistence.api.services.documents import Documents
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.services.documents import Documents
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
 from rdf_persistence_generation.extensions.shacl import render as render_shapes

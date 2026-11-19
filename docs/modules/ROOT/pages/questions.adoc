@@ -269,17 +269,26 @@ deployment values].
 
 == Developing the toolkit
 
+*Where does a module live?*::
+In a theme, and inside the theme in a layer: `rdf_persistence/<theme>/<layer>/<module>.py`. There
+are thirteen themes, from `core` up to `api`, and a theme imports only the themes below it. The
+layers are `domain`, `services`, `adapters` and `entrypoints`. A new module goes to the lowest theme
+that uses it; its unit tests go to `tests/unit/<theme>/`. Every name a consumer uses still imports
+from `rdf_persistence`. See xref:architecture/index.adoc#themes[Where a module lives], and
+xref:architecture/index.adoc#layering[The contracts] for the import rules.
+
 *How do I tell a technical model from a domain model?*::
 By its path. A domain model is the metamodel, `rdf_persistence/model/rp_*.yaml`, generated into
 `core/domain/generated/`. A technical model (a request body, a setting, a wire shape, a SPARQL term bundle, a
-testkit record) is a schema under `rdf_persistence/model/technical/<group>/`, generated into the
-`generated/` folder of the lowest layer whose code may import it, and the domain layer imports none of
-them. A target's `kind` key and an import-linter contract check it. See
+testkit record) is a schema under `rdf_persistence/model/technical/<theme>/`, generated into
+`<theme>/<layer>/generated/`: the lowest layer every user may import, in the lowest theme that uses
+it. No domain layer imports one. A target's `kind` key, its folder and the import-linter contracts
+check it. See xref:architecture/index.adoc#models-in-themes[Where a model lives] and
 xref:architecture/generation.adoc#kinds[Two kinds of model].
 
 *How do I change a toolkit schema?*::
 Edit the schema under `rdf_persistence/model/` (or a technical schema under
-`rdf_persistence/model/technical/<group>/`, or
+`rdf_persistence/model/technical/<theme>/`, or
 `rdf_persistence_generation/model/rp_generation.yaml`), run
 `make generate`, refresh the model-shape snapshot if a class changed, and commit the schema and the
 generated code together. See xref:develop/index.adoc#change-a-toolkit-schema[Change a toolkit

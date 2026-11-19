@@ -4,7 +4,7 @@ Feature: What the toolkit does can be followed in traces and logs, without a ten
   So that I can see what the service is doing and where it fails, and no library's data leaves it
 
   # Not projected here, each is a unit test named by its test case in the spec's tables:
-  #   "no provider installed" (TC-14, tests/unit/services/test_telemetry.py): it needs an interpreter
+  #   "no provider installed" (TC-14, tests/unit/core/test_telemetry.py): it needs an interpreter
   #     in which no provider was ever installed, and this lane's conftest installs one;
   #   "the package loads no SDK" (TC-17, tests/unit/test_packaging.py): a fresh interpreter;
   #   "a traced event" (TC-28, tests/integration/adapters/test_redis_events.py): it needs a Redis

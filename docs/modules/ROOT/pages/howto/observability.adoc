@@ -191,7 +191,9 @@ The toolkit logs through the standard `logging` module and nothing else. A *logg
 `logging.Handler` that turns each `LogRecord` into an OpenTelemetry log record, with the current
 trace and span ids, the `extra=` attributes as log attributes, and `exc_info` as `exception.*`.
 Attach one to the root logger (the last lines of `install_telemetry` above), or to the
-`rdf_persistence` logger to bridge the toolkit alone.
+`rdf_persistence` logger to bridge the toolkit alone. Each module logs under its own path, such as
+`rdf_persistence.tenancy.services.sweep` (xref:architecture/index.adoc#themes[Where a module
+lives]); a configuration on `rdf_persistence` catches them all and survives a module's move.
 
 The handler comes from `opentelemetry-instrumentation-logging`; the SDK's own `LoggingHandler` is
 deprecated. If the import fails after an upgrade, look in the release notes of that package and of

@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence.api.services.components import DuplicateComponentError, merge_components
 from rdf_persistence.core.services.artifacts import COMPONENTS_FILE, SCHEMAS
-from rdf_persistence.services.components import DuplicateComponentError, merge_components
 from rdf_persistence_generation import components
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 

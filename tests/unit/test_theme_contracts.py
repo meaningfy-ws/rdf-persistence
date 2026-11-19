@@ -1,8 +1,7 @@
-"""The import contracts that guard the turned-on themes while two layouts coexist (thematic-structure PD-6, D-13, D-16).
+"""The import contracts that guard the themes (thematic-structure PD-6, D-16, D-17).
 
-Until stage 7 the unmoved modules sit at ``rdf_persistence.{domain,services,adapters,entrypoints}`` and are
-outside every theme contract. A turned-on theme must import none of them, and its domain must not reach a
-technical model. These tests read ``.importlinter`` and name the contract that does it; the themes come from
+The themes keep their order and a domain reaches no technical model. These tests read ``.importlinter``
+and name the contract that does it; the themes come from
 ``TURNED_ON`` of ``test_theme_layout``, so a stage that turns a theme on is checked without an edit here.
 
 Each probe plants one import in a scratch package whose theme folders are the turned-on themes, runs the
@@ -24,19 +23,12 @@ from tests.unit.test_theme_layout import TURNED_ON
 ROOT = Path(__file__).resolve().parents[2]
 THEMES = tuple(sorted(TURNED_ON))
 THEME_LAYERS = ("domain", "services", "adapters", "entrypoints")
-OLD_LAYERS = (
-    "rdf_persistence.domain",
-    "rdf_persistence.services",
-    "rdf_persistence.adapters",
-    "rdf_persistence.entrypoints",
-)
-OLD_LAYOUT = "themes-never-import-the-old-layout"
-TECHNICAL_MODELS = "domain-never-imports-technical-models"
+DOMAIN_CONTRACT = "domain-of-a-theme-imports-no-upper-layer"
 EVENT_BUS_LIBRARIES = "event-bus-libraries-in-one-module"
 FASTSTREAM = "faststream"
 API_NO_BUS = "api-services-never-import-the-bus"
-# The `api` services modules not yet moved (stage 7 moves them to `rdf_persistence.api.services`); `api`
-# sits above `messaging`, so the theme order does not keep them off the bus.
+# The `api` services modules `api-services-never-import-the-bus` names; `api` sits above `messaging`, so
+# the theme order does not keep them off the bus.
 API_SERVICES = ("aggregates", "components", "documents", "file_removal")
 
 
@@ -66,60 +58,18 @@ def _covers(source: str, module: str) -> bool:
 
 
 @pytest.mark.parametrize("theme", THEMES)
-@pytest.mark.parametrize("theme_layer", THEME_LAYERS)
-@pytest.mark.parametrize("layer", OLD_LAYERS)
-def test_a_contract_forbids_each_turned_on_theme_from_importing_each_old_layer(
-    layer, theme_layer, theme
-):
-    module = f"rdf_persistence.{theme}.{theme_layer}"
-    guarding = [
-        name
-        for name, options in _contracts().items()
-        if options.get("type") == ["forbidden"]
-        and any(_covers(source, module) for source in options.get("source_modules", []))
-        and any(
-            forbidden == layer or _covers(forbidden, layer)
-            for forbidden in options.get("forbidden_modules", [])
-        )
-    ]
-
-    assert guarding, f"no contract stops {module} importing {layer}"
-
-
-@pytest.mark.parametrize("theme", THEMES)
-def test_the_old_layout_contract_names_every_turned_on_theme_as_a_source(theme):
-    sources = _contracts()[OLD_LAYOUT]["source_modules"]
-
-    assert f"rdf_persistence.{theme}" in sources, f"{OLD_LAYOUT} has no source {theme}: {sources}"
-
-
-@pytest.mark.parametrize("theme", THEMES)
-def test_the_technical_models_contract_covers_the_domain_of_each_turned_on_theme(theme):
-    contract = _contracts()[TECHNICAL_MODELS]
+def test_the_domain_contract_covers_the_domain_of_each_turned_on_theme(theme):
+    contract = _contracts()[DOMAIN_CONTRACT]
 
     assert any(
         _covers(source, f"rdf_persistence.{theme}.domain") for source in contract["source_modules"]
-    ), f"{TECHNICAL_MODELS} does not cover the domain of {theme}"
+    ), f"{DOMAIN_CONTRACT} does not cover the domain of {theme}"
 
 
-# --- the old layers never reach up into a moved theme (thematic-structure D-14 C1), on a scratch layout ---
+# --- the scratch layout the probes run on ---
 
-DOMAIN_UP = "old-domain-imports-no-theme-upper-layer"
-SERVICES_UP = "old-services-import-no-theme-adapters-or-entrypoints"
-ADAPTERS_UP = "old-adapters-import-no-theme-entrypoints"
-ENTRYPOINTS_SIDEWAYS = "old-entrypoints-import-no-theme-adapters"
-OLD_VS_THEMES = (DOMAIN_UP, SERVICES_UP, ADAPTERS_UP, ENTRYPOINTS_SIDEWAYS)
-THEME_CONTRACTS = (
-    "themes-ordered",
-    "domain-of-a-theme-imports-no-upper-layer",
-    OLD_LAYOUT,
-)
 SCRATCH_PACKAGES = (
     "",
-    "domain",
-    "services",
-    "adapters",
-    "entrypoints",
     *(theme for theme in THEMES),
     *(f"{theme}/{layer}" for theme in THEMES for layer in THEME_LAYERS),
     "iris/services/generated",
@@ -132,7 +82,7 @@ SCRATCH_MODULES = {
     "collaboration/services/workflows.py": "",
     "events/services/relay.py": "",
     "events/adapters/redis_events.py": f"import {FASTSTREAM}\n",
-    **{f"services/{module}.py": "" for module in API_SERVICES},
+    **{f"api/services/{module}.py": "" for module in API_SERVICES},
 }
 
 
@@ -141,7 +91,7 @@ def _importing(*modules: str) -> str:
 
 
 def _lint(
-    tmp_path: Path, planted: dict[str, str], contracts: tuple[str, ...] = OLD_VS_THEMES
+    tmp_path: Path, planted: dict[str, str], contracts: tuple[str, ...]
 ) -> tuple[int, list[str]]:
     """Run import-linter on a scratch package with only the named contracts of ``.importlinter``."""
     files = {f"{package}/__init__.py".removeprefix("/"): "" for package in SCRATCH_PACKAGES}
@@ -179,89 +129,12 @@ def _lint(
     return done.returncode, [line for line in done.stdout.splitlines() if line.endswith("BROKEN")]
 
 
-@pytest.mark.parametrize(
-    ("contract", "planted"),
-    [
-        pytest.param(
-            DOMAIN_UP, {"domain/x.py": _importing("core.services")}, id="domain-to-core-services"
-        ),
-        pytest.param(
-            DOMAIN_UP, {"domain/x.py": _importing("core.adapters")}, id="domain-to-core-adapters"
-        ),
-        pytest.param(
-            DOMAIN_UP,
-            {"domain/x.py": _importing("core.entrypoints")},
-            id="domain-to-core-entrypoints",
-        ),
-        pytest.param(
-            SERVICES_UP,
-            {"services/x.py": _importing("core.adapters")},
-            id="services-to-core-adapters",
-        ),
-        pytest.param(
-            SERVICES_UP,
-            {"services/x.py": _importing("core.entrypoints")},
-            id="services-to-core-entrypoints",
-        ),
-        pytest.param(
-            ADAPTERS_UP,
-            {"adapters/x.py": _importing("core.entrypoints")},
-            id="adapters-to-core-entrypoints",
-        ),
-        pytest.param(
-            ENTRYPOINTS_SIDEWAYS,
-            {"entrypoints/x.py": _importing("core.adapters")},
-            id="entrypoints-to-core-adapters",
-        ),
-    ],
-)
-def test_an_old_layer_importing_up_into_a_theme_breaks_its_contract(tmp_path, contract, planted):
-    code, broken = _lint(tmp_path, planted)
-
-    assert code != 0, "import-linter kept every contract"
-    assert any(contract in line for line in broken), broken
-
-
-@pytest.mark.parametrize(
-    "planted",
-    [
-        pytest.param({"domain/x.py": _importing("domain", "core.domain")}, id="domain"),
-        pytest.param(
-            {"services/x.py": _importing("services", "domain", "core.domain", "core.services")},
-            id="services",
-        ),
-        pytest.param(
-            {"adapters/x.py": _importing("adapters", "services", "core.services", "core.domain")},
-            id="adapters",
-        ),
-        pytest.param(
-            {"entrypoints/x.py": _importing("entrypoints", "services", "core.services")},
-            id="entrypoints",
-        ),
-    ],
-)
-def test_an_old_layer_importing_itself_or_below_keeps_the_contracts(tmp_path, planted):
-    code, broken = _lint(tmp_path, planted)
-
-    assert (code, broken) == (0, []), broken
-
-
-# --- a turned-on theme never reaches the old layout; the themes keep their order (D-13 C1, D-16 C1, W2, S1) ---
+# --- the themes keep their order and their domain stays pure (D-16 C1, W2, S1) ---
 
 
 def _breaks(tmp_path: Path, contract: str, planted: dict[str, str]) -> bool:
     code, broken = _lint(tmp_path, planted, (contract,))
     return code != 0 and any(contract in line for line in broken)
-
-
-@pytest.mark.parametrize("theme", THEMES)
-@pytest.mark.parametrize("old", [layer.rsplit(".", 1)[1] for layer in OLD_LAYERS])
-def test_a_turned_on_theme_importing_an_old_layer_breaks_the_old_layout_contract(
-    tmp_path, theme, old
-):
-    planted = {f"{theme}/services/x.py": _importing(old)}
-
-    assert _breaks(tmp_path, OLD_LAYOUT, planted), f"{theme} imports rdf_persistence.{old} freely"
 
 
 @pytest.mark.parametrize(
@@ -302,6 +175,20 @@ def test_a_planted_import_between_the_new_themes_breaks_its_contract(
 SERVICES_NO_ADAPTERS = "services-of-a-theme-import-no-adapters-or-entrypoints"
 
 
+def test_domain_pure_keeps_the_domain_shim_a_source_until_stage_8():
+    sources = _contracts()["domain-pure"]["source_modules"]
+
+    assert "rdf_persistence.domain" in sources
+
+
+def test_a_domain_module_importing_a_service_of_another_theme_breaks_layers_across_themes(
+    tmp_path,
+):
+    planted = {"iris/domain/x.py": _importing("core.services")}
+
+    assert _breaks(tmp_path, DOMAIN_CONTRACT, planted)
+
+
 def test_a_service_of_a_theme_importing_a_wire_model_of_a_theme_breaks_layers_across_themes(
     tmp_path,
 ):  # TC-51
@@ -314,31 +201,6 @@ def test_a_service_of_a_theme_importing_an_adapter_of_a_theme_breaks_layers_acro
     planted = {"persistence/services/x.py": _importing("access.adapters")}
 
     assert _breaks(tmp_path, SERVICES_NO_ADAPTERS, planted)
-
-
-@pytest.mark.parametrize(
-    ("contract", "where", "imports"),
-    [
-        pytest.param(DOMAIN_UP, "domain/x.py", "schema.services", id="old-domain-to-schema"),
-        pytest.param(SERVICES_UP, "services/x.py", "files.adapters", id="old-services-to-files"),
-        pytest.param(
-            ADAPTERS_UP, "adapters/x.py", "provenance.entrypoints", id="old-adapters-to-provenance"
-        ),
-        pytest.param(
-            ENTRYPOINTS_SIDEWAYS, "entrypoints/x.py", "iris.adapters", id="old-entrypoints-to-iris"
-        ),
-        pytest.param(
-            ENTRYPOINTS_SIDEWAYS,
-            "entrypoints/x.py",
-            "access.adapters",
-            id="old-entrypoints-to-access",
-        ),
-    ],
-)
-def test_an_old_layer_importing_up_into_a_new_theme_breaks_its_contract(
-    tmp_path, contract, where, imports
-):
-    assert _breaks(tmp_path, contract, {where: _importing(imports)})
 
 
 # --- the theme contracts name every turned-on theme (thematic-structure D-17 W2), on a modified config text ---
@@ -433,15 +295,17 @@ def test_events_importing_collaboration_breaks_the_theme_order(tmp_path):
 
 @pytest.mark.parametrize("module", API_SERVICES)
 def test_an_api_services_module_importing_the_message_bus_breaks_its_contract(tmp_path, module):
-    """The four unmoved ``api`` services modules stay off the bus, which the theme order cannot say."""
-    planted = {f"services/{module}.py": _importing("messaging.services.messagebus")}
+    """The four ``api`` services modules stay off the bus, which the theme order cannot say."""
+    planted = {f"api/services/{module}.py": _importing("messaging.services.messagebus")}
 
     assert _breaks(tmp_path, API_NO_BUS, planted)
 
 
 def test_the_api_services_modules_exist_where_the_bus_contract_names_them():
+    sources = _contracts()[API_NO_BUS]["source_modules"]
     for module in API_SERVICES:
-        assert (ROOT / "rdf_persistence" / "services" / f"{module}.py").is_file(), module
+        assert f"rdf_persistence.api.services.{module}" in sources, module
+        assert (ROOT / "rdf_persistence" / "api" / "services" / f"{module}.py").is_file(), module
 
 
 def test_a_services_module_of_events_importing_faststream_breaks_the_one_module_rule(tmp_path):

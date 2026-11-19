@@ -14,6 +14,7 @@ import pytest
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCTERMS
 
+from rdf_persistence.api.services.documents import Documents
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     MigrationFailed,
@@ -34,7 +35,6 @@ from rdf_persistence.migrations.services.migrations import (
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import LABEL
-from rdf_persistence.services.documents import Documents
 from rdf_persistence.tenancy.services.iri_policy_guard import guard_iri_policy
 from rdf_persistence.tenancy.services.migration_runner import (
     migrate_database,

@@ -19,7 +19,7 @@ from rdf_persistence_generation.manifest import current_inputs
 from .conftest import ROOT_SCHEMA
 from .test_boundary_check import add_api_module, problems_of
 
-SERVICE_INPUT = "rdf_persistence/model/technical/service/rp_service.yaml"
+SERVICE_INPUT = "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml"
 EXPORT = re.compile(r'export \* from "\./(\w+)";')
 IMPORT = re.compile(r'from "\./(\w+)";')
 DECLARED = re.compile(r"export (?:interface|type) (\w+)")
@@ -68,7 +68,7 @@ classes:
 
 
 def service_enums() -> list[str]:
-    """The enums `rp_service.yaml` itself defines (not the ones it imports)."""
+    """The enums `rp_api_entrypoints.yaml` itself defines (not the ones it imports)."""
     return list(load_schema(SERVICE_SCHEMA).schema.enums)
 
 
@@ -221,10 +221,13 @@ def test_rendering_the_service_schema_equals_its_own_module_files() -> None:
         for f in typescript._module_files(SERVICE_SCHEMA)
         if f.name not in served_elsewhere
     }
-    own = typescript.with_index(list(kept.values()))
-    assert [f.name for f in typescript.render(SERVICE_SCHEMA)] == [f.name for f in own], (
-        "rendering the service schema adds nothing to its own files"
-    )
+    # the schema's own module is written as ``rp_service.ts`` whatever the schema is called (TC-07)
+    own_file = f"{load_schema(SERVICE_SCHEMA).schema.name}.ts"
+    merged_file = f"{typescript.SERVICE_MODULE}.ts"
+    names = [merged_file if name == own_file else name for name in kept]
+    assert sorted(f.name for f in typescript.render(SERVICE_SCHEMA)) == sorted(
+        [*names, "index.ts"]
+    ), "rendering the service schema adds nothing to its own files"
 
 
 def test_a_relative_path_to_the_service_schema_is_the_same_file(
@@ -399,7 +402,7 @@ def test_the_service_schema_is_an_input_of_the_toy_manifest() -> None:
     target = read_targets(toy / "pyproject.toml")[0]
     paths = {e.path for e in current_inputs(target, toy)}
     assert SERVICE_INPUT in paths, (
-        "rp_service.ts is generated from rp_service.yaml, but a change to it would not make the toy stale"
+        "rp_service.ts is generated from rp_api_entrypoints.yaml, but a change to it would not make the toy stale"
     )
 
 

@@ -3,14 +3,17 @@
 ; =============================================================================
 ; Run with:  make check-architecture   (wraps `uv run lint-imports`)
 ;
-; Direction (PD-1, toolkit-v1-foundation):
+; Direction (PD-1, toolkit-v1-foundation), inside each of the thirteen themes (thematic-structure PD-6):
 ;   entrypoints | adapters  >  services  >  domain
 ; Ports live in `services`; their implementations in `adapters`. `entrypoints`
 ; and `adapters` are independent siblings: neither imports the other, so the
-; consumer's composition root wires adapters in. `testkit` sits outside the
-; contract, and `rdf_persistence_generation` is a separate root package the
-; library never imports (library-never-imports-the-generator). Parenthesised
-; layers are optional until they exist.
+; consumer's composition root wires adapters in. Between the themes the order
+; is `themes-ordered`. `testkit` sits outside the contracts, and
+; `rdf_persistence_generation` is a separate root package the library never
+; imports (library-never-imports-the-generator). Parenthesised layers are
+; optional: a theme need not have every layer. The two deprecation shims,
+; `rdf_persistence.domain` and `rdf_persistence.adapters` (PD-8), stand outside
+; the themes until stage 8 removes them.
 
 [importlinter]
 root_packages =
@@ -20,17 +23,7 @@ root_packages =
     rdflib
 include_external_packages = True
 
-[importlinter:contract:layers]
-name = Layers: entrypoints | adapters > services > domain
-type = layers
-layers =
-    (rdf_persistence.entrypoints) | (rdf_persistence.adapters)
-    (rdf_persistence.services)
-    (rdf_persistence.domain)
-
-; The thematic layout (thematic-structure PD-6). A stage adds its themes to `containers` and to
-; `themes-ordered` (a theme not yet moved is absent, not empty); the old `layers` contract runs beside
-; these until stage 7. `themes-ordered` lists the highest theme first.
+; The thematic layout (thematic-structure PD-6). `themes-ordered` lists the highest theme first.
 [importlinter:contract:themes-layered]
 name = Themes: in each theme, entrypoints | adapters > services > domain, and nothing outside the layers
 type = layers
@@ -47,6 +40,7 @@ containers =
     rdf_persistence.events
     rdf_persistence.collaboration
     rdf_persistence.messaging
+    rdf_persistence.api
 layers =
     (entrypoints) | (adapters)
     (services)
@@ -57,6 +51,7 @@ exhaustive = true
 name = Themes: a theme imports only the themes below it (core is the lowest)
 type = layers
 layers =
+    rdf_persistence.api
     rdf_persistence.messaging
     rdf_persistence.collaboration | rdf_persistence.events
     rdf_persistence.tenancy
@@ -67,7 +62,7 @@ layers =
     rdf_persistence.core
 
 [importlinter:contract:domain-of-a-theme-imports-no-upper-layer]
-name = layers-across-themes (1/3) the domain of a theme imports no services, adapters or entrypoints of any theme
+name = layers-across-themes (1/4) the domain of a theme imports no services, adapters or entrypoints of any theme
 type = forbidden
 source_modules =
     rdf_persistence.*.domain
@@ -77,7 +72,7 @@ forbidden_modules =
     rdf_persistence.*.entrypoints
 
 [importlinter:contract:services-of-a-theme-import-no-adapters-or-entrypoints]
-name = layers-across-themes (2/3) the services of a theme import no adapters or entrypoints of any theme
+name = layers-across-themes (2/4) the services of a theme import no adapters or entrypoints of any theme
 type = forbidden
 source_modules =
     rdf_persistence.*.services
@@ -86,7 +81,7 @@ forbidden_modules =
     rdf_persistence.*.entrypoints
 
 [importlinter:contract:adapters-and-entrypoints-of-themes-are-independent]
-name = layers-across-themes (3/3) the adapters and the entrypoints of the themes import neither the other
+name = layers-across-themes (3/4) the adapters of the themes import no entrypoints
 type = forbidden
 source_modules =
     rdf_persistence.*.adapters
@@ -94,98 +89,21 @@ forbidden_modules =
     rdf_persistence.*.entrypoints
 
 [importlinter:contract:entrypoints-of-themes-import-no-adapters]
-name = layers-across-themes (3/3) the entrypoints of the themes import no adapters
+name = layers-across-themes (4/4) the entrypoints of the themes import no adapters
 type = forbidden
 source_modules =
     rdf_persistence.*.entrypoints
 forbidden_modules =
     rdf_persistence.*.adapters
 
-; Temporary (thematic-structure D-13, D-16): while the unmoved modules stay at the old layout, no old
-; contract or theme contract stops a moved theme from importing them. Every turned-on theme is a source
-; here (a stage adds its themes, and `tests/unit/test_theme_contracts.py` fails when one is missing).
-; Stage 7 removes this contract with the old layout.
-[importlinter:contract:themes-never-import-the-old-layout]
-name = a moved theme never imports the old layout (domain, services, adapters, entrypoints), until stage 7 removes it
-type = forbidden
-source_modules =
-    rdf_persistence.core
-    rdf_persistence.iris
-    rdf_persistence.schema
-    rdf_persistence.files
-    rdf_persistence.provenance
-    rdf_persistence.persistence
-    rdf_persistence.migrations
-    rdf_persistence.access
-    rdf_persistence.tenancy
-    rdf_persistence.events
-    rdf_persistence.collaboration
-    rdf_persistence.messaging
-forbidden_modules =
-    rdf_persistence.domain
-    rdf_persistence.services
-    rdf_persistence.adapters
-    rdf_persistence.entrypoints
-
-; Temporary (thematic-structure D-14): the other direction of the contract above. While the unmoved modules
-; stay at the old layout, the old layers keep their order against the layers of the moved themes: an old
-; layer never imports upward into a theme. `*` matches one segment, so `rdf_persistence.*.services` names
-; `rdf_persistence.core.services` and not `rdf_persistence.services` (the old layer importing itself is
-; fine). Stage 7 removes these four contracts with the old layout.
-[importlinter:contract:old-domain-imports-no-theme-upper-layer]
-name = old-vs-themes (1/4) old domain imports no theme upper layer
-type = forbidden
-source_modules =
-    rdf_persistence.domain
-forbidden_modules =
-    rdf_persistence.*.services
-    rdf_persistence.*.adapters
-    rdf_persistence.*.entrypoints
-
-[importlinter:contract:old-services-import-no-theme-adapters-or-entrypoints]
-name = old-vs-themes (2/4) old services import no theme adapters or entrypoints
-type = forbidden
-source_modules =
-    rdf_persistence.services
-forbidden_modules =
-    rdf_persistence.*.adapters
-    rdf_persistence.*.entrypoints
-
-[importlinter:contract:old-adapters-import-no-theme-entrypoints]
-name = old-vs-themes (3/4) old adapters import no theme entrypoints
-type = forbidden
-source_modules =
-    rdf_persistence.adapters
-forbidden_modules =
-    rdf_persistence.*.entrypoints
-
-[importlinter:contract:old-entrypoints-import-no-theme-adapters]
-name = old-vs-themes (4/4) old entrypoints import no theme adapters
-type = forbidden
-source_modules =
-    rdf_persistence.entrypoints
-forbidden_modules =
-    rdf_persistence.*.adapters
-
-; Technical models (service settings, wire shapes) are generated outside the domain and the domain never
-; imports them, directly or through a chain (technical-models PD-2, Q-2). The `thematic-structure` change
-; replaces this contract with one over the thematic layout.
-[importlinter:contract:domain-never-imports-technical-models]
-name = the domain never imports a technical model (service, wire or testkit)
-type = forbidden
-source_modules =
-    rdf_persistence.domain
-    rdf_persistence.*.domain
-forbidden_modules =
-    rdf_persistence.services.generated
-    rdf_persistence.adapters.generated
-    rdf_persistence.*.services.generated
-    rdf_persistence.*.adapters.generated
-    rdf_persistence.testkit.generated
-
+; Technical models (service settings, wire shapes) sit in a `services`, `adapters` or `entrypoints`
+; layer, which no domain imports (the first two of the four `layers-across-themes` contracts), nor does a domain import
+; the testkit's (`runtime-without-extras`): that is what `domain-never-imports-technical-models` said
+; (technical-models PD-2, Q-2; thematic-structure PD-6).
 [importlinter:contract:domain-pure]
 name = domain imports no I/O, web, token or validation library
 type = forbidden
+; `rdf_persistence.domain` is the deprecation shim (PD-8): kept a source until stage 8 removes it.
 source_modules =
     rdf_persistence.domain
     rdf_persistence.*.domain
@@ -202,9 +120,7 @@ name = runtime layers import neither the testkit, the generators nor test toolin
 type = forbidden
 source_modules =
     rdf_persistence.domain
-    rdf_persistence.services
     rdf_persistence.adapters
-    rdf_persistence.entrypoints
     rdf_persistence.*.domain
     rdf_persistence.*.services
     rdf_persistence.*.adapters
@@ -296,17 +212,16 @@ forbidden_modules =
 ignore_imports =
     rdf_persistence.events.adapters.redis_events -> faststream
 
-; Temporary (thematic-structure D-23): the theme order puts `messaging` above every theme, so it cannot keep
-; the four `api` services modules that have not moved off the bus (`api` sits above `messaging`). Stage 7
-; moves them and retargets these sources to `rdf_persistence.api.services`.
+; The theme order puts `api` above `messaging`, so it cannot keep the four `api` services modules off the
+; bus (thematic-structure D-23); this contract does.
 [importlinter:contract:api-services-never-import-the-bus]
 name = the api services modules (aggregates, components, documents, file_removal) never import the message bus
 type = forbidden
 source_modules =
-    rdf_persistence.services.aggregates
-    rdf_persistence.services.components
-    rdf_persistence.services.documents
-    rdf_persistence.services.file_removal
+    rdf_persistence.api.services.aggregates
+    rdf_persistence.api.services.components
+    rdf_persistence.api.services.documents
+    rdf_persistence.api.services.file_removal
 forbidden_modules =
     rdf_persistence.messaging
 
@@ -317,17 +232,16 @@ name = the domain tests import nothing above the domain: no services, adapters, 
 type = forbidden
 allow_indirect_imports = True
 source_modules =
-    tests.unit.domain
     tests.unit.core.test_rp_model
+    tests.unit.core.test_access_model
+    tests.unit.core.test_tenant_store_name
     tests.unit.core.test_exceptions
     tests.unit.core.test_sparql
     tests.unit.core.test_sparql_parsing
     tests.unit.iris.test_layout
     tests.unit.files.test_blob_keys
 forbidden_modules =
-    rdf_persistence.services
     rdf_persistence.adapters
-    rdf_persistence.entrypoints
     rdf_persistence.*.services
     rdf_persistence.*.adapters
     rdf_persistence.*.entrypoints
@@ -350,4 +264,4 @@ forbidden_modules =
 ignore_imports =
     rdf_persistence.core.domain.sparql_parsing -> rdflib.plugins.sparql
     rdf_persistence.core.domain.sparql_parsing -> rdflib.plugins.sparql.**
-    rdf_persistence.services.shacl -> pyshacl
+    rdf_persistence.api.services.shacl -> pyshacl

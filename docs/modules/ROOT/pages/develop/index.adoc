@@ -23,9 +23,10 @@ types are allowed only where a field holds a run-time object LinkML cannot expre
 [cols="2,4",options="header"]
 |===
 |Path |What it holds
-|`rdf_persistence/model/` |The metamodel schemas (`rp_core.yaml`, `rp_annotations.yaml`, `rp_provenance.yaml`, `rp_access.yaml`, `rp_tenancy.yaml`, `rp_files.yaml`, imported together by `rp.yaml`), flat, and `technical/<group>/rp_*.yaml`, the schemas of the technical models (`core`, `iris`, `schema`, `persistence`, `migrations`, `access`, `tenancy`, `events`, `collaboration`, `service`, `settings`, `testkit`)
+|`rdf_persistence/model/` |The metamodel schemas (`rp_core.yaml`, `rp_annotations.yaml`, `rp_provenance.yaml`, `rp_access.yaml`, `rp_tenancy.yaml`, `rp_files.yaml`, imported together by `rp.yaml`), flat, and `technical/<theme>/rp_<theme>_<layer>.yaml` (or `rp_<theme>_settings.yaml` / `rp_<theme>_templates.yaml` for a non-served group), the schemas of the technical models (`core`, `iris`, `schema`, `persistence`, `migrations`, `access`, `tenancy`, `events`, `collaboration`, `api`), with `technical/testkit/rp_testkit.yaml`
+|`rdf_persistence/<theme>/<layer>/` |The hand-written modules: thirteen themes, each with the layers it needs (`domain`, `services`, `adapters`, `entrypoints`); which module sits where is in xref:architecture/index.adoc#themes[Where a module lives]. The two modules left in `rdf_persistence/domain/` and `rdf_persistence/adapters/` are deprecation shims
 |`rdf_persistence/core/domain/generated/` |The metamodel's generated classes, shapes and context
-|`rdf_persistence/<theme>/services/generated/`, `<theme>/adapters/generated/`, `services/generated/`, `testkit/generated/` |The generated technical models, each in the lowest layer whose code may import them: `HttpSettings` and `LogContext` (from `model/technical/core/rp_core_services.yaml`) in `core/services/generated/`, the IRI settings and policy in `iris/services/generated/` with their templates in `iris/services/generated/templates/`, the SPARQL term bundles in `schema/services/generated/templates/`, the caller and directory records and settings in `access/services/generated/`, the tenant records in `tenancy/services/generated/`, the event envelope and settings in `events/services/generated/`, the referrer and member records in `collaboration/services/generated/`, `service/` and `settings/` in `services/generated/`, the wire shapes in `access/adapters/generated/` and `persistence/adapters/generated/`, the testkit's records in `testkit/generated/` (xref:architecture/generation.adoc#kinds[Two kinds of model])
+|`rdf_persistence/<theme>/<layer>/generated/`, `testkit/generated/` |The generated technical models, each in the lowest layer every user may import, in the lowest theme that uses it: for example `HttpSettings` and `LogContext` in `core/services/generated/`, the IRI settings and policy in `iris/services/generated/`, the wire shapes in `access/adapters/generated/` and `persistence/adapters/generated/`, the API's bodies and `ToolkitSettings` in `api/entrypoints/generated/`, the testkit's records in `testkit/generated/`. The full list: xref:architecture/generation.adoc#kinds[Two kinds of model]
 |`rdf_persistence/core/domain/base.py` |`RpModel`, the strict base class of every generated class
 |`rdf_persistence/schema/services/schema.py`, `schema_structure.py` |`load_schema` (with the metamodel import map) and the rules that read a schema's aggregate structure, used by every other part
 |`rdf_persistence_generation/` |`rp-generate`: `cli.py`, `config.py` (the `[tool.rp-generate]` table), `steps.py` (the steps, in order), `pipeline.py` (staging and running them), `manifest.py` (freshness), `lint.yaml`
@@ -67,7 +68,7 @@ xref:develop/testing.adoc#slow[the testing checklist].
 |`make test-generator` |Run the generator's unit, feature and integration tests of `tests/generator/` in parallel, without containers; fails under 80 % coverage of `rdf_persistence_generation`; needs Node 20 for the `tsc` test, which the CI job `test-generator` sets up
 |`make test-perf` |Run the wall-clock budget tests alone (needs Docker); not part of `check-all` or CI
 |`make refresh-map` |Re-key the rows of `tests/audit/scenario-map.csv` whose test file was renamed (against `BASE`, default `develop`, or an explicit `--moved OLD=NEW`), drop those whose test is gone and list the collected tests that have no row (exit 1 while some are unmapped); keeps the map when the collection fails
-|`make mutation` |Mutate the domain layer of every theme (`rdf_persistence/*/domain/*`, without `generated`) and of the old layout, `iris/services/iris.py` and `tenancy/services/tenant_move.py` (`mutmut`, selection in `setup.cfg`: `tests/unit/domain`, the domain tests of `tests/unit/core` and `tests/unit/files`, `tests/unit/iris` and the tenant-move tests of `tests/unit/tenancy`) and print the killed, survived and untested counts; slow, not part of `check-all` or CI
+|`make mutation` |Mutate the domain layer of every theme (`rdf_persistence/*/domain/*`, without `generated`), `iris/services/iris.py` and `tenancy/services/tenant_move.py` (`mutmut`, selection in `setup.cfg`: `tests/unit/core`, `tests/unit/files`, `tests/unit/iris` and `tests/unit/tenancy/test_tenant_move.py`) and print the killed, survived and untested counts; slow, not part of `check-all` or CI
 |`make test-containers` |Run the integration and e2e tests against Fuseki, Garage, Zitadel and Redis (needs Docker); local only, not in CI
 |`make fuseki-image` |Load the Fuseki test image from `temp/fuseki-image.tar`; build it and save the tar first when the tar is missing or older than `fuseki/` or `compose.yaml`
 |`make format`, `make format-check` |Format the code with Ruff, or only check it (`check-quality` runs the check)
@@ -97,8 +98,10 @@ the generated package (xref:architecture/generation.adoc#kinds[Two kinds of mode
 toolchain (a view-model, a problem) in `rp_generation.yaml`
 (`rdf_persistence_generation.generated`), a record the testkit's own modules use in
 `model/technical/testkit/rp_testkit.yaml` (`rdf_persistence.testkit.generated`), a deployment value in
-`rp_settings.yaml` (xref:howto/settings.adoc[Configure the toolkit's deployment values]), a request
-or response body in `rp_service.yaml`. Use enums for value sets, never free strings.
+the settings schema of the theme whose code uses it (xref:howto/settings.adoc[Configure the toolkit's
+deployment values]), a request or response body in the services schema of the lowest theme that
+uses it, or in `api/rp_api_entrypoints.yaml` when only the entrypoints do. Use enums for value sets,
+never free strings.
 
 [#hand-written]
 == Add a hand-written type

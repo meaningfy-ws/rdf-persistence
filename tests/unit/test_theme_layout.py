@@ -31,6 +31,7 @@ TURNED_ON: frozenset[str] = frozenset(
         "events",
         "collaboration",
         "messaging",
+        "api",
     }
 )
 # Old paths that hold a deprecation shim, not a leftover (PD-8): the module re-exports the moved one and
@@ -313,7 +314,14 @@ PLACED: tuple[Placed, ...] = (
         "service",
         ("Problem", "ProblemKind", "ProblemSlug", "Authorised", "LabelUpdate", "TenantCreate"),
     ),
-    Placed("api", "entrypoints", "settings", ("SseSettings", "ToolkitSettings")),
+    # Not served, like `LimitSettings`: the settings are no part of the HTTP API's types (TC-07).
+    Placed(
+        "api",
+        "entrypoints",
+        "settings",
+        ("SseSettings", "ToolkitSettings"),
+        tail="settings.rp_api_settings",
+    ),
 )
 
 
@@ -431,6 +439,41 @@ def test_the_layout_names_the_themes_the_changed_mapper_knows():
     assert {row.theme for row in LAYOUT} == THEMES, "LAYOUT and tests.changed.THEMES differ"
 
 
+def test_every_row_of_the_layout_is_on():
+    """TC-01 at the end of the move (stage 7): no theme is left on its old path."""
+    off = sorted({row.theme for row in LAYOUT if not row.on})
+
+    assert off == [], f"themes still off: {off}"
+    assert len({row.theme for row in LAYOUT}) == 13, "PD-1 has thirteen themes"
+
+
+# TC-70: what stands at the top of the package once the move is done (PD-1, PD-8).
+SHIM_FOLDERS = frozenset({"domain", "adapters"})
+TOP_LEVEL_FILES = frozenset({"__init__.py", "py.typed"})
+
+
+def test_the_top_level_of_the_package_holds_the_themes_the_shims_and_nothing_else():
+    """TC-70: exactly the 13 themes, `domain` and `adapters` (shims), `model`, `testkit`, two files."""
+    entries = {p.name for p in (ROOT / PACKAGE).iterdir() if p.name != "__pycache__"}
+    themes = {row.theme for row in LAYOUT}
+
+    assert entries == themes | SHIM_FOLDERS | {"model", "testkit"} | TOP_LEVEL_FILES, (
+        f"unexpected or missing at the top level: {sorted(entries)}"
+    )
+
+
+def test_a_shim_folder_holds_its_init_and_its_shim_and_no_other_module():
+    """TC-70: `domain/` and `adapters/` are the two deprecation shims (PD-8) until stage 8."""
+    found = {
+        p.relative_to(ROOT).with_suffix("").as_posix().replace("/", ".")
+        for folder in SHIM_FOLDERS
+        for p in (ROOT / PACKAGE / folder).rglob("*.py")
+        if p.name != "__init__.py"
+    }
+
+    assert found == SHIMS, f"modules in the shim folders other than the shims: {sorted(found)}"
+
+
 def test_no_two_rows_share_an_old_or_a_new_path():
     olds = [row.old for row in LAYOUT if row.old]
     news = [row.new for row in LAYOUT]
@@ -459,7 +502,8 @@ def test_a_class_is_placed_once_and_in_a_known_theme_and_layer():
 # --- the guard on a planted tree ------------------------------------------------------------
 
 SERVICE_OLD = "rdf_persistence.services.generated.service.rp_service"
-# The planted rows use `api`, the theme that turns on last, so they stay "off" for the whole move.
+# The planted rows use `api`; every theme is on after stage 7, so a test that needs the row off turns
+# the themes off itself (`nothing_on`).
 SERVICE_NEW = "rdf_persistence.api.entrypoints.generated.rp_api_entrypoints"
 ONE_CLASS = (Placed("api", "entrypoints", "service", ("Problem",)),)
 
@@ -470,7 +514,7 @@ def _module(root: Path, module: str, *classes: str) -> None:
     path.write_text("".join(f"class {c}:\n    pass\n\n" for c in classes), encoding="utf-8")
 
 
-def test_a_class_row_off_holds_while_the_class_is_in_its_group_module(tmp_path):
+def test_a_class_row_off_holds_while_the_class_is_in_its_group_module(tmp_path, nothing_on):
     _module(tmp_path, SERVICE_OLD, "Problem")
 
     assert placed_problems(ONE_CLASS, tmp_path) == [], "the class stands where the row says"
@@ -496,7 +540,7 @@ def test_a_class_row_turned_on_holds_when_the_class_stands_in_the_new_module(tmp
     assert turned_on_classes(ONE_CLASS) == {(SERVICE_OLD, "Problem"): SERVICE_NEW}
 
 
-def test_a_class_without_a_row_fails_by_name(tmp_path):
+def test_a_class_without_a_row_fails_by_name(tmp_path, nothing_on):
     _module(tmp_path, SERVICE_OLD, "Problem", "Newcomer")
 
     problems = placed_problems(ONE_CLASS, tmp_path)

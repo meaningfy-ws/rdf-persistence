@@ -274,7 +274,7 @@ where the store is. Two refusals share 409 and differ in `type`: `conflict` ("Ve
 stale version) and `key-conflict` ("Key conflict": a write claims a unique key value another
 aggregate of the tenant holds). Neither carries a detail, so the answer names neither the value nor
 the holder. A fault is anything the caller cannot fix: SPARQL the toolkit wrote that the
-store refuses (`ToolkitStore` in `services/store.py` turns the store's `BadQuery` into a
+store refuses (`ToolkitStore` in `persistence/services/store.py` turns the store's `BadQuery` into a
 `SparqlError`), or stored data that does not validate. A bad query string from the caller stays 400
 `bad-query`; so does a filter on an IRI-valued slot whose value is not an IRI SPARQL can carry.
 
@@ -335,7 +335,7 @@ sequenceDiagram
 
 |1
 |Verify the bearer token.
-|`entrypoints/auth.py`, `Gate.caller`, which calls the `TokenVerifier` (`JwksTokenVerifier.verify`)
+|`api/entrypoints/auth.py`, `Gate.caller`, which calls the `TokenVerifier` (`JwksTokenVerifier.verify`)
 |401
 
 |2
@@ -360,7 +360,7 @@ xref:architecture/access-control.adoc#check[the check].
 
 |5
 |Pick the response type from `Accept`.
-|`entrypoints/negotiation.py`, `accepted_media_type`, in `DocumentApi.replace` (`entrypoints/router.py`)
+|`api/entrypoints/negotiation.py`, `accepted_media_type`, in `DocumentApi.replace` (`api/entrypoints/router.py`)
 |406
 
 |6
@@ -379,8 +379,8 @@ it outgrows the limit.
 
 |8
 |Parse the JSON, and count its objects and list values against the cap of 10 000.
-|`services/documents.py`, `Documents._document` and `_bound`, called by `Documents.parse` from
-`Aggregates.replace` (`services/aggregates.py`)
+|`api/services/documents.py`, `Documents._document` and `_bound`, called by `Documents.parse` from
+`Aggregates.replace` (`api/services/aggregates.py`)
 |422, 413
 
 |9
@@ -390,7 +390,7 @@ a remote context is refused. A JSON-LD body is expanded with its own inline cont
 loaded JSON-LD file, goes through one function that refuses a remote context, a second graph, a
 relative IRI that has no `@base`, an IRI that is not valid and a document that is not an object or
 array.
-|`Documents._plain_document` and `_typed`; `Documents._triples` and `services/jsonld.py` (`triples_of`, pyld `to_rdf`)
+|`Documents._plain_document` and `_typed`; `Documents._triples` and `persistence/services/jsonld.py` (`triples_of`, pyld `to_rdf`)
 |422
 
 |10
@@ -422,7 +422,7 @@ operations: a guard operation that writes a commit marker only if the graph is a
 version token and the tracking statements, each matching only while the marker is there, and the
 release of the marker; then an `ASK` for the new token (see
 xref:architecture/data-flows.adoc#commit[Committing several aggregates at once]).
-|`services/session.py`, `Session.replace_graph`, `Transaction.replace_graph`
+|`persistence/services/session.py`, `Session.replace_graph`, `Transaction.replace_graph`
 (`replace_parts`, `request_text`, `payload_triples`), through `ToolkitStore`
 |409; 500 if the store refuses the text
 
@@ -430,7 +430,7 @@ xref:architecture/data-flows.adoc#commit[Committing several aggregates at once])
 |Read the aggregate back and answer it in the negotiated type: framed JSON (with the context's
 `Link` header) or JSON-LD, or one of the five RDF forms (<<representations>>); the bookkeeping and `internal` values left out. The `ETag`
 is the new version token, in quotes; `Vary: Accept` is set.
-|`Session.get_graph`; `entrypoints/responses.py`, `document_response`, with `negotiation.py`,
+|`Session.get_graph`; `api/entrypoints/responses.py`, `document_response`, with `negotiation.py`,
 `etag_of`, and `Documents.render`
 |—
 |===

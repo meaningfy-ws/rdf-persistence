@@ -18,10 +18,10 @@ from types import SimpleNamespace
 from rdflib import RDF, Graph
 from rdflib.namespace import Namespace
 
+from rdf_persistence.api.services.documents import Documents
+from rdf_persistence.api.services.shacl import warm_up
 from rdf_persistence.core.domain.sparql import checked_group
 from rdf_persistence.core.domain.sparql_parsing import prepare_query
-from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.shacl import warm_up
 from rdf_persistence.tenancy.services.migration_runner import migrate_dataset
 from rdf_persistence.testkit.fakes import FakeStore
 from tests.unit.tenancy.migration_helpers import (

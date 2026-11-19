@@ -195,7 +195,7 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
     module outside its layers.
   - `themes-ordered` (layers): `api` / `messaging` / `collaboration | events` / `tenancy` /
     `access | migrations` / `persistence` / `provenance | files` / `iris | schema` / `core`.
-  - `layers-across-themes` (forbidden, three contracts): `rdf_persistence.*.domain` imports no
+  - `layers-across-themes` (forbidden, three rules in four contracts, D-12 (4)): `rdf_persistence.*.domain` imports no
     `rdf_persistence.*.{services,adapters,entrypoints}`; `rdf_persistence.*.services` imports no
     `rdf_persistence.*.{adapters,entrypoints}`; `rdf_persistence.*.adapters` and
     `rdf_persistence.*.entrypoints` import neither the other.
@@ -236,10 +236,11 @@ Settled in the EPIC and cited, not re-argued: DEC-1 to DEC-10. The new ones:
     `themes-ordered` implies the bus rule only for the themes below `messaging`; for `api`, above
     it, `api-services-never-import-the-bus` (D-23) keeps
     `rdf_persistence.api.services.{aggregates,components,documents,file_removal}` off
-    `rdf_persistence.messaging`, so the contracts end as 16.
+    `rdf_persistence.messaging`.
 
-  The 14 contracts of today therefore end as 15: ten carry over, four are gone, five are new
-  (`themes-layered`, `themes-ordered` and the three of `layers-across-themes`).
+  The 14 contracts of today therefore end as 17: ten carry over, four are gone, seven are new
+  (`themes-layered`, `themes-ordered`, the four sections of `layers-across-themes` (D-12 (4)
+  split the third in two) and `api-services-never-import-the-bus` (D-23)).
 
   During stages 2 to 6 the old `layers` contract and the new ones run side by side; a stage adds its
   themes to `containers` and `themes-ordered` (a theme not yet moved is absent, not empty).
@@ -721,5 +722,36 @@ consumers later.
   rather than widening the exemption). Under the floor: S3 (recorded in D-22 (7)). The tester's
   tests are not kept: none failed first on production code but F1's, which the reworded title
   resolves. The checker found PD-6 and task 7.1 silent on the new contract: both now name it
-  (16 contracts at the end). Under the floor: the stage's unplanted control does not lint the new
-  contract (its four planted tests do); the stage changelog items go to `evidence/docs-owed.md`.
+  (17 contracts at the end, PD-6). Under the floor: the stage's unplanted control does not lint the
+  new contract (its four planted tests do); the stage changelog items go to `evidence/docs-owed.md`.
+- **D-24 Stage 7 (`api`, the end of the old layers) as built** (builder of 7.1 and 7.2, accepted
+  by the lead; 7.1 built on an older base and combined onto stage 6 by an integration fixer). (1)
+  The five temporary contracts (`themes-never-import-the-old-layout`, the four `old-vs-themes`)
+  and their own planted tests removed; the D-16 derived test of `domain-never-imports-technical-models`
+  retargeted to `domain-of-a-theme-imports-no-upper-layer`. (2) `api-services-never-import-the-bus`
+  retargeted to `api.services` (D-23); its planted tests re-pointed. (3) The served schema of the
+  service is `model/technical/api/rp_api_entrypoints.yaml`; `rp_service.ts` keeps its name
+  (`SERVICE_MODULE`). (4) TC-04's `EXEMPT`: `tests/feature/test_technical_models.py` removed (D-21);
+  `tests/unit/test_technical_split.py` kept, as its probe that an old path raises
+  `ModuleNotFoundError` names `rdf_persistence.domain.generated`. (5) The CHANGELOG lists the
+  logger names under Changed (BREAKING), not Deprecated as task 7.2 says: the old names stop at
+  once, with no warning. (6) The 15 tests 7.1 added without a map row are mapped.
+- **D-25 Stage 7 full review and tester** (lead; L1, L2, L3 apart, L4+L5 one pass, D-7; 34
+  findings, none Critical as reported; tester 57 tests, 3 failed, 2 findings). Re-labelled
+  Critical: L2 W1 (`domain-pure` lost `rdf_persistence.domain` as a source while the shim lives:
+  a narrowed gate; restored until stage 8). Accepted below Critical, one fixer pass: PD-6's count
+  (17, above) and the four `layers-across-themes` labels `(1/4)`–`(4/4)`, the `:84` name, the
+  `:100` comment; spec deltas for `rp-developer-checks` (theme folders in `make test-changed`) and
+  `rp-generation` (the service's TypeScript types from the served schemas, `rp_api_entrypoints.yaml`;
+  the schema file name `rp_<theme>_<layer>.yaml`, or `rp_<theme>_<group>.yaml` for a non-served
+  group, D-15 (1), in the delta and the pages that repeat it); `make test-changed` runs a shim's own
+  tests; the stale test-file paths the tester found (four places) and its guard test kept; the dead
+  scratch line in `test_theme_contracts.py`; `SERVICE_SETTINGS` in `test_technical_models.py` names a
+  module holding `ServiceSettings`; the stale boundary-test name; `typescript.py`'s message built
+  from `SERVICE_MODULE`; planted tests for "a domain module imports a service of another theme" and
+  "two themes of one rank" mapped at scenario level. Under the floor, for stage 8 or later: one
+  shared `_lint` helper; the names `LAYERS`, `SHIM_FOLDERS` (twice), `_ENTRYPOINTS`,
+  `_SERVICE_MODELS`, `SERVICE_SCHEMA`; the bus contract on the whole `api.services` package; PD-4's
+  folder check requiring a theme before the layer (the tester's probe); the shims' warnings naming
+  a version (PD-8; named when the release is cut). The tester's other tests are not kept: none
+  failed first on production code.

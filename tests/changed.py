@@ -13,9 +13,10 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 FALLBACK_EXIT = 3
-LAYERS = frozenset({"domain", "services", "adapters", "entrypoints", "testkit"})
+LAYERS = frozenset({"testkit"})  # outside the themes; the old layer folders are gone (PD-11)
 # thematic-structure PD-1, PD-11: rdf_persistence/<theme>/<layer>/ is covered by tests/unit/<theme>/.
-# `core` is imported by every theme, so a change in it runs the whole fast suite.
+# `core` is imported by every theme, so a change in it runs the whole fast suite. The deprecation shims
+# `rdf_persistence/domain/` and `rdf_persistence/adapters/` (PD-8) are no theme: they select the root tests and the folder of the shim's own tests (SHIM_TESTS).
 THEMES = frozenset(
     {
         "core",
@@ -34,9 +35,11 @@ THEMES = frozenset(
     }
 )
 CORE_THEME = "core"
+# The folders holding the shims' own tests (test_domain_base_shim.py, test_fuseki_shim.py), run in
+# addition to the root tests when a shim changes; both entries go with the shims at stage 8.
+SHIM_TESTS = {"domain": ("tests/unit/core/",), "adapters": ("tests/unit/persistence/",)}
 NO_TEST_ROOTS = frozenset({"openspec", ".claude", "temp"})
 SHARED_FILES = frozenset({"pytest.ini", "pyproject.toml", "uv.lock", "Makefile", ".coveragerc"})
-DOMAIN_FOLDER = "tests/unit/domain/"
 # The generator's own pyramid (generator-package PD-9, PD-10): its code selects all of it.
 GENERATOR_PACKAGE = "rdf_persistence_generation"
 GENERATOR_TESTS = "tests/generator/"
@@ -91,7 +94,7 @@ def _test_folder_of(parts: tuple[str, ...], root_tests: Sequence[str]) -> list[s
     if parts[0] == "rdf_persistence" and len(parts) > 2 and parts[1] in LAYERS | THEMES:
         return [f"tests/unit/{parts[1]}/"]
     if parts[0] == "rdf_persistence" and len(parts) > 1:
-        return list(root_tests)
+        return [*root_tests, *SHIM_TESTS.get(parts[1], ())]
     return None
 
 
@@ -147,7 +150,7 @@ def pytest_arguments(paths: Sequence[str], pytest_n: str | None) -> list[str]:
     """The pytest arguments for a selection: nothing when it is empty, else paths then -n."""
     if not paths:
         return []
-    one_process = all(not p.endswith("/") for p in paths) or list(paths) == [DOMAIN_FOLDER]
+    one_process = all(not p.endswith("/") for p in paths)
     return [*paths, "-n", pytest_n or ("0" if one_process else "auto"), *DIST]
 
 

@@ -11,7 +11,7 @@ HEAVY = (
     "httpx",
     "anyio",
     "rdf_persistence.adapters",
-    "rdf_persistence.services",
+    "rdf_persistence.api",
     "rdf_persistence.persistence.adapters",
     "rdf_persistence.access",
     "rdf_persistence.tenancy",

@@ -63,7 +63,7 @@ testkit = [
 events = [
     "faststream[redis]==0.7.8",
 ]
-# `settings_from_env` of `rdf_persistence.entrypoints.environment` (technical-models PD-12).
+# `settings_from_env` of `rdf_persistence.api.entrypoints.environment` (technical-models PD-12).
 settings = [
     "pydantic-settings==2.16.2",
 ]
@@ -202,8 +202,8 @@ regenerate-command = "make generate"
 kind = "technical"
 
 [[tool.rp-generate]]
-schema = "rdf_persistence/model/technical/service/rp_service.yaml"
-package = "rdf_persistence.services.generated.service"
+schema = "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml"
+package = "rdf_persistence.api.entrypoints.generated"
 regenerate-command = "make generate"
 kind = "technical"
 
@@ -222,8 +222,8 @@ openapi = false
 kind = "technical"
 
 [[tool.rp-generate]]
-schema = "rdf_persistence/model/technical/settings/rp_settings.yaml"
-package = "rdf_persistence.services.generated.settings"
+schema = "rdf_persistence/model/technical/api/rp_api_settings.yaml"
+package = "rdf_persistence.api.entrypoints.generated.settings"
 regenerate-command = "make generate"
 openapi = false
 kind = "technical"

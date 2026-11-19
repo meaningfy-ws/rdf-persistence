@@ -21,12 +21,12 @@ from rdf_persistence import (
     UnitOfWork,
     load_role_definitions,
 )
-from rdf_persistence.entrypoints.service import install_service
+from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import ToolkitSettings
+from rdf_persistence.api.entrypoints.service import install_service
 from rdf_persistence.events.services.events import EventBus
 from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.services.generated.rp_iris_services import IdKind, IdSpec, IriPolicy
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris, draw_id
-from rdf_persistence.services.generated.settings.rp_settings import ToolkitSettings
 from rdf_persistence.tenancy.services.tenancy import GrantValidator, RootValidator
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 from rdf_persistence.testkit.tokens import ISSUER, shared_key

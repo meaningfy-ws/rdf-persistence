@@ -7,6 +7,126 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Imports between generation targets** (`thematic-structure`): a schema that imports a module of
+  another target, where that module declares `python_package`, imports its classes from
+  `<python_package>.<module>` and does not generate them again; the manifest lists the imported
+  YAML as an input. A module without `python_package` is generated as before.
+- **A toolkit target's folder follows its kind** (`thematic-structure`): in the toolkit's own run,
+  rule `TARGET_KIND` also refuses a target whose `package` does not have `domain` (for a `domain`
+  target) or `services`, `adapters` or `entrypoints` (for a `technical` one) before `generated`.
+  `rdf_persistence.testkit` and `rdf_persistence_generation` are exempt. A consumer's run is not
+  checked.
+
+### Changed
+- **The library is organised in thirteen themes** (`thematic-structure`). Every module moved from
+  `rdf_persistence/{domain,services,adapters,entrypoints}/` to
+  `rdf_persistence/<theme>/<layer>/`: `core`, `iris`, `schema`, `files`, `provenance`,
+  `persistence`, `migrations`, `access`, `tenancy`, `events`, `collaboration`, `messaging` and
+  `api` (the map: `docs/modules/ROOT/pages/architecture/index.adoc`, "Where a module lives"). The 149 names of `rdf_persistence`
+  are the same objects; only a deep import of an old module path breaks, with
+  `ModuleNotFoundError`. Two old paths keep a shim for one release (see Deprecated); every other
+  one, for example `rdf_persistence.services.session`, `rdf_persistence.services.messagebus`,
+  `rdf_persistence.services.{events,event_hub,event_stream,relay}`,
+  `rdf_persistence.services.{collaboration,discussion,reference_collections,transitions,workflows,write_guards}`,
+  `rdf_persistence.adapters.redis_events` or `rdf_persistence.entrypoints.kit`, has none. The
+  metamodel's generated package moved from `rdf_persistence.domain.generated` to
+  `rdf_persistence.core.domain.generated`.
+- **The technical schemas are split by theme** (`thematic-structure`). `model/technical/{service,
+  settings,telemetry,templates,wire}/` are now `model/technical/<theme>/rp_<theme>_<layer>.yaml`
+  (`rp_<theme>_settings.yaml` or `rp_<theme>_templates.yaml` for a non-served group), each generated
+  into `rdf_persistence/<theme>/<layer>/generated/` (a group into `generated/settings/` or
+  `generated/templates/`; `testkit` is unchanged). The
+  top-level names are unchanged; a deep import moves:
+  - from `rdf_persistence.services.generated.service.rp_service`: `ServiceSettings`, `IriPolicy`,
+    `IdSpec`, `IdKind` to `rdf_persistence.iris.services.generated.rp_iris_services`; `Page`,
+    `Filter`, `ListRequest`, `Condition`, `ListPlan`, `AggregateHead` to
+    `rdf_persistence.persistence.services.generated.rp_persistence_services`; `Migration`,
+    `MigrationStep` to `rdf_persistence.migrations.services.generated.rp_migrations_services`;
+    `VerifiedCaller`, `GrantSet`, `CallerAccess`, `AccountSummary` to
+    `rdf_persistence.access.services.generated.rp_access_services`; `TenantDump`, `TenantSummary`
+    to `rdf_persistence.tenancy.services.generated.rp_tenancy_services`; `EventEnvelope` to
+    `rdf_persistence.events.services.generated.rp_events_services`; `Referrer`, `ReferrerList`,
+    `MemberList` to `rdf_persistence.collaboration.services.generated.rp_collaboration_services`;
+    `TenantCreate`, `LabelUpdate`, `Authorised`, `Problem`, `ProblemKind`, `ProblemSlug` to
+    `rdf_persistence.api.entrypoints.generated.rp_api_entrypoints`;
+  - from `rdf_persistence.services.generated.settings.rp_settings`: `HttpSettings` to
+    `rdf_persistence.core.services.generated.rp_core_services`; `LimitSettings` to
+    `rdf_persistence.persistence.services.generated.settings.rp_persistence_settings`;
+    `JwksSettings` and `DirectorySettings` to
+    `rdf_persistence.access.services.generated.settings.rp_access_settings`; `EventSettings` to
+    `rdf_persistence.events.services.generated.settings.rp_events_settings`; `SseSettings` and
+    `ToolkitSettings` to `rdf_persistence.api.entrypoints.generated.settings.rp_api_settings`;
+  - `LogContext`, from `rdf_persistence.services.generated.telemetry.rp_telemetry`, to
+    `rdf_persistence.core.services.generated.rp_core_services`; the SPARQL term bundles, from
+    `rdf_persistence.services.generated.templates.rp_templates`, to
+    `rdf_persistence.schema.services.generated.templates.rp_schema_templates`, and
+    `IriTemplateVariables`, `IriParts` to
+    `rdf_persistence.iris.services.generated.templates.rp_iris_templates`;
+  - from `rdf_persistence.adapters.generated.rp_wire`: the `Zitadel*` records, `JwtClaims`,
+    `DiscoveryDocument` and `BadRequestMeans` to
+    `rdf_persistence.access.adapters.generated.rp_access_adapters`; `FusekiDatasetList` and
+    `FusekiDataset` to `rdf_persistence.persistence.adapters.generated.rp_persistence_adapters`.
+- **The served types come from eight schemas** (`thematic-structure`). `/openapi.json` is
+  unchanged. `rp_service.ts`, which every consumer's TypeScript output carries, holds the same
+  declarations in a new order: that of the served schemas (`iris`, `persistence`, `migrations`,
+  `access`, `tenancy`, `events`, `collaboration`, `api`).
+- **A consumer's generated code imports `RpModel` from `rdf_persistence`** (`thematic-structure`),
+  where it named `rdf_persistence.domain.base`. Its freshness check fails once after the upgrade:
+  run your regenerate command.
+- **`FusekiStore` is built on `SparqlProtocolStore`** (`thematic-structure`), a base in
+  `rdf_persistence.persistence.adapters.sparql_protocol` that holds the SPARQL 1.1 Protocol;
+  neither is a new public name, and `FusekiStore` behaves and is built as before. Its error
+  messages name its `service` ("Fuseki"), so they read as before.
+- **BREAKING for log readers: logger names follow the new module paths** (`thematic-structure`).
+  Each module logs under `__name__`, so a configuration on an old name no longer matches; one on
+  `rdf_persistence` still does. Old → new:
+  `rdf_persistence.adapters.fuseki` → `rdf_persistence.persistence.adapters.sparql_protocol`;
+  `adapters.redis_events` → `events.adapters.redis_events`; `adapters.s3` → `files.adapters.s3`;
+  `adapters.zitadel` → `access.adapters.zitadel`; `entrypoints.kit` → `api.entrypoints.kit`;
+  `entrypoints.problems` → `api.entrypoints.problems`; `services.file_removal` →
+  `api.services.file_removal`; `services.iri_policy_guard` → `tenancy.services.iri_policy_guard`;
+  `services.messagebus` → `messaging.services.messagebus`; `services.migration_runner` →
+  `tenancy.services.migration_runner`; `services.relay` → `events.services.relay`;
+  `services.session` → `persistence.services.session`; `services.sweep` →
+  `tenancy.services.sweep`; `services.tenancy` → `tenancy.services.tenancy`;
+  `services.tenant_dump` → `tenancy.services.tenant_dump`; `services.tenant_sweep` →
+  `tenancy.services.tenant_sweep` (each under `rdf_persistence.`).
+- **The store's 400 log line** (`thematic-structure`): "Fuseki refused a request with 400" is now
+  "A SPARQL Protocol store refused a request with 400", under the logger
+  `rdf_persistence.persistence.adapters.sparql_protocol`. `BAD_QUERY_MESSAGE` and `UNREADABLE` are
+  no longer in the new module; the `rdf_persistence.adapters.fuseki` shim keeps them, with their
+  old values, with the SPARQL protocol constants (`SPARQL_QUERY`, `SPARQL_UPDATE`,
+  `RESULTS_JSON`, `GRAPH_PARAM`) and Fuseki's own.
+- **`error.type` names the new module** (`thematic-structure`): the attribute is the exception's
+  module and class, so `rdf_persistence.domain.exceptions.Conflict` is now
+  `rdf_persistence.core.domain.exceptions.Conflict`, and so for every toolkit exception. A
+  dashboard or alert that matches the old value must change.
+
+### Deprecated
+- **`rdf_persistence.domain.base`** (`thematic-structure`): it moved to
+  `rdf_persistence.core.domain.base`. The old path warns (`DeprecationWarning`) and re-exports the
+  same `RpModel`; import it from `rdf_persistence`. Removed in the next minor release.
+- **`rdf_persistence.adapters.fuseki`** (`thematic-structure`): it moved to
+  `rdf_persistence.persistence.adapters.fuseki`. The old path warns and re-exports the same
+  `FusekiStore` and the module's constants; import `FusekiStore` from `rdf_persistence`. Removed in
+  the next minor release.
+- **`mint_aggregate_iri`** (`thematic-structure`): it warns; use `Iris.mint_aggregate` on the
+  service's `Iris` (`DEFAULT_IRIS.mint_aggregate(tenant, cls_type="", rp_path=path)` mints the same
+  IRI). Removed, with its top-level export, in the next minor release.
+
+### Removed
+- **The eleven IRI wrappers that only called `DEFAULT_IRIS`** (`thematic-structure`), from
+  `rdf_persistence.services.iris` (none was a top-level name): `mint_tenant_iri`, `tenant_iri`,
+  `aggregate_iri`, `is_aggregate_iri`, `is_aggregate_graph_iri`, `is_loaded_graph_of`,
+  `mint_part_iri`, `loaded_graph_iri`, `tenant_resource_name`, `principal_iri` and the helper
+  `_default_iris`. Call the `Iris` of the service instead (`mint_tenant`, `tenant`, `aggregate`,
+  `is_aggregate`, `is_aggregate_graph`, `is_loaded_graph`, `mint_part`, `mint_loaded_graph`,
+  `resource_name`, `principal`). `Iris.resource_name` takes the tenant's IRI, not its id, and reads
+  the id through the policy, so it is stricter than `tenant_resource_name(prefix, id)`; a bad tenant segment is refused by `ServiceSettings` (`ValidationError`), where a wrapper raised
+  `InvalidIri`. The twelve layout functions that no policy changes stay, in
+  `rdf_persistence.iris.domain.layout`.
+
 ## [0.5.0] - 2026-11-18
 
 ### Added

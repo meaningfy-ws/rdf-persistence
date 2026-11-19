@@ -17,10 +17,10 @@ from linkml_runtime.utils.schemaview import SchemaView
 from pyld import jsonld
 from rdflib import SH, Graph
 
+from rdf_persistence.api.services.documents import Documents
+from rdf_persistence.api.services.shacl import validate_locked
 from rdf_persistence.core.domain.exceptions import InvalidBody
 from rdf_persistence.schema.services.schema_structure import generation_view, json_name
-from rdf_persistence.services.documents import Documents
-from rdf_persistence.services.shacl import validate_locked
 from rdf_persistence_generation.config import TOOLKIT_ROOTS
 from rdf_persistence_generation.testkit.conformance import Conformance, load_cases
 from rdf_persistence_generation.testkit.roundtrip import without_framing

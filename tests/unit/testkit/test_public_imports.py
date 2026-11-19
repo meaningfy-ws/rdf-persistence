@@ -22,14 +22,14 @@ ALLOWED = [
 REFUSED = [
     "from rdf_persistence.access.services.access import AccessRules",
     "import rdf_persistence.persistence.adapters.fuseki",
-    "from rdf_persistence.services import iris",
-    "from rdf_persistence.entrypoints.service import install_service",
-    "from rdf_persistence import services",
+    "from rdf_persistence.iris.services import iris",
+    "from rdf_persistence.api.entrypoints.service import install_service",
+    "from rdf_persistence import api",
     "from rdf_persistence.testkit.exceptions import TokenRefusedError",
     "from rdf_persistence.testkit import exceptions",
     "import rdf_persistence.testkit.zitadel",
     "from rdf_persistence.testkit.fakes import FakeStore",
-    "if True:\n    from rdf_persistence.services import store",
+    "if True:\n    from rdf_persistence.persistence.services import store",
 ]
 
 

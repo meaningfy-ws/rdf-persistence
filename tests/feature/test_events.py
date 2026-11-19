@@ -25,8 +25,8 @@ from rdf_persistence.tenancy.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus
 from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, toy_mapper
 from tests.toy_service import ToyService
-from tests.unit.entrypoints.scene import Scene
-from tests.unit.entrypoints.test_events_route import (
+from tests.unit.api.scene import Scene
+from tests.unit.api.test_events_route import (
     Block,
     Follow,
     another_book,

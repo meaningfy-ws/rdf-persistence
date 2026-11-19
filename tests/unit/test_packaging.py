@@ -87,7 +87,7 @@ def test_a_consumers_type_checker_reads_our_annotations(tmp_path: Path) -> None:
 SDK_FREE_IMPORTS = (
     "import sys\n"
     "import rdf_persistence\n"
-    "import rdf_persistence.entrypoints.kit\n"
+    "import rdf_persistence.api.entrypoints.kit\n"
     "import rdf_persistence.persistence.adapters.fuseki\n"
     "print([name for name in sys.modules if name.startswith('opentelemetry.sdk')])\n"
 )

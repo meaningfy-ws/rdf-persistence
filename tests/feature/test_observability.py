@@ -35,7 +35,7 @@ from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 scenarios("observability.feature")
 
 RP = "https://meaningfy.ws/ns/rdf-persistence"
-KIT_LOGGER = "rdf_persistence.entrypoints.kit"
+KIT_LOGGER = "rdf_persistence.api.entrypoints.kit"
 
 
 class FailingUpdates(FakeStore):
