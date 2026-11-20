@@ -222,3 +222,8 @@ None. The owner settled three on 2026-11-20 (`inputs/qa.md`), recorded as PD-9 t
   for a `key_counts_absent` key the type pattern binds `?key_root` first, then the optional value
   patterns follow. Unflagged keys keep today's text (G-4). Guarded by a fake-store test whose
   aggregate graph has a part holding a key predicate, and by IT-NE-2 on Fuseki.
+- **D-7** (developer, 2026-11-20, from the L2+L3 review of PR #211): the review's two Warnings,
+  below the Critical floor, are fixed now: W1, the `claims_of` docstring and its blank-node
+  comment in `unique_keys.py`, and W2, the "claims nothing" bullet of
+  `user-manual/store-and-read.adoc`, are qualified to keys without `consider_nulls_inequal: false`.
+  Wording only, no behaviour change. S1 to S3 stay under the floor (PR body).

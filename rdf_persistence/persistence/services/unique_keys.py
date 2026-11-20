@@ -74,13 +74,15 @@ def _plain(value: Value) -> Value:
 
 def claims_of(keys: Iterable[AggregateKey], iri: str, triples: Iterable[Triple]) -> list[KeyClaim]:
     """The claims of the root ``iri`` holding ``triples``: one per key of its type with a value for
-    each predicate (PD-5); a key with a predicate that has no value claims nothing.
+    each predicate (PD-5); a key with a predicate that has no value claims nothing, unless it
+    counts absences (``consider_nulls_inequal: false``): it claims ``ABSENT_KEY_VALUE`` there (PD-4).
 
     Raises:
         InvalidBody: A key predicate has two values or more; nothing is sent (the shapes of the
             router refuse this earlier, so it can only come from a raw session call).
     """
-    # a blank node is no value: in a pattern it would match anything, so it claims nothing
+    # a blank node is no value: in a pattern it would match anything, so it claims nothing (a key
+    # that counts absences claims ABSENT_KEY_VALUE for that slot instead, PD-4)
     own = [(p, o) for s, p, o in triples if str(s) == str(iri) and not isinstance(o, BNode)]
     types = {str(o) for p, o in own if p == RDF.type}
     found = [(key, _values_of(own, key, iri)) for key in keys if key.root_class in types]

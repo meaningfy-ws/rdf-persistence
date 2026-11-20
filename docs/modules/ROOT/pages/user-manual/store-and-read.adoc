@@ -300,8 +300,8 @@ How a key behaves:
   `"Dune"` and `"Dune"@en` are three values). Write numbers in their canonical form, as the
   mapper and the router do: one written otherwise (`"07"^^xsd:integer`) equals `7` on Fuseki but
   not on the fake store of the testkit.
-* An aggregate with a slot of the key absent claims nothing, so any number of books may lack an
-  ISBN. A key over several slots claims only when all have a value.
+* By default, an aggregate with a slot of the key absent claims nothing, so any number of books
+  may lack an ISBN. A key over several slots claims only when all have a value.
 * A key with `consider_nulls_inequal: false` (xref:user-manual/model.adoc#unique-across-aggregates[declare it])
   counts an absent slot as one value, equal only to another absence and never to a present value,
   an empty string included. With the key `[title, subtitle]`, a book "Dune" without a subtitle
