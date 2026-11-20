@@ -42,7 +42,14 @@ from rdf_persistence_generation.uml.modules import (
     package_paths,
 )
 from rdf_persistence_generation.uml.naming import title_for
-from rdf_persistence_generation.uml.slots import SharedSlots, Usage, attribute_usages, share
+from rdf_persistence_generation.uml.slots import (
+    SharedSlots,
+    Usage,
+    attribute_usages,
+    share,
+    split_toolkit,
+    use_toolkit_slots,
+)
 
 LINKML_TYPES: Final = "linkml:types"
 LINKML_PREFIX: Final = ("linkml", "https://w3id.org/linkml/")
@@ -257,6 +264,7 @@ def _imports(
 ) -> list[str]:
     classes = [built.classes[each.uml.object_id] for each in members if not each.is_enum]
     toolkit = {ANNOTATIONS_IMPORT} | _toolkit_imports(ctx, classes)
+    toolkit.update(*(built.shared.toolkit_imports.get(each.label, set()) for each in members))
     return [LINKML_TYPES, *sorted(toolkit), *sorted(refs - {name})]
 
 
@@ -287,6 +295,7 @@ def convert(
     ctx = Context(settings, metamodel_prefixes, prefixes)
     ctx.paths = package_paths(model, settings)
     elements, usages, parent_of = _build(ctx, model)
+    toolkit_usages, usages = split_toolkit(ctx, usages)
     if not ctx.elements and not ctx.findings.problems():
         ctx.findings.problem(
             UmlRule.PACKAGE_MODULE,
@@ -300,6 +309,7 @@ def convert(
     shared = share(ctx, usages, module_of)
     classes = _classes(ctx, elements, usages, parent_of)
     built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx))
+    use_toolkit_slots(ctx, toolkit_usages, classes, shared, built.slot_names)
     problems = ctx.findings.problems()
     if problems:
         return [], ctx.findings.report(), problems

@@ -8,7 +8,7 @@ A *usage* is one slot on one class, with the shape it has there (``Shape``). ``a
 import re
 from typing import Final
 
-from linkml_runtime.linkml_model import SlotDefinition
+from linkml_runtime.linkml_model import ClassDefinition, SlotDefinition
 
 from rdf_persistence_generation.generated.rp_generation import (
     ReportKind,
@@ -302,6 +302,9 @@ class SharedSlots:
         self.definitions: dict[str, SlotDefinition] = {}
         self.home: dict[str, str] = {}
         self.class_usage: dict[str, dict[str, SlotDefinition]] = {}
+        self.toolkit_imports: dict[
+            str, set[str]
+        ] = {}  # class label -> toolkit modules its slots need
 
 
 def _check_one_iri(ctx: Context, name: str, usages: list[Usage]) -> None:
@@ -341,6 +344,85 @@ def share(ctx: Context, usages: list[Usage], module_of: dict[int, str]) -> Share
             if narrowed is not None:
                 shared.class_usage.setdefault(each.holder.label, {})[name] = narrowed
     return shared
+
+
+def split_toolkit(ctx: Context, usages: list[Usage]) -> tuple[list[Usage], list[Usage]]:
+    """The usages whose IRI is a toolkit slot's ``slot_uri`` (R-15), and the others (PD-18).
+
+    ``id`` is not found by IRI (it is the identifier), so ``dct:identifier`` stays a new slot (R-22).
+    """
+    known = [each for each in usages if ctx.toolkit.slot_by_uri(each.identity.iri) is not None]
+    return known, [each for each in usages if each not in known]
+
+
+def _cardinality_text(shape: Shape) -> str:
+    lower = shape.minimum_cardinality or int(bool(shape.required))
+    upper = shape.maximum_cardinality or (_MANY if shape.multivalued else 1)
+    return f"{lower}..{upper}"
+
+
+def _kept(ctx: Context, element: str, slot: SlotDefinition, shape: Shape) -> None:
+    """Report each way the UML shape differs from the toolkit slot, which is kept (PD-18)."""
+    name = str(slot.name)
+    differences = {
+        "multivalued": (shape.multivalued, bool(slot.multivalued)),
+        "range": (shape.range, slot.range),
+    }
+    for what, (uml, toolkit) in differences.items():
+        if toolkit is not None and uml != toolkit:
+            ctx.findings.note(
+                ReportKind.TOOLKIT_SLOT_KEPT,
+                element,
+                f"the toolkit's {name} is kept; {what} {str(uml).lower()} is not carried",
+            )
+
+
+def _toolkit_names(ctx: Context, definition: ClassDefinition) -> list[str]:
+    """The toolkit classes a class is built on: its ``is_a`` and mixins that the toolkit defines."""
+    named = [definition.is_a, *definition.mixins]
+    return [name for name in named if name and ctx.toolkit.class_by_name(name)]
+
+
+def _use_toolkit_slot(
+    ctx: Context,
+    usage: Usage,
+    definition: ClassDefinition,
+    shared: SharedSlots,
+    slot_names: dict[int, list[str]],
+) -> None:
+    slot = ctx.toolkit.slot_by_uri(usage.identity.iri)
+    assert slot is not None  # split_toolkit kept only usages that have one
+    name, label, shape = str(slot.name), usage.holder.label, usage.shape
+    element = f"{label}.{name}"
+    if ctx.toolkit.is_filled(name):
+        text = f"the toolkit fills {name}; [{_cardinality_text(shape)}] is not carried"
+        ctx.findings.note(ReportKind.TOOLKIT_FILLED, element, text)
+        return
+    sources = _toolkit_names(ctx, definition)
+    held = slot_names.setdefault(usage.holder.uml.object_id, [])
+    if not ctx.toolkit.inherits(sources, name) and name not in held:
+        held.append(name)
+        shared.toolkit_imports.setdefault(label, set()).add(ctx.toolkit.module_of_slot(name))
+    _kept(ctx, element, slot, shape)
+    if shape.required and not ctx.toolkit.required_on(sources, name):
+        shared.class_usage.setdefault(label, {})[name] = SlotDefinition(name=name, required=True)
+
+
+def use_toolkit_slots(
+    ctx: Context,
+    usages: list[Usage],
+    classes: dict[int, ClassDefinition],
+    shared: SharedSlots,
+    slot_names: dict[int, list[str]],
+) -> None:
+    """Give each class the toolkit slots its usages stand for (R-15, PD-18, PD-26).
+
+    The toolkit slot is not defined again: the class lists it unless a toolkit class it is built on brings it,
+    its module is imported, and a ``slot_usage`` states ``required`` only where the toolkit's is not. A
+    toolkit-filled slot is dropped and reported.
+    """
+    for usage in sorted(usages, key=lambda each: (each.holder.label, each.order)):
+        _use_toolkit_slot(ctx, usage, classes[usage.holder.uml.object_id], shared, slot_names)
 
 
 def attribute_usages(ctx: Context, holder: Element) -> list[Usage]:

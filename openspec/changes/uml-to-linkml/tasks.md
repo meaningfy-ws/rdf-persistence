@@ -65,7 +65,7 @@ schema change and its regenerated code go in one commit (`make generate`, then t
 - [x] 2.3 Mixins (PD-17, R-25..R-28) and the DEC-4 branch, after 2.2 and 1.9. Failing tests first:
   the TC-5 rows for R-25..R-28, the PD-17 conflict rows, and the `activity_root` row (active only
   if SPIKE-1 failed). Accept: green.
-- [ ] 2.4 Toolkit slots (PD-18, R-15, R-22), after 2.2: failing test first TC-6. Accept: green.
+- [x] 2.4 Toolkit slots (PD-18, R-15, R-22), after 2.2: failing test first TC-6. Accept: green.
 - [ ] 2.5 Tagged values and keys (PD-20, PD-21, R-20, R-21), after 2.2: failing tests first TC-7,
   TC-8. Accept: green.
 - [ ] 2.6 Tenant root, abstract roots, cross-package slots, left-out links (PD-19, PD-16 R-24,

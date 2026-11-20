@@ -267,7 +267,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/convert.py",
-      "sha256": "f2ad7bcd826ceff25baf87629ea6f8bf83c20d7e43bbf05d6760a43575274ab9"
+      "sha256": "aad9cef7e3944a88938d9c978d306a9625297e1037918a714120ff05a8f1f699"
     },
     {
       "path": "rdf_persistence_generation/uml/links.py",
@@ -291,11 +291,11 @@
     },
     {
       "path": "rdf_persistence_generation/uml/slots.py",
-      "sha256": "883ed0599ed57da0135a86371404d4574be5fe8af3765f42023be1bf3ebdd36e"
+      "sha256": "6a76bf2fd3d8482c14eecd48bc380c40c5ca6fda1f37107f0d811ced8ee9f1ae"
     },
     {
       "path": "rdf_persistence_generation/uml/toolkit.py",
-      "sha256": "43718374d296b1d5c1fd96d8812cf24792a76d16991051f69b38fe261155d058"
+      "sha256": "ed4fcd79f14a14a5a1a2cdae126d606baf6526c3a247e5302a4ff97631927ab0"
     },
     {
       "path": "rdf_persistence_generation/uml/write.py",

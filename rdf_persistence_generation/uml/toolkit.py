@@ -68,6 +68,21 @@ class Toolkit:
         """The reusable toolkit slot whose expanded ``slot_uri`` is ``uri``; never the identifier."""
         return self._slot_uris.get(uri)
 
+    def module_of_slot(self, slot_name: str) -> str:
+        """The import of the module that defines the toolkit slot ``slot_name`` (F-11)."""
+        return IMPORT_FORM + str(self._view.in_schema(slot_name))
+
+    def inherits(self, class_names: list[str], slot_name: str) -> bool:
+        """True when a toolkit class of ``class_names`` has the slot, itself or through its parents and mixins."""
+        return any(slot_name in self._view.class_slots(name) for name in class_names)
+
+    def required_on(self, class_names: list[str], slot_name: str) -> bool:
+        """Whether the slot is required where a class of ``class_names`` has it; else as the toolkit defines it."""
+        having = [name for name in class_names if slot_name in self._view.class_slots(name)]
+        if not having:
+            return bool(self._view.get_slot(slot_name).required)
+        return any(self._view.induced_slot(slot_name, name).required for name in having)
+
     def is_filled(self, slot_name: str) -> bool:
         """True when the toolkit fills the slot itself (``toolkit_filled: true``)."""
         return slot_name in self._filled

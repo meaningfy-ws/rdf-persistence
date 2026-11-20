@@ -11,7 +11,13 @@ from dataclasses import dataclass, field
 import pytest
 from linkml_runtime.dumpers import yaml_dumper
 
-from rdf_persistence_generation.generated.rp_generation import UmlLinkKind, UmlPackage, UmlRule
+from rdf_persistence_generation.generated.rp_generation import (
+    UmlAttribute,
+    UmlLinkKind,
+    UmlPackage,
+    UmlPrefix,
+    UmlRule,
+)
 from tests.generator.uml_model import (
     BIDIRECTIONAL,
     BOOK,
@@ -22,6 +28,7 @@ from tests.generator.uml_model import (
     GENRE,
     LIBRARY_PKG,
     MODEL_PKG,
+    PREFIXES,
     SERIES,
     SHELF,
     SHELVES_PKG,
@@ -1692,6 +1699,150 @@ ROWS_ACTIVITY_ROOT = [
     ),
 ]
 
+# --- R-15, R-22 toolkit slots (PD-18, PD-26, F-3) -----------------------------------------------------
+
+_SKOS = "http://www.w3.org/2004/02/skos/core#"
+_WITH_SKOS = {
+    "prefixes": [
+        UmlPrefix(prefix_name=name, namespace=namespace)
+        for name, namespace in {**PREFIXES, "skos": _SKOS}.items()
+    ]
+}
+_DESCRIBED = {**_WITH_SKOS, **_DEFAULTS}
+_TOOLKIT_SLOTS = ("label", "started_at_time", "generated_at_time", "identifier")
+
+
+def _with(
+    *attributes: UmlAttribute, tags: tuple[tuple[str, str], ...] = (), root: bool = True
+) -> object:
+    """A Book (a root unless told otherwise) with these attributes and tagged values."""
+    return model(
+        klass(BOOK, "lib:Book", stereotype="root" if root else None, attributes=attributes),
+        tags=tuple(tag(BOOK, name, value) for name, value in tags),
+    )
+
+
+def _pref_label(declared: str = "xsd:string", **bounds: str | None) -> UmlAttribute:
+    return attribute(1, BOOK, "skos:prefLabel", declared, **bounds)
+
+
+def _book_uses(
+    slots: list[str], usage: dict[str, object] | None = None, imports: tuple[str, ...] = ()
+) -> Check:
+    """No new slot; the Book lists these slots and carries this ``slot_usage``."""
+
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        module = out.schemas["app_library"]
+        assert not module.slots, "a toolkit slot is not defined again"
+        book = out.klass("app_library", "Book")
+        assert list(book.slots) == slots
+        carried = {
+            name: _limits(book.slot_usage[name])
+            for name in _TOOLKIT_SLOTS
+            if name in book.slot_usage
+        }
+        assert carried == (usage or {})
+        assert bool(book.slot_usage) == bool(usage), "no slot_usage of another slot"
+        for imported in imports:
+            assert imported in module.imports, f"{imported} is imported"
+
+    return check
+
+
+def _line(kind: str, *lines: str) -> Check:
+    def check(out: Converted) -> None:
+        assert out.report_lines(kind) == list(lines)
+
+    return check
+
+
+def _identifier_slot(out: Converted) -> None:
+    _no_problems(out)
+    slot = out.slot("app_library", "identifier")
+    assert slot.slot_uri == "dcterms:identifier"
+    assert slot.range == "string"
+    assert slot.required is True
+    assert list(out.klass("app_library", "Book").slots) == ["identifier"]
+    assert "id" not in out.schemas["app_library"].slots
+
+
+_KEPT = "the toolkit's label is kept; {} is not carried"
+
+ROWS_R22 = [
+    Row(
+        "an attribute dct:identifier is a new slot identifier, never the toolkit's id",
+        UmlRule.TOOLKIT_SLOT,
+        _with(attribute(1, BOOK, "dct:identifier")),
+        _all(_identifier_slot, _line("toolkit_slot_kept")),
+    ),
+]
+
+ROWS_R15 = [
+    Row(
+        "a toolkit-filled slot gets no slot, no slot_usage and a toolkit-filled line",
+        UmlRule.TOOLKIT_SLOT,
+        _with(
+            attribute(1, BOOK, "prov:startedAtTime", "xsd:dateTime"),
+            tags=(("rp_mixins", "Activity"),),
+        ),
+        _all(
+            _book_uses([], imports=(_RP_PROVENANCE,)),
+            _line(
+                "toolkit_filled",
+                "Book.started_at_time: the toolkit fills started_at_time; [1..1] is not carried",
+            ),
+        ),
+    ),
+    Row(
+        "a toolkit slot the class inherits, with an optional bound, adds nothing",
+        UmlRule.TOOLKIT_SLOT,
+        _with(_pref_label(lower="0")),
+        _all(_book_uses([]), _line("toolkit_slot_kept"), _line("toolkit_filled")),
+        _DESCRIBED,
+    ),
+    Row(
+        "a required bound the inherited slot already has (Described requires label) adds nothing",
+        UmlRule.TOOLKIT_SLOT,
+        _with(_pref_label()),
+        _book_uses([]),
+        _DESCRIBED,
+    ),
+    Row(
+        "a class that does not inherit the slot lists it; its required is a slot_usage, the module is imported",
+        UmlRule.TOOLKIT_SLOT,
+        _with(_pref_label(), root=False),
+        _book_uses(["label"], {"label": {"required": True}}, (_RP_ANNOTATIONS,)),
+        _WITH_SKOS,
+    ),
+    Row(
+        "a slot of a module no toolkit class of the class brings is imported",
+        UmlRule.TOOLKIT_SLOT,
+        _with(attribute(1, BOOK, "prov:generatedAtTime", "xsd:dateTime", lower="0"), root=False),
+        _book_uses(["generated_at_time"], imports=(_RP_PROVENANCE,)),
+    ),
+    Row(
+        "a multivalued difference keeps the toolkit's slot and says so",
+        UmlRule.TOOLKIT_SLOT,
+        _with(_pref_label(lower="0", upper="*")),
+        _all(
+            _book_uses([]),
+            _line("toolkit_slot_kept", "Book.label: " + _KEPT.format("multivalued true")),
+        ),
+        _DESCRIBED,
+    ),
+    Row(
+        "a range difference keeps the toolkit's slot and says so",
+        UmlRule.TOOLKIT_SLOT,
+        _with(_pref_label("xsd:integer", lower="0")),
+        _all(
+            _book_uses([]),
+            _line("toolkit_slot_kept", "Book.label: " + _KEPT.format("range integer")),
+        ),
+        _DESCRIBED,
+    ),
+]
+
 ROWS: list[Row] = [
     *ROWS_R1,
     *ROWS_R2,
@@ -1712,10 +1863,11 @@ ROWS: list[Row] = [
     *ROWS_R27,
     *ROWS_R28,
     *ROWS_ACTIVITY_ROOT,
+    *ROWS_R15,
+    *ROWS_R22,
 ]
 
 STAGE_2 = {
-    UmlRule.TOOLKIT_SLOT,
     UmlRule.TENANT_ROOT,
     UmlRule.CLASS_ANNOTATION,
     UmlRule.UNIQUE_KEY,
