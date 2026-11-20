@@ -17,14 +17,14 @@ schema change and its regenerated code go in one commit (`make generate`, then t
   `tests/generator/unit/test_uml_records.py` asserts every `UmlRule` value names its R-n in its
   description (`no_rule` and `activity_root` excepted) and that the set of `UmlRule` values equals
   the 24 values listed in design.md PD-2, written out in the test. Accept: test green; `make check-quality` green.
-- [ ] 1.2 Fixture builder (PD-24), after 1.1: `tests/generator/uml_qea.py` with `EA_COLUMNS`, the
+- [x] 1.2 Fixture builder (PD-24), after 1.1: `tests/generator/uml_qea.py` with `EA_COLUMNS`, the
   DDL and the builder API. Failing test first: TC-12 and a round trip (build, reopen read-only,
   count rows). Accept: TC-12 green; no `.qea` file under `tests/`.
-- [ ] 1.3 Reader (PD-3, PD-4), after 1.2: `rdf_persistence_generation/uml/qea.py`. Failing tests
+- [x] 1.3 Reader (PD-3, PD-4), after 1.2: `rdf_persistence_generation/uml/qea.py`. Failing tests
   first: TC-1, TC-2, TC-3 and the matrix's exit-2 rows for the file, tables, columns and
   `--package`. Accept: those green; `make check-architecture` green with `uml` added to the
   contract `works-without-the-generate-extra` (`.importlinter`).
-- [ ] 1.4 Naming (PD-6, PD-10 keys, PD-12 plural), in parallel with 1.3:
+- [x] 1.4 Naming (PD-6, PD-10 keys, PD-12 plural), in parallel with 1.3:
   `rdf_persistence_generation/uml/naming.py`. Failing test first: TC-4. Accept: TC-4 green.
 - [ ] 1.5 Plain rules (PD-5, PD-7..PD-13, PD-15, PD-16 single-package part), after 1.3 and 1.4:
   `classes.py`, `slots.py`, `convert.py`. Failing tests first: the rows of TC-5 for R-1..R-13 and

@@ -680,3 +680,18 @@ and its checkers page):
   otherwise block. Limits kept (`epic-delivery`, Authority): merge only once the PR lists check runs
   and all are green; nothing destructive beyond the normal git flow; the grant ends with the EPIC.
   The DEC-5 question before stage 2 is still asked.
+- **D-17 Reader as built** (2026-11-20, task 1.3; amends PD-3, PD-4, PD-13). `read_qea` returns
+  the `UmlModel` or every `no_rule` problem, sorted; usage errors are a typed `QeaUsageError`
+  whose text the CLI prefixes with `rp-uml2linkml: `. A stereotyped `Boundary` is ignored without
+  a report line (the reader has no report channel; PD-3's "(reported)" is dropped). A connector
+  of a type the reader does not know (`Aggregation`, `Abstraction`, `ControlFlow`…) touching a
+  converted class is `no_rule` in the reader, as `UmlLinkKind` has no value for it; connectors to
+  `Note`, `Text`, `Boundary` or `Package` objects are skipped. A non-empty `PDATA1` other than `0`
+  on an association names an association class (no association in the real file carries one).
+  Boundaries count only when they hold a converted class, and their straddle checks look at
+  converted classes only. Tags keep file order within a name (for `rp_mixins`, `unique_key`). Two
+  amendments for task 1.6: an `--exclude-package` that matches no package of the subtree is a usage
+  error (`no package <p> under <root>`), not silently ignored; and the reader puts the classes at
+  the far end of a link that are not converted (outside the subtree, excluded) in a new
+  `UmlModel.uml_outside_classes` (no attributes), so the converter can name them in report lines
+  (PD-15) and stage 2 can recognise drawn toolkit classes (PD-17).
