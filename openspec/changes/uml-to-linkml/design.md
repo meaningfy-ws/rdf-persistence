@@ -697,3 +697,13 @@ and its checkers page):
   (PD-15) and stage 2 can recognise drawn toolkit classes (PD-17); their packages and ancestors not
   already converted go in `UmlModel.uml_outside_packages`, so the converter computes a package path
   over both lists and tells excluded (path under an `--exclude-package`) from outside.
+- **D-18 Converter as built** (2026-11-20, task 1.5; amends PD-1, PD-2). The converter is split
+  into `classes.py`, `slots.py`, `links.py` (associations, dependencies, ownership), `modules.py`
+  (package paths, module names, cycle components) and `context.py` (sorted, deduplicated findings).
+  Its intermediate working state (paths, bounds, usages, layout) is plain `__slots__` classes, not
+  generated models: it never leaves a function call, and the model guard refuses dataclasses. Problem
+  and report elements use local names (`Book.pages`), except the unknown-prefix problem, which keeps
+  the written name. In stage 1 every tag but `rp_path` is an `ignored-tag` line. `yaml_dumper` writes
+  `annotations` and `prefixes` in their long form, which the golden records (RISK-5). A
+  `Source -> Destination` association that also names a source role is `no_rule`: model2owl
+  requires `Bi-Directional` for two roles.
