@@ -47,6 +47,7 @@ from rdf_persistence import (
     MembershipRule,
     ModuleKind,
     Motivation,
+    OnReferencedDelete,
     PendingLoad,
     Policy,
     PostComment,
@@ -80,6 +81,7 @@ from rdf_persistence import (
 )
 
 from .books import (
+    Author,
     Book,
     Chapter,
     Genre,

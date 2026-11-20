@@ -48,6 +48,11 @@ from rdf_persistence.access.services.generated.rp_access_services import (
     GrantSet,
     VerifiedCaller
 )
+from rdf_persistence.collaboration.services.generated.rp_collaboration_services import (
+    MemberList,
+    Referrer,
+    ReferrerList
+)
 from rdf_persistence.core.domain.generated.rp_annotations import (
     Described,
     Tracked
@@ -60,6 +65,7 @@ from rdf_persistence.core.domain.generated.rp_core import (
     GraphKind,
     KeyDuplicate,
     ModuleKind,
+    OnReferencedDelete,
     PendingLoad,
     Principal,
     RegistryEntry,
@@ -119,6 +125,8 @@ class ProblemSlug(str, Enum):
     "The write lost a race, or the thing to create already exists."
     KEY_CONFLICT = "key_conflict"
     "The write would give an aggregate a key value that another aggregate of its class holds."
+    IN_USE = "in_use"
+    "The delete would leave other aggregates pointing at a class that refuses it; the answer names them."
     PRECONDITION_REQUIRED = "precondition_required"
     "An update or a delete came without the version it expects."
     INVALID_BODY = "invalid_body"
@@ -196,6 +204,18 @@ class Problem(ConfiguredBaseModel):
     instance: Optional[str] = Field(default=None, title="Problem instance", description="The IRI that identifies this occurrence of the problem.")
 
 
+class InUseProblem(Problem):
+    "The problem detail of a delete refused because other aggregates still point at the resource: it names up to the configured number of referrers the caller may read, and counts the rest."
+    referrers: Optional[list[Referrer]] = Field(default=None, title="Referrers", description="The aggregates that point at the resource, ordered by IRI and slot.")
+    hidden_count: Optional[int] = Field(default=None, title="Hidden count", description="The number of referrers or members the caller may not read, so are not listed.", ge=0)
+    more_count: Optional[int] = Field(default=None, title="More count", description="The number of referrers the caller may read but the answer does not name, past the limit.", ge=0)
+    type: str = Field(default=..., title="Problem type", description="The IRI that identifies the kind of problem.")
+    title: str = Field(default=..., title="Problem title", description="A short, fixed summary of the kind of problem.")
+    status: int = Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
+    detail: Optional[str] = Field(default=None, title="Problem detail", description="An explanation of this occurrence of the problem.")
+    instance: Optional[str] = Field(default=None, title="Problem instance", description="The IRI that identifies this occurrence of the problem.")
+
+
 class ProblemKind(ConfiguredBaseModel):
     "A kind of problem the service answers with: the slug that ends its problem type IRI, its fixed title and the HTTP status it comes with."
     slug: str = Field(default=..., title="Problem slug", description="The last segment of the problem type IRI, lower case words joined by hyphens.")
@@ -222,4 +242,5 @@ TenantCreate.model_rebuild()
 LabelUpdate.model_rebuild()
 Authorised.model_rebuild()
 Problem.model_rebuild()
+InUseProblem.model_rebuild()
 ProblemKind.model_rebuild()

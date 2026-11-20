@@ -6,6 +6,7 @@ import pytest
 from linkml_runtime.linkml_model.annotations import Annotation
 from linkml_runtime.linkml_model.meta import ClassDefinition, PresenceEnum, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
+from rdflib import URIRef
 
 from rdf_persistence.core.domain.generated.rp_core import (
     DatabaseKind,
@@ -38,6 +39,7 @@ from rdf_persistence.schema.services.schema_structure import (
     json_name,
     keyed_slots,
     presence_alternatives,
+    refusing_classes,
     served_roots,
     stored_file_class,
     workflow_name_of,
@@ -550,6 +552,59 @@ classes:
 )
 def test_the_workflow_of_a_class_is_the_first_name_up_its_is_a_chain(name, expected) -> None:
     assert workflow_name_of(SchemaView(WORKFLOWS), name) == expected, name
+
+
+REFUSING = (
+    HEAD
+    + """
+classes:
+  Guarded:
+    title: Guarded
+    description: Refuses deletion while referenced.
+    class_uri: r:Guarded
+    annotations: {rp_on_referenced_delete: refuse}
+  Special:
+    title: Special
+    description: A subclass of a refusing class.
+    class_uri: r:Special
+    is_a: Guarded
+  Policy:
+    title: Policy
+    description: A mixin that refuses deletion while referenced.
+    class_uri: r:Policy
+    mixin: true
+    annotations: {rp_on_referenced_delete: refuse}
+  Mixed:
+    title: Mixed
+    description: Mixes in the refusing mixin, which does not carry over.
+    class_uri: r:Mixed
+    mixins: [Policy]
+  Quoted:
+    title: Quoted
+    description: Writes the value in quotes.
+    class_uri: r:Quoted
+    annotations: {rp_on_referenced_delete: "refuse"}
+  Plain:
+    title: Plain
+    description: Says nothing.
+    class_uri: r:Plain
+"""
+)
+R = "https://example.org/ns/r#"
+
+
+def test_the_refusing_classes_of_the_toy_are_the_authors() -> None:
+    assert refusing_classes(load_schema(TOY)) == frozenset(
+        {URIRef("https://example.org/ns/library#Author")}
+    )
+
+
+def test_a_subclass_of_a_refusing_class_refuses_but_a_mixing_in_class_does_not() -> None:
+    refusing = refusing_classes(SchemaView(REFUSING))
+    assert refusing == frozenset(
+        URIRef(R + name) for name in ("Guarded", "Special", "Policy", "Quoted")
+    ), "is_a inherits, a mixin does not pass it on, the mixin itself refuses"
+    assert URIRef(R + "Mixed") not in refusing
 
 
 def test_a_root_under_a_system_database_ancestor_is_no_served_root() -> None:

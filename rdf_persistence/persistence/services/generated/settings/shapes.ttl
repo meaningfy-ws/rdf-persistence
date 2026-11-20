@@ -7,12 +7,10 @@ rp:LimitSettings a sh:NodeShape ;
 	rdfs:comment "The most the toolkit takes in one message bus run, one commit, one body and one restore manifest." ;
 	rdfs:label "Limit settings" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n0 ;
-	sh:property _:c14n1 , _:c14n2 , _:c14n3 , _:c14n4 ;
+	sh:ignoredProperties _:c14n2 ;
+	sh:property _:c14n0 , _:c14n1 , _:c14n3 , _:c14n4 , _:c14n5 ;
 	sh:targetClass rp:LimitSettings .
-_:c14n0 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n1 sh:datatype xsd:integer ;
+_:c14n0 sh:datatype xsd:integer ;
 	sh:defaultValue 10000 ;
 	sh:description "The most objects and list values one JSON or JSON-LD body may hold." ;
 	sh:maxCount 1 ;
@@ -20,9 +18,21 @@ _:c14n1 sh:datatype xsd:integer ;
 	sh:minInclusive 1 ;
 	sh:name "Maximum document nodes" ;
 	sh:nodeKind sh:Literal ;
-	sh:order 2 ;
+	sh:order 3 ;
 	sh:path rp:max_document_nodes .
-_:c14n2 sh:datatype xsd:integer ;
+_:c14n1 sh:datatype xsd:integer ;
+	sh:defaultValue 20 ;
+	sh:description "The most referrers a refused delete names in its answer; 0 names none and counts all of them." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:minInclusive 0 ;
+	sh:name "Maximum named referrers" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:max_named_referrers .
+_:c14n2 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n3 sh:datatype xsd:integer ;
 	sh:defaultValue 500 ;
 	sh:description "The most aggregate roots one commit transaction holds." ;
 	sh:maxCount 1 ;
@@ -32,7 +42,7 @@ _:c14n2 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:max_roots .
-_:c14n3 sh:datatype xsd:integer ;
+_:c14n4 sh:datatype xsd:integer ;
 	sh:defaultValue 65536 ;
 	sh:description "The most bytes the manifest of a tenant dump may hold." ;
 	sh:maxCount 1 ;
@@ -40,9 +50,9 @@ _:c14n3 sh:datatype xsd:integer ;
 	sh:minInclusive 1 ;
 	sh:name "Maximum manifest size" ;
 	sh:nodeKind sh:Literal ;
-	sh:order 3 ;
+	sh:order 4 ;
 	sh:path rp:max_manifest_bytes .
-_:c14n4 sh:datatype xsd:integer ;
+_:c14n5 sh:datatype xsd:integer ;
 	sh:defaultValue 100 ;
 	sh:description "The most messages one run of the message bus handles." ;
 	sh:maxCount 1 ;

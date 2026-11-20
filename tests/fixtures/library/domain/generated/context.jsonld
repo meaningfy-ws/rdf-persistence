@@ -434,6 +434,10 @@
          "@container": "@set",
          "@id": "rp:workflowTransition"
       },
+      "written_by": {
+         "@type": "@id",
+         "@id": "writtenBy"
+      },
       "@version": 1.1,
       "type": "@type",
       "Activity": {
@@ -450,6 +454,9 @@
       },
       "ApproveBook": {
          "@id": "ApproveBook"
+      },
+      "Author": {
+         "@id": "Author"
       },
       "BlobEntry": {
          "@id": "rp:BlobEntry"

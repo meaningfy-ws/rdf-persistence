@@ -15,6 +15,9 @@
       "max_messages": {
          "@id": "max_messages"
       },
+      "max_named_referrers": {
+         "@id": "max_named_referrers"
+      },
       "max_roots": {
          "@id": "max_roots"
       },

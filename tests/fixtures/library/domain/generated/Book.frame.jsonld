@@ -12,6 +12,10 @@
     "@embed": "@never",
     "@omitDefault": true
   },
+  "written_by": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
   "creator": {
     "@embed": "@never",
     "@omitDefault": true

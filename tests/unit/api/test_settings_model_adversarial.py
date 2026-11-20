@@ -63,6 +63,7 @@ OLD_DEFAULTS = {
     "limits": {  # messagebus limit=100, DEFAULT_MAX_ROOTS=500, MAX_NODES=10_000, 64 * 1024
         "max_messages": 100,
         "max_roots": 500,
+        "max_named_referrers": 20,
         "max_document_nodes": 10_000,
         "max_manifest_bytes": 64 * 1024,
     },

@@ -9,6 +9,9 @@ classDiagram
     class Shelf {
         <<root>>
     }
+    class Author {
+        <<root>>
+    }
     class Chapter {
         <<owned>>
         +integer number
@@ -21,5 +24,6 @@ classDiagram
     Book "1" *-- "*" Chapter : chapters
     Book "1" --> "0..1" Shelf : shelf
     Book "1" --> "0..1" Book : sequel_of
+    Book "1" --> "0..1" Author : written_by
     Chapter "1" *-- "*" Note : notes
     Note "1" --> "0..1" Book : about

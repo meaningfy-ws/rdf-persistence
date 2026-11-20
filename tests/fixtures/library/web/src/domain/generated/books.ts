@@ -26,6 +26,8 @@ export interface Book {
   shelf?: string;
   /** The book this one follows, another aggregate, stored as its IRI. */
   sequel_of?: string;
+  /** The author of the book, another aggregate, stored as its IRI. */
+  written_by?: string;
   /** The IRI that identifies the object. */
   id: string;
   /** The preferred label of the object. */
@@ -66,6 +68,24 @@ export interface Shelf {
   has_part?: string[];
   /** The rule that says which aggregates of the member class belong to the collection. */
   membership_rule?: MembershipRule;
+}
+
+/** An author of the library; an aggregate root that books point at, and that cannot be deleted while a book still does. */
+export interface Author {
+  /** The IRI that identifies the object. */
+  id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The time the graph was first committed. */
+  created?: string;
+  /** The time the graph was last committed. */
+  modified?: string;
+  /** The principal that first committed the graph. */
+  creator?: string;
+  /** A principal that committed a later version of the graph. */
+  contributor?: string[];
 }
 
 /** A chapter of a book, known by its number rather than a label; part of the book's aggregate. It owns its notes. */
