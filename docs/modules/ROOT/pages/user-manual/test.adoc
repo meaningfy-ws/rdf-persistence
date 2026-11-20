@@ -140,6 +140,10 @@ opened = await stream
 assert opened.events[0].id == activity_iri
 ----
 
+The `timeout` counts from the call, so when the test commits after starting the task, give it room
+for those commits (a few seconds more than the commits take); the call still returns as soon as the
+events came.
+
 If the test can fail between starting the task and awaiting it, cancel the task in a fixture or a
 `finally`, so that no stream is left running.
 

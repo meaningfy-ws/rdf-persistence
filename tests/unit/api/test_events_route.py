@@ -26,6 +26,9 @@ from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.api.scene import Scene
 
 TIMEOUT = 3.0
+# The deadline of ``open_event_stream`` runs from the call, so it also covers the test's own commits; a
+# passing stream returns as soon as its events came, so the bound costs nothing when green.
+FOLLOW_TIMEOUT = 30.0
 WEEK = timedelta(days=7)
 KEEP_ALIVE = 0.05
 
@@ -76,7 +79,7 @@ def opening(
             events_of(scene, prefix),
             headers={**scene.headers(who), **headers},
             events=events,
-            timeout=TIMEOUT,
+            timeout=FOLLOW_TIMEOUT,
         )
     )
     streams.add(task)
@@ -471,7 +474,7 @@ async def test_the_follower_of_another_tenant_hears_nothing(
             f"/fast{elsewhere}/rp-events",
             headers=settled.headers("ada"),
             events=1,
-            timeout=TIMEOUT,
+            timeout=FOLLOW_TIMEOUT,
         )
     )
     streams.add(ada)
