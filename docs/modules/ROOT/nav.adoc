@@ -94,6 +94,7 @@
 .Reference
 * xref:reference/index.adoc[Python API and rp-generate]
 * xref:reference/http-api.adoc[The HTTP API]
+* xref:reference/uml-conventions.adoc[UML conventions]
 
 .Developer manual
 * xref:develop/index.adoc[Working on the library]
