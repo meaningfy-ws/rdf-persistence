@@ -494,6 +494,9 @@ metamodel. Every model problem is printed `[<rule>] <element>: <message>` by `fo
 | A PD-3 table or column missing (another EA version, a foreign file) | `sqlite_master` lookup; `pragma table_info` per table before the first select | `rp-uml2linkml: <path> has no table <t>` / `rp-uml2linkml: <path>: table <t> has no column <c>` | 2 |
 | `--package` unknown / ambiguous | `t_package` lookup | `no package <p>` / `package <p> is ambiguous: <path1>, <path2>; name it by path` | 2 |
 | Prefixes file missing key or not a mapping | load | `<file>: missing <key>` / `<file>: not a mapping` | 2 |
+| Prefixes file value unusable (D-29 C-2) | load | `<file>: schema_base <v> is not an absolute IRI` / `<file>: prefix <name> is not an NCName` / `<file>: namespace <v> of prefix <name> is not an absolute IRI` / `<file>: default_prefix <v> is not a key of prefixes` | 2 |
+| `--root-name` not an NCName (D-29 C-2) | argument check | `rp-uml2linkml: --root-name <v> is not an NCName` | 2 |
+| A written name that is not a valid local name (D-29 C-1) | PD-6, linkml's CURIE check | `[attribute_slot] Book.has title: 'has title' is not a valid local name` (a literal: `[class_iri]`) | 1 |
 | Unknown CURIE prefix | PD-6 | `[class_iri] <element>: prefix <pfx> is not in <file>` | 1 |
 | Unmapped element (association class, n-ary node, `Interface`, unknown stereotype, `2..5`, missing card, roleless association, two domain parents, `Aggregation` connector) | PD-3, PD-8, PD-9, PD-13, PD-15 | `[no_rule] <element>: <what it is>: no rule converts it` | 1 |
 | Boundary ambiguity (straddle, placed twice, two boundaries, unequal diagrams, 0 or 2 roots) | PD-4, PD-13 | `[no_rule] <boundary or class>: <reason>: no rule converts it` | 1 |
