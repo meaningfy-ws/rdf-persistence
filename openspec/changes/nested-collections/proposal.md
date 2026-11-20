@@ -22,8 +22,8 @@ An optional slot `nests` (boolean, default false) on `ReferenceCollection`. When
 member may also be a collection of the same collection class with the same `member_class`. Saving
 refuses a cycle (a collection that contains itself directly or through nested ones) with
 `InvalidBody` naming the cycle. It refuses a nested collection of another member class, as it does
-today for any member of the wrong class. `members(transitive=True)` lists the items of the whole
-tree. `collections_of` and `delete_cascade` treat a nested collection as a member.
+today for any member of the wrong class. `members(deep=True)` lists the items of the whole
+tree (the existing flag keeps its name; owner, 2026-11-20, `inputs/qa.md`). `collections_of` and `delete_cascade` treat a nested collection as a member.
 
 ## Key decisions
 
@@ -51,7 +51,7 @@ tree. `collections_of` and `delete_cascade` treat a nested collection as a membe
 ## What Changes
 
 - `rp_collections.yaml`: `nests` slot.
-- Collection services: the nested-member check, the cycle check, `members(transitive=…)`.
+- Collection services: the nested-member check, the cycle check, `members(deep=…)` over nested collections.
 
 ## Capabilities
 

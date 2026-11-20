@@ -34,7 +34,8 @@ toolkit class annotation.
 - **GIVEN** `«root» lib:Loan` tagged `rp_mixins=Activity` with `prov:startedAtTime [1..1]` and `rp_path=loans`
 - **WHEN** it is converted
 - **THEN** `Loan` is `is_a: Activity`, mixes in `AggregateRoot`, `Described` and `Tracked`, has
-  `annotations: {rp_path: loans}`, makes `started_at_time` required, and defines no new slot
+  `annotations: {rp_path: loans}`, defines no new slot and narrows no toolkit-filled slot (the
+  `[1..1]` on `started_at_time` is dropped), and the report names `started_at_time`
 
 #### Scenario: a tagged value becomes an annotation
 - **GIVEN** a class tagged `rp_writes=service`

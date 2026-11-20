@@ -37,12 +37,14 @@ guards and access counting. Stored data moves with a schema migration (version 2
 - **DEC-3:** stored data is migrated through the existing schema-migration mechanism, not left
   behind. Rejected: "no data moved" (as in `1__2`), because collections are live data that the
   services read.
+- **DEC-4:** the collection class (the `ReferenceCollection` mixin's `class_uri`) is
+  `dcmitype:Collection`, not `prov:Collection`; decided by the owner 2026-11-20 (OQ-1, raised as
+  OPEN-1 in the PLAN; `inputs/qa.md` item 2). No stored graph carries the mixin's type, so no data
+  moves for it (design.md F-6). Rejected: keeping `prov:Collection`.
 
 ## Rabbit-holes
 
-- OQ-1, the class type `prov:Collection`: the same vocabulary policy argues for a DCT/DCMI type
-  (e.g. `dcmitype:Collection`). The PLAN asks the owner before changing it. If it changes, it rides
-  the same migration.
+- OQ-1, the class type `prov:Collection`: settled by DEC-4 (2026-11-20).
 - Generated artefacts carry the old name in many places (shapes, context, frames, TS, OpenAPI):
   `make generate` regenerates them, never a hand edit.
 
@@ -65,8 +67,12 @@ guards and access counting. Stored data moves with a schema migration (version 2
 
 ### Modified Capabilities
 
-- `rp-reference-collections`: members are stated with `dct:hasPart`.
-- `rp-schema-migrations`: version 3 and its migration.
+- `rp-reference-collections`: members are stated with `dct:hasPart`; the class is
+  `dcmitype:Collection` (DEC-4).
+
+`rp-schema-migrations` was listed here at shaping and removed on 2026-11-20 at the PLAN review: its
+mechanism is unchanged and version 3 is an instance of its requirements, so it has no delta
+(design.md PD-7).
 
 ## Impact
 

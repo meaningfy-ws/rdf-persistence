@@ -21,6 +21,16 @@ counting the unreadable ones. A class without the annotation SHALL behave as bef
 - **WHEN** an unreferenced author is deleted
 - **THEN** the answer is 204
 
+#### Scenario: a cascade over a referenced member
+- **GIVEN** a collection of `Author`s naming an author that a `Book` refers to
+- **WHEN** a caller deletes the collection with its members (`delete_cascade`)
+- **THEN** `InUse` names the author and the book, and neither the collection nor any member is deleted
+
+#### Scenario: a cascade whose only referrers go with it
+- **GIVEN** a collection of `Author`s naming an author that nothing else refers to
+- **WHEN** a caller deletes the collection with its members
+- **THEN** the collection and the author are deleted
+
 #### Scenario: opt-in only
 - **GIVEN** a class without the annotation and a referrer
 - **WHEN** it is deleted

@@ -6,8 +6,11 @@
 
 ## Appetite
 
-**TINY.** The logic already exists twice in the toolkit's own tests. It becomes one public testkit
-function.
+**SMALL.** The logic already exists in the toolkit's own tests. It becomes one public testkit
+function with generated result records, and three test modules switch to it.
+
+> Re-shaped 2026-11-20 by the owner: TINY → SMALL (the PLAN found generated records, a lifespan
+> flag and a third test module; inputs/qa.md).
 
 ## Why
 
@@ -20,13 +23,17 @@ for the end of a stream that never ends, so the test hangs. The toolkit's own `F
 `rdf_persistence.testkit.open_event_stream(app, url, headers=…, events=0, timeout=3.0)` returns the
 status, the headers and the first `events` parsed events, then disconnects and cancels the app task.
 On a timeout it raises `TimeoutError` naming the URL. A refusal (401/404) returns at once. The
-toolkit's own tests switch to it, and both private helpers are deleted.
+toolkit's own tests switch to it, and the private helpers' stream plumbing is deleted (amended
+2026-11-20 by the owner: `Following` stays as the scenario's state holder; inputs/qa.md).
 
 ## Key decisions
 
 - **DEC-1:** one public function replaces both private helpers. Rejected: publishing `Follow` as a
   class.
-- **DEC-2:** the result is a small frozen dataclass in `testkit` (status, headers, events).
+- **DEC-2:** the result types `OpenedStream` (status, headers, events) and `StreamEvent` are
+  generated from LinkML (`rp_testkit.yaml`), per AGENTS.md principle 2. Replaced 2026-11-20 by the
+  owner; it said "a small frozen dataclass in `testkit`", which the toolkit's model guard refuses
+  (inputs/qa.md).
 
 ## Rabbit-holes
 
@@ -40,9 +47,12 @@ toolkit's own tests switch to it, and both private helpers are deleted.
 
 ## What Changes
 
-- `rdf_persistence/testkit`: `open_event_stream` and its result type.
-- `tests/unit/api/test_events_route.py` and `tests/feature/test_events.py` use it, and their private
-  helpers go.
+- `rdf_persistence/testkit`: `open_event_stream`; `rp_testkit.yaml`: its generated result records.
+- `rdf_persistence/api/entrypoints/service.py`: the toolkit's lifespan sets and clears the flag
+  `app.state.rp_lifespan_started` (added 2026-11-20 by the owner, OPEN-2; inputs/qa.md).
+- `tests/unit/api/test_events_route.py`, `tests/unit/api/test_service_kit.py` and
+  `tests/feature/test_events.py` use it; `Follow`, `Block` and `parsed` go, `Following` loses its
+  stream plumbing.
 
 ## Capabilities
 
@@ -52,4 +62,5 @@ toolkit's own tests switch to it, and both private helpers are deleted.
 
 ## Impact
 
-Testkit public surface (`assert_public_imports` list), two test modules, the testkit how-to.
+Testkit public surface (`__all__`), three test modules, the toolkit's lifespan flag, the testkit
+how-to.

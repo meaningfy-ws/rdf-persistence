@@ -60,6 +60,27 @@ Work outside the table, all delivered and archived: `test-suite-grooming`, `alig
 | `ldes-view` | MEDIUM | no | a shaping session |
 | `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
 
+### The first consumer's needs (shaped 2026-11-20)
+
+MWB2 opened seven issues; each is one EPIC, in the consumer's order (D-12). The first two unblock its
+`v2-02` and run in parallel (generator vs library, no shared code).
+
+| # | Id | Appetite | Issue | Depends on | Needed by (MWB2) | PLAN (gate, 2026-11-20) |
+|---|---|---|---|---|---|---|
+| 1a | `uml-to-linkml` | MEDIUM (2 stages) | #196 | none | `v2-02` phase B, now | 8.8, accepted (R-0005) |
+| 1b | `collection-has-part` | SMALL (**BREAKING**) | #199 | none | `v2-02` 2.1b, now | 9.0 |
+| 2 | `delete-refuses-referenced` | MEDIUM (re-shaped from SMALL) | #201 | none | `v2-03` 7.1 | 8.4 → 9.2 |
+| 3 | `nested-collections` | SMALL | #198 | 1b | `v2-03` 7.2 | 8.5 → 9.1 |
+| 4 | `unique-key-nulls-equal` | SMALL | #202 | none | `v2-04` stage C, `v2-05` 6.1 | 8.7 → 9.2 |
+| 5 | `listing-contains-filter` | SMALL | #203 | none | `v2-05` 4.4 | 8.8, accepted (R-0005) |
+| 6 | `testkit-event-stream` | SMALL (re-shaped from TINY) | #204 | none; before `test-debt-paydown` | not blocking | 8.5 → 9.0 |
+
+Every PLAN was attacked by its planner and gated by a fresh reviewer; the owner answered one round of
+questions (each change's `inputs/qa.md`). Next: the owner signs off each change's scenarios, then an
+epic session per change.
+
+#200 is a plain bug fix (PR with a test); #197, #189, #192 block nothing and stay in the issue list.
+
 Open follow-ups, each under the floor of its review: #125 (`aggregate-events`), #189
 (`target-kind-from-the-model`), #192 (`domain-model-per-theme`). Not shaped yet; the consumer's
 upgrade to 0.7.0 is planned in MWBv2 (D-12).

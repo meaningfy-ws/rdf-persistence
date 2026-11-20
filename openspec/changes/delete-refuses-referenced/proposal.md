@@ -6,8 +6,12 @@
 
 ## Appetite
 
-**SMALL.** One annotation and one check in the existing delete paths. `referrers` already exists and
-is reused as is.
+**MEDIUM.** One annotation, an atomic guard in the delete's update request, signature changes on
+the delete paths and a problem model.
+
+Re-shaped 2026-11-20 by the owner: SMALL → MEDIUM, the atomic guard needs a guard in the delete's
+update, signature changes and a problem model. DEC-2 narrowed in the same re-shape. Record:
+`inputs/qa.md`.
 
 ## Why
 
@@ -18,8 +22,9 @@ consumer's delete guard on collections needs this before `v2-03`'s last stage.
 ## Solution outline
 
 A class annotation `rp_on_referenced_delete: refuse` (absent means today's behaviour). Both the
-generic `DELETE /{type}/{id}` and `session.remove` then call `referrers` inside the transaction. If
-any exist, they raise `InUse(referrers, hidden_count)`, which the API answers as `409` problem
+generic `DELETE /{type}/{id}` and `session.remove` then refuse inside the delete's own update request:
+a guard there matches the links `referrers` reads (its pattern shared, not reused as a call), and
+after a refusal the referrers are read and named. If any exist, they raise `InUse(referrers, hidden_count)`, which the API answers as `409` problem
 `in-use`. The problem names the readable referrers (type, IRI, slot; capped, with a count of the
 rest) and the count of unreadable ones. Nothing is deleted.
 
@@ -28,8 +33,10 @@ rest) and the count of unreadable ones. Nothing is deleted.
 - **DEC-1:** opt-in per class through an annotation in the metamodel's annotation enum, so the UML
   converter carries it with no change (`uml-to-linkml` DEC-2). Rejected: on for everyone, which
   would change today's behaviour.
-- **DEC-2:** the check runs in the delete's transaction, so a referrer added concurrently is either
-  seen or blocked by the same guarded update. Rejected: a pre-check outside it, which races.
+- **DEC-2:** the check runs in the delete's update request, so no referrer exists at the moment the
+  delete applies; a referrer written after it is not blocked (accepted as RISK-1 in design.md).
+  Rejected: a pre-check outside it, which races. (Narrowed in the 2026-11-20 re-shape; it read "a
+  referrer added concurrently is either seen or blocked by the same guarded update".)
 - **DEC-3:** unreadable referrers are counted, never named, the same as `referrers` today.
 
 ## Rabbit-holes
