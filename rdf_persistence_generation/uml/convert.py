@@ -20,6 +20,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
     ReportLine,
+    UmlElement,
     UmlModel,
     UmlRule,
     UmlSettings,
@@ -32,7 +33,13 @@ from rdf_persistence_generation.uml.classes import (
     mark_abstract_roots,
     parents,
 )
-from rdf_persistence_generation.uml.context import Context, Element
+from rdf_persistence_generation.uml.context import (
+    Context,
+    below_of,
+    is_boundary_root,
+    literals_of,
+    path_of,
+)
 from rdf_persistence_generation.uml.links import link_usages, owned_pairs
 from rdf_persistence_generation.uml.mixins import check_default_mixins
 from rdf_persistence_generation.uml.modules import (
@@ -49,6 +56,7 @@ from rdf_persistence_generation.uml.slots import (
     Usage,
     attribute_usages,
     choose_homes,
+    is_owned,
     name_slots,
     share,
     shared_edges,
@@ -69,7 +77,7 @@ class Layout:
 
     def __init__(
         self,
-        elements: list[Element],
+        elements: list[UmlElement],
         edges: Mapping[ModulePath, set[ModulePath]],
         merged: Mapping[ModulePath, ModulePath],
         names: Mapping[ModulePath, str],
@@ -79,8 +87,8 @@ class Layout:
         self.merged = merged
         self.names = names
 
-    def members(self, path: ModulePath) -> list[Element]:
-        return [each for each in self.elements if self.merged[each.path] == path]
+    def members(self, path: ModulePath) -> list[UmlElement]:
+        return [each for each in self.elements if self.merged[path_of(each)] == path]
 
     def refers_to(self, path: ModulePath) -> set[str]:
         """The modules the module at ``path`` imports."""
@@ -92,16 +100,16 @@ class Layout:
         }
 
 
-def _generated(ctx: Context) -> list[Element]:
+def _generated(ctx: Context) -> list[UmlElement]:
     """The elements that become a definition; an enumeration with no literal does not."""
     return [
         element
-        for element in sorted(ctx.elements.values(), key=lambda each: (each.path, each.label))
-        if not (element.is_enum and not element.literals)
+        for element in sorted(ctx.elements.values(), key=lambda each: (path_of(each), each.label))
+        if not (element.is_enum and not literals_of(element))
     ]
 
 
-def _usages(ctx: Context, model: UmlModel, elements: list[Element]) -> list[Usage]:
+def _usages(ctx: Context, model: UmlModel, elements: list[UmlElement]) -> list[Usage]:
     usages = [
         usage
         for element in elements
@@ -113,18 +121,18 @@ def _usages(ctx: Context, model: UmlModel, elements: list[Element]) -> list[Usag
 
 
 def _references(
-    elements: list[Element], usages: list[Usage], parent_of: Mapping[int, str]
+    elements: list[UmlElement], usages: list[Usage], parent_of: Mapping[int, str]
 ) -> dict[ModulePath, set[ModulePath]]:
     """For each package path, the package paths its classes refer to (``is_a``, slot ranges)."""
     by_label = {element.label: element for element in elements}
-    edges: dict[ModulePath, set[ModulePath]] = {element.path: set() for element in elements}
+    edges: dict[ModulePath, set[ModulePath]] = {path_of(element): set() for element in elements}
     for child_id, parent in parent_of.items():
-        child = next(each for each in elements if each.uml.object_id == child_id)
-        edges[child.path].add(by_label[parent].path)
+        child = next(each for each in elements if each.uml_class.object_id == child_id)
+        edges[path_of(child)].add(path_of(by_label[parent]))
     for usage in usages:
         target = by_label.get(usage.shape.range)
         if target is not None:
-            edges[usage.holder.path].add(target.path)
+            edges[path_of(usage.holder)].add(path_of(target))
     for path, targets in edges.items():
         targets.discard(path)
     return edges
@@ -168,7 +176,7 @@ def _grown(
 
 
 def _settle(
-    usages: list[Usage], edges: Edges, by_label: Mapping[str, Element]
+    usages: list[Usage], edges: Edges, by_label: Mapping[str, UmlElement]
 ) -> tuple[
     Edges, dict[ModulePath, ModulePath], list[list[ModulePath]], dict[str, ModulePath | None]
 ]:
@@ -249,7 +257,7 @@ class Built:
         self.slot_names = slot_names
 
 
-def _build(ctx: Context, model: UmlModel) -> tuple[list[Element], list[Usage], dict[int, str]]:
+def _build(ctx: Context, model: UmlModel) -> tuple[list[UmlElement], list[Usage], dict[int, str]]:
     collect_elements(ctx, model)
     elements = _generated(ctx)
     return elements, _usages(ctx, model, elements), parents(ctx, model)
@@ -258,28 +266,28 @@ def _build(ctx: Context, model: UmlModel) -> tuple[list[Element], list[Usage], d
 def _enums(ctx: Context) -> dict[int, EnumDefinition]:
     """The enum of each enumeration; an empty one makes none but a report line (D-10)."""
     enums: dict[int, EnumDefinition] = {}
-    for element in sorted(ctx.elements.values(), key=lambda each: (each.path, each.label)):
+    for element in sorted(ctx.elements.values(), key=lambda each: (path_of(each), each.label)):
         built = build_enum(ctx, element) if element.is_enum else None
         if built is not None:
-            enums[element.uml.object_id] = built
+            enums[element.uml_class.object_id] = built
     return enums
 
 
 def _slot_names(usages: list[Usage], ctx: Context) -> dict[int, list[str]]:
     names: dict[int, list[str]] = {}
     for usage in sorted(usages, key=lambda each: each.order):
-        held = names.setdefault(usage.holder.uml.object_id, [])
+        held = names.setdefault(usage.holder.uml_class.object_id, [])
         if usage.name not in held:
             held.append(usage.name)
     return names
 
 
 def _write_module(
-    ctx: Context, name: str, path: ModulePath, built: Built, members: list[Element]
+    ctx: Context, name: str, path: ModulePath, built: Built, members: list[UmlElement]
 ) -> SchemaDefinition:
     settings = ctx.settings
     first = path[-1] if path else settings.subtree_package.rsplit(PATH_SEPARATOR, 1)[-1]
-    note = next((ctx.paths[i].note for i in ctx.paths if ctx.paths[i].below == path), None)
+    note = next((ctx.paths[i].note for i in ctx.paths if below_of(ctx.paths[i]) == path), None)
     schema = SchemaDefinition(
         id=settings.schema_base + name,
         name=name,
@@ -296,8 +304,8 @@ def _write_module(
     return schema
 
 
-def _place(schema: SchemaDefinition, element: Element, built: Built) -> None:
-    key = element.uml.object_id
+def _place(schema: SchemaDefinition, element: UmlElement, built: Built) -> None:
+    key = element.uml_class.object_id
     if element.is_enum:
         schema.enums[element.label] = built.enums[key]
         return
@@ -314,26 +322,26 @@ def _toolkit_imports(ctx: Context, members: list[ClassDefinition]) -> set[str]:
 
 
 def _imports(
-    ctx: Context, name: str, members: list[Element], built: Built, refs: set[str]
+    ctx: Context, name: str, members: list[UmlElement], built: Built, refs: set[str]
 ) -> list[str]:
-    classes = [built.classes[each.uml.object_id] for each in members if not each.is_enum]
+    classes = [built.classes[each.uml_class.object_id] for each in members if not each.is_enum]
     toolkit = {ANNOTATIONS_IMPORT} | _toolkit_imports(ctx, classes)
     toolkit.update(*(built.shared.toolkit_imports.get(each.label, set()) for each in members))
     return [LINKML_TYPES, *sorted(toolkit), *sorted(refs - {name})]
 
 
 def _classes(
-    ctx: Context, elements: list[Element], usages: list[Usage], parent_of: Mapping[int, str]
+    ctx: Context, elements: list[UmlElement], usages: list[Usage], parent_of: Mapping[int, str]
 ) -> dict[int, ClassDefinition]:
     """The class of each UML class; a part is a class an owned slot ranges over (PD-13, PD-17)."""
     defaults = check_default_mixins(ctx)
-    owned = {usage.shape.range for usage in usages if usage.shape.owned}
+    owned = {usage.shape.range for usage in usages if is_owned(usage.shape)}
     return {
-        e.uml.object_id: build_class(
+        e.uml_class.object_id: build_class(
             ctx,
             e,
-            parent_of.get(e.uml.object_id),
-            e.label in owned and not e.is_a_boundary_root,
+            parent_of.get(e.uml_class.object_id),
+            e.label in owned and not is_boundary_root(e),
             defaults,
         )
         for e in elements
@@ -342,7 +350,7 @@ def _classes(
 
 
 def _lay_out(
-    ctx: Context, elements: list[Element], usages: list[Usage], parent_of: Mapping[int, str]
+    ctx: Context, elements: list[UmlElement], usages: list[Usage], parent_of: Mapping[int, str]
 ) -> tuple[Layout, SharedSlots]:
     """The modules the packages are written as, and the slots each of them defines or shares (R-24, D-5)."""
     by_label = {element.label: element for element in elements}
@@ -351,7 +359,9 @@ def _lay_out(
     )
     _note_merges(ctx, components)
     names = _module_names(ctx, set(merged.values()))
-    module_of = {element.uml.object_id: names[merged[element.path]] for element in elements}
+    module_of = {
+        element.uml_class.object_id: names[merged[path_of(element)]] for element in elements
+    }
     named_homes = {name: names[path] if path else None for name, path in homes.items()}
     return Layout(elements, edges, merged, names), share(ctx, usages, module_of, named_homes)
 

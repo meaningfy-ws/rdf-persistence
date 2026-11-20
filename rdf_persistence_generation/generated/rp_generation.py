@@ -603,6 +603,35 @@ class UmlSettings(ConfiguredBaseModel):
     not_generated_stereotypes: Optional[list[str]] = Field(default=None, title="Not-generated stereotypes", description="The stereotypes whose classes are not generated, only listed in the report.")
 
 
+class UmlElement(ConfiguredBaseModel):
+    "A class or an enumeration the conversion generates: the UML class it was read from, its resolved name, where its package sits and what the conversion has classified it as (PD-17, R-18, R-23)."
+    uml_class: UmlClass = Field(default=..., title="UML class", description="The class or enumeration of the UML model that an element was read from.")
+    resolved_name: UmlName = Field(default=..., title="Resolved name", description="The name an element was written with, resolved against the prefixes file.")
+    label: str = Field(default=..., title="Label", description="A readable label.")
+    module_path: Optional[list[str]] = Field(default=None, title="Module path", description="The names of the packages below the subtree package that an element sits in, outermost first.")
+    is_enum: Optional[bool] = Field(default=False, title="Is enumeration", description="Whether an element is an enumeration.")
+    is_root: Optional[bool] = Field(default=False, title="Is root", description="Whether an element is the root of an application aggregate.")
+    is_abstract: Optional[bool] = Field(default=False, title="Is abstract", description="Whether a UML class is abstract.")
+    is_tenant_root: Optional[bool] = Field(default=False, title="Is tenant root", description="Whether an element is the root of the tenant, a root of its own kind (R-18).")
+    is_abstract_root: Optional[bool] = Field(default=False, title="Is abstract root", description="Whether an element is an abstract root, set by the abstract-roots pass (R-23).")
+
+
+class UmlPackagePath(ConfiguredBaseModel):
+    "Where a package sits: its names below the subtree package, whether an exclusion covers it, and its note."
+    below: Optional[list[str]] = Field(default=None, title="Below the subtree package", description="The names of the packages between the subtree package, which is left out, and a package, which is last.")
+    is_excluded: Optional[bool] = Field(default=False, title="Is excluded", description="Whether an `--exclude-package` covers a package.")
+    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
+
+
+class UmlLinkEnd(ConfiguredBaseModel):
+    "One end of a connector that may become a slot: the class that holds it, the one it points at, and the role and cardinality written at that end."
+    holder_id: int = Field(default=..., title="Holder id", description="The id of the class that holds the slot an end of a connector gives.")
+    other_id: int = Field(default=..., title="Other id", description="The id of the class that the slot an end of a connector gives points at.")
+    end_role: Optional[str] = Field(default=None, title="End role", description="The role written at the end of a connector that names the slot.")
+    end_card: Optional[str] = Field(default=None, title="End cardinality", description="The cardinality written at the end of a connector that names the slot, as the model writes it.")
+    owned_by_composite: Optional[bool] = Field(default=False, title="Owned by composite", description="Whether the destination of the slot is owned because the connector is a composite association.")
+
+
 class ReportLine(ConfiguredBaseModel):
     "One line of the report a conversion writes beside its output, saying what was left out or changed."
     report_kind: ReportKind = Field(default=..., title="Report kind", description="What a report line says was left out or changed.")
@@ -731,6 +760,9 @@ UmlBoundary.model_rebuild()
 UmlPrefix.model_rebuild()
 UmlName.model_rebuild()
 UmlSettings.model_rebuild()
+UmlElement.model_rebuild()
+UmlPackagePath.model_rebuild()
+UmlLinkEnd.model_rebuild()
 ReportLine.model_rebuild()
 PresenceRule.model_rebuild()
 RuleAlternative.model_rebuild()

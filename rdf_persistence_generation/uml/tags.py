@@ -17,8 +17,8 @@ from rdf_persistence_generation.checks.hard import (
     PATTERNED_ANNOTATIONS,
     segment_pattern,
 )
-from rdf_persistence_generation.generated.rp_generation import ReportKind, UmlRule
-from rdf_persistence_generation.uml.context import Context, Element
+from rdf_persistence_generation.generated.rp_generation import ReportKind, UmlElement, UmlRule
+from rdf_persistence_generation.uml.context import Context
 
 RP_MIXINS: Final = "rp_mixins"  # a tag of the mixin rules (R-25..R-28), not read here
 UNIQUE_KEY: Final = "unique_key"
@@ -32,7 +32,7 @@ _ANNOTATION_NAMES: Final = frozenset(each.value for each in RpAnnotation)
 
 def apply_tags(
     ctx: Context,
-    element: Element,
+    element: UmlElement,
     definition: ClassDefinition,
     derived: dict[str, Annotation],
 ) -> None:
@@ -41,7 +41,7 @@ def apply_tags(
     ``derived`` are the annotations the converter gives the class itself (a root's path); a tag overrides one.
     """
     annotations = dict(derived)
-    tags = ctx.tags.get(element.uml.object_id, {})
+    tags = ctx.tags.get(element.uml_class.object_id, {})
     for name in sorted(tags):
         if name not in _OWN_TAGS and not (name == GRAPH and element.is_tenant_root):
             written = _annotation_of(ctx, element, name, tags[name])
@@ -54,7 +54,7 @@ def apply_tags(
         definition.unique_keys = keys
 
 
-def _annotation_of(ctx: Context, element: Element, name: str, text: str) -> Annotation | None:
+def _annotation_of(ctx: Context, element: UmlElement, name: str, text: str) -> Annotation | None:
     if name in ctx.toolkit.class_annotations:
         why = _value_problem(RpAnnotation(name), text)
         if why is None:
@@ -79,14 +79,14 @@ def _value_problem(tag: RpAnnotation, text: str) -> str | None:
     return None
 
 
-def _takes_tenant_scope(element: Element) -> bool:
+def _takes_tenant_scope(element: UmlElement) -> bool:
     """True when a key of the class holds across the tenant's aggregates: a root or an abstract root (PD-21)."""
-    return element.is_root or element.is_abstract_root
+    return bool(element.is_root or element.is_abstract_root)
 
 
-def _unique_keys(ctx: Context, element: Element) -> dict[str, UniqueKey]:
+def _unique_keys(ctx: Context, element: UmlElement) -> dict[str, UniqueKey]:
     keys: dict[str, UniqueKey] = {}
-    for written in ctx.tag_values.get(element.uml.object_id, {}).get(UNIQUE_KEY, []):
+    for written in ctx.tag_values.get(element.uml_class.object_id, {}).get(UNIQUE_KEY, []):
         key = _unique_key(ctx, element, written)
         if key is None:
             continue
@@ -97,11 +97,11 @@ def _unique_keys(ctx: Context, element: Element) -> dict[str, UniqueKey]:
     return dict(sorted(keys.items()))
 
 
-def _key_problem(ctx: Context, element: Element, written: str, why: str) -> None:
+def _key_problem(ctx: Context, element: UmlElement, written: str, why: str) -> None:
     ctx.findings.problem(UmlRule.UNIQUE_KEY, element.label, f"{UNIQUE_KEY} {written!r}: {why}")
 
 
-def _unique_key(ctx: Context, element: Element, written: str) -> UniqueKey | None:
+def _unique_key(ctx: Context, element: UmlElement, written: str) -> UniqueKey | None:
     parsed = _parse_key(ctx, element, written)
     if isinstance(parsed, str):
         _key_problem(ctx, element, written, parsed)
@@ -110,7 +110,7 @@ def _unique_key(ctx: Context, element: Element, written: str) -> UniqueKey | Non
 
 
 def _parse_key(
-    ctx: Context, element: Element, written: str
+    ctx: Context, element: UmlElement, written: str
 ) -> tuple[str, list[str], str | None] | str:
     """The name, the slots and the nulls clause of a key; what is wrong with the tag when it is not one."""
     match = _KEY.fullmatch(written.strip())
@@ -128,7 +128,7 @@ def _parse_key(
     return name.strip(), [str(found) for _, found in listed], clause
 
 
-def _unknown_problem(element: Element, listed: list[tuple[str, str | None]]) -> str | None:
+def _unknown_problem(element: UmlElement, listed: list[tuple[str, str | None]]) -> str | None:
     unknown = [each for each, found in listed if found is None]
     if not unknown:
         return None
@@ -145,16 +145,16 @@ def _grammar_problem(name: str, slots: str, clause: str | None) -> str | None:
     return None
 
 
-def _slots_of(ctx: Context, element: Element, listed: str) -> list[tuple[str, str | None]]:
+def _slots_of(ctx: Context, element: UmlElement, listed: str) -> list[tuple[str, str | None]]:
     """Each listed name with the slot it stands for: a slot name or a UML name of an attribute or a role.
 
     An attribute that reuses a toolkit slot stands for the toolkit's slot; None when the name is unknown.
     """
-    named = ctx.slot_aliases.get(element.uml.object_id, {})
+    named = ctx.slot_aliases.get(element.uml_class.object_id, {})
     return [(each.strip(), named.get(each.strip())) for each in listed.split(",")]
 
 
-def _build_key(element: Element, name: str, slots: list[str], clause: str | None) -> UniqueKey:
+def _build_key(element: UmlElement, name: str, slots: list[str], clause: str | None) -> UniqueKey:
     key = UniqueKey(unique_key_name=name, unique_key_slots=slots)
     if clause == NULLS_EQUAL:
         key.consider_nulls_inequal = False

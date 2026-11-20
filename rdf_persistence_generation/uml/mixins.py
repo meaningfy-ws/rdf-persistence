@@ -8,8 +8,8 @@ problem. Which classes are toolkit classes comes from the toolkit's own metamode
 
 from typing import Final
 
-from rdf_persistence_generation.generated.rp_generation import UmlRule
-from rdf_persistence_generation.uml.context import Context, Element
+from rdf_persistence_generation.generated.rp_generation import UmlElement, UmlRule
+from rdf_persistence_generation.uml.context import Context, is_boundary_root
 
 AGGREGATE_ROOT: Final = "AggregateRoot"
 DESCRIBED: Final = "Described"
@@ -74,41 +74,41 @@ def _is_mixin(ctx: Context, name: str) -> bool:
     return bool(ctx.toolkit.class_by_name(name).mixin)  # type: ignore[union-attr]
 
 
-def _defaults(ctx: Context, element: Element, owned: bool, defaults: list[str]) -> list[str]:
+def _defaults(ctx: Context, element: UmlElement, owned: bool, defaults: list[str]) -> list[str]:
     """The default mixins of a root or an owned part; an unlabelled part has ``Described`` only (PD-29)."""
-    if element.is_a_boundary_root:
+    if is_boundary_root(element):
         return defaults
     if not owned:
         return []
-    tags = ctx.tags.get(element.uml.object_id, {})
+    tags = ctx.tags.get(element.uml_class.object_id, {})
     if tags.get(RP_UNLABELLED, "").strip().lower() == TRUE:
         return [each for each in defaults if each == DESCRIBED]
     return defaults
 
 
 def _mixins(
-    ctx: Context, element: Element, named: list[str], owned: bool, defaults: list[str]
+    ctx: Context, element: UmlElement, named: list[str], owned: bool, defaults: list[str]
 ) -> list[str]:
     """The mixins of a class, in the order of the module docstring."""
     mixins = [AGGREGATE_ROOT] if element.is_root or element.is_abstract_root else []  # R-10, R-23
     mixins += [name for name in named if _is_mixin(ctx, name)]
     mixins += _defaults(ctx, element, owned, defaults)
-    if ctx.tags.get(element.uml.object_id, {}).get(WORKFLOW, "").strip():
+    if ctx.tags.get(element.uml_class.object_id, {}).get(WORKFLOW, "").strip():
         mixins.append(UNDER_WORKFLOW)
     return mixins
 
 
 def compose(
-    ctx: Context, element: Element, domain_parent: str | None, owned: bool, defaults: list[str]
+    ctx: Context, element: UmlElement, domain_parent: str | None, owned: bool, defaults: list[str]
 ) -> Composed:
     """The ``is_a`` and the mixins of a class; two ``is_a`` sources are a problem naming the class (PD-17).
 
     ``owned`` is whether a boundary or a composite association makes the class a part; ``defaults`` are the
     default mixins that are toolkit classes (``check_default_mixins``).
     """
-    tags = ctx.tags.get(element.uml.object_id, {})
+    tags = ctx.tags.get(element.uml_class.object_id, {})
     named = _known(ctx, element.label, _listed(tags.get(RP_MIXINS, "")))
-    named += ctx.drawn_parents.get(element.uml.object_id, [])
+    named += ctx.drawn_parents.get(element.uml_class.object_id, [])
     mixins = _mixins(ctx, element, named, owned, defaults)
     sources = [domain_parent] if domain_parent else []
     sources += [name for name in named if not _is_mixin(ctx, name)]
