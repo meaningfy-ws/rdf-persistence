@@ -52,14 +52,14 @@ never commit; the lead does.
 
 ## 3. Docs and gates
 
-- [ ] 3.1 `docs/modules/ROOT/pages/user-manual/test.adoc`: a section `[#event-stream]` "Follow a
+- [x] 3.1 `docs/modules/ROOT/pages/user-manual/test.adoc`: a section `[#event-stream]` "Follow a
   tenant's event stream" (the issue's example, PD-5's return rules, PD-3's lifespan rule, "start
   it as a task, then commit"); `questions.adoc`'s testkit answer links it. Accept: `make check-docs`.
 - [ ] 3.2 Lead: `make check-all`, the SMALL review set, `openspec validate --all --strict`.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 3.1 · [ ] 3.2
+- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [x] 3.1 · [ ] 3.2
 
 ## Verification
 
