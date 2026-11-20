@@ -102,7 +102,7 @@ async def test_a_dump_at_toolkit_version_two_is_restored_with_the_members_of_its
     assert Literal("Book") in {o for _, _, o in graph}, "its member class is kept"
     async with world.tenancy.tenant_session(summary.id, RESTORER) as opened:
         found = await collaboration_over(opened, summary.id).members(new_shelf)
-    assert found.member_iris == sorted(members), "members(s1) lists b1 and b2"
+    assert found.member_iris == sorted(map(str, members)), "members(s1) lists b1 and b2"
 
 
 def collaboration_over(session, tenant: str) -> Collaboration:
