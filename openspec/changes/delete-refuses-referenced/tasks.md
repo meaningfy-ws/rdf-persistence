@@ -24,7 +24,7 @@ commit and never run `make generate`; the lead does, then `make check-generated`
 - [x] 2.1 `InUse` (PD-6) in `core/domain/exceptions.py`, exported from `rdf_persistence`
   (`make refresh-surface`); the naming move (PD-8) to `collaboration/services/referrer_naming.py`.
   Tests first: TC-0 (unit); TC-7 must stay green. Accept: TC-0 passes; TC-7 unchanged and passing.
-- [ ] 2.2 Session (PD-3, PD-4, PD-5, PD-7, PD-9): the `RemovalRefusal` protocol, `removals` on
+- [x] 2.2 Session (PD-3, PD-4, PD-5, PD-7, PD-9): the `RemovalRefusal` protocol, `removals` on
   `Session`, `open_session`, `Tenancy`; the shared referrer fragment; the guard; the diagnosis
   step; the same-commit check; `readable` on `transaction` and `remove`. Tests first: TC-3, TC-4,
   TC-5 with a stub `RemovalRefusal` (unit, fake store). Accept: they pass; existing
