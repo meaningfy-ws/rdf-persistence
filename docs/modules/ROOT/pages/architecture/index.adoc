@@ -88,6 +88,7 @@ graph TB
         WF["Workflows"]
     end
     WG["Write guards"]
+    RR["Referenced<br/>removals"]
     KIT --> TV
     KIT --> POL
     KIT --> TEN
@@ -96,6 +97,7 @@ graph TB
     KIT --> COL
     KIT --> WF
     KIT --> WG
+    KIT --> RR
     KIT --> EB
     COL --> TR
     COL --> RC
@@ -105,6 +107,8 @@ graph TB
     WG --> RC
     WG --> WF
     WG --> SES
+    RR --> SES
+    TEN -.-> RR
     COLL --> POL
     COLL --> SES
     COLL --> MAP
@@ -136,7 +140,12 @@ or writes through the session (the arrows that leave the box: access rules, mapp
 unit of work, which do not pass through them, stay as they were. *Write guards* are the checks a
 session runs on every add and replace (a collection's members, a state that only a transition
 changes). The kit builds them once and hands them to every session it opens; the session calls
-them through a protocol of its own (`WriteGuard`) and imports none of them. An import contract
+them through a protocol of its own (`WriteGuard`) and imports none of them. The second thing the
+kit builds for the session is the refusal of a removal that others still refer to: the session
+declares the port `RemovalRefusal` (the classes that refuse, and the `InUse` that names the
+referrers), `ReferencedRemovals` (`collaboration/services/referenced_removals.py`) implements it
+from the schema, and the kit hands it to `Tenancy`, which gives it to every session it opens (the
+dotted arrow is that handover, not an import). The session imports no schema. An import contract
 (`collaboration-layers` in `.importlinter`) fixes the order: collaboration, then transitions and
 write guards, then discussion, reference collections and workflows, then access, then the session.
 
@@ -219,7 +228,7 @@ and buckets, and the sweep inside a live tenant is the next building block (belo
 
 |Collaboration
 |built
-|`Collaboration` (`collaboration/services/collaboration.py`), opened with `kit.collaboration(authorised)` for a caller the gate has authorised; it checks access itself on every call. Eight methods and no route (`comment` and `transition` take `command=`, the command whose class and slots the record keeps): `referrers` (itself); `members`, `collections_of` and `delete_cascade` (`collaboration/services/reference_collections.py`); `comment` and `thread` (`collaboration/services/discussion.py`); `transition` and `transitions` (`collaboration/services/transitions.py`). `Workflows` (`collaboration/services/workflows.py`, `kit.workflows`) loads the workflow files given to `install_service(workflows=…)` and refuses a bad one before the service serves (`InvalidWorkflow`). `WriteGuards` (`collaboration/services/write_guards.py`) composes the rules of a write. What a caller may not read is counted and never named (xref:architecture/access-control.adoc#collaboration[access control]). The session gained only generic reads for them (`referrer_rows`, `heads`, `matches`, `graphs_with`, `activities`, `root_values`, `not_aggregates`), `principal`, `now()`, optional `guards` and `dependents`, and three private pieces of a transaction (xref:architecture/data-flows.adoc#private-pieces[the three, side by side]). A comment is an aggregate the toolkit writes itself, and a delete through the kit takes it with its aggregate. A transition is a `Transition` activity in the tenant's provenance graph (`iris.provenance(tenant)`), kept when its aggregate is deleted; `transitions` reads it only for a stored aggregate. How to use each: xref:howto/reverse-references.adoc[reverse references], xref:howto/reference-collections.adoc[reference collections], xref:howto/discussion.adoc[discussion], xref:howto/workflow.adoc[workflow].
+|`Collaboration` (`collaboration/services/collaboration.py`), opened with `kit.collaboration(authorised)` for a caller the gate has authorised; it checks access itself on every call. Eight methods and no route (`comment` and `transition` take `command=`, the command whose class and slots the record keeps): `referrers` (itself); `members`, `collections_of` and `delete_cascade` (`collaboration/services/reference_collections.py`); `comment` and `thread` (`collaboration/services/discussion.py`); `transition` and `transitions` (`collaboration/services/transitions.py`). `Workflows` (`collaboration/services/workflows.py`, `kit.workflows`) loads the workflow files given to `install_service(workflows=…)` and refuses a bad one before the service serves (`InvalidWorkflow`). `WriteGuards` (`collaboration/services/write_guards.py`) composes the rules of a write. `ReferencedRemovals` (`collaboration/services/referenced_removals.py`) names the classes that refuse deletion while referred to and builds the `InUse` that names the referrers; it implements the session's `RemovalRefusal` port, and the kit passes it to `Tenancy`. What a caller may not read is counted and never named (xref:architecture/access-control.adoc#collaboration[access control]). The session gained only generic reads for them (`referrer_rows`, `heads`, `matches`, `graphs_with`, `activities`, `root_values`, `not_aggregates`), `principal`, `now()`, optional `guards` and `dependents`, and three private pieces of a transaction (xref:architecture/data-flows.adoc#private-pieces[the three, side by side]). A comment is an aggregate the toolkit writes itself, and a delete through the kit takes it with its aggregate. A transition is a `Transition` activity in the tenant's provenance graph (`iris.provenance(tenant)`), kept when its aggregate is deleted; `transitions` reads it only for a stored aggregate. How to use each: xref:howto/reverse-references.adoc[reverse references], xref:howto/reference-collections.adoc[reference collections], xref:howto/discussion.adoc[discussion], xref:howto/workflow.adoc[workflow].
 |
 
 |Message bus
