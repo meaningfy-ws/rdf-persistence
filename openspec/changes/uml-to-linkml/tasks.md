@@ -83,7 +83,7 @@ schema change and its regenerated code go in one commit (`make generate`, then t
   the new UML tests' asserts (W-6); correct the scenario-map evidence (W-7); drop the stale comment
   in `test_uml_cycle.py` and use the path form (W-8); import `convert` at module level (S-8); and
   PD-6's "domain class named like a toolkit class" check in 2.2 (S-11).
-- [ ] 2.10 R-30 and W-1 (D-23, D-24), with 2.5 (R-30) and after 2.6 (W-1). Failing tests first:
+- [x] 2.10 R-30 and W-1 (D-23, D-24), with 2.5 (R-30) and after 2.6 (W-1). Failing tests first:
   an enumeration stereotyped as listed in `--not-generated` → no enum, a `not-generated` line, and
   a dependency to it → no slot, a `not-generated` line. W-1: `Bounds`, `Shape`, `Identity` replaced
   by `SlotDefinition`; `Element`, `PackagePath`, `End` by generated UML records; the model guard
