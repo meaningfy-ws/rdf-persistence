@@ -238,7 +238,7 @@ def test_a_shelf_with_members_and_a_rule_round_trips_and_is_typed_by_its_own_cla
     )
     iri = shelf_iri(1)
     on = shelf(iri).model_copy(
-        update={"member_class": "Book", "had_member": [book_iri(1)], "membership_rule": rule}
+        update={"member_class": "Book", "has_part": [book_iri(1)], "membership_rule": rule}
     )
     mapper = toy_mapper()
     graph = mapper.to_graph(on)

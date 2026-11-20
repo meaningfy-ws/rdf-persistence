@@ -127,7 +127,7 @@ def before(store: FakeStore, operation: str, action, when: str = "") -> None:
 async def test_a_plain_delete_keeps_the_members(guarded):  # TC-33
     await put_book(guarded, B1)
     await put_book(guarded, B2)
-    await put(guarded, a_shelf(S1, had_member=[B1, B2]))
+    await put(guarded, a_shelf(S1, has_part=[B1, B2]))
     await guarded.remove(S1, await version(guarded, S1))
     assert not await stored(guarded, S1), "the shelf is gone"
     assert await stored(guarded, B1), "b1 stays"
@@ -140,7 +140,7 @@ async def test_a_cascade_deletes_the_collection_and_all_its_members_in_one_reque
     await put_book(guarded, B1)
     await put_book(guarded, B2)
     await put_book(guarded, B3, Genre.POETRY)
-    await put(guarded, a_shelf(S1, had_member=[B1], membership_rule=poetry()))
+    await put(guarded, a_shelf(S1, has_part=[B1], membership_rule=poetry()))
     sent = len(guarded._store.sent("update"))
     await as_ada(collaboration, guarded).delete_cascade(S1, await version(guarded, S1))
     assert len(guarded._store.sent("update")) == sent + 1, "one update request"
@@ -153,7 +153,7 @@ async def test_a_member_the_caller_may_not_delete_refuses_the_cascade_and_is_nam
 ):  # TC-35
     await put_book(guarded, B1)
     await put_book(guarded, B2)
-    await put(guarded, a_shelf(S1, had_member=[B1, B2]))
+    await put(guarded, a_shelf(S1, has_part=[B1, B2]))
     access = held(
         role("reader"), direct(Action.DELETE, graph_of(S1)), direct(Action.DELETE, graph_of(B1))
     )
@@ -172,7 +172,7 @@ async def test_a_refused_member_the_caller_may_not_read_is_counted_and_not_named
 ):
     for iri in (B1, B2, B3):
         await put_book(guarded, iri)
-    await put(guarded, a_shelf(S1, had_member=[B1, B2, B3]))
+    await put(guarded, a_shelf(S1, has_part=[B1, B2, B3]))
     access = held(
         role("reader"),
         direct(Action.DELETE, graph_of(S1)),
@@ -193,7 +193,7 @@ async def test_a_member_changed_between_the_resolve_and_the_send_is_a_conflict(
 ):  # TC-36
     await put_book(guarded, B1)
     await put_book(guarded, B2)
-    await put(guarded, a_shelf(S1, had_member=[B1, B2]))
+    await put(guarded, a_shelf(S1, has_part=[B1, B2]))
     before(guarded._store, "update", lambda: regenre(guarded._store, B2, Genre.POETRY))
     with pytest.raises(Conflict) as refused:
         await as_ada(collaboration, guarded).delete_cascade(S1, await version(guarded, S1))
@@ -231,7 +231,7 @@ async def test_more_members_than_one_commit_holds_is_refused_before_any_other_re
     toy_session, collaboration
 ):  # TC-36c
     members = [book_iri(n) for n in range(1, DEFAULT_MAX_ROOTS + 1)]
-    await put(toy_session, a_shelf(S1, had_member=members))  # no guards: the books are not stored
+    await put(toy_session, a_shelf(S1, has_part=members))  # no guards: the books are not stored
     with pytest.raises(CommitTooLarge, match=str(DEFAULT_MAX_ROOTS)):
         await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
     assert not [q for q in toy_session._store.sent("query") if HEADS in q], "no heads were read"
@@ -240,7 +240,7 @@ async def test_more_members_than_one_commit_holds_is_refused_before_any_other_re
 
 async def test_a_collection_that_lists_itself_is_deleted_once(toy_session, collaboration):  # TC-37
     await put_book(toy_session, B1)
-    await put(toy_session, a_shelf(S1, had_member=[S1, B1]))  # no guards: a shelf holds books
+    await put(toy_session, a_shelf(S1, has_part=[S1, B1]))  # no guards: a shelf holds books
     await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
     assert not await stored(toy_session, S1), "the shelf is gone"
     assert not await stored(toy_session, B1), "and its book"
@@ -250,8 +250,8 @@ async def test_a_member_that_is_a_collection_is_deleted_and_its_own_members_stay
     guarded, collaboration
 ):  # TC-38
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(A, member_class="Book", had_member=[B1]))
-    await put(guarded, a_shelf(S1, member_class="Shelf", had_member=[A]))
+    await put(guarded, a_shelf(A, member_class="Book", has_part=[B1]))
+    await put(guarded, a_shelf(S1, member_class="Shelf", has_part=[A]))
     await as_ada(collaboration, guarded).delete_cascade(S1, await version(guarded, S1))
     assert not await stored(guarded, S1), "the outer shelf is gone"
     assert not await stored(guarded, A), "and the shelf it holds"
@@ -260,7 +260,7 @@ async def test_a_member_that_is_a_collection_is_deleted_and_its_own_members_stay
 
 async def test_a_stale_version_of_the_collection_is_a_conflict(guarded, collaboration):  # TC-39
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(S1, had_member=[B1]))
+    await put(guarded, a_shelf(S1, has_part=[B1]))
     with pytest.raises(Conflict):
         await as_ada(collaboration, guarded).delete_cascade(S1, "not-the-version")
     assert await stored(guarded, S1), "the shelf is kept"
@@ -270,7 +270,7 @@ async def test_a_stale_version_of_the_collection_is_a_conflict(guarded, collabor
 async def test_a_member_that_is_already_gone_is_skipped(guarded, collaboration):  # TC-40
     await put_book(guarded, B1)
     await put_book(guarded, B9)
-    await put(guarded, a_shelf(S1, had_member=[B1, B9]))
+    await put(guarded, a_shelf(S1, has_part=[B1, B9]))
     await guarded.remove(B9, await version(guarded, B9))
     await as_ada(collaboration, guarded).delete_cascade(S1, await version(guarded, S1))
     assert not await stored(guarded, S1), "the shelf is gone"
@@ -280,7 +280,7 @@ async def test_a_member_that_is_already_gone_is_skipped(guarded, collaboration):
 async def test_a_member_that_goes_after_the_heads_is_skipped_too(guarded, collaboration):
     await put_book(guarded, B1)
     await put_book(guarded, B4)
-    await put(guarded, a_shelf(S1, had_member=[B1, B4]))
+    await put(guarded, a_shelf(S1, has_part=[B1, B4]))
     current = await version(guarded, S1)
     before(guarded._store, "query", lambda: gone(guarded._store, B4), when=graph_of(B4))
     await as_ada(collaboration, guarded).delete_cascade(S1, current)
@@ -319,7 +319,7 @@ async def test_a_cascade_refusal_names_readable_members_and_counts_only_the_name
         await put_book(guarded, iri)
     await put_book(guarded, B3, Genre.POETRY)
     await put_book(guarded, B4, Genre.POETRY)
-    await put(guarded, a_shelf(S1, had_member=[B1, B2], membership_rule=poetry()))
+    await put(guarded, a_shelf(S1, has_part=[B1, B2], membership_rule=poetry()))
     access = reads_only_and_deletes_the_shelf(B2, B4)
     with pytest.raises(Forbidden) as refused:
         await collaboration(caller(), access, guarded).delete_cascade(
@@ -336,7 +336,7 @@ async def test_a_cascade_refusal_names_readable_members_and_counts_only_the_name
 
 async def test_the_room_check_gives_the_limit_and_no_member_count(toy_session, collaboration):
     members = [book_iri(n) for n in range(1, DEFAULT_MAX_ROOTS + 8)]
-    await put(toy_session, a_shelf(S1, had_member=members))  # no guards: the books are not stored
+    await put(toy_session, a_shelf(S1, has_part=members))  # no guards: the books are not stored
     with pytest.raises(CommitTooLarge) as refused:
         await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
     assert str(DEFAULT_MAX_ROOTS) in str(refused.value), "the limit"
@@ -349,7 +349,7 @@ async def test_a_stored_member_class_that_is_no_served_root_refuses_the_cascade(
     """A collection written without guards: its member class is the access class, it names the record."""
     record = access_record()
     await put(toy_session, record)
-    await put(toy_session, a_shelf(S1, member_class="LibraryAccess", had_member=[record.id]))
+    await put(toy_session, a_shelf(S1, member_class="LibraryAccess", has_part=[record.id]))
     with pytest.raises(StoredDataInvalid, match=S1):
         await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
     assert await stored(toy_session, record.id), "the access record is kept"
@@ -380,7 +380,7 @@ async def test_a_collection_that_is_not_an_aggregate_of_the_tenant_is_an_invalid
 async def test_a_shelf_and_its_new_books_in_one_commit_is_refused(guarded):  # D-6
     work = UnitOfWork(guarded, toy_mapper())
     work.add(dune(B1, chapters=1))
-    work.add(a_shelf(S1, had_member=[B1]))
+    work.add(a_shelf(S1, has_part=[B1]))
     with pytest.raises(InvalidBody, match=B1):
         await work.commit()
     assert not await stored(guarded, S1), "the shelf is not stored"

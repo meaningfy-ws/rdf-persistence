@@ -105,7 +105,7 @@ async def test_the_explicit_and_the_rule_members_are_joined_and_sorted(
 ):  # TC-24
     await put_book(guarded, B1)
     await put_book(guarded, B3, Genre.POETRY)
-    await put(guarded, a_shelf(S1, had_member=[B1], membership_rule=poetry()))
+    await put(guarded, a_shelf(S1, has_part=[B1], membership_rule=poetry()))
     found = await as_ada(collaboration, guarded).members(S1)
     assert found.member_iris == [B1, B3], "explicit b1 and rule b3, sorted"
     assert found.hidden_count == 0, "ada may read both"
@@ -116,7 +116,7 @@ async def test_a_member_a_caller_may_not_read_is_counted_and_not_named(
 ):  # TC-25
     await put_book(guarded, B1)
     await put_book(guarded, B2)
-    await put(guarded, a_shelf(S1, had_member=[B1, B2]))
+    await put(guarded, a_shelf(S1, has_part=[B1, B2]))
     found = await as_bob(collaboration, guarded).members(S1)
     assert found.member_iris == [B1], "bob may read only b1"
     assert found.hidden_count == 1, "b2 is counted"
@@ -125,7 +125,7 @@ async def test_a_member_a_caller_may_not_read_is_counted_and_not_named(
 
 async def test_a_collection_of_a_member_who_matches_both_ways_lists_it_once(guarded, collaboration):
     await put_book(guarded, B3, Genre.POETRY)
-    await put(guarded, a_shelf(S1, had_member=[B3], membership_rule=poetry()))
+    await put(guarded, a_shelf(S1, has_part=[B3], membership_rule=poetry()))
     found = await as_ada(collaboration, guarded).members(S1)
     assert found.member_iris == [B3], "named and matched, listed once"
 
@@ -142,8 +142,8 @@ async def test_a_deep_read_goes_into_the_members_that_are_collections(
     guarded, collaboration
 ):  # TC-26
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(B, member_class="Book", had_member=[B1]))
-    await put(guarded, a_shelf(A, member_class="Shelf", had_member=[B]))
+    await put(guarded, a_shelf(B, member_class="Book", has_part=[B1]))
+    await put(guarded, a_shelf(A, member_class="Shelf", has_part=[B]))
     build = as_ada(collaboration, guarded)
     assert (await build.members(A)).member_iris == [B], "not deep: only the shelf"
     assert (await build.members(A, deep=True)).member_iris == sorted([B, B1]), "deep: and its book"
@@ -153,10 +153,10 @@ async def test_a_deep_read_of_collections_that_hold_each_other_ends(
     guarded, collaboration
 ):  # TC-27
     await put(guarded, a_shelf(A, member_class="Shelf"))
-    await put(guarded, a_shelf(B, member_class="Shelf", had_member=[A]))
+    await put(guarded, a_shelf(B, member_class="Shelf", has_part=[A]))
     stored = await guarded.get_graph(A)
     await guarded.replace_graph(
-        A, toy_mapper().to_triples(a_shelf(A, member_class="Shelf", had_member=[B])), stored[2]
+        A, toy_mapper().to_triples(a_shelf(A, member_class="Shelf", has_part=[B])), stored[2]
     )
     found = await as_ada(collaboration, guarded).members(A, deep=True)
     assert found.member_iris == sorted([A, B]), "each is the other's member, and the read ends"
@@ -166,8 +166,8 @@ async def test_a_deep_read_does_not_go_into_a_collection_the_caller_may_not_read
     guarded, collaboration
 ):  # TC-28
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(B, member_class="Book", had_member=[B1]))
-    await put(guarded, a_shelf(A, member_class="Shelf", had_member=[B]))
+    await put(guarded, a_shelf(B, member_class="Book", has_part=[B1]))
+    await put(guarded, a_shelf(A, member_class="Shelf", has_part=[B]))
     found = await as_bob(collaboration, guarded, hidden=B).members(A, deep=True)
     assert found.member_iris is None, "b is hidden, and b1 behind it is not reached"
     assert found.hidden_count == 1, "b is counted"
@@ -175,7 +175,7 @@ async def test_a_deep_read_does_not_go_into_a_collection_the_caller_may_not_read
 
 async def test_a_member_collection_that_is_gone_is_a_leaf_of_a_deep_read(guarded, collaboration):
     await put(guarded, a_shelf(B, member_class="Book"))
-    await put(guarded, a_shelf(A, member_class="Shelf", had_member=[B]))
+    await put(guarded, a_shelf(A, member_class="Shelf", has_part=[B]))
     await guarded.remove(B, (await guarded.get_graph(B))[2])
     found = await as_ada(collaboration, guarded).members(A, deep=True)
     assert found.member_iris == [B], "b is still named, and has no members of its own"
@@ -227,7 +227,7 @@ async def test_the_collections_that_hold_a_member_are_those_that_list_it_or_matc
     guarded, collaboration
 ):  # TC-29
     await put_book(guarded, B3, Genre.POETRY)
-    await put(guarded, a_shelf(S1, had_member=[B3]))
+    await put(guarded, a_shelf(S1, has_part=[B3]))
     await put(guarded, a_shelf(S2, membership_rule=poetry()))
     found = await as_ada(collaboration, guarded).collections_of(B3)
     assert isinstance(found, MemberList), "a generated model"
@@ -237,7 +237,7 @@ async def test_the_collections_that_hold_a_member_are_those_that_list_it_or_matc
 
 async def test_a_collection_that_holds_a_member_both_ways_is_counted_once(guarded, collaboration):
     await put_book(guarded, B3, Genre.POETRY)
-    await put(guarded, a_shelf(S1, had_member=[B3], membership_rule=poetry()))
+    await put(guarded, a_shelf(S1, has_part=[B3], membership_rule=poetry()))
     found = await as_bob(collaboration, guarded, hidden=S1).collections_of(B3)
     assert found.member_iris is None, "bob may not read s1"
     assert found.hidden_count == 1, "and it is one collection, not two holders"
@@ -259,7 +259,7 @@ async def test_a_collection_of_another_member_class_is_not_tested(guarded, colla
 
 async def test_a_hidden_holder_is_counted_and_not_named(guarded, collaboration):
     await put_book(guarded, B3, Genre.POETRY)
-    await put(guarded, a_shelf(S1, had_member=[B3]))
+    await put(guarded, a_shelf(S1, has_part=[B3]))
     await put(guarded, a_shelf(S2, membership_rule=poetry()))
     found = await as_bob(collaboration, guarded, hidden=S2).collections_of(B3)
     assert found.member_iris == [S1], "bob may read only s1"
@@ -270,7 +270,7 @@ async def test_a_hidden_holder_is_counted_and_not_named(guarded, collaboration):
 async def test_a_hidden_referrer_that_is_no_collection_is_not_counted(guarded, collaboration):
     await put_book(guarded, B1)
     await put_book(guarded, B2)
-    await put(guarded, a_shelf(S1, had_member=[B1]))
+    await put(guarded, a_shelf(S1, has_part=[B1]))
     await put(guarded, dune(B3, chapters=1, sequel_of=B1))  # a book that points at b1
     found = await as_bob(collaboration, guarded, hidden=B3).collections_of(B1)
     assert found.member_iris == [S1], "the shelf"
@@ -279,7 +279,7 @@ async def test_a_hidden_referrer_that_is_no_collection_is_not_counted(guarded, c
 
 async def test_a_member_that_is_not_stored_has_only_its_explicit_holders(guarded, collaboration):
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(S1, had_member=[B1]))
+    await put(guarded, a_shelf(S1, has_part=[B1]))
     await guarded.remove(B1, (await guarded.get_graph(B1))[2])
     found = await as_ada(collaboration, guarded).collections_of(B1)
     assert found.member_iris == [S1], "the shelf still lists it; no rule is asked about a gone book"
@@ -290,7 +290,7 @@ async def test_a_deleted_member_stays_named_and_blocks_the_next_save_until_it_is
 ):  # the how-to: no referential integrity
     await put_book(guarded, B1)
     await put_book(guarded, B2)
-    await put(guarded, a_shelf(S1, had_member=[B1, B2]))
+    await put(guarded, a_shelf(S1, has_part=[B1, B2]))
     await guarded.remove(B1, (await guarded.get_graph(B1))[2])
     build = as_ada(collaboration, guarded)
     assert (await build.members(S1)).member_iris == [B1, B2], "the deleted book is still listed"
@@ -302,7 +302,7 @@ async def test_a_deleted_member_stays_named_and_blocks_the_next_save_until_it_is
         await work.commit()
     work = UnitOfWork(guarded, toy_mapper())
     fresh = await work.get(Shelf, S1)
-    fresh.had_member = [B2]
+    fresh.has_part = [B2]
     work.add(fresh)
     await work.commit()
     assert (await build.members(S1)).member_iris == [B2], "taken out, the shelf is saved"
@@ -311,10 +311,10 @@ async def test_a_deleted_member_stays_named_and_blocks_the_next_save_until_it_is
 async def test_a_shelf_is_changed_by_a_replace_and_its_token_deletes_it(guarded, collaboration):
     await put_book(guarded, B1)
     await put_book(guarded, B2)
-    await put(guarded, a_shelf(S1, had_member=[B1]))
+    await put(guarded, a_shelf(S1, has_part=[B1]))
     work = UnitOfWork(guarded, toy_mapper())
     edited = await work.get(Shelf, S1)
-    edited.had_member = [*(edited.had_member or []), B2]
+    edited.has_part = [*(edited.has_part or []), B2]
     work.add(edited)
     await work.commit()
     work = UnitOfWork(guarded, toy_mapper())
@@ -369,7 +369,7 @@ async def test_a_hidden_named_member_is_counted_and_a_hidden_rule_member_is_not(
     for iri in (B1, B2):
         await put_book(guarded, iri)
     await put_book(guarded, B3, Genre.POETRY)
-    await put(guarded, a_shelf(S1, had_member=[B1, B2], membership_rule=poetry()))
+    await put(guarded, a_shelf(S1, has_part=[B1, B2], membership_rule=poetry()))
     found = await as_bob_without(collaboration, guarded, B2, B3).members(S1)
     assert found.member_iris == [B1], "bob may read b1 only"
     assert found.hidden_count == 1, "b2 is named, so counted; b3 only matches, so it is not"
@@ -380,7 +380,7 @@ async def test_a_deep_read_does_not_count_a_hidden_rule_member_of_a_nested_colle
 ):
     await put_book(guarded, B3, Genre.POETRY)
     await put(guarded, a_shelf(B, member_class="Book", membership_rule=poetry()))
-    await put(guarded, a_shelf(A, member_class="Shelf", had_member=[B]))
+    await put(guarded, a_shelf(A, member_class="Shelf", has_part=[B]))
     found = await as_bob_without(collaboration, guarded, B3).members(A, deep=True)
     assert found.member_iris == [B], "the nested shelf"
     assert found.hidden_count == 0, "b3 matches b's rule and is hidden: not counted"
@@ -431,7 +431,7 @@ async def test_a_deep_read_names_the_nested_collection_whose_rule_is_bad(
     toy_session, collaboration
 ):
     await put(toy_session, a_shelf(B, member_class="Book", membership_rule=poetry("colour", "red")))
-    await put(toy_session, a_shelf(A, member_class="Shelf", had_member=[B]))
+    await put(toy_session, a_shelf(A, member_class="Shelf", has_part=[B]))
     with pytest.raises(StoredDataInvalid) as refused:
         await as_ada(collaboration, toy_session).members(A, deep=True)
     assert B in str(refused.value), "b is the broken one"
@@ -451,13 +451,35 @@ async def test_a_collection_is_decoded_from_its_own_graph_only(toy_session, coll
     assert found.member_iris == [B], "the real b holds b3; a's foreign copy does not corrupt it"
 
 
-async def test_a_referrer_by_had_member_that_is_no_collection_is_not_a_holder(
+async def test_a_saved_collection_states_each_member_with_has_part_and_every_reader_finds_them(
+    guarded, collaboration
+):  # TC-7
+    await put_book(guarded, B1)
+    await put_book(guarded, B2)
+    await put(guarded, a_shelf(S1, has_part=[B1, B2]))
+    graph, _, token = await guarded.get_graph(S1)
+    dct_has_part = URIRef("http://purl.org/dc/terms/hasPart")
+    prov_had_member = URIRef("http://www.w3.org/ns/prov#hadMember")
+    stated = list(graph.triples((None, dct_has_part, None)))
+    assert len(stated) == 2, "one dcterms:hasPart per member"
+    assert not list(graph.triples((None, prov_had_member, None))), "and no prov:hadMember"
+    build = as_ada(collaboration, guarded)
+    assert (await build.members(S1)).member_iris == [B1, B2], "members"
+    for member in (B1, B2):
+        assert (await build.collections_of(member)).member_iris == [S1], "collections_of"
+        [found] = (await build.referrers(member)).referrers or []
+        assert (found.referrer, found.referrer_slot) == (S1, "has_part"), "referrers"
+    await build.delete_cascade(S1, token)
+    assert not await guarded.heads([S1, B1, B2]), "the cascade finds both members"
+
+
+async def test_a_referrer_by_has_part_that_is_no_collection_is_not_a_holder(
     toy_session, collaboration
 ):
     await put_book(toy_session, B1)
     stray = [
         (URIRef(B2), RDF.type, URIRef("http://purl.org/ontology/bibo/Book")),
-        (URIRef(B2), v.HAD_MEMBER, URIRef(B1)),
+        (URIRef(B2), v.HAS_PART, URIRef(B1)),
     ]
     await toy_session.add_graph(B2, stray)
     found = await as_ada(collaboration, toy_session).collections_of(B1)
@@ -469,7 +491,7 @@ async def test_a_member_that_is_no_longer_a_collection_is_a_leaf_of_a_deep_read(
     guarded, collaboration
 ):
     await put(guarded, a_shelf(B, member_class="Book"))
-    await put(guarded, a_shelf(A, member_class="Shelf", had_member=[B]))
+    await put(guarded, a_shelf(A, member_class="Shelf", has_part=[B]))
     stored_b = (await guarded.get_graph(B))[2]
     await guarded.remove(B, stored_b)
     await put_book(guarded, B)  # the IRI of a shelf now holds a book
@@ -495,7 +517,7 @@ def limited_collaboration(session, max_roots: int) -> Collaboration:
 async def test_a_cascade_over_the_mappers_limit_is_refused_naming_it(guarded):  # TC-25
     for iri in (B1, B2, B3):
         await put_book(guarded, iri)
-    await put(guarded, a_shelf(S1, had_member=[B1, B2, B3]))
+    await put(guarded, a_shelf(S1, has_part=[B1, B2, B3]))
     stored = (await guarded.get_graph(S1))[2]
     with pytest.raises(CommitTooLarge, match=r"\b3\b"):
         await limited_collaboration(guarded, 3).delete_cascade(S1, stored)

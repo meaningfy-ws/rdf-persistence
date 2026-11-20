@@ -4,6 +4,7 @@
       "ADMS": "http://www.w3.org/ns/adms#",
       "ODRL": "http://www.w3.org/ns/odrl/2/",
       "dcterms": "http://purl.org/dc/terms/",
+      "dctypes": "http://purl.org/dc/dcmitype/",
       "linkml": "https://w3id.org/linkml/",
       "oa": "http://www.w3.org/ns/oa#",
       "prov": "http://www.w3.org/ns/prov#",
@@ -99,10 +100,10 @@
          "@type": "@id",
          "@id": "graph"
       },
-      "had_member": {
+      "has_part": {
          "@type": "@id",
          "@container": "@set",
-         "@id": "prov:hadMember"
+         "@id": "dcterms:hasPart"
       },
       "has_target": {
          "@type": "@id",
@@ -310,7 +311,7 @@
          "@id": "Provenanced"
       },
       "ReferenceCollection": {
-         "@id": "prov:Collection"
+         "@id": "dctypes:Collection"
       },
       "RegistryEntry": {
          "@id": "RegistryEntry"

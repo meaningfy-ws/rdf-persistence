@@ -1218,7 +1218,7 @@
       "additionalProperties": false,
       "description": "A mixin for an aggregate that collects other aggregates of one class: the members it names, and a rule that says which aggregates of that class belong. A collection of collections has the collection class as its member class.",
       "properties": {
-        "had_member": {
+        "has_part": {
           "description": "The IRIs of the aggregates the collection names as its members.",
           "items": {
             "format": "uri",
@@ -1555,7 +1555,7 @@
           "description": "A free-text description of the object.",
           "type": "string"
         },
-        "had_member": {
+        "has_part": {
           "description": "The IRIs of the aggregates the collection names as its members.",
           "items": {
             "format": "uri",

@@ -570,7 +570,7 @@ async def test_a_shelf_with_a_member_of_the_wrong_class_is_a_422_and_stores_noth
         "label": "Shelf",
         "description": "A shelf.",
         "member_class": "Shelf",
-        "had_member": [scene.book_iri],
+        "has_part": [scene.book_iri],
     }
     response = await scene.http.post(
         f"{scene.tenant}/shelves", json=body, headers=scene.headers("ada")

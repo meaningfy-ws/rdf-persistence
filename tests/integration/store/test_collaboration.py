@@ -217,7 +217,7 @@ async def test_a_shelf_of_stored_books_is_saved_and_the_books_are_untouched(
     await put_genre_book(session, B2)
     before = [await version_of(session, i) for i in (B1, B2)]
     work = UnitOfWork(session, toy_mapper())
-    work.add(a_shelf(S1, had_member=[B1, B2]))
+    work.add(a_shelf(S1, has_part=[B1, B2]))
     await work.commit()
     assert await stored(session, S1), "the shelf is stored"
     assert (await as_ada(collaboration).members(S1)).member_iris == [B1, B2], "and holds both"
@@ -234,8 +234,8 @@ async def test_a_rule_shelf_gains_a_newly_saved_poetry_book(session, collaborati
 
 async def test_nested_shelves_are_read_deeply(session, collaboration):  # TC-26
     await put_genre_book(session, B1)
-    await put(session, a_shelf(B, member_class="Book", had_member=[B1]))
-    await put(session, a_shelf(A, member_class="Shelf", had_member=[B]))
+    await put(session, a_shelf(B, member_class="Book", has_part=[B1]))
+    await put(session, a_shelf(A, member_class="Shelf", has_part=[B]))
     build = as_ada(collaboration)
     assert (await build.members(A)).member_iris == [B], "not deep: only the shelf"
     assert (await build.members(A, deep=True)).member_iris == sorted([B, B1]), "deep: and its book"
@@ -243,10 +243,10 @@ async def test_nested_shelves_are_read_deeply(session, collaboration):  # TC-26
 
 async def test_a_deep_read_of_shelves_that_hold_each_other_ends(session, collaboration):  # TC-27
     await put(session, a_shelf(A, member_class="Shelf"))
-    await put(session, a_shelf(B, member_class="Shelf", had_member=[A]))
+    await put(session, a_shelf(B, member_class="Shelf", has_part=[A]))
     await session.replace_graph(
         A,
-        toy_mapper().to_triples(a_shelf(A, member_class="Shelf", had_member=[B])),
+        toy_mapper().to_triples(a_shelf(A, member_class="Shelf", has_part=[B])),
         await version_of(session, A),
     )
     found = await as_ada(collaboration).members(A, deep=True)
@@ -259,7 +259,7 @@ async def test_a_cascade_deletes_the_shelf_and_its_members_in_one_request(
     await put_genre_book(session, B1)
     await put_genre_book(session, B2)
     await put_genre_book(session, B3, Genre.POETRY)
-    await put(session, a_shelf(S1, had_member=[B1], membership_rule=poetry()))
+    await put(session, a_shelf(S1, has_part=[B1], membership_rule=poetry()))
     sent: list[str] = []
     original = store.update
 
@@ -304,7 +304,7 @@ async def test_a_rule_member_regenred_before_the_heads_fails_the_match_guard(
 async def test_a_member_the_caller_may_not_delete_refuses_the_cascade(session, collaboration):
     await put_genre_book(session, B1)
     await put_genre_book(session, B2)
-    await put(session, a_shelf(S1, had_member=[B1, B2]))
+    await put(session, a_shelf(S1, has_part=[B1, B2]))
     access = held(
         role("reader"), direct(Action.DELETE, graph_of(S1)), direct(Action.DELETE, graph_of(B1))
     )
@@ -326,7 +326,7 @@ async def test_a_cascade_of_the_most_members_a_commit_holds_is_one_request(
         for iri in books[start : start + 100]:
             work.add(dune(iri, chapters=0))
         await work.commit()
-    await put(session, a_shelf(S1, had_member=books))
+    await put(session, a_shelf(S1, has_part=books))
     sent: list[str] = []
     original = store.update
 
@@ -428,10 +428,10 @@ async def test_a_remove_leaves_an_aggregate_of_another_class_that_links_to_it(
     session, collaboration
 ):
     await put_book(session, B1)
-    await put(session, a_shelf(S1, member_class="Book", had_member=[B1]))
+    await put(session, a_shelf(S1, member_class="Book", has_part=[B1]))
     await as_reviewer(collaboration).comment(B1, "goes with b1")
     await session.remove(B1, await version_of(session, B1))
-    assert await stored(session, S1), "the shelf names b1 by had_member, not by a comment's target"
+    assert await stored(session, S1), "the shelf names b1 by has_part, not by a comment's target"
     assert await comments_on(session, B1) == [], "the comment on b1 went with it"
 
 

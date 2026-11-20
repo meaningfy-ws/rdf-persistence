@@ -191,7 +191,7 @@ class ReferenceCollections:
         named = {
             referrer
             for referrer, referrer_class, _, predicate in rows
-            if predicate == str(v.HAD_MEMBER) and URIRef(referrer_class) in self._collection_classes
+            if predicate == str(v.HAS_PART) and URIRef(referrer_class) in self._collection_classes
         }
         return self._listed(named | await self._rule_holders(iri))
 
@@ -340,7 +340,7 @@ class ReferenceCollections:
 
     async def _direct(self, iri: str, collection: ReferenceCollection) -> Held:
         """The members ``collection`` names, and those that only meet its rule."""
-        named = set(collection.had_member or [])
+        named = set(collection.has_part or [])
         matched: set[str] = set()
         if collection.membership_rule is not None:
             equals: dict[str, list[str]] = {}

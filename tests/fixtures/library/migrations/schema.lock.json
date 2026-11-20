@@ -549,6 +549,13 @@
           "inlined": false
         },
         {
+          "slot_uri": "http://purl.org/dc/terms/hasPart",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
           "slot_uri": "http://purl.org/dc/terms/identifier",
           "range": "http://www.w3.org/2001/XMLSchema#anyURI",
           "required": true,
@@ -567,13 +574,6 @@
           "range": "http://www.w3.org/2001/XMLSchema#string",
           "required": true,
           "multivalued": false,
-          "inlined": false
-        },
-        {
-          "slot_uri": "http://www.w3.org/ns/prov#hadMember",
-          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
-          "required": false,
-          "multivalued": true,
           "inlined": false
         },
         {

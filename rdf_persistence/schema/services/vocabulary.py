@@ -180,7 +180,7 @@ STATE = predicate("state")
 TENANT_STATE_IRIS = enum_meanings("TenantState")
 
 # A collection names its members, and has a rule that says which others belong (PD-5, PD-7).
-HAD_MEMBER = predicate("had_member")
+HAS_PART = predicate("has_part")
 MEMBERSHIP_RULE = predicate("membership_rule")
 
 # A comment is a Web Annotation: its class, the aggregate it targets and the aggregates it refers to (PD-12).

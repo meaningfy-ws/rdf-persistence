@@ -60,7 +60,7 @@ linkml_meta = None
 class ReferenceCollection(ConfiguredBaseModel):
     "A mixin for an aggregate that collects other aggregates of one class: the members it names, and a rule that says which aggregates of that class belong. A collection of collections has the collection class as its member class."
     member_class: str = Field(default=..., title="Member class", description="The schema name of the class of the aggregates the collection collects.")
-    had_member: Optional[list[str]] = Field(default=None, title="Had member", description="The IRIs of the aggregates the collection names as its members.")
+    has_part: Optional[list[str]] = Field(default=None, title="Has part", description="The IRIs of the aggregates the collection names as its members.")
     membership_rule: Optional[MembershipRule] = Field(default=None, title="Membership rule", description="The rule that says which aggregates of the member class belong to the collection.")
 
 

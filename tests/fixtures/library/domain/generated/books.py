@@ -105,7 +105,7 @@ class Shelf(ReferenceCollection, Tracked, Described, AggregateRoot):
     creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")
     contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
     member_class: str = Field(default=..., title="Member class", description="The schema name of the class of the aggregates the collection collects.")
-    had_member: Optional[list[str]] = Field(default=None, title="Had member", description="The IRIs of the aggregates the collection names as its members.")
+    has_part: Optional[list[str]] = Field(default=None, title="Has part", description="The IRIs of the aggregates the collection names as its members.")
     membership_rule: Optional[MembershipRule] = Field(default=None, title="Membership rule", description="The rule that says which aggregates of the member class belong to the collection.")
 
 

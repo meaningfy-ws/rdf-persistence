@@ -31,7 +31,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_collections.yaml",
-      "sha256": "3151d0baef16e713c7d14c86d5dc1f1ee915ca7996c89cb8b8ddea795834f489"
+      "sha256": "361eff3a9e6b9b175e1ea64f94a7150c9182de09d59bbb6f4a27ea5062faf17f"
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
@@ -329,7 +329,7 @@
     },
     {
       "path": "domain/generated/books.py",
-      "sha256": "327ee15a86c5f020171e16e8b5695b28d6d99bea3a3dea0de81b808204f59c7f"
+      "sha256": "1eaecb883aba8d5eb036eeb3da5cac8ca9f600f77aa38ac88d726ee59e185274"
     },
     {
       "path": "domain/generated/books_activities.py",
@@ -337,7 +337,7 @@
     },
     {
       "path": "domain/generated/context.jsonld",
-      "sha256": "14c5acfeccb9ff62034e7cb235122eee16c9a8e2bea727b8a6bd7f2bb497ed85"
+      "sha256": "be0606abdc83af6c9e16d099606c62bee07564903e68acb5f4ddb2a9c17be19c"
     },
     {
       "path": "domain/generated/diagrams/books.mmd",
@@ -377,7 +377,7 @@
     },
     {
       "path": "domain/generated/openapi-components.json",
-      "sha256": "740493440769cf2d15b37ff2ed181b9aabb3dcdb3230352cdecdb941c3ceb949"
+      "sha256": "1230d6c0545e8465955b1b2bc12460caaa499652146e3186484dde758f5b25cc"
     },
     {
       "path": "domain/generated/scans.py",
@@ -385,7 +385,7 @@
     },
     {
       "path": "domain/generated/shapes.ttl",
-      "sha256": "ac667e32db6d57d1eb0ee1aab43258ddd820daf8a0767ae45e5ef5b7c1d24d32"
+      "sha256": "899a6f5feaef06deda0ba718ef5c8b6ce7f336125e105698b189c67beac14ad3"
     },
     {
       "path": "domain/generated/templates.py",
@@ -393,11 +393,11 @@
     },
     {
       "path": "migrations/schema.lock.json",
-      "sha256": "55bfaac70a96df87b121472c27cc8e78e35ca27c1bdf95de18fb0d676dc488eb"
+      "sha256": "161c781be0caeda3874e3884b767b095403150f5dad337eac56e3f180b1e2560"
     },
     {
       "path": "web/src/domain/generated/books.ts",
-      "sha256": "25bf695fbc3aa5b81ac32727a8de37fdb37b38398fc624064ef73780b9cf4b42"
+      "sha256": "2fa53db2769366e1293924380e74a4e1067b255f5a2289c26a6ade7e6243bd49"
     },
     {
       "path": "web/src/domain/generated/books_activities.ts",
