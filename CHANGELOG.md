@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING: reference collections state members with `dct:hasPart`** (`collection-has-part`, #199).
+  The slot and field `had_member` (`prov:hadMember`) of `ReferenceCollection` is now `has_part`
+  (`dcterms:hasPart`), in Python, JSON, TypeScript and the API: the listing filter `had_member`
+  becomes `has_part`, and the sort keys `had_member` and `-had_member` become `has_part` and
+  `-has_part`. `vocabulary.HAD_MEMBER` is now `vocabulary.HAS_PART`; there is no alias.
+  - The toolkit's own schema goes to version 3. Its migration rewrites the stored members of every
+    collection at start-up and on restore of a dump at version 2. Every version token is rotated
+    once by the upgrade, so a client that holds one re-reads before it replaces, or the replace
+    answers 409.
+  - A consumer whose lock names a collection class migrates in three steps. (1) Raise the `version:`
+    of your schema. (2) Run `rp-generate`: it drafts `<old>__<new>.yaml` with one
+    `DROP <http://www.w3.org/ns/prov#hadMember>` step per collection class. (3) Keep or delete that
+    step, since it matches nothing after the toolkit's 2 to 3 step, and commit the file and the
+    lock. Without the raised version, `rp-generate` refuses and names the class. A consumer with no
+    locked collection class only regenerates.
+  - The mixin's class IRI changes from `prov:Collection` to `dcmitype:Collection`. The JSON-LD term
+    `ReferenceCollection` and the target of the mixin's shape change; no stored data does, because
+    no graph is typed with the mixin.
+  - To state `dct:hasPart` elsewhere in a model, reuse the toolkit's `has_part` slot instead of
+    declaring another slot with `slot_uri: dcterms:hasPart`.
+
 ## [0.7.0] - 2026-11-19
 
 ### Changed
