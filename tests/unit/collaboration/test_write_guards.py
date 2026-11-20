@@ -81,14 +81,14 @@ async def test_a_collection_of_stored_books_is_saved_and_its_members_are_untouch
     async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
         await save(session, dune(book_iri(1)), dune(book_iri(2)))
         before = [await version_of(session, book_iri(n)) for n in (1, 2)]
-        await save(session, a_shelf(had_member=[book_iri(1), book_iri(2)]))
+        await save(session, a_shelf(has_part=[book_iri(1), book_iri(2)]))
         assert await version_of(session, shelf_iri(1)), "the shelf is stored"
         assert before == [await version_of(session, book_iri(n)) for n in (1, 2)], "books untouched"
 
 
 BAD_BODY = [
-    pytest.param({"had_member": [shelf_iri(2)]}, shelf_iri(2), id="TC-16-another-class"),
-    pytest.param({"had_member": [book_iri(99)]}, book_iri(99), id="TC-17-never-stored"),
+    pytest.param({"has_part": [shelf_iri(2)]}, shelf_iri(2), id="TC-16-another-class"),
+    pytest.param({"has_part": [book_iri(99)]}, book_iri(99), id="TC-17-never-stored"),
     pytest.param({"member_class": "Chapter"}, "Chapter", id="TC-19-not-a-served-root"),
     pytest.param({"member_class": "Comment"}, "Comment", id="D-7-a-comment-is-no-member-class"),
     pytest.param({"membership_rule": rule("colour", "red")}, "colour", id="TC-20-unknown-slot"),
@@ -110,7 +110,7 @@ async def test_every_member_that_is_not_of_the_class_is_named():
     async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
         await save(session, dune(book_iri(1)), a_shelf(2))
         with pytest.raises(InvalidBody) as refused:
-            await save(session, a_shelf(had_member=[book_iri(1), shelf_iri(2), book_iri(99)]))
+            await save(session, a_shelf(has_part=[book_iri(1), shelf_iri(2), book_iri(99)]))
         assert shelf_iri(2) in str(refused.value), "the shelf is not a book"
         assert book_iri(99) in str(refused.value), "b99 was never stored"
         assert book_iri(1) not in str(refused.value), "b1 is a member of the class"
@@ -119,7 +119,7 @@ async def test_every_member_that_is_not_of_the_class_is_named():
 async def test_a_member_the_tenant_does_not_mint_is_an_invalid_iri():  # TC-18
     async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
         with pytest.raises(InvalidIri, match=ELSEWHERE):
-            await save(session, a_shelf(had_member=[ELSEWHERE]))
+            await save(session, a_shelf(has_part=[ELSEWHERE]))
         with pytest.raises(NotFound):
             await session.get_graph(shelf_iri(1))
 
@@ -129,7 +129,7 @@ async def test_a_member_the_tenant_does_not_mint_is_an_invalid_iri():  # TC-18
     [
         {"membership_rule": rule("genre", "poetry")},
         {"membership_rule": MembershipRule()},
-        {"member_class": "Shelf", "had_member": [shelf_iri(2)]},
+        {"member_class": "Shelf", "has_part": [shelf_iri(2)]},
     ],
     ids=["rule", "empty-rule", "collection-of-collections"],
 )
@@ -143,18 +143,18 @@ async def test_a_valid_rule_or_collection_of_collections_is_saved(slots):
 async def test_a_session_without_guards_checks_nothing():  # TC-22
     async with fake_session(tenant_iri=TENANT) as session:
         await save(session, a_shelf(2))
-        await save(session, a_shelf(had_member=[shelf_iri(2)]))
+        await save(session, a_shelf(has_part=[shelf_iri(2)]))
         assert await version_of(session, shelf_iri(1)), "the shelf of shelves is stored"
 
 
 async def test_a_replace_of_a_collection_is_guarded_like_an_add():
     async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
         await save(session, dune(book_iri(1)), a_shelf(2))
-        await save(session, a_shelf(had_member=[book_iri(1)]))
+        await save(session, a_shelf(has_part=[book_iri(1)]))
         kept = await version_of(session, shelf_iri(1))
         work = UnitOfWork(session, toy_mapper())
         stored = await work.get(type(a_shelf()), shelf_iri(1))
-        work.add(stored.model_copy(update={"had_member": [shelf_iri(2)]}))
+        work.add(stored.model_copy(update={"has_part": [shelf_iri(2)]}))
         with pytest.raises(InvalidBody, match=shelf_iri(2)):
             await work.commit()
         assert await version_of(session, shelf_iri(1)) == kept, "the shelf is as it was"

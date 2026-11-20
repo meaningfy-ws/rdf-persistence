@@ -473,7 +473,7 @@ async def test_removing_an_aggregate_removes_the_comments_on_it_and_keeps_the_ot
 
 
 async def test_a_cascade_removes_the_comments_on_its_members(session, ada, books):  # D-7 item 4
-    await put(session, shelf(S1).model_copy(update={"had_member": [B1]}))
+    await put(session, shelf(S1).model_copy(update={"has_part": [B1]}))
     on_member = await ada.comment(B1, "on a member")
     on_other = await ada.comment(B2, "on a book that stays")
     await ada.delete_cascade(S1, await version(session, S1))

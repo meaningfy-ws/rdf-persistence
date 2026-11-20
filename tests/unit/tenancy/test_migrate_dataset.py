@@ -7,14 +7,17 @@ registry. Chains are files in ``tmp_path``; the request is the very text the sto
 from pathlib import Path
 
 import pytest
-from rdflib import XSD, Dataset, Literal, URIRef
+from rdflib import RDF, XSD, BNode, Dataset, Graph, Literal, URIRef
+from rdflib.compare import isomorphic
 
 from rdf_persistence.core.domain.exceptions import InvalidBody, SparqlError
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind
 from rdf_persistence.iris.domain.layout import stamps_graph_iri
 from rdf_persistence.migrations.services.generated.rp_migrations_services import MigrationStep
 from rdf_persistence.migrations.services.migrations import Chain
+from rdf_persistence.migrations.services.migrations import chain_of as chain_of_schema
 from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.tenancy.services import migration_runner
 from rdf_persistence.tenancy.services.migration_runner import migrate_dataset
 from tests.toy import SETTINGS
@@ -271,3 +274,156 @@ def test_a_defect_in_our_own_request_text_escapes_and_is_not_blamed_on_the_dump(
     data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
     with pytest.raises(SparqlError):
         migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
+
+
+# -- collection-has-part TC-2 to TC-6: the toolkit's 2 to 3 restates the members of a collection ----------
+
+RP_NS = "https://meaningfy.ws/ns/rdf-persistence#"
+MEMBER_CLASS = URIRef(f"{RP_NS}memberClass")
+MEMBERSHIP_RULE = URIRef(f"{RP_NS}membershipRule")
+RULE_SLOT = URIRef(f"{RP_NS}equalsSlot")
+HAD_MEMBER = URIRef("http://www.w3.org/ns/prov#hadMember")
+HAS_PART = URIRef("http://purl.org/dc/terms/hasPart")
+SHELF_CLASS = URIRef("https://example.org/ns/library#Shelf")
+SHELF = URIRef("https://example.org/library/libraries/t/shelves/s1")
+B1 = URIRef("https://example.org/library/libraries/t/books/b1")
+B2 = URIRef("https://example.org/library/libraries/t/books/b2")
+OTHER = URIRef("https://example.org/library/libraries/t/other/x")
+
+
+@pytest.fixture
+def real_toolkit_chain() -> Chain:
+    """The toolkit's own chain, as the service loads it."""
+    return chain_of_schema(metamodel(), TOOLKIT_MIGRATIONS)[1]
+
+
+def a_shelf(subject: URIRef = SHELF, *, member_class: str | None = "Book") -> Graph:
+    """The graph of a stored collection as the mapper writes it, without its members."""
+    graph = Graph(identifier=subject)
+    graph.add((subject, RDF.type, SHELF_CLASS))
+    graph.add((subject, v.VERSION, TOKEN))
+    if member_class is not None:
+        graph.add((subject, MEMBER_CLASS, Literal(member_class)))
+    return graph
+
+
+def at_toolkit_version_two(*graphs: Graph, stamp_version: str = "2") -> Dataset:
+    """A dump whose stamps graph holds the toolkit's stamp and whose graphs are ``graphs``."""
+    data = Dataset()
+    data.graph(STAMPS).add(stamp(RP, stamp_version))
+    for graph in graphs:
+        target = data.graph(graph.identifier)
+        for triple in graph:
+            target.add(triple)
+    return data
+
+
+def content(data: Dataset, subject: URIRef) -> Graph:
+    """What the graph of ``subject`` holds, the version token left out."""
+    kept = Graph()
+    for triple in data.graph(subject):
+        if triple[1] != v.VERSION:
+            kept.add(triple)
+    return kept
+
+
+def members_as(members: list[URIRef], predicate: URIRef, *, subject: URIRef = SHELF) -> Graph:
+    expected = Graph()
+    expected.add((subject, RDF.type, SHELF_CLASS))
+    expected.add((subject, MEMBER_CLASS, Literal("Book")))
+    for member in members:
+        expected.add((subject, predicate, member))
+    return expected
+
+
+def tokens(data: Dataset, subject: URIRef = SHELF) -> set[str]:
+    return {str(o) for o in data.graph(subject).objects(subject, v.VERSION)}
+
+
+@pytest.mark.parametrize("members", [[B1, B2], [B1]], ids=["two members", "one member"])
+def test_the_toolkits_migration_restates_the_members_of_a_collection_with_has_part(
+    real_toolkit_chain, members
+):
+    shelf = a_shelf()
+    for member in members:
+        shelf.add((SHELF, HAD_MEMBER, member))
+    data = at_toolkit_version_two(shelf)
+    migrate_dataset(data, [(RP, real_toolkit_chain)], STAMPS)
+    assert isomorphic(content(data, SHELF), members_as(members, HAS_PART)), (
+        "each member is stated with dcterms:hasPart and none with prov:hadMember"
+    )
+    assert stamped(data) == {RP: "3"}, "the toolkit's stamp is at 3"
+    assert tokens(data), "the shelf still has a token"
+    assert tokens(data) != {str(TOKEN)}, "the version token was renewed"
+
+
+def test_a_graph_that_is_not_a_collection_keeps_its_had_member(real_toolkit_chain):
+    other = a_shelf(OTHER, member_class=None)  # no rp:memberClass: not a collection
+    other.add((OTHER, HAD_MEMBER, B1))
+    data = at_toolkit_version_two(other, a_shelf())
+    before = content(data, OTHER)
+    migrate_dataset(data, [(RP, real_toolkit_chain)], STAMPS)
+    assert isomorphic(content(data, OTHER), before), "the triples are as they were"
+    assert (OTHER, HAD_MEMBER, B1) in data.graph(OTHER), "prov:hadMember is still stated"
+    assert stamped(data) == {RP: "3"}, "the migration did run on the database"
+
+
+def test_a_collection_with_a_rule_and_no_member_gets_no_has_part_and_keeps_its_rule(
+    real_toolkit_chain,
+):
+    shelf = a_shelf()
+    rule = BNode()
+    shelf.add((SHELF, MEMBERSHIP_RULE, rule))
+    shelf.add((rule, RULE_SLOT, Literal("genre")))
+    data = at_toolkit_version_two(shelf)
+    migrate_dataset(data, [(RP, real_toolkit_chain)], STAMPS)
+    held = content(data, SHELF)
+    assert not list(held.triples((None, HAS_PART, None))), "no member was invented"
+    assert isomorphic(held, content(at_toolkit_version_two(shelf), SHELF)), (
+        "the rule and its blank node part are as they were"
+    )
+    assert stamped(data) == {RP: "3"}, "the migration did run"
+
+
+def test_a_collection_of_collections_is_restated_like_any_other(real_toolkit_chain):
+    outer = a_shelf(SHELF, member_class="Shelf")
+    inner = URIRef("https://example.org/library/libraries/t/shelves/s2")
+    outer.add((SHELF, HAD_MEMBER, inner))
+    data = at_toolkit_version_two(outer)
+    migrate_dataset(data, [(RP, real_toolkit_chain)], STAMPS)
+    held = content(data, SHELF)
+    assert (SHELF, HAS_PART, inner) in held, "the inner collection is stated with dcterms:hasPart"
+    assert (SHELF, HAD_MEMBER, inner) not in held, "and no longer with prov:hadMember"
+
+
+def test_a_dump_already_at_version_three_is_left_as_it_is_even_with_a_had_member(
+    real_toolkit_chain,
+):
+    shelf = a_shelf()
+    shelf.add((SHELF, HAD_MEMBER, B1))  # planted: a version 3 database should not hold it
+    data = at_toolkit_version_two(shelf, stamp_version="3")
+    before = set(data.quads())
+    migrate_dataset(data, [(RP, real_toolkit_chain)], STAMPS)
+    assert set(data.quads()) == before, "the stamp guard: nothing changed, not even the token"
+
+
+def test_the_consumers_drop_of_had_member_after_the_toolkits_step_keeps_the_members(
+    tmp_path, real_toolkit_chain
+):
+    """The drafted step of a consumer (design PD-5) matches nothing once the toolkit's step has run."""
+    drop = MigrationStep(
+        title="drop prov:hadMember of the shelf",
+        where_pattern=f"?s <{HAD_MEMBER}> ?o .",
+        delete_pattern=f"?s <{HAD_MEMBER}> ?o .",
+    )
+    library = chain_of(tmp_path / "lib", LIB, migration(LIB, "1", "2", drop), current="2")
+    shelf = a_shelf()
+    shelf.add((SHELF, HAD_MEMBER, B1))
+    shelf.add((SHELF, HAD_MEMBER, B2))
+    data = at_toolkit_version_two(shelf)
+    data.graph(STAMPS).add(stamp(LIB, "1"))
+    migrate_dataset(data, [(RP, real_toolkit_chain), (LIB, library)], STAMPS)
+    assert isomorphic(content(data, SHELF), members_as([B1, B2], HAS_PART)), (
+        "the members survive as dcterms:hasPart: the toolkit's chain ran first"
+    )
+    assert stamped(data) == {RP: "3", LIB: "2"}, "both chains ran"

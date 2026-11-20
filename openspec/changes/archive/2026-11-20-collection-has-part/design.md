@@ -248,6 +248,37 @@ Test cases (tier from the folder; written first, failing):
 - **RISK-5** (likely, low): the consumer lock break (F-5) on every consumer with a locked
   collection class. Mitigation PD-5 + TC-9.
 
+## Delivery decisions
+
+Stage 1, PR #207. The lead decided these; they are shown to the developer at the end of the stage (R-0007).
+
+- **D-1** The schema writes the class IRI as `dctypes:Collection` with `dctypes: http://purl.org/dc/dcmitype/`,
+  not as `dcmitype:` (PD-8). The repository's canonical-prefix lint refuses `dcmitype`. The IRI is the one
+  DEC-4 decided.
+- **D-2** `tests/unit/core/test_tenant_store_name.py` (TC-04) also pinned toolkit version 2. The version-test
+  table missed it, so it now states version 3 and the chain `1__2`, `2__3`.
+- **D-3** `rp-manifest.json` (the hashes of the model files) is regenerated with the model. It is missing from
+  the generated-files table. Tasks 1.1 and 1.2 changed different lines of it, and `check-freshness` and
+  `check-generated` pass after they were combined.
+- **D-4** Review findings (one L2+L3 pass, 8 findings, 0 Critical as reported). The lead re-labelled these
+  Critical and accepted them:
+  - W1: `rp-generation` "the combined shapes" still promised the pre-split bytes and an unchanged lock.
+    Re-labelled because the spec deltas must be true of the code (P-0004). Fixed by a MODIFIED delta in
+    `specs/rp-generation`.
+  - W2: `architecture/generation.adoc` stated toolkit version "2". Re-labelled because it was false during
+    a breaking upgrade.
+  - W3 and W4: the scenario map traced the migrate and restore scenarios to no test, and `refresh-map`
+    exited 1. Re-labelled because the signed-off scenarios were not traceable.
+  - W2 to W4 were fixed by one fixer in `e7760cdb`. The full gates were run again (T3) and passed.
+- Under the floor:
+  - W5: no collection service is called after the start-up migration. TC-10 calls `members` after the same
+    step on the restore path, and IT-1 proves the triples on Fuseki.
+  - W6: `check-generated` and `openspec validate` were missing from the gate report. They are gates, not
+    code, and the lead ran them.
+  - S1: the restore test builds its own `Collaboration`; the collaboration conftest could share one builder.
+  - S2: TC-1's request check is weak, and the integration test imports unit-tier helpers, following an
+    existing precedent.
+
 ## Open Questions
 
 None. The owner answered the PLAN's three questions on 2026-11-20 (`inputs/qa.md` items 3 to 5):

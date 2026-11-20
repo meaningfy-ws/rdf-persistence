@@ -1,6 +1,6 @@
 {
   "schema_id": "https://meaningfy.ws/ns/rdf-persistence",
-  "schema_version": "2",
+  "schema_version": "3",
   "locked_classes": [
     {
       "class_uri": "http://www.w3.org/ns/oa#Annotation",

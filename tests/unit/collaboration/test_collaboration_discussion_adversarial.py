@@ -387,7 +387,7 @@ async def test_the_removed_aggregates_referrers_still_refer_to_it(session, ada, 
 async def test_a_cascade_drops_the_comments_on_the_collection_and_on_its_members(
     session, ada, books, store
 ):
-    await put(session, shelf(S1).model_copy(update={"had_member": [B1, B2]}))
+    await put(session, shelf(S1).model_copy(update={"has_part": [B1, B2]}))
     on = {n: await ada.comment(i, n) for n, i in (("s1", S1), ("b1", B1), ("b2", B2), ("b3", B3))}
     await ada.delete_cascade(S1, await version(session, S1))
     assert await stored(session, *on.values()) == [on["b3"]], (
@@ -579,7 +579,7 @@ async def test_a_comment_racing_the_removal_and_return_of_its_target_lands_on_th
 async def test_a_comment_racing_a_cascade_that_removes_its_target_is_refused(
     as_member, rules, store, session, ada, books
 ):
-    await put(session, shelf(S1).model_copy(update={"had_member": [B1]}))
+    await put(session, shelf(S1).model_copy(update={"has_part": [B1]}))
     target = B1 if as_member else S1
     ver = await version(session, S1)
     before(
@@ -596,7 +596,7 @@ async def test_a_comment_racing_a_cascade_that_removes_its_target_is_refused(
 async def test_a_remove_of_a_target_that_a_racing_cascade_removed_first_leaves_no_orphan(
     rules, store, session, ada, books
 ):
-    await put(session, shelf(S1).model_copy(update={"had_member": [B1]}))
+    await put(session, shelf(S1).model_copy(update={"has_part": [B1]}))
     on_b1, on_s1 = await ada.comment(B1, "on b1"), await ada.comment(S1, "on s1")
     ver = await version(session, S1)
     old = await version(session, B1)
@@ -609,7 +609,7 @@ async def test_a_remove_of_a_target_that_a_racing_cascade_removed_first_leaves_n
 async def test_a_cascade_racing_a_remove_of_one_member_is_a_conflict_and_keeps_the_collections_comments(
     rules, store, session, ada, books
 ):
-    await put(session, shelf(S1).model_copy(update={"had_member": [B1]}))
+    await put(session, shelf(S1).model_copy(update={"has_part": [B1]}))
     on_b1, on_s1 = await ada.comment(B1, "on b1"), await ada.comment(S1, "on s1")
     ver = await version(session, S1)
     before(store, "update", lambda: removed_by_another(store, B1))
@@ -1094,7 +1094,7 @@ async def test_a_comment_on_something_that_is_no_aggregate_of_the_tenant_is_refu
 async def test_a_comment_is_no_member_of_a_collection(members, rule, session, ada, books, store):
     c = await ada.comment(B1, "a remark")
     named = shelf(S1).model_copy(
-        update={"member_class": rule, "had_member": [c] if members == "iri" else None}
+        update={"member_class": rule, "has_part": [c] if members == "iri" else None}
     )
     with pytest.raises(PersistenceError):
         await put(session, named)
@@ -1106,7 +1106,7 @@ async def test_a_cascade_of_a_stored_collection_that_names_a_comment_deletes_not
 ):  # the stored data is not trusted (PD-28 item 2)
     c = await ada.comment(B1, "a remark")
     async with fake_session(store, tenant_iri=TENANT) as unguarded:
-        await put(unguarded, shelf(S1).model_copy(update={"had_member": [c]}))
+        await put(unguarded, shelf(S1).model_copy(update={"has_part": [c]}))
     with pytest.raises(PersistenceError):
         await ada.delete_cascade(S1, await version(session, S1))
     assert sorted(await stored(session, S1, c, B1)) == sorted([S1, c, B1]), (

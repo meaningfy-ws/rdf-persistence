@@ -30,10 +30,12 @@ def test_tc02_an_invalid_store_name_is_refused(name: str) -> None:
         with_store(name)
 
 
-def test_tc04_the_lock_stays_at_version_2_and_no_migration_is_added() -> None:
+def test_tc04_the_lock_is_at_the_toolkits_version_3_and_its_chain_holds_both_migrations() -> None:
     lock = json.loads((MIGRATIONS / "schema.lock.json").read_text("utf-8"))
-    assert str(lock["schema_version"]) == "2", "the lock is at version 2"
-    assert sorted(p.name for p in MIGRATIONS.glob("*.yaml")) == ["1__2.yaml"], "no new migration"
+    assert str(lock["schema_version"]) == "3", "the lock is at version 3"
+    assert sorted(p.name for p in MIGRATIONS.glob("*.yaml")) == ["1__2.yaml", "2__3.yaml"], (
+        "the chain is 1 to 2 and 2 to 3"
+    )
 
 
 def test_store_not_wired_is_a_value_error_of_the_toolkit() -> None:

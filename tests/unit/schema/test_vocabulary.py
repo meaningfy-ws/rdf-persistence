@@ -53,6 +53,17 @@ def test_each_constant_is_the_uri_of_its_slot(view, slot, predicate):
     assert slot_iri(view, slot) == predicate, f"{slot} differs from the schema"
 
 
+def test_membership_is_dct_has_part_and_the_old_constant_is_gone(view):  # TC-8
+    assert URIRef("http://purl.org/dc/terms/hasPart") == vocabulary.HAS_PART, "dcterms:hasPart"
+    assert slot_iri(view, "has_part") == vocabulary.HAS_PART, "the constant comes from the slot"
+    assert not hasattr(vocabulary, "HAD_MEMBER"), "removed, not aliased"
+
+
+def test_the_reference_collection_mixin_is_a_dcmitype_collection(view):  # TC-8, DEC-4
+    declared = URIRef(view.expand_curie(view.get_class("ReferenceCollection").class_uri))
+    assert declared == URIRef("http://purl.org/dc/dcmitype/Collection"), "dcmitype:Collection"
+
+
 def test_the_commit_marker_class_iri_is_the_class_uri_of_the_schema(view):
     declared = URIRef(view.expand_curie(view.get_class("CommitMarker").class_uri))
     assert declared == vocabulary.COMMIT_MARKER, "COMMIT_MARKER differs from the schema"

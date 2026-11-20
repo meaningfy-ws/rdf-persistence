@@ -2526,13 +2526,13 @@
             "in": "query"
           },
           {
-            "description": "Only the shelves whose had_member is this value. May be repeated: all the values must be present.",
+            "description": "Only the shelves whose has_part is this value. May be repeated: all the values must be present.",
             "required": false,
             "schema": {
               "format": "uri",
               "type": "string"
             },
-            "name": "had_member",
+            "name": "has_part",
             "in": "query"
           },
           {
@@ -2582,12 +2582,12 @@
               "enum": [
                 "id",
                 "description",
-                "had_member",
+                "has_part",
                 "label",
                 "member_class",
                 "-id",
                 "-description",
-                "-had_member",
+                "-has_part",
                 "-label",
                 "-member_class"
               ]
@@ -4506,7 +4506,7 @@
             "type": "string",
             "description": "A free-text description of the object."
           },
-          "had_member": {
+          "has_part": {
             "items": {
               "type": "string",
               "format": "uri"

@@ -1015,7 +1015,7 @@
     range: Activity
 - class_name: ReferenceCollection
   slots:
-  - name: had_member
+  - name: has_part
     required: false
     multivalued: true
     range: uri
@@ -1267,7 +1267,7 @@
     required: false
     multivalued: false
     range: string
-  - name: had_member
+  - name: has_part
     required: false
     multivalued: true
     range: uri

@@ -5,6 +5,7 @@
       "ODRL": "http://www.w3.org/ns/odrl/2/",
       "bibo": "http://purl.org/ontology/bibo/",
       "dcterms": "http://purl.org/dc/terms/",
+      "dctypes": "http://purl.org/dc/dcmitype/",
       "formats": "http://www.w3.org/ns/formats/",
       "lib": "https://example.org/ns/library#",
       "linkml": "https://w3id.org/linkml/",
@@ -169,10 +170,10 @@
          "@type": "@id",
          "@id": "rp:graph"
       },
-      "had_member": {
+      "has_part": {
          "@type": "@id",
          "@container": "@set",
-         "@id": "prov:hadMember"
+         "@id": "dcterms:hasPart"
       },
       "has_target": {
          "@type": "@id",
@@ -514,7 +515,7 @@
          "@id": "rp:Provenanced"
       },
       "ReferenceCollection": {
-         "@id": "prov:Collection"
+         "@id": "dctypes:Collection"
       },
       "RegistryEntry": {
          "@id": "rp:RegistryEntry"

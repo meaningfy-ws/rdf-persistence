@@ -280,6 +280,73 @@ def test_a_version_with_a_slash_is_written_with_an_underscore_in_the_file_name(
     assert migration.from_version == "1.0/beta", "the file keeps the version as written"
 
 
+# ---- a consumer whose lock still names `prov:hadMember` (TC-9, collection-has-part PD-5) ---------
+
+SHELF = "https://example.org/ns/library#Shelf"
+HAD_MEMBER = "http://www.w3.org/ns/prov#hadMember"
+HAS_PART = "http://purl.org/dc/terms/hasPart"
+
+
+def lock_as_before_the_rename(toy: Toy) -> None:
+    """Plant the lock a consumer committed before `has_part`: `lib:Shelf` holds `prov:hadMember`."""
+    lock = SchemaLock.model_validate_json(toy.lock.read_text("utf-8"))
+    (shelf,) = [c for c in lock.locked_classes or [] if c.class_uri == SHELF]
+    (members,) = [s for s in shelf.locked_slots or [] if s.slot_uri == HAS_PART]
+    members.slot_uri = HAD_MEMBER
+    toy.lock.write_text(lock.model_dump_json(indent=2) + "\n", encoding="utf-8")
+
+
+@pytest.mark.slow
+def test_a_lock_naming_had_member_with_the_version_unchanged_is_refused(bootstrapped: Toy) -> None:
+    """TC-9: a consumer that regenerates without a new version is told which slot went."""
+    lock_as_before_the_rename(bootstrapped)
+    before = bootstrapped.files()
+    code, printed = bootstrapped.run()
+    assert code == FAILED, printed
+    assert SHELF in printed, "the class is named"
+    assert HAD_MEMBER in printed, "the removed slot is named"
+    assert "set a new `version:`" in printed, "the fix is named"
+    assert bootstrapped.files() == before, "a refused run changes nothing"
+
+
+@pytest.mark.slow
+def test_a_lock_naming_had_member_with_a_new_version_drafts_one_drop_and_nothing_unresolved(
+    bootstrapped: Toy,
+) -> None:
+    """TC-9: the added `dcterms:hasPart` is safe, so the draft holds the DROP alone."""
+    lock_as_before_the_rename(bootstrapped)
+    bootstrapped.edit(VERSION_2)
+    bootstrapped.passes()
+    assert drafts(bootstrapped) == ["1__2.yaml"], "one draft, named from the two versions"
+    steps = load_migration(bootstrapped.migrations / "1__2.yaml").steps or []
+    (step,) = steps
+    assert step.title.startswith("DROP "), step.title
+    assert "hadMember" in step.title, "the step drops the old predicate"
+    assert "hadMember" in (step.delete_pattern or ""), "the step deletes the old predicate"
+    assert "hasPart" not in step.title, "the new predicate is not touched"
+    assert step.unresolved is None, "nothing is left for the developer to write"
+    bootstrapped.passes("--check")
+
+
+@pytest.mark.slow
+def test_a_draft_that_exists_is_not_overwritten_when_the_lock_names_had_member(
+    bootstrapped: Toy,
+) -> None:
+    """TC-9: the developer's `1__2.yaml` is kept byte for byte."""
+    lock_as_before_the_rename(bootstrapped)
+    draft_path = bootstrapped.migrations / "1__2.yaml"
+    draft_path.write_text(
+        "schema_id: https://example.org/ns/library\nfrom_version: '1'\nto_version: '2'\n"
+        "description: Written by the developer.\nsteps: []\n",
+        encoding="utf-8",
+    )
+    kept = draft_path.read_bytes()
+    bootstrapped.edit(VERSION_2)
+    bootstrapped.passes()
+    assert draft_path.read_bytes() == kept, "the run keeps the developer's file"
+    assert drafts(bootstrapped) == ["1__2.yaml"], "no second draft"
+
+
 # ---- an unresolved draft (TC-09a) and a file that does not load ----------------------------------
 
 

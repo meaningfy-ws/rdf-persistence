@@ -45,11 +45,16 @@ The mixin adds three slots:
 |===
 |Slot |What it holds
 |`member_class` |Required. The schema name of the class of the members, here `"Book"`.
-|`had_member` |The IRIs of the members the collection names.
+|`has_part` |The IRIs of the members the collection names, stated with `dct:hasPart`.
 |`membership_rule` |A rule that says which aggregates of the member class belong (see <<rule>>).
 |===
 
-A collection of collections is a shelf whose `member_class` is `"Shelf"`.
+A collection of collections is a shelf whose `member_class` is `"Shelf"`. The mixin's class IRI is
+`dcmitype:Collection`.
+
+To state `dct:hasPart` anywhere else in an application model, reuse the toolkit's `has_part` slot.
+Do not declare another slot with `slot_uri: dcterms:hasPart`: two slots for one IRI make JSON-LD
+compaction pick one of the two terms, and on a collection class they would share the predicate.
 
 [#save]
 == Save a collection
@@ -59,7 +64,7 @@ Save it like any aggregate, with a `UnitOfWork` or through the generic API:
 [source,python]
 ----
 shelf = Shelf(id=s1_iri, label="Shelf", description="A shelf.",
-              member_class="Book", had_member=[b1_iri, b2_iri])
+              member_class="Book", has_part=[b1_iri, b2_iri])
 work = UnitOfWork(session, mapper)
 work.add(shelf)
 await work.commit()      # b1 and b2 keep their versions: nothing of theirs is written
@@ -90,7 +95,7 @@ replace is checked like an add, so a book you add must be stored already.
 ----
 work = UnitOfWork(session, mapper)
 shelf = await work.get(Shelf, s1_iri)
-shelf.had_member = [*(shelf.had_member or []), b4_iri]    # or leave one out to drop it
+shelf.has_part = [*(shelf.has_part or []), b4_iri]    # or leave one out to drop it
 work.add(shelf)          # a root you read is replaced, at the version you read
 await work.commit()      # Conflict if someone else changed the shelf since
 ----
@@ -106,7 +111,7 @@ class accepts. An aggregate belongs when it meets every row.
 ----
 poetry = MembershipRule(rule_equalities=[SlotEquality(equals_slot="genre", equals_value="poetry")])
 shelf = Shelf(id=s1_iri, label="Shelf", description="A shelf, and all poetry.",
-              member_class="Book", had_member=[b1_iri, b2_iri], membership_rule=poetry)
+              member_class="Book", has_part=[b1_iri, b2_iri], membership_rule=poetry)
 ----
 
 The rest of this page reads this shelf: it names b1 and b2, and b3 is a poetry book.
@@ -248,9 +253,9 @@ is a member that only meets a rule: `members` drops it without counting it (see 
 * *No paging yet.* `members` and `collections_of` answer in one piece. They are meant for
   hundreds of items, not more.
 * *No referential integrity.* A member deleted after the collection was saved stays in
-  `had_member` and is still listed by `members`, plain and deep (a deep read has nothing to open
+  `has_part` and is still listed by `members`, plain and deep (a deep read has nothing to open
   in it). A cascade skips it. The next save of the shelf is refused with `InvalidBody`, naming
-  it, until you take it out of `had_member`.
+  it, until you take it out of `has_part`.
 * *`collections_of` asks the store once per rule collection* of the resource's class. That is
   fine for hundreds of rule collections.
 * *One bad stored rule collection breaks `collections_of` for a whole class.* A rule collection

@@ -415,7 +415,7 @@ async def test_removing_a_book_and_adding_it_again_starts_in_the_initial_state(s
 
 async def test_a_cascade_then_an_add_starts_in_the_initial_state(rules, session, ada, books):
     await go(ada, session, "in_review", comment="ready")
-    await put(session, shelf(S1).model_copy(update={"had_member": [B1]}))
+    await put(session, shelf(S1).model_copy(update={"has_part": [B1]}))
     await ada.delete_cascade(S1, await version(session, S1))
     with pytest.raises(Forbidden):
         await add_by_session(session, B1, typed(B1, ACCEPTED))
@@ -1059,7 +1059,7 @@ async def test_a_transition_racing_a_cascade_that_holds_the_book_leaves_no_orpha
     store, now, rules, session, ada, books
 ):
     await session.remove(B2, await version(session, B2))
-    await put(session, shelf(S1).model_copy(update={"had_member": [B1]}))
+    await put(session, shelf(S1).model_copy(update={"has_part": [B1]}))
     stale = await version(session, B1)
     async with opened(store, now, BOB, rules) as other:
         rival = make(rules, other, BOB, [role("librarian", who=BOB)])
@@ -1183,7 +1183,7 @@ async def test_removing_a_book_keeps_its_transitions_and_removes_its_comments_th
         work.remove(await work.get(type(dune(B1)), B1))
         await work.commit()
     else:
-        await put(session, shelf(S1).model_copy(update={"had_member": [B1]}))
+        await put(session, shelf(S1).model_copy(update={"has_part": [B1]}))
         await ada.delete_cascade(S1, await version(session, S1))
     assert await aggregates(store) == 0, "no book, comment or shelf is left"
     assert await records_of(session, B1) == [kept], "and the transition is"
@@ -1194,7 +1194,7 @@ async def test_a_transition_is_no_member_class_and_no_member_of_a_collection(ses
     [record] = await ada.transitions(B1)
     refused = (
         ({"member_class": "Transition"}, InvalidBody),
-        ({"had_member": [record.id]}, InvalidIri),  # a urn:uuid is no aggregate IRI of the tenant
+        ({"has_part": [record.id]}, InvalidIri),  # a urn:uuid is no aggregate IRI of the tenant
     )
     for slots, error in refused:
         with pytest.raises(error):

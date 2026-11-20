@@ -63,7 +63,7 @@ export interface Shelf {
   /** The schema name of the class of the aggregates the collection collects. */
   member_class: string;
   /** The IRIs of the aggregates the collection names as its members. */
-  had_member?: string[];
+  has_part?: string[];
   /** The rule that says which aggregates of the member class belong to the collection. */
   membership_rule?: MembershipRule;
 }

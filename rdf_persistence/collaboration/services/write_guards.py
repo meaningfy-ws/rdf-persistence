@@ -86,7 +86,7 @@ class WriteGuards:
             self._listings.served_root(collection.member_class)
         except ValueError as error:
             raise InvalidBody(str(error)) from error
-        members = collection.had_member or []
+        members = collection.has_part or []
         if outside := session.not_aggregates(members):
             raise InvalidIri(f"not aggregate IRIs of the tenant: {outside}")
         heads = await session.heads(members)
