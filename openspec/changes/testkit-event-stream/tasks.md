@@ -41,10 +41,10 @@ never commit; the lead does.
   delete `Follow`, `follow`, `Block`, `parsed`. Accept: the same test names, all pass;
   `grep -rn "class Follow\|def parsed\|class Block" tests/` is empty; no `pytest.raises(TimeoutError)`
   left in the file.
-- [ ] 2.2 `tests/unit/api/test_service_kit.py`. Tier: unit. Failing test first: rewrite
+- [x] 2.2 `tests/unit/api/test_service_kit.py`. Tier: unit. Failing test first: rewrite
   `test_a_keep_alive_of_the_toolkit_settings_reaches_the_events_route` (TC-36) per its design row,
   failing until 1.3 is in; drop the `follow, parsed` import. Accept: the test passes.
-- [ ] 2.3 `tests/feature/test_events.py`. Tier: feature. Failing test first: the step
+- [x] 2.3 `tests/feature/test_events.py`. Tier: feature. Failing test first: the step
   `_barred_reader` rewritten on `following.pending` (PD-7), so the scenario "a hidden aggregate"
   fails until `Following` holds `pending`; then `Following` per PD-7, the "resuming a stream" steps,
   and the imports of `Block`, `Follow`, `follow` removed. Accept: `make test-feature` passes both
@@ -59,7 +59,7 @@ never commit; the lead does.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [x] 3.1 · [ ] 3.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 2.1 · [x] 2.2 · [x] 2.3 · [x] 3.1 · [ ] 3.2
 
 ## Verification
 

@@ -45,7 +45,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Replace
 from rdf_persistence.schema.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
-from rdf_persistence.testkit import FakeStore, RecordingObserver
+from rdf_persistence.testkit import FakeStore, RecordingObserver, open_event_stream
 from tests.fixtures.library.domain import generated
 from tests.toy import (
     REVIEW_WORKFLOW,
@@ -65,7 +65,6 @@ from tests.toy_service import (
     principal_of,
 )
 from tests.unit.api.scene import Scene
-from tests.unit.api.test_events_route import follow, parsed
 from tests.unit.tenancy.test_session_activity import activities
 
 PROBLEMS = f"{SETTINGS.base}problems/"
@@ -745,13 +744,19 @@ async def test_a_roots_limit_of_the_toolkit_settings_reaches_the_units_of_work()
 
 
 async def test_a_keep_alive_of_the_toolkit_settings_reaches_the_events_route() -> None:  # TC-36
-    toolkit = ToolkitSettings(sse=SseSettings(keep_alive_seconds=0.05))
+    toolkit = ToolkitSettings(sse=SseSettings(keep_alive_seconds=0.05, max_lifetime_seconds=0.001))
     async with served(toolkit) as toy, toy.client() as http:
         scene = await Scene.set_up(toy, http)
-        await toy.kit.relay.run_once()
-        async with follow(scene, prefix="") as stream:
-            block = await asyncio.wait_for(stream._block(), 3.0)  # 15 s by default
-    assert parsed(block or "").comment is not None, "a comment line within the window"
+        opened = await open_event_stream(
+            toy.app,
+            f"{scene.tenant}/rp-events",
+            headers=scene.headers("rita"),
+            events=1,
+            timeout=3.0,  # the stream ends at its first wake, 0.05 s; with 15 s it would raise
+        )
+    assert opened.status == 200, "the route was reached: a refusal would also leave no events"
+    assert opened.headers["content-type"].startswith("text/event-stream"), "it is an event stream"
+    assert opened.events == [], "the stream ended at its first wake, before any event"
 
 
 async def test_a_node_limit_of_the_toolkit_settings_reaches_the_documents() -> None:  # TC-37
