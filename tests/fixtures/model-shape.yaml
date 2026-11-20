@@ -534,6 +534,45 @@
     multivalued: false
     range: integer
     alias: length
+- class_name: InUseProblem
+  slots:
+  - name: hidden_count
+    required: false
+    multivalued: false
+    range: integer
+  - name: more_count
+    required: false
+    multivalued: false
+    range: integer
+  - name: problem_detail
+    required: false
+    multivalued: false
+    range: string
+    alias: detail
+  - name: problem_instance
+    required: false
+    multivalued: false
+    range: uri
+    alias: instance
+  - name: problem_status
+    required: true
+    multivalued: false
+    range: integer
+    alias: status
+  - name: problem_title
+    required: true
+    multivalued: false
+    range: string
+    alias: title
+  - name: problem_type
+    required: true
+    multivalued: false
+    range: uri
+    alias: type
+  - name: referrers
+    required: false
+    multivalued: true
+    range: Referrer
 - class_name: Invalidation
   slots:
   - name: activity

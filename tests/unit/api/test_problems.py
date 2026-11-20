@@ -67,6 +67,7 @@ TITLES = {
     "not-found": "Not found",
     "conflict": "Version conflict",
     "key-conflict": "Key conflict",
+    "in-use": "In use",
     "precondition-required": "Precondition required",
     "invalid-body": "Invalid body",
     "not-acceptable": "Not acceptable",

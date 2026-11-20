@@ -58,6 +58,7 @@ DEFAULTS = [
     ("sse", "resume_window_seconds", 604800),
     ("limits", "max_messages", 100),
     ("limits", "max_roots", 500),
+    ("limits", "max_named_referrers", 20),
     ("limits", "max_document_nodes", 10000),
     ("limits", "max_manifest_bytes", 65536),
 ]

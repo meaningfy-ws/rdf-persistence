@@ -31,7 +31,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/hard.py",
-      "sha256": "07de85189a51d9ab8df399ed1a24c3a2438b77a38970f8a4347cb297223878d3"
+      "sha256": "04871af37f626e38d29bd2280ce58b3d6cc1472238c9bf1f82723cf529ae7f4e"
     },
     {
       "path": "rdf_persistence_generation/checks/python_package.py",

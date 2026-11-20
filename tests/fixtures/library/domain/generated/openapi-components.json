@@ -925,6 +925,14 @@
       "title": "Note",
       "type": "object"
     },
+    "OnReferencedDelete": {
+      "description": "What a delete does with an instance that is still referenced, the values of the rp_on_referenced_delete annotation.",
+      "enum": [
+        "refuse"
+      ],
+      "title": "OnReferencedDelete",
+      "type": "string"
+    },
     "PendingLoad": {
       "additionalProperties": false,
       "description": "The registry marker of a load not yet committed: one triple saying when the graph was put. It names no registry entry, so deleting it never deletes an entry.",
@@ -1511,6 +1519,7 @@
         "rp_iri_type",
         "rp_unlabelled",
         "rp_writes",
+        "rp_on_referenced_delete",
         "workflow",
         "bookkeeping",
         "toolkit_filled",

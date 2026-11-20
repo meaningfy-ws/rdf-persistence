@@ -84,6 +84,7 @@
 |`new_part` |function |A part of the aggregate rooted at ``root_iri``, with an IRI minted by ``iris`` (default policy: ``{root}/parts/{uuid4}``); ``tenant`` is the tenant the aggregate is in (PD-3).
 |`NotAcceptable` |class |The request's ``Accept`` names no representation the service produces.
 |`NotFound` |class |The named thing does not exist.
+|`OnReferencedDelete` |class |What a delete does with an instance that is still referenced, the values of the rp_on_referenced_delete annotation.
 |`open_session` |function |Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy (default: the default policy); ``listings`` lets the session ``find`` aggregates.
 |`Page` |class |One page of a listing, with the position of the page in the whole listing.
 |`PayloadTooLarge` |class |A request body is larger than the service takes: too many bytes, or too many nodes.

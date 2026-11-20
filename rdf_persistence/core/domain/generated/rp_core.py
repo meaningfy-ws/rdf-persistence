@@ -84,6 +84,8 @@ class RpAnnotation(str, Enum):
     "Class annotation, `true` on an owned value class whose instances need no label of their own."
     RP_WRITES = "rp_writes"
     "Class annotation (see WritesKind). `service` marks an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it. `toolkit` marks a root the toolkit writes and reads itself, which no route serves."
+    RP_ON_REFERENCED_DELETE = "rp_on_referenced_delete"
+    "Class annotation (see OnReferencedDelete). `refuse` on an aggregate root class: deleting an instance that another aggregate still points at is refused, naming the referrers."
     WORKFLOW = "workflow"
     "Class annotation on an aggregate root: the name of the workflow its instances follow, which follows the pattern of the url_segment slot; the root includes UnderWorkflow. A subclass inherits it."
     BOOKKEEPING = "bookkeeping"
@@ -124,6 +126,12 @@ class WritesKind(str, Enum):
     "The consumer writes the root through a session; the API serves no generic create, replace or delete."
     TOOLKIT = "toolkit"
     "The toolkit writes and reads the root itself; no route serves it, and the consumer does not write it."
+
+
+class OnReferencedDelete(str, Enum):
+    "What a delete does with an instance that is still referenced, the values of the rp_on_referenced_delete annotation."
+    REFUSE = "refuse"
+    "The delete is refused while another aggregate points at the instance."
 
 
 class GraphKind(str, Enum):

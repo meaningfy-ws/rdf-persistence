@@ -35,7 +35,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "e28b62e2cd07c23eafb5d493481abed24009c1faca62ba43e5904a0b63c88206"
+      "sha256": "28226c6a8af9cf06b5c384ba7c4a11255664054d3427e230c3705a50d8844097"
     },
     {
       "path": "rdf_persistence/model/rp_discussion.yaml",
@@ -63,7 +63,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml",
-      "sha256": "a1bebfd94c9c363609afa4b229871faec5b7f095234c133ad5915c34dbe30d67"
+      "sha256": "917e0a4ff0746bbaddef0af426901ac0c0da74a5d4e1579f052446af91ab8cf5"
     },
     {
       "path": "rdf_persistence/model/technical/collaboration/rp_collaboration_services.yaml",
@@ -119,7 +119,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/hard.py",
-      "sha256": "07de85189a51d9ab8df399ed1a24c3a2438b77a38970f8a4347cb297223878d3"
+      "sha256": "04871af37f626e38d29bd2280ce58b3d6cc1472238c9bf1f82723cf529ae7f4e"
     },
     {
       "path": "rdf_persistence_generation/checks/python_package.py",
@@ -413,7 +413,7 @@
     },
     {
       "path": "domain/generated/library.py",
-      "sha256": "977bfcfc82f3e72fae9b32965348cb138bd42b094863e4693985a1feae29b1e1"
+      "sha256": "d8790cdcca67e4d230b32a94432885fe673d21ae4d20cfc639565a132290bb4d"
     },
     {
       "path": "domain/generated/library_access.py",
@@ -425,7 +425,7 @@
     },
     {
       "path": "domain/generated/openapi-components.json",
-      "sha256": "1b440980126d551c143355bbd51092d9b72238d9584431d60c851e6b490e4104"
+      "sha256": "8999305e0f8679e67d24ca5d32e899aefa50c945254ce730c720884d93f9d780"
     },
     {
       "path": "domain/generated/scans.py",
@@ -473,7 +473,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_core.ts",
-      "sha256": "e98406acb5ad6657c3dfde4306db4000f16207655dddedd99224995505d92b6c"
+      "sha256": "e6c12b35391b6a0eafa5d451e97aa125e9ec5d5edb6a674be20bac338afd815b"
     },
     {
       "path": "web/src/domain/generated/rp_discussion.ts",
@@ -489,7 +489,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_service.ts",
-      "sha256": "de93c0c08b3fb9d4739a7a7b91b80d9c85b8951eee529e251972be39f2c8ab8d"
+      "sha256": "4b4f04bc22b9feabb1d5f23082bdd3c83cf42b7090d60e79443b633437d4bcc5"
     },
     {
       "path": "web/src/domain/generated/rp_tenancy.ts",

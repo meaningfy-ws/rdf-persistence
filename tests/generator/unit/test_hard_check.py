@@ -725,6 +725,33 @@ def _planted(break_toy: Breaker, module: str, old: str, new: str) -> list[str]:
     return problems_of(break_toy(module, old, new))
 
 
+@pytest.mark.parametrize("value", ["refuse", '"refuse"'], ids=["plain", "quoted"])
+def test_a_class_that_refuses_a_referenced_delete_passes(break_toy: Breaker, value: str) -> None:
+    """TC-1 (PD-1): `refuse` is the one value of `rp_on_referenced_delete`, written plain or quoted."""
+    problems = _planted(
+        break_toy,
+        "books.yaml",
+        "rp_path: books",
+        f"rp_path: books\n      rp_on_referenced_delete: {value}",
+    )
+    assert problems == [], "refuse must be accepted"
+
+
+def test_a_referenced_delete_value_other_than_refuse_gives_one_problem_naming_it(
+    break_toy: Breaker,
+) -> None:
+    """TC-1 (PD-1): `cascade` is no value; the EPIC rules out any other."""
+    problems = _planted(
+        break_toy,
+        "books.yaml",
+        "rp_path: books",
+        "rp_path: books\n      rp_on_referenced_delete: cascade",
+    )
+    named = [p for p in problems if f"[{HardRule.ANNOTATION.value}] Book:" in p]
+    assert len(named) == 1, problems
+    assert "'cascade'" in named[0], problems
+
+
 @pytest.mark.parametrize("slot", ["chapters", "authors", "id", "created", "binding"])
 def test_a_key_over_a_slot_that_cannot_be_keyed_names_class_key_and_slot(
     break_toy: Breaker, slot: str

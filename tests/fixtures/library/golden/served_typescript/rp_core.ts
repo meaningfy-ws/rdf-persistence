@@ -27,6 +27,8 @@ export type RpAnnotation =
   | "rp_unlabelled"
   /** Class annotation (see WritesKind). `service` marks an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it. `toolkit` marks a root the toolkit writes and reads itself, which no route serves. */
   | "rp_writes"
+  /** Class annotation (see OnReferencedDelete). `refuse` on an aggregate root class: deleting an instance that another aggregate still points at is refused, naming the referrers. */
+  | "rp_on_referenced_delete"
   /** Class annotation on an aggregate root: the name of the workflow its instances follow, which follows the pattern of the url_segment slot; the root includes UnderWorkflow. A subclass inherits it. */
   | "workflow"
   /** Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement. */
@@ -64,6 +66,11 @@ export type WritesKind =
   | "service"
   /** The toolkit writes and reads the root itself; no route serves it, and the consumer does not write it. */
   | "toolkit";
+
+/** What a delete does with an instance that is still referenced, the values of the rp_on_referenced_delete annotation. */
+export type OnReferencedDelete =
+  /** The delete is refused while another aggregate points at the instance. */
+  | "refuse";
 
 /** The special graphs a class can live in, the values of the graph annotation. */
 export type GraphKind =

@@ -139,6 +139,9 @@
       "head_version": {
          "@id": "headVersion"
       },
+      "hidden_count": {
+         "@id": "hiddenCount"
+      },
       "hidden_graphs": {
          "@type": "@id",
          "@container": "@set",
@@ -209,9 +212,17 @@
          "@container": "@set",
          "@id": "sweptLoadedGraph"
       },
+      "member_iris": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "memberIri"
+      },
       "modified": {
          "@type": "xsd:dateTime",
          "@id": "dcterms:modified"
+      },
+      "more_count": {
+         "@id": "moreCount"
       },
       "offset": {
          "@id": "offset"
@@ -256,6 +267,21 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "prohibition"
+      },
+      "referrer": {
+         "@type": "@id",
+         "@id": "referrer"
+      },
+      "referrer_class": {
+         "@id": "referrerClass"
+      },
+      "referrer_slot": {
+         "@id": "referrerSlot"
+      },
+      "referrers": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "referrers"
       },
       "removed_blobs": {
          "@id": "removedBlobs"
@@ -352,6 +378,9 @@
       "GrantSet": {
          "@id": "GrantSet"
       },
+      "InUseProblem": {
+         "@id": "InUseProblem"
+      },
       "KeyDuplicate": {
          "@id": "KeyDuplicate"
       },
@@ -363,6 +392,9 @@
       },
       "ListRequest": {
          "@id": "ListRequest"
+      },
+      "MemberList": {
+         "@id": "MemberList"
       },
       "Page": {
          "@id": "Page"
@@ -384,6 +416,12 @@
       },
       "Prohibition": {
          "@id": "ODRL:Prohibition"
+      },
+      "Referrer": {
+         "@id": "Referrer"
+      },
+      "ReferrerList": {
+         "@id": "ReferrerList"
       },
       "RegistryEntry": {
          "@id": "RegistryEntry"

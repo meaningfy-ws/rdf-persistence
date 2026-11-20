@@ -47,6 +47,7 @@ from rdf_persistence import (
     MembershipRule,
     ModuleKind,
     Motivation,
+    OnReferencedDelete,
     PendingLoad,
     Policy,
     PostComment,
