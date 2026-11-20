@@ -64,3 +64,24 @@ toolkit's own tests switch to it, and the private helpers' stream plumbing is de
 
 Testkit public surface (`__all__`), three test modules, the toolkit's lifespan flag, the testkit
 how-to.
+
+## Delivered (reconciliation, 2026-11-20)
+
+| Shaped | Delivered | PR |
+|---|---|---|
+| DEC-1 one public function replaces the private helpers | `open_event_stream` in `rdf_persistence/testkit/streams.py`, a lazy public name; `Follow`, `follow`, `Block`, `parsed` deleted; `Following` keeps only its scenario role | #213 |
+| DEC-2 generated result records | `OpenedStream` and `StreamEvent` are generated from `rp_testkit.yaml` and exported | #213 |
+| Lifespan only when not started | `app.state.rp_lifespan_started` (`LIFESPAN_STARTED`), set and cleared by the toolkit's lifespan | #213 |
+| Three test modules switch | `test_events_route.py`, `test_service_kit.py` and `feature/test_events.py` follow the stream with the helper; absence is proven by sentinels | #213 |
+| The testkit how-to | `user-manual/test.adoc#event-stream`, linked from `questions.adoc` | #213 |
+
+What Changes, Capabilities and Impact hold as written. The spec delta `specs/rp-testkit/spec.md`
+is true of the code: each of its four scenarios is a test in `tests/unit/api/test_open_event_stream.py`.
+
+Two things the shape implied but this change does not give:
+- **A public wait-until-subscribed.** A consumer cannot wait for the subscription before a commit
+  without private state, because `EventHub` has no public read for it. Follow-up: #214.
+- **Some test hardening from the review**, listed under the floor in `design.md`. Follow-up: #215.
+
+Two behaviours were decided during delivery and are recorded in `design.md`: D-6 (an app that
+raises after the head ends the read) and D-7 (the lifespan's start-up is outside the deadline).
