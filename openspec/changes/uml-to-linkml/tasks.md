@@ -45,7 +45,7 @@ schema change and its regenerated code go in one commit (`make generate`, then t
   `rdf_persistence/` may change to make them pass. Accept: the verdict (pass or the
   first failing S-id) in `evidence/spike-dec4.md`; no file under `rdf_persistence/` changed; on
   fail, the toy change reverted and the tests kept as `xfail(strict=True)` with the reason.
-- [ ] 1.8 SPIKE-2 (PD-14), after 1.6: `tests/generator/integration/test_uml_cycle.py` (IT-2).
+- [x] 1.8 SPIKE-2 (PD-14), after 1.6: `tests/generator/integration/test_uml_cycle.py` (IT-2).
   Accept: the verdict in `evidence/spike-cycles.md`.
 - [ ] 1.9 Lead: both verdicts and the PD-14 choice in design.md `## Delivery decisions`; stage
   gates `make check-all` and `make test-containers`; one L2+L3 pass; fixes; the stage PR, merged
@@ -53,7 +53,7 @@ schema change and its regenerated code go in one commit (`make generate`, then t
 
 ## 2. Stage 2: the toolkit-aware rules (R-15, R-18, R-20..R-29)
 
-- [ ] 2.1 Lead: freeze the rule table (DEC-5): rules R-30… received since the PLAN appended with
+- [x] 2.1 Lead: freeze the rule table (DEC-5): rules R-30… received since the PLAN appended with
   source and stage, or sent to a follow-up issue; the freeze date written under the table; any new
   rule's `UmlRule` value added (with 1.1's test updated).
 - [ ] 2.2 Toolkit index (PD-17, PD-18, PD-20 lookups): `uml/toolkit.py`; `_segment_pattern`

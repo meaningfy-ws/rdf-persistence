@@ -74,7 +74,7 @@ Probe `temp/uml-probe/{boundaries,members,scoped,cycles}.py` on the first consum
 - Re-implementing `rp-generate`'s checks in the converter (anti-pattern A-3).
 - Any change to `rdf_persistence/` unless SPIKE-1 or SPIKE-2 requires it, then as its own task.
 
-## Rule table (open until stage 2 starts: DEC-5)
+## Rule table (frozen 2026-11-20: DEC-5, D-20)
 
 Sources: **B** = issue body table, **C1..C4** = the four comments in
 [inputs/seed.md](inputs/seed.md#comments). R-1..R-13 follow the body's row order and R-14..R-19
@@ -707,3 +707,23 @@ and its checkers page):
   `annotations` and `prefixes` in their long form, which the golden records (RISK-5). A
   `Source -> Destination` association that also names a source role is `no_rule`: model2owl
   requires `Bi-Directional` for two roles.
+- **D-19 Converter round trip of a cycle** (2026-11-20, task 1.8). Two packages in a cycle become
+  one module with a `merged-cycle` line (green). `rp-generate` refuses stage-1 output in write
+  mode as well (`[described] Book: a root or owned class includes Described`): the default mixins
+  are stage 2 (task 2.3, R-25). So generating and importing the merged module is a strict xfail
+  naming task 2.3; a probe with `Described` added by hand generated and imported. The same run
+  found that `--package MODEL/library` (the path form, PD-3) converted nothing and exited 0; it is
+  fixed in the converter with a test (module paths relative to the subtree root), and an empty
+  subtree is now a problem, never a silent success.
+- **D-20 Rule table frozen; a UML conventions page** (2026-11-20, the developer: "no new uml to
+  linkml rules … for now freeze and go ahead"; DEC-5, task 2.1). The rule table is frozen at
+  R-1..R-29 as amended by D-9..D-14 and D-17..D-19; a later rule goes to a follow-up issue. The
+  developer also asked that the UML conventions the toolkit adds on top of model2owl be written
+  down in the docs, with UML snippets that show each rule. PD-25 gains a reference page
+  `docs/modules/ROOT/pages/reference/uml-conventions.adoc` ("Which UML conventions does a model
+  for rdf-persistence follow?"): the model2owl conventions the converter relies on, then the
+  toolkit's own (stereotypes `root`, `tenant root`, `Abstract`, the not-generated list; aggregate
+  boundaries drawn as boundary objects; the class tagged values; multiplicity, direction, empty
+  enumerations, language strings), each with a Mermaid class-diagram snippet and the LinkML it
+  becomes. Drafted in parallel with stage 1's close (the rules are decided), checked against the
+  converter as built in task 2.7.
