@@ -1121,6 +1121,56 @@
     required: false
     multivalued: true
     range: Principal
+- class_name: Review
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
 - class_name: RoleDefinition
   slots:
   - name: actions

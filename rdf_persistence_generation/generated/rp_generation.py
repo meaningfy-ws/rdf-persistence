@@ -176,6 +176,98 @@ class GenerationAnnotation(str, Enum):
     "On the root schema of the metamodel (`rp.yaml`), the package an application\u0027s generated code imports the metamodel\u0027s classes from, which re-exports them."
 
 
+class UmlLinkKind(str, Enum):
+    "The kinds of connector the UML reader keeps."
+    ASSOCIATION = "association"
+    "A connector between two classes, with roles and cardinalities."
+    DEPENDENCY = "dependency"
+    "A connector from a class to the enumeration it is typed by."
+    GENERALISATION = "generalisation"
+    "A connector from a class to its parent."
+
+
+class ReportKind(str, Enum):
+    "The kinds of line the conversion report holds; the report prints them with `-` where the schema has `_`."
+    NOT_GENERATED = "not_generated"
+    "A class left out because its stereotype is listed as not generated."
+    EXCLUDED_LINK = "excluded_link"
+    "A link left out because it reaches an excluded package."
+    OUTSIDE_LINK = "outside_link"
+    "A link that reaches a class that is not generated, kept as a reference by IRI."
+    NO_NOTE = "no_note"
+    "A class or an attribute with no note, so no description to carry."
+    IMPLICIT_MEANING = "implicit_meaning"
+    "A value of an enumeration written without a prefix, so with no `meaning`."
+    TOOLKIT_FILLED = "toolkit_filled"
+    "An element the converter took from the toolkit\u0027s classes, not from the drawing."
+    TOOLKIT_SLOT_KEPT = "toolkit_slot_kept"
+    "An attribute that stood for a toolkit slot and was replaced by it."
+    IGNORED_TAG = "ignored_tag"
+    "A tagged value no rule uses."
+    IGNORED_STEREOTYPE = "ignored_stereotype"
+    "A stereotype no rule uses."
+    MERGED_CYCLE = "merged_cycle"
+    "Packages that import each other, merged into one module."
+    STALE_FILE = "stale_file"
+    "A file of an earlier run left in the output folder, which this run did not write."
+    EXTERNAL_LIST = "external_list"
+    "An enumeration with no literals, a list kept outside the model, so its slots range over a URI."
+    UNSPECIFIED_MULTIPLICITY = "unspecified_multiplicity"
+    "A connector end with no multiplicity, read as zero or more."
+
+
+class UmlRule(str, Enum):
+    "The rules of the UML conversion, one value for each rule of the design\u0027s rule table that is in force; a problem names the one it breaks. `no_rule` stands for an element no rule maps."
+    NO_RULE = "no_rule"
+    "An element of the model that no rule maps; the run fails."
+    PACKAGE_MODULE = "package_module"
+    "R-1, a package becomes a module of the root schema."
+    CLASS_IRI = "class_iri"
+    "R-2, a class `pfx:Name` becomes a class `Name` with that IRI."
+    ABSTRACT_CLASS = "abstract_class"
+    "R-3, an abstract class becomes an abstract class."
+    GENERALISATION = "generalisation"
+    "R-4, a generalisation becomes `is_a` for the first parent and mixins for the others."
+    ATTRIBUTE_SLOT = "attribute_slot"
+    "R-5, an attribute becomes a slot with its IRI, range, required and multivalued."
+    ASSOCIATION_SLOT = "association_slot"
+    "R-6, an association becomes a slot on its source whose range is its destination."
+    ENUMERATION = "enumeration"
+    "R-7, an enumeration becomes an enum, its literals permissible values."
+    DEPENDENCY_ENUM_SLOT = "dependency_enum_slot"
+    "R-8, a dependency on an enumeration becomes a slot ranged by that enum."
+    NOTES_DESCRIPTION = "notes_description"
+    "R-9, the notes of a class, an attribute or a connector become descriptions."
+    ROOT_CLASS = "root_class"
+    "R-10, a root class gets the aggregate-root mixin and a path."
+    BOUNDARY_OWNED = "boundary_owned"
+    "R-11, the classes of a boundary or a composite association are owned by the root."
+    NOT_GENERATED = "not_generated"
+    "R-12, a stereotype listed as not generated makes no class and is reported."
+    SHARED_SLOT = "shared_slot"
+    "R-13, one slot name and IRI on several classes make one shared slot."
+    TOOLKIT_SLOT = "toolkit_slot"
+    "R-15 and R-22, an attribute whose IRI a toolkit slot has is that slot; a `dct:identifier` is the new identifier slot."
+    TENANT_ROOT = "tenant_root"
+    "R-18, a tenant root is stored in the meta graph and is no aggregate root."
+    TITLE = "title"
+    "R-19, a class or a slot with no title gets its name split into words."
+    CLASS_ANNOTATION = "class_annotation"
+    "R-20, a tagged value named like a toolkit class annotation becomes that annotation."
+    UNIQUE_KEY = "unique_key"
+    "R-21, a `unique_key` tagged value becomes a unique key of the class."
+    ABSTRACT_ROOT = "abstract_root"
+    "R-23, an abstract class of roots that is a slot\u0027s range is an aggregate root with no path."
+    SHARED_SLOT_ACROSS_PACKAGES = "shared_slot_across_packages"
+    "R-24, a slot on classes of several packages is defined once in the module the others import."
+    TOOLKIT_MIXINS = "toolkit_mixins"
+    "R-25 to R-28, the default mixins, `rp_mixins`, `workflow` and a drawn toolkit parent."
+    LEFT_OUT_LINK = "left_out_link"
+    "R-29, a link to a class that is not generated, or to an excluded package, is left out and reported."
+    ACTIVITY_ROOT = "activity_root"
+    "A root class that is an activity, which the toolkit\u0027s rules do not allow."
+
+
 
 class GenerationTarget(ConfiguredBaseModel):
     "One entry of the `[tool.rp-generate]` table of a `pyproject.toml`: a schema and the folders its generated artefacts are written to. Paths are relative to the folder of the `pyproject.toml`."
@@ -403,6 +495,121 @@ class CheckProblem(ConfiguredBaseModel):
         return v
 
 
+class UmlModel(ConfiguredBaseModel):
+    "What the UML reader takes from a model file: the packages, the classes and enumerations with their attributes, the connectors, the tagged values and the boundaries. The converter reads nothing else."
+    uml_packages: Optional[list[UmlPackage]] = Field(default=None, title="UML packages", description="The packages of a UML model.")
+    uml_outside_packages: Optional[list[UmlPackage]] = Field(default=None, title="UML outside packages", description="The packages an outside class sits in, and their ancestors, that are not converted. With `uml_packages` they give the package path of an outside class.")
+    uml_classes: Optional[list[UmlClass]] = Field(default=None, title="UML classes", description="The classes and enumerations of a UML model.")
+    uml_outside_classes: Optional[list[UmlClass]] = Field(default=None, title="UML outside classes", description="The classes and enumerations at the far end of a link whose near end is a converted class, and that are not converted themselves (outside the subtree, or in an excluded package), without their attributes.")
+    uml_links: Optional[list[UmlLink]] = Field(default=None, title="UML links", description="The connectors of a UML model.")
+    uml_tagged_values: Optional[list[UmlTaggedValue]] = Field(default=None, title="UML tagged values", description="The tagged values of the classes of a UML model.")
+    uml_boundaries: Optional[list[UmlBoundary]] = Field(default=None, title="UML boundaries", description="The boundaries of a UML model.")
+
+
+class UmlPackage(ConfiguredBaseModel):
+    "A package of the UML model, with its parent, so the package tree can be rebuilt."
+    package_id: int = Field(default=..., title="Package id", description="The id a UML model gives a package.")
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    parent_id: Optional[int] = Field(default=None, title="Parent id", description="The id of the package that holds a package, absent for a top one.")
+    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
+
+
+class UmlClass(ConfiguredBaseModel):
+    "A class or an enumeration of the UML model. For an enumeration the attributes are its literals."
+    object_id: int = Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration or a boundary.")
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    object_type: str = Field(default=..., title="Object type", description="The kind of element a UML object is, as the model file names it (`Class`, `Enumeration`).")
+    uml_alias: Optional[str] = Field(default=None, title="Alias", description="The alias of a UML element, the title the author gave it.")
+    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
+    package_id: int = Field(default=..., title="Package id", description="The id a UML model gives a package.")
+    uml_stereotype: Optional[str] = Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
+    multiple_stereotypes: Optional[bool] = Field(default=None, title="Multiple stereotypes", description="Whether the model gives the element a second stereotype besides the first.")
+    is_abstract: Optional[bool] = Field(default=None, title="Is abstract", description="Whether a UML class is abstract.")
+    ea_guid: Optional[str] = Field(default=None, title="GUID", description="The globally unique id the modelling tool gives an object.")
+    uml_attributes: Optional[list[UmlAttribute]] = Field(default=None, title="UML attributes", description="The attributes of a class, or the literals of an enumeration, in the order the model gives them.")
+
+
+class UmlAttribute(ConfiguredBaseModel):
+    "An attribute of a UML class, or a literal of a UML enumeration."
+    attribute_id: int = Field(default=..., title="Attribute id", description="The id a UML model gives an attribute.")
+    owner_id: int = Field(default=..., title="Owner id", description="The id of the class or enumeration an attribute or a tagged value belongs to.")
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
+    declared_type: Optional[str] = Field(default=None, title="Declared type", description="The type of an attribute as the model writes it, a datatype or the name of a class.")
+    classifier_id: Optional[int] = Field(default=None, title="Classifier id", description="The id of the class an attribute is typed by, absent for a plain type.")
+    lower_bound: Optional[str] = Field(default=None, title="Lower bound", description="The lower bound of an attribute\u0027s multiplicity, as the model writes it.")
+    upper_bound: Optional[str] = Field(default=None, title="Upper bound", description="The upper bound of an attribute\u0027s multiplicity, as the model writes it (`*` for no bound).")
+    position: Optional[int] = Field(default=None, title="Position", description="The place of an attribute among those of its class.")
+    uml_stereotype: Optional[str] = Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
+
+
+class UmlLink(ConfiguredBaseModel):
+    "A connector of the UML model: an association, a dependency or a generalisation, from its source class to its target class. Roles and cardinalities are those of each end; an end is the whole of an aggregation when its aggregate flag is set."
+    connector_id: int = Field(default=..., title="Connector id", description="The id a UML model gives a connector.")
+    link_kind: UmlLinkKind = Field(default=..., title="Link kind", description="Whether a connector is an association, a dependency or a generalisation.")
+    sub_type: Optional[str] = Field(default=None, title="Sub type", description="The sub type of a connector, as the model writes it.")
+    uml_stereotype: Optional[str] = Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
+    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
+    source_id: int = Field(default=..., title="Source id", description="The id of the class a connector starts at.")
+    target_id: int = Field(default=..., title="Target id", description="The id of the class a connector ends at.")
+    source_role: Optional[str] = Field(default=None, title="Source role", description="The role name at the source end of a connector.")
+    source_card: Optional[str] = Field(default=None, title="Source cardinality", description="The cardinality at the source end of a connector, as the model writes it.")
+    source_aggregate: Optional[int] = Field(default=None, title="Source aggregate", description="The aggregation flag of the source end of a connector, 0 for none, 1 for shared, 2 for composite.")
+    target_role: Optional[str] = Field(default=None, title="Target role", description="The role name at the target end of a connector.")
+    target_card: Optional[str] = Field(default=None, title="Target cardinality", description="The cardinality at the target end of a connector, as the model writes it.")
+    target_aggregate: Optional[int] = Field(default=None, title="Target aggregate", description="The aggregation flag of the target end of a connector, 0 for none, 1 for shared, 2 for composite.")
+    association_class: Optional[str] = Field(default=None, title="Association class", description="The id or name the model gives to the class an association is drawn as, absent for a plain one.")
+    direction: Optional[str] = Field(default=None, title="Direction", description="The direction of a connector as the model writes it (`Source -\u003e Destination`, `Bi-Directional`), absent when the model gives none.")
+
+
+class UmlTaggedValue(ConfiguredBaseModel):
+    "A named value attached to a class of the UML model, its text resolved from the memo when it is one."
+    owner_id: int = Field(default=..., title="Owner id", description="The id of the class or enumeration an attribute or a tagged value belongs to.")
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    tag_value: Optional[str] = Field(default=None, title="Tag value", description="The text of a tagged value.")
+
+
+class UmlBoundary(ConfiguredBaseModel):
+    "A boundary drawn on a diagram, with the classes and enumerations whose rectangles lie wholly inside it."
+    object_id: int = Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration or a boundary.")
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    diagram_id: int = Field(default=..., title="Diagram id", description="The id of the diagram a boundary is drawn on.")
+    member_ids: Optional[list[int]] = Field(default=None, title="Member ids", description="The ids of the classes and enumerations that lie inside a boundary.")
+
+
+class UmlPrefix(ConfiguredBaseModel):
+    "One prefix of the prefixes file and the namespace it stands for."
+    prefix_name: str = Field(default=..., title="Prefix name", description="The name of a prefix, the part of a CURIE before the colon.")
+    namespace: str = Field(default=..., title="Namespace", description="The IRI a prefix stands for.")
+
+
+class UmlName(ConfiguredBaseModel):
+    "A written name resolved (PD-6): its local name and, when it was prefixed, the IRI it expands to and the CURIE written to the output."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    iri: Optional[str] = Field(default=None, title="IRI", description="The full IRI a prefixed name expands to; absent for an unprefixed name.")
+    curie: Optional[str] = Field(default=None, title="CURIE", description="The prefixed name written to the output, in the metamodel\u0027s prefix name when it names the namespace.")
+
+
+class UmlSettings(ConfiguredBaseModel):
+    "What one run of the UML converter is told: the keys of the prefixes file and the command line values the conversion depends on."
+    schema_base: str = Field(default=..., title="Schema base", description="The IRI a module\u0027s id is made from, followed by the module name.")
+    default_prefix: str = Field(default=..., title="Default prefix", description="The name of the prefix the converted modules use for unprefixed names.")
+    schema_version: str = Field(default=..., title="Schema version", description="The `version` of the schema when the lock was written.")
+    prefixes: Optional[list[UmlPrefix]] = Field(default=None, title="Prefixes", description="The prefixes of the prefixes file.")
+    subtree_package: str = Field(default=..., title="Subtree package", description="The name or path of the package whose subtree is converted.")
+    root_name: str = Field(default=..., title="Root name", description="The name of the root schema, and the prefix of the module names.")
+    exclude_packages: Optional[list[str]] = Field(default=None, title="Excluded packages", description="The paths of the packages left out of the conversion with their subtrees.")
+    default_mixins: Optional[list[str]] = Field(default=None, title="Default mixins", description="The mixins a root class and its labelled parts get by default.")
+    not_generated_stereotypes: Optional[list[str]] = Field(default=None, title="Not-generated stereotypes", description="The stereotypes whose classes are not generated, only listed in the report.")
+
+
+class ReportLine(ConfiguredBaseModel):
+    "One line of the report a conversion writes beside its output, saying what was left out or changed."
+    report_kind: ReportKind = Field(default=..., title="Report kind", description="What a report line says was left out or changed.")
+    element: str = Field(default=..., title="Element", description="The element of the schema, or the file, a problem is about.")
+    message: str = Field(default=..., title="Message", description="What is wrong, in a line.")
+
+
 class PresenceRule(ConfiguredBaseModel):
     "A class-level rule over alternatives, and when its validator refuses."
     name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
@@ -514,6 +721,17 @@ ConstraintCase.model_rebuild()
 CliFlag.model_rebuild()
 GeneratedFile.model_rebuild()
 CheckProblem.model_rebuild()
+UmlModel.model_rebuild()
+UmlPackage.model_rebuild()
+UmlClass.model_rebuild()
+UmlAttribute.model_rebuild()
+UmlLink.model_rebuild()
+UmlTaggedValue.model_rebuild()
+UmlBoundary.model_rebuild()
+UmlPrefix.model_rebuild()
+UmlName.model_rebuild()
+UmlSettings.model_rebuild()
+ReportLine.model_rebuild()
 PresenceRule.model_rebuild()
 RuleAlternative.model_rebuild()
 UniqueKeyOn.model_rebuild()

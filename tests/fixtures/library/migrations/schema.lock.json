@@ -288,6 +288,92 @@
       ]
     },
     {
+      "class_uri": "http://www.w3.org/ns/prov#Generation",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "http://www.w3.org/ns/prov#activity",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/prov#atTime",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entity",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entityClass",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entityVersion",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "http://www.w3.org/ns/prov#Invalidation",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "http://www.w3.org/ns/prov#activity",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/prov#atTime",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entity",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entityClass",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entityVersion",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
       "class_uri": "https://example.org/ns/library#LibraryAccess",
       "iri_type": "library-access",
       "root_path": null,
@@ -398,6 +484,98 @@
           "required": false,
           "multivalued": false,
           "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://example.org/ns/library#Review",
+      "iri_type": "review",
+      "root_path": "reviews",
+      "root_database": "tenant",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/contributor",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/created",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/creator",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/modified",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/prov#endedAtTime",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/prov#startedAtTime",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/prov#wasAssociatedWith",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#generation",
+          "range": "http://www.w3.org/ns/prov#Generation",
+          "required": false,
+          "multivalued": true,
+          "inlined": true
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#invalidation",
+          "range": "http://www.w3.org/ns/prov#Invalidation",
+          "required": false,
+          "multivalued": true,
+          "inlined": true
         }
       ]
     },

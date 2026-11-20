@@ -1,0 +1,18 @@
+name: library
+description: The library model, converted from UML.
+title: Library
+id: https://example.org/ns/library/library
+version: '1'
+imports:
+- linkml:types
+- library_catalogue
+- library_shelves
+prefixes:
+  lib:
+    prefix_prefix: lib
+    prefix_reference: https://example.org/ns/library#
+  linkml:
+    prefix_prefix: linkml
+    prefix_reference: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string

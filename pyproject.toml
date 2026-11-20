@@ -49,6 +49,8 @@ dependencies = [
 [project.scripts]
 # Always installed; without the `generate` extra it exits 2 and says so (PD-2).
 rp-generate = "rdf_persistence_generation.cli:main"
+# Needs no `generate` extra: stdlib sqlite3, yaml and linkml_runtime (PD-1).
+rp-uml2linkml = "rdf_persistence_generation.uml.cli:main"
 
 [project.optional-dependencies]
 # The generators, kept out of consumers' running services (PD-2).

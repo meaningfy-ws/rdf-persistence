@@ -88,6 +88,7 @@ from .books import (
 )
 from .books_activities import (
     ApproveBook,
+    Review,
     ShelveBooks
 )
 from .library_access import LibraryAccess

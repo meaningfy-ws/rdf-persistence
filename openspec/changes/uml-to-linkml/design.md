@@ -74,7 +74,7 @@ Probe `temp/uml-probe/{boundaries,members,scoped,cycles}.py` on the first consum
 - Re-implementing `rp-generate`'s checks in the converter (anti-pattern A-3).
 - Any change to `rdf_persistence/` unless SPIKE-1 or SPIKE-2 requires it, then as its own task.
 
-## Rule table (open until stage 2 starts: DEC-5)
+## Rule table (frozen 2026-11-20: DEC-5, D-20)
 
 Sources: **B** = issue body table, **C1..C4** = the four comments in
 [inputs/seed.md](inputs/seed.md#comments). R-1..R-13 follow the body's row order and R-14..R-19
@@ -566,3 +566,212 @@ Each is a decision of this PLAN:
 
 (Filled during delivery: SPIKE-1 and SPIKE-2 verdicts, the DEC-5 freeze date, accepted review
 findings.)
+
+- **D-1 Review set** (2026-11-20). Rule P-0005 holds over the MEDIUM default of the workflow file:
+  each stage gets one L2+L3 pass (task 1.9); the full review (L1, L2, L3 apart, L4+L5 as one) runs
+  once, in task 2.8. No adversarial tester: the PLAN has no `## Invariants` section and the
+  appetite is below LARGE.
+- **D-2 SPIKE-2 first** (2026-11-20, the developer: "stage 1 starts with the two spikes"). SPIKE-2
+  asks whether `rp-generate` generates two domain modules that import each other; it does not need
+  the converter. It runs now on two hand-written LinkML modules (`books` ↔ `shelves`, the
+  SPIKE-2 classes) in a `tmp_path` project, as
+  `tests/generator/integration/test_module_import_cycle.py`, kept as the guard of PD-14. The
+  converter round trip stays IT-2 in task 1.8. The verdict now sets PD-14 before task 1.5, which
+  lays out the modules (R-1), instead of before 2.5.
+- **D-3 Order** (2026-11-20, rule R-0004). SPIKE-1 (1.7) and SPIKE-2 run first, in parallel
+  (disjoint files; SPIKE-2 writes only into `tmp_path`). Task 1.1 runs beside them in its own
+  builder worktree (`.worktrees/uml-to-linkml-1.1`), because 1.1 and 1.7 both run `make generate`;
+  their generated files are disjoint (the generator's records vs the toy), and the lead re-runs
+  `make check-generated` after joining them. Then 1.2 ∥ 1.4, then 1.3, as the roadmap.
+- **D-4 Test folders** (2026-11-20). `tests/unit/` is organised by feature, not by layer: S-3..S-5
+  and S-6 go into the feature folders that hold the provenance and route tests, not the
+  `tests/unit/services/` and `tests/unit/entrypoints/` the PLAN names. `evidence/spike-dec4.md`
+  names the paths.
+- **D-5 SPIKE-2 verdict: fail; PD-14 takes its second branch** (2026-11-20,
+  [evidence/spike-cycles.md](evidence/spike-cycles.md)). `rp-generate` accepts two domain modules
+  that import each other (exit 0), but the split pydantic modules (F-10) import each other at module
+  level and the package fails with a circular `ImportError`. So, per PD-27, the packages of each
+  import cycle are written as one module named after its first package in path order, with a
+  `merged-cycle` report line; task 1.5 builds the module layout this way. The cycle test stays as
+  `xfail(strict=True, raises=ImportError)`: it fails loudly the day the generator learns cycles,
+  and then PD-14's first branch can replace PD-27. The generator gap is ours: issue #208.
+- **D-6 Records as built** (2026-11-20, task 1.1; amends PD-2). Slots are global in
+  `rp_generation.yaml` and `kind`, `package`, `classes`, `links`, `stereotype` are taken, so:
+  `UmlLink.link_kind`, `ReportLine.report_kind`, the model's lists `uml_packages`, `uml_classes`,
+  `uml_links`, `uml_tagged_values`, `uml_boundaries`, attributes under `UmlClass.uml_attributes`.
+  `UmlLink` carries both ends (`source_role`/`_card`/`_aggregate`, `target_…`) and the raw EA
+  aggregation flags instead of `whole_end`: the reader copies columns, the converter derives the
+  whole end (PD-13). A new class `UmlPrefix` (`prefix_name`, `namespace`) keeps
+  `UmlSettings.prefixes` a list of models, not a dict (P-0007). `UmlSettings` holds the prefixes
+  file's keys and the CLI values, not the `.qea` path or `--out` (I/O).
+- **D-7 SPIKE-1 verdict: pass** (2026-11-20, [evidence/spike-dec4.md](evidence/spike-dec4.md)).
+  S-1..S-6 green with no file under `rdf_persistence/` changed: an application root may be
+  `is_a: Activity` (DEC-4). PD-17 allows `Activity` as the `is_a` of a root; the `activity_root`
+  refusal of task 2.3 stays inactive. PD-18 and PD-26 stand: the hard check refuses a narrowed
+  `started_at_time` on `Review` (S-2). `Review` stays in the toy (PD-34). Adding it shifted four
+  toy-enumeration tests (`test_openapi`, `test_documents`, `test_allowed_actions_adversarial`,
+  `test_ext_jsonld_context`), each given its `Review` row (RISK-7). The scenario-map rows of the
+  seven spike tests are added in task 1.9.
+- **D-8 Naming as built** (2026-11-20, task 1.4; amends PD-6 and D-6). `resolve_name` returns the
+  generated `UmlName` (`name`, `iri`, `curie`), since the model guard refuses a hand-written result
+  type. It takes the prefixes as a `Mapping[str, str]` index built from the `UmlPrefix` records
+  (P-0007 allows a dict as an index). A name that breaks F-7 is a problem with rule `class_iri`
+  for classes and enums and `attribute_slot` for slots and permissible values; task 1.5 dedupes
+  unknown-prefix problems to one per prefix. The 1.1 record slot `alias` is renamed `uml_alias`:
+  `alias` is a slot of the records moved out of the generation schema, which
+  `test_technical_split` guards. Every new `.py` under `rdf_persistence_generation/` changes the 25
+  `rp-manifest.json` files (they hash the generator's sources); the lead commits them, regenerated
+  with `make generate`, with the task. Gate: `make test-changed` against a detached builder worktree
+  ran fewer tests than `make test-fast` and missed the `alias` clash, so builders in a builder
+  worktree run `make test-fast check-quality`.
+
+Alignment with the model2owl UML conventions and the SEMIC style (developer, 2026-11-20, round 3;
+the conventions read at https://docs.ted.europa.eu/M2O/latest/uml/conceptual-model-conventions.html
+and its checkers page):
+
+- **D-9 Why model2owl is not run first.** `linkml-engineering` derives LinkML from UML through
+  model2owl. Not here: model2owl reads an XMI export, not the `.qea` (DEC-1); its documentation
+  states no LinkML output; and it knows nothing of the toolkit's roots, boundaries, mixins and
+  annotations, which are most of the rule table. The converter follows model2owl's UML conventions
+  instead, as D-10..D-14 align them.
+- **D-10 Empty enumerations** (amends PD-10, R-7, R-8). An enumeration with no literals is a
+  controlled list kept outside the model (model2owl `rule:gen-controlled-list-empty`, a SKOS concept
+  scheme): an attribute or dependency ranging over it becomes `range: uri`, with a report line
+  `external-list` naming the enumeration. An enumeration with literals stays an enum (R-7). The
+  `permissive`/`restrictive` tag on an enumeration is an `ignored-tag` line.
+- **D-11 Multiplicity** (amends PD-8; supersedes PD-32). Any `l..u` with integers `0 ≤ l ≤ u`, or
+  `u = *`, and the shorthands `n` (= `n..n`) and `*` (= `0..*`): `required: true` when l ≥ 1;
+  `multivalued: true` when u > 1 or `*`; `minimum_cardinality: l` when l > 1;
+  `maximum_cardinality: u` when 1 < u < `*`. A missing multiplicity is `0..*` (model2owl
+  `rule:attributes-multiplicity`) with a report line `unspecified-multiplicity`; "exactly one" is
+  written `1..1`. In a `.qea` only a connector's card can be missing (`NULL` or empty: 91 of the
+  real file's association ends); EA stores an attribute's blank multiplicity as `1`/`1`, the same
+  as an explicit `1..1` (38 of 68 attributes in the real file), so an attribute's bounds are taken
+  as stored. A malformed card (`2..1`, `a..b`) is `no_rule`.
+- **D-12 Language strings** (amends PD-7). `rdf:langString` (and `rdf:PlainLiteral`) are never
+  dropped or narrowed to `string`. The toolkit has no language-string range yet (and
+  `api/services/documents.py` strips `@language` from value objects), and this EPIC changes no
+  library code, so until the toolkit change lands such an attribute is `no_rule`:
+  `[no_rule] <Class>.<attribute>: rdf:langString has no toolkit range yet (#209): no
+  rule converts it` (the toolkit change: issue #209). When the toolkit's range lands, PD-7 maps to it with no other change. The
+  real model has no such attribute.
+- **D-13 Abstract stereotype** (amends PD-15, R-3). A class stereotyped `Abstract` (any case) is
+  `abstract: true`, as is EA's `Abstract` flag; the stereotype is not reported.
+- **D-14 Direction and implicit identity** (amends PD-3, PD-6, PD-8). The reader also reads
+  `t_connector.Direction`: an association is accepted `Source -> Destination` (target role) or
+  `Bi-Directional` (both roles); any other direction is `no_rule` (model2owl
+  `connector-direction-21/24`). A class or enum whose expanded IRI is `<default_prefix>:<its LinkML
+  name>` gets no explicit `class_uri` (the implicit URI is the same, `modelling-conventions` rule
+  2); slots keep `slot_uri`, as their snake-case name differs from the IRI's local name.
+- **D-15 Parallel build of 1.3, 1.5 and 1.6** (2026-11-20, the developer: "continue in parallel").
+  The reader (1.3), the converter (1.5) and the writer half of 1.6 run at once, each in its own
+  builder worktree, against the records of 1.1 and this interface:
+  `convert(model, settings, metamodel_prefixes) -> (schemas, report_lines, problems)`, pure, each
+  schema named after its module; `write(schemas, report_lines, out, root_name) -> added report
+  lines`, writing `<schema.name>.yaml`. The converter's tests build `UmlModel` records directly; the
+  reader-to-output path is tested by 1.6's golden and IT-1, which the lead runs after the three
+  join (CLI, console script, golden). Both 1.3 (`UmlLink.direction`) and 1.5 (two `ReportKind`
+  values) change `rp_generation.yaml`: the lead joins them, takes one generated side and runs
+  `make generate` (P-0003). The D-14 direction check is added to 1.5 after 1.3 joins. In stage 1 a
+  slot shared across modules is refused, naming stage 2 (task 2.6, R-24).
+- **D-16 Authority** (2026-11-20, the developer: "dont wait on me, feel free to merge admin too").
+  For this EPIC the lead commits, pushes, opens and merges each stage PR into `develop` without
+  waiting for the developer, with `gh pr merge --merge --admin` where a required review would
+  otherwise block. Limits kept (`epic-delivery`, Authority): merge only once the PR lists check runs
+  and all are green; nothing destructive beyond the normal git flow; the grant ends with the EPIC.
+  The DEC-5 question before stage 2 is still asked.
+- **D-17 Reader as built** (2026-11-20, task 1.3; amends PD-3, PD-4, PD-13). `read_qea` returns
+  the `UmlModel` or every `no_rule` problem, sorted; usage errors are a typed `QeaUsageError`
+  whose text the CLI prefixes with `rp-uml2linkml: `. A stereotyped `Boundary` is ignored without
+  a report line (the reader has no report channel; PD-3's "(reported)" is dropped). A connector
+  of a type the reader does not know (`Aggregation`, `Abstraction`, `ControlFlow`…) touching a
+  converted class is `no_rule` in the reader, as `UmlLinkKind` has no value for it; connectors to
+  `Note`, `Text`, `Boundary` or `Package` objects are skipped. A non-empty `PDATA1` other than `0`
+  on an association names an association class (no association in the real file carries one).
+  Boundaries count only when they hold a converted class, and their straddle checks look at
+  converted classes only. Tags keep file order within a name (for `rp_mixins`, `unique_key`). Two
+  amendments for task 1.6: an `--exclude-package` that matches no package of the subtree is a usage
+  error (`no package <p> under <root>`), not silently ignored; and the reader puts the classes at
+  the far end of a link that are not converted (outside the subtree, excluded) in a new
+  `UmlModel.uml_outside_classes` (no attributes), so the converter can name them in report lines
+  (PD-15) and stage 2 can recognise drawn toolkit classes (PD-17); their packages and ancestors not
+  already converted go in `UmlModel.uml_outside_packages`, so the converter computes a package path
+  over both lists and tells excluded (path under an `--exclude-package`) from outside.
+- **D-18 Converter as built** (2026-11-20, task 1.5; amends PD-1, PD-2). The converter is split
+  into `classes.py`, `slots.py`, `links.py` (associations, dependencies, ownership), `modules.py`
+  (package paths, module names, cycle components) and `context.py` (sorted, deduplicated findings).
+  Its intermediate working state (paths, bounds, usages, layout) is plain `__slots__` classes, not
+  generated models: it never leaves a function call, and the model guard refuses dataclasses. Problem
+  and report elements use local names (`Book.pages`), except the unknown-prefix problem, which keeps
+  the written name. In stage 1 every tag but `rp_path` is an `ignored-tag` line. `yaml_dumper` writes
+  `annotations` and `prefixes` in their long form, which the golden records (RISK-5). A
+  `Source -> Destination` association that also names a source role is `no_rule`: model2owl
+  requires `Bi-Directional` for two roles.
+- **D-19 Converter round trip of a cycle** (2026-11-20, task 1.8). Two packages in a cycle become
+  one module with a `merged-cycle` line (green). `rp-generate` refuses stage-1 output in write
+  mode as well (`[described] Book: a root or owned class includes Described`): the default mixins
+  are stage 2 (task 2.3, R-25). So generating and importing the merged module is a strict xfail
+  naming task 2.3; a probe with `Described` added by hand generated and imported. The same run
+  found that `--package MODEL/library` (the path form, PD-3) converted nothing and exited 0; it is
+  fixed in the converter with a test (module paths relative to the subtree root), and an empty
+  subtree is now a problem, never a silent success.
+- **D-20 Rule table frozen; a UML conventions page** (2026-11-20, the developer: "no new uml to
+  linkml rules … for now freeze and go ahead"; DEC-5, task 2.1). The rule table is frozen at
+  R-1..R-29 as amended by D-9..D-14 and D-17..D-19; a later rule goes to a follow-up issue. The
+  developer also asked that the UML conventions the toolkit adds on top of model2owl be written
+  down in the docs, with UML snippets that show each rule. PD-25 gains a reference page
+  `docs/modules/ROOT/pages/reference/uml-conventions.adoc` ("Which UML conventions does a model
+  for rdf-persistence follow?"): the model2owl conventions the converter relies on, then the
+  toolkit's own (stereotypes `root`, `tenant root`, `Abstract`, the not-generated list; aggregate
+  boundaries drawn as boundary objects; the class tagged values; multiplicity, direction, empty
+  enumerations, language strings), each with a Mermaid class-diagram snippet and the LinkML it
+  becomes. Drafted in parallel with stage 1's close (the rules are decided), checked against the
+  converter as built in task 2.7.
+- **D-21 Converter follow-up and golden as built** (2026-11-20, tasks 1.5, 1.6). Direction (D-14)
+  is checked on associations only; no direction is `no_rule` ("no direction"). Exclusion uses the
+  reader's rule: an `--exclude-package` path matches a package path or its tail. The empty-subtree
+  problem (D-19) is raised only when no other problem was found; not-generated classes do not count
+  as converted. The stage-1 golden (`tests/generator/fixtures/uml/golden/stage1/`) gives every
+  class and connector a note, as lint refuses a class or slot with no description; its one note-less
+  element is an enumeration literal (PD-28, RISK-2 unchanged). PD-12's plural stays simple
+  (`Shelf` → `shelfs`): the `rp_path` tag overrides it, and the conventions page says so; irregular
+  plurals are not guessed. `--default-mixins` is parsed and used from task 2.3.
+- **D-22 Stage-1 review, accepted findings** (2026-11-20, one L2+L3 pass, 23 findings).
+  - **C-1 (Critical): a shared slot leaks one usage's limits to another** (`slots.py`
+    `_shape_kwargs`, `usage_of`). Fix: a shared slot is defined with only what every usage agrees
+    on; each usage that differs carries its own non-empty limits (`minimum_cardinality`,
+    `maximum_cardinality`, `minimum_value`, `required`, `multivalued`, `range`, `owned` with its
+    `inlined`/`inlined_as_list`) in `slot_usage`; no empty `slot_usage`. `range` and
+    `description` keep PD-16: the slot takes the first usage's range and the first non-empty
+    description in PD-16 order, and a usage overrides them with its own when it differs (a usage with
+    no note inherits the slot's: one name and one IRI are one concept, R-13), because lint refuses a
+    slot with no description and a slot with no range defaults to `string`. Rows for each kind of
+    difference, and one through the lint step.
+  - **W-3, re-labelled Critical** (reason: it breaks invariant I-1 and goal G-4, "an element no rule
+    maps fails the run", and one case crashes): a link held by an enumeration, a dependency with only
+    a source role (PD-8: a dependency needs `DestRole`), and a generalisation from an enumeration
+    are dropped silently; with an empty enumeration the last raises `StopIteration`
+    (`convert.py:100, :110`, `links.py:440-442, :496`). Fix: each is `no_rule`, one row each.
+
+  Under the floor (rejected for this stage, one line each; the cheap factual ones are carried into
+  stage 2's tasks, marked →2):
+  - W-1 the D-18 `__slots__` working classes pass the model guard unseen; shown to the developer at
+    the end with D-18 (generate them, use `SlotDefinition` for `Shape`, or list them in
+    `HAND_WRITTEN`).
+  - W-2 reader and converter both derive package paths, exclusion and admission (and the
+    association-class test differs in case); one owner per rule in stage 2's full review.
+  - W-4 the read-only test cannot fail (the code opens `mode=ro`, checked by the reviewer). →2
+  - W-5 untested: unknown connector type, connectors to notes/boundaries, a boundary with two roots,
+    a dependency to an excluded enumeration. →2
+  - W-6 asserts without messages in the new UML tests (testing rule 10). →2
+  - W-7 eight scenario-map rows cite a `uml/rules.py` that does not exist and one maps the
+    excluded-package scenario to a reader test. →2
+  - W-8 a stale comment in `test_uml_cycle.py` about the path-form bug. →2
+  - S-1 IT-2's xfail could fail for another reason; S-2 the `activity_root` xfail reason; S-3 reader
+    and converter name elements differently; S-4 a prefix name declared with another namespace
+    than the metamodel's; S-5 `default_prefix` not checked against `prefixes`; S-6 a subtree of only
+    empty enumerations passes; S-7 an `--exclude-package` matching several packages; S-8 the
+    lazy `convert` import (→2); S-9 tags on an empty enumeration not reported; S-10 the golden
+    fixture's docstring claims R-13, a composite, `excluded-link`, `merged-cycle`; S-11 PD-6's
+    toolkit-name clash has no task (→2, task 2.2); S-12 a test helper repeats `format_problem`;
+    S-13 `qea.py` holds the boundary geometry, `PackagePath` lives away from its builder.

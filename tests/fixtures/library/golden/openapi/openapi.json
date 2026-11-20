@@ -3474,6 +3474,1010 @@
         ]
       }
     },
+    "/libraries/{t}/reviews": {
+      "get": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "List the reviews",
+        "operationId": "listing_libraries__t__reviews_get",
+        "parameters": [
+          {
+            "name": "t",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "T"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "description": "Only the reviews whose description is this value.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "name": "description",
+            "in": "query"
+          },
+          {
+            "description": "Only the reviews whose ended_at_time is this value.",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "name": "ended_at_time",
+            "in": "query"
+          },
+          {
+            "description": "Only the reviews whose label is this value.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "name": "label",
+            "in": "query"
+          },
+          {
+            "description": "Only the reviews whose started_at_time is this value.",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "name": "started_at_time",
+            "in": "query"
+          },
+          {
+            "description": "Only the reviews whose was_associated_with is this value. May be repeated: all the values must be present.",
+            "required": false,
+            "schema": {
+              "format": "uri",
+              "type": "string"
+            },
+            "name": "was_associated_with",
+            "in": "query"
+          },
+          {
+            "description": "The most items on the page.",
+            "required": false,
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "description": "The position of the first item.",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "description": "The key to order by; a - sign before it orders descending. By IRI if absent.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "id",
+                "description",
+                "ended_at_time",
+                "label",
+                "started_at_time",
+                "was_associated_with",
+                "-id",
+                "-description",
+                "-ended_at_time",
+                "-label",
+                "-started_at_time",
+                "-was_associated_with"
+              ]
+            },
+            "name": "sort",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  ],
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "$ref": "#/components/schemas/Review"
+                      },
+                      "type": "array"
+                    }
+                  }
+                }
+              },
+              "application/ld+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid token",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not acceptable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "Create a Review",
+        "operationId": "create_libraries__t__reviews_post",
+        "parameters": [
+          {
+            "name": "t",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "T"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Review"
+                }
+              },
+              "application/ld+json": {
+                "schema": {
+                  "type": "object"
+                }
+              },
+              "text/turtle": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/n-triples": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/n-quads": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/trig": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rdf+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid token",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not acceptable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Key conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload too large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid body",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Review"
+              }
+            },
+            "application/ld+json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/libraries/{t}/reviews/{aggregate_id}": {
+      "get": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "Read a Review",
+        "operationId": "read_libraries__t__reviews__aggregate_id__get",
+        "parameters": [
+          {
+            "name": "t",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "T"
+            }
+          },
+          {
+            "name": "aggregate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aggregate Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Review"
+                }
+              },
+              "application/ld+json": {
+                "schema": {
+                  "type": "object"
+                }
+              },
+              "text/turtle": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/n-triples": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/n-quads": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/trig": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rdf+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Allowed-Actions": {
+                "description": "what the caller may do here, comma separated, in the order read, modify, delete, administer, annotate",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid token",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not acceptable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "Replace a Review",
+        "operationId": "replace_libraries__t__reviews__aggregate_id__put",
+        "parameters": [
+          {
+            "name": "t",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "T"
+            }
+          },
+          {
+            "name": "aggregate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aggregate Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "description": "The version of the object being replaced or removed, its ETag.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "name": "If-Match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Review"
+                }
+              },
+              "application/ld+json": {
+                "schema": {
+                  "type": "object"
+                }
+              },
+              "text/turtle": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/n-triples": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/n-quads": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/trig": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rdf+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid token",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not acceptable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version conflict or Key conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload too large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid body",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Precondition required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Review"
+              }
+            },
+            "application/ld+json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "Delete a Review",
+        "operationId": "remove_libraries__t__reviews__aggregate_id__delete",
+        "parameters": [
+          {
+            "name": "t",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "T"
+            }
+          },
+          {
+            "name": "aggregate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aggregate Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "description": "The version of the object being replaced or removed, its ETag.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "name": "If-Match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Invalid token",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Precondition required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/libraries/{t}/scans": {
       "get": {
         "tags": [
@@ -4093,6 +5097,48 @@
         "title": "Filter",
         "description": "One equality filter of a listing, the name of a slot of the listed type and the value it must have, as the text the caller sent."
       },
+      "Generation": {
+        "properties": {
+          "activity": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI of the activity this generation or invalidation belongs to."
+          },
+          "at_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The time of the generation or invalidation, the end of its activity."
+          },
+          "entity": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI of the entity whose version was generated or invalidated."
+          },
+          "entity_class": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI of the entity's class, when it had one."
+          },
+          "entity_version": {
+            "type": "string",
+            "description": "The version token of the entity that was generated or invalidated."
+          },
+          "type": {
+            "type": "string",
+            "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "activity",
+          "at_time",
+          "entity",
+          "entity_version"
+        ],
+        "title": "Generation",
+        "description": "The generation of one version of an entity by an activity."
+      },
       "Genre": {
         "type": "string",
         "enum": [
@@ -4180,6 +5226,48 @@
         "type": "object",
         "title": "GrantSet",
         "description": "The body that replaces the grants and prohibitions of a tenant; two grants with the same assignee, target and role or action are refused."
+      },
+      "Invalidation": {
+        "properties": {
+          "activity": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI of the activity this generation or invalidation belongs to."
+          },
+          "at_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The time of the generation or invalidation, the end of its activity."
+          },
+          "entity": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI of the entity whose version was generated or invalidated."
+          },
+          "entity_class": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI of the entity's class, when it had one."
+          },
+          "entity_version": {
+            "type": "string",
+            "description": "The version token of the entity that was generated or invalidated."
+          },
+          "type": {
+            "type": "string",
+            "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "activity",
+          "at_time",
+          "entity",
+          "entity_version"
+        ],
+        "title": "Invalidation",
+        "description": "The invalidation of one version of an entity by an activity."
       },
       "LabelUpdate": {
         "properties": {
@@ -4437,6 +5525,68 @@
         ],
         "title": "Prohibition",
         "description": "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission."
+      },
+      "Review": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "A free-text description of the object."
+          },
+          "ended_at_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The time the activity ended."
+          },
+          "generations": {
+            "items": {
+              "$ref": "#/components/schemas/Generation"
+            },
+            "type": "array",
+            "description": "The versions of entities the activity generated."
+          },
+          "id": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI that identifies the object.",
+            "readOnly": true
+          },
+          "invalidations": {
+            "items": {
+              "$ref": "#/components/schemas/Invalidation"
+            },
+            "type": "array",
+            "description": "The versions of entities the activity invalidated."
+          },
+          "label": {
+            "type": "string",
+            "description": "The preferred label of the object."
+          },
+          "started_at_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The time the activity started."
+          },
+          "type": {
+            "type": "string",
+            "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses."
+          },
+          "was_associated_with": {
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "type": "array",
+            "description": "A principal that carried out the activity."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "Review",
+        "description": "A review of a book, kept as a root that is also an activity (the guard of DEC-4)."
       },
       "Scan": {
         "properties": {

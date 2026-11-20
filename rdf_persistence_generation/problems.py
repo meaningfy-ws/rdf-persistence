@@ -1,5 +1,7 @@
 """Check problems: how a rule's finding is built, and the one place it becomes a line of text."""
 
+from collections.abc import Sequence
+
 from rdf_persistence_generation.generated.rp_generation import (
     BoundaryRule,
     CheckProblem,
@@ -22,3 +24,8 @@ def format_problem(problem: CheckProblem) -> str:
         problem.message,
     )
     return "".join(parts)
+
+
+def format_problems(problems: Sequence[CheckProblem]) -> str:
+    """The lines of ``format_problem``, one per problem, sorted, for a command to print."""
+    return "\n".join(sorted(format_problem(problem) for problem in problems))

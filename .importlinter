@@ -142,6 +142,7 @@ source_modules =
     rdf_persistence_generation.problems
     rdf_persistence_generation.generated
     rdf_persistence_generation.testkit
+    rdf_persistence_generation.uml
     rdf_persistence.testkit
     rdf_persistence.schema.services.schema
     rdf_persistence.schema.services.schema_structure
