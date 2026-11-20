@@ -747,6 +747,8 @@ async def test_a_keep_alive_of_the_toolkit_settings_reaches_the_events_route() -
     toolkit = ToolkitSettings(sse=SseSettings(keep_alive_seconds=0.05, max_lifetime_seconds=0.001))
     async with served(toolkit) as toy, toy.client() as http:
         scene = await Scene.set_up(toy, http)
+        # deliver the set-up activity now: the only wake left for the stream is the keep-alive
+        await toy.kit.relay.run_once()
         opened = await open_event_stream(
             toy.app,
             f"{scene.tenant}/rp-events",
