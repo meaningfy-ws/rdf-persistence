@@ -594,8 +594,7 @@ findings.)
   import cycle are written as one module named after its first package in path order, with a
   `merged-cycle` report line; task 1.5 builds the module layout this way. The cycle test stays as
   `xfail(strict=True, raises=ImportError)`: it fails loudly the day the generator learns cycles,
-  and then PD-14's first branch can replace PD-27. The generator gap is ours and goes to a
-  follow-up issue.
+  and then PD-14's first branch can replace PD-27. The generator gap is ours: issue #208.
 - **D-6 Records as built** (2026-11-20, task 1.1; amends PD-2). Slots are global in
   `rp_generation.yaml` and `kind`, `package`, `classes`, `links`, `stereotype` are taken, so:
   `UmlLink.link_kind`, `ReportLine.report_kind`, the model's lists `uml_packages`, `uml_classes`,
@@ -613,3 +612,54 @@ findings.)
   toy-enumeration tests (`test_openapi`, `test_documents`, `test_allowed_actions_adversarial`,
   `test_ext_jsonld_context`), each given its `Review` row (RISK-7). The scenario-map rows of the
   seven spike tests are added in task 1.9.
+- **D-8 Naming as built** (2026-11-20, task 1.4; amends PD-6 and D-6). `resolve_name` returns the
+  generated `UmlName` (`name`, `iri`, `curie`), since the model guard refuses a hand-written result
+  type. It takes the prefixes as a `Mapping[str, str]` index built from the `UmlPrefix` records
+  (P-0007 allows a dict as an index). A name that breaks F-7 is a problem with rule `class_iri`
+  for classes and enums and `attribute_slot` for slots and permissible values; task 1.5 dedupes
+  unknown-prefix problems to one per prefix. The 1.1 record slot `alias` is renamed `uml_alias`:
+  `alias` is a slot of the records moved out of the generation schema, which
+  `test_technical_split` guards. Every new `.py` under `rdf_persistence_generation/` changes the 25
+  `rp-manifest.json` files (they hash the generator's sources); the lead commits them, regenerated
+  with `make generate`, with the task. Gate: `make test-changed` against a detached builder worktree
+  ran fewer tests than `make test-fast` and missed the `alias` clash, so builders in a builder
+  worktree run `make test-fast check-quality`.
+
+Alignment with the model2owl UML conventions and the SEMIC style (developer, 2026-11-20, round 3;
+the conventions read at https://docs.ted.europa.eu/M2O/latest/uml/conceptual-model-conventions.html
+and its checkers page):
+
+- **D-9 Why model2owl is not run first.** `linkml-engineering` derives LinkML from UML through
+  model2owl. Not here: model2owl reads an XMI export, not the `.qea` (DEC-1); its documentation
+  states no LinkML output; and it knows nothing of the toolkit's roots, boundaries, mixins and
+  annotations, which are most of the rule table. The converter follows model2owl's UML conventions
+  instead, as D-10..D-14 align them.
+- **D-10 Empty enumerations** (amends PD-10, R-7, R-8). An enumeration with no literals is a
+  controlled list kept outside the model (model2owl `rule:gen-controlled-list-empty`, a SKOS concept
+  scheme): an attribute or dependency ranging over it becomes `range: uri`, with a report line
+  `external-list` naming the enumeration. An enumeration with literals stays an enum (R-7). The
+  `permissive`/`restrictive` tag on an enumeration is an `ignored-tag` line.
+- **D-11 Multiplicity** (amends PD-8; supersedes PD-32). Any `l..u` with integers `0 ≤ l ≤ u`, or
+  `u = *`, and the shorthands `n` (= `n..n`) and `*` (= `0..*`): `required: true` when l ≥ 1;
+  `multivalued: true` when u > 1 or `*`; `minimum_cardinality: l` when l > 1;
+  `maximum_cardinality: u` when 1 < u < `*`. A missing multiplicity is `0..*` (model2owl
+  `rule:attributes-multiplicity`) with a report line `unspecified-multiplicity`; "exactly one" is
+  written `1..1`. In a `.qea` only a connector's card can be missing (`NULL` or empty: 91 of the
+  real file's association ends); EA stores an attribute's blank multiplicity as `1`/`1`, the same
+  as an explicit `1..1` (38 of 68 attributes in the real file), so an attribute's bounds are taken
+  as stored. A malformed card (`2..1`, `a..b`) is `no_rule`.
+- **D-12 Language strings** (amends PD-7). `rdf:langString` (and `rdf:PlainLiteral`) are never
+  dropped or narrowed to `string`. The toolkit has no language-string range yet (and
+  `api/services/documents.py` strips `@language` from value objects), and this EPIC changes no
+  library code, so until the toolkit change lands such an attribute is `no_rule`:
+  `[no_rule] <Class>.<attribute>: rdf:langString has no toolkit range yet (#209): no
+  rule converts it` (the toolkit change: issue #209). When the toolkit's range lands, PD-7 maps to it with no other change. The
+  real model has no such attribute.
+- **D-13 Abstract stereotype** (amends PD-15, R-3). A class stereotyped `Abstract` (any case) is
+  `abstract: true`, as is EA's `Abstract` flag; the stereotype is not reported.
+- **D-14 Direction and implicit identity** (amends PD-3, PD-6, PD-8). The reader also reads
+  `t_connector.Direction`: an association is accepted `Source -> Destination` (target role) or
+  `Bi-Directional` (both roles); any other direction is `no_rule` (model2owl
+  `connector-direction-21/24`). A class or enum whose expanded IRI is `<default_prefix>:<its LinkML
+  name>` gets no explicit `class_uri` (the implicit URI is the same, `modelling-conventions` rule
+  2); slots keep `slot_uri`, as their snake-case name differs from the IRI's local name.
