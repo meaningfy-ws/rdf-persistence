@@ -694,4 +694,6 @@ and its checkers page):
   error (`no package <p> under <root>`), not silently ignored; and the reader puts the classes at
   the far end of a link that are not converted (outside the subtree, excluded) in a new
   `UmlModel.uml_outside_classes` (no attributes), so the converter can name them in report lines
-  (PD-15) and stage 2 can recognise drawn toolkit classes (PD-17).
+  (PD-15) and stage 2 can recognise drawn toolkit classes (PD-17); their packages and ancestors not
+  already converted go in `UmlModel.uml_outside_packages`, so the converter computes a package path
+  over both lists and tells excluded (path under an `--exclude-package`) from outside.
