@@ -81,6 +81,7 @@ from rdf_persistence import (
 )
 
 from .books import (
+    Author,
     Book,
     Chapter,
     Genre,

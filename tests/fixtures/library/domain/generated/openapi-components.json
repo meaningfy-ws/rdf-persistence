@@ -248,6 +248,36 @@
       "title": "ApproveBook",
       "type": "object"
     },
+    "Author": {
+      "additionalProperties": false,
+      "description": "An author of the library; an aggregate root that books point at, and that cannot be deleted while a book still does.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Author",
+      "type": "object"
+    },
     "BlobEntry": {
       "additionalProperties": false,
       "description": "One object in a tenant's bucket, as a listing of the bucket reports it.",
@@ -321,6 +351,11 @@
         },
         "workflow_status": {
           "description": "The current state of the aggregate, the IRI of a state of its workflow.",
+          "format": "uri",
+          "type": "string"
+        },
+        "written_by": {
+          "description": "The author of the book, another aggregate, stored as its IRI.",
           "format": "uri",
           "type": "string"
         }

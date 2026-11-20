@@ -138,11 +138,12 @@ def test_the_current_shapes_equal_the_reviewed_snapshot() -> None:
 def test_a_slot_added_to_the_toy_schema_is_named_by_the_diff(toy_copy: Path) -> None:
     books = toy_copy / "books.yaml"
     text = books.read_text(encoding="utf-8")
-    anchor = "    slots: [isbn, authors, published, genre, chapters, shelf, sequel_of]"
+    anchor = "    slots: [isbn, authors, published, genre, chapters, shelf, sequel_of, written_by]"
     assert anchor in text, "the planted fault would plant nothing"
     books.write_text(
         text.replace(
-            anchor, "    slots: [isbn, authors, published, genre, chapters, shelf, sequel_of, city]"
+            anchor,
+            "    slots: [isbn, authors, published, genre, chapters, shelf, sequel_of, written_by, city]",
         ),
         encoding="utf-8",
     )

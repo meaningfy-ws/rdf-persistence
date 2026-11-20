@@ -32,7 +32,7 @@ GENERATION_MODEL = MODEL_DIR.parent / "rdf_persistence_generation" / "model" / "
 
 NOTES_OWNED = "    range: Note\n    multivalued: true\n    inlined_as_list: true\n    annotations:\n      owned: true\n"
 NOTES_REFERENCED = "    range: Note\n    multivalued: true\n    inlined_as_list: true\n"
-BOOK_SLOTS = "slots: [isbn, authors, published, genre, chapters, shelf, sequel_of]"
+BOOK_SLOTS = "slots: [isbn, authors, published, genre, chapters, shelf, sequel_of, written_by]"
 BOOK_IMPORTS = "  - rdf_persistence/model/rp_collections\nannotations:\n  module_kind: domain"
 ACCESS_IMPORT = "  - rdf_persistence/model/rp_collections\n  - library_access\nannotations:\n  module_kind: domain"
 TENANCY_IMPORT = "  - rdf_persistence/model/rp_collections\n  - rdf_persistence/model/rp_tenancy\nannotations:\n  module_kind: domain"
@@ -72,7 +72,7 @@ def book_slot_over(name: str, range_: str, *, imports_activities: bool) -> tuple
         f"    slot_uri: lib:{name}\n    range: {range_}\n  isbn:\n"
     )
     edits = (
-        Edit("books.yaml", BOOK_SLOTS, BOOK_SLOTS.replace("sequel_of]", f"sequel_of, {name}]")),
+        Edit("books.yaml", BOOK_SLOTS, BOOK_SLOTS.replace("written_by]", f"written_by, {name}]")),
         Edit("books.yaml", BOOK_ISBN_SLOT, slot),
     )
     imports = (Edit("books.yaml", BOOK_IMPORTS, WITH_ACTIVITIES),) if imports_activities else ()
@@ -99,7 +99,7 @@ FAULTS = (
             Edit(
                 "books.yaml",
                 BOOK_SLOTS,
-                "slots: [isbn, authors, published, genre, shelf, sequel_of]",
+                "slots: [isbn, authors, published, genre, shelf, sequel_of, written_by]",
             ),
         ),
         "Chapter",

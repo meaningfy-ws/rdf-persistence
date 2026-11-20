@@ -187,3 +187,15 @@ None. The owner accepted every recommendation on 2026-11-20 (`inputs/qa.md`):
 | OPEN-2 | A collection's `had_member` link is a referrer like any other (E8). |
 | OPEN-3 | A `rp_writes: service` class may carry the annotation; its `session.remove` refuses; the hard check accepts the combination. |
 | OPEN-4 | Added: `specs/rp-service-api/spec.md` (the `in-use` problem) and the two cascade scenarios in `specs/rp-reverse-references/spec.md`. |
+
+## Delivery decisions
+
+Taken by the lead during delivery (rule R-0007); shown to the owner for validation at the end.
+
+| ID | Decision | Why |
+|---|---|---|
+| D-1 | The stages are built in parallel worktrees (owner, 2026-11-20: "advance in parallel"): stage 2 on `feat/delete-refuses-referenced-s2` from task 1.1's commit, stage 3's docs on `docs/delete-refuses-referenced-s3` written to the PLAN ahead of the code. Each is rebased on `develop` after the stage before it merges, and the docs are checked against the built code before their PR. | Tasks 2.1 and 3.1 touch none of stage 1's files; the code chain from 2.2 on stays sequential. |
+| D-2 | `hard.py` imports the generated `OnReferencedDelete` and is itself a generation input, so task 1.1 was generated twice: once without its `ALLOWED_ANNOTATIONS` row, then with it. | The generator cannot import an enum it has not generated yet. |
+| D-3 | `problems.py` got its `in-use` title and status row in task 1.1, and `InUse` its problem mapping in task 2.1; task 2.3 adds the `InUseProblem` body. | `problems.py` looks up every slug at import, and the table test requires a row per error class: a commit must not leave the gate red. |
+| D-4 | Task 1.2 also updated about ten existing tests that hard-code the toy's classes, `Book.slots` and routes (lock, boundary, frames, OpenAPI, documents, allowed actions, shape snapshot). | PD-13 kept existing behaviour; these tests list the toy's shape, not its behaviour. |
+| D-5 | Tester: no. The PLAN has no `## Invariants` section and the appetite is MEDIUM (stage loop, Prepare). Stage review per P-0005: one L2+L3 pass per stage; the full review (L1, L2, L3 separate, L4+L5 one) once, on the last stage. | The repository rule overrides the default MEDIUM set. |

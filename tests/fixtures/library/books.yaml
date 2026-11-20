@@ -26,7 +26,7 @@ classes:
     description: A book held by a library; an aggregate root that owns its chapters.
     class_uri: bibo:Book
     mixins: [AggregateRoot, Described, Tracked, UnderWorkflow]
-    slots: [isbn, authors, published, genre, chapters, shelf, sequel_of]
+    slots: [isbn, authors, published, genre, chapters, shelf, sequel_of, written_by]
     unique_keys:
       isbn_key:
         unique_key_slots: [isbn]
@@ -44,6 +44,15 @@ classes:
     annotations:
       rp_path: shelves
       database: tenant
+  Author:
+    title: Author
+    description: An author of the library; an aggregate root that books point at, and that cannot be deleted while a book still does.
+    class_uri: lib:Author
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: authors
+      database: tenant
+      rp_on_referenced_delete: refuse
   Chapter:
     title: Chapter
     description: A chapter of a book, known by its number rather than a label; part of the book's aggregate. It owns its notes.
@@ -121,6 +130,11 @@ slots:
     description: The book this one follows, another aggregate, stored as its IRI.
     slot_uri: lib:sequelOf
     range: Book
+  written_by:
+    title: Written by
+    description: The author of the book, another aggregate, stored as its IRI.
+    slot_uri: lib:writtenBy
+    range: Author
   about:
     title: About
     description: The book a note is about, another aggregate, stored as its IRI.

@@ -112,6 +112,13 @@
           "required": false,
           "multivalued": false,
           "inlined": false
+        },
+        {
+          "slot_uri": "https://example.org/ns/library#writtenBy",
+          "range": "https://example.org/ns/library#Author",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
         }
       ]
     },
@@ -366,6 +373,63 @@
         },
         {
           "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#entityVersion",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://example.org/ns/library#Author",
+      "iri_type": "author",
+      "root_path": "authors",
+      "root_database": "tenant",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/contributor",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/created",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/creator",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/modified",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
           "range": "http://www.w3.org/2001/XMLSchema#string",
           "required": true,
           "multivalued": false,

@@ -85,6 +85,7 @@ class Book(UnderWorkflow, Tracked, Described, AggregateRoot):
     chapters: Optional[list[Chapter]] = Field(default=None, title="Chapters", description="The chapters of the book; they live in the book\u0027s graph.")
     shelf: Optional[str] = Field(default=None, title="Shelf", description="The shelf the book stands on, another aggregate, stored as its IRI.")
     sequel_of: Optional[str] = Field(default=None, title="Sequel of", description="The book this one follows, another aggregate, stored as its IRI.")
+    written_by: Optional[str] = Field(default=None, title="Written by", description="The author of the book, another aggregate, stored as its IRI.")
     id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     label: str = Field(default=..., title="Label", description="The preferred label of the object.")
     description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
@@ -107,6 +108,17 @@ class Shelf(ReferenceCollection, Tracked, Described, AggregateRoot):
     member_class: str = Field(default=..., title="Member class", description="The schema name of the class of the aggregates the collection collects.")
     has_part: Optional[list[str]] = Field(default=None, title="Has part", description="The IRIs of the aggregates the collection names as its members.")
     membership_rule: Optional[MembershipRule] = Field(default=None, title="Membership rule", description="The rule that says which aggregates of the member class belong to the collection.")
+
+
+class Author(Tracked, Described, AggregateRoot):
+    "An author of the library; an aggregate root that books point at, and that cannot be deleted while a book still does."
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
+    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
+    created: Optional[datetime ] = Field(default=None, title="Created", description="The time the graph was first committed.")
+    modified: Optional[datetime ] = Field(default=None, title="Modified", description="The time the graph was last committed.")
+    creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")
+    contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
 
 
 class Chapter(Described):
@@ -132,5 +144,6 @@ class Note(Described):
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 Book.model_rebuild()
 Shelf.model_rebuild()
+Author.model_rebuild()
 Chapter.model_rebuild()
 Note.model_rebuild()

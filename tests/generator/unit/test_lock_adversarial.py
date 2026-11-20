@@ -52,7 +52,9 @@ def seen(found: list[LockChange]) -> str:
 
 # -- the lock does not depend on how the schema is written --------------------------------------
 
-BOOK_SLOTS_REVERSED = "slots: [sequel_of, shelf, chapters, genre, published, authors, isbn]"
+BOOK_SLOTS_REVERSED = (
+    "slots: [written_by, sequel_of, shelf, chapters, genre, published, authors, isbn]"
+)
 MOVE_ENUM_VALUE: Edits = (
     (
         "books.yaml",
@@ -104,7 +106,7 @@ def test_a_schema_written_in_another_order_or_with_other_names_has_the_same_lock
 TWO_SLOTS_ONE_IRI = (
     "slots:\n  isbn_alt:\n    slot_uri: bibo:isbn\n    range: string\n    required: true\n  isbn:"
 )
-ALT_LAST = BOOK_SLOTS.replace("sequel_of]", "sequel_of, isbn_alt]")
+ALT_LAST = BOOK_SLOTS.replace("written_by]", "written_by, isbn_alt]")
 ALT_FIRST = BOOK_SLOTS.replace("[isbn,", "[isbn_alt, isbn,")
 
 
@@ -147,7 +149,11 @@ SWAP_CLASS_IRIS: Edits = (
     ("books.yaml", "    class_uri: lib:Parked\n", "    class_uri: lib:Shelf\n"),
 )
 MOVE_SLOT: Edits = (
-    ("books.yaml", BOOK_SLOTS, "slots: [isbn, authors, published, genre, chapters, shelf]"),
+    (
+        "books.yaml",
+        BOOK_SLOTS,
+        "slots: [isbn, authors, published, genre, chapters, shelf, written_by]",
+    ),
     ("books.yaml", "slots: [number, notes]", "slots: [number, notes, sequel_of]"),
 )
 NARROW_BY_USAGE: Edits = (

@@ -160,6 +160,36 @@
     required: false
     multivalued: true
     range: Principal
+- class_name: Author
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
 - class_name: Authorised
   slots:
   - name: caller_access
@@ -250,6 +280,10 @@
     required: false
     multivalued: false
     range: uri
+  - name: written_by
+    required: false
+    multivalued: false
+    range: Author
 - class_name: CallerAccess
   slots:
   - name: grants
