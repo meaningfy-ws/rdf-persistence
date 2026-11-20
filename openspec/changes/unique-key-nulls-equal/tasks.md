@@ -38,7 +38,7 @@ check-quality` (`make test-fast check-quality` where marked); commit body
   `key_duplicates()` reporting `[Dune, <marker IRI>]` for two stored Dune / —. And a test that
   the toy `isbn_key`'s guard and duplicates query text are unchanged (G-4). Accept: all pass;
   the existing unique-key unit and adversarial tests pass unchanged.
-- [ ] 1.6 Integration (RISK-1), `tests/integration/store/test_unique_keys.py`: IT-NE-1, two
+- [x] 1.6 Integration (RISK-1), `tests/integration/store/test_unique_keys.py`: IT-NE-1, two
   concurrent adds of Dune / — on Fuseki, exactly one stored, the other `KeyConflict` (as IT-01);
   IT-NE-2, `key_duplicates()` on Fuseki reports the shared absence. Written by the builder, run by
   the lead in `make test-containers`. Accept: both pass on Fuseki.
@@ -52,7 +52,7 @@ check-quality` (`make test-fast check-quality` where marked); commit body
 
 ## Roadmap
 
-- [ ] 1.1 ✓ · 1.2 ✓ · 1.3 ✓ · 1.4 ✓ · 1.5 ✓ · 1.6 · 1.7 ✓ · 1.8
+- [ ] 1.1 ✓ · 1.2 ✓ · 1.3 ✓ · 1.4 ✓ · 1.5 ✓ · 1.6 ✓ · 1.7 ✓ · 1.8
   (1.2, 1.3 and 1.4 may run in parallel; 1.5 needs 1.3 and 1.4; 1.6 needs 1.5.)
 
 ## Verification
