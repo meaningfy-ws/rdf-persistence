@@ -16,6 +16,7 @@ from rdf_persistence.core.domain.sparql import (
     SparqlTerm,
     absent_patterns,
     checked_group,
+    contains_patterns,
     count,
     fill,
     fill_terms,
@@ -252,6 +253,62 @@ def test_match_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
 def test_match_patterns_refuse_a_raw_string():
     with pytest.raises(SparqlError):
         match_patterns("root", [(URIRef(f"{EX}p"), "raw")])  # type: ignore[list-item]
+
+
+CONTAINS_INJECTIONS = ['"} ; DROP ALL ; #', '"', "\\", "}", "a\nb", "\\u0022"]
+
+
+@pytest.mark.parametrize("text", CONTAINS_INJECTIONS)
+def test_contains_patterns_keep_the_text_inside_one_literal(text):
+    """TC-04: the text is matched exactly as given, and nothing else in the query changes."""
+    hit, miss = URIRef(f"{EX}hit"), URIRef(f"{EX}miss")
+    name, kind = URIRef(f"{EX}name"), URIRef(f"{EX}Thing")
+    graph = Graph()
+    for subject, value in ((hit, f"xx{text}yy"), (miss, "zzz")):
+        graph.add((subject, URIRef(f"{EX}type"), kind))
+        graph.add((subject, name, Literal(value)))
+    patterns = contains_patterns("root", [(name, Literal(text))])
+    query = fill(
+        f"SELECT ?root WHERE {{ ?root <{EX}type> <{EX}Thing> . $patterns }}", patterns=patterns
+    )
+    assert {row[0] for row in graph.query(query)} == {hit}, (
+        "only the value holding the text matches"
+    )
+    assert patterns.count("CONTAINS(") == 1, "one CONTAINS, whatever the text holds"
+
+
+def test_contains_patterns_render_each_pair_as_its_own_exists_on_its_own_variable():
+    pairs = [(URIRef(f"{EX}p"), Literal("a")), (URIRef(f"{EX}q"), Literal("b"))]
+    patterns = contains_patterns("root", pairs)
+    assert patterns == (
+        f"FILTER EXISTS {{ ?root <{EX}p> ?root_c0 . "
+        f'FILTER (CONTAINS(LCASE(STR(?root_c0)), LCASE("a"))) }} '
+        f"FILTER EXISTS {{ ?root <{EX}q> ?root_c1 . "
+        f'FILTER (CONTAINS(LCASE(STR(?root_c1)), LCASE("b"))) }}'
+    )
+    prepareQuery(fill("ASK { ?root a ?type . $patterns }", patterns=patterns))
+
+
+def test_contains_patterns_are_case_insensitive():
+    graph = Graph()
+    graph.add((URIRef(f"{EX}s"), URIRef(f"{EX}p"), Literal("Hello World")))
+    patterns = contains_patterns("root", [(URIRef(f"{EX}p"), Literal("LO wo"))])
+    assert graph.query(fill("ASK { ?root ?x ?y . $patterns }", patterns=patterns)).askAnswer
+
+
+def test_empty_contains_patterns_are_empty():
+    assert contains_patterns("root", []) == ""
+
+
+@pytest.mark.parametrize("variable", ["r o", "", "?x"])
+def test_contains_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
+    with pytest.raises(SparqlError):
+        contains_patterns(variable, [])
+
+
+def test_contains_patterns_refuse_a_raw_string():
+    with pytest.raises(SparqlError):
+        contains_patterns("root", [(URIRef(f"{EX}p"), "raw")])  # type: ignore[list-item]
 
 
 def test_value_patterns_refuse_a_raw_string():

@@ -162,7 +162,9 @@ async with kit.session(tenant, principal) as session:
 `find` ignores Prohibitions on purpose: a duplicate you may not see is still a duplicate. So never
 show its result to a caller as it is. Check each IRI with `kit.require_aggregate`, or answer from the
 listing route, which applies the rules. A list value asks for all its items:
-`find(Book, authors=["X", "Y"])` returns the books that have both.
+`find(Book, authors=["X", "Y"])` returns the books that have both. A `Contains` value asks for part
+of a text slot, ignoring case: `find(Book, label=Contains(text="dune"))`. Use it alone or as an item
+of a list.
 
 `find` is not a snapshot: it reads page by page, so a write made meanwhile by another request can
 slip past a uniqueness check. Called without filters, it reads every aggregate of the class, so never
@@ -172,7 +174,8 @@ pass a caller's input to it unfiltered. `find` raises:
   with them.
 * `ValueError`, when the class is not an aggregate root the service serves, or a list value is
   empty.
-* `BadQuery`, when a name is not a slot, or a value does not fit its slot.
+* `BadQuery`, when a name is not a slot, a value does not fit its slot, or a `Contains` is on a slot
+  that holds no text or has an empty text.
 
 [#sweep-live-tenant]
 == Sweep a live tenant

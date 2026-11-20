@@ -7,7 +7,7 @@ A session SHALL return, through `find(cls, **equals)`, the IRIs of the tenant's 
 present. A value given as `Contains(text=<text>)` SHALL instead match a case-insensitive
 substring of a string-ranged slot, as a listing's `<slot>~=<text>` does. It SHALL never return
 aggregates of another tenant or another class, and SHALL raise a clear error for a name that is
-not a slot of `cls`.
+not a slot of `cls`, and for a `Contains` on a slot that holds no text or with an empty text.
 
 #### Scenario: one match
 - **GIVEN** two `Scan` aggregates in a tenant, one with `file_name` "a" and one with "b"
@@ -27,3 +27,7 @@ not a slot of `cls`.
 - **GIVEN** books labelled "Dune" and "Emma"
 - **WHEN** the session finds books with `label=Contains(text="DUNE")`
 - **THEN** it returns exactly the IRI of "Dune"
+
+#### Scenario: a substring of a slot that holds no text
+- **WHEN** the session finds books with `published=Contains(text="19")`
+- **THEN** it raises a bad-query error

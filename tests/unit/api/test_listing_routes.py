@@ -9,8 +9,10 @@ import pytest
 
 from rdf_persistence import Page
 from rdf_persistence.access.domain.generated.rp_access import Action, Grant, Prohibition
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, assert_problem, principal_of
 from tests.unit.api.listing_shelf import Shelf
+
+PROBLEM_BAD_QUERY_SLUG = "bad-query"
 
 
 @pytest.fixture
@@ -85,3 +87,52 @@ async def test_the_tenant_listing_is_paged_by_iri_like_any_other(shelf, client) 
     assert [t["id"] for t in page.items] == ids[1:3], (
         "the page holds the libraries at the requested offset, in IRI order"
     )
+
+
+@pytest.fixture
+async def dunes(service: ToyService, client: httpx.AsyncClient) -> Shelf:
+    """A tenant of ``ada`` with three books: Dune, Children of Dune (nonfiction) and Emma."""
+    shelf = Shelf(service, client)
+    made = await client.post("/libraries", json=TENANT_BODY, headers=shelf.headers())
+    shelf.tenant, shelf.tenant_iri = made.headers["location"], made.json()["id"]
+    for label, genre in [
+        ("Dune", "fiction"),
+        ("Children of Dune", "nonfiction"),
+        ("Emma", "fiction"),
+    ]:
+        body = {**DUNE_BODY, "label": label, "genre": genre}
+        created = await client.post(shelf.path, json=body, headers=shelf.headers())
+        assert created.status_code == 201, created.text
+    return shelf
+
+
+# TC-09a, TC-09c
+async def test_a_contains_filter_lists_the_books_whose_text_holds_it(dunes: Shelf) -> None:
+    page = Page.model_validate((await dunes.page_of("label~=DUNE")).json())
+    assert sorted(i["label"] for i in page.items) == ["Children of Dune", "Dune"], (
+        "a substring in any case lists both books"
+    )
+    assert page.total == 2, "and the total counts both"
+    combined = Page.model_validate((await dunes.page_of("label~=dune&genre=fiction")).json())
+    assert [i["label"] for i in combined.items] == ["Dune"], "a contains and an equality both hold"
+    assert combined.total == 1, "and the total agrees"
+
+
+# TC-09b, TC-09d
+@pytest.mark.parametrize("query", ["published~=19", "label~=", "label~"])
+async def test_a_contains_filter_that_cannot_hold_is_a_bad_query(dunes: Shelf, query: str) -> None:
+    assert_problem(await dunes.page_of(query), 400, PROBLEM_BAD_QUERY_SLUG)
+
+
+async def test_an_offset_beyond_the_largest_whole_number_a_page_can_start_at_is_a_bad_query(
+    dunes: Shelf,
+) -> None:
+    assert_problem(await dunes.page_of("offset=9223372036854775758"), 400, PROBLEM_BAD_QUERY_SLUG)
+
+
+# TC-09e
+async def test_the_tenant_listing_still_refuses_a_contains_filter(
+    dunes: Shelf, client: httpx.AsyncClient
+) -> None:
+    response = await client.get("/libraries?label~=x", headers=dunes.headers())
+    assert response.status_code == 400, "the tenant listing refuses every filter"

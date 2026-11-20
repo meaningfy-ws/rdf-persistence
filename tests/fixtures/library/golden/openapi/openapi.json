@@ -62,6 +62,7 @@
             "description": "The position of the first item.",
             "required": false,
             "schema": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
@@ -1477,12 +1478,32 @@
             "in": "query"
           },
           {
+            "description": "Only the books whose authors contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "authors~",
+            "in": "query"
+          },
+          {
             "description": "Only the books whose description is this value.",
             "required": false,
             "schema": {
               "type": "string"
             },
             "name": "description",
+            "in": "query"
+          },
+          {
+            "description": "Only the books whose description contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "description~",
             "in": "query"
           },
           {
@@ -1504,12 +1525,32 @@
             "in": "query"
           },
           {
+            "description": "Only the books whose isbn contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "isbn~",
+            "in": "query"
+          },
+          {
             "description": "Only the books whose label is this value.",
             "required": false,
             "schema": {
               "type": "string"
             },
             "name": "label",
+            "in": "query"
+          },
+          {
+            "description": "Only the books whose label contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "label~",
             "in": "query"
           },
           {
@@ -1567,6 +1608,7 @@
             "description": "The position of the first item.",
             "required": false,
             "schema": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
@@ -2526,6 +2568,16 @@
             "in": "query"
           },
           {
+            "description": "Only the shelves whose description contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "description~",
+            "in": "query"
+          },
+          {
             "description": "Only the shelves whose has_part is this value. May be repeated: all the values must be present.",
             "required": false,
             "schema": {
@@ -2545,12 +2597,32 @@
             "in": "query"
           },
           {
+            "description": "Only the shelves whose label contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "label~",
+            "in": "query"
+          },
+          {
             "description": "Only the shelves whose member_class is this value.",
             "required": false,
             "schema": {
               "type": "string"
             },
             "name": "member_class",
+            "in": "query"
+          },
+          {
+            "description": "Only the shelves whose member_class contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "member_class~",
             "in": "query"
           },
           {
@@ -2568,6 +2640,7 @@
             "description": "The position of the first item.",
             "required": false,
             "schema": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
@@ -3517,6 +3590,16 @@
             "in": "query"
           },
           {
+            "description": "Only the reviews whose description contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "description~",
+            "in": "query"
+          },
+          {
             "description": "Only the reviews whose ended_at_time is this value.",
             "required": false,
             "schema": {
@@ -3533,6 +3616,16 @@
               "type": "string"
             },
             "name": "label",
+            "in": "query"
+          },
+          {
+            "description": "Only the reviews whose label contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "label~",
             "in": "query"
           },
           {
@@ -3570,6 +3663,7 @@
             "description": "The position of the first item.",
             "required": false,
             "schema": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
@@ -4530,12 +4624,32 @@
             "in": "query"
           },
           {
+            "description": "Only the scans whose description contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "description~",
+            "in": "query"
+          },
+          {
             "description": "Only the scans whose file_name is this value.",
             "required": false,
             "schema": {
               "type": "string"
             },
             "name": "file_name",
+            "in": "query"
+          },
+          {
+            "description": "Only the scans whose file_name contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "file_name~",
             "in": "query"
           },
           {
@@ -4548,12 +4662,32 @@
             "in": "query"
           },
           {
+            "description": "Only the scans whose label contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "label~",
+            "in": "query"
+          },
+          {
             "description": "Only the scans whose media_type is this value.",
             "required": false,
             "schema": {
               "type": "string"
             },
             "name": "media_type",
+            "in": "query"
+          },
+          {
+            "description": "Only the scans whose media_type contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "media_type~",
             "in": "query"
           },
           {
@@ -4574,6 +4708,16 @@
               "type": "string"
             },
             "name": "sha256",
+            "in": "query"
+          },
+          {
+            "description": "Only the scans whose sha256 contains this text, ignoring case. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": "sha256~",
             "in": "query"
           },
           {
@@ -4611,6 +4755,7 @@
             "description": "The position of the first item.",
             "required": false,
             "schema": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
@@ -5075,6 +5220,10 @@
       },
       "Filter": {
         "properties": {
+          "contains": {
+            "type": "boolean",
+            "description": "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value."
+          },
           "slot": {
             "type": "string",
             "description": "The name of the slot the filter is on."
@@ -5095,7 +5244,7 @@
           "value"
         ],
         "title": "Filter",
-        "description": "One equality filter of a listing, the name of a slot of the listed type and the value it must have, as the text the caller sent."
+        "description": "One filter of a listing, the name of a slot of the listed type and the value it must have, or whose text it must contain, as the text the caller sent."
       },
       "Generation": {
         "properties": {
@@ -5330,7 +5479,7 @@
               "$ref": "#/components/schemas/Filter"
             },
             "type": "array",
-            "description": "The equality filters of a listing; all of them must hold."
+            "description": "The filters of a listing; all of them must hold."
           },
           "limit": {
             "type": "integer",
@@ -5340,6 +5489,7 @@
           },
           "offset": {
             "type": "integer",
+            "maximum": 9007199254740991.0,
             "minimum": 0.0,
             "description": "The position of the page's first object in the whole listing."
           },
@@ -5355,7 +5505,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ListRequest",
-        "description": "The query of a listing, as the caller sent it: the equality filters, the position and size of the page and the key to sort by."
+        "description": "The query of a listing, as the caller sent it: the filters, the position and size of the page and the key to sort by."
       },
       "MembershipRule": {
         "properties": {
@@ -5436,6 +5586,7 @@
           },
           "offset": {
             "type": "integer",
+            "maximum": 9007199254740991.0,
             "minimum": 0.0,
             "description": "The position of the page's first object in the whole listing."
           },

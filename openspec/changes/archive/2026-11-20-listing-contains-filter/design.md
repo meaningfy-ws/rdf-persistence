@@ -203,7 +203,7 @@ Tier: `unit` unless said. Test names are the implementer's; the file is fixed.
 | TC-02 | `tests/unit/schema/test_schema_structure.py` | `holds_text` on each listable `Book` slot | true: label, description, isbn, authors; false: published, genre, shelf, sequel_of, workflow_status (a row per slot, rule 6) |
 | TC-03 | `tests/unit/persistence/test_listing.py` | plans of the error matrix's first three rows | `BadQuery` each, parametrized |
 | TC-04 | `tests/unit/core/test_sparql.py` | `contains_patterns("root", [(P, Literal(t))])` for each injection text `t` of `'"} ; DROP ALL ; #'`, `'"'`, `'\\'`, `'}'`, `'a\nb'`, `'\\u0022'` (parametrized); empty pairs; raw `str`; variable `"r o"` | each parses inside `ASK { ?root ?p ?o . $patterns }` as one `CONTAINS` whose literal equals `t`; `""`; `SparqlError`; `SparqlError` |
-| TC-05 | `tests/unit/persistence/test_listing_query.py` (table at `:166`) | `label~=DUNE` → [1],1; `label~=u` → [1,3],2; `authors~=HER` → [1,3],2; `authors~=E&limit=2` → [1,2],3; `label~=u&genre=fiction` → [1,3],2; `label~=u&genre=nonfiction` → [],0; `authors~=e&authors~=j` → [3],1; `label~=e&sort=-label&limit=2&offset=1` → [2,4],4 (note below) | page and total |
+| TC-05 | `tests/unit/persistence/test_listing_query.py` (table at `:166`) | `label~=DUNE` → [1],1; `label~=u` → [1,3],2; `authors~=HER` → [1,3],2; `authors~=E&limit=2` → [1,2],3; `label~=u&genre=fiction` → [1,3],2; `label~=u&genre=nonfiction` → [],0; `authors~=e&authors~=j` → [3],1; `label~=e&sort=-label&limit=2&offset=1` → [2,1],5 (note below; D-5) | page and total |
 | TC-06 | same file | `("label~", t)` for each TC-04 text `t` (parametrized) | `([], 0)`, store unchanged |
 | TC-07 | `tests/unit/access/test_session_find.py` | a: `find(Book, label=Contains(text="DUNE"))`; b: `authors=[Contains(text="her"), "Joyce"]`; c: `Contains(text=19)`; d: `published=Contains(text="19")`; e: `label=Contains(text="")` | a: the Dune IRI; b: book 3 only; c: `ValidationError`; d, e: `BadQuery` |
 | TC-08 | `tests/unit/persistence/test_session_guards.py` | `matches(dune_iri, BOOK, [Condition(label, "UN", contains=True)])` and `"zz"` | true; false |
@@ -213,8 +213,9 @@ Tier: `unit` unless said. Test names are the implementer's; the file is fixed.
 | IT-2 | same file (`:56`) | each `INJECTIONS` value through `label~` | nothing matched, nothing changed |
 | IT-3 | `make typecheck-openapi-ts` | the served document | `tsc --strict` passes with `"label~"` keys |
 
-TC-05 note: labels containing `e` are Emma, Ulysses, Candide, Beloved; by `-label` they are
-Ulysses(3), Emma(2), Candide(4), Beloved(5); `limit=2&offset=1` → `[2, 4]`, total 4.
+TC-05 note (corrected in delivery, D-5): all five labels contain `e`, Dune included; by `-label`
+they are Ulysses(3), Emma(2), Dune(1), Candide(4), Beloved(5); `limit=2&offset=1` → `[2, 1]`,
+total 5.
 
 ## Risks / Trade-offs
 
@@ -239,4 +240,137 @@ PD-11.
 
 ## Delivery decisions
 
-(Filled during delivery.)
+Taken by the lead under R-0007, shown to the developer at the end.
+
+- **D-1 The PLAN on the branch.** The gated PLAN was on `docs/epics-consumer-needs`, not yet in
+  `develop`. Only this change's folder was copied, unchanged, as the branch's first commit; a
+  rebase drops it once that branch merges.
+- **D-2 Impact of `list_request` is HIGH.** GitNexus rates it HIGH because every listing route
+  passes through it, which is the surface this change targets. The change is additive: a
+  parameter `x~` already answered 400 as an unknown slot. Proceeded without a stop.
+- **D-3 Parallel builders (developer, 2026-11-20: "work with subagents in parallel").** Task 1.3
+  is split into 1.3a (`holds_text`, TC-02; disjoint files) and 1.3b (plan, `condition_patterns`,
+  the routes); task 2.1 into 2.1a (the two Antora pages) and the docstrings, which each code task
+  updates. 1.1, 1.2, 1.3a and 2.1a run in parallel: 1.1 in the branch's worktree, the
+  others each in its own worktree under `.worktrees/` from `3d7dde5e`; the lead commits each
+  result there and cherry-picks it. 1.3b follows 1.1, 1.2 and
+  1.3a; 1.4 and 1.5 follow 1.1 (same YAML and served golden). Correction after 1.1: nested
+  worktrees are not invisible to the lead's gates: `test_no_live_file_still_names_an_old_path`
+  scans the tree and fails on their copies. Builders now never run in the branch's worktree, and
+  each nested worktree is removed once its commit is picked, so none exists at the full gates.
+  Each worktree needs `make install` before its first gate; an edit to a generator input
+  (e.g. `schema_structure.py`) needs `make generate`; the lead regenerates once after picking
+  results that touched the same manifests (`make check-generated` after 1.1 + 1.3a: fresh).
+- **D-4 Wave 2 and the impact of the plan.** GitNexus rates `Listings.plan`, `condition_pairs`
+  and `AggregateOpenApi._query_parameters` HIGH: they are on the listing, commit-guard and OpenAPI
+  paths this change targets. `condition_pairs` has exactly the three uses PD-6 names.
+  `Listings.plan` has two callers the PLAN does not name, `write_guards.prepare` and
+  `reference_collections.delete_cascade`; both pass equality filters only (`rule_filters` stays
+  equality, Non-Goals), so they are unchanged while equality is, which the full suite covers.
+  TC-07 needs the plan of 1.3b, so 1.4 follows 1.3b; 1.3b and 1.5 run in parallel.
+- **D-5 TC-05's last row was wrong.** The PLAN expected `label~=e&sort=-label&limit=2&offset=1`
+  → `[2, 4]`, total 4, leaving out Dune, which also contains `e`. The code is right; the row and
+  its note now say `[2, 1]`, total 5. A test-data error, not a scenario change: no signed-off
+  scenario uses this row.
+- **D-6 1.3b re-run (T1).** The builder refactored `Listings.plan` (xenon rank C, `_filtered`
+  split out) after its full `test-fast` run and re-ran only the touched files; the lead re-ran
+  `make test-fast check-quality` on the final code.
+- **D-7 A direct probe of RISK-2.** IT-1's rows show the filter works on Fuseki, but not that
+  `EXISTS` stays inside the aggregate's own graph. One more integration test writes a matching
+  label for book A into another named graph of the same tenant database and expects that label
+  to list nothing. 1.4 and the integration tests (2.2's IT-1, IT-2 and this probe) run in
+  parallel from `49a600be`; a builder writes the integration tests, the lead runs
+  `make test-containers`. Result: green on Fuseki for a sibling book's graph and a fresh graph;
+  RISK-2 did not materialise.
+- **D-8 The public-surface snapshot is refreshed whole.** `make refresh-surface` (task 1.4) added
+  `Contains` and also replaced 79 stale module paths (`rdf_persistence.domain.…` →
+  `rdf_persistence.core.domain.…`) that `develop` still carries; the surface test does not
+  compare them, so they had drifted unnoticed. The file is the tool's output, so it is kept whole
+  rather than trimmed by hand. Another branch that refreshes it will produce the same lines.
+  Adding a public generated class takes `make generate`, `refresh-served-golden`,
+  `refresh-surface`, `refresh-snapshot` and `docs-reference`, and `NAMES` bumped.
+- **D-9 `offset` gets an upper bound (a defect the stage's gate exposed).** `make check-all` on
+  `8a3cdc57` failed two schemathesis cases of `tests/unit/api/test_contract.py` on
+  `GET /libraries/{t}/books`: `offset=9223372036854775758` makes rdflib's `islice` overflow
+  (`ValueError`, a 500). Pre-existing: `ListRequest` never bounded `offset`, and the plain query
+  fails the same way without any contains filter; the contract test is derandomized, and the new
+  `<slot>~` parameters changed what it generates, so the branch reaches the case every run.
+  Fix in the model: `offset` takes `maximum_value: 9007199254740991` (2^53 − 1, the largest
+  integer a JSON or TypeScript client holds exactly; far below the overflow), so a larger offset
+  is the existing 400 `bad-query` and the OpenAPI shows the maximum. `make test-containers`
+  passed (322) on the same head. Its docs follow in the same fix (review S-3): the message and
+  `Raises` of `list_request`, and the `offset` row of `reference/http-api.adoc`.
+- **D-10 Review W-1, re-labelled Critical: the "listed once" scenario had no discriminating
+  test.** The L2+L3 pass found that TC-05's row `authors~=E&limit=2` → `[1, 2]`, 3 passes
+  without `FILTER EXISTS` too: by IRI the rows would be 1, 2, 3, 3, `LIMIT 2` cuts before the
+  duplicate and `COUNT(DISTINCT ?root)` hides it from the total. Re-label reason: it is the only
+  evidence of a signed-off scenario, and the duplicate row is the very counterexample PD-5 was
+  designed against, so the requirement "listed and counted once" was unverified in behaviour.
+  Fix: add the row `authors~=e&offset=3` → `[]`, total 3 (without `EXISTS`: `[3]`) to TC-05 and
+  to IT-1. The scenario's wording is unchanged, so it needs no new sign-off; the worked example's
+  claim that book 3 "would shift the page" holds only from `offset=3` on.
+
+- **D-11 Rebase on `develop` (P-0002, P-0003).** `develop` moved 56 commits (the PLAN branch,
+  uml-to-linkml, collection-has-part, unique-key-nulls-equal). The copied PLAN was identical to
+  `develop`'s and dropped (D-1 closed). Conflicts were only in generated files (manifests, one
+  `shapes.ttl`, the served golden); each was settled by deleting the conflicted file and running
+  `make generate` or `make refresh-served-golden` on the merged sources. On the final tree every
+  refresh target ran: the served golden gains D-9's `maximum` on one more `offset` parameter;
+  nothing else changed. `condition_patterns` is still the only renderer of conditions
+  (`unique_keys.py` renders key values). `make refresh-map BASE=origin/develop` lists 38 tests
+  with no row, all of `develop`'s own changes (unique keys, the UML converter); none of this
+  change's. Mapping them is outside this change: left for `develop`'s owners.
+- **D-12 The open items closed in this PR (developer, 2026-11-20: "do also everything left
+  open now").** The review findings under the floor are fixed by one fixer: S-1 (`holds_text`
+  returns False on a class-ranged slot), S-2 (a commit-guard test with a contains condition),
+  S-4 (TC-07a uses Emma), S-5 (the two descriptions end with a full stop), the stale line of
+  `architecture/index.adoc`, and the over-long lines of `listing.py` and `api.adoc`; the user
+  manual gains `Contains` in `files.adoc` (the docs owed, `evidence/docs-owed.md`). Not changed:
+  `holds_iri`'s default range (1.3a's note), because GitNexus rates `holds_iri` CRITICAL (the
+  listing, discussion and event-relay flows) and the note is harmless for the induced slots
+  every caller passes. The 38 tests of `develop` without a scenario-map row (D-11) are mapped in
+  this PR as a separate commit, and `make refresh-map` drops the two rows whose tests `develop`
+  removed (`test_hard_check.py`: the two old `consider_nulls_inequal` checks), so every collected
+  test is mapped and no row names a missing test. The rdflib overflow is reported upstream as
+  https://github.com/RDFLib/rdflib/issues/3739 (D-9's bound stays our fix). The acceptance demo
+  ran through the API (`evidence/acceptance.md`); the verdict is the developer's.
+- **D-13 The specs match what was built, and are synced (developer, 2026-11-20: "any divergence
+  between implementation and epic specs? integrate and update specs").** Two divergences found
+  and closed in the deltas: (a) D-9's `offset` bound was in no requirement, and "Listings are
+  filtered and paged" said equality filters only: the `rp-service-api` delta now MODIFIES it
+  (equality and contains filters, `limit` 1 to 200, `offset` 0 to 2^53 − 1, out of range 400),
+  with the scenario "an offset beyond the bound"; (b) `find` with a `Contains` on a non-text slot
+  or an empty text raised `BadQuery`, which the `rp-aggregate-store` delta did not say: its
+  requirement now does, with the scenario "a substring of a slot that holds no text". Both new
+  scenarios are already tested (the D-9 route test, TC-07d); the developer signed them off with
+  the acceptance on 2026-11-20.
+  Nothing else diverges: no living requirement describes `Session.matches` or the commit guard,
+  and the EPIC's differences (`Contains(text=…)`, D-9) are in `proposal.md`'s As built. The
+  deltas are synced into `openspec/specs/` now, so the archive runs with `--skip-specs`.
+
+### Review findings under the floor (L2+L3 pass, 2026-11-20)
+
+- W-2: `make check-generated` was not run on the final head: not a code fix, the lead runs it
+  with the full gates on the fixed head.
+- S-1: `holds_text` raises `AttributeError` on a class-ranged (owned-part) slot instead of
+  returning False; today's callers pass listable slots only, which exclude owned parts.
+- S-2: no unit test of the commit guard (`Transaction._require_match`) with a contains
+  condition; no caller passes one today (D-4), and it shares `condition_patterns` with TC-08.
+- S-4: TC-07a stores "Dune" and "Ulysses" where the scenario says "Dune" and "Emma"; the
+  assertion is the same.
+- S-5: the descriptions of `Contains` and `filter_contains` lack a final full stop, carried into
+  the generated docs and types.
+
+### Under the floor
+
+- 1.1: the module docstring of `listing.py` has one line over the page width (lint passes).
+- 1.3a: `holds_iri` reads `slot.range` without the default range; harmless for the induced slots
+  listings use, which always carry a range.
+- 2.1a: two lines of `api.adoc` run past the page's wrap width; the rendered page is the same.
+- 1.3b: `core.domain.sparql.join` keeps a separator between empty terms (`join(["", ""]) == " "`);
+  `condition_patterns` joins only the non-empty parts, so an equality-only query text is unchanged.
+  Ordinary join semantics, not a defect.
+- 1.4: `Contains` sits after `Page` in `rdf_persistence.__all__`; the list is not in strict
+  alphabetical order elsewhere either.
+- `shapes.ttl` diffs are large on any model change because c14n blank-node labels renumber
+  (1.1: about 1000 lines for one added property). Generator awkwardness, not a defect here.

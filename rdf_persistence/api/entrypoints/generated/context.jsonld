@@ -75,6 +75,9 @@
          "@container": "@set",
          "@id": "condition"
       },
+      "text": {
+         "@id": "containsText"
+      },
       "contributor": {
          "@type": "@id",
          "@container": "@set",
@@ -99,6 +102,9 @@
       },
       "email": {
          "@id": "email"
+      },
+      "contains": {
+         "@id": "filterContains"
       },
       "slot": {
          "@id": "filterSlot"
@@ -330,6 +336,9 @@
       },
       "Condition": {
          "@id": "Condition"
+      },
+      "Contains": {
+         "@id": "Contains"
       },
       "Described": {
          "@id": "Described"

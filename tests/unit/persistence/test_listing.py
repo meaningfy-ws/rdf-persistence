@@ -49,6 +49,30 @@ def test_limit_offset_sort_and_filters_are_read_from_the_query_string():
     ], "everything else is a filter, in the order sent"
 
 
+# TC-01: a name ending in "~" is a contains filter on the name without that last "~"
+@pytest.mark.parametrize(
+    ("param", "expected"),
+    [
+        (("label~", "dune"), Filter(slot="label", value="dune", contains=True)),
+        (("label", "dune"), Filter(slot="label", value="dune", contains=False)),
+        (("label~", "a=b"), Filter(slot="label", value="a=b", contains=True)),
+        (("sort~", "x"), Filter(slot="sort", value="x", contains=True)),
+        (("label~~", "x"), Filter(slot="label~", value="x", contains=True)),
+    ],
+    ids=[
+        "contains",
+        "equality",
+        "value-with-equals",
+        "reserved-name-after-strip",
+        "only-last-tilde",
+    ],
+)
+def test_a_name_ending_in_a_tilde_is_a_contains_filter(param, expected):
+    assert list_request([param]).filters == [expected], (
+        "the last ~ makes a contains filter; reserved names are compared before it is stripped"
+    )
+
+
 # equivalence class: a limit that is not digits (abc); 0 and 201 are the range's boundaries
 @pytest.mark.parametrize(
     "params",
@@ -61,6 +85,8 @@ def test_limit_offset_sort_and_filters_are_read_from_the_query_string():
         [("offset", "x")],
         [("offset", "")],
         [("offset", "1"), ("offset", "2")],
+        [("offset", "9007199254740992")],
+        [("offset", "9223372036854775758")],
         [("sort", "label"), ("sort", "isbn")],
     ],
     ids=lambda p: "&".join(f"{k}={v}" for k, v in p),
@@ -70,7 +96,10 @@ def test_a_limit_offset_or_sort_that_is_not_one_valid_value_is_a_bad_query(param
         list_request(params)
 
 
-@pytest.mark.parametrize("params", [[("limit", "1")], [("limit", "200")], [("offset", "0")]])
+@pytest.mark.parametrize(
+    "params",
+    [[("limit", "1")], [("limit", "200")], [("offset", "0")], [("offset", "9007199254740991")]],
+)
 def test_the_bounds_of_limit_and_offset_are_allowed(params):
     list_request(params)
 
@@ -170,6 +199,34 @@ def test_the_identifier_sorts_by_iri_in_the_direction_asked(listings, view):
 def test_a_slot_the_type_does_not_offer_is_a_bad_query(listings, view, params):
     with pytest.raises(BadQuery):
         plan_of(listings, view, *params)
+
+
+# TC-03: a contains filter on a slot that is no string slot, on no slot, or with no text
+@pytest.mark.parametrize(
+    "params",
+    [
+        [("published~", "19")],
+        [("genre~", "fic")],
+        [("shelf~", "x")],
+        [("workflow_status~", "x")],
+        [("nope~", "x")],
+        [("~", "x")],
+        [("label~~", "x")],
+        [("label~", "")],
+    ],
+    ids=lambda p: "&".join(f"{k}={v}" for k, v in p),
+)
+def test_a_contains_filter_that_cannot_be_planned_is_a_bad_query(listings, view, params):
+    with pytest.raises(BadQuery):
+        plan_of(listings, view, *params)
+
+
+def test_a_contains_filter_keeps_its_text_as_sent_in_the_plan(listings, view):
+    plan = plan_of(listings, view, ("label~", "DUNE"), ("genre", "fiction"))
+    assert [(c.value, c.contains, c.reference, c.datatype) for c in plan.conditions or []] == [
+        ("DUNE", True, False, None),
+        (f"{SCHEMA_ORG}Fiction", False, True, None),
+    ], "the text is not typed or folded; the equality filter is unchanged"
 
 
 def test_a_slot_name_is_matched_exactly_not_as_a_pattern(listings, view):

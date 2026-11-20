@@ -5,8 +5,9 @@ from uuid import UUID
 
 import pytest
 from linkml_runtime.linkml_model.annotations import Annotation
+from pydantic import ValidationError
 
-from rdf_persistence import Action
+from rdf_persistence import Action, Contains
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import BadQuery
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
@@ -167,6 +168,44 @@ async def test_find_returns_an_aggregate_the_principal_may_not_read(listings):  
             "the aggregate the principal may not read is found, and hidden by the rules"
         )
         assert await session.find(Scan, file_name="a") == [iri], "the session ignores prohibitions"
+
+
+async def test_find_by_a_contains_matches_a_substring_in_any_case(listings):  # TC-07 a
+    async with fake_session(listings=listings) as session:
+        dune = await put_book(session, 1, ["Herbert"], label="Dune")
+        await put_book(session, 2, ["Austen"], label="Emma")
+        assert await session.find(Book, label=Contains(text="DUNE")) == [dune], (
+            "find by a Contains returns the aggregate whose text holds it, in any case"
+        )
+
+
+async def test_find_by_contains_and_a_plain_value_in_a_list_needs_both(listings):  # TC-07 b
+    async with fake_session(listings=listings) as session:
+        await put_book(session, 1, ["Herbert"], label="Dune")
+        await put_book(session, 2, ["Joyce"], label="Ulysses")
+        both = await put_book(session, 3, ["Joyce", "Herbert"], label="Mix")
+        assert await session.find(Book, authors=[Contains(text="her"), "Joyce"]) == [both], (
+            "a list may mix a Contains and a plain value; the aggregate needs both"
+        )
+
+
+def test_a_contains_refuses_a_text_that_is_not_a_string():  # TC-07 c
+    with pytest.raises(ValidationError):
+        Contains(text=19)
+
+
+async def test_find_by_a_contains_on_a_slot_that_is_not_text_is_a_bad_query(listings):  # TC-07 d
+    async with fake_session(listings=listings) as session:
+        await put_book(session, 1, ["X"])
+        with pytest.raises(BadQuery):
+            await session.find(Book, published=Contains(text="19"))
+
+
+async def test_find_by_an_empty_contains_is_a_bad_query(listings):  # TC-07 e
+    async with fake_session(listings=listings) as session:
+        await put_book(session, 1, ["X"])
+        with pytest.raises(BadQuery):
+            await session.find(Book, label=Contains(text=""))
 
 
 async def test_find_by_a_value_of_an_unknown_type_is_a_bad_query(listings):

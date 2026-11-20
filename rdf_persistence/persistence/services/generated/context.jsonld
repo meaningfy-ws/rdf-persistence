@@ -25,8 +25,14 @@
          "@container": "@set",
          "@id": "condition"
       },
+      "text": {
+         "@id": "containsText"
+      },
       "descending": {
          "@id": "descending"
+      },
+      "contains": {
+         "@id": "filterContains"
       },
       "slot": {
          "@id": "filterSlot"
@@ -88,6 +94,9 @@
       },
       "Condition": {
          "@id": "Condition"
+      },
+      "Contains": {
+         "@id": "Contains"
       },
       "Filter": {
          "@id": "Filter"

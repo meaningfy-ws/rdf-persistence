@@ -26,6 +26,7 @@ from rdf_persistence.schema.services.schema_structure import (
     generation_view,
     holds_iri,
     holds_owned_part,
+    holds_text,
     iri_type_of,
     iri_types,
     is_bookkeeping,
@@ -362,6 +363,38 @@ def test_a_slot_holds_owned_parts_or_iris_or_neither(cls, slot, owned_part, iri)
     induced = view.induced_slot(slot, cls)
     assert holds_owned_part(view, induced) is owned_part, f"{cls}.{slot} owned part"
     assert holds_iri(view, induced) is iri, f"{cls}.{slot} IRI"
+
+
+TEMPLATES = ROOT / "rdf_persistence" / "model" / "technical" / "schema" / "rp_schema_templates.yaml"
+
+
+@pytest.mark.parametrize(
+    ("slot", "expected"),
+    [
+        ("label", True),
+        ("description", True),
+        ("isbn", True),
+        ("authors", True),
+        ("published", False),  # a date
+        ("genre", False),  # an enum
+        ("shelf", False),  # a reference
+        ("sequel_of", False),  # a reference
+        ("workflow_status", False),  # a uri
+        ("chapters", False),  # owned parts, ranged by a class
+    ],
+)
+def test_a_slot_holds_text_when_it_is_written_as_a_plain_literal(slot, expected) -> None:
+    """TC-02 (PD-3): the listable slots of the toy Book."""
+    view = load_schema(TOY)
+    assert holds_text(view, view.induced_slot(slot, "Book")) is expected, f"Book.{slot}"
+
+
+def test_a_type_derived_from_string_with_its_own_uri_is_not_text() -> None:
+    """TC-02 (PD-3): sparql_term is a string by repr, rp:SparqlTerm by datatype; it is also the default range."""
+    view = load_schema(TEMPLATES)
+    slot = view.induced_slot("registry", "RegistryTerms")
+    assert slot.range == "sparql_term", "the slot is ranged by the derived type"
+    assert not holds_text(view, slot), "a datatype of its own is not a plain literal"
 
 
 @pytest.mark.parametrize(

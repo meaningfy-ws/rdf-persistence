@@ -1,7 +1,8 @@
 """Listings (PD-15): what a page of aggregates asks for, and the one query that reads it.
 
-A listing is the aggregates of one type in a tenant, filtered by equality on the type's slots, ordered
-by IRI or by one slot, and cut into a page. The query string becomes a ``ListRequest``; against the
+A listing is the aggregates of one type in a tenant, filtered on the type's slots (equality, or
+contains for a name ending in ``~``), ordered by IRI or by one slot, and cut into a page. The
+query string becomes a ``ListRequest``; against the
 type's slots it becomes a ``ListPlan`` of typed terms (a filter value is typed by the range of its
 slot, never pasted into the query as text); the plan becomes one ``CONSTRUCT`` that returns the
 triples of the page's aggregates and the size of the whole listing.
@@ -21,8 +22,11 @@ from rdf_persistence.core.domain.exceptions import BadQuery
 from rdf_persistence.core.domain.generated.rp_core import DatabaseKind
 from rdf_persistence.core.domain.sparql import (
     FORBIDDEN_IRI_CHARS,
+    SparqlTerm,
+    contains_patterns,
     count,
     fill_terms,
+    join,
     match_patterns,
     order_by,
     term_list,
@@ -38,6 +42,7 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema_structure import (
     holds_iri,
     holds_owned_part,
+    holds_text,
     is_bookkeeping,
     is_internal,
     rdf_term,
@@ -47,7 +52,11 @@ from rdf_persistence.schema.services.schema_structure import (
 LIMIT, OFFSET, SORT = "limit", "offset", "sort"
 # The largest page a listing gives: the bound the generated request model enforces.
 PAGE = next(m.le for m in ListRequest.model_fields["limit"].metadata if hasattr(m, "le"))
+# The furthest position a page can start at: the bound the generated request model enforces.
+MAX_OFFSET = next(m.le for m in ListRequest.model_fields["offset"].metadata if hasattr(m, "le"))
 RESERVED = frozenset({LIMIT, OFFSET, SORT})
+# A parameter name ending in it asks for a contains filter on the name without it.
+CONTAINS = "~"
 DESCENDING = "-"
 _DIGITS = re.compile(r"[0-9]+")
 _SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:\S+")
@@ -104,15 +113,20 @@ def _paging(sent: Mapping[str, list[str]]) -> dict[str, int]:
 def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
     """The listing a query string asks for: ``limit``, ``offset``, ``sort``, every other parameter a filter.
 
+    A name ending in ``~`` is a contains filter on the name without that last ``~`` (``label~=dune``);
+    any other name is an equality filter. The value is taken as sent. The reserved names are compared
+    before the ``~`` is stripped, so ``sort~`` is a filter on the slot ``sort``.
+
     Raises:
-        BadQuery: ``limit`` is not between 1 and ``PAGE``, ``offset`` is negative, a number is not a whole
-            number, or ``limit``, ``offset`` or ``sort`` is given twice.
+        BadQuery: ``limit`` is not between 1 and ``PAGE``, ``offset`` is not between 0 and
+            ``MAX_OFFSET``, a number is not a whole number, or ``limit``, ``offset`` or ``sort``
+            is given twice.
     """
     sent = _sent(params)
     if len(sent[SORT]) > 1:
         raise BadQuery("sort must be given once")
     filters = [
-        Filter(slot=name, value=value)
+        Filter(slot=name.removesuffix(CONTAINS), value=value, contains=name.endswith(CONTAINS))
         for name, values in sent.items()
         if name not in RESERVED
         for value in values
@@ -122,7 +136,9 @@ def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
             **_paging(sent), sort=sent[SORT][0] if sent[SORT] else None, filters=filters or None
         )
     except ValidationError as error:
-        raise BadQuery(f"limit is between 1 and {PAGE} and offset is not negative") from error
+        raise BadQuery(
+            f"limit is between 1 and {PAGE} and offset between 0 and {MAX_OFFSET}"
+        ) from error
 
 
 def listable_slots(view: SchemaView, cls: ClassDefinition) -> dict[str, SlotDefinition]:
@@ -194,8 +210,25 @@ def _term(condition: Condition) -> URIRef | Literal:
 
 
 def condition_pairs(conditions: Iterable[Condition]) -> list[tuple[URIRef, URIRef | Literal]]:
-    """The ``(predicate, value)`` each condition of a plan asks for."""
+    """The ``(predicate, value)`` each condition of a plan asks for: equality conditions only; use ``condition_patterns``."""
     return [(URIRef(c.predicate), _term(c)) for c in conditions]
+
+
+def condition_patterns(variable: str, conditions: Iterable[Condition]) -> SparqlTerm:
+    """The patterns that hold every condition of a plan on ``?variable``: the one renderer of conditions.
+
+    An equality condition is a ``?variable <predicate> <value> .`` triple pattern; a contains condition
+    is a ``FILTER EXISTS`` on a value of the predicate holding its text, ignoring case. The listing,
+    ``Session.matches`` and the commit guard all render through it, so they agree.
+    """
+    conditions = list(conditions)
+    equal = [c for c in conditions if not c.contains]
+    containing = [(URIRef(c.predicate), Literal(c.value)) for c in conditions if c.contains]
+    parts = [
+        match_patterns(variable, condition_pairs(equal)),
+        contains_patterns(variable, containing),
+    ]
+    return join(part for part in parts if part)
 
 
 class Listings:
@@ -233,6 +266,26 @@ class Listings:
             raise BadQuery(f"{cls.name} has no slot {name!r} to filter or sort on")
         return slot
 
+    def _filtered(self, cls: ClassDefinition, filter_: Filter) -> Condition:
+        """The condition of one filter: its slot resolved, its value typed (equality) or kept (contains)."""
+        slot = self._slot(cls, filter_.slot)
+        if filter_.contains:
+            return self._contains(cls, slot, filter_.value)
+        return _condition(self._predicate(slot), typed_value(self._view, slot, filter_.value))
+
+    def _contains(self, cls: ClassDefinition, slot: SlotDefinition, text: str) -> Condition:
+        """The condition that a value of ``slot`` contains ``text``, ignoring case.
+
+        Raises:
+            BadQuery: The slot is not a string slot, or the text is empty.
+        """
+        name = underscore(slot.name)
+        if not holds_text(self._view, slot):
+            raise BadQuery(f"{cls.name} slot {name!r} is not a string; ~= takes a string slot")
+        if not text:
+            raise BadQuery(f"~= on {name!r} needs at least one character")
+        return Condition(predicate=str(self._predicate(slot)), value=text, contains=True)
+
     def _sort(self, cls: ClassDefinition, key: str | None) -> tuple[URIRef | None, bool]:
         if key is None:
             return None, False
@@ -248,15 +301,15 @@ class Listings:
     ) -> ListPlan:
         """The plan of ``request`` for the aggregates of ``cls``, leaving out the ``hidden`` graphs.
 
+        An equality filter becomes a condition on the value typed by the range of its slot. A contains
+        filter keeps its text as sent, to be matched against the text of a string slot.
+
         Raises:
-            BadQuery: A filter or the sort key names a slot the type does not offer, or a filter's
-                value is not a value of its slot.
+            BadQuery: A filter or the sort key names a slot the type does not offer, an equality
+                filter's value is not a value of its slot, or a contains filter is on a slot that is
+                not a string or has no text.
         """
-        conditions = [
-            _condition(self._predicate(slot), typed_value(self._view, slot, f.value))
-            for f in request.filters or []
-            for slot in [self._slot(cls, f.slot)]
-        ]
+        conditions = [self._filtered(cls, f) for f in request.filters or []]
         sort, descending = self._sort(cls, request.sort)
         assert request.limit is not None, "ListRequest defaults"
         assert request.offset is not None, "ListRequest defaults"
@@ -280,7 +333,7 @@ def listing_query(registry: URIRef, plan: ListPlan) -> str:
     terms = v.listing_terms(
         registry,
         target=URIRef(plan.target),
-        patterns=match_patterns("root", condition_pairs(plan.conditions or [])),
+        patterns=condition_patterns("root", plan.conditions or []),
         hidden=term_list(URIRef(graph) for graph in plan.hidden_graphs or []),
         order=order_by(*keys),
         limit=count(plan.limit),

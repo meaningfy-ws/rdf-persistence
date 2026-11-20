@@ -77,7 +77,7 @@ from rdf_persistence.persistence.services.listing import (
     listable_slots,
     sort_keys,
 )
-from rdf_persistence.schema.services.schema_structure import DESCRIPTION
+from rdf_persistence.schema.services.schema_structure import DESCRIPTION, holds_text
 from rdf_persistence.tenancy.services.generated.rp_tenancy_services import TenantSummary
 
 BEARER_AUTH = "bearerAuth"
@@ -409,12 +409,29 @@ def _filter(cls: ClassDefinition, rp_path: str, name: str, slot: SlotDefinition)
     )
 
 
+def _contains(rp_path: str, name: str) -> Parameter:
+    """The ``<name>~`` query parameter of a text slot: a case-insensitive contains filter (PD-8)."""
+    return _query(
+        f"{name}~",
+        Schema(type="string", minLength=1),
+        f"Only the {rp_path} whose {name} contains this text, ignoring case. "
+        "May be repeated: each must hold.",
+    )
+
+
 class AggregateOpenApi:
     """What the document says about the routes of one aggregate type, served at ``rp_path`` (PD-13)."""
 
     def __init__(self, view: SchemaView, cls: ClassDefinition, rp_path: str) -> None:
         self._view, self._cls, self._tag = view, cls, rp_path
         self._schema = _ref(cls.name)
+
+    def _filters(self, name: str, slot: SlotDefinition) -> list[Parameter]:
+        """The equality parameter of a slot, then its ``<name>~`` contains one when it holds text."""
+        filters = [_filter(self._cls, self._tag, name, slot)]
+        if holds_text(self._view, slot):
+            filters.append(_contains(self._tag, name))
+        return filters
 
     def _query_parameters(self) -> list[Parameter]:
         slots = listable_slots(self._view, self._cls)
@@ -423,7 +440,7 @@ class AggregateOpenApi:
             "By IRI if absent."
         )
         return [
-            *(_filter(self._cls, self._tag, name, slot) for name, slot in sorted(slots.items())),
+            *(p for name, slot in sorted(slots.items()) for p in self._filters(name, slot)),
             *_PAGING,
             _query(SORT, Schema(type="string", enum=sort_keys(self._view, self._cls)), order),
         ]

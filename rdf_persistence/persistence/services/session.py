@@ -41,7 +41,6 @@ from rdf_persistence.core.domain.sparql import (
     fill_terms,
     fragment,
     join,
-    match_patterns,
     term,
     term_list,
     triples_block,
@@ -54,6 +53,7 @@ from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     AggregateHead,
     Condition,
+    Contains,
     Filter,
     ListPlan,
     ListRequest,
@@ -61,7 +61,7 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
 from rdf_persistence.persistence.services.listing import (
     PAGE,
     Listings,
-    condition_pairs,
+    condition_patterns,
     items_of,
     listing_query,
     total_of,
@@ -985,8 +985,9 @@ class Session:
     async def matches(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> bool:
         """Whether the aggregate ``iri`` is of exactly the class ``class_iri`` and holds every condition.
 
-        The conditions are those of a ``ListPlan``, so this agrees with what ``find`` lists. No
-        access is checked.
+        The conditions are those of a ``ListPlan``, equality or contains, rendered as the listing
+        renders them (``condition_patterns``), so this agrees with what ``find`` lists. No access
+        is checked.
 
         Raises:
             InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
@@ -996,14 +997,16 @@ class Session:
             MATCHES,
             graph=term(self._graph(iri)),
             type=term(URIRef(class_iri)),
-            patterns=match_patterns("root", condition_pairs(conditions)),
+            patterns=condition_patterns("root", conditions),
             iri=term(URIRef(iri)),
         )
 
     async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
         """The IRIs of the tenant's aggregates of ``cls`` whose slots equal ``equals``, in IRI order.
 
-        A list or tuple value asks for all its items. Prohibitions are ignored (PD-6): a hidden
+        A list or tuple value asks for all its items. A ``Contains`` value, alone or as an item,
+        asks for a case-insensitive substring of a string slot instead of its value:
+        ``find(Book, label=Contains(text="dune"))``. Prohibitions are ignored (PD-6): a hidden
         duplicate is still a duplicate; check each IRI with ``require_aggregate`` before showing it.
 
         Not a snapshot: the pages are separate queries, so a concurrent write can slip past a
@@ -1015,7 +1018,8 @@ class Session:
             RuntimeError: The session was opened without listings.
             ValueError: ``cls`` is not an aggregate root with a path in the tenant databases, or a
                 list value is empty.
-            BadQuery: A name is not a slot a listing may filter on, or a value is not one of its slot.
+            BadQuery: A name is not a slot a listing may filter on, a value is not one of its slot,
+                or a ``Contains`` is on a slot that is not text or has an empty text.
             DatabaseGone: The tenant database does not exist.
         """
         if self._listings is None:
@@ -1433,7 +1437,7 @@ class Transaction:
         names no one if it fails (PD-15)."""
         self._require_open()
         number = count(len(self._guards))
-        patterns = match_patterns(f"root{number}", condition_pairs(conditions))
+        patterns = condition_patterns(f"root{number}", conditions)
         self._guards.append(
             fragment(
                 _MATCH_GUARD,
@@ -1662,12 +1666,18 @@ def _items(name: str, value: object) -> list[object]:
 
 
 def _filters(equals: dict[str, object]) -> list[Filter]:
-    """One filter per value; a list or tuple gives one per item."""
-    return [
-        Filter(slot=name, value=_text(item))
-        for name, value in equals.items()
-        for item in _items(name, value)
-    ]
+    """One filter per value; a list or tuple gives one per item.
+
+    A ``Contains`` item gives a filter that matches a substring, ignoring case; any other item
+    gives one that matches the value.
+    """
+    return [_filter(name, item) for name, value in equals.items() for item in _items(name, value)]
+
+
+def _filter(name: str, item: object) -> Filter:
+    if isinstance(item, Contains):
+        return Filter(slot=name, value=item.text, contains=True)
+    return Filter(slot=name, value=_text(item))
 
 
 def _text(value: object) -> str:

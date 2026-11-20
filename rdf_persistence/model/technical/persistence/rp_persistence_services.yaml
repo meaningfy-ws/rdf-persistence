@@ -46,21 +46,35 @@ classes:
   Filter:
     title: Filter
     description: >-
-      One equality filter of a listing, the name of a slot of the listed type and the value it must
-      have, as the text the caller sent.
+      One filter of a listing, the name of a slot of the listed type and the value it must have, or
+      whose text it must contain, as the text the caller sent.
     class_uri: rp:Filter
     slots:
       - filter_slot
       - filter_value
+      - filter_contains
     slot_usage:
       filter_slot:
         required: true
       filter_value:
         required: true
+      filter_contains:
+        ifabsent: "false"
+  Contains:
+    title: Contains
+    description: >-
+      A value of `Session.find` that asks for a case-insensitive substring of a string slot rather
+      than its value.
+    class_uri: rp:Contains
+    slots:
+      - contains_text
+    slot_usage:
+      contains_text:
+        required: true
   ListRequest:
     title: List request
     description: >-
-      The query of a listing, as the caller sent it: the equality filters, the position and size of
+      The query of a listing, as the caller sent it: the filters, the position and size of
       the page and the key to sort by.
     class_uri: rp:ListRequest
     slots:
@@ -76,20 +90,24 @@ classes:
   Condition:
     title: Condition
     description: >-
-      An equality filter of a listing resolved against the slots of the listed type: the aggregate
-      has this statement. The value is an IRI when it is a reference, else a literal of the datatype.
+      A filter of a listing resolved against the slots of the listed type: the aggregate has this
+      statement, or a statement whose text contains the value. The value is an IRI when it is a
+      reference, else a literal of the datatype.
     class_uri: rp:Condition
     slots:
       - condition_predicate
       - condition_value
       - condition_datatype
       - condition_reference
+      - filter_contains
     slot_usage:
       condition_predicate:
         required: true
       condition_value:
         required: true
       condition_reference:
+        ifabsent: "false"
+      filter_contains:
         ifabsent: "false"
   ListPlan:
     title: List plan
@@ -150,6 +168,7 @@ slots:
     slot_uri: rp:offset
     range: integer
     minimum_value: 0
+    maximum_value: 9007199254740991
   sort:
     title: Sort
     description: >-
@@ -159,11 +178,23 @@ slots:
     range: string
   filters:
     title: Filters
-    description: The equality filters of a listing; all of them must hold.
+    description: The filters of a listing; all of them must hold.
     slot_uri: rp:filter
     range: Filter
     multivalued: true
     inlined_as_list: true
+  filter_contains:
+    title: Filter contains
+    description: Whether the filter matches a substring of the slot's text, ignoring case, rather than the value.
+    slot_uri: rp:filterContains
+    alias: contains
+    range: boolean
+  contains_text:
+    title: Contains text
+    description: The text a string slot must hold, in any case.
+    slot_uri: rp:containsText
+    alias: text
+    range: string
   condition_predicate:
     title: Condition predicate
     description: The IRI of the predicate the aggregate must have a statement with.
@@ -196,7 +227,7 @@ slots:
     range: uri
   conditions:
     title: Conditions
-    description: The equality conditions of a listing; all of them must hold.
+    description: The conditions of a listing; all of them must hold.
     slot_uri: rp:condition
     range: Condition
     multivalued: true

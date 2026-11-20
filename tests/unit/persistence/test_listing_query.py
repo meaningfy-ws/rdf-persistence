@@ -182,6 +182,18 @@ async def listed(
         ([("published", "1922-02-02")], [3], 1),
         ([("label", "Dune"), ("genre", "nonfiction")], [], 0),
         ([("genre", "fiction"), ("limit", "1"), ("offset", "1"), ("sort", "-label")], [1], 3),
+        # TC-05: a contains filter; an aggregate with two matching values is listed once
+        ([("label~", "DUNE")], [1], 1),
+        ([("label~", "u")], [1, 3], 2),
+        ([("authors~", "HER")], [1, 3], 2),
+        ([("authors~", "E"), ("limit", "2")], [1, 2], 3),
+        # book 3 holds two matching authors: a join would list it twice, and offset 3 would reach it
+        ([("authors~", "e"), ("offset", "3")], [], 3),
+        ([("label~", "u"), ("genre", "fiction")], [1, 3], 2),
+        ([("label~", "u"), ("genre", "nonfiction")], [], 0),
+        ([("authors~", "e"), ("authors~", "j")], [3], 1),
+        # every label holds an "e" (Dune too), so the total is 5; by -label: 3, 2, 1, 4, 5
+        ([("label~", "e"), ("sort", "-label"), ("limit", "2"), ("offset", "1")], [2, 1], 5),
     ],
     ids=lambda v: (
         str(v)
@@ -203,6 +215,22 @@ async def test_a_hostile_filter_value_matches_nothing_and_leaves_the_store_uncha
     before = await listed(shelf, view, policy)
     assert await listed(shelf, view, policy, ("label", HOSTILE)) == ([], 0), (
         "it is a value, nothing else"
+    )
+    assert await listed(shelf, view, policy) == before, "and the store still holds every book"
+
+
+# TC-06: the texts that would break out of a literal, as the contains filter's text
+@pytest.mark.parametrize(
+    "text",
+    [HOSTILE, '"', "\\", "}", "a\nb", "\\u0022"],
+    ids=["break-out", "quote", "backslash", "brace", "newline", "unicode-escape"],
+)
+async def test_a_hostile_contains_text_matches_nothing_and_leaves_the_store_unchanged(
+    shelf, view, policy, text
+):
+    before = await listed(shelf, view, policy)
+    assert await listed(shelf, view, policy, ("label~", text)) == ([], 0), (
+        "it is a text, nothing else"
     )
     assert await listed(shelf, view, policy) == before, "and the store still holds every book"
 
