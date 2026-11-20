@@ -155,8 +155,10 @@ An arrow is an import; an import a module already gets through another one is no
 
 `rp.yaml` imports all nine modules (`rp_core`, `rp_annotations`, `rp_provenance`, `rp_access`,
 `rp_tenancy`, `rp_files`, `rp_collections`, `rp_discussion` and `rp_workflow`); an application
-imports `rp.yaml`, or only the modules it uses. The toolkit's own schema is at version `"2"`;
-`rdf_persistence/model/migrations/1__2.yaml` is the step from version 1 and has no operations.
+imports `rp.yaml`, or only the modules it uses. The toolkit's own schema is at version `"3"`;
+`rdf_persistence/model/migrations/1__2.yaml` is the step from version 1 and has no operations, and
+`2__3.yaml` restates the members of every reference collection with `dcterms:hasPart` instead of
+`prov:hadMember` (collection-has-part).
 
 `rp_provenance` holds the activity classes (`Activity`, `Generation`, `Invalidation`, `Add`,
 `Replace`, `Remove`). `rp_discussion` (`PostComment`, `PostReply`) and `rp_files` (`DeleteFile`)
