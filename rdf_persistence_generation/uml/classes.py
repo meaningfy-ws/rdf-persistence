@@ -4,6 +4,8 @@
 their LinkML definitions; ``parents`` reads the generalisations. Slots are in ``slots``.
 """
 
+from collections.abc import Mapping
+
 from linkml_runtime.linkml_model import (
     Annotation,
     ClassDefinition,
@@ -37,13 +39,15 @@ from rdf_persistence_generation.uml.naming import (
     rp_path_for,
     title_for,
 )
-from rdf_persistence_generation.uml.tags import apply_tags
+from rdf_persistence_generation.uml.tags import GRAPH, apply_tags
 
 CLASS_TYPE = "Class"
 ENUMERATION_TYPE = "Enumeration"
 ROOT_STEREOTYPE = "root"
+TENANT_STEREOTYPE = "tenant root"
 ABSTRACT_STEREOTYPE = "abstract"
 RP_PATH = "rp_path"
+META = "meta"
 EMPTY_LIST_NOTE = "no literals; its list is kept outside the model, so slots range over a URI"
 
 
@@ -67,15 +71,27 @@ def _admit(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
         ctx.findings.no_rule(label, f"object type {uml.object_type}")
     elif uml.multiple_stereotypes:
         ctx.findings.no_rule(label, "more than one stereotype")
+    elif uml.object_type == CLASS_TYPE and ctx.toolkit_name(uml.name) is not None:
+        _use_drawn_toolkit_class(ctx, uml, label)
     elif stereotype in (ctx.settings.not_generated_stereotypes or []):
         _leave_out(ctx, uml, LEFT_NOT_GENERATED)
         ctx.findings.note(
             ReportKind.NOT_GENERATED, label, f"stereotype {stereotype}, not generated"
         )
-    elif stereotype.lower() not in ("", ROOT_STEREOTYPE, ABSTRACT_STEREOTYPE):
+    elif stereotype.lower() not in ("", ROOT_STEREOTYPE, TENANT_STEREOTYPE, ABSTRACT_STEREOTYPE):
         ctx.findings.no_rule(label, f"stereotype {stereotype}")
     else:
         _register(ctx, uml, path)
+
+
+def _use_drawn_toolkit_class(ctx: Context, uml: UmlClass, label: str) -> None:
+    """A toolkit class drawn inside the subtree is the toolkit's, not generated; a parent only (PD-17, R-28)."""
+    toolkit_class = str(ctx.toolkit_name(uml.name))
+    _leave_out(ctx, uml, LEFT_NOT_GENERATED)
+    ctx.drawn_toolkit[uml.object_id] = toolkit_class
+    ctx.findings.note(
+        ReportKind.NOT_GENERATED, label, f"drawn as the toolkit's {toolkit_class}, not generated"
+    )
 
 
 def _leave_out(ctx: Context, uml: UmlClass, why: str) -> None:
@@ -96,7 +112,9 @@ def _register(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
         stereotype == ROOT_STEREOTYPE,
         bool(uml.is_abstract) or stereotype == ABSTRACT_STEREOTYPE,
     )
-    ctx.elements[uml.object_id] = Element(uml, name, path, flags)
+    ctx.elements[uml.object_id] = Element(
+        uml, name, path, flags, is_tenant_root=stereotype == TENANT_STEREOTYPE
+    )
 
 
 def _collect_outside(ctx: Context, model: UmlModel) -> None:
@@ -231,8 +249,22 @@ def build_class(
     derived: dict[str, Annotation] = {}
     if element.is_root:
         derived[RP_PATH] = annotation(RP_PATH, root_path(ctx, element))
+    if element.is_tenant_root:
+        derived[GRAPH] = annotation(GRAPH, META)
+        _check_tenant_graph(ctx, element)
     apply_tags(ctx, element, definition, derived)
     return definition
+
+
+def _check_tenant_graph(ctx: Context, element: Element) -> None:
+    """A tenant root lives in the meta graph, so a ``graph`` tag of another value is a problem (R-18)."""
+    written = ctx.tags.get(element.uml.object_id, {}).get(GRAPH)
+    if written is not None and written.strip().lower() != META:
+        ctx.findings.problem(
+            UmlRule.TENANT_ROOT,
+            element.label,
+            f"graph: {written!r} conflicts with the «tenant root» stereotype, which is graph {META}",
+        )
 
 
 def parents(ctx: Context, model: UmlModel) -> dict[int, str]:
@@ -258,6 +290,39 @@ def parents(ctx: Context, model: UmlModel) -> dict[int, str]:
         for child, targets in found.items()
         if (name := _one_parent(ctx, ctx.elements[child], targets)) is not None
     }
+
+
+def _concrete_below(
+    label: str, children: dict[str, list[Element]], seen: set[str]
+) -> list[Element]:
+    """The concrete classes that descend from ``label`` through any number of abstract ones."""
+    found: list[Element] = []
+    for child in children.get(label, []):
+        if child.label in seen:
+            continue
+        seen.add(child.label)
+        found += _concrete_below(child.label, children, seen) if child.is_abstract else [child]
+    return found
+
+
+def mark_abstract_roots(ctx: Context, ranges: set[str], parent_of: Mapping[int, str]) -> None:
+    """Mark the abstract roots (R-23, PD-19).
+
+    An abstract class is one when it is the range of a generated slot (``ranges``), has concrete descendants
+    and all of them are «root».
+    """
+    children: dict[str, list[Element]] = {}
+    for element in ctx.elements.values():
+        parent = parent_of.get(element.uml.object_id)
+        if parent is not None:
+            children.setdefault(parent, []).append(element)
+    for element in ctx.elements.values():
+        if element.is_enum or not element.is_abstract or element.is_root:
+            continue
+        below = _concrete_below(element.label, children, {element.label})
+        element.is_abstract_root = (
+            element.label in ranges and bool(below) and all(each.is_root for each in below)
+        )
 
 
 def _parent_label(ctx: Context, target: int) -> str | None:

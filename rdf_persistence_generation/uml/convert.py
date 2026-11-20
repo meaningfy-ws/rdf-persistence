@@ -29,6 +29,7 @@ from rdf_persistence_generation.uml.classes import (
     build_class,
     build_enum,
     collect_elements,
+    mark_abstract_roots,
     parents,
 )
 from rdf_persistence_generation.uml.context import Context, Element
@@ -40,13 +41,17 @@ from rdf_persistence_generation.uml.modules import (
     cycle_components,
     module_name,
     package_paths,
+    reachable,
 )
 from rdf_persistence_generation.uml.naming import title_for
 from rdf_persistence_generation.uml.slots import (
     SharedSlots,
     Usage,
     attribute_usages,
+    choose_homes,
+    name_slots,
     share,
+    shared_edges,
     split_toolkit,
     use_toolkit_slots,
 )
@@ -125,22 +130,71 @@ def _references(
     return edges
 
 
-def _layout(
-    ctx: Context, elements: list[Element], edges: Mapping[ModulePath, set[ModulePath]]
-) -> dict[ModulePath, ModulePath]:
+Edges = dict[ModulePath, set[ModulePath]]
+
+
+def _merge(
+    edges: Mapping[ModulePath, set[ModulePath]],
+) -> tuple[dict[ModulePath, ModulePath], list[list[ModulePath]]]:
     """The path each package is written under: its own, or the first of the cycle it is in (D-5)."""
     merged = {path: path for path in edges}
-    root_name = ctx.settings.root_name
-    for component in cycle_components(list(edges), dict(edges)):
+    components = cycle_components(list(edges), dict(edges))
+    for component in components:
         for path in component:
             merged[path] = component[0]
+    return merged, components
+
+
+def _module_graph(
+    edges: Mapping[ModulePath, set[ModulePath]], merged: Mapping[ModulePath, ModulePath]
+) -> Edges:
+    """The imports between the modules the packages are written as."""
+    graph: Edges = {path: set() for path in set(merged.values())}
+    for source, targets in edges.items():
+        graph[merged[source]] |= {merged[target] for target in targets}
+    for path, targets in graph.items():
+        targets.discard(path)
+    return graph
+
+
+def _grown(
+    edges: Mapping[ModulePath, set[ModulePath]], added: Mapping[ModulePath, set[ModulePath]]
+) -> Edges:
+    grown: Edges = {path: set(targets) for path, targets in edges.items()}
+    for path, targets in added.items():
+        grown.setdefault(path, set()).update(targets)
+        grown[path].discard(path)
+    return grown
+
+
+def _settle(
+    usages: list[Usage], edges: Edges, by_label: Mapping[str, Element]
+) -> tuple[
+    Edges, dict[ModulePath, ModulePath], list[list[ModulePath]], dict[str, ModulePath | None]
+]:
+    """The imports once the shared slots are placed, and the modules and homes that agree with them (PD-16).
+
+    A shared slot's home is chosen from the imports there are, and its placing adds imports, which can
+    make a cycle: so the choice is repeated, the imports only growing, until the modules stop changing.
+    """
+    merged, _ = _merge(edges)
+    while True:
+        homes = choose_homes(usages, merged, reachable(_module_graph(edges, merged)))
+        edges = _grown(edges, shared_edges(usages, merged, homes, by_label))
+        again, components = _merge(edges)
+        if again == merged:
+            return edges, merged, components, homes
+        merged = again
+
+
+def _note_merges(ctx: Context, components: list[list[ModulePath]]) -> None:
+    for component in components:
         names = ", ".join("/".join(path) or "main" for path in component)
         ctx.findings.note(
             ReportKind.MERGED_CYCLE,
-            module_name(root_name, component[0]),
+            module_name(ctx.settings.root_name, component[0]),
             f"the packages {names} are written as one module",
         )
-    return merged
 
 
 def _module_names(ctx: Context, paths: set[ModulePath]) -> dict[ModulePath, str]:
@@ -276,11 +330,30 @@ def _classes(
     owned = {usage.shape.range for usage in usages if usage.shape.owned}
     return {
         e.uml.object_id: build_class(
-            ctx, e, parent_of.get(e.uml.object_id), e.label in owned and not e.is_root, defaults
+            ctx,
+            e,
+            parent_of.get(e.uml.object_id),
+            e.label in owned and not e.is_a_boundary_root,
+            defaults,
         )
         for e in elements
         if not e.is_enum
     }
+
+
+def _lay_out(
+    ctx: Context, elements: list[Element], usages: list[Usage], parent_of: Mapping[int, str]
+) -> tuple[Layout, SharedSlots]:
+    """The modules the packages are written as, and the slots each of them defines or shares (R-24, D-5)."""
+    by_label = {element.label: element for element in elements}
+    edges, merged, components, homes = _settle(
+        usages, _references(elements, usages, parent_of), by_label
+    )
+    _note_merges(ctx, components)
+    names = _module_names(ctx, set(merged.values()))
+    module_of = {element.uml.object_id: names[merged[element.path]] for element in elements}
+    named_homes = {name: names[path] if path else None for name, path in homes.items()}
+    return Layout(elements, edges, merged, names), share(ctx, usages, module_of, named_homes)
 
 
 def convert(
@@ -296,24 +369,22 @@ def convert(
     ctx.paths = package_paths(model, settings)
     elements, usages, parent_of = _build(ctx, model)
     toolkit_usages, usages = split_toolkit(ctx, usages)
+    name_slots(ctx, usages, toolkit_usages)
     if not ctx.elements and not ctx.findings.problems():
         ctx.findings.problem(
             UmlRule.PACKAGE_MODULE,
             settings.subtree_package,
             "the package holds no class or enumeration to convert",
         )
-    edges = _references(elements, usages, parent_of)
-    merged = _layout(ctx, elements, edges)
-    names = _module_names(ctx, set(merged.values()))
-    module_of = {element.uml.object_id: names[merged[element.path]] for element in elements}
-    shared = share(ctx, usages, module_of)
+    layout, shared = _lay_out(ctx, elements, usages, parent_of)
+    mark_abstract_roots(ctx, {usage.shape.range for usage in usages}, parent_of)
     classes = _classes(ctx, elements, usages, parent_of)
     built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx))
     use_toolkit_slots(ctx, toolkit_usages, classes, shared, built.slot_names)
     problems = ctx.findings.problems()
     if problems:
         return [], ctx.findings.report(), problems
-    schemas = _assemble(ctx, Layout(elements, edges, merged, names), built)
+    schemas = _assemble(ctx, layout, built)
     return schemas, ctx.findings.report(), []
 
 

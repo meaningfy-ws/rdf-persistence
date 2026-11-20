@@ -1,8 +1,8 @@
-"""TC-5, TC-9 (same-package half): the plain conversion rules R-1..R-13 and R-19, one table (PD-5..PD-16, D-5, D-10..D-14).
+"""TC-5, TC-9: the conversion rules R-1..R-29, one table (PD-5..PD-21, D-5, D-10..D-14).
 
 Each row builds a ``UmlModel`` directly (the reader is not involved), converts it and checks the
 fragment of LinkML the rule's column promises, or the problem its failure branch gives. The last
-test says every ``UmlRule`` value has a row; the rules of stage 2 are marked as such.
+test says every ``UmlRule`` value has a row.
 """
 
 from collections.abc import Callable
@@ -69,7 +69,9 @@ def _problem(rule: UmlRule, *fragments: str) -> Check:
     def check(out: Converted) -> None:
         assert [p.rule for p in out.problems] == [rule.value], out.problem_texts()
         for fragment in fragments:
-            assert fragment in out.problem_texts()[0]
+            assert fragment in out.problem_texts()[0], (
+                f"the problem must say {fragment!r}: {out.problem_texts()}"
+            )
 
     return check
 
@@ -87,34 +89,44 @@ def _all(*checks: Check) -> Check:
 
 def _two_modules(out: Converted) -> None:
     _no_problems(out)
-    assert sorted(out.schemas) == ["app", "app_library", "app_shelves"]
+    assert sorted(out.schemas) == ["app", "app_library", "app_shelves"], (
+        "a module per package, a root"
+    )
     library = out.schemas["app_library"]
-    assert library.id == "https://example.org/ns/library/app_library"
-    assert library.annotations["module_kind"].value == "domain"
-    assert library.title == "Library"
-    assert library.description == "The library package of the app model, converted from UML."
-    assert library.imports[0] == "linkml:types"
-    assert out.schemas["app"].imports == ["linkml:types", "app_library", "app_shelves"]
-    assert out.schemas["app"].version == "1"
+    assert library.id == "https://example.org/ns/library/app_library", "the id is base + module"
+    assert library.annotations["module_kind"].value == "domain", "the module is a domain module"
+    assert library.title == "Library", "the title is the package name in words"
+    assert library.description == "The library package of the app model, converted from UML.", (
+        "the description is the default one"
+    )
+    assert library.imports[0] == "linkml:types", "the module imports the LinkML types first"
+    assert out.schemas["app"].imports == ["linkml:types", "app_library", "app_shelves"], (
+        "the root imports every module"
+    )
+    assert out.schemas["app"].version == "1", "the root carries the version"
 
 
 def _main_module(out: Converted) -> None:
     _no_problems(out)
-    assert sorted(out.schemas) == ["app", "app_main"]
+    assert sorted(out.schemas) == ["app", "app_main"], "the subtree package's classes go to main"
 
 
 def _nested_names(out: Converted) -> None:
     _no_problems(out)
-    assert sorted(out.schemas) == ["app", "app_library__rare_books", "app_rare_books"]
+    assert sorted(out.schemas) == ["app", "app_library__rare_books", "app_rare_books"], (
+        "a nested path is joined by two underscores and never collides with a single segment"
+    )
 
 
 def _package_note(out: Converted) -> None:
-    assert out.schemas["app_library"].description == "Everything about books."
+    assert out.schemas["app_library"].description == "Everything about books.", (
+        "the package note, trimmed, is the module description"
+    )
 
 
 def _no_empty_module(out: Converted) -> None:
     _no_problems(out)
-    assert sorted(out.schemas) == ["app", "app_library"]
+    assert sorted(out.schemas) == ["app", "app_library"], "a package with no class has no module"
 
 
 _RARE = UmlPackage(package_id=5, name="rare-books", parent_id=MODEL_PKG)
@@ -182,20 +194,22 @@ ROWS_R1 = [
 
 def _implicit_iri(out: Converted) -> None:
     _no_problems(out)
-    assert out.klass("app_library", "Book").class_uri is None
+    assert out.klass("app_library", "Book").class_uri is None, "an implicit IRI is not written"
 
 
 def _foreign_iri(out: Converted) -> None:
     _no_problems(out)
-    assert out.klass("app_library", "Book").class_uri == "bibo:Book"
+    assert out.klass("app_library", "Book").class_uri == "bibo:Book", "a foreign IRI is kept"
     assert (
         out.schemas["app_library"].prefixes["bibo"].prefix_reference
         == "http://purl.org/ontology/bibo/"
-    )
+    ), "the foreign prefix is declared"
 
 
 def _metamodel_prefix(out: Converted) -> None:
-    assert out.klass("app_library", "Thing").class_uri == "dcterms:Thing"
+    assert out.klass("app_library", "Thing").class_uri == "dcterms:Thing", (
+        "the metamodel's prefix name is used"
+    )
 
 
 ROWS_R2 = [
@@ -275,12 +289,12 @@ ROWS_R2 = [
 
 def _abstract(out: Converted) -> None:
     _no_problems(out)
-    assert out.klass("app_library", "Book").abstract is True
-    assert not out.report_lines("ignored_stereotype")
+    assert out.klass("app_library", "Book").abstract is True, "the class is abstract"
+    assert not out.report_lines("ignored_stereotype"), "the Abstract stereotype is not reported"
 
 
 def _concrete(out: Converted) -> None:
-    assert not out.klass("app_library", "Book").abstract
+    assert not out.klass("app_library", "Book").abstract, "a concrete class is not abstract"
 
 
 ROWS_R3 = [
@@ -309,14 +323,14 @@ ROWS_R3 = [
 
 def _is_a(out: Converted) -> None:
     _no_problems(out)
-    assert out.klass("app_library", "Book").is_a == "Series"
-    assert not out.klass("app_library", "Book").mixins
+    assert out.klass("app_library", "Book").is_a == "Series", "the one parent is is_a"
+    assert not out.klass("app_library", "Book").mixins, "a domain parent is no mixin"
 
 
 def _is_a_across(out: Converted) -> None:
     _no_problems(out)
-    assert out.klass("app_library", "Book").is_a == "Series"
-    assert "app_catalogue" in out.schemas["app_library"].imports
+    assert out.klass("app_library", "Book").is_a == "Series", "the parent is is_a"
+    assert "app_catalogue" in out.schemas["app_library"].imports, "the parent's module is imported"
 
 
 ROWS_R4 = [
@@ -375,19 +389,21 @@ ROWS_R4 = [
 def _title_slot(out: Converted) -> None:
     _no_problems(out)
     slot = out.slot("app_library", "title")
-    assert slot.slot_uri == "dcterms:title"
-    assert slot.range == "string"
-    assert slot.required is True
-    assert not slot.multivalued
-    assert out.klass("app_library", "Book").slots == ["title", "subtitle"]
+    assert slot.slot_uri == "dcterms:title", "the slot keeps its IRI"
+    assert slot.range == "string", "xsd:string is string"
+    assert slot.required is True, "a lower bound of 1 is required"
+    assert not slot.multivalued, "an upper bound of 1 is single-valued"
+    assert out.klass("app_library", "Book").slots == ["title", "subtitle"], (
+        "the class lists its slots in attribute order"
+    )
 
 
 def _range_is(expected: str, minimum: int | None = None) -> Check:
     def check(out: Converted) -> None:
         _no_problems(out)
         slot = out.slot("app_library", "pages")
-        assert slot.range == expected
-        assert slot.minimum_value == minimum
+        assert slot.range == expected, f"the range of the slot is {expected}"
+        assert slot.minimum_value == minimum, f"the minimum value is {minimum}"
 
     return check
 
@@ -398,8 +414,12 @@ def _shape(
     def check(out: Converted) -> None:
         _no_problems(out)
         found = out.slot("app_library", slot)
-        assert (bool(found.required), bool(found.multivalued)) == (required, multivalued)
-        assert (found.minimum_cardinality, found.maximum_cardinality) == (minimum, maximum)
+        assert (bool(found.required), bool(found.multivalued)) == (required, multivalued), (
+            f"required and multivalued of {slot}"
+        )
+        assert (found.minimum_cardinality, found.maximum_cardinality) == (minimum, maximum), (
+            f"the cardinalities of {slot}"
+        )
 
     return check
 
@@ -442,14 +462,16 @@ def _langstring(declared: str) -> Check:
     def check(out: Converted) -> None:
         assert out.problem_texts() == [
             f"[no_rule] Book.pages: {declared} has no toolkit range yet (#209): no rule converts it"
-        ]
+        ], f"{declared} is refused, never narrowed to a string"
 
     return check
 
 
 def _ignored_stereotype(out: Converted) -> None:
     _no_problems(out)
-    assert out.report_lines("ignored_stereotype") == ["Book.pages: stereotype key is not used"]
+    assert out.report_lines("ignored_stereotype") == ["Book.pages: stereotype key is not used"], (
+        "an attribute stereotype is reported, not used"
+    )
 
 
 ROWS_R5 = [
@@ -544,10 +566,12 @@ def _both_ends(out: Converted) -> None:
         "Shelf",
         False,
         False,
+    ), "the destination role is a slot on the source"
+    assert out.slot("app_library", "books").range == "Book", (
+        "the source role is a slot on the target"
     )
-    assert out.slot("app_library", "books").range == "Book"
-    assert out.klass("app_library", "Book").slots == ["shelved_on"]
-    assert out.klass("app_library", "Shelf").slots == ["books"]
+    assert out.klass("app_library", "Book").slots == ["shelved_on"], "Book lists its role"
+    assert out.klass("app_library", "Shelf").slots == ["books"], "Shelf lists its role"
 
 
 def _card_shape(card: str | None, shape: tuple[bool, bool, int | None, int | None]) -> Check:
@@ -556,7 +580,7 @@ def _card_shape(card: str | None, shape: tuple[bool, bool, int | None, int | Non
     def check(out: Converted) -> None:
         check_shape(out)
         unspecified = out.report_lines("unspecified_multiplicity")
-        assert bool(unspecified) == (not card)
+        assert bool(unspecified) == (not card), "only a missing multiplicity is reported"
 
     return check
 
@@ -657,30 +681,34 @@ ROWS_R6 = [
 def _enum(out: Converted) -> None:
     _no_problems(out)
     values = out.enum("app_library", "Genre").permissible_values
-    assert list(values) == ["novel", "on_loan"]
-    assert values["on_loan"].meaning == "lib:onLoan"
-    assert values["on_loan"].title == "On loan"
-    assert values["on_loan"].description == "The lib:onLoan."
-    assert values["novel"].meaning == "lib:novel"
+    assert list(values) == ["novel", "on_loan"], "the literals are keys in snake case, in order"
+    assert values["on_loan"].meaning == "lib:onLoan", "a prefixed literal is its own meaning"
+    assert values["on_loan"].title == "On loan", "the title is the literal in words"
+    assert values["on_loan"].description == "The lib:onLoan.", "the note is the description"
+    assert values["novel"].meaning == "lib:novel", "an unprefixed literal gets the default prefix"
     assert out.report_lines("implicit_meaning") == [
         "Genre.novel: written without a prefix; meaning lib:novel"
-    ]
+    ], "the implicit meaning is reported"
 
 
 def _empty_enum(out: Converted) -> None:
     _no_problems(out)
-    assert out.slot("app_library", "pages").range == "uri"
-    assert "Genre" not in out.schemas["app_library"].enums
+    assert out.slot("app_library", "pages").range == "uri", (
+        "a slot to an empty enumeration is a URI"
+    )
+    assert "Genre" not in out.schemas["app_library"].enums, "an empty enumeration makes no enum"
     assert out.report_lines("external_list") == [
         "Genre: no literals; its list is kept outside the model, so slots range over a URI"
-    ]
+    ], "the empty list is reported"
 
 
 def _dependency(out: Converted) -> None:
     _no_problems(out)
     slot = out.slot("app_library", "genre")
-    assert (slot.range, bool(slot.required), bool(slot.multivalued)) == ("Genre", False, False)
-    assert out.klass("app_library", "Book").slots == ["genre"]
+    assert (slot.range, bool(slot.required), bool(slot.multivalued)) == ("Genre", False, False), (
+        "a dependency is a slot ranged by the enumeration"
+    )
+    assert out.klass("app_library", "Book").slots == ["genre"], "the source lists the slot"
 
 
 def _dependency_link(role: str | None, target: int = GENRE) -> object:
@@ -753,22 +781,28 @@ ROWS_R8 = [
 
 def _descriptions(out: Converted) -> None:
     _no_problems(out)
-    assert out.klass("app_library", "Book").description == "Line one.\nLine two."
-    assert out.slot("app_library", "pages").description == "The pages."
-    assert out.slot("app_library", "shelf").description == "On a shelf."
-    assert not out.report_lines("no_note")
+    assert out.klass("app_library", "Book").description == "Line one.\nLine two.", (
+        "line ends are normalised and the note is trimmed"
+    )
+    assert out.slot("app_library", "pages").description == "The pages.", "an attribute's note"
+    assert out.slot("app_library", "shelf").description == "On a shelf.", "a connector's note"
+    assert not out.report_lines("no_note"), "an element with a note has no no-note line"
 
 
 def _no_note(out: Converted) -> None:
-    assert out.klass("app_library", "Book").description is None
-    assert out.report_lines("no_note") == ["Book: no note, so no description"]
+    assert out.klass("app_library", "Book").description is None, "no placeholder description"
+    assert out.report_lines("no_note") == ["Book: no note, so no description"], (
+        "the missing note is reported"
+    )
 
 
 def _titles(out: Converted) -> None:
     _no_problems(out)
-    assert out.klass("app_library", "ISBNRecordFile").title == "ISBN record file"
-    assert out.klass("app_library", "Book").title == "Printed book"
-    assert out.slot("app_library", "has_chapter").title == "Has chapter"
+    assert out.klass("app_library", "ISBNRecordFile").title == "ISBN record file", (
+        "capitals stay capitals in a split name"
+    )
+    assert out.klass("app_library", "Book").title == "Printed book", "the alias is the title"
+    assert out.slot("app_library", "has_chapter").title == "Has chapter", "a slot's title"
 
 
 ROWS_R9 = [
@@ -811,29 +845,35 @@ ROWS_R9 = [
 def _root(out: Converted) -> None:
     _no_problems(out)
     book = out.klass("app_library", "Book")
-    assert book.mixins == ["AggregateRoot"]
-    assert book.annotations["rp_path"].value == "books"
-    assert "rdf_persistence/model/rp_core" in out.schemas["app_library"].imports
+    assert book.mixins == ["AggregateRoot"], "a root has the aggregate-root mixin"
+    assert book.annotations["rp_path"].value == "books", "its path is the plural in kebab case"
+    assert "rdf_persistence/model/rp_core" in out.schemas["app_library"].imports, (
+        "the module imports the toolkit's core"
+    )
 
 
 def _root_path(out: Converted) -> None:
-    assert out.klass("app_library", "Book").annotations["rp_path"].value == "tomes"
+    assert out.klass("app_library", "Book").annotations["rp_path"].value == "tomes", (
+        "the tagged path wins over the derived one"
+    )
 
 
 def _owned(multivalued: bool) -> Check:
     def check(out: Converted) -> None:
         _no_problems(out)
         slot = out.slot("app_library", "has_chapter")
-        assert slot.annotations["owned"].value == "true"
-        assert bool(slot.inlined_as_list) is multivalued
-        assert bool(slot.inlined) is not multivalued
+        assert slot.annotations["owned"].value == "true", "the slot is owned"
+        assert bool(slot.inlined_as_list) is multivalued, "a many slot is inlined as a list"
+        assert bool(slot.inlined) is not multivalued, "a single slot is inlined"
 
     return check
 
 
 def _not_owned(out: Converted) -> None:
     _no_problems(out)
-    assert "owned" not in out.slot("app_library", "has_chapter").annotations
+    assert "owned" not in out.slot("app_library", "has_chapter").annotations, (
+        "a plain reference is not owned"
+    )
 
 
 def _book_chapter(
@@ -932,15 +972,21 @@ def _annotated(**expected: str) -> Check:
     def check(out: Converted) -> None:
         _no_problems(out)
         annotations = out.klass("app_library", "Book").annotations
-        assert {name: annotations[name].value for name in expected} == expected
+        assert {name: annotations[name].value for name in expected} == expected, (
+            "the class carries the annotations its tagged values name"
+        )
 
     return check
 
 
 def _ignored_class_tag(out: Converted) -> None:
     _no_problems(out)
-    assert out.report_lines("ignored_tag") == ["Book: tagged value junctionKind is not used"]
-    assert "junctionKind" not in out.klass("app_library", "Book").annotations
+    assert out.report_lines("ignored_tag") == ["Book: tagged value junctionKind is not used"], (
+        "an unknown tag is reported"
+    )
+    assert "junctionKind" not in out.klass("app_library", "Book").annotations, (
+        "an unknown tag is not written"
+    )
 
 
 def _tagged_root(*tags: object, stereotype: str | None = "root") -> object:
@@ -1020,15 +1066,15 @@ def _keyed(*tags: object, stereotype: str | None = "root") -> object:
 def _key(name: str, slots: list[str], *, scope: str | None, nulls_equal: bool) -> Check:
     def check(out: Converted) -> None:
         _no_problems(out)
-        assert _key_names(out) == [name]
+        assert _key_names(out) == [name], "the class has the one key"
         found = out.klass("app_library", "Book").unique_keys[name]
-        assert isinstance(found, UniqueKey)
-        assert [str(slot) for slot in found.unique_key_slots] == slots
-        assert found.consider_nulls_inequal is (False if nulls_equal else None)
+        assert isinstance(found, UniqueKey), "the key is a unique key"
+        assert [str(slot) for slot in found.unique_key_slots] == slots, "the key's slots"
+        assert found.consider_nulls_inequal is (False if nulls_equal else None), "the nulls clause"
         if scope is None:
-            assert "rp_unique_scope" not in found.annotations
+            assert "rp_unique_scope" not in found.annotations, "a part's key has no scope"
         else:
-            assert found.annotations["rp_unique_scope"].value == scope
+            assert found.annotations["rp_unique_scope"].value == scope, "a root's key is scoped"
 
     return check
 
@@ -1040,7 +1086,7 @@ def _key_names(out: Converted) -> list[str]:
 
 def _two_keys(out: Converted) -> None:
     _no_problems(out)
-    assert _key_names(out) == ["by_isbn", "by_title"]
+    assert _key_names(out) == ["by_isbn", "by_title"], "each tag gives one key"
 
 
 def _key_problem(*fragments: str) -> Check:
@@ -1131,23 +1177,37 @@ ROWS_R21 = [
 
 def _not_generated(out: Converted) -> None:
     _no_problems(out)
-    assert "Series" not in out.schemas["app_library"].classes
-    assert out.slot("app_library", "series").range == "uri"
-    assert out.report_lines("not_generated") == ["Series: stereotype loaded graph, not generated"]
+    assert "Series" not in out.schemas["app_library"].classes, "the class is not generated"
+    assert out.slot("app_library", "series").range == "uri", "a slot to it is a URI"
+    assert out.report_lines("not_generated") == [
+        "Series: stereotype loaded graph, not generated"
+    ], "the class is reported"
+
+
+def _not_generated_link(out: Converted) -> None:
+    _no_problems(out)
+    assert out.slot("app_library", "series").range == "uri", "the slot ranges over a URI"
+    assert len(out.report_lines("not_generated")) == 1, "one report line, the class's"
+    assert out.report_lines("outside_link") == [], "a not-generated class is not an outside link"
+    assert out.report_lines("excluded_link") == [], "a not-generated class is not an excluded link"
 
 
 def _outside(out: Converted) -> None:
     _no_problems(out)
-    assert out.slot("app_library", "series").range == "uri"
-    assert [line.split(":")[0] for line in out.report_lines("outside_link")] == ["Book.series"]
+    assert out.slot("app_library", "series").range == "uri", "a link outside the subtree is a URI"
+    assert [line.split(":")[0] for line in out.report_lines("outside_link")] == ["Book.series"], (
+        "the outside link is reported once, naming the slot"
+    )
 
 
 def _excluded(out: Converted) -> None:
     _no_problems(out)
-    assert "series" not in out.schemas["app_library"].slots
+    assert "series" not in out.schemas["app_library"].slots, (
+        "a link to an excluded class makes no slot"
+    )
     assert [line.split(":")[0] for line in out.report_lines("excluded_link")] == [
         "Book.series -> Series"
-    ]
+    ], "the excluded link is reported as <Source>.<role> -> <Target>"
 
 
 _EXCLUDED_MODEL = model(
@@ -1186,12 +1246,12 @@ def _shared(out: Converted) -> None:
 
 def _merged(out: Converted) -> None:
     _no_problems(out)
-    assert sorted(out.schemas) == ["app", "app_library"]
-    assert sorted(out.schemas["app_library"].classes) == ["Book", "Shelf"]
-    assert out.schemas["app"].imports == ["linkml:types", "app_library"]
+    assert sorted(out.schemas) == ["app", "app_library"], "the two packages are one module"
+    assert sorted(out.schemas["app_library"].classes) == ["Book", "Shelf"], "it holds both classes"
+    assert out.schemas["app"].imports == ["linkml:types", "app_library"], "the root imports it once"
     assert out.report_lines("merged_cycle") == [
         "app_library: the packages library, shelves are written as one module"
-    ]
+    ], "the merge is reported"
 
 
 _SHARED = (
@@ -1212,7 +1272,7 @@ ROWS_R12 = [
     ),
     Row(
         "a link to a class outside the subtree is a URI range and a report line (D-17)",
-        UmlRule.NOT_GENERATED,
+        UmlRule.LEFT_OUT_LINK,
         model(
             klass(BOOK, "lib:Book"),
             links=(link(1, BOOK, SERIES, target_role="series"),),
@@ -1223,14 +1283,24 @@ ROWS_R12 = [
     ),
     Row(
         "a link to a class in an excluded package makes no slot and a report line",
-        UmlRule.NOT_GENERATED,
+        UmlRule.LEFT_OUT_LINK,
         _EXCLUDED_MODEL,
         _excluded,
         {"exclude_packages": ["catalogue"]},
     ),
     Row(
+        "a slot to a not-generated class is a URI range with the class's one line, and no link line",
+        UmlRule.LEFT_OUT_LINK,
+        model(
+            klass(BOOK, "lib:Book"),
+            klass(SERIES, "lib:Series", stereotype="loaded graph"),
+            links=(link(1, BOOK, SERIES, target_role="series"),),
+        ),
+        _not_generated_link,
+    ),
+    Row(
         "the same class in a package no exclusion covers is outside, not excluded",
-        UmlRule.NOT_GENERATED,
+        UmlRule.LEFT_OUT_LINK,
         _EXCLUDED_MODEL,
         _outside,
     ),
@@ -1269,22 +1339,6 @@ ROWS_R12 = [
             links=(link(1, BOOK, SHELF, target_role="shelf", source_role="featured"),),
         ),
         _merged,
-    ),
-    Row(
-        "stage-1 limit: a slot used in two modules is a problem",
-        UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
-        model(
-            klass(
-                BOOK, "lib:Book", CATALOGUE_PKG, attributes=(attribute(1, BOOK, "lib:hasParent"),)
-            ),
-            klass(
-                SHELF, "lib:Shelf", SHELVES_PKG, attributes=(attribute(2, SHELF, "lib:hasParent"),)
-            ),
-        ),
-        _problem(
-            UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
-            "has_parent: used in app_catalogue, app_shelves; slots shared across packages arrive in stage 2 (task 2.6)",
-        ),
     ),
 ]
 
@@ -1540,7 +1594,9 @@ ROWS_W3 = [
 
 def _both_roles(out: Converted) -> None:
     _no_problems(out)
-    assert sorted(out.schemas["app_library"].slots) == ["has_chapter", "in_book"]
+    assert sorted(out.schemas["app_library"].slots) == ["has_chapter", "in_book"], (
+        "each role of the association is a slot"
+    )
 
 
 def _directed_pair(direction: str, source_role: str | None = "lib:inBook") -> object:
@@ -1582,19 +1638,23 @@ def test_the_path_form_and_the_name_form_of_the_package_give_the_same_modules() 
     by_name = _from_library(subtree_package="library")
     by_path = _from_library(subtree_package="MODEL/library")
 
-    assert by_name.problems == by_path.problems == []
-    assert sorted(by_path.schemas) == ["app", "app_main", "app_rare_books"]
+    assert by_name.problems == by_path.problems == [], "both forms convert without a problem"
+    assert sorted(by_path.schemas) == ["app", "app_main", "app_rare_books"], (
+        "the path form gives the modules of the subtree, not none"
+    )
     for name, schema in by_name.schemas.items():
-        assert yaml_dumper.dumps(by_path.schemas[name]) == yaml_dumper.dumps(schema)
+        assert yaml_dumper.dumps(by_path.schemas[name]) == yaml_dumper.dumps(schema), (
+            f"the module {name} is the same by name and by path"
+        )
 
 
 def test_a_subtree_with_no_class_or_enumeration_is_a_problem() -> None:
     out = run(model(), subtree_package="model")
 
-    assert out.schemas == {}
+    assert out.schemas == {}, "nothing is written for an empty subtree"
     assert out.problem_texts() == [
         "[package_module] model: the package holds no class or enumeration to convert"
-    ]
+    ], "an empty subtree is a problem, never a silent success"
 
 
 def _no_direction() -> object:
@@ -1938,13 +1998,13 @@ def _book_uses(
         module = out.schemas["app_library"]
         assert not module.slots, "a toolkit slot is not defined again"
         book = out.klass("app_library", "Book")
-        assert list(book.slots) == slots
+        assert list(book.slots) == slots, "the slots the Book lists"
         carried = {
             name: _limits(book.slot_usage[name])
             for name in _TOOLKIT_SLOTS
             if name in book.slot_usage
         }
-        assert carried == (usage or {})
+        assert carried == (usage or {}), "the limits the slot_usage of a toolkit slot carries"
         assert bool(book.slot_usage) == bool(usage), "no slot_usage of another slot"
         for imported in imports:
             assert imported in module.imports, f"{imported} is imported"
@@ -1954,7 +2014,7 @@ def _book_uses(
 
 def _line(kind: str, *lines: str) -> Check:
     def check(out: Converted) -> None:
-        assert out.report_lines(kind) == list(lines)
+        assert out.report_lines(kind) == list(lines), f"the {kind} lines of the report"
 
     return check
 
@@ -1962,11 +2022,11 @@ def _line(kind: str, *lines: str) -> Check:
 def _identifier_slot(out: Converted) -> None:
     _no_problems(out)
     slot = out.slot("app_library", "identifier")
-    assert slot.slot_uri == "dcterms:identifier"
-    assert slot.range == "string"
-    assert slot.required is True
-    assert list(out.klass("app_library", "Book").slots) == ["identifier"]
-    assert "id" not in out.schemas["app_library"].slots
+    assert slot.slot_uri == "dcterms:identifier", "the identifier has the Dublin Core IRI"
+    assert slot.range == "string", "the identifier is a string"
+    assert slot.required is True, "the identifier is required"
+    assert list(out.klass("app_library", "Book").slots) == ["identifier"], "the Book lists it"
+    assert "id" not in out.schemas["app_library"].slots, "id stays the IRI and is not redefined"
 
 
 _KEPT = "the toolkit's label is kept; {} is not carried"
@@ -2045,7 +2105,499 @@ ROWS_R15 = [
     ),
 ]
 
+# --- R-18 tenant root (PD-19, PD-13) ---------------------------------------------------------------------
+
+
+def _tenant(out: Converted) -> None:
+    _no_problems(out)
+    book = out.klass("app_library", "Book")
+    assert book.annotations["graph"].value == "meta", "a tenant root lives in the meta graph"
+    assert "rp_path" not in book.annotations, "a tenant root has no path"
+    assert "AggregateRoot" not in book.mixins, "a tenant root is not an aggregate root"
+    assert list(book.mixins) == ["Described", "Tracked"], "it has the default mixins as a root has"
+
+
+def _tenant_with_part(out: Converted) -> None:
+    _no_problems(out)
+    assert out.slot("app_library", "has_chapter").annotations["owned"].value == "true", (
+        "the part of a tenant root's boundary is owned"
+    )
+    assert list(out.klass("app_library", "Chapter").mixins) == ["Described", "Tracked"], (
+        "the part has the default mixins"
+    )
+
+
+ROWS_R18 = [
+    Row(
+        "a tenant root is graph meta, with no aggregate-root mixin and no path",
+        UmlRule.TENANT_ROOT,
+        model(klass(BOOK, "lib:Book", stereotype="tenant root")),
+        _tenant,
+        _DEFAULTS,
+    ),
+    Row(
+        "a graph tag of meta on a tenant root is the same annotation",
+        UmlRule.TENANT_ROOT,
+        model(
+            klass(BOOK, "lib:Book", stereotype="Tenant Root"), tags=(tag(BOOK, "graph", "meta"),)
+        ),
+        _tenant,
+        _DEFAULTS,
+    ),
+    Row(
+        "a boundary holding a tenant root has its one root, and owns the parts",
+        UmlRule.TENANT_ROOT,
+        model(
+            klass(BOOK, "lib:Book", stereotype="tenant root"),
+            klass(CHAPTER, "lib:Chapter"),
+            links=(link(1, BOOK, CHAPTER, target_role="lib:hasChapter", target_card="0..*"),),
+            boundaries=(boundary(20, BOOK, CHAPTER),),
+        ),
+        _tenant_with_part,
+        _DEFAULTS,
+    ),
+    Row(
+        "failure: a graph tag of another value on a tenant root",
+        UmlRule.TENANT_ROOT,
+        model(
+            klass(BOOK, "lib:Book", stereotype="tenant root"), tags=(tag(BOOK, "graph", "data"),)
+        ),
+        _problem(UmlRule.TENANT_ROOT, "Book", "graph", "data", "meta"),
+    ),
+]
+
+# --- R-23 abstract roots (PD-19, PD-21) -----------------------------------------------------------------
+
+WORK = SERIES  # the abstract class the roots specialise
+MID = 17
+
+
+def _work_model(
+    *,
+    book: str | None = "root",
+    ranged: bool = True,
+    work_attributes: tuple[UmlAttribute, ...] = (),
+    tags: tuple[object, ...] = (),
+) -> object:
+    """An abstract Work, specialised by a Book; a root Shelf points at the Work when ``ranged``."""
+    return model(
+        klass(WORK, "lib:Work", abstract=True, attributes=work_attributes),
+        klass(BOOK, "lib:Book", stereotype=book),
+        klass(SHELF, "lib:Shelf", stereotype="root"),
+        links=(
+            generalisation(1, BOOK, WORK),
+            *(
+                (link(2, SHELF, WORK, target_role="lib:holds", target_card="0..*"),)
+                if ranged
+                else ()
+            ),
+        ),
+        tags=tags,
+    )
+
+
+def _work_is_root(out: Converted) -> None:
+    _no_problems(out)
+    work = out.klass("app_library", "Work")
+    assert list(work.mixins) == ["AggregateRoot"], (
+        "the abstract root has the aggregate-root mixin only"
+    )
+    assert "rp_path" not in (work.annotations or {}), "an abstract root has no path"
+    book = out.klass("app_library", "Book")
+    assert book.is_a == "Work", "the root keeps its parent"
+    assert list(book.mixins) == ["AggregateRoot", "Described", "Tracked"], (
+        "a root subclass still lists the aggregate-root mixin"
+    )
+    assert "rdf_persistence/model/rp_core" in out.schemas["app_library"].imports, "rp_core imported"
+
+
+def _work_is_plain(out: Converted) -> None:
+    _no_problems(out)
+    assert list(out.klass("app_library", "Work").mixins) == [], "the abstract class stays plain"
+
+
+def _work_key(out: Converted) -> None:
+    _no_problems(out)
+    key = out.klass("app_library", "Work").unique_keys["k"]
+    assert key.annotations["rp_unique_scope"].value == "tenant", (
+        "a key of an abstract root is tenant-wide"
+    )
+
+
+def _assert_mixins(out: Converted, name: str, expected: list[str]) -> None:
+    assert list(out.klass("app_library", name).mixins) == expected, f"mixins of {name}"
+
+
+def _through_middle(out: Converted) -> None:
+    _no_problems(out)
+    _assert_mixins(out, "Work", ["AggregateRoot"])
+    _assert_mixins(out, "Middle", [])
+
+
+ROWS_R23 = [
+    Row(
+        "an abstract class whose concrete subclasses are all roots and that is a range is a root",
+        UmlRule.ABSTRACT_ROOT,
+        _work_model(),
+        _work_is_root,
+        _DEFAULTS,
+    ),
+    Row(
+        "an abstract class that no slot ranges over is not a root",
+        UmlRule.ABSTRACT_ROOT,
+        _work_model(ranged=False),
+        _work_is_plain,
+        _DEFAULTS,
+    ),
+    Row(
+        "an abstract class with a concrete subclass that is not a root is not a root",
+        UmlRule.ABSTRACT_ROOT,
+        _work_model(book=None),
+        _work_is_plain,
+        _DEFAULTS,
+    ),
+    Row(
+        "an abstract class with no concrete subclass is not a root",
+        UmlRule.ABSTRACT_ROOT,
+        model(
+            klass(WORK, "lib:Work", abstract=True),
+            klass(SHELF, "lib:Shelf", stereotype="root"),
+            links=(link(2, SHELF, WORK, target_role="lib:holds", target_card="0..*"),),
+        ),
+        _work_is_plain,
+        _DEFAULTS,
+    ),
+    Row(
+        "the concrete descendants are taken through an abstract middle class",
+        UmlRule.ABSTRACT_ROOT,
+        model(
+            klass(WORK, "lib:Work", abstract=True),
+            klass(MID, "lib:Middle", abstract=True),
+            klass(BOOK, "lib:Book", stereotype="root"),
+            klass(SHELF, "lib:Shelf", stereotype="root"),
+            links=(
+                generalisation(1, MID, WORK),
+                generalisation(2, BOOK, MID),
+                link(3, SHELF, WORK, target_role="lib:holds", target_card="0..*"),
+            ),
+        ),
+        _through_middle,
+        _DEFAULTS,
+    ),
+    Row(
+        "a unique key of an abstract root is scoped to the tenant",
+        UmlRule.ABSTRACT_ROOT,
+        _work_model(
+            work_attributes=(attribute(11, WORK, "lib:title"),),
+            tags=(tag(WORK, "unique_key", "k: title"),),
+        ),
+        _work_key,
+        _DEFAULTS,
+    ),
+]
+
+
+# --- R-24 a slot shared across packages (PD-16, D-22 C-1, D-5) ---------------------------------------------
+
+AFIRST_PKG, BHOME_PKG, ZED_PKG = 21, 22, 23
+CLASS_A, CLASS_B, CLASS_Z = 30, 31, 32
+_THREE = (
+    UmlPackage(package_id=MODEL_PKG, name="model"),
+    UmlPackage(package_id=AFIRST_PKG, name="afirst", parent_id=MODEL_PKG),
+    UmlPackage(package_id=BHOME_PKG, name="bhome", parent_id=MODEL_PKG),
+    UmlPackage(package_id=ZED_PKG, name="zed", parent_id=MODEL_PKG),
+)
+
+
+def _parent_slot(owner: int, attribute_id: int, **bounds: str | None) -> UmlAttribute:
+    return attribute(attribute_id, owner, "lib:hasParent", **bounds)
+
+
+Usage = tuple[str, dict[str, object]]  # the module of a class and the limits its slot_usage carries
+
+
+def _home_in(home: str, others: list[str], *, usage_in: dict[str, Usage]) -> Check:
+    """The slot is defined in ``home`` only; each other module imports it and carries its own limits."""
+
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        for module, schema in out.schemas.items():
+            if module != "app":
+                defined = "has_parent" in schema.slots
+                assert defined is (module == home), (
+                    f"has_parent is defined in {home} only, not {module}"
+                )
+        for module in others:
+            assert home in out.schemas[module].imports, f"{module} imports the home {home}"
+        for holder, (module, expected) in usage_in.items():
+            usages = out.klass(module, holder).slot_usage
+            found = _limits(usages["has_parent"]) if "has_parent" in usages else {}
+            assert found == expected, f"the slot_usage limits of {holder}.has_parent"
+
+    return check
+
+
+def _usage(module: str, **limits: object) -> Usage:
+    return module, limits
+
+
+def _cross_model(
+    *, book_imports_shelf: bool = False, shelf_imports_book: bool = False, book: dict | None = None
+) -> object:
+    links = []
+    if shelf_imports_book:
+        links.append(link(1, SHELF, BOOK, target_role="lib:book", target_card="0..1"))
+    if book_imports_shelf:
+        links.append(link(2, BOOK, SHELF, target_role="lib:shelf", target_card="0..1"))
+    return model(
+        klass(BOOK, "lib:Book", CATALOGUE_PKG, attributes=(_parent_slot(BOOK, 1, **(book or {})),)),
+        klass(SHELF, "lib:Shelf", SHELVES_PKG, attributes=(_parent_slot(SHELF, 2),)),
+        links=tuple(links),
+    )
+
+
+def _by_three() -> object:
+    """``afirst`` imports ``bhome`` (A -> B); A.has_parent ranges over Z of ``zed``, B's over B itself."""
+    return model(
+        klass(CLASS_A, "lib:Alpha", AFIRST_PKG),
+        klass(CLASS_B, "lib:Beta", BHOME_PKG),
+        klass(CLASS_Z, "lib:Zed", ZED_PKG),
+        links=(
+            link(1, CLASS_A, CLASS_B, target_role="lib:beta", target_card="0..1"),
+            link(2, CLASS_A, CLASS_Z, target_role="lib:hasParent", target_card="0..1"),
+            link(3, CLASS_B, CLASS_B, target_role="lib:hasParent", target_card="0..1"),
+        ),
+        packages=_THREE,
+    )
+
+
+def _range_module_imported(out: Converted) -> None:
+    _no_problems(out)
+    assert "has_parent" in out.schemas["app_bhome"].slots, (
+        "the others import bhome, so it is the home"
+    )
+    assert out.slot("app_bhome", "has_parent").range == "Zed", (
+        "the slot takes the first usage's range"
+    )
+    assert "app_zed" in out.schemas["app_bhome"].imports, (
+        "the home imports the module of its slot's range"
+    )
+    assert sorted(out.schemas) == ["app", "app_afirst", "app_bhome", "app_zed"], (
+        "no module is merged"
+    )
+
+
+def _cycle_by_sharing(out: Converted) -> None:
+    _no_problems(out)
+    assert sorted(out.schemas) == ["app", "app_afirst", "app_bhome"], "bhome and zed are one module"
+    assert sorted(out.schemas["app_bhome"].classes) == ["Beta", "Zed"], (
+        "the merged module holds both"
+    )
+    assert out.report_lines("merged_cycle") == [
+        "app_bhome: the packages bhome, zed are written as one module"
+    ], "the merge from the final imports is reported once, naming the packages"
+    assert "has_parent" in out.schemas["app_bhome"].slots, (
+        "the slot is defined in the merged module"
+    )
+
+
+ROWS_R24 = [
+    Row(
+        "the slot is defined in the module the other imports, with the other's own limits",
+        UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
+        _cross_model(shelf_imports_book=True, book={"lower": "0"}),
+        _home_in(
+            "app_catalogue",
+            ["app_shelves"],
+            usage_in={
+                "Book": _usage("app_catalogue"),
+                "Shelf": _usage("app_shelves", required=True),
+            },
+        ),
+    ),
+    Row(
+        "the home is the module every other reaches, not the first in path order",
+        UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
+        _cross_model(book_imports_shelf=True),
+        _home_in(
+            "app_shelves",
+            ["app_catalogue"],
+            usage_in={"Book": _usage("app_catalogue"), "Shelf": _usage("app_shelves")},
+        ),
+    ),
+    Row(
+        "failure: no module of the usages is imported by the others",
+        UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
+        _cross_model(),
+        _problem(
+            UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
+            "has_parent: used in app_catalogue, app_shelves and no one of them is imported by the others",
+        ),
+    ),
+    Row(
+        "failure: one slot name with two IRIs in two packages",
+        UmlRule.CLASS_IRI,
+        model(
+            klass(BOOK, "lib:Book", CATALOGUE_PKG, attributes=(_parent_slot(BOOK, 1),)),
+            klass(
+                SHELF,
+                "lib:Shelf",
+                SHELVES_PKG,
+                attributes=(attribute(2, SHELF, "bibo:hasParent"),),
+            ),
+            links=(link(1, SHELF, BOOK, target_role="lib:book", target_card="0..1"),),
+        ),
+        _problem(UmlRule.CLASS_IRI, "has_parent", "https://example.org/ns/library#hasParent"),
+    ),
+    Row(
+        "the home also imports the module of its slot's range, which the first usage chose",
+        UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
+        _by_three(),
+        _range_module_imported,
+    ),
+    Row(
+        "a cycle that sharing creates is merged into one module, from the final imports (D-5)",
+        UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
+        model(
+            klass(CLASS_A, "lib:Alpha", AFIRST_PKG),
+            klass(CLASS_B, "lib:Beta", BHOME_PKG),
+            klass(CLASS_Z, "lib:Zed", ZED_PKG),
+            links=(
+                link(1, CLASS_A, CLASS_B, target_role="lib:beta", target_card="0..1"),
+                link(2, CLASS_A, CLASS_Z, target_role="lib:hasParent", target_card="0..1"),
+                link(3, CLASS_B, CLASS_B, target_role="lib:hasParent", target_card="0..1"),
+                link(4, CLASS_Z, CLASS_B, target_role="lib:beta", target_card="0..1"),
+            ),
+            packages=_THREE,
+        ),
+        _cycle_by_sharing,
+    ),
+]
+
+# --- carried from 2.5: a unique key may name a role or a reused toolkit slot (PD-21) -----------------------
+
+
+def _keys_of(name: str, slots: list[str]) -> Check:
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        found = out.klass("app_library", "Book").unique_keys[name]
+        assert [str(slot) for slot in found.unique_key_slots] == slots, (
+            f"the slots of the key {name}"
+        )
+
+    return check
+
+
+def _keyed_with_role(*tags: object) -> object:
+    return model(
+        klass(BOOK, "lib:Book", stereotype="root", attributes=_KEYED[:1]),
+        klass(CHAPTER, "lib:Chapter"),
+        links=(link(1, BOOK, CHAPTER, target_role="lib:hasChapter", target_card="0..*"),),
+        tags=tuple(tags),
+    )
+
+
+def _keyed_with_toolkit_slot(*tags: object) -> object:
+    return model(
+        klass(
+            BOOK,
+            "lib:Book",
+            stereotype="root",
+            attributes=(attribute(1, BOOK, "skos:prefLabel"), attribute(2, BOOK, "lib:subtitle")),
+        ),
+        tags=tuple(tags),
+    )
+
+
+ROWS_KEYS_OF_ROLES = [
+    Row(
+        "a key names a role slot by its slot name",
+        UmlRule.UNIQUE_KEY,
+        _keyed_with_role(tag(BOOK, "unique_key", "k: title, has_chapter")),
+        _keys_of("k", ["title", "has_chapter"]),
+    ),
+    Row(
+        "a key names a role slot by its UML name",
+        UmlRule.UNIQUE_KEY,
+        _keyed_with_role(tag(BOOK, "unique_key", "k: hasChapter")),
+        _keys_of("k", ["has_chapter"]),
+    ),
+    Row(
+        "a key names a reused toolkit slot by the toolkit's name",
+        UmlRule.UNIQUE_KEY,
+        _keyed_with_toolkit_slot(tag(BOOK, "unique_key", "k: label, subtitle")),
+        _keys_of("k", ["label", "subtitle"]),
+        _DESCRIBED,
+    ),
+    Row(
+        "a key names a reused toolkit slot by the attribute's UML name",
+        UmlRule.UNIQUE_KEY,
+        _keyed_with_toolkit_slot(tag(BOOK, "unique_key", "k: prefLabel")),
+        _keys_of("k", ["label"]),
+        _DESCRIBED,
+    ),
+    Row(
+        "failure: a role the class does not have",
+        UmlRule.UNIQUE_KEY,
+        _keyed_with_role(tag(BOOK, "unique_key", "k: has_page")),
+        _problem(UmlRule.UNIQUE_KEY, "Book", "unique_key", "has_page"),
+    ),
+]
+
+# --- carried from 2.4: a toolkit class drawn inside the subtree is the toolkit's (PD-17, R-28) -----------
+
+
+def _inside_toolkit(out: Converted) -> None:
+    _no_problems(out)
+    assert sorted(out.schemas["app_library"].classes) == ["Book"], (
+        "the drawn class is not generated"
+    )
+    assert out.klass("app_library", "Book").is_a == "Activity", "Book is the toolkit's Activity"
+    assert _RP_PROVENANCE in out.schemas["app_library"].imports, "the toolkit module is imported"
+    assert out.report_lines("not_generated") == [
+        "Activity: drawn as the toolkit's Activity, not generated"
+    ], "the left-out class is in the report"
+
+
+def _inside_mixin(out: Converted) -> None:
+    _no_problems(out)
+    assert sorted(out.schemas["app_library"].classes) == ["Book"], (
+        "the drawn class is not generated"
+    )
+    assert "ReferenceCollection" in out.klass("app_library", "Book").mixins, (
+        "the toolkit mixin is used"
+    )
+
+
+ROWS_DRAWN_INSIDE = [
+    Row(
+        "a prov:Activity drawn in a converted package is not generated and is the is_a",
+        UmlRule.TOOLKIT_MIXINS,
+        model(
+            klass(BOOK, "lib:Book", stereotype="root"),
+            klass(_ACTIVITY, "prov:Activity"),
+            links=(generalisation(1, BOOK, _ACTIVITY),),
+        ),
+        _inside_toolkit,
+    ),
+    Row(
+        "an rp:ReferenceCollection drawn in a converted package is a mixin, not generated",
+        UmlRule.TOOLKIT_MIXINS,
+        model(
+            klass(BOOK, "lib:Book", stereotype="root"),
+            klass(_COLLECTION, "rp:ReferenceCollection", abstract=True),
+            links=(generalisation(1, BOOK, _COLLECTION),),
+        ),
+        _inside_mixin,
+    ),
+]
+
 ROWS: list[Row] = [
+    *ROWS_KEYS_OF_ROLES,
+    *ROWS_DRAWN_INSIDE,
+    *ROWS_R24,
+    *ROWS_R23,
+    *ROWS_R18,
     *ROWS_R1,
     *ROWS_R2,
     *ROWS_R3,
@@ -2070,12 +2622,6 @@ ROWS: list[Row] = [
     *ROWS_R15,
     *ROWS_R22,
 ]
-
-STAGE_2 = {
-    UmlRule.TENANT_ROOT,
-    UmlRule.ABSTRACT_ROOT,
-    UmlRule.LEFT_OUT_LINK,
-}
 
 
 def test_the_schemas_dump_to_yaml_the_way_the_toolkit_writes_them() -> None:
@@ -2107,17 +2653,9 @@ def test_a_unique_key_dumps_to_yaml_with_its_scope_and_nulls() -> None:
     "row", [pytest.param(row, id=f"{row.rule.value}: {row.case}") for row in ROWS]
 )
 def test_a_rule_row(row: Row) -> None:
-    row.check(run(row.uml, **row.overrides))
+    row.check(run(row.uml, **row.overrides))  # each check states its own failure messages
 
 
-@pytest.mark.parametrize(
-    "rule",
-    [
-        pytest.param(rule, marks=pytest.mark.xfail(strict=True, reason="stage 2"))
-        if rule in STAGE_2
-        else rule
-        for rule in UmlRule
-    ],
-)
+@pytest.mark.parametrize("rule", list(UmlRule))
 def test_every_uml_rule_has_a_row(rule: UmlRule) -> None:
-    assert rule in {row.rule for row in ROWS}
+    assert rule in {row.rule for row in ROWS}, f"the rule {rule.value} has no row in ROWS"

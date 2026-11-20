@@ -18,11 +18,11 @@ from rdf_persistence_generation.checks.hard import (
     segment_pattern,
 )
 from rdf_persistence_generation.generated.rp_generation import ReportKind, UmlRule
-from rdf_persistence_generation.uml.context import Context, Element, local_of
-from rdf_persistence_generation.uml.naming import slot_name
+from rdf_persistence_generation.uml.context import Context, Element
 
 RP_MIXINS: Final = "rp_mixins"  # a tag of the mixin rules (R-25..R-28), not read here
 UNIQUE_KEY: Final = "unique_key"
+GRAPH: Final = "graph"  # a tenant root's is set by its stereotype (R-18), so its tag is read there
 NULLS_EQUAL: Final = "nulls=equal"
 KEY_FORM: Final = "<name>: <attribute>, <attribute> [; nulls=equal]"
 _KEY = re.compile(r"([^:;]*):([^;]*)(?:;(.*))?", re.DOTALL)
@@ -43,7 +43,7 @@ def apply_tags(
     annotations = dict(derived)
     tags = ctx.tags.get(element.uml.object_id, {})
     for name in sorted(tags):
-        if name not in _OWN_TAGS:
+        if name not in _OWN_TAGS and not (name == GRAPH and element.is_tenant_root):
             written = _annotation_of(ctx, element, name, tags[name])
             if written is not None:
                 annotations[name] = written
@@ -80,8 +80,8 @@ def _value_problem(tag: RpAnnotation, text: str) -> str | None:
 
 
 def _takes_tenant_scope(element: Element) -> bool:
-    """True when a key of the class holds across the tenant's aggregates: a root (R-23 adds the abstract roots)."""
-    return element.is_root
+    """True when a key of the class holds across the tenant's aggregates: a root or an abstract root (PD-21)."""
+    return element.is_root or element.is_abstract_root
 
 
 def _unique_keys(ctx: Context, element: Element) -> dict[str, UniqueKey]:
@@ -102,14 +102,16 @@ def _key_problem(ctx: Context, element: Element, written: str, why: str) -> None
 
 
 def _unique_key(ctx: Context, element: Element, written: str) -> UniqueKey | None:
-    parsed = _parse_key(element, written)
+    parsed = _parse_key(ctx, element, written)
     if isinstance(parsed, str):
         _key_problem(ctx, element, written, parsed)
         return None
     return _build_key(element, *parsed)
 
 
-def _parse_key(element: Element, written: str) -> tuple[str, list[str], str | None] | str:
+def _parse_key(
+    ctx: Context, element: Element, written: str
+) -> tuple[str, list[str], str | None] | str:
     """The name, the slots and the nulls clause of a key; what is wrong with the tag when it is not one."""
     match = _KEY.fullmatch(written.strip())
     if match is None:
@@ -119,7 +121,7 @@ def _parse_key(element: Element, written: str) -> tuple[str, list[str], str | No
     why = _grammar_problem(name.strip(), slots, clause)
     if why is not None:
         return why
-    listed = _slots_of(element, slots)
+    listed = _slots_of(ctx, element, slots)
     why = _unknown_problem(element, listed)
     if why is not None:
         return why
@@ -130,7 +132,7 @@ def _unknown_problem(element: Element, listed: list[tuple[str, str | None]]) -> 
     unknown = [each for each, found in listed if found is None]
     if not unknown:
         return None
-    return f"no attribute {', '.join(repr(each) for each in unknown)} on {element.label}"
+    return f"no attribute or role {', '.join(repr(each) for each in unknown)} on {element.label}"
 
 
 def _grammar_problem(name: str, slots: str, clause: str | None) -> str | None:
@@ -143,12 +145,12 @@ def _grammar_problem(name: str, slots: str, clause: str | None) -> str | None:
     return None
 
 
-def _slots_of(element: Element, listed: str) -> list[tuple[str, str | None]]:
-    """Each listed attribute with the slot it stands for: its slot name or its UML name; None when unknown."""
-    named: dict[str, str] = {}
-    for attribute in element.uml.uml_attributes or []:
-        slot = slot_name(attribute.name)
-        named[slot] = named[local_of(attribute.name)] = slot
+def _slots_of(ctx: Context, element: Element, listed: str) -> list[tuple[str, str | None]]:
+    """Each listed name with the slot it stands for: a slot name or a UML name of an attribute or a role.
+
+    An attribute that reuses a toolkit slot stands for the toolkit's slot; None when the name is unknown.
+    """
+    named = ctx.slot_aliases.get(element.uml.object_id, {})
     return [(each.strip(), named.get(each.strip())) for each in listed.split(",")]
 
 

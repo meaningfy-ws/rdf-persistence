@@ -136,6 +136,22 @@ class _Tarjan:
         self.counter = 0
 
 
+def reachable(edges: Mapping[ModulePath, set[ModulePath]]) -> dict[ModulePath, set[ModulePath]]:
+    """The modules each module reaches by imports, directly or through others (LinkML imports are transitive)."""
+    reached: dict[ModulePath, set[ModulePath]] = {}
+    for start in edges:
+        seen: set[ModulePath] = set()
+        pending = list(edges[start])
+        while pending:
+            node = pending.pop()
+            if node not in seen:
+                seen.add(node)
+                pending.extend(edges.get(node, ()))
+        seen.discard(start)
+        reached[start] = seen
+    return reached
+
+
 def cycle_components(
     nodes: list[ModulePath], edges: Mapping[ModulePath, set[ModulePath]]
 ) -> list[list[ModulePath]]:
