@@ -342,7 +342,8 @@ Taken by the lead under R-0007, shown to the developer at the end.
   with the scenario "an offset beyond the bound"; (b) `find` with a `Contains` on a non-text slot
   or an empty text raised `BadQuery`, which the `rp-aggregate-store` delta did not say: its
   requirement now does, with the scenario "a substring of a slot that holds no text". Both new
-  scenarios are already tested (the D-9 route test, TC-07d) and await the developer's sign-off.
+  scenarios are already tested (the D-9 route test, TC-07d); the developer signed them off with
+  the acceptance on 2026-11-20.
   Nothing else diverges: no living requirement describes `Session.matches` or the commit guard,
   and the EPIC's differences (`Contains(text=…)`, D-9) are in `proposal.md`'s As built. The
   deltas are synced into `openspec/specs/` now, so the archive runs with `--skip-specs`.

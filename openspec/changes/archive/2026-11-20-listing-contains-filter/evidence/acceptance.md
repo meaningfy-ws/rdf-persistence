@@ -27,4 +27,6 @@ tests).
 
 ## Verdict
 
-Pending: the developer accepts, names what is wrong, or records a skip.
+Accepted by the developer on 2026-11-20 ("I accept, sign off"), together with the sign-off of the
+two scenarios added by D-13 ("an offset beyond the bound", "a substring of a slot that holds no
+text").
