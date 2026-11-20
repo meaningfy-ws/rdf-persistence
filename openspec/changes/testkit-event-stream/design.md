@@ -215,5 +215,10 @@ Taken by the lead (rule R-0007), shown to the developer at the end; the develope
   `parsed`, `Block` and `Follow` from `test_events_route.py`, so they drop those imports before
   2.1 deletes them.
 - **D-4 Review set.** SMALL: one pass of L2 and L3 together; no checker, no adversarial tester.
+- **D-6 An app that raises after the head** ends the read like any other end of the response
+  (PD-5 c): the call returns the events so far and the exception is not re-raised, since the head,
+  the status and the events already reached the caller. Not in the error matrix; found in 1.3.
+- **D-7 The lifespan's start-up is outside the deadline**, as its shutdown already is (PD-4): the
+  `timeout` bounds the head and the events only. Found in 1.3.
 - **D-5 Sandbox.** The gates run with `UV_CACHE_DIR=<worktree>/temp/uv-cache` (the user cache is
   read-only in the sandbox); `temp/` is git-ignored.

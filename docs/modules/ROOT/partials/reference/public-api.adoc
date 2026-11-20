@@ -178,6 +178,7 @@
 |`model_shape_diff` |function |Where the pydantic fields of the generated classes differ from the shapes (name, required, multivalued); empty when they agree.
 |`new_key` |function |A fresh signing key that fits ``algorithm``: RSA 2048 (RS*, PS*), the curve of ES256, ES384 or ES512 (P-256, P-384, P-521), or Ed25519 (EdDSA).
 |`no_network` |function |Make ``connect``, ``connect_ex`` and ``create_connection`` raise ``RuntimeError``.
+|`open_event_stream` |function |Open ``url`` on ``app``; return its status, headers (``dict[str, str]``, lower-case names) and events.
 |`OpenedStream` |class |What opening a server-sent event stream returned: the status and headers of the response and the events read from it.
 |`provision_project` |function |Create the project with the role ``admin``, and one machine user per principal.
 |`read_snapshot` |function |Read the shapes written by :func:`write_snapshot`.

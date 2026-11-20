@@ -19,7 +19,7 @@ never commit; the lead does.
   `tests/unit/api/test_event_wiring.py`, `test_the_lifespan_flag_is_set_while_the_lifespan_runs`
   (true inside `service.app.router.lifespan_context`, false after it). Then `LIFESPAN_STARTED` and
   its set/clear in `_run_at_startup`. Accept: that test; `make check-architecture`.
-- [ ] 1.3 `open_event_stream` (PD-2, PD-4, PD-5, PD-8; algorithm steps 1-7) in
+- [x] 1.3 `open_event_stream` (PD-2, PD-4, PD-5, PD-8; algorithm steps 1-7) in
   `rdf_persistence/testkit/streams.py`, a lazy name of the testkit. Tier: unit. Failing tests first,
   in `tests/unit/testkit/test_streams.py`, one per error-matrix row: raw ASGI apps (split chunks and
   a split UTF-8 character, `\r\n`, multi-line `data`, `: keep-alive` and `: ping` skipped, a reset
@@ -59,7 +59,7 @@ never commit; the lead does.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [ ] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [x] 3.1 · [ ] 3.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [x] 3.1 · [ ] 3.2
 
 ## Verification
 
