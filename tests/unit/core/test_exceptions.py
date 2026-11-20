@@ -43,3 +43,40 @@ def test_a_conflict_names_the_roots_that_conflict_and_defaults_to_none():
     named = exceptions.Conflict("lost", iris=("urn:a", "urn:b"))
     assert named.iris == ("urn:a", "urn:b"), "a conflict carries the roots it was given"
     assert str(named) == "lost", "naming roots does not change the conflict's text"
+
+
+def test_in_use_keeps_the_roots_referrers_and_counts_it_was_given():
+    referrers = (("urn:b1", "Book", "written_by"), ("urn:b2", "Book", "written_by"))
+    error = exceptions.InUse(
+        "in use",
+        iris=("urn:a1",),
+        referrers=referrers,
+        more_count=1,
+        hidden_count=2,
+    )
+    assert error.iris == ("urn:a1",), "the refused roots are kept as a tuple"
+    assert error.referrers == referrers, "the (referrer, class, slot) triples are kept as given"
+    assert (error.more_count, error.hidden_count) == (1, 2), "both counts are kept"
+    assert str(error) == "in use", "the text is the message it was raised with"
+    assert isinstance(error, exceptions.Conflict), "a Conflict subclass, as KeyConflict is"
+
+
+def test_in_use_sorts_the_roots_and_the_referrers_it_was_given_unsorted():
+    error = exceptions.InUse(
+        "in use",
+        iris=("urn:a2", "urn:a1"),
+        referrers=(("urn:b2", "Book", "written_by"), ("urn:b1", "Book", "written_by")),
+    )
+    assert error.iris == ("urn:a1", "urn:a2"), "the refused roots are sorted"
+    assert error.referrers == (
+        ("urn:b1", "Book", "written_by"),
+        ("urn:b2", "Book", "written_by"),
+    ), "the referrers are sorted"
+
+
+def test_in_use_with_nothing_named_defaults_to_empty_and_zero():
+    error = exceptions.InUse("in use", iris=["urn:a1"], referrers=[("urn:b", "Book", "s")])
+    assert error.referrers == (("urn:b", "Book", "s"),), "referrers become a tuple"
+    assert exceptions.InUse("in use").referrers == (), "no referrers by default"
+    bare = exceptions.InUse("in use")
+    assert (bare.iris, bare.more_count, bare.hidden_count) == ((), 0, 0), "defaults are empty/0"

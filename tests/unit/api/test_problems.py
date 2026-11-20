@@ -37,6 +37,7 @@ ROWS = [
     (exceptions.TenantGone, 404, "not-found"),
     (exceptions.Conflict, 409, "conflict"),
     (exceptions.KeyConflict, 409, "key-conflict"),
+    (exceptions.InUse, 409, "in-use"),
     (exceptions.PreconditionRequired, 428, "precondition-required"),
     (exceptions.InvalidBody, 422, "invalid-body"),
     (exceptions.InvalidGraph, 422, "invalid-body"),

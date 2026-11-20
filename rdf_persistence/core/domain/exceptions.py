@@ -56,6 +56,35 @@ class KeyConflict(Conflict):
         self.keys = tuple(keys)
 
 
+class InUse(Conflict):
+    """A removal is refused because an aggregate of the tenant still refers to a root it removes.
+
+    ``iris`` are the refused roots found referenced, sorted. ``referrers`` are the
+    ``(referrer IRI, class name, slot name)`` triples of the first refused root, sorted: the same
+    strings as the generated ``Referrer``, held as tuples because ``domain`` cannot import a
+    services model. ``more_count`` is the number of readable referrer aggregates the cap left out
+    and ``hidden_count`` the number of referrer aggregates the caller may not read, never named.
+    Except for the exact case of a referrer added in the same commit (PD-5), it is a diagnosis
+    read after the refusal, so it can race: it says what referred to the root at the read, not
+    why the removal was refused. A ``Conflict`` subclass, so code that catches ``Conflict`` catches
+    it, but it must not be retried as one: the same removal fails until the referrers are gone
+    (error matrix, row 15).
+    """
+
+    def __init__(
+        self,
+        *args: object,
+        iris: tuple[str, ...] = (),
+        referrers: tuple[tuple[str, str, str], ...] = (),
+        more_count: int = 0,
+        hidden_count: int = 0,
+    ) -> None:
+        super().__init__(*args, iris=tuple(sorted(iris)))
+        self.referrers = tuple(sorted(referrers))
+        self.more_count = more_count
+        self.hidden_count = hidden_count
+
+
 class CommitTooLarge(PersistenceError):
     """A unit of work holds more roots than its ``max_roots``; commit fewer, or in batches."""
 

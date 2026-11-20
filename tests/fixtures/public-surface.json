@@ -39,6 +39,7 @@
   "IdSpec": "rdf_persistence.services.generated.service.rp_service",
   "Identity": "rdf_persistence.services.identity",
   "IdentityUnavailable": "rdf_persistence.domain.exceptions",
+  "InUse": "rdf_persistence.domain.exceptions",
   "InvalidBody": "rdf_persistence.domain.exceptions",
   "InvalidGrant": "rdf_persistence.domain.exceptions",
   "InvalidGraph": "rdf_persistence.domain.exceptions",

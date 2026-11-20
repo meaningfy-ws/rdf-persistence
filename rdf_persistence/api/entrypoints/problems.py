@@ -70,6 +70,7 @@ FORBIDDEN = _kind(ProblemSlug.FORBIDDEN)
 NOT_FOUND = _kind(ProblemSlug.NOT_FOUND)
 CONFLICT = _kind(ProblemSlug.CONFLICT)
 KEY_CONFLICT = _kind(ProblemSlug.KEY_CONFLICT)
+IN_USE = _kind(ProblemSlug.IN_USE)
 PRECONDITION_REQUIRED = _kind(ProblemSlug.PRECONDITION_REQUIRED)
 INVALID_BODY = _kind(ProblemSlug.INVALID_BODY)
 NOT_ACCEPTABLE = _kind(ProblemSlug.NOT_ACCEPTABLE)
@@ -92,6 +93,7 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
     (errors.TenantGone, NOT_FOUND),
     (errors.Conflict, CONFLICT),
     (errors.KeyConflict, KEY_CONFLICT),  # found through the class first, so it wins over its base
+    (errors.InUse, IN_USE),  # likewise
     (errors.PreconditionRequired, PRECONDITION_REQUIRED),
     (errors.InvalidBody, INVALID_BODY),
     (errors.InvalidGraph, INVALID_BODY),
