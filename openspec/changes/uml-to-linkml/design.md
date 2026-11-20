@@ -663,3 +663,20 @@ and its checkers page):
   `connector-direction-21/24`). A class or enum whose expanded IRI is `<default_prefix>:<its LinkML
   name>` gets no explicit `class_uri` (the implicit URI is the same, `modelling-conventions` rule
   2); slots keep `slot_uri`, as their snake-case name differs from the IRI's local name.
+- **D-15 Parallel build of 1.3, 1.5 and 1.6** (2026-11-20, the developer: "continue in parallel").
+  The reader (1.3), the converter (1.5) and the writer half of 1.6 run at once, each in its own
+  builder worktree, against the records of 1.1 and this interface:
+  `convert(model, settings, metamodel_prefixes) -> (schemas, report_lines, problems)`, pure, each
+  schema named after its module; `write(schemas, report_lines, out, root_name) -> added report
+  lines`, writing `<schema.name>.yaml`. The converter's tests build `UmlModel` records directly; the
+  reader-to-output path is tested by 1.6's golden and IT-1, which the lead runs after the three
+  join (CLI, console script, golden). Both 1.3 (`UmlLink.direction`) and 1.5 (two `ReportKind`
+  values) change `rp_generation.yaml`: the lead joins them, takes one generated side and runs
+  `make generate` (P-0003). The D-14 direction check is added to 1.5 after 1.3 joins. In stage 1 a
+  slot shared across modules is refused, naming stage 2 (task 2.6, R-24).
+- **D-16 Authority** (2026-11-20, the developer: "dont wait on me, feel free to merge admin too").
+  For this EPIC the lead commits, pushes, opens and merges each stage PR into `develop` without
+  waiting for the developer, with `gh pr merge --merge --admin` where a required review would
+  otherwise block. Limits kept (`epic-delivery`, Authority): merge only once the PR lists check runs
+  and all are green; nothing destructive beyond the normal git flow; the grant ends with the EPIC.
+  The DEC-5 question before stage 2 is still asked.
