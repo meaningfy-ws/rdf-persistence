@@ -124,6 +124,23 @@ def holds_iri(view: SchemaView, slot: SlotDefinition) -> bool:
     return bool(URI_TYPES & set(view.type_ancestors(slot.range)))
 
 
+def datatype_of(view: SchemaView, range_: str) -> URIRef:
+    """The datatype IRI of the type ``range_``: its URI, expanded."""
+    return URIRef(view.expand_curie(str(view.get_type(range_).uri)))
+
+
+def holds_text(view: SchemaView, slot: SlotDefinition) -> bool:
+    """True when the values of the slot are plain text: ``rdf_term`` writes them as plain literals.
+
+    Not an enum, not an IRI, and a type whose URI is ``xsd:string``: a type derived from string with a
+    URI of its own is not text.
+    """
+    range_ = slot.range or str(view.schema.default_range)
+    if range_ in view.all_enums() or holds_iri(view, slot):
+        return False
+    return datatype_of(view, range_) == XSD.string
+
+
 def rdf_term(view: SchemaView, slot: SlotDefinition, value: Any) -> URIRef | Literal:
     """``value``, of a slot that holds no owned part, as the RDF term the store keeps it as.
 
@@ -145,7 +162,7 @@ def rdf_term(view: SchemaView, slot: SlotDefinition, value: Any) -> URIRef | Lit
         return URIRef(view.expand_curie(str(meaning))) if meaning else Literal(text)
     if holds_iri(view, slot):
         return URIRef(str(value))
-    datatype = URIRef(view.expand_curie(str(view.get_type(range_).uri)))
+    datatype = datatype_of(view, range_)
     return Literal(str(value)) if datatype == XSD.string else Literal(value, datatype=datatype)
 
 
