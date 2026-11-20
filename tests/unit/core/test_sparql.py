@@ -14,6 +14,7 @@ from rdf_persistence.core.domain.base import RpModel
 from rdf_persistence.core.domain.exceptions import SparqlError
 from rdf_persistence.core.domain.sparql import (
     SparqlTerm,
+    absent_patterns,
     checked_group,
     count,
     fill,
@@ -22,6 +23,7 @@ from rdf_persistence.core.domain.sparql import (
     fragment_terms,
     join,
     match_patterns,
+    optional_value_patterns,
     order_by,
     term,
     term_list,
@@ -276,6 +278,67 @@ def test_no_value_patterns_and_no_variables_are_empty():
 def test_value_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
     with pytest.raises(SparqlError):
         value_patterns(variable, [])
+
+
+def test_absent_patterns_render_one_not_exists_per_predicate_ignoring_blank_nodes():
+    predicates = [URIRef(f"{EX}p"), URIRef(f"{EX}q")]
+    patterns = absent_patterns("root", predicates)
+    assert patterns == (
+        f"FILTER NOT EXISTS {{ ?root <{EX}p> ?key_absent_0 . FILTER (!isBlank(?key_absent_0)) }} "
+        f"FILTER NOT EXISTS {{ ?root <{EX}q> ?key_absent_1 . FILTER (!isBlank(?key_absent_1)) }}"
+    )
+    prepareQuery(fill("ASK { ?root a ?type . $patterns }", patterns=patterns))
+
+
+def test_no_absent_patterns_are_empty():
+    assert absent_patterns("root", []) == ""
+
+
+@pytest.mark.parametrize("variable", ["", "1x", "a b", "x } ; DROP ALL ; {", "?x"])
+def test_absent_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
+    with pytest.raises(SparqlError):
+        absent_patterns(variable, [])
+
+
+def test_absent_patterns_refuse_an_iri_that_could_break_out():
+    with pytest.raises(SparqlError, match="IRI"):
+        absent_patterns("root", [URIRef(f"{EX}a>b")])
+
+
+def test_optional_value_patterns_bind_each_value_or_the_default_in_the_value_variables():
+    predicates = [URIRef(f"{EX}p"), URIRef(f"{EX}q")]
+    default = URIRef(f"{EX}none")
+    patterns = optional_value_patterns("root", predicates, default)
+    assert patterns == (
+        f"OPTIONAL {{ ?root <{EX}p> ?key_raw_0 . FILTER (!isBlank(?key_raw_0)) }} "
+        f"BIND (COALESCE(?key_raw_0, <{EX}none>) AS ?v0) "
+        f"OPTIONAL {{ ?root <{EX}q> ?key_raw_1 . FILTER (!isBlank(?key_raw_1)) }} "
+        f"BIND (COALESCE(?key_raw_1, <{EX}none>) AS ?v1)"
+    )
+    prepareQuery(
+        fill(
+            "SELECT $vars WHERE { ?root a ?type . $patterns }",
+            vars=value_variables(2),
+            patterns=patterns,
+        )
+    )
+
+
+def test_no_optional_value_patterns_are_empty():
+    assert optional_value_patterns("root", [], URIRef(f"{EX}none")) == ""
+
+
+@pytest.mark.parametrize("variable", ["", "1x", "a b", "x } ; DROP ALL ; {", "?x"])
+def test_optional_value_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
+    with pytest.raises(SparqlError):
+        optional_value_patterns(variable, [], URIRef(f"{EX}none"))
+
+
+def test_optional_value_patterns_refuse_a_predicate_or_default_that_could_break_out():
+    with pytest.raises(SparqlError, match="IRI"):
+        optional_value_patterns("root", [URIRef(f"{EX}a>b")], URIRef(f"{EX}none"))
+    with pytest.raises(SparqlError, match="IRI"):
+        optional_value_patterns("root", [URIRef(f"{EX}p")], URIRef(f"{EX}n>one"))
 
 
 # -1 (negative), True (a bool) and 1.5 (any non-int type) are three classes.

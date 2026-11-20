@@ -122,6 +122,10 @@
       "additionalProperties": false,
       "description": "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates.",
       "properties": {
+        "key_counts_absent": {
+          "description": "Whether an absent value of a slot of the key counts as a value: two roots that both lack a value then hold the same values, and the key refuses them. False when the key declares nulls as unequal or does not say.",
+          "type": "boolean"
+        },
         "key_name": {
           "description": "The name of a key across aggregates, as declared in `unique_keys`.",
           "type": "string"

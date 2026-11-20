@@ -135,6 +135,9 @@
          "@type": "@id",
          "@id": "iriPolicy"
       },
+      "key_counts_absent": {
+         "@id": "keyCountsAbsent"
+      },
       "key_name": {
          "@id": "keyName"
       },

@@ -194,5 +194,25 @@ the key when a session commits
 (xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across aggregates]); it
 generates no validator or shape for it.
 
+By default a book that lacks a slot of the key claims nothing. To make an absent slot count as a
+value, set `consider_nulls_inequal: false` on the key, with `rp_unique_scope: tenant`. Here no two
+books of a tenant share a title and subtitle, and a book without a subtitle clashes with another
+book of the same title that has none:
+
+[source,yaml]
+----
+    unique_keys:
+      title_subtitle:
+        unique_key_slots: [title, subtitle]   # subtitle is optional
+        consider_nulls_inequal: false         # an absent slot is one value, equal to another absence
+        annotations:
+          rp_unique_scope: tenant
+----
+
+On a key across aggregates, `rp-generate` refuses the option beside any scope other than `tenant`
+(the problem names `rp_unique_scope: tenant`). On an in-aggregate key it changes nothing, since
+two absent values are already equal there. How such a key behaves is in
+xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across aggregates].
+
 The full list of annotations and mixins is in
 xref:architecture/generation.adoc#metamodel[the metamodel].

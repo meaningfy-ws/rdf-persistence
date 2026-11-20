@@ -19,7 +19,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "79ba09091602aabc4fd28906ae56caf268b95a50da1fae7a91c9ce81093887bd"
+      "sha256": "e28b62e2cd07c23eafb5d493481abed24009c1faca62ba43e5904a0b63c88206"
     },
     {
       "path": "rdf_persistence/model/rp_discussion.yaml",
@@ -47,7 +47,7 @@
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
-      "sha256": "44c0a241000640e1625d96ff6124cbc55789a5dbe6cd93acc5148ac3a5c5da8d"
+      "sha256": "17c91f0f631d9323f51fdca8b396a1892767bda68693ea545789e05c397891c8"
     },
     {
       "path": "rdf_persistence_generation/__init__.py",
@@ -71,7 +71,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/hard.py",
-      "sha256": "b62056a350cf0b9a3bde98b9b32f6f10635196bf6434cb39c6c96af792162d4f"
+      "sha256": "07de85189a51d9ab8df399ed1a24c3a2438b77a38970f8a4347cb297223878d3"
     },
     {
       "path": "rdf_persistence_generation/checks/python_package.py",
@@ -213,7 +213,7 @@
     },
     {
       "path": "docs/modules/ROOT/partials/model/rp_core.mmd",
-      "sha256": "050ebabeb8e63fca7219adda0b5f20129f10e742a04dadd0dc53cf02f2819dc9"
+      "sha256": "9b6b3c0e8bec20583265afd45b6280112a77383186f82bc07c67aa5c29c24385"
     },
     {
       "path": "docs/modules/ROOT/partials/model/rp_discussion.mmd",
@@ -281,7 +281,7 @@
     },
     {
       "path": "rdf_persistence/core/domain/generated/context.jsonld",
-      "sha256": "be2f170a47ada20b51b2b332a2b25f8cdfb556d14da32ee3d025291e33576c66"
+      "sha256": "f136c813d6232cbf14b32377532fffa1a77fd1bebe69ff95b0a41d630e284453"
     },
     {
       "path": "rdf_persistence/core/domain/generated/rp_annotations.py",
@@ -289,11 +289,11 @@
     },
     {
       "path": "rdf_persistence/core/domain/generated/rp_core.py",
-      "sha256": "b36411d7d985f20c220b4f75edb49a5230ffad7e2a98bc4c51e2b753f85ad5b0"
+      "sha256": "9b47aa0e770ba20aef2d584105bde7c5b6a9d99ca5aa94b32bffd63becd1ed6d"
     },
     {
       "path": "rdf_persistence/core/domain/generated/shapes.ttl",
-      "sha256": "986ccc02336da1103aa876686ee6c925c9e0f4c67a2f1a9c4b7db97b9373c8b3"
+      "sha256": "bfd873a8e630b3eb080794a15f7377c7518d5e3c4d95a6eabaf6c347e22a4e07"
     },
     {
       "path": "rdf_persistence/model/migrations/schema.lock.json",

@@ -760,18 +760,31 @@ def test_an_unscoped_key_on_a_root_is_refused_with_the_fix(break_toy: Breaker) -
     ), problems
 
 
-def test_a_key_that_counts_missing_values_as_equal_is_refused(break_toy: Breaker) -> None:
-    """TC-08: false contradicts the rule that an absent value claims nothing."""
-    refused = _planted(
-        break_toy, "books.yaml", KEY_SCOPE, KEY_SCOPE + "        consider_nulls_inequal: false\n"
-    )
-    assert any(p.startswith(f"{UNIQUE_KEY} Book:") and "isbn_key" in p for p in refused), refused
+NULLS_NEED_TENANT = "consider_nulls_inequal: false needs rp_unique_scope: tenant"
 
 
-def test_a_key_with_consider_nulls_inequal_true_passes(break_toy: Breaker) -> None:
-    """TC-08"""
-    root = break_toy("books.yaml", KEY_SCOPE, KEY_SCOPE + "        consider_nulls_inequal: true\n")
-    assert problems_of(root) == [], "a key with consider-nulls inequal true raises no problem"
+@pytest.mark.parametrize(
+    ("scope", "option", "refused"),
+    [
+        ("tenant", "false", False),
+        ("world", "false", True),
+        ("tenant", "true", False),
+        ("tenant", None, False),
+    ],
+    ids=["false-at-tenant", "false-at-another-scope", "true", "unset"],
+)
+def test_counting_absent_values_as_equal_needs_the_tenant_scope(
+    break_toy: Breaker, scope: str, option: str | None, refused: bool
+) -> None:
+    """TC-08: false is allowed at the tenant scope only; true or unset adds no problem."""
+    line = "" if option is None else f"        consider_nulls_inequal: {option}\n"
+    new = KEY_SCOPE.replace("tenant", scope) + line
+    problems = _planted(break_toy, "books.yaml", KEY_SCOPE, new)
+    named = f"{UNIQUE_KEY} Book: unique key 'isbn_key': {NULLS_NEED_TENANT}"
+    if refused:
+        assert any(p.startswith(named) for p in problems), problems
+    else:
+        assert problems == [], "no problem for this option at this scope"
 
 
 MIXIN = """  Keyed:

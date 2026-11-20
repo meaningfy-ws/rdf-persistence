@@ -88,6 +88,10 @@
     range: string
 - class_name: AggregateKey
   slots:
+  - name: key_counts_absent
+    required: false
+    multivalued: false
+    range: boolean
   - name: key_name
     required: true
     multivalued: false

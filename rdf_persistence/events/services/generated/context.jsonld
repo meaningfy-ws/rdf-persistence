@@ -77,6 +77,9 @@
          "@type": "@id",
          "@id": "graph"
       },
+      "key_counts_absent": {
+         "@id": "keyCountsAbsent"
+      },
       "key_name": {
          "@id": "keyName"
       },

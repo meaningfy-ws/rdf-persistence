@@ -1,4 +1,7 @@
-"""Unique keys across aggregates against a real Fuseki (cross-aggregate-unique-keys 1.4: IT-01, IT-02, IT-04).
+"""Unique keys across aggregates against a real Fuseki.
+
+cross-aggregate-unique-keys 1.4: IT-01, IT-02, IT-04, IT-05. unique-key-nulls-equal 1.6: IT-NE-1
+(concurrent adds of one title with no subtitle), IT-NE-2 (the report names the shared absence).
 
 A, B are stored books of the toy tenant; "another session" is a second session on the same dataset.
 """
@@ -8,11 +11,11 @@ import uuid
 from collections.abc import AsyncIterator
 
 import pytest
-from rdflib import Literal, URIRef
+from rdflib import RDF, BNode, Literal, URIRef
 from rdflib.namespace import XSD
 
 from rdf_persistence.core.domain.exceptions import Conflict, KeyConflict, NotFound
-from rdf_persistence.core.domain.generated.rp_core import KeyDuplicate
+from rdf_persistence.core.domain.generated.rp_core import AggregateKey, KeyDuplicate
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.persistence.services.session import Session
@@ -20,6 +23,7 @@ from tests.integration.store.sessions import (
     BEN,
     BOOK,
     ISBN,
+    TITLE,
     session_of,
 )
 from tests.integration.store.sessions import book as book_iri
@@ -160,3 +164,80 @@ async def test_it05_the_report_names_the_roots_that_share_a_key_value(store, dat
     ], "one group: ISBN 1, roots A and B sorted; C is alone"
     after = len(list(await store.query(database, every_quad)))
     assert after == before, "the report changed nothing in the store"
+
+
+# --- a key that counts an absence as a value (unique-key-nulls-equal 1.6: IT-NE-1, IT-NE-2) -------
+
+ALTERNATIVE = URIRef("http://purl.org/dc/terms/alternative")
+TITLE_SUBTITLE = AggregateKey(
+    key_name="title_subtitle",
+    root_class=str(BOOK),
+    key_predicates=[str(TITLE), str(ALTERNATIVE)],
+    key_counts_absent=True,
+)
+MARKER_TEXT = "https://meaningfy.ws/ns/rdf-persistence#absentKeyValue"
+WITH_TITLE = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?root a $book ; $title $value } }"
+
+
+async def books_titled(store: FusekiStore, database: str, title: str) -> int:
+    text = fill(WITH_TITLE, book=term(BOOK), title=term(TITLE), value=term(Literal(title)))
+    return len(list(await store.query(database, text)))
+
+
+def dune(iri: str, title: str = "Dune", *, with_part: bool = False) -> list:
+    """A book with a title and no ``dcterms:alternative``; optionally with a part that has a title."""
+    root = URIRef(iri)
+    triples = [(root, RDF.type, BOOK), (root, TITLE, Literal(title))]
+    if with_part:
+        triples.append((BNode(), TITLE, Literal("Chapter")))
+    return triples
+
+
+async def test_it_ne_1_of_two_concurrent_adds_of_dune_without_subtitle_exactly_one_is_stored(
+    store, database
+):
+    """Scenario: concurrent creates with the slot absent (RISK-1)."""
+    keys = (TITLE_SUBTITLE,)
+    for n in range(ROUNDS):
+        title = f"Dune {n}"  # a fresh title each round: the key is one title with no subtitle
+        first, second = book_iri(300 + 2 * n), book_iri(301 + 2 * n)
+        mine = session_of(store, database, keys=keys)
+        theirs = session_of(store, database, BEN, keys=keys)
+
+        outcomes = await asyncio.gather(
+            mine.add_graph(first, dune(first, title)),
+            theirs.add_graph(second, dune(second, title)),
+            return_exceptions=True,
+        )
+
+        refused = [
+            (root, o)
+            for root, o in zip((first, second), outcomes, strict=True)
+            if isinstance(o, BaseException)
+        ]
+        assert len(refused) == 1, f"round {n}: exactly one add is refused, got {outcomes}"
+        loser, error = refused[0]
+        assert type(error) is KeyConflict, f"round {n}: a key clash, not {error!r}"
+        assert error.iris == (loser,), f"round {n}: the refused add names its own root"
+        assert error.keys == ("title_subtitle",), f"round {n}: the key that clashed"
+        assert await books_titled(store, database, title) == 1, f"round {n}: one {title} / none"
+
+
+async def test_it_ne_2_the_report_names_the_absence_two_dunes_share(store, database):
+    """Scenario: duplicates that share an absence (PD-3, PD-5, D-5), on Fuseki."""
+    first, second = book_iri(310), book_iri(311)
+    unkeyed = session_of(store, database, keys=())
+    await unkeyed.add_graph(first, dune(first, with_part=True))
+    await unkeyed.add_graph(second, dune(second))
+    keyed = session_of(store, database, keys=(TITLE_SUBTITLE,))
+
+    report = await keyed.key_duplicates()
+
+    assert report == [
+        KeyDuplicate(
+            key_name="title_subtitle",
+            root_class=str(BOOK),
+            key_values=["Dune", MARKER_TEXT],
+            key_roots=[first, second],
+        )
+    ], "one group: Dune with the marker for the absent subtitle, both roots"

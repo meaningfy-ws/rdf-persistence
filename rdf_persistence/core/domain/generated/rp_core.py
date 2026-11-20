@@ -173,6 +173,7 @@ class AggregateKey(ConfiguredBaseModel):
     key_name: str = Field(default=..., title="Key name", description="The name of a key across aggregates, as declared in `unique_keys`.")
     root_class: str = Field(default=..., title="Root class", description="The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope.")
     key_predicates: list[str] = Field(default=..., title="Key predicates", description="The predicates of the key\u0027s slots, in the order of the key.")
+    key_counts_absent: Optional[bool] = Field(default=False, title="Key counts absent", description="Whether an absent value of a slot of the key counts as a value: two roots that both lack a value then hold the same values, and the key refuses them. False when the key declares nulls as unequal or does not say.")
 
 
 class KeyDuplicate(ConfiguredBaseModel):

@@ -35,7 +35,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "79ba09091602aabc4fd28906ae56caf268b95a50da1fae7a91c9ce81093887bd"
+      "sha256": "e28b62e2cd07c23eafb5d493481abed24009c1faca62ba43e5904a0b63c88206"
     },
     {
       "path": "rdf_persistence/model/rp_discussion.yaml",
@@ -95,7 +95,7 @@
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
-      "sha256": "44c0a241000640e1625d96ff6124cbc55789a5dbe6cd93acc5148ac3a5c5da8d"
+      "sha256": "17c91f0f631d9323f51fdca8b396a1892767bda68693ea545789e05c397891c8"
     },
     {
       "path": "rdf_persistence_generation/__init__.py",
@@ -119,7 +119,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/hard.py",
-      "sha256": "b62056a350cf0b9a3bde98b9b32f6f10635196bf6434cb39c6c96af792162d4f"
+      "sha256": "07de85189a51d9ab8df399ed1a24c3a2438b77a38970f8a4347cb297223878d3"
     },
     {
       "path": "rdf_persistence_generation/checks/python_package.py",
@@ -337,7 +337,7 @@
     },
     {
       "path": "domain/generated/context.jsonld",
-      "sha256": "be0606abdc83af6c9e16d099606c62bee07564903e68acb5f4ddb2a9c17be19c"
+      "sha256": "1edfd8ed6c6dce024c5a5ed4d7a2a481218629dc1fb55334ce95ce22d61bd2bc"
     },
     {
       "path": "domain/generated/diagrams/books.mmd",
@@ -377,7 +377,7 @@
     },
     {
       "path": "domain/generated/openapi-components.json",
-      "sha256": "1230d6c0545e8465955b1b2bc12460caaa499652146e3186484dde758f5b25cc"
+      "sha256": "c1fe4fe07bf9e0dd62cd9801b8047bef645cc9c7a6b7dbe5d70dd64655009322"
     },
     {
       "path": "domain/generated/scans.py",
@@ -385,7 +385,7 @@
     },
     {
       "path": "domain/generated/shapes.ttl",
-      "sha256": "899a6f5feaef06deda0ba718ef5c8b6ce7f336125e105698b189c67beac14ad3"
+      "sha256": "13acc51539f52ec53d6aa14eb5a139eae1fa6647ca556f8712e84e47c1d78948"
     },
     {
       "path": "domain/generated/templates.py",
@@ -425,7 +425,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_core.ts",
-      "sha256": "0717eccbcfe63fc678fa4732504b7f24bce3feb6e6c19f6c6c8fce32194803cc"
+      "sha256": "e98406acb5ad6657c3dfde4306db4000f16207655dddedd99224995505d92b6c"
     },
     {
       "path": "web/src/domain/generated/rp_discussion.ts",

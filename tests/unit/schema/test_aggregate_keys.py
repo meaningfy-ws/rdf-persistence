@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from rdf_persistence.core.domain.generated.rp_core import AggregateKey
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import aggregate_keys
@@ -79,6 +81,24 @@ classes:
 )
 
 
+def nulls_schema(declaration: str) -> str:
+    """A schema with one scoped key whose ``consider_nulls_inequal`` is ``declaration`` (empty: unset)."""
+    return (
+        HEAD
+        + f"""
+classes:
+  Nulls:
+    title: Nulls
+    description: A root with one scoped key.
+    mixins: [AggregateRoot]
+    slots: [title]
+    unique_keys:
+      title_key: {{unique_key_slots: [title], {SCOPED}{declaration}}}
+"""
+        + SLOTS
+    )
+
+
 def keys_of(tmp_path: Path, schema: str) -> list[AggregateKey]:
     path = tmp_path / "keys.yaml"
     path.write_text(schema, encoding="utf-8")
@@ -99,6 +119,24 @@ def test_a_root_gets_the_scoped_keys_it_inherits_and_the_nearest_declaration_win
         AggregateKey(key_name="title_key", root_class=f"{R}Magazine", key_predicates=[f"{R}issn"]),
     ], (
         "TC-02: the abstract Publication is no root; Magazine's own declaration replaces the inherited"
+    )
+
+
+@pytest.mark.parametrize(
+    ("declaration", "counts_absent"),
+    [
+        (", consider_nulls_inequal: false", True),
+        (", consider_nulls_inequal: true", False),
+        ("", False),
+    ],
+    ids=["false", "true", "unset"],
+)
+def test_a_key_counts_absent_values_exactly_when_nulls_are_declared_not_inequal(
+    tmp_path: Path, declaration: str, counts_absent: bool
+) -> None:
+    [key] = keys_of(tmp_path, nulls_schema(declaration))
+    assert key.key_counts_absent is counts_absent, (
+        "PD-1: only an explicit consider_nulls_inequal: false makes an absent value count as a value"
     )
 
 

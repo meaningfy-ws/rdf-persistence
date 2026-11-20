@@ -21,6 +21,9 @@
       "hidden_count": {
          "@id": "hiddenCount"
       },
+      "key_counts_absent": {
+         "@id": "keyCountsAbsent"
+      },
       "key_name": {
          "@id": "keyName"
       },
