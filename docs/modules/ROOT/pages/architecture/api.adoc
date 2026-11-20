@@ -162,7 +162,10 @@ more, in extension members and not in a `detail` (it has none): `referrers` (the
 as `Referrer` items, capped by `limits.max_named_referrers`, `[]` when none is readable),
 `more_count` (readable referrer aggregates left out by the cap) and `hidden_count` (referrer
 aggregates the caller may not read). The members are filtered by what the caller may read first,
-so the answer does not name what `referrers` would hide. A stale `If-Match` on the same request
+so the answer does not name what `referrers` would hide. An `InUse` raised by a removal made
+without a `readable` callable (`InUse.filtered` is false) is answered with `referrers: []`,
+`more_count: 0` and every referrer aggregate in `hidden_count`: an unfiltered refusal names
+nothing over HTTP. A stale `If-Match` on the same request
 stays `conflict`, whatever refers to the aggregate. How a client or a caller of `session.remove`
 handles it is in
 xref:user-manual/store-and-read.adoc#refuse-referenced[Refuse to delete an aggregate that others refer to].

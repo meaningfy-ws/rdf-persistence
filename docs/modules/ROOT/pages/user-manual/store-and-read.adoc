@@ -406,6 +406,11 @@ stays. The body names the referrers the caller may read, as `Collaboration.refer
   (xref:howto/settings.adoc[Configure the toolkit]): `LimitSettings(max_named_referrers=50)`.
 * The 409 has no `detail`, like the other 409 problems. A stale `If-Match` on the same request
   is still 409 `conflict`, never `in-use`.
+* An HTTP answer never names what the caller may not read. `InUse` carries `filtered`, true when a
+  `readable` callable judged its referrers. The handler answers a filtered `InUse` as above. An
+  unfiltered one, raised by a removal made without `readable`, is answered with `referrers: []`,
+  `more_count: 0` and every referrer aggregate counted in `hidden_count`. The generic DELETE route
+  and `delete_cascade` pass `readable`, so their answers are filtered.
 
 With no referrer, the delete answers 204 as before. The comments on the author (a comment is
 removed with its target) do not count as referrers: a comment never blocks the delete, also one
@@ -429,9 +434,17 @@ async with kit.session(tenant, principal) as session:
 
 A session at this level checks no access, so it has the full reach: every referrer is readable and
 `hidden_count` is 0 (`readable=None`; the generic route passes a `readable=` callable to
-`session.remove` that narrows to what the caller may read). The same refusal applies to a `UnitOfWork` (`work.remove(author)` then
+`session.remove` that narrows to what the caller may read). In process, `InUse` still names every
+referrer up to the cap, and `filtered` is false. The same refusal applies to a `UnitOfWork` (`work.remove(author)` then
 `commit()`), to `remove_with_files` and to `delete_cascade`, because all of them end in one
 transaction.
+
+*Your own routes.* A route of yours that removes, through
+`kit.remove_with_files(tenant, principal, iri, if_version, *, readable=None)` or `session.remove`,
+passes the collaboration's `readable_referrers` as `readable`
+(`kit.collaboration(checked).readable_referrers`) to have the readable referrers named in the 409.
+Without it the refusal is unfiltered, and the 409 answers `referrers: []` with every referrer
+aggregate in `hidden_count`.
 
 What to expect:
 
