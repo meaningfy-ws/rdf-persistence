@@ -8,14 +8,14 @@ never commit; the lead does.
 
 ## 1. The helper (testkit)
 
-- [ ] 1.1 Records (PD-1). Tier: unit. Failing test first: in `tests/unit/testkit/test_streams.py`,
+- [x] 1.1 Records (PD-1). Tier: unit. Failing test first: in `tests/unit/testkit/test_streams.py`,
   `test_the_result_records_are_public_and_generated` (imports `OpenedStream`, `StreamEvent` from
   `rdf_persistence.testkit`; `StreamEvent(id="x").id == "x"`; `OpenedStream.__module__` is
   `rdf_persistence.testkit.generated.rp_testkit`). Then add `Any`, `StreamEvent`, `OpenedStream` and
   their slots to `rdf_persistence/model/technical/testkit/rp_testkit.yaml`, `make generate`, export
   both. Accept: that test, `test_generated_classes_match_the_induced_slots[testkit]` and
   `tests/unit/testkit/test_model_guard.py` pass.
-- [ ] 1.2 Lifespan flag (PD-3). Tier: unit. Failing test first: in
+- [x] 1.2 Lifespan flag (PD-3). Tier: unit. Failing test first: in
   `tests/unit/api/test_event_wiring.py`, `test_the_lifespan_flag_is_set_while_the_lifespan_runs`
   (true inside `service.app.router.lifespan_context`, false after it). Then `LIFESPAN_STARTED` and
   its set/clear in `_run_at_startup`. Accept: that test; `make check-architecture`.
@@ -59,7 +59,7 @@ never commit; the lead does.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [x] 3.1 · [ ] 3.2
+- [x] 1.1 · [x] 1.2 · [ ] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [x] 3.1 · [ ] 3.2
 
 ## Verification
 

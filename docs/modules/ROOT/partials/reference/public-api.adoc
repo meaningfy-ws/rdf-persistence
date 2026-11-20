@@ -178,11 +178,13 @@
 |`model_shape_diff` |function |Where the pydantic fields of the generated classes differ from the shapes (name, required, multivalued); empty when they agree.
 |`new_key` |function |A fresh signing key that fits ``algorithm``: RSA 2048 (RS*, PS*), the curve of ES256, ES384 or ES512 (P-256, P-384, P-521), or Ed25519 (EdDSA).
 |`no_network` |function |Make ``connect``, ``connect_ex`` and ``create_connection`` raise ``RuntimeError``.
+|`OpenedStream` |class |What opening a server-sent event stream returned: the status and headers of the response and the events read from it.
 |`provision_project` |function |Create the project with the role ``admin``, and one machine user per principal.
 |`read_snapshot` |function |Read the shapes written by :func:`write_snapshot`.
 |`RecordingObserver` |class |An observer that appends every activity it is called with; it never raises.
 |`shared_key` |function |One signing key per process, for tests that need a key but not a distinct one.
 |`snapshot_diff` |function |Human-readable lines for what differs between two lists of shapes; empty if none.
+|`StreamEvent` |class |One event of a server-sent event stream.
 |`TokenRefusedError` |class |Zitadel refused a token request (a disabled account, an unknown key, ...).
 |`TokenSigner` |class |An identity provider for tests: signing keys, tokens, and the endpoints a verifier reads.
 |`wait_until` |function |Call ``probe`` until it returns something truthy, and return that value.

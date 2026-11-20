@@ -18,6 +18,7 @@ from rdf_persistence.testkit.fakes import (
     InMemoryEventBus,
     fake_session,
 )
+from rdf_persistence.testkit.generated.rp_testkit import OpenedStream, StreamEvent
 from rdf_persistence.testkit.guards import assert_models_generated
 from rdf_persistence.testkit.messages import RecordingObserver
 from rdf_persistence.testkit.model_shape import model_schema_diff, model_shape_diff
@@ -67,7 +68,9 @@ __all__ = [
     "FakeStore",
     "InMemoryBroker",
     "InMemoryEventBus",
+    "OpenedStream",
     "RecordingObserver",
+    "StreamEvent",
     "TokenRefusedError",
     "TokenSigner",
     "new_key",

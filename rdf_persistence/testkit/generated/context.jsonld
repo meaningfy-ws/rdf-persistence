@@ -21,8 +21,17 @@
       "endpoint": {
          "@id": "endpoint"
       },
+      "events": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "streamEvents"
+      },
       "exit_code": {
          "@id": "exitCode"
+      },
+      "headers": {
+         "@type": "@id",
+         "@id": "headers"
       },
       "help": {
          "@id": "help"
@@ -77,6 +86,18 @@
          "@container": "@set",
          "@id": "slotShapes"
       },
+      "data": {
+         "@id": "sseData"
+      },
+      "event": {
+         "@id": "sseEvent"
+      },
+      "id": {
+         "@id": "sseId"
+      },
+      "status": {
+         "@id": "status"
+      },
       "stderr": {
          "@id": "stderr"
       },
@@ -100,6 +121,9 @@
       },
       "@version": 1.1,
       "type": "@type",
+      "Any": {
+         "@id": "linkml:Any"
+      },
       "ClassShape": {
          "@id": "ClassShape"
       },
@@ -121,8 +145,14 @@
       "MachineUser": {
          "@id": "MachineUser"
       },
+      "OpenedStream": {
+         "@id": "OpenedStream"
+      },
       "SlotShape": {
          "@id": "SlotShape"
+      },
+      "StreamEvent": {
+         "@id": "StreamEvent"
       },
       "Violation": {
          "@id": "Violation"
