@@ -122,11 +122,11 @@ export interface Filter {
   slot: string;
   /** The value the slot must have, as text. */
   value: string;
-  /** Whether the filter matches a substring of the slot's text, ignoring case, rather than the value */
+  /** Whether the filter matches a substring of the slot's text, ignoring case, rather than the value. */
   contains?: boolean;
 }
 
-/** A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value */
+/** A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value. */
 export interface Contains {
   /** The text a string slot must hold, in any case. */
   text: string;
@@ -154,7 +154,7 @@ export interface Condition {
   datatype?: string;
   /** Whether the value is an IRI rather than a literal. */
   reference?: boolean;
-  /** Whether the filter matches a substring of the slot's text, ignoring case, rather than the value */
+  /** Whether the filter matches a substring of the slot's text, ignoring case, rather than the value. */
   contains?: boolean;
 }
 

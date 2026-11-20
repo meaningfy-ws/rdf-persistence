@@ -380,6 +380,7 @@ TEMPLATES = ROOT / "rdf_persistence" / "model" / "technical" / "schema" / "rp_sc
         ("shelf", False),  # a reference
         ("sequel_of", False),  # a reference
         ("workflow_status", False),  # a uri
+        ("chapters", False),  # owned parts, ranged by a class
     ],
 )
 def test_a_slot_holds_text_when_it_is_written_as_a_plain_literal(slot, expected) -> None:

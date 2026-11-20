@@ -169,8 +169,8 @@ owned-part slots cannot be filtered on. A string-ranged slot also takes a contai
 `?<slot>~=<text>` (`Session.find` takes `Contains(text=...)`): it matches the aggregates whose value
 holds the text, ignoring case. Filters combine with AND, paging and the total are unchanged, and an
 aggregate is listed once however many of its values match. A slot that is not a string, or an empty
-text, answers 400 `bad-query`. The text reaches SPARQL only as an escaped literal. One SPARQL `CONSTRUCT` per page counts the matches and
-selects the page. The query states, for each subject, the graph it found it in (`rp:listedIn`), and
+text, answers 400 `bad-query`. The text reaches SPARQL only as an escaped literal. One SPARQL `CONSTRUCT` per page counts the matches
+and selects the page. The query states, for each subject, the graph it found it in (`rp:listedIn`), and
 the toolkit gives each aggregate the subjects of its own graph; no IRI is read to find a subject's
 root, so parts beside their root are listed with it. A `read` prohibition on an aggregate hides it
 from that caller's listing and
@@ -178,7 +178,8 @@ total. The tenant listing takes only `limit` and `offset`, and is paged in one q
 
 *The OpenAPI document* is FastAPI's (`/openapi.json`), completed from the schema. It lists every
 aggregate type's routes with their request and response bodies, a query parameter per filterable
-slot (and a `<slot>~` parameter, `minLength: 1`, per string-ranged slot), the problem responses of each route (413 on every operation with a body), the `ETag`,
+slot (and a `<slot>~` parameter, `minLength: 1`, per string-ranged slot), the problem responses of
+each route (413 on every operation with a body), the `ETag`,
 `If-Match` and `Location` headers, and a
 bearer security scheme. Its component schemas come from `openapi-components.json`, which
 `rp-generate` writes with `gen-json-schema` (xref:architecture/generation.adoc#toolchain[step 5b]),

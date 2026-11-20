@@ -136,7 +136,7 @@ def holds_text(view: SchemaView, slot: SlotDefinition) -> bool:
     URI of its own is not text.
     """
     range_ = slot.range or str(view.schema.default_range)
-    if range_ in view.all_enums() or holds_iri(view, slot):
+    if range_ in view.all_enums() or range_ in view.all_classes() or holds_iri(view, slot):
         return False
     return datatype_of(view, range_) == XSD.string
 

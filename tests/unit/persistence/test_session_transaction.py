@@ -425,6 +425,32 @@ async def test_a_match_guard_that_fails_refuses_the_commit_and_writes_nothing(
     assert not await a_marker_is_left(store), "the failed guard leaves no marker"
 
 
+def containing(text: str) -> list[Condition]:
+    return [Condition(predicate=str(TITLE), value=text, contains=True)]
+
+
+async def test_a_contains_match_guard_that_holds_lets_the_commit_through(session, typed):
+    async with session.transaction() as t:
+        await t.remove(A, typed[A])
+        t._require_match(A, str(KIND), containing("IRS"))
+    assert not await stored(session, A), "the removal goes through when the substring is held"
+
+
+async def test_a_contains_match_guard_that_fails_refuses_the_commit_and_writes_nothing(
+    store, session, typed
+):
+    with pytest.raises(Conflict) as refused:
+        async with session.transaction() as t:
+            await t.remove(A, typed[A])
+            t._require_match(A, str(KIND), containing("zzz"))
+    assert refused.value.iris == (), "a guard that only stopped holding names no one"
+    assert (
+        str(refused.value) == "the commit lost a race with another writer; read again and retry"
+    ), "the failed guard says the commit lost a race"
+    assert await stored(session, A), "the guarded root stays stored"
+    assert not await a_marker_is_left(store), "the failed guard leaves no marker"
+
+
 async def test_the_class_of_a_match_guard_must_be_the_class_of_the_aggregate(session, typed):
     with pytest.raises(Conflict):
         async with session.transaction() as t:

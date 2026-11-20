@@ -9,55 +9,55 @@ rp:AggregateHead a sh:NodeShape ;
 	rdfs:label "Aggregate head" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n1 ;
-	sh:property _:c14n27 , _:c14n29 , _:c14n33 ;
+	sh:property _:c14n26 , _:c14n29 , _:c14n33 ;
 	sh:targetClass rp:AggregateHead .
 rp:Any a sh:NodeShape ;
 	rdfs:comment "Any value; the slots that range over it hold data the toolkit does not model." ;
 	rdfs:label "Any" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n12 ;
+	sh:ignoredProperties _:c14n13 ;
 	sh:targetClass linkml:Any .
 rp:Condition a sh:NodeShape ;
 	rdfs:comment "A filter of a listing resolved against the slots of the listed type: the aggregate has this statement, or a statement whose text contains the value. The value is an IRI when it is a reference, else a literal of the datatype." ;
 	rdfs:label "Condition" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n3 ;
-	sh:property _:c14n18 , _:c14n22 , _:c14n23 , _:c14n26 , _:c14n9 ;
+	sh:property _:c14n18 , _:c14n22 , _:c14n25 , _:c14n28 , _:c14n9 ;
 	sh:targetClass rp:Condition .
 rp:Contains a sh:NodeShape ;
-	rdfs:comment "A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value" ;
+	rdfs:comment "A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value." ;
 	rdfs:label "Contains" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n13 ;
-	sh:property _:c14n11 ;
+	sh:ignoredProperties _:c14n14 ;
+	sh:property _:c14n12 ;
 	sh:targetClass rp:Contains .
 rp:Filter a sh:NodeShape ;
 	rdfs:comment "One filter of a listing, the name of a slot of the listed type and the value it must have, or whose text it must contain, as the text the caller sent." ;
 	rdfs:label "Filter" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n6 ;
-	sh:property _:c14n17 , _:c14n20 , _:c14n4 ;
+	sh:property _:c14n11 , _:c14n20 , _:c14n4 ;
 	sh:targetClass rp:Filter .
 rp:ListPlan a sh:NodeShape ;
 	rdfs:comment "A listing resolved against the slots of the listed type: the class, the typed conditions, the predicate to order by (none orders by IRI), the page, and the graphs of the aggregates the caller may not read." ;
 	rdfs:label "List plan" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n14 ;
-	sh:property _:c14n0 , _:c14n16 , _:c14n21 , _:c14n25 , _:c14n31 , _:c14n32 , _:c14n34 ;
+	sh:ignoredProperties _:c14n15 ;
+	sh:property _:c14n0 , _:c14n17 , _:c14n21 , _:c14n24 , _:c14n31 , _:c14n32 , _:c14n34 ;
 	sh:targetClass rp:ListPlan .
 rp:ListRequest a sh:NodeShape ;
 	rdfs:comment "The query of a listing, as the caller sent it: the filters, the position and size of the page and the key to sort by." ;
 	rdfs:label "List request" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n19 ;
-	sh:property _:c14n2 , _:c14n24 , _:c14n30 , _:c14n7 ;
+	sh:property _:c14n2 , _:c14n23 , _:c14n30 , _:c14n7 ;
 	sh:targetClass rp:ListRequest .
 rp:Page a sh:NodeShape ;
 	rdfs:comment "One page of a listing, with the position of the page in the whole listing." ;
 	rdfs:label "Page" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n8 ;
-	sh:property _:c14n10 , _:c14n15 , _:c14n28 , _:c14n5 ;
+	sh:property _:c14n10 , _:c14n16 , _:c14n27 , _:c14n5 ;
 	sh:targetClass rp:Page .
 _:c14n0 sh:datatype xsd:integer ;
 	sh:description "The position of the page's first object in the whole listing." ;
@@ -81,7 +81,14 @@ _:c14n10 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:offset .
-_:c14n11 sh:datatype xsd:string ;
+_:c14n11 sh:datatype xsd:boolean ;
+	sh:description "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value." ;
+	sh:maxCount 1 ;
+	sh:name "Filter contains" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:filterContains .
+_:c14n12 sh:datatype xsd:string ;
 	sh:description "The text a string slot must hold, in any case." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -89,13 +96,13 @@ _:c14n11 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:containsText .
-_:c14n12 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
 _:c14n13 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
 _:c14n14 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n15 sh:datatype xsd:integer ;
+_:c14n15 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n16 sh:datatype xsd:integer ;
 	sh:description "The most objects the page can hold." ;
 	sh:maxCount 1 ;
 	sh:maxInclusive 200 ;
@@ -105,19 +112,12 @@ _:c14n15 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path rp:limit .
-_:c14n16 sh:description "The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI." ;
+_:c14n17 sh:description "The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI." ;
 	sh:maxCount 1 ;
 	sh:name "Plan sort" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path rp:planSort .
-_:c14n17 sh:datatype xsd:boolean ;
-	sh:description "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value" ;
-	sh:maxCount 1 ;
-	sh:name "Filter contains" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 2 ;
-	sh:path rp:filterContains .
 _:c14n18 sh:description "The IRI of the predicate the aggregate must have a statement with." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -151,20 +151,13 @@ _:c14n21 sh:datatype xsd:boolean ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:descending .
-_:c14n22 sh:datatype xsd:boolean ;
-	sh:description "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value" ;
-	sh:maxCount 1 ;
-	sh:name "Filter contains" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 4 ;
-	sh:path rp:filterContains .
-_:c14n23 sh:description "The IRI of the datatype of a literal value; absent for a plain string." ;
+_:c14n22 sh:description "The IRI of the datatype of a literal value; absent for a plain string." ;
 	sh:maxCount 1 ;
 	sh:name "Condition datatype" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path rp:conditionDatatype .
-_:c14n24 sh:datatype xsd:integer ;
+_:c14n23 sh:datatype xsd:integer ;
 	sh:defaultValue 50 ;
 	sh:description "The most objects the page can hold." ;
 	sh:maxCount 1 ;
@@ -174,26 +167,26 @@ _:c14n24 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:limit .
-_:c14n25 sh:description "The IRI of the class of the aggregates listed." ;
+_:c14n24 sh:description "The IRI of the class of the aggregates listed." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Plan class" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path rp:planClass .
-_:c14n26 sh:datatype xsd:boolean ;
+_:c14n25 sh:datatype xsd:boolean ;
 	sh:description "Whether the value is an IRI rather than a literal." ;
 	sh:maxCount 1 ;
 	sh:name "Condition reference" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:conditionReference .
-_:c14n27 sh:description "The class IRIs the stored aggregate is typed with." ;
+_:c14n26 sh:description "The class IRIs the stored aggregate is typed with." ;
 	sh:name "Head types" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path rp:headType .
-_:c14n28 sh:datatype xsd:integer ;
+_:c14n27 sh:datatype xsd:integer ;
 	sh:description "The number of objects in the whole listing." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -202,6 +195,13 @@ _:c14n28 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:total .
+_:c14n28 sh:datatype xsd:boolean ;
+	sh:description "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value." ;
+	sh:maxCount 1 ;
+	sh:name "Filter contains" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 4 ;
+	sh:path rp:filterContains .
 _:c14n29 sh:datatype xsd:string ;
 	sh:description "The version token of the stored aggregate's graph." ;
 	sh:maxCount 1 ;

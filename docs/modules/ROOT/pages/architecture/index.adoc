@@ -244,7 +244,7 @@ and buckets, and the sweep inside a live tenant is the next building block (belo
 
 |Typed query builder
 |deferred
-|The router lists by class with equality filters, from templates with escaped terms, never by concatenating input.
+|The router lists by class with equality and contains filters, from templates with escaped terms, never by concatenating input.
 |
 
 |Unique keys across aggregates (e.g. a name unique within a kind)

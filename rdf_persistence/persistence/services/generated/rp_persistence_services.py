@@ -69,11 +69,11 @@ class Filter(ConfiguredBaseModel):
     "One filter of a listing, the name of a slot of the listed type and the value it must have, or whose text it must contain, as the text the caller sent."
     slot: str = Field(default=..., title="Filter slot", description="The name of the slot the filter is on.")
     value: str = Field(default=..., title="Filter value", description="The value the slot must have, as text.")
-    contains: Optional[bool] = Field(default=False, title="Filter contains", description="Whether the filter matches a substring of the slot\u0027s text, ignoring case, rather than the value")
+    contains: Optional[bool] = Field(default=False, title="Filter contains", description="Whether the filter matches a substring of the slot\u0027s text, ignoring case, rather than the value.")
 
 
 class Contains(ConfiguredBaseModel):
-    "A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value"
+    "A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value."
     text: str = Field(default=..., title="Contains text", description="The text a string slot must hold, in any case.")
 
 
@@ -91,7 +91,7 @@ class Condition(ConfiguredBaseModel):
     value: str = Field(default=..., title="Condition value", description="The value of the statement, an IRI or the lexical form of a literal.")
     datatype: Optional[str] = Field(default=None, title="Condition datatype", description="The IRI of the datatype of a literal value; absent for a plain string.")
     reference: Optional[bool] = Field(default=False, title="Condition reference", description="Whether the value is an IRI rather than a literal.")
-    contains: Optional[bool] = Field(default=False, title="Filter contains", description="Whether the filter matches a substring of the slot\u0027s text, ignoring case, rather than the value")
+    contains: Optional[bool] = Field(default=False, title="Filter contains", description="Whether the filter matches a substring of the slot\u0027s text, ignoring case, rather than the value.")
 
 
 class ListPlan(ConfiguredBaseModel):

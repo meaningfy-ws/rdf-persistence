@@ -1,7 +1,8 @@
 """Listings (PD-15): what a page of aggregates asks for, and the one query that reads it.
 
-A listing is the aggregates of one type in a tenant, filtered on the type's slots (equality, or contains for a name ending in ``~``), ordered
-by IRI or by one slot, and cut into a page. The query string becomes a ``ListRequest``; against the
+A listing is the aggregates of one type in a tenant, filtered on the type's slots (equality, or
+contains for a name ending in ``~``), ordered by IRI or by one slot, and cut into a page. The
+query string becomes a ``ListRequest``; against the
 type's slots it becomes a ``ListPlan`` of typed terms (a filter value is typed by the range of its
 slot, never pasted into the query as text); the plan becomes one ``CONSTRUCT`` that returns the
 triples of the page's aggregates and the size of the whole listing.
@@ -117,8 +118,9 @@ def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
     before the ``~`` is stripped, so ``sort~`` is a filter on the slot ``sort``.
 
     Raises:
-        BadQuery: ``limit`` is not between 1 and ``PAGE``, ``offset`` is not between 0 and ``MAX_OFFSET``, a number is not a whole
-            number, or ``limit``, ``offset`` or ``sort`` is given twice.
+        BadQuery: ``limit`` is not between 1 and ``PAGE``, ``offset`` is not between 0 and
+            ``MAX_OFFSET``, a number is not a whole number, or ``limit``, ``offset`` or ``sort``
+            is given twice.
     """
     sent = _sent(params)
     if len(sent[SORT]) > 1:

@@ -173,7 +173,7 @@ async def test_find_returns_an_aggregate_the_principal_may_not_read(listings):  
 async def test_find_by_a_contains_matches_a_substring_in_any_case(listings):  # TC-07 a
     async with fake_session(listings=listings) as session:
         dune = await put_book(session, 1, ["Herbert"], label="Dune")
-        await put_book(session, 2, ["Joyce"], label="Ulysses")
+        await put_book(session, 2, ["Austen"], label="Emma")
         assert await session.find(Book, label=Contains(text="DUNE")) == [dune], (
             "find by a Contains returns the aggregate whose text holds it, in any case"
         )

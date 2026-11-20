@@ -5222,7 +5222,7 @@
         "properties": {
           "contains": {
             "type": "boolean",
-            "description": "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value"
+            "description": "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value."
           },
           "slot": {
             "type": "string",

@@ -64,7 +64,7 @@ classes:
     title: Contains
     description: >-
       A value of `Session.find` that asks for a case-insensitive substring of a string slot rather
-      than its value
+      than its value.
     class_uri: rp:Contains
     slots:
       - contains_text
@@ -185,7 +185,7 @@ slots:
     inlined_as_list: true
   filter_contains:
     title: Filter contains
-    description: Whether the filter matches a substring of the slot's text, ignoring case, rather than the value
+    description: Whether the filter matches a substring of the slot's text, ignoring case, rather than the value.
     slot_uri: rp:filterContains
     alias: contains
     range: boolean
