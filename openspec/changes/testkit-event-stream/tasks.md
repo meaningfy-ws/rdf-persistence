@@ -34,7 +34,7 @@ never commit; the lead does.
 
 ## 2. The toolkit's tests switch (DEC-1)
 
-- [ ] 2.1 `tests/unit/api/test_events_route.py`. Tier: unit. Failing test first: rewrite
+- [x] 2.1 `tests/unit/api/test_events_route.py`. Tier: unit. Failing test first: rewrite
   `test_a_reader_hears_the_replace_of_a_book_with_its_id_class_and_json` (TC-32) on `opening` and
   the `streams` fixture (PD-8) before they exist, and see it fail; then add `streams`, `opening`,
   `drained`, rewrite every other `follow` test per design.md "Tests rewritten" (PD-5, PD-6), and
@@ -59,7 +59,7 @@ never commit; the lead does.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 2.1 · [x] 2.2 · [x] 2.3 · [x] 3.1 · [ ] 3.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 3.1 · [ ] 3.2
 
 ## Verification
 
