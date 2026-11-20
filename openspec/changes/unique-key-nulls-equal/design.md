@@ -206,6 +206,15 @@ None. The owner settled three on 2026-11-20 (`inputs/qa.md`), recorded as PD-9 t
   and the lock's byte identity and the frame set stay guarded, and `make check-generated` keeps
   them fresh. The model change's own reference files (`tests/fixtures/model-shape.yaml`, the
   served TypeScript golden) were refreshed with their make targets. Developer may overrule.
+  **Superseded** at the rebase on `develop` (2026-11-20): `collection-has-part` PD-10, merged
+  first, dropped every byte check against 0.6.0 (shapes, context and lock), keeping the presence
+  and frame-set tests; the branch takes develop's test unchanged. The refreshed reference files
+  stand.
+- **D-6** (lead, 2026-11-20, at the rebase): every conflict was in a generated file (shapes and
+  manifests of `core`, `collaboration` and the toy library). The sources merged cleanly
+  (`rp_core.yaml` here, `rp_collections.yaml` there); per P-0003 the conflicted outputs were
+  deleted, as the generator asks for an invalid manifest, and regenerated from the merged
+  sources with `make generate`. No generated file was edited by hand.
 - **D-5** (lead, 2026-11-20, from the 1.5 report): PD-5's `duplicates_query` rendered the
   `OPTIONAL` value patterns before the type pattern. An `OPTIONAL` evaluated with `?key_root`
   unbound binds it to any subject of the graph holding the predicate (a part, for instance); the
