@@ -94,6 +94,14 @@ a value another aggregate of the tenant holds raises `KeyConflict` (409 `key-con
 nothing. See xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across
 aggregates] and xref:user-manual/store-and-read.adoc#key-on-live-data[Add a key to live data].
 
+*Can I stop an aggregate from being deleted while others refer to it?*::
+Yes: annotate its class `rp_on_referenced_delete: refuse`. Removing it then raises `InUse` (a
+`Conflict`, so do not retry it) and `DELETE /{type}/{id}` answers 409 `in-use`, naming the referrers
+the caller may read and counting the rest; nothing is deleted. The check holds when the delete is
+applied, not for a write that names the IRI afterwards. See
+xref:user-manual/store-and-read.adoc#refuse-referenced[Refuse to delete an aggregate that others
+refer to].
+
 *Why did my commit raise `Conflict`?*::
 Another writer changed or removed a root you change since you read it, or a root you add already
 exists; nothing was written, and the toolkit never retries for you. Read the roots again in a new
