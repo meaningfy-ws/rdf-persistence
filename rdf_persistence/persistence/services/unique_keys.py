@@ -19,11 +19,13 @@ from rdf_persistence.core.domain.generated.rp_core import AggregateKey, KeyDupli
 from rdf_persistence.core.domain.sparql import (
     SparqlTerm,
     Triple,
+    absent_patterns,
     count,
     fill,
     fragment_terms,
     join,
     match_patterns,
+    optional_value_patterns,
     union,
     value_patterns,
     value_variables,
@@ -86,11 +88,25 @@ def claims_of(keys: Iterable[AggregateKey], iri: str, triples: Iterable[Triple])
 
 
 def _values_of(own: list[tuple[URIRef, Value]], key: AggregateKey, iri: str) -> tuple[Value, ...]:
-    """The one value per predicate of ``key`` in ``own``, or none if a predicate has no value."""
+    """The one value per predicate of ``key`` in ``own``; a predicate with no value gives none at all,
+    or, for a key that counts absences, the ``ABSENT_KEY_VALUE`` (PD-4)."""
     per_predicate = [[_plain(o) for p, o in own if str(p) == name] for name in key.key_predicates]
     if any(len(values) > 1 for values in per_predicate):
         raise InvalidBody(f"{iri} has more than one value for a slot of the key {key.key_name}")
+    if key.key_counts_absent:
+        return _counted_values(per_predicate, key, iri)
     return tuple(values[0] for values in per_predicate) if all(per_predicate) else ()
+
+
+def _counted_values(
+    per_predicate: list[list[Value]], key: AggregateKey, iri: str
+) -> tuple[Value, ...]:
+    """The values of a key that counts absences: an empty slot is the ``ABSENT_KEY_VALUE`` (PD-4)."""
+    if any(values and values[0] == v.ABSENT_KEY_VALUE for values in per_predicate):
+        raise InvalidBody(
+            f"{iri} holds the absent-value marker in a slot of the key {key.key_name}"
+        )
+    return tuple(values[0] if values else v.ABSENT_KEY_VALUE for values in per_predicate)
 
 
 def _identity(claim: KeyClaim) -> tuple[str, str, tuple[Value, ...]]:
@@ -110,7 +126,10 @@ def same_value(claims: Sequence[KeyClaim]) -> list[KeyClaim]:
 def _values(claim: KeyClaim) -> SparqlTerm:
     """The patterns that match a root holding the values of ``claim`` (``$values`` of ``KEY_HELD``)."""
     pairs = [*zip(map(URIRef, claim.key.key_predicates), claim.values, strict=True)]
-    return match_patterns("key_root", [*pairs, (RDF.type, URIRef(claim.key.root_class))])
+    present = [(p, value) for p, value in pairs if value != v.ABSENT_KEY_VALUE]
+    absent = [p for p, value in pairs if value == v.ABSENT_KEY_VALUE]
+    held = match_patterns("key_root", [*present, (RDF.type, URIRef(claim.key.root_class))])
+    return join([held, absent_patterns("key_root", absent)]) if absent else held
 
 
 def guard(claim: KeyClaim, registry: URIRef, excluded: Iterable[URIRef]) -> SparqlTerm:
@@ -139,12 +158,12 @@ def duplicates_query(key: AggregateKey, registry: URIRef) -> str:
     group the values (``?v0`` …) and the roots, as IRIs joined by a space (``?key_roots``, which no
     IRI contains). It joins the registry as ``KEY_HELD`` does, and excludes no root."""
     predicates = [URIRef(name) for name in key.key_predicates]
-    values = join(
-        [
-            value_patterns("key_root", predicates),
-            match_patterns("key_root", [(RDF.type, URIRef(key.root_class))]),
-        ]
-    )
+    typed = match_patterns("key_root", [(RDF.type, URIRef(key.root_class))])
+    if key.key_counts_absent:
+        # the type binds ?key_root first: an OPTIONAL before it would match any node of the graph
+        values = join([typed, optional_value_patterns("key_root", predicates, v.ABSENT_KEY_VALUE)])
+    else:
+        values = join([value_patterns("key_root", predicates), typed])
     return fill(
         _DUPLICATES,
         variables=value_variables(len(predicates)),

@@ -30,6 +30,7 @@ from rdf_persistence.persistence.services.unique_keys import (
     held,
     same_value,
 )
+from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from rdf_persistence.testkit import FakeStore, fake_session
@@ -476,3 +477,272 @@ def test_the_report_query_parses_and_names_the_registry_and_the_class():
     assert "GROUP BY" in text, "a group per value, kept when two roots share it"
     assert str(registry) in text, "it names the registry and the key's class"
     assert str(BOOK) in text, "it names the registry and the key's class"
+
+
+# --- keys that count an absence as a value (unique-key-nulls-equal 1.5) ---------------------------
+
+ALTERNATIVE = URIRef("http://purl.org/dc/terms/alternative")
+TITLE_SUBTITLE = AggregateKey(
+    key_name="title_subtitle",
+    root_class=str(BOOK),
+    key_predicates=[str(TITLE), str(ALTERNATIVE)],
+    key_counts_absent=True,
+)
+UNCOUNTED = AggregateKey(
+    key_name="title_subtitle",
+    root_class=str(BOOK),
+    key_predicates=[str(TITLE), str(ALTERNATIVE)],
+)
+MARKER_TEXT = "https://meaningfy.ws/ns/rdf-persistence#absentKeyValue"
+
+
+def titled(iri: str, title: str | None = None, *subtitles: str | BNode) -> list:
+    """The triples of a book root with a title and subtitles; none of either leaves the slot absent."""
+    root = URIRef(iri)
+    return [
+        (root, RDF.type, BOOK),
+        *(((root, TITLE, Literal(title)),) if title is not None else ()),
+        *((root, ALTERNATIVE, s if isinstance(s, BNode) else Literal(s)) for s in subtitles),
+    ]
+
+
+@pytest.fixture
+async def titles(store) -> AsyncIterator[Session]:
+    async with opened(store, keys=(TITLE_SUBTITLE,)) as s:
+        yield s
+
+
+def test_the_marker_is_the_toolkit_iri_in_the_toolkit_namespace():
+    assert URIRef(MARKER_TEXT) == v.ABSENT_KEY_VALUE, "PD-2"
+
+
+def test_an_absent_slot_of_a_counting_key_claims_the_marker():
+    (claim,) = claims_of([TITLE_SUBTITLE], A, titled(A, "Dune"))
+    assert claim.values == (Literal("Dune"), v.ABSENT_KEY_VALUE), "the absent slot is one value"
+
+
+def test_a_blank_node_slot_claims_the_marker():
+    (claim,) = claims_of([TITLE_SUBTITLE], A, titled(A, "Dune", BNode()))
+    assert claim.values == (Literal("Dune"), v.ABSENT_KEY_VALUE), "a blank node is no value"
+
+
+async def test_ex1_an_absence_another_root_shares_is_a_key_conflict(store, titles):
+    await titles.add_graph(A, titled(A, "Dune"))
+    with pytest.raises(KeyConflict) as refused:
+        await titles.add_graph(B, titled(B, "Dune"))
+    assert refused.value.iris == (B,), "the root of the commit whose key clashed"
+    assert refused.value.keys == ("title_subtitle",), "the key"
+    assert not await stored(titles, B), "B has no graph"
+    assert not await has_entry(store, B), "B has no registry entry"
+
+
+async def test_ex2_a_present_value_differs_from_an_absence(titles):
+    await titles.add_graph(A, titled(A, "Dune"))
+    await titles.add_graph(B, titled(B, "Dune", "Messiah"))
+    assert await stored(titles, B), "Dune / Messiah is not Dune / -"
+
+
+async def test_a_present_value_of_another_slot_differs_from_an_absence(titles):
+    await titles.add_graph(A, titled(A, "Dune"))
+    await titles.add_graph(B, titled(B, "Emma"))
+    assert await stored(titles, B), "Emma / - is not Dune / -"
+
+
+async def test_ex3_an_empty_value_is_not_an_absence(titles):
+    await titles.add_graph(A, titled(A, "Dune"))
+    await titles.add_graph(B, titled(B, "Dune", ""))
+    assert await stored(titles, B), "Dune / empty is not Dune / -"
+
+
+async def test_an_absence_is_not_an_empty_value_either_way(titles):
+    await titles.add_graph(A, titled(A, "Dune", ""))
+    await titles.add_graph(B, titled(B, "Dune"))
+    assert await stored(titles, B), "the stored empty literal is a value, not an absence"
+
+
+async def test_ex4_a_replace_taking_an_absence_another_root_holds_is_refused(titles):
+    version_a = await titles.add_graph(A, titled(A, "Dune", "Messiah"))
+    await titles.add_graph(B, titled(B, "Dune"))
+    with pytest.raises(KeyConflict) as refused:
+        await titles.replace_graph(A, titled(A, "Dune"), version_a)
+    assert refused.value.iris == (A,), "the root that replaced"
+
+
+async def test_ex5_one_transaction_swaps_an_absence_and_a_value(titles):
+    version_a = await titles.add_graph(A, titled(A, "Dune", "Messiah"))
+    version_b = await titles.add_graph(B, titled(B, "Dune"))
+    async with titles.transaction() as t:
+        await t.replace_graph(A, titled(A, "Dune"), version_a)
+        await t.replace_graph(B, titled(B, "Dune", "Messiah"), version_b)
+    assert (await titles.get_graph(A))[0].value(URIRef(A), ALTERNATIVE) is None, "A lost it"
+    assert (await titles.get_graph(B))[0].value(URIRef(B), ALTERNATIVE) == Literal("Messiah")
+
+
+async def test_ex6_a_root_goes_from_a_value_to_an_absence_and_back(titles):
+    version = await titles.add_graph(A, titled(A, "Dune"))
+    version = await titles.replace_graph(A, titled(A, "Dune", "Messiah"), version)
+    version = await titles.replace_graph(A, titled(A, "Dune"), version)
+    await titles.replace_graph(A, titled(A, "Dune", "Messiah"), version)
+    assert await stored(titles, A), "its own root never clashes with itself"
+
+
+async def test_two_changes_of_one_absence_in_one_transaction_send_nothing(store, titles):
+    sent = len(store.sent("update"))
+    with pytest.raises(KeyConflict) as refused:
+        async with titles.transaction() as t:
+            await t.add_graph(A, titled(A, "Dune"))
+            await t.add_graph(B, titled(B, "Dune"))
+    assert refused.value.iris == (A, B), "both roots, sorted"
+    assert refused.value.keys == ("title_subtitle",), "the key"
+    assert len(store.sent("update")) == sent, "the store received no update"
+
+
+async def test_a_blank_node_slot_of_the_change_counts_as_absent(titles):
+    await titles.add_graph(A, titled(A, "Dune"))
+    with pytest.raises(KeyConflict) as refused:
+        await titles.add_graph(B, titled(B, "Dune", BNode()))
+    assert refused.value.iris == (B,), "the blank node is no value"
+
+
+async def test_a_slot_holding_the_marker_is_an_invalid_body_and_sends_nothing(store, titles):
+    sent = len(store.sent("update"))
+    marked = [*titled(B, "Dune"), (URIRef(B), ALTERNATIVE, v.ABSENT_KEY_VALUE)]
+    with pytest.raises(InvalidBody):
+        await titles.add_graph(B, marked)
+    assert len(store.sent("update")) == sent, "nothing was sent"
+
+
+async def test_two_values_of_a_slot_of_a_counting_key_are_an_invalid_body(store, titles):
+    sent = len(store.sent("update"))
+    with pytest.raises(InvalidBody):
+        await titles.add_graph(B, titled(B, "Dune", "Messiah", "Children"))
+    assert len(store.sent("update")) == sent, "nothing was sent"
+
+
+async def test_every_slot_absent_allows_one_root_of_the_type(titles):
+    await titles.add_graph(A, titled(A))
+    with pytest.raises(KeyConflict) as refused:
+        await titles.add_graph(B, titled(B))
+    assert refused.value.iris == (B,), "PD-11: at most one root lacks every key value"
+
+
+async def test_a_stale_replace_that_also_clashes_on_an_absence_is_a_plain_conflict(store, titles):
+    version_a = await titles.add_graph(A, titled(A, "Dune", "Messiah"))
+    await titles.add_graph(B, titled(B, "Dune"))
+    async with opened(store, "ben", keys=(TITLE_SUBTITLE,)) as other_session:
+        await other_session.replace_graph(A, titled(A, "Dune", "Children"), version_a)
+    with pytest.raises(Conflict) as refused:
+        await titles.replace_graph(A, titled(A, "Dune"), version_a)
+    assert type(refused.value) is Conflict, "the version comes first, not a KeyConflict"
+
+
+async def test_a_key_without_the_option_claims_nothing_for_an_absent_slot(store):
+    async with opened(store, keys=(UNCOUNTED,)) as plain:
+        assert claims_of([UNCOUNTED], A, titled(A, "Dune")) == [], "no claim, as before"
+        sent = len(store.sent("update"))
+        await plain.add_graph(A, titled(A, "Dune"))
+        await plain.add_graph(B, titled(B, "Dune"))
+        assert await stored(plain, B), "both stored"
+        updates = store.sent("update")[sent:]
+        assert all("key_graph" not in str(u) for u in updates), "no key guard was sent"
+
+
+def test_a_key_without_the_option_still_refuses_two_values():
+    with pytest.raises(InvalidBody):
+        claims_of([UNCOUNTED], A, titled(A, "Dune", "x", "y"))
+
+
+def test_the_guard_of_an_absent_slot_nests_the_absence_in_the_graph_block():
+    registry = DEFAULT_IRIS.registry(TENANT)
+    (claim,) = claims_of([TITLE_SUBTITLE], B, titled(B, "Dune"))
+    text = str(guard(claim, registry, [URIRef(A)]))
+    block = text[text.index("GRAPH ?key_graph {") : text.index("GRAPH <")]
+    assert f'?key_root <{TITLE}> "Dune"' in block, "the present value is matched"
+    assert "FILTER NOT EXISTS" in block, "the absence is inside the GRAPH block"
+    assert f"<{ALTERNATIVE}> ?key_absent_0" in block, "on the absent predicate"
+    assert block.index('"Dune"') < block.index("FILTER NOT EXISTS"), "value first"
+    # the session skolemises blank nodes on write, so a stored blank node can only come from a
+    # foreign store: the pattern is what makes it count as absent there
+    assert "FILTER (!isBlank(?key_absent_0))" in block, "a stored blank node is no value"
+    assert MARKER_TEXT not in text, "the marker is never a pattern"
+    marker = new_marker(datetime(2026, 11, 14, tzinfo=UTC))
+    prepareUpdate(request_text(registry, marker, [guard(claim, registry, [])], []))
+    prepareQuery(diagnosis([claim], registry, [URIRef(A)]))
+
+
+def test_the_duplicates_query_of_a_counting_key_defaults_an_absent_slot_to_the_marker():
+    text = duplicates_query(TITLE_SUBTITLE, DEFAULT_IRIS.registry(TENANT))
+    prepareQuery(text)
+    assert "OPTIONAL" in text, "a slot is optional"
+    assert "COALESCE" in text, "an absent slot is bound to the marker"
+    assert f"<{MARKER_TEXT}>" in text, "the marker is the default"
+
+
+async def test_the_report_names_the_shared_absence_by_the_marker_text(store):
+    async with opened(store, keys=()) as unkeyed:
+        await unkeyed.add_graph(A, titled(A, "Dune"))
+        await unkeyed.add_graph(B, titled(B, "Dune"))
+    async with opened(store, keys=(TITLE_SUBTITLE,)) as keyed:
+        assert await keyed.key_duplicates() == [
+            KeyDuplicate(
+                key_name="title_subtitle",
+                root_class=str(BOOK),
+                key_values=["Dune", MARKER_TEXT],
+                key_roots=[A, B],
+            )
+        ], "the absent slot shows as the marker's IRI text"
+
+
+async def test_a_part_holding_a_slot_predicate_hides_no_absence_from_the_report(store):
+    """The part has a title the root lacks; the root's absence must still be reported."""
+
+    def with_part(iri: str) -> list:
+        part = BNode()
+        return [*titled(iri, None, "Messiah"), (part, TITLE, Literal("Chapter"))]
+
+    async with opened(store, keys=()) as unkeyed:
+        await unkeyed.add_graph(A, with_part(A))
+        await unkeyed.add_graph(B, with_part(B))
+    async with opened(store, keys=(TITLE_SUBTITLE,)) as keyed:
+        report = await keyed.key_duplicates()
+    assert [(d.key_values, d.key_roots) for d in report] == [([MARKER_TEXT, "Messiah"], [A, B])], (
+        "both roots lack a title, whatever a part of their graph holds"
+    )
+
+
+async def test_a_replace_keeping_a_shared_absence_is_refused_until_fixed(store, titles):
+    async with opened(store, keys=()) as unkeyed:
+        await unkeyed.add_graph(A, titled(A, "Dune"))
+        await unkeyed.add_graph(B, titled(B, "Dune"))
+    version_a = (await titles.get_graph(A))[2]
+    with pytest.raises(KeyConflict):
+        await titles.replace_graph(A, titled(A, "Dune"), version_a)
+
+
+# G-4: the text of the toy isbn_key, captured before unique-key-nulls-equal changed the renderers.
+ISBN_GUARD = (
+    "FILTER NOT EXISTS { \n"
+    'GRAPH ?key_graph { ?key_root <http://purl.org/ontology/bibo/isbn> "1" . '
+    "?key_root <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/bibo/Book> . }\n"
+    "GRAPH <https://example.org/libraries/6f1c0c1e/registry> { ?key_graph "
+    "<https://meaningfy.ws/ns/rdf-persistence#kind> <https://meaningfy.ws/ns/rdf-persistence#Aggregate> ; "
+    "<https://meaningfy.ws/ns/rdf-persistence#ownedBy> ?key_root }\n"
+    "FILTER (?key_root NOT IN (<https://example.org/libraries/6f1c0c1e/books/"
+    "00000000-0000-0000-0000-000000000001>))\n }"
+)
+ISBN_DUPLICATES = (
+    'SELECT ?v0 (GROUP_CONCAT(DISTINCT STR(?key_root); SEPARATOR=" ") AS ?key_roots) WHERE { \n'
+    "GRAPH ?key_graph { ?key_root <http://purl.org/ontology/bibo/isbn> ?v0 . "
+    "?key_root <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/bibo/Book> . }\n"
+    "GRAPH <https://example.org/libraries/6f1c0c1e/registry> { ?key_graph "
+    "<https://meaningfy.ws/ns/rdf-persistence#kind> <https://meaningfy.ws/ns/rdf-persistence#Aggregate> ; "
+    "<https://meaningfy.ws/ns/rdf-persistence#ownedBy> ?key_root }\n"
+    "FILTER (?key_root NOT IN ())\n } GROUP BY ?v0 HAVING (COUNT(DISTINCT ?key_root) > 1)"
+)
+
+
+def test_g4_the_text_of_a_key_without_the_option_is_unchanged():
+    registry = DEFAULT_IRIS.registry(TENANT)
+    (claim,) = claims_of(KEYS, B, book(B, "1"))
+    assert str(guard(claim, registry, [URIRef(A)])) == ISBN_GUARD, "the guard"
+    assert duplicates_query(KEYS[0], registry) == ISBN_DUPLICATES, "the duplicates query"

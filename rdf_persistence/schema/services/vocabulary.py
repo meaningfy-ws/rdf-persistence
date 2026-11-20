@@ -169,6 +169,9 @@ PENDING_SINCE = URIRef(f"{STARTED_AT.removesuffix('startedAt')}pendingSince")
 RELAYED_AT = URIRef(f"{STARTED_AT.removesuffix('startedAt')}relayedAt")
 PUBLICATION_FAILED = URIRef(f"{STARTED_AT.removesuffix('startedAt')}publicationFailed")
 RELAY_PLUMBING = (PENDING_SINCE, RELAYED_AT, PUBLICATION_FAILED)
+# The value of an absent slot of a unique key that counts absences (unique-key-nulls-equal PD-2): held
+# in memory and shown in the key-duplicates report, never written to a graph or matched in a pattern.
+ABSENT_KEY_VALUE = URIRef(f"{STARTED_AT.removesuffix('startedAt')}absentKeyValue")
 # A graph naming a blob of the tenant's bucket by its key (PD-3 of the live-tenant sweep).
 FILE_KEY = predicate("file_key")
 # A listing states the graph it found each subject in (PD-7); the toolkit drops it before answering.
