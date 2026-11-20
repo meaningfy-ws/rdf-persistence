@@ -33,14 +33,14 @@ Every task: the failing test named first, in its tier; task gate `make test-chan
 - [x] 2.1 Docs (PD-9): `api.adoc#serving`, `http-api.adoc#listings`, the docstrings. The
   `rp-aggregate-store` delta (PD-11) is already in the change.
   Accept: `make check-quality` (holds `check-docs` and `openspec validate --all --strict`).
-- [ ] 2.2 Lead: IT-1 and IT-2 rows in `tests/integration/api/test_listing.py`; `make check-all`,
+- [x] 2.2 Lead: IT-1 and IT-2 rows in `tests/integration/api/test_listing.py`; `make check-all`,
   `make test-containers`, `make check-types` (IT-3); `make refresh-map` exit 0 with the new tests
   mapped to the delta scenarios as design.md PD-12's table says; the SMALL review set
   (`docs/modules/ROOT/pages/develop/agents.adoc#challenge`); fixes; ticks.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 2.1 · [ ] 2.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 2.1 · [x] 2.2
 
 ## Verification
 
