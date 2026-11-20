@@ -28,6 +28,14 @@ classes:
     class_uri: lib:ShelveBooks
     is_a: Activity
     slots: [used_resource, shelf_note]
+  Review:
+    title: Review
+    description: A review of a book, kept as a root that is also an activity (the guard of DEC-4).
+    class_uri: lib:Review
+    is_a: Activity
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: reviews
 
 slots:
   shelf_note:

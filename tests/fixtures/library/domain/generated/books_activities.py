@@ -29,9 +29,12 @@ from pydantic import (
 )
 from rdf_persistence import (
     Activity,
+    AggregateRoot,
+    Described,
     Generation,
     Invalidation,
     Principal,
+    Tracked,
     Transition
 )
 
@@ -93,7 +96,24 @@ class ShelveBooks(Activity):
     invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
 
 
+class Review(Tracked, Described, AggregateRoot, Activity):
+    "A review of a book, kept as a root that is also an activity (the guard of DEC-4)."
+    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
+    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
+    created: Optional[datetime ] = Field(default=None, title="Created", description="The time the graph was first committed.")
+    modified: Optional[datetime ] = Field(default=None, title="Modified", description="The time the graph was last committed.")
+    creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")
+    contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
+    was_associated_with: Optional[list[str]] = Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: Optional[datetime ] = Field(default=None, title="Started at time", description="The time the activity started.")
+    ended_at_time: Optional[datetime ] = Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: Optional[list[Generation]] = Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: Optional[list[Invalidation]] = Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 ApproveBook.model_rebuild()
 ShelveBooks.model_rebuild()
+Review.model_rebuild()

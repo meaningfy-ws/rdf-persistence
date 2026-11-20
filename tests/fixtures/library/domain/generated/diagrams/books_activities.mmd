@@ -5,7 +5,11 @@ classDiagram
         +uri used_resource
         +string shelf_note
     }
+    class Review {
+        <<root>>
+    }
     class Activity
     class Transition
     Transition <|-- ApproveBook
     Activity <|-- ShelveBooks
+    Activity <|-- Review

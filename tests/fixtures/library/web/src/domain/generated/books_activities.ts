@@ -50,3 +50,31 @@ export interface ShelveBooks {
   /** The versions of entities the activity invalidated. */
   invalidations?: Invalidation[];
 }
+
+/** A review of a book, kept as a root that is also an activity (the guard of DEC-4). */
+export interface Review {
+  /** The IRI that identifies the object. */
+  id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The time the graph was first committed. */
+  created?: string;
+  /** The time the graph was last committed. */
+  modified?: string;
+  /** The principal that first committed the graph. */
+  creator?: string;
+  /** A principal that committed a later version of the graph. */
+  contributor?: string[];
+  /** A principal that carried out the activity. */
+  was_associated_with?: string[];
+  /** The time the activity started. */
+  started_at_time?: string;
+  /** The time the activity ended. */
+  ended_at_time?: string;
+  /** The versions of entities the activity generated. */
+  generations?: Generation[];
+  /** The versions of entities the activity invalidated. */
+  invalidations?: Invalidation[];
+}

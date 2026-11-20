@@ -77,6 +77,7 @@ def test_one_frame_per_aggregate_type_the_tenant_root_and_each_activity(staged: 
             "Book.frame.jsonld",
             "Library.frame.jsonld",
             "LibraryAccess.frame.jsonld",
+            "Review.frame.jsonld",
             "Scan.frame.jsonld",
             "Shelf.frame.jsonld",
             "Template.frame.jsonld",

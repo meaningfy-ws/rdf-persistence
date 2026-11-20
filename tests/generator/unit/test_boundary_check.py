@@ -63,17 +63,6 @@ class Fault:
 
 BOOK_ISBN_SLOT = "slots:\n  isbn:\n"
 WITH_ACTIVITIES = "  - rdf_persistence/model/rp_collections\n  - books_activities\nannotations:\n  module_kind: domain"
-REVIEW_ROOT = """  Review:
-    title: Review
-    description: A review of a book kept as a root that is also an activity.
-    class_uri: lib:Review
-    is_a: Activity
-    mixins: [AggregateRoot, Described, Tracked]
-    annotations:
-      rp_path: reviews
-      database: tenant
-slots:
-"""
 
 
 def book_slot_over(name: str, range_: str, *, imports_activities: bool) -> tuple[Edit, ...]:
@@ -161,11 +150,8 @@ PASSING = (
     pytest.param(  # TC-102: and the workflow activity
         book_slot_over("last_move", "Transition", imports_activities=True), id="toolkit-transition"
     ),
-    pytest.param(  # TC-102: so may an aggregate root that is also an activity
-        (
-            *book_slot_over("last_review", "Review", imports_activities=True),
-            Edit("books_activities.yaml", "slots:\n", REVIEW_ROOT),
-        ),
+    pytest.param(  # TC-102: so may an aggregate root that is also an activity (the toy's Review)
+        book_slot_over("last_review", "Review", imports_activities=True),
         id="activity-root",
     ),
 )
