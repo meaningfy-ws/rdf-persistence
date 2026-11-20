@@ -73,7 +73,7 @@ MWB2 opened seven issues; each is one EPIC, in the consumer's order (D-12). The 
 | 3 | `nested-collections` | SMALL | #198 | 1b | `v2-03` 7.2 | 8.5 → 9.1 |
 | 4 | `unique-key-nulls-equal` | SMALL | #202 | none | `v2-04` stage C, `v2-05` 6.1 | 8.7 → 9.2, delivered 2026-11-20 (#211), archived |
 | 5 | `listing-contains-filter` | SMALL | #203 | none | `v2-05` 4.4 | 8.8, accepted (R-0005) |
-| 6 | `testkit-event-stream` | SMALL (re-shaped from TINY) | #204 | none; before `test-debt-paydown` | not blocking | 8.5 → 9.0 |
+| 6 | `testkit-event-stream` | SMALL (re-shaped from TINY) | #204 | none; before `test-debt-paydown` | not blocking | 8.5 → 9.0, delivered 2026-11-20 (#213), archived |
 
 Every PLAN was attacked by its planner and gated by a fresh reviewer; the owner answered one round of
 questions (each change's `inputs/qa.md`). Next: the owner signs off each change's scenarios, then an
