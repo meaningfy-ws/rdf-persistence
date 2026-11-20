@@ -108,3 +108,28 @@ unchanged. It writes a report listing what it left out.
 
 Generator package only. New console script in `pyproject.toml`. No new dependency (stdlib
 `sqlite3`).
+
+---
+
+## Delivery reconciliation
+
+What was delivered against this shape, stage by stage (rule P-0004). The decisions are in
+[design.md](design.md#delivery-decisions); this table only names them.
+
+| Shaped | Delivered | Why | Decision | PR |
+|---|---|---|---|---|
+| One module per UML package | One per package, except the packages of an import cycle, written as one module with a `merged-cycle` report line | Split Pydantic modules do not import across a module cycle (SPIKE-2 failed; #208) | D-5 | #212 |
+| The output passes `rp-generate`'s lint and boundary check unchanged | True when every class, slot and enumeration has a note; a missing note gets no placeholder and a `no-note` report line | Lint refuses an element without a description; a placeholder would hide the gap | PD-28, D-21 | #212 |
+| Multiplicity `0\|1 .. 1\|*`; a missing one fails (PD-32) | Any `m..n`, with `minimum_cardinality`/`maximum_cardinality`; a missing one is `0..*` with a report line; `1..1` for exactly one; an attribute's bounds as stored, since EA writes a blank as `1..1` | Alignment with the model2owl conventions (developer, round 3) | D-11 | #212 |
+| An enumeration becomes an enum | An enumeration with no literals (an external code list) gives `range: uri` and an `external-list` line | model2owl's controlled-list convention | D-10 | #212 |
+| The XSD datatype map | `rdf:langString` and `rdf:PlainLiteral` fail the run until the toolkit has a language-string range; never narrowed to a plain string | Language strings must not be lost (developer); the toolkit change is #209 | D-12 | #212 |
+| Unknown stereotypes fail | The «Abstract» stereotype is accepted as `abstract: true` | model2owl draws abstract classes with it | D-13 | #212 |
+| Connector direction not read | Only `Source -> Destination` (target role) or `Bi-Directional` (both roles) | model2owl's direction rule | D-14, D-18 | #212 |
+| Explicit `class_uri` on every class | No `class_uri` when it equals the implicit one | `modelling-conventions` rule 2 | D-14 | #212 |
+| `--exclude-package` | One that matches no package is a usage error; the reader also names the far ends of links it leaves out | A typo must not convert everything; the report names left-out targets | D-17 | #212 |
+| An application root may be an `Activity` (DEC-4, if the spike passes) | Allowed: SPIKE-1 passed with no library change; `Review` stays in the toy as its guard | — | D-7 | #212 |
+| One how-to page | Also a UML conventions reference page with UML snippets | The developer asked for the toolkit's conventions to be written down | D-20 | stage 2 |
+| The rule table open until stage 2 | Frozen with no new rules | The developer had none | D-20 | #212 |
+
+Stage 2 (the toolkit-aware rules, R-15, R-18, R-20..R-29, and the docs) is not delivered yet; this
+table is completed before its last merge.
