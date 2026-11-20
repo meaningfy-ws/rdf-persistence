@@ -24,7 +24,7 @@ Every task: the failing test named first, in its tier; task gate `make test-chan
   `Contains` class in `rp_persistence_services.yaml`, `make generate`, `make refresh-served-golden`
   (diff: `interface Contains` only); `_filters`, `rdf_persistence.__all__`, `NAMES` 149, `make refresh-surface` (diff: one added name).
   Accept: TC-07 and `tests/unit/test_public_surface.py` pass.
-- [ ] 1.5 OpenAPI (PD-8), unit: TC-10 first, failing. `<slot>~` parameters in `openapi.py`;
+- [x] 1.5 OpenAPI (PD-8), unit: TC-10 first, failing. `<slot>~` parameters in `openapi.py`;
   `make refresh-served-golden` (diff: only the `~` parameters). Accept: TC-10 and
   `tests/unit/api/test_openapi_served.py` pass.
 

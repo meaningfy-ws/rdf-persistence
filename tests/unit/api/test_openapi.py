@@ -11,7 +11,7 @@ from rdf_persistence.api.entrypoints.problems import CONFLICT as VERSION_CONFLIC
 from rdf_persistence.api.entrypoints.problems import KEY_CONFLICT, KINDS
 from rdf_persistence.core.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS, TURTLE
 from rdf_persistence.persistence.services.listing import listable_slots
-from rdf_persistence.schema.services.schema_structure import is_internal
+from rdf_persistence.schema.services.schema_structure import holds_text, is_internal
 from tests.toy_service import ToyService
 
 COMPONENT = "#/components/schemas/"
@@ -177,9 +177,31 @@ def test_a_listing_takes_a_parameter_per_slot_of_the_type_and_the_paging_ones(
     cls = toy.kit.documents.aggregates[rp_path]
     op = operation(document, f"{TENANT}/{rp_path}", "get")
     queries = {p["name"] for p in op["parameters"] if p["in"] == "query"}
-    assert queries == {*listable_slots(toy.kit.view, cls), "limit", "offset", "sort"}, (
-        "a listing takes a parameter per slot plus the paging ones"
+    slots = listable_slots(toy.kit.view, cls)
+    contains = {f"{name}~" for name, slot in slots.items() if holds_text(toy.kit.view, slot)}
+    assert queries == {*slots, *contains, "limit", "offset", "sort"}, (
+        "a listing takes a parameter per slot, a contains one per text slot, and the paging ones"
     )
+
+
+def test_a_listing_takes_a_contains_parameter_per_text_slot_right_after_its_equality_one(
+    document,
+) -> None:  # TC-10
+    op = operation(document, f"{TENANT}/books", "get")
+    names = [p["name"] for p in op["parameters"] if p["in"] == "query"]
+    params = {p["name"]: p for p in op["parameters"] if p["in"] == "query"}
+    for text in ("label", "description", "isbn", "authors"):
+        assert names.index(f"{text}~") == names.index(text) + 1, (
+            f"{text}~ is placed right after {text}"
+        )
+        assert params[f"{text}~"]["schema"] == {"type": "string", "minLength": 1}, (
+            f"{text}~ is a non-empty string"
+        )
+        assert params[f"{text}~"]["description"] == (
+            f"Only the books whose {text} contains this text, ignoring case. "
+            "May be repeated: each must hold."
+        ), f"{text}~ says what it does"
+    assert not {"published~", "genre~", "shelf~"} & set(names), "a non-text slot has no contains"
 
 
 def test_the_filters_of_a_book_are_typed_by_the_schema(document) -> None:
