@@ -456,6 +456,7 @@ WITHOUT_GENERATE_EXTRA_SOURCES = {
         "problems",
         "generated",
         "testkit",
+        "uml",
     )
 } | {
     "rdf_persistence.testkit",

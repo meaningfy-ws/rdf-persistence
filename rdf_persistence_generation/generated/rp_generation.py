@@ -513,7 +513,7 @@ class UmlClass(ConfiguredBaseModel):
     object_id: int = Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration or a boundary.")
     name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
     object_type: str = Field(default=..., title="Object type", description="The kind of element a UML object is, as the model file names it (`Class`, `Enumeration`).")
-    alias: Optional[str] = Field(default=None, title="Alias", description="The alias of a UML element, the title the author gave it.")
+    uml_alias: Optional[str] = Field(default=None, title="Alias", description="The alias of a UML element, the title the author gave it.")
     note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
     package_id: int = Field(default=..., title="Package id", description="The id a UML model gives a package.")
     uml_stereotype: Optional[str] = Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
@@ -574,6 +574,13 @@ class UmlPrefix(ConfiguredBaseModel):
     "One prefix of the prefixes file and the namespace it stands for."
     prefix_name: str = Field(default=..., title="Prefix name", description="The name of a prefix, the part of a CURIE before the colon.")
     namespace: str = Field(default=..., title="Namespace", description="The IRI a prefix stands for.")
+
+
+class UmlName(ConfiguredBaseModel):
+    "A written name resolved (PD-6): its local name and, when it was prefixed, the IRI it expands to and the CURIE written to the output."
+    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    iri: Optional[str] = Field(default=None, title="IRI", description="The full IRI a prefixed name expands to; absent for an unprefixed name.")
+    curie: Optional[str] = Field(default=None, title="CURIE", description="The prefixed name written to the output, in the metamodel\u0027s prefix name when it names the namespace.")
 
 
 class UmlSettings(ConfiguredBaseModel):
@@ -715,6 +722,7 @@ UmlLink.model_rebuild()
 UmlTaggedValue.model_rebuild()
 UmlBoundary.model_rebuild()
 UmlPrefix.model_rebuild()
+UmlName.model_rebuild()
 UmlSettings.model_rebuild()
 ReportLine.model_rebuild()
 PresenceRule.model_rebuild()

@@ -236,7 +236,7 @@ classes:
       - object_id
       - name
       - object_type
-      - alias
+      - uml_alias
       - note
       - package_id
       - uml_stereotype
@@ -348,6 +348,19 @@ classes:
       prefix_name:
         required: true
       namespace:
+        required: true
+  UmlName:
+    title: UML name
+    description: >-
+      A written name resolved (PD-6): its local name and, when it was prefixed, the IRI it expands to and
+      the CURIE written to the output.
+    class_uri: rp:UmlName
+    slots:
+      - name
+      - iri
+      - curie
+    slot_usage:
+      name:
         required: true
   UmlSettings:
     title: UML settings
@@ -1086,7 +1099,7 @@ slots:
     title: Object type
     description: The kind of element a UML object is, as the model file names it (`Class`, `Enumeration`).
     slot_uri: rp:umlObjectType
-  alias:
+  uml_alias:
     title: Alias
     description: The alias of a UML element, the title the author gave it.
     slot_uri: rp:umlAlias
@@ -1180,6 +1193,14 @@ slots:
     title: Namespace
     description: The IRI a prefix stands for.
     slot_uri: rp:prefixNamespace
+  iri:
+    title: IRI
+    description: The full IRI a prefixed name expands to; absent for an unprefixed name.
+    slot_uri: rp:nameIri
+  curie:
+    title: CURIE
+    description: The prefixed name written to the output, in the metamodel's prefix name when it names the namespace.
+    slot_uri: rp:nameCurie
   prefixes:
     title: Prefixes
     description: The prefixes of the prefixes file.

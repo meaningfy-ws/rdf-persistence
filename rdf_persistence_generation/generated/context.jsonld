@@ -9,9 +9,6 @@
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
-      "alias": {
-         "@id": "umlAlias"
-      },
       "association_class": {
          "@id": "umlAssociationClass"
       },
@@ -40,6 +37,9 @@
       },
       "connector_id": {
          "@id": "umlConnectorId"
+      },
+      "curie": {
+         "@id": "nameCurie"
       },
       "declared_type": {
          "@id": "umlDeclaredType"
@@ -128,6 +128,9 @@
       "invalid": {
          "@container": "@set",
          "@id": "invalidInstances"
+      },
+      "iri": {
+         "@id": "nameIri"
       },
       "iri_type": {
          "@id": "lockedIriType"
@@ -410,6 +413,9 @@
       "typescript": {
          "@id": "typescriptFolder"
       },
+      "uml_alias": {
+         "@id": "umlAlias"
+      },
       "uml_attributes": {
          "@type": "@id",
          "@container": "@set",
@@ -551,6 +557,9 @@
       },
       "UmlModel": {
          "@id": "UmlModel"
+      },
+      "UmlName": {
+         "@id": "UmlName"
       },
       "UmlPackage": {
          "@id": "UmlPackage"

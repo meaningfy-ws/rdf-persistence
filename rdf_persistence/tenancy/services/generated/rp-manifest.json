@@ -188,6 +188,14 @@
     {
       "path": "rdf_persistence_generation/templating.py",
       "sha256": "43a7c52d6981949ca8f5d302f60d28edcc7cdb92703f03093c7e895cd7a9510f"
+    },
+    {
+      "path": "rdf_persistence_generation/uml/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "rdf_persistence_generation/uml/naming.py",
+      "sha256": "b323839ceb348b4b44f8243594e0c86f336f369f92d0b953d019499488b753d2"
     }
   ],
   "outputs": [
