@@ -351,16 +351,24 @@ def _referrers_pattern(
     )
 
 
+def _types_of(iri: str, triples: Sequence[Triple]) -> list[str]:
+    """Every class the ``triples`` give the root ``iri``, sorted; one empty name when it has none."""
+    own = URIRef(iri)
+    return sorted({str(o) for s, p, o in triples if s == own and p == RDF.type}) or [""]
+
+
 def _link_rows(iri: str, triples: Sequence[Triple]) -> list[tuple[str, ReferrerRow]]:
     """The links the ``triples`` of the root ``iri`` make to other IRIs: ``(target, row)``, the row as
-    ``referrer_rows`` reads it (its subject class is none for a link of the root itself)."""
-    own, root_class = URIRef(iri), class_in(iri, triples) or ""
+    ``referrer_rows`` reads it (its subject class is none for a link of the root itself). A root of
+    several types makes one row per type, as the store answers one solution per ``rdf:type``."""
+    own, root_classes = URIRef(iri), _types_of(iri, triples)
     part_class = {s: str(o) for s, p, o in triples if p == RDF.type and s != own}
     links = [(s, p, o) for s, p, o in triples if p != RDF.type and o != own]
     return [
         (str(o), (iri, root_class, part_class.get(s), str(p)))
         for s, p, o in links
         if isinstance(o, URIRef)
+        for root_class in root_classes
     ]
 
 

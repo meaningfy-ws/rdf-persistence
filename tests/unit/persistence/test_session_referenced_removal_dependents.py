@@ -31,6 +31,7 @@ from tests.toy import TENANT, book_iri
 LIB = "https://example.org/ns/library#"
 AUTHOR_CLASS = URIRef(LIB + "Author")
 BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
+NOTE_CLASS = URIRef(LIB + "Note")
 WRITTEN_BY = URIRef(LIB + "writtenBy")
 COMMENT_PAIR: Dependents = ((v.ANNOTATION, v.HAS_TARGET),)
 A1 = f"{TENANT}/authors/{UUID(int=1)}"
@@ -135,3 +136,34 @@ async def test_a_comment_added_for_the_removed_author_in_the_same_commit_is_no_r
         assert not isinstance(refused, InUse), "a dependent comment is no referrer"
     assert len(store.sent("update")) > sent, "the commit was sent"
     assert not await stored(session, A1), "the author is removed"
+
+
+def comment_and_book(iri: str, target: str) -> list:
+    """A root typed both as the dependent class and as a note, linking by the dependent predicate.
+
+    The note class sorts after the comment class, so the one class a commit names for a root is the
+    dependent one: the shape the single-class check wrongly dropped.
+    """
+    return [*root(iri, v.ANNOTATION, (v.HAS_TARGET, target)), (URIRef(iri), RDF.type, NOTE_CLASS)]
+
+
+async def test_a_root_typed_also_as_a_note_blocks_a_stored_removal(session):
+    """follow-on of D-9: the guard keeps the solution of the type that is no dependent."""
+    version = await session.add_graph(A1, author(A1))
+    await session.add_graph(C1, comment_and_book(C1, A1))
+    with pytest.raises(InUse) as refused:
+        await session.remove(A1, version)
+    assert refused.value.referrers[0][0] == C1, "the root is named"
+    assert await stored(session, A1), "nothing was deleted"
+
+
+async def test_a_root_typed_also_as_a_note_added_in_the_same_commit_blocks_unsent(session, store):
+    """the check of the commit agrees with the guard: one type of the root is no dependent."""
+    version = await session.add_graph(A1, author(A1))
+    sent = len(store.sent("update"))
+    with pytest.raises(InUse):
+        async with session.transaction() as t:
+            await t.add_graph(C1, comment_and_book(C1, A1))
+            await t.remove(A1, version)
+    assert len(store.sent("update")) == sent, "nothing was sent"
+    assert await stored(session, A1), "the author is kept"
