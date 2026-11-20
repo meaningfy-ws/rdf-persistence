@@ -1,0 +1,96 @@
+"""Converter-side cases the rule table does not hold: a boundary's roots, a dependency to an excluded enum.
+
+Records are built as ``test_uml_rules.py`` builds them (the reader is not involved).
+"""
+
+from pathlib import Path
+
+import pytest
+
+from rdf_persistence_generation.generated.rp_generation import (
+    UmlLinkKind,
+    UmlModel,
+    UmlPackage,
+    UmlRule,
+)
+from rdf_persistence_generation.uml.qea import read_qea
+from tests.generator.uml_model import (
+    BOOK,
+    CATALOGUE_PKG,
+    CHAPTER,
+    GENRE,
+    LIBRARY_PKG,
+    MODEL_PKG,
+    SERIES,
+    boundary,
+    enumeration,
+    klass,
+    link,
+    model,
+    run,
+)
+from tests.generator.uml_qea import QeaBuilder
+
+
+@pytest.mark.parametrize("object_type", ["Note", "Boundary"])
+def test_a_link_the_reader_skipped_to_a_note_or_boundary_does_not_stop_the_conversion(
+    tmp_path: Path, object_type: str
+) -> None:
+    builder = QeaBuilder(tmp_path / "library.qea")
+    top = builder.package("model")
+    library = builder.package("library", parent=top)
+    book = builder.cls(library, "lib:Book", stereotype="root", note="A book.")
+    ignored = builder.cls(library, "lib:Ignored", object_type=object_type)
+    builder.association(book, ignored, role="lib:ignored", card="0..1")
+    builder.dependency(book, ignored, role="lib:dep")
+    read = read_qea(builder.finish(), "model", ())
+    assert isinstance(read, UmlModel), f"the reader found problems: {read}"
+
+    out = run(read)
+
+    assert out.problems == [], out.problem_texts()
+    slots = out.schemas["app_library"].slots
+    assert "ignored" not in slots, f"no slot for the association: {sorted(slots)}"
+    assert "dep" not in slots, f"no slot for the dependency: {sorted(slots)}"
+
+
+def _two_roots_model() -> object:
+    return model(
+        klass(BOOK, "lib:Book", stereotype="root"),
+        klass(SERIES, "lib:Series", stereotype="root"),
+        klass(CHAPTER, "lib:Chapter"),
+        links=(link(1, BOOK, CHAPTER, target_role="lib:hasChapter", target_card="0..*"),),
+        boundaries=(boundary(20, BOOK, SERIES, CHAPTER),),
+    )
+
+
+def test_a_boundary_with_two_roots_is_a_no_rule_problem() -> None:
+    out = run(_two_roots_model())
+
+    assert [p.rule for p in out.problems] == [UmlRule.NO_RULE.value], out.problem_texts()
+    (text,) = out.problem_texts()
+    assert "Aggregate" in text, text
+    assert "exactly one root, this one has 2" in text, text
+
+
+def test_a_dependency_to_an_enumeration_in_an_excluded_package_makes_no_slot_and_a_report_line():
+    uml = model(
+        klass(BOOK, "lib:Book"),
+        links=(link(1, BOOK, GENRE, kind=UmlLinkKind.DEPENDENCY, target_role="lib:genre"),),
+        packages=(
+            UmlPackage(package_id=MODEL_PKG, name="model"),
+            UmlPackage(package_id=LIBRARY_PKG, name="library", parent_id=MODEL_PKG),
+        ),
+        outside=(enumeration(GENRE, "lib:Genre", ("fiction",), CATALOGUE_PKG),),
+        outside_packages=(
+            UmlPackage(package_id=CATALOGUE_PKG, name="catalogue", parent_id=MODEL_PKG),
+        ),
+    )
+
+    out = run(uml, exclude_packages=["catalogue"])
+
+    assert out.problems == [], out.problem_texts()
+    assert "genre" not in out.schemas["app_library"].slots, "no slot is made"
+    assert [line.split(":")[0] for line in out.report_lines("excluded_link")] == [
+        "Book.genre -> Genre"
+    ], out.report_lines("excluded_link")

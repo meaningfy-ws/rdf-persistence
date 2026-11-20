@@ -32,7 +32,7 @@ def convert_library(folder: Path, out: Path) -> None:
             ROOT_NAME,
         ]
     )
-    assert code == 0
+    assert code == 0, f"the conversion of the library exits {code}"
 
 
 def files_of(folder: Path) -> dict[str, str]:
@@ -68,4 +68,6 @@ def test_a_second_run_writes_the_same_bytes(tmp_path: Path) -> None:
 
     convert_library(tmp_path, out)
 
-    assert {file.name: file.read_bytes() for file in sorted(out.iterdir())} == first
+    assert {file.name: file.read_bytes() for file in sorted(out.iterdir())} == first, (
+        "the second run writes other bytes"
+    )
