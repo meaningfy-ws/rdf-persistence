@@ -5,7 +5,7 @@ by every session. It names the classes that refuse deletion and turns the referr
 root into the ``InUse`` the caller sees: the readable referrers named up to the cap, the others counted.
 """
 
-from collections.abc import Awaitable, Callable, Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import URIRef
@@ -15,10 +15,8 @@ from rdf_persistence.core.domain.exceptions import InUse
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
     LimitSettings,
 )
-from rdf_persistence.persistence.services.session import ReferrerRow
+from rdf_persistence.persistence.services.session import Readable, ReferrerRow
 from rdf_persistence.schema.services.schema_structure import refusing_classes
-
-Readable = Callable[[str, Sequence[ReferrerRow]], Awaitable[set[str]]]
 
 
 class ReferencedRemovals:

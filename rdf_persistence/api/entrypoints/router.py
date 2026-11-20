@@ -209,14 +209,29 @@ class DocumentApi:
         return await self._response(read, media_type)
 
     async def remove(
-        self, request: Request, caller: VerifiedCaller, tenant: str, iri: str
+        self, request: Request, caller: VerifiedCaller, checked: Authorised
     ) -> Response:
+        """Delete the aggregate ``checked`` names, if the ``If-Match`` version is current.
+
+        Raises:
+            InUse: (a ``Conflict``, answered 409 ``in-use``) The class refuses deletion while referred
+                to and another aggregate refers to it; the referrers the caller may read are named.
+        """
+        tenant, iri = checked.caller_access.tenant, checked.checked_target
         principal = Principal(id=caller.principal)
 
         expected = await matched_version(
             request.headers.get(IF_MATCH), self._version_of(tenant, principal, iri)
         )
-        await self._kit.aggregates.remove(tenant, principal, iri, expected, self._cls)
+        async with self._kit.collaboration(checked) as collaboration:
+            await self._kit.aggregates.remove(
+                tenant,
+                principal,
+                iri,
+                expected,
+                self._cls,
+                readable=collaboration.readable_referrers,
+            )
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
@@ -416,8 +431,7 @@ def add_aggregate_routes(
         caller: VerifiedCaller = as_caller,
         checked: Authorised = may_delete,
     ) -> Response:
-        tenant = checked.caller_access.tenant
-        return await api.remove(request, caller, tenant, checked.checked_target)
+        return await api.remove(request, caller, checked)
 
     docs = AggregateOpenApi(kit.view, cls, rp_path)
     docs.listing().add_to(router, collection, HTTPMethod.GET, listing)

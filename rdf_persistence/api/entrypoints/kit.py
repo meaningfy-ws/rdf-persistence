@@ -37,6 +37,7 @@ from rdf_persistence.collaboration.domain.generated import (
 )
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.discussion import dependents as discussion_dependents
+from rdf_persistence.collaboration.services.referenced_removals import ReferencedRemovals
 from rdf_persistence.collaboration.services.workflows import Workflows
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import (
@@ -209,6 +210,7 @@ class ServiceKit:
             iris=self.iris,
             listings=self.listings,
             guards=WriteGuards(mapper, models, self.listings, self.workflows),
+            removals=ReferencedRemovals(view, self.toolkit.limits),
             grant_validators=grant_validators,
             root_validators=root_validators,
             dependents=discussion_dependents(view),
