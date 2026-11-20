@@ -216,3 +216,20 @@ SHALL raise `TimeoutError` naming the URL rather than hang.
 #### Scenario: nothing arrives
 - **WHEN** `events=1` and `timeout=0.5` on a silent stream
 - **THEN** it raises `TimeoutError` naming the URL
+
+#### Scenario: the server ends the stream early
+- **GIVEN** a stream the server ends after one event
+- **WHEN** the helper waits for `events=3`
+- **THEN** it returns that one event instead of raising
+
+#### Scenario: the lifespan runs only when it is not running
+- **GIVEN** an app whose lifespan the toolkit's own lifespan has not started (`app.state.rp_lifespan_started`
+  is not set)
+- **WHEN** the helper opens a stream on it
+- **THEN** it enters the app's lifespan for the call and leaves it once
+- **AND** on an app where the flag is set it does not enter the lifespan again
+
+#### Scenario: an app that fails after the head
+- **GIVEN** an app that sends the head and one event, then raises
+- **WHEN** the helper waits for more events than came
+- **THEN** it returns the head and the event that came, and does not re-raise
