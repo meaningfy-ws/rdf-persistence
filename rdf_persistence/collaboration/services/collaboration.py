@@ -32,7 +32,7 @@ from rdf_persistence.core.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
-from rdf_persistence.persistence.services.session import Session
+from rdf_persistence.persistence.services.session import ReferrerRow, Session
 
 
 class Collaboration:
@@ -118,8 +118,25 @@ class Collaboration:
         self._require_readable(iri)
         self._require_names(class_name, slot)
         rows = await self._session.referrer_rows(iri)
+        readable = await self.readable_referrers(iri, rows)
+        return self._listed(named(self._view, rows), class_name, slot, readable)
+
+    async def readable_referrers(self, iri: str, rows: Sequence[ReferrerRow]) -> set[str]:
+        """Of the referrers of ``iri`` in ``rows``, the IRIs the caller may read (PD-9, DEC-3).
+
+        A comment is readable when its thread shows it to the caller and by no other right; any
+        other referrer, when the caller may read it (PD-3, PD-30). It checks nothing of ``iri``.
+        """
         judged = await self._discussion.judged(iri, rows)
-        return self._readable(named(self._view, rows), class_name, slot, judged)
+        return {
+            referrer
+            for referrer in {row[0] for row in rows}
+            if (
+                judged[referrer]
+                if referrer in judged
+                else self._rules.may(self._caller, self._access, referrer, Action.READ)
+            )
+        }
 
     async def members(self, collection: str, *, deep: bool = False) -> MemberList:
         """The members of the collection that the caller may read, sorted; ``hidden_count`` is the
@@ -218,28 +235,15 @@ class Collaboration:
         if slot is not None and self._view.get_slot(slot) is None:
             raise BadQuery(f"the schema has no slot {slot!r}")
 
-    def _readable(
-        self,
+    @staticmethod
+    def _listed(
         named: set[tuple[str, str, str]],
         class_name: str | None,
         slot: str | None,
-        judged: dict[str, bool],
+        readable: set[str],
     ) -> ReferrerList:
-        """The items the caller may read, narrowed and sorted, and the number of other referrers (PD-26).
-
-        A comment in ``judged`` is readable when its thread shows it to the caller and by no other
-        right; any other referrer, when the caller may read it (PD-3, PD-30).
-        """
+        """The items of the ``readable`` referrers, narrowed and sorted, and the number of other referrers (PD-26)."""
         referrers = {referrer for referrer, _, _ in named}
-        readable = {
-            r
-            for r in referrers
-            if (
-                judged[r]
-                if r in judged
-                else self._rules.may(self._caller, self._access, r, Action.READ)
-            )
-        }
         items = [
             Referrer(referrer=r, referrer_class=c, referrer_slot=s)
             for r, c, s in sorted(named)
