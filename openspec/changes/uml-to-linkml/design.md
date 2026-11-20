@@ -736,3 +736,38 @@ and its checkers page):
   element is an enumeration literal (PD-28, RISK-2 unchanged). PD-12's plural stays simple
   (`Shelf` → `shelfs`): the `rp_path` tag overrides it, and the conventions page says so; irregular
   plurals are not guessed. `--default-mixins` is parsed and used from task 2.3.
+- **D-22 Stage-1 review, accepted findings** (2026-11-20, one L2+L3 pass, 23 findings).
+  - **C-1 (Critical): a shared slot leaks one usage's limits to another** (`slots.py`
+    `_shape_kwargs`, `usage_of`). Fix: a shared slot is defined with only what every usage agrees
+    on; each usage that differs carries its own non-empty limits (`minimum_cardinality`,
+    `maximum_cardinality`, `minimum_value`, `required`, `multivalued`, `range`, `owned` with its
+    `inlined`/`inlined_as_list`, `description`) in `slot_usage`; no empty `slot_usage`. Rows for
+    each kind of difference.
+  - **W-3, re-labelled Critical** (reason: it breaks invariant I-1 and goal G-4, "an element no rule
+    maps fails the run", and one case crashes): a link held by an enumeration, a dependency with only
+    a source role (PD-8: a dependency needs `DestRole`), and a generalisation from an enumeration
+    are dropped silently; with an empty enumeration the last raises `StopIteration`
+    (`convert.py:100, :110`, `links.py:440-442, :496`). Fix: each is `no_rule`, one row each.
+
+  Under the floor (rejected for this stage, one line each; the cheap factual ones are carried into
+  stage 2's tasks, marked →2):
+  - W-1 the D-18 `__slots__` working classes pass the model guard unseen; shown to the developer at
+    the end with D-18 (generate them, use `SlotDefinition` for `Shape`, or list them in
+    `HAND_WRITTEN`).
+  - W-2 reader and converter both derive package paths, exclusion and admission (and the
+    association-class test differs in case); one owner per rule in stage 2's full review.
+  - W-4 the read-only test cannot fail (the code opens `mode=ro`, checked by the reviewer). →2
+  - W-5 untested: unknown connector type, connectors to notes/boundaries, a boundary with two roots,
+    a dependency to an excluded enumeration. →2
+  - W-6 asserts without messages in the new UML tests (testing rule 10). →2
+  - W-7 eight scenario-map rows cite a `uml/rules.py` that does not exist and one maps the
+    excluded-package scenario to a reader test. →2
+  - W-8 a stale comment in `test_uml_cycle.py` about the path-form bug. →2
+  - S-1 IT-2's xfail could fail for another reason; S-2 the `activity_root` xfail reason; S-3 reader
+    and converter name elements differently; S-4 a prefix name declared with another namespace
+    than the metamodel's; S-5 `default_prefix` not checked against `prefixes`; S-6 a subtree of only
+    empty enumerations passes; S-7 an `--exclude-package` matching several packages; S-8 the
+    lazy `convert` import (→2); S-9 tags on an empty enumeration not reported; S-10 the golden
+    fixture's docstring claims R-13, a composite, `excluded-link`, `merged-cycle`; S-11 PD-6's
+    toolkit-name clash has no task (→2, task 2.2); S-12 a test helper repeats `format_problem`;
+    S-13 `qea.py` holds the boundary geometry, `PackagePath` lives away from its builder.

@@ -77,6 +77,12 @@ schema change and its regenerated code go in one commit (`make generate`, then t
 - [ ] 2.7 Docs (PD-25), in parallel with 2.6: the how-to page, `nav.adoc`, `questions.adoc`,
   the `architecture/generation.adoc` line, `specs/rp-generation/spec.md` (MODIFIED delta).
   Accept: `make check-docs` green; `openspec validate uml-to-linkml --strict` green.
+- [ ] 2.9 Stage-1 review carry-over (design.md D-22, the items marked →2), with 2.6: make the
+  read-only test able to fail (W-4); test the unknown connector type, connectors to notes and
+  boundaries, a boundary with two roots, a dependency to an excluded enumeration (W-5); messages on
+  the new UML tests' asserts (W-6); correct the scenario-map evidence (W-7); drop the stale comment
+  in `test_uml_cycle.py` and use the path form (W-8); import `convert` at module level (S-8); and
+  PD-6's "domain class named like a toolkit class" check in 2.2 (S-11).
 - [ ] 2.8 Lead: full gates; the appetite's full review (P-0005); fixes; acceptance demo: the
   converter on the consumer's real `.qea`, read-only, output in `temp/` and never committed,
   showing exit code, problem count by rule and report count by kind; PR, CI green, merge; owner's
