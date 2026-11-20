@@ -221,5 +221,27 @@ Taken by the lead (rule R-0007), shown to the developer at the end; the develope
   the status and the events already reached the caller. Not in the error matrix; found in 1.3.
 - **D-7 The lifespan's start-up is outside the deadline**, as its shutdown already is (PD-4): the
   `timeout` bounds the head and the events only. Found in 1.3.
+- **D-8 Accepted finding W1 (review, re-labelled Critical).** The rewritten TC-36 keep-alive
+  test (`test_service_kit.py`) dropped `await toy.kit.relay.run_once()`; a set-up activity the
+  background relay delivers after the stream subscribes ends the stream past its lifetime, so
+  `events == []` holds even if the keep-alive setting never reached the route: the test can pass
+  vacuously. Re-label reason: a test that cannot fail for its own claim is a spec-coverage defect.
+  Fix: restore the drain before `open_event_stream`.
+- **Under the floor** (review of stage 1, L2+L3; not fixed in this PR; W3 and W4 follow up in
+  #214, the rest in #215):
+  - W2: no test for D-6 (raise after the head) and D-7 (slow start-up); behaviour recorded, tests
+    are a follow-up.
+  - W3: the how-to omits D-6, D-7 and the `RuntimeError`/`ValueError` outcomes the docstring
+    states; follow-up with W4's page change.
+  - W4: `EventHub` has no public "a follower is subscribed" read, so a consumer cannot wait for
+    the subscription before a commit without private state; a gap in our own library, filed as a
+    follow-up issue (not worked around); the toolkit's own tests keep RISK-5.
+  - W5: PD-2's laziness (`import rdf_persistence.testkit` loads no `api.entrypoints`) has no
+    subprocess check.
+  - S1: TC-37 cannot tell "replay, then live" apart from a live-only delivery.
+  - S2: TC-37b's replay holds no hidden activity (pre-existing weakness).
+  - S3: two sentinel checks read only the event type / compare the id with its own data.
+  - S4: two concurrent calls on an app whose lifespan has not started both enter it.
+  - S5: `pytest.raises(..., match=url)` treats the URL as a regex.
 - **D-5 Sandbox.** The gates run with `UV_CACHE_DIR=<worktree>/temp/uv-cache` (the user cache is
   read-only in the sandbox); `temp/` is git-ignored.
