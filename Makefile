@@ -124,7 +124,7 @@ refresh-map: ## Re-key the scenario-map rows of renamed test files (against BASE
 	@ uv run python -m tests.audit.refresh_map --base $(BASE)
 
 refresh-golden: ## Rewrite the golden files of the extensions' schemas that are not the toy (the toy's golden is the committed tree: make generate; the served goldens: make refresh-served-golden)
-	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/generator/unit -k "ext_ and not test_the_toy_typescript_equals_the_golden_files" -q
+	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/generator/unit -k "(ext_ or uml_) and not test_the_toy_typescript_equals_the_golden_files" -q
 
 refresh-served-golden: ## Rewrite the served OpenAPI and TypeScript goldens; this resets the baseline that guards the thematic move (review the diff)
 	@ RP_REFRESH_GOLDEN=1 uv run pytest tests/unit/api/test_openapi_served.py -q

@@ -174,6 +174,10 @@
       "sha256": "22ff7e53d22f3b8530a77ce3733ed8271bd293fe3a2cab03b71c317c0846c042"
     },
     {
+      "path": "rdf_persistence_generation/uml/cli.py",
+      "sha256": "662d297a924cc7659efc7f220252b5d02c72a0a74b405e75cd293dd9a07249dd"
+    },
+    {
       "path": "rdf_persistence_generation/uml/context.py",
       "sha256": "6b58b9dd9b117d8774e618e93dc11ce62cf13e2ba1d19f88dcbf3b18ea82547f"
     },
