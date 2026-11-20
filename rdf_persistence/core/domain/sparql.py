@@ -188,6 +188,40 @@ def value_patterns(subject: str, predicates: Sequence[URIRef]) -> SparqlTerm:
     return SparqlTerm(" ".join(f"?{subject} {term(p)} ?v{n} ." for n, p in enumerate(predicates)))
 
 
+def absent_patterns(subject: str, predicates: Sequence[URIRef]) -> SparqlTerm:
+    """Render ``FILTER NOT EXISTS { ?subject <predicate> ?key_absent_0 . FILTER (!isBlank(…)) }`` per predicate.
+
+    A blank node is no value, so a predicate holding only blank nodes counts as absent (PD-3).
+    """
+    if not _VARIABLE.fullmatch(subject):
+        raise SparqlError(f"not a plain variable name: {subject!r}")
+    return SparqlTerm(
+        " ".join(
+            f"FILTER NOT EXISTS {{ ?{subject} {term(p)} ?key_absent_{n} . "
+            f"FILTER (!isBlank(?key_absent_{n})) }}"
+            for n, p in enumerate(predicates)
+        )
+    )
+
+
+def optional_value_patterns(
+    subject: str, predicates: Sequence[URIRef], default: URIRef
+) -> SparqlTerm:
+    """Render, per predicate, an ``OPTIONAL`` value bound to ``?v0``, ``?v1`` … or ``default`` when it is absent.
+
+    The variables are those of ``value_variables``; a blank node is no value (PD-5).
+    """
+    if not _VARIABLE.fullmatch(subject):
+        raise SparqlError(f"not a plain variable name: {subject!r}")
+    return SparqlTerm(
+        " ".join(
+            f"OPTIONAL {{ ?{subject} {term(p)} ?key_raw_{n} . FILTER (!isBlank(?key_raw_{n})) }} "
+            f"BIND (COALESCE(?key_raw_{n}, {term(default)}) AS ?v{n})"
+            for n, p in enumerate(predicates)
+        )
+    )
+
+
 def value_variables(number: int) -> SparqlTerm:
     """Render the variables ``?v0 ?v1 …`` that ``value_patterns`` binds, ``number`` of them."""
     # count() refuses a bool, a negative or a non-int
