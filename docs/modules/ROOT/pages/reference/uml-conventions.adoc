@@ -74,7 +74,10 @@ named in each subsection.
 === A root
 
 A class stereotyped «root» is an aggregate root. It mixes in `AggregateRoot`, gets the default
-mixins (`--default-mixins`, `Described,Tracked`) and an `rp_path`. The `rp_path` is the `rp_path`
+mixins (`--default-mixins`, `Described,Tracked`) and an `rp_path`. A part that an aggregate
+boundary or a composite association owns gets the default mixins too; a class that is neither a root
+nor a part gets none. A name in `--default-mixins` that is not a toolkit class fails (<<fails>>). The
+`rp_path` is the `rp_path`
 tagged value when the class has one, else the plural of the class name in kebab case (`Book` →
 `books`, `Library` → `libraries`, `Box` → `boxes`). The plural is simple and irregular nouns are not
 guessed: `Shelf` becomes `shelfs`, so give it `rp_path=shelves` (<<tagged-values>>). Two roots with
@@ -218,8 +221,10 @@ classes:
 
 A class whose stereotype is in the not-generated list produces no class. The list is
 `--not-generated <stereotype>`, repeatable; its default is `loaded graph`, and naming any replaces
-the default. A slot to such a class is `range: uri`, and the report has a `not-generated` line. A
-slot to a class in an `--exclude-package` package (the option's path matches a package's path or
+the default. A slot to such a class is `range: uri`, and the report has a `not-generated` line. An
+enumeration with such a stereotype (`workflow states`, say) is not generated either, and nothing
+points at it: a dependency to it, or an attribute typed by it, makes no slot. Each of these is one
+`not-generated` line, the same as for a class. A slot to a class in an `--exclude-package` package (the option's path matches a package's path or
 its tail) is not made at all (an `excluded-link` line); a
 slot to a class outside the converted package that is not excluded is `range: uri` (an
 `outside-link` line).
@@ -255,25 +260,38 @@ meaning.
 `rp_iri_type`, `database`
 |That annotation on the class. The names are those the metamodel marks as class annotations, read
 at run time, so an annotation the toolkit adds later needs no change in the converter. Its value
-is checked by the rules `rp-generate` uses; a bad value fails the run. `workflow` also adds the
-`UnderWorkflow` mixin.
+is checked by the rules `rp-generate` uses, read without regard to case; a bad value fails the run
+with `[class_annotation] Book: rp_writes: 'sometimes' is not one of ('service', 'toolkit')` (or
+`rp_path: 'Books' does not match <pattern>` for `rp_path`, `rp_iri_type` and `workflow`, which take
+a URL segment). A tag on a class overrides the annotation the converter derives, such as a root's
+`rp_path`. `workflow` also adds the `UnderWorkflow` mixin.
 
 |`rp_mixins=<Class>[,<Class>...]`
 |The named toolkit classes, as mixins when the class is a mixin and as `is_a` when it is not
-(`Activity`). An unknown name fails and lists the toolkit's classes.
+(`Activity`). The tag may repeat; the lists join. A class gets its mixins in one order, each once:
+`AggregateRoot`, the `rp_mixins` names in tag order, the toolkit parents drawn as generalisations in
+connector order, the default mixins, `UnderWorkflow`. An unknown name fails:
+`[toolkit_mixins] Book: Nope is not a toolkit class; the toolkit classes are <the list>`.
 
 |`unique_key = <name>: <a>, <b>[; nulls=equal]`
-|A `unique_keys` entry over the named slots (a slot name or the attribute's UML name). On a root
-it is scoped to the tenant. `nulls=equal` writes `consider_nulls_inequal: false`. One key per tag;
-repeat the tag for more keys.
+|A `unique_keys` entry over the named attributes of the class, each by its slot name or its UML
+name. `<name>` is an identifier of ASCII letters, digits and underscores; the only clause is
+`nulls=equal`, which writes `consider_nulls_inequal: false`. On a root the key is scoped to the
+tenant (`rp_unique_scope: tenant`). One key per tag; repeat the tag for more keys, each with its own
+name. A bad tag fails with the tag text and the cause:
+`[unique_key] Book: unique_key 'k: title, nothing': no attribute 'nothing' on Book`. The other causes
+are `expected <name>: <attribute>, <attribute> [; nulls=equal]` (no colon, no attribute, or a clause
+other than `nulls=equal`), `the name '1k' is not an identifier` and `a key of this name is declared
+twice`.
 
 |Any other tag
-|Ignored, with an `ignored-tag` line. A tag named like a metamodel annotation that is not a class
-annotation (`owned`) fails.
+|Ignored, with an `ignored-tag` line (`tagged value rp_pth is not used`); a tag name is exact, so a
+misspelt `rp_path` is such a tag. A tag named like a metamodel annotation that is not a class
+annotation (`owned`) fails: `[class_annotation] Book: owned: tagged value is not a class annotation`.
 |===
 
 A part tagged `rp_unlabelled=true` gets `Described` only, with the annotation, so its `label` is
-optional.
+optional. On a root the tag adds only the annotation.
 
 A stereotype on an attribute is not used: the attribute converts as usual and the report has an
 `ignored-stereotype` line.
@@ -320,10 +338,14 @@ A toolkit concept is drawn with its own IRI and the converter uses the toolkit's
 generated. A generalisation to it has the effect of `rp_mixins`: a mixin class is mixed in, a
 non-mixin becomes `is_a`. A «root» may be an `Activity`.
 * An attribute or role whose IRI is a toolkit slot's `slot_uri` uses that slot, and no new one is
-made. A `[1..1]` on a slot the toolkit fills itself (`started_at_time`) is not carried: the
-converter writes no `slot_usage` for it and reports a `toolkit-filled` line. An attribute that
-differs from the toolkit slot in multiplicity (multivalued) or in range keeps the toolkit's, with a
-`toolkit-slot-kept` line.
+made; a `[1..1]` on a slot the toolkit does not already require becomes a `slot_usage` with
+`required: true`. A bound on a slot the toolkit fills itself (`started_at_time`) is not carried: the
+converter writes no slot and no `slot_usage` for it and reports
+`toolkit-filled	Loan.started_at_time	the toolkit fills started_at_time; [1..1] is not carried`.
+An attribute that differs from the toolkit slot in `multivalued` or in range keeps the toolkit's,
+with a line such as
+`toolkit-slot-kept	Book.label	the toolkit's label is kept; multivalued true is not carried`
+(the other bounds are not compared).
 * `dct:identifier` is the exception: it makes a new slot `identifier`
 (`slot_uri: dcterms:identifier`), because `id` is the resource's IRI and stays so.
 
@@ -456,8 +478,13 @@ after the first package in path order, with a `merged-cycle` line in the report.
 == What fails
 
 The converter collects every problem, prints them sorted as `[<rule>] <element>: <reason>` (the
-rule is `no_rule` for an element no convention maps, else the rule that was broken), writes nothing
-and exits 1. Fix the EA model and run again.
+rule is `no_rule` for an element no convention maps, else the name of the rule that was broken, such
+as `class_iri`, `class_annotation` or `unique_key`), writes nothing and exits 1. The lines go to
+standard error. Fix the EA model and run again.
+
+A connector one of whose ends is a note, a text or a boundary object, or a package, is ignored
+whatever its type, so a comment drawn onto a class never fails the run. A connector of a type no
+convention maps between two converted classes still fails.
 
 [cols="3,4",options="header"]
 |===
@@ -475,6 +502,19 @@ and exits 1. Fix the EA model and run again.
 
 |Two or more generalisations to domain classes
 |Keep one parent. Express the other as a slot, or as a toolkit mixin (`rp_mixins`).
+
+|Two `is_a` sources: a domain parent and a toolkit class that is not a mixin (`Activity`), or two
+such toolkit classes (`[no_rule] Book: two is_a sources, Series and Activity`)
+|Keep one. Name a toolkit mixin instead of the second.
+
+|A domain class named like a toolkit class, with another IRI
+(`[class_iri] Activity: <your IRI> and <the toolkit's IRI> both map to Activity`)
+|Rename the class.
+
+|A name in `rp_mixins` or in `--default-mixins` that is not a toolkit class
+(`[toolkit_mixins] Book: Nope is not a toolkit class; the toolkit classes are ...`; for the option,
+the element is `--default-mixins`)
+|Correct the name; the message lists the toolkit's classes.
 
 |A class that straddles a boundary's edge, or is inside two boundaries
 |Move it wholly inside one boundary, or wholly outside.
@@ -523,6 +563,8 @@ enumeration
 |A slot name used in several packages where no package is imported by all the others
 |Move the classes into one package, or make one package refer to the rest.
 
-|A tagged value with a bad value, or a `unique_key` with a bad grammar
-|Fix the value; the message names the class and tag.
+|A tagged value with a bad value (`[class_annotation]`), a tag named like a metamodel annotation
+that is not a class annotation, or a `unique_key` with a bad grammar, an unknown attribute or a
+repeated name (`[unique_key]`)
+|Fix the value; the message names the class, the tag and the cause (<<tagged-values>>).
 |===
