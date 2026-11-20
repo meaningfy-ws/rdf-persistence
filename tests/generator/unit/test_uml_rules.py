@@ -835,6 +835,7 @@ def _book_chapter(
     source_aggregate: int = 0,
     target_aggregate: int = 0,
     root: str | None = "root",
+    tags: tuple = (),
 ) -> object:
     return model(
         klass(BOOK, "lib:Book", stereotype=root),
@@ -851,6 +852,7 @@ def _book_chapter(
             ),
         ),
         boundaries=boundaries,
+        tags=tags,
     )
 
 
@@ -1428,6 +1430,268 @@ ROWS_D14 = [
     ),
 ]
 
+# --- R-25..R-28 toolkit mixins (PD-17, PD-29), DEC-4 (D-7) -------------------------------------------
+
+_RP_CORE = "rdf_persistence/model/rp_core"
+_RP_ANNOTATIONS = "rdf_persistence/model/rp_annotations"
+_RP_PROVENANCE = "rdf_persistence/model/rp_provenance"
+_RP_WORKFLOW = "rdf_persistence/model/rp_workflow"
+_RP_COLLECTIONS = "rdf_persistence/model/rp_collections"
+_DEFAULTS = {"default_mixins": ["Described", "Tracked"]}
+_ACTIVITY, _COLLECTION = 15, 16
+_EXTERNAL = (UmlPackage(package_id=EXTERNAL_PKG, name="external"),)
+
+
+def _drawn(*classes: tuple[int, str]) -> dict[str, object]:
+    """The model keywords that put drawn classes outside the subtree, as the reader reports them."""
+    return {
+        "outside": tuple(klass(each, name, EXTERNAL_PKG) for each, name in classes),
+        "outside_packages": _EXTERNAL,
+    }
+
+
+def _book(*tags: tuple[str, str], **drawn: object) -> object:
+    """A root Book with tagged values; ``links`` and drawn classes go in through ``drawn``."""
+    return model(
+        klass(BOOK, "lib:Book", stereotype="root"),
+        tags=tuple(tag(BOOK, name, value) for name, value in tags),
+        **drawn,
+    )
+
+
+def _mixed(
+    expected: list[str],
+    *,
+    is_a: str | None = None,
+    imports: tuple[str, ...] = (),
+    name: str = "Book",
+) -> Check:
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        definition = out.klass("app_library", name)
+        assert list(definition.mixins) == expected, f"mixins of {name}"
+        assert definition.is_a == is_a, f"is_a of {name}"
+        for module in imports:
+            assert module in out.schemas["app_library"].imports, f"{module} is imported"
+
+    return check
+
+
+def _imports_sorted(out: Converted) -> None:
+    toolkit = [i for i in out.schemas["app_library"].imports if i.startswith("rdf_persistence/")]
+    assert toolkit == sorted(toolkit), "the toolkit imports are sorted"
+    assert len(toolkit) == len(set(toolkit)), "each toolkit module is imported once"
+
+
+def _drawn_not_generated(out: Converted) -> None:
+    _no_problems(out)
+    assert sorted(out.schemas["app_library"].classes) == ["Book"], (
+        "the drawn class is not generated"
+    )
+    assert out.report_lines("outside_link") == [], "a drawn toolkit parent is not an outside link"
+
+
+_NOT_TOOLKIT = "Nope"
+_ONE_SOURCE = "no rule converts it"
+
+ROWS_R25 = [
+    Row(
+        "a root has the default mixins after the aggregate-root mixin",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(),
+        _mixed(["AggregateRoot", "Described", "Tracked"], imports=(_RP_CORE, _RP_ANNOTATIONS)),
+        _DEFAULTS,
+    ),
+    Row(
+        "the default mixins are the ones the command line gives",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(),
+        _mixed(["AggregateRoot", "Tracked"]),
+        {"default_mixins": ["Tracked"]},
+    ),
+    Row(
+        "an owned part has the default mixins and no aggregate-root mixin",
+        UmlRule.TOOLKIT_MIXINS,
+        _book_chapter("1..*", boundaries=(boundary(20, BOOK, CHAPTER),)),
+        _mixed(["Described", "Tracked"], name="Chapter"),
+        _DEFAULTS,
+    ),
+    Row(
+        "a part tagged rp_unlabelled has Described only (PD-29)",
+        UmlRule.TOOLKIT_MIXINS,
+        _book_chapter(
+            "1..*",
+            boundaries=(boundary(20, BOOK, CHAPTER),),
+            tags=(tag(CHAPTER, "rp_unlabelled", "true"),),
+        ),
+        _mixed(["Described"], name="Chapter"),
+        _DEFAULTS,
+    ),
+    Row(
+        "a class that is neither a root nor owned has no default mixin",
+        UmlRule.TOOLKIT_MIXINS,
+        model(klass(BOOK, "lib:Book")),
+        _mixed([]),
+        _DEFAULTS,
+    ),
+    Row(
+        "failure: a default mixin that is not a toolkit class lists the toolkit classes",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(),
+        _problem(UmlRule.TOOLKIT_MIXINS, "--default-mixins", _NOT_TOOLKIT, "Described", "Tracked"),
+        {"default_mixins": ["Described", _NOT_TOOLKIT]},
+    ),
+]
+
+ROWS_R26 = [
+    Row(
+        "an rp_mixins name is a mixin, after the aggregate-root one and before the defaults",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(("rp_mixins", "Provenanced")),
+        _mixed(
+            ["AggregateRoot", "Provenanced", "Described", "Tracked"],
+            imports=(_RP_PROVENANCE, _RP_CORE, _RP_ANNOTATIONS),
+        ),
+        _DEFAULTS,
+    ),
+    Row(
+        "rp_mixins names keep the tag order, spaces ignored, and no mixin is repeated",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(("rp_mixins", "Tracked, Described")),
+        _mixed(["AggregateRoot", "Tracked", "Described"]),
+        _DEFAULTS,
+    ),
+    Row(
+        "a toolkit module is imported once, with the other toolkit imports sorted",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(("rp_mixins", "Provenanced,Described")),
+        _all(
+            _mixed(
+                ["AggregateRoot", "Provenanced", "Described", "Tracked"],
+                imports=(_RP_PROVENANCE,),
+            ),
+            _imports_sorted,
+        ),
+        _DEFAULTS,
+    ),
+    Row(
+        "a non-mixin in rp_mixins is the is_a (Activity)",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(("rp_mixins", "Activity")),
+        _mixed(
+            ["AggregateRoot", "Described", "Tracked"], is_a="Activity", imports=(_RP_PROVENANCE,)
+        ),
+        _DEFAULTS,
+    ),
+    Row(
+        "failure: an rp_mixins name that is not a toolkit class lists the toolkit classes",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(("rp_mixins", _NOT_TOOLKIT)),
+        _problem(UmlRule.TOOLKIT_MIXINS, "Book", _NOT_TOOLKIT, "Described", "Activity"),
+    ),
+    Row(
+        "failure: two non-mixin toolkit classes are two is_a sources",
+        UmlRule.NO_RULE,
+        _book(("rp_mixins", "Activity,Principal")),
+        _problem(UmlRule.NO_RULE, "Book", "Activity", "Principal", _ONE_SOURCE),
+    ),
+]
+
+ROWS_R27 = [
+    Row(
+        "a workflow tag adds the workflow mixin after the defaults",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(("workflow", "review")),
+        _mixed(["AggregateRoot", "Described", "Tracked", "UnderWorkflow"], imports=(_RP_WORKFLOW,)),
+        _DEFAULTS,
+    ),
+]
+
+ROWS_R28 = [
+    Row(
+        "a drawn mixin parent is a mixin and is not generated",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(
+            links=(generalisation(1, BOOK, _COLLECTION),),
+            **_drawn((_COLLECTION, "rp:ReferenceCollection")),
+        ),
+        _all(
+            _drawn_not_generated,
+            _mixed(
+                ["AggregateRoot", "ReferenceCollection", "Described", "Tracked"],
+                imports=(_RP_COLLECTIONS,),
+            ),
+        ),
+        _DEFAULTS,
+    ),
+    Row(
+        "a drawn parent comes after the rp_mixins names",
+        UmlRule.TOOLKIT_MIXINS,
+        _book(
+            ("rp_mixins", "Provenanced"),
+            links=(generalisation(1, BOOK, _COLLECTION),),
+            **_drawn((_COLLECTION, "rp:ReferenceCollection")),
+        ),
+        _mixed(["AggregateRoot", "Provenanced", "ReferenceCollection"]),
+    ),
+    Row(
+        "a drawn mixin parent beside a domain parent: the domain parent is the is_a",
+        UmlRule.TOOLKIT_MIXINS,
+        model(
+            klass(BOOK, "lib:Book"),
+            klass(SERIES, "lib:Series"),
+            links=(generalisation(1, BOOK, SERIES), generalisation(2, BOOK, _COLLECTION)),
+            **_drawn((_COLLECTION, "rp:ReferenceCollection")),
+        ),
+        _mixed(["ReferenceCollection"], is_a="Series"),
+    ),
+    Row(
+        "failure: a domain parent and a drawn Activity are two is_a sources",
+        UmlRule.NO_RULE,
+        model(
+            klass(BOOK, "lib:Book"),
+            klass(SERIES, "lib:Series"),
+            links=(generalisation(1, BOOK, SERIES), generalisation(2, BOOK, _ACTIVITY)),
+            **_drawn((_ACTIVITY, "prov:Activity")),
+        ),
+        _problem(UmlRule.NO_RULE, "Book", "Series", "Activity", _ONE_SOURCE),
+    ),
+    Row(
+        "failure: a drawn class that is not a toolkit class stays a class that is not converted",
+        UmlRule.NO_RULE,
+        model(
+            klass(BOOK, "lib:Book"),
+            links=(generalisation(1, BOOK, _ACTIVITY),),
+            **_drawn((_ACTIVITY, "prov:Entity")),
+        ),
+        _problem(UmlRule.NO_RULE, "Book", "not converted", _ONE_SOURCE),
+    ),
+]
+
+# SPIKE-1 passed (D-7): an application root may be an Activity, so the activity_root refusal is inactive.
+ROWS_ACTIVITY_ROOT = [
+    Row(
+        "inactive since SPIKE-1 passed: a root drawn as a prov:Activity is accepted, is_a Activity",
+        UmlRule.ACTIVITY_ROOT,
+        _book(links=(generalisation(1, BOOK, _ACTIVITY),), **_drawn((_ACTIVITY, "prov:Activity"))),
+        _all(
+            _drawn_not_generated,
+            _mixed(
+                ["AggregateRoot", "Described", "Tracked"],
+                is_a="Activity",
+                imports=(_RP_PROVENANCE,),
+            ),
+        ),
+        _DEFAULTS,
+    ),
+    Row(
+        "inactive since SPIKE-1 passed: a root tagged rp_mixins=Activity is accepted",
+        UmlRule.ACTIVITY_ROOT,
+        _book(("rp_mixins", "Activity")),
+        _mixed(["AggregateRoot"], is_a="Activity"),
+    ),
+]
+
 ROWS: list[Row] = [
     *ROWS_R1,
     *ROWS_R2,
@@ -1443,6 +1707,11 @@ ROWS: list[Row] = [
     *ROWS_R13,
     *ROWS_W3,
     *ROWS_D14,
+    *ROWS_R25,
+    *ROWS_R26,
+    *ROWS_R27,
+    *ROWS_R28,
+    *ROWS_ACTIVITY_ROOT,
 ]
 
 STAGE_2 = {
@@ -1451,9 +1720,7 @@ STAGE_2 = {
     UmlRule.CLASS_ANNOTATION,
     UmlRule.UNIQUE_KEY,
     UmlRule.ABSTRACT_ROOT,
-    UmlRule.TOOLKIT_MIXINS,
     UmlRule.LEFT_OUT_LINK,
-    UmlRule.ACTIVITY_ROOT,
 }
 
 

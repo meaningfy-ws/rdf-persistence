@@ -44,6 +44,10 @@ class Toolkit:
     def class_by_name(self, name: str) -> ClassDefinition | None:
         return self._classes.get(name)
 
+    def class_names(self) -> list[str]:
+        """The names of every toolkit class, sorted."""
+        return sorted(self._classes)
+
     def class_by_uri(self, uri: str) -> ClassDefinition | None:
         """The toolkit class whose expanded ``class_uri`` is ``uri``."""
         return self._class_uris.get(uri)

@@ -28,6 +28,7 @@ from rdf_persistence_generation.uml.context import (
     Element,
     local_of,
 )
+from rdf_persistence_generation.uml.mixins import MIXIN_TAGS, RP_MIXINS, compose
 from rdf_persistence_generation.uml.naming import (
     CURIE_SEPARATOR,
     check_class_name,
@@ -41,9 +42,7 @@ CLASS_TYPE = "Class"
 ENUMERATION_TYPE = "Enumeration"
 ROOT_STEREOTYPE = "root"
 ABSTRACT_STEREOTYPE = "abstract"
-AGGREGATE_ROOT = "AggregateRoot"
 RP_PATH = "rp_path"
-RP_CORE_IMPORT = "rdf_persistence/model/rp_core"
 EMPTY_LIST_NOTE = "no literals; its list is kept outside the model, so slots range over a URI"
 
 
@@ -105,12 +104,21 @@ def _collect_outside(ctx: Context, model: UmlModel) -> None:
         path = ctx.paths.get(uml.package_id)
         _leave_out(ctx, uml, LEFT_EXCLUDED if path is not None and path.excluded else LEFT_OUTSIDE)
         ctx.class_names[uml.object_id] = local_of(uml.name)
+        toolkit_class = ctx.toolkit_name(uml.name)
+        if toolkit_class is not None:
+            ctx.drawn_toolkit[uml.object_id] = toolkit_class  # R-28: not generated, a parent only
 
 
 def collect_elements(ctx: Context, model: UmlModel) -> None:
     """Classify every class of the subtree: generated, left out, or a problem; check names for clashes."""
     for tagged in model.uml_tagged_values or []:
-        ctx.tags.setdefault(tagged.owner_id, {})[tagged.name] = tagged.tag_value or ""
+        held = ctx.tags.setdefault(tagged.owner_id, {})
+        value = tagged.tag_value or ""
+        held[tagged.name] = (
+            f"{held[tagged.name]},{value}"
+            if tagged.name == RP_MIXINS and tagged.name in held
+            else value
+        )
     _collect_outside(ctx, model)
     for uml in sorted(model.uml_classes or [], key=lambda each: (each.name, each.object_id)):
         ctx.class_names[uml.object_id] = local_of(uml.name)
@@ -199,26 +207,36 @@ def _described(ctx: Context, element: Element) -> str | None:
     return description
 
 
-def build_class(ctx: Context, element: Element, is_a: str | None) -> ClassDefinition:
-    """The class of a UML class: title, description, IRI, abstract flag, parent and the root's path."""
+def build_class(
+    ctx: Context, element: Element, parent: str | None, owned: bool, defaults: list[str]
+) -> ClassDefinition:
+    """The class of a UML class: title, description, IRI, abstract flag, parent, mixins and the root's path.
+
+    ``parent`` is the domain parent; ``owned`` whether a boundary or composite makes the class a part;
+    ``defaults`` the default mixins (PD-17).
+    """
+    composed = compose(ctx, element, parent, owned, defaults)
     definition = ClassDefinition(
         name=element.label,
         title=title_for(element.label, element.uml.uml_alias),
         description=_described(ctx, element),
         class_uri=class_uri_of(ctx, element.name),
-        is_a=is_a,
+        is_a=composed.is_a,
+        mixins=composed.mixins,
     )
     if element.is_abstract:
         definition.abstract = True
     if element.is_root:
-        definition.mixins = [AGGREGATE_ROOT]
         definition.annotations = {RP_PATH: annotation(RP_PATH, root_path(ctx, element))}
-    _note_tags(ctx, element, (RP_PATH,))
+    _note_tags(ctx, element, (RP_PATH, *MIXIN_TAGS))
     return definition
 
 
 def parents(ctx: Context, model: UmlModel) -> dict[int, str]:
-    """The ``is_a`` of each class: its one generalised domain class (PD-9, PD-30); others are problems."""
+    """The domain parent of each class (PD-9, PD-30); others are problems.
+
+    A generalisation to a drawn toolkit class is kept in ``ctx.drawn_parents`` for the mixins (R-28).
+    """
     found: dict[int, list[int]] = {}
     for each in sorted(model.uml_links or [], key=lambda link: link.connector_id):
         if each.link_kind != UmlLinkKind.GENERALISATION or each.source_id not in ctx.elements:
@@ -226,6 +244,10 @@ def parents(ctx: Context, model: UmlModel) -> dict[int, str]:
         child = ctx.elements[each.source_id]
         if child.is_enum:
             ctx.findings.no_rule(child.label, "generalisation from an enumeration")
+        elif each.target_id in ctx.drawn_toolkit:
+            ctx.drawn_parents.setdefault(each.source_id, []).append(
+                ctx.drawn_toolkit[each.target_id]
+            )
         else:
             found.setdefault(each.source_id, []).append(each.target_id)
     return {

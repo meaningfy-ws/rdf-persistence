@@ -22,6 +22,7 @@ from rdf_persistence_generation.uml.toolkit import load_toolkit
 
 PREFIXES_FILE: Final = "the prefixes file"
 NO_RULE_TAIL: Final = "no rule converts it"
+TOOLKIT_PREFIX: Final = "rp"  # the metamodel's name for the toolkit's own namespace
 LEFT_NOT_GENERATED: Final = "not-generated"
 LEFT_EXCLUDED: Final = "excluded"
 LEFT_OUTSIDE: Final = "outside"
@@ -124,6 +125,32 @@ class Context:
         self.paths: dict[int, PackagePath] = {}
         self.tags: dict[int, dict[str, str]] = {}
         self.unknown_prefixes: set[str] = set()
+        self.drawn_toolkit: dict[
+            int, str
+        ] = {}  # drawn classes that are toolkit classes: id -> name (R-28)
+        self.drawn_parents: dict[
+            int, list[str]
+        ] = {}  # a class's drawn toolkit parents, connector order
+
+    def toolkit_name(self, written: str) -> str | None:
+        """The toolkit class a drawn class stands for: its IRI is a toolkit ``class_uri``, or it is the toolkit's
+        namespace with a toolkit class's name (PD-17); None when it is neither or its prefix is unknown."""
+        resolved = resolve_name(
+            written, written, self.prefixes, self.metamodel_prefixes, PREFIXES_FILE
+        )
+        if not isinstance(resolved, UmlName) or resolved.iri is None:
+            return None
+        by_uri = self.toolkit.class_by_uri(resolved.iri)
+        if by_uri is not None:
+            return str(by_uri.name)
+        in_toolkit_namespace = (
+            resolved.iri == self.metamodel_prefixes.get(TOOLKIT_PREFIX, "") + resolved.name
+        )
+        return (
+            resolved.name
+            if in_toolkit_namespace and self.toolkit.class_by_name(resolved.name)
+            else None
+        )
 
     def resolve(self, written: str, element: str) -> UmlName | None:
         """Expand a written name; an unknown prefix is one problem for the prefix, naming the first element."""

@@ -135,6 +135,8 @@ classes:
     title: Book
     mixins:
     - AggregateRoot
+    - Described
+    - Tracked
     slots:
     - pages
     - subtitle
@@ -149,6 +151,9 @@ classes:
     name: Chapter
     description: A chapter of a book.
     title: Chapter
+    mixins:
+    - Described
+    - Tracked
     slots:
     - heading
   Periodical:
@@ -162,6 +167,8 @@ classes:
     is_a: Publication
     mixins:
     - AggregateRoot
+    - Described
+    - Tracked
     slots:
     - issn
   Publication:

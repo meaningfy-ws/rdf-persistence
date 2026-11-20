@@ -25,7 +25,6 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlSettings,
 )
 from rdf_persistence_generation.uml.classes import (
-    RP_CORE_IMPORT,
     annotation,
     build_class,
     build_enum,
@@ -34,6 +33,7 @@ from rdf_persistence_generation.uml.classes import (
 )
 from rdf_persistence_generation.uml.context import Context, Element
 from rdf_persistence_generation.uml.links import link_usages, owned_pairs
+from rdf_persistence_generation.uml.mixins import check_default_mixins
 from rdf_persistence_generation.uml.modules import (
     PATH_SEPARATOR,
     ModulePath,
@@ -246,11 +246,33 @@ def _place(schema: SchemaDefinition, element: Element, built: Built) -> None:
     schema.classes[element.label] = definition
 
 
-def _imports(name: str, members: list[Element], refs: set[str]) -> list[str]:
-    toolkit = [ANNOTATIONS_IMPORT]
-    if any(element.is_root for element in members):
-        toolkit.append(RP_CORE_IMPORT)
+def _toolkit_imports(ctx: Context, members: list[ClassDefinition]) -> set[str]:
+    """The module of each toolkit class a module's classes use as ``is_a`` or mixin (PD-17)."""
+    used = {name for each in members for name in [each.is_a, *each.mixins] if name}
+    return {ctx.toolkit.module_of(name) for name in used if ctx.toolkit.class_by_name(name)}
+
+
+def _imports(
+    ctx: Context, name: str, members: list[Element], built: Built, refs: set[str]
+) -> list[str]:
+    classes = [built.classes[each.uml.object_id] for each in members if not each.is_enum]
+    toolkit = {ANNOTATIONS_IMPORT} | _toolkit_imports(ctx, classes)
     return [LINKML_TYPES, *sorted(toolkit), *sorted(refs - {name})]
+
+
+def _classes(
+    ctx: Context, elements: list[Element], usages: list[Usage], parent_of: Mapping[int, str]
+) -> dict[int, ClassDefinition]:
+    """The class of each UML class; a part is a class an owned slot ranges over (PD-13, PD-17)."""
+    defaults = check_default_mixins(ctx)
+    owned = {usage.shape.range for usage in usages if usage.shape.owned}
+    return {
+        e.uml.object_id: build_class(
+            ctx, e, parent_of.get(e.uml.object_id), e.label in owned and not e.is_root, defaults
+        )
+        for e in elements
+        if not e.is_enum
+    }
 
 
 def convert(
@@ -276,11 +298,7 @@ def convert(
     names = _module_names(ctx, set(merged.values()))
     module_of = {element.uml.object_id: names[merged[element.path]] for element in elements}
     shared = share(ctx, usages, module_of)
-    classes = {
-        e.uml.object_id: build_class(ctx, e, parent_of.get(e.uml.object_id))
-        for e in elements
-        if not e.is_enum
-    }
+    classes = _classes(ctx, elements, usages, parent_of)
     built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx))
     problems = ctx.findings.problems()
     if problems:
@@ -296,7 +314,7 @@ def _assemble(ctx: Context, layout: Layout, built: Built) -> list[SchemaDefiniti
         name = layout.names[path]
         members = layout.members(path)
         schema = _write_module(ctx, name, path, built, members)
-        schema.imports = _imports(name, members, layout.refers_to(path))
+        schema.imports = _imports(ctx, name, members, built, layout.refers_to(path))
         _prefixes_of(ctx, schema)
         modules.append(schema)
     return [_root(ctx, [m.name for m in modules]), *modules]

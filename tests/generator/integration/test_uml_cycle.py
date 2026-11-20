@@ -110,15 +110,6 @@ def test_the_packages_of_a_cycle_become_one_module_with_a_merged_cycle_line(
     assert SECOND_PACKAGE in merged_lines[0]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "uml-to-linkml stage 1 writes no `Described` mixin (stage 2, task 2.3): rp-generate's "
-        "hard check [described] refuses a root class without it, in write mode too. Drop the "
-        "marker when the converter writes the mixins"
-    ),
-)
 def test_the_merged_module_generates_and_the_package_imports(
     project: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -132,6 +123,8 @@ def test_the_merged_module_generates_and_the_package_imports(
 
     generated = importlib.import_module(f"{PACKAGE}.domain.generated.{ROOT_NAME}_{FIRST_PACKAGE}")
     book = generated.Book(
-        id="https://example.org/ns/library#book-1", shelf="https://example.org/ns/library#shelf-1"
+        id="https://example.org/ns/library#book-1",
+        label="A book",
+        shelf="https://example.org/ns/library#shelf-1",
     )
     assert str(book.shelf) == "https://example.org/ns/library#shelf-1"

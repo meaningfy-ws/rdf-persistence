@@ -207,7 +207,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/classes.py",
-      "sha256": "6473b7657cbe213c80fa30c1457927ab96052320d37f933ae83921036c46b59e"
+      "sha256": "700ee8874b902644e66a93faab14c25851145b574681c4fbf40614014bf840b8"
     },
     {
       "path": "rdf_persistence_generation/uml/cli.py",
@@ -215,15 +215,19 @@
     },
     {
       "path": "rdf_persistence_generation/uml/context.py",
-      "sha256": "c62ba3b00f79ae218ebf8245d0ec034eb0d318b83dda5696c4274baeafe31ca9"
+      "sha256": "cc0016892edf7339715de890f01c201d1daa155adcb4390e99d9586305b6ed42"
     },
     {
       "path": "rdf_persistence_generation/uml/convert.py",
-      "sha256": "316af545f40f3e531e62926b3466a21d51ca10a8050cbcddf0962c4bcec6e805"
+      "sha256": "f2ad7bcd826ceff25baf87629ea6f8bf83c20d7e43bbf05d6760a43575274ab9"
     },
     {
       "path": "rdf_persistence_generation/uml/links.py",
       "sha256": "130862957b53e0cf311077b85fcaf7b402f48d2838289a31e57bb0f67c833ed1"
+    },
+    {
+      "path": "rdf_persistence_generation/uml/mixins.py",
+      "sha256": "6cd4c1d18b01da10bf7a0ac03f2aacebad028ba073fb7f3a9872785a2b4aec34"
     },
     {
       "path": "rdf_persistence_generation/uml/modules.py",
@@ -243,7 +247,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/toolkit.py",
-      "sha256": "e4efc285555c067024d4f7c9446d3a88e7a0893cfc5a83576988e35debc971bd"
+      "sha256": "43718374d296b1d5c1fd96d8812cf24792a76d16991051f69b38fe261155d058"
     },
     {
       "path": "rdf_persistence_generation/uml/write.py",

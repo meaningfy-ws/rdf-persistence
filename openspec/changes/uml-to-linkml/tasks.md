@@ -62,7 +62,7 @@ schema change and its regenerated code go in one commit (`make generate`, then t
   `prov:Activity` → `Activity`, non-mixin; `skos:prefLabel` → `label`; `dcterms:identifier` not
   offered (it is `id`); `started_at_time` toolkit-filled. Accept: green; `make check-architecture`
   green (else the matrix's fallback module).
-- [ ] 2.3 Mixins (PD-17, R-25..R-28) and the DEC-4 branch, after 2.2 and 1.9. Failing tests first:
+- [x] 2.3 Mixins (PD-17, R-25..R-28) and the DEC-4 branch, after 2.2 and 1.9. Failing tests first:
   the TC-5 rows for R-25..R-28, the PD-17 conflict rows, and the `activity_root` row (active only
   if SPIKE-1 failed). Accept: green.
 - [ ] 2.4 Toolkit slots (PD-18, R-15, R-22), after 2.2: failing test first TC-6. Accept: green.
