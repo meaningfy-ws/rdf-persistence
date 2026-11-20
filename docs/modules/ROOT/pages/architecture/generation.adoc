@@ -511,6 +511,13 @@ pass `rp-generate`, is in xref:user-manual/model.adoc[Write the model]; the toy 
 `tests/fixtures/library/` is the full version (a tenant root, a stored file, an access module, an
 enum, a workflow).
 
+*Or draw it.* An application that keeps its model as an Enterprise Architect class diagram does not
+write the files: `rp-uml2linkml` (`rdf_persistence_generation/uml/`) reads the `.qea` and writes
+the same modules and root schema, which `rp-generate` then treats as hand-written ones, with the
+same checks (<<toolchain>>). The UML takes the place of the LinkML as the file the modellers edit.
+See xref:howto/uml-to-linkml.adoc[Generate the model from UML] and the
+xref:reference/uml-conventions.adoc[UML conventions].
+
 An application may narrow `Grant.role` to an enum of its own roles by subclassing (`is_a` with
 `slot_usage`); the toy library keeps plain strings, matched against its role definitions.
 
