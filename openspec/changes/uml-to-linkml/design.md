@@ -74,7 +74,7 @@ Probe `temp/uml-probe/{boundaries,members,scoped,cycles}.py` on the first consum
 - Re-implementing `rp-generate`'s checks in the converter (anti-pattern A-3).
 - Any change to `rdf_persistence/` unless SPIKE-1 or SPIKE-2 requires it, then as its own task.
 
-## Rule table (frozen 2026-11-20: DEC-5, D-20)
+## Rule table (frozen 2026-11-20: DEC-5, D-20, final with R-30 by D-23)
 
 Sources: **B** = issue body table, **C1..C4** = the four comments in
 [inputs/seed.md](inputs/seed.md#comments). R-1..R-13 follow the body's row order and R-14..R-19
@@ -114,6 +114,7 @@ freeze is appended as R-30, R-31… with its source and date; the freeze date is
 | R-27 | tagged value `workflow=<name>` | `UnderWorkflow` mixin (+ the annotation, R-20) | C4.1 | active | 2 | PD-17 |
 | R-28 | drawn generalisation to a toolkit class | as R-26; the drawn toolkit class is not generated | C1 kept by C4.1 | active | 2 | PD-17 |
 | R-29 | association to a not-generated class / to an excluded package | `range: uri` / no slot, one report line | C4.2 | active | 2 | PD-15 |
+| R-30 | enumeration whose stereotype is listed in `--not-generated` (e.g. «workflow states») | no enum; a dependency to it makes no slot; one `not-generated` report line each (`UmlRule.not_generated`, as R-12) | D-23, real-model run | active | 2 | PD-15 |
 
 Run-level invariants (not mappings, so not rules): I-1 an unmapped element fails the run and
 nothing is written (`UmlRule.no_rule`); I-2 a second run is byte-identical; I-3 the report lists
@@ -775,3 +776,21 @@ and its checkers page):
     fixture's docstring claims R-13, a composite, `excluded-link`, `merged-cycle`; S-11 PD-6's
     toolkit-name clash has no task (→2, task 2.2); S-12 a test helper repeats `format_problem`;
     S-13 `qea.py` holds the boundary geometry, `PackagePath` lives away from its builder.
+- **D-23 Rule freeze, final** (2026-11-20, the developer, one question round after the converter
+  ran read-only on the consumer's real `.qea`; amends D-20). The run (`evidence/real-model-run.md`)
+  met no Activity, Component, Interface, Abstraction or ControlFlow in the converted package: they
+  all sit in packages outside it, so none needs a rule. Of its 18 problems, 10 are stage-2 rules
+  (R-18, R-24) and 1 is new: R-30, an enumeration whose stereotype is listed in `--not-generated`
+  is not generated, and a dependency to it makes no slot; both are `not-generated` report lines
+  under `UmlRule.not_generated` (no new enum value). The rest are the consumer's model to fix, not
+  rules: a class straddling two boundaries, two IRIs sharing a local name (twice), a package whose
+  boundaries hold no «root», and a prefixes file without `schema_base` and `version`. No rule was
+  added to #196 after its four comments. The table is frozen at R-1..R-30; a later rule goes to a
+  follow-up issue.
+- **D-24 W-1 scope** (2026-11-20, the developer; closes W-1 of D-22). The converter's hand-written
+  *data* classes go: `Bounds`, `Shape` and `Identity` become LinkML's `SlotDefinition`; `Element`,
+  `PackagePath` and `End` become generated UML records (the `uml` technical schema of task 1.1).
+  The output side already uses `SchemaDefinition`, `ClassDefinition` and `SlotDefinition`. The
+  per-call processing state (`Context`, `Findings`, `Layout`, `Built`, `SharedSlots`, `_Reading`,
+  `_Boundaries`) stays: it holds indexes inside one call (P-0007 allows them), and no
+  `HAND_WRITTEN` exception is added. Task 2.10.
