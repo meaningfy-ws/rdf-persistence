@@ -66,9 +66,11 @@ tests/integration/adapters/test_redis_events.py::test_a_trim_that_fails_does_not
 tests/integration/adapters/test_redis_events.py::test_an_entry_older_than_the_retention_is_trimmed_on_the_next_publish,capability,rp-events,,,medium,"spec id (TC-23, D-17); retention is in no spec scenario"
 tests/integration/adapters/test_redis_events.py::test_the_redis_bus_conforms,requirement,rp-events,"Events reach the bus at least once, in order per aggregate",,medium,spec id (TC-22); redis_events.py is under the coverage omit
 tests/integration/api/test_listing.py::test_a_page_holds_the_third_and_fourth_books_by_iri_and_the_total,scenario,rp-service-api,Listings are filtered and paged,a page of books,high,name; module docstring names the scenario; covered code (services/listing)
+tests/integration/api/test_listing.py::test_a_value_in_another_graph_does_not_make_an_aggregate_match,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code (services/listing)
 tests/integration/api/test_listing.py::test_an_injection_through_a_filter_matches_nothing_and_changes_nothing,scenario,rp-aggregate-store,SPARQL is never built by concatenating input,an injection attempt,high,name; module docstring names the scenario; covered code (domain/sparql)
 tests/integration/api/test_listing.py::test_an_injection_through_a_reference_filter_is_a_bad_query,scenario,rp-aggregate-store,SPARQL is never built by concatenating input,an injection attempt,high,name; module docstring; covered code (domain/sparql)
 tests/integration/api/test_listing.py::test_sort_filters_and_paging_work_against_fuseki,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code (services/listing)
+tests/integration/api/test_listing.py::test_the_total_of_a_contains_page_counts_every_match_not_the_page,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code (services/listing)
 tests/integration/api/test_negotiation.py::test_a_body_the_service_cannot_read_is_a_415_problem,requirement,rp-service-api,"Plain JSON by default, RDF serialisations on request",,high,name; covered code (entrypoints/negotiation)
 tests/integration/api/test_negotiation.py::test_an_accept_the_service_cannot_meet_is_a_406_problem,requirement,rp-service-api,"Plain JSON by default, RDF serialisations on request",,high,name; covered code (entrypoints/negotiation)
 tests/integration/api/test_negotiation.py::test_the_same_book_is_described_by_the_same_triples_in_json_json_ld_and_turtle,scenario,rp-service-api,"Plain JSON by default, RDF serialisations on request",the same book three ways,high,name; module docstring; covered code (entrypoints/negotiation)
@@ -664,6 +666,12 @@ tests/unit/core/test_sparql.py::test_a_template_that_names_a_forbidden_predicate
 tests/unit/core/test_sparql.py::test_a_term_field_refuses_a_raw_string,scenario,rp-generation,A generated field can hold a toolkit type,a raw string in a SPARQL term field,high,docstring TC-15 PD-4 (change technical-models)
 tests/unit/core/test_sparql.py::test_a_term_field_keeps_the_sparql_term_it_is_given,requirement,rp-generation,A generated field can hold a toolkit type,,high,docstring TC-14 PD-4 (change technical-models)
 tests/unit/core/test_sparql.py::test_a_none_field_is_left_out_so_fill_reports_it_missing,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,docstring TC-17 PD-4 (change technical-models)
+tests/unit/core/test_sparql.py::test_contains_patterns_are_case_insensitive,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,name; covered code (domain/sparql)
+tests/unit/core/test_sparql.py::test_contains_patterns_keep_the_text_inside_one_literal,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,name; covered code (domain/sparql)
+tests/unit/core/test_sparql.py::test_contains_patterns_refuse_a_raw_string,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,name; covered code (domain/sparql)
+tests/unit/core/test_sparql.py::test_contains_patterns_refuse_a_variable_that_is_not_a_plain_name,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,name; covered code (domain/sparql)
+tests/unit/core/test_sparql.py::test_contains_patterns_render_each_pair_as_its_own_exists_on_its_own_variable,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,name; covered code (domain/sparql)
+tests/unit/core/test_sparql.py::test_empty_contains_patterns_are_empty,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,name; covered code (domain/sparql)
 tests/unit/core/test_sparql.py::test_fill_terms_takes_the_model_fields_and_the_extra_terms,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,docstring TC-55 PD-4 (change technical-models)
 tests/unit/core/test_sparql.py::test_a_name_in_both_the_model_and_the_extra_terms_is_refused,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,docstring TC-55 PD-4 (change technical-models)
 tests/unit/core/test_sparql.py::test_fragment_terms_gives_a_sparql_term_and_refuses_a_name_given_twice,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,high,docstring TC-55 PD-4 (change technical-models)
@@ -812,10 +820,15 @@ tests/unit/api/test_library_app.py::test_a_reader_cannot_write_the_file_and_an_o
 tests/unit/api/test_library_app.py::test_the_apps_post_writes_the_record_through_a_session_and_the_bytes_to_the_bucket,scenario,rp-service-api,Some roots are written only through a session,the consumer's route writes it,medium,name;covered code
 tests/unit/api/test_library_app.py::test_the_bytes_are_kept_under_the_id_of_the_scan_and_read_back,scenario,rp-file-store,"Files are kept byte for byte, per tenant, over S3",round trip,medium,name
 tests/unit/api/test_listing_routes.py::test_a_book_the_caller_is_prohibited_from_reading_is_not_listed_or_counted,requirement,rp-access,Access is decided per tenant and per aggregate,,high,name;covered code;spec id
+tests/unit/api/test_listing_routes.py::test_a_contains_filter_lists_the_books_whose_text_holds_it,scenario,rp-service-api,Listings filter by a case-insensitive substring,a substring in any case,high,name; covered code (services/listing, entrypoints/router)
+tests/unit/api/test_listing_routes.py::test_a_contains_filter_lists_the_books_whose_text_holds_it,scenario,rp-service-api,Listings filter by a case-insensitive substring,combined filters,high,name; covered code (services/listing, entrypoints/router)
+tests/unit/api/test_listing_routes.py::test_a_contains_filter_that_cannot_hold_is_a_bad_query,scenario,rp-service-api,Listings filter by a case-insensitive substring,a non-string slot,high,name; covered code (services/listing, entrypoints/router)
+tests/unit/api/test_listing_routes.py::test_a_contains_filter_that_cannot_hold_is_a_bad_query,scenario,rp-service-api,Listings filter by a case-insensitive substring,an empty text,high,name; covered code (services/listing, entrypoints/router)
 tests/unit/api/test_listing_routes.py::test_a_listing_never_shows_the_books_of_another_tenant,requirement,rp-service-api,Listings are filtered and paged,,medium,name;covered code
 tests/unit/api/test_listing_routes.py::test_a_permission_on_one_book_alone_does_not_list_books,requirement,rp-access,Access is decided per tenant and per aggregate,,high,name;covered code;spec id
 tests/unit/api/test_listing_routes.py::test_a_prohibition_of_modify_leaves_the_book_in_the_listing,requirement,rp-access,Access is decided per tenant and per aggregate,,high,name;covered code;spec id
 tests/unit/api/test_listing_routes.py::test_the_tenant_listing_is_paged_by_iri_like_any_other,requirement,rp-service-api,Listings are filtered and paged,,high,name;covered code;spec id
+tests/unit/api/test_listing_routes.py::test_the_tenant_listing_still_refuses_a_contains_filter,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name;covered code
 tests/unit/api/test_listing_routes_read.py::TestReadOnlyListing::test_a_bad_query_is_a_400_problem_and_changes_nothing,requirement,rp-service-api,Listings are filtered and paged,,high,name;covered code;spec id
 tests/unit/api/test_listing_routes_read.py::TestReadOnlyListing::test_a_global_reader_lists_the_books_of_any_tenant,requirement,rp-access,Access is decided per tenant and per aggregate,,high,name;covered code;spec id
 tests/unit/api/test_listing_routes_read.py::TestReadOnlyListing::test_a_hostile_filter_value_is_just_a_value,requirement,rp-aggregate-store,SPARQL is never built by concatenating input,,medium,name;covered code
@@ -876,6 +889,7 @@ tests/unit/api/test_openapi.py::test_a_book_is_created_and_replaced_with_the_jso
 tests/unit/api/test_openapi.py::test_a_create_answers_the_location_and_the_version,requirement,rp-service-api,The contract is published,,high,name;spec id
 tests/unit/api/test_openapi.py::test_a_delete_carries_its_expected_version_in_if_match,requirement,rp-service-api,The contract is published,,high,name;spec id
 tests/unit/api/test_openapi.py::test_a_listing_answers_a_page_of_the_type,requirement,rp-service-api,The contract is published,,high,name;spec id
+tests/unit/api/test_openapi.py::test_a_listing_takes_a_contains_parameter_per_text_slot_right_after_its_equality_one,scenario,rp-service-api,Listings filter by a case-insensitive substring,the contract shows a contains parameter per string slot,high,name;covered code;spec id
 tests/unit/api/test_openapi.py::test_a_listing_takes_a_parameter_per_slot_of_the_type_and_the_paging_ones,requirement,rp-service-api,The contract is published,,high,name;covered code;spec id
 tests/unit/api/test_openapi.py::test_a_problem_response_is_an_rfc_9457_problem_with_the_fixed_title,scenario,rp-service-api,The contract is published,the document lists the routes,high,name;spec id
 tests/unit/api/test_openapi.py::test_a_read_answers_every_representation_and_the_version,requirement,rp-service-api,The contract is published,,high,name;spec id
@@ -2262,8 +2276,11 @@ tests/unit/iris/test_iris_follow_schema.py::test_a_prefix_the_schema_refuses_is_
 tests/unit/iris/test_iris_follow_schema.py::test_a_segment_the_schema_refuses_is_refused,capability,rp-iri-policy,,,medium,"spec id (PD-6a); pins domain.iris regexes to the schema patterns, no requirement names it"
 tests/unit/iris/test_iris_follow_schema.py::test_the_prefix_rule_is_the_pattern_of_the_service_settings_prefix,capability,rp-iri-policy,,,medium,"spec id (PD-6a); pins domain.iris regexes to the schema patterns, no requirement names it"
 tests/unit/iris/test_iris_follow_schema.py::test_the_segment_rule_is_the_pattern_of_url_segment,capability,rp-iri-policy,,,medium,"spec id (PD-6a); pins domain.iris regexes to the schema patterns, no requirement names it"
+tests/unit/persistence/test_listing.py::test_a_contains_filter_keeps_its_text_as_sent_in_the_plan,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code; spec id (PD-15)
+tests/unit/persistence/test_listing.py::test_a_contains_filter_that_cannot_be_planned_is_a_bad_query,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code; spec id (PD-15)
 tests/unit/persistence/test_listing.py::test_a_limit_offset_or_sort_that_is_not_one_valid_value_is_a_bad_query,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code; spec id (PD-15)
 tests/unit/persistence/test_listing.py::test_a_literal_filter_keeps_its_datatype_in_the_plan,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code; spec id (PD-15)
+tests/unit/persistence/test_listing.py::test_a_name_ending_in_a_tilde_is_a_contains_filter,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code; spec id (PD-15)
 tests/unit/persistence/test_listing.py::test_a_slot_name_is_matched_exactly_not_as_a_pattern,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code; spec id (PD-15)
 tests/unit/persistence/test_listing.py::test_a_slot_the_type_does_not_offer_is_a_bad_query,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code; spec id (PD-15)
 tests/unit/persistence/test_listing.py::test_a_value_is_typed_by_the_range_of_its_slot,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code; spec id (PD-15)
@@ -2278,7 +2295,9 @@ tests/unit/persistence/test_listing.py::test_the_plan_of_a_listing_carries_the_t
 tests/unit/persistence/test_listing.py::test_the_slots_a_listing_may_name_are_those_of_the_type_that_are_not_bookkeeping_or_owned,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code; spec id (PD-15)
 tests/unit/persistence/test_listing.py::test_the_sort_keys_are_the_identifier_and_the_listable_slots_up_and_down,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code; spec id (PD-15)
 tests/unit/persistence/test_listing.py::test_without_a_sort_key_the_listing_is_by_iri_ascending,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code; spec id (PD-15)
+tests/unit/persistence/test_listing_query.py::test_a_page_holds_the_aggregates_in_order_and_the_total_counts_the_whole_listing,scenario,rp-service-api,Listings filter by a case-insensitive substring,an item matching on several values is listed once,high,name; covered code (services/listing); TC-05 row authors~=E&limit=2
 tests/unit/persistence/test_listing_query.py::test_a_hidden_graph_is_left_out_of_the_page_and_of_the_total,requirement,rp-service-api,Listings are filtered and paged,,medium,covered code; spec id (PD-15)
+tests/unit/persistence/test_listing_query.py::test_a_hostile_contains_text_matches_nothing_and_leaves_the_store_unchanged,scenario,rp-aggregate-store,SPARQL is never built by concatenating input,an injection attempt,high,name; covered code
 tests/unit/persistence/test_listing_query.py::test_a_hostile_filter_value_matches_nothing_and_leaves_the_store_unchanged,scenario,rp-aggregate-store,SPARQL is never built by concatenating input,an injection attempt,high,name; covered code
 tests/unit/persistence/test_listing_query.py::test_a_listing_of_aggregates_with_flat_parts_gives_each_item_its_own_parts_only,scenario,rp-iri-policy,Ownership does not depend on IRI nesting,a listing of aggregates with flat parts,high,name; covered code
 tests/unit/persistence/test_listing_query.py::test_a_page_holds_the_aggregates_in_order_and_the_total_counts_the_whole_listing,requirement,rp-service-api,Listings are filtered and paged,,high,name; covered code; spec id (PD-15)
@@ -2809,10 +2828,12 @@ tests/unit/schema/test_schema_structure.py::test_a_root_the_toolkit_writes_is_no
 tests/unit/schema/test_schema_structure.py::test_a_root_under_a_system_database_ancestor_is_no_served_root,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_rule_is_read_from_the_class_that_declares_it,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_slot_holds_owned_parts_or_iris_or_neither,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_slot_holds_text_when_it_is_written_as_a_plain_literal,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code
 tests/unit/schema/test_schema_structure.py::test_a_slot_of_objects_is_keyed_by_the_keys_of_its_range,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_slot_that_refers_by_identifier_is_not_keyed,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_subclass_has_the_keyed_slots_it_inherits,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_tag_that_is_not_there_gives_none_and_a_false_flag,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_type_derived_from_string_with_its_own_uri_is_not_text,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code
 tests/unit/schema/test_schema_structure.py::test_every_value_set_of_the_vocabulary_has_members,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_presence_alternatives_list_each_slot_present_or_absent,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_the_comment_is_a_root_the_generic_router_does_not_serve,capability,rp-discussion,,,medium,spec id
@@ -2916,10 +2937,15 @@ tests/unit/persistence/test_session_activity_adversarial.py::test_the_session_ov
 tests/unit/persistence/test_session_activity_adversarial.py::test_the_start_of_an_activity_is_not_after_its_end_when_the_clock_goes_back,requirement,rp-messages,Every commit records one activity with its PROV events,,high,covered code; spec id
 tests/unit/persistence/test_session_activity_adversarial.py::test_the_types_of_an_activity_class_come_from_the_metamodel,requirement,rp-messages,Every commit records one activity with its PROV events,,high,covered code; spec id
 tests/unit/persistence/test_session_activity_adversarial.py::test_two_served_commits_with_one_id_at_once_let_exactly_one_win,requirement,rp-messages,Activity records are kept,,high,name; covered code; spec id
+tests/unit/access/test_session_find.py::test_a_contains_refuses_a_text_that_is_not_a_string,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_a_filter_value_is_its_rdf_lexical_form,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
+tests/unit/access/test_session_find.py::test_find_by_a_contains_matches_a_substring_in_any_case,scenario,rp-aggregate-store,A session finds aggregates by slot values,a substring in any case,high,name; covered code; spec id
+tests/unit/access/test_session_find.py::test_find_by_a_contains_on_a_slot_that_is_not_text_is_a_bad_query,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_by_a_datetime_uses_the_rdf_lexical_form,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_by_a_value_of_an_unknown_type_is_a_bad_query,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
+tests/unit/access/test_session_find.py::test_find_by_an_empty_contains_is_a_bad_query,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_by_an_unknown_slot_is_a_bad_query_naming_slot_and_class,scenario,rp-aggregate-store,A session finds aggregates by slot values,an unknown slot,high,name; covered code; spec id
+tests/unit/access/test_session_find.py::test_find_by_contains_and_a_plain_value_in_a_list_needs_both,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_by_several_values_of_a_slot_needs_them_all,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_leaves_out_other_tenants_and_other_classes,scenario,rp-aggregate-store,A session finds aggregates by slot values,other tenants and classes stay out,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_pages_until_every_match_is_collected,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
@@ -2935,6 +2961,7 @@ tests/unit/persistence/test_session_graphs_with.py::test_each_aggregate_with_the
 tests/unit/persistence/test_session_graphs_with.py::test_triples_about_another_subject_stay_in_the_graph_that_holds_them,capability,rp-aggregate-store,,,high,covered code; spec id
 tests/unit/persistence/test_session_guards.py::test_a_stale_remove_is_a_conflict_and_keeps_the_aggregate,requirement,rp-aggregate-store,Stale writes are refused,,high,name; covered code
 tests/unit/persistence/test_session_guards.py::test_a_stale_replace_keeps_the_stored_triples,requirement,rp-aggregate-store,Stale writes are refused,,high,name; covered code
+tests/unit/persistence/test_session_guards.py::test_matches_reads_a_contains_condition_as_a_substring_in_any_case,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code
 tests/unit/persistence/test_session_guards.py::test_replacing_or_removing_a_missing_aggregate_is_not_found_and_writes_nothing,requirement,rp-aggregate-store,Stale writes are refused,,high,name; covered code
 tests/unit/persistence/test_session_heads.py::test_heads_answers_the_stored_aggregates_and_none_for_the_others,capability,rp-aggregate-store,,,high,covered code; spec id
 tests/unit/persistence/test_session_heads.py::test_heads_of_no_iri_sends_no_query,capability,rp-aggregate-store,,,high,covered code; spec id

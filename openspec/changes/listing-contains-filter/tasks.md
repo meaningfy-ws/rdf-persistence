@@ -9,14 +9,14 @@ Every task: the failing test named first, in its tier; task gate `make test-chan
 
 ## 1. Stage 1: the contains filter
 
-- [ ] 1.1 Model and parsing (PD-1, PD-2), unit: TC-01 first, failing. Add `filter_contains` to
+- [x] 1.1 Model and parsing (PD-1, PD-2), unit: TC-01 first, failing. Add `filter_contains` to
   `rp_persistence_services.yaml`, `make generate`, then `list_request`. The served TypeScript
   golden follows with `make refresh-served-golden` (review the diff: `Filter` and `Condition`
   gain `contains?: boolean` only). Accept: TC-01 passes; `make check-generated` clean after the
   lead's commit.
-- [ ] 1.2 Rendering (PD-5), unit, `domain`: TC-04 first, failing. `contains_patterns` in
+- [x] 1.2 Rendering (PD-5), unit, `domain`: TC-04 first, failing. `contains_patterns` in
   `core/domain/sparql.py`. Gate: `make test-fast check-quality`.
-- [ ] 1.3 Plan, one renderer and the routes (PD-3, PD-4, PD-6), unit: TC-02, TC-03, TC-05, TC-06,
+- [x] 1.3 Plan, one renderer and the routes (PD-3, PD-4, PD-6), unit: TC-02, TC-03, TC-05, TC-06,
   TC-08 and TC-09 first; all fail except TC-09's tenant case, which guards today's refusal.
   `holds_text` in `schema_structure.py`; `Listings.plan`; `condition_patterns` and its three uses
   in `listing.py` and `session.py`. Gate: `make test-fast check-quality`. Accept: all pass.
@@ -30,7 +30,7 @@ Every task: the failing test named first, in its tier; task gate `make test-chan
 
 ## 2. Docs, spec and gates
 
-- [ ] 2.1 Docs (PD-9): `api.adoc#serving`, `http-api.adoc#listings`, the docstrings. The
+- [x] 2.1 Docs (PD-9): `api.adoc#serving`, `http-api.adoc#listings`, the docstrings. The
   `rp-aggregate-store` delta (PD-11) is already in the change.
   Accept: `make check-quality` (holds `check-docs` and `openspec validate --all --strict`).
 - [ ] 2.2 Lead: IT-1 and IT-2 rows in `tests/integration/api/test_listing.py`; `make check-all`,
@@ -40,7 +40,7 @@ Every task: the failing test named first, in its tier; task gate `make test-chan
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 2.1 · [ ] 2.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 2.1 · [ ] 2.2
 
 ## Verification
 

@@ -275,6 +275,20 @@ Taken by the lead under R-0007, shown to the developer at the end.
 - **D-6 1.3b re-run (T1).** The builder refactored `Listings.plan` (xenon rank C, `_filtered`
   split out) after its full `test-fast` run and re-ran only the touched files; the lead re-ran
   `make test-fast check-quality` on the final code.
+- **D-7 A direct probe of RISK-2.** IT-1's rows show the filter works on Fuseki, but not that
+  `EXISTS` stays inside the aggregate's own graph. One more integration test writes a matching
+  label for book A into another named graph of the same tenant database and expects that label
+  to list nothing. 1.4 and the integration tests (2.2's IT-1, IT-2 and this probe) run in
+  parallel from `49a600be`; a builder writes the integration tests, the lead runs
+  `make test-containers`. Result: green on Fuseki for a sibling book's graph and a fresh graph;
+  RISK-2 did not materialise.
+- **D-8 The public-surface snapshot is refreshed whole.** `make refresh-surface` (task 1.4) added
+  `Contains` and also replaced 79 stale module paths (`rdf_persistence.domain.…` →
+  `rdf_persistence.core.domain.…`) that `develop` still carries; the surface test does not
+  compare them, so they had drifted unnoticed. The file is the tool's output, so it is kept whole
+  rather than trimmed by hand. Another branch that refreshes it will produce the same lines.
+  Adding a public generated class takes `make generate`, `refresh-served-golden`,
+  `refresh-surface`, `refresh-snapshot` and `docs-reference`, and `NAMES` bumped.
 
 ### Under the floor
 
@@ -285,5 +299,7 @@ Taken by the lead under R-0007, shown to the developer at the end.
 - 1.3b: `core.domain.sparql.join` keeps a separator between empty terms (`join(["", ""]) == " "`);
   `condition_patterns` joins only the non-empty parts, so an equality-only query text is unchanged.
   Ordinary join semantics, not a defect.
+- 1.4: `Contains` sits after `Page` in `rdf_persistence.__all__`; the list is not in strict
+  alphabetical order elsewhere either.
 - `shapes.ttl` diffs are large on any model change because c14n blank-node labels renumber
   (1.1: about 1000 lines for one added property). Generator awkwardness, not a defect here.
