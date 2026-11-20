@@ -542,4 +542,4 @@ toolkit's run SHALL write no root module that imports every theme.
 
 #### Scenario: the combined shapes
 - **WHEN** the toolkit is generated
-- **THEN** `rdf_persistence/core/domain/generated/shapes.ttl`, `context.jsonld` and the frames hold every domain module's, the same as before the split, and the migrations lock is unchanged
+- **THEN** `rdf_persistence/core/domain/generated/` holds one `shapes.ttl`, one `context.jsonld` and the frames, built from every domain module, with the same set of frames as before the split, the migrations lock sits beside the metamodel, and the committed files equal a regeneration

@@ -68,7 +68,7 @@ MWB2 opened seven issues; each is one EPIC, in the consumer's order (D-12). The 
 | # | Id | Appetite | Issue | Depends on | Needed by (MWB2) | PLAN (gate, 2026-11-20) |
 |---|---|---|---|---|---|---|
 | 1a | `uml-to-linkml` | MEDIUM (2 stages) | #196 | none | `v2-02` phase B, now | 8.8, accepted (R-0005) |
-| 1b | `collection-has-part` | SMALL (**BREAKING**) | #199 | none | `v2-02` 2.1b, now | 9.0 |
+| 1b | `collection-has-part` | SMALL (**BREAKING**) | #199 | none | `v2-02` 2.1b, now | 9.0, delivered 2026-11-20 (#207), archived |
 | 2 | `delete-refuses-referenced` | MEDIUM (re-shaped from SMALL) | #201 | none | `v2-03` 7.1 | 8.4 → 9.2 |
 | 3 | `nested-collections` | SMALL | #198 | 1b | `v2-03` 7.2 | 8.5 → 9.1 |
 | 4 | `unique-key-nulls-equal` | SMALL | #202 | none | `v2-04` stage C, `v2-05` 6.1 | 8.7 → 9.2 |
