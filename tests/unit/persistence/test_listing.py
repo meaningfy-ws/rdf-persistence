@@ -196,6 +196,34 @@ def test_a_slot_the_type_does_not_offer_is_a_bad_query(listings, view, params):
         plan_of(listings, view, *params)
 
 
+# TC-03: a contains filter on a slot that is no string slot, on no slot, or with no text
+@pytest.mark.parametrize(
+    "params",
+    [
+        [("published~", "19")],
+        [("genre~", "fic")],
+        [("shelf~", "x")],
+        [("workflow_status~", "x")],
+        [("nope~", "x")],
+        [("~", "x")],
+        [("label~~", "x")],
+        [("label~", "")],
+    ],
+    ids=lambda p: "&".join(f"{k}={v}" for k, v in p),
+)
+def test_a_contains_filter_that_cannot_be_planned_is_a_bad_query(listings, view, params):
+    with pytest.raises(BadQuery):
+        plan_of(listings, view, *params)
+
+
+def test_a_contains_filter_keeps_its_text_as_sent_in_the_plan(listings, view):
+    plan = plan_of(listings, view, ("label~", "DUNE"), ("genre", "fiction"))
+    assert [(c.value, c.contains, c.reference, c.datatype) for c in plan.conditions or []] == [
+        ("DUNE", True, False, None),
+        (f"{SCHEMA_ORG}Fiction", False, True, None),
+    ], "the text is not typed or folded; the equality filter is unchanged"
+
+
 def test_a_slot_name_is_matched_exactly_not_as_a_pattern(listings, view):
     for name in ("Label", "label ", "la.el", "label}"):
         with pytest.raises(BadQuery):

@@ -41,7 +41,6 @@ from rdf_persistence.core.domain.sparql import (
     fill_terms,
     fragment,
     join,
-    match_patterns,
     term,
     term_list,
     triples_block,
@@ -61,7 +60,7 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
 from rdf_persistence.persistence.services.listing import (
     PAGE,
     Listings,
-    condition_pairs,
+    condition_patterns,
     items_of,
     listing_query,
     total_of,
@@ -985,8 +984,9 @@ class Session:
     async def matches(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> bool:
         """Whether the aggregate ``iri`` is of exactly the class ``class_iri`` and holds every condition.
 
-        The conditions are those of a ``ListPlan``, so this agrees with what ``find`` lists. No
-        access is checked.
+        The conditions are those of a ``ListPlan``, equality or contains, rendered as the listing
+        renders them (``condition_patterns``), so this agrees with what ``find`` lists. No access
+        is checked.
 
         Raises:
             InvalidIri: ``iri`` is not an aggregate IRI the policy mints for the tenant.
@@ -996,7 +996,7 @@ class Session:
             MATCHES,
             graph=term(self._graph(iri)),
             type=term(URIRef(class_iri)),
-            patterns=match_patterns("root", condition_pairs(conditions)),
+            patterns=condition_patterns("root", conditions),
             iri=term(URIRef(iri)),
         )
 
@@ -1433,7 +1433,7 @@ class Transaction:
         names no one if it fails (PD-15)."""
         self._require_open()
         number = count(len(self._guards))
-        patterns = match_patterns(f"root{number}", condition_pairs(conditions))
+        patterns = condition_patterns(f"root{number}", conditions)
         self._guards.append(
             fragment(
                 _MATCH_GUARD,
