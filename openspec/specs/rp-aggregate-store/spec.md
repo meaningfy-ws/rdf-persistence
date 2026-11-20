@@ -308,8 +308,12 @@ When a schema declares a unique key on an aggregate root with the scope `tenant`
 refused if, once applied, two aggregates of that type in the same tenant would hold equal values
 for every slot of the key. The check SHALL be part of the commit's one guarded update, so that of
 two concurrent writes with the same key at most one succeeds, and a refused commit SHALL change
-nothing. Values are equal when they are the same RDF term, after an `xsd:string` literal is read as the plain literal of the same text. An aggregate with a key slot absent
-SHALL claim nothing and SHALL never conflict. Aggregates of other types, subclasses included, and
+nothing. Values are equal when they are the same RDF term, after an `xsd:string` literal is read as the plain literal of the same text. For a key
+without `consider_nulls_inequal: false`, an aggregate with a key slot absent SHALL claim nothing
+and SHALL never conflict. For a key with `consider_nulls_inequal: false`, an absent slot SHALL
+count as one value, equal only to another absence and never to a present value (an empty string
+included), guarded in the same update as the present values; a key value equal to the toolkit's
+absent marker SHALL be refused as an invalid body. Aggregates of other types, subclasses included, and
 of other tenants SHALL never conflict. A refusal SHALL be a key conflict, told apart from a
 version conflict, naming the roots of the commit whose key clashed. Like a version conflict's
 roots, the kind of the refusal and its roots are a diagnosis read after the refusal: it can miss a
@@ -347,8 +351,32 @@ root or name one too many, and a clash whose holder is gone by then is reported 
 - **THEN** a key conflict naming both is raised before any request is sent
 
 #### Scenario: absent keys never conflict
+- **GIVEN** the key on the book's ISBN, without `consider_nulls_inequal: false`
 - **WHEN** two books without an ISBN are added
 - **THEN** both commits succeed
+
+#### Scenario: concurrent creates with the slot absent
+- **GIVEN** the key `title_subtitle` on `[title, subtitle]` with `consider_nulls_inequal: false`
+- **WHEN** two concurrent creates of "Dune" with no subtitle run
+- **THEN** exactly one succeeds and the other raises `KeyConflict`
+
+#### Scenario: a present value differs
+- **GIVEN** the key `title_subtitle` with `consider_nulls_inequal: false`, and "Dune" with no
+  subtitle stored
+- **WHEN** "Dune" / "Messiah" is created
+- **THEN** it is accepted
+
+#### Scenario: an empty value is not an absence
+- **GIVEN** the key `title_subtitle` with `consider_nulls_inequal: false`, and "Dune" with no
+  subtitle stored
+- **WHEN** "Dune" with the subtitle `""` is created
+- **THEN** it is accepted
+
+#### Scenario: a key without the option behaves as before
+- **GIVEN** the key `title_subtitle` on `[title, subtitle]` without `consider_nulls_inequal: false`,
+  and "Dune" with no subtitle stored
+- **WHEN** another "Dune" with no subtitle is created
+- **THEN** it is accepted, and, as before this change, the absent slot claims nothing and no key guard is sent for it
 
 #### Scenario: the same key in two tenants
 - **GIVEN** two active library tenants
@@ -363,9 +391,17 @@ root or name one too many, and a clash whose holder is gone by then is reported 
 ### Requirement: Existing key duplicates can be reported
 
 A session SHALL report, for each declared key, the key values its tenant's aggregates already
-repeat and the roots that hold each, without changing anything.
+repeat and the roots that hold each, without changing anything. For a key with
+`consider_nulls_inequal: false`, aggregates that share an absent slot SHALL be reported, the
+absence shown as the toolkit's absent marker IRI.
 
 #### Scenario: a key declared over duplicates
 - **GIVEN** a tenant holding two books with the same ISBN, stored before the key was declared
 - **WHEN** an operator asks a session of that tenant for its key duplicates
 - **THEN** the report names the key, the ISBN and both books, and the store is unchanged
+
+#### Scenario: duplicates that share an absence
+- **GIVEN** the key `title_subtitle` with `consider_nulls_inequal: false`, and two stored "Dune"
+  books with no subtitle
+- **WHEN** an operator asks for the key duplicates
+- **THEN** the report names the key, the values "Dune" and the absent marker IRI, and both books
