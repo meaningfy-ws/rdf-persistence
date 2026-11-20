@@ -113,7 +113,8 @@ def metamodel_prefixes() -> Mapping[str, str]:
 
     Read once with ``linkml_runtime`` (the contract ``works-without-the-generate-extra`` allows it).
     """
-    from rdf_persistence_generation.config import METAMODEL_ROOT, PACKAGE_DIR, load_schema
+    from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
+    from rdf_persistence_generation.config import METAMODEL_ROOT
 
     view = load_schema(PACKAGE_DIR / "model" / METAMODEL_ROOT)
     return {
