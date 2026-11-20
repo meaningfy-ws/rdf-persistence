@@ -124,6 +124,12 @@ async def test_a_contains_filter_that_cannot_hold_is_a_bad_query(dunes: Shelf, q
     assert_problem(await dunes.page_of(query), 400, PROBLEM_BAD_QUERY_SLUG)
 
 
+async def test_an_offset_beyond_the_largest_whole_number_a_page_can_start_at_is_a_bad_query(
+    dunes: Shelf,
+) -> None:
+    assert_problem(await dunes.page_of("offset=9223372036854775758"), 400, PROBLEM_BAD_QUERY_SLUG)
+
+
 # TC-09e
 async def test_the_tenant_listing_still_refuses_a_contains_filter(
     dunes: Shelf, client: httpx.AsyncClient

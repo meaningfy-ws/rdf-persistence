@@ -62,6 +62,7 @@
             "description": "The position of the first item.",
             "required": false,
             "schema": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
@@ -1607,6 +1608,7 @@
             "description": "The position of the first item.",
             "required": false,
             "schema": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
@@ -2638,6 +2640,7 @@
             "description": "The position of the first item.",
             "required": false,
             "schema": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
@@ -4751,6 +4754,7 @@
             "description": "The position of the first item.",
             "required": false,
             "schema": {
+              "maximum": 9007199254740991,
               "minimum": 0,
               "type": "integer"
             },
@@ -5484,6 +5488,7 @@
           },
           "offset": {
             "type": "integer",
+            "maximum": 9007199254740991.0,
             "minimum": 0.0,
             "description": "The position of the page's first object in the whole listing."
           },
@@ -5580,6 +5585,7 @@
           },
           "offset": {
             "type": "integer",
+            "maximum": 9007199254740991.0,
             "minimum": 0.0,
             "description": "The position of the page's first object in the whole listing."
           },

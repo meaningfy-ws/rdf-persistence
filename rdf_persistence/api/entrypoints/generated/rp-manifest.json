@@ -27,7 +27,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/persistence/rp_persistence_services.yaml",
-      "sha256": "1673ec659a2668dbf5b8d9c4489da5cd8724c4ad805139f901fb23dca89fd68b"
+      "sha256": "87659747e17838fc6905ee5174621ace32af7eb468293330d4072c5084f7602c"
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
@@ -253,7 +253,7 @@
     },
     {
       "path": "rdf_persistence/api/entrypoints/generated/shapes.ttl",
-      "sha256": "d2c6e92c03d5dd7ffdec9143d4b8a074b50b04006428d8df3cc0696738433533"
+      "sha256": "8ec50fe432c8be347dd9c096069ee190bfed54043f834c2f003f336321637754"
     }
   ]
 }

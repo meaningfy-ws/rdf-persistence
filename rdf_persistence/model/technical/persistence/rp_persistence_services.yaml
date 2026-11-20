@@ -168,6 +168,7 @@ slots:
     slot_uri: rp:offset
     range: integer
     minimum_value: 0
+    maximum_value: 9007199254740991
   sort:
     title: Sort
     description: >-

@@ -157,6 +157,7 @@
         },
         "offset": {
           "description": "The position of the page's first object in the whole listing.",
+          "maximum": 9007199254740991,
           "minimum": 0,
           "type": "integer"
         },
@@ -202,6 +203,7 @@
         },
         "offset": {
           "description": "The position of the page's first object in the whole listing.",
+          "maximum": 9007199254740991,
           "minimum": 0,
           "type": "integer"
         },
@@ -236,6 +238,7 @@
         },
         "offset": {
           "description": "The position of the page's first object in the whole listing.",
+          "maximum": 9007199254740991,
           "minimum": 0,
           "type": "integer"
         },

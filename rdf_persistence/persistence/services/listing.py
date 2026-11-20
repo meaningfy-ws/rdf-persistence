@@ -51,6 +51,8 @@ from rdf_persistence.schema.services.schema_structure import (
 LIMIT, OFFSET, SORT = "limit", "offset", "sort"
 # The largest page a listing gives: the bound the generated request model enforces.
 PAGE = next(m.le for m in ListRequest.model_fields["limit"].metadata if hasattr(m, "le"))
+# The furthest position a page can start at: the bound the generated request model enforces.
+MAX_OFFSET = next(m.le for m in ListRequest.model_fields["offset"].metadata if hasattr(m, "le"))
 RESERVED = frozenset({LIMIT, OFFSET, SORT})
 # A parameter name ending in it asks for a contains filter on the name without it.
 CONTAINS = "~"
@@ -115,7 +117,7 @@ def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
     before the ``~`` is stripped, so ``sort~`` is a filter on the slot ``sort``.
 
     Raises:
-        BadQuery: ``limit`` is not between 1 and ``PAGE``, ``offset`` is negative, a number is not a whole
+        BadQuery: ``limit`` is not between 1 and ``PAGE``, ``offset`` is not between 0 and ``MAX_OFFSET``, a number is not a whole
             number, or ``limit``, ``offset`` or ``sort`` is given twice.
     """
     sent = _sent(params)
@@ -132,7 +134,9 @@ def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
             **_paging(sent), sort=sent[SORT][0] if sent[SORT] else None, filters=filters or None
         )
     except ValidationError as error:
-        raise BadQuery(f"limit is between 1 and {PAGE} and offset is not negative") from error
+        raise BadQuery(
+            f"limit is between 1 and {PAGE} and offset between 0 and {MAX_OFFSET}"
+        ) from error
 
 
 def listable_slots(view: SchemaView, cls: ClassDefinition) -> dict[str, SlotDefinition]:

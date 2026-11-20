@@ -65,6 +65,25 @@ async def test_the_total_of_a_contains_page_counts_every_match_not_the_page(toy,
     assert page["total"] == 2, "the total counts both matches, not the one on the page"
 
 
+async def test_a_book_with_two_matching_values_is_listed_once_so_the_page_after_the_matches_is_empty(
+    toy, client
+) -> None:
+    made = await client.post("/libraries", json=TENANT_BODY, headers=toy.bearer("ada"))
+    path = f"{made.headers['location']}/books"
+    for label, authors in [
+        ("Dune", ["Herbert"]),
+        ("Emma", ["Austen"]),
+        ("Ulysses", ["Joyce", "Herbert"]),
+    ]:
+        created = await client.post(
+            path, json={**DUNE_BODY, "label": label, "authors": authors}, headers=toy.bearer("ada")
+        )
+        assert created.status_code == 201, created.text
+    page = (await client.get(f"{path}?authors~=e&offset=3", headers=toy.bearer("ada"))).json()
+    assert page["items"] == [], "three books match; a join would list the fourth row, Ulysses again"
+    assert page["total"] == 3, "and the total counts each book once"
+
+
 @pytest.mark.parametrize("slot", ["label", "label~"])
 @pytest.mark.parametrize("value", INJECTIONS, ids=range(len(INJECTIONS)))
 async def test_an_injection_through_a_filter_matches_nothing_and_changes_nothing(

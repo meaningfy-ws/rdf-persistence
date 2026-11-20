@@ -166,7 +166,7 @@ A listing answers one page:
 |Parameter |Meaning
 
 |`limit` |The most items on the page: 1 to 200, 50 by default.
-|`offset` |The position of the page's first item, 0 by default.
+|`offset` |The position of the page's first item: 0 to 9007199254740991 (2^53 - 1), 0 by default.
 |`sort` |A slot name; descending with a leading `-`. By IRI when absent.
 |`<slot>=<value>` |An equality filter on a slot; several must all hold. The value is read by the
 slot's range: a reference takes an IRI.

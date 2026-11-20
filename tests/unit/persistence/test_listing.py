@@ -85,6 +85,8 @@ def test_a_name_ending_in_a_tilde_is_a_contains_filter(param, expected):
         [("offset", "x")],
         [("offset", "")],
         [("offset", "1"), ("offset", "2")],
+        [("offset", "9007199254740992")],
+        [("offset", "9223372036854775758")],
         [("sort", "label"), ("sort", "isbn")],
     ],
     ids=lambda p: "&".join(f"{k}={v}" for k, v in p),
@@ -94,7 +96,10 @@ def test_a_limit_offset_or_sort_that_is_not_one_valid_value_is_a_bad_query(param
         list_request(params)
 
 
-@pytest.mark.parametrize("params", [[("limit", "1")], [("limit", "200")], [("offset", "0")]])
+@pytest.mark.parametrize(
+    "params",
+    [[("limit", "1")], [("limit", "200")], [("offset", "0")], [("offset", "9007199254740991")]],
+)
 def test_the_bounds_of_limit_and_offset_are_allowed(params):
     list_request(params)
 

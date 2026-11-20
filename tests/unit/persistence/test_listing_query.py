@@ -187,6 +187,8 @@ async def listed(
         ([("label~", "u")], [1, 3], 2),
         ([("authors~", "HER")], [1, 3], 2),
         ([("authors~", "E"), ("limit", "2")], [1, 2], 3),
+        # book 3 holds two matching authors: a join would list it twice, and offset 3 would reach it
+        ([("authors~", "e"), ("offset", "3")], [], 3),
         ([("label~", "u"), ("genre", "fiction")], [1, 3], 2),
         ([("label~", "u"), ("genre", "nonfiction")], [], 0),
         ([("authors~", "e"), ("authors~", "j")], [3], 1),

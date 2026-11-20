@@ -62,7 +62,7 @@ class Page(ConfiguredBaseModel):
     items: list[Any] = Field(default=..., title="Items", description="The objects of the page; framed aggregates, or tenant summaries.")
     total: int = Field(default=..., title="Total", description="The number of objects in the whole listing.", ge=0)
     limit: int = Field(default=..., title="Limit", description="The most objects the page can hold.", ge=1, le=200)
-    offset: int = Field(default=..., title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0)
+    offset: int = Field(default=..., title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0, le=9007199254740991)
 
 
 class Filter(ConfiguredBaseModel):
@@ -80,7 +80,7 @@ class Contains(ConfiguredBaseModel):
 class ListRequest(ConfiguredBaseModel):
     "The query of a listing, as the caller sent it: the filters, the position and size of the page and the key to sort by."
     limit: Optional[int] = Field(default=50, title="Limit", description="The most objects the page can hold.", ge=1, le=200)
-    offset: Optional[int] = Field(default=0, title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0)
+    offset: Optional[int] = Field(default=0, title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0, le=9007199254740991)
     sort: Optional[str] = Field(default=None, title="Sort", description="The slot a listing is ordered by, ascending, or descending when its name starts with a minus sign; absent, the listing is ordered by IRI.")
     filters: Optional[list[Filter]] = Field(default=None, title="Filters", description="The filters of a listing; all of them must hold.")
 
@@ -101,7 +101,7 @@ class ListPlan(ConfiguredBaseModel):
     sort_by: Optional[str] = Field(default=None, title="Plan sort", description="The IRI of the predicate a listing is ordered by; absent, it is ordered by IRI.")
     descending: Optional[bool] = Field(default=False, title="Descending", description="Whether the order is reversed.")
     limit: int = Field(default=..., title="Limit", description="The most objects the page can hold.", ge=1, le=200)
-    offset: int = Field(default=..., title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0)
+    offset: int = Field(default=..., title="Offset", description="The position of the page\u0027s first object in the whole listing.", ge=0, le=9007199254740991)
     hidden_graphs: Optional[list[str]] = Field(default=None, title="Hidden graphs", description="The IRIs of the graphs of the aggregates a listing leaves out.")
 
 

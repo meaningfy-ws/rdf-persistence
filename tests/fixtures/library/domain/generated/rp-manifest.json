@@ -83,7 +83,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/persistence/rp_persistence_services.yaml",
-      "sha256": "1673ec659a2668dbf5b8d9c4489da5cd8724c4ad805139f901fb23dca89fd68b"
+      "sha256": "87659747e17838fc6905ee5174621ace32af7eb468293330d4072c5084f7602c"
     },
     {
       "path": "rdf_persistence/model/technical/tenancy/rp_tenancy_services.yaml",
