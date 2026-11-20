@@ -61,3 +61,20 @@ option behave as today.
 
 Generator hard check, the store's guarded write, docs (unique keys how-to). The UML converter
 already writes the option (`uml-to-linkml` DEC-3).
+
+## Delivery reconciliation
+
+Delivered in one stage, PR #211, 2026-11-20.
+
+| Shaped | As delivered | PR |
+|---|---|---|
+| DEC-1 `consider_nulls_inequal: false` is the switch | As shaped; carried into the runtime as `AggregateKey.key_counts_absent` (PD-1) | #211 |
+| DEC-2 tenant scope only; other scopes refused naming it | As shaped (PD-7) | #211 |
+| DEC-3 one fixed toolkit IRI, never storable | `rp:absentKeyValue`, in memory and in the report only; a value equal to it is an invalid body (PD-2, PD-4) | #211 |
+| Rabbit-hole: existing duplicates | `key_duplicates()` reports them by the marker; no cleanup | #211 |
+| Rabbit-hole: multi-valued slots | Unchanged, confirmed | #211 |
+| No-go: no change to keys without the option | Byte-identical queries, pinned by a test (G-4) | #211 |
+
+What Changes, Capabilities and Impact hold as written. Beyond the shape: the duplicates query
+binds the root before its optional values (D-5), and the 0.6.0 byte guard met the model change
+(D-4, superseded on `develop`). Nothing the shape promised was left out.

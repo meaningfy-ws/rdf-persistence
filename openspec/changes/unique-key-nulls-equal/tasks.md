@@ -47,12 +47,12 @@ check-quality` (`make test-fast check-quality` where marked); commit body
   report, RISK-3), `architecture/generation.adoc` section `[#hard-check]`, the item "a key
   annotated `rp_unique_scope`" (the refusal narrowed to scopes other than `tenant`). No new page.
   Accept: `make check-docs` passes; no text says the option is refused at tenant scope.
-- [ ] 1.8 Lead: `make check-all`, `make test-containers`, `make check-generated`; one review pass
+- [x] 1.8 Lead: `make check-all`, `make test-containers`, `make check-generated`; one review pass
   (SMALL); every new or changed scenario of both deltas and the issue's acceptance shown (`evidence/acceptance.md`).
 
 ## Roadmap
 
-- [ ] 1.1 ✓ · 1.2 ✓ · 1.3 ✓ · 1.4 ✓ · 1.5 ✓ · 1.6 ✓ · 1.7 ✓ · 1.8
+- [x] 1.1 ✓ · 1.2 ✓ · 1.3 ✓ · 1.4 ✓ · 1.5 ✓ · 1.6 ✓ · 1.7 ✓ · 1.8 ✓
   (1.2, 1.3 and 1.4 may run in parallel; 1.5 needs 1.3 and 1.4; 1.6 needs 1.5.)
 
 ## Verification
