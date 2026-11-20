@@ -1,3 +1,20 @@
+## MODIFIED Requirements
+
+### Requirement: Listings are filtered and paged
+
+A listing SHALL accept equality filters and contains filters (`<slot>~=<text>`) on the type's
+slots, `limit` from 1 to 200, `offset` from 0 to 9007199254740991 (2^53 − 1), and one sort key,
+and SHALL return a page with `items`, `total`, `limit` and `offset`. A `limit` or `offset` out of
+its range SHALL answer `400 bad-query`.
+
+#### Scenario: a page of books
+- **WHEN** books are listed with `limit=2&offset=2` and no sort key
+- **THEN** the page holds the third and fourth books by IRI order, and the total count
+
+#### Scenario: an offset beyond the bound
+- **WHEN** books are listed with `offset=9223372036854775758`
+- **THEN** the answer is 400 `bad-query`
+
 ## ADDED Requirements
 
 ### Requirement: Listings filter by a case-insensitive substring

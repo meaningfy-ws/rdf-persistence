@@ -74,7 +74,9 @@ decisions are design D-1 to D-11.
   `Session.matches` and the commit guard, which now render conditions as listings do.
 - **Capabilities** as shaped: `rp-service-api` adds the requirement "Listings filter by a
   case-insensitive substring"; `rp-aggregate-store` modifies "A session finds aggregates by slot
-  values". The spec deltas are true of the code; every delta scenario has its test in
+  values". Beyond the shape: `rp-service-api` also modifies "Listings are filtered and paged"
+  (contains filters, the `limit` and `offset` ranges, D-9), and the `find` requirement names its
+  `Contains` errors (D-13). The deltas are synced into `openspec/specs/`. The spec deltas are true of the code; every delta scenario has its test in
   `tests/audit/scenario-map.csv`.
 - **Impact** as shaped, plus `reference/http-api.adoc`, the generated public-API partial and the
   public surface (149 names, `Contains` added), and one change beside the shape: a listing's

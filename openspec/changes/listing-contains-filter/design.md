@@ -320,6 +320,32 @@ Taken by the lead under R-0007, shown to the developer at the end.
   (`unique_keys.py` renders key values). `make refresh-map BASE=origin/develop` lists 38 tests
   with no row, all of `develop`'s own changes (unique keys, the UML converter); none of this
   change's. Mapping them is outside this change: left for `develop`'s owners.
+- **D-12 The open items closed in this PR (developer, 2026-11-20: "do also everything left
+  open now").** The review findings under the floor are fixed by one fixer: S-1 (`holds_text`
+  returns False on a class-ranged slot), S-2 (a commit-guard test with a contains condition),
+  S-4 (TC-07a uses Emma), S-5 (the two descriptions end with a full stop), the stale line of
+  `architecture/index.adoc`, and the over-long lines of `listing.py` and `api.adoc`; the user
+  manual gains `Contains` in `files.adoc` (the docs owed, `evidence/docs-owed.md`). Not changed:
+  `holds_iri`'s default range (1.3a's note), because GitNexus rates `holds_iri` CRITICAL (the
+  listing, discussion and event-relay flows) and the note is harmless for the induced slots
+  every caller passes. The 38 tests of `develop` without a scenario-map row (D-11) are mapped in
+  this PR as a separate commit, and `make refresh-map` drops the two rows whose tests `develop`
+  removed (`test_hard_check.py`: the two old `consider_nulls_inequal` checks), so every collected
+  test is mapped and no row names a missing test. The rdflib overflow is reported upstream as
+  https://github.com/RDFLib/rdflib/issues/3739 (D-9's bound stays our fix). The acceptance demo
+  ran through the API (`evidence/acceptance.md`); the verdict is the developer's.
+- **D-13 The specs match what was built, and are synced (developer, 2026-11-20: "any divergence
+  between implementation and epic specs? integrate and update specs").** Two divergences found
+  and closed in the deltas: (a) D-9's `offset` bound was in no requirement, and "Listings are
+  filtered and paged" said equality filters only: the `rp-service-api` delta now MODIFIES it
+  (equality and contains filters, `limit` 1 to 200, `offset` 0 to 2^53 − 1, out of range 400),
+  with the scenario "an offset beyond the bound"; (b) `find` with a `Contains` on a non-text slot
+  or an empty text raised `BadQuery`, which the `rp-aggregate-store` delta did not say: its
+  requirement now does, with the scenario "a substring of a slot that holds no text". Both new
+  scenarios are already tested (the D-9 route test, TC-07d) and await the developer's sign-off.
+  Nothing else diverges: no living requirement describes `Session.matches` or the commit guard,
+  and the EPIC's differences (`Contains(text=…)`, D-9) are in `proposal.md`'s As built. The
+  deltas are synced into `openspec/specs/` now, so the archive runs with `--skip-specs`.
 
 ### Review findings under the floor (L2+L3 pass, 2026-11-20)
 

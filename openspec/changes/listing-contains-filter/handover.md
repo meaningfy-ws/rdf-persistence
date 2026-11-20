@@ -21,7 +21,8 @@ D-1 to D-11 (design.md, Delivery decisions), and the review findings under the f
 ## Next
 After the merge: the acceptance demo or its recorded skip (`evidence/acceptance.md`), the docs
 decision (`evidence/docs-owed.md`: the docs pages shipped in this PR), then archive the change
-per `spec-stewardship`. Read first: tasks.md §2.2, design.md D-1 to D-11, proposal.md As built.
+per `spec-stewardship` with `openspec archive listing-contains-filter --skip-specs --yes`: the
+deltas are already synced into `openspec/specs/` (D-13). Read first: tasks.md §2.2, design.md D-1 to D-11, proposal.md As built.
 
 ## Prompt
 Act as the team lead. Close openspec/changes/listing-contains-filter from handover.md: the
