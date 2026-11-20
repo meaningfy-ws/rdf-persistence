@@ -157,7 +157,10 @@ check, not the converter's.
 === A tenant root
 
 A class stereotyped «tenant root» is annotated `graph: meta`. It gets no `AggregateRoot` and no
-`rp_path`. A `graph` tagged value with another value fails.
+`rp_path`, but it takes the default mixins, and it counts as the one root of its boundary
+(<<boundary>>), so its parts are owned. A `graph` tagged value of `meta` is the same annotation;
+one with another value is a problem, `[tenant_root] Library: graph: 'data' conflicts with the
+«tenant root» stereotype, which is graph meta`.
 
 [mermaid]
 ....
@@ -172,6 +175,7 @@ classDiagram
 classes:
   Library:
     title: Library
+    mixins: [Described, Tracked]
     annotations:
       graph: meta
 ----
@@ -182,9 +186,11 @@ classes:
 A class is abstract when EA's _Abstract_ flag is set or its stereotype is «Abstract» (any case).
 It becomes `abstract: true`; the stereotype is not reported.
 
-An abstract class is also an aggregate root of its own when all its concrete subclasses are «root»
-and it is the range of a generated slot, so a slot can point at "any of them". It then mixes in
-`AggregateRoot` and has no `rp_path` and no default mixins; the concrete roots keep their own.
+An abstract class is also an aggregate root of its own when it is the range of a generated slot and
+all its concrete descendants are «root», counted through any abstract classes between them, so a
+slot can point at "any of them". It then mixes in `AggregateRoot` and has no `rp_path` and no
+default mixins; the concrete roots keep their own. A `unique_key` on it is scoped to the tenant
+(`rp_unique_scope: tenant`), as on a root (<<tagged-values>>).
 
 [mermaid]
 ....
@@ -224,10 +230,15 @@ A class whose stereotype is in the not-generated list produces no class. The lis
 the default. A slot to such a class is `range: uri`, and the report has a `not-generated` line. An
 enumeration with such a stereotype (`workflow states`, say) is not generated either, and nothing
 points at it: a dependency to it, or an attribute typed by it, makes no slot. Each of these is one
-`not-generated` line, the same as for a class. A slot to a class in an `--exclude-package` package (the option's path matches a package's path or
-its tail) is not made at all (an `excluded-link` line); a
-slot to a class outside the converted package that is not excluded is `range: uri` (an
-`outside-link` line).
+`not-generated` line, the same as for a class.
+
+A link that reaches a class the run leaves out is handled by where the class is:
+
+* a not-generated class: the slot is `range: uri`;
+* a class in an `--exclude-package` package (the option's path matches a package's path or its
+  tail): no slot is made, and the report has an `excluded-link` line;
+* a class outside the converted package that is not excluded: the slot is `range: uri`, and the
+  report has an `outside-link` line.
 
 [mermaid]
 ....
@@ -274,13 +285,13 @@ connector order, the default mixins, `UnderWorkflow`. An unknown name fails:
 `[toolkit_mixins] Book: Nope is not a toolkit class; the toolkit classes are <the list>`.
 
 |`unique_key = <name>: <a>, <b>[; nulls=equal]`
-|A `unique_keys` entry over the named attributes of the class, each by its slot name or its UML
-name. `<name>` is an identifier of ASCII letters, digits and underscores; the only clause is
+|A `unique_keys` entry over the named slots of the class: an attribute, a role or a reused toolkit
+slot (<<toolkit-reuse>>), each by its slot name or its UML name. `<name>` is an identifier of ASCII letters, digits and underscores; the only clause is
 `nulls=equal`, which writes `consider_nulls_inequal: false`. On a root the key is scoped to the
-tenant (`rp_unique_scope: tenant`). One key per tag; repeat the tag for more keys, each with its own
+tenant (`rp_unique_scope: tenant`), and so is one on an abstract root (<<abstract>>). One key per tag; repeat the tag for more keys, each with its own
 name. A bad tag fails with the tag text and the cause:
-`[unique_key] Book: unique_key 'k: title, nothing': no attribute 'nothing' on Book`. The other causes
-are `expected <name>: <attribute>, <attribute> [; nulls=equal]` (no colon, no attribute, or a clause
+`[unique_key] Book: unique_key 'k: title, nothing': no attribute or role 'nothing' on Book`. The
+other causes are `expected <name>: <attribute>, <attribute> [; nulls=equal]` (no colon, no attribute, or a clause
 other than `nulls=equal`), `the name '1k' is not an identifier` and `a key of this name is declared
 twice`.
 
@@ -334,8 +345,11 @@ classes:
 
 A toolkit concept is drawn with its own IRI and the converter uses the toolkit's definition.
 
-* A class drawn with a toolkit class's IRI (`prov:Activity`, or `rp:ReferenceCollection`) is not
-generated. A generalisation to it has the effect of `rp_mixins`: a mixin class is mixed in, a
+* A class drawn with a toolkit class's IRI (`prov:Activity`, or `rp:ReferenceCollection`) is the
+toolkit's class, not generated. Drawn inside the converted subtree it is reported as
+`not-generated	Activity	drawn as the toolkit's Activity, not generated`, and a slot that points at
+it is `range: uri`; drawn outside the subtree, at the far end of a link, it is a class outside like
+any other (<<not-generated>>). A generalisation to it has the effect of `rp_mixins`: a mixin class is mixed in, a
 non-mixin becomes `is_a`. A «root» may be an `Activity`.
 * An attribute or role whose IRI is a toolkit slot's `slot_uri` uses that slot, and no new one is
 made; a `[1..1]` on a slot the toolkit does not already require becomes a `slot_usage` with
@@ -474,6 +488,39 @@ Two packages whose classes refer to each other cannot be two modules, as the gen
 modules would import each other. The packages of each import cycle are written as one module named
 after the first package in path order, with a `merged-cycle` line in the report.
 
+[#shared-slots]
+=== A slot shared across packages
+
+A name used in classes of several packages is one slot, defined once, in a home module: the module
+that every other using module reaches by imports, directly or through others. When several modules
+qualify, the first in path order is the home. A class in another module states a `slot_usage` only
+for the limits (`required`, `multivalued` and the like), the range or the description in which it
+differs from the slot. Placing the slot adds imports: each using module imports the home, and the
+home imports the module of the slot's range. If these imports make two modules import each other,
+they are written as one module, with a `merged-cycle` line (above).
+
+In the example, `lib:location` is used by `Book` (catalogue) and `Shelf` (shelves). The catalogue
+already refers to the shelves, so the slot is defined in `library_shelves`, and `Shelf`, where it is
+required, narrows it:
+
+[source,yaml]
+----
+# library_shelves.yaml
+slots:
+  location:
+    slot_uri: lib:location
+    range: string
+classes:
+  Shelf:
+    slots: [location]
+    slot_usage:
+      location:
+        required: true
+----
+
+When no using module is reached by all the others, the run fails with
+`[shared_slot_across_packages] location: used in library_catalogue, library_shelves and no one of them is imported by the others`.
+
 [#fails]
 == What fails
 
@@ -560,8 +607,10 @@ enumeration
 |A prefix not in the prefixes file, or two elements with one name and different IRIs
 |Declare the prefix; rename one element.
 
-|A slot name used in several packages where no package is imported by all the others
-|Move the classes into one package, or make one package refer to the rest.
+|A slot name used in several packages where no one of them is reached by imports from all the
+others (`[shared_slot_across_packages] location: used in ... and no one of them is imported by the
+others`)
+|Move the classes into one package, or make one package refer to the rest (<<shared-slots>>).
 
 |A tagged value with a bad value (`[class_annotation]`), a tag named like a metamodel annotation
 that is not a class annotation, or a `unique_key` with a bad grammar, an unknown attribute or a
