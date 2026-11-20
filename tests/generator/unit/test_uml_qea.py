@@ -216,7 +216,109 @@ def test_tags_of_objects_outside_the_subtree_are_not_read(tmp_path):
     assert as_model(read(builder)).uml_tagged_values == []
 
 
+# --- the far end of a link that is not converted (D-17) -----------------------------------------
+
+
+def outside_names(model: UmlModel) -> list[str]:
+    return [item.name for item in model.uml_outside_classes or []]
+
+
+def test_an_association_to_a_class_outside_the_subtree_names_it_without_attributes(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.attribute(ids["stray"], "lib:secret", "xsd:string")
+    builder.association(ids["book"], ids["stray"], role="lib:stray", card="0..1")
+    model = as_model(read(builder))
+    (stray,) = model.uml_outside_classes
+    assert (stray.object_id, stray.name, stray.object_type, stray.package_id) == (
+        ids["stray"],
+        "lib:Stray",
+        "Class",
+        ids["other"],
+    )
+    assert not stray.uml_attributes
+    assert "lib:Stray" not in names(model)
+
+
+def test_an_outside_class_carries_the_columns_the_reader_copies(tmp_path):
+    builder, ids = build_library(tmp_path)
+    ids["ghost"] = builder.cls(
+        ids["other"], "lib:Ghost", stereotype="loaded graph", abstract=True, note="A ghost."
+    )
+    builder.association(ids["book"], ids["ghost"], role="lib:ghost", card="0..1")
+    (ghost,) = as_model(read(builder)).uml_outside_classes
+    assert (ghost.uml_stereotype, ghost.note, ghost.is_abstract) == (
+        "loaded graph",
+        "A ghost.",
+        True,
+    )
+    assert ghost.ea_guid == f"{{GUID-{ids['ghost']}}}"
+
+
+def test_an_association_to_a_class_in_an_excluded_package_names_it_too(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.attribute(ids["folio"], "lib:leaf", "xsd:string")
+    builder.association(ids["book"], ids["folio"], role="lib:folio", card="0..1")
+    model = as_model(read(builder, excluded=("MODEL/library/rare-books",)))
+    (folio,) = model.uml_outside_classes
+    assert (folio.name, folio.package_id) == ("lib:Folio", ids["rare"])
+    assert not folio.uml_attributes
+    assert [p.name for p in model.uml_packages] == ["library"]
+
+
+def test_a_dependency_to_an_outside_enumeration_names_it(tmp_path):
+    builder, ids = build_library(tmp_path)
+    ids["status"] = builder.cls(ids["other"], "lib:Status", object_type="Enumeration")
+    builder.dependency(ids["book"], ids["status"], role="lib:status")
+    (status,) = as_model(read(builder)).uml_outside_classes
+    assert (status.name, status.object_type) == ("lib:Status", "Enumeration")
+
+
+def test_a_generalisation_to_an_outside_class_names_it(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.generalisation(ids["book"], ids["stray"])
+    assert outside_names(as_model(read(builder))) == ["lib:Stray"]
+
+
+def test_a_class_reached_by_two_links_appears_once_in_object_id_order(tmp_path):
+    builder, ids = build_library(tmp_path)
+    ids["late"] = builder.cls(ids["other"], "lib:Aardvark")
+    builder.association(ids["book"], ids["late"], role="lib:late", card="0..1")
+    builder.association(ids["chapter"], ids["stray"], role="lib:stray", card="0..1")
+    builder.generalisation(ids["chapter"], ids["late"])
+    builder.generalisation(ids["book"], ids["stray"])
+    model = as_model(read(builder))
+    assert [c.object_id for c in model.uml_outside_classes] == [ids["stray"], ids["late"]]
+
+
+def test_a_link_between_outside_classes_names_none(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.association(ids["stray"], ids["stray"], role="lib:self", card="1")
+    assert as_model(read(builder)).uml_outside_classes in (None, [])
+
+
+def test_the_outside_packages_hold_what_the_outside_classes_need_beyond_the_converted_ones(
+    tmp_path,
+):
+    builder, ids = build_library(tmp_path)
+    builder.association(ids["book"], ids["stray"], role="lib:stray", card="0..1")
+    builder.association(ids["book"], ids["folio"], role="lib:folio", card="0..1")
+    model = as_model(read(builder, excluded=("MODEL/library/rare-books",)))
+    assert [(p.name, p.package_id, p.parent_id) for p in model.uml_outside_packages] == [
+        ("MODEL", ids["model"], None),
+        ("rare-books", ids["rare"], ids["library"]),
+        ("other", ids["other"], ids["model"]),
+    ]
+    assert [p.name for p in model.uml_packages] == ["library"]
+
+
 # --- usage errors (matrix, exit 2) -------------------------------------------------------------
+
+
+def test_an_exclude_path_that_matches_no_package_is_a_usage_error(tmp_path):
+    builder, _ = build_library(tmp_path)
+    with pytest.raises(QeaUsageError) as error:
+        read(builder, excluded=("MODEL/library/nowhere",))
+    assert error.value.message == "no package MODEL/library/nowhere under library"
 
 
 def test_a_missing_file_is_not_an_ea_file(tmp_path):

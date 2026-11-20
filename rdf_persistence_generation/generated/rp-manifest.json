@@ -107,7 +107,7 @@
     },
     {
       "path": "rdf_persistence_generation/model/rp_generation.yaml",
-      "sha256": "7641f3a0e208064156b29e37ff54a6953a55c39955afa89bd849cca237518ee5"
+      "sha256": "6f83e26c15c1b1d27de10e65454928b1eb6b7f51f6051042a631466293cf862b"
     },
     {
       "path": "rdf_persistence_generation/pipeline.py",
@@ -175,7 +175,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/qea.py",
-      "sha256": "690488b3fc23aa4fb21b30200ef0d91cc1a485be6954ce6a2febc650f34e040b"
+      "sha256": "20db00380ef45b4c11adfd957a5651cbde5b98747c3d90bde2a950ab99b6201e"
     },
     {
       "path": "rdf_persistence_generation/uml/write.py",
@@ -189,15 +189,15 @@
     },
     {
       "path": "rdf_persistence_generation/generated/context.jsonld",
-      "sha256": "289860bd82d921e9713cec1d8e051b4b39eb3c97913f0c934cad855352440de3"
+      "sha256": "503ba9fa91dac5414f54cee8c024957fa8690d94a8e0e2fb92a9dc63d676e5de"
     },
     {
       "path": "rdf_persistence_generation/generated/rp_generation.py",
-      "sha256": "b02646e5bb4cac38260d349a66e57c13dfd91861fc6709aeca2dcbb3a2afbcda"
+      "sha256": "f920747601218a068db6819b90a34c73b1fe679de395ff33ee0010e271236bf0"
     },
     {
       "path": "rdf_persistence_generation/generated/shapes.ttl",
-      "sha256": "a9e9040cc65c809506d038806a731675515db1bfd2aeed0e226aca6f2076c067"
+      "sha256": "751c125fb4eef0ffcddca850bf55087de633e30256060d207b5110414c08a9f3"
     }
   ]
 }

@@ -237,7 +237,10 @@ class _Reading:
         self.problems: list[CheckProblem] = []
         package_rows = self._select("t_package")
         self.paths = _package_paths(package_rows)
-        root = self.paths[_resolve_package(self.paths, package)]
+        root_id = _resolve_package(self.paths, package)
+        root = self.paths[root_id]
+        self._check_excluded(excluded, root, package_rows)
+        self.all_package_rows = {row["Package_ID"]: row for row in package_rows}
         self.package_rows = [
             row
             for row in package_rows
@@ -246,7 +249,22 @@ class _Reading:
         self.package_ids = {row["Package_ID"] for row in self.package_rows}
         self._load_objects(self._select("t_object"))
 
+    def _check_excluded(
+        self, excluded: tuple[str, ...], root: str, package_rows: Sequence[sqlite3.Row]
+    ) -> None:
+        """An excluded path that matches no package of the subtree is a usage error (D-17)."""
+        subtree = [
+            self.paths[row["Package_ID"]]
+            for row in package_rows
+            if self._is_converted(self.paths[row["Package_ID"]], root, ())
+        ]
+        root_name = root.rsplit(PATH_SEPARATOR, 1)[-1]
+        for base in excluded:
+            if not any(_is_within(path, base) for path in subtree):
+                raise QeaUsageError(f"no package {base} under {root_name}")
+
     def _load_objects(self, objects: list[sqlite3.Row]) -> None:
+        self.object_rows = {row["Object_ID"]: row for row in objects}
         self.object_types = {row["Object_ID"]: row["Object_Type"] for row in objects}
         self.object_names = {row["Object_ID"]: row["Name"] or "" for row in objects}
         in_subtree = [row for row in objects if row["Package_ID"] in self.package_ids]
@@ -267,10 +285,14 @@ class _Reading:
     def read(self) -> UmlModel | list[CheckProblem]:
         for row in self.unexpected_rows:
             self.problems.append(_no_rule(row["Name"] or "", f"{row['Object_Type']} object"))
+        links = self._links()
+        outside = self._outside_rows(links)
         model = UmlModel(
             uml_packages=self._packages(),
+            uml_outside_packages=self._outside_packages(outside),
             uml_classes=self._classes(),
-            uml_links=self._links(),
+            uml_outside_classes=[self._class_record(row) for row in outside],
+            uml_links=links,
             uml_tagged_values=self._tags(),
             uml_boundaries=_Boundaries(self, self._select("t_diagramobjects")).read(),
         )
@@ -283,18 +305,36 @@ class _Reading:
         return self.object_names.get(object_id) or str(object_id)
 
     def _packages(self) -> list[UmlPackage]:
-        ordered = sorted(
-            self.package_rows, key=lambda row: (self.paths[row["Package_ID"]], row["Package_ID"])
+        return [self._package(row) for row in self._by_path(self.package_rows)]
+
+    def _outside_rows(self, links: Iterable[UmlLink]) -> list[sqlite3.Row]:
+        """The classes and enumerations at the far end of a link, not converted, once each."""
+        ends = {end for link in links for end in (link.source_id, link.target_id)}
+        rows = [self.object_rows[end] for end in ends - self.class_ids if end in self.object_rows]
+        return sorted(_of_types(rows, CONVERTED_TYPES), key=lambda row: row["Object_ID"])
+
+    def _outside_packages(self, outside: Iterable[sqlite3.Row]) -> list[UmlPackage]:
+        """The packages of the outside classes and their ancestors that are not converted."""
+        wanted: set[int] = set()
+        for row in outside:
+            current = row["Package_ID"]
+            while current in self.all_package_rows and current not in wanted:
+                wanted.add(current)
+                current = self.all_package_rows[current]["Parent_ID"]
+        rows = [self.all_package_rows[pid] for pid in wanted - self.package_ids]
+        return [self._package(row) for row in self._by_path(rows)]
+
+    def _by_path(self, rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
+        return sorted(rows, key=lambda row: (self.paths[row["Package_ID"]], row["Package_ID"]))
+
+    @staticmethod
+    def _package(row: sqlite3.Row) -> UmlPackage:
+        return UmlPackage(
+            package_id=row["Package_ID"],
+            name=row["Name"] or "",
+            parent_id=row["Parent_ID"] or None,
+            note=_text(row["Notes"]),
         )
-        return [
-            UmlPackage(
-                package_id=row["Package_ID"],
-                name=row["Name"] or "",
-                parent_id=row["Parent_ID"] or None,
-                note=_text(row["Notes"]),
-            )
-            for row in ordered
-        ]
 
     def _second_stereotypes(self) -> dict[str, list[str]]:
         found: dict[str, list[str]] = {}
@@ -338,21 +378,32 @@ class _Reading:
                     _no_rule(row["Name"] or "", f"two stereotypes ({', '.join(names)})")
                 )
             classes.append(
-                UmlClass(
-                    object_id=row["Object_ID"],
-                    name=row["Name"] or "",
-                    object_type=row["Object_Type"],
-                    uml_alias=_text(row["Alias"]),
-                    note=_text(row["Note"]),
-                    package_id=row["Package_ID"],
-                    uml_stereotype=_text(row["Stereotype"]),
-                    multiple_stereotypes=bool(names),
-                    is_abstract=str(row["Abstract"]).strip() in ("1", "-1"),
-                    ea_guid=_text(row["ea_guid"]),
-                    uml_attributes=attributes.get(row["Object_ID"], []),
+                self._class_record(
+                    row, attributes.get(row["Object_ID"], []), multiple_stereotypes=bool(names)
                 )
             )
         return classes
+
+    @staticmethod
+    def _class_record(
+        row: sqlite3.Row,
+        attributes: list[UmlAttribute] | None = None,
+        multiple_stereotypes: bool = False,
+    ) -> UmlClass:
+        """The record of a class row; for an outside class (D-17) no attributes."""
+        return UmlClass(
+            object_id=row["Object_ID"],
+            name=row["Name"] or "",
+            object_type=row["Object_Type"],
+            uml_alias=_text(row["Alias"]),
+            note=_text(row["Note"]),
+            package_id=row["Package_ID"],
+            uml_stereotype=_text(row["Stereotype"]),
+            multiple_stereotypes=multiple_stereotypes,
+            is_abstract=str(row["Abstract"]).strip() in ("1", "-1"),
+            ea_guid=_text(row["ea_guid"]),
+            uml_attributes=attributes or [],
+        )
 
     def _links(self) -> list[UmlLink]:
         links = []

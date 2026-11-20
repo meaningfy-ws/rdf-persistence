@@ -199,7 +199,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/qea.py",
-      "sha256": "690488b3fc23aa4fb21b30200ef0d91cc1a485be6954ce6a2febc650f34e040b"
+      "sha256": "20db00380ef45b4c11adfd957a5651cbde5b98747c3d90bde2a950ab99b6201e"
     },
     {
       "path": "rdf_persistence_generation/uml/write.py",

@@ -209,7 +209,9 @@ classes:
     class_uri: rp:UmlModel
     slots:
       - uml_packages
+      - uml_outside_packages
       - uml_classes
+      - uml_outside_classes
       - uml_links
       - uml_tagged_values
       - uml_boundaries
@@ -1010,6 +1012,25 @@ slots:
     description: The classes and enumerations of a UML model.
     slot_uri: rp:umlClasses
     range: UmlClass
+    multivalued: true
+    inlined_as_list: true
+  uml_outside_classes:
+    title: UML outside classes
+    description: >-
+      The classes and enumerations at the far end of a link whose near end is a converted class,
+      and that are not converted themselves (outside the subtree, or in an excluded package),
+      without their attributes.
+    slot_uri: rp:umlOutsideClasses
+    range: UmlClass
+    multivalued: true
+    inlined_as_list: true
+  uml_outside_packages:
+    title: UML outside packages
+    description: >-
+      The packages an outside class sits in, and their ancestors, that are not converted. With
+      `uml_packages` they give the package path of an outside class.
+    slot_uri: rp:umlOutsidePackages
+    range: UmlPackage
     multivalued: true
     inlined_as_list: true
   uml_links:

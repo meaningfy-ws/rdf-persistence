@@ -494,7 +494,9 @@ class CheckProblem(ConfiguredBaseModel):
 class UmlModel(ConfiguredBaseModel):
     "What the UML reader takes from a model file: the packages, the classes and enumerations with their attributes, the connectors, the tagged values and the boundaries. The converter reads nothing else."
     uml_packages: Optional[list[UmlPackage]] = Field(default=None, title="UML packages", description="The packages of a UML model.")
+    uml_outside_packages: Optional[list[UmlPackage]] = Field(default=None, title="UML outside packages", description="The packages an outside class sits in, and their ancestors, that are not converted. With `uml_packages` they give the package path of an outside class.")
     uml_classes: Optional[list[UmlClass]] = Field(default=None, title="UML classes", description="The classes and enumerations of a UML model.")
+    uml_outside_classes: Optional[list[UmlClass]] = Field(default=None, title="UML outside classes", description="The classes and enumerations at the far end of a link whose near end is a converted class, and that are not converted themselves (outside the subtree, or in an excluded package), without their attributes.")
     uml_links: Optional[list[UmlLink]] = Field(default=None, title="UML links", description="The connectors of a UML model.")
     uml_tagged_values: Optional[list[UmlTaggedValue]] = Field(default=None, title="UML tagged values", description="The tagged values of the classes of a UML model.")
     uml_boundaries: Optional[list[UmlBoundary]] = Field(default=None, title="UML boundaries", description="The boundaries of a UML model.")

@@ -439,6 +439,16 @@
          "@container": "@set",
          "@id": "umlLinks"
       },
+      "uml_outside_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlOutsideClasses"
+      },
+      "uml_outside_packages": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlOutsidePackages"
+      },
       "uml_packages": {
          "@type": "@id",
          "@container": "@set",
