@@ -77,3 +77,23 @@ The same two classes and both slots as ONE module (`app_books`, no import of the
 `ImportError`. Reproduction: the cycle test above. A generator fix (a deferred import,
 `TYPE_CHECKING` plus model rebuild, or one module per strongly connected component) is outside this
 spike; the PLAN's fallback applies in the converter.
+
+## Converter round trip (task 1.8)
+
+Test: `tests/generator/integration/test_uml_cycle.py` (IT-2), at `ce32e9cc`. A `.qea` with
+`MODEL/library/books` (`lib:Book`) and `MODEL/library/shelves` (`lib:Shelf`), each «root» with a
+`0..1` association to the other, converted by `rp-uml2linkml`.
+
+- `test_the_packages_of_a_cycle_become_one_module_with_a_merged_cycle_line`: **passes**. One module
+  `app_books` (the first package in path order) holds `Book` and `Shelf`; the report has one
+  `merged-cycle` line naming `books` and `shelves`.
+- `test_the_merged_module_generates_and_the_package_imports`: `xfail(strict=True)` at stage 1.
+  `rp-generate` (write mode) exits 1 on the converter's output: `hard check: [described] Book: a
+  root or owned class includes Described` (same for `Shelf`). Stage 1 writes no `Described` mixin
+  (task 2.3); the hard check runs in write mode. With `Described` added by hand to the converter's
+  output (a scratch probe, not kept), `rp-generate` exits 0, the package imports and a `Book` with a
+  `shelf` is built: the merge itself is sound. The marker comes off with task 2.3.
+
+Verdict: the converter's merge of a cycle is confirmed; the full round trip waits for stage 2.
+Gap found: `--package MODEL/library` (a path) converts nothing, exit 0 and an empty root; the name
+`library` works (see the task 1.8 report).
