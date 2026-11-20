@@ -148,8 +148,8 @@ def _scoped_key_reasons(
         yield f"{scope.value}: {value!r} is not one of {allowed}"
     if not below:
         yield "it is on a class that is neither a tenant-database aggregate root nor an ancestor of one"
-    if key.consider_nulls_inequal is False:
-        yield "consider_nulls_inequal: false contradicts a missing value claiming nothing"
+    if key.consider_nulls_inequal is False and value != UniqueScope.TENANT.value:
+        yield f"consider_nulls_inequal: false needs {scope.value}: {UniqueScope.TENANT.value}"
     for root in below:
         for slot in key.unique_key_slots:
             if (reason := _bad_key_slot(view, root, str(slot))) is not None:
