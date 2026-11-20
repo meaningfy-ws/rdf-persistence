@@ -186,15 +186,17 @@ None. The owner settled three on 2026-11-20 (`inputs/qa.md`), recorded as PD-9 t
   The changes are additive (a field defaulting to `false`, two new functions, a narrowed
   refusal), so no existing caller changes meaning. Proceed; G-4's query-text test and the full
   gates guard it.
-- **D-2** (lead, 2026-11-20): 1.2, 1.3, 1.4 and 1.7 (docs only, no roadmap dependency) run as parallel builders in the one worktree, on
-  disjoint files; a gate failure in another builder's file is T2, re-run by the lead. Gates in
+- **D-2** (lead, 2026-11-20): 1.2, 1.3, 1.4 and 1.7 (docs only, no roadmap dependency) run as
+  parallel builders in the one worktree, on disjoint files; a gate failure in another builder's file is T2, re-run by the lead. Gates in
   the sandbox run with `UV_CACHE_DIR=$TMPDIR/uv-cache` (the shared uv cache is read-only there).
 - **D-3** (lead, 2026-11-20, from the 1.4 report): D-2 missed one coupling: the generated-code
   freshness plugin stops every pytest run while a model task (1.3) is between its schema edit and
   `make generate`, so 1.2 and 1.4 cannot see red or green until 1.3 regenerates. They resume
   after it. Generator code is a freshness input too (1.2's `hard.py` blocked 1.4 the same way),
   so from here builders run one after another, each ending with `make generate` when it touched
-  an input. Next time, model and generator tasks run first or in their own worktrees.
+  an input. Next time, model and generator tasks run first or in their own worktrees. Also,
+  `term()` refuses an IRI containing `>` (`SparqlError`), it does not escape it (task 1.4's
+  wording); the tests assert the refusal, which is the existing, safer behaviour.
 - **D-4** (lead, 2026-11-20, from the 1.2–1.4 verification): PD-1 is the first model change
   since the per-theme move, and `tests/unit/test_combined_artefacts.py` (domain-model-per-theme
   TC-03) pins `core`'s `shapes.ttl` and `context.jsonld` byte for byte to the v0.6.0 copies, so
@@ -203,6 +205,11 @@ None. The owner settled three on 2026-11-20 (`inputs/qa.md`), recorded as PD-9 t
   exclude those two files from the byte comparison only; their presence in `core`, the frames'
   and the lock's byte identity and the frame set stay guarded, and `make check-generated` keeps
   them fresh. The model change's own reference files (`tests/fixtures/model-shape.yaml`, the
-  served TypeScript golden) were refreshed with their make targets. Developer may overrule. Also, `term()` refuses an
-  IRI containing `>` (`SparqlError`), it does not escape it (task 1.4's wording); the tests
-  assert the refusal, which is the existing, safer behaviour.
+  served TypeScript golden) were refreshed with their make targets. Developer may overrule.
+- **D-5** (lead, 2026-11-20, from the 1.5 report): PD-5's `duplicates_query` rendered the
+  `OPTIONAL` value patterns before the type pattern. An `OPTIONAL` evaluated with `?key_root`
+  unbound binds it to any subject of the graph holding the predicate (a part, for instance); the
+  type pattern then drops that row and the root lacking the value is never reported. Decided:
+  for a `key_counts_absent` key the type pattern binds `?key_root` first, then the optional value
+  patterns follow. Unflagged keys keep today's text (G-4). Guarded by a fake-store test whose
+  aggregate graph has a part holding a key predicate, and by IT-NE-2 on Fuseki.
