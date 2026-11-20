@@ -939,12 +939,16 @@ def test_a_link_end_the_model_lists_nowhere_is_an_internal_error() -> None:
 def _shared(out: Converted) -> None:
     _no_problems(out)
     isbn = out.slot("app_library", "isbn")
-    assert isbn.required is True
-    assert "isbn" in out.klass("app_library", "Book").slots
-    assert "isbn" in out.klass("app_library", "Series").slots
-    assert not out.klass("app_library", "Book").slot_usage
-    assert out.klass("app_library", "Series").slot_usage["isbn"].required is False
-    assert [name for name in out.schemas["app_library"].slots if name == "isbn"] == ["isbn"]
+    assert not isbn.required, "the slot is required on one usage only, so it states no required"
+    assert "isbn" in out.klass("app_library", "Book").slots, "Book has the slot"
+    assert "isbn" in out.klass("app_library", "Series").slots, "Series has the slot"
+    assert out.klass("app_library", "Book").slot_usage["isbn"].required is True, (
+        "Book, the required usage, carries required in its slot_usage"
+    )
+    assert not out.klass("app_library", "Series").slot_usage, "Series has nothing of its own"
+    assert [name for name in out.schemas["app_library"].slots if name == "isbn"] == ["isbn"], (
+        "the slot is defined once"
+    )
 
 
 def _merged(out: Converted) -> None:
@@ -1048,6 +1052,255 @@ ROWS_R12 = [
             UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
             "has_parent: used in app_catalogue, app_shelves; slots shared across packages arrive in stage 2 (task 2.6)",
         ),
+    ),
+]
+
+
+# --- R-13 again: a shared slot holds only what every usage agrees on (D-22 C-1) ------------------------
+
+_LIMITS = (
+    "range",
+    "required",
+    "multivalued",
+    "description",
+    "minimum_cardinality",
+    "maximum_cardinality",
+    "minimum_value",
+    "inlined",
+    "inlined_as_list",
+)
+_ATTRIBUTE_NOTE = "An attribute."
+_LINK_NOTE = "A connector."
+
+
+def _limits(definition: object) -> dict[str, object]:
+    """The limits a slot or slot_usage states: the keywords that are set and not false."""
+    found = {name: getattr(definition, name) for name in _LIMITS}
+    return {
+        name: value for name, value in found.items() if value is not None and value is not False
+    }
+
+
+def _agreed_and_narrowed(
+    slot: str, agreed: dict[str, object], book: dict[str, object], series: dict[str, object]
+) -> Check:
+    """The slot states ``agreed``; Book and Series each state their own ``slot_usage`` limits, or none."""
+
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        assert _limits(out.slot("app_library", slot)) == agreed, (
+            f"the slot {slot} must state only what both usages agree on"
+        )
+        for holder, expected in (("Book", book), ("Series", series)):
+            usages = out.klass("app_library", holder).slot_usage
+            found = _limits(usages[slot]) if slot in usages else None
+            assert found == (expected or None), (
+                f"{holder}.{slot} must carry its own limits in slot_usage, and none when it has none"
+            )
+        every = [
+            out.klass("app_library", holder).slot_usage[name]
+            for holder in sorted(out.schemas["app_library"].classes)
+            for name in out.klass("app_library", holder).slots
+            if name in out.klass("app_library", holder).slot_usage
+        ]
+        for usage in every:
+            assert _limits(usage) or usage.annotations, (
+                f"the slot_usage of {usage.name} is empty and must not be written"
+            )
+
+    return check
+
+
+def _isbn_pair(book: dict[str, object], series: dict[str, object]) -> object:
+    return model(
+        klass(BOOK, "lib:Book", attributes=(attribute(1, BOOK, "lib:isbn", **book),)),
+        klass(SERIES, "lib:Series", attributes=(attribute(2, SERIES, "lib:isbn", **series),)),
+    )
+
+
+def _owned_on_one_class() -> object:
+    """Book owns its parts through a boundary; Series refers to the same slot name as a plain reference."""
+    return model(
+        klass(BOOK, "lib:Book", stereotype="root"),
+        klass(CHAPTER, "lib:Chapter"),
+        klass(SERIES, "lib:Series"),
+        links=(
+            link(1, BOOK, CHAPTER, target_role="lib:hasPart", target_card="0..*"),
+            link(2, SERIES, CHAPTER, target_role="lib:hasPart", target_card="0..*"),
+        ),
+        boundaries=(boundary(20, BOOK, CHAPTER),),
+    )
+
+
+def _owned_on_book_only(out: Converted) -> None:
+    _agreed_and_narrowed(
+        "has_part",
+        {"range": "Chapter", "multivalued": True, "description": _LINK_NOTE},
+        {"inlined_as_list": True},
+        {},
+    )(out)
+    assert "owned" not in out.slot("app_library", "has_part").annotations, (
+        "the owned annotation must not leak from Book to the shared slot"
+    )
+    book_usage = out.klass("app_library", "Book").slot_usage["has_part"]
+    assert book_usage.annotations["owned"].value == "true", "Book's own usage carries owned"
+
+
+_TEXT = {"range": "string", "description": _ATTRIBUTE_NOTE}
+
+ROWS_R13 = [
+    Row(
+        "a limit one usage has and the other has not stays on that usage (maximum_cardinality)",
+        UmlRule.SHARED_SLOT,
+        _isbn_pair({"lower": "0", "upper": "5"}, {"lower": "0", "upper": None}),
+        _agreed_and_narrowed(
+            "isbn", {**_TEXT, "multivalued": True}, {"maximum_cardinality": 5}, {}
+        ),
+    ),
+    Row(
+        "a minimum_value on the defining usage does not leak to the other",
+        UmlRule.SHARED_SLOT,
+        _isbn_pair({"declared_type": "xsd:nonNegativeInteger"}, {"declared_type": "xsd:integer"}),
+        _agreed_and_narrowed(
+            "isbn",
+            {"range": "integer", "required": True, "description": _ATTRIBUTE_NOTE},
+            {"minimum_value": 0},
+            {},
+        ),
+    ),
+    Row(
+        "a minimum_value on the second usage is its own",
+        UmlRule.SHARED_SLOT,
+        _isbn_pair({"declared_type": "xsd:integer"}, {"declared_type": "xsd:nonNegativeInteger"}),
+        _agreed_and_narrowed(
+            "isbn",
+            {"range": "integer", "required": True, "description": _ATTRIBUTE_NOTE},
+            {},
+            {"minimum_value": 0},
+        ),
+    ),
+    Row(
+        "ownership on one class does not leak inlined to the other",
+        UmlRule.SHARED_SLOT,
+        _owned_on_one_class(),
+        _owned_on_book_only,
+    ),
+    Row(
+        "a description on the first usage only is the slot's, and the other usage inherits it",
+        UmlRule.SHARED_SLOT,
+        _isbn_pair({"note": "The isbn."}, {"note": None}),
+        _agreed_and_narrowed(
+            "isbn", {"range": "string", "required": True, "description": "The isbn."}, {}, {}
+        ),
+    ),
+    Row(
+        "the slot takes the first non-empty description, in class order",
+        UmlRule.SHARED_SLOT,
+        _isbn_pair({"note": None}, {"note": "The isbn."}),
+        _agreed_and_narrowed(
+            "isbn", {"range": "string", "required": True, "description": "The isbn."}, {}, {}
+        ),
+    ),
+    Row(
+        "a usage whose description differs carries its own, the first one is the slot's",
+        UmlRule.SHARED_SLOT,
+        _isbn_pair({"note": "The isbn."}, {"note": "The code."}),
+        _agreed_and_narrowed(
+            "isbn",
+            {"range": "string", "required": True, "description": "The isbn."},
+            {},
+            {"description": "The code."},
+        ),
+    ),
+    Row(
+        "a required on one usage only stays on it",
+        UmlRule.SHARED_SLOT,
+        _isbn_pair({}, {"lower": "0"}),
+        _agreed_and_narrowed("isbn", _TEXT, {"required": True}, {}),
+    ),
+    Row(
+        "the slot takes the first usage's range, a usage with another range carries its own",
+        UmlRule.SHARED_SLOT,
+        _isbn_pair({"declared_type": "xsd:string"}, {"declared_type": "xsd:integer"}),
+        _agreed_and_narrowed(
+            "isbn",
+            {"range": "string", "required": True, "description": _ATTRIBUTE_NOTE},
+            {},
+            {"range": "integer"},
+        ),
+    ),
+    Row(
+        "two identical usages write the full slot and no slot_usage",
+        UmlRule.SHARED_SLOT,
+        _isbn_pair({}, {}),
+        _agreed_and_narrowed("isbn", {**_TEXT, "required": True}, {}, {}),
+    ),
+]
+
+# --- W-3: elements no rule maps are problems, not silence (D-22) ----------------------------------------
+
+_NOVEL = ("lib:novel",)
+
+ROWS_W3 = [
+    Row(
+        "failure: a directed association held by an enumeration",
+        UmlRule.NO_RULE,
+        model(
+            enumeration(GENRE, "lib:Genre", _NOVEL),
+            klass(BOOK, "lib:Book"),
+            links=(link(1, GENRE, BOOK, target_role="lib:books", target_card="0..*"),),
+        ),
+        _problem(UmlRule.NO_RULE, "Genre.books", "enumeration", "no rule converts it"),
+    ),
+    Row(
+        "failure: the source role of an association points back at an enumeration",
+        UmlRule.NO_RULE,
+        model(
+            enumeration(GENRE, "lib:Genre", _NOVEL),
+            klass(BOOK, "lib:Book"),
+            links=(link(1, BOOK, GENRE, target_role="genre", source_role="lib:books"),),
+        ),
+        _problem(UmlRule.NO_RULE, "Genre.books", "enumeration"),
+    ),
+    Row(
+        "failure: a dependency held by an enumeration",
+        UmlRule.NO_RULE,
+        model(
+            enumeration(GENRE, "lib:Genre", _NOVEL),
+            enumeration(SERIES, "lib:Format", ("lib:paper",)),
+            links=(link(1, GENRE, SERIES, kind=UmlLinkKind.DEPENDENCY, target_role="format"),),
+        ),
+        _problem(UmlRule.NO_RULE, "Genre.format", "enumeration"),
+    ),
+    Row(
+        "failure: a dependency with a source role only needs a destination role",
+        UmlRule.NO_RULE,
+        model(
+            enumeration(GENRE, "lib:Genre", _NOVEL),
+            klass(BOOK, "lib:Book"),
+            links=(link(1, BOOK, GENRE, kind=UmlLinkKind.DEPENDENCY, source_role="lib:genre"),),
+        ),
+        _problem(UmlRule.NO_RULE, "Book.genre", "destination role", "no rule converts it"),
+    ),
+    Row(
+        "failure: a generalisation from an enumeration",
+        UmlRule.NO_RULE,
+        model(
+            enumeration(GENRE, "lib:Genre", _NOVEL),
+            klass(BOOK, "lib:Book"),
+            links=(generalisation(1, GENRE, BOOK),),
+        ),
+        _problem(UmlRule.NO_RULE, "Genre", "generalisation from an enumeration"),
+    ),
+    Row(
+        "failure: a generalisation from an empty enumeration is a problem, not a crash",
+        UmlRule.NO_RULE,
+        model(
+            enumeration(GENRE, "lib:Genre", ()),
+            klass(BOOK, "lib:Book"),
+            links=(generalisation(1, GENRE, BOOK),),
+        ),
+        _problem(UmlRule.NO_RULE, "Genre", "generalisation from an enumeration"),
     ),
 ]
 
@@ -1165,6 +1418,8 @@ ROWS: list[Row] = [
     *ROWS_R9,
     *ROWS_R10,
     *ROWS_R12,
+    *ROWS_R13,
+    *ROWS_W3,
     *ROWS_D14,
 ]
 

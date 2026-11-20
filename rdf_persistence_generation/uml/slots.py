@@ -96,6 +96,8 @@ SHAPE_FIELDS: Final = (
     "minimum_value",
     "owned",
 )
+# What the slot states only when every usage agrees; ``range`` and ``description`` always follow PD-16.
+LIMIT_FIELDS: Final = tuple(each for each in SHAPE_FIELDS if each not in ("range", "description"))
 
 
 class Shape:
@@ -137,13 +139,12 @@ class Usage:
         return self.identity.name
 
 
-def _shape_kwargs(shape: Shape, only: set[str] | None = None) -> dict[str, object]:
-    """The LinkML keywords of a shape; ``only`` keeps the named fields (false ones are written then)."""
+def _shape_kwargs(shape: Shape, only: set[str] | frozenset[str]) -> dict[str, object]:
+    """The LinkML keywords of the ``only`` fields of a shape; an unset or false field writes nothing."""
     kwargs: dict[str, object] = {}
     for field_name in SHAPE_FIELDS:
         value = getattr(shape, field_name)
-        present = value is not None and (only is not None or value is not False)
-        if present and (only is None or field_name in only):
+        if field_name in only and value is not None and value is not False:
             kwargs.update(_keyword(field_name, value, shape))
     return kwargs
 
@@ -158,25 +159,52 @@ def _keyword(name: str, value: object, shape: Shape) -> dict[str, object]:
     return {name: value}
 
 
-def slot_of(usage: Usage) -> SlotDefinition:
-    """The slot a name gets from its first usage."""
-    identity = usage.identity
+def _comparable(shape: Shape, field_name: str) -> tuple[object, object]:
+    """A field's value; an owned one also counts its multiplicity, which picks ``inlined`` or ``inlined_as_list``."""
+    value = getattr(shape, field_name)
+    return (value, shape.multivalued if field_name == OWNED and value else None)
+
+
+def differing_fields(shapes: list[Shape]) -> frozenset[str]:
+    """The limits on which the usages of one slot do not all agree."""
+    return frozenset(
+        field_name
+        for field_name in LIMIT_FIELDS
+        if len({_comparable(shape, field_name) for shape in shapes}) > 1
+    )
+
+
+def slot_of(identity: "Identity", shapes: list[Shape], differing: frozenset[str]) -> SlotDefinition:
+    """The slot of a name (R-13, PD-16).
+
+    It states the limits every usage agrees on, the first usage's range and the first non-empty
+    description, the usages being in PD-16 order.
+    """
+    description = next((shape.description for shape in shapes if shape.description), None)
     return SlotDefinition(
         name=identity.name,
         slot_uri=identity.slot_uri,
         title=identity.title,
-        **_shape_kwargs(usage.shape),
+        **_shape_kwargs(shapes[0], frozenset(LIMIT_FIELDS) - differing),
+        range=shapes[0].range,
+        description=description,
     )
 
 
-def usage_of(name: str, shape: Shape, first: Shape) -> SlotDefinition | None:
-    """The ``slot_usage`` of a class whose shape differs from the slot's: only the differing fields."""
-    differing = {
-        field_name
-        for field_name in SHAPE_FIELDS
-        if getattr(shape, field_name) != getattr(first, field_name)
-    }
-    return SlotDefinition(name=name, **_shape_kwargs(shape, differing)) if differing else None
+def usage_of(
+    name: str, shape: Shape, differing: frozenset[str], slot: SlotDefinition
+) -> SlotDefinition | None:
+    """The ``slot_usage`` of a class: what it has of its own, or None.
+
+    That is its value of each differing limit, its range when it is not the slot's and its description
+    when it is non-empty and not the slot's; an empty description inherits the slot's.
+    """
+    kwargs = _shape_kwargs(shape, differing)
+    if shape.range != slot.range:
+        kwargs["range"] = shape.range
+    if shape.description and shape.description != slot.description:
+        kwargs["description"] = shape.description
+    return SlotDefinition(name=name, **kwargs) if kwargs else None
 
 
 class Identity:
@@ -292,7 +320,7 @@ def _check_one_module(ctx: Context, name: str, modules: list[str]) -> None:
 
 
 def share(ctx: Context, usages: list[Usage], module_of: dict[int, str]) -> SharedSlots:
-    """One slot for each name (R-13): the first usage defines it, a differing one gets a ``slot_usage``."""
+    """One slot for each name (R-13): the slot states what every usage agrees on, each class its own rest."""
     shared = SharedSlots()
     by_name: dict[str, list[Usage]] = {}
     for usage in usages:
@@ -303,12 +331,15 @@ def share(ctx: Context, usages: list[Usage], module_of: dict[int, str]) -> Share
         _check_one_iri(ctx, name, ordered)
         _check_one_module(ctx, name, sorted({module_of[u.holder.uml.object_id] for u in ordered}))
         first = ordered[0]
-        shared.definitions[name] = slot_of(first)
+        shapes = [each.shape for each in ordered]
+        differing = differing_fields(shapes)
+        slot = slot_of(first.identity, shapes, differing)
+        shared.definitions[name] = slot
         shared.home[name] = module_of[first.holder.uml.object_id]
-        for other in ordered[1:]:
-            narrowed = usage_of(name, other.shape, first.shape)
+        for each in ordered:
+            narrowed = usage_of(name, each.shape, differing, slot)
             if narrowed is not None:
-                shared.class_usage.setdefault(other.holder.label, {})[name] = narrowed
+                shared.class_usage.setdefault(each.holder.label, {})[name] = narrowed
     return shared
 
 

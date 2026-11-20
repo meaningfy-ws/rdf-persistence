@@ -206,7 +206,12 @@ def parents(ctx: Context, model: UmlModel) -> dict[int, str]:
     """The ``is_a`` of each class: its one generalised domain class (PD-9, PD-30); others are problems."""
     found: dict[int, list[int]] = {}
     for each in sorted(model.uml_links or [], key=lambda link: link.connector_id):
-        if each.link_kind == UmlLinkKind.GENERALISATION and each.source_id in ctx.elements:
+        if each.link_kind != UmlLinkKind.GENERALISATION or each.source_id not in ctx.elements:
+            continue
+        child = ctx.elements[each.source_id]
+        if child.is_enum:
+            ctx.findings.no_rule(child.label, "generalisation from an enumeration")
+        else:
             found.setdefault(each.source_id, []).append(each.target_id)
     return {
         child: name

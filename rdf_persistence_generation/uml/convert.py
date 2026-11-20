@@ -97,7 +97,7 @@ def _usages(ctx: Context, model: UmlModel, elements: list[Element]) -> list[Usag
         for usage in attribute_usages(ctx, element)
     ]
     usages.extend(link_usages(ctx, model, owned_pairs(ctx, model)))
-    return [usage for usage in usages if not usage.holder.is_enum]
+    return usages
 
 
 def _references(

@@ -114,6 +114,13 @@ def _range_of(ctx: Context, end: End, holder: Element, slot: str) -> str | None:
     return None
 
 
+def _enum_holder(ctx: Context, holder: Element, element: str) -> bool:
+    """Whether an enumeration holds the slot, which no rule maps: a problem naming the slot."""
+    if holder.is_enum:
+        ctx.findings.no_rule(element, "a slot held by an enumeration")
+    return holder.is_enum
+
+
 def _end_usage(ctx: Context, link: UmlLink, end: End, owned: set[tuple[int, int]]) -> Usage | None:
     holder = ctx.elements.get(end.holder_id)
     name = ctx.resolve(end.role, _name_of(ctx, end.holder_id)) if end.role and holder else None
@@ -124,6 +131,8 @@ def _end_usage(ctx: Context, link: UmlLink, end: End, owned: set[tuple[int, int]
     if identity is None:
         return None
     element = f"{holder.label}.{identity.name}"
+    if _enum_holder(ctx, holder, element):
+        return None
     bounds = check_bounds(ctx, element, _card_text(ctx, element, end.card))
     target_range = _range_of(ctx, end, holder, identity.name)
     if bounds is None or target_range is None:
@@ -195,6 +204,13 @@ def _ends(link: UmlLink) -> list[End]:
 
 
 def _dependency_target_ok(ctx: Context, link: UmlLink) -> bool:
+    if not link.target_role:
+        role = slot_name(link.source_role) if link.source_role else ""
+        ctx.findings.no_rule(
+            f"{_name_of(ctx, link.source_id)}.{role}".rstrip("."),
+            "a dependency with a source role only, it needs a destination role",
+        )
+        return False
     target = ctx.elements.get(link.target_id)
     if target is not None and not target.is_enum:
         ctx.findings.no_rule(
