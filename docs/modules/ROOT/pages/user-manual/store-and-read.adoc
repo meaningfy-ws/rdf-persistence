@@ -395,9 +395,10 @@ stays. The body names the referrers the caller may read, as `Collaboration.refer
 ----
 
 * `referrers` holds the readable referrers, sorted by IRI, one item per referrer and slot. The
-  member is absent when none is readable.
+  member is always there, and is `[]` when none is readable; `more_count` and `hidden_count` are
+  always there too, 0 when there is nothing to count.
 * `hidden_count` is the number of referrer aggregates the caller may not read. When only
-  unreadable ones refer to the author, the body has no `referrers` and a `hidden_count` of their
+  unreadable ones refer to the author, `referrers` is `[]` and `hidden_count` is their
   number: the caller learns that the author is in use, not by what.
 * `more_count` is the number of readable referrer aggregates left out by the cap. At most
   `limits.max_named_referrers` aggregates are named (default 20; 0 names none and counts all).
@@ -406,10 +407,12 @@ stays. The body names the referrers the caller may read, as `Collaboration.refer
 * The 409 has no `detail`, like the other 409 problems. A stale `If-Match` on the same request
   is still 409 `conflict`, never `in-use`.
 
-With no referrer, the delete answers 204 as before. The comments of the author (a comment is
-removed with its target) do not count as referrers.
+With no referrer, the delete answers 204 as before. The comments on the author (a comment is
+removed with its target) do not count as referrers: a comment never blocks the delete, also one
+added in the same commit as the removal.
 
-*In code.* `session.remove` raises `InUse`, which holds the same facts:
+*In code.* `session.remove` raises `InUse`, which holds the same facts (`iris`: all the refused
+roots found referenced; `referrers`: those of the first one only):
 
 [source,python]
 ----
@@ -425,7 +428,8 @@ async with kit.session(tenant, principal) as session:
 ----
 
 A session at this level checks no access, so it has the full reach: every referrer is readable and
-`hidden_count` is 0. The same refusal applies to a `UnitOfWork` (`work.remove(author)` then
+`hidden_count` is 0 (`readable=None`; the generic route passes a `readable=` callable to
+`session.remove` that narrows to what the caller may read). The same refusal applies to a `UnitOfWork` (`work.remove(author)` then
 `commit()`), to `remove_with_files` and to `delete_cascade`, because all of them end in one
 transaction.
 
@@ -441,23 +445,26 @@ What to expect:
   a book referring to the author and removes the author raises `InUse` before anything is sent.
 * *A collection that names the author counts.* A `ReferenceCollection` (a shelf) that holds the
   author as a member refers to it, so `DELETE /authors/a1` is refused naming
-  `(shelf, Shelf, had_member)`. Remove the author from the shelf first.
+  `(shelf, Shelf, has_part)`. Remove the author from the shelf first.
 * *`delete_cascade` is all or nothing.* It removes a collection and its members in one
   transaction. If a member of a refusing class is referred to from outside the cascade, the whole
   cascade raises `InUse` (`iris` lists the refused members) and nothing is deleted. The collection
   itself and the other members removed by the same cascade do not count as referrers.
 * *Batches are not one transaction.* With `commit(batches=True)` a unit of work that holds more
   roots than `max_roots` (<<transaction-batches>>) sends several requests. If the author falls in
-  an earlier batch than the book that refers to it, that batch raises `InUse`, and the batches
-  before it stay committed. Remove the referrers first, or keep the commit within `max_roots`.
+  an earlier batch than the book that stops referring to it, that batch raises `InUse` and the
+  batches before it stay committed; its message ends with "n of m batches committed before it".
+  The unit of work keeps the rest, so fix the cause and call `commit(batches=True)` again. Remove the referrers first, or keep the commit within `max_roots`.
 * *A session you open yourself does not refuse.* `kit.session` and the generic router wire the
-  refusal. `open_session` refuses nothing unless you pass `removals=` (what the kit builds from the
-  schema); a session opened without it deletes a referenced aggregate, as `keys` is for unique keys.
+  refusal. `open_session` (and `Tenancy`) refuse nothing unless you pass `removals=` (what the kit builds
+  from the schema); a session opened without it deletes a referenced aggregate, as `keys` is for
+  unique keys. In a unit test, `fake_session(..., removals=...)` of `rdf_persistence.testkit` takes
+  it the same way.
 * *The guarantee has a limit.* The check holds at the moment the delete is applied: if no
   aggregate refers to the author then, it is deleted, and a book written after that may still name
   the author's IRI. The toolkit checks nowhere that a referenced aggregate exists, so that
-  reference dangles. Of two concurrent writers, one that removes a referrer and one that removes
-  the author, never does the author go while the referrer stays.
+  reference dangles. Concurrent writers are not locked: the guarantee is only that no referrer
+  exists at the moment the delete is applied. A referrer written after it is not blocked.
 
 [#transaction-batches]
 === Save more than 500 aggregates

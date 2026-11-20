@@ -159,7 +159,7 @@ aggregate of the tenant holds). Neither carries a detail, so the answer names ne
 the holder. A third, `in-use` ("In use"), answers the `DELETE` of an aggregate of a class annotated
 `rp_on_referenced_delete: refuse` while another aggregate refers to it. It is the one 409 that says
 more, in extension members and not in a `detail` (it has none): `referrers` (the readable referrers
-as `Referrer` items, capped by `limits.max_named_referrers`, absent when none is readable),
+as `Referrer` items, capped by `limits.max_named_referrers`, `[]` when none is readable),
 `more_count` (readable referrer aggregates left out by the cap) and `hidden_count` (referrer
 aggregates the caller may not read). The members are filtered by what the caller may read first,
 so the answer does not name what `referrers` would hide. A stale `If-Match` on the same request
