@@ -35,6 +35,7 @@ from rdf_persistence_generation.uml.classes import (
 from rdf_persistence_generation.uml.context import Context, Element
 from rdf_persistence_generation.uml.links import link_usages, owned_pairs
 from rdf_persistence_generation.uml.modules import (
+    PATH_SEPARATOR,
     ModulePath,
     cycle_components,
     module_name,
@@ -216,7 +217,7 @@ def _write_module(
     ctx: Context, name: str, path: ModulePath, built: Built, members: list[Element]
 ) -> SchemaDefinition:
     settings = ctx.settings
-    first = path[-1] if path else settings.subtree_package
+    first = path[-1] if path else settings.subtree_package.rsplit(PATH_SEPARATOR, 1)[-1]
     note = next((ctx.paths[i].note for i in ctx.paths if ctx.paths[i].below == path), None)
     schema = SchemaDefinition(
         id=settings.schema_base + name,
@@ -264,6 +265,12 @@ def convert(
     ctx = Context(settings, metamodel_prefixes, prefixes)
     ctx.paths = package_paths(model, settings)
     elements, usages, parent_of = _build(ctx, model)
+    if not ctx.elements and not ctx.findings.problems():
+        ctx.findings.problem(
+            UmlRule.PACKAGE_MODULE,
+            settings.subtree_package,
+            "the package holds no class or enumeration to convert",
+        )
     edges = _references(elements, usages, parent_of)
     merged = _layout(ctx, elements, edges)
     names = _module_names(ctx, set(merged.values()))

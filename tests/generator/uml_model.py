@@ -37,7 +37,11 @@ METAMODEL_PREFIXES = {
     "rp": "https://meaningfy.ws/ns/rdf-persistence#",
 }
 
+DIRECTED = "Source -> Destination"
+BIDIRECTIONAL = "Bi-Directional"
+
 MODEL_PKG, LIBRARY_PKG, CATALOGUE_PKG, SHELVES_PKG = 1, 2, 3, 4
+EXTERNAL_PKG = 8  # a package outside the subtree, as the reader reports it in uml_outside_packages
 BOOK, CHAPTER, SHELF, GENRE, SERIES = 10, 11, 12, 13, 14
 
 PACKAGES = (
@@ -131,12 +135,17 @@ def link(
     target_aggregate: int = 0,
     note: str | None = "A connector.",
     stereotype: str | None = None,
+    direction: str | None = None,
 ) -> UmlLink:
+    """A connector; with no ``direction`` given, a source role makes it bi-directional, else directed."""
+    if direction is None:
+        direction = BIDIRECTIONAL if source_role else DIRECTED
     return UmlLink(
         connector_id=connector_id,
         link_kind=kind,
         uml_stereotype=stereotype,
         note=note,
+        direction=direction,
         source_id=source,
         target_id=target,
         source_role=source_role,
@@ -168,9 +177,14 @@ def model(
     tags: tuple[UmlTaggedValue, ...] = (),
     boundaries: tuple[UmlBoundary, ...] = (),
     packages: tuple[UmlPackage, ...] = PACKAGES,
+    outside: tuple[UmlClass, ...] = (),
+    outside_packages: tuple[UmlPackage, ...] = (),
 ) -> UmlModel:
+    """A model; ``outside`` are the classes at a link's far end the reader did not convert (D-17)."""
     return UmlModel(
         uml_packages=list(packages),
+        uml_outside_packages=list(outside_packages),
+        uml_outside_classes=list(outside),
         uml_classes=list(classes),
         uml_links=list(links),
         uml_tagged_values=list(tags),

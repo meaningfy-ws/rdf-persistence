@@ -15,6 +15,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.uml.context import (
     LEFT_EXCLUDED,
     LEFT_NOT_GENERATED,
+    LEFT_OUTSIDE,
     Context,
     Element,
 )
@@ -31,6 +32,8 @@ from rdf_persistence_generation.uml.slots import (
 )
 
 ASSOCIATION_CLASS = "Class"
+DIRECTED = "Source -> Destination"
+BIDIRECTIONAL = "Bi-Directional"
 
 
 class End:
@@ -70,16 +73,20 @@ def owned_pairs(ctx: Context, model: UmlModel) -> set[tuple[int, int]]:
     return pairs
 
 
-def outside_name(element_id: int) -> str:
-    """How the report names a link's far end that the model does not hold: by its id (D-17 will name it)."""
-    return f"#{element_id}"
-
-
 def _name_of(ctx: Context, element_id: int) -> str:
+    """The local name of a link's end; an end the model lists nowhere is an internal error (D-17).
+
+    Raises:
+        LookupError: The end is in neither ``uml_classes`` nor ``uml_outside_classes``.
+    """
     element = ctx.elements.get(element_id)
-    return (
-        element.label if element else ctx.left_out_names.get(element_id) or outside_name(element_id)
-    )
+    if element is not None:
+        return element.label
+    if element_id not in ctx.class_names:
+        raise LookupError(
+            f"link end {element_id} is in neither uml_classes nor uml_outside_classes"
+        )
+    return ctx.class_names[element_id]
 
 
 def _range_of(ctx: Context, end: End, holder: Element, slot: str) -> str | None:
@@ -96,12 +103,15 @@ def _range_of(ctx: Context, end: End, holder: Element, slot: str) -> str | None:
             ReportKind.EXCLUDED_LINK, element, "the target is in an excluded package, so no slot"
         )
         return None
-    ctx.findings.note(
-        ReportKind.OUTSIDE_LINK,
-        f"{holder.label}.{slot}",
-        "the target is outside the converted subtree, a URI",
-    )
-    return URI
+    if why == LEFT_OUTSIDE:
+        ctx.findings.note(
+            ReportKind.OUTSIDE_LINK,
+            f"{holder.label}.{slot}",
+            "the target is outside the converted subtree, a URI",
+        )
+        return URI
+    _name_of(ctx, end.other_id)  # a class the model lists but refused has its own problem
+    return None
 
 
 def _end_usage(ctx: Context, link: UmlLink, end: End, owned: set[tuple[int, int]]) -> Usage | None:
@@ -130,16 +140,38 @@ def _card_text(ctx: Context, element: str, card: str | None) -> str:
     return card
 
 
-def _refused(ctx: Context, link: UmlLink) -> bool:
-    """A connector no rule maps: a stereotype, an association class or a composite whose whole is the target."""
-    role = slot_name(link.target_role) if link.target_role else ""
-    label = f"{_name_of(ctx, link.source_id)}.{role}".rstrip(".")
+def _wrong_direction(link: UmlLink) -> str | None:
+    """Why an association's direction is not accepted (D-14), or None when it is.
+
+    ``Source -> Destination`` takes the destination role only; a source role as well asks for
+    ``Bi-Directional``, as the model2owl convention does. ``Bi-Directional`` takes both.
+    """
+    if link.link_kind != UmlLinkKind.ASSOCIATION or link.direction == BIDIRECTIONAL:
+        return None
+    if link.direction != DIRECTED:
+        return f"direction {link.direction}" if link.direction else "no direction"
+    if link.source_role:
+        return f"direction {DIRECTED} with a source role, which needs {BIDIRECTIONAL}"
+    return None
+
+
+def _refusal(link: UmlLink) -> str | None:
+    """Why a connector is refused: a stereotype, an association class, a composite whole or a direction."""
     if link.uml_stereotype:
-        ctx.findings.no_rule(label, f"connector stereotype {link.uml_stereotype}")
-    elif link.association_class or link.sub_type == ASSOCIATION_CLASS:
-        ctx.findings.no_rule(label, "association class")
-    elif link.target_aggregate == COMPOSITE:
-        ctx.findings.no_rule(label, "a composite whose whole is the destination")
+        return f"connector stereotype {link.uml_stereotype}"
+    if link.association_class or link.sub_type == ASSOCIATION_CLASS:
+        return "association class"
+    if link.target_aggregate == COMPOSITE:
+        return "a composite whose whole is the destination"
+    return _wrong_direction(link)
+
+
+def _refused(ctx: Context, link: UmlLink) -> bool:
+    """A connector no rule maps (see ``_refusal``), or one with no role at all."""
+    reason = _refusal(link)
+    if reason is not None:
+        role = slot_name(link.target_role) if link.target_role else ""
+        ctx.findings.no_rule(f"{_name_of(ctx, link.source_id)}.{role}".rstrip("."), reason)
     elif not link.source_role and not link.target_role:
         ctx.findings.no_rule(
             f"{_name_of(ctx, link.source_id)} -> {_name_of(ctx, link.target_id)}",

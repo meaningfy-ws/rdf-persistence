@@ -23,6 +23,7 @@ PREFIXES_FILE: Final = "the prefixes file"
 NO_RULE_TAIL: Final = "no rule converts it"
 LEFT_NOT_GENERATED: Final = "not-generated"
 LEFT_EXCLUDED: Final = "excluded"
+LEFT_OUTSIDE: Final = "outside"
 
 
 def local_of(written: str) -> str:
@@ -115,7 +116,9 @@ class Context:
         self.findings = Findings()
         self.elements: dict[int, Element] = {}
         self.left_out: dict[int, str] = {}
-        self.left_out_names: dict[int, str] = {}
+        self.class_names: dict[
+            int, str
+        ] = {}  # every class the model lists, converted or not (D-17)
         self.paths: dict[int, PackagePath] = {}
         self.tags: dict[int, dict[str, str]] = {}
         self.unknown_prefixes: set[str] = set()

@@ -380,11 +380,12 @@ class QeaBuilder:
             DestIsAggregate=0,
         )
 
-    def dependency(self, source: int, destination: int, role: str) -> int:
+    def dependency(self, source: int, destination: int, role: str, note: str | None = None) -> int:
         """A class-to-enumeration dependency, named by its destination role."""
         return self._insert(
             "t_connector",
             Connector_Type=DEPENDENCY_TYPE,
+            Notes=note,
             Start_Object_ID=source,
             End_Object_ID=destination,
             DestRole=role,

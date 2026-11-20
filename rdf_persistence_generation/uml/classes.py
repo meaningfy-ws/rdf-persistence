@@ -23,6 +23,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.uml.context import (
     LEFT_EXCLUDED,
     LEFT_NOT_GENERATED,
+    LEFT_OUTSIDE,
     Context,
     Element,
     local_of,
@@ -79,7 +80,6 @@ def _admit(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
 
 def _leave_out(ctx: Context, uml: UmlClass, why: str) -> None:
     ctx.left_out[uml.object_id] = why
-    ctx.left_out_names[uml.object_id] = local_of(uml.name)
 
 
 def _register(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
@@ -99,11 +99,21 @@ def _register(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
     ctx.elements[uml.object_id] = Element(uml, name, path, flags)
 
 
+def _collect_outside(ctx: Context, model: UmlModel) -> None:
+    """The classes the reader found at a link's far end: excluded when their package is, else outside (D-17)."""
+    for uml in model.uml_outside_classes or []:
+        path = ctx.paths.get(uml.package_id)
+        _leave_out(ctx, uml, LEFT_EXCLUDED if path is not None and path.excluded else LEFT_OUTSIDE)
+        ctx.class_names[uml.object_id] = local_of(uml.name)
+
+
 def collect_elements(ctx: Context, model: UmlModel) -> None:
     """Classify every class of the subtree: generated, left out, or a problem; check names for clashes."""
     for tagged in model.uml_tagged_values or []:
         ctx.tags.setdefault(tagged.owner_id, {})[tagged.name] = tagged.tag_value or ""
+    _collect_outside(ctx, model)
     for uml in sorted(model.uml_classes or [], key=lambda each: (each.name, each.object_id)):
+        ctx.class_names[uml.object_id] = local_of(uml.name)
         path = ctx.paths.get(uml.package_id)
         if path is None:
             continue

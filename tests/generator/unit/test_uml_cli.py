@@ -94,6 +94,33 @@ def test_three_faults_give_three_sorted_lines_exit_one_and_leave_out_unchanged(t
     assert snapshot(out) == before
 
 
+def test_the_path_form_and_the_name_form_of_the_package_write_the_same_files(tmp_path, capsys):
+    builder, _ = build_library(tmp_path)
+    qea = builder.finish()
+
+    by_path = run(capsys, tmp_path, qea, package=ROOT)
+    path_files = snapshot(tmp_path / "out")
+    (tmp_path / "out" / "app.yaml").unlink()
+    by_name = run(capsys, tmp_path, qea, package="library")
+
+    assert by_path == by_name == (0, [])
+    assert "app_main.yaml" in path_files
+    assert snapshot(tmp_path / "out") == path_files
+
+
+def test_a_package_with_no_class_or_enumeration_exits_one_and_writes_nothing(tmp_path, capsys):
+    builder = QeaBuilder(tmp_path / "empty.qea")
+    builder.package("library", parent=builder.package("MODEL"))
+
+    code, lines = run(capsys, tmp_path, builder.finish())
+
+    assert code == 1
+    assert lines == [
+        f"[package_module] {ROOT}: the package holds no class or enumeration to convert"
+    ]
+    assert not (tmp_path / "out").exists()
+
+
 def test_an_out_folder_that_does_not_exist_is_not_created_by_a_failed_run(tmp_path, capsys):
     builder, ids = build_library(tmp_path)
     builder.extra_stereotypes(ids["book"], "root", "loaded graph")

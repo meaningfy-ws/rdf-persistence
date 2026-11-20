@@ -13,9 +13,12 @@ from linkml_runtime.dumpers import yaml_dumper
 
 from rdf_persistence_generation.generated.rp_generation import UmlLinkKind, UmlPackage, UmlRule
 from tests.generator.uml_model import (
+    BIDIRECTIONAL,
     BOOK,
     CATALOGUE_PKG,
     CHAPTER,
+    DIRECTED,
+    EXTERNAL_PKG,
     GENRE,
     LIBRARY_PKG,
     MODEL_PKG,
@@ -914,6 +917,25 @@ def _excluded(out: Converted) -> None:
     ]
 
 
+_EXCLUDED_MODEL = model(
+    klass(BOOK, "lib:Book"),
+    links=(link(1, BOOK, SERIES, target_role="series"),),
+    packages=(
+        UmlPackage(package_id=MODEL_PKG, name="model"),
+        UmlPackage(package_id=LIBRARY_PKG, name="library", parent_id=MODEL_PKG),
+    ),
+    outside=(klass(SERIES, "lib:Series", CATALOGUE_PKG),),
+    outside_packages=(UmlPackage(package_id=CATALOGUE_PKG, name="catalogue", parent_id=MODEL_PKG),),
+)
+
+
+def test_a_link_end_the_model_lists_nowhere_is_an_internal_error() -> None:
+    uml = model(klass(BOOK, "lib:Book"), links=(link(1, BOOK, 999, target_role="series"),))
+
+    with pytest.raises(LookupError, match="999"):
+        run(uml)
+
+
 def _shared(out: Converted) -> None:
     _no_problems(out)
     isbn = out.slot("app_library", "isbn")
@@ -952,21 +974,28 @@ ROWS_R12 = [
         _not_generated,
     ),
     Row(
-        "a link to a class the model does not hold is a URI range and a report line",
+        "a link to a class outside the subtree is a URI range and a report line (D-17)",
         UmlRule.NOT_GENERATED,
-        model(klass(BOOK, "lib:Book"), links=(link(1, BOOK, 999, target_role="series"),)),
+        model(
+            klass(BOOK, "lib:Book"),
+            links=(link(1, BOOK, SERIES, target_role="series"),),
+            outside=(klass(SERIES, "ext:Series", EXTERNAL_PKG),),
+            outside_packages=(UmlPackage(package_id=EXTERNAL_PKG, name="external"),),
+        ),
         _outside,
     ),
     Row(
         "a link to a class in an excluded package makes no slot and a report line",
         UmlRule.NOT_GENERATED,
-        model(
-            klass(BOOK, "lib:Book"),
-            klass(SERIES, "lib:Series", CATALOGUE_PKG),
-            links=(link(1, BOOK, SERIES, target_role="series"),),
-        ),
+        _EXCLUDED_MODEL,
         _excluded,
         {"exclude_packages": ["catalogue"]},
+    ),
+    Row(
+        "the same class in a package no exclusion covers is outside, not excluded",
+        UmlRule.NOT_GENERATED,
+        _EXCLUDED_MODEL,
+        _outside,
     ),
     Row(
         "failure: a stereotype no rule knows",
@@ -1022,6 +1051,108 @@ ROWS_R12 = [
     ),
 ]
 
+
+def _both_roles(out: Converted) -> None:
+    _no_problems(out)
+    assert sorted(out.schemas["app_library"].slots) == ["has_chapter", "in_book"]
+
+
+def _directed_pair(direction: str, source_role: str | None = "lib:inBook") -> object:
+    return model(
+        klass(BOOK, "lib:Book"),
+        klass(CHAPTER, "lib:Chapter"),
+        links=(
+            link(
+                1,
+                BOOK,
+                CHAPTER,
+                target_role="lib:hasChapter",
+                target_card="0..*",
+                source_role=source_role,
+                source_card="1..1",
+                direction=direction,
+            ),
+        ),
+    )
+
+
+_RARE_BOOKS = 5
+
+
+def _from_library(**overrides: object) -> Converted:
+    """The model as the reader gives it: the subtree root first, its ancestor ``MODEL`` not listed."""
+    uml = model(
+        klass(BOOK, "lib:Book", stereotype="root"),
+        klass(CHAPTER, "lib:Chapter", _RARE_BOOKS),
+        packages=(
+            UmlPackage(package_id=LIBRARY_PKG, name="library", parent_id=MODEL_PKG),
+            UmlPackage(package_id=_RARE_BOOKS, name="rare-books", parent_id=LIBRARY_PKG),
+        ),
+    )
+    return run(uml, **overrides)
+
+
+def test_the_path_form_and_the_name_form_of_the_package_give_the_same_modules() -> None:
+    by_name = _from_library(subtree_package="library")
+    by_path = _from_library(subtree_package="MODEL/library")
+
+    assert by_name.problems == by_path.problems == []
+    assert sorted(by_path.schemas) == ["app", "app_main", "app_rare_books"]
+    for name, schema in by_name.schemas.items():
+        assert yaml_dumper.dumps(by_path.schemas[name]) == yaml_dumper.dumps(schema)
+
+
+def test_a_subtree_with_no_class_or_enumeration_is_a_problem() -> None:
+    out = run(model(), subtree_package="model")
+
+    assert out.schemas == {}
+    assert out.problem_texts() == [
+        "[package_module] model: the package holds no class or enumeration to convert"
+    ]
+
+
+def _no_direction() -> object:
+    """The reader gives ``direction`` None when the connector row has none; the helper fills one in."""
+    uml = _directed_pair(DIRECTED, None)
+    uml.uml_links[0].direction = None
+    return uml
+
+
+ROWS_D14 = [
+    Row(
+        "a bi-directional association gives a slot at each end (D-14)",
+        UmlRule.NO_RULE,
+        _directed_pair(BIDIRECTIONAL),
+        _both_roles,
+    ),
+    Row(
+        "failure: a direction of Unspecified names the connector and the direction",
+        UmlRule.NO_RULE,
+        _directed_pair("Unspecified", None),
+        _problem(
+            UmlRule.NO_RULE, "Book.has_chapter", "direction Unspecified", "no rule converts it"
+        ),
+    ),
+    Row(
+        "failure: a direction of Destination -> Source",
+        UmlRule.NO_RULE,
+        _directed_pair("Destination -> Source", None),
+        _problem(UmlRule.NO_RULE, "Book.has_chapter", "direction Destination -> Source"),
+    ),
+    Row(
+        "failure: no direction at all",
+        UmlRule.NO_RULE,
+        _no_direction(),
+        _problem(UmlRule.NO_RULE, "Book.has_chapter", "no direction"),
+    ),
+    Row(
+        "failure: a source role on a Source -> Destination association asks for Bi-Directional",
+        UmlRule.NO_RULE,
+        _directed_pair(DIRECTED),
+        _problem(UmlRule.NO_RULE, "Book.has_chapter", "Source -> Destination", "Bi-Directional"),
+    ),
+]
+
 ROWS: list[Row] = [
     *ROWS_R1,
     *ROWS_R2,
@@ -1034,6 +1165,7 @@ ROWS: list[Row] = [
     *ROWS_R9,
     *ROWS_R10,
     *ROWS_R12,
+    *ROWS_D14,
 ]
 
 STAGE_2 = {

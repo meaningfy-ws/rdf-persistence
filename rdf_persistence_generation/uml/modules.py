@@ -29,36 +29,59 @@ def _chain(package_id: int, by_id: Mapping[int, UmlPackage]) -> tuple[str, ...]:
     return tuple(reversed(names))
 
 
-def _is_under(path: str, root: str) -> bool:
-    return path == root or path.startswith(root + PATH_SEPARATOR)
+def _is_within(path: str, base: str) -> bool:
+    """Whether ``path`` is ``base``, below it, or (``base`` being a tail of a path) below its tail: as the reader reads it."""
+    return f"/{base}/" in f"/{path}/"
 
 
 def _is_excluded(full: tuple[str, ...], below: tuple[str, ...], excluded: list[str]) -> bool:
     texts = (PATH_SEPARATOR.join(full), PATH_SEPARATOR.join(below))
-    return any(_is_under(text, path) for path in excluded for text in texts)
+    return any(_is_within(text, path) for path in excluded for text in texts if text)
 
 
-def _subtree_root(fulls: Mapping[int, tuple[str, ...]], subtree: str) -> tuple[str, ...] | None:
-    wanted = tuple(subtree.split(PATH_SEPARATOR))
-    matches = sorted(full for full in fulls.values() if full[-len(wanted) :] == wanted)
-    return matches[0] if matches else None
+def _subtree_root(
+    converted: Mapping[int, UmlPackage], fulls: Mapping[int, tuple[str, ...]]
+) -> tuple[str, ...] | None:
+    """The path of the subtree package: the converted package whose parent is not converted.
+
+    The reader lists the subtree package first and none of its ancestors, so the root is found by
+    its place in the list, not by matching the ``--package`` text, which may be a name or a path.
+    """
+    tops = sorted(
+        fulls[package_id]
+        for package_id, package in converted.items()
+        if package.parent_id not in converted
+    )
+    return tops[0] if tops else None
 
 
 def package_paths(model: UmlModel, settings: UmlSettings) -> dict[int, PackagePath]:
-    """The packages of the subtree, each with its path below the subtree package and its exclusion."""
-    by_id = {package.package_id: package for package in model.uml_packages or []}
+    """The packages of the subtree, each with its path below the subtree package and its exclusion.
+
+    The outside packages (D-17) are laid out with the converted ones, so a path under an
+    ``--exclude-package`` is told from one that is simply outside the subtree.
+    """
+    by_id = _all_packages(model)
     fulls = {package_id: _chain(package_id, by_id) for package_id in by_id}
-    root = _subtree_root(fulls, settings.subtree_package)
-    if root is None:
-        return {}
+    root = _subtree_root({p.package_id: p for p in model.uml_packages or []}, fulls)
     excluded = list(settings.exclude_packages or [])
-    paths: dict[int, PackagePath] = {}
-    for package_id, full in fulls.items():
-        if full[: len(root)] == root:
-            below = full[len(root) :]
-            note = by_id[package_id].note
-            paths[package_id] = PackagePath(below, _is_excluded(full, below, excluded), note)
-    return paths
+    return {
+        package_id: _path_below(full, root, by_id[package_id].note, excluded)
+        for package_id, full in fulls.items()
+        if root is not None and full[: len(root)] == root
+    }
+
+
+def _all_packages(model: UmlModel) -> dict[int, UmlPackage]:
+    packages = [*(model.uml_packages or []), *(model.uml_outside_packages or [])]
+    return {package.package_id: package for package in packages}
+
+
+def _path_below(
+    full: tuple[str, ...], root: tuple[str, ...] | None, note: str | None, excluded: list[str]
+) -> PackagePath:
+    below = full[len(root or ()) :]
+    return PackagePath(below, _is_excluded(full, below, excluded), note)
 
 
 def segment_name(segment: str) -> str:
