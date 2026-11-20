@@ -181,6 +181,34 @@ def match_patterns(variable: str, pairs: Iterable[tuple[URIRef, URIRef | Literal
     return SparqlTerm(" ".join(f"?{variable} {term(p)} {term(o)} ." for p, o in pairs))
 
 
+def contains_patterns(variable: str, pairs: Iterable[tuple[URIRef, Literal]]) -> SparqlTerm:
+    """Render a case-insensitive substring filter on ``?variable`` for each ``(predicate, text)`` pair.
+
+    The n-th pair (from 0) becomes ``FILTER EXISTS { ?variable <predicate> ?variable_cN . FILTER
+    (CONTAINS(LCASE(STR(?variable_cN)), LCASE("text"))) }``: a subject matches when some value of the
+    predicate holds the text. Each pair has its own ``?variable_cN``, so the filters never share a
+    binding. The predicate and the text go through ``term``, like the value of ``match_patterns``;
+    no pairs render the empty pattern.
+
+    Raises:
+        SparqlError: The variable is not a plain name, or a text is a raw string, not a ``Literal``.
+    """
+    if not _VARIABLE.fullmatch(variable):
+        raise SparqlError(f"not a plain variable name: {variable!r}")
+    filters = []
+    for n, (predicate, text) in enumerate(pairs):
+        if not isinstance(text, Literal):
+            raise SparqlError(
+                f"contains_patterns() takes a Literal text, not {type(text).__name__}"
+            )
+        bound = f"?{variable}_c{n}"
+        filters.append(
+            f"FILTER EXISTS {{ ?{variable} {term(predicate)} {bound} . "
+            f"FILTER (CONTAINS(LCASE(STR({bound})), LCASE({term(text)}))) }}"
+        )
+    return SparqlTerm(" ".join(filters))
+
+
 def value_patterns(subject: str, predicates: Sequence[URIRef]) -> SparqlTerm:
     """Render ``?subject <predicate> ?v0 .``, ``?v1`` and so on, one pattern per predicate in order."""
     if not _VARIABLE.fullmatch(subject):
