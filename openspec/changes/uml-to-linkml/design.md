@@ -794,3 +794,19 @@ and its checkers page):
   per-call processing state (`Context`, `Findings`, `Layout`, `Built`, `SharedSlots`, `_Reading`,
   `_Boundaries`) stays: it holds indexes inside one call (P-0007 allows them), and no
   `HAND_WRITTEN` exception is added. Task 2.10.
+- **D-25 Connectors to ignored objects** (2026-11-20, the lead, found in task 2.9; amends D-17).
+  The reader skips any connector one of whose ends is a `Note`, `Text`, `Boundary` or `Package`
+  object, whatever its `Connector_Type`: an association drawn to a note reached the converter as a
+  link whose end was listed nowhere, and the converter raised `LookupError`. An unmapped connector
+  type between converted classes stays `no_rule`.
+- **D-26 Stage-2 build order and joins** (2026-11-20, the lead, the developer: "advance in parallel
+  if possible, with subagents"; rule R-0004). 2.2, then 2.3; 2.4 after 2.3 (it needs each class's
+  mixins); 2.5, 2.7, 2.9 and R-30 of 2.10 each in its own builder worktree beside them; 2.6 after
+  2.5 joined, with W-6/W-8 of 2.9 for its files and two gaps the builders reported: a `unique_key`
+  naming a role or a reused toolkit slot, and a toolkit class drawn inside the subtree (PD-17). The
+  lead joins each branch, takes one side of the generated manifests and runs `make generate`
+  (P-0003). R-30 applies to not-generated *enumerations* only; a dependency to or an attribute typed
+  by a not-generated class keeps its stage-1 behaviour (I-1). Three tests failed once each under
+  the load of parallel builders and passed alone (`test_sparql` pattern-too-long,
+  `test_open_event_stream` 404, `test_templates` toy type check); the stage's full gates re-run
+  them.
