@@ -61,7 +61,8 @@ guards and access counting. Stored data moves with a schema migration (version 2
 - **BREAKING** `rp_collections.yaml`: `had_member` → `has_part`, `slot_uri: dcterms:hasPart`.
 - `vocabulary.HAD_MEMBER` → `HAS_PART`; `reference_collections.py` and `write_guards.py` follow.
 - Migration `2__3.yaml` with a step that rewrites the predicate in collection graphs.
-- Docs: `howto/reference-collections.adoc`, the tutorial, release notes.
+- Docs: `howto/reference-collections.adoc`, `architecture/generation.adoc`, release notes (the tutorial
+  has no collection, design.md F-7).
 
 ## Capabilities
 
@@ -69,6 +70,9 @@ guards and access counting. Stored data moves with a schema migration (version 2
 
 - `rp-reference-collections`: members are stated with `dct:hasPart`; the class is
   `dcmitype:Collection` (DEC-4).
+- `rp-generation`: added at delivery (design.md D-4, W1). "The combined shapes" no longer promises the
+  pre-split bytes and an unchanged lock. It promises one combined set in `core` that equals a
+  regeneration (PD-10).
 
 `rp-schema-migrations` was listed here at shaping and removed on 2026-11-20 at the PLAN review: its
 mechanism is unchanged and version 3 is an instance of its requirements, so it has no delta
@@ -78,3 +82,13 @@ mechanism is unchanged and version 3 is an instance of its requirements, so it h
 
 Library model, collaboration services, generated artefacts, the consumer's lock (`v2-02` regenerates
 against the new slot name).
+
+## As built
+
+Delivered in one stage, PR #207, as shaped:
+- DEC-1 to DEC-4 hold.
+- The class IRI is written `dctypes:Collection`, because the repository's prefix lint requires that
+  prefix name. The IRI is DEC-4's (design.md D-1).
+- The spec delta gained `rp-generation` (D-4).
+- Nothing the shape promised was left out.
+- Follow-up: #206, the generator check for two slots sharing one IRI (RISK-2).
