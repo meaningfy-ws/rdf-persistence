@@ -49,6 +49,8 @@ from tests.unit.tenancy.test_tenant_sweep import make_world
 scenarios("events.feature")
 
 DEPLOYMENT = "deployment-a"
+# The deadline of ``open_event_stream`` runs from the call, so it covers the scenario's own commits.
+FOLLOW_TIMEOUT = 30.0
 CONTEXT = context_link("https://lib.example")
 VIEW = load_schema(TOY_SCHEMA)
 
@@ -269,6 +271,7 @@ class Following:
                 events_of(scene),
                 headers=scene.headers(who, **headers),
                 events=events,
+                timeout=FOLLOW_TIMEOUT,
             )
         )
         await listening(scene.service.kit.hub)

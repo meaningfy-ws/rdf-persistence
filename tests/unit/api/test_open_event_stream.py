@@ -13,6 +13,8 @@ from rdf_persistence.testkit import assert_public_imports, open_event_stream
 from tests.unit.api.scene import Scene
 
 TIMEOUT = 3.0
+# The deadline runs from the call, so it also covers the commits made after starting the task.
+FOLLOW_TIMEOUT = 30.0
 SHORT = 0.5
 
 
@@ -56,7 +58,7 @@ async def test_one_event_is_returned_with_the_activity_iri_as_its_id(settled: Sc
             events_of(settled),
             headers=settled.headers("rita"),
             events=1,
-            timeout=TIMEOUT,
+            timeout=FOLLOW_TIMEOUT,
         )
     )
     try:
