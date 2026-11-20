@@ -200,6 +200,197 @@ classes:
     slot_usage:
       message:
         required: true
+  UmlModel:
+    title: UML model
+    description: >-
+      What the UML reader takes from a model file: the packages, the classes and enumerations with
+      their attributes, the connectors, the tagged values and the boundaries. The converter reads
+      nothing else.
+    class_uri: rp:UmlModel
+    slots:
+      - uml_packages
+      - uml_classes
+      - uml_links
+      - uml_tagged_values
+      - uml_boundaries
+  UmlPackage:
+    title: UML package
+    description: A package of the UML model, with its parent, so the package tree can be rebuilt.
+    class_uri: rp:UmlPackage
+    slots:
+      - package_id
+      - name
+      - parent_id
+      - note
+    slot_usage:
+      package_id:
+        required: true
+      name:
+        required: true
+  UmlClass:
+    title: UML class
+    description: >-
+      A class or an enumeration of the UML model. For an enumeration the attributes are its literals.
+    class_uri: rp:UmlClass
+    slots:
+      - object_id
+      - name
+      - object_type
+      - alias
+      - note
+      - package_id
+      - uml_stereotype
+      - multiple_stereotypes
+      - is_abstract
+      - ea_guid
+      - uml_attributes
+    slot_usage:
+      object_id:
+        required: true
+      name:
+        required: true
+      object_type:
+        required: true
+      package_id:
+        required: true
+  UmlAttribute:
+    title: UML attribute
+    description: An attribute of a UML class, or a literal of a UML enumeration.
+    class_uri: rp:UmlAttribute
+    slots:
+      - attribute_id
+      - owner_id
+      - name
+      - note
+      - declared_type
+      - classifier_id
+      - lower_bound
+      - upper_bound
+      - position
+      - uml_stereotype
+    slot_usage:
+      attribute_id:
+        required: true
+      owner_id:
+        required: true
+      name:
+        required: true
+  UmlLink:
+    title: UML link
+    description: >-
+      A connector of the UML model: an association, a dependency or a generalisation, from its source
+      class to its target class. Roles and cardinalities are those of each end; an end is the whole
+      of an aggregation when its aggregate flag is set.
+    class_uri: rp:UmlLink
+    slots:
+      - connector_id
+      - link_kind
+      - sub_type
+      - uml_stereotype
+      - note
+      - source_id
+      - target_id
+      - source_role
+      - source_card
+      - source_aggregate
+      - target_role
+      - target_card
+      - target_aggregate
+      - association_class
+    slot_usage:
+      connector_id:
+        required: true
+      link_kind:
+        required: true
+      source_id:
+        required: true
+      target_id:
+        required: true
+  UmlTaggedValue:
+    title: UML tagged value
+    description: A named value attached to a class of the UML model, its text resolved from the memo when it is one.
+    class_uri: rp:UmlTaggedValue
+    slots:
+      - owner_id
+      - name
+      - tag_value
+    slot_usage:
+      owner_id:
+        required: true
+      name:
+        required: true
+  UmlBoundary:
+    title: UML boundary
+    description: >-
+      A boundary drawn on a diagram, with the classes and enumerations whose rectangles lie wholly
+      inside it.
+    class_uri: rp:UmlBoundary
+    slots:
+      - object_id
+      - name
+      - diagram_id
+      - member_ids
+    slot_usage:
+      object_id:
+        required: true
+      name:
+        required: true
+      diagram_id:
+        required: true
+  UmlPrefix:
+    title: UML prefix
+    description: One prefix of the prefixes file and the namespace it stands for.
+    class_uri: rp:UmlPrefix
+    slots:
+      - prefix_name
+      - namespace
+    slot_usage:
+      prefix_name:
+        required: true
+      namespace:
+        required: true
+  UmlSettings:
+    title: UML settings
+    description: >-
+      What one run of the UML converter is told: the keys of the prefixes file and the command line
+      values the conversion depends on.
+    class_uri: rp:UmlSettings
+    slots:
+      - schema_base
+      - default_prefix
+      - schema_version
+      - prefixes
+      - subtree_package
+      - root_name
+      - exclude_packages
+      - default_mixins
+      - not_generated_stereotypes
+    slot_usage:
+      schema_base:
+        required: true
+      default_prefix:
+        required: true
+      schema_version:
+        required: true
+      subtree_package:
+        required: true
+      root_name:
+        required: true
+  ReportLine:
+    title: Report line
+    description: One line of the report a conversion writes beside its output, saying what was left out or changed.
+    class_uri: rp:ReportLine
+    slots:
+      - report_kind
+      - element
+      - message
+    slot_usage:
+      report_kind:
+        required: true
+      element:
+        required: true
+      message:
+        required: true
   PresenceRule:
     title: Presence rule
     description: A class-level rule over alternatives, and when its validator refuses.
@@ -793,6 +984,245 @@ slots:
     title: What
     description: What is wrong at that place.
     slot_uri: rp:what
+  uml_packages:
+    title: UML packages
+    description: The packages of a UML model.
+    slot_uri: rp:umlPackages
+    range: UmlPackage
+    multivalued: true
+    inlined_as_list: true
+  uml_classes:
+    title: UML classes
+    description: The classes and enumerations of a UML model.
+    slot_uri: rp:umlClasses
+    range: UmlClass
+    multivalued: true
+    inlined_as_list: true
+  uml_links:
+    title: UML links
+    description: The connectors of a UML model.
+    slot_uri: rp:umlLinks
+    range: UmlLink
+    multivalued: true
+    inlined_as_list: true
+  uml_tagged_values:
+    title: UML tagged values
+    description: The tagged values of the classes of a UML model.
+    slot_uri: rp:umlTaggedValues
+    range: UmlTaggedValue
+    multivalued: true
+    inlined_as_list: true
+  uml_boundaries:
+    title: UML boundaries
+    description: The boundaries of a UML model.
+    slot_uri: rp:umlBoundaries
+    range: UmlBoundary
+    multivalued: true
+    inlined_as_list: true
+  uml_attributes:
+    title: UML attributes
+    description: The attributes of a class, or the literals of an enumeration, in the order the model gives them.
+    slot_uri: rp:umlAttributes
+    range: UmlAttribute
+    multivalued: true
+    inlined_as_list: true
+  package_id:
+    title: Package id
+    description: The id a UML model gives a package.
+    slot_uri: rp:umlPackageId
+    range: integer
+  parent_id:
+    title: Parent id
+    description: The id of the package that holds a package, absent for a top one.
+    slot_uri: rp:umlParentId
+    range: integer
+  object_id:
+    title: Object id
+    description: The id a UML model gives a class, an enumeration or a boundary.
+    slot_uri: rp:umlObjectId
+    range: integer
+  owner_id:
+    title: Owner id
+    description: The id of the class or enumeration an attribute or a tagged value belongs to.
+    slot_uri: rp:umlOwnerId
+    range: integer
+  attribute_id:
+    title: Attribute id
+    description: The id a UML model gives an attribute.
+    slot_uri: rp:umlAttributeId
+    range: integer
+  connector_id:
+    title: Connector id
+    description: The id a UML model gives a connector.
+    slot_uri: rp:umlConnectorId
+    range: integer
+  source_id:
+    title: Source id
+    description: The id of the class a connector starts at.
+    slot_uri: rp:umlSourceId
+    range: integer
+  target_id:
+    title: Target id
+    description: The id of the class a connector ends at.
+    slot_uri: rp:umlTargetId
+    range: integer
+  classifier_id:
+    title: Classifier id
+    description: The id of the class an attribute is typed by, absent for a plain type.
+    slot_uri: rp:umlClassifierId
+    range: integer
+  diagram_id:
+    title: Diagram id
+    description: The id of the diagram a boundary is drawn on.
+    slot_uri: rp:umlDiagramId
+    range: integer
+  member_ids:
+    title: Member ids
+    description: The ids of the classes and enumerations that lie inside a boundary.
+    slot_uri: rp:umlMemberIds
+    range: integer
+    multivalued: true
+  object_type:
+    title: Object type
+    description: The kind of element a UML object is, as the model file names it (`Class`, `Enumeration`).
+    slot_uri: rp:umlObjectType
+  alias:
+    title: Alias
+    description: The alias of a UML element, the title the author gave it.
+    slot_uri: rp:umlAlias
+  note:
+    title: Note
+    description: The note of a UML element.
+    slot_uri: rp:umlNote
+  uml_stereotype:
+    title: UML stereotype
+    description: The stereotype of a UML element, absent when it has none.
+    slot_uri: rp:umlStereotype
+  multiple_stereotypes:
+    title: Multiple stereotypes
+    description: Whether the model gives the element a second stereotype besides the first.
+    slot_uri: rp:umlMultipleStereotypes
+    range: boolean
+  is_abstract:
+    title: Is abstract
+    description: Whether a UML class is abstract.
+    slot_uri: rp:umlIsAbstract
+    range: boolean
+  ea_guid:
+    title: GUID
+    description: The globally unique id the modelling tool gives an object.
+    slot_uri: rp:umlGuid
+  declared_type:
+    title: Declared type
+    description: The type of an attribute as the model writes it, a datatype or the name of a class.
+    slot_uri: rp:umlDeclaredType
+  lower_bound:
+    title: Lower bound
+    description: The lower bound of an attribute's multiplicity, as the model writes it.
+    slot_uri: rp:umlLowerBound
+  upper_bound:
+    title: Upper bound
+    description: The upper bound of an attribute's multiplicity, as the model writes it (`*` for no bound).
+    slot_uri: rp:umlUpperBound
+  position:
+    title: Position
+    description: The place of an attribute among those of its class.
+    slot_uri: rp:umlPosition
+    range: integer
+  link_kind:
+    title: Link kind
+    description: Whether a connector is an association, a dependency or a generalisation.
+    slot_uri: rp:umlLinkKind
+    range: UmlLinkKind
+  sub_type:
+    title: Sub type
+    description: The sub type of a connector, as the model writes it.
+    slot_uri: rp:umlSubType
+  source_role:
+    title: Source role
+    description: The role name at the source end of a connector.
+    slot_uri: rp:umlSourceRole
+  source_card:
+    title: Source cardinality
+    description: The cardinality at the source end of a connector, as the model writes it.
+    slot_uri: rp:umlSourceCard
+  source_aggregate:
+    title: Source aggregate
+    description: The aggregation flag of the source end of a connector, 0 for none, 1 for shared, 2 for composite.
+    slot_uri: rp:umlSourceAggregate
+    range: integer
+  target_role:
+    title: Target role
+    description: The role name at the target end of a connector.
+    slot_uri: rp:umlTargetRole
+  target_card:
+    title: Target cardinality
+    description: The cardinality at the target end of a connector, as the model writes it.
+    slot_uri: rp:umlTargetCard
+  target_aggregate:
+    title: Target aggregate
+    description: The aggregation flag of the target end of a connector, 0 for none, 1 for shared, 2 for composite.
+    slot_uri: rp:umlTargetAggregate
+    range: integer
+  association_class:
+    title: Association class
+    description: The id or name the model gives to the class an association is drawn as, absent for a plain one.
+    slot_uri: rp:umlAssociationClass
+  tag_value:
+    title: Tag value
+    description: The text of a tagged value.
+    slot_uri: rp:umlTagValue
+  prefix_name:
+    title: Prefix name
+    description: The name of a prefix, the part of a CURIE before the colon.
+    slot_uri: rp:prefixName
+  namespace:
+    title: Namespace
+    description: The IRI a prefix stands for.
+    slot_uri: rp:prefixNamespace
+  prefixes:
+    title: Prefixes
+    description: The prefixes of the prefixes file.
+    slot_uri: rp:umlPrefixes
+    range: UmlPrefix
+    multivalued: true
+    inlined_as_list: true
+  schema_base:
+    title: Schema base
+    description: The IRI a module's id is made from, followed by the module name.
+    slot_uri: rp:schemaBase
+  default_prefix:
+    title: Default prefix
+    description: The name of the prefix the converted modules use for unprefixed names.
+    slot_uri: rp:umlDefaultPrefix
+  subtree_package:
+    title: Subtree package
+    description: The name or path of the package whose subtree is converted.
+    slot_uri: rp:umlSubtreePackage
+  root_name:
+    title: Root name
+    description: The name of the root schema, and the prefix of the module names.
+    slot_uri: rp:umlRootName
+  exclude_packages:
+    title: Excluded packages
+    description: The paths of the packages left out of the conversion with their subtrees.
+    slot_uri: rp:umlExcludePackages
+    multivalued: true
+  default_mixins:
+    title: Default mixins
+    description: The mixins a root class and its labelled parts get by default.
+    slot_uri: rp:umlDefaultMixins
+    multivalued: true
+  not_generated_stereotypes:
+    title: Not-generated stereotypes
+    description: The stereotypes whose classes are not generated, only listed in the report.
+    slot_uri: rp:umlNotGeneratedStereotypes
+    multivalued: true
+  report_kind:
+    title: Report kind
+    description: What a report line says was left out or changed.
+    slot_uri: rp:reportKind
+    range: ReportKind
 
 enums:
   HardRule:
@@ -1054,3 +1484,171 @@ enums:
           On the root schema of the metamodel (`rp.yaml`), the package an application's generated code
           imports the metamodel's classes from, which re-exports them.
         meaning: rp:GenerationAnnotationPublicPackage
+  UmlLinkKind:
+    title: UML link kind
+    description: The kinds of connector the UML reader keeps.
+    permissible_values:
+      association:
+        title: Association
+        description: A connector between two classes, with roles and cardinalities.
+        meaning: rp:UmlLinkKindAssociation
+      dependency:
+        title: Dependency
+        description: A connector from a class to the enumeration it is typed by.
+        meaning: rp:UmlLinkKindDependency
+      generalisation:
+        title: Generalisation
+        description: A connector from a class to its parent.
+        meaning: rp:UmlLinkKindGeneralisation
+  ReportKind:
+    title: Report kind
+    description: >-
+      The kinds of line the conversion report holds; the report prints them with `-` where the
+      schema has `_`.
+    permissible_values:
+      not_generated:
+        title: Not generated
+        description: A class left out because its stereotype is listed as not generated.
+        meaning: rp:ReportKindNotGenerated
+      excluded_link:
+        title: Excluded link
+        description: A link left out because it reaches an excluded package.
+        meaning: rp:ReportKindExcludedLink
+      outside_link:
+        title: Outside link
+        description: A link that reaches a class that is not generated, kept as a reference by IRI.
+        meaning: rp:ReportKindOutsideLink
+      no_note:
+        title: No note
+        description: A class or an attribute with no note, so no description to carry.
+        meaning: rp:ReportKindNoNote
+      implicit_meaning:
+        title: Implicit meaning
+        description: A value of an enumeration written without a prefix, so with no `meaning`.
+        meaning: rp:ReportKindImplicitMeaning
+      toolkit_filled:
+        title: Toolkit filled
+        description: An element the converter took from the toolkit's classes, not from the drawing.
+        meaning: rp:ReportKindToolkitFilled
+      toolkit_slot_kept:
+        title: Toolkit slot kept
+        description: An attribute that stood for a toolkit slot and was replaced by it.
+        meaning: rp:ReportKindToolkitSlotKept
+      ignored_tag:
+        title: Ignored tag
+        description: A tagged value no rule uses.
+        meaning: rp:ReportKindIgnoredTag
+      ignored_stereotype:
+        title: Ignored stereotype
+        description: A stereotype no rule uses.
+        meaning: rp:ReportKindIgnoredStereotype
+      merged_cycle:
+        title: Merged cycle
+        description: Packages that import each other, merged into one module.
+        meaning: rp:ReportKindMergedCycle
+      stale_file:
+        title: Stale file
+        description: A file of an earlier run left in the output folder, which this run did not write.
+        meaning: rp:ReportKindStaleFile
+  UmlRule:
+    title: UML rule
+    description: >-
+      The rules of the UML conversion, one value for each rule of the design's rule table that is in
+      force; a problem names the one it breaks. `no_rule` stands for an element no rule maps.
+    permissible_values:
+      no_rule:
+        title: No rule
+        description: An element of the model that no rule maps; the run fails.
+        meaning: rp:UmlRuleNoRule
+      package_module:
+        title: Package module
+        description: R-1, a package becomes a module of the root schema.
+        meaning: rp:UmlRulePackageModule
+      class_iri:
+        title: Class IRI
+        description: R-2, a class `pfx:Name` becomes a class `Name` with that IRI.
+        meaning: rp:UmlRuleClassIri
+      abstract_class:
+        title: Abstract class
+        description: R-3, an abstract class becomes an abstract class.
+        meaning: rp:UmlRuleAbstractClass
+      generalisation:
+        title: Generalisation
+        description: R-4, a generalisation becomes `is_a` for the first parent and mixins for the others.
+        meaning: rp:UmlRuleGeneralisation
+      attribute_slot:
+        title: Attribute slot
+        description: R-5, an attribute becomes a slot with its IRI, range, required and multivalued.
+        meaning: rp:UmlRuleAttributeSlot
+      association_slot:
+        title: Association slot
+        description: R-6, an association becomes a slot on its source whose range is its destination.
+        meaning: rp:UmlRuleAssociationSlot
+      enumeration:
+        title: Enumeration
+        description: R-7, an enumeration becomes an enum, its literals permissible values.
+        meaning: rp:UmlRuleEnumeration
+      dependency_enum_slot:
+        title: Dependency enum slot
+        description: R-8, a dependency on an enumeration becomes a slot ranged by that enum.
+        meaning: rp:UmlRuleDependencyEnumSlot
+      notes_description:
+        title: Notes description
+        description: R-9, the notes of a class, an attribute or a connector become descriptions.
+        meaning: rp:UmlRuleNotesDescription
+      root_class:
+        title: Root class
+        description: R-10, a root class gets the aggregate-root mixin and a path.
+        meaning: rp:UmlRuleRootClass
+      boundary_owned:
+        title: Boundary owned
+        description: R-11, the classes of a boundary or a composite association are owned by the root.
+        meaning: rp:UmlRuleBoundaryOwned
+      not_generated:
+        title: Not generated
+        description: R-12, a stereotype listed as not generated makes no class and is reported.
+        meaning: rp:UmlRuleNotGenerated
+      shared_slot:
+        title: Shared slot
+        description: R-13, one slot name and IRI on several classes make one shared slot.
+        meaning: rp:UmlRuleSharedSlot
+      toolkit_slot:
+        title: Toolkit slot
+        description: R-15 and R-22, an attribute whose IRI a toolkit slot has is that slot; a `dct:identifier` is the new identifier slot.
+        meaning: rp:UmlRuleToolkitSlot
+      tenant_root:
+        title: Tenant root
+        description: R-18, a tenant root is stored in the meta graph and is no aggregate root.
+        meaning: rp:UmlRuleTenantRoot
+      title:
+        title: Title
+        description: R-19, a class or a slot with no title gets its name split into words.
+        meaning: rp:UmlRuleTitle
+      class_annotation:
+        title: Class annotation
+        description: R-20, a tagged value named like a toolkit class annotation becomes that annotation.
+        meaning: rp:UmlRuleClassAnnotation
+      unique_key:
+        title: Unique key
+        description: R-21, a `unique_key` tagged value becomes a unique key of the class.
+        meaning: rp:UmlRuleUniqueKey
+      abstract_root:
+        title: Abstract root
+        description: R-23, an abstract class of roots that is a slot's range is an aggregate root with no path.
+        meaning: rp:UmlRuleAbstractRoot
+      shared_slot_across_packages:
+        title: Shared slot across packages
+        description: R-24, a slot on classes of several packages is defined once in the module the others import.
+        meaning: rp:UmlRuleSharedSlotAcrossPackages
+      toolkit_mixins:
+        title: Toolkit mixins
+        description: R-25 to R-28, the default mixins, `rp_mixins`, `workflow` and a drawn toolkit parent.
+        meaning: rp:UmlRuleToolkitMixins
+      left_out_link:
+        title: Left-out link
+        description: R-29, a link to a class that is not generated, or to an excluded package, is left out and reported.
+        meaning: rp:UmlRuleLeftOutLink
+      activity_root:
+        title: Activity root
+        description: A root class that is an activity, which the toolkit's rules do not allow.
+        meaning: rp:UmlRuleActivityRoot

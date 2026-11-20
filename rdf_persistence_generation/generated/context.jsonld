@@ -9,6 +9,15 @@
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://meaningfy.ws/ns/rdf-persistence#",
+      "alias": {
+         "@id": "umlAlias"
+      },
+      "association_class": {
+         "@id": "umlAssociationClass"
+      },
+      "attribute_id": {
+         "@id": "umlAttributeId"
+      },
       "attributes": {
          "@type": "@id",
          "@container": "@set",
@@ -26,14 +35,36 @@
          "@container": "@set",
          "@id": "mmdClasses"
       },
+      "classifier_id": {
+         "@id": "umlClassifierId"
+      },
+      "connector_id": {
+         "@id": "umlConnectorId"
+      },
+      "declared_type": {
+         "@id": "umlDeclaredType"
+      },
+      "default_mixins": {
+         "@container": "@set",
+         "@id": "umlDefaultMixins"
+      },
+      "default_prefix": {
+         "@id": "umlDefaultPrefix"
+      },
       "description": {
          "@id": "descriptionText"
+      },
+      "diagram_id": {
+         "@id": "umlDiagramId"
       },
       "diagrams": {
          "@id": "diagramsFolder"
       },
       "doc": {
          "@id": "doc"
+      },
+      "ea_guid": {
+         "@id": "umlGuid"
       },
       "element": {
          "@id": "element"
@@ -52,6 +83,10 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "tsEnums"
+      },
+      "exclude_packages": {
+         "@container": "@set",
+         "@id": "umlExcludePackages"
       },
       "externals": {
          "@container": "@set",
@@ -97,6 +132,9 @@
       "iri_type": {
          "@id": "lockedIriType"
       },
+      "is_abstract": {
+         "@id": "umlIsAbstract"
+      },
       "key_iris": {
          "@container": "@set",
          "@id": "keyIris"
@@ -124,6 +162,15 @@
       "label": {
          "@id": "label"
       },
+      "link_kind": {
+         "@id": "umlLinkKind",
+         "@type": "@vocab",
+         "@context": {
+            "association": "https://meaningfy.ws/ns/rdf-persistence#UmlLinkKindAssociation",
+            "dependency": "https://meaningfy.ws/ns/rdf-persistence#UmlLinkKindDependency",
+            "generalisation": "https://meaningfy.ws/ns/rdf-persistence#UmlLinkKindGeneralisation"
+         }
+      },
       "links": {
          "@container": "@set",
          "@id": "mmdLinks"
@@ -146,6 +193,13 @@
          "@container": "@set",
          "@id": "lockedSlots"
       },
+      "lower_bound": {
+         "@id": "umlLowerBound"
+      },
+      "member_ids": {
+         "@container": "@set",
+         "@id": "umlMemberIds"
+      },
       "message": {
          "@id": "message"
       },
@@ -154,6 +208,9 @@
       },
       "module": {
          "@id": "moduleName"
+      },
+      "multiple_stereotypes": {
+         "@id": "umlMultipleStereotypes"
       },
       "multivalued": {
          "@id": "multivalued"
@@ -165,8 +222,24 @@
          "@container": "@set",
          "@id": "importedNames"
       },
+      "namespace": {
+         "@id": "prefixNamespace"
+      },
       "need": {
          "@id": "need"
+      },
+      "not_generated_stereotypes": {
+         "@container": "@set",
+         "@id": "umlNotGeneratedStereotypes"
+      },
+      "note": {
+         "@id": "umlNote"
+      },
+      "object_id": {
+         "@id": "umlObjectId"
+      },
+      "object_type": {
+         "@id": "umlObjectType"
       },
       "openapi": {
          "@id": "openapiComponents"
@@ -182,8 +255,17 @@
          "@container": "@set",
          "@id": "manifestOutputs"
       },
+      "owner_id": {
+         "@id": "umlOwnerId"
+      },
       "package": {
          "@id": "package"
+      },
+      "package_id": {
+         "@id": "umlPackageId"
+      },
+      "parent_id": {
+         "@id": "umlParentId"
       },
       "parts": {
          "@type": "@id",
@@ -192,6 +274,17 @@
       },
       "path": {
          "@id": "path"
+      },
+      "position": {
+         "@id": "umlPosition"
+      },
+      "prefix_name": {
+         "@id": "prefixName"
+      },
+      "prefixes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlPrefixes"
       },
       "python": {
          "@id": "pythonFolder"
@@ -212,17 +305,40 @@
       "relative_path": {
          "@id": "relativePath"
       },
+      "report_kind": {
+         "@id": "reportKind",
+         "@type": "@vocab",
+         "@context": {
+            "not_generated": "https://meaningfy.ws/ns/rdf-persistence#ReportKindNotGenerated",
+            "excluded_link": "https://meaningfy.ws/ns/rdf-persistence#ReportKindExcludedLink",
+            "outside_link": "https://meaningfy.ws/ns/rdf-persistence#ReportKindOutsideLink",
+            "no_note": "https://meaningfy.ws/ns/rdf-persistence#ReportKindNoNote",
+            "implicit_meaning": "https://meaningfy.ws/ns/rdf-persistence#ReportKindImplicitMeaning",
+            "toolkit_filled": "https://meaningfy.ws/ns/rdf-persistence#ReportKindToolkitFilled",
+            "toolkit_slot_kept": "https://meaningfy.ws/ns/rdf-persistence#ReportKindToolkitSlotKept",
+            "ignored_tag": "https://meaningfy.ws/ns/rdf-persistence#ReportKindIgnoredTag",
+            "ignored_stereotype": "https://meaningfy.ws/ns/rdf-persistence#ReportKindIgnoredStereotype",
+            "merged_cycle": "https://meaningfy.ws/ns/rdf-persistence#ReportKindMergedCycle",
+            "stale_file": "https://meaningfy.ws/ns/rdf-persistence#ReportKindStaleFile"
+         }
+      },
       "required": {
          "@id": "required"
       },
       "root_database": {
          "@id": "lockedRootDatabase"
       },
+      "root_name": {
+         "@id": "umlRootName"
+      },
       "root_path": {
          "@id": "lockedRootPath"
       },
       "rule": {
          "@id": "rule"
+      },
+      "schema_base": {
+         "@id": "schemaBase"
       },
       "schema_file": {
          "@id": "schemaFile"
@@ -244,11 +360,44 @@
          "@type": "@id",
          "@id": "lockedSlotIri"
       },
+      "source_aggregate": {
+         "@id": "umlSourceAggregate"
+      },
+      "source_card": {
+         "@id": "umlSourceCard"
+      },
+      "source_id": {
+         "@id": "umlSourceId"
+      },
+      "source_role": {
+         "@id": "umlSourceRole"
+      },
       "step": {
          "@id": "step"
       },
       "stereotype": {
          "@id": "stereotype"
+      },
+      "sub_type": {
+         "@id": "umlSubType"
+      },
+      "subtree_package": {
+         "@id": "umlSubtreePackage"
+      },
+      "tag_value": {
+         "@id": "umlTagValue"
+      },
+      "target_aggregate": {
+         "@id": "umlTargetAggregate"
+      },
+      "target_card": {
+         "@id": "umlTargetCard"
+      },
+      "target_id": {
+         "@id": "umlTargetId"
+      },
+      "target_role": {
+         "@id": "umlTargetRole"
       },
       "text": {
          "@id": "text"
@@ -260,6 +409,42 @@
       },
       "typescript": {
          "@id": "typescriptFolder"
+      },
+      "uml_attributes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlAttributes"
+      },
+      "uml_boundaries": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlBoundaries"
+      },
+      "uml_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlClasses"
+      },
+      "uml_links": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlLinks"
+      },
+      "uml_packages": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlPackages"
+      },
+      "uml_stereotype": {
+         "@id": "umlStereotype"
+      },
+      "uml_tagged_values": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlTaggedValues"
+      },
+      "upper_bound": {
+         "@id": "umlUpperBound"
       },
       "valid": {
          "@container": "@set",
@@ -325,6 +510,9 @@
       "PresenceRule": {
          "@id": "PresenceRule"
       },
+      "ReportLine": {
+         "@id": "ReportLine"
+      },
       "RuleAlternative": {
          "@id": "RuleAlternative"
       },
@@ -348,6 +536,33 @@
       },
       "TsModule": {
          "@id": "TsModule"
+      },
+      "UmlAttribute": {
+         "@id": "UmlAttribute"
+      },
+      "UmlBoundary": {
+         "@id": "UmlBoundary"
+      },
+      "UmlClass": {
+         "@id": "UmlClass"
+      },
+      "UmlLink": {
+         "@id": "UmlLink"
+      },
+      "UmlModel": {
+         "@id": "UmlModel"
+      },
+      "UmlPackage": {
+         "@id": "UmlPackage"
+      },
+      "UmlPrefix": {
+         "@id": "UmlPrefix"
+      },
+      "UmlSettings": {
+         "@id": "UmlSettings"
+      },
+      "UmlTaggedValue": {
+         "@id": "UmlTaggedValue"
       },
       "UniqueKeyOn": {
          "@id": "UniqueKeyOn"
