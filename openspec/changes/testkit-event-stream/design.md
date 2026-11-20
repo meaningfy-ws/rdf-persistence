@@ -199,3 +199,21 @@ apps: parsing, lifespan, leaving). Each new test gets a row in `tests/audit/scen
 
 None. OPEN-1 to OPEN-4 were answered by the owner on 2026-11-20 (inputs/qa.md): PD-1, PD-3, PD-7
 and RISK-1 follow the answers.
+
+## Delivery decisions
+
+Taken by the lead (rule R-0007), shown to the developer at the end; the developer may overrule.
+
+- **D-1 Scenarios signed off.** The four scenarios of `specs/rp-testkit/spec.md` were shown to the
+  developer on 2026-11-20, who answered "do whatever you need to advance and continue".
+- **D-2 Stacked on the planning branch.** This PLAN exists only on `docs/epics-consumer-needs`
+  (`8f64ccd9`), not on `develop`. `feat/testkit-event-stream` is fast-forwarded onto it, so the
+  PR carries the two planning commits until that branch merges; a rebase on `develop` after it
+  merges drops them (P-0002).
+- **D-3 Task order.** 1.1 and 1.2 in parallel (disjoint files), then 1.3, then 2.2, 2.3 and 3.1
+  in parallel, and 2.1 last: `test_service_kit.py` and `feature/test_events.py` import `follow`,
+  `parsed`, `Block` and `Follow` from `test_events_route.py`, so they drop those imports before
+  2.1 deletes them.
+- **D-4 Review set.** SMALL: one pass of L2 and L3 together; no checker, no adversarial tester.
+- **D-5 Sandbox.** The gates run with `UV_CACHE_DIR=<worktree>/temp/uv-cache` (the user cache is
+  read-only in the sandbox); `temp/` is git-ignored.
