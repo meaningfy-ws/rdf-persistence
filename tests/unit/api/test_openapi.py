@@ -54,6 +54,7 @@ ROUTES = [
     (f"{TENANT}/grants", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     (f"{TENANT}/label", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     (f"{TENANT}/rp-events", "get", {200, 401, 403, 404, 503}),
+    *aggregate_routes("authors"),
     *aggregate_routes("books"),
     *aggregate_routes("reviews"),
     *aggregate_routes("scans", written=False),

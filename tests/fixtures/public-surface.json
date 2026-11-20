@@ -67,6 +67,7 @@
   "Motivation": "rdf_persistence.core.domain.generated.rp_discussion",
   "NotAcceptable": "rdf_persistence.domain.exceptions",
   "NotFound": "rdf_persistence.domain.exceptions",
+  "OnReferencedDelete": "rdf_persistence.domain.generated.rp_core",
   "Page": "rdf_persistence.services.generated.service.rp_service",
   "PayloadTooLarge": "rdf_persistence.domain.exceptions",
   "PendingLoad": "rdf_persistence.domain.generated.rp_core",

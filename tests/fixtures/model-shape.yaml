@@ -160,6 +160,36 @@
     required: false
     multivalued: true
     range: Principal
+- class_name: Author
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
 - class_name: Authorised
   slots:
   - name: caller_access
@@ -250,6 +280,10 @@
     required: false
     multivalued: false
     range: uri
+  - name: written_by
+    required: false
+    multivalued: false
+    range: Author
 - class_name: CallerAccess
   slots:
   - name: grants
@@ -534,6 +568,45 @@
     multivalued: false
     range: integer
     alias: length
+- class_name: InUseProblem
+  slots:
+  - name: hidden_count
+    required: false
+    multivalued: false
+    range: integer
+  - name: more_count
+    required: false
+    multivalued: false
+    range: integer
+  - name: problem_detail
+    required: false
+    multivalued: false
+    range: string
+    alias: detail
+  - name: problem_instance
+    required: false
+    multivalued: false
+    range: uri
+    alias: instance
+  - name: problem_status
+    required: true
+    multivalued: false
+    range: integer
+    alias: status
+  - name: problem_title
+    required: true
+    multivalued: false
+    range: string
+    alias: title
+  - name: problem_type
+    required: true
+    multivalued: false
+    range: uri
+    alias: type
+  - name: referrers
+    required: false
+    multivalued: true
+    range: Referrer
 - class_name: Invalidation
   slots:
   - name: activity

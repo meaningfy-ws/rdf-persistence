@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "books.yaml",
-      "sha256": "ca254877ee7451cc6d13cad4da94f3f2f42c0d7477b41752ba4f86c49094ce3f"
+      "sha256": "603ead0c0f8665b38493d88e82e280db7e9da8b2fa57161fcc61a30ddc3e663c"
     },
     {
       "path": "books_activities.yaml",
@@ -35,7 +35,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "e28b62e2cd07c23eafb5d493481abed24009c1faca62ba43e5904a0b63c88206"
+      "sha256": "28226c6a8af9cf06b5c384ba7c4a11255664054d3427e230c3705a50d8844097"
     },
     {
       "path": "rdf_persistence/model/rp_discussion.yaml",
@@ -63,7 +63,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml",
-      "sha256": "a1bebfd94c9c363609afa4b229871faec5b7f095234c133ad5915c34dbe30d67"
+      "sha256": "917e0a4ff0746bbaddef0af426901ac0c0da74a5d4e1579f052446af91ab8cf5"
     },
     {
       "path": "rdf_persistence/model/technical/collaboration/rp_collaboration_services.yaml",
@@ -95,7 +95,7 @@
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
-      "sha256": "8501ea5b79fb079540756b1976be2c0987d01e0d8fc0105066e5ceda0e0f0865"
+      "sha256": "b1e633e62e0f4eb5d34723f3958f5127915e7d1667ac77a4594c7506887fdf2a"
     },
     {
       "path": "rdf_persistence_generation/__init__.py",
@@ -119,7 +119,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/hard.py",
-      "sha256": "55b01073b9e292e519e6c5f9f7b3b9e8d70268f78867086d02d10ec25435a7e0"
+      "sha256": "10abc0ffdad9da0f1da1c0dcefbbd0b056186d059ebe02ca91930e2bcc70ccb2"
     },
     {
       "path": "rdf_persistence_generation/checks/python_package.py",
@@ -328,8 +328,12 @@
       "sha256": "844013c34c1d2fc4a2dd3305aa6ff33914019105f8e39e9a99f33d213338b6b2"
     },
     {
+      "path": "domain/generated/Author.frame.jsonld",
+      "sha256": "8f82d7837805ec5468929347a497edc49a1582f66c1c4d3dbec631a880353c55"
+    },
+    {
       "path": "domain/generated/Book.frame.jsonld",
-      "sha256": "6141f098715ede7f2b36d396db64bede6e2d216c99b94eacd6392b7bdab56c93"
+      "sha256": "5bb65e90e14960bba577c2b52fcdf8cbd8d3b4bf8449e39f2b146f1aa95d782d"
     },
     {
       "path": "domain/generated/DeleteFile.frame.jsonld",
@@ -389,7 +393,7 @@
     },
     {
       "path": "domain/generated/books.py",
-      "sha256": "1eaecb883aba8d5eb036eeb3da5cac8ca9f600f77aa38ac88d726ee59e185274"
+      "sha256": "27d9fb24b3149f3c672e6e7ce890ea536646c5ffae54986a898b2bca6aea98a7"
     },
     {
       "path": "domain/generated/books_activities.py",
@@ -397,11 +401,11 @@
     },
     {
       "path": "domain/generated/context.jsonld",
-      "sha256": "bb50943f786bdb83bd6162f3a3c996016b357e02af616f4d01736a32960d0019"
+      "sha256": "33387c48c3ee8ef979b22344a448d055954acd0c4100e6af0b6c86d4c264ca2f"
     },
     {
       "path": "domain/generated/diagrams/books.mmd",
-      "sha256": "b69d09e3ecf1ce6f1a1b345ac2df359b8a6ecc0ab5cc70dfd7df006041c24b34"
+      "sha256": "3bf1462938fd116df4ab9ef57b69b3768983e8ba3251c51401f69adc220e0c30"
     },
     {
       "path": "domain/generated/diagrams/books_activities.mmd",
@@ -425,7 +429,7 @@
     },
     {
       "path": "domain/generated/library.py",
-      "sha256": "977bfcfc82f3e72fae9b32965348cb138bd42b094863e4693985a1feae29b1e1"
+      "sha256": "27d57c326520dcffa741c5a060fb2f5b54c287711a7ba61ce1728d316c092d83"
     },
     {
       "path": "domain/generated/library_access.py",
@@ -437,7 +441,7 @@
     },
     {
       "path": "domain/generated/openapi-components.json",
-      "sha256": "1b440980126d551c143355bbd51092d9b72238d9584431d60c851e6b490e4104"
+      "sha256": "c13e8afd2fe0973202050437c4e2bf0b6e1532bc6c31183d2f8af69ca1f6e87e"
     },
     {
       "path": "domain/generated/scans.py",
@@ -445,7 +449,7 @@
     },
     {
       "path": "domain/generated/shapes.ttl",
-      "sha256": "2f99850762bd63923d5575bf7ed9cd738d318d7bad6372707826b3dcdfc7da95"
+      "sha256": "26e0aec1744cd321e3769600a70e52bd01c7cc31282c2a18126af934380e87c4"
     },
     {
       "path": "domain/generated/templates.py",
@@ -453,11 +457,11 @@
     },
     {
       "path": "migrations/schema.lock.json",
-      "sha256": "891366b0fbdebfc74d120a1ae887edcc8931d88bebc105ecef702d0ae5038fb5"
+      "sha256": "4f7b6d421012d49ae5d3c79bf4e94eb6b20530b7653a5d0d2a06870fec4b5d0f"
     },
     {
       "path": "web/src/domain/generated/books.ts",
-      "sha256": "2fa53db2769366e1293924380e74a4e1067b255f5a2289c26a6ade7e6243bd49"
+      "sha256": "3ea1d967fcedab3b4445954c3fcfd0ba2b9a4294d501b120165a92146a37ba01"
     },
     {
       "path": "web/src/domain/generated/books_activities.ts",
@@ -485,7 +489,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_core.ts",
-      "sha256": "e98406acb5ad6657c3dfde4306db4000f16207655dddedd99224995505d92b6c"
+      "sha256": "e6c12b35391b6a0eafa5d451e97aa125e9ec5d5edb6a674be20bac338afd815b"
     },
     {
       "path": "web/src/domain/generated/rp_discussion.ts",
@@ -501,7 +505,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_service.ts",
-      "sha256": "de93c0c08b3fb9d4739a7a7b91b80d9c85b8951eee529e251972be39f2c8ab8d"
+      "sha256": "4b4f04bc22b9feabb1d5f23082bdd3c83cf42b7090d60e79443b633437d4bcc5"
     },
     {
       "path": "web/src/domain/generated/rp_tenancy.ts",

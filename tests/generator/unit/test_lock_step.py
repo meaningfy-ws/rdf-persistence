@@ -25,7 +25,7 @@ MESSAGE_ROOM = 1500  # the whole output of a run, with the error text cut
 VERSION_2 = (("library.yaml", 'version: "1"', 'version: "2"'),)
 FAILED = 1
 ADD_SUBTITLE: Edits = (
-    ("books.yaml", BOOK_SLOTS, BOOK_SLOTS.replace("sequel_of]", "sequel_of, subtitle]")),
+    ("books.yaml", BOOK_SLOTS, BOOK_SLOTS.replace("written_by]", "written_by, subtitle]")),
     (
         "books.yaml",
         "slots:\n  isbn:",

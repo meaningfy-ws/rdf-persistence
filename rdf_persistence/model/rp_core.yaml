@@ -307,6 +307,12 @@ enums:
           mixes in StoredFile is service-written without it. `toolkit` marks a root the toolkit
           writes and reads itself, which no route serves.
         meaning: rp:AnnotationWrites
+      rp_on_referenced_delete:
+        title: On referenced delete
+        description: >-
+          Class annotation (see OnReferencedDelete). `refuse` on an aggregate root class: deleting an
+          instance that another aggregate still points at is refused, naming the referrers.
+        meaning: rp:AnnotationOnReferencedDelete
       workflow:
         title: Workflow
         description: >-
@@ -390,6 +396,14 @@ enums:
           The toolkit writes and reads the root itself; no route serves it, and the consumer does not
           write it.
         meaning: rp:WritesToolkit
+  OnReferencedDelete:
+    title: On referenced delete
+    description: What a delete does with an instance that is still referenced, the values of the rp_on_referenced_delete annotation.
+    permissible_values:
+      refuse:
+        title: Refuse
+        description: The delete is refused while another aggregate points at the instance.
+        meaning: rp:OnReferencedDeleteRefuse
   GraphKind:
     title: Graph kind
     description: The special graphs a class can live in, the values of the graph annotation.

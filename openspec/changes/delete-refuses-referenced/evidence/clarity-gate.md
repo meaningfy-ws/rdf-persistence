@@ -22,3 +22,5 @@ committed after the delete (RISK-1, narrows DEC-2), cap applied before the reada
 Scenarios: not yet signed off by the owner.
 run 2, 2026-11-20, 8.4/10, fresh reviewer, fail
 run 3, 2026-11-20, 9.2/10, fresh reviewer (gaps only), pass
+
+Scenarios: signed off as written by the owner, 2026-11-20 (epic session, before stage 1).

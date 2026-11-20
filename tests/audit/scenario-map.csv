@@ -1364,6 +1364,7 @@ tests/generator/unit/test_generation_inputs.py::test_a_staged_path_outside_the_s
 tests/generator/unit/test_generation_inputs.py::test_an_entry_that_resolves_outside_through_a_link_is_kept_and_reported,capability,rp-generation,,,medium,covered code (generation inputs); module docstring PD-28; no requirement on input validation
 tests/generator/unit/test_generation_inputs.py::test_an_output_name_that_is_not_a_plain_file_name_is_a_step_error,capability,rp-generation,,,medium,covered code (generation inputs); module docstring PD-28; no requirement on input validation
 tests/generator/unit/test_hard_check.py::test_a_bad_iri_type_pattern_is_refused_when_the_schema_does_not_import_the_metamodel,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name (rp_iri_type shared/reserved) + covered code
+tests/generator/unit/test_hard_check.py::test_a_class_that_refuses_a_referenced_delete_passes,requirement,rp-reverse-references,A class may refuse deletion while referenced,,high,docstring TC-1 PD-1 + covered code (checks/hard)
 tests/generator/unit/test_hard_check.py::test_a_class_named_like_a_reserved_word_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name (rp_iri_type shared/reserved) + covered code
 tests/generator/unit/test_hard_check.py::test_a_comment_subclass_that_narrows_a_state_slot_is_refused,requirement,rp-generation,A consumer does not redefine what the toolkit fills,,high,docstring D-11 j + covered code
 tests/generator/unit/test_hard_check.py::test_a_fault_names_only_the_broken_element,requirement,rp-generation,"Generation fails on missing IRIs, labels or definitions",,high,module docstring PD-11/PD-23 + covered code (checks/hard.py)
@@ -1373,6 +1374,7 @@ tests/generator/unit/test_hard_check.py::test_a_missing_default_prefix_names_onl
 tests/generator/unit/test_hard_check.py::test_a_planted_fault_is_reported_with_its_rule_and_element,requirement,rp-generation,"Generation fails on missing IRIs, labels or definitions",,high,module docstring PD-11/PD-23 + covered code (checks/hard.py)
 tests/generator/unit/test_hard_check.py::test_a_quoted_version_passes,requirement,rp-schema-migrations,A schema change that stored data must follow needs a new version and a migration,,high,docstring TC-10 / name + covered code (version and migrations folder)
 tests/generator/unit/test_hard_check.py::test_a_reserved_segment_is_refused_with_the_fix_and_one_without_the_dash_passes,capability,rp-generation,,,medium,docstring TC-47 (reserved rp- path segment; no spec requirement found)
+tests/generator/unit/test_hard_check.py::test_a_referenced_delete_value_other_than_refuse_gives_one_problem_naming_it,requirement,rp-reverse-references,A class may refuse deletion while referenced,,high,docstring TC-1 PD-1 + covered code (checks/hard)
 tests/generator/unit/test_hard_check.py::test_a_reserved_type_is_refused,requirement,rp-iri-policy,Policies are checked when settings are made,,high,name (rp_iri_type shared/reserved) + covered code
 tests/generator/unit/test_hard_check.py::test_a_root_schema_that_is_not_a_mapping_gives_a_problem,capability,rp-generation,,,medium,docstring PD-22.10 + covered code
 tests/generator/unit/test_hard_check.py::test_a_run_with_a_bad_key_exits_1_naming_the_slot_and_writes_nothing,requirement,rp-generation,A unique key across aggregates is declared with its scope,,high,name + covered code
@@ -2844,6 +2846,7 @@ tests/unit/schema/test_schema_structure.py::test_a_slot_holds_text_when_it_is_wr
 tests/unit/schema/test_schema_structure.py::test_a_slot_of_objects_is_keyed_by_the_keys_of_its_range,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_slot_that_refers_by_identifier_is_not_keyed,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_subclass_has_the_keyed_slots_it_inherits,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_a_subclass_of_a_refusing_class_refuses_but_a_mixing_in_class_does_not,requirement,rp-reverse-references,A class may refuse deletion while referenced,,high,name + covered code (schema_structure; TC-2 PD-2)
 tests/unit/schema/test_schema_structure.py::test_a_tag_that_is_not_there_gives_none_and_a_false_flag,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_type_derived_from_string_with_its_own_uri_is_not_text,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code
 tests/unit/schema/test_schema_structure.py::test_every_value_set_of_the_vocabulary_has_members,capability,rp-service-api,,,medium,spec id
@@ -2851,6 +2854,7 @@ tests/unit/schema/test_schema_structure.py::test_presence_alternatives_list_each
 tests/unit/schema/test_schema_structure.py::test_the_comment_is_a_root_the_generic_router_does_not_serve,capability,rp-discussion,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_the_comment_still_has_an_iri_type_the_policy_mints_and_recognises,capability,rp-discussion,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_the_defaults_leave_a_root_description_slot_usage_alone,capability,rp-service-api,,,medium,spec id
+tests/unit/schema/test_schema_structure.py::test_the_refusing_classes_of_the_toy_are_the_authors,requirement,rp-reverse-references,A class may refuse deletion while referenced,,high,name + covered code (schema_structure; TC-2 PD-13)
 tests/unit/schema/test_schema_structure.py::test_the_generation_view_has_the_defaults_applied,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_the_grants_of_an_access_record_are_keyed_in_the_metamodel,capability,rp-access,,,medium,covered code
 tests/unit/schema/test_schema_structure.py::test_the_iri_type_is_the_annotation_else_the_kebab_case_name,capability,rp-iri-policy,,,medium,covered code
@@ -4668,7 +4672,8 @@ tests/unit/testkit/test_streams.py::test_the_last_id_and_event_win_and_retry_and
 tests/unit/testkit/test_streams.py::test_events_are_returned_as_soon_as_the_asked_number_came,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,PD-5 (b); covered code (testkit/streams)
 tests/unit/testkit/test_streams.py::test_the_head_alone_is_enough_when_no_event_is_asked,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,PD-5 (a); covered code (testkit/streams)
 tests/unit/testkit/test_streams.py::test_header_names_are_lower_case_and_a_repeated_name_is_joined,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,algorithm step 4; covered code (testkit/streams)
-tests/unit/testkit/test_streams.py::test_a_stream_the_server_ends_early_returns_the_events_so_far,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,error matrix (early end); covered code (testkit/streams)
+tests/unit/testkit/test_streams.py::test_a_stream_the_server_ends_early_returns_the_events_so_far,scenario,rp-testkit,The testkit opens a tenant's event stream in-process,the server ends the stream early,high,error matrix (early end); covered code (testkit/streams)
+tests/unit/testkit/test_streams.py::test_an_app_that_raises_after_the_head_returns_what_came,scenario,rp-testkit,The testkit opens a tenant's event stream in-process,an app that fails after the head,high,name; spec scenario text; D-6
 tests/unit/testkit/test_streams.py::test_a_refusal_is_returned_at_once_with_no_events,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,error matrix (refusal); covered code (testkit/streams)
 tests/unit/testkit/test_streams.py::test_fewer_events_than_asked_within_the_timeout_name_the_url_and_the_count,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,error matrix (fewer than events); covered code (testkit/streams)
 tests/unit/testkit/test_streams.py::test_no_head_within_the_timeout_names_the_url_and_leaves_no_app_task,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,error matrix (no head); covered code (testkit/streams)
@@ -4678,6 +4683,6 @@ tests/unit/testkit/test_streams.py::test_an_app_that_ignores_the_disconnect_is_d
 tests/unit/testkit/test_streams.py::test_a_call_cancelled_while_it_waits_leaves_its_app_task_done,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,error matrix (cancelled call); PD-8; covered code (testkit/streams)
 tests/unit/testkit/test_streams.py::test_the_scope_is_a_get_without_spec_version_and_carries_the_url_and_headers,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,algorithm step 3; RISK-4; covered code (testkit/streams)
 tests/unit/testkit/test_streams.py::test_a_bad_argument_is_a_value_error_naming_it,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,error matrix (bad arguments); covered code (testkit/streams)
-tests/unit/testkit/test_streams.py::test_the_lifespan_is_entered_and_left_once_when_the_flag_is_absent,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,PD-3; covered code (testkit/streams)
-tests/unit/testkit/test_streams.py::test_the_lifespan_is_not_entered_when_the_flag_says_it_runs,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,PD-3; covered code (testkit/streams)
+tests/unit/testkit/test_streams.py::test_the_lifespan_is_entered_and_left_once_when_the_flag_is_absent,scenario,rp-testkit,The testkit opens a tenant's event stream in-process,the lifespan runs only when it is not running,high,PD-3; covered code (testkit/streams)
+tests/unit/testkit/test_streams.py::test_the_lifespan_is_not_entered_when_the_flag_says_it_runs,scenario,rp-testkit,The testkit opens a tenant's event stream in-process,the lifespan runs only when it is not running,high,PD-3; covered code (testkit/streams)
 tests/unit/testkit/test_streams.py::test_the_state_the_lifespan_yields_reaches_the_request,requirement,rp-testkit,The testkit opens a tenant's event stream in-process,,high,PD-3 (state in the scope); covered code (testkit/streams)

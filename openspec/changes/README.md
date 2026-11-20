@@ -56,7 +56,7 @@ Work outside the table, all delivered and archived: `test-suite-grooming`, `alig
 
 | Id | Appetite | PLAN | Next |
 |---|---|---|---|
-| `test-debt-paydown` | LARGE (three stages, one PR) | gated 9.2 (2026-11-17) | ready for an epic session |
+| `test-debt-paydown` | LARGE (three stages, one PR) | gate void (2026-11-20: paths stale after the thematic restructure) | re-plan after wave 2 (`inputs/handover.md`) |
 | `ldes-view` | MEDIUM | no | a shaping session |
 | `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
 
@@ -67,7 +67,7 @@ MWB2 opened seven issues; each is one EPIC, in the consumer's order (D-12). The 
 
 | # | Id | Appetite | Issue | Depends on | Needed by (MWB2) | PLAN (gate, 2026-11-20) |
 |---|---|---|---|---|---|---|
-| 1a | `uml-to-linkml` | MEDIUM (2 stages) | #196 | none | `v2-02` phase B, now | 8.8, accepted (R-0005) |
+| 1a | `uml-to-linkml` | MEDIUM (2 stages) | #196 | none | `v2-02` phase B, now | 8.8, accepted (R-0005); stage 1 delivered (#212), stage 2 next |
 | 1b | `collection-has-part` | SMALL (**BREAKING**) | #199 | none | `v2-02` 2.1b, now | 9.0, delivered 2026-11-20 (#207), archived |
 | 2 | `delete-refuses-referenced` | MEDIUM (re-shaped from SMALL) | #201 | none | `v2-03` 7.1 | 8.4 → 9.2 |
 | 3 | `nested-collections` | SMALL | #198 | 1b | `v2-03` 7.2 | 8.5 → 9.1 |
@@ -76,10 +76,30 @@ MWB2 opened seven issues; each is one EPIC, in the consumer's order (D-12). The 
 | 6 | `testkit-event-stream` | SMALL (re-shaped from TINY) | #204 | none; before `test-debt-paydown` | not blocking | 8.5 → 9.0, delivered 2026-11-20 (#213), archived |
 
 Every PLAN was attacked by its planner and gated by a fresh reviewer; the owner answered one round of
-questions (each change's `inputs/qa.md`). Next: the owner signs off each change's scenarios, then an
-epic session per change.
+questions (each change's `inputs/qa.md`).
 
 #200 is a plain bug fix (PR with a test); #197, #189, #192 block nothing and stay in the issue list.
+
+#### Where it stands (2026-11-20, evening)
+
+- **Delivered:** `collection-has-part` (#207, BREAKING), `unique-key-nulls-equal` (#211),
+  `uml-to-linkml` stage 1 (#212: the `.qea` reader and the plain UML rules; both spikes passed),
+  `listing-contains-filter` (#216), `testkit-event-stream` (#213; its tests timed out on CI, #220,
+  fixed by #221).
+- **Next:** `uml-to-linkml` stage 2 (critical path for the consumer's `v2-02`); wave 2,
+  `nested-collections` and `delete-refuses-referenced`, unblocked since #207; `test-debt-paydown`'s
+  PLAN to update for what #213 landed (its RISK-1) before that EPIC starts.
+- **Release:** 0.8.0 (#210) is held until `uml-to-linkml` stage 2 merges, so the consumer upgrades once
+  for its `v2-02`.
+- **Issues found on the way:** #206 (two slots sharing one `slot_uri`), #208 (module import cycles;
+  the converter merges such packages meanwhile), #209 (`rdf:langString`; the converter refuses it
+  meanwhile), #214 and #215 (testkit follow-ups). #217 (38 unmapped tests) was closed by #216's
+  map refresh.
+- **Open owner decision:** the converter's hand-written working classes (stage 1 D-22, W-1);
+  recommended: LinkML's own metamodel classes for the output side, generated records for the UML side,
+  decided in the stage 2 brief.
+- **Worktrees** go in `.worktrees/` (P-0015), never beside the repository; a stage PR merges on green
+  CI without waiting for the developer (P-0013).
 
 Open follow-ups, each under the floor of its review: #125 (`aggregate-events`), #189
 (`target-kind-from-the-model`), #192 (`domain-model-per-theme`). Not shaped yet; the consumer's

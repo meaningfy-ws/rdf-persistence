@@ -7,14 +7,14 @@ commit and never run `make generate`; the lead does, then `make check-generated`
 
 ## 1. Stage 1: model
 
-- [ ] 1.1 Metamodel and settings (PD-1, PD-10, PD-11): in `rp_core.yaml` the `RpAnnotation` entry
+- [x] 1.1 Metamodel and settings (PD-1, PD-10, PD-11): in `rp_core.yaml` the `RpAnnotation` entry
   and `OnReferencedDelete`; in `rp_persistence_settings.yaml` `max_named_referrers`; in
   `rp_api_entrypoints.yaml` `ProblemSlug.in_use`, the new slot `more_count`, the import of
   `../collaboration/rp_collaboration_services`, and `InUseProblem` (`is_a: Problem`) with the
   optional slots `referrers` (range `Referrer`, inlined as list), `hidden_count` and `more_count`; the
   `ALLOWED_ANNOTATIONS` row in `hard.py`. Tests first: TC-1 (generator unit). Lead: `make generate`.
   Accept: TC-1 passes; `ToolkitSettings().limits.max_named_referrers == 20`.
-- [ ] 1.2 Toy (PD-13): `Author` and `Book.written_by` in `tests/fixtures/library/books.yaml`;
+- [x] 1.2 Toy (PD-13): `Author` and `Book.written_by` in `tests/fixtures/library/books.yaml`;
   `schema_structure.refusing_classes` (PD-2). Tests first: TC-2 (unit). Lead: `make generate`,
   `make refresh-golden`, `make refresh-served-golden`, `make refresh-snapshot`. Accept: TC-2
   passes; `make test-fast` passes.

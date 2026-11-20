@@ -21,6 +21,8 @@ export type ProblemSlug =
   | "conflict"
   /** The write would give an aggregate a key value that another aggregate of its class holds. */
   | "key_conflict"
+  /** The delete would leave other aggregates pointing at a class that refuses it; the answer names them. */
+  | "in_use"
   /** An update or a delete came without the version it expects. */
   | "precondition_required"
   /** The body is not a valid representation for its route. */
@@ -356,6 +358,26 @@ export interface Authorised {
 
 /** An RFC 9457 problem detail, the body of every error answer of the service. */
 export interface Problem {
+  /** The IRI that identifies the kind of problem. */
+  type: string;
+  /** A short, fixed summary of the kind of problem. */
+  title: string;
+  /** The HTTP status code of the answer. */
+  status: number;
+  /** An explanation of this occurrence of the problem. */
+  detail?: string;
+  /** The IRI that identifies this occurrence of the problem. */
+  instance?: string;
+}
+
+/** The problem detail of a delete refused because other aggregates still point at the resource: it names up to the configured number of referrers the caller may read, and counts the rest. */
+export interface InUseProblem {
+  /** The aggregates that point at the resource, ordered by IRI and slot. */
+  referrers?: Referrer[];
+  /** The number of referrers or members the caller may not read, so are not listed. */
+  hidden_count?: number;
+  /** The number of referrers the caller may read but the answer does not name, past the limit. */
+  more_count?: number;
   /** The IRI that identifies the kind of problem. */
   type: string;
   /** A short, fixed summary of the kind of problem. */

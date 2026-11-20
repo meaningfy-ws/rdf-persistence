@@ -21,6 +21,7 @@ imports:
   - rdf_persistence/model/rp_tenancy
   - ../persistence/rp_persistence_services
   - ../access/rp_access_services
+  - ../collaboration/rp_collaboration_services
 annotations:
   module_kind: technical
   python_package: rdf_persistence.api.entrypoints.generated
@@ -79,6 +80,20 @@ classes:
         required: true
       problem_status:
         required: true
+  InUseProblem:
+    title: In-use problem
+    description: >-
+      The problem detail of a delete refused because other aggregates still point at the resource: it
+      names up to the configured number of referrers the caller may read, and counts the rest.
+    class_uri: rp:InUseProblem
+    is_a: Problem
+    slots:
+      - referrers
+      - hidden_count
+      - more_count
+    slot_usage:
+      referrers:
+        inlined_as_list: true
 
   ProblemKind:
     title: Problem kind
@@ -146,6 +161,12 @@ slots:
     slot_uri: rp:problemDetail
     alias: detail
     range: string
+  more_count:
+    title: More count
+    description: The number of referrers the caller may read but the answer does not name, past the limit.
+    slot_uri: rp:moreCount
+    range: integer
+    minimum_value: 0
   problem_instance:
     title: Problem instance
     description: The IRI that identifies this occurrence of the problem.
@@ -179,6 +200,10 @@ enums:
         title: Key conflict
         meaning: rp:keyConflict
         description: The write would give an aggregate a key value that another aggregate of its class holds.
+      in_use:
+        title: In use
+        meaning: rp:inUse
+        description: The delete would leave other aggregates pointing at a class that refuses it; the answer names them.
       precondition_required:
         title: Precondition required
         meaning: rp:preconditionRequired

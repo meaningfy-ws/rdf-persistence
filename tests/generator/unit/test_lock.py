@@ -25,7 +25,7 @@ XSD_STRING = "http://www.w3.org/2001/XMLSchema#string"
 # (module, old, new) edits, each applied to the first match.
 Edits = tuple[tuple[str, str, str], ...]
 
-BOOK_SLOTS = "slots: [isbn, authors, published, genre, chapters, shelf, sequel_of]"
+BOOK_SLOTS = "slots: [isbn, authors, published, genre, chapters, shelf, sequel_of, written_by]"
 SUBTITLE_SLOT = "slots:\n  subtitle:\n    slot_uri: lib:subtitle\n    range: string\n  isbn:"
 ISBN_DEF = "    slot_uri: bibo:isbn\n    range: string\n"
 AUTHORS_MULTI = "    slot_uri: schema:author\n    range: string\n    multivalued: true\n"
@@ -142,7 +142,7 @@ def test_the_lock_is_sorted_and_repeatable(toy_lock: SchemaLock) -> None:
 # ---- TC-02, TC-03, TC-04: classification, both directions --------------------------------------
 
 ADD_SUBTITLE: Edits = (
-    ("books.yaml", BOOK_SLOTS, BOOK_SLOTS.replace("sequel_of]", "sequel_of, subtitle]")),
+    ("books.yaml", BOOK_SLOTS, BOOK_SLOTS.replace("written_by]", "written_by, subtitle]")),
     ("books.yaml", "slots:\n  isbn:", SUBTITLE_SLOT),
 )
 ADD_SUBTITLE_REQUIRED: Edits = (

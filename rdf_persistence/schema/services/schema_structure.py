@@ -31,6 +31,7 @@ from rdf_persistence.core.domain.generated.rp_core import (
     AggregateKey,
     DatabaseKind,
     GraphKind,
+    OnReferencedDelete,
     RpAnnotation,
     WritesKind,
 )
@@ -89,6 +90,24 @@ def workflow_name_of(view: SchemaView, class_name: str) -> str | None:
             if (text := annotation_text(view.get_class(ancestor), RpAnnotation.WORKFLOW))
         ),
         None,
+    )
+
+
+def refuses_deletion(view: SchemaView, class_name: str) -> bool:
+    """True when the class or an ``is_a`` ancestor says ``rp_on_referenced_delete: refuse``; mixins do not count (PD-2)."""
+    return any(
+        annotation_text(view.get_class(ancestor), RpAnnotation.RP_ON_REFERENCED_DELETE)
+        == OnReferencedDelete.REFUSE.value
+        for ancestor in view.class_ancestors(class_name, mixins=False)
+    )
+
+
+def refusing_classes(view: SchemaView) -> frozenset[URIRef]:
+    """The IRIs of the classes that refuse deletion while another aggregate points at them (PD-2)."""
+    return frozenset(
+        URIRef(view.get_uri(name, expand=True))
+        for name in view.all_classes()
+        if refuses_deletion(view, name)
     )
 
 

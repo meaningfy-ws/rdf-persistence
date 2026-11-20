@@ -35,6 +35,7 @@ from rdf_persistence.core.domain.generated.rp_core import (
     GraphKind,
     KeyDuplicate,
     ModuleKind,
+    OnReferencedDelete,
     PendingLoad,
     Principal,
     RegistryEntry,

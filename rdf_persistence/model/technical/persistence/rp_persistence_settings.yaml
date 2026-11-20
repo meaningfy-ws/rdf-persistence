@@ -24,6 +24,7 @@ classes:
     slots:
       - max_messages
       - max_roots
+      - max_named_referrers
       - max_document_nodes
       - max_manifest_bytes
 
@@ -42,6 +43,14 @@ slots:
     required: true
     ifabsent: int(500)
     minimum_value: 1
+  max_named_referrers:
+    title: Maximum named referrers
+    description: >-
+      The most referrers a refused delete names in its answer; 0 names none and counts all of them.
+    range: integer
+    required: true
+    ifabsent: int(20)
+    minimum_value: 0
   max_document_nodes:
     title: Maximum document nodes
     description: The most objects and list values one JSON or JSON-LD body may hold.

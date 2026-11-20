@@ -38,6 +38,58 @@
       "title": "Authorised",
       "type": "object"
     },
+    "InUseProblem": {
+      "additionalProperties": false,
+      "description": "The problem detail of a delete refused because other aggregates still point at the resource: it names up to the configured number of referrers the caller may read, and counts the rest.",
+      "properties": {
+        "detail": {
+          "description": "An explanation of this occurrence of the problem.",
+          "type": "string"
+        },
+        "hidden_count": {
+          "description": "The number of referrers or members the caller may not read, so are not listed.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "instance": {
+          "description": "The IRI that identifies this occurrence of the problem.",
+          "format": "uri",
+          "type": "string"
+        },
+        "more_count": {
+          "description": "The number of referrers the caller may read but the answer does not name, past the limit.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "referrers": {
+          "description": "The aggregates that point at the resource, ordered by IRI and slot.",
+          "items": {
+            "$ref": "#/components/schemas/Referrer"
+          },
+          "type": "array"
+        },
+        "status": {
+          "description": "The HTTP status code of the answer.",
+          "type": "integer"
+        },
+        "title": {
+          "description": "A short, fixed summary of the kind of problem.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The IRI that identifies the kind of problem.",
+          "format": "uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "status"
+      ],
+      "title": "InUseProblem",
+      "type": "object"
+    },
     "LabelUpdate": {
       "additionalProperties": false,
       "description": "The body that replaces the label of a tenant.",
@@ -131,6 +183,7 @@
         "not_found",
         "conflict",
         "key_conflict",
+        "in_use",
         "precondition_required",
         "invalid_body",
         "not_acceptable",
