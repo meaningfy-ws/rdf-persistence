@@ -132,6 +132,17 @@ async def test_a_stream_the_server_ends_early_returns_the_events_so_far() -> Non
     assert [e.id for e in opened.events] == ["1"], "fewer than asked, no TimeoutError"
 
 
+async def test_an_app_that_raises_after_the_head_returns_what_came() -> None:
+    async def failing_late(scope, receive, send) -> None:
+        await send(head())
+        await send(body(b"id: 1\n\n"))
+        raise KeyError("boom")
+
+    opened = await open_event_stream(failing_late, URL, events=3, timeout=SHORT)
+    assert opened.status == 200
+    assert [e.id for e in opened.events] == ["1"], "what came, and no exception"
+
+
 async def test_a_refusal_is_returned_at_once_with_no_events() -> None:
     app = serving(b'{"title": ', b'"no"}', ends=True, status=404, content_type=b"application/json")
     opened = await open_event_stream(app, URL, events=1, timeout=SHORT)
