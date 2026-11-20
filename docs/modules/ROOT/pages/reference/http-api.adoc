@@ -170,6 +170,8 @@ A listing answers one page:
 |`sort` |A slot name; descending with a leading `-`. By IRI when absent.
 |`<slot>=<value>` |An equality filter on a slot; several must all hold. The value is read by the
 slot's range: a reference takes an IRI.
+|`<slot>~=<text>` |A contains filter on a string slot: the value holds the text, ignoring case, as in
+`label~=dune`. Several filters must all hold. An empty text, or a slot that is not a string, answers 400.
 |===
 
 The items are the aggregates as the representation frames them. An aggregate the caller is
