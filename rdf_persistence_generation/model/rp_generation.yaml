@@ -392,6 +392,58 @@ classes:
         required: true
       root_name:
         required: true
+  UmlElement:
+    title: UML element
+    description: >-
+      A class or an enumeration the conversion generates: the UML class it was read from, its resolved
+      name, where its package sits and what the conversion has classified it as (PD-17, R-18, R-23).
+    class_uri: rp:UmlElement
+    slots:
+      - uml_class
+      - resolved_name
+      - label
+      - module_path
+      - is_enum
+      - is_root
+      - is_abstract
+      - is_tenant_root
+      - is_abstract_root
+    slot_usage:
+      uml_class:
+        required: true
+      resolved_name:
+        required: true
+      label:
+        required: true
+      is_abstract:
+        ifabsent: "false"
+  UmlPackagePath:
+    title: UML package path
+    description: >-
+      Where a package sits: its names below the subtree package, whether an exclusion covers it, and
+      its note.
+    class_uri: rp:UmlPackagePath
+    slots:
+      - below
+      - is_excluded
+      - note
+  UmlLinkEnd:
+    title: UML link end
+    description: >-
+      One end of a connector that may become a slot: the class that holds it, the one it points at, and
+      the role and cardinality written at that end.
+    class_uri: rp:UmlLinkEnd
+    slots:
+      - holder_id
+      - other_id
+      - end_role
+      - end_card
+      - owned_by_composite
+    slot_usage:
+      holder_id:
+        required: true
+      other_id:
+        required: true
   ReportLine:
     title: Report line
     description: One line of the report a conversion writes beside its output, saying what was left out or changed.
@@ -1229,6 +1281,80 @@ slots:
     title: CURIE
     description: The prefixed name written to the output, in the metamodel's prefix name when it names the namespace.
     slot_uri: rp:nameCurie
+  uml_class:
+    title: UML class
+    description: The class or enumeration of the UML model that an element was read from.
+    slot_uri: rp:umlElementClass
+    range: UmlClass
+  resolved_name:
+    title: Resolved name
+    description: The name an element was written with, resolved against the prefixes file.
+    slot_uri: rp:umlElementName
+    range: UmlName
+  module_path:
+    title: Module path
+    description: The names of the packages below the subtree package that an element sits in, outermost first.
+    slot_uri: rp:umlModulePath
+    multivalued: true
+  is_enum:
+    title: Is enumeration
+    description: Whether an element is an enumeration.
+    slot_uri: rp:umlIsEnum
+    range: boolean
+    ifabsent: "false"
+  is_root:
+    title: Is root
+    description: Whether an element is the root of an application aggregate.
+    slot_uri: rp:umlIsRoot
+    range: boolean
+    ifabsent: "false"
+  is_tenant_root:
+    title: Is tenant root
+    description: Whether an element is the root of the tenant, a root of its own kind (R-18).
+    slot_uri: rp:umlIsTenantRoot
+    range: boolean
+    ifabsent: "false"
+  is_abstract_root:
+    title: Is abstract root
+    description: Whether an element is an abstract root, set by the abstract-roots pass (R-23).
+    slot_uri: rp:umlIsAbstractRoot
+    range: boolean
+    ifabsent: "false"
+  below:
+    title: Below the subtree package
+    description: The names of the packages between the subtree package, which is left out, and a package, which is last.
+    slot_uri: rp:umlBelow
+    multivalued: true
+  is_excluded:
+    title: Is excluded
+    description: Whether an `--exclude-package` covers a package.
+    slot_uri: rp:umlIsExcluded
+    range: boolean
+    ifabsent: "false"
+  holder_id:
+    title: Holder id
+    description: The id of the class that holds the slot an end of a connector gives.
+    slot_uri: rp:umlHolderId
+    range: integer
+  other_id:
+    title: Other id
+    description: The id of the class that the slot an end of a connector gives points at.
+    slot_uri: rp:umlOtherId
+    range: integer
+  end_role:
+    title: End role
+    description: The role written at the end of a connector that names the slot.
+    slot_uri: rp:umlEndRole
+  end_card:
+    title: End cardinality
+    description: The cardinality written at the end of a connector that names the slot, as the model writes it.
+    slot_uri: rp:umlEndCard
+  owned_by_composite:
+    title: Owned by composite
+    description: Whether the destination of the slot is owned because the connector is a composite association.
+    slot_uri: rp:umlOwnedByComposite
+    range: boolean
+    ifabsent: "false"
   prefixes:
     title: Prefixes
     description: The prefixes of the prefixes file.

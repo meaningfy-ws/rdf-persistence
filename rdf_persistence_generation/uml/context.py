@@ -1,7 +1,8 @@
 """What one conversion shares between its passes: the findings it collects and the elements it has classified.
 
-The records here are working state of one run (not model data), plain classes because the model guard
-refuses a hand-written dataclass: built once, read by the passes in ``classes``, ``slots``, ``modules`` and ``convert``.
+What is here is working state of one run (the findings and the indexes the passes read), plain classes because
+the model guard refuses a hand-written dataclass. The records of the model (``UmlElement``, ``UmlPackagePath``)
+are generated; their helpers are functions here.
 """
 
 from collections.abc import Mapping
@@ -11,8 +12,9 @@ from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
     ReportLine,
-    UmlClass,
+    UmlElement,
     UmlName,
+    UmlPackagePath,
     UmlRule,
     UmlSettings,
 )
@@ -63,61 +65,24 @@ class Findings:
         return [self._report[key] for key in sorted(self._report)]
 
 
-class PackagePath:
-    """Where a package sits: its names below the subtree package, and whether an exclusion covers it."""
-
-    __slots__ = ("below", "excluded", "note")
-
-    def __init__(
-        self, below: tuple[str, ...], excluded: bool = False, note: str | None = None
-    ) -> None:
-        self.below = below
-        self.excluded = excluded
-        self.note = note
+def path_of(element: UmlElement) -> tuple[str, ...]:
+    """The packages an element sits in below the subtree package, as a key."""
+    return tuple(element.module_path or ())
 
 
-class Element:
-    """A class or an enumeration the run generates."""
+def below_of(path: UmlPackagePath) -> tuple[str, ...]:
+    """The packages between the subtree package and a package, as a key."""
+    return tuple(path.below or ())
 
-    __slots__ = (
-        "is_abstract",
-        "is_abstract_root",
-        "is_enum",
-        "is_root",
-        "is_tenant_root",
-        "name",
-        "path",
-        "uml",
-    )
 
-    def __init__(
-        self,
-        uml: UmlClass,
-        name: UmlName,
-        path: tuple[str, ...],
-        flags: tuple[bool, bool, bool],
-        is_tenant_root: bool = False,
-    ) -> None:
-        """``flags`` are: an enumeration, a root, abstract; a tenant root is a root of its own kind (R-18)."""
-        self.uml = uml
-        self.name = name
-        self.path = path
-        self.is_enum, self.is_root, self.is_abstract = flags
-        self.is_tenant_root = is_tenant_root
-        self.is_abstract_root = False  # set by the abstract-roots pass (R-23)
+def is_boundary_root(element: UmlElement) -> bool:
+    """Whether the class may be the one root of a boundary: a root or the tenant root (PD-13)."""
+    return bool(element.is_root or element.is_tenant_root)
 
-    @property
-    def is_a_boundary_root(self) -> bool:
-        """Whether the class may be the one root of a boundary: a root or the tenant root (PD-13)."""
-        return self.is_root or self.is_tenant_root
 
-    @property
-    def label(self) -> str:
-        return self.name.name
-
-    @property
-    def literals(self) -> int:
-        return len(self.uml.uml_attributes or [])
+def literals_of(element: UmlElement) -> int:
+    """How many literals an enumeration lists; a class has its attributes in their place."""
+    return len(element.uml_class.uml_attributes or [])
 
 
 class Context:
@@ -134,7 +99,7 @@ class Context:
         self.prefixes = prefixes
         self.findings = Findings()
         self.toolkit = load_toolkit()
-        self.elements: dict[int, Element] = {}
+        self.elements: dict[int, UmlElement] = {}
         self.left_out: dict[int, str] = {}
         self.left_out_enums: set[int] = (
             set()
@@ -142,7 +107,7 @@ class Context:
         self.class_names: dict[
             int, str
         ] = {}  # every class the model lists, converted or not (D-17)
-        self.paths: dict[int, PackagePath] = {}
+        self.paths: dict[int, UmlPackagePath] = {}
         self.tags: dict[int, dict[str, str]] = {}
         self.tag_values: dict[
             int, dict[str, list[str]]

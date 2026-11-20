@@ -175,7 +175,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/classes.py",
-      "sha256": "e8ba27cf404f24e9326c0b8c481d0bba3736cb573074755353fbf7748149d16e"
+      "sha256": "436963f87cb9cdf880021ee5028db94726d9cc2ef37bde4973dd9a14e47ad467"
     },
     {
       "path": "rdf_persistence_generation/uml/cli.py",
@@ -183,23 +183,23 @@
     },
     {
       "path": "rdf_persistence_generation/uml/context.py",
-      "sha256": "02252403b45eb482a9d6b940eef0eddb48bf196c30cf618053586636e73fd4f8"
+      "sha256": "b1b9cdf36b08b8fe6362e228b4e32c219b71fc096a10011b989f31b33e7dd50b"
     },
     {
       "path": "rdf_persistence_generation/uml/convert.py",
-      "sha256": "817b91f0cf5f1709d18ca23d7cd63f31760fb40fd97848cb6c1c41b5ceb8685b"
+      "sha256": "7f630713c758f17ac250df352a363aca33fdcae4db69e24e2d12b19f8e98b00e"
     },
     {
       "path": "rdf_persistence_generation/uml/links.py",
-      "sha256": "782c14cb31d5dd5aff1835405a6a2879ca5a63a30e9cff44d660eb1baad69d65"
+      "sha256": "a985447bf48bfd02b17d2d63fb1534bd69bbf28d9ec15fc108694001e44e4f12"
     },
     {
       "path": "rdf_persistence_generation/uml/mixins.py",
-      "sha256": "7d10107f8013a47c1a6e70545e4148cdddae3a00b50ab278ad25ddcf21a3fd59"
+      "sha256": "fe1fbf50e80114dbf517f570a41f14e2420a9ab6e273406ac1058fc3eceafc07"
     },
     {
       "path": "rdf_persistence_generation/uml/modules.py",
-      "sha256": "a073a998d75df1deae28d24270181654008c323ec271821deb2bd9a2b1dbffd3"
+      "sha256": "3664b7f0e0b7d6b2567d74f54a1264bf4c3c4b29b1606650582794720e68b388"
     },
     {
       "path": "rdf_persistence_generation/uml/naming.py",
@@ -211,11 +211,11 @@
     },
     {
       "path": "rdf_persistence_generation/uml/slots.py",
-      "sha256": "18824f95aafae3334f33e72659cffabee5fdc314755434b908f6f0e74682d947"
+      "sha256": "fc1cab1ceb75eae003a403fed411ea2061e1b511ebcf47f519f3a2f7033c8cab"
     },
     {
       "path": "rdf_persistence_generation/uml/tags.py",
-      "sha256": "9e3589fd8930ad9d07cdb01054b0ca9704edc85c269b522a25ec399b7bf94f0c"
+      "sha256": "4ad1abfa27069e874515b2238865e3b5f07dfe8fc1c4d419bb38f1b82d8aa53f"
     },
     {
       "path": "rdf_persistence_generation/uml/toolkit.py",

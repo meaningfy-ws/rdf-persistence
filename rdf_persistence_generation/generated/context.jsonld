@@ -20,6 +20,10 @@
          "@container": "@set",
          "@id": "mmdAttributes"
       },
+      "below": {
+         "@container": "@set",
+         "@id": "umlBelow"
+      },
       "class_name": {
          "@id": "className"
       },
@@ -72,6 +76,12 @@
       "element": {
          "@id": "element"
       },
+      "end_card": {
+         "@id": "umlEndCard"
+      },
+      "end_role": {
+         "@id": "umlEndRole"
+      },
       "enum_name": {
          "@id": "lockChangeEnum"
       },
@@ -107,6 +117,9 @@
          "@type": "@id",
          "@id": "partFrame"
       },
+      "holder_id": {
+         "@id": "umlHolderId"
+      },
       "holds": {
          "@id": "holds"
       },
@@ -140,6 +153,21 @@
       },
       "is_abstract": {
          "@id": "umlIsAbstract"
+      },
+      "is_abstract_root": {
+         "@id": "umlIsAbstractRoot"
+      },
+      "is_enum": {
+         "@id": "umlIsEnum"
+      },
+      "is_excluded": {
+         "@id": "umlIsExcluded"
+      },
+      "is_root": {
+         "@id": "umlIsRoot"
+      },
+      "is_tenant_root": {
+         "@id": "umlIsTenantRoot"
       },
       "key_iris": {
          "@container": "@set",
@@ -215,6 +243,10 @@
       "module": {
          "@id": "moduleName"
       },
+      "module_path": {
+         "@container": "@set",
+         "@id": "umlModulePath"
+      },
       "multiple_stereotypes": {
          "@id": "umlMultipleStereotypes"
       },
@@ -256,10 +288,16 @@
       "optional": {
          "@id": "optional"
       },
+      "other_id": {
+         "@id": "umlOtherId"
+      },
       "outputs": {
          "@type": "@id",
          "@container": "@set",
          "@id": "manifestOutputs"
+      },
+      "owned_by_composite": {
+         "@id": "umlOwnedByComposite"
       },
       "owner_id": {
          "@id": "umlOwnerId"
@@ -332,6 +370,10 @@
       },
       "required": {
          "@id": "required"
+      },
+      "resolved_name": {
+         "@type": "@id",
+         "@id": "umlElementName"
       },
       "root_database": {
          "@id": "lockedRootDatabase"
@@ -430,6 +472,10 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "umlBoundaries"
+      },
+      "uml_class": {
+         "@type": "@id",
+         "@id": "umlElementClass"
       },
       "uml_classes": {
          "@type": "@id",
@@ -567,8 +613,14 @@
       "UmlClass": {
          "@id": "UmlClass"
       },
+      "UmlElement": {
+         "@id": "UmlElement"
+      },
       "UmlLink": {
          "@id": "UmlLink"
+      },
+      "UmlLinkEnd": {
+         "@id": "UmlLinkEnd"
       },
       "UmlModel": {
          "@id": "UmlModel"
@@ -578,6 +630,9 @@
       },
       "UmlPackage": {
          "@id": "UmlPackage"
+      },
+      "UmlPackagePath": {
+         "@id": "UmlPackagePath"
       },
       "UmlPrefix": {
          "@id": "UmlPrefix"
