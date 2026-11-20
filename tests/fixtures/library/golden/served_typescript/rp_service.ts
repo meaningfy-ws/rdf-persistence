@@ -126,6 +126,12 @@ export interface Filter {
   contains?: boolean;
 }
 
+/** A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value */
+export interface Contains {
+  /** The text a string slot must hold, in any case. */
+  text: string;
+}
+
 /** The query of a listing, as the caller sent it: the filters, the position and size of the page and the key to sort by. */
 export interface ListRequest {
   /** The most objects the page can hold. */

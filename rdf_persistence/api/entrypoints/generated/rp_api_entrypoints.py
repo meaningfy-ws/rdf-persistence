@@ -72,6 +72,7 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
     AggregateHead,
     Any,
     Condition,
+    Contains,
     Filter,
     ListPlan,
     ListRequest,

@@ -60,6 +60,17 @@ classes:
         required: true
       filter_contains:
         ifabsent: "false"
+  Contains:
+    title: Contains
+    description: >-
+      A value of `Session.find` that asks for a case-insensitive substring of a string slot rather
+      than its value
+    class_uri: rp:Contains
+    slots:
+      - contains_text
+    slot_usage:
+      contains_text:
+        required: true
   ListRequest:
     title: List request
     description: >-
@@ -177,6 +188,12 @@ slots:
     slot_uri: rp:filterContains
     alias: contains
     range: boolean
+  contains_text:
+    title: Contains text
+    description: The text a string slot must hold, in any case.
+    slot_uri: rp:containsText
+    alias: text
+    range: string
   condition_predicate:
     title: Condition predicate
     description: The IRI of the predicate the aggregate must have a statement with.

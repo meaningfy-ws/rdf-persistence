@@ -24,6 +24,7 @@
 |`CommitMarker` |class |The registry marker of one transaction's commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written.
 |`CommitTooLarge` |class |A unit of work holds more roots than its ``max_roots``; commit fewer, or in batches.
 |`Conflict` |class |The write lost a race, or the thing to create already exists.
+|`Contains` |class |A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value
 |`context_link` |function |The JSON-LD context link of an envelope: ``{public_url}{prefix}/context.jsonld``, relative (``{prefix}/context.jsonld``) without a public URL (D-16).
 |`DatabaseGone` |class |The dataset a request names does not exist (it was dropped, or never created).
 |`DatabaseKind` |class |The databases an aggregate can live in, the values of the database annotation.

@@ -381,6 +381,13 @@
     multivalued: false
     range: boolean
     alias: contains
+- class_name: Contains
+  slots:
+  - name: contains_text
+    required: true
+    multivalued: false
+    range: string
+    alias: text
 - class_name: DeleteFile
   slots:
   - name: ended_at_time

@@ -169,7 +169,10 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.iris.services.iris import DEFAULT_IRIS, IdSource, Iris
     from rdf_persistence.messaging.services.messagebus import MessageBus, Work, bootstrap, command
     from rdf_persistence.persistence.adapters.fuseki import FusekiStore
-    from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
+    from rdf_persistence.persistence.services.generated.rp_persistence_services import (
+        Contains,
+        Page,
+    )
     from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
         LimitSettings,
     )
@@ -241,7 +244,7 @@ _LAZY_MODULES = {
     "EventEnvelope": _EVENTS_MODELS,
     **dict.fromkeys(("MemberList", "Referrer", "ReferrerList"), _COLLABORATION_MODELS),
     **dict.fromkeys(("IdKind", "IdSpec", "IriPolicy", "ServiceSettings"), _IRIS_MODELS),
-    "Page": _PERSISTENCE_MODELS,
+    **dict.fromkeys(("Contains", "Page"), _PERSISTENCE_MODELS),
     "FusekiStore": "rdf_persistence.persistence.adapters.fuseki",
     "JwksTokenVerifier": f"{_ACCESS_ADAPTERS}.jwks",
     "S3FileStore": _S3,
@@ -362,6 +365,7 @@ __all__ = [
     "NotAcceptable",
     "NotFound",
     "Page",
+    "Contains",
     "Receive",
     "PayloadTooLarge",
     "PendingLoad",

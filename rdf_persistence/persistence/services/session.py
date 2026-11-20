@@ -53,6 +53,7 @@ from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     AggregateHead,
     Condition,
+    Contains,
     Filter,
     ListPlan,
     ListRequest,
@@ -1003,7 +1004,9 @@ class Session:
     async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
         """The IRIs of the tenant's aggregates of ``cls`` whose slots equal ``equals``, in IRI order.
 
-        A list or tuple value asks for all its items. Prohibitions are ignored (PD-6): a hidden
+        A list or tuple value asks for all its items. A ``Contains`` value, alone or as an item,
+        asks for a case-insensitive substring of a string slot instead of its value:
+        ``find(Book, label=Contains(text="dune"))``. Prohibitions are ignored (PD-6): a hidden
         duplicate is still a duplicate; check each IRI with ``require_aggregate`` before showing it.
 
         Not a snapshot: the pages are separate queries, so a concurrent write can slip past a
@@ -1015,7 +1018,8 @@ class Session:
             RuntimeError: The session was opened without listings.
             ValueError: ``cls`` is not an aggregate root with a path in the tenant databases, or a
                 list value is empty.
-            BadQuery: A name is not a slot a listing may filter on, or a value is not one of its slot.
+            BadQuery: A name is not a slot a listing may filter on, a value is not one of its slot,
+                or a ``Contains`` is on a slot that is not text or has an empty text.
             DatabaseGone: The tenant database does not exist.
         """
         if self._listings is None:
@@ -1662,12 +1666,18 @@ def _items(name: str, value: object) -> list[object]:
 
 
 def _filters(equals: dict[str, object]) -> list[Filter]:
-    """One filter per value; a list or tuple gives one per item."""
-    return [
-        Filter(slot=name, value=_text(item))
-        for name, value in equals.items()
-        for item in _items(name, value)
-    ]
+    """One filter per value; a list or tuple gives one per item.
+
+    A ``Contains`` item gives a filter that matches a substring, ignoring case; any other item
+    gives one that matches the value.
+    """
+    return [_filter(name, item) for name, value in equals.items() for item in _items(name, value)]
+
+
+def _filter(name: str, item: object) -> Filter:
+    if isinstance(item, Contains):
+        return Filter(slot=name, value=item.text, contains=True)
+    return Filter(slot=name, value=_text(item))
 
 
 def _text(value: object) -> str:

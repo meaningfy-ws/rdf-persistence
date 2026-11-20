@@ -25,6 +25,9 @@
          "@container": "@set",
          "@id": "condition"
       },
+      "text": {
+         "@id": "containsText"
+      },
       "descending": {
          "@id": "descending"
       },
@@ -91,6 +94,9 @@
       },
       "Condition": {
          "@id": "Condition"
+      },
+      "Contains": {
+         "@id": "Contains"
       },
       "Filter": {
          "@id": "Filter"

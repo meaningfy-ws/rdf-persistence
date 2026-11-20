@@ -20,7 +20,7 @@ Every task: the failing test named first, in its tier; task gate `make test-chan
   TC-08 and TC-09 first; all fail except TC-09's tenant case, which guards today's refusal.
   `holds_text` in `schema_structure.py`; `Listings.plan`; `condition_patterns` and its three uses
   in `listing.py` and `session.py`. Gate: `make test-fast check-quality`. Accept: all pass.
-- [ ] 1.4 `Contains` and `find` (PD-7, PD-10), unit: TC-07 first, failing. The generated
+- [x] 1.4 `Contains` and `find` (PD-7, PD-10), unit: TC-07 first, failing. The generated
   `Contains` class in `rp_persistence_services.yaml`, `make generate`, `make refresh-served-golden`
   (diff: `interface Contains` only); `_filters`, `rdf_persistence.__all__`, `NAMES` 149, `make refresh-surface` (diff: one added name).
   Accept: TC-07 and `tests/unit/test_public_surface.py` pass.

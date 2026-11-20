@@ -72,6 +72,11 @@ class Filter(ConfiguredBaseModel):
     contains: Optional[bool] = Field(default=False, title="Filter contains", description="Whether the filter matches a substring of the slot\u0027s text, ignoring case, rather than the value")
 
 
+class Contains(ConfiguredBaseModel):
+    "A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value"
+    text: str = Field(default=..., title="Contains text", description="The text a string slot must hold, in any case.")
+
+
 class ListRequest(ConfiguredBaseModel):
     "The query of a listing, as the caller sent it: the filters, the position and size of the page and the key to sort by."
     limit: Optional[int] = Field(default=50, title="Limit", description="The most objects the page can hold.", ge=1, le=200)
@@ -111,6 +116,7 @@ class AggregateHead(ConfiguredBaseModel):
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 Page.model_rebuild()
 Filter.model_rebuild()
+Contains.model_rebuild()
 ListRequest.model_rebuild()
 Condition.model_rebuild()
 ListPlan.model_rebuild()
