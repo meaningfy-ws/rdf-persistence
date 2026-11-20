@@ -92,7 +92,7 @@ def test_the_kit_holds_the_toolkits_chain_first_and_the_consumers_second() -> No
     assert [schema for schema, _ in kit.chains] == [str(metamodel().schema.id), LIB], (
         "toolkit first"
     )
-    assert [versions(chain) for _, chain in kit.chains] == [("1", "2"), ("1",)], (
+    assert [versions(chain) for _, chain in kit.chains] == [("1", "2", "3"), ("1",)], (
         "each at its current version"
     )
 
@@ -102,7 +102,7 @@ async def test_a_tenant_created_through_the_service_holds_both_stamps_current() 
     tenant = await a_tenant(toy)
     database = toy.kit.tenancy.database_of(toy.kit.tenant_iri(tenant))
     held = await stamps(toy.store, database, toy.kit.tenancy.stamps_graph)
-    assert held == {RP: "2", LIB: "1"}, "TC-34: both schemas at the versions the service runs"
+    assert held == {RP: "3", LIB: "1"}, "TC-34: both schemas at the versions the service runs"
 
 
 # --- a bad chain stops the service (TC-38) -------------------------------------------------------

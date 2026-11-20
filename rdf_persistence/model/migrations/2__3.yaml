@@ -1,0 +1,14 @@
+schema_id: https://meaningfy.ws/ns/rdf-persistence
+from_version: '2'
+to_version: '3'
+description: >-
+  Reference collections state their members with dct:hasPart instead of prov:hadMember
+  (collection-has-part DEC-1, DEC-3). Only a subject that states rp:memberClass, which every
+  stored collection does (member_class is required), is rewritten.
+steps:
+  - title: Restate the members of every reference collection with dct:hasPart
+    where_pattern: >-
+      ?collection <https://meaningfy.ws/ns/rdf-persistence#memberClass> ?class ;
+      <http://www.w3.org/ns/prov#hadMember> ?member
+    delete_pattern: ?collection <http://www.w3.org/ns/prov#hadMember> ?member
+    insert_pattern: ?collection <http://purl.org/dc/terms/hasPart> ?member

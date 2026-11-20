@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "rdf_persistence/model/rp.yaml",
-      "sha256": "921c705c84730a9bc3277a4198262c0bb11ec645e5073a257b8b805ea2932843"
+      "sha256": "78dd6655e3f496ccf3131d66be3628b241606835566c510576a1e651bf58177f"
     },
     {
       "path": "rdf_persistence/model/rp_access.yaml",
@@ -297,7 +297,7 @@
     },
     {
       "path": "rdf_persistence/model/migrations/schema.lock.json",
-      "sha256": "8c4cf7713602583270af1616ec2bab5ade75b401bd09aab59abd2b23fa23b378"
+      "sha256": "0362409119ae9dda1e5c10f065cf7302b1bc7c8b005f4c55f9646d9020748bab"
     }
   ]
 }
