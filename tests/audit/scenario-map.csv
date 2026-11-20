@@ -838,7 +838,7 @@ tests/unit/api/test_listing_routes.py::test_a_contains_filter_that_cannot_hold_i
 tests/unit/api/test_listing_routes.py::test_a_listing_never_shows_the_books_of_another_tenant,requirement,rp-service-api,Listings are filtered and paged,,medium,name;covered code
 tests/unit/api/test_listing_routes.py::test_a_permission_on_one_book_alone_does_not_list_books,requirement,rp-access,Access is decided per tenant and per aggregate,,high,name;covered code;spec id
 tests/unit/api/test_listing_routes.py::test_a_prohibition_of_modify_leaves_the_book_in_the_listing,requirement,rp-access,Access is decided per tenant and per aggregate,,high,name;covered code;spec id
-tests/unit/api/test_listing_routes.py::test_an_offset_beyond_the_largest_whole_number_a_page_can_start_at_is_a_bad_query,requirement,rp-service-api,Listings are filtered and paged,,high,name;covered code
+tests/unit/api/test_listing_routes.py::test_an_offset_beyond_the_largest_whole_number_a_page_can_start_at_is_a_bad_query,scenario,rp-service-api,Listings are filtered and paged,an offset beyond the bound,high,name;covered code
 tests/unit/api/test_listing_routes.py::test_the_tenant_listing_is_paged_by_iri_like_any_other,requirement,rp-service-api,Listings are filtered and paged,,high,name;covered code;spec id
 tests/unit/api/test_listing_routes.py::test_the_tenant_listing_still_refuses_a_contains_filter,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name;covered code
 tests/unit/api/test_listing_routes_read.py::TestReadOnlyListing::test_a_bad_query_is_a_400_problem_and_changes_nothing,requirement,rp-service-api,Listings are filtered and paged,,high,name;covered code;spec id
@@ -2952,7 +2952,7 @@ tests/unit/persistence/test_session_activity_adversarial.py::test_two_served_com
 tests/unit/access/test_session_find.py::test_a_contains_refuses_a_text_that_is_not_a_string,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_a_filter_value_is_its_rdf_lexical_form,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_by_a_contains_matches_a_substring_in_any_case,scenario,rp-aggregate-store,A session finds aggregates by slot values,a substring in any case,high,name; covered code; spec id
-tests/unit/access/test_session_find.py::test_find_by_a_contains_on_a_slot_that_is_not_text_is_a_bad_query,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
+tests/unit/access/test_session_find.py::test_find_by_a_contains_on_a_slot_that_is_not_text_is_a_bad_query,scenario,rp-aggregate-store,A session finds aggregates by slot values,a substring of a slot that holds no text,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_by_a_datetime_uses_the_rdf_lexical_form,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_by_a_value_of_an_unknown_type_is_a_bad_query,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
 tests/unit/access/test_session_find.py::test_find_by_an_empty_contains_is_a_bad_query,requirement,rp-aggregate-store,A session finds aggregates by slot values,,high,name; covered code; spec id
@@ -3008,6 +3008,8 @@ tests/unit/persistence/test_session_tenant_root.py::test_tc00b_a_session_reads_t
 tests/unit/persistence/test_session_tenant_root.py::test_tc00c_a_transaction_replaces_the_root_whatever_the_types,scenario,rp-aggregate-store,The tenant root is recognised whatever the IRI's type,"URIRef tenant, string IRI",high,name; covered code; spec id
 tests/unit/persistence/test_session_transaction.py::test_a_lost_race_with_no_culprit_says_so_with_no_iris,requirement,rp-aggregate-store,Several aggregates of one tenant commit atomically,,high,covered code; spec id
 tests/unit/persistence/test_session_transaction.py::test_a_match_guard_after_the_block_ended_raises,capability,rp-aggregate-store,,,medium,covered code
+tests/unit/persistence/test_session_transaction.py::test_a_contains_match_guard_that_fails_refuses_the_commit_and_writes_nothing,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code
+tests/unit/persistence/test_session_transaction.py::test_a_contains_match_guard_that_holds_lets_the_commit_through,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code
 tests/unit/persistence/test_session_transaction.py::test_a_match_guard_that_fails_refuses_the_commit_and_writes_nothing,capability,rp-aggregate-store,,,medium,covered code
 tests/unit/persistence/test_session_transaction.py::test_a_match_guard_that_holds_lets_the_commit_through,capability,rp-aggregate-store,,,medium,covered code
 tests/unit/persistence/test_session_transaction.py::test_a_present_guard_after_the_block_ended_raises,capability,rp-aggregate-store,,,medium,covered code
