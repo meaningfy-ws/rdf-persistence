@@ -140,6 +140,21 @@ def _check_clashes(ctx: Context) -> None:
                 element.label,
                 f"{iris[0]} and {iris[1]} both map to {element.label}",
             )
+    _check_toolkit_names(ctx)
+
+
+def _check_toolkit_names(ctx: Context) -> None:
+    """A domain class named like a toolkit class, with another IRI, is a problem naming both (PD-6, S-11)."""
+    for element in sorted(ctx.elements.values(), key=lambda each: each.uml.object_id):
+        if element.is_enum or ctx.toolkit.class_by_name(element.label) is None:
+            continue
+        iris = sorted((_iri_of(ctx, element.name), ctx.toolkit.class_uri(element.label)))
+        if iris[0] != iris[1]:
+            ctx.findings.problem(
+                UmlRule.CLASS_IRI,
+                element.label,
+                f"{iris[0]} and {iris[1]} both map to {element.label}",
+            )
 
 
 def root_path(ctx: Context, element: Element) -> str:

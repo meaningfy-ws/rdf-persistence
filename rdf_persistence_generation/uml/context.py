@@ -18,6 +18,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.problems import format_problem
 from rdf_persistence_generation.uml.naming import CURIE_SEPARATOR, resolve_name
+from rdf_persistence_generation.uml.toolkit import load_toolkit
 
 PREFIXES_FILE: Final = "the prefixes file"
 NO_RULE_TAIL: Final = "no rule converts it"
@@ -114,6 +115,7 @@ class Context:
         self.metamodel_prefixes = metamodel_prefixes
         self.prefixes = prefixes
         self.findings = Findings()
+        self.toolkit = load_toolkit()
         self.elements: dict[int, Element] = {}
         self.left_out: dict[int, str] = {}
         self.class_names: dict[

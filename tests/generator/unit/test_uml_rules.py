@@ -233,6 +233,28 @@ ROWS_R2 = [
         ),
     ),
     Row(
+        "failure: a domain class named like a toolkit class is a problem naming both (S-11)",
+        UmlRule.CLASS_IRI,
+        model(klass(BOOK, "lib:Activity")),
+        _problem(
+            UmlRule.CLASS_IRI,
+            "Activity",
+            "https://example.org/ns/library#Activity",
+            "http://www.w3.org/ns/prov#Activity",
+        ),
+    ),
+    Row(
+        "failure: a domain class named like a toolkit mixin is a problem naming both (S-11)",
+        UmlRule.CLASS_IRI,
+        model(klass(BOOK, "lib:Described")),
+        _problem(
+            UmlRule.CLASS_IRI,
+            "Described",
+            "https://example.org/ns/library#Described",
+            "https://meaningfy.ws/ns/rdf-persistence#Described",
+        ),
+    ),
+    Row(
         "failure: a name that breaks the lint pattern",
         UmlRule.CLASS_IRI,
         model(klass(BOOK, "lib:book")),

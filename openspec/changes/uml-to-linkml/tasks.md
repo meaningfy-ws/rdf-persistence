@@ -56,7 +56,7 @@ schema change and its regenerated code go in one commit (`make generate`, then t
 - [x] 2.1 Lead: freeze the rule table (DEC-5): rules R-30… received since the PLAN appended with
   source and stage, or sent to a follow-up issue; the freeze date written under the table; any new
   rule's `UmlRule` value added (with 1.1's test updated).
-- [ ] 2.2 Toolkit index (PD-17, PD-18, PD-20 lookups): `uml/toolkit.py`; `_segment_pattern`
+- [x] 2.2 Toolkit index (PD-17, PD-18, PD-20 lookups): `uml/toolkit.py`; `_segment_pattern`
   renamed `segment_pattern` in `checks/hard.py` and its callers. Failing test first:
   `tests/generator/unit/test_uml_toolkit.py`: class annotations = the seven of F-1;
   `prov:Activity` → `Activity`, non-mixin; `skos:prefLabel` → `label`; `dcterms:identifier` not
