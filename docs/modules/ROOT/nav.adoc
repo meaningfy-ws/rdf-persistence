@@ -26,6 +26,7 @@
 *** xref:howto/reference-collections.adoc[Group resources you do not own]
 *** xref:howto/migrate.adoc[Change a schema that has stored data]
 *** xref:howto/application-data.adoc[Keep data that belongs to no tenant]
+*** xref:howto/uml-to-linkml.adoc[Generate the model from UML]
 ** Collaboration and events
 *** xref:howto/discussion.adoc[Comment on a resource]
 *** xref:howto/workflow.adoc[Put a resource through review]

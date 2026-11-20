@@ -76,7 +76,9 @@ named in each subsection.
 A class stereotyped «root» is an aggregate root. It mixes in `AggregateRoot`, gets the default
 mixins (`--default-mixins`, `Described,Tracked`) and an `rp_path`. The `rp_path` is the `rp_path`
 tagged value when the class has one, else the plural of the class name in kebab case (`Book` →
-`books`, `Library` → `libraries`, `Box` → `boxes`). Two roots with one `rp_path` fail.
+`books`, `Library` → `libraries`, `Box` → `boxes`). The plural is simple and irregular nouns are not
+guessed: `Shelf` becomes `shelfs`, so give it `rp_path=shelves` (<<tagged-values>>). Two roots with
+one `rp_path` fail.
 
 [mermaid]
 ....
@@ -217,7 +219,8 @@ classes:
 A class whose stereotype is in the not-generated list produces no class. The list is
 `--not-generated <stereotype>`, repeatable; its default is `loaded graph`, and naming any replaces
 the default. A slot to such a class is `range: uri`, and the report has a `not-generated` line. A
-slot to a class in an `--exclude-package` package is not made at all (an `excluded-link` line); a
+slot to a class in an `--exclude-package` package (the option's path matches a package's path or
+its tail) is not made at all (an `excluded-link` line); a
 slot to a class outside the converted package that is not excluded is `range: uri` (an
 `outside-link` line).
 
@@ -272,6 +275,9 @@ annotation (`owned`) fails.
 A part tagged `rp_unlabelled=true` gets `Described` only, with the annotation, so its `label` is
 optional.
 
+A stereotype on an attribute is not used: the attribute converts as usual and the report has an
+`ignored-stereotype` line.
+
 [mermaid]
 ....
 classDiagram
@@ -315,7 +321,9 @@ generated. A generalisation to it has the effect of `rp_mixins`: a mixin class i
 non-mixin becomes `is_a`. A «root» may be an `Activity`.
 * An attribute or role whose IRI is a toolkit slot's `slot_uri` uses that slot, and no new one is
 made. A `[1..1]` on a slot the toolkit fills itself (`started_at_time`) is not carried: the
-converter writes no `slot_usage` for it and reports a `toolkit-filled` line.
+converter writes no `slot_usage` for it and reports a `toolkit-filled` line. An attribute that
+differs from the toolkit slot in multiplicity (multivalued) or in range keeps the toolkit's, with a
+`toolkit-slot-kept` line.
 * `dct:identifier` is the exception: it makes a new slot `identifier`
 (`slot_uri: dcterms:identifier`), because `id` is the resource's IRI and stays so.
 
@@ -447,8 +455,9 @@ after the first package in path order, with a `merged-cycle` line in the report.
 [#fails]
 == What fails
 
-The converter collects every problem, prints them sorted as `[no_rule] <element>: <reason>`, writes
-nothing and exits 1. Fix the EA model and run again.
+The converter collects every problem, prints them sorted as `[<rule>] <element>: <reason>` (the
+rule is `no_rule` for an element no convention maps, else the rule that was broken), writes nothing
+and exits 1. Fix the EA model and run again.
 
 [cols="3,4",options="header"]
 |===
@@ -479,7 +488,17 @@ nothing and exits 1. Fix the EA model and run again.
 |A class with two stereotypes
 |Keep one.
 
-|A direction other than `Source -> Destination` or `Bi-Directional`; two roles on a
+|A stereotype on a connector
+|Remove it; a connector carries none of the toolkit's conventions.
+
+|A generalisation from an enumeration, or to a class that is not converted; a slot held by an
+enumeration
+|Generalise classes that are converted, and keep an enumeration to its literals.
+
+|A package that holds no class or enumeration to convert
+|Name the package that holds the model in `--package`.
+
+|No direction, a direction other than `Source -> Destination` or `Bi-Directional`; two roles on a
 `Source -> Destination` association
 |Set the direction in EA. For two roles, set `Bi-Directional`.
 
