@@ -210,6 +210,10 @@ class ReportKind(str, Enum):
     "Packages that import each other, merged into one module."
     STALE_FILE = "stale_file"
     "A file of an earlier run left in the output folder, which this run did not write."
+    EXTERNAL_LIST = "external_list"
+    "An enumeration with no literals, a list kept outside the model, so its slots range over a URI."
+    UNSPECIFIED_MULTIPLICITY = "unspecified_multiplicity"
+    "A connector end with no multiplicity, read as zero or more."
 
 
 class UmlRule(str, Enum):

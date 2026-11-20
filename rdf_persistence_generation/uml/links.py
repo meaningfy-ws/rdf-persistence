@@ -1,0 +1,186 @@
+"""Slots of associations and dependencies, and what a boundary owns (R-6, R-8, R-11, R-12; PD-8, PD-13, PD-15).
+
+An association gives a slot at each end that has a role; a dependency gives one, on its source, ranged
+by the enumeration it points at. A slot from a member of a boundary to another member than its root is
+owned (and so is the destination of a composite association).
+"""
+
+from rdf_persistence_generation.generated.rp_generation import (
+    ReportKind,
+    UmlBoundary,
+    UmlLink,
+    UmlLinkKind,
+    UmlModel,
+)
+from rdf_persistence_generation.uml.context import (
+    LEFT_EXCLUDED,
+    LEFT_NOT_GENERATED,
+    Context,
+    Element,
+)
+from rdf_persistence_generation.uml.naming import slot_name
+from rdf_persistence_generation.uml.slots import (
+    COMPOSITE,
+    UNSPECIFIED,
+    URI,
+    Shape,
+    Usage,
+    check_bounds,
+    described,
+    slot_identity,
+)
+
+ASSOCIATION_CLASS = "Class"
+
+
+class End:
+    """One end of a connector that may become a slot: the class that holds it and the one it points at."""
+
+    __slots__ = ("card", "holder_id", "other_id", "owned_by_composite", "role")
+
+    def __init__(
+        self,
+        ids: tuple[int, int],
+        role_and_card: tuple[str | None, str | None],
+        owned_by_composite: bool = False,
+    ) -> None:
+        """``ids`` are the holder's and the target's; the role and the cardinality are the end's own."""
+        self.holder_id, self.other_id = ids
+        self.role, self.card = role_and_card
+        self.owned_by_composite = owned_by_composite
+
+
+def _boundary_pairs(ctx: Context, boundary: UmlBoundary) -> set[tuple[int, int]]:
+    """The owned pairs of one boundary: from each member to each member but its root."""
+    members = [m for m in boundary.member_ids or [] if m in ctx.elements]
+    roots = [m for m in members if ctx.elements[m].is_root]
+    if len(roots) != 1:
+        ctx.findings.no_rule(
+            boundary.name, f"a boundary needs exactly one root, this one has {len(roots)}"
+        )
+        return set()
+    return {(m, p) for m in members for p in members if p != roots[0]}
+
+
+def owned_pairs(ctx: Context, model: UmlModel) -> set[tuple[int, int]]:
+    """The (holder, target) pairs a boundary makes owned; a boundary without exactly one root is a problem."""
+    pairs: set[tuple[int, int]] = set()
+    for each in sorted(model.uml_boundaries or [], key=lambda b: (b.name, b.object_id)):
+        pairs |= _boundary_pairs(ctx, each)
+    return pairs
+
+
+def outside_name(element_id: int) -> str:
+    """How the report names a link's far end that the model does not hold: by its id (D-17 will name it)."""
+    return f"#{element_id}"
+
+
+def _name_of(ctx: Context, element_id: int) -> str:
+    element = ctx.elements.get(element_id)
+    return (
+        element.label if element else ctx.left_out_names.get(element_id) or outside_name(element_id)
+    )
+
+
+def _range_of(ctx: Context, end: End, holder: Element, slot: str) -> str | None:
+    """The range a slot has; None when the target is in an excluded package and the slot is not made."""
+    target = ctx.elements.get(end.other_id)
+    if target is not None:
+        return URI if target.is_enum and not target.literals else target.label
+    why = ctx.left_out.get(end.other_id)
+    if why == LEFT_NOT_GENERATED:
+        return URI
+    if why == LEFT_EXCLUDED:
+        element = f"{holder.label}.{slot} -> {_name_of(ctx, end.other_id)}"
+        ctx.findings.note(
+            ReportKind.EXCLUDED_LINK, element, "the target is in an excluded package, so no slot"
+        )
+        return None
+    ctx.findings.note(
+        ReportKind.OUTSIDE_LINK,
+        f"{holder.label}.{slot}",
+        "the target is outside the converted subtree, a URI",
+    )
+    return URI
+
+
+def _end_usage(ctx: Context, link: UmlLink, end: End, owned: set[tuple[int, int]]) -> Usage | None:
+    holder = ctx.elements.get(end.holder_id)
+    name = ctx.resolve(end.role, _name_of(ctx, end.holder_id)) if end.role and holder else None
+    if holder is None or name is None:
+        return None
+    element = f"{holder.label}.{name.name}"
+    identity = slot_identity(ctx, name, element)
+    if identity is None:
+        return None
+    element = f"{holder.label}.{identity.name}"
+    bounds = check_bounds(ctx, element, _card_text(ctx, element, end.card))
+    target_range = _range_of(ctx, end, holder, identity.name)
+    if bounds is None or target_range is None:
+        return None
+    is_owned = end.owned_by_composite or (end.holder_id, end.other_id) in owned
+    shape = Shape((target_range, described(ctx, element, link.note)), bounds, None, is_owned)
+    return Usage(holder, identity, (1, 0, identity.name), shape)
+
+
+def _card_text(ctx: Context, element: str, card: str | None) -> str:
+    if card is None or not card.strip():
+        ctx.findings.note(ReportKind.UNSPECIFIED_MULTIPLICITY, element, f"read as {UNSPECIFIED}")
+        return UNSPECIFIED
+    return card
+
+
+def _refused(ctx: Context, link: UmlLink) -> bool:
+    """A connector no rule maps: a stereotype, an association class or a composite whose whole is the target."""
+    role = slot_name(link.target_role) if link.target_role else ""
+    label = f"{_name_of(ctx, link.source_id)}.{role}".rstrip(".")
+    if link.uml_stereotype:
+        ctx.findings.no_rule(label, f"connector stereotype {link.uml_stereotype}")
+    elif link.association_class or link.sub_type == ASSOCIATION_CLASS:
+        ctx.findings.no_rule(label, "association class")
+    elif link.target_aggregate == COMPOSITE:
+        ctx.findings.no_rule(label, "a composite whose whole is the destination")
+    elif not link.source_role and not link.target_role:
+        ctx.findings.no_rule(
+            f"{_name_of(ctx, link.source_id)} -> {_name_of(ctx, link.target_id)}",
+            "link with no role",
+        )
+    else:
+        return False
+    return True
+
+
+def _ends(link: UmlLink) -> list[End]:
+    forward = End(
+        (link.source_id, link.target_id),
+        (link.target_role, link.target_card),
+        owned_by_composite=link.source_aggregate == COMPOSITE,
+    )
+    if link.link_kind == UmlLinkKind.DEPENDENCY:
+        return [forward]
+    backward = End((link.target_id, link.source_id), (link.source_role, link.source_card))
+    return [forward, backward]
+
+
+def _dependency_target_ok(ctx: Context, link: UmlLink) -> bool:
+    target = ctx.elements.get(link.target_id)
+    if target is not None and not target.is_enum:
+        ctx.findings.no_rule(
+            f"{_name_of(ctx, link.source_id)}.{link.target_role}",
+            "dependency on a class, not an enumeration",
+        )
+        return False
+    return True
+
+
+def link_usages(ctx: Context, model: UmlModel, owned: set[tuple[int, int]]) -> list[Usage]:
+    """The slots of every association and dependency, in connector order."""
+    usages: list[Usage] = []
+    for link in sorted(model.uml_links or [], key=lambda each: each.connector_id):
+        if link.link_kind == UmlLinkKind.GENERALISATION or _refused(ctx, link):
+            continue
+        if link.link_kind == UmlLinkKind.DEPENDENCY and not _dependency_target_ok(ctx, link):
+            continue
+        made = (_end_usage(ctx, link, end, owned) for end in _ends(link))
+        usages.extend(usage for usage in made if usage is not None)
+    return usages

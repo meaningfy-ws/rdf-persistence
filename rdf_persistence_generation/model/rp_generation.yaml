@@ -1599,6 +1599,14 @@ enums:
         title: Stale file
         description: A file of an earlier run left in the output folder, which this run did not write.
         meaning: rp:ReportKindStaleFile
+      external_list:
+        title: External list
+        description: An enumeration with no literals, a list kept outside the model, so its slots range over a URI.
+        meaning: rp:ReportKindExternalList
+      unspecified_multiplicity:
+        title: Unspecified multiplicity
+        description: A connector end with no multiplicity, read as zero or more.
+        meaning: rp:ReportKindUnspecifiedMultiplicity
   UmlRule:
     title: UML rule
     description: >-

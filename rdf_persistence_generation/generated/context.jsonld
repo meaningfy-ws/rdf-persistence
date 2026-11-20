@@ -325,7 +325,9 @@
             "ignored_tag": "https://meaningfy.ws/ns/rdf-persistence#ReportKindIgnoredTag",
             "ignored_stereotype": "https://meaningfy.ws/ns/rdf-persistence#ReportKindIgnoredStereotype",
             "merged_cycle": "https://meaningfy.ws/ns/rdf-persistence#ReportKindMergedCycle",
-            "stale_file": "https://meaningfy.ws/ns/rdf-persistence#ReportKindStaleFile"
+            "stale_file": "https://meaningfy.ws/ns/rdf-persistence#ReportKindStaleFile",
+            "external_list": "https://meaningfy.ws/ns/rdf-persistence#ReportKindExternalList",
+            "unspecified_multiplicity": "https://meaningfy.ws/ns/rdf-persistence#ReportKindUnspecifiedMultiplicity"
          }
       },
       "required": {
