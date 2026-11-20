@@ -553,6 +553,17 @@ ROWS_R5 = [
         ),
         _ignored_stereotype,
     ),
+    *[
+        Row(
+            f"failure: an attribute written {written!r} is not a valid local name (D-29 C-1)",
+            UmlRule.ATTRIBUTE_SLOT,
+            model(klass(BOOK, "lib:Book", attributes=(attribute(1, BOOK, written),))),
+            _problem(
+                UmlRule.ATTRIBUTE_SLOT, "Book.has title", "'has title' is not a valid local name"
+            ),
+        )
+        for written in ("has title", "lib:has title")
+    ],
 ]
 
 # --- R-6 association slot (PD-8, D-11) ----------------------------------------------------------------
@@ -628,6 +639,21 @@ ROWS_R6 = [
         ),
         _both_ends,
     ),
+    *[
+        Row(
+            f"failure: a role written {written!r} is not a valid local name (D-29 C-1)",
+            UmlRule.ATTRIBUTE_SLOT,
+            model(
+                klass(BOOK, "lib:Book"),
+                klass(SHELF, "lib:Shelf"),
+                links=(link(1, BOOK, SHELF, target_role=written, target_card="0..1"),),
+            ),
+            _problem(
+                UmlRule.ATTRIBUTE_SLOT, "Book.has title", "'has title' is not a valid local name"
+            ),
+        )
+        for written in ("has title", "lib:has title")
+    ],
     *[
         Row(
             f"connector card {card!r} (D-11)",
@@ -749,6 +775,15 @@ ROWS_R7 = [
         ),
         _empty_enum,
     ),
+    *[
+        Row(
+            f"failure: a literal written {written!r} is not a valid local name (D-29 C-1)",
+            UmlRule.CLASS_IRI,
+            model(enumeration(GENRE, "lib:Genre", (written,))),
+            _problem(UmlRule.CLASS_IRI, "Genre.on loan", "'on loan' is not a valid local name"),
+        )
+        for written in ("on loan", "lib:on loan")
+    ],
 ]
 
 ROWS_R8 = [

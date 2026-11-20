@@ -12,6 +12,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import yaml
+from linkml_runtime.utils.metamodelcore import NCName
+from linkml_runtime.utils.uri_validator import validate_uri
 
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
@@ -33,7 +35,11 @@ LIST_SEPARATOR = ","
 REQUIRED_KEYS = ("schema_base", "default_prefix", "version", "prefixes")
 
 
-class PrefixesFileError(Exception):
+class UsageError(Exception):
+    """The setup cannot be used (exit 2); the message is the matrix text."""
+
+
+class PrefixesFileError(UsageError):
     """The prefixes file cannot be used (exit 2); the message is the matrix text."""
 
 
@@ -79,6 +85,38 @@ def _read_mapping(path: Path) -> Mapping[str, object]:
     return content
 
 
+def _is_ncname(text: str) -> bool:
+    return bool(text) and NCName.is_valid(text)
+
+
+def _is_absolute_iri(text: str) -> bool:
+    return bool(validate_uri(text))
+
+
+def _check_values(
+    path: Path, content: Mapping[str, object], prefixes: Mapping[str, object]
+) -> None:
+    """Each value the file gives must be usable in the output (D-29 C-2), else a usage error."""
+    schema_base = str(content["schema_base"])
+    if not _is_absolute_iri(schema_base):
+        raise PrefixesFileError(f"{path}: schema_base {schema_base} is not an absolute IRI")
+    for name, namespace in prefixes.items():
+        if not _is_ncname(str(name)):
+            raise PrefixesFileError(f"{path}: prefix {name} is not an NCName")
+        if not _is_absolute_iri(str(namespace)):
+            raise PrefixesFileError(
+                f"{path}: namespace {namespace} of prefix {name} is not an absolute IRI"
+            )
+    default_prefix = str(content["default_prefix"])
+    if default_prefix not in {str(name) for name in prefixes}:
+        raise PrefixesFileError(f"{path}: default_prefix {default_prefix} is not a key of prefixes")
+
+
+def _check_root_name(root_name: str) -> None:
+    if not _is_ncname(root_name):
+        raise UsageError(f"--root-name {root_name} is not an NCName")
+
+
 def load_settings(path: Path, args: argparse.Namespace) -> UmlSettings:
     """The prefixes file (PD-5) and the command line as ``UmlSettings``.
 
@@ -92,6 +130,7 @@ def load_settings(path: Path, args: argparse.Namespace) -> UmlSettings:
     prefixes = content["prefixes"]
     if not isinstance(prefixes, Mapping):
         raise PrefixesFileError(f"{path}: prefixes is not a mapping")
+    _check_values(path, content, prefixes)
     return UmlSettings(
         schema_base=str(content["schema_base"]),
         default_prefix=str(content["default_prefix"]),
@@ -139,9 +178,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run ``rp-uml2linkml``; return the exit code: 0 written, 1 model problems, 2 unusable setup."""
     args = build_parser().parse_args(argv)
     try:
+        _check_root_name(args.root_name)
         settings = load_settings(args.prefixes, args)
         model = read_qea(args.qea, args.package, args.exclude_package)
-    except PrefixesFileError as error:
+    except UsageError as error:
         return _usage_error(str(error))
     except QeaUsageError as error:
         return _usage_error(error.message)
