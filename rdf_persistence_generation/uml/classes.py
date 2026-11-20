@@ -79,6 +79,8 @@ def _admit(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
 
 def _leave_out(ctx: Context, uml: UmlClass, why: str) -> None:
     ctx.left_out[uml.object_id] = why
+    if why == LEFT_NOT_GENERATED and uml.object_type == ENUMERATION_TYPE:
+        ctx.left_out_enums.add(uml.object_id)
 
 
 def _register(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:

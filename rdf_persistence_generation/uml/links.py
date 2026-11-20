@@ -211,6 +211,14 @@ def _dependency_target_ok(ctx: Context, link: UmlLink) -> bool:
             "a dependency with a source role only, it needs a destination role",
         )
         return False
+    if ctx.not_generated_enum(link.target_id):
+        element = f"{_name_of(ctx, link.source_id)}.{slot_name(link.target_role)}"
+        ctx.findings.note(
+            ReportKind.NOT_GENERATED,
+            f"{element} -> {_name_of(ctx, link.target_id)}",
+            "the target is not generated, so no slot (R-30)",
+        )
+        return False
     target = ctx.elements.get(link.target_id)
     if target is not None and not target.is_enum:
         ctx.findings.no_rule(

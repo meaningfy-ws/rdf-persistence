@@ -119,6 +119,9 @@ class Context:
         self.toolkit = load_toolkit()
         self.elements: dict[int, Element] = {}
         self.left_out: dict[int, str] = {}
+        self.left_out_enums: set[int] = (
+            set()
+        )  # left out as not generated, and an enumeration (R-30)
         self.class_names: dict[
             int, str
         ] = {}  # every class the model lists, converted or not (D-17)
@@ -131,6 +134,10 @@ class Context:
         self.drawn_parents: dict[
             int, list[str]
         ] = {}  # a class's drawn toolkit parents, connector order
+
+    def not_generated_enum(self, object_id: int | None) -> bool:
+        """Whether the element is an enumeration the run leaves out as not generated (R-30)."""
+        return object_id in self.left_out_enums
 
     def toolkit_name(self, written: str) -> str | None:
         """The toolkit class a drawn class stands for: its IRI is a toolkit ``class_uri``, or it is the toolkit's

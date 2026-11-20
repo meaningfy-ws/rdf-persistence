@@ -1692,6 +1692,126 @@ ROWS_ACTIVITY_ROOT = [
     ),
 ]
 
+# --- R-30 an enumeration that is not generated (PD-15, D-23) --------------------------------------------
+
+_STATES = "workflow states"
+_LISTED = {"not_generated_stereotypes": ["loaded graph", _STATES]}
+
+
+def _states_enum() -> object:
+    states = enumeration(GENRE, "lib:Genre", ("lib:open", "lib:closed"))
+    states.uml_stereotype = _STATES
+    return states
+
+
+def _enum_left_out(out: Converted) -> None:
+    _no_problems(out)
+    assert "Genre" not in out.schemas["app_library"].enums
+    assert "Genre: stereotype workflow states, not generated" in out.report_lines("not_generated")
+
+
+def _no_slot_for_states(out: Converted) -> None:
+    _enum_left_out(out)
+    assert "genre" not in out.schemas["app_library"].slots
+    assert out.klass("app_library", "Book").slots == []
+    assert [line.split(":")[0] for line in out.report_lines("not_generated")] == [
+        "Book.genre -> Genre",
+        "Genre",
+    ]
+
+
+def _no_slot_for_typed_attribute(out: Converted) -> None:
+    _enum_left_out(out)
+    assert "status" not in out.schemas["app_library"].slots
+    assert out.klass("app_library", "Book").slots == []
+    assert [line.split(":")[0] for line in out.report_lines("not_generated")] == [
+        "Book.status",
+        "Genre",
+    ]
+
+
+def _class_dependency_stays_a_uri(out: Converted) -> None:
+    _no_problems(out)
+    assert out.slot("app_library", "series").range == "uri"
+    assert out.report_lines("not_generated") == ["Series: stereotype loaded graph, not generated"]
+
+
+ROWS_R30 = [
+    Row(
+        "a dependency to a not-generated class is as before: a URI slot, no extra line",
+        UmlRule.NOT_GENERATED,
+        model(
+            klass(SERIES, "lib:Series", stereotype="loaded graph"),
+            klass(BOOK, "lib:Book"),
+            links=(
+                link(
+                    1,
+                    BOOK,
+                    SERIES,
+                    kind=UmlLinkKind.DEPENDENCY,
+                    target_role="series",
+                    target_card="0..1",
+                ),
+            ),
+        ),
+        _class_dependency_stays_a_uri,
+    ),
+    Row(
+        "an attribute typed by a not-generated class is still no rule",
+        UmlRule.NOT_GENERATED,
+        model(
+            klass(SERIES, "lib:Series", stereotype="loaded graph"),
+            klass(
+                BOOK,
+                "lib:Book",
+                attributes=(attribute(1, BOOK, "lib:series", "Series", classifier=SERIES),),
+            ),
+        ),
+        _problem(UmlRule.NO_RULE, "Book.series", "type Series"),
+    ),
+    Row(
+        "a listed enumeration makes no enum and one not-generated line",
+        UmlRule.NOT_GENERATED,
+        model(_states_enum(), klass(BOOK, "lib:Book")),
+        _enum_left_out,
+        _LISTED,
+    ),
+    Row(
+        "a dependency to a listed enumeration makes no slot and one not-generated line",
+        UmlRule.NOT_GENERATED,
+        model(
+            _states_enum(),
+            klass(BOOK, "lib:Book"),
+            links=(
+                link(
+                    1,
+                    BOOK,
+                    GENRE,
+                    kind=UmlLinkKind.DEPENDENCY,
+                    target_role="genre",
+                    target_card="0..1",
+                ),
+            ),
+        ),
+        _no_slot_for_states,
+        _LISTED,
+    ),
+    Row(
+        "an attribute typed by a listed enumeration makes no slot and one not-generated line",
+        UmlRule.NOT_GENERATED,
+        model(
+            _states_enum(),
+            klass(
+                BOOK,
+                "lib:Book",
+                attributes=(attribute(1, BOOK, "lib:status", "Genre", classifier=GENRE),),
+            ),
+        ),
+        _no_slot_for_typed_attribute,
+        _LISTED,
+    ),
+]
+
 ROWS: list[Row] = [
     *ROWS_R1,
     *ROWS_R2,
@@ -1712,6 +1832,7 @@ ROWS: list[Row] = [
     *ROWS_R27,
     *ROWS_R28,
     *ROWS_ACTIVITY_ROOT,
+    *ROWS_R30,
 ]
 
 STAGE_2 = {

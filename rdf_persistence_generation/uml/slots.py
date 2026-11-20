@@ -232,13 +232,33 @@ def slot_identity(ctx: Context, name: UmlName, element: str) -> Identity | None:
     return Identity(snake, iri, explicit, title_for(name.name))
 
 
+def _typed_by_not_generated(
+    ctx: Context, element: str, attribute: UmlAttribute, declared: str
+) -> bool:
+    """Whether the type is an enumeration the run does not generate: no slot, one report line (R-30)."""
+    if not ctx.not_generated_enum(attribute.classifier_id):
+        return False
+    ctx.findings.note(
+        ReportKind.NOT_GENERATED,
+        element,
+        f"typed by {declared}, which is not generated, so no slot (R-30)",
+    )
+    return True
+
+
 def _typed(ctx: Context, holder: Element, attribute: UmlAttribute) -> tuple[str, int | None] | None:
     """The range and ``minimum_value`` an attribute's type gives (PD-7, D-10, D-12), or None with a problem."""
     element = f"{holder.label}.{local_of(attribute.name)}"
     declared = (attribute.declared_type or "").strip()
+    if _typed_by_not_generated(ctx, element, attribute, declared):
+        return None
     target = ctx.elements.get(attribute.classifier_id or -1) or _enum_named(ctx, declared)
     if target is not None and target.is_enum:
         return (target.label if target.literals else URI), None
+    return _plain_type(ctx, element, declared)
+
+
+def _plain_type(ctx: Context, element: str, declared: str) -> tuple[str, int | None] | None:
     if declared in LANG_STRINGS:
         ctx.findings.no_rule(element, f"{declared} has no toolkit range yet (#209)")
     elif declared in XSD:
