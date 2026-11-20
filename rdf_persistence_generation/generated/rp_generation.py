@@ -553,6 +553,7 @@ class UmlLink(ConfiguredBaseModel):
     target_card: Optional[str] = Field(default=None, title="Target cardinality", description="The cardinality at the target end of a connector, as the model writes it.")
     target_aggregate: Optional[int] = Field(default=None, title="Target aggregate", description="The aggregation flag of the target end of a connector, 0 for none, 1 for shared, 2 for composite.")
     association_class: Optional[str] = Field(default=None, title="Association class", description="The id or name the model gives to the class an association is drawn as, absent for a plain one.")
+    direction: Optional[str] = Field(default=None, title="Direction", description="The direction of a connector as the model writes it (`Source -\u003e Destination`, `Bi-Directional`), absent when the model gives none.")
 
 
 class UmlTaggedValue(ConfiguredBaseModel):

@@ -254,7 +254,7 @@ DDL: dict[str, str] = {
     ),
     "t_connector": (
         "CREATE TABLE t_connector (Connector_ID INTEGER PRIMARY KEY, Connector_Type TEXT,"
-        " SubType TEXT, Stereotype TEXT, Notes TEXT, Start_Object_ID INTEGER,"
+        " SubType TEXT, Stereotype TEXT, Notes TEXT, Direction TEXT, Start_Object_ID INTEGER,"
         " End_Object_ID INTEGER, SourceRole TEXT, SourceCard TEXT, SourceIsAggregate INTEGER,"
         " DestRole TEXT, DestCard TEXT, DestIsAggregate INTEGER, PDATA1 TEXT)"
     ),
@@ -272,6 +272,7 @@ BOUNDARY_TYPE = "Boundary"
 GENERALISATION_TYPE = "Generalization"
 ASSOCIATION_TYPE = "Association"
 DEPENDENCY_TYPE = "Dependency"
+DIRECTED = "Source -> Destination"
 
 
 class QeaBuilder:
@@ -303,7 +304,7 @@ class QeaBuilder:
         abstract: bool = False,
         note: str | None = None,
     ) -> int:
-        return self._insert(
+        object_id = self._insert(
             "t_object",
             Object_Type=object_type,
             Name=name,
@@ -312,6 +313,19 @@ class QeaBuilder:
             Stereotype=stereotype,
             Abstract="1" if abstract else "0",
         )
+        self._db.execute(
+            "UPDATE t_object SET ea_guid = ? WHERE Object_ID = ?",
+            (f"{{GUID-{object_id}}}", object_id),
+        )
+        return object_id
+
+    def extra_stereotypes(self, owner: int, *names: str) -> int:
+        """Record the stereotypes of ``owner`` in ``t_xref`` the way EA does, one entry per name."""
+        guid = self._db.execute(
+            "SELECT ea_guid FROM t_object WHERE Object_ID = ?", (owner,)
+        ).fetchone()[0]
+        entries = "".join(f"@STEREO;Name={name};GUID={{S-{name}}};@ENDSTEREO;" for name in names)
+        return self._insert("t_xref", Client=guid, Name="Stereotypes", Description=entries)
 
     def attribute(
         self,
@@ -337,12 +351,26 @@ class QeaBuilder:
         )
 
     def association(
-        self, source: int, destination: int, role: str, card: str, note: str | None = None
+        self,
+        source: int,
+        destination: int,
+        role: str,
+        card: str | None,
+        note: str | None = None,
+        direction: str = DIRECTED,
+        sub_type: str | None = None,
+        pdata1: str | None = None,
     ) -> int:
-        """A directed association with its role and cardinality at the destination."""
+        """A directed association with its role and cardinality at the destination.
+
+        ``sub_type="Class"`` or a ``pdata1`` naming a class makes it an association class.
+        """
         return self._insert(
             "t_connector",
             Connector_Type=ASSOCIATION_TYPE,
+            SubType=sub_type,
+            PDATA1=pdata1,
+            Direction=direction,
             Notes=note,
             Start_Object_ID=source,
             End_Object_ID=destination,
@@ -387,13 +415,14 @@ class QeaBuilder:
         """
         left, top, right, bottom = rect
         boundary = self._insert("t_object", Object_Type=BOUNDARY_TYPE, Name="Boundary")
-        self._place(diagram, boundary, rect)
+        self.place(diagram, boundary, rect)
         centre_x, centre_y = (left + right) // 2, (top + bottom) // 2
         for member in members:
-            self._place(diagram, member, (centre_x - 1, centre_y + 1, centre_x + 1, centre_y - 1))
+            self.place(diagram, member, (centre_x - 1, centre_y + 1, centre_x + 1, centre_y - 1))
         return boundary
 
-    def _place(self, diagram: int, obj: int, rect: tuple[int, int, int, int]) -> None:
+    def place(self, diagram: int, obj: int, rect: tuple[int, int, int, int]) -> None:
+        """Place an object on a diagram as ``(left, top, right, bottom)``, as given, unnormalised."""
         left, top, right, bottom = rect
         self._insert(
             "t_diagramobjects",

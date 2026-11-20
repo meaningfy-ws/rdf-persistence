@@ -60,6 +60,9 @@
       "diagrams": {
          "@id": "diagramsFolder"
       },
+      "direction": {
+         "@id": "umlDirection"
+      },
       "doc": {
          "@id": "doc"
       },

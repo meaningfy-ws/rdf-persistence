@@ -297,6 +297,7 @@ classes:
       - target_card
       - target_aggregate
       - association_class
+      - direction
     slot_usage:
       connector_id:
         required: true
@@ -1181,6 +1182,12 @@ slots:
     title: Association class
     description: The id or name the model gives to the class an association is drawn as, absent for a plain one.
     slot_uri: rp:umlAssociationClass
+  direction:
+    title: Direction
+    description: >-
+      The direction of a connector as the model writes it (`Source -> Destination`, `Bi-Directional`),
+      absent when the model gives none.
+    slot_uri: rp:umlDirection
   tag_value:
     title: Tag value
     description: The text of a tagged value.
