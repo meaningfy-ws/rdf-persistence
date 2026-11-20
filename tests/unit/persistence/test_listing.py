@@ -49,6 +49,30 @@ def test_limit_offset_sort_and_filters_are_read_from_the_query_string():
     ], "everything else is a filter, in the order sent"
 
 
+# TC-01: a name ending in "~" is a contains filter on the name without that last "~"
+@pytest.mark.parametrize(
+    ("param", "expected"),
+    [
+        (("label~", "dune"), Filter(slot="label", value="dune", contains=True)),
+        (("label", "dune"), Filter(slot="label", value="dune", contains=False)),
+        (("label~", "a=b"), Filter(slot="label", value="a=b", contains=True)),
+        (("sort~", "x"), Filter(slot="sort", value="x", contains=True)),
+        (("label~~", "x"), Filter(slot="label~", value="x", contains=True)),
+    ],
+    ids=[
+        "contains",
+        "equality",
+        "value-with-equals",
+        "reserved-name-after-strip",
+        "only-last-tilde",
+    ],
+)
+def test_a_name_ending_in_a_tilde_is_a_contains_filter(param, expected):
+    assert list_request([param]).filters == [expected], (
+        "the last ~ makes a contains filter; reserved names are compared before it is stripped"
+    )
+
+
 # equivalence class: a limit that is not digits (abc); 0 and 201 are the range's boundaries
 @pytest.mark.parametrize(
     "params",

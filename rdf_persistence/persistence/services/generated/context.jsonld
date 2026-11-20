@@ -28,6 +28,9 @@
       "descending": {
          "@id": "descending"
       },
+      "contains": {
+         "@id": "filterContains"
+      },
       "slot": {
          "@id": "filterSlot"
       },

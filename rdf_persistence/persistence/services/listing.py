@@ -1,6 +1,6 @@
 """Listings (PD-15): what a page of aggregates asks for, and the one query that reads it.
 
-A listing is the aggregates of one type in a tenant, filtered by equality on the type's slots, ordered
+A listing is the aggregates of one type in a tenant, filtered on the type's slots (equality, or contains for a name ending in ``~``), ordered
 by IRI or by one slot, and cut into a page. The query string becomes a ``ListRequest``; against the
 type's slots it becomes a ``ListPlan`` of typed terms (a filter value is typed by the range of its
 slot, never pasted into the query as text); the plan becomes one ``CONSTRUCT`` that returns the
@@ -48,6 +48,8 @@ LIMIT, OFFSET, SORT = "limit", "offset", "sort"
 # The largest page a listing gives: the bound the generated request model enforces.
 PAGE = next(m.le for m in ListRequest.model_fields["limit"].metadata if hasattr(m, "le"))
 RESERVED = frozenset({LIMIT, OFFSET, SORT})
+# A parameter name ending in it asks for a contains filter on the name without it.
+CONTAINS = "~"
 DESCENDING = "-"
 _DIGITS = re.compile(r"[0-9]+")
 _SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:\S+")
@@ -104,6 +106,10 @@ def _paging(sent: Mapping[str, list[str]]) -> dict[str, int]:
 def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
     """The listing a query string asks for: ``limit``, ``offset``, ``sort``, every other parameter a filter.
 
+    A name ending in ``~`` is a contains filter on the name without that last ``~`` (``label~=dune``);
+    any other name is an equality filter. The value is taken as sent. The reserved names are compared
+    before the ``~`` is stripped, so ``sort~`` is a filter on the slot ``sort``.
+
     Raises:
         BadQuery: ``limit`` is not between 1 and ``PAGE``, ``offset`` is negative, a number is not a whole
             number, or ``limit``, ``offset`` or ``sort`` is given twice.
@@ -112,7 +118,7 @@ def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
     if len(sent[SORT]) > 1:
         raise BadQuery("sort must be given once")
     filters = [
-        Filter(slot=name, value=value)
+        Filter(slot=name.removesuffix(CONTAINS), value=value, contains=name.endswith(CONTAINS))
         for name, values in sent.items()
         if name not in RESERVED
         for value in values
