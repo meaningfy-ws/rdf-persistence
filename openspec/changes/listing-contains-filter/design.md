@@ -203,7 +203,7 @@ Tier: `unit` unless said. Test names are the implementer's; the file is fixed.
 | TC-02 | `tests/unit/schema/test_schema_structure.py` | `holds_text` on each listable `Book` slot | true: label, description, isbn, authors; false: published, genre, shelf, sequel_of, workflow_status (a row per slot, rule 6) |
 | TC-03 | `tests/unit/persistence/test_listing.py` | plans of the error matrix's first three rows | `BadQuery` each, parametrized |
 | TC-04 | `tests/unit/core/test_sparql.py` | `contains_patterns("root", [(P, Literal(t))])` for each injection text `t` of `'"} ; DROP ALL ; #'`, `'"'`, `'\\'`, `'}'`, `'a\nb'`, `'\\u0022'` (parametrized); empty pairs; raw `str`; variable `"r o"` | each parses inside `ASK { ?root ?p ?o . $patterns }` as one `CONTAINS` whose literal equals `t`; `""`; `SparqlError`; `SparqlError` |
-| TC-05 | `tests/unit/persistence/test_listing_query.py` (table at `:166`) | `label~=DUNE` → [1],1; `label~=u` → [1,3],2; `authors~=HER` → [1,3],2; `authors~=E&limit=2` → [1,2],3; `label~=u&genre=fiction` → [1,3],2; `label~=u&genre=nonfiction` → [],0; `authors~=e&authors~=j` → [3],1; `label~=e&sort=-label&limit=2&offset=1` → [2,4],4 (note below) | page and total |
+| TC-05 | `tests/unit/persistence/test_listing_query.py` (table at `:166`) | `label~=DUNE` → [1],1; `label~=u` → [1,3],2; `authors~=HER` → [1,3],2; `authors~=E&limit=2` → [1,2],3; `label~=u&genre=fiction` → [1,3],2; `label~=u&genre=nonfiction` → [],0; `authors~=e&authors~=j` → [3],1; `label~=e&sort=-label&limit=2&offset=1` → [2,1],5 (note below; D-5) | page and total |
 | TC-06 | same file | `("label~", t)` for each TC-04 text `t` (parametrized) | `([], 0)`, store unchanged |
 | TC-07 | `tests/unit/access/test_session_find.py` | a: `find(Book, label=Contains(text="DUNE"))`; b: `authors=[Contains(text="her"), "Joyce"]`; c: `Contains(text=19)`; d: `published=Contains(text="19")`; e: `label=Contains(text="")` | a: the Dune IRI; b: book 3 only; c: `ValidationError`; d, e: `BadQuery` |
 | TC-08 | `tests/unit/persistence/test_session_guards.py` | `matches(dune_iri, BOOK, [Condition(label, "UN", contains=True)])` and `"zz"` | true; false |
@@ -213,8 +213,9 @@ Tier: `unit` unless said. Test names are the implementer's; the file is fixed.
 | IT-2 | same file (`:56`) | each `INJECTIONS` value through `label~` | nothing matched, nothing changed |
 | IT-3 | `make typecheck-openapi-ts` | the served document | `tsc --strict` passes with `"label~"` keys |
 
-TC-05 note: labels containing `e` are Emma, Ulysses, Candide, Beloved; by `-label` they are
-Ulysses(3), Emma(2), Candide(4), Beloved(5); `limit=2&offset=1` → `[2, 4]`, total 4.
+TC-05 note (corrected in delivery, D-5): all five labels contain `e`, Dune included; by `-label`
+they are Ulysses(3), Emma(2), Dune(1), Candide(4), Beloved(5); `limit=2&offset=1` → `[2, 1]`,
+total 5.
 
 ## Risks / Trade-offs
 
@@ -267,6 +268,13 @@ Taken by the lead under R-0007, shown to the developer at the end.
   `reference_collections.delete_cascade`; both pass equality filters only (`rule_filters` stays
   equality, Non-Goals), so they are unchanged while equality is, which the full suite covers.
   TC-07 needs the plan of 1.3b, so 1.4 follows 1.3b; 1.3b and 1.5 run in parallel.
+- **D-5 TC-05's last row was wrong.** The PLAN expected `label~=e&sort=-label&limit=2&offset=1`
+  → `[2, 4]`, total 4, leaving out Dune, which also contains `e`. The code is right; the row and
+  its note now say `[2, 1]`, total 5. A test-data error, not a scenario change: no signed-off
+  scenario uses this row.
+- **D-6 1.3b re-run (T1).** The builder refactored `Listings.plan` (xenon rank C, `_filtered`
+  split out) after its full `test-fast` run and re-ran only the touched files; the lead re-ran
+  `make test-fast check-quality` on the final code.
 
 ### Under the floor
 
@@ -274,5 +282,8 @@ Taken by the lead under R-0007, shown to the developer at the end.
 - 1.3a: `holds_iri` reads `slot.range` without the default range; harmless for the induced slots
   listings use, which always carry a range.
 - 2.1a: two lines of `api.adoc` run past the page's wrap width; the rendered page is the same.
+- 1.3b: `core.domain.sparql.join` keeps a separator between empty terms (`join(["", ""]) == " "`);
+  `condition_patterns` joins only the non-empty parts, so an equality-only query text is unchanged.
+  Ordinary join semantics, not a defect.
 - `shapes.ttl` diffs are large on any model change because c14n blank-node labels renumber
   (1.1: about 1000 lines for one added property). Generator awkwardness, not a defect here.
