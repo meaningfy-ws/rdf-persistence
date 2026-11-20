@@ -123,6 +123,9 @@ class Context:
         ] = {}  # every class the model lists, converted or not (D-17)
         self.paths: dict[int, PackagePath] = {}
         self.tags: dict[int, dict[str, str]] = {}
+        self.tag_values: dict[
+            int, dict[str, list[str]]
+        ] = {}  # every value of a tag, for the ones a class may repeat (R-21)
         self.unknown_prefixes: set[str] = set()
 
     def resolve(self, written: str, element: str) -> UmlName | None:

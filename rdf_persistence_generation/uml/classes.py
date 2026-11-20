@@ -36,6 +36,7 @@ from rdf_persistence_generation.uml.naming import (
     rp_path_for,
     title_for,
 )
+from rdf_persistence_generation.uml.tags import apply_tags
 
 CLASS_TYPE = "Class"
 ENUMERATION_TYPE = "Enumeration"
@@ -111,6 +112,8 @@ def collect_elements(ctx: Context, model: UmlModel) -> None:
     """Classify every class of the subtree: generated, left out, or a problem; check names for clashes."""
     for tagged in model.uml_tagged_values or []:
         ctx.tags.setdefault(tagged.owner_id, {})[tagged.name] = tagged.tag_value or ""
+        owned = ctx.tag_values.setdefault(tagged.owner_id, {})
+        owned.setdefault(tagged.name, []).append(tagged.tag_value or "")
     _collect_outside(ctx, model)
     for uml in sorted(model.uml_classes or [], key=lambda each: (each.name, each.object_id)):
         ctx.class_names[uml.object_id] = local_of(uml.name)
@@ -210,10 +213,11 @@ def build_class(ctx: Context, element: Element, is_a: str | None) -> ClassDefini
     )
     if element.is_abstract:
         definition.abstract = True
+    derived: dict[str, Annotation] = {}
     if element.is_root:
         definition.mixins = [AGGREGATE_ROOT]
-        definition.annotations = {RP_PATH: annotation(RP_PATH, root_path(ctx, element))}
-    _note_tags(ctx, element, (RP_PATH,))
+        derived[RP_PATH] = annotation(RP_PATH, root_path(ctx, element))
+    apply_tags(ctx, element, definition, derived)
     return definition
 
 
