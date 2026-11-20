@@ -29,6 +29,9 @@ from rdf_persistence.tenancy.services.migration_runner import migrate_shared, mi
 from rdf_persistence.tenancy.services.sweep import sweep
 from rdf_persistence.tenancy.services.tenancy import GrantValidator, RootValidator
 
+LIFESPAN_STARTED = "rp_lifespan_started"
+"""The ``app.state`` attribute that is true while the lifespan the toolkit installs runs (PD-3)."""
+
 
 def install_service(
     app: FastAPI,
@@ -184,8 +187,10 @@ def _run_at_startup(app: FastAPI, kit: ServiceKit) -> None:
         relay = asyncio.create_task(kit.relay.run())
         try:
             async with inner(scope_app) as state:
+                setattr(scope_app.state, LIFESPAN_STARTED, True)
                 yield state
         finally:
+            setattr(scope_app.state, LIFESPAN_STARTED, False)
             relay.cancel()
             await asyncio.gather(relay, return_exceptions=True)
             if kit.event_bus is not None:

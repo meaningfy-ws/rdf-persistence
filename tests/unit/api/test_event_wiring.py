@@ -5,6 +5,7 @@ import asyncio
 import pytest
 from fastapi import FastAPI
 
+from rdf_persistence.api.entrypoints.service import LIFESPAN_STARTED
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.provenance.domain.generated.rp_provenance import Add
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
@@ -40,6 +41,15 @@ async def test_leaving_the_lifespan_ends_the_relay_and_closes_the_bus() -> None:
         assert not task.done(), "the relay is still running while the lifespan is open"
     assert task.done(), "the relay task ended"
     assert bus not in broker._buses, "close() was called on the bus"
+
+
+async def test_the_lifespan_flag_is_set_while_the_lifespan_runs() -> None:  # PD-3
+    toy = ToyService()
+    state = toy.app.state
+    assert not getattr(state, LIFESPAN_STARTED, False), "the flag is not set before the lifespan"
+    async with toy.app.router.lifespan_context(toy.app):
+        assert getattr(state, LIFESPAN_STARTED, False) is True, "the flag is set while it runs"
+    assert getattr(state, LIFESPAN_STARTED, None) is False, "the flag is cleared after it"
 
 
 async def test_with_no_event_bus_the_activity_is_still_relayed_to_the_hub() -> None:  # TC-21

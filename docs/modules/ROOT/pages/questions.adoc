@@ -148,7 +148,8 @@ the blobs no `file_key` names, and removes them only when you pass `remove=True`
 Use the fakes of `rdf_persistence.testkit` (`FakeStore`, `FakeFileStore`, `FakeIdentity`,
 `fake_session`) and its `TokenSigner`, and add the model guards and the freshness plugin to your
 test suite. See xref:user-manual/generated-classes.adoc#guard[step 6] and
-xref:user-manual/test.adoc[step 13].
+xref:user-manual/test.adoc[step 13]. To follow a tenant's event stream in a test, use
+`open_event_stream`; see xref:user-manual/test.adoc#event-stream[Follow a tenant's event stream].
 
 == Using a feature
 

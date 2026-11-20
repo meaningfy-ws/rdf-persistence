@@ -22,15 +22,19 @@ from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.provenance.domain.generated.rp_provenance import Replace
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.tenancy.services.tenant_dump import dump, restore
-from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus
+from rdf_persistence.testkit import (
+    InMemoryBroker,
+    InMemoryEventBus,
+    OpenedStream,
+    StreamEvent,
+    open_event_stream,
+)
 from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, toy_mapper
 from tests.toy_service import ToyService
 from tests.unit.api.scene import Scene
 from tests.unit.api.test_events_route import (
-    Block,
-    Follow,
     another_book,
-    follow,
+    events_of,
     listening,
     mount,
     replace,
@@ -232,8 +236,8 @@ class Following:
         self.loop = asyncio.new_event_loop()
         self.stack = AsyncExitStack()
         self.scene: Scene
-        self.stream: Follow
-        self.heard: list[Block] = []
+        self.pending: asyncio.Task[OpenedStream] | None = None
+        self.heard: list[StreamEvent] = []
         self.first_id = ""
         self.etag = ""
         self.other_iri = self.other = self.other_etag = ""
@@ -242,6 +246,9 @@ class Following:
         return self.loop.run_until_complete(work)
 
     def close(self) -> None:
+        if self.pending is not None:
+            self.pending.cancel()
+            self.run(asyncio.gather(self.pending, return_exceptions=True))
         self.run(self.stack.aclose())
         self.loop.close()
 
@@ -253,10 +260,22 @@ class Following:
         self.scene = await Scene.set_up(service, http)
         await service.kit.relay.run_once()  # a follower hears only what follows
 
-    async def follow(self, who: str, **headers: str) -> Follow:
-        stream = follow(self.scene, who, **headers)
-        await self.stack.enter_async_context(stream)
-        return stream
+    async def start(self, who: str, events: int, **headers: str) -> None:
+        """Start reading the tenant's stream as ``who``; returns once it is subscribed."""
+        scene = self.scene
+        self.pending = asyncio.ensure_future(
+            open_event_stream(
+                scene.service.app,
+                events_of(scene),
+                headers=scene.headers(who, **headers),
+                events=events,
+            )
+        )
+        await listening(scene.service.kit.hub)
+
+    async def opened(self) -> OpenedStream:
+        assert self.pending is not None, "a stream was started"
+        return await self.pending
 
 
 @pytest.fixture
@@ -273,8 +292,7 @@ def _barred_reader(following):
         scene = following.scene
         following.other_iri, following.other, following.other_etag = await another_book(scene)
         await reshape_grants(scene, with_carol(hide=scene.book_iri))
-        following.stream = await following.follow("carol")
-        await listening(scene.service.kit.hub)
+        await following.start("carol", events=1)
 
     following.run(go())
 
@@ -284,20 +302,14 @@ def _replace_both(following):
     async def go():
         scene = following.scene
         await replace(scene, scene.book, scene.book_etag, "Dune Messiah")
-        await replace(scene, following.other, following.other_etag, "Emma 2")
+        await replace(scene, following.other, following.other_etag, "Emma 2")  # the sentinel
 
     following.run(go())
 
 
 @then("the reader receives the other book's event only")
 def _only_the_other(following):
-    async def go():
-        [event] = await following.stream.take(1)
-        with pytest.raises(TimeoutError):
-            await following.stream.take(1, timeout=0.2)
-        return event
-
-    event = following.run(go())
+    [event] = following.run(following.opened()).events
     assert [g.entity for g in Replace.model_validate_json(event.data).generations] == [
         following.other_iri
     ], "the reader hears only the other book"
@@ -308,10 +320,9 @@ def _ended_after_a(following):
     async def go():
         await following.open()
         scene = following.scene
-        async with follow(scene) as first:
-            await listening(scene.service.kit.hub)
-            following.etag = await replace(scene, scene.book, scene.book_etag, "A")
-            [a] = await first.take(1)
+        await following.start("rita", events=1)
+        following.etag = await replace(scene, scene.book, scene.book_etag, "A")
+        [a] = (await following.opened()).events
         following.first_id = a.id
         following.etag = await replace(scene, scene.book, following.etag, "Later one")
         following.etag = await replace(scene, scene.book, following.etag, "Later two")
@@ -322,11 +333,10 @@ def _ended_after_a(following):
 @when("the reader reconnects with Last-Event-ID A within 7 days")
 def _reconnect(following):
     async def go():
-        following.stream = await following.follow("rita", **{"Last-Event-ID": following.first_id})
-        following.heard = await following.stream.take(2)
+        await following.start("rita", events=3, **{"Last-Event-ID": following.first_id})
         scene = following.scene
         await replace(scene, scene.book, following.etag, "Live")
-        following.heard += await following.stream.take(1)
+        following.heard = (await following.opened()).events
 
     following.run(go())
 

@@ -199,3 +199,49 @@ apps: parsing, lifespan, leaving). Each new test gets a row in `tests/audit/scen
 
 None. OPEN-1 to OPEN-4 were answered by the owner on 2026-11-20 (inputs/qa.md): PD-1, PD-3, PD-7
 and RISK-1 follow the answers.
+
+## Delivery decisions
+
+Taken by the lead (rule R-0007), shown to the developer at the end; the developer may overrule.
+
+- **D-1 Scenarios signed off.** The four scenarios of `specs/rp-testkit/spec.md` were shown to the
+  developer on 2026-11-20, who answered "do whatever you need to advance and continue".
+- **D-2 Stacked on the planning branch.** This PLAN exists only on `docs/epics-consumer-needs`
+  (`8f64ccd9`), not on `develop`. `feat/testkit-event-stream` is fast-forwarded onto it, so the
+  PR carries the two planning commits until that branch merges; a rebase on `develop` after it
+  merges drops them (P-0002). Resolved: the planning branch merged (#205) and the branch was
+  rebased on `develop` `82ccd12c` before the PR, cleanly; `make check-generated` fresh.
+- **D-3 Task order.** 1.1 and 1.2 in parallel (disjoint files), then 1.3, then 2.2, 2.3 and 3.1
+  in parallel, and 2.1 last: `test_service_kit.py` and `feature/test_events.py` import `follow`,
+  `parsed`, `Block` and `Follow` from `test_events_route.py`, so they drop those imports before
+  2.1 deletes them.
+- **D-4 Review set.** SMALL: one pass of L2 and L3 together; no checker, no adversarial tester.
+- **D-6 An app that raises after the head** ends the read like any other end of the response
+  (PD-5 c): the call returns the events so far and the exception is not re-raised, since the head,
+  the status and the events already reached the caller. Not in the error matrix; found in 1.3.
+- **D-7 The lifespan's start-up is outside the deadline**, as its shutdown already is (PD-4): the
+  `timeout` bounds the head and the events only. Found in 1.3.
+- **D-8 Accepted finding W1 (review, re-labelled Critical).** The rewritten TC-36 keep-alive
+  test (`test_service_kit.py`) dropped `await toy.kit.relay.run_once()`; a set-up activity the
+  background relay delivers after the stream subscribes ends the stream past its lifetime, so
+  `events == []` holds even if the keep-alive setting never reached the route: the test can pass
+  vacuously. Re-label reason: a test that cannot fail for its own claim is a spec-coverage defect.
+  Fix: restore the drain before `open_event_stream`.
+- **Under the floor** (review of stage 1, L2+L3; not fixed in this PR; W3 and W4 follow up in
+  #214, the rest in #215):
+  - W2: no test for D-6 (raise after the head) and D-7 (slow start-up); behaviour recorded, tests
+    are a follow-up.
+  - W3: the how-to omits D-6, D-7 and the `RuntimeError`/`ValueError` outcomes the docstring
+    states; follow-up with W4's page change.
+  - W4: `EventHub` has no public "a follower is subscribed" read, so a consumer cannot wait for
+    the subscription before a commit without private state; a gap in our own library, filed as a
+    follow-up issue (not worked around); the toolkit's own tests keep RISK-5.
+  - W5: PD-2's laziness (`import rdf_persistence.testkit` loads no `api.entrypoints`) has no
+    subprocess check.
+  - S1: TC-37 cannot tell "replay, then live" apart from a live-only delivery.
+  - S2: TC-37b's replay holds no hidden activity (pre-existing weakness).
+  - S3: two sentinel checks read only the event type / compare the id with its own data.
+  - S4: two concurrent calls on an app whose lifespan has not started both enter it.
+  - S5: `pytest.raises(..., match=url)` treats the URL as a regex.
+- **D-5 Sandbox.** The gates run with `UV_CACHE_DIR=<worktree>/temp/uv-cache` (the user cache is
+  read-only in the sandbox); `temp/` is git-ignored.

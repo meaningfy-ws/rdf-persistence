@@ -98,6 +98,20 @@ class ExecResult(ConfiguredBaseModel):
     exit_code: int = Field(default=..., title="Exit code", description="The exit code the command ended with.")
 
 
+class StreamEvent(ConfiguredBaseModel):
+    "One event of a server-sent event stream. A field the event did not carry is absent (None); one it carried empty is the empty string."
+    id: Optional[str] = Field(default=None, title="Event id", description="The `id` field of an event; absent when the event had none.")
+    event: Optional[str] = Field(default=None, title="Event name", description="The `event` field of an event, its type; absent when the event had none.")
+    data: Optional[str] = Field(default=None, title="Event data", description="The `data` field of an event, its lines joined by a newline; absent when the event had none.")
+
+
+class OpenedStream(ConfiguredBaseModel):
+    "What opening a server-sent event stream returned: the status and headers of the response and the events read from it."
+    status: int = Field(default=..., title="Status", description="The HTTP status code of a response.")
+    headers: Any = Field(default=..., title="Headers", description="The headers of a response, a mapping of lower-case names to values.")
+    events: list[StreamEvent] = Field(default=..., title="Events", description="The events read from a stream, in the order they arrived.")
+
+
 class FusekiServer(ConfiguredBaseModel):
     "Where the test Fuseki answers, and the one user it admits."
     url: str = Field(default=..., title="URL", description="The base URL a server answers on.")
@@ -143,6 +157,8 @@ FieldFlags.model_rebuild()
 Violation.model_rebuild()
 ContainerMarker.model_rebuild()
 ExecResult.model_rebuild()
+StreamEvent.model_rebuild()
+OpenedStream.model_rebuild()
 FusekiServer.model_rebuild()
 GarageServer.model_rebuild()
 ZitadelServer.model_rebuild()

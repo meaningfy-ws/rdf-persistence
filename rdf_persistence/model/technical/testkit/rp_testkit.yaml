@@ -18,6 +18,10 @@ annotations:
   python_package: rdf_persistence.testkit.generated
 
 classes:
+  Any:
+    title: Any
+    description: Any value; the slots that range over it hold data the toolkit does not model.
+    class_uri: linkml:Any
   SlotShape:
     title: Slot shape
     description: The shape of one slot of a class, as the schema induces it.
@@ -102,6 +106,33 @@ classes:
       stderr:
         required: true
       exit_code:
+        required: true
+  StreamEvent:
+    title: Stream event
+    description: >-
+      One event of a server-sent event stream. A field the event did not carry is absent (None);
+      one it carried empty is the empty string.
+    class_uri: rp:StreamEvent
+    slots:
+      - sse_id
+      - sse_event
+      - sse_data
+  OpenedStream:
+    title: Opened stream
+    description: >-
+      What opening a server-sent event stream returned: the status and headers of the response and
+      the events read from it.
+    class_uri: rp:OpenedStream
+    slots:
+      - status
+      - headers
+      - events
+    slot_usage:
+      status:
+        required: true
+      headers:
+        required: true
+      events:
         required: true
   FusekiServer:
     title: Fuseki server
@@ -294,6 +325,38 @@ slots:
     description: The exit code the command ended with.
     slot_uri: rp:exitCode
     range: integer
+  sse_id:
+    title: Event id
+    description: The `id` field of an event; absent when the event had none.
+    slot_uri: rp:sseId
+    alias: id
+  sse_event:
+    title: Event name
+    description: The `event` field of an event, its type; absent when the event had none.
+    slot_uri: rp:sseEvent
+    alias: event
+  sse_data:
+    title: Event data
+    description: The `data` field of an event, its lines joined by a newline; absent when the event had none.
+    slot_uri: rp:sseData
+    alias: data
+  status:
+    title: Status
+    description: The HTTP status code of a response.
+    slot_uri: rp:status
+    range: integer
+  headers:
+    title: Headers
+    description: The headers of a response, a mapping of lower-case names to values.
+    slot_uri: rp:headers
+    range: Any
+  events:
+    title: Events
+    description: The events read from a stream, in the order they arrived.
+    slot_uri: rp:streamEvents
+    range: StreamEvent
+    multivalued: true
+    inlined_as_list: true
   user_id:
     title: User id
     description: The id of a user in the identity provider.

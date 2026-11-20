@@ -18,6 +18,7 @@ from rdf_persistence.testkit.fakes import (
     InMemoryEventBus,
     fake_session,
 )
+from rdf_persistence.testkit.generated.rp_testkit import OpenedStream, StreamEvent
 from rdf_persistence.testkit.guards import assert_models_generated
 from rdf_persistence.testkit.messages import RecordingObserver
 from rdf_persistence.testkit.model_shape import model_schema_diff, model_shape_diff
@@ -32,6 +33,7 @@ from rdf_persistence.testkit.shape_snapshot import (
 
 if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.testkit.graphs import assert_isomorphic
+    from rdf_persistence.testkit.streams import open_event_stream
     from rdf_persistence.testkit.tokens import TokenSigner, new_key, shared_key
     from rdf_persistence.testkit.zitadel import access_token, create_machine_user, provision_project
 
@@ -45,6 +47,7 @@ _LAZY_NAMES = {
     "create_machine_user": ("rdf_persistence.testkit.zitadel", "create_machine_user"),
     "provision_project": ("rdf_persistence.testkit.zitadel", "provision_project"),
     "assert_isomorphic": ("rdf_persistence.testkit.graphs", "assert_isomorphic"),
+    "open_event_stream": ("rdf_persistence.testkit.streams", "open_event_stream"),
 }
 
 
@@ -67,7 +70,9 @@ __all__ = [
     "FakeStore",
     "InMemoryBroker",
     "InMemoryEventBus",
+    "OpenedStream",
     "RecordingObserver",
+    "StreamEvent",
     "TokenRefusedError",
     "TokenSigner",
     "new_key",
@@ -78,6 +83,7 @@ __all__ = [
     "model_schema_diff",
     "model_shape_diff",
     "no_network",
+    "open_event_stream",
     "provision_project",
     "read_snapshot",
     "shared_key",
