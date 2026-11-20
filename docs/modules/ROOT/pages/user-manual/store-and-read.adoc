@@ -376,14 +376,14 @@ classes:
 
 From then on, removing an `Author` fails while any other aggregate of the tenant holds a reference
 to it, for example a book whose slot `written_by` has the author as value. A class without the
-annotation behaves as before: the toolkit adds no query and no check for it.
+annotation is deleted as before. A schema with no refusing class adds no query and no guard to
+a removal.
 
 *Over HTTP.* `DELETE /{type}/{id}` answers 409 with a problem of type `in-use`, and the author
 stays. The toolkit's problem handlers, which `install_service` puts on your app, map `InUse` to
 this answer: a route of yours that raises it gets the same 409 without registering anything. The
 body names the referrers the caller may read, as the kit's per-caller collaboration service does
-(`kit.collaboration(checked).referrers`, see
-xref:howto/reverse-references.adoc[Find what refers to a resource]). In this example, the author
+(see xref:howto/reverse-references.adoc[Find what refers to a resource]). In this example, the author
 is referred to by one book the caller may read and one it may not:
 
 [source,json]
@@ -421,8 +421,9 @@ is referred to by one book the caller may read and one it may not:
 
 With no referrer, the delete answers 204 as before. The comments on the author do not count as
 referrers. A comment (see xref:howto/discussion.adoc[Comment on a resource without editing it]) is a record that depends
-on its target and is removed with it, so it never blocks the delete, even one added in the same
-commit as the removal.
+on its target and is removed with it, so a stored comment never blocks the delete. Adding a comment
+on a target in the same commit that removes it is not supported today
+(https://github.com/meaningfy-ws/rdf-persistence/issues/226[issue #226]).
 
 *In code.* `session.remove` raises `InUse`, which holds the same facts (`iris`: all the refused
 roots found referenced, sorted; `referrers`: those of the first of them only, one tuple per
@@ -457,7 +458,8 @@ false. The same refusal applies to a `UnitOfWork` (`work.remove(author)` then `c
 `kit.remove_with_files(tenant, principal, iri, if_version, *, readable=None)` or `session.remove`,
 passes `readable` to have the readable referrers named in the 409. It is an async callable
 `(iri, rows) -> set of the referrer IRIs the caller may read`; the collaboration of the caller
-provides it, as `kit.collaboration(checked).readable_referrers`. `checked` is the `Authorised`
+provides it, as `collaboration.readable_referrers`, where `collaboration` is what the async context
+manager `kit.collaboration(checked)` yields. `checked` is the `Authorised`
 that `kit.require_aggregate` answers for the caller and the aggregate, once its token is verified
 and its roles permit the action:
 
