@@ -7,7 +7,9 @@ matrix row 14. ``A1`` is an author (the toy's refusing class), ``B1`` a book tha
 
 import asyncio
 import uuid
+from collections import Counter
 from collections.abc import AsyncIterator
+from contextlib import AsyncExitStack
 from uuid import UUID
 
 import pytest
@@ -20,7 +22,7 @@ from rdf_persistence.collaboration.services.discussion import dependents
 from rdf_persistence.collaboration.services.referenced_removals import ReferencedRemovals
 from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
-from rdf_persistence.core.domain.exceptions import Conflict, InUse
+from rdf_persistence.core.domain.exceptions import Conflict, InUse, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
@@ -148,10 +150,12 @@ async def stored(session: Session, iri: str) -> bool:
 async def test_it1_a_referrer_removed_at_the_same_time_never_leaves_a_dangling_reference(
     store, database, rules, session
 ):
+    counts: Counter[str] = Counter()
     for n in range(ROUNDS):
         author, book = f"{TENANT}/authors/{UUID(int=1000 + n)}", book_iri(1000 + n)
         await put_author(session, author)
         await put_book(session, book, written_by=author)
+        before = set((await session.get_graph(author))[0])
         versions = [await version_of(session, author), await version_of(session, book)]
         async with (
             opened(store, database, rules, "https://example.org/people/ben") as theirs,
@@ -163,11 +167,52 @@ async def test_it1_a_referrer_removed_at_the_same_time_never_leaves_a_dangling_r
                 return_exceptions=True,
             )
 
-        for outcome in outcomes:  # done, refused as in use, or lost the race: nothing else
-            assert outcome is None or isinstance(outcome, Conflict), f"round {n}: {outcome!r}"
-        assert not (not await stored(session, author) and await stored(session, book)), (
-            f"round {n}: the author is gone while the book that names it stays"
+        removal, _ = outcomes
+        counts[outcome_of(removal, book)] += 1
+        summary = f"round {n}, outcomes so far {dict(counts)}: author removal {removal!r}"
+        # the author is wholly there (every triple, its registry entry) or wholly gone
+        if await stored(session, author):
+            assert set((await session.get_graph(author))[0]) == before, f"{summary}: partial"
+        else:
+            with pytest.raises(NotFound):
+                await session.get_graph(author)
+        if removal is None:  # a removed author with the book still there is a dangling reference
+            assert not await stored(session, author), f"{summary}: reported removed, still there"
+            assert not await stored(session, book), f"{summary}: dangling reference"
+        else:
+            assert await stored(session, author), f"{summary}: refused yet gone"
+    print(f"IT-1 outcomes over {ROUNDS} rounds: {dict(counts)}")
+
+
+async def test_it1b_concurrent_removals_of_a_referenced_author_are_all_refused(
+    store, database, rules, session
+):
+    """Nothing removes the book, so only the guard can refuse: every attempt is ``InUse``."""
+    await put_author(session)
+    await put_book(session, written_by=A1)
+    before = set((await session.get_graph(A1))[0])
+    version = await version_of(session, A1)
+    async with AsyncExitStack() as stack:
+        sessions = [
+            await stack.enter_async_context(opened(store, database, rules)) for _ in range(ROUNDS)
+        ]
+        outcomes = await asyncio.gather(
+            *(each.remove(A1, version) for each in sessions), return_exceptions=True
         )
+    assert all(isinstance(o, InUse) for o in outcomes), f"all refused as in use: {outcomes!r}"
+    assert await stored(session, A1), "the author stays"
+    assert set((await session.get_graph(A1))[0]) == before, "the author is whole"
+
+
+def outcome_of(removal: BaseException | None, book: str) -> str:
+    """Name the outcome of the author's removal: ``removed``, ``in_use`` (naming only the book) or ``lost``."""
+    if removal is None:
+        return "removed"
+    if isinstance(removal, InUse):
+        assert {r for r, _, _ in removal.referrers} <= {book}, f"names only the book: {removal!r}"
+        return "in_use"
+    assert type(removal) is Conflict, f"a lost race is a plain Conflict: {removal!r}"
+    return "lost"
 
 
 async def test_e1_a_removal_of_a_referenced_author_is_refused_naming_the_book(session):

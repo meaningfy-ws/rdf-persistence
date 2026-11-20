@@ -153,7 +153,7 @@ referrers are gone. A delete that succeeded is retried as today (`NotFound` or `
 | TC-8 | unit, `tests/unit/collaboration/test_collaboration_cascade.py` | E6, E7 | as the table | member already gone |
 | TC-9 | unit, `tests/unit/api/test_problems.py` and a new `tests/unit/api/test_delete_in_use.py` | E1, E2, E3 through the toy app | 409 body validates as `InUseProblem`; 204 | `If-Match` stale → 409 `conflict` |
 | TC-10 | unit, `tests/unit/api/test_contract.py` | OpenAPI of the toy | `DELETE /authors/{id}` 409 references `InUseProblem`; `/books` does not | |
-| IT-1 | integration, `tests/integration/store/test_referenced_removal.py` (Fuseki) | 20 rounds: B1 refers to A1; concurrently remove B1 and remove A1 | never A1 gone while B1 stays | — |
+| IT-1 | integration, `tests/integration/store/test_referenced_removal.py` (Fuseki) | 20 rounds: B1 refers to A1; concurrently remove B1 and remove A1 | per round: A1's graph and registry entry are wholly there or wholly gone (never partial); a returned A1 removal means B1 is gone; a raised one leaves A1 whole and is `InUse` (naming only B1) or a plain `Conflict`; the outcome counts are in the failure message, no mix required. IT-1b (same file, B1 kept): 20 concurrent removals of A1 are all `InUse` and A1 stays whole, which fails without the guard (D-11) | — |
 | IT-2 | integration, same file | E1 and E7 on Fuseki | as the table | the guard's SPARQL runs on the real store |
 | IT-3 | integration, same file | E8, E9 and matrix 14 on Fuseki | E8 refused; E9 and matrix 14 removed | the dependents filter and the `NOT IN ($removed)` exclusion inside the guard on the real store |
 
