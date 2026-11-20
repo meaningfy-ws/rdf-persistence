@@ -177,6 +177,7 @@ async def test_an_in_use_refusal_names_the_referrers_as_members_and_has_no_detai
         ),
         more_count=2,
         hidden_count=3,
+        filtered=True,  # D-10: only a judged refusal names its referrers
     )
     response = await get(app_raising(error))
     problem = InUseProblem.model_validate(response.json())
@@ -202,6 +203,41 @@ async def test_an_in_use_refusal_with_only_hidden_referrers_has_an_empty_list_an
         "no name is given, only that one referrer exists"
     )
     assert problem.detail is None, "no detail"
+
+
+async def test_an_unfiltered_in_use_refusal_names_nobody_and_hides_every_referrer() -> None:  # D-10
+    error = exceptions.InUse(
+        "x",
+        iris=("http://lib/authors/a1",),
+        referrers=(
+            ("http://lib/books/b1", "Book", "written_by"),
+            ("http://lib/books/b2", "Book", "written_by"),
+            ("http://lib/books/b2", "Book", "sequel_of"),
+        ),
+        more_count=2,
+        hidden_count=3,
+    )
+    assert error.filtered is False, "the error was raised without a readable callable"
+    response = await get(app_raising(error))
+    problem = InUseProblem.model_validate(response.json())
+    assert response.status_code == 409, "still the in-use refusal"
+    assert (problem.referrers, problem.more_count) == ([], 0), "nothing is named or left over"
+    assert problem.hidden_count == 2 + 2 + 3, "every referrer aggregate: named, more and hidden"
+    assert "http://lib/books" not in response.text, "no referrer IRI is in the response"
+
+
+async def test_a_filtered_in_use_refusal_is_answered_as_it_was_judged() -> None:  # D-10
+    error = exceptions.InUse(
+        "x",
+        iris=("i",),
+        referrers=(("http://lib/books/b1", "Book", "written_by"),),
+        more_count=1,
+        hidden_count=1,
+        filtered=True,
+    )
+    problem = InUseProblem.model_validate((await get(app_raising(error))).json())
+    assert [r.referrer for r in problem.referrers or []] == ["http://lib/books/b1"], "named"
+    assert (problem.more_count, problem.hidden_count) == (1, 1), "the counts as given"
 
 
 async def test_a_version_conflict_is_not_an_in_use_problem() -> None:  # TC-9

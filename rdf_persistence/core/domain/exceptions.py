@@ -69,6 +69,10 @@ class InUse(Conflict):
     why the removal was refused. A ``Conflict`` subclass, so code that catches ``Conflict`` catches
     it, but it must not be retried as one: the same removal fails until the referrers are gone
     (error matrix, row 15).
+
+    ``filtered`` is true when a ``readable`` callable judged the referrers, so the named ones are
+    those the caller may read. An unfiltered error names every referrer, which suits an in-process
+    caller but must not reach a caller by name: the HTTP handler answers it with counts only.
     """
 
     def __init__(
@@ -78,11 +82,13 @@ class InUse(Conflict):
         referrers: tuple[tuple[str, str, str], ...] = (),
         more_count: int = 0,
         hidden_count: int = 0,
+        filtered: bool = False,
     ) -> None:
         super().__init__(*args, iris=tuple(sorted(iris)))
         self.referrers = tuple(sorted(referrers))
         self.more_count = more_count
         self.hidden_count = hidden_count
+        self.filtered = filtered
 
 
 class CommitTooLarge(PersistenceError):

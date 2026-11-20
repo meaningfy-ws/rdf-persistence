@@ -80,3 +80,8 @@ def test_in_use_with_nothing_named_defaults_to_empty_and_zero():
     assert exceptions.InUse("in use").referrers == (), "no referrers by default"
     bare = exceptions.InUse("in use")
     assert (bare.iris, bare.more_count, bare.hidden_count) == ((), 0, 0), "defaults are empty/0"
+
+
+def test_in_use_is_unfiltered_unless_told_otherwise_and_keeps_what_it_was_told():  # D-10
+    assert exceptions.InUse("in use").filtered is False, "no readable callable judged it by default"
+    assert exceptions.InUse("in use", filtered=True).filtered is True, "the flag is kept"

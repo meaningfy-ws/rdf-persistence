@@ -5,11 +5,13 @@ reads every aggregate unless a test bans her from one.
 """
 
 import httpx
+import pytest
 from rdflib import URIRef
 
 from rdf_persistence import Action, GrantSet
 from rdf_persistence.access.domain.generated.rp_access import Prohibition
 from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import InUseProblem
+from rdf_persistence.core.domain.exceptions import InUse
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.schema.services import vocabulary as v
 from tests.toy import graph_of
@@ -163,3 +165,38 @@ async def test_a_stale_version_is_a_conflict_not_in_use_even_with_a_referrer(ser
     refused = await lib.delete(lib.author, if_match='"stale"')
 
     assert_problem(refused, 409, "conflict")
+
+
+async def _kit_remove(service, lib: Library, **options) -> None:
+    async with service.kit.session(lib.tenant, principal_of("ada")) as session:
+        version = (await session.get_graph(lib.author))[2]
+    await service.kit.remove_with_files(lib.tenant, "ada", lib.author, version, **options)
+
+
+async def test_the_kit_removal_without_readable_refuses_with_an_unfiltered_error(service, client):
+    # D-10: the handler answers such an error naming nobody (test_problems)
+    lib = await library(service, client)
+    await lib.book(written_by=lib.author)
+
+    with pytest.raises(InUse) as refused:
+        await _kit_remove(service, lib)
+
+    assert refused.value.filtered is False, "no readable callable judged the referrers"
+    assert await lib.exists(lib.author), "the author is still there"
+
+
+async def test_the_kit_removal_with_readable_names_only_what_it_lets_through(service, client):
+    # D-10
+    lib = await library(service, client)
+    seen = await lib.book(written_by=lib.author)
+    unseen = await lib.book(written_by=lib.author)
+
+    async def readable(_root, rows) -> set[str]:
+        return {row[0] for row in rows} - {unseen}
+
+    with pytest.raises(InUse) as refused:
+        await _kit_remove(service, lib, readable=readable)
+
+    assert refused.value.filtered is True, "the readable callable judged the referrers"
+    assert [r[0] for r in refused.value.referrers] == [seen], "the readable one is named"
+    assert refused.value.hidden_count == 1, "the other is only counted"

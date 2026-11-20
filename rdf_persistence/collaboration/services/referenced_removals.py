@@ -48,4 +48,5 @@ class ReferencedRemovals:
             referrers=tuple(item for item in items if item[0] in shown),
             more_count=len(referrers & allowed) - len(shown),
             hidden_count=len(referrers - allowed),
+            filtered=readable is not None,
         )

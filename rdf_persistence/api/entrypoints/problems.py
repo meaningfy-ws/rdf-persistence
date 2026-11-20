@@ -173,8 +173,18 @@ def in_use_problem(base: str, error: errors.InUse) -> InUseProblem:
 
     ``error.referrers`` are the readable referrers the guard found, and the counts say how many more
     exist, named or not; only structured members carry them, as the text of a 409 is never sent.
+    An unfiltered error (no ``readable`` callable judged its referrers) names nobody: every
+    referrer aggregate is counted in ``hidden_count`` (D-10, fail closed).
     """
     plain = problem_for(base, IN_USE)
+    if not error.filtered:
+        every = {iri for iri, _, _ in error.referrers}
+        return InUseProblem(
+            **plain.model_dump(),
+            referrers=[],
+            more_count=0,
+            hidden_count=len(every) + error.more_count + error.hidden_count,
+        )
     return InUseProblem(
         **plain.model_dump(),
         referrers=[

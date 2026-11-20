@@ -65,7 +65,7 @@ from rdf_persistence.migrations.services.migrations import chain_of, current_ver
 from rdf_persistence.persistence.services.decoding import error_text
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import Mapper, generated_models_of
-from rdf_persistence.persistence.services.session import Session
+from rdf_persistence.persistence.services.session import Readable, Session
 from rdf_persistence.persistence.services.store import (
     Store,
     ToolkitStore,
@@ -515,10 +515,20 @@ class ServiceKit:
         )
 
     async def remove_with_files(
-        self, tenant: str, principal: str, iri: str, if_version: str
+        self,
+        tenant: str,
+        principal: str,
+        iri: str,
+        if_version: str,
+        *,
+        readable: Readable | None = None,
     ) -> None:
         """Remove the aggregate ``iri`` at ``if_version`` and delete the blobs only it names in
         ``rp:fileKey``. A blob that cannot be deleted is logged; the sweep removes it later.
+
+        A consumer route should pass its collaboration's ``readable_referrers`` as ``readable``, to
+        have the referrers the caller may read named when the removal is refused as in use; without
+        it the refusal names nobody over HTTP (it counts every referrer as hidden).
 
         It removes whatever aggregate ``iri`` names and checks no class: with an IRI policy whose
         aggregate template names neither the type nor the path, check the type of what is stored
@@ -536,6 +546,7 @@ class ServiceKit:
             iri,
             if_version,
             self.mapper,
+            readable=readable,
         )
 
     @asynccontextmanager

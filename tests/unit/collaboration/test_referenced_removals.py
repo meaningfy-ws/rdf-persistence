@@ -110,6 +110,17 @@ async def test_the_refused_roots_are_all_reported_sorted():
     assert refused.iris == (A1, A2)
 
 
+async def test_a_refusal_judged_by_a_readable_callable_is_filtered():  # D-10
+    refused = await removals().in_use([A1], written_by(book_iri(1)), only([book_iri(1)]))
+    assert refused.filtered is True, "a readable callable judged the referrers"
+
+
+async def test_a_refusal_without_a_readable_callable_is_not_filtered():  # D-10, E5
+    refused = await removals().in_use([A1], written_by(book_iri(1)), None)
+    assert refused.filtered is False, "nobody judged the referrers, so they must not reach a caller"
+    assert refused.referrers == ((book_iri(1), "Book", "written_by"),), "in-process: still named"
+
+
 @pytest.mark.parametrize("cap", [0, 1, 20])
 async def test_no_rows_name_nothing(cap):
     refused = await removals(cap).in_use([A1], [], None)
