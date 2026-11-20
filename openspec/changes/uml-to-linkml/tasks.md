@@ -11,7 +11,7 @@ schema change and its regenerated code go in one commit (`make generate`, then t
 
 ## 1. Stage 1: the reader and the plain UML rules (R-1..R-13, R-19)
 
-- [ ] 1.1 Records (PD-2): add the `Uml*` classes, `UmlSettings`, `ReportLine` and the enums
+- [x] 1.1 Records (PD-2): add the `Uml*` classes, `UmlSettings`, `ReportLine` and the enums
   `UmlRule`, `UmlLinkKind`, `ReportKind` to `rdf_persistence_generation/model/rp_generation.yaml`
   (title, description, IRI per element, `meaning` per value); `make generate`. Failing test first:
   `tests/generator/unit/test_uml_records.py` asserts every `UmlRule` value names its R-n in its
@@ -35,7 +35,7 @@ schema change and its regenerated code go in one commit (`make generate`, then t
   script in `pyproject.toml`, `uml_` added to the `-k` of `make refresh-golden`, the stage-1
   golden under `tests/generator/fixtures/uml/golden/`. Failing tests first: TC-10, TC-11,
   IT-1 (lint and boundary steps). Accept: green; `uv run rp-uml2linkml --help` exits 0.
-- [ ] 1.7 SPIKE-1 (DEC-4), independent of 1.1..1.6 (disjoint files), run beside 1.3..1.5, in this
+- [x] 1.7 SPIKE-1 (DEC-4), independent of 1.1..1.6 (disjoint files), run beside 1.3..1.5, in this
   order: (a) write the S-2 row in `test_hard_check.py`,
   `tests/unit/services/test_activity_root.py` (S-3..S-5) and
   `tests/unit/entrypoints/test_activity_root_routes.py` (S-6), importing `Review` from the toy's

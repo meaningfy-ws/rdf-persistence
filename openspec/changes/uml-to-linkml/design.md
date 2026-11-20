@@ -566,3 +566,50 @@ Each is a decision of this PLAN:
 
 (Filled during delivery: SPIKE-1 and SPIKE-2 verdicts, the DEC-5 freeze date, accepted review
 findings.)
+
+- **D-1 Review set** (2026-11-20). Rule P-0005 holds over the MEDIUM default of the workflow file:
+  each stage gets one L2+L3 pass (task 1.9); the full review (L1, L2, L3 apart, L4+L5 as one) runs
+  once, in task 2.8. No adversarial tester: the PLAN has no `## Invariants` section and the
+  appetite is below LARGE.
+- **D-2 SPIKE-2 first** (2026-11-20, the developer: "stage 1 starts with the two spikes"). SPIKE-2
+  asks whether `rp-generate` generates two domain modules that import each other; it does not need
+  the converter. It runs now on two hand-written LinkML modules (`books` ↔ `shelves`, the
+  SPIKE-2 classes) in a `tmp_path` project, as
+  `tests/generator/integration/test_module_import_cycle.py`, kept as the guard of PD-14. The
+  converter round trip stays IT-2 in task 1.8. The verdict now sets PD-14 before task 1.5, which
+  lays out the modules (R-1), instead of before 2.5.
+- **D-3 Order** (2026-11-20, rule R-0004). SPIKE-1 (1.7) and SPIKE-2 run first, in parallel
+  (disjoint files; SPIKE-2 writes only into `tmp_path`). Task 1.1 runs beside them in its own
+  builder worktree (`.worktrees/uml-to-linkml-1.1`), because 1.1 and 1.7 both run `make generate`;
+  their generated files are disjoint (the generator's records vs the toy), and the lead re-runs
+  `make check-generated` after joining them. Then 1.2 ∥ 1.4, then 1.3, as the roadmap.
+- **D-4 Test folders** (2026-11-20). `tests/unit/` is organised by feature, not by layer: S-3..S-5
+  and S-6 go into the feature folders that hold the provenance and route tests, not the
+  `tests/unit/services/` and `tests/unit/entrypoints/` the PLAN names. `evidence/spike-dec4.md`
+  names the paths.
+- **D-5 SPIKE-2 verdict: fail; PD-14 takes its second branch** (2026-11-20,
+  [evidence/spike-cycles.md](evidence/spike-cycles.md)). `rp-generate` accepts two domain modules
+  that import each other (exit 0), but the split pydantic modules (F-10) import each other at module
+  level and the package fails with a circular `ImportError`. So, per PD-27, the packages of each
+  import cycle are written as one module named after its first package in path order, with a
+  `merged-cycle` report line; task 1.5 builds the module layout this way. The cycle test stays as
+  `xfail(strict=True, raises=ImportError)`: it fails loudly the day the generator learns cycles,
+  and then PD-14's first branch can replace PD-27. The generator gap is ours and goes to a
+  follow-up issue.
+- **D-6 Records as built** (2026-11-20, task 1.1; amends PD-2). Slots are global in
+  `rp_generation.yaml` and `kind`, `package`, `classes`, `links`, `stereotype` are taken, so:
+  `UmlLink.link_kind`, `ReportLine.report_kind`, the model's lists `uml_packages`, `uml_classes`,
+  `uml_links`, `uml_tagged_values`, `uml_boundaries`, attributes under `UmlClass.uml_attributes`.
+  `UmlLink` carries both ends (`source_role`/`_card`/`_aggregate`, `target_…`) and the raw EA
+  aggregation flags instead of `whole_end`: the reader copies columns, the converter derives the
+  whole end (PD-13). A new class `UmlPrefix` (`prefix_name`, `namespace`) keeps
+  `UmlSettings.prefixes` a list of models, not a dict (P-0007). `UmlSettings` holds the prefixes
+  file's keys and the CLI values, not the `.qea` path or `--out` (I/O).
+- **D-7 SPIKE-1 verdict: pass** (2026-11-20, [evidence/spike-dec4.md](evidence/spike-dec4.md)).
+  S-1..S-6 green with no file under `rdf_persistence/` changed: an application root may be
+  `is_a: Activity` (DEC-4). PD-17 allows `Activity` as the `is_a` of a root; the `activity_root`
+  refusal of task 2.3 stays inactive. PD-18 and PD-26 stand: the hard check refuses a narrowed
+  `started_at_time` on `Review` (S-2). `Review` stays in the toy (PD-34). Adding it shifted four
+  toy-enumeration tests (`test_openapi`, `test_documents`, `test_allowed_actions_adversarial`,
+  `test_ext_jsonld_context`), each given its `Review` row (RISK-7). The scenario-map rows of the
+  seven spike tests are added in task 1.9.
