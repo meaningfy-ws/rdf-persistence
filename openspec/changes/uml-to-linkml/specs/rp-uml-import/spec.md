@@ -9,7 +9,9 @@ carries a note, `rp-generate`'s lint and boundary check pass on the output uncha
 without a note gets no placeholder description, and the report lists it. A slot used in several
 packages is defined once, in the module the others reach by imports, and fails the run when there is
 none. A class or an enumeration whose stereotype is listed as not generated produces nothing, and
-the report names it and the links to it. A connector with a note, text, boundary or package at an
+the report names it. A link to such a class becomes a `range: uri` slot with no line of its own; a
+dependency to such an enumeration, or an attribute typed by one, gets a `not-generated` line and no
+slot. A connector with a note, text, boundary or package at an
 end is not read. The model follows the model2owl UML conventions; the toolkit's own conventions are
 stated on the UML conventions page.
 

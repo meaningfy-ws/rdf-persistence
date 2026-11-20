@@ -49,7 +49,8 @@ role only. The direction is `Source -> Destination` or `Bi-Directional`; no othe
 
 |A dependency to an enumeration
 |A dependency from a class to an enumeration, named by its target role, is a slot ranged by the
-enum. A dependency to a class fails.
+enum. A dependency to a converted class fails; one to a class that is not generated or outside the
+package is a `range: uri` slot.
 |https://docs.ted.europa.eu/M2O/latest/uml/conv-conn-dependency.html[Dependencies]
 
 |A reused name is one property
@@ -267,10 +268,11 @@ meaning.
 |===
 |Tag |Becomes
 
-|A class annotation: `rp_path`, `graph`, `workflow`, `rp_writes`, `rp_unlabelled`,
-`rp_iri_type`, `database`
+|A class annotation named in the metamodel (as of this release: `graph`, `database`, `rp_path`,
+`rp_iri_type`, `rp_unlabelled`, `rp_writes`, `rp_on_referenced_delete`, `workflow`)
 |That annotation on the class. The names are those the metamodel marks as class annotations, read
-at run time, so an annotation the toolkit adds later needs no change in the converter. Its value
+at run time, so an annotation the toolkit adds later needs no change in the converter; see
+xref:architecture/generation.adoc#annotations[Annotations] for the current set. Its value
 is checked by the rules `rp-generate` uses, read without regard to case; a bad value fails the run
 with `[class_annotation] Book: rp_writes: 'sometimes' is not one of ('service', 'toolkit')` (or
 `rp_path: 'Books' does not match <pattern>` for `rp_path`, `rp_iri_type` and `workflow`, which take
@@ -592,8 +594,9 @@ enumeration
 |An association with no role at either end, or a dependency with no target role
 |Name the target role.
 
-|A dependency to a class
-|A dependency leads to an enumeration. For a class, use an association.
+|A dependency to a converted class
+|A dependency leads to an enumeration. For a class, use an association. A dependency to a class
+that is not generated or outside the package is a `range: uri` slot and does not fail.
 
 |An `Aggregation` connector, or a composite association whose whole is the destination
 |Draw the whole as the source of the composite association.

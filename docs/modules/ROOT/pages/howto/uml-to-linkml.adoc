@@ -139,7 +139,7 @@ not-generated	Vocabulary	stereotype loaded graph, not generated
 |===
 |Kind |What it means
 
-|`no-note` |A class, attribute, connector or enumeration literal has no note in EA, so the
+|`no-note` |A class, enumeration, attribute, connector or enumeration literal has no note in EA, so the
 element has no `description`. The converter writes no placeholder. `rp-generate` requires one and
 refuses the schemas without it, so this line blocks step 4: add the note in EA.
 |`unspecified-multiplicity` |A connector end has no multiplicity and was read as `0..*`. Write
