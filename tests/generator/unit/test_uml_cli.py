@@ -161,6 +161,55 @@ def test_a_prefixes_entry_that_is_not_a_mapping_is_a_usage_error(tmp_path, capsy
     assert (code, lines) == (2, [f"{PREFIX}{broken}: prefixes is not a mapping"]), (code, lines)
 
 
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        pytest.param(
+            "schema_base: https://example.org/ns/library/",
+            "schema_base: example.org/ns/library/",
+            "schema_base example.org/ns/library/ is not an absolute IRI",
+            id="schema_base",
+        ),
+        pytest.param(
+            "  lib: https://example.org/ns/library#",
+            "  lib: example.org/ns/library#",
+            "namespace example.org/ns/library# of prefix lib is not an absolute IRI",
+            id="namespace",
+        ),
+        pytest.param(
+            "  dct: http://purl.org/dc/terms/",
+            "  1dct: http://purl.org/dc/terms/",
+            "prefix 1dct is not an NCName",
+            id="prefix-name",
+        ),
+        pytest.param(
+            "default_prefix: lib",
+            "default_prefix: other",
+            "default_prefix other is not a key of prefixes",
+            id="default-prefix",
+        ),
+    ],
+)
+def test_a_prefixes_value_that_is_unusable_is_a_usage_error(tmp_path, capsys, old, new, message):
+    builder, _ = build_library(tmp_path)
+    assert old in PREFIXES, f"the fixture must hold {old!r}"
+    broken = prefixes_file(tmp_path, PREFIXES.replace(old, new))
+
+    code, lines = run(capsys, tmp_path, builder.finish(), prefixes=broken)
+
+    assert (code, lines) == (2, [f"{PREFIX}{broken}: {message}"]), (code, lines)
+    assert not (tmp_path / "out").exists(), "nothing is written"
+
+
+def test_a_root_name_that_is_not_an_ncname_is_a_usage_error(tmp_path, capsys):
+    builder, _ = build_library(tmp_path)
+
+    code, lines = run(capsys, tmp_path, builder.finish(), "--root-name", "my app")
+
+    assert (code, lines) == (2, [f"{PREFIX}--root-name my app is not an NCName"]), (code, lines)
+    assert not (tmp_path / "out").exists(), "nothing is written"
+
+
 def test_a_file_that_is_not_sqlite_is_a_usage_error(tmp_path, capsys):
     text = tmp_path / "model.qea"
     text.write_text("this is not a database, and it is long enough to look like a header\n" * 8)

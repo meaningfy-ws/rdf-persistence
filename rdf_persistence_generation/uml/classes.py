@@ -35,6 +35,7 @@ from rdf_persistence_generation.uml.mixins import RP_MIXINS, compose
 from rdf_persistence_generation.uml.naming import (
     CURIE_SEPARATOR,
     check_class_name,
+    check_local_name,
     check_slot_name,
     permissible_value_key,
     rp_path_for,
@@ -365,6 +366,10 @@ def _permissible_value(
     ctx: Context, enum: UmlElement, literal: str, note: str | None
 ) -> PermissibleValue | None:
     element = f"{enum.label}.{local_of(literal)}"
+    invalid = check_local_name(local_of(literal), element, UmlRule.CLASS_IRI)
+    if invalid is not None:
+        ctx.findings.add(invalid)
+        return None
     description = description_of(note)
     if description is None:
         ctx.findings.note(ReportKind.NO_NOTE, element, "no note, so no description")

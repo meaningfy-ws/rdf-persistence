@@ -21,7 +21,12 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.uml.classes import annotation, description_of
 from rdf_persistence_generation.uml.context import Context, literals_of, local_of, path_of
 from rdf_persistence_generation.uml.modules import ModulePath
-from rdf_persistence_generation.uml.naming import check_slot_name, slot_name, title_for
+from rdf_persistence_generation.uml.naming import (
+    check_local_name,
+    check_slot_name,
+    slot_name,
+    title_for,
+)
 
 URI: Final = "uri"
 OWNED: Final = "owned"
@@ -246,7 +251,9 @@ def slot_identity(
     written as with the IRI it expands to: LinkML has no metaslot for either, so ``UmlName`` holds them.
     """
     snake = slot_name(name.name)
-    problem = check_slot_name(snake, element)
+    problem = check_local_name(name.name, element, UmlRule.ATTRIBUTE_SLOT) or check_slot_name(
+        snake, element
+    )
     if problem is not None:
         ctx.findings.add(problem)
         return None
