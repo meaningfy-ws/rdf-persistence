@@ -43,6 +43,9 @@
       "insert_pattern": {
          "@id": "insertPattern"
       },
+      "key_counts_absent": {
+         "@id": "keyCountsAbsent"
+      },
       "key_name": {
          "@id": "keyName"
       },

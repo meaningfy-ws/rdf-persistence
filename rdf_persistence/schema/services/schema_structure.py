@@ -543,6 +543,7 @@ def aggregate_keys(view: SchemaView) -> list[AggregateKey]:
                 view.get_uri(view.induced_slot(str(slot), root.name), expand=True)
                 for slot in key.unique_key_slots
             ],
+            key_counts_absent=key.consider_nulls_inequal is False,
         )
         for root in keyed_roots(view, list(view.all_classes().values()))
         for key in _all_keys_of(view, root.name).values()

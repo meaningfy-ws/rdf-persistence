@@ -190,6 +190,9 @@
       "isbn": {
          "@id": "bibo:isbn"
       },
+      "key_counts_absent": {
+         "@id": "rp:keyCountsAbsent"
+      },
       "key_name": {
          "@id": "rp:keyName"
       },

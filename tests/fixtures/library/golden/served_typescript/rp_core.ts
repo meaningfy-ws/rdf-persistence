@@ -115,6 +115,8 @@ export interface AggregateKey {
   root_class: string;
   /** The predicates of the key's slots, in the order of the key. */
   key_predicates: string[];
+  /** Whether an absent value of a slot of the key counts as a value: two roots that both lack a value then hold the same values, and the key refuses them. False when the key declares nulls as unequal or does not say. */
+  key_counts_absent?: boolean;
 }
 
 /** A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant's database by the duplicates report. */

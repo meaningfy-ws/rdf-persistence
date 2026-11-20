@@ -90,6 +90,7 @@ classes:
       - key_name
       - root_class
       - key_predicates
+      - key_counts_absent
     slot_usage:
       key_name:
         required: true
@@ -210,6 +211,15 @@ slots:
     slot_uri: rp:keyPredicates
     range: uri
     multivalued: true
+  key_counts_absent:
+    title: Key counts absent
+    description: >-
+      Whether an absent value of a slot of the key counts as a value: two roots that both lack a value
+      then hold the same values, and the key refuses them. False when the key declares nulls as unequal
+      or does not say.
+    slot_uri: rp:keyCountsAbsent
+    range: boolean
+    ifabsent: "false"
   key_values:
     title: Key values
     description: The values that a set of roots share for a key.
