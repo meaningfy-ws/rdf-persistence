@@ -209,7 +209,8 @@ Taken by the lead (rule R-0007), shown to the developer at the end; the develope
 - **D-2 Stacked on the planning branch.** This PLAN exists only on `docs/epics-consumer-needs`
   (`8f64ccd9`), not on `develop`. `feat/testkit-event-stream` is fast-forwarded onto it, so the
   PR carries the two planning commits until that branch merges; a rebase on `develop` after it
-  merges drops them (P-0002).
+  merges drops them (P-0002). Resolved: the planning branch merged (#205) and the branch was
+  rebased on `develop` `82ccd12c` before the PR, cleanly; `make check-generated` fresh.
 - **D-3 Task order.** 1.1 and 1.2 in parallel (disjoint files), then 1.3, then 2.2, 2.3 and 3.1
   in parallel, and 2.1 last: `test_service_kit.py` and `feature/test_events.py` import `follow`,
   `parsed`, `Block` and `Follow` from `test_events_route.py`, so they drop those imports before
