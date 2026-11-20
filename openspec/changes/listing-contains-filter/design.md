@@ -289,6 +289,39 @@ Taken by the lead under R-0007, shown to the developer at the end.
   rather than trimmed by hand. Another branch that refreshes it will produce the same lines.
   Adding a public generated class takes `make generate`, `refresh-served-golden`,
   `refresh-surface`, `refresh-snapshot` and `docs-reference`, and `NAMES` bumped.
+- **D-9 `offset` gets an upper bound (a defect the stage's gate exposed).** `make check-all` on
+  `8a3cdc57` failed two schemathesis cases of `tests/unit/api/test_contract.py` on
+  `GET /libraries/{t}/books`: `offset=9223372036854775758` makes rdflib's `islice` overflow
+  (`ValueError`, a 500). Pre-existing: `ListRequest` never bounded `offset`, and the plain query
+  fails the same way without any contains filter; the contract test is derandomized, and the new
+  `<slot>~` parameters changed what it generates, so the branch reaches the case every run.
+  Fix in the model: `offset` takes `maximum_value: 9007199254740991` (2^53 − 1, the largest
+  integer a JSON or TypeScript client holds exactly; far below the overflow), so a larger offset
+  is the existing 400 `bad-query` and the OpenAPI shows the maximum. `make test-containers`
+  passed (322) on the same head. Its docs follow in the same fix (review S-3): the message and
+  `Raises` of `list_request`, and the `offset` row of `reference/http-api.adoc`.
+- **D-10 Review W-1, re-labelled Critical: the "listed once" scenario had no discriminating
+  test.** The L2+L3 pass found that TC-05's row `authors~=E&limit=2` → `[1, 2]`, 3 passes
+  without `FILTER EXISTS` too: by IRI the rows would be 1, 2, 3, 3, `LIMIT 2` cuts before the
+  duplicate and `COUNT(DISTINCT ?root)` hides it from the total. Re-label reason: it is the only
+  evidence of a signed-off scenario, and the duplicate row is the very counterexample PD-5 was
+  designed against, so the requirement "listed and counted once" was unverified in behaviour.
+  Fix: add the row `authors~=e&offset=3` → `[]`, total 3 (without `EXISTS`: `[3]`) to TC-05 and
+  to IT-1. The scenario's wording is unchanged, so it needs no new sign-off; the worked example's
+  claim that book 3 "would shift the page" holds only from `offset=3` on.
+
+### Review findings under the floor (L2+L3 pass, 2026-11-20)
+
+- W-2: `make check-generated` was not run on the final head: not a code fix, the lead runs it
+  with the full gates on the fixed head.
+- S-1: `holds_text` raises `AttributeError` on a class-ranged (owned-part) slot instead of
+  returning False; today's callers pass listable slots only, which exclude owned parts.
+- S-2: no unit test of the commit guard (`Transaction._require_match`) with a contains
+  condition; no caller passes one today (D-4), and it shares `condition_patterns` with TC-08.
+- S-4: TC-07a stores "Dune" and "Ulysses" where the scenario says "Dune" and "Emma"; the
+  assertion is the same.
+- S-5: the descriptions of `Contains` and `filter_contains` lack a final full stop, carried into
+  the generated docs and types.
 
 ### Under the floor
 
