@@ -177,3 +177,15 @@ Concurrency is the store's: two updates are serialised and the second one's guar
 ## Open Questions
 
 None. The owner settled three on 2026-11-20 (`inputs/qa.md`), recorded as PD-9 to PD-11.
+
+## Delivery decisions
+
+- **D-1** (lead, 2026-11-20, impact before 1.2 to 1.4): GitNexus rates `AggregateKey` CRITICAL
+  (fan-in of the shared `RpModel` base, 134 implementations), `sparql.py` HIGH (fan-in of the
+  existing helpers) and `_scoped_key_reasons` HIGH (3 dependents, all on the hard-check path).
+  The changes are additive (a field defaulting to `false`, two new functions, a narrowed
+  refusal), so no existing caller changes meaning. Proceed; G-4's query-text test and the full
+  gates guard it.
+- **D-2** (lead, 2026-11-20): 1.2, 1.3, 1.4 and 1.7 (docs only, no roadmap dependency) run as parallel builders in the one worktree, on
+  disjoint files; a gate failure in another builder's file is T2, re-run by the lead. Gates in
+  the sandbox run with `UV_CACHE_DIR=$TMPDIR/uv-cache` (the shared uv cache is read-only there).
