@@ -2846,7 +2846,7 @@ tests/unit/schema/test_schema_structure.py::test_a_slot_holds_text_when_it_is_wr
 tests/unit/schema/test_schema_structure.py::test_a_slot_of_objects_is_keyed_by_the_keys_of_its_range,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_slot_that_refers_by_identifier_is_not_keyed,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_subclass_has_the_keyed_slots_it_inherits,capability,rp-service-api,,,medium,spec id
-tests/unit/schema/test_schema_structure.py::test_a_subclass_of_a_refusing_class_refuses_but_a_mixing_in_class_does_not,requirement,rp-reverse-references,A class may refuse deletion while referenced,,high,docstring TC-2 PD-2 + covered code (schema_structure)
+tests/unit/schema/test_schema_structure.py::test_a_subclass_of_a_refusing_class_refuses_but_a_mixing_in_class_does_not,requirement,rp-reverse-references,A class may refuse deletion while referenced,,high,name + covered code (schema_structure; TC-2 PD-2)
 tests/unit/schema/test_schema_structure.py::test_a_tag_that_is_not_there_gives_none_and_a_false_flag,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_a_type_derived_from_string_with_its_own_uri_is_not_text,requirement,rp-service-api,Listings filter by a case-insensitive substring,,high,name; covered code
 tests/unit/schema/test_schema_structure.py::test_every_value_set_of_the_vocabulary_has_members,capability,rp-service-api,,,medium,spec id
@@ -2854,7 +2854,7 @@ tests/unit/schema/test_schema_structure.py::test_presence_alternatives_list_each
 tests/unit/schema/test_schema_structure.py::test_the_comment_is_a_root_the_generic_router_does_not_serve,capability,rp-discussion,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_the_comment_still_has_an_iri_type_the_policy_mints_and_recognises,capability,rp-discussion,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_the_defaults_leave_a_root_description_slot_usage_alone,capability,rp-service-api,,,medium,spec id
-tests/unit/schema/test_schema_structure.py::test_the_refusing_classes_of_the_toy_are_the_authors,requirement,rp-reverse-references,A class may refuse deletion while referenced,,high,docstring TC-2 PD-13 + covered code (schema_structure)
+tests/unit/schema/test_schema_structure.py::test_the_refusing_classes_of_the_toy_are_the_authors,requirement,rp-reverse-references,A class may refuse deletion while referenced,,high,name + covered code (schema_structure; TC-2 PD-13)
 tests/unit/schema/test_schema_structure.py::test_the_generation_view_has_the_defaults_applied,capability,rp-service-api,,,medium,spec id
 tests/unit/schema/test_schema_structure.py::test_the_grants_of_an_access_record_are_keyed_in_the_metamodel,capability,rp-access,,,medium,covered code
 tests/unit/schema/test_schema_structure.py::test_the_iri_type_is_the_annotation_else_the_kebab_case_name,capability,rp-iri-policy,,,medium,covered code
