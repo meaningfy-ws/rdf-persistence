@@ -727,3 +727,12 @@ and its checkers page):
   enumerations, language strings), each with a Mermaid class-diagram snippet and the LinkML it
   becomes. Drafted in parallel with stage 1's close (the rules are decided), checked against the
   converter as built in task 2.7.
+- **D-21 Converter follow-up and golden as built** (2026-11-20, tasks 1.5, 1.6). Direction (D-14)
+  is checked on associations only; no direction is `no_rule` ("no direction"). Exclusion uses the
+  reader's rule: an `--exclude-package` path matches a package path or its tail. The empty-subtree
+  problem (D-19) is raised only when no other problem was found; not-generated classes do not count
+  as converted. The stage-1 golden (`tests/generator/fixtures/uml/golden/stage1/`) gives every
+  class and connector a note, as lint refuses a class or slot with no description; its one note-less
+  element is an enumeration literal (PD-28, RISK-2 unchanged). PD-12's plural stays simple
+  (`Shelf` → `shelfs`): the `rp_path` tag overrides it, and the conventions page says so; irregular
+  plurals are not guessed. `--default-mixins` is parsed and used from task 2.3.

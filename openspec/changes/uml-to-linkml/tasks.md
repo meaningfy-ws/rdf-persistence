@@ -26,12 +26,12 @@ schema change and its regenerated code go in one commit (`make generate`, then t
   contract `works-without-the-generate-extra` (`.importlinter`).
 - [x] 1.4 Naming (PD-6, PD-10 keys, PD-12 plural), in parallel with 1.3:
   `rdf_persistence_generation/uml/naming.py`. Failing test first: TC-4. Accept: TC-4 green.
-- [ ] 1.5 Plain rules (PD-5, PD-7..PD-13, PD-15, PD-16 single-package part), after 1.3 and 1.4:
+- [x] 1.5 Plain rules (PD-5, PD-7..PD-13, PD-15, PD-16 single-package part), after 1.3 and 1.4:
   `classes.py`, `slots.py`, `convert.py`. Failing tests first: the rows of TC-5 for R-1..R-13 and
   R-19, each with its failure branch, and TC-9's same-package half. Accept: those rows green;
   `test_every_uml_rule_has_a_row` lists only stage-2 rules as missing (marked `xfail(strict=True)`
   with "stage 2" until 2.6).
-- [ ] 1.6 Writer and command (PD-22, PD-23, PD-1), after 1.5: `write.py`, `cli.py`, the console
+- [x] 1.6 Writer and command (PD-22, PD-23, PD-1), after 1.5: `write.py`, `cli.py`, the console
   script in `pyproject.toml`, `uml_` added to the `-k` of `make refresh-golden`, the stage-1
   golden under `tests/generator/fixtures/uml/golden/`. Failing tests first: TC-10, TC-11,
   IT-1 (lint and boundary steps). Accept: green; `uv run rp-uml2linkml --help` exits 0.
