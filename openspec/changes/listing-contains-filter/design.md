@@ -310,6 +310,17 @@ Taken by the lead under R-0007, shown to the developer at the end.
   to IT-1. The scenario's wording is unchanged, so it needs no new sign-off; the worked example's
   claim that book 3 "would shift the page" holds only from `offset=3` on.
 
+- **D-11 Rebase on `develop` (P-0002, P-0003).** `develop` moved 56 commits (the PLAN branch,
+  uml-to-linkml, collection-has-part, unique-key-nulls-equal). The copied PLAN was identical to
+  `develop`'s and dropped (D-1 closed). Conflicts were only in generated files (manifests, one
+  `shapes.ttl`, the served golden); each was settled by deleting the conflicted file and running
+  `make generate` or `make refresh-served-golden` on the merged sources. On the final tree every
+  refresh target ran: the served golden gains D-9's `maximum` on one more `offset` parameter;
+  nothing else changed. `condition_patterns` is still the only renderer of conditions
+  (`unique_keys.py` renders key values). `make refresh-map BASE=origin/develop` lists 38 tests
+  with no row, all of `develop`'s own changes (unique keys, the UML converter); none of this
+  change's. Mapping them is outside this change: left for `develop`'s owners.
+
 ### Review findings under the floor (L2+L3 pass, 2026-11-20)
 
 - W-2: `make check-generated` was not run on the final head: not a code fix, the lead runs it
