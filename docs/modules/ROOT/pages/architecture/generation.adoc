@@ -215,9 +215,10 @@ are the generated enum `HardRule`. It fails generation when:
 . a key annotated `rp_unique_scope` (a key across aggregates) has a scope other than `tenant`; sits
   on a class that is not a tenant-database aggregate root or an ancestor of one; names a slot that
   is not a slot of every such root, is multivalued, is the identifier, is bookkeeping or holds an
-  owned part; or sets `consider_nulls_inequal: false`. An unscoped `unique_keys` declared on a
-  tenant-database aggregate root class itself is refused too, since it would enforce nothing. Each
-  problem names the class, the key and, for a slot, the slot;
+  owned part; or sets `consider_nulls_inequal: false` with a scope other than `tenant` (the problem
+  names `rp_unique_scope: tenant`; at tenant scope the option is accepted). An unscoped
+  `unique_keys` declared on a tenant-database aggregate root class itself is refused too, since it
+  would enforce nothing. Each problem names the class, the key and, for a slot, the slot;
 . the `rp_path` or the `rp_iri_type` (the type segment of a class's IRIs) of a class starts with
   `rp-` (rule `RESERVED_SEGMENT`). The prefix belongs to the toolkit's own roots (`rp-comments`), so a
   path or an IRI of an application never meets one of theirs;

@@ -302,6 +302,17 @@ How a key behaves:
   not on the fake store of the testkit.
 * An aggregate with a slot of the key absent claims nothing, so any number of books may lack an
   ISBN. A key over several slots claims only when all have a value.
+* A key with `consider_nulls_inequal: false` (xref:user-manual/model.adoc#unique-across-aggregates[declare it])
+  counts an absent slot as one value, equal only to another absence and never to a present value,
+  an empty string included. With the key `[title, subtitle]`, a book "Dune" without a subtitle
+  clashes with another "Dune" without one, but not with "Dune" and subtitle `""`, nor with "Dune"
+  and subtitle "Messiah". The check and the write are still one request.
+* When every slot of such a key is absent, the claim is all absence: at most one root of the type
+  and tenant may lack every key value, as SQL `NULLS NOT DISTINCT` does. Such a claim has no
+  value to anchor on, so the guard reads every root of the type in the tenant. A key of only
+  optional slots can make that costly on a large type; give the key a required slot.
+* A value of such a key that equals the marker below is refused as an invalid body
+  (`InvalidBody`), and nothing is sent.
 * The scope is the tenant and the type: the root's own class. A subclass that inherits the key is
   its own scope, so a `Magazine` and a `Book` may share an ISBN. Another tenant never clashes.
 * `kit.session` and the generic router enforce the keys of the schema. `open_session` enforces
@@ -325,8 +336,13 @@ changing the ISBN passes. So order the steps:
   key values held by two aggregates or more: `key_name`, `root_class`, `key_values` (the lexical
   forms, in the key's slot order) and `key_roots` (the roots, sorted). Values of the same text but
   another datatype or language are different values, so they are separate entries that look
-  alike. A stored root that has two values for a key slot appears once per value, and must be
-  brought to one value.
+  alike. For a key with `consider_nulls_inequal: false`, an absent slot appears in `key_values`
+  as the marker, the IRI `https://meaningfy.ws/ns/rdf-persistence#absentKeyValue`, shown as text.
+  It looks like a literal of that same text but is not a stored value: nothing holds it, and
+  the toolkit refuses it as a key value. Turning the option on over stored data that shares an
+  absence lists those duplicates here, and the toolkit does not clean them up; until you fix
+  them, an edit that keeps the absence is refused. A stored root that has two values for a key
+  slot appears once per value, and must be brought to one value.
 . Fix each duplicate: change the value of, or remove, every root but one.
 . Run the report once more, since the service still running accepts new duplicates; when it is
   empty, deploy.
