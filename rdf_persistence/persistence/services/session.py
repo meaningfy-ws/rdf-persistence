@@ -1368,9 +1368,15 @@ class Transaction:
 
     def _note_links(self, iri: str, triples: Sequence[Triple]) -> None:
         """Keep the links the new ``triples`` of the root ``iri`` make to other IRIs, as the rows
-        ``referrer_rows`` would read, for the check against the removals of this commit (PD-5)."""
+        ``referrer_rows`` would read, for the check against the removals of this commit (PD-5); the
+        link of a ``dependents`` pair is no referrer here either, as in the store guard (PD-3)."""
         if self._refusing():
-            self._links += _link_rows(iri, triples)
+            dependents = set(self._session._dependents)
+            self._links += [
+                (target, row)
+                for target, row in _link_rows(iri, triples)
+                if (URIRef(row[1]), URIRef(row[3])) not in dependents
+            ]
 
     def _removed_graphs(self) -> dict[URIRef, str]:
         """Graph -> root of each aggregate this transaction removes."""
