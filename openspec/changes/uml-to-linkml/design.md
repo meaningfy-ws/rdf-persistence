@@ -741,8 +741,12 @@ and its checkers page):
     `_shape_kwargs`, `usage_of`). Fix: a shared slot is defined with only what every usage agrees
     on; each usage that differs carries its own non-empty limits (`minimum_cardinality`,
     `maximum_cardinality`, `minimum_value`, `required`, `multivalued`, `range`, `owned` with its
-    `inlined`/`inlined_as_list`, `description`) in `slot_usage`; no empty `slot_usage`. Rows for
-    each kind of difference.
+    `inlined`/`inlined_as_list`) in `slot_usage`; no empty `slot_usage`. `range` and
+    `description` keep PD-16: the slot takes the first usage's range and the first non-empty
+    description in PD-16 order, and a usage overrides them with its own when it differs (a usage with
+    no note inherits the slot's: one name and one IRI are one concept, R-13), because lint refuses a
+    slot with no description and a slot with no range defaults to `string`. Rows for each kind of
+    difference, and one through the lint step.
   - **W-3, re-labelled Critical** (reason: it breaks invariant I-1 and goal G-4, "an element no rule
     maps fails the run", and one case crashes): a link held by an enumeration, a dependency with only
     a source role (PD-8: a dependency needs `DestRole`), and a generalisation from an enumeration
