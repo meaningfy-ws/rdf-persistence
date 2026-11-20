@@ -28,9 +28,12 @@ from rdf_persistence.migrations.services.migrations import (
     stamp_if_none,
     stamps,
 )
+from rdf_persistence.migrations.services.migrations import chain_of as chain_of_schema
 from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.tenancy.services.migration_runner import migrate_database
+from tests.unit.tenancy.migration_helpers import RP
 from tests.unit.tenancy.test_migration_runner import (
     ISBN,
     LIB,
@@ -253,6 +256,67 @@ async def test_two_runners_at_once_migrate_a_database_exactly_once(
     )
     assert await values(store, database, BOOKS[0], MID_ISBN) == [], "none is left on the middle one"
     assert await values(store, database, made.part, ISBN) == ["P"], "the owned part followed"
+
+
+# -- collection-has-part IT-1: the toolkit's own 2 to 3 on Fuseki -----------------------------------------
+
+SHELF = URIRef(f"{TENANT}/shelves/s1")
+SHELF_BOOKS = tuple(URIRef(f"{TENANT}/books/b{n}") for n in (1, 2))
+HAD_MEMBER = URIRef("http://www.w3.org/ns/prov#hadMember")
+HAS_PART = URIRef("http://purl.org/dc/terms/hasPart")
+MEMBER_CLASS = URIRef("https://meaningfy.ws/ns/rdf-persistence#memberClass")
+SHELF_CLASS = URIRef("https://example.org/ns/library#Shelf")
+SHELF_TOKEN = Literal("t1")
+SHELF_SEED = (
+    "INSERT DATA { "
+    "GRAPH $stamps { $rp $p_stamp $two } "
+    "GRAPH $shelf { $shelf a $shelf_class ; $member_class 'Book' ; "
+    "$had_member $b1, $b2 ; $p_version $token } }"
+)
+
+
+@pytest.fixture
+def toolkit_chain() -> tuple[str, Chain]:
+    """The toolkit's own chain, as the service loads it: versions 1, 2 and 3."""
+    return chain_of_schema(metamodel(), TOOLKIT_MIGRATIONS)
+
+
+@pytest.fixture
+async def shelved(store, database) -> SimpleNamespace:
+    """A tenant database at toolkit "2" holding a shelf stated with prov:hadMember."""
+    text = fill(
+        SHELF_SEED,
+        stamps=term(STAMPS), rp=term(URIRef(RP)), p_stamp=term(v.DATA_SCHEMA_VERSION),
+        two=term(Literal("2")), shelf=term(SHELF), shelf_class=term(SHELF_CLASS),
+        member_class=term(MEMBER_CLASS), had_member=term(HAD_MEMBER),
+        b1=term(SHELF_BOOKS[0]), b2=term(SHELF_BOOKS[1]), p_version=term(v.VERSION),
+        token=term(SHELF_TOKEN),
+    )  # fmt: skip
+    await store.update(database, text)
+    return SimpleNamespace(token_before=await tokens(store, database))
+
+
+async def test_the_toolkits_two_to_three_restates_the_members_with_has_part(
+    store, database, shelved, toolkit_chain
+):
+    await migrate_database(store, database, [toolkit_chain], STAMPS)
+    assert await values(store, database, SHELF, HAS_PART) == sorted(map(str, SHELF_BOOKS)), (
+        "both members are stated with dcterms:hasPart"
+    )
+    assert await values(store, database, SHELF, HAD_MEMBER) == [], "none with prov:hadMember"
+    assert await stamps(store, database, STAMPS) == {RP: "3"}, "the toolkit's stamp is 3"
+    after = await tokens(store, database)
+    assert set(after) == {str(SHELF)}, "the shelf keeps a token"
+    assert after != shelved.token_before, "the version token was renewed"
+
+
+async def test_a_second_run_of_the_toolkits_chain_changes_nothing(
+    store, database, shelved, toolkit_chain
+):
+    await migrate_database(store, database, [toolkit_chain], STAMPS)
+    once = await quads(store, database)
+    await migrate_database(store, database, [toolkit_chain], STAMPS)
+    assert await quads(store, database) == once, "same triples, same token, stamp 3"
 
 
 async def test_two_conditional_first_stamps_at_once_leave_one_stamp(store, database):
