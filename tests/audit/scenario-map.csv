@@ -4594,7 +4594,7 @@ tests/generator/unit/test_uml_toolkit.py::test_activity_is_not_a_mixin,requireme
 tests/generator/unit/test_uml_toolkit.py::test_described_is_a_mixin,requirement,rp-uml-import,"The toolkit is reused, not redefined",,high,name; covered code (uml/toolkit.py)
 tests/generator/unit/test_uml_toolkit.py::test_generated_at_time_is_not_filled_by_the_toolkit,requirement,rp-uml-import,"The toolkit is reused, not redefined",,high,name; covered code (uml/toolkit.py)
 tests/generator/unit/test_uml_toolkit.py::test_started_at_time_is_filled_by_the_toolkit,requirement,rp-uml-import,"The toolkit is reused, not redefined",,high,name; covered code (uml/toolkit.py)
-tests/generator/unit/test_uml_toolkit.py::test_the_class_annotations_are_the_seven_the_metamodel_describes_as_class_annotations,requirement,rp-uml-import,"The toolkit is reused, not redefined",,high,name; covered code (uml/toolkit.py)
+tests/generator/unit/test_uml_toolkit.py::test_the_class_annotations_are_those_the_metamodel_describes_as_class_annotations,requirement,rp-uml-import,"The toolkit is reused, not redefined",,high,name; covered code (uml/toolkit.py)
 tests/generator/unit/test_uml_toolkit.py::test_the_identifier_slot_is_not_offered_for_reuse,requirement,rp-uml-import,"The toolkit is reused, not redefined",,high,name; covered code (uml/toolkit.py)
 tests/generator/unit/test_uml_toolkit.py::test_the_segment_pattern_of_the_hard_check_is_public_for_the_converter,requirement,rp-uml-import,"The toolkit is reused, not redefined",,high,name; covered code (uml/toolkit.py)
 tests/generator/unit/test_uml_write.py::test_a_file_outside_the_root_pattern_is_untouched_and_not_reported,requirement,rp-uml-import,A UML class model converts to toolkit-conformant LinkML,,high,name; covered code (uml/write.py)

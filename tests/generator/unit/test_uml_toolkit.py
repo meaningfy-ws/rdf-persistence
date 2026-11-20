@@ -19,6 +19,7 @@ CLASS_ANNOTATIONS = {
     "rp_iri_type",
     "rp_unlabelled",
     "rp_writes",
+    "rp_on_referenced_delete",
     "workflow",
 }
 
@@ -28,7 +29,7 @@ def toolkit() -> Toolkit:
     return load_toolkit()
 
 
-def test_the_class_annotations_are_the_seven_the_metamodel_describes_as_class_annotations(
+def test_the_class_annotations_are_those_the_metamodel_describes_as_class_annotations(
     toolkit: Toolkit,
 ) -> None:
     assert set(toolkit.class_annotations) == CLASS_ANNOTATIONS, toolkit.class_annotations

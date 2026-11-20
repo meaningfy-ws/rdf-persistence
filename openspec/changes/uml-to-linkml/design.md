@@ -820,3 +820,9 @@ and its checkers page):
   reused toolkit slot. A toolkit class drawn inside the subtree is used as the toolkit class and
   reported `not-generated` ("drawn as the toolkit's <Class>"). The spec delta's scenarios run as
   `tests/generator/feature/uml_import.feature`, in the generator lane.
+- **D-28 Develop merged in, not rebased** (2026-11-21, the lead; departs from P-0002 in form, not
+  intent). The stage branch joins eight builder branches with merge commits; a rebase replays each
+  task on a base it was not built on and raises every join conflict again, commit by commit. So
+  `develop` is merged into the stage branch before the PR, which surfaces its conflicts before review
+  and CI as P-0002 wants. Develop brought a new class annotation (`rp_on_referenced_delete`): the
+  converter needed no change (PD-20, A-1); only the test that listed the class annotations did.
