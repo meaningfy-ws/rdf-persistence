@@ -220,9 +220,13 @@ class Collaboration:
         The members are those the collection names and those that meet its rule, resolved now: not
         deep (a member that is a collection is deleted, its own members stay) and not the collection
         itself. A member that is already gone is skipped. A plain delete of the collection keeps its
-        members. The ``Raises`` are those of ``ReferenceCollections.delete_cascade``.
+        members. A member of a refusing class that an aggregate outside the cascade refers to
+        refuses the whole cascade with ``InUse``, naming the referrers the caller may read. The
+        ``Raises`` are those of ``ReferenceCollections.delete_cascade``, which include ``InUse``.
         """
-        await self._collections.delete_cascade(collection, if_version)
+        await self._collections.delete_cascade(
+            collection, if_version, readable=self.readable_referrers
+        )
 
     def _require_readable(self, iri: str) -> None:
         if not self._iris.is_aggregate(self._access.tenant, iri):

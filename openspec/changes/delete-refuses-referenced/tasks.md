@@ -35,7 +35,7 @@ commit and never run `make generate`; the lead does, then `make check-generated`
   problem row and handler branch; the `DELETE` docs. Tests first: TC-6, TC-9, TC-10 (unit).
   Accept: they pass; E1 to E4, E8 (OPEN-2 as decided, `inputs/qa.md`) and E9 hold through the toy
   app; TC-7 still passes.
-- [ ] 2.4 Cascade (PD-12, OPEN-1 as decided): `Collaboration.delete_cascade` passes
+- [x] 2.4 Cascade (PD-12, OPEN-1 as decided): `Collaboration.delete_cascade` passes
   `readable_referrers` to `ReferenceCollections.delete_cascade`. Tests first: TC-8 (unit).
   Accept: E6, E7 hold.
 - [ ] 2.5 Integration (RISK-2): IT-1, IT-2, IT-3 on Fuseki. Accept: all three pass in

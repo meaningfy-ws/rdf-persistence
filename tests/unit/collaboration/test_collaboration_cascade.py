@@ -4,6 +4,8 @@
 wrapping one operation of the store: ``before`` runs it once, just before the first matching call.
 """
 
+from uuid import UUID
+
 import pytest
 
 from rdf_persistence import Action, StoredDataInvalid, generated_models
@@ -13,11 +15,13 @@ from rdf_persistence.collaboration.domain.generated.rp_collections import (
     SlotEquality,
 )
 from rdf_persistence.collaboration.services.collaboration import Collaboration
+from rdf_persistence.collaboration.services.referenced_removals import ReferencedRemovals
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import (
     CommitTooLarge,
     Conflict,
     Forbidden,
+    InUse,
     InvalidBody,
     InvalidIri,
 )
@@ -29,7 +33,7 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore, fake_session
-from tests.fixtures.library.domain.generated.books import Genre
+from tests.fixtures.library.domain.generated.books import Author, Genre
 from tests.toy import (
     ADA,
     MODULES,
@@ -53,6 +57,7 @@ from tests.toy import access as access_record
 
 DEFAULT_MAX_ROOTS = LimitSettings().max_roots  # the limit of a default mapper
 B1, B2, B3, B4, B9 = (book_iri(n) for n in (1, 2, 3, 4, 9))
+A1, A2 = (f"{TENANT}/authors/{UUID(int=n)}" for n in (1, 2))
 S1, A = shelf_iri(1), shelf_iri(3)
 HEADS = "VALUES ?m"  # the text of the query that reads the heads of the members
 
@@ -90,6 +95,29 @@ async def guarded():
     guards = WriteGuards(toy_mapper(), generated_models(*MODULES), listings)
     async with fake_session(tenant_iri=TENANT, listings=listings, guards=guards) as session:
         yield session
+
+
+@pytest.fixture
+async def refusing():
+    """A guarded session that also refuses to remove an author something refers to (PD-7)."""
+    view = load_schema(TOY_SCHEMA)
+    listings = Listings(view)
+    guards = WriteGuards(toy_mapper(), generated_models(*MODULES), listings)
+    async with fake_session(
+        tenant_iri=TENANT,
+        listings=listings,
+        guards=guards,
+        removals=ReferencedRemovals(view, LimitSettings()),
+    ) as session:
+        yield session
+
+
+async def put_author(session, iri: str) -> None:
+    await put(session, Author(id=iri, label="Frank"))
+
+
+async def put_book_by(session, iri: str, author: str) -> None:
+    await put(session, dune(iri, chapters=1, written_by=author))
 
 
 def as_ada(collaboration, session):
@@ -275,6 +303,62 @@ async def test_a_member_that_is_already_gone_is_skipped(guarded, collaboration):
     await as_ada(collaboration, guarded).delete_cascade(S1, await version(guarded, S1))
     assert not await stored(guarded, S1), "the shelf is gone"
     assert not await stored(guarded, B1), "and the book that was still there"
+
+
+async def test_a_member_that_something_outside_the_cascade_refers_to_refuses_the_whole_cascade(
+    refusing, collaboration
+):  # TC-8, E6
+    await put_author(refusing, A1)
+    await put_book_by(refusing, B1, A1)
+    await put(refusing, a_shelf(S1, member_class="Author", has_part=[A1]))
+    with pytest.raises(InUse) as refused:
+        await as_ada(collaboration, refusing).delete_cascade(S1, await version(refusing, S1))
+    assert refused.value.iris == (A1,), "the author is the refused root"
+    assert [r[0] for r in refused.value.referrers] == [B1], "its referrer is named"
+    assert await stored(refusing, S1), "the shelf is kept"
+    assert await stored(refusing, A1), "and the author: nothing is deleted"
+
+
+async def test_a_referrer_the_caller_may_not_read_is_counted_and_not_named_in_a_cascade_refusal(
+    refusing, collaboration
+):  # TC-8, PD-9
+    await put_author(refusing, A1)
+    await put_book_by(refusing, B1, A1)
+    await put(refusing, a_shelf(S1, member_class="Author", has_part=[A1]))
+    access = held(
+        role("reader"),
+        direct(Action.DELETE, graph_of(S1)),
+        direct(Action.DELETE, graph_of(A1)),
+        bans=[ban(Action.READ, graph_of(B1))],
+    )
+    with pytest.raises(InUse) as refused:
+        await collaboration(caller(), access, refusing).delete_cascade(
+            S1, await version(refusing, S1)
+        )
+    assert refused.value.referrers == (), "b1 is not named: the caller may not read it"
+    assert refused.value.hidden_count == 1, "but it is counted"
+    assert await stored(refusing, A1), "the author is kept"
+
+
+async def test_a_member_that_only_the_collection_refers_to_is_deleted_with_it(
+    refusing, collaboration
+):  # TC-8, E7
+    await put_author(refusing, A1)
+    await put(refusing, a_shelf(S1, member_class="Author", has_part=[A1]))
+    await as_ada(collaboration, refusing).delete_cascade(S1, await version(refusing, S1))
+    assert not await stored(refusing, S1), "the shelf is gone"
+    assert not await stored(refusing, A1), "and the author: the shelf's own link does not count"
+
+
+async def test_a_refusing_member_already_gone_is_skipped(refusing, collaboration):  # TC-8
+    await put_author(refusing, A1)
+    await put_author(refusing, A2)
+    await put(refusing, a_shelf(S1, member_class="Author", has_part=[A1, A2]))
+    # another writer's session refuses nothing: the shelf still names A2
+    await gone(refusing._store, A2)
+    await as_ada(collaboration, refusing).delete_cascade(S1, await version(refusing, S1))
+    assert not await stored(refusing, S1), "the shelf is gone"
+    assert not await stored(refusing, A1), "and the author that was still there"
 
 
 async def test_a_member_that_goes_after_the_heads_is_skipped_too(guarded, collaboration):
