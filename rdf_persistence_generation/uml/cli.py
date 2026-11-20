@@ -20,6 +20,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlSettings,
 )
 from rdf_persistence_generation.problems import format_problems
+from rdf_persistence_generation.uml.convert import convert
 from rdf_persistence_generation.uml.qea import QeaUsageError, read_qea
 from rdf_persistence_generation.uml.write import write
 
@@ -146,8 +147,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _usage_error(error.message)
     if not isinstance(model, UmlModel):
         return _problems_found(model)
-    from rdf_persistence_generation.uml.convert import convert  # lazy: lands with task 1.5
-
     schemas, report, problems = convert(model, settings, metamodel_prefixes())
     if problems:
         return _problems_found(problems)

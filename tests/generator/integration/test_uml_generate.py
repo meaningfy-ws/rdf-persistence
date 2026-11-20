@@ -38,7 +38,7 @@ def test_the_golden_passes_the_lint_and_boundary_steps(tmp_path: Path) -> None:
         read_targets(project / "pyproject.toml"), project, (LINT_STEP, BOUNDARY_STEP), check=True
     )
 
-    assert problems == []
+    assert problems == [], "the golden passes the lint and the boundary steps"
 
 
 def test_a_shared_slot_whose_usages_disagree_on_description_passes_the_lint(
