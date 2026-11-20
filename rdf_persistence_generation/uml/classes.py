@@ -28,7 +28,7 @@ from rdf_persistence_generation.uml.context import (
     Element,
     local_of,
 )
-from rdf_persistence_generation.uml.mixins import MIXIN_TAGS, RP_MIXINS, compose
+from rdf_persistence_generation.uml.mixins import RP_MIXINS, compose
 from rdf_persistence_generation.uml.naming import (
     CURIE_SEPARATOR,
     check_class_name,
@@ -37,6 +37,7 @@ from rdf_persistence_generation.uml.naming import (
     rp_path_for,
     title_for,
 )
+from rdf_persistence_generation.uml.tags import apply_tags
 
 CLASS_TYPE = "Class"
 ENUMERATION_TYPE = "Enumeration"
@@ -119,6 +120,7 @@ def collect_elements(ctx: Context, model: UmlModel) -> None:
             if tagged.name == RP_MIXINS and tagged.name in held
             else value
         )
+        ctx.tag_values.setdefault(tagged.owner_id, {}).setdefault(tagged.name, []).append(value)
     _collect_outside(ctx, model)
     for uml in sorted(model.uml_classes or [], key=lambda each: (each.name, each.object_id)):
         ctx.class_names[uml.object_id] = local_of(uml.name)
@@ -226,9 +228,10 @@ def build_class(
     )
     if element.is_abstract:
         definition.abstract = True
+    derived: dict[str, Annotation] = {}
     if element.is_root:
-        definition.annotations = {RP_PATH: annotation(RP_PATH, root_path(ctx, element))}
-    _note_tags(ctx, element, (RP_PATH, *MIXIN_TAGS))
+        derived[RP_PATH] = annotation(RP_PATH, root_path(ctx, element))
+    apply_tags(ctx, element, definition, derived)
     return definition
 
 

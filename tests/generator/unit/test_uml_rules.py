@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 import pytest
 from linkml_runtime.dumpers import yaml_dumper
+from linkml_runtime.linkml_model.meta import UniqueKey
 
 from rdf_persistence_generation.generated.rp_generation import (
     UmlAttribute,
@@ -921,6 +922,207 @@ ROWS_R10 = [
         UmlRule.NO_RULE,
         _book_chapter("1..*", target_aggregate=2, root=None),
         _problem(UmlRule.NO_RULE, "Book.has_chapter", "no rule converts it"),
+    ),
+]
+
+# --- R-20 class tagged values (PD-20, DEC-2) -------------------------------------------------------------
+
+
+def _annotated(**expected: str) -> Check:
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        annotations = out.klass("app_library", "Book").annotations
+        assert {name: annotations[name].value for name in expected} == expected
+
+    return check
+
+
+def _ignored_class_tag(out: Converted) -> None:
+    _no_problems(out)
+    assert out.report_lines("ignored_tag") == ["Book: tagged value junctionKind is not used"]
+    assert "junctionKind" not in out.klass("app_library", "Book").annotations
+
+
+def _tagged_root(*tags: object, stereotype: str | None = "root") -> object:
+    return model(klass(BOOK, "lib:Book", stereotype=stereotype), tags=tuple(tags))
+
+
+ROWS_R20 = [
+    Row(
+        "a tag named like a class annotation becomes that annotation",
+        UmlRule.CLASS_ANNOTATION,
+        _tagged_root(tag(BOOK, "rp_writes", "service"), tag(BOOK, "database", "system")),
+        _annotated(rp_writes="service", database="system", rp_path="books"),
+    ),
+    Row(
+        "the workflow tag is the workflow annotation",
+        UmlRule.CLASS_ANNOTATION,
+        _tagged_root(tag(BOOK, "workflow", "review")),
+        _annotated(workflow="review"),
+    ),
+    Row(
+        "a part takes class annotations too",
+        UmlRule.CLASS_ANNOTATION,
+        _tagged_root(tag(BOOK, "rp_unlabelled", "true"), stereotype=None),
+        _annotated(rp_unlabelled="true"),
+    ),
+    Row(
+        "failure: a value outside the annotation's values",
+        UmlRule.CLASS_ANNOTATION,
+        _tagged_root(tag(BOOK, "rp_writes", "sometimes")),
+        _problem(
+            UmlRule.CLASS_ANNOTATION,
+            "Book",
+            "rp_writes: 'sometimes' is not one of ('service', 'toolkit')",
+        ),
+    ),
+    Row(
+        "failure: a path that does not follow the segment pattern",
+        UmlRule.CLASS_ANNOTATION,
+        _tagged_root(tag(BOOK, "rp_path", "Books")),
+        _problem(UmlRule.CLASS_ANNOTATION, "Book", "rp_path: 'Books' does not match"),
+    ),
+    Row(
+        "failure: a workflow name that does not follow the segment pattern",
+        UmlRule.CLASS_ANNOTATION,
+        _tagged_root(tag(BOOK, "workflow", "Two Words")),
+        _problem(UmlRule.CLASS_ANNOTATION, "Book", "workflow: 'Two Words' does not match"),
+    ),
+    Row(
+        "failure: a tag named like an annotation of another element",
+        UmlRule.CLASS_ANNOTATION,
+        _tagged_root(tag(BOOK, "owned", "true")),
+        _problem(UmlRule.CLASS_ANNOTATION, "Book", "owned", "is not a class annotation"),
+    ),
+    Row(
+        "any other tag is an ignored-tag line",
+        UmlRule.CLASS_ANNOTATION,
+        _tagged_root(tag(BOOK, "junctionKind", "x")),
+        _ignored_class_tag,
+    ),
+]
+
+# --- R-21 unique keys (PD-21, DEC-3) ---------------------------------------------------------------------
+
+_KEYED = (
+    attribute(11, BOOK, "lib:title", position=0),
+    attribute(12, BOOK, "lib:subtitle", position=1),
+    attribute(13, BOOK, "lib:hasIsbn", position=2),
+)
+
+
+def _keyed(*tags: object, stereotype: str | None = "root") -> object:
+    return model(
+        klass(BOOK, "lib:Book", stereotype=stereotype, attributes=_KEYED), tags=tuple(tags)
+    )
+
+
+def _key(name: str, slots: list[str], *, scope: str | None, nulls_equal: bool) -> Check:
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        assert _key_names(out) == [name]
+        found = out.klass("app_library", "Book").unique_keys[name]
+        assert isinstance(found, UniqueKey)
+        assert [str(slot) for slot in found.unique_key_slots] == slots
+        assert found.consider_nulls_inequal is (False if nulls_equal else None)
+        if scope is None:
+            assert "rp_unique_scope" not in found.annotations
+        else:
+            assert found.annotations["rp_unique_scope"].value == scope
+
+    return check
+
+
+def _key_names(out: Converted) -> list[str]:
+    """The names of the class's keys; the runtime's key mapping also lists its own ``_if_missing`` hook."""
+    return sorted(n for n in out.klass("app_library", "Book").unique_keys if not n.startswith("_"))
+
+
+def _two_keys(out: Converted) -> None:
+    _no_problems(out)
+    assert _key_names(out) == ["by_isbn", "by_title"]
+
+
+def _key_problem(*fragments: str) -> Check:
+    return _problem(UmlRule.UNIQUE_KEY, "Book", "unique_key", *fragments)
+
+
+_BAD_KEY = "k title"
+
+ROWS_R21 = [
+    Row(
+        "a key on a root is scoped to the tenant, nulls equal",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "k: title, subtitle; nulls=equal")),
+        _key("k", ["title", "subtitle"], scope="tenant", nulls_equal=True),
+    ),
+    Row(
+        "a key on a part has no scope",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "k: title, subtitle; nulls=equal"), stereotype=None),
+        _key("k", ["title", "subtitle"], scope=None, nulls_equal=True),
+    ),
+    Row(
+        "a key without the nulls clause leaves the default, whitespace is free",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "  k :title ,subtitle  ")),
+        _key("k", ["title", "subtitle"], scope="tenant", nulls_equal=False),
+    ),
+    Row(
+        "an attribute is named by its slot or by its UML name",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "k: title, hasIsbn")),
+        _key("k", ["title", "has_isbn"], scope="tenant", nulls_equal=False),
+    ),
+    Row(
+        "an attribute named by its slot",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "k: has_isbn")),
+        _key("k", ["has_isbn"], scope="tenant", nulls_equal=False),
+    ),
+    Row(
+        "the tag may repeat, one key each",
+        UmlRule.UNIQUE_KEY,
+        _keyed(
+            tag(BOOK, "unique_key", "by_title: title"), tag(BOOK, "unique_key", "by_isbn: hasIsbn")
+        ),
+        _two_keys,
+    ),
+    Row(
+        "failure: no colon",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", _BAD_KEY)),
+        _key_problem(repr(_BAD_KEY)),
+    ),
+    Row(
+        "failure: no attribute after the colon",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "k:")),
+        _key_problem("'k:'"),
+    ),
+    Row(
+        "failure: another clause than nulls=equal",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "k: title; nulls=unequal")),
+        _key_problem("nulls=unequal"),
+    ),
+    Row(
+        "failure: an attribute the class does not have",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "k: title, nothing")),
+        _key_problem("'k: title, nothing'", "nothing"),
+    ),
+    Row(
+        "failure: a name that is not an identifier",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "1k: title")),
+        _key_problem("1k"),
+    ),
+    Row(
+        "failure: two keys with one name",
+        UmlRule.UNIQUE_KEY,
+        _keyed(tag(BOOK, "unique_key", "k: title"), tag(BOOK, "unique_key", "k: subtitle")),
+        _key_problem("k", "twice"),
     ),
 ]
 
@@ -1854,6 +2056,8 @@ ROWS: list[Row] = [
     *ROWS_R8,
     *ROWS_R9,
     *ROWS_R10,
+    *ROWS_R20,
+    *ROWS_R21,
     *ROWS_R12,
     *ROWS_R13,
     *ROWS_W3,
@@ -1869,8 +2073,6 @@ ROWS: list[Row] = [
 
 STAGE_2 = {
     UmlRule.TENANT_ROOT,
-    UmlRule.CLASS_ANNOTATION,
-    UmlRule.UNIQUE_KEY,
     UmlRule.ABSTRACT_ROOT,
     UmlRule.LEFT_OUT_LINK,
 }
@@ -1890,6 +2092,15 @@ def test_the_schemas_dump_to_yaml_the_way_the_toolkit_writes_them() -> None:
     )
     for line in wanted:
         assert line in text, text
+
+
+def test_a_unique_key_dumps_to_yaml_with_its_scope_and_nulls() -> None:
+    out = run(_keyed(tag(BOOK, "unique_key", "k: title; nulls=equal")))
+    text = yaml_dumper.dumps(out.schemas["app_library"])
+    for line in ("unique_keys:", "unique_key_name: k", "- title", "consider_nulls_inequal: false"):
+        assert line in text, text
+    assert "tag: rp_unique_scope" in text, text
+    assert "value: tenant" in text, text
 
 
 @pytest.mark.parametrize(
