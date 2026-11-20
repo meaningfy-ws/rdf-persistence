@@ -826,3 +826,56 @@ and its checkers page):
   `develop` is merged into the stage branch before the PR, which surfaces its conflicts before review
   and CI as P-0002 wants. Develop brought a new class annotation (`rp_on_referenced_delete`): the
   converter needed no change (PD-20, A-1); only the test that listed the class annotations did.
+- **D-29 Full review, accepted findings** (2026-11-21, PR #228; L1, L2, L3 apart, L4+L5 as one;
+  38 findings, none labelled Critical; five re-labelled by the lead, each with its reason).
+  - **C-1 (L1 W-1): a name with a space crashes the run.** An attribute, role or literal written
+    `has title` passes the snake-case check (the words are joined) but its raw name reaches
+    `slot_uri`/`meaning`, and linkml raises `ValueError`: a traceback, not a problem, and the run
+    stops at the first one. Reason: it breaks I-1, G-4 and A-9 on an ordinary modelling slip (as
+    stage 1's W-3). Fix: check the written local name before building the definition; an invalid
+    one is an `attribute_slot` problem (a `class_iri` one for a literal's meaning), collected.
+  - **C-2 (L1 W-2): the prefixes file and `--root-name` are not checked.** A `default_prefix` not
+    under `prefixes` writes relative IRIs with exit 0 (stage 1's S-5); a namespace or `schema_base`
+    that is not an absolute IRI, a prefix or `--root-name` that is not an NCName, crash with a
+    traceback. Reason: silent wrong output, and the error matrix promises exit 2. Fix: each is a usage
+    error (exit 2, one `rp-uml2linkml:` line) in `load_settings` and the argument parse.
+  - **C-3 (L2 W1, W4, W7): the spec delta and the conventions page say what the code does not.** The
+    spec says the report names the links to a not-generated class (only an enumeration's are named,
+    D-26); the page lists seven class annotations (eight since develop, D-28) and says any
+    dependency to a class fails (only one to a converted class does). Reason: P-0004, the spec and
+    the reference must be true of the code before the archive. Fix: the text, not the code.
+  - **C-4 (L2 W3): the stage-2 golden is never generated.** IT-1 runs the four checks only; the
+    `rp-generation` scenario "writes its targets exactly as for a hand-written schema" is unproven
+    for an Activity root, an abstract root, a tenant root, `StoredFile` and tenant-scoped keys.
+    Reason: a spec scenario mapped to a test that cannot fail for it. Fix: IT-1 also generates the
+    stage-2 golden in write mode and imports the package (as `test_uml_cycle.py` does); a refusal
+    found there is fixed in the converter, or reported upstream if it is the toolkit's.
+
+  Under the floor (one line each; to the developer at the end with D-1..D-29):
+  - L1 S-1 harden the reader against a crafted `.qea` (`trusted_schema=OFF`, tables only).
+  - L1 S-2 no test pins the converter's name patterns to linkml's linter patterns.
+  - L2 W2 the feature's first scenario lacks a generalisation, a dependency and the URI/cardinality
+    Thens (the golden covers them).
+  - L2 W5 asserts without messages in the R-30 rows and two toolkit tests.
+  - L2 W6 Then steps bundling several asserts; two feature lines chained with "and".
+  - L2 S1 `test_every_uml_rule_has_a_row` counts enum values, not R-n; S2 a Then that accepts any
+    report kind; S3 the stage-2 spec sentences have no scenario of their own; S4 stale "R-1..R-29".
+  - L3 W1 / L4+L5 W-5 reader and converter still both own package paths, exclusion, admission and
+    the association-class test (D-22 W-2, again).
+  - L3 W2 / L4+L5 S-2 `convert` loads the toolkit itself; the metamodel is read twice.
+  - L3 W3 / L4+L5 W-6 `Usage` and `Composed` are hand-written data classes D-24 did not keep.
+  - L3 W4 / L4+L5 S-1 `Context` is filled in an order nothing enforces.
+  - L3 W5 / L4+L5 S-6 `slots.py` has five concerns; graph code in `convert.py`; boundary geometry
+    in `qea.py`.
+  - L3 W6 / L4+L5 W-4 annotation names and values re-declared as strings, not the generated enums
+    (A-1 in spirit).
+  - L3 S1..S3 shared helpers imported across peer passes; no contract for "convert is pure"; the
+    CLI's lazy imports.
+  - L4+L5 W-1 a disk error mid-move leaves a mixed `--out` (the error matrix accepts it; a re-run
+    rewrites all); staging beside `--out` fails across filesystems.
+  - L4+L5 W-2 every SQLite error reads as "not a .qea file".
+  - L4+L5 W-3 `mode=ro` on a WAL-mode file leaves `-shm`/`-wal` beside it (the real file is in
+    `delete` mode; `immutable=1` would close it).
+  - L4+L5 W-7 two exceptions outside `exceptions.py`; W-8 free strings for closed sets.
+  - L4+L5 S-3 repeated scans that an index would avoid; S-4 an `assert` and a `type: ignore` in
+    production code; S-5 small clean-ups.
