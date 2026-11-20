@@ -76,7 +76,7 @@ def _is_mixin(ctx: Context, name: str) -> bool:
 
 def _defaults(ctx: Context, element: Element, owned: bool, defaults: list[str]) -> list[str]:
     """The default mixins of a root or an owned part; an unlabelled part has ``Described`` only (PD-29)."""
-    if element.is_root:
+    if element.is_a_boundary_root:
         return defaults
     if not owned:
         return []
@@ -84,6 +84,18 @@ def _defaults(ctx: Context, element: Element, owned: bool, defaults: list[str]) 
     if tags.get(RP_UNLABELLED, "").strip().lower() == TRUE:
         return [each for each in defaults if each == DESCRIBED]
     return defaults
+
+
+def _mixins(
+    ctx: Context, element: Element, named: list[str], owned: bool, defaults: list[str]
+) -> list[str]:
+    """The mixins of a class, in the order of the module docstring."""
+    mixins = [AGGREGATE_ROOT] if element.is_root or element.is_abstract_root else []  # R-10, R-23
+    mixins += [name for name in named if _is_mixin(ctx, name)]
+    mixins += _defaults(ctx, element, owned, defaults)
+    if ctx.tags.get(element.uml.object_id, {}).get(WORKFLOW, "").strip():
+        mixins.append(UNDER_WORKFLOW)
+    return mixins
 
 
 def compose(
@@ -97,11 +109,7 @@ def compose(
     tags = ctx.tags.get(element.uml.object_id, {})
     named = _known(ctx, element.label, _listed(tags.get(RP_MIXINS, "")))
     named += ctx.drawn_parents.get(element.uml.object_id, [])
-    mixins = [AGGREGATE_ROOT] if element.is_root else []  # R-23 adds the abstract roots here
-    mixins += [name for name in named if _is_mixin(ctx, name)]
-    mixins += _defaults(ctx, element, owned, defaults)
-    if tags.get(WORKFLOW, "").strip():
-        mixins.append(UNDER_WORKFLOW)
+    mixins = _mixins(ctx, element, named, owned, defaults)
     sources = [domain_parent] if domain_parent else []
     sources += [name for name in named if not _is_mixin(ctx, name)]
     sources = _once(sources)

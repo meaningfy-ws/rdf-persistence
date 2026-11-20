@@ -1,4 +1,4 @@
-"""Slots (R-5, R-6, R-8, R-11, R-13; PD-7, PD-8, PD-13, PD-15, PD-16 single-module part; D-10..D-12).
+"""Slots (R-5, R-6, R-8, R-11, R-13, R-24; PD-7, PD-8, PD-13, PD-15, PD-16; D-10..D-12).
 
 A *usage* is one slot on one class, with the shape it has there (``Shape``). ``attribute_usages`` and
 ``link_usages`` read them from the model; ``share`` makes one slot of the usages of a name and a
@@ -6,6 +6,7 @@ A *usage* is one slot on one class, with the shape it has there (``Shape``). ``a
 """
 
 import re
+from collections.abc import Mapping
 from typing import Final
 
 from linkml_runtime.linkml_model import ClassDefinition, SlotDefinition
@@ -18,6 +19,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.uml.classes import annotation, description_of
 from rdf_persistence_generation.uml.context import Context, Element, local_of
+from rdf_persistence_generation.uml.modules import ModulePath
 from rdf_persistence_generation.uml.naming import check_slot_name, slot_name, title_for
 
 URI: Final = "uri"
@@ -208,15 +210,18 @@ def usage_of(
 
 
 class Identity:
-    """A slot's name, the IRI it expands to, its explicit ``slot_uri`` and its title."""
+    """A slot's name, the IRI it expands to, its explicit ``slot_uri``, its title and the UML name it was written as."""
 
-    __slots__ = ("iri", "name", "slot_uri", "title")
+    __slots__ = ("iri", "name", "slot_uri", "title", "uml_name")
 
-    def __init__(self, name: str, iri: str, slot_uri: str | None, title: str) -> None:
+    def __init__(
+        self, name: str, iri: str, slot_uri: str | None, title: str, uml_name: str = ""
+    ) -> None:
         self.name = name
         self.iri = iri
         self.slot_uri = slot_uri
         self.title = title
+        self.uml_name = uml_name
 
 
 def slot_identity(ctx: Context, name: UmlName, element: str) -> Identity | None:
@@ -229,7 +234,7 @@ def slot_identity(ctx: Context, name: UmlName, element: str) -> Identity | None:
     iri = name.iri or ctx.default_namespace() + name.name
     differs = snake != name.name
     explicit = name.curie or (f"{ctx.settings.default_prefix}:{name.name}" if differs else None)
-    return Identity(snake, iri, explicit, title_for(name.name))
+    return Identity(snake, iri, explicit, title_for(name.name), name.name)
 
 
 def _typed_by_not_generated(
@@ -333,17 +338,76 @@ def _check_one_iri(ctx: Context, name: str, usages: list[Usage]) -> None:
         ctx.findings.problem(UmlRule.CLASS_IRI, name, f"{iris[0]} and {iris[1]} both map to {name}")
 
 
-def _check_one_module(ctx: Context, name: str, modules: list[str]) -> None:
-    if len(modules) > 1:
-        ctx.findings.problem(
-            UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
-            name,
-            f"used in {', '.join(modules)}; slots shared across packages arrive in stage 2 (task 2.6)",
+def _used_in(
+    usages: list[Usage], merged: Mapping[ModulePath, ModulePath]
+) -> dict[str, set[ModulePath]]:
+    """The modules each slot name is used in."""
+    found: dict[str, set[ModulePath]] = {}
+    for usage in usages:
+        found.setdefault(usage.name, set()).add(merged[usage.holder.path])
+    return found
+
+
+def choose_homes(
+    usages: list[Usage],
+    merged: Mapping[ModulePath, ModulePath],
+    reach: Mapping[ModulePath, set[ModulePath]],
+) -> dict[str, ModulePath | None]:
+    """The home module of each slot used in several modules (R-24, PD-16).
+
+    It is the one every other using module reaches by imports; when several qualify, the first in path
+    order; None when none does.
+    """
+    homes: dict[str, ModulePath | None] = {}
+    for name, modules in _used_in(usages, merged).items():
+        if len(modules) > 1:
+            fits = sorted(m for m in modules if all(m in reach[other] for other in modules - {m}))
+            homes[name] = fits[0] if fits else None
+    return homes
+
+
+def shared_edges(
+    usages: list[Usage],
+    merged: Mapping[ModulePath, ModulePath],
+    homes: Mapping[str, ModulePath | None],
+    by_label: Mapping[str, Element],
+) -> dict[ModulePath, set[ModulePath]]:
+    """The imports a shared slot adds: each using module imports the home, which imports its range's module."""
+    added: dict[ModulePath, set[ModulePath]] = {}
+    for name, modules in _used_in(usages, merged).items():
+        home = homes.get(name)
+        if home is None:
+            continue
+        for other in modules - {home}:
+            added.setdefault(other, set()).add(home)
+        first = min(
+            (each for each in usages if each.name == name),
+            key=lambda each: (merged[each.holder.path], each.holder.label, each.order),
         )
+        target = by_label.get(first.shape.range)
+        if target is not None:
+            added.setdefault(home, set()).add(merged[target.path])
+    return added
 
 
-def share(ctx: Context, usages: list[Usage], module_of: dict[int, str]) -> SharedSlots:
-    """One slot for each name (R-13): the slot states what every usage agrees on, each class its own rest."""
+def _no_home(ctx: Context, name: str, modules: list[str]) -> None:
+    ctx.findings.problem(
+        UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
+        name,
+        f"used in {', '.join(modules)} and no one of them is imported by the others",
+    )
+
+
+def share(
+    ctx: Context,
+    usages: list[Usage],
+    module_of: dict[int, str],
+    homes: Mapping[str, str | None],
+) -> SharedSlots:
+    """One slot for each name (R-13): the slot states what every usage agrees on, each class its own rest.
+
+    ``homes`` names the module that defines each slot used in several modules (``choose_homes``).
+    """
     shared = SharedSlots()
     by_name: dict[str, list[Usage]] = {}
     for usage in usages:
@@ -352,13 +416,15 @@ def share(ctx: Context, usages: list[Usage], module_of: dict[int, str]) -> Share
         key = lambda each: (module_of[each.holder.uml.object_id], each.holder.label, each.order)  # noqa: E731
         ordered = sorted(by_name[name], key=key)
         _check_one_iri(ctx, name, ordered)
-        _check_one_module(ctx, name, sorted({module_of[u.holder.uml.object_id] for u in ordered}))
+        modules = sorted({module_of[u.holder.uml.object_id] for u in ordered})
+        if len(modules) > 1 and homes.get(name) is None:
+            _no_home(ctx, name, modules)
         first = ordered[0]
         shapes = [each.shape for each in ordered]
         differing = differing_fields(shapes)
         slot = slot_of(first.identity, shapes, differing)
         shared.definitions[name] = slot
-        shared.home[name] = module_of[first.holder.uml.object_id]
+        shared.home[name] = homes.get(name) or module_of[first.holder.uml.object_id]
         for each in ordered:
             narrowed = usage_of(name, each.shape, differing, slot)
             if narrowed is not None:
@@ -373,6 +439,27 @@ def split_toolkit(ctx: Context, usages: list[Usage]) -> tuple[list[Usage], list[
     """
     known = [each for each in usages if ctx.toolkit.slot_by_uri(each.identity.iri) is not None]
     return known, [each for each in usages if each not in known]
+
+
+def name_slots(ctx: Context, generated: list[Usage], toolkit: list[Usage]) -> None:
+    """Record, for each class, the slot each name a modeller wrote stands for (PD-21).
+
+    A slot is known by its slot name and by its UML name; a usage that reuses a toolkit slot stands for
+    the toolkit's slot.
+    """
+    for usage in generated:
+        _alias(ctx, usage, usage.name)
+    for usage in toolkit:
+        found = ctx.toolkit.slot_by_uri(usage.identity.iri)
+        if found is not None:
+            _alias(ctx, usage, str(found.name))
+
+
+def _alias(ctx: Context, usage: Usage, slot: str) -> None:
+    held = ctx.slot_aliases.setdefault(usage.holder.uml.object_id, {})
+    held[slot] = held[usage.identity.name] = slot
+    if usage.identity.uml_name:
+        held[usage.identity.uml_name] = slot
 
 
 def _cardinality_text(shape: Shape) -> str:

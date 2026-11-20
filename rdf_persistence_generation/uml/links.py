@@ -56,7 +56,7 @@ class End:
 def _boundary_pairs(ctx: Context, boundary: UmlBoundary) -> set[tuple[int, int]]:
     """The owned pairs of one boundary: from each member to each member but its root."""
     members = [m for m in boundary.member_ids or [] if m in ctx.elements]
-    roots = [m for m in members if ctx.elements[m].is_root]
+    roots = [m for m in members if ctx.elements[m].is_a_boundary_root]
     if len(roots) != 1:
         ctx.findings.no_rule(
             boundary.name, f"a boundary needs exactly one root, this one has {len(roots)}"

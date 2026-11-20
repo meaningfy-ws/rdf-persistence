@@ -23,9 +23,7 @@ from tests.generator.uml_qea import QeaBuilder
 
 PACKAGE = "cycle_app"
 ROOT_NAME = "app"
-# The subtree package by name: the path form ``MODEL/library`` converts nothing (the reader keeps
-# only the subtree's packages, so the converter never matches the path); reported upstream.
-LIBRARY = "library"
+LIBRARY = "MODEL/library"  # the subtree package by its path
 PREFIXES = """\
 schema_base: https://example.org/ns/library/
 default_prefix: lib
@@ -102,12 +100,14 @@ def test_the_packages_of_a_cycle_become_one_module_with_a_merged_cycle_line(
     modules = sorted(file.name for file in project.glob(f"{ROOT_NAME}_*.yaml"))
     merged = yaml.safe_load((project / f"{ROOT_NAME}_{FIRST_PACKAGE}.yaml").read_text("utf-8"))
     report = (project / f"{ROOT_NAME}.uml-report.txt").read_text(encoding="utf-8")
-    assert modules == [f"{ROOT_NAME}_{FIRST_PACKAGE}.yaml"]
-    assert sorted(merged["classes"]) == ["Book", "Shelf"]
+    assert modules == [f"{ROOT_NAME}_{FIRST_PACKAGE}.yaml"], (
+        "one module, named after the first package"
+    )
+    assert sorted(merged["classes"]) == ["Book", "Shelf"], "the module holds both packages' classes"
     merged_lines = [line for line in report.splitlines() if line.startswith(MERGED_CYCLE)]
-    assert len(merged_lines) == 1
-    assert FIRST_PACKAGE in merged_lines[0]
-    assert SECOND_PACKAGE in merged_lines[0]
+    assert len(merged_lines) == 1, "the report has exactly one merged-cycle line"
+    assert FIRST_PACKAGE in merged_lines[0], "the line names the first package"
+    assert SECOND_PACKAGE in merged_lines[0], "the line names the second package"
 
 
 def test_the_merged_module_generates_and_the_package_imports(
@@ -127,4 +127,6 @@ def test_the_merged_module_generates_and_the_package_imports(
         label="A book",
         shelf="https://example.org/ns/library#shelf-1",
     )
-    assert str(book.shelf) == "https://example.org/ns/library#shelf-1"
+    assert str(book.shelf) == "https://example.org/ns/library#shelf-1", (
+        "the generated merged module builds a Book that refers to a Shelf"
+    )

@@ -1,0 +1,153 @@
+name: library_catalogue
+annotations:
+  module_kind:
+    tag: module_kind
+    value: domain
+description: What the library holds.
+title: Catalogue
+id: https://example.org/ns/library/library_catalogue
+imports:
+- linkml:types
+- rdf_persistence/model/rp_annotations
+- rdf_persistence/model/rp_core
+- rdf_persistence/model/rp_files
+- library_shelves
+prefixes:
+  dcterms:
+    prefix_prefix: dcterms
+    prefix_reference: http://purl.org/dc/terms/
+  lib:
+    prefix_prefix: lib
+    prefix_reference: https://example.org/ns/library#
+  linkml:
+    prefix_prefix: linkml
+    prefix_reference: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+slots:
+  has_chapter:
+    name: has_chapter
+    annotations:
+      owned:
+        tag: owned
+        value: 'true'
+    description: The chapters of the book.
+    title: Has chapter
+    slot_uri: lib:hasChapter
+    range: Chapter
+    required: true
+    multivalued: true
+    inlined_as_list: true
+  heading:
+    name: heading
+    description: The heading.
+    title: Heading
+    slot_uri: lib:heading
+    range: string
+    required: true
+  identifier:
+    name: identifier
+    description: Its catalogue number.
+    title: Identifier
+    slot_uri: dcterms:identifier
+    range: string
+    required: true
+  issn:
+    name: issn
+    description: Its ISSN.
+    title: Issn
+    slot_uri: lib:issn
+    range: string
+  related_work:
+    name: related_work
+    description: A work it relates to.
+    title: Related work
+    slot_uri: lib:relatedWork
+    range: Work
+    multivalued: true
+  shelved_on:
+    name: shelved_on
+    description: The shelf the book stands on.
+    title: Shelved on
+    slot_uri: lib:shelvedOn
+    range: Shelf
+  subtitle:
+    name: subtitle
+    description: Its subtitle.
+    title: Subtitle
+    slot_uri: lib:subtitle
+    range: string
+  title:
+    name: title
+    description: The title of the book.
+    title: Title
+    slot_uri: dcterms:title
+    range: string
+    required: true
+classes:
+  Book:
+    name: Book
+    annotations:
+      rp_path:
+        tag: rp_path
+        value: books
+    description: A book held by the library.
+    title: Book
+    is_a: Work
+    mixins:
+    - AggregateRoot
+    - StoredFile
+    - Described
+    - Tracked
+    slots:
+    - title
+    - subtitle
+    - identifier
+    - location
+    - has_chapter
+    - related_work
+    - shelved_on
+    unique_keys:
+      title_subtitle:
+        unique_key_name: title_subtitle
+        unique_key_slots:
+        - title
+        - subtitle
+        annotations:
+          rp_unique_scope:
+            tag: rp_unique_scope
+            value: tenant
+  Chapter:
+    name: Chapter
+    annotations:
+      rp_unlabelled:
+        tag: rp_unlabelled
+        value: 'true'
+    description: A chapter of a book.
+    title: Chapter
+    mixins:
+    - Described
+    slots:
+    - heading
+  Periodical:
+    name: Periodical
+    annotations:
+      rp_path:
+        tag: rp_path
+        value: periodicals
+    description: A publication in issues.
+    title: Periodical
+    is_a: Work
+    mixins:
+    - AggregateRoot
+    - Described
+    - Tracked
+    slots:
+    - issn
+  Work:
+    name: Work
+    description: Anything the library holds.
+    title: Work
+    abstract: true
+    mixins:
+    - AggregateRoot

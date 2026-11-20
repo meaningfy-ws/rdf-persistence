@@ -79,7 +79,16 @@ class PackagePath:
 class Element:
     """A class or an enumeration the run generates."""
 
-    __slots__ = ("is_abstract", "is_enum", "is_root", "name", "path", "uml")
+    __slots__ = (
+        "is_abstract",
+        "is_abstract_root",
+        "is_enum",
+        "is_root",
+        "is_tenant_root",
+        "name",
+        "path",
+        "uml",
+    )
 
     def __init__(
         self,
@@ -87,12 +96,20 @@ class Element:
         name: UmlName,
         path: tuple[str, ...],
         flags: tuple[bool, bool, bool],
+        is_tenant_root: bool = False,
     ) -> None:
-        """``flags`` are: an enumeration, a root, abstract."""
+        """``flags`` are: an enumeration, a root, abstract; a tenant root is a root of its own kind (R-18)."""
         self.uml = uml
         self.name = name
         self.path = path
         self.is_enum, self.is_root, self.is_abstract = flags
+        self.is_tenant_root = is_tenant_root
+        self.is_abstract_root = False  # set by the abstract-roots pass (R-23)
+
+    @property
+    def is_a_boundary_root(self) -> bool:
+        """Whether the class may be the one root of a boundary: a root or the tenant root (PD-13)."""
+        return self.is_root or self.is_tenant_root
 
     @property
     def label(self) -> str:
@@ -130,6 +147,9 @@ class Context:
         self.tag_values: dict[
             int, dict[str, list[str]]
         ] = {}  # every value of a tag, for the ones a class may repeat (R-21)
+        self.slot_aliases: dict[
+            int, dict[str, str]
+        ] = {}  # a class's slot names by every name written for them (PD-21)
         self.unknown_prefixes: set[str] = set()
         self.drawn_toolkit: dict[
             int, str

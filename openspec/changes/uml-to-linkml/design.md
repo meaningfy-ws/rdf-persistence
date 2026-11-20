@@ -810,3 +810,13 @@ and its checkers page):
   the load of parallel builders and passed alone (`test_sparql` pattern-too-long,
   `test_open_event_stream` 404, `test_templates` toy type check); the stage's full gates re-run
   them.
+- **D-27 Task 2.6 as built** (2026-11-21, the lead; amends PD-16, PD-19, D-15). A «tenant root»
+  takes the default mixins (`Described`, `Tracked`), as the toolkit's own tenant class does; a
+  `graph` tag on it other than `meta` is one `[tenant_root]` problem, and the tag is not also checked
+  as a class annotation. A shared slot's home is the module every other using module reaches
+  transitively; sharing adds imports (user → home, home → its range's module), the homes are
+  recomputed until the modules stop changing, and a cycle that sharing creates is merged (PD-14).
+  D-15's stage-1 refusal of a cross-module slot is gone. A `unique_key` may name a role slot or a
+  reused toolkit slot. A toolkit class drawn inside the subtree is used as the toolkit class and
+  reported `not-generated` ("drawn as the toolkit's <Class>"). The spec delta's scenarios run as
+  `tests/generator/feature/uml_import.feature`, in the generator lane.
