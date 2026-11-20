@@ -239,4 +239,40 @@ PD-11.
 
 ## Delivery decisions
 
-(Filled during delivery.)
+Taken by the lead under R-0007, shown to the developer at the end.
+
+- **D-1 The PLAN on the branch.** The gated PLAN was on `docs/epics-consumer-needs`, not yet in
+  `develop`. Only this change's folder was copied, unchanged, as the branch's first commit; a
+  rebase drops it once that branch merges.
+- **D-2 Impact of `list_request` is HIGH.** GitNexus rates it HIGH because every listing route
+  passes through it, which is the surface this change targets. The change is additive: a
+  parameter `x~` already answered 400 as an unknown slot. Proceeded without a stop.
+- **D-3 Parallel builders (developer, 2026-11-20: "work with subagents in parallel").** Task 1.3
+  is split into 1.3a (`holds_text`, TC-02; disjoint files) and 1.3b (plan, `condition_patterns`,
+  the routes); task 2.1 into 2.1a (the two Antora pages) and the docstrings, which each code task
+  updates. 1.1, 1.2, 1.3a and 2.1a run in parallel: 1.1 in the branch's worktree, the
+  others each in its own worktree under `.worktrees/` from `3d7dde5e`; the lead commits each
+  result there and cherry-picks it. 1.3b follows 1.1, 1.2 and
+  1.3a; 1.4 and 1.5 follow 1.1 (same YAML and served golden). Correction after 1.1: nested
+  worktrees are not invisible to the lead's gates: `test_no_live_file_still_names_an_old_path`
+  scans the tree and fails on their copies. Builders now never run in the branch's worktree, and
+  each nested worktree is removed once its commit is picked, so none exists at the full gates.
+  Each worktree needs `make install` before its first gate; an edit to a generator input
+  (e.g. `schema_structure.py`) needs `make generate`; the lead regenerates once after picking
+  results that touched the same manifests (`make check-generated` after 1.1 + 1.3a: fresh).
+- **D-4 Wave 2 and the impact of the plan.** GitNexus rates `Listings.plan`, `condition_pairs`
+  and `AggregateOpenApi._query_parameters` HIGH: they are on the listing, commit-guard and OpenAPI
+  paths this change targets. `condition_pairs` has exactly the three uses PD-6 names.
+  `Listings.plan` has two callers the PLAN does not name, `write_guards.prepare` and
+  `reference_collections.delete_cascade`; both pass equality filters only (`rule_filters` stays
+  equality, Non-Goals), so they are unchanged while equality is, which the full suite covers.
+  TC-07 needs the plan of 1.3b, so 1.4 follows 1.3b; 1.3b and 1.5 run in parallel.
+
+### Under the floor
+
+- 1.1: the module docstring of `listing.py` has one line over the page width (lint passes).
+- 1.3a: `holds_iri` reads `slot.range` without the default range; harmless for the induced slots
+  listings use, which always carry a range.
+- 2.1a: two lines of `api.adoc` run past the page's wrap width; the rendered page is the same.
+- `shapes.ttl` diffs are large on any model change because c14n blank-node labels renumber
+  (1.1: about 1000 lines for one added property). Generator awkwardness, not a defect here.
