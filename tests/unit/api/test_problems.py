@@ -8,8 +8,8 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ValidationError
 
-from rdf_persistence import LabelUpdate, Problem, ProblemKind
-from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import ProblemSlug
+from rdf_persistence import LabelUpdate, Problem, ProblemKind, Referrer
+from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import InUseProblem, ProblemSlug
 from rdf_persistence.api.entrypoints.problems import (
     KINDS,
     install_problem_handlers,
@@ -114,7 +114,7 @@ async def test_an_error_answers_with_its_status_and_problem_type(
     error: type[PersistenceError], status: int, slug: str
 ) -> None:
     response = await get(app_raising(error("detail")))
-    problem = Problem.model_validate(response.json())
+    problem = (InUseProblem if slug == "in-use" else Problem).model_validate(response.json())
     assert response.status_code == status, "status"
     assert (problem.type, problem.title, problem.status) == (
         f"{BASE}problems/{slug}",
@@ -163,6 +163,50 @@ async def test_a_rejected_body_says_why() -> None:
     assert problem.detail == "label: Field required", (
         "a 422 carries the messages the caller needs to fix the body"
     )
+
+
+async def test_an_in_use_refusal_names_the_referrers_as_members_and_has_no_detail() -> (
+    None
+):  # TC-9, PD-11
+    error = exceptions.InUse(
+        "http://lib/books/b1 refers to it",
+        iris=("http://lib/authors/a1",),
+        referrers=(
+            ("http://lib/books/b2", "Book", "written_by"),
+            ("http://lib/books/b1", "Book", "written_by"),
+        ),
+        more_count=2,
+        hidden_count=3,
+    )
+    response = await get(app_raising(error))
+    problem = InUseProblem.model_validate(response.json())
+    assert response.status_code == 409, "status"
+    assert problem.type == f"{BASE}problems/in-use", "the in-use type under the base"
+    assert (problem.title, problem.status) == ("In use", 409), "its fixed title and status"
+    assert problem.detail is None, "a 409 carries no text, the members say what refers"
+    assert "refers to it" not in response.text, "the text of the error does not leak"
+    assert problem.referrers == [
+        Referrer(referrer="http://lib/books/b1", referrer_class="Book", referrer_slot="written_by"),
+        Referrer(referrer="http://lib/books/b2", referrer_class="Book", referrer_slot="written_by"),
+    ], "the referrers, as generated models, in the order of the error"
+    assert (problem.more_count, problem.hidden_count) == (2, 3), "the counts"
+    assert response.headers["content-type"] == PROBLEM_JSON, "media type"
+
+
+async def test_an_in_use_refusal_with_only_hidden_referrers_has_an_empty_list_and_the_count() -> (
+    None
+):  # E2
+    response = await get(app_raising(exceptions.InUse("x", iris=("i",), hidden_count=1)))
+    problem = InUseProblem.model_validate(response.json())
+    assert (problem.referrers, problem.more_count, problem.hidden_count) == ([], 0, 1), (
+        "no name is given, only that one referrer exists"
+    )
+    assert problem.detail is None, "no detail"
+
+
+async def test_a_version_conflict_is_not_an_in_use_problem() -> None:  # TC-9
+    body = (await get(app_raising(exceptions.Conflict("stale")))).json()
+    assert not {"referrers", "more_count", "hidden_count"} & set(body), "no members on a conflict"
 
 
 async def test_an_invalid_token_asks_for_a_bearer_token() -> None:

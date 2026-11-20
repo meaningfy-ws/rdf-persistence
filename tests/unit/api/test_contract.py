@@ -16,7 +16,7 @@ from schemathesis.specs.openapi.checks import (
     status_code_conformance,
 )
 
-from rdf_persistence.core.domain.media import JSON
+from rdf_persistence.core.domain.media import JSON, PROBLEM_JSON
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 
 CHECKS: list[CheckFunction] = [
@@ -134,6 +134,23 @@ def test_every_json_body_is_valid_against_its_schema(toy: ToyService, operation:
     """TC-63: every body the operation answers (a stream's first event included) is valid against its schema."""
     method, path = case_of(operation)
     assert run_contract(toy, [response_schema_conformance], path, method) == 1
+
+
+def delete_conflict(toy: ToyService, rp_path: str) -> dict[str, Any]:
+    """The documented 409 answer of ``DELETE /libraries/{t}/<rp_path>/{aggregate_id}``."""
+    path = f"/libraries/{{t}}/{rp_path}/{{aggregate_id}}"
+    return toy.app.openapi()["paths"][path]["delete"]["responses"]["409"]
+
+
+def test_the_delete_of_a_refusing_class_documents_the_in_use_problem(toy: ToyService) -> None:
+    """TC-10: ``DELETE /authors/{id}`` 409 is an ``InUseProblem``; a class that does not refuse keeps ``Problem``."""
+    in_use = "#/components/schemas/InUseProblem"
+    refusing = delete_conflict(toy, "authors")["content"][PROBLEM_JSON]["schema"]
+    assert refusing == {"$ref": in_use}, "a refusing class answers 409 with the in-use problem"
+    assert "In use" in delete_conflict(toy, "authors")["description"], "its title is named"
+    plain = delete_conflict(toy, "books")["content"][PROBLEM_JSON]["schema"]
+    assert plain == {"$ref": "#/components/schemas/Problem"}, "a book keeps today's 409"
+    assert "InUseProblem" in toy.app.openapi()["components"]["schemas"], "the component exists"
 
 
 @pytest.mark.slow

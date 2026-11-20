@@ -4501,11 +4501,11 @@
             }
           },
           "409": {
-            "description": "Version conflict",
+            "description": "Version conflict or In use",
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Problem"
+                  "$ref": "#/components/schemas/InUseProblem"
                 }
               }
             }
@@ -6412,6 +6412,58 @@
         "title": "GrantSet",
         "description": "The body that replaces the grants and prohibitions of a tenant; two grants with the same assignee, target and role or action are refused."
       },
+      "InUseProblem": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "description": "An explanation of this occurrence of the problem."
+          },
+          "hidden_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "description": "The number of referrers or members the caller may not read, so are not listed."
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI that identifies this occurrence of the problem."
+          },
+          "more_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "description": "The number of referrers the caller may read but the answer does not name, past the limit."
+          },
+          "referrers": {
+            "items": {
+              "$ref": "#/components/schemas/Referrer"
+            },
+            "type": "array",
+            "description": "The aggregates that point at the resource, ordered by IRI and slot."
+          },
+          "status": {
+            "type": "integer",
+            "description": "The HTTP status code of the answer."
+          },
+          "title": {
+            "type": "string",
+            "description": "A short, fixed summary of the kind of problem."
+          },
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI that identifies the kind of problem."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "title": "InUseProblem",
+        "description": "The problem detail of a delete refused because other aggregates still point at the resource: it names up to the configured number of referrers the caller may read, and counts the rest."
+      },
       "Invalidation": {
         "properties": {
           "activity": {
@@ -6712,6 +6764,36 @@
         ],
         "title": "Prohibition",
         "description": "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission."
+      },
+      "Referrer": {
+        "properties": {
+          "referrer": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI of the aggregate that holds the reference."
+          },
+          "referrer_class": {
+            "type": "string",
+            "description": "The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class."
+          },
+          "referrer_slot": {
+            "type": "string",
+            "description": "The name of the slot that holds the reference; its IRI when the schema does not know the slot."
+          },
+          "type": {
+            "type": "string",
+            "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "referrer",
+          "referrer_class",
+          "referrer_slot"
+        ],
+        "title": "Referrer",
+        "description": "One aggregate that points at another: its IRI, its schema class and the slot that holds the reference."
       },
       "Review": {
         "properties": {
