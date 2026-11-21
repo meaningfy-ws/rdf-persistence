@@ -251,7 +251,8 @@ None. The owner decided all four on 2026-11-20 (`inputs/qa.md`):
 
   Not tested: a subclass of a collection class (the toy library has none, and the tester does not
   edit schemas); the exact-class rule is enforced by `accepted_members` adding only the class's own
-  IRI.
+  IRI. Also not tested: a sub-collection held by two nesting parents, which nothing refuses (the
+  how-to says so; the cold reader asked).
 - **D-4 Review findings (SMALL: one pass, L2 + L3; nine findings).** Accepted, one fix pass:
   - C-1 (Critical): a replace of a nested collection could change its `member_class`, which broke
     the parent's deep reads and refused every later save of the parent. A replace that changes the
