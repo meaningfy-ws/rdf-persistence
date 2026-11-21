@@ -274,3 +274,7 @@ Taken by the lead during delivery (R-0007); the developer may overrule any of th
   `may_read`. That is PD-4 and RISK-2, accepted by the owner: every HTTP write that holds a caller
   passes `may_read` (create, replace, tenant-root PUT, rename, `kit.collaboration`), and the
   sessions opened without it only read, remove (no rule runs), or write as the toolkit. No change.
+  It flagged too that, after C1, the reader reports any stored class, so a client might assert a
+  type to fool a rule. It cannot over HTTP: `Documents` refuses a root with an `rdf:type` outside
+  the route class's family, and a tenant session refuses application types; code that writes
+  through a unit of work is the consumer's own, trusted. No change.
