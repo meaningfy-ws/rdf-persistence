@@ -69,7 +69,7 @@ MWB2 opened seven issues; each is one EPIC, in the consumer's order (D-12). The 
 |---|---|---|---|---|---|---|
 | 1a | `uml-to-linkml` | MEDIUM (2 stages) | #196 | none | `v2-02` phase B, now | 8.8, accepted (R-0005); delivered 2026-11-21 (#212, #228), accepted, archived; hardening follow-up #229 |
 | 1b | `collection-has-part` | SMALL (**BREAKING**) | #199 | none | `v2-02` 2.1b, now | 9.0, delivered 2026-11-20 (#207), archived |
-| 2 | `delete-refuses-referenced` | MEDIUM (re-shaped from SMALL) | #201 | none | `v2-03` 7.1 | 8.4 → 9.2 |
+| 2 | `delete-refuses-referenced` | MEDIUM (re-shaped from SMALL) | #201 | none | `v2-03` 7.1 | 8.4 → 9.2, delivered 2026-11-21 (#224, #225), archived; follow-ups #226, #227 |
 | 3 | `nested-collections` | SMALL | #198 | 1b | `v2-03` 7.2 | 8.5 → 9.1, delivered 2026-11-21 (#234), accepted, archived; follow-up #235 |
 | 4 | `unique-key-nulls-equal` | SMALL | #202 | none | `v2-04` stage C, `v2-05` 6.1 | 8.7 → 9.2, delivered 2026-11-20 (#211), archived |
 | 5 | `listing-contains-filter` | SMALL | #203 | none | `v2-05` 4.4 | 8.8, accepted (R-0005); delivered 2026-11-20 (#216), accepted, archived |
@@ -102,12 +102,19 @@ questions (each change's `inputs/qa.md`).
 - **2026-11-21:** `nested-collections` delivered (#234: the `nests` slot, the cycle check with version
   guards a write guard relies on through `GuardContext`, deep reads of a tree), accepted with a
   follow-up (#235: the member-class race, D-5, and the floor) and archived.
+- **2026-11-21: released as 0.8.0** (BREAKING; #238 the CHANGELOG, #210 the release PR; tag
+  `v0.8.0`, `main` fast-forwarded). All seven EPICs above ship in it: `has_part` and the toolkit's
+  schema version 3 (migration `2__3`), `rp-uml2linkml`, nested collections, the refusal to delete
+  a referenced aggregate, unique keys with nulls equal, the contains filter and
+  `testkit.open_event_stream`. The GitHub Release tells the consumer what it gets and what to do
+  (regenerate against `has_part`, raise its lock's schema version where the lock names a collection
+  class) and asks it to upgrade once, for `v2-02` to `v2-05`.
 - **Worktrees** go in `.worktrees/` (P-0015), never beside the repository; a stage PR merges on green
   CI without waiting for the developer (P-0013).
 
 Open follow-ups, each under the floor of its review: #125 (`aggregate-events`), #189
 (`target-kind-from-the-model`), #192 (`domain-model-per-theme`). Not shaped yet; the consumer's
-upgrade to 0.7.0 is planned in MWBv2 (D-12).
+upgrade to 0.8.0 is planned in MWBv2 (D-12).
 
 ### Why this order
 
