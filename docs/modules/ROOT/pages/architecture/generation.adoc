@@ -756,7 +756,10 @@ first.
   folders); the TypeScript output passes `tsc --noEmit --strict` in CI. `rp-generate` checks the
   first on every run and `rp-generate --check` both, on whatever project they run (#242): each
   module that fails to import is an `import check` problem naming the module and the exception,
-  each mypy error a `type check` problem naming the file and line, and the run exits 1.
+  each mypy error a `type check` problem naming the file and line, and the run exits 1. mypy is
+  left out of a plain run because it is slow there: measured after a regeneration, 12.9 s on the
+  toolkit's 24 targets, whose generation takes about 20 s (the import check takes 0.5 s); here
+  `make check-generated` runs it too.
 
 === Guards against hand-written models
 

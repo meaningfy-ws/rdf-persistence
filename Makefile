@@ -109,7 +109,8 @@ check-freshness: ## rp-generate --check on both projects: lint, checks, and the 
 	@ uv run rp-generate --check --project $(TOY_PROJECT)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated code matches its sources$(END_BUILD_PRINT)"
 
-check-generated: generate ## Regenerate and fail if the result differs from what is committed (PD-19)
+check-generated: generate ## Regenerate, type-check the result and fail if it differs from what is committed (PD-19)
+	@ $(MAKE) --no-print-directory typecheck-generated
 	@ git diff --exit-code --stat -- $(GENERATED_GLOBS)
 	@ git ls-files --others --exclude-standard -- $(GENERATED_GLOBS) | grep . && exit 1 || true
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated output is fresh$(END_BUILD_PRINT)"
