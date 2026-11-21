@@ -9,7 +9,7 @@ parallel group, then runs `make refresh-map`.
 
 ## 1. Stage 1: test structure (tests only)
 
-- [ ] 1.1 PD-11 moves: the 13 tooling tests to `tests/unit/tooling/`, the 17 package tests and
+- [x] 1.1 PD-11 moves: the 13 tooling tests to `tests/unit/tooling/`, the 17 package tests and
   `sparql_threads.py` to `tests/unit/package/` (refresh-b §2), `git mv` committed first;
   `parents[3]` in the 21 files; `Makefile:55, :121`; `testing.adoc:27`; `tests/changed.py` as PD-11
   says (rule 11 → `tests/unit/package/`, rule 2 → `tests/unit/tooling/test_check_docs.py`,
@@ -24,26 +24,26 @@ parallel group, then runs `make refresh-map`.
   `make test-fast` collects the count before minus 1
   (`test_the_root_level_unit_test_files_are_the_real_ones` goes) plus the new scenario tests;
   `make refresh-map` exit 0 with "Removed rows (1)", that test's row.
-- [ ] 1.2 PD-8, after 1.1: every source module of the table to its home (one module per step,
+- [x] 1.2 PD-8, after 1.1: every source module of the table to its home (one module per step,
   `make test-fast` after each); then `tests/unit/tooling/test_no_cross_test_imports.py`. Accept:
   the guard passes on `tests/`, and its own test fails on each of the five planted forms.
-- [ ] 1.3 PD-1 (except TC-37a, TC-38) and PD-17: the replacements, the `Mapper` limit, the five
+- [x] 1.3 PD-1 (except TC-37a, TC-38) and PD-17: the replacements, the `Mapper` limit, the five
   classes in `testing.adoc` rule 3, a `# X<n>` comment on each kept line (in `test_relay.py`,
   1.4 adds them). Accept:
   `grep -rnE "monkeypatch\.(setattr|delattr)" tests/unit tests/generator/unit` lists only lines
   (or the statements those lines open) with a trailing
   `# X1` to `# X5`, TC-37a/TC-38 (stage 2), or non-toolkit targets; the builder reports
   SparqlError's outcome to the lead in its hand-off.
-- [ ] 1.4 PD-4 and PD-16 in `tests/unit/events/test_relay.py`, `tests/unit/api/test_events_route.py`,
+- [x] 1.4 PD-4 and PD-16 in `tests/unit/events/test_relay.py`, `tests/unit/api/test_events_route.py`,
   `tests/unit/api/test_open_event_stream.py`, plus PD-17's `# X3` comments in `test_relay.py`.
   Accept: S1-S3 as PD-16 states; with
   `PYTEST_ADDOPTS="--durations=0" make test-changed`, the call phase of d18
   (`test_relay.py:307-321`, 0.192 s today) and of the grant-removed keep-alive test
   (`test_events_route.py:236-243`, 0.881 s today) are each under 0.1 s.
-- [ ] 1.5 PD-9 and PD-10. Accept: 17 token cases, 1 email case; each hand mutation is caught (the
+- [x] 1.5 PD-9 and PD-10. Accept: 17 token cases, 1 email case; each hand mutation is caught (the
   builder lists them in its hand-off, the lead puts them in the commit body); `test_documents.py`
   has 2 tests on `each_policy_documents`.
-- [ ] 1.6 PD-11's rest, after 1.3 to 1.5: `test_tenant_move.py` literals and its `.importlinter`
+- [x] 1.6 PD-11's rest, after 1.3 to 1.5: `test_tenant_move.py` literals and its `.importlinter`
   contract; class-comment form; plan numbers; marker completeness; Hypothesis `-n 2`;
   `utc_now`; `listing_shelf` and personas; conftest constants; `TEST_DATA_DIR` and
   `load_text_file` deleted. Accept:
@@ -55,10 +55,10 @@ parallel group, then runs `make refresh-map`.
 
 ## 2. Stage 2: production seams and clean-ups
 
-- [ ] 2.1 `Relay.paused()` (PD-2) with its three unit tests; then TC-37a and TC-38 use it.
+- [x] 2.1 `Relay.paused()` (PD-2) with its three unit tests; then TC-37a and TC-38 use it.
   Accept: no `monkeypatch` in `test_events_route.py`; the `rp-events` scenarios pass.
-- [ ] 2.2 PD-5. Accept: `test_data_plane_statuses_map_to_errors` passes unchanged in its asserts.
-- [ ] 2.3 PD-6. Accept: each new test fails when its half of the guard is removed by hand.
+- [x] 2.2 PD-5. Accept: `test_data_plane_statuses_map_to_errors` passes unchanged in its asserts.
+- [x] 2.3 PD-6. Accept: each new test fails when its half of the guard is removed by hand.
 - [x] 2.4 PD-7 (cache and warm once; probe imports updated). Accept: the median of 7 `ToyService()`
   timings drops by ≥ 25 % (before and after, one checkout); the revised `test_shacl` test passes;
   a new test in `tests/unit/api/test_shacl.py`: two same-size rewrites of a shapes file in
