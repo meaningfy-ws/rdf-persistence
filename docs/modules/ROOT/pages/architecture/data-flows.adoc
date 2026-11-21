@@ -555,10 +555,21 @@ they can race with other writers; the guards in the request are what protect the
 *Write guards.* After these pre-checks and before the change is collected, each `add_graph` and
 `replace_graph` hands the triples to the session's *write guards* (`collaboration/services/write_guards.py`,
 `WriteGuards.prepare`), which return the triples to write or raise. They are not the guards of the
-request: they are checks in Python that read the store. There are two rules. The first is for a root whose
+request: they are checks in Python that read the store. What they read can still move before the
+commit, so the transaction hands each guard a `GuardContext`: the triples collected so far, by root,
+and `rely_on(iri, version)`. A guard that relies on a version it read adds one version guard to the
+commit's one request, for that graph at that version. If the graph has changed or been removed when
+the request is applied, the commit fails with a `Conflict` naming it (PD-5, PD-9). There are two
+rules. The first is for a root whose
 class mixes in `ReferenceCollection`: its member class is a served aggregate root (`InvalidBody`),
 every member is an aggregate IRI of the tenant (`InvalidIri`) and a stored aggregate of that class
-(`InvalidBody`), and its rule is one a listing of that class accepts (`InvalidBody`). A refused
+(`InvalidBody`), and its rule is one a listing of that class accepts (`InvalidBody`). When the
+collection has `nests: true`, a member may be a collection of exactly the same class and member
+class, and its member class must not itself be a collection class (`InvalidBody`). The rule also refuses a cycle
+(`InvalidBody`, naming it): it walks the nested collections from the new members, over the stored
+ones overlaid by those collected earlier in the transaction, and relies on the version of each
+collection it reached. Two saves that would together close a cycle therefore cannot both commit: the
+second fails with a `Conflict` naming the collection that changed. A refused
 change is not collected, so nothing of the transaction is sent. A member must therefore be stored
 before the commit that names it. The second keeps the state of an aggregate under a workflow
 (`Workflows.keep_state`, `collaboration/services/workflows.py`), through the class in both directions. With S the
@@ -620,8 +631,8 @@ adds one guard on its target: the target must still have a version when the requ
 refused with a `Conflict` whose `iris` names the target, and nothing is stored.
 
 [#private-pieces]
-*The three private pieces, side by side.* A transaction has no public method that takes SPARQL or
-lifts a rule. What the collaboration code needs beyond add, replace and remove is three private
+*The four private pieces, side by side.* A transaction has no public method that takes SPARQL or
+lifts a rule. What the collaboration code needs beyond add, replace and remove is four private
 methods of `Transaction`. Each collects no change and has exactly one caller; a test
 (`tests/unit/collaboration/test_private_transaction_pieces.py`) fails when another module uses one, so
 a new way past a rule has to be argued for.
@@ -643,6 +654,14 @@ would hold and tell nothing.
 |`Discussion.comment` (`collaboration/services/discussion.py`), on the comment's target
 |`Conflict` whose `iris` names `iri`.
 
+|`_rely_on(iri, version)` (reliance)
+|Adds a guard to the request: the graph of `iri` is at `version` when the request is applied. A
+second call for the same graph and version changes nothing. Reached only through the
+`GuardContext` that `Transaction._context` builds for each write guard.
+|`WriteGuards` (`collaboration/services/write_guards.py`), for each collection its cycle walk reached
+|`Conflict` whose `iris` names `iri`, when the graph changed or was removed. At once, a `Conflict`
+too, when the same graph is relied on at another version in one transaction.
+
 |`_allow_state(iri, state_iri)` (state allowance)
 |Adds nothing to the request. It lets this transaction's write of `iri` set that one state: the
 transaction hands it to the write guards, which otherwise refuse a state other than the stored one.
@@ -651,7 +670,7 @@ transaction hands it to the write guards, which otherwise refuse a state other t
 that names any other state is still refused (`Forbidden`).
 |===
 
-The first two are guards of the request, checked by the store when the request is applied. The third
+The first three are guards of the request, checked by the store when the request is applied. The fourth
 is a permit read in Python by the write guards, before the request is built.
 
 *Limits.* One tenant only: nothing spans two tenants, a tenant and the system database, or a
@@ -688,8 +707,9 @@ sequenceDiagram
   T->>S: _allow_state(B, …/review/accepted)
   T->>S: replace_graph(B, triples with the new state, v7)
   S->>F: SELECT version and tracking of B
-  S->>W: prepare(B, triples, allowed state)
+  S->>W: prepare(B, triples, allowed state, context)
   W->>F: SELECT the stored classes and state of B
+  Note over W,S: a collection write would also call context.rely_on(…)
   W-->>S: triples (the new state is the allowed one)
   S->>F: SELECT the loaded graphs B owns
   T->>S: add_graph(C, the comment), the Transition R as the served activity
@@ -716,7 +736,7 @@ its class named a workflow).
 . *Replace `B`* at `v7`: its stored triples with `adms:status` set to the IRI of the new state
   (`<workflow id>/accepted`). `Transaction._allow_state` was called first, so the write guards
   accept this one state (<<commit>>, _Write guards_ and
-  <<private-pieces,the three private pieces>>).
+  <<private-pieces,the four private pieces>>).
 . *Record the activity `R`*, a `Transition` with an id of the form `urn:uuid:…`, as the served
   activity of the same transaction: the aggregate (`used_resource`), the state left and the state
   entered, the comment's IRI if any, and, filled by the session as for every commit, the start,
