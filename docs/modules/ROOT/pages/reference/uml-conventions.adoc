@@ -424,7 +424,7 @@ classDiagram
   class Book["lib:Book"] {
     <<root>>
   }
-  Shelf --> "0..*" Book : dct:hasPart
+  Shelf --> "0..*" Book : hasPart
   note for Shelf "rp_mixins = ReferenceCollection"
 ....
 
