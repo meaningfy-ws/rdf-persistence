@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 import httpx
 
 from tests.fixtures.library.domain.generated.books_activities import Review
+from tests.scene import Scene
 from tests.toy_service import body_of
-from tests.unit.api.scene import Scene
 
 STARTED = datetime(2026, 11, 20, 9, 0, tzinfo=UTC)
 

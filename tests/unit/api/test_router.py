@@ -29,10 +29,7 @@ from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.provenance.domain.generated.rp_provenance import Replace
 from rdf_persistence.schema.services import vocabulary
 from rdf_persistence.testkit import assert_isomorphic
-from tests.toy import SETTINGS, keep_a_librarian
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
-from tests.unit.activity_helpers import activities
-from tests.unit.api.scene import (
+from tests.scene import (
     NIL,
     PROBLEMS,
     Scene,
@@ -40,6 +37,9 @@ from tests.unit.api.scene import (
     everyone_has_a_role,
     problem_of,
 )
+from tests.toy import SETTINGS, keep_a_librarian
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
+from tests.unit.activity_helpers import activities
 from tests.unit.api.tenant_requests import put_root, rename
 
 # --- tenants ------------------------------------------------------------------------------------

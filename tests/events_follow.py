@@ -17,8 +17,8 @@ from rdf_persistence.api.entrypoints.sse import add_events_route
 from rdf_persistence.events.services.event_hub import EventHub
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.testkit import OpenedStream, open_event_stream
+from tests.scene import Scene
 from tests.toy_service import DUNE_BODY, ToyService, principal_of
-from tests.unit.api.scene import Scene
 
 TIMEOUT = 3.0
 # The deadline of ``open_event_stream`` runs from the call, so it also covers the test's own commits; a

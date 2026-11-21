@@ -9,8 +9,8 @@ from rdf_persistence import InvalidBody, Page
 from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.media import JSON
+from tests.scene import PROBLEMS, Scene, problem_of
 from tests.toy_service import ToyService, principal_of
-from tests.unit.api.scene import PROBLEMS, Scene, problem_of
 
 
 @asynccontextmanager

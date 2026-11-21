@@ -6,8 +6,8 @@ import httpx
 import pytest
 
 from rdf_persistence.testkit import no_network  # noqa: F401  (fixture)
+from tests.scene import Scene
 from tests.toy_service import ToyService
-from tests.unit.api.scene import Scene
 
 
 @pytest.fixture(autouse=True)

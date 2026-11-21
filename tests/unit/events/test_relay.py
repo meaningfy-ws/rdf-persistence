@@ -536,17 +536,34 @@ async def _stop(task: "asyncio.Task[None]") -> None:
         await task
 
 
+async def _yield_to_the_loop() -> None:
+    """Let every ready task run; the in-memory fakes never suspend, so a few yields settle a round."""
+    for _ in range(10):
+        await asyncio.sleep(0)
+
+
+async def test_a_round_started_without_pausing_finishes_within_the_yields(world):
+    """Control for the paused tests: the same yields, no ``paused()``, and the round is done."""
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
+    await add_one(world, world.tenant)
+    round_ = asyncio.create_task(relay.run_once())
+    await _yield_to_the_loop()
+    assert round_.done(), "without a pause the round completes within the yields"
+    await round_
+    assert len(sent(world, world.tenant)) == 1
+
+
 async def test_a_commit_made_while_the_relay_is_paused_stays_pending(world):
     relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
-    task = asyncio.create_task(relay.run())
-    try:
-        async with relay.paused():
-            await add_one(world, world.tenant)
-            relay.wake()
-            assert len(await pending(world, world.tenant)) == 1, "the commit is still pending"
-            assert sent(world, world.tenant) == [], "nothing went out while the block was open"
-    finally:
-        await _stop(task)
+    async with relay.paused():
+        await add_one(world, world.tenant)
+        round_ = asyncio.create_task(relay.run_once())
+        await _yield_to_the_loop()
+        assert not round_.done(), "the round waits for the pause to end"
+        assert len(await pending(world, world.tenant)) == 1, "the commit is still pending"
+        assert sent(world, world.tenant) == [], "nothing went out while the block was open"
+    await round_
+    assert len(sent(world, world.tenant)) == 1, "the held round publishes once released"
 
 
 async def test_the_relay_runs_the_round_that_fell_due_while_it_was_paused(world):
@@ -557,6 +574,8 @@ async def test_the_relay_runs_the_round_that_fell_due_while_it_was_paused(world)
             await add_one(world, world.tenant)
             due = await pending(world, world.tenant)
             relay.wake()
+            await _yield_to_the_loop()
+            assert sent(world, world.tenant) == [], "the wake-up round waits for the pause to end"
         await wait_until_async(
             lambda: _truth(len(sent(world, world.tenant)) == 1),
             "the publication",
@@ -569,19 +588,13 @@ async def test_the_relay_runs_the_round_that_fell_due_while_it_was_paused(world)
 
 async def test_a_paused_block_that_raises_releases_the_relay(world):
     relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
-    task = asyncio.create_task(relay.run())
-    try:
-        with pytest.raises(RuntimeError, match="the block fails"):
-            async with relay.paused():
-                raise RuntimeError("the block fails")
-        await add_one(world, world.tenant)
-        due = await pending(world, world.tenant)
-        relay.wake()
-        await wait_until_async(
-            lambda: _truth(len(sent(world, world.tenant)) == 1),
-            "the publication",
-            poll_seconds=0.01,
-        )
-        assert [activity for _, _, activity in sent(world, world.tenant)] == due, "that commit"
-    finally:
-        await _stop(task)
+    await add_one(world, world.tenant)
+    due = await pending(world, world.tenant)
+    with pytest.raises(RuntimeError, match="the block fails"):
+        async with relay.paused():
+            round_ = asyncio.create_task(relay.run_once())
+            await _yield_to_the_loop()
+            assert not round_.done(), "the round is held while the block is open"
+            raise RuntimeError("the block fails")
+    await asyncio.wait_for(round_, timeout=5)  # released by the exception, not stuck on the lock
+    assert [activity for _, _, activity in sent(world, world.tenant)] == due, "that commit"

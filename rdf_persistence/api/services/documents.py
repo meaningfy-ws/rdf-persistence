@@ -26,8 +26,7 @@ from pyld import jsonld
 from rdflib import RDF, SH, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.api.services.shacl import validate_warm, warm_up
-from rdf_persistence.core.domain import sparql_parsing
+from rdf_persistence.api.services.shacl import validate_warm, warm_up_once
 from rdf_persistence.core.domain.exceptions import InvalidBody, NotAcceptable, PayloadTooLarge
 from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.core.domain.media import (
@@ -87,9 +86,6 @@ LANGUAGE_KEY = "@language"
 # What XML 1.0 forbids in text: rdflib's RDF/XML writer passes it through, and no XML parser reads it.
 XML_FORBIDDEN = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
-# The digests of the shapes warmed in this process (``services.shacl``).
-_WARMED_SHAPES: set[str] = set()
-
 
 @lru_cache(maxsize=8)
 def _shape_triples(digest: str, data: bytes) -> tuple[tuple[Node, Node, Node], ...]:
@@ -104,17 +100,6 @@ def _read_shapes(path: Path) -> tuple[Graph, str]:
     graph = Graph()
     graph.addN((s, p, o, graph) for s, p, o in _shape_triples(digest, data))
     return graph, digest
-
-
-def _warm_once(shapes: Graph, digest: str) -> None:
-    """Warm ``shapes`` up unless this process has warmed shapes of the same digest: the warm-up's effect
-    is process-wide. Read without the lock (a set lookup); decided again under it."""
-    if digest in _WARMED_SHAPES:
-        return
-    with sparql_parsing.SPARQL_PARSER_LOCK:
-        if digest not in _WARMED_SHAPES:
-            warm_up(shapes)
-            _WARMED_SHAPES.add(digest)
 
 
 class Documents:
@@ -141,7 +126,8 @@ class Documents:
             CONTEXT_KEY
         ]
         self.shapes, digest = _read_shapes(folder / SHAPES_FILE)
-        _warm_once(self.shapes, digest)  # so that validation in worker threads needs no parser lock
+        # so that validation in worker threads needs no parser lock
+        warm_up_once(self.shapes, digest)
         self._class_of = {self._iri_of(c): c for c in view.all_classes().values()}
         self._slots = {
             name: {json_name(slot): slot for slot in view.class_induced_slots(name)}

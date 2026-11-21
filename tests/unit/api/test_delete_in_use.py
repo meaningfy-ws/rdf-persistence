@@ -14,9 +14,9 @@ from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import InUsePr
 from rdf_persistence.core.domain.exceptions import InUse
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.schema.services import vocabulary as v
+from tests.scene import PROBLEMS
 from tests.toy import graph_of
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, assert_problem, principal_of
-from tests.unit.api.scene import PROBLEMS
 from tests.unit.collaboration.collaboration_data import annotation
 
 AUTHOR_BODY = {"label": "Herbert", "description": "An author."}

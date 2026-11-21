@@ -17,9 +17,9 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
     LimitSettings,
 )
 from rdf_persistence.schema.services import vocabulary as v
+from tests.scene import PROBLEMS, Scene, problem_of
 from tests.toy import SETTINGS
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of, store_scan
-from tests.unit.api.scene import PROBLEMS, Scene, problem_of
 
 RP = "https://meaningfy.ws/ns/rdf-persistence#"
 ODRL = "http://www.w3.org/ns/odrl/2/"

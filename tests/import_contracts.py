@@ -17,7 +17,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import NamedTuple
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 ROOT_PACKAGE = "rdf_persistence"
 LINT_IMPORTS = Path(sys.executable).parent / "lint-imports"
 BROKEN = "BROKEN"

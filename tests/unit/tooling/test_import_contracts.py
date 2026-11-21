@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.unit.import_contracts import broken_in, run_contracts, scratch_config
+from tests.import_contracts import broken_in, run_contracts, scratch_config
 
 KEYS = ("domain-pure", "services-of-a-theme-import-no-adapters-or-entrypoints")
 

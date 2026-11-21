@@ -17,10 +17,9 @@ def test_testkit_root_does_not_import_testcontainers() -> None:
 
 
 def test_missing_extra_names_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
-    # X5: makes `import testcontainers` fail
     monkeypatch.setitem(sys.modules, "testcontainers", None)  # X5
     for name in [m for m in sys.modules if m.startswith(CONTAINERS)]:
-        monkeypatch.delitem(sys.modules, name)
+        monkeypatch.delitem(sys.modules, name)  # X5
     with pytest.raises(ImportError, match=r"rdf-persistence\[testkit\]"):
         importlib.import_module(CONTAINERS)
 

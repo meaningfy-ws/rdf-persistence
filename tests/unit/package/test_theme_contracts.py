@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.import_contracts import lint_contracts, run_contracts
+from tests.import_contracts import lint_contracts, run_contracts
 from tests.unit.layout_table import TURNED_ON
 
 ROOT = Path(__file__).resolve().parents[3]

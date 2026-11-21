@@ -31,8 +31,8 @@ from tests.events_follow import (
     short_times,
     with_carol,
 )
+from tests.scene import Scene
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
-from tests.unit.api.scene import Scene
 
 
 @pytest.fixture

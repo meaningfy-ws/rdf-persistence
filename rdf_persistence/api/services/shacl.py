@@ -29,6 +29,9 @@ _INSTANCES = 2  # one focus node and several take different paths through the ge
 
 Validation = tuple[bool, Graph, str]
 
+# The digests of the shapes warmed in this process (``warm_up_once``).
+_WARMED_SHAPES: set[str] = set()
+
 
 def _validate(data: Graph, shapes: Graph) -> Validation:
     conforms, report, text = validate(data, shacl_graph=shapes, inference="none")
@@ -55,6 +58,17 @@ def warm_up(shapes: Graph) -> None:
     scratch = Graph()
     scratch += shapes  # pyshacl adds to the shapes graph it is given
     validate_locked(data, scratch)
+
+
+def warm_up_once(shapes: Graph, digest: str) -> None:
+    """Warm ``shapes`` up unless this process has warmed shapes of the same digest: the warm-up's effect
+    is process-wide. Read without the lock (a set lookup); decided again under it."""
+    if digest in _WARMED_SHAPES:
+        return
+    with sparql_parsing.SPARQL_PARSER_LOCK:
+        if digest not in _WARMED_SHAPES:
+            warm_up(shapes)
+            _WARMED_SHAPES.add(digest)
 
 
 def validate_warm(data: Graph, shapes: Graph) -> Validation:

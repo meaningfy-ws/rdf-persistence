@@ -13,8 +13,8 @@ from rdf_persistence.api.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_
 from rdf_persistence.core.domain.exceptions import StoreUnavailable
 from rdf_persistence.core.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.iris.domain.layout import graph_iri
+from tests.scene import Scene, everyone_has_a_role
 from tests.toy_service import DUNE_BODY, principal_of
-from tests.unit.api.scene import Scene, everyone_has_a_role
 
 ROOT_BODY = {"label": "Ghent", "description": "d", "city": "c"}
 # who -> (subject, global roles); mia is the member [read, modify, delete] of everyone_has_a_role

@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.unit.import_contracts import (
+from tests.import_contracts import (
     CONTRACT_DOMAIN,
     CONTRACT_ENTRYPOINTS,
     CONTRACT_RUNTIME,

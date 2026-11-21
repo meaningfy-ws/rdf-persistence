@@ -30,8 +30,8 @@ from rdf_persistence.schema.services.generated.templates.rp_schema_templates imp
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit.tokens import ISSUER
 from rdf_persistence_generation.cli import main as generate
+from tests.import_contracts import Linted, lint_scratch
 from tests.toy_service import ToyService
-from tests.unit.import_contracts import Linted, lint_scratch
 
 scenarios("technical_models.feature")
 

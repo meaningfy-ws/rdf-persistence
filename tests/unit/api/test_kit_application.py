@@ -12,9 +12,9 @@ from rdf_persistence.iris.domain.layout import application_database_name
 from rdf_persistence.testkit import FakeStore
 from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.domain.generated.templates import Template
+from tests.scene import Scene
 from tests.toy import SETTINGS
 from tests.toy_service import ToyService, principal_of
-from tests.unit.api.scene import Scene
 
 APP_DATABASE = application_database_name(SETTINGS.prefix)
 

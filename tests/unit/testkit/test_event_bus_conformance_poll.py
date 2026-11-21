@@ -23,8 +23,13 @@ class DelayedBus:
     def __init__(self, wrapped: InMemoryEventBus) -> None:
         self.wrapped = wrapped
         self._deliveries: set[asyncio.Task[None]] = set()
+        self.fail_next = False
 
     async def publish(self, envelope: EventEnvelope, body: Activity) -> None:
+        if self.fail_next:  # as the in-memory bus does: raise at once, not in the late delivery
+            self.fail_next = False
+            raise ConnectionError("the delayed bus was told to fail")
+
         async def deliver() -> None:
             await asyncio.sleep(DELIVERY_DELAY_SECONDS)
             await self.wrapped.publish(envelope, body)
@@ -52,10 +57,12 @@ class DelayedPair:
 
     @asynccontextmanager
     async def failing(self, bus: DelayedBus) -> AsyncIterator[None]:
-        bus.wrapped.fail_next_publish()
+        bus.fail_next = True
         yield
 
 
+# These two tests time real waits on purpose: the spec scenario is worded in time ("one interval",
+# "sooner than the default"), and the delivery delay is what makes a poll interval observable.
 async def test_a_fast_poll_ends_a_delivery_case_before_one_default_interval():
     started = time.monotonic()
     await run_case(a_message_reaches_every_started_bus, DelayedPair(), poll_seconds=0.02)

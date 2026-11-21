@@ -40,10 +40,10 @@ from tests.events_follow import (
     with_carol,
 )
 from tests.relay_helpers import add_one, book, commit, pending, triples
+from tests.scene import Scene
 from tests.tenancy_world import make_world
 from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, toy_mapper
 from tests.toy_service import ToyService
-from tests.unit.api.scene import Scene
 
 scenarios("events.feature")
 

@@ -45,6 +45,7 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Replace
 from rdf_persistence.schema.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.testkit import FakeStore, RecordingObserver, open_event_stream
+from tests.scene import Scene
 from tests.toy import (
     ROLES,
     SETTINGS,
@@ -64,7 +65,6 @@ from tests.toy_service import (
     principal_of,
 )
 from tests.unit.activity_helpers import activities
-from tests.unit.api.scene import Scene
 
 PROBLEMS = f"{SETTINGS.base}problems/"
 FILE_KEY = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")
@@ -683,6 +683,7 @@ async def test_a_generic_replace_reaches_the_observers_of_the_kits_bus(scene) ->
 
 
 async def test_a_kit_with_no_bus_records_and_publishes_nothing(scene) -> None:  # TC-82
+    """Recording still happens without a bus; "publishes nothing" follows from having no bus to publish to."""
     assert scene.service.kit.bus is None, "a kit starts with no bus"
 
     await replace_the_book(scene)
