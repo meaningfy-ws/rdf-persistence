@@ -67,7 +67,7 @@ MWB2 opened seven issues; each is one EPIC, in the consumer's order (D-12). The 
 
 | # | Id | Appetite | Issue | Depends on | Needed by (MWB2) | PLAN (gate, 2026-11-20) |
 |---|---|---|---|---|---|---|
-| 1a | `uml-to-linkml` | MEDIUM (2 stages) | #196 | none | `v2-02` phase B, now | 8.8, accepted (R-0005); stage 1 delivered (#212), stage 2 next |
+| 1a | `uml-to-linkml` | MEDIUM (2 stages) | #196 | none | `v2-02` phase B, now | 8.8, accepted (R-0005); delivered 2026-11-21 (#212, #228), accepted, archived; hardening follow-up #229 |
 | 1b | `collection-has-part` | SMALL (**BREAKING**) | #199 | none | `v2-02` 2.1b, now | 9.0, delivered 2026-11-20 (#207), archived |
 | 2 | `delete-refuses-referenced` | MEDIUM (re-shaped from SMALL) | #201 | none | `v2-03` 7.1 | 8.4 → 9.2 |
 | 3 | `nested-collections` | SMALL | #198 | 1b | `v2-03` 7.2 | 8.5 → 9.1 |
@@ -95,9 +95,10 @@ questions (each change's `inputs/qa.md`).
   the converter merges such packages meanwhile), #209 (`rdf:langString`; the converter refuses it
   meanwhile), #214 and #215 (testkit follow-ups). #217 (38 unmapped tests) was closed by #216's
   map refresh.
-- **Open owner decision:** the converter's hand-written working classes (stage 1 D-22, W-1);
-  recommended: LinkML's own metamodel classes for the output side, generated records for the UML side,
-  decided in the stage 2 brief.
+- **2026-11-21:** `uml-to-linkml` stage 2 delivered (#228: the toolkit-aware rules, R-30, the docs),
+  accepted with a follow-up (#229, the review's floor) and archived; the hand-written working classes
+  were decided as D-24 (generated UML records, LinkML's `SlotDefinition`). The 0.8.0 release (#210)
+  is no longer held.
 - **Worktrees** go in `.worktrees/` (P-0015), never beside the repository; a stage PR merges on green
   CI without waiting for the developer (P-0013).
 

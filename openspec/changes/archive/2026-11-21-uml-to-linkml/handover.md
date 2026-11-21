@@ -27,10 +27,14 @@ floor).
   `wip/uml-to-linkml-*` branches and `backup/uml-to-linkml-stage2-pre-rebase` can be removed once
   #228 is merged.
 
+## Closed (2026-11-21)
+Accepted with a follow-up (#229, the review's floor); D-1..D-29 validated; no docs owed
+(`evidence/docs-owed.md`); archived in the same session. Nothing is left in this change.
+
 ## Next
-The developer's acceptance, then archive. Read first: `evidence/acceptance.md`, design.md D-23..D-29.
+None for this change. The hardening follow-up #229 is a shaping session's when the developer
+schedules it; the 0.8.0 release (#210) may now go ahead.
 
 ## Prompt
-Act as the team lead. Close openspec/changes/uml-to-linkml from handover.md, following the
-epic-delivery skill: record the developer's acceptance verdict in evidence/acceptance.md, write
-evidence/docs-owed.md, archive the change per spec-stewardship in one PR, and merge it on green CI.
+Act as the planner. Shape issue #229 (uml-to-linkml hardening) into an EPIC with the
+epic-planning skill, reading the archived change's design.md D-22 and D-29 first.
