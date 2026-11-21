@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-21
+
+### Added
+- **`rp-uml2linkml`: generate LinkML modules from a UML class model** (`uml-to-linkml`, #196). It
+  reads an Enterprise Architect `.qea` model, applies the toolkit's rules (tenant and abstract roots,
+  the toolkit's mixins and shared slots, tagged values as annotations and unique keys) and writes
+  the schemas with a report of what it left out. See the how-to "Generate the model from UML" and
+  the reference "UML conventions".
+- **Nested reference collections** (`nested-collections`, #198). The `nests` slot lets a collection
+  hold collections of its own kind; a save that makes a nesting cycle is refused, and
+  `members(collection, deep=True)` reads the items of the whole tree. The member class of a
+  collection that another one nests cannot change. `WriteGuard.prepare` takes a keyword-only
+  `context: GuardContext`, so a write guard can rely on the versions it read.
+- **Refuse deleting a referenced aggregate** (`delete-refuses-referenced`, #201). A class annotated
+  `rp_on_referenced_delete: refuse` cannot be removed, by `session.remove` or the generic
+  `DELETE`, while another aggregate points to it: the session raises `InUse`, naming the referrers,
+  and the API answers `409` with the `in-use` problem type. A collection cascade over such a member
+  is refused too. Without the annotation, deletion behaves as before.
+- **Unique keys where absent values count as equal** (`unique-key-nulls-equal`, #202). A
+  tenant-scoped unique key may set the LinkML field `consider_nulls_inequal: false`: an absent key
+  slot then counts as one value, in the key guard and in `key_duplicates()`. Other scopes keep
+  refusing the option.
+- **A case-insensitive contains filter on listings** (`listing-contains-filter`, #203):
+  `Session.find` takes the `Contains` operator, and the generated API offers a `<slot>~` parameter
+  for every text slot; on any other slot it answers `400 bad-query`.
+- **`testkit.open_event_stream`** (`testkit-event-stream`, #204) opens a tenant's event stream
+  in-process for tests. The toolkit's lifespan sets `app.state.rp_lifespan_started` while it runs.
+
 ### Changed
 - **BREAKING: reference collections state members with `dct:hasPart`** (`collection-has-part`, #199).
   The slot and field `had_member` (`prov:hadMember`) of `ReferenceCollection` is now `has_part`
@@ -545,7 +573,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.4.0...v0.5.0
