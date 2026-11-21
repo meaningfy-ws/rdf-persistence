@@ -51,7 +51,6 @@ from rdf_persistence_generation.uml.modules import (
     reachable,
 )
 from rdf_persistence_generation.uml.naming import title_for
-from rdf_persistence_generation.uml.tags import package_kind
 from rdf_persistence_generation.uml.slots import (
     SharedSlots,
     Usage,
@@ -64,6 +63,7 @@ from rdf_persistence_generation.uml.slots import (
     split_toolkit,
     use_toolkit_slots,
 )
+from rdf_persistence_generation.uml.tags import package_kind
 
 LINKML_TYPES: Final = "linkml:types"
 LINKML_PREFIX: Final = ("linkml", "https://w3id.org/linkml/")
