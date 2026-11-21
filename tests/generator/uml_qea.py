@@ -1,13 +1,13 @@
 """Build a small Enterprise Architect ``.qea`` file for tests (PD-24).
 
 A helper, not a test module. No binary is checked in: a test builds the file in ``tmp_path``
-with the stdlib ``sqlite3``. The seven tables are the ones the reader reads (PD-3), with
+with the stdlib ``sqlite3``. The ten tables are the ones the reader reads (PD-3), with
 exactly the columns it reads; ``EA_COLUMNS`` lists the real columns of each, so a unit test can
 assert that the DDL here invents none.
 """
 
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 
 # The column names of the seven tables, taken from EA's own schema (``pragma table_info`` on an
@@ -234,6 +234,62 @@ EA_COLUMNS: dict[str, tuple[str, ...]] = {
         "ObjectStyle",
         "Instance_ID",
     ),
+    "t_diagram": (
+        "Diagram_ID",
+        "Package_ID",
+        "ParentID",
+        "Diagram_Type",
+        "Name",
+        "Version",
+        "Author",
+        "ShowDetails",
+        "Notes",
+        "Stereotype",
+        "AttPub",
+        "AttPri",
+        "AttPro",
+        "Orientation",
+        "cx",
+        "cy",
+        "Scale",
+        "CreatedDate",
+        "ModifiedDate",
+        "HTMLPath",
+        "ShowForeign",
+        "ShowBorder",
+        "ShowPackageContents",
+        "PDATA",
+        "Locked",
+        "ea_guid",
+        "TPos",
+        "Swimlanes",
+        "StyleEx",
+    ),
+    "t_connectortag": ("PropertyID", "ElementID", "Property", "VALUE", "NOTES", "ea_guid"),
+    "t_operation": (
+        "OperationID",
+        "Object_ID",
+        "Name",
+        "Scope",
+        "Type",
+        "ReturnArray",
+        "Stereotype",
+        "IsStatic",
+        "IsAbstract",
+        "IsConst",
+        "IsSynchronized",
+        "IsPure",
+        "IsReturnArray",
+        "IsQuery",
+        "Pos",
+        "Notes",
+        "Behaviour",
+        "Classifier",
+        "Concurrency",
+        "Style",
+        "StyleEx",
+        "ea_guid",
+    ),
 }
 
 # The columns the reader reads (PD-3), no more.
@@ -245,7 +301,7 @@ DDL: dict[str, str] = {
     "t_object": (
         "CREATE TABLE t_object (Object_ID INTEGER PRIMARY KEY, Object_Type TEXT, Name TEXT,"
         " Alias TEXT, Note TEXT, Package_ID INTEGER, Stereotype TEXT, Abstract TEXT,"
-        " ea_guid TEXT, Classifier INTEGER, RunState TEXT)"
+        " ea_guid TEXT, Classifier INTEGER, RunState TEXT, NType INTEGER, ParentID INTEGER)"
     ),
     "t_attribute": (
         "CREATE TABLE t_attribute (ID INTEGER PRIMARY KEY, Object_ID INTEGER, Name TEXT,"
@@ -256,7 +312,8 @@ DDL: dict[str, str] = {
         "CREATE TABLE t_connector (Connector_ID INTEGER PRIMARY KEY, Connector_Type TEXT,"
         " SubType TEXT, Stereotype TEXT, Notes TEXT, Direction TEXT, Start_Object_ID INTEGER,"
         " End_Object_ID INTEGER, SourceRole TEXT, SourceCard TEXT, SourceIsAggregate INTEGER,"
-        " DestRole TEXT, DestCard TEXT, DestIsAggregate INTEGER, PDATA1 TEXT)"
+        " DestRole TEXT, DestCard TEXT, DestIsAggregate INTEGER, PDATA1 TEXT, Name TEXT,"
+        " PDATA2 TEXT, PDATA3 TEXT, PDATA4 TEXT, PDATA5 TEXT, ea_guid TEXT)"
     ),
     "t_objectproperties": (
         "CREATE TABLE t_objectproperties (Object_ID INTEGER, Property TEXT, Value TEXT, Notes TEXT)"
@@ -266,12 +323,22 @@ DDL: dict[str, str] = {
         "CREATE TABLE t_diagramobjects (Diagram_ID INTEGER, Object_ID INTEGER, RectTop INTEGER,"
         " RectLeft INTEGER, RectRight INTEGER, RectBottom INTEGER)"
     ),
+    "t_diagram": (
+        "CREATE TABLE t_diagram (Diagram_ID INTEGER PRIMARY KEY, Name TEXT, Package_ID INTEGER,"
+        " Diagram_Type TEXT)"
+    ),
+    "t_connectortag": (
+        "CREATE TABLE t_connectortag (ElementID INTEGER, Property TEXT, VALUE TEXT, NOTES TEXT)"
+    ),
+    "t_operation": "CREATE TABLE t_operation (Object_ID INTEGER, Name TEXT)",
 }
 
 BOUNDARY_TYPE = "Boundary"
 GENERALISATION_TYPE = "Generalization"
 ASSOCIATION_TYPE = "Association"
 DEPENDENCY_TYPE = "Dependency"
+STATE_FLOW_TYPE = "StateFlow"
+STATECHART_TYPE = "Statechart"
 DIRECTED = "Source -> Destination"
 
 
@@ -347,6 +414,86 @@ class QeaBuilder:
             (f"{{GUID-{object_id}}}", object_id),
         )
         return object_id
+
+    def state(
+        self,
+        package: int,
+        name: str,
+        ntype: int | None = None,
+        parent: int = 0,
+        note: str | None = None,
+    ) -> int:
+        """A ``State`` row, or with an ``ntype`` a ``StateNode`` (3 is the Initial node)."""
+        object_id = self._insert(
+            "t_object",
+            Object_Type="State" if ntype is None else "StateNode",
+            Name=name,
+            Note=note,
+            Package_ID=package,
+            NType=ntype or 0,
+            ParentID=parent,
+        )
+        self._db.execute(
+            "UPDATE t_object SET ea_guid = ? WHERE Object_ID = ?",
+            (f"{{GUID-{object_id}}}", object_id),
+        )
+        return object_id
+
+    def operation(self, owner: int, name: str) -> int:
+        """An operation row of ``owner``, where EA keeps a state's entry, do and exit behaviour."""
+        return self._insert("t_operation", Object_ID=owner, Name=name)
+
+    def state_flow(
+        self,
+        source: int,
+        destination: int,
+        tags: Mapping[str, str] | None = None,
+        memo_tags: Mapping[str, str] | None = None,
+        name: str | None = None,
+        stereotype: str | None = None,
+        pdata: Mapping[int, str] | None = None,
+        trigger: bool = False,
+    ) -> int:
+        """A ``StateFlow`` with its tags in ``t_connectortag``; a ``memo_tags`` text goes to NOTES.
+
+        ``pdata`` maps 1 to 5 to a ``PDATA`` text; ``trigger`` adds the ``t_xref`` row EA keeps one in.
+        """
+        connector = self._insert(
+            "t_connector",
+            Connector_Type=STATE_FLOW_TYPE,
+            Direction=DIRECTED,
+            Name=name,
+            Stereotype=stereotype,
+            Start_Object_ID=source,
+            End_Object_ID=destination,
+            **{f"PDATA{number}": text for number, text in (pdata or {}).items()},
+        )
+        guid = f"{{CON-{connector}}}"
+        self._db.execute(
+            "UPDATE t_connector SET ea_guid = ? WHERE Connector_ID = ?", (guid, connector)
+        )
+        for tag, value in (tags or {}).items():
+            self._insert("t_connectortag", ElementID=connector, Property=tag, VALUE=value)
+        for tag, text in (memo_tags or {}).items():
+            self._insert(
+                "t_connectortag", ElementID=connector, Property=tag, VALUE="<memo>", NOTES=text
+            )
+        if trigger:
+            self._insert("t_xref", Client=guid, Name="CustomProperties", Description="trigger")
+        return connector
+
+    def diagram(self, name: str, package: int, diagram_type: str, members: Iterable[int]) -> int:
+        """A diagram of ``diagram_type`` in ``package``, the ``members`` placed on it."""
+        diagram = self._insert(
+            "t_diagram", Name=name, Package_ID=package, Diagram_Type=diagram_type
+        )
+        for member in members:
+            self.place(diagram, member, (0, 0, 10, -10))
+        return diagram
+
+    def statechart(self, name: str, package: int, nodes: Iterable[int]) -> int:
+        """A ``Statechart`` diagram: the one thing that groups states into a workflow (probe)."""
+        return self.diagram(name, package, STATECHART_TYPE, nodes)
 
     def extra_stereotypes(self, owner: int, *names: str) -> int:
         """Record the stereotypes of ``owner`` in ``t_xref`` the way EA does, one entry per name."""

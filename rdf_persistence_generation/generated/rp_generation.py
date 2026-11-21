@@ -167,6 +167,14 @@ class UmlLinkKind(str, _Enum):
     "A connector from a class to its parent."
 
 
+class UmlStateNodeKind(str, _Enum):
+    "The kinds of state node the UML reader recognises."
+    STATE = "state"
+    "A state of a state machine."
+    INITIAL = "initial"
+    "The initial node of a state machine."
+
+
 class ReportKind(str, _Enum):
     "The kinds of line the conversion report holds; the report prints them with `-` where the schema has `_`."
     NOT_GENERATED = "not_generated"
@@ -494,6 +502,9 @@ class UmlModel(ConfiguredBaseModel):
     uml_tagged_values: _Optional[list[UmlTaggedValue]] = _Field(default=None, title="UML tagged values", description="The tagged values of the classes of a UML model.")
     uml_boundaries: _Optional[list[UmlBoundary]] = _Field(default=None, title="UML boundaries", description="The boundaries of a UML model.")
     uml_objects: _Optional[list[UmlObject]] = _Field(default=None, title="UML objects", description="The objects of a UML model, the instances of its drawn classes.")
+    uml_state_nodes: _Optional[list[UmlStateNode]] = _Field(default=None, title="UML state nodes", description="The states and state nodes of the converted packages of a UML model.")
+    uml_state_flows: _Optional[list[UmlStateFlow]] = _Field(default=None, title="UML state flows", description="The transitions between the state nodes of the converted packages of a UML model.")
+    uml_statecharts: _Optional[list[UmlStatechart]] = _Field(default=None, title="UML statecharts", description="The Statechart diagrams of the converted packages of a UML model.")
 
 
 class UmlPackage(ConfiguredBaseModel):
@@ -576,6 +587,31 @@ class UmlObject(ConfiguredBaseModel):
     package_path: _Optional[str] = _Field(default=None, title="Package path", description="The path of the package a UML element sits in, the package names joined by `/`.")
     run_values: _Optional[list[UmlRunValue]] = _Field(default=None, title="Run values", description="The variables a UML object\u0027s run state sets, in the order the model file writes them.")
     run_state_rest: _Optional[str] = _Field(default=None, title="Run state rest", description="The text of a UML object\u0027s run state outside its variable blocks, stripped; absent when blank.")
+
+
+class UmlStateNode(ConfiguredBaseModel):
+    "A state or a state node of the UML model, with the kind the reader recognises (a state, or the initial node) and the type the file gives a state node, so the workflow rule can refuse any other."
+    object_id: int = _Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
+    uml_name: str = _Field(default=..., title="UML name", description="The name of a UML element, as drawn.")
+    node_kind: _Optional[UmlStateNodeKind] = _Field(default=None, title="Node kind", description="Whether a state node is a state or the initial node; absent for any other kind of node.")
+    node_type: _Optional[int] = _Field(default=None, title="Node type", description="The type code the model file gives a state node (`3` for the initial node), as written.")
+    note: _Optional[str] = _Field(default=None, title="Note", description="The note of a UML element.")
+
+
+class UmlStateFlow(ConfiguredBaseModel):
+    "A transition of the UML model between two state nodes of the converted packages, with its tags as the model file writes them."
+    connector_id: int = _Field(default=..., title="Connector id", description="The id a UML model gives a connector.")
+    source_id: int = _Field(default=..., title="Source id", description="The id of the class a connector starts at.")
+    target_id: int = _Field(default=..., title="Target id", description="The id of the class a connector ends at.")
+    uml_tagged_values: _Optional[list[UmlTaggedValue]] = _Field(default=None, title="UML tagged values", description="The tagged values of the classes of a UML model.")
+
+
+class UmlStatechart(ConfiguredBaseModel):
+    "A Statechart diagram of the UML model, with the package it sits in and the state nodes placed on it."
+    diagram_id: int = _Field(default=..., title="Diagram id", description="The id of the diagram a boundary is drawn on.")
+    uml_name: str = _Field(default=..., title="UML name", description="The name of a UML element, as drawn.")
+    package_path: _Optional[str] = _Field(default=None, title="Package path", description="The path of the package a UML element sits in, the package names joined by `/`.")
+    node_ids: _Optional[list[int]] = _Field(default=None, title="Node ids", description="The ids of the state nodes placed on a diagram.")
 
 
 class UmlRunValue(ConfiguredBaseModel):
@@ -766,6 +802,9 @@ UmlLink.model_rebuild()
 UmlTaggedValue.model_rebuild()
 UmlBoundary.model_rebuild()
 UmlObject.model_rebuild()
+UmlStateNode.model_rebuild()
+UmlStateFlow.model_rebuild()
+UmlStatechart.model_rebuild()
 UmlRunValue.model_rebuild()
 UmlPrefix.model_rebuild()
 UmlName.model_rebuild()

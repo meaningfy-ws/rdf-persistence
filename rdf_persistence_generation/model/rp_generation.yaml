@@ -216,6 +216,9 @@ classes:
       - uml_tagged_values
       - uml_boundaries
       - uml_objects
+      - uml_state_nodes
+      - uml_state_flows
+      - uml_statecharts
   UmlPackage:
     title: UML package
     description: >-
@@ -359,6 +362,57 @@ classes:
       - run_state_rest
     slot_usage:
       object_id:
+        required: true
+      uml_name:
+        required: true
+  UmlStateNode:
+    title: UML state node
+    description: >-
+      A state or a state node of the UML model, with the kind the reader recognises (a state, or the
+      initial node) and the type the file gives a state node, so the workflow rule can refuse any other.
+    class_uri: rp:UmlStateNode
+    slots:
+      - object_id
+      - uml_name
+      - node_kind
+      - node_type
+      - note
+    slot_usage:
+      object_id:
+        required: true
+      uml_name:
+        required: true
+  UmlStateFlow:
+    title: UML state flow
+    description: >-
+      A transition of the UML model between two state nodes of the converted packages, with its tags
+      as the model file writes them.
+    class_uri: rp:UmlStateFlow
+    slots:
+      - connector_id
+      - source_id
+      - target_id
+      - uml_tagged_values
+    slot_usage:
+      connector_id:
+        required: true
+      source_id:
+        required: true
+      target_id:
+        required: true
+  UmlStatechart:
+    title: UML statechart
+    description: >-
+      A Statechart diagram of the UML model, with the package it sits in and the state nodes placed
+      on it.
+    class_uri: rp:UmlStatechart
+    slots:
+      - diagram_id
+      - uml_name
+      - package_path
+      - node_ids
+    slot_usage:
+      diagram_id:
         required: true
       uml_name:
         required: true
@@ -1144,6 +1198,43 @@ slots:
     range: UmlObject
     multivalued: true
     inlined_as_list: true
+  uml_state_nodes:
+    title: UML state nodes
+    description: The states and state nodes of the converted packages of a UML model.
+    slot_uri: rp:umlStateNodes
+    range: UmlStateNode
+    multivalued: true
+    inlined_as_list: true
+  uml_state_flows:
+    title: UML state flows
+    description: The transitions between the state nodes of the converted packages of a UML model.
+    slot_uri: rp:umlStateFlows
+    range: UmlStateFlow
+    multivalued: true
+    inlined_as_list: true
+  uml_statecharts:
+    title: UML statecharts
+    description: The Statechart diagrams of the converted packages of a UML model.
+    slot_uri: rp:umlStatecharts
+    range: UmlStatechart
+    multivalued: true
+    inlined_as_list: true
+  node_kind:
+    title: Node kind
+    description: Whether a state node is a state or the initial node; absent for any other kind of node.
+    slot_uri: rp:umlNodeKind
+    range: UmlStateNodeKind
+  node_type:
+    title: Node type
+    description: The type code the model file gives a state node (`3` for the initial node), as written.
+    slot_uri: rp:umlNodeType
+    range: integer
+  node_ids:
+    title: Node ids
+    description: The ids of the state nodes placed on a diagram.
+    slot_uri: rp:umlNodeIds
+    range: integer
+    multivalued: true
   run_values:
     title: Run values
     description: The variables a UML object's run state sets, in the order the model file writes them.
@@ -1745,6 +1836,18 @@ enums:
         title: Generalisation
         description: A connector from a class to its parent.
         meaning: rp:UmlLinkKindGeneralisation
+  UmlStateNodeKind:
+    title: UML state node kind
+    description: The kinds of state node the UML reader recognises.
+    permissible_values:
+      state:
+        title: State
+        description: A state of a state machine.
+        meaning: rp:UmlStateNodeKindState
+      initial:
+        title: Initial
+        description: The initial node of a state machine.
+        meaning: rp:UmlStateNodeKindInitial
   ReportKind:
     title: Report kind
     description: >-

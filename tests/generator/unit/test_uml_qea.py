@@ -671,3 +671,164 @@ def test_a_boundary_holding_no_converted_class_is_left_out(tmp_path):
     builder, ids = boundary_world(tmp_path)
     builder.place(1, ids["stray"], INSIDE)
     assert as_model(read(builder)).uml_boundaries == [], "a boundary with no converted class goes"
+
+
+# --- state machines: states, the initial node, StateFlows, Statechart diagrams (PD-1, PD-2) -----
+
+INITIAL_NTYPE = 3
+
+
+def build_loan(tmp_path: Path) -> tuple[QeaBuilder, dict[str, int]]:
+    """The library with a Statechart ``loan``: Initial, two States, two StateFlows."""
+    builder, ids = build_library(tmp_path)
+    lib = ids["library"]
+    ids["start"] = builder.state(lib, "Start", ntype=INITIAL_NTYPE)
+    ids["requested"] = builder.state(lib, "requested", note="Asked for.")
+    ids["approved"] = builder.state(lib, "approved")
+    ids["first"] = builder.state_flow(ids["start"], ids["requested"])
+    ids["second"] = builder.state_flow(
+        ids["requested"], ids["approved"], tags={"roles": "librarian", "comment_required": "true"}
+    )
+    ids["chart"] = builder.statechart(
+        "loan", lib, [ids["start"], ids["requested"], ids["approved"]]
+    )
+    return builder, ids
+
+
+def test_a_statechart_reads_into_one_chart_with_its_nodes_and_flows(tmp_path):
+    builder, ids = build_loan(tmp_path)
+    model = as_model(read(builder))
+    (chart,) = model.uml_statecharts
+    assert (chart.diagram_id, chart.uml_name, chart.package_path) == (
+        ids["chart"],
+        "loan",
+        ROOT,
+    ), "the diagram is one record, named and placed"
+    assert chart.node_ids == sorted([ids["start"], ids["requested"], ids["approved"]]), (
+        "its nodes are the state nodes placed on it, by id"
+    )
+    nodes = {n.uml_name: (n.object_id, n.node_kind, n.note) for n in model.uml_state_nodes}
+    assert nodes == {
+        "Start": (ids["start"], "initial", None),
+        "requested": (ids["requested"], "state", "Asked for."),
+        "approved": (ids["approved"], "state", None),
+    }, "the Initial StateNode is initial, a State is a state, the note is copied"
+    flows = [(f.connector_id, f.source_id, f.target_id) for f in model.uml_state_flows]
+    assert flows == [
+        (ids["first"], ids["start"], ids["requested"]),
+        (ids["second"], ids["requested"], ids["approved"]),
+    ], "each StateFlow between two nodes of the subtree is one record, by connector id"
+    assert [
+        (t.owner_id, t.name, t.tag_value) for t in model.uml_state_flows[1].uml_tagged_values
+    ] == [
+        (ids["second"], "comment_required", "true"),
+        (ids["second"], "roles", "librarian"),
+    ], "its tags come from t_connectortag, sorted by name"
+    assert not model.uml_state_flows[0].uml_tagged_values, "the Initial flow has no tags"
+
+
+def test_state_machine_rows_leave_the_classes_and_links_as_they_were(tmp_path):
+    builder, _ = build_loan(tmp_path)
+    model = as_model(read(builder))
+    assert names(model) == ["lib:Book", "lib:Chapter", "lib:Folio", "lib:Genre"], names(model)
+    assert not model.uml_links, "a StateFlow is no link"
+
+
+def test_a_model_with_no_state_machine_reads_no_state_records(tmp_path):
+    builder, _ = build_library(tmp_path)
+    model = as_model(read(builder))
+    assert (
+        model.uml_state_nodes in (None, []),
+        model.uml_state_flows in (None, []),
+        model.uml_statecharts in (None, []),
+    ) == (True, True, True), "nothing drawn, nothing read"
+
+
+def test_a_diagram_that_is_not_a_statechart_is_not_read(tmp_path):
+    builder, ids = build_loan(tmp_path)
+    builder.diagram("class view", ids["library"], "Logical", [ids["book"]])
+    assert len(as_model(read(builder)).uml_statecharts) == 1, "only the Statechart is read"
+
+
+def test_a_statechart_outside_the_subtree_is_not_read(tmp_path):
+    builder, ids = build_library(tmp_path)
+    away = builder.state(ids["other"], "away")
+    builder.statechart("elsewhere", ids["other"], [away])
+    model = as_model(read(builder))
+    assert model.uml_statecharts in (None, []), "a diagram in another package is not read"
+    assert model.uml_state_nodes in (None, []), "nor are its states"
+
+
+def test_a_state_node_of_another_kind_is_still_read_with_its_type(tmp_path):
+    builder, ids = build_library(tmp_path)
+    final = builder.state(ids["library"], "End", ntype=4)
+    (node,) = as_model(read(builder)).uml_state_nodes
+    assert (node.object_id, node.node_kind, node.node_type) == (final, None, 4), (
+        "the reader copies the NType and judges nothing: the workflow rule does (PD-5)"
+    )
+
+
+def test_a_state_flow_with_one_end_outside_the_subtree_is_a_no_rule_problem(tmp_path):
+    builder, ids = build_loan(tmp_path)
+    away = builder.state(ids["other"], "away")
+    builder.state_flow(ids["approved"], away)
+    assert as_problems(read(builder)) == [
+        "[no_rule] approved -> away: StateFlow crossing the converted packages: no rule converts it"
+    ], "a StateFlow leaving the subtree is a problem naming its ends"
+
+
+def test_a_state_flow_between_two_outside_states_is_not_read(tmp_path):
+    builder, ids = build_loan(tmp_path)
+    left, right = builder.state(ids["other"], "left"), builder.state(ids["other"], "right")
+    builder.state_flow(left, right)
+    assert len(as_model(read(builder)).uml_state_flows) == 2, "a flow away from the subtree is not"
+
+
+def test_a_substate_is_a_no_rule_problem(tmp_path):
+    builder, ids = build_loan(tmp_path)
+    builder.state(ids["library"], "inner", parent=ids["requested"])
+    assert as_problems(read(builder)) == ["[no_rule] inner: substate: no rule converts it"], (
+        "a state with a ParentID is a problem naming it"
+    )
+
+
+def test_a_state_owning_operations_is_a_no_rule_problem(tmp_path):
+    builder, ids = build_loan(tmp_path)
+    builder.operation(ids["approved"], "entry")
+    assert as_problems(read(builder)) == [
+        "[no_rule] approved: State with entry, do or exit behaviour: no rule converts it"
+    ], "a state that owns t_operation rows is a problem naming it"
+
+
+@pytest.mark.parametrize(
+    ("change", "what"),
+    [
+        ({"name": "go"}, "StateFlow with a name"),
+        ({"pdata": {1: "x"}}, "StateFlow with PDATA1"),
+        ({"pdata": {2: "x"}}, "StateFlow with PDATA2"),
+        ({"pdata": {3: "x"}}, "StateFlow with PDATA3"),
+        ({"pdata": {4: "x"}}, "StateFlow with PDATA4"),
+        ({"pdata": {5: "x"}}, "StateFlow with PDATA5"),
+        ({"stereotype": "signal"}, "StateFlow with a stereotype"),
+        ({"trigger": True}, "StateFlow with a trigger"),
+    ],
+)
+def test_a_state_flow_with_a_construct_the_converter_does_not_know_is_a_no_rule_problem(
+    tmp_path, change, what
+):
+    builder, ids = build_loan(tmp_path)
+    builder.state_flow(ids["approved"], ids["requested"], **change)
+    assert as_problems(read(builder)) == [
+        f"[no_rule] approved -> requested: {what}: no rule converts it"
+    ], "the flow is refused, naming it and the construct"
+
+
+def test_a_memo_connector_tag_takes_its_text_from_the_notes(tmp_path):
+    builder, ids = build_library(tmp_path)
+    first, second = builder.state(ids["library"], "a"), builder.state(ids["library"], "b")
+    flow = builder.state_flow(first, second, memo_tags={"roles": "librarian,reader"})
+    builder.statechart("memo", ids["library"], [first, second])
+    (read_flow,) = as_model(read(builder)).uml_state_flows
+    assert [(t.owner_id, t.name, t.tag_value) for t in read_flow.uml_tagged_values] == [
+        (flow, "roles", "librarian,reader")
+    ], "a <memo> value is read from NOTES, as for a class tag"

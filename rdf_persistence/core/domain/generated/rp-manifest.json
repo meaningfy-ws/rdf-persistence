@@ -243,7 +243,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/qea.py",
-      "sha256": "60421ab198b83e9330efaf9965582e4569574edb6670fd8264ad9a700d58e594"
+      "sha256": "3bad277886f8c9fb350d89fc979d34ced93a9b9077c4a1e7af34888a7ab4cfce"
     },
     {
       "path": "rdf_persistence_generation/uml/roles.py",

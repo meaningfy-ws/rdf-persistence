@@ -29,6 +29,10 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlPackage,
     UmlRule,
     UmlRunValue,
+    UmlStatechart,
+    UmlStateFlow,
+    UmlStateNode,
+    UmlStateNodeKind,
     UmlTaggedValue,
 )
 from rdf_persistence_generation.problems import format_problem
@@ -48,6 +52,8 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
         "ea_guid",
         "Classifier",
         "RunState",
+        "NType",
+        "ParentID",
     ),
     "t_attribute": (
         "ID",
@@ -77,6 +83,12 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
         "DestCard",
         "DestIsAggregate",
         "PDATA1",
+        "Name",
+        "PDATA2",
+        "PDATA3",
+        "PDATA4",
+        "PDATA5",
+        "ea_guid",
     ),
     "t_objectproperties": ("Object_ID", "Property", "Value", "Notes"),
     "t_xref": ("Client", "Name", "Description"),
@@ -88,12 +100,22 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
         "RectRight",
         "RectBottom",
     ),
+    "t_diagram": ("Diagram_ID", "Name", "Package_ID", "Diagram_Type"),
+    "t_connectortag": ("ElementID", "Property", "VALUE", "NOTES"),
+    "t_operation": ("Object_ID",),
 }
 
 CLASS_TYPE = "Class"
 ENUMERATION_TYPE = "Enumeration"
 BOUNDARY_TYPE = "Boundary"
 OBJECT_TYPE = "Object"  # an instance of a drawn class: read as a UmlObject, never a problem
+STATE_TYPE = "State"
+STATE_NODE_TYPE = "StateNode"
+STATE_TYPES = frozenset({STATE_TYPE, STATE_NODE_TYPE})
+INITIAL_NODE_TYPE = 3  # the `NType` EA gives an Initial node
+STATE_FLOW_TYPE = "StateFlow"
+STATECHART_TYPE = "Statechart"
+PDATA_COLUMNS = ("PDATA1", "PDATA2", "PDATA3", "PDATA4", "PDATA5")
 CONVERTED_TYPES = frozenset({CLASS_TYPE, ENUMERATION_TYPE})
 # Object types that are drawing furniture, never converted and never a problem.
 PACKAGE_TYPE = "Package"  # the object that draws a package; it shares the package's ea_guid
@@ -243,7 +265,7 @@ def _package_objects(
 
 def _unexpected(rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
     """Rows whose object type is neither converted nor drawing furniture."""
-    known = CONVERTED_TYPES | IGNORED_TYPES | {OBJECT_TYPE}
+    known = CONVERTED_TYPES | IGNORED_TYPES | STATE_TYPES | {OBJECT_TYPE}
     return [row for row in rows if row["Object_Type"] not in known]
 
 
@@ -266,6 +288,11 @@ def _run_values(run_state: object) -> list[UmlRunValue]:
 def _run_state_rest(run_state: object) -> str | None:
     """The text of a ``RunState`` outside its ``@VAR`` blocks, stripped; the role rule judges it (D-4)."""
     return _text(RUN_STATE_BLOCK.sub("", _text(run_state) or "").strip())
+
+
+def _tag_text(value: str | None, notes: str | None) -> str | None:
+    """A tagged value's text: its ``Value``, or, for a ``<memo>``, the text EA keeps in the notes."""
+    return notes if value == MEMO else value
 
 
 def _plain_boundaries(rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
@@ -315,6 +342,8 @@ class _Reading:
         self.class_rows = _of_types(in_subtree, CONVERTED_TYPES)
         self.unexpected_rows = _unexpected(in_subtree)
         self.object_instance_rows = _of_types(in_subtree, (OBJECT_TYPE,))
+        self.state_rows = _of_types(in_subtree, STATE_TYPES)
+        self.state_ids = {row["Object_ID"] for row in self.state_rows}
         self.class_ids = {row["Object_ID"] for row in self.class_rows}
         self.boundary_rows = _plain_boundaries(objects)
         self.package_objects = _package_objects(self.package_rows, objects)
@@ -333,6 +362,7 @@ class _Reading:
             self.problems.append(_no_rule(row["Name"] or "", f"{row['Object_Type']} object"))
         links = self._links()
         outside = self._outside_rows(links)
+        nodes, flows, charts = _StateMachines(self).read()
         model = UmlModel(
             uml_packages=self._packages(),
             uml_outside_packages=self._outside_packages(outside),
@@ -342,6 +372,9 @@ class _Reading:
             uml_tagged_values=self._tags(),
             uml_boundaries=_Boundaries(self, self._select("t_diagramobjects")).read(),
             uml_objects=self._objects(),
+            uml_state_nodes=nodes,
+            uml_state_flows=flows,
+            uml_statecharts=charts,
         )
         if not self.problems:
             return model
@@ -472,6 +505,8 @@ class _Reading:
             start, end = row["Start_Object_ID"], row["End_Object_ID"]
             if start not in self.class_ids and end not in self.class_ids:
                 continue
+            if row["Connector_Type"] == STATE_FLOW_TYPE and {start, end} & self.state_ids:
+                continue  # a transition of the converted states: `_StateMachines` reads or refuses it
             if {self.object_types.get(start), self.object_types.get(end)} & IGNORED_TYPES:
                 continue  # a note, text, boundary or package end: no link, no problem (D-25)
             link = self._link(row)
@@ -530,7 +565,7 @@ class _Reading:
             UmlTaggedValue(
                 owner_id=row["Object_ID"],
                 name=row["Property"] or "",
-                tag_value=row["Notes"] if row["Value"] == MEMO else row["Value"],
+                tag_value=_tag_text(row["Value"], row["Notes"]),
             )
             for row in self._select("t_objectproperties")
             if row["Object_ID"] in owners
@@ -638,3 +673,124 @@ class _Boundaries:
             elif INSIDE in relations:
                 members.add(object_id)
         return members
+
+
+class _StateMachines:
+    """States, StateFlows and Statechart diagrams of the converted packages (PD-1, PD-2).
+
+    The reader copies what the file holds and refuses, as ``no_rule``, every construct the probe did
+    not see (DEC-6): a substate, a state with operations, a StateFlow with a name, PDATA, a
+    stereotype or a trigger, and a StateFlow with one end outside the converted state nodes. It does
+    not judge the kind of a state node: the workflow rule does (PD-5).
+    """
+
+    def __init__(self, reading: _Reading) -> None:
+        self.reading = reading
+
+    def read(self) -> tuple[list[UmlStateNode], list[UmlStateFlow], list[UmlStatechart]]:
+        return self._nodes(), self._flows(), self._charts()
+
+    def _nodes(self) -> list[UmlStateNode]:
+        select = self.reading._select
+        with_operations = {row["Object_ID"] for row in select("t_operation")}
+        nodes = []
+        for row in sorted(self.reading.state_rows, key=lambda r: (r["Name"] or "", r["Object_ID"])):
+            name = row["Name"] or ""
+            if _integer(row["ParentID"]):
+                self.reading.problems.append(_no_rule(name, "substate"))
+            if row["Object_ID"] in with_operations:
+                self.reading.problems.append(
+                    _no_rule(name, "State with entry, do or exit behaviour")
+                )
+            nodes.append(self._node(row))
+        return nodes
+
+    @staticmethod
+    def _node(row: sqlite3.Row) -> UmlStateNode:
+        is_node = row["Object_Type"] == STATE_NODE_TYPE
+        node_type = _integer(row["NType"]) if is_node else None
+        kind = None
+        if not is_node:
+            kind = UmlStateNodeKind.STATE
+        elif node_type == INITIAL_NODE_TYPE:
+            kind = UmlStateNodeKind.INITIAL
+        return UmlStateNode(
+            object_id=row["Object_ID"],
+            uml_name=row["Name"] or "",
+            node_kind=kind,
+            node_type=node_type,
+            note=_text(row["Note"]),
+        )
+
+    def _flows(self) -> list[UmlStateFlow]:
+        reading = self.reading
+        tags = self._tags()
+        triggered = {row["Client"] for row in reading._select("t_xref")}
+        flows = []
+        for row in reading._select("t_connector"):
+            start, end = row["Start_Object_ID"], row["End_Object_ID"]
+            if row["Connector_Type"] != STATE_FLOW_TYPE or not {start, end} & reading.state_ids:
+                continue
+            label = f"{reading.label(start)} -> {reading.label(end)}"
+            if not {start, end} <= reading.state_ids:
+                reading.problems.append(
+                    _no_rule(label, "StateFlow crossing the converted packages")
+                )
+                continue
+            for what in self._unknown(row, triggered):
+                reading.problems.append(_no_rule(label, f"StateFlow with {what}"))
+            flows.append(
+                UmlStateFlow(
+                    connector_id=row["Connector_ID"],
+                    source_id=start,
+                    target_id=end,
+                    uml_tagged_values=tags.get(row["Connector_ID"], []),
+                )
+            )
+        return sorted(flows, key=lambda flow: flow.connector_id)
+
+    @staticmethod
+    def _unknown(row: sqlite3.Row, triggered: set[str]) -> list[str]:
+        """What a StateFlow carries that the probe did not see, one phrase each."""
+        found = []
+        if _text(row["Name"]) is not None:
+            found.append("a name")
+        found += [column for column in PDATA_COLUMNS if _text(row[column]) is not None]
+        if _text(row["Stereotype"]) is not None:
+            found.append("a stereotype")
+        if row["ea_guid"] in triggered:
+            found.append("a trigger")
+        return found
+
+    def _tags(self) -> dict[int, list[UmlTaggedValue]]:
+        by_connector: dict[int, list[UmlTaggedValue]] = defaultdict(list)
+        for row in self.reading._select("t_connectortag"):
+            by_connector[row["ElementID"]].append(
+                UmlTaggedValue(
+                    owner_id=row["ElementID"],
+                    name=row["Property"] or "",
+                    tag_value=_tag_text(row["VALUE"], row["NOTES"]),
+                )
+            )
+        return {key: sorted(tags, key=lambda tag: tag.name) for key, tags in by_connector.items()}
+
+    def _charts(self) -> list[UmlStatechart]:
+        reading = self.reading
+        placed: dict[int, set[int]] = defaultdict(set)
+        for row in reading._select("t_diagramobjects"):
+            if row["Object_ID"] in reading.state_ids:
+                placed[row["Diagram_ID"]].add(row["Object_ID"])
+        rows = [
+            row
+            for row in reading._select("t_diagram")
+            if row["Diagram_Type"] == STATECHART_TYPE and row["Package_ID"] in reading.package_ids
+        ]
+        return [
+            UmlStatechart(
+                diagram_id=row["Diagram_ID"],
+                uml_name=row["Name"] or "",
+                package_path=reading.paths[row["Package_ID"]],
+                node_ids=sorted(placed[row["Diagram_ID"]]),
+            )
+            for row in sorted(rows, key=lambda r: (r["Name"] or "", r["Diagram_ID"]))
+        ]

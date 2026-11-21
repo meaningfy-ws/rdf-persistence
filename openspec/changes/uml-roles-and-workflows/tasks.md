@@ -35,7 +35,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
 
 ## 2. Stage 2: workflows
 
-- [ ] 2.1 Reader and records (PD-1, PD-2). Generator unit, first, in `test_uml_qea.py`: a model
+- [x] 2.1 Reader and records (PD-1, PD-2). Generator unit, first, in `test_uml_qea.py`: a model
   with a Statechart diagram, an Initial node, two States and two StateFlows (tags in
   `t_connectortag`) reads into `UmlStatechart`, `UmlStateNode`s and `UmlStateFlow`s; a StateFlow
   with one end outside the subtree is `no_rule`; a substate (`ParentID` ≠ 0), a State owning a

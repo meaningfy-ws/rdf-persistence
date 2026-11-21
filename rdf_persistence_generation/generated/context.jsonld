@@ -266,6 +266,21 @@
       "need": {
          "@id": "need"
       },
+      "node_ids": {
+         "@container": "@set",
+         "@id": "umlNodeIds"
+      },
+      "node_kind": {
+         "@id": "umlNodeKind",
+         "@type": "@vocab",
+         "@context": {
+            "state": "https://meaningfy.ws/ns/rdf-persistence#UmlStateNodeKindState",
+            "initial": "https://meaningfy.ws/ns/rdf-persistence#UmlStateNodeKindInitial"
+         }
+      },
+      "node_type": {
+         "@id": "umlNodeType"
+      },
       "not_generated_stereotypes": {
          "@container": "@set",
          "@id": "umlNotGeneratedStereotypes"
@@ -525,6 +540,21 @@
          "@container": "@set",
          "@id": "umlPackages"
       },
+      "uml_state_flows": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlStateFlows"
+      },
+      "uml_state_nodes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlStateNodes"
+      },
+      "uml_statecharts": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlStatecharts"
+      },
       "uml_stereotype": {
          "@id": "umlStereotype"
       },
@@ -674,6 +704,15 @@
       },
       "UmlSettings": {
          "@id": "UmlSettings"
+      },
+      "UmlStatechart": {
+         "@id": "UmlStatechart"
+      },
+      "UmlStateFlow": {
+         "@id": "UmlStateFlow"
+      },
+      "UmlStateNode": {
+         "@id": "UmlStateNode"
       },
       "UmlTaggedValue": {
          "@id": "UmlTaggedValue"
