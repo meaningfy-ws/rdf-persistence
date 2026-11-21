@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator, Callable
 import pytest
 from rdflib import URIRef
 
-from rdf_persistence import Action, CallerAccess, VerifiedCaller, generated_models
+from rdf_persistence import Action, CallerAccess, InvalidBody, VerifiedCaller, generated_models
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.collaboration.domain.generated.rp_collections import (
     MembershipRule,
@@ -239,6 +239,53 @@ async def test_nested_shelves_are_read_deeply(session, collaboration):  # TC-26
     build = as_ada(collaboration)
     assert (await build.members(A)).member_iris == [B], "not deep: only the shelf"
     assert (await build.members(A, deep=True)).member_iris == sorted([B, B1]), "deep: and its book"
+
+
+def nesting(iri: str, *members: str):
+    """A shelf that nests the given shelves and holds the given books."""
+    return shelf(iri, nests=True).model_copy(update={"has_part": list(members) or None})
+
+
+async def test_a_deep_read_of_a_three_level_tree_lists_every_item_and_no_sub_collection(
+    session, collaboration
+):
+    await put_genre_book(session, B1)
+    await put_genre_book(session, B2)
+    await put_genre_book(session, B3)
+    await put(session, nesting(S2, B3))
+    await put(session, nesting(B, B2, S2))
+    await put(session, nesting(A, B1, B))
+    found = await as_ada(collaboration).members(A, deep=True)
+    assert found.member_iris == sorted([B1, B2, B3]), "the items of the three levels"
+    assert found.hidden_count == 0, "the sub-shelves are structure, not hidden"
+
+
+async def test_two_saves_that_together_close_a_cycle_commit_one_and_conflict_the_other(
+    store, database, rules, session
+):
+    await put(session, nesting(A))
+    await put(session, nesting(B))
+    async with opened(store, database, BOB, rules) as other:
+        first, second = session.transaction(), other.transaction()
+        t1, t2 = await first.__aenter__(), await second.__aenter__()
+        for t, who, saved in ((t1, session, nesting(A, B)), (t2, other, nesting(B, A))):
+            await t.replace_graph(
+                saved.id, toy_mapper().to_triples(saved), await version_of(who, saved.id)
+            )
+        await first.__aexit__(None, None, None)  # collected first, commits first
+        a_saved = await version_of(session, A)
+        b_before = await version_of(session, B)
+        with pytest.raises(Conflict) as refused:
+            await second.__aexit__(None, None, None)
+        assert refused.value.iris == (A,), "the conflict names the collection the first one saved"
+        assert await version_of(session, B) == b_before, "nothing of the second is stored"
+        assert await version_of(session, A) == a_saved, "and the first is as it committed"
+        with pytest.raises(InvalidBody, match="would make a cycle"):
+            async with other.transaction() as retry:  # the retry reads A as saved
+                saved = nesting(B, A)
+                await retry.replace_graph(
+                    B, toy_mapper().to_triples(saved), await version_of(other, B)
+                )
 
 
 async def test_a_deep_read_of_shelves_that_hold_each_other_ends(session, collaboration):  # TC-27
