@@ -5,6 +5,7 @@ import os
 import sys
 from pathlib import Path
 
+from rdf_persistence_generation.checks.importable import import_problems, type_problems
 from rdf_persistence_generation.config import cli_flags, python_folder, read_targets, toml_key
 from rdf_persistence_generation.exceptions import ConfigError
 from rdf_persistence_generation.generated.rp_generation import CheckProblem, GenerationTarget
@@ -74,6 +75,9 @@ def _run(
 ) -> int:
     """Generate (or check) the targets and report; the exit code is 0 or 1."""
     problems = generate(targets, base, pipeline_steps or (), check=args.check)
+    if not problems:  # what was written imports, and in a check type-checks (#242)
+        problems += import_problems(targets, base)
+        problems += type_problems(targets, base) if args.check else []
     if args.check:
         problems += _freshness(targets, base)
     for problem in problems:

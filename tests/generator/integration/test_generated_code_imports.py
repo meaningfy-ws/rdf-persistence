@@ -7,6 +7,7 @@ the mixins the parent already has, so the module failed to import (no consistent
 """
 
 import importlib
+import pkgutil
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -15,7 +16,10 @@ from types import ModuleType
 
 import pytest
 
+from rdf_persistence_generation.checks.importable import MYPY_CONFIG
 from rdf_persistence_generation.cli import main
+from rdf_persistence_generation.uml.cli import main as uml2linkml
+from tests.generator import uml_library_stage2
 
 PACKAGE = "imports_app"
 HEADER = """\
@@ -37,7 +41,7 @@ imports:
 DOMAIN = "annotations:\n  module_kind: domain\n"
 PYPROJECT = f"""\
 [tool.rp-generate]
-schema = "app.yaml"
+schema = "{{root}}.yaml"
 package = "{PACKAGE}.domain.generated"
 python = "{PACKAGE}/domain/generated"
 migrations = "migrations"
@@ -67,20 +71,26 @@ def module(name: str, classes: str, *, imports: tuple[str, ...] = (), slots: str
     return f"{HEADER.format(name=name, extra_imports=extra)}{DOMAIN}\nclasses:\n{classes}{slots}"
 
 
+def write_target(folder: Path, root: str) -> Path:
+    """A pyproject whose target generates ``<root>.yaml`` into the package, and the package's folders."""
+    folder.mkdir(exist_ok=True)
+    (folder / PACKAGE / "domain").mkdir(parents=True)
+    (folder / PACKAGE / "__init__.py").write_text("")
+    (folder / PACKAGE / "domain" / "__init__.py").write_text("")
+    (folder / "pyproject.toml").write_text(PYPROJECT.format(root=root))
+    return folder / "pyproject.toml"
+
+
 def write_project(folder: Path, modules: dict[str, str]) -> Path:
     """The project: a pyproject, a root schema importing ``modules``, the modules; returns the pyproject."""
-    folder.mkdir(exist_ok=True)
-    (folder / "pyproject.toml").write_text(PYPROJECT)
+    pyproject = write_target(folder, "app")
     root = HEADER.format(name="app", extra_imports="".join(f"  - {m}\n" for m in modules))
     (folder / "app.yaml").write_text(
         root.replace("title: app module\n", 'title: app\nversion: "1"\n')
     )
-    (folder / PACKAGE / "domain").mkdir(parents=True)
-    (folder / PACKAGE / "__init__.py").write_text("")
-    (folder / PACKAGE / "domain" / "__init__.py").write_text("")
     for name, text in modules.items():
         (folder / f"{name}.yaml").write_text(text)
-    return folder / "pyproject.toml"
+    return pyproject
 
 
 @pytest.fixture
@@ -107,7 +117,7 @@ def mypy_output(project: Path) -> str:
             "-m",
             "mypy",
             "--config-file",
-            str(Path.cwd() / "mypy-generated.ini"),
+            str(MYPY_CONFIG),
             "--no-incremental",
             f"{PACKAGE}/domain/generated",
         ],
@@ -117,6 +127,54 @@ def mypy_output(project: Path) -> str:
         check=False,
     )
     return "" if result.returncode == 0 else result.stdout
+
+
+def test_a_converted_qea_model_generates_a_package_whose_every_module_imports_and_type_checks(
+    project: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The whole path, end to end: rp-uml2linkml, then rp-generate, then the generated package."""
+    project.mkdir()
+    converted = uml2linkml(
+        [
+            str(uml_library_stage2.build_library(tmp_path)),
+            "--package",
+            uml_library_stage2.PACKAGE,
+            "--prefixes",
+            str(uml_library_stage2.write_prefixes(tmp_path)),
+            "--out",
+            str(project),
+            "--root-name",
+            uml_library_stage2.ROOT_NAME,
+        ]
+    )
+    assert converted == 0, capsys.readouterr().err
+    pyproject = write_target(project, uml_library_stage2.ROOT_NAME)
+
+    assert main(["--project", str(pyproject)]) == 0, capsys.readouterr().err
+    assert main(["--check", "--project", str(pyproject)]) == 0, capsys.readouterr().err
+
+    package = importlib.import_module(f"{PACKAGE}.domain.generated")
+    modules = [info.name for info in pkgutil.iter_modules(package.__path__)]
+    assert modules, "the converted model generated no module"
+    for name in modules:
+        assert generated(name), f"{name} does not import"
+
+
+def test_the_check_type_checks_the_generated_package_and_names_the_module_and_the_error(
+    project: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pyproject = write_project(project, {"app_typed": module("app_typed", root_class("Ledger"))})
+    assert main(["--project", str(pyproject)]) == 0, capsys.readouterr().err
+    written = project / PACKAGE / "domain" / "generated" / "app_typed.py"
+    written.write_text(written.read_text() + '\nCOUNT: int = "one"\n')
+
+    code = main(["--check", "--project", str(pyproject)])
+
+    error = capsys.readouterr().err
+    assert code == 1, "a generated module with a type error passed the check"
+    assert "type check" in error, error
+    assert "app_typed.py" in error, "the module is not named"
+    assert "Incompatible types in assignment" in error, "mypy's error is not given"
 
 
 def test_a_root_subclass_whose_parent_is_in_another_module_has_the_parent_first_and_imports(

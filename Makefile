@@ -182,7 +182,7 @@ TOY_TS = $(wildcard tests/fixtures/library/web/src/domain/generated/*.ts)
 
 typecheck-generated: ## Run mypy on the generated Python only, with mypy-generated.ini (PD-27)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mypy on generated code$(END_BUILD_PRINT)"
-	@ uv run mypy --config-file mypy-generated.ini $(GENERATED_PY)
+	@ uv run mypy --config-file rdf_persistence_generation/mypy-generated.ini $(GENERATED_PY)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated code type checks passed$(END_BUILD_PRINT)"
 
 typecheck-ts: ## Run tsc --noEmit --strict (typescript 5.9.3) on the generated TypeScript (needs Node)

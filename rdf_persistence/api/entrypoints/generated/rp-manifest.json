@@ -66,6 +66,10 @@
       "sha256": "10abc0ffdad9da0f1da1c0dcefbbd0b056186d059ebe02ca91930e2bcc70ccb2"
     },
     {
+      "path": "rdf_persistence_generation/checks/importable.py",
+      "sha256": "e7be9f46583094199da17d8e6c6ce02ee821170a45d937a229cdf8cb36f4044c"
+    },
+    {
       "path": "rdf_persistence_generation/checks/python_package.py",
       "sha256": "1b5bef27110e472f274d9812cbb604898ddf4e77ff6dad5ad00c00497290c073"
     },
@@ -79,7 +83,7 @@
     },
     {
       "path": "rdf_persistence_generation/cli.py",
-      "sha256": "03c5fc33ac5b4ebe37a92ad4a0bb6766ceca6c91732b50b93c999ce8a710461a"
+      "sha256": "8df6567a603e2c96a207fcfb547332138277fcb764d0ee286396fb1ab8db251a"
     },
     {
       "path": "rdf_persistence_generation/components.py",
