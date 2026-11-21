@@ -64,5 +64,8 @@ async def test_a_fast_poll_ends_a_delivery_case_before_one_default_interval():
     )
 
 
-async def test_a_case_run_without_poll_seconds_still_passes():
+async def test_a_case_run_without_poll_seconds_polls_every_default_interval():
+    started = time.monotonic()
     await run_case(a_message_reaches_every_started_bus, DelayedPair())
+    # The first probe comes before the 0.1 s delivery, so the case sleeps one default interval.
+    assert time.monotonic() - started >= bootstrap.POLL_SECONDS, "a wait polled faster"

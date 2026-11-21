@@ -4335,6 +4335,9 @@ tests/unit/core/test_sparql_parsing.py::test_each_wrapper_holds_the_lock_while_r
 tests/unit/core/test_sparql_parsing.py::test_prepare_update_applies_the_prefixes_it_is_given,capability,rp-aggregate-store,,,medium,name; wrapper of rdflib's SPARQL parser
 tests/unit/api/test_shacl.py::test_a_validation_after_the_warm_up_does_not_take_the_lock,capability,rp-aggregate-store,,,low,name; lock around pyshacl validation; no spec requirement
 tests/unit/api/test_shacl.py::test_documents_warm_up_when_built_and_validate_without_the_lock,capability,rp-aggregate-store,,,low,name; lock around pyshacl validation; no spec requirement
+tests/unit/api/test_shacl.py::test_each_documents_has_its_own_shapes_even_for_same_size_rewrites_of_the_file,capability,rp-aggregate-store,,,low,name; shapes cache keyed by content (test-debt-paydown PD-7); no spec requirement
+tests/unit/testkit/test_event_bus_conformance_poll.py::test_a_case_run_without_poll_seconds_polls_every_default_interval,scenario,rp-testkit,The event-bus conformance kit polls at a caller's interval,the default,high,"name,spec id test-debt-paydown PD-15"
+tests/unit/testkit/test_event_bus_conformance_poll.py::test_a_fast_poll_ends_a_delivery_case_before_one_default_interval,scenario,rp-testkit,The event-bus conformance kit polls at a caller's interval,a fast poll on a slow-delivering bus,high,"name,spec id test-debt-paydown PD-15"
 tests/unit/api/test_shacl.py::test_validate_locked_holds_the_lock_for_the_whole_validation,capability,rp-aggregate-store,,,low,name; lock around pyshacl validation; no spec requirement
 tests/unit/api/test_shacl.py::test_warm_up_runs_one_validation_under_the_lock,capability,rp-aggregate-store,,,low,name; lock around pyshacl validation; no spec requirement
 tests/unit/testkit/test_testkit_imports.py::test_no_library_testkit_module_imports_the_generator,capability,rp-testkit,,,medium,name; docstring generator-package PD-1
