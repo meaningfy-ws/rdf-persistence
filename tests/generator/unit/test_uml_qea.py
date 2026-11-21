@@ -222,6 +222,23 @@ def test_a_memo_tag_takes_its_text_from_the_notes(tmp_path):
     ], "the memo tag's text is its notes"
 
 
+def test_a_package_carries_its_own_object_and_that_object_s_tags_are_read(tmp_path):
+    builder, ids = build_library(tmp_path)
+    library_element = builder.package_element(ids["library"])
+    rare_element = builder.package_element(ids["rare"])
+    other_element = builder.package_element(ids["other"])
+    builder.tag(library_element, "module_kind", "access")
+    builder.tag(other_element, "module_kind", "access")
+    model = as_model(read(builder))
+    assert {p.name: p.object_id for p in model.uml_packages} == {
+        "library": library_element,
+        "rare-books": rare_element,
+    }, "each converted package names the object EA draws it as (same ea_guid)"
+    assert [(t.owner_id, t.name, t.tag_value) for t in model.uml_tagged_values] == [
+        (library_element, "module_kind", "access"),
+    ], "a converted package's tags are read, an outside package's are not"
+
+
 def test_tags_of_objects_outside_the_subtree_are_not_read(tmp_path):
     builder, ids = build_library(tmp_path)
     builder.tag(ids["stray"], "graph", "lib:x")

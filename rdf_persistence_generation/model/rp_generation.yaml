@@ -217,13 +217,16 @@ classes:
       - uml_boundaries
   UmlPackage:
     title: UML package
-    description: A package of the UML model, with its parent, so the package tree can be rebuilt.
+    description: >-
+      A package of the UML model, with its parent, so the package tree can be rebuilt, and the object
+      that draws it, which owns its tagged values.
     class_uri: rp:UmlPackage
     slots:
       - package_id
       - name
       - parent_id
       - note
+      - object_id
     slot_usage:
       package_id:
         required: true
@@ -1125,7 +1128,7 @@ slots:
     range: integer
   object_id:
     title: Object id
-    description: The id a UML model gives a class, an enumeration or a boundary.
+    description: The id a UML model gives a class, an enumeration, a boundary or the object of a package.
     slot_uri: rp:umlObjectId
     range: integer
   owner_id:

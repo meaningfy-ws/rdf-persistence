@@ -2747,7 +2747,183 @@ ROWS_DRAWN_INSIDE = [
     ),
 ]
 
+# --- a reference collection's dct:hasPart role fixes its member class (#241) ------------------------------
+
+_HAS_PART = "dct:hasPart"
+_COLLECTION_ROOT = 17  # lib:Collection, the abstract class the collections generalise
+
+
+def _shelf(
+    *targets: int, generalised: bool = False, collection: bool = True, drawn: bool = False
+) -> object:
+    """Shelf (a root, a reference collection when ``collection``) with a ``dct:hasPart`` role to each target.
+
+    ``generalised`` makes Shelf a collection through an abstract ``lib:Collection`` that mixes it in;
+    ``drawn`` through a generalisation to ``rp:ReferenceCollection`` drawn outside the subtree. The
+    series is drawn outside too, a target that is not converted.
+    """
+    holder = _COLLECTION_ROOT if generalised else SHELF
+    tagged = collection and not drawn
+    tags = (tag(holder, "rp_mixins", "ReferenceCollection"),) if tagged else ()
+    parent = (klass(_COLLECTION_ROOT, "lib:Collection", abstract=True),) if generalised else ()
+    roles = tuple(
+        link(n, SHELF, target, target_role=_HAS_PART, target_card="0..*")
+        for n, target in enumerate(targets, start=1)
+    )
+    is_a = (generalisation(9, SHELF, _COLLECTION_ROOT),) if generalised else ()
+    is_a += (generalisation(10, SHELF, _COLLECTION),) if drawn else ()
+    return model(
+        klass(SHELF, "lib:Shelf", stereotype="root"),
+        klass(BOOK, "lib:Book", stereotype="root"),
+        klass(CHAPTER, "lib:Chapter", stereotype="root"),
+        *parent,
+        links=(*roles, *is_a),
+        tags=tags,
+        **_drawn((_COLLECTION, "rp:ReferenceCollection"), (SERIES, "lib:Series")),
+    )
+
+
+def _member_class(expected: str | None, *kept: str) -> Check:
+    """Shelf's ``member_class`` is fixed to ``expected`` (or not at all), with these kept lines only."""
+
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        usage = out.klass("app_library", "Shelf").slot_usage
+        fixed = usage["member_class"].equals_string if "member_class" in usage else None
+        assert fixed == expected, "the member class the hasPart role fixes"
+        assert out.report_lines("toolkit_slot_kept") == list(kept), "the toolkit_slot_kept lines"
+
+    return check
+
+
+_RANGE_KEPT = "Shelf.has_part: the toolkit's has_part is kept; range {} is not carried"
+
+ROWS_MEMBER_CLASS = [
+    Row(
+        "a reference collection's hasPart role to a converted class fixes its member class",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(BOOK),
+        _member_class("Book"),
+    ),
+    Row(
+        "a class that is a reference collection by its domain parent gets the member class too",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(BOOK, generalised=True),
+        _member_class("Book"),
+    ),
+    Row(
+        "a class that generalises a drawn rp:ReferenceCollection gets the member class too",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(BOOK, drawn=True),
+        _member_class("Book"),
+    ),
+    Row(
+        "a hasPart role to a class that is not converted is a URI, the toolkit's own range",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(SERIES),
+        _member_class(None),
+    ),
+    Row(
+        "a hasPart role to the collection's own class (nesting) keeps today's behaviour",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(SHELF),
+        _member_class(None, _RANGE_KEPT.format("shelf")),
+    ),
+    Row(
+        "a hasPart role on a class that is not a reference collection changes nothing",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(BOOK, collection=False),
+        _member_class(None, _RANGE_KEPT.format("book")),
+    ),
+    Row(
+        "failure: hasPart roles to two different classes on one collection name the class",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(BOOK, CHAPTER),
+        _problem(UmlRule.TOOLKIT_SLOT, "Shelf", "Book", "Chapter"),
+    ),
+]
+
+# --- a package's module_kind tagged value (#245 part 1) ---------------------------------------------------
+
+_LIBRARY_ELEMENT, _SHELVES_ELEMENT = (
+    30,
+    31,
+)  # the packages' own objects, which own their tagged values
+
+
+def _kinded(*tags: tuple[int, str], cycle: bool = False) -> object:
+    """Book in library and Shelf in shelves, each package with its own object; ``cycle`` links them both ways."""
+    packages = (
+        UmlPackage(package_id=MODEL_PKG, name="model"),
+        UmlPackage(
+            package_id=LIBRARY_PKG, name="library", parent_id=MODEL_PKG, object_id=_LIBRARY_ELEMENT
+        ),
+        UmlPackage(
+            package_id=SHELVES_PKG, name="shelves", parent_id=MODEL_PKG, object_id=_SHELVES_ELEMENT
+        ),
+    )
+    links = (
+        (
+            link(1, BOOK, SHELF, target_role="lib:onShelf", target_card="0..1"),
+            link(2, SHELF, BOOK, target_role="lib:holds", target_card="0..*"),
+        )
+        if cycle
+        else ()
+    )
+    return model(
+        klass(BOOK, "lib:Book", stereotype="root"),
+        klass(SHELF, "lib:Shelf", SHELVES_PKG, stereotype="root"),
+        packages=packages,
+        links=links,
+        tags=tuple(tag(owner, "module_kind", value) for owner, value in tags),
+    )
+
+
+def _kinds(**expected: str) -> Check:
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        found = {name: out.schemas[name].annotations["module_kind"].value for name in expected}
+        assert found == expected, "the module_kind of each module"
+
+    return check
+
+
+ROWS_MODULE_KIND = [
+    Row(
+        "a package's module_kind tagged value is its module's annotation, the others stay domain",
+        UmlRule.PACKAGE_MODULE,
+        _kinded((_LIBRARY_ELEMENT, "access")),
+        _kinds(app_library="access", app_shelves="domain"),
+    ),
+    Row(
+        "a module_kind tagged value is read case-blind, as a class annotation's is",
+        UmlRule.PACKAGE_MODULE,
+        _kinded((_LIBRARY_ELEMENT, "Access")),
+        _kinds(app_library="access"),
+    ),
+    Row(
+        "a package with no module_kind tagged value is a domain module",
+        UmlRule.PACKAGE_MODULE,
+        _kinded(),
+        _kinds(app_library="domain", app_shelves="domain"),
+    ),
+    Row(
+        "failure: a module_kind the metamodel does not know names the package and the value",
+        UmlRule.PACKAGE_MODULE,
+        _kinded((_LIBRARY_ELEMENT, "planet")),
+        _problem(UmlRule.PACKAGE_MODULE, "library", "planet"),
+    ),
+    Row(
+        "failure: packages written as one module with different kinds name the module",
+        UmlRule.PACKAGE_MODULE,
+        _kinded((_LIBRARY_ELEMENT, "access"), cycle=True),
+        _problem(UmlRule.PACKAGE_MODULE, "app_library", "access", "domain"),
+    ),
+]
+
 ROWS: list[Row] = [
+    *ROWS_MEMBER_CLASS,
+    *ROWS_MODULE_KIND,
     *ROWS_KEYS_OF_ROLES,
     *ROWS_DRAWN_INSIDE,
     *ROWS_R24,

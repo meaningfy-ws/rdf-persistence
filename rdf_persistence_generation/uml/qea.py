@@ -33,7 +33,7 @@ from rdf_persistence_generation.problems import format_problem
 
 # The tables and the columns read from them (PD-3, with `t_connector.Direction` from D-14).
 TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
-    "t_package": ("Package_ID", "Name", "Parent_ID", "Notes"),
+    "t_package": ("Package_ID", "Name", "Parent_ID", "Notes", "ea_guid"),
     "t_object": (
         "Object_ID",
         "Object_Type",
@@ -91,7 +91,8 @@ ENUMERATION_TYPE = "Enumeration"
 BOUNDARY_TYPE = "Boundary"
 CONVERTED_TYPES = frozenset({CLASS_TYPE, ENUMERATION_TYPE})
 # Object types that are drawing furniture, never converted and never a problem.
-IGNORED_TYPES = frozenset({"Package", "Note", "Text", BOUNDARY_TYPE})
+PACKAGE_TYPE = "Package"  # the object that draws a package; it shares the package's ea_guid
+IGNORED_TYPES = frozenset({PACKAGE_TYPE, "Note", "Text", BOUNDARY_TYPE})
 LINK_KINDS: dict[str, UmlLinkKind] = {
     "Association": UmlLinkKind.ASSOCIATION,
     "Dependency": UmlLinkKind.DEPENDENCY,
@@ -219,6 +220,20 @@ def _of_types(rows: Iterable[sqlite3.Row], types: Iterable[str]) -> list[sqlite3
     return [row for row in rows if row["Object_Type"] in wanted]
 
 
+def _package_objects(
+    packages: Iterable[sqlite3.Row], objects: Iterable[sqlite3.Row]
+) -> dict[int, int]:
+    """The object that draws each package, found by the ea_guid EA gives both: package id -> object id."""
+    by_guid = {
+        row["ea_guid"]: row["Object_ID"]
+        for row in _of_types(objects, (PACKAGE_TYPE,))
+        if row["ea_guid"]
+    }
+    return {
+        row["Package_ID"]: by_guid[row["ea_guid"]] for row in packages if row["ea_guid"] in by_guid
+    }
+
+
 def _unexpected(rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
     """Rows whose object type is neither converted nor drawing furniture."""
     return [row for row in rows if row["Object_Type"] not in CONVERTED_TYPES | IGNORED_TYPES]
@@ -272,6 +287,7 @@ class _Reading:
         self.unexpected_rows = _unexpected(in_subtree)
         self.class_ids = {row["Object_ID"] for row in self.class_rows}
         self.boundary_rows = _plain_boundaries(objects)
+        self.package_objects = _package_objects(self.package_rows, objects)
 
     def _select(self, table: str) -> list[sqlite3.Row]:
         columns = ", ".join(TABLE_COLUMNS[table])
@@ -327,13 +343,13 @@ class _Reading:
     def _by_path(self, rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
         return sorted(rows, key=lambda row: (self.paths[row["Package_ID"]], row["Package_ID"]))
 
-    @staticmethod
-    def _package(row: sqlite3.Row) -> UmlPackage:
+    def _package(self, row: sqlite3.Row) -> UmlPackage:
         return UmlPackage(
             package_id=row["Package_ID"],
             name=row["Name"] or "",
             parent_id=row["Parent_ID"] or None,
             note=_text(row["Notes"]),
+            object_id=self.package_objects.get(row["Package_ID"]),
         )
 
     def _second_stereotypes(self) -> dict[str, list[str]]:
@@ -463,6 +479,8 @@ class _Reading:
         return f"{source}.{role} -> {target}" if role else f"{source} -> {target}"
 
     def _tags(self) -> list[UmlTaggedValue]:
+        """The tagged values of the converted classes and of the converted packages' objects."""
+        owners = self.class_ids | set(self.package_objects.values())
         tags = [
             UmlTaggedValue(
                 owner_id=row["Object_ID"],
@@ -470,7 +488,7 @@ class _Reading:
                 tag_value=row["Notes"] if row["Value"] == MEMO else row["Value"],
             )
             for row in self._select("t_objectproperties")
-            if row["Object_ID"] in self.class_ids
+            if row["Object_ID"] in owners
         ]
         return sorted(tags, key=lambda tag: (tag.owner_id, tag.name))
 

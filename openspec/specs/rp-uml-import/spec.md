@@ -11,9 +11,10 @@ naming every element no rule maps, rather than guess.
 
 ### Requirement: A UML class model converts to toolkit-conformant LinkML
 
-`rp-uml2linkml` SHALL read an Enterprise Architect `.qea` file read-only and write one
-`module_kind: domain` LinkML module per UML package, the packages of an import cycle together as one
-module, and a root schema importing them. When every class, slot and enumeration of the model
+`rp-uml2linkml` SHALL read an Enterprise Architect `.qea` file read-only and write one LinkML
+module per UML package, the packages of an import cycle together as one module, and a root schema
+importing them. A module is `module_kind: domain` unless its package's `module_kind` tagged value
+names another kind of the metamodel's `ModuleKind`; any other value fails the run. When every class, slot and enumeration of the model
 carries a note, `rp-generate`'s lint and boundary check pass on the output unchanged; an element
 without a note gets no placeholder description, and the report lists it. A slot used in several
 packages is defined once, in the module the others reach by imports, and fails the run when there is
@@ -32,6 +33,13 @@ stated on the UML conventions page.
 - **THEN** it writes one module per package with the URIs, cardinalities, descriptions, the
   `AggregateRoot` mixin with `rp_path`, and the `owned` slots, and `rp-generate`'s lint and
   boundary check accept it
+
+#### Scenario: an access package
+- **GIVEN** a package tagged `module_kind=access` whose class generalises `rp:TenantAccess`
+- **WHEN** it is converted
+- **THEN** its module is annotated `module_kind: access`, the class is `is_a: TenantAccess`, and
+  `rp-generate`'s boundary rule passes for the root that imports it; a value such as `planet`
+  fails the run naming the package
 
 #### Scenario: packages that refer to each other
 - **GIVEN** two packages whose classes refer to each other
@@ -91,7 +99,17 @@ mixins on roots and labelled parts, `rp_mixins` and drawn generalisations to too
 whose IRI is a toolkit slot's `slot_uri` (except `id`), and every class tagged value named like a
 toolkit class annotation. A «tenant root» becomes the class of the tenant's meta graph, not an
 aggregate root; an abstract class whose concrete descendants are all roots, and which a slot ranges
-over, becomes an aggregate root.
+over, becomes an aggregate root. A reference collection's `dct:hasPart` role to another converted
+class fixes the collection's `member_class` to that class.
+
+#### Scenario: a reference collection's member class
+- **GIVEN** `«root» lib:Shelf` tagged `rp_mixins=ReferenceCollection` (or generalising a class that
+  is) with a `dct:hasPart` role to `«root» lib:Book`
+- **WHEN** it is converted
+- **THEN** `Shelf` has `slot_usage: {member_class: {equals_string: Book}}`, a `Shelf` of another
+  member class is refused by its model and its shape, and the report has no `toolkit-slot-kept`
+  line for the role; a role to `Shelf` itself (nesting) stays the toolkit's `has_part`, reported as
+  before, and roles to two different classes fail the run naming `Shelf`
 
 #### Scenario: a root that is an activity
 - **GIVEN** `«root» lib:Loan` tagged `rp_mixins=Activity` with `prov:startedAtTime [1..1]` and `rp_path=loans`
