@@ -7,12 +7,12 @@ Every task: the failing test first, in the tier named; task gate `make test-chan
 
 ## 1. Stage 1: aggregate validators
 
-- [ ] 1.1 Registration (PD-1, PD-2). Unit, first, in
+- [x] 1.1 Registration (PD-1, PD-2). Unit, first, in
   `tests/unit/collaboration/test_aggregate_validators.py`: T-1, T-2, a non-callable rule →
   `TypeError`, an empty mapping selects nothing. Then `collaboration/services/aggregate_validators.py`
   with the two types and `AggregateValidators` (keys checked with `root_classes`, mixins and toolkit
   classes refused, `class_descendants(mixins=False)`), and the class IRI → rules map.
-- [ ] 1.2 Selection and running (PD-3, PD-7), after 1.1. Unit, first, same file: T-3, T-4, T-5.
+- [x] 1.2 Selection and running (PD-3, PD-7), after 1.1. Unit, first, same file: T-3, T-4, T-5.
   Then the selection over all root types and `run_aggregate_validators`.
 - [x] 1.3 Session read check (PD-4), a port change. Unit, first, in
   `tests/unit/persistence/test_session_may_read.py`: a session opened with `may_read` exposes it;
