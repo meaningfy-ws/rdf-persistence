@@ -100,7 +100,8 @@ def import_problems(targets: Sequence[GenerationTarget], base: Path) -> list[Che
         return []
     folders = json.dumps({t.package: str(_folder(t, base)) for t in checked})
     result = subprocess.run(
-        [sys.executable, "-c", IMPORT_SCRIPT, _search_path(_roots(checked, base)), folders]
+        # -B: no __pycache__ in the generated folders, which a run's output must not gain
+        [sys.executable, "-B", "-c", IMPORT_SCRIPT, _search_path(_roots(checked, base)), folders]
         + list(schema_of),
         capture_output=True,
         text=True,
