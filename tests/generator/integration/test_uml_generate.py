@@ -2,7 +2,7 @@
 
 The converter's output is the input of the generator, so a golden (the converted generic library model)
 is copied into a project with a ``[tool.rp-generate]`` target and checked with the steps that read
-schemas only: lint and boundary for stage 1, lint, boundary, hard and rules for stage 2. A refusal here
+schemas only: lint and boundary for the basic model, lint, boundary, hard and rules for the extended one. A refusal here
 is the converter's fault, not the golden's and not the checks'.
 """
 

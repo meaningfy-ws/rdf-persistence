@@ -1,4 +1,4 @@
-"""The lock, the diff and the draft (task 1.2, PD-3, PD-5; TC-01 to TC-05a)."""
+"""The lock, the diff and the draft (PD-3, PD-5; TC-01 to TC-05a)."""
 
 from pathlib import Path
 
@@ -13,7 +13,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.lock import changes, described, draft
 
-from .conftest import ROOT_SCHEMA, Breaker
+from .golden import ROOT_SCHEMA, Breaker
 from .lock_helpers import (
     BOOK,
     BOOK_SLOTS,

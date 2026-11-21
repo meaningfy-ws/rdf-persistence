@@ -96,7 +96,7 @@ def test_the_migrations_pending_from_the_empty_version_are_the_one_step(empty_fi
     assert [m.to_version for m in pending] == ["1"], "the step from the empty version"
 
 
-# equivalence class: a version that is not in the chain (the empty one and a padded "1 ", which
+# Class: a version that is not in the chain (the empty one and a padded "1 ", which
 # only an exact-text comparison tells from "1")
 @pytest.mark.parametrize("version", ["", "1 "])
 def test_a_version_not_in_the_chain_has_no_pending_migrations(tmp_path, version):
@@ -234,7 +234,7 @@ def test_a_folder_that_is_a_file_is_refused_naming_it(tmp_path):
     assert "migrations" in refused(path, "1"), "the refusal names the folder that is a file"
 
 
-# equivalence class: bytes that do not decode as UTF-8 (one read, one except clause)
+# Class: bytes that do not decode as UTF-8 (one read, one except clause)
 @pytest.mark.parametrize("content", [b"\xff\xfe\x00\x00"], ids=["utf16-noise"])
 def test_a_file_that_is_not_utf8_is_refused_naming_it(tmp_path, content):
     chain_of(tmp_path, ["1", "2"])

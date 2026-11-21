@@ -1,4 +1,4 @@
-"""Adversarial tests of the generated settings model (technical-models stage 3, task 3.1, PD-6).
+"""Adversarial tests of the generated settings model (technical-models PD-6).
 
 Attacks: PD-6's defaults table (a default that drifted, a slot added or dropped) and the rule that
 no two default instances share a group or a list.

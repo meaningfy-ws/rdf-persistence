@@ -1,4 +1,4 @@
-"""Removing a file aggregate with its blobs, over the fakes (live-tenant-sweep PD-10, task 4.1)."""
+"""Removing a file aggregate with its blobs, over the fakes (live-tenant-sweep PD-10)."""
 
 import logging
 from datetime import timedelta

@@ -14,7 +14,7 @@ EXTENSIONS = ROOT / "rdf_persistence_generation" / "extensions"
 PAGE = ROOT / "docs" / "modules" / "ROOT" / "pages" / "architecture" / "generation.adoc"
 TESTS = Path(__file__).parent
 GOLDENS = ROOT / "tests" / "fixtures" / "library" / "golden"
-EXTENSIONS_PREFIX = "rdf_persistence_generation/extensions/"  # page rows: task 2.5 renames them
+EXTENSIONS_PREFIX = "rdf_persistence_generation/extensions/"  # the page's rows name them
 TOY_TREE_CHECK = "assert_matches_toy("
 GOLDEN_CHECK = "assert_matches_golden("
 

@@ -1,4 +1,4 @@
-"""A loaded JSON-LD file that breaks the one path is refused and writes nothing (stage 2, task 2.2, PD-6)."""
+"""A loaded JSON-LD file that breaks the one path is refused and writes nothing (PD-6)."""
 
 import json
 from collections.abc import AsyncIterator

@@ -1,4 +1,4 @@
-"""Adversarial tests of the outbox and the relay (aggregate-events stage 1; PD-1 to PD-5, PD-14, PD-16, RISK-7).
+"""Adversarial tests of the outbox and the relay (aggregate-events; PD-1 to PD-5, PD-14, PD-16, RISK-7).
 
 The world is the relay tests': two tenants of the toy library and the application database over the
 fakes; nothing sleeps. A test marked ``xfail(strict=True)`` is a finding: the code does not do what

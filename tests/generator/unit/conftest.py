@@ -1,17 +1,13 @@
 """Shared fixtures of the generation tests: a private, breakable copy of the toy library."""
 
 import shutil
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from rdf_persistence_generation.cli import main
 
-TOY = Path(__file__).parents[2] / "fixtures" / "library"
-ROOT_SCHEMA = "library.yaml"
-
-Breaker = Callable[[str, str, str], Path]
+from .golden import ROOT_SCHEMA, TOY, Breaker
 
 
 @pytest.fixture

@@ -7,7 +7,7 @@ from rdf_persistence_generation.checks import boundary
 from rdf_persistence_generation.checks.hard import hard_problems
 from rdf_persistence_generation.problems import format_problem
 
-from .conftest import ROOT_SCHEMA
+from .golden import ROOT_SCHEMA
 
 
 def hard_check_problems(root: Path) -> list[str]:

@@ -445,7 +445,7 @@ async def test_each_create_and_drop_step_is_logged_with_the_tenant_and_resource_
     ], "each step is logged with the tenant and resource"
 
 
-# --- changing the access record: the label and the grants (task 5.2) ---------------------------
+# --- changing the access record: the label and the grants ---------------------------
 
 BEN = Principal(id="https://example.org/people/ben")
 
@@ -685,7 +685,7 @@ async def test_a_root_label_other_than_the_tenants_is_refused_before_anything_is
     assert files.sent("create_bucket") == [], "no bucket"
 
 
-# -- the IRI policy: tenants are minted through Iris (iri-policy task 3.1, PD-3a, PD-5, PD-6) --
+# -- the IRI policy: tenants are minted through Iris (iri-policy PD-3a, PD-5, PD-6) --
 
 A_ID = str(UUID(int=1))
 B_ID = str(UUID(int=2))

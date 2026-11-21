@@ -1,4 +1,4 @@
-"""Stage 2 of mwb2-adoption-fixes, attacked: consumer validators on tenant writes (PD-7) at their edges."""
+"""Consumer validators on tenant writes (mwb2-adoption-fixes PD-7), attacked at their edges."""
 
 import asyncio
 from collections.abc import Awaitable, Callable

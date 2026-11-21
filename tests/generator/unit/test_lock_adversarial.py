@@ -23,7 +23,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.lock import changes, described, draft
 
-from .conftest import ROOT_SCHEMA, Breaker
+from .golden import ROOT_SCHEMA, Breaker
 from .lock_helpers import (
     BOOK,
     BOOK_SLOTS,

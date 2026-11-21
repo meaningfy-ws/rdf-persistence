@@ -1,4 +1,4 @@
-"""Adversarial tests of the removed per-value keywords (technical-models stage 3, DEC-5, D-28 to D-36).
+"""Adversarial tests of the removed per-value keywords (technical-models DEC-5, D-28 to D-36).
 
 Attacks: 'an old keyword still accepted somewhere'. A scan of every constructor and public function
 of the package for the names the settings groups replaced, and a probe of each constructor that had

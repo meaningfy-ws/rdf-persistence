@@ -11,7 +11,7 @@ from rdf_persistence_generation.config import cli_flags, read_targets
 from rdf_persistence_generation.exceptions import ConfigError
 from rdf_persistence_generation.generated.rp_generation import GenerationTarget
 
-from .conftest import TOY
+from .golden import TOY
 
 SINGLE = """
 [tool.rp-generate]
@@ -72,7 +72,7 @@ def test_flags_alone_make_a_target_when_there_is_no_table(tmp_path: Path) -> Non
 
 @pytest.mark.parametrize(
     "flag",
-    [flag.option for flag in cli_flags()][:2],  # one class: every flag takes the same path
+    [flag.option for flag in cli_flags()][:2],  # Class: every flag takes the same path
 )
 def test_a_flag_with_several_entries_is_an_error_naming_it(tmp_path: Path, flag: str) -> None:
     with pytest.raises(ConfigError, match=flag):

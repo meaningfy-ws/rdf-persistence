@@ -18,7 +18,7 @@ from rdf_persistence_generation.manifest import current_inputs
 
 from .checks import add_api_module
 from .checks import boundary_problems as problems_of
-from .conftest import ROOT_SCHEMA
+from .golden import ROOT_SCHEMA
 
 SERVICE_INPUT = "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml"
 EXPORT = re.compile(r'export \* from "\./(\w+)";')
@@ -147,7 +147,7 @@ def test_no_declared_type_name_is_exported_by_two_files(toy_copy: Path) -> None:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("clash", ["Page"])  # one class: a reserved class name
+@pytest.mark.parametrize("clash", ["Page"])  # Class: a reserved class name
 def test_a_consumer_class_named_like_a_service_type_is_refused_naming_the_clash(
     tmp_path: Path, clash: str, capsys: pytest.CaptureFixture[str]
 ) -> None:

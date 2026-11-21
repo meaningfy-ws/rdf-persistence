@@ -573,7 +573,7 @@ async def test_tc34_a_commit_of_exactly_the_limit_is_one_request(session, store)
         assert stored_id == book.id, "both books are stored"
 
 
-# -- fixes after the stage 2 review (PD-20) ----------------------------------------------------
+# -- fixes after the review (PD-20)----------------------------------------------------
 
 
 async def test_a_retry_after_a_failed_batch_does_not_rewrite_a_root_taken_as_committed(
@@ -604,7 +604,7 @@ async def test_a_retry_after_a_failed_batch_does_not_rewrite_a_root_taken_as_com
     assert (await unit(session).get(Book, clash)).label == "Dune", "the other root is stored"
 
 
-# equivalence class: a limit below one; 0 is the boundary and -1 the same class
+# Class: a limit below one; 0 is the boundary and -1 the same class
 @pytest.mark.parametrize("limit", [0])
 def test_a_limit_below_one_is_refused_naming_the_value(session, limit):
     with pytest.raises(ValueError, match=str(limit)):

@@ -1,4 +1,4 @@
-"""Adversarial tests of the technical-module exemption (technical-models stage 4, D-49).
+"""Adversarial tests of the technical-module exemption (technical-models D-49).
 
 Attacks: a stored or domain class slipped past the class rules by way of a module annotated
 ``module_kind: technical``: an import, a misspelt or absent kind, a technical range, a wrong target kind.

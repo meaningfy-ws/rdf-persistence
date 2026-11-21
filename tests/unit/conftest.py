@@ -5,7 +5,6 @@ They sit at the root of the unit tests because the tests that use them are sprea
 """
 
 from collections.abc import AsyncIterator
-from pathlib import Path
 
 import pytest
 
@@ -14,9 +13,7 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import fake_session
-from tests.toy import TENANT, TOY_SCHEMA
-
-GENERATED = Path(__file__).parents[1] / "fixtures" / "library" / "domain" / "generated"
+from tests.toy import GENERATED, TENANT, TOY_SCHEMA
 
 
 @pytest.fixture(scope="module")

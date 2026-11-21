@@ -1,4 +1,4 @@
-"""The boundary check (task 1.7, PD-23): ownership of the aggregate's parts and module kinds."""
+"""The boundary check (PD-23): ownership of the aggregate's parts and module kinds."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,7 +25,7 @@ from rdf_persistence_generation.problems import format_problem
 
 from .checks import API_MODULE, add_api_module
 from .checks import boundary_problems as problems_of
-from .conftest import ROOT_SCHEMA, TOY, Breaker
+from .golden import ROOT_SCHEMA, TOY, Breaker
 
 MODEL_DIR = Path(__file__).parents[3] / "rdf_persistence"
 METAMODEL = MODEL_DIR / "model" / "rp.yaml"

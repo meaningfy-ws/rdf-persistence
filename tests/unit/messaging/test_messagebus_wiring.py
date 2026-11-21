@@ -1,5 +1,5 @@
 """The bus wired end to end: ``bootstrap``, the toolkit's ``Transition`` handler, a handler's unit of work
-(message-bus PD-13 to PD-16, task 3.3).
+(message-bus PD-13 to PD-16).
 
 The collaboration and the session are real, over the fake store; the session's ``on_commit`` is the
 bus's ``publish``, as the kit wires it.

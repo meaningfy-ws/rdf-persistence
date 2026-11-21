@@ -37,7 +37,6 @@ from rdf_persistence.testkit.markers import EVENTS, FILES, IDENTITY, STORE, regi
 
 # Path constants — single source of truth for the test directory structure.
 TESTS_ROOT_DIR = Path(__file__).parent
-TEST_DATA_DIR = TESTS_ROOT_DIR / "test_data"
 
 # CI runs the same examples every time (checklist 8); locally Hypothesis explores. Registered and
 # loaded at import of this root conftest, so every xdist worker has them.
@@ -164,21 +163,3 @@ def spans(_span_exporter: InMemorySpanExporter) -> Callable[[], tuple[ReadableSp
     """A callable over the spans finished since the test began; call it after the code under test."""
     _span_exporter.clear()
     return lambda: tuple(_span_exporter.get_finished_spans())
-
-
-def load_text_file(relative_path: str) -> str:
-    """Load text content from the ``test_data`` directory.
-
-    Args:
-        relative_path: Path relative to ``test_data/``, e.g. ``"samples/a.json"``.
-
-    Returns:
-        The full file content as a UTF-8 string.
-
-    Raises:
-        FileNotFoundError: If the file does not exist.
-    """
-    file_path = TEST_DATA_DIR / relative_path
-    if not file_path.exists():
-        raise FileNotFoundError(f"Test data file not found: {file_path}")
-    return file_path.read_text(encoding="utf-8")

@@ -63,8 +63,7 @@ from tests.migration_helpers import (
     second_tenant,
 )
 from tests.tenancy_world import CREATOR, HOUR, make_world
-from tests.toy import SETTINGS, TOY_SCHEMA, library_slots, toy_mapper
-from tests.unit.conftest import GENERATED
+from tests.toy import GENERATED, SETTINGS, TOY_SCHEMA, library_slots, toy_mapper
 
 # -- the world ------------------------------------------------------------------------------------
 

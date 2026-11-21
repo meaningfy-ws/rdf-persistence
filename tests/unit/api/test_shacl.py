@@ -12,9 +12,8 @@ from rdf_persistence.api.services.documents import Documents
 from rdf_persistence.core.domain import sparql_parsing
 from rdf_persistence.core.services.artifacts import CONTEXT_FILE, SHAPES_FILE
 from rdf_persistence.schema.services.schema import load_schema
-from tests.toy import TOY_SCHEMA
+from tests.toy import GENERATED, TOY_SCHEMA
 from tests.unit.builders import RecordingLock
-from tests.unit.conftest import GENERATED
 
 EX = Namespace("urn:example:")
 SHAPES = """

@@ -1,4 +1,4 @@
-"""The consumer's tenant end to end over the fakes (iri-policy task 5.1, PD-3a, PD-10, PD-12a).
+"""The consumer's tenant end to end over the fakes (iri-policy PD-3a, PD-10, PD-12a).
 
 Access record ``{base}{deployment}/library/{tenant_id}``; meta and registry graphs under templates of
 their own. Nothing is read or written at the default ``{tenant}/access|meta|registry``.

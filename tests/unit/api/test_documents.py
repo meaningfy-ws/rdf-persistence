@@ -36,6 +36,7 @@ from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import (
     BOOK,
     BOOK_JSON,
+    GENERATED,
     TENANT,
     TOY_SCHEMA,
     book_iri,
@@ -43,7 +44,6 @@ from tests.toy import (
     encoded,
     toy_mapper,
 )
-from tests.unit.conftest import GENERATED
 
 GRAPH = graph_iri(BOOK)
 BIBO = "http://purl.org/ontology/bibo/"
@@ -297,7 +297,7 @@ async def test_a_remote_context_is_not_fetched(default_documents, book_class) ->
         await parse(default_documents, encoded(body), JSON_LD, book_class, BOOK, creating=True)
 
 
-# equivalence classes: unparseable text ({not json; the empty text is the same), JSON that is no object
+# Classes: unparseable text ({not json; the empty text is the same), JSON that is no object
 @pytest.mark.parametrize("data", [b"{not json", b"[1, 2]", b'"text"'])
 async def test_a_body_that_is_not_a_json_object_is_refused(
     default_documents, book_class, data

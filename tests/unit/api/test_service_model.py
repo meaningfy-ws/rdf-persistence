@@ -1,4 +1,4 @@
-"""The service classes of ``rp_api_entrypoints.yaml`` as gen-pydantic renders them (task 1.13, PD-24)."""
+"""The service classes of ``rp_api_entrypoints.yaml`` as gen-pydantic renders them (PD-24)."""
 
 import pytest
 from pydantic import ValidationError

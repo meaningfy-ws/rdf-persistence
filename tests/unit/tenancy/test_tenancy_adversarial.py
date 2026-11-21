@@ -1,4 +1,4 @@
-"""Stage 1 of mwb2-adoption-fixes, attacked: the rename and the root label check (PD-3) at their edges."""
+"""The rename and the root label check (mwb2-adoption-fixes PD-3), attacked at their edges."""
 
 import pytest
 from pydantic import ValidationError
@@ -97,7 +97,7 @@ async def test_two_renames_in_a_row_each_need_the_version_the_last_answered(tena
     assert await _both(tenancy, store, summary.id) == ("C", "C"), "the stale one changed nothing"
 
 
-# equivalence class: a blank label (the empty one stands for the spaces)
+# Class: a blank label (the empty one stands for the spaces)
 @pytest.mark.parametrize("label", [""])
 async def test_an_invalid_label_is_refused_before_the_root_is_written(tenancy, store, label):
     summary = await tenancy.create("A", library_slots(), CREATOR)

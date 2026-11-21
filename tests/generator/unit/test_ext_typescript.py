@@ -7,8 +7,7 @@ import pytest
 from rdf_persistence_generation.extensions import typescript
 from rdf_persistence_generation.steps import TYPESCRIPT_STEP
 
-from .conftest import ROOT_SCHEMA
-from .golden import TOY_TARGET, assert_matches_golden, assert_matches_toy, run_toy
+from .golden import ROOT_SCHEMA, TOY_TARGET, assert_matches_golden, assert_matches_toy, run_toy
 
 
 @pytest.fixture(scope="module")

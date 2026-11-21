@@ -47,7 +47,7 @@ def test_the_layout_names_the_themes_the_changed_mapper_knows():
 
 
 def test_every_row_of_the_layout_is_on():
-    """TC-01 at the end of the move (stage 7): no theme is left on its old path."""
+    """TC-01 at the end of the move: no theme is left on its old path."""
     off = sorted({row.theme for row in LAYOUT if not row.on})
 
     assert off == [], f"themes still off: {off}"
@@ -160,7 +160,7 @@ def test_a_class_is_placed_once_and_in_a_known_theme_and_layer():
 # --- the guard on a planted tree ------------------------------------------------------------
 
 SERVICE_OLD = "rdf_persistence.services.generated.service.rp_service"
-# The planted rows use `api`; every theme is on after stage 7, so a test that needs the row off turns
+# The planted rows use `api`; every theme is on once the move is done, so a test that needs the row off turns
 # the themes off itself (`nothing_on`).
 SERVICE_NEW = "rdf_persistence.api.entrypoints.generated.rp_api_entrypoints"
 ONE_CLASS = (Placed("api", "entrypoints", "service", ("Problem",)),)

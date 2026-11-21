@@ -1,4 +1,4 @@
-"""What the stage 5 review found, as requests (PD-14b): strict bodies, bounded bodies, every error a problem."""
+"""What the review of the router found, as requests (PD-14b): strict bodies, bounded bodies, every error a problem."""
 
 import json
 from collections.abc import AsyncIterator

@@ -1,4 +1,4 @@
-"""The one JSON-LD path, attacked (manual-revision-notes stage 2, task 2.2, PD-6)."""
+"""The one JSON-LD path, attacked (manual-revision-notes PD-6)."""
 
 import pytest
 from hypothesis import HealthCheck, given, settings

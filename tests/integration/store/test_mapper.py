@@ -1,4 +1,4 @@
-"""The mapper and unit of work against a real Fuseki: the round trip of the toy library (task 2.5)."""
+"""The mapper and unit of work against a real Fuseki: the round trip of the toy library."""
 
 import uuid
 from collections.abc import AsyncIterator

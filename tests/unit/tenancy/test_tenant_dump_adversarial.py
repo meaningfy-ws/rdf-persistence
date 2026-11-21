@@ -1,6 +1,6 @@
 """Hostile archives, failures at each step and round trips of dump and restore (tenant-dump-restore, adversarial).
 
-Written after task 3.1 to break it; the TC-10 to TC-27 cases of ``test_tenant_dump.py`` are not repeated. A test
+Written after the dump to break it; the TC-10 to TC-27 cases of ``test_tenant_dump.py`` are not repeated. A test
 named ``..._design_silent`` pins a guarantee the design does not state; its docstring says what it expects and why.
 """
 
@@ -95,7 +95,7 @@ async def head_of(world: SimpleNamespace) -> list[tuple[str, bytes]]:
 # -- hostile blob members: a blob is a regular file named blobs/<key> -------------------------------
 
 
-# equivalence classes: a bare name (blobs/; blobs is the same), a path out of blobs/ (/etc/passwd; ../blobs/x), a reserved name (manifest.json; graphs.nq)
+# Classes: a bare name (blobs/; blobs is the same), a path out of blobs/ (/etc/passwd; ../blobs/x), a reserved name (manifest.json; graphs.nq)
 @pytest.mark.parametrize("name", ["blobs/", "/etc/passwd", "manifest.json"])
 async def test_a_member_whose_name_is_not_a_blob_name_is_refused_and_leaves_nothing(world, name):
     before = await state_of(world)
@@ -104,7 +104,7 @@ async def test_a_member_whose_name_is_not_a_blob_name_is_refused_and_leaves_noth
     assert await state_of(world) == before, "the refused restore leaves the state as it was"
 
 
-# equivalence class: a key with a ".." segment (a/../../x is the same)
+# Class: a key with a ".." segment (a/../../x is the same)
 @pytest.mark.parametrize("key", ["../x"])
 async def test_a_blob_key_that_climbs_out_of_the_bucket_is_refused_design_silent(world, key):
     """Design PD-3 says 'a regular file under blobs/'. ``blobs/../x`` is under ``blobs/`` as text only: an
@@ -126,7 +126,7 @@ async def test_two_blobs_with_one_key_are_refused_design_silent(world):
     assert await state_of(world) == before, "the refused restore leaves the state as it was"
 
 
-# equivalence classes: a link, which the stream refuses to read (a hard link stands for a symlink), and a device
+# Classes: a link, which the stream refuses to read (a hard link stands for a symlink), and a device
 # or a fifo, which only the regular-file check refuses (a character device stands for them)
 @pytest.mark.parametrize("kind", [tarfile.LNKTYPE, tarfile.CHRTYPE])
 async def test_a_blob_member_that_is_a_link_or_a_device_is_refused(world, kind):
@@ -302,7 +302,7 @@ def with_manifest(data: bytes, **changes) -> bytes:
 @pytest.mark.parametrize(
     "source",
     [
-        "{base}libraries/books",  # a path word as the tenant id (equivalence class: a reserved word)
+        "{base}libraries/books",  # a path word as the tenant id (class: a reserved word)
         "{base}libraries/",
         "{base}",
         "not an iri",
@@ -326,7 +326,7 @@ async def test_a_source_tenant_id_that_does_not_belong_to_the_source_tenant_is_r
     ), "the refusal names the other tenant id"
 
 
-# equivalence class: a source tenant id that is not the source tenant's (the empty one stands for a blank)
+# Class: a source tenant id that is not the source tenant's (the empty one stands for a blank)
 @pytest.mark.parametrize("empty", [""])
 async def test_an_empty_source_tenant_id_is_refused_and_does_not_rewrite_everything(world, empty):
     await refused(world, with_manifest(await dumped(world), source_tenant_id=empty))
@@ -344,7 +344,7 @@ async def test_extra_manifest_fields_are_refused_or_ignored_never_a_crash(world)
     assert summary.label == "Ghent", "the extra manifest field does not change the label"
 
 
-# equivalence classes: JSON that is no object (b"[]"; null and "x" are the same), an object of the wrong shape,
+# Classes: JSON that is no object (b"[]"; null and "x" are the same), an object of the wrong shape,
 # unterminated nesting (the parser's depth), bytes that are no text
 @pytest.mark.parametrize("text", [b'{"format_version": "1"}', b"[]", b"{" * 5000, b"\xff\xfe"])
 async def test_a_manifest_of_the_wrong_shape_is_refused(world, text):
@@ -541,7 +541,7 @@ async def test_a_blob_key_survives_a_dump_and_a_restore(world, key):
     assert await world.files.get(record.database_name, key) == key.encode(), "the blob's bytes"
 
 
-# equivalence classes: below the space (newline; tab is the same), the delete character
+# Classes: below the space (newline; tab is the same), the delete character
 @pytest.mark.parametrize("key", ["line\nbreak", "del\x7f"], ids=repr)
 async def test_a_blob_key_with_a_control_character_is_refused_by_the_one_key_rule(world, key):
     """Garage refuses such a key (``checked_blob_key``); the archive of a store that held one is refused whole."""

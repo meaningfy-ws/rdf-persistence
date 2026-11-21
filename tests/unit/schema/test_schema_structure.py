@@ -253,7 +253,7 @@ def required(view, cls: str, slot: str) -> bool:
         ("Chapter", "label", False),  # rp_unlabelled
         ("Note", "label", True),  # labelled, unchanged
         ("Book", "description", False),  # a root: optional (PD-1)
-        # equivalence class: a root has an optional description (Book stands for Scan and LibraryAccess)
+        # Class: a root has an optional description (Book stands for Scan and LibraryAccess)
         ("Chapter", "description", False),  # owned, not a root
         ("Library", "description", False),  # the tenant root is not an AggregateRoot
     ],
@@ -402,7 +402,7 @@ def test_a_type_derived_from_string_with_its_own_uri_is_not_text() -> None:
 @pytest.mark.parametrize(
     ("name", "alias", "expected"),
     [
-        ("file key", None, "file_key"),  # equivalence class: no alias (file_key is the same)
+        ("file key", None, "file_key"),  # Class: no alias (file_key is the same)
         ("problem_slug", "slug", "slug"),
     ],
 )

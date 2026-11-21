@@ -19,8 +19,7 @@ from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
 
-from .conftest import Breaker
-from .golden import assert_matches_golden
+from .golden import Breaker, assert_matches_golden
 
 PREFIXES = """
 prefixes: {v: "https://example.org/ns/v#", linkml: "https://w3id.org/linkml/"}
@@ -327,7 +326,7 @@ def test_a_unique_key_name_that_is_not_an_identifier_is_refused(tmp_path: Path) 
         render_modules(tmp_path / "validators.yaml")
 
 
-# --- the same rules on a slot, an attribute or a slot_usage (stage 1 review) ---
+# --- the same rules on a slot, an attribute or a slot_usage ---
 
 SLOT_TEXT = "    slot_uri: schema:text\n    range: string\n"
 ATTRIBUTE_END = "        range: string\n        annotations:\n          owned: false\n"

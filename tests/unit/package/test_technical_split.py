@@ -1,4 +1,4 @@
-"""The technical schemas live under ``model/technical/`` and generate outside the domain (technical-models stage 1).
+"""The technical schemas live under ``model/technical/`` and generate outside the domain (technical-models).
 
 TC-06..TC-10 and TC-53: the folder holds only technical modules, the domain folder none, the
 generated service models sit in ``services``, and the import contracts refuse the domain's reach
@@ -253,7 +253,7 @@ def test_no_live_file_still_names_an_old_path():
     assert hits == [], "old paths still named:\n" + "\n".join(hits)
 
 
-# --- stage 4: the testkit's records get their own technical target (PD-11, TC-49..TC-51) -----------
+# --- the testkit's records get their own technical target (PD-11, TC-49..TC-51) -----------
 
 TESTKIT = PACKAGE / "testkit"
 GENERATION_DIR = PACKAGE.parent / "rdf_persistence_generation"

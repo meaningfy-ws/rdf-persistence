@@ -63,7 +63,9 @@ runs the generator's integration tests, never in CI.
 . Assert on RDF by parsing it into a graph and comparing with `rdflib.compare.isomorphic`; on
   failure, print the graph diff. Never compare Turtle as strings.
 . Every query, guard, check or policy rule gets a positive and a negative case in a parametrized
-  table, plus a test that every rule in the catalogue has a row.
+  table, plus a test that every rule in the catalogue has a row. Where one case stands for a
+  class of inputs, a comment on that case says so in one form: `# Class: <what the class is>` for
+  one class, `# Classes: <the classes>` for several, naming the case that stands for the others.
 . Goldens are regenerated only by a make target. Turtle is compared by meaning, other formats by
   exact text, and the file set must match exactly.
 . Hypothesis tests cover invariants (round-trip, order independence, bounds); CI runs them

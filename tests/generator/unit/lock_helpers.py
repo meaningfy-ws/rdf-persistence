@@ -6,7 +6,7 @@ from rdf_persistence.schema.services.schema_structure import generation_view
 from rdf_persistence_generation.generated.rp_generation import SchemaLock
 from rdf_persistence_generation.lock import summarise
 
-from .conftest import ROOT_SCHEMA, Breaker
+from .golden import ROOT_SCHEMA, Breaker
 
 BOOK = "http://purl.org/ontology/bibo/Book"
 SHELF = "https://example.org/ns/library#Shelf"

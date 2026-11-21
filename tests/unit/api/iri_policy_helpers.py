@@ -22,8 +22,7 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import TOY_SCHEMA
-from tests.unit.conftest import GENERATED
+from tests.toy import GENERATED, TOY_SCHEMA
 
 BASE = "https://example.org/"
 FLAT = "{base}{tenant_id}/{type}/{id}"

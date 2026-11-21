@@ -64,7 +64,7 @@ def test_differences_are_dotted_field_names():
     )
 
 
-# One base: every base is one equivalence class (the IRI is the base plus a fixed segment).
+# Class: every base (the IRI is the base plus a fixed segment).
 BASE = "https://a.example/"
 
 

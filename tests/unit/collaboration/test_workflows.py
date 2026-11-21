@@ -214,7 +214,7 @@ def test_from_files_gives_the_same_workflows_as_the_constructor(tmp_path):
 
 
 # PD-32 item 4: the id rule of the SPARQL layer, a hash at the end, a long input cut short.
-# equivalence classes: a character IRIs forbid ({; | ^ ` are the same), a hash end, a slash end, not absolute
+# Classes: a character IRIs forbid ({; | ^ ` are the same), a hash end, a slash end, not absolute
 BAD_IDS = [
     "https://ex.org/{review}",
     "C:\\path",

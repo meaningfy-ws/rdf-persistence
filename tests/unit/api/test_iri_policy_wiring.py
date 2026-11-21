@@ -1,4 +1,4 @@
-"""The kit builds one ``Iris`` and the routes map path ids through it (iri-policy task 3.4, PD-3a, PD-3c).
+"""The kit builds one ``Iris`` and the routes map path ids through it (iri-policy PD-3a, PD-3c).
 
 A path id of the wrong form is a 404 before the store is asked, under the default policy (a UUID)
 and under the consumer's (seven lowercase characters, flat objects beside the tenant).

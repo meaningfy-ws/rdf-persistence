@@ -1,4 +1,4 @@
-"""Adversarial tests of the ``default_instance`` generation check (technical-models stage 3, task 3.1, PD-6).
+"""Adversarial tests of the ``default_instance`` generation check (technical-models PD-6).
 
 Attacks: the error-matrix row '``default_instance`` on a class with a required slot without default',
 by the two ways the range can hold one that the plain case does not show.

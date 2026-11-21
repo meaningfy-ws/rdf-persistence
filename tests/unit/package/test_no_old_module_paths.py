@@ -47,11 +47,11 @@ EXEMPT: frozenset[str] = frozenset(
         "tests/unit/package/test_theme_layout.py",
         # the table of old and new paths that test reads.
         "tests/unit/layout_table.py",
-        # stage 2 (D-13 S2): the probe that an old import path is a ModuleNotFoundError names the paths
+        # D-13: the probe that an old import path is a ModuleNotFoundError names the paths
         # that never existed or are gone, which is the point of the probe; it still names
         # `rdf_persistence.domain.generated` (two lines), so it stays.
         "tests/unit/package/test_technical_split.py",
-        # stage 8: the probe that the two removed shim paths cannot be imported names them.
+        # The probe that the two removed shim paths cannot be imported names them.
         "tests/unit/package/test_deprecated_paths_removed.py",
     }
 )

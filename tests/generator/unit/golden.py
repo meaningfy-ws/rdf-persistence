@@ -12,6 +12,7 @@ refresh-golden`` sets it); a plain test run never writes them.
 """
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -24,7 +25,10 @@ from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.generated.rp_generation import GenerationManifest, GenerationTarget
 from rdf_persistence_generation.pipeline import Run, Step
 
-from .conftest import ROOT_SCHEMA, TOY
+TOY = Path(__file__).parents[2] / "fixtures" / "library"
+ROOT_SCHEMA = "library.yaml"
+
+Breaker = Callable[[str, str, str], Path]
 
 GOLDEN_ROOT = TOY / "golden"
 REFRESH_VARIABLE = "RP_REFRESH_GOLDEN"

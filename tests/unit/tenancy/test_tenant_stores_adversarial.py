@@ -1,4 +1,4 @@
-"""Tenants routed by store, attacked: failure mid-write, a second instance, erased records, limits (tenant-stores stage 1).
+"""Tenants routed by store, attacked: failure mid-write, a second instance, erased records, limits (tenant-stores).
 
 ``D`` is the default ``FakeStore``, ``A`` the store wired as ``client-a``. A failing test is a FINDING and is kept
 ``xfail(strict=True)`` with its evidence in the reason, for the lead to decide (none is open).
@@ -404,7 +404,7 @@ def test_a_store_name_at_the_limits_of_the_pattern_is_wired(name):
     )
 
 
-# equivalence classes: uppercase (A; Default), punctuation (a_b; a.b, a/b), whitespace (a b; a\n, " a");
+# Classes: uppercase (A; Default), punctuation (a_b; a.b, a/b), whitespace (a b; a\n, " a");
 # the empty, the long, the digit-first, the dash-first and the non-ASCII names are boundaries of the pattern
 @pytest.mark.parametrize("name", ["", "a" * 33, "A", "1a", "-a", "a_b", "a b", "é"])
 def test_a_store_name_outside_the_pattern_is_refused_naming_it(name):

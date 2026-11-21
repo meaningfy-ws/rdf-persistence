@@ -17,8 +17,7 @@ from rdf_persistence_generation.extensions.shacl_constraints import (
     unique_key_query,
 )
 
-from .conftest import ROOT_SCHEMA, TOY
-from .golden import assert_matches_golden
+from .golden import ROOT_SCHEMA, TOY, assert_matches_golden
 
 CONTACT = """
 id: https://example.org/ns/contact

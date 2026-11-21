@@ -695,7 +695,7 @@ async def test_the_access_record_has_no_generic_route(scene) -> None:
         assert (await scene.http.get(path, headers=scene.headers("ada"))).status_code == 404, path
 
 
-# --- representations (task 5.3) -----------------------------------------------------------------
+# --- representations -----------------------------------------------------------------
 
 
 async def test_plain_json_points_at_the_context_by_a_link_header(scene) -> None:
@@ -868,7 +868,7 @@ async def test_a_tenant_root_replace_as_rdf_xml_that_cannot_be_written_is_a_406(
     assert len(scene.service.store.sent("update")) == writes, "nothing was written"
 
 
-# One case per class: produced but not accepted (turtle), an unknown type (text/plain stands for it).
+# Classes: produced but not accepted (turtle), an unknown type (text/plain stands for it).
 @pytest.mark.parametrize("content_type", [TURTLE, "text/plain"])
 async def test_a_body_in_another_format_is_a_415(scene, content_type) -> None:
     response = await scene.http.post(

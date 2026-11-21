@@ -1,4 +1,4 @@
-"""Adversarial tests of ``default_instance`` through ``rp-generate`` (technical-models stage 4, D-44..D-47).
+"""Adversarial tests of ``default_instance`` through ``rp-generate`` (technical-models D-44..D-47).
 
 Attacks: nesting, cycles, inheritance, a range of another module, an unquoted ``true``, a narrowed range,
 a class order the generator reshuffles.

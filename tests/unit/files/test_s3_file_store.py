@@ -105,7 +105,7 @@ async def test_a_server_error_status_is_store_unavailable_whatever_its_code(s3):
         await files.get(BUCKET, KEY)
 
 
-# One class: every BotoCoreError is mapped once in _run; EndpointConnectionError stands for it.
+# Class: every BotoCoreError is mapped once in _run; EndpointConnectionError stands for it.
 @pytest.mark.parametrize(
     "error",
     [EndpointConnectionError(endpoint_url=URL)],
@@ -212,7 +212,7 @@ BAD_KEYS = [
 ORDINARY_KEYS = ["a..b", "..x", "x/..y/z", "folder/ä b+c.bin"]
 
 
-# One class per call site of checked_blob_key: put, get and delete each call it on their own, so
+# Class: one per call site of checked_blob_key: put, get and delete each call it on their own, so
 # each is tried once ("../x"); every form stays on put (they are different security probes).
 @pytest.mark.parametrize(
     ("operation", "key"),
@@ -240,7 +240,7 @@ async def test_a_key_with_dots_inside_a_segment_is_a_key(s3, key):
     await files.put(BUCKET, key, b"x")
 
 
-# One class: botocore's ParamValidationError, mapped once in _run.
+# Class: botocore's ParamValidationError, mapped once in _run.
 @pytest.mark.parametrize("bucket", [""])
 async def test_a_bucket_name_boto_refuses_is_the_callers_error_not_an_outage(no_network, bucket):  # noqa: F811
     files = S3FileStore(

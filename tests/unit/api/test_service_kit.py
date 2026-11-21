@@ -1,4 +1,4 @@
-"""The service kit (task 5.1): the token and access dependencies, problem handlers, versions, start-up."""
+"""The service kit: the token and access dependencies, problem handlers, versions, start-up."""
 
 import asyncio
 import io
@@ -91,7 +91,7 @@ async def test_an_expired_token_is_a_401_problem_and_no_handler_runs(service, cl
     )
 
 
-# One case per class: no credential (absent), no token after the scheme, a scheme that is not
+# Classes: no credential (absent), no token after the scheme, a scheme that is not
 # Bearer, a token the verifier refuses.
 @pytest.mark.parametrize(
     "authorization",
@@ -388,7 +388,7 @@ async def test_without_an_id_source_two_creates_draw_different_ids_of_the_policy
     assert [len(i) for i in locations] == [length, length], "the policy's tenant id length"
 
 
-# --- the sweep of a live tenant (live-tenant-sweep task 3.2) -------------------------------------
+# --- the sweep of a live tenant (live-tenant-sweep) -------------------------------------
 
 
 async def test_the_kit_sweeps_a_tenant_with_its_own_store_files_and_iris(service, client) -> None:
@@ -455,7 +455,7 @@ async def test_the_kit_restores_no_more_than_the_settings_max_restore_bytes(
         )
 
 
-# --- removal of a file aggregate with its blobs (live-tenant-sweep task 4.1) ---------------------
+# --- removal of a file aggregate with its blobs (live-tenant-sweep) ---------------------
 
 
 async def test_the_kit_removes_an_aggregate_with_its_blobs(service, client) -> None:

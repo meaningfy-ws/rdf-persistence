@@ -126,7 +126,7 @@ def test_a_blank_node_in_delete_or_insert_is_refused(tmp_path, clause, pattern):
     assert "step 1" in refused, "the step is named"
 
 
-# equivalence class: a predicate of the toolkit's own list; one per clause stands for it
+# Class: a predicate of the toolkit's own list; one per clause stands for it
 @pytest.mark.parametrize("predicate", [v.VERSION])
 @pytest.mark.parametrize("clause", ["insert_pattern", "delete_pattern"])
 def test_a_template_naming_a_toolkit_predicate_is_refused(
@@ -156,7 +156,7 @@ def test_graph_and_service_are_refused_in_any_pattern(tmp_path, clause, keyword)
     assert clause in refusal(tmp_path, step(**fields)), "the pattern is named"
 
 
-# equivalence classes: a reserved ?rp_ variable (?rp_x is the same), the dollar form
+# Classes: a reserved ?rp_ variable (?rp_x is the same), the dollar form
 @pytest.mark.parametrize("variable", ["?rp_registry", "$rp_registry"])
 def test_a_reserved_variable_is_refused(tmp_path, variable):
     refused = refusal(

@@ -1,4 +1,4 @@
-"""Adversarial tests of how the kit passes the toolkit settings on (technical-models stage 3, task 3.3, PD-7).
+"""Adversarial tests of how the kit passes the toolkit settings on (technical-models PD-7).
 
 Attacks: 'a group not passed on by the kit'. Every slot of a group the kit consumes is given a value
 no default has, and each object the kit builds must show it.

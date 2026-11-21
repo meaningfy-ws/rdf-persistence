@@ -1,4 +1,4 @@
-"""``IdSpec``, ``IriPolicy`` and the ``ServiceSettings`` fields of the IRI policy (iri-policy task 1.1, PD-1, PD-2)."""
+"""``IdSpec``, ``IriPolicy`` and the ``ServiceSettings`` fields of the IRI policy (iri-policy PD-1, PD-2)."""
 
 import re
 
@@ -220,7 +220,7 @@ def test_the_default_part_and_loaded_graph_templates_need_neither_type_tenant_no
     )
 
 
-# app-level-data task 1.1 (PD-1): the application template
+# app-level-data (PD-1): the application template
 
 
 def test_the_default_application_template_is_base_app() -> None:

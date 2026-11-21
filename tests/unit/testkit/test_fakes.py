@@ -67,7 +67,7 @@ async def test_two_fake_sessions_over_one_store_see_the_same_data(no_network):  
         )
 
 
-# --- fake_session under a consumer's IRI policy (iri-policy task 3.4) -------------------------------
+# --- fake_session under a consumer's IRI policy (iri-policy) -------------------------------
 
 
 def _consumer_iris() -> Iris:

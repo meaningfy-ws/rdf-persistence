@@ -1,7 +1,7 @@
 """Steps of ``generation.feature``: ``rp-generate`` run on a copy of the toy library (PD-11).
 
 Each scenario copies the toy library's schemas, migrations and ``pyproject.toml`` to ``tmp_path`` and
-calls ``cli.main`` there, as the command line does. TC-41 to TC-45 of ``generator-package`` task 4.1.
+calls ``cli.main`` there, as the command line does. TC-41 to TC-45 of ``generator-package``.
 """
 
 import shutil

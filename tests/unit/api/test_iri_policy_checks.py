@@ -1,4 +1,4 @@
-"""Checks and ownership go through ``Iris`` (iri-policy task 3.3, PD-4, PD-7, PD-11).
+"""Checks and ownership go through ``Iris`` (iri-policy PD-4, PD-7, PD-11).
 
 Under the flat policy a root, a part and a loaded graph are all minted beside each other under the
 tenant's id, so no check can walk IRI parents: the session matches the policy's templates, the
@@ -20,7 +20,7 @@ from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import ROLES, caller, direct, held
+from tests.toy import GENERATED, ROLES, caller, direct, held
 from tests.unit.api.iri_policy_helpers import (
     ADA,
     BASE,
@@ -39,7 +39,6 @@ from tests.unit.api.iri_policy_helpers import (
     replace,
     session_on,
 )
-from tests.unit.conftest import GENERATED
 
 
 @pytest.fixture
@@ -52,7 +51,7 @@ async def store():
 # -- "a hand-made IRI", "an aggregate IRI with a part's type" -------------------------------------
 
 
-# equivalence class: no aggregate template matches; hand-made and a part's type are scenarios of their own
+# Class: no aggregate template matches; hand-made and a part's type are scenarios of their own
 @pytest.mark.parametrize(
     "iri",
     [

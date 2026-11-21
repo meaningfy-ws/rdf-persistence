@@ -185,7 +185,7 @@ DATA_PLANE = {
 @pytest.mark.parametrize("operation", DATA_PLANE)
 @pytest.mark.parametrize(
     ("status", "error"),
-    # One case per branch of _raise_for_status; 500 stands for the whole `not is_success`
+    # Class: one per branch of _raise_for_status; 500 stands for the whole `not is_success`
     # fall-through (503, 401, 403 are the same branch), 404 and 405 are the explicit pair.
     [
         (405, DatabaseGone),
@@ -201,7 +201,7 @@ async def test_data_plane_statuses_map_to_errors(operation, status, error):
 
 
 @pytest.mark.parametrize("operation", DATA_PLANE)
-# One class: every httpx.TransportError is mapped once in _http; ConnectError stands for it.
+# Class: every httpx.TransportError is mapped once in _http; ConnectError stands for it.
 @pytest.mark.parametrize("failure", [httpx.ConnectError("refused")])
 async def test_an_unreachable_store_is_unavailable(operation, failure):
     def refuse(request):
@@ -259,7 +259,7 @@ ADMIN_PLANE = {
 
 
 @pytest.mark.parametrize("operation", [*DATA_PLANE, *ADMIN_PLANE])
-# One class: every other non-success status falls to the one `not response.is_success` branch.
+# Class: every other non-success status falls to the one `not response.is_success` branch.
 @pytest.mark.parametrize("status", [301])
 async def test_any_other_unsuccessful_status_is_unavailable(operation, status):
     store, _ = store_answering(reply(status, b"nope"))

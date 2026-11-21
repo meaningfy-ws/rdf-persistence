@@ -124,7 +124,7 @@ async def test_a_listed_action_is_allowed_and_an_unlisted_one_is_refused(
     )
 
 
-# One class for the callers without administer (mia stands for them; she holds delete).
+# Class: the callers without administer (mia stands for them; she holds delete).
 @pytest.mark.parametrize("who", ["ada", "mia", "admin"])
 async def test_deleting_the_tenant_is_allowed_exactly_when_the_tenant_read_lists_delete(
     scene, who

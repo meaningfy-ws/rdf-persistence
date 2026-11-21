@@ -158,7 +158,7 @@ class MovedModule:
     """One generated domain module that left ``core`` for its theme (domain-model-per-theme PD-9).
 
     The old path is the module of ``core/domain/generated``; the new one is the same module name in
-    ``<theme>/domain/generated``. A row has no on switch: it stands at ``new`` from task 2.1.
+    ``<theme>/domain/generated``. A row has no on switch: it stands at ``new`` from the start.
     """
 
     theme: str
@@ -306,7 +306,7 @@ PLACED: tuple[Placed, ...] = (
         ("ReferrerRow",),
         tail="rows.rp_persistence_rows",
     ),
-    # D-8, settled at stage 3: `schema/vocabulary` builds all six term bundles, so `schema` is their lowest
+    # D-8: `schema/vocabulary` builds all six term bundles, so `schema` is their lowest
     # user (PD-2); a bundle placed in `persistence` or `migrations` would make `schema` import a higher
     # theme. Their slots range over `SparqlTerm` of `core`, so no slot reaches a class of a higher theme.
     Placed(

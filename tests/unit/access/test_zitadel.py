@@ -150,7 +150,7 @@ async def test_find_by_email_with_no_match_is_not_found():
 
 @pytest.mark.parametrize(
     ("state", "active"),
-    # One class: `state is ACTIVE`; INACTIVE and LOCKED stand for every non-active state.
+    # Class: `state is ACTIVE`; INACTIVE and LOCKED stand for every non-active state.
     [
         ("USER_STATE_ACTIVE", True),
         ("USER_STATE_INACTIVE", False),
@@ -341,7 +341,7 @@ async def test_a_role_change_on_an_unknown_account_is_not_found(method):
 
 @pytest.mark.parametrize(
     ("method", "action", "state"),
-    # One class (`state != wanted`) per direction, since each direction has its own wanted state.
+    # Class: `state != wanted`, one per direction, since each direction has its own wanted state.
     [
         ("disable", "deactivate", "USER_STATE_ACTIVE"),
         ("enable", "reactivate", "USER_STATE_INACTIVE"),
@@ -472,7 +472,7 @@ CALLS = {
 
 
 @pytest.mark.parametrize("method", CALLS)
-# One class (the `not response.is_success` branch of _send); 500 and 401 are the two the name gives.
+# Class: the `not response.is_success` branch of _send; 500 and 401 are the two the name gives.
 @pytest.mark.parametrize("status", [500, 401])
 async def test_a_server_error_or_a_refused_service_token_is_identity_unavailable(method, status):
     transport = httpx.MockTransport(lambda request: answer(status=status))

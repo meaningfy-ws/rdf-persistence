@@ -118,7 +118,7 @@ UNREADABLE = {
 }
 
 
-# design RF-1: such a marker counts as none. Equivalence classes: a datetime with no zone (naive), a value
+# design RF-1: such a marker counts as none. Classes: a datetime with no zone (naive), a value
 # that is no datetime (ill-typed; a date-only, a plain and a number literal are the same)
 @pytest.mark.parametrize("kind", UNREADABLE)
 @pytest.mark.parametrize("remove", [False, True])

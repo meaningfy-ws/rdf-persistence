@@ -1,4 +1,4 @@
-"""The end-to-end proof (task 5.7): the toy library served over Fuseki, Garage and Zitadel.
+"""The end-to-end proof: the toy library served over Fuseki, Garage and Zitadel.
 
 Real JWT access tokens of the machine users (JWT-profile grant) are verified against the Zitadel
 container's keys. Only public names are used (``assert_public_imports`` checks this very file).

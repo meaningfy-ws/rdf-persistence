@@ -1,4 +1,4 @@
-"""``Iris`` for the application under hostile input and unusual policies (app-level-data task 2.1, PD-2, PD-3).
+"""``Iris`` for the application under hostile input and unusual policies (app-level-data PD-2, PD-3).
 
 Every test names the production change that would make it fail. The Hypothesis tests state invariants
 over many policies (default, flat, ``{tenant_id}``-only templates, short ids, ``{deployment}`` and

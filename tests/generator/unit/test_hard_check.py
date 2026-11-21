@@ -1,4 +1,4 @@
-"""The hard check (task 1.6, PD-11, PD-23): IRIs, titles, descriptions, meanings, paths, mixins."""
+"""The hard check (PD-11, PD-23): IRIs, titles, descriptions, meanings, paths, mixins."""
 
 import shutil
 from dataclasses import dataclass
@@ -34,12 +34,11 @@ from rdf_persistence_generation.problems import format_problem
 from .checks import DEFAULT_INSTANCE_SCHEMA
 from .checks import hard_check_problems as problems_of
 from .conftest import (
-    ROOT_SCHEMA,
     TOOLKIT_DOMAIN,
-    Breaker,
     theme_package,
     toolkit_domain_targets,
 )
+from .golden import ROOT_SCHEMA, Breaker
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
 GENERATION_MODEL = (
@@ -1139,7 +1138,7 @@ def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings(
     `rp_iris_services` and `rp_iris_templates`, are the ninth and the tenth (thematic-structure 3.1); the
     `persistence` theme's three (`rp_persistence_services`, `_settings`, `_adapters`) and the `migrations`
     theme's one are the eleventh to the fourteenth (4.2). `rp_wire` is the `access` theme's
-    `rp_access_adapters` from stage 5, beside `rp_access_services`, `rp_access_settings` and the
+    `rp_access_adapters`, beside `rp_access_services`, `rp_access_settings` and the
     `tenancy` theme's `rp_tenancy_services`: seventeen in all (5.1). The `events` theme's two
     (`rp_events_services`, `rp_events_settings`) and the `collaboration` theme's one
     (`rp_collaboration_services`) make twenty (6.1). The four theme targets of the domain model
