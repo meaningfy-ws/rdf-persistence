@@ -78,7 +78,7 @@ def toolkit_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         ignore=shutil.ignore_patterns("migrations", "__pycache__", "generated"),
     )
     for module in ROOTS_USERS:
-        monkeypatch.setattr(f"{module}.TOOLKIT_ROOTS", (tmp_path.resolve(),))
+        monkeypatch.setattr(f"{module}.TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
     (tmp_path / "pyproject.toml").write_text(toolkit_domain_targets(), encoding="utf-8")
     return tmp_path
 

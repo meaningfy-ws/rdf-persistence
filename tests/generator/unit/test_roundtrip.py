@@ -62,7 +62,7 @@ def test_a_round_trip_that_loses_a_value_is_caught(monkeypatch: pytest.MonkeyPat
     def lossy(graph: Graph, cls: ClassDefinition) -> dict:
         return {k: v for k, v in real(graph, cls).items() if k != "isbn"}
 
-    monkeypatch.setattr(toy.documents, "frame", lossy)
+    monkeypatch.setattr(toy.documents, "frame", lossy)  # X3
     with pytest.raises(AssertionError, match="objects differ"):
         round_trip(toy, book, "Book")
 

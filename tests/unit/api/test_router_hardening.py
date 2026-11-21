@@ -137,8 +137,12 @@ async def test_a_body_of_too_many_objects_is_a_413_before_it_is_typed_or_expande
 
         return wrapper
 
-    monkeypatch.setattr(Documents, "_plain_document", spied("typed", Documents._plain_document))
-    monkeypatch.setattr(Documents, "_triples", staticmethod(spied("expanded", Documents._triples)))
+    monkeypatch.setattr(  # X2
+        Documents, "_plain_document", spied("typed", Documents._plain_document)
+    )
+    monkeypatch.setattr(  # X2
+        Documents, "_triples", staticmethod(spied("expanded", Documents._triples))
+    )
     chapters = [{"number": n} for n in range(LimitSettings().max_document_nodes + 1)]
     response = await scene.http.post(
         f"{scene.tenant}/books",

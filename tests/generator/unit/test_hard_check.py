@@ -1192,8 +1192,10 @@ def toolkit_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     shutil.copytree(
         METAMODEL.parent, tmp_path / MODEL_COPY, ignore=shutil.ignore_patterns("migrations")
     )
-    monkeypatch.setattr(f"{PACKAGE_CHECK}.TOOLKIT_ROOTS", (tmp_path.resolve(),))
-    monkeypatch.setattr("rdf_persistence_generation.steps.TOOLKIT_ROOTS", (tmp_path.resolve(),))
+    monkeypatch.setattr(f"{PACKAGE_CHECK}.TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
+    monkeypatch.setattr(  # X1
+        "rdf_persistence_generation.steps.TOOLKIT_ROOTS", (tmp_path.resolve(),)
+    )
     (tmp_path / "pyproject.toml").write_text(toolkit_domain_targets(), encoding="utf-8")
     return tmp_path
 

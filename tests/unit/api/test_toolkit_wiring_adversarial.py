@@ -57,7 +57,7 @@ async def test_the_events_route_gets_every_slot_of_the_sse_group(
         return
         yield  # an async generator that ends at once
 
-    monkeypatch.setattr("rdf_persistence.api.entrypoints.sse.event_stream", fake_stream)
+    monkeypatch.setattr("rdf_persistence.api.entrypoints.sse.event_stream", fake_stream)  # X2
     toy = ToyService(toolkit=ODD)
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         made = await http.post("/libraries", json=TENANT_BODY, headers=toy.bearer("ada"))
@@ -80,7 +80,9 @@ async def test_the_restore_gets_the_limits_group_of_the_kit(
         seen.update(kwargs)
         return "restored"
 
-    monkeypatch.setattr("rdf_persistence.api.entrypoints.kit.tenant_dump.restore", fake_restore)
+    monkeypatch.setattr(  # X2
+        "rdf_persistence.api.entrypoints.kit.tenant_dump.restore", fake_restore
+    )
     kit = ToyService(toolkit=ODD).kit
     await kit.restore_tenant(io.BytesIO(b""), "ada")
     assert seen["limits"] is ODD.limits, "restore was not given the kit's limits"

@@ -47,9 +47,9 @@ def without_linkml(monkeypatch: pytest.MonkeyPatch) -> None:
         m for m in sys.modules if m.startswith("linkml.")
     ]:  # a cached submodule would import
         monkeypatch.delitem(sys.modules, name)
-    monkeypatch.setitem(sys.modules, "linkml", None)
-    monkeypatch.delitem(sys.modules, "rdf_persistence_generation.steps")
-    monkeypatch.delattr(generation, "steps")  # a from-import would find the attribute
+    monkeypatch.setitem(sys.modules, "linkml", None)  # X5
+    monkeypatch.delitem(sys.modules, "rdf_persistence_generation.steps")  # X5
+    monkeypatch.delattr(generation, "steps")  # X5: a from-import would find the attribute
 
 
 @pytest.mark.usefixtures("without_linkml")

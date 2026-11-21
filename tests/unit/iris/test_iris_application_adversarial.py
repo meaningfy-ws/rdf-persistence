@@ -246,7 +246,7 @@ def test_a_tenant_read_as_an_aggregate_of_the_application_is_refused_on_its_own(
         object_id=IdSpec(kind=IdKind.RANDOM, length=8),
     )
     # the probes draw with ``secrets``: pin them, so refusal (a) cannot fire first by chance
-    monkeypatch.setattr(
+    monkeypatch.setattr(  # X4
         iris_module, "draw_id", lambda spec: "abababab" if spec.alphabet == "ab" else "zzzzzzzz"
     )
     with pytest.raises(InvalidIri, match="is one of its aggregates"):

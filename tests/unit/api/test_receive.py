@@ -359,7 +359,7 @@ async def test_a_key_error_while_handing_over_leaves_the_message_unacked(
     async def broken(self, activity_iri: str) -> bool:
         raise KeyError("a lookup that is not a missing tenant")
 
-    monkeypatch.setattr(Session, "is_recorded", broken)
+    monkeypatch.setattr(Session, "is_recorded", broken)  # X3
     await sent(world)
     assert len(world.there.activities) == 1, "not handed over"
     monkeypatch.undo()
@@ -373,7 +373,7 @@ async def test_an_application_activity_without_an_application_class_is_logged_an
     def no_application(principal: str):
         raise LookupError("the schema declares no application class")
 
-    monkeypatch.setattr(world.cat.kit, "application_session", no_application)
+    monkeypatch.setattr(world.cat.kit, "application_session", no_application)  # X3
     caplog.set_level(logging.DEBUG, LOGGER)
     await sent(world, tenant=world.cat.kit.tenancy.application)
     assert len(world.there.activities) == 1, "only the first message reached the observer"

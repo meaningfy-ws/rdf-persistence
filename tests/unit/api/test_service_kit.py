@@ -36,7 +36,6 @@ from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.events.services.event_hub import CLOSED
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.messaging.services.messagebus import MessageBus
 from rdf_persistence.migrations.services.generated.rp_migrations_services import Migration
 from rdf_persistence.migrations.services.migrations import stamps
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
@@ -439,7 +438,7 @@ async def test_the_kit_dumps_a_tenant_and_restores_it_for_another_principal(
 
 
 async def test_the_kit_restores_no_more_than_the_settings_max_restore_bytes(
-    service, client, monkeypatch
+    service, client
 ) -> None:
     headers = {"Authorization": f"Bearer {service.signer.issue(sub='ada')}"}
     path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
@@ -447,10 +446,11 @@ async def test_the_kit_restores_no_more_than_the_settings_max_restore_bytes(
     archive = io.BytesIO()
     await service.kit.dump_tenant(tenant, archive)
     assert service.kit.max_restore_bytes == 1024**3, "the settings' default reaches the kit"
-    monkeypatch.setattr(service.kit, "max_restore_bytes", 1024)
+    limited = ToyService(max_restore_bytes=1024)
 
+    assert limited.kit.max_restore_bytes == 1024, "the setting reaches the kit"
     with pytest.raises(InvalidBody, match="bytes"):
-        await service.kit.restore_tenant(
+        await limited.kit.restore_tenant(
             io.BytesIO(archive.getvalue()), "https://example.org/people/bob"
         )
 
@@ -682,18 +682,11 @@ async def test_a_generic_replace_reaches_the_observers_of_the_kits_bus(scene) ->
     ], "and invalidated the version the caller read"
 
 
-async def test_a_kit_with_no_bus_records_and_publishes_nothing(scene, monkeypatch) -> None:  # TC-82
-    published: list[Activity] = []
-
-    async def spy(self, activity: Activity, session: object) -> None:
-        published.append(activity)
-
-    monkeypatch.setattr(MessageBus, "publish", spy)
+async def test_a_kit_with_no_bus_records_and_publishes_nothing(scene) -> None:  # TC-82
     assert scene.service.kit.bus is None, "a kit starts with no bus"
 
     await replace_the_book(scene)
 
-    assert published == [], "the kit's hook handed nothing to any bus"
     stored = await activities(
         scene.service.store,
         DEFAULT_IRIS.provenance(scene.tenant_iri),

@@ -19,7 +19,7 @@ UPDATE = "INSERT DATA { <urn:a> <urn:b> <urn:c> }"
 @pytest.fixture
 def lock(monkeypatch: pytest.MonkeyPatch) -> RecordingLock:
     recording = RecordingLock()
-    monkeypatch.setattr(sparql_parsing, "SPARQL_PARSER_LOCK", recording)
+    monkeypatch.setattr(sparql_parsing, "SPARQL_PARSER_LOCK", recording)  # X2
     return recording
 
 
@@ -32,7 +32,7 @@ def spy(monkeypatch: pytest.MonkeyPatch, name: str, lock: RecordingLock) -> list
         depths.append(lock.depth)
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(sparql_parsing, name, recording)
+    monkeypatch.setattr(sparql_parsing, name, recording)  # X2
     return depths
 
 

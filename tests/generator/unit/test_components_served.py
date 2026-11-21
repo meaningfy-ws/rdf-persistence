@@ -61,7 +61,7 @@ def test_a_class_declared_by_two_served_schemas_stays_in_both_files(
 ):
     first = schema(tmp_path, "first", ("Dup", "A"))
     second = schema(tmp_path, "second", ("Dup", "B"))
-    monkeypatch.setattr(components, "SERVED_SCHEMAS", (first, second))
+    monkeypatch.setattr(components, "SERVED_SCHEMAS", (first, second))  # X1
     assert published(first) == {"Dup", "A"}
     assert published(second) == {"Dup", "B"}
 
@@ -71,7 +71,7 @@ def test_a_class_declared_by_two_served_schemas_makes_the_merge_raise_naming_bot
 ):
     first = schema(tmp_path, "first", ("Dup", "A"))
     second = schema(tmp_path, "second", ("Dup", "B"))
-    monkeypatch.setattr(components, "SERVED_SCHEMAS", (first, second))
+    monkeypatch.setattr(components, "SERVED_SCHEMAS", (first, second))  # X1
     folders = write_folders(tmp_path, [first, second])
     with pytest.raises(DuplicateComponentError, match=r"(?s)Dup.*out_first.*out_second"):
         merge_components(folders)
@@ -83,6 +83,6 @@ def test_a_served_schema_listed_before_the_one_it_imports_is_an_error_naming_bot
     """The order the SERVED_SCHEMAS comment forbids ("a schema comes before the ones that import it")."""
     low = schema(tmp_path, "low", ("Low",))
     high = schema(tmp_path, "high", ("High",), imports=("low",))
-    monkeypatch.setattr(components, "SERVED_SCHEMAS", (high, low))
+    monkeypatch.setattr(components, "SERVED_SCHEMAS", (high, low))  # X1
     with pytest.raises(SchemaGenerationError, match=r"(?s)high.*low"):
         components.render(high)

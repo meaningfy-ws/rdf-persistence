@@ -9,12 +9,14 @@ from rdflib import RDF, XSD, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.compare import isomorphic
 
 from rdf_persistence.core.domain.exceptions import InvalidBody, SparqlError
-from rdf_persistence.migrations.services.generated.rp_migrations_services import MigrationStep
+from rdf_persistence.migrations.services.generated.rp_migrations_services import (
+    Migration,
+    MigrationStep,
+)
 from rdf_persistence.migrations.services.migrations import Chain
 from rdf_persistence.migrations.services.migrations import chain_of as chain_of_schema
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
-from rdf_persistence.tenancy.services import migration_runner
 from rdf_persistence.tenancy.services.migration_runner import migrate_dataset
 from tests.migration_helpers import (
     BOOK,
@@ -169,27 +171,33 @@ def test_a_long_value_from_the_dump_is_cut_in_the_reason(lib_chain, toolkit_chai
     assert "..." in str(caught.value), "and the cut is marked"
 
 
-NOTHING = "INSERT DATA { GRAPH <urn:g> { <urn:a> <urn:b> <urn:c> } }"
-DROP_STAMPS = f"DELETE WHERE {{ GRAPH <{STAMPS}> {{ ?s ?p ?o }} }}"
+class Inert(Dataset):
+    """A dataset whose update does nothing: the request leaves the stamp where it was."""
+
+    def update(self, *_, **__) -> None:
+        return None
+
+
+class Unstamping(Dataset):
+    """A dataset whose update empties the stamps graph: the request leaves no stamp."""
+
+    def update(self, *_, **__) -> None:
+        self.graph(STAMPS).remove((None, None, None))
 
 
 def test_a_request_that_leaves_the_stamp_where_it_was_is_refused_as_going_backwards(
-    lib_chain, toolkit_chain, monkeypatch
+    lib_chain, toolkit_chain
 ):
     """The forward-only rule of the store (PD-23) holds in memory: the stamp read back is not ``to`` or later."""
-    monkeypatch.setattr(migration_runner, "migration_request", lambda *_: NOTHING)
-    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
+    data = dataset(stamp(RP, "1"), stamp(LIB, "1"), kind=Inert)
     with pytest.raises(InvalidBody) as caught:
         migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
     assert "went backwards" in str(caught.value), "the reason says the stamp did not move forward"
     assert f"1__2 of {LIB}" in str(caught.value), "the reason names the migration"
 
 
-def test_a_request_that_removes_the_stamp_is_refused_as_leaving_none(
-    lib_chain, toolkit_chain, monkeypatch
-):
-    monkeypatch.setattr(migration_runner, "migration_request", lambda *_: DROP_STAMPS)
-    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
+def test_a_request_that_removes_the_stamp_is_refused_as_leaving_none(lib_chain, toolkit_chain):
+    data = dataset(stamp(RP, "1"), stamp(LIB, "1"), kind=Unstamping)
     with pytest.raises(InvalidBody, match="there is no stamp") as caught:
         migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
     assert "None" not in str(caught.value), "a missing stamp is not the version 'None' (PD-25.8)"
@@ -217,16 +225,15 @@ def test_what_is_not_the_requests_fault_escapes_as_it_is(lib_chain, toolkit_chai
         migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
 
 
-def test_a_defect_in_our_own_request_text_escapes_and_is_not_blamed_on_the_dump(
-    lib_chain, toolkit_chain, monkeypatch
-):
-    def broken(*_):
-        raise SparqlError("a template of ours is wrong")
-
-    monkeypatch.setattr(migration_runner, "migration_request", broken)
-    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
-    with pytest.raises(SparqlError):
-        migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
+def test_a_defect_in_our_own_request_text_escapes_and_is_not_blamed_on_the_dump(toolkit_chain):
+    """A schema id SPARQL cannot carry reaches the request builder, which refuses it as a defect of ours."""
+    schema = "https://ex.org/a b"
+    step = Migration(schema_id=schema, from_version="1", to_version="2")
+    hand_built: Chain = (("1", "2"), (step,))
+    data = dataset(stamp(RP, "1"), stamp(schema, "1"))
+    with pytest.raises(SparqlError) as caught:
+        migrate_dataset(data, [(RP, toolkit_chain), (schema, hand_built)], STAMPS)
+    assert "migration_request" in {frame.name for frame in caught.traceback}, "the attack ran it"
 
 
 # -- collection-has-part TC-2 to TC-6: the toolkit's 2 to 3 restates the members of a collection ----------

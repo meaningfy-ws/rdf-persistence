@@ -221,7 +221,7 @@ def test_a_request_with_the_wrong_number_of_operations_is_refused(tmp_path, monk
     from rdf_persistence.migrations.services import migrations
 
     smuggled = migrations.migration_request
-    monkeypatch.setattr(
+    monkeypatch.setattr(  # X3
         migrations,
         "migration_request",
         lambda m, stamps: smuggled(m, stamps) + ";\nCLEAR ALL",

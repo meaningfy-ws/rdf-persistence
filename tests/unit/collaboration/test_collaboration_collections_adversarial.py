@@ -41,7 +41,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
     LimitSettings,
 )
 from rdf_persistence.persistence.services.listing import Listings
-from rdf_persistence.persistence.services.mapper import Mapper, UnitOfWork
+from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore, fake_session
@@ -64,6 +64,7 @@ from tests.toy import (
     role,
     shelf_iri,
     toy_mapper,
+    toy_mapper_limited,
 )
 from tests.unit.collaboration.collaboration_data import (
     HEADS,
@@ -119,8 +120,8 @@ async def second_writer(store: FakeStore):
         yield other
 
 
-def as_ada(collaboration, session):
-    return collaboration(caller(principal=ADA), held(role("librarian")), session)
+def as_ada(collaboration, session, mapper=None):
+    return collaboration(caller(principal=ADA), held(role("librarian")), session, mapper)
 
 
 def as_bob(collaboration, session, *hidden: str):
@@ -645,52 +646,57 @@ async def books_through_one_transaction(session, count: int, first: int = 1) -> 
 LIMIT = 6  # the limit the three tests below lower the cascade's to: the fake store is slow at 500
 
 
-@pytest.fixture
-def small_limit(monkeypatch):
-    """The cascade counts against the mapper's ``max_roots``; the fake store takes minutes at 500."""
-    monkeypatch.setattr(Mapper, "max_roots", property(lambda self: LIMIT))
+def as_limited_ada(collaboration, session):
+    """Ada through a mapper of ``max_roots`` ``LIMIT``: the cascade counts against it; the fake store takes minutes at 500."""
+    return as_ada(collaboration, session, toy_mapper_limited(LIMIT))
 
 
 async def test_rule_members_that_make_the_collection_and_members_exactly_the_limit_are_deleted(
-    toy_session, collaboration, small_limit
+    toy_session, collaboration
 ):
     iris = await books_through_one_transaction(toy_session, LIMIT - 1)
     await cascade_put(toy_session, a_shelf(S1, membership_rule=MembershipRule()))
-    await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
+    await as_limited_ada(collaboration, toy_session).delete_cascade(
+        S1, await version(toy_session, S1)
+    )
     assert not await cascade_stored(toy_session, S1), "the shelf is gone"
     assert await heads_of(toy_session, iris) == {}, "and the books with it"
 
 
 async def test_rule_members_one_over_the_limit_are_refused_and_nothing_is_deleted(
-    toy_session, collaboration, small_limit
+    toy_session, collaboration
 ):
     iris = await books_through_one_transaction(toy_session, LIMIT)
     await cascade_put(toy_session, a_shelf(S1, membership_rule=MembershipRule()))
     with pytest.raises(CommitTooLarge, match=str(LIMIT)):
-        await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
+        await as_limited_ada(collaboration, toy_session).delete_cascade(
+            S1, await version(toy_session, S1)
+        )
     assert await cascade_stored(toy_session, S1), "the shelf is stored"
     assert len(await heads_of(toy_session, iris)) == LIMIT, "every book is stored"
     assert not await marker_left(toy_session), "no commit marker"
 
 
-async def test_named_and_rule_members_count_once_each_against_the_limit(
-    toy_session, collaboration, small_limit
-):
+async def test_named_and_rule_members_count_once_each_against_the_limit(toy_session, collaboration):
     iris = await books_through_one_transaction(toy_session, LIMIT - 1)
     await cascade_put(toy_session, a_shelf(S1, has_part=iris[:3], membership_rule=MembershipRule()))
-    await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
+    await as_limited_ada(collaboration, toy_session).delete_cascade(
+        S1, await version(toy_session, S1)
+    )
     assert not await cascade_stored(toy_session, S1), "the same books named and matched count once"
 
 
 async def test_a_rule_member_that_is_the_collection_itself_is_not_counted_twice(
-    toy_session, collaboration, small_limit
+    toy_session, collaboration
 ):  # a shelf of shelves whose rule matches every shelf, itself included
     await cascade_put(toy_session, a_shelf(A, member_class="Shelf"))
     await cascade_put(toy_session, a_shelf(B, member_class="Shelf"))
     await cascade_put(
         toy_session, a_shelf(S1, member_class="Shelf", membership_rule=MembershipRule())
     )
-    await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
+    await as_limited_ada(collaboration, toy_session).delete_cascade(
+        S1, await version(toy_session, S1)
+    )
     assert not any([await cascade_stored(toy_session, i) for i in (S1, A, B)]), "all three are gone"
 
 

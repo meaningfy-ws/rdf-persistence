@@ -29,7 +29,7 @@ ex:Shape a sh:NodeShape ; sh:targetClass ex:Thing ; sh:closed true ; sh:ignoredP
 @pytest.fixture
 def lock(monkeypatch: pytest.MonkeyPatch) -> RecordingLock:
     recording = RecordingLock()
-    monkeypatch.setattr(sparql_parsing, "SPARQL_PARSER_LOCK", recording)
+    monkeypatch.setattr(sparql_parsing, "SPARQL_PARSER_LOCK", recording)  # X2
     return recording
 
 
@@ -60,7 +60,7 @@ def test_validate_locked_holds_the_lock_for_the_whole_validation(monkeypatch, lo
         depths.append(lock.depth)
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(shacl, "validate", spying)
+    monkeypatch.setattr(shacl, "validate", spying)  # X2
     conforms, _, _ = shacl.validate_locked(thing(named=True), copy_of(shapes))
     assert depths == [1], "pyshacl ran with the lock held"
     assert lock.depth == 0

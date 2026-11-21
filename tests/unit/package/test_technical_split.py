@@ -204,7 +204,7 @@ def test_a_stale_toolkit_folder_stops_the_service_at_start(monkeypatch):
     from tests.toy_service import ToyService
 
     stale = ROOT / "rdf_persistence" / "domain" / "generated" / "service"
-    monkeypatch.setattr(openapi, "served_folders", lambda: (stale,))
+    monkeypatch.setattr(openapi, "served_folders", lambda: (stale,))  # X1
     with pytest.raises(OSError):
         ToyService()
 

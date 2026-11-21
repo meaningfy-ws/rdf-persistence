@@ -101,9 +101,11 @@ def stamp(schema: str, version: str) -> tuple[URIRef, URIRef, Literal]:
     return URIRef(schema), STAMP, Literal(version)
 
 
-def dataset(*stamps: tuple[URIRef, URIRef, Literal], isbn: URIRef = OLD_ISBN) -> Dataset:
-    """A dump with the given stamps, a book whose ISBN is under ``isbn``, a loaded graph and its registry."""
-    data = Dataset()
+def dataset(
+    *stamps: tuple[URIRef, URIRef, Literal], isbn: URIRef = OLD_ISBN, kind: type[Dataset] = Dataset
+) -> Dataset:
+    """A dump of class ``kind`` with the given stamps, a book whose ISBN is under ``isbn``, a loaded graph and its registry."""
+    data = kind()
     for statement in stamps:
         data.graph(STAMPS).add(statement)
     data.graph(BOOK).add((BOOK, v.VERSION, TOKEN))

@@ -169,7 +169,7 @@ def test_every_served_schema_is_merged_into_one_service_file_in_served_order(
     extra.write_text(EXTRA_SERVED, encoding="utf-8")
     dependent = toy_copy / "extra_dependent.yaml"
     dependent.write_text(EXTRA_SERVED_DEPENDENT, encoding="utf-8")
-    monkeypatch.setattr(
+    monkeypatch.setattr(  # X1
         typescript, "SERVED_SCHEMAS", (*typescript.SERVED_SCHEMAS, extra, dependent)
     )
     rendered_files = typescript.render(toy_copy / ROOT_SCHEMA)
@@ -222,7 +222,7 @@ def test_a_module_that_names_a_served_type_imports_the_merged_file(
         encoding="utf-8",
     )
     served = (*typescript.SERVED_SCHEMAS, toy_copy / "served" / "extra_served.yaml")
-    monkeypatch.setattr(typescript, "SERVED_SCHEMAS", served)
+    monkeypatch.setattr(typescript, "SERVED_SCHEMAS", served)  # X1
 
     files = {f.name: f.text for f in typescript.render(root)}
 

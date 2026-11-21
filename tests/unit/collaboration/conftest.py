@@ -10,6 +10,7 @@ from rdf_persistence.access.services.access import AccessRules, load_role_defini
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.mapper import Mapper
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore
@@ -25,14 +26,17 @@ def collaboration(toy_session: Session) -> Callable[..., Collaboration]:
     rules = AccessRules(load_role_definitions(ROLES))
 
     def build(
-        who: VerifiedCaller, access: CallerAccess, session: Session | None = None
+        who: VerifiedCaller,
+        access: CallerAccess,
+        session: Session | None = None,
+        mapper: Mapper | None = None,
     ) -> Collaboration:
         return Collaboration(
             session or toy_session,
             view=view,
             rules=rules,
             iris=DEFAULT_IRIS,
-            mapper=toy_mapper(),
+            mapper=mapper or toy_mapper(),
             models=generated_models(*MODULES),
             listings=Listings(view),
             caller=who,

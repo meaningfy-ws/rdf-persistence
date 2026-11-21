@@ -42,7 +42,16 @@ runs the generator's integration tests, never in CI.
 
 [start=3]
 . Prefer one fake that implements the real port, with a small API (`add`, `on(name, outcome,
-  times)`, `sent`), over `MagicMock`.
+  times)`, `sent`), over `MagicMock`. A test does not `monkeypatch.setattr` or `delattr` toolkit
+  code (`rdf_persistence*`); it uses a real seam: a setting, a constructor argument, a subclass of a
+  third-party class, or data. Five kinds of patch stay, each marked with a trailing `# X1` to `# X5`
+  comment:
+  `X1`, a configuration constant of the generator or the kit pointed at a copy;
+  `X2`, an order or a hand-off no public result shows, observed by a pass-through spy or an
+  instrumented lock;
+  `X3`, a fault or defect no port can produce, injected to prove a guard catches it;
+  `X4`, a random draw pinned;
+  `X5`, an absent optional dependency.
 . Build model objects with small builder functions, through the generated models, never bare
   dicts. Shared read-only data is session-scoped; mutable state is function-scoped (`tmp_path`).
   Deviation from the checklist's rule 6 (a factory library): model objects come from the named

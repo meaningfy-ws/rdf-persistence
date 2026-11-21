@@ -155,7 +155,7 @@ def test_a_metamodel_without_public_package_is_a_clear_error(
     root.write_text(
         text.replace("public_package: rdf_persistence", "other: note", 1), encoding="utf-8"
     )
-    monkeypatch.setattr(pydantic_split, "METAMODEL_DIR", folder)
+    monkeypatch.setattr(pydantic_split, "METAMODEL_DIR", folder)  # X1
     schema = load_schema(folder / "rp_core.yaml").schema
     public_package.cache_clear()  # the lookup is cached for the process
     try:
@@ -627,7 +627,7 @@ def test_a_malformed_python_package_of_the_metamodel_is_refused_on_the_base_mode
 ) -> None:
     """The ``RpModel`` import is written beside the metamodel's package: a hole in it is refused."""
     folder = metamodel_copy("rp", "a..generated")
-    monkeypatch.setattr(pydantic_split, "METAMODEL_DIR", folder)
+    monkeypatch.setattr(pydantic_split, "METAMODEL_DIR", folder)  # X1
     pydantic_split.toolkit_base_module.cache_clear()
     try:
         with pytest.raises(SchemaGenerationError, match="rp.*python_package"):
@@ -654,7 +654,7 @@ def beside(tmp_path: Path) -> Path:
 @pytest.fixture
 def beside_as_toolkit(beside: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """``beside``, treated as the toolkit's own folder."""
-    monkeypatch.setattr(pydantic_split, "TOOLKIT_ROOTS", (beside.resolve(),))
+    monkeypatch.setattr(pydantic_split, "TOOLKIT_ROOTS", (beside.resolve(),))  # X1
     return beside
 
 

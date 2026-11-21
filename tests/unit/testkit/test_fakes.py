@@ -237,7 +237,7 @@ async def test_a_failure_that_is_not_the_stores_own_propagates_unchanged(monkeyp
     def too_deep(_text):
         raise RecursionError("deep")
 
-    monkeypatch.setattr("rdf_persistence.testkit.fakes.prepare_update", too_deep)
+    monkeypatch.setattr("rdf_persistence.testkit.fakes.prepare_update", too_deep)  # X3
     with pytest.raises(RecursionError):
         await store.update(NAME, TWO_INSERTS)
 
