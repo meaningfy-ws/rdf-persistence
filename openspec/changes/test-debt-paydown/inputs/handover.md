@@ -1,6 +1,10 @@
 # Hand-over: test-debt-paydown (2026-11-17, updated 2026-11-20)
 
-**State (2026-11-20, latest): RE-PLAN after wave 2.** The PLAN no longer holds. It was gated on
+**State (2026-11-21, latest): RE-PLANNED.** Wave 2 merged; the PLAN was rebased on `030f580f`
+(`design.md`, `tasks.md`, facts in `inputs/refresh-*.md`, answers in `inputs/qa.md`) and gated
+(`evidence/clarity-gate.md`). Nothing is built. Deliver with the `team-lead` from task 1.1.
+
+**Earlier state (2026-11-20): RE-PLAN after wave 2.** The PLAN no longer holds. It was gated on
 `be129a0`, and the thematic restructure (archived `2026-11-19-thematic-structure`) moved the
 package and the tests after that: of the PLAN's ~90 code paths, 6 still exist. The cross-test
 imports went from 33 modules (79 statements) to 41 (99), measured with
