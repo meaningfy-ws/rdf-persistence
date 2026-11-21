@@ -3,9 +3,9 @@ import copy, sys, time
 sys.path.insert(0, ".")
 from rdflib import Graph
 from tests.toy_service import ToyService
-from rdf_persistence.services.schema import load_schema
-from rdf_persistence.services.schema_structure import iri_types
-from rdf_persistence.services import documents as d
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import iri_types
+from rdf_persistence.api.services import documents as d
 import tests.toy as toy
 
 ToyService()

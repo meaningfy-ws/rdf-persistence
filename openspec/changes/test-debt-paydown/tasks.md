@@ -59,7 +59,7 @@ parallel group, then runs `make refresh-map`.
   Accept: no `monkeypatch` in `test_events_route.py`; the `rp-events` scenarios pass.
 - [ ] 2.2 PD-5. Accept: `test_data_plane_statuses_map_to_errors` passes unchanged in its asserts.
 - [ ] 2.3 PD-6. Accept: each new test fails when its half of the guard is removed by hand.
-- [ ] 2.4 PD-7 (cache and warm once; probe imports updated). Accept: the median of 7 `ToyService()`
+- [x] 2.4 PD-7 (cache and warm once; probe imports updated). Accept: the median of 7 `ToyService()`
   timings drops by ≥ 25 % (before and after, one checkout); the revised `test_shacl` test passes;
   a new test in `tests/unit/api/test_shacl.py`: two same-size rewrites of a shapes file in
   `tmp_path`, each `Documents` gets its own.

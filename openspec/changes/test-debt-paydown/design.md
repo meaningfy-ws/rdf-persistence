@@ -98,7 +98,7 @@ generated is edited by hand; no new test library.
   `rdf_persistence/api/services/documents.py` (`:106-109`), (a) `Documents.__init__` reads the bytes
   of `folder / SHAPES_FILE` each time and computes `digest = sha256(data).hexdigest()`; an
   `lru_cache(maxsize=8)` `_shape_triples(digest: str, data: bytes) -> tuple` parses `data` on a miss
-  with `Graph().parse(data=data, format="turtle")` and returns its triples; each `Documents` builds
+  with `Graph().parse(data=data, format=TURTLE)` (the `text/turtle` media type of `core.domain.media`; the packaging test forbids rdflib's short names) and returns its triples; each `Documents` builds
   its own `Graph` and adds them with `graph.addN((s, p, o, graph) for s, p, o in triples)` (rdflib
   7.6's `addN` drops quads of another context); (b) `warm_up` runs once per digest per process: a
   module-level `set` of warmed digests, checked first without the lock (a set lookup); on a miss,
