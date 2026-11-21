@@ -19,5 +19,5 @@ Run 2 found four small gaps (the rename method's name, how a toolkit class is to
 stored class is chosen, a member removed earlier in the same unit of work); all four were folded in
 without a third run (R-0005).
 
-Scenarios (specs/rp-service-api/spec.md, design.md T-1 to T-11, A-1 to A-7): sign-off by the owner
-pending.
+Scenarios (specs/rp-service-api/spec.md, design.md T-1 to T-11, A-1 to A-7): signed off by the
+owner, 2026-11-21 ('signed off').
