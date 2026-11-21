@@ -135,7 +135,7 @@ What was delivered against this shape, stage by stage (rule P-0004). The decisio
 | R-30 for not-generated stereotypes | Enumerations only; a not-generated class keeps its stage-1 behaviour | An attribute typed by a class must still fail (I-1) | D-26 | stage 2 |
 | The reader reads connectors between classes | It skips any connector with a note, text, boundary or package at an end, whatever its type | An association drawn to a note crashed the converter | D-25 | stage 2 |
 | The converter's records are generated models (PD-2) | Also its working data (`Element`, `PackagePath`, `End` as generated records; slot shapes as `SlotDefinition`); the per-call processing state stays hand-written | Stage-1 review W-1 | D-24 | stage 2 |
-| The generated output passes `rp-generate` (G-2) | The stage-2 golden passes lint, boundary, hard and rules; the real model converts once its own clashes are fixed (see the acceptance evidence) | — | — | stage 2 |
+| The generated output passes `rp-generate` (G-2) | The stage-2 golden passes lint, boundary, hard and rules, is generated in write mode and imports; the real model converts once its own clashes are fixed, and passes `rp-generate` once its missing notes are added too ([acceptance](evidence/acceptance.md)) | RISK-2: a quarter of the real model has no notes | D-29 C-4 | stage 2 |
 
 Not delivered: nothing the shape promised is left out. Upstream: #208 (cyclic split modules) and
 #209 (a language-string range) stay open in the toolkit; the converter refuses or merges until they

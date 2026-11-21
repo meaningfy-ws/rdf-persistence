@@ -830,7 +830,8 @@ and its checkers page):
   and CI as P-0002 wants. Develop brought a new class annotation (`rp_on_referenced_delete`): the
   converter needed no change (PD-20, A-1); only the test that listed the class annotations did.
 - **D-29 Full review, accepted findings** (2026-11-21, PR #228; L1, L2, L3 apart, L4+L5 as one;
-  38 findings, none labelled Critical; five re-labelled by the lead, each with its reason).
+  38 findings, none labelled Critical; six re-labelled by the lead into four, C-1..C-4, each with
+  its reason; the checker agreed with all four).
   - **C-1 (L1 W-1): a name with a space crashes the run.** An attribute, role or literal written
     `has title` passes the snake-case check (the words are joined) but its raw name reaches
     `slot_uri`/`meaning`, and linkml raises `ValueError`: a traceback, not a problem, and the run
