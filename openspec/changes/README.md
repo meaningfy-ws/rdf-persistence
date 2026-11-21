@@ -116,6 +116,18 @@ Open follow-ups, each under the floor of its review: #125 (`aggregate-events`), 
 (`target-kind-from-the-model`), #192 (`domain-model-per-theme`). Not shaped yet; the consumer's
 upgrade to 0.8.0 is planned in MWBv2 (D-12).
 
+### The first consumer's needs, second wave (shaped 2026-11-21)
+
+Two more issues from MWB2's `v2-02` phase B, shaped the same way: seeds in `inputs/`, one round of
+the owner's questions (`inputs/qa.md`), the PLAN attacked and gated by a fresh reviewer. Library
+vs generator, no shared code: they run in parallel. Part 1 of #245 (`module_kind` per package) is
+fixed separately and is not in either.
+
+| # | Id | Appetite | Issue | Depends on | Needed by (MWB2) | PLAN (gate, 2026-11-21) |
+|---|---|---|---|---|---|---|
+| 8 | `aggregate-validators` | SMALL | #240 | none | `v2-02` phase B, the package's 0..1 collection limits | 8.1 → 8.9, accepted (R-0005) |
+| 9 | `uml-roles-and-workflows` | MEDIUM (2 stages: roles, workflows) | #245 parts 2, 3 | `uml-to-linkml` (archived); for the consumer, #245 part 1 (RISK-3) | `v2-02` phase B, its hand-written roles and workflow files | 8.0 → 9.0 |
+
 ### Why this order
 
 1. **#72 and the release first, as fillers.** Both are independent and small. Cutting 0.2.0
