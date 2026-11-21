@@ -9,7 +9,7 @@ by trying member classes, the class of a hidden aggregate whose IRI it holds, ne
 (RISK-8, accepted). What a collection is lives in ``reference_collections``.
 """
 
-from collections.abc import Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 
 from rdflib import Graph, Literal
 
@@ -23,17 +23,40 @@ from rdf_persistence.collaboration.services.reference_collections import (
     outside_member_class,
     rule_plan,
 )
-from rdf_persistence.collaboration.services.nesting import walk_from
 from rdf_persistence.collaboration.services.workflows import Workflows
-from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.core.domain.exceptions import BadQuery, InvalidBody, InvalidIri
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.persistence.services.generated.rp_persistence_services import AggregateHead
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.persistence.services.session import GuardContext, Session
 from rdf_persistence.schema.services import vocabulary as v
+
+
+def _walk_from(
+    root: str, new: Iterable[str], skeleton: Mapping[str, Collection[str]]
+) -> tuple[frozenset[str], tuple[str, int] | None]:
+    """Follow ``skeleton`` (``{collection: members}``) from each of the ``new`` members of ``root``.
+
+    Depth first, iterative, so the depth of a tree costs nothing. A node not in ``skeleton`` is
+    reached and not entered. Returns ``(reached, cycle)``: ``reached`` is every node the walk
+    reached (never ``root``); ``cycle`` is ``None``, or ``(closing, between)`` when ``root`` was
+    reached: the new member it was reached from and the number of other collections on the way.
+    """
+    reached: set[str] = set()
+    for start in new:
+        stack = [(start, start, 0)]  # (node, the new member it was reached from, depth)
+        while stack:
+            node, origin, depth = stack.pop()
+            if node == root:
+                return frozenset(reached), (origin, max(depth - 1, 0))
+            if node in reached:
+                continue
+            reached.add(node)
+            stack.extend((member, origin, depth + 1) for member in skeleton.get(node, ()))
+    return frozenset(reached), None
 
 
 class WriteGuards:
@@ -80,7 +103,9 @@ class WriteGuards:
         name = collection_class(self._collections, iri, graph)
         if name is not None:
             decoded = self._decoded(name, iri, graph)
-            await self._check_collection(session, name, decoded, context, adding=stored is None)
+            await self._check_collection(
+                session, iri, name, decoded, context, adding=stored is None
+            )
         if self._workflows is None:
             return triples
         return await self._workflows.keep_state(session, iri, triples, stored, allowed_state)
@@ -92,15 +117,30 @@ class WriteGuards:
             # the generated class refuses the triples; its text names internals
             raise InvalidBody(f"the triples of {iri} are not those of a {name}") from error
 
-    async def _check_collection(
+    async def _check_collection(  # noqa: PLR0913 - the root, its class, its decoding and what the transaction holds
         self,
         session: Session,
+        iri: str,
         name: str,
         collection: ReferenceCollection,
         context: GuardContext,
         *,
         adding: bool,
     ) -> None:
+        heads = await self._check_members(session, name, collection)
+        try:
+            rule_plan(self._listings, collection)
+        except BadQuery as error:
+            raise InvalidBody(str(error)) from error
+        if collection.nests:
+            await self._check_no_cycle(
+                session, iri, name, collection, heads, context, adding=adding
+            )
+
+    async def _check_members(
+        self, session: Session, name: str, collection: ReferenceCollection
+    ) -> Sequence[AggregateHead]:
+        """The heads of the members, once the member class and the members are checked."""
         view = self._mapper.view
         try:
             self._listings.served_root(collection.member_class)
@@ -117,16 +157,12 @@ class WriteGuards:
             wrong = await self._unlike_nested(session, name, collection, heads)
         if wrong:
             raise InvalidBody(f"not stored aggregates of {collection.member_class}: {wrong}")
-        try:
-            rule_plan(self._listings, collection)
-        except BadQuery as error:
-            raise InvalidBody(str(error)) from error
-        if collection.nests:
-            await self._check_no_cycle(session, name, collection, heads, context, adding=adding)
+        return heads
 
     async def _check_no_cycle(  # noqa: PLR0913 - what the walk reads and what it relies on
         self,
         session: Session,
+        iri: str,
         name: str,
         collection: ReferenceCollection,
         heads: Sequence[AggregateHead],
@@ -135,26 +171,43 @@ class WriteGuards:
         adding: bool,
     ) -> None:
         """Refuse a nested member that leads back to the collection, and rely on what was walked (PD-4)."""
-        iri = str(collection.id)
         own = self._mapper.view.get_uri(name, expand=True)
         nested = {str(h.head_iri) for h in heads if own in (h.head_types or [])}
         stored = set() if adding else await self._stored_members(session, iri)
         if not (new := sorted(nested - stored)):
             return  # nothing nested is added: no walk, no guard
         skeleton = await self._skeleton(session, name, collection, context)
-        walk = walk_from(iri, new, {each: members for each, (_, members) in skeleton.items()})
-        if walk.cycle is not None:
+        walked, cycle = _walk_from(
+            iri, new, {each: members for each, (_, members) in skeleton.items()}
+        )
+        if cycle is not None:
+            closing, between = cycle
             raise InvalidBody(
-                f"saving {iri} would make a cycle: {iri} → {walk.cycle.closing}"
-                f" → ({walk.cycle.between} more) → {iri}"
+                f"saving {iri} would make a cycle: {iri} → {closing} → ({between} more) → {iri}"
             )
-        reached = sorted(walk.reached - set(context.collected))  # a collected one has its own guard
+        reached = sorted(walked - set(context.collected))  # a collected one has its own guard
+        await self._rely_on_walked(session, own, reached, skeleton, context)
+
+    @staticmethod
+    async def _rely_on_walked(
+        session: Session,
+        own: str,
+        reached: list[str],
+        skeleton: dict[str, tuple[str | None, list[str]]],
+        context: GuardContext,
+    ) -> None:
+        """Guard the versions of the collections a walk reached, and of the leaves that may become one."""
         for each in (i for i in reached if i in skeleton):
             context.rely_on(each, str(skeleton[each][0]))
+        leaves = [i for i in reached if i not in skeleton]
         # a leaf (nests false) may be turned into a nesting collection meanwhile: guard it too
-        for head in await session.heads([i for i in reached if i not in skeleton]):
-            if own in (head.head_types or []):
-                context.rely_on(str(head.head_iri), str(head.head_version))
+        for head in await WriteGuards._alike_heads(session, own, leaves):
+            context.rely_on(str(head.head_iri), str(head.head_version))
+
+    @staticmethod
+    async def _alike_heads(session: Session, own: str, iris: list[str]) -> list[AggregateHead]:
+        """The heads of ``iris`` that are stored with exactly the class whose IRI is ``own``."""
+        return [h for h in await session.heads(iris) if own in (h.head_types or [])]
 
     @staticmethod
     async def _stored_members(session: Session, iri: str) -> set[str]:

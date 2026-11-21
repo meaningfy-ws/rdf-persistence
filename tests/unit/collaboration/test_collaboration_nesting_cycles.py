@@ -77,7 +77,9 @@ async def test_two_saves_that_together_close_a_cycle_commit_one_and_conflict_the
         with pytest.raises(Conflict) as refused:
             async with session.transaction() as first:
                 await replace_in(session, first, nesting(X, Y))
-                async with session.transaction() as second:  # collected after the first, commits first
+                async with (
+                    session.transaction() as second
+                ):  # collected after the first, commits first
                     await replace_in(session, second, nesting(Y, X))
         assert refused.value.iris == (Y,), "the conflict names the collection the other one saved"
         with pytest.raises(InvalidBody, match="would make a cycle"):
