@@ -35,6 +35,7 @@ from rdf_persistence.persistence.services.session import (
     Clock,
     Dependents,
     OnCommit,
+    RemovalRefusal,
     Session,
     WriteGuard,
     open_session,
@@ -364,6 +365,7 @@ async def fake_session(
     dependents: Dependents = (),
     record_activities: bool = True,
     on_commit: OnCommit | None = None,
+    removals: RemovalRefusal | None = None,
 ) -> AsyncIterator[Session]:
     """A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 
@@ -371,6 +373,7 @@ async def fake_session(
     on the store if it is not there yet. ``iris`` is the IRI policy of the code under test (default: the
     default policy). ``keys`` are the keys across aggregates the session enforces (default: none).
     ``record_activities`` and ``on_commit`` are the session's (message-bus PD-9, PD-10).
+    ``removals`` are the session's: the classes whose roots it refuses to remove while referenced.
     """
     store = store or FakeStore()
     if FAKE_DATABASE not in await store.list_datasets():
@@ -388,6 +391,7 @@ async def fake_session(
         dependents=dependents,
         record_activities=record_activities,
         on_commit=on_commit,
+        removals=removals,
     ) as session:
         yield session
 

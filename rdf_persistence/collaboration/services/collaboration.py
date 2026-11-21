@@ -25,6 +25,7 @@ from rdf_persistence.collaboration.services.generated.rp_collaboration_services 
     ReferrerList,
 )
 from rdf_persistence.collaboration.services.reference_collections import ReferenceCollections
+from rdf_persistence.collaboration.services.referrer_naming import named
 from rdf_persistence.collaboration.services.transitions import Transitions
 from rdf_persistence.collaboration.services.workflows import Workflows
 from rdf_persistence.core.domain.exceptions import BadQuery, InvalidIri
@@ -117,8 +118,25 @@ class Collaboration:
         self._require_readable(iri)
         self._require_names(class_name, slot)
         rows = await self._session.referrer_rows(iri)
+        readable = await self.readable_referrers(iri, rows)
+        return self._listed(named(self._view, rows), class_name, slot, readable)
+
+    async def readable_referrers(self, iri: str, rows: Sequence[ReferrerRow]) -> set[str]:
+        """Of the referrers of ``iri`` in ``rows``, the IRIs the caller may read (PD-9, DEC-3).
+
+        A comment is readable when its thread shows it to the caller and by no other right; any
+        other referrer, when the caller may read it (PD-3, PD-30). It checks nothing of ``iri``.
+        """
         judged = await self._discussion.judged(iri, rows)
-        return self._readable(self._named(rows), class_name, slot, judged)
+        return {
+            referrer
+            for referrer in {row[0] for row in rows}
+            if (
+                judged[referrer]
+                if referrer in judged
+                else self._rules.may(self._caller, self._access, referrer, Action.READ)
+            )
+        }
 
     async def members(self, collection: str, *, deep: bool = False) -> MemberList:
         """The members of the collection that the caller may read, sorted; ``hidden_count`` is the
@@ -202,9 +220,13 @@ class Collaboration:
         The members are those the collection names and those that meet its rule, resolved now: not
         deep (a member that is a collection is deleted, its own members stay) and not the collection
         itself. A member that is already gone is skipped. A plain delete of the collection keeps its
-        members. The ``Raises`` are those of ``ReferenceCollections.delete_cascade``.
+        members. A member of a refusing class that an aggregate outside the cascade refers to
+        refuses the whole cascade with ``InUse``, naming the referrers the caller may read. The
+        ``Raises`` are those of ``ReferenceCollections.delete_cascade``, which include ``InUse``.
         """
-        await self._collections.delete_cascade(collection, if_version)
+        await self._collections.delete_cascade(
+            collection, if_version, readable=self.readable_referrers
+        )
 
     def _require_readable(self, iri: str) -> None:
         if not self._iris.is_aggregate(self._access.tenant, iri):
@@ -217,57 +239,15 @@ class Collaboration:
         if slot is not None and self._view.get_slot(slot) is None:
             raise BadQuery(f"the schema has no slot {slot!r}")
 
-    def _classes_by_iri(self) -> dict[str, str]:
-        return {
-            self._view.get_uri(c, expand=True): name for name, c in self._view.all_classes().items()
-        }
-
-    def _named(self, rows: list[ReferrerRow]) -> set[tuple[str, str, str]]:
-        """``(referrer, class name, slot name)`` of each row; an IRI the schema does not know stays as it is.
-
-        A referrer with a type the schema knows is not also listed under the types it does not.
-        """
-        classes = self._classes_by_iri()
-        typed = {referrer for referrer, cls, _, _ in rows if cls in classes}
-        return {
-            (
-                referrer,
-                classes.get(cls, cls),
-                self._slot_name(classes.get(subject or cls), predicate),
-            )
-            for referrer, cls, subject, predicate in rows
-            if cls in classes or referrer not in typed
-        }
-
-    def _slot_name(self, class_name: str | None, predicate: str) -> str:
-        """The slot of ``class_name`` whose ``slot_uri`` is ``predicate``, or ``predicate`` itself."""
-        slots = self._view.class_induced_slots(class_name) if class_name else []
-        return next(
-            (s.name for s in slots if self._view.get_uri(s, expand=True) == predicate), predicate
-        )
-
-    def _readable(
-        self,
+    @staticmethod
+    def _listed(
         named: set[tuple[str, str, str]],
         class_name: str | None,
         slot: str | None,
-        judged: dict[str, bool],
+        readable: set[str],
     ) -> ReferrerList:
-        """The items the caller may read, narrowed and sorted, and the number of other referrers (PD-26).
-
-        A comment in ``judged`` is readable when its thread shows it to the caller and by no other
-        right; any other referrer, when the caller may read it (PD-3, PD-30).
-        """
+        """The items of the ``readable`` referrers, narrowed and sorted, and the number of other referrers (PD-26)."""
         referrers = {referrer for referrer, _, _ in named}
-        readable = {
-            r
-            for r in referrers
-            if (
-                judged[r]
-                if r in judged
-                else self._rules.may(self._caller, self._access, r, Action.READ)
-            )
-        }
         items = [
             Referrer(referrer=r, referrer_class=c, referrer_slot=s)
             for r, c, s in sorted(named)

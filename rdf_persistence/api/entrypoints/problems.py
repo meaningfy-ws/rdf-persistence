@@ -19,10 +19,12 @@ from starlette.exceptions import HTTPException
 
 from rdf_persistence.api.entrypoints.auth import BEARER_SCHEME
 from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import (
+    InUseProblem,
     Problem,
     ProblemKind,
     ProblemSlug,
 )
+from rdf_persistence.collaboration.services.generated.rp_collaboration_services import Referrer
 from rdf_persistence.core.domain import exceptions as errors
 from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.core.domain.media import PROBLEM_JSON
@@ -70,6 +72,7 @@ FORBIDDEN = _kind(ProblemSlug.FORBIDDEN)
 NOT_FOUND = _kind(ProblemSlug.NOT_FOUND)
 CONFLICT = _kind(ProblemSlug.CONFLICT)
 KEY_CONFLICT = _kind(ProblemSlug.KEY_CONFLICT)
+IN_USE = _kind(ProblemSlug.IN_USE)
 PRECONDITION_REQUIRED = _kind(ProblemSlug.PRECONDITION_REQUIRED)
 INVALID_BODY = _kind(ProblemSlug.INVALID_BODY)
 NOT_ACCEPTABLE = _kind(ProblemSlug.NOT_ACCEPTABLE)
@@ -92,6 +95,7 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
     (errors.TenantGone, NOT_FOUND),
     (errors.Conflict, CONFLICT),
     (errors.KeyConflict, KEY_CONFLICT),  # found through the class first, so it wins over its base
+    (errors.InUse, IN_USE),  # likewise
     (errors.PreconditionRequired, PRECONDITION_REQUIRED),
     (errors.InvalidBody, INVALID_BODY),
     (errors.InvalidGraph, INVALID_BODY),
@@ -164,6 +168,34 @@ def problem_for(base: str, kind: ProblemKind, detail: str | None = None) -> Prob
     )
 
 
+def in_use_problem(base: str, error: errors.InUse) -> InUseProblem:
+    """The problem of a refused removal (PD-11): no ``detail``, the members say who refers.
+
+    ``error.referrers`` are the readable referrers the guard found, and the counts say how many more
+    exist, named or not; only structured members carry them, as the text of a 409 is never sent.
+    An unfiltered error (no ``readable`` callable judged its referrers) names nobody: every
+    referrer aggregate is counted in ``hidden_count`` (D-10, fail closed).
+    """
+    plain = problem_for(base, IN_USE)
+    if not error.filtered:
+        every = {iri for iri, _, _ in error.referrers}
+        return InUseProblem(
+            **plain.model_dump(),
+            referrers=[],
+            more_count=0,
+            hidden_count=len(every) + error.more_count + error.hidden_count,
+        )
+    return InUseProblem(
+        **plain.model_dump(),
+        referrers=[
+            Referrer(referrer=iri, referrer_class=cls, referrer_slot=slot)
+            for iri, cls, slot in error.referrers
+        ],
+        more_count=error.more_count,
+        hidden_count=error.hidden_count,
+    )
+
+
 def problem_response(problem: Problem, headers: Mapping[str, str] | None = None) -> Response:
     """The answer for ``problem``: its status, RFC 9457 media type, and ``WWW-Authenticate`` on a 401.
 
@@ -221,6 +253,8 @@ def install_problem_handlers(app: FastAPI, base: str) -> None:
                 exc_info=error if refusal is None else None,
                 extra=log_extra(context),
             )
+        if isinstance(error, errors.InUse):
+            return problem_response(in_use_problem(base, error))
         return problem_response(problem_for(base, kind, str(error)))
 
     async def invalid_body(_: Request, error: Exception) -> Response:

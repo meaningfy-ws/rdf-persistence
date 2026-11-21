@@ -51,6 +51,7 @@
 |`IdSource` |function |
 |`IdSpec` |class |How the toolkit draws an id: a UUIDv4, or `length` characters drawn from `alphabet`.
 |`install_service` |function |Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
+|`InUse` |class |A removal is refused because an aggregate of the tenant still refers to a root it removes.
 |`Invalidation` |class |The invalidation of one version of an entity by an activity.
 |`InvalidBody` |class |A request body is not a valid representation for its route: it fails the shape, names an IRI the client may not choose, or describes another aggregate than the one in the path.
 |`InvalidGrant` |class |A grant or prohibition targets something that is not the tenant or the graph of one of its aggregates, or names an assignee that is not an IRI.

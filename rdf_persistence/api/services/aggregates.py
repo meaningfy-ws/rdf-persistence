@@ -16,7 +16,7 @@ from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
-from rdf_persistence.persistence.services.session import Stored
+from rdf_persistence.persistence.services.session import Readable, Stored
 from rdf_persistence.schema.services.schema_structure import iri_type_of
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 
@@ -137,16 +137,22 @@ class Aggregates:
         iri: str,
         if_version: str,
         cls: ClassDefinition,
+        readable: Readable | None = None,
     ) -> None:
         """Delete the aggregate ``iri`` if it is still at ``if_version``.
+
+        ``readable`` says which referrers the caller may read; it shapes the ``InUse`` of a refusal
+        (``None``: every referrer is named).
 
         Raises:
             NotFound: The aggregate has no graph, or is not of ``cls`` (a class derived from it will do).
             Conflict: Its version is not ``if_version``; nothing changed.
+            InUse: (a ``Conflict``) Its class refuses deletion while referred to and another aggregate
+                still refers to it; nothing changed.
         """
         async with self._tenancy.tenant_session(tenant, principal) as session:
             self._require_class(await session.get_graph(iri), iri, cls)
-            await session.remove(iri, if_version)
+            await session.remove(iri, if_version, readable=readable)
 
     async def _triples(
         self,

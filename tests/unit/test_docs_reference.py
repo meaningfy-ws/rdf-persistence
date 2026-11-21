@@ -45,7 +45,7 @@ def test_the_problem_table_has_every_kind_with_its_status_and_description():
 
     assert "|`key-conflict` |409 |Key conflict |" in table, "slug, status and title of a kind"
     assert "another aggregate of its class holds" in table, "the schema's description is shown"
-    assert table.count("\n|`") == 15, "one row per kind of problem"
+    assert table.count("\n|`") == 16, "one row per kind of problem"
 
 
 def test_check_fails_on_a_stale_partial_and_passes_once_written(tmp_path, monkeypatch):

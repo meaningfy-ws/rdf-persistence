@@ -21,24 +21,24 @@ commit and never run `make generate`; the lead does, then `make check-generated`
 
 ## 2. Stage 2: the refusal
 
-- [ ] 2.1 `InUse` (PD-6) in `core/domain/exceptions.py`, exported from `rdf_persistence`
+- [x] 2.1 `InUse` (PD-6) in `core/domain/exceptions.py`, exported from `rdf_persistence`
   (`make refresh-surface`); the naming move (PD-8) to `collaboration/services/referrer_naming.py`.
   Tests first: TC-0 (unit); TC-7 must stay green. Accept: TC-0 passes; TC-7 unchanged and passing.
-- [ ] 2.2 Session (PD-3, PD-4, PD-5, PD-7, PD-9): the `RemovalRefusal` protocol, `removals` on
+- [x] 2.2 Session (PD-3, PD-4, PD-5, PD-7, PD-9): the `RemovalRefusal` protocol, `removals` on
   `Session`, `open_session`, `Tenancy`; the shared referrer fragment; the guard; the diagnosis
   step; the same-commit check; `readable` on `transaction` and `remove`. Tests first: TC-3, TC-4,
   TC-5 with a stub `RemovalRefusal` (unit, fake store). Accept: they pass; existing
   `tests/unit/persistence/` passes unchanged.
-- [ ] 2.3 Schema side and HTTP (PD-7, PD-9, PD-10, PD-11; the `rp-service-api` delta):
+- [x] 2.3 Schema side and HTTP (PD-7, PD-9, PD-10, PD-11; the `rp-service-api` delta):
   `ReferencedRemovals`; `Collaboration.readable_referrers` (moved out of `referrers`); kit wiring;
   `Aggregates.remove(…, readable)`; the route opening `kit.collaboration(checked)`; the `InUse`
   problem row and handler branch; the `DELETE` docs. Tests first: TC-6, TC-9, TC-10 (unit).
   Accept: they pass; E1 to E4, E8 (OPEN-2 as decided, `inputs/qa.md`) and E9 hold through the toy
   app; TC-7 still passes.
-- [ ] 2.4 Cascade (PD-12, OPEN-1 as decided): `Collaboration.delete_cascade` passes
+- [x] 2.4 Cascade (PD-12, OPEN-1 as decided): `Collaboration.delete_cascade` passes
   `readable_referrers` to `ReferenceCollections.delete_cascade`. Tests first: TC-8 (unit).
   Accept: E6, E7 hold.
-- [ ] 2.5 Integration (RISK-2): IT-1, IT-2, IT-3 on Fuseki. Accept: all three pass in
+- [x] 2.5 Integration (RISK-2): IT-1, IT-2, IT-3 on Fuseki. Accept: all three pass in
   `make test-containers` (lead).
 
 ## 3. Stage 3: docs and close

@@ -58,6 +58,7 @@ from rdf_persistence.persistence.services.session import (
     Clock,
     Dependents,
     OnCommit,
+    RemovalRefusal,
     Session,
     WriteGuard,
     open_session,
@@ -137,6 +138,7 @@ class Tenancy:
         stamps: Sequence[tuple[str, str]] = (),
         on_commit: OnCommit | None = None,
         stores: Mapping[str, Store] = {},
+        removals: RemovalRefusal | None = None,
     ) -> None:
         """``store`` is the ``default`` store, which holds the system database; ``stores`` are the others by name.
 
@@ -145,6 +147,7 @@ class Tenancy:
                 is wired under two names (the default one included).
         """
         self._dependents = dependents
+        self._removals = removals  # the refusal of removals, given to every session (PD-7)
         # given to the sessions of tenant and application databases, never the system database's
         self._on_commit = on_commit
         # (schema id, current version) of each chain, written to a new database (PD-10)
@@ -204,6 +207,7 @@ class Tenancy:
             allowed_types=allowed_types,
             record_activities=database != self._system,  # no tenancy activities (message-bus PD-9)
             on_commit=None if database == self._system else self._on_commit,
+            removals=self._removals,
         )
 
     def tenant_session(

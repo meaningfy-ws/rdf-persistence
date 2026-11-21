@@ -141,8 +141,12 @@ def test_a_problem_response_is_an_rfc_9457_problem_with_the_fixed_title(
     # two kinds share 409: the description of a status names the titles of its kinds the route has
     for status in expected - SUCCESS:
         response = op["responses"][str(status)]
-        assert schema_of(response["content"][PROBLEM_JSON]) == {"$ref": f"{COMPONENT}Problem"}, (
-            f"{status} is a Problem"
+        refusing = (path, method, status) == (f"{TENANT}/authors/{{aggregate_id}}", "delete", 409)
+        schema = (
+            "InUseProblem" if refusing else "Problem"
+        )  # a refusing class's 409 may say who refers
+        assert schema_of(response["content"][PROBLEM_JSON]) == {"$ref": f"{COMPONENT}{schema}"}, (
+            f"{status} is a {schema}"
         )
         titles = [k.title for k in KINDS if k.status == status]
         assert any(title in response["description"] for title in titles), (

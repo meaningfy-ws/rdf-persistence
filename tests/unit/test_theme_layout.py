@@ -129,6 +129,8 @@ LAYOUT: tuple[Move, ...] = (
         "services",
         "discussion",
         "reference_collections",
+        "referrer_naming",
+        "referenced_removals",
         "workflows",
         "transitions",
         "write_guards",

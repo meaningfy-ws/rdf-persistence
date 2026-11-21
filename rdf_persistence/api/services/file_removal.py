@@ -9,6 +9,7 @@ from rdf_persistence.core.services.telemetry import log_extra
 from rdf_persistence.files.domain.generated.rp_files import DeleteFile
 from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.persistence.services.mapper import Mapper
+from rdf_persistence.persistence.services.session import Readable
 from rdf_persistence.provenance.services.provenance import new_activity_id
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.tenancy.services.tenancy import Tenancy
@@ -24,15 +25,20 @@ async def remove_with_files(
     iri: str,
     if_version: str,
     mapper: Mapper | None = None,
+    *,
+    readable: Readable | None = None,
 ) -> None:
     """Remove the aggregate ``iri`` at ``if_version``, then delete from the tenant's bucket the blobs
     it named in ``rp:fileKey`` that no other graph names. A blob that cannot be deleted is logged and
     left for the live-tenant sweep. The removal's activity is a ``DeleteFile``, built with ``mapper``;
-    without one it is the standard ``Remove``.
+    without one it is the standard ``Remove``. ``readable`` is what ``Session.remove`` takes: a
+    consumer route passes its collaboration's ``readable_referrers`` to have the readable referrers
+    of a refused removal named; without it the refusal is unfiltered and names nobody over HTTP.
 
     Raises:
         NotFound: The aggregate has no graph, or the tenant has no access record.
         Conflict: The aggregate is not at ``if_version``; nothing changed.
+        InUse: The aggregate is a refusing class and another aggregate still refers to it.
     """
     access, _ = await tenancy.get(tenant)
     async with tenancy.tenant_session(tenant, principal) as session:
@@ -42,7 +48,7 @@ async def remove_with_files(
         if mapper is not None:
             served = mapper.served(DeleteFile(id=new_activity_id(), used_resource=iri))
         # a stale version is refused with nothing changed
-        await session.remove(iri, if_version, served=served)
+        await session.remove(iri, if_version, served=served, readable=readable)
         orphans = keys - await session.named_file_keys(keys)
     for key in sorted(orphans):
         await _delete_blob(files, access.database_name, tenant, key)

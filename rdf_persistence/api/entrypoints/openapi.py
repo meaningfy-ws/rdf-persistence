@@ -45,6 +45,7 @@ from rdf_persistence.access.services.generated.rp_access_services import GrantSe
 from rdf_persistence.api.entrypoints import problems
 from rdf_persistence.api.entrypoints.auth import BEARER_SCHEME
 from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import (
+    InUseProblem,
     LabelUpdate,
     Problem,
     ProblemKind,
@@ -77,7 +78,12 @@ from rdf_persistence.persistence.services.listing import (
     listable_slots,
     sort_keys,
 )
-from rdf_persistence.schema.services.schema_structure import DESCRIPTION, holds_text
+from rdf_persistence.schema.services.schema_structure import (
+    DESCRIPTION,
+    holds_text,
+    refuses_deletion,
+    refusing_classes,
+)
 from rdf_persistence.tenancy.services.generated.rp_tenancy_services import TenantSummary
 
 BEARER_AUTH = "bearerAuth"
@@ -156,14 +162,14 @@ def _document_media(schema: Schema, *, rdf: bool = True) -> dict[str, MediaType]
     return {**media, **_media(Schema(type="string"), *REPRESENTATIONS[2:])} if rdf else media
 
 
-def _problem(kind: ProblemKind, description: str) -> Response:
+def _problem(kind: ProblemKind, description: str, schema: str = Problem.__name__) -> Response:
     """The answer for ``kind``; ``description`` names every title of the route that shares its status."""
     headers: dict[str, Header | Reference] = {
         WWW_AUTHENTICATE: Header(schema=Schema(type="string"))
     }
     return Response(
         description=description,
-        content=_media(_ref(Problem.__name__), PROBLEM_JSON),
+        content=_media(_ref(schema), PROBLEM_JSON),
         headers=headers if kind == problems.INVALID_TOKEN else None,
     )
 
@@ -251,8 +257,12 @@ def route_options(
     status, response = success
     responses: dict[str, Response | object] = {str(status.value): response}
     for kind in sorted(kinds, key=lambda k: k.status):
-        shared = [k.title for k in kinds if k.status == kind.status]
-        responses[str(kind.status)] = _problem(kind, " or ".join(shared))
+        sharing = [k for k in kinds if k.status == kind.status]
+        # a status shared with the in-use kind is answered by its problem: the extras are optional
+        schema = InUseProblem if problems.IN_USE in sharing else Problem
+        responses[str(kind.status)] = _problem(
+            kind, " or ".join(k.title for k in sharing), schema.__name__
+        )
     # Any other failure is a problem as well; declaring it keeps FastAPI from adding its own 422.
     responses[DEFAULT] = Response(
         description="Any other problem", content=_media(_ref(Problem.__name__), PROBLEM_JSON)
@@ -495,11 +505,12 @@ class AggregateOpenApi:
 
     def remove(self) -> RouteDocs:
         deleted = (HTTPStatus.NO_CONTENT, _success(description="Deleted"))
+        refused = (problems.IN_USE,) if refuses_deletion(self._view, self._cls.name) else ()
         return route_options(
             f"Delete a {self._cls.name}",
             self._tag,
             deleted,
-            (*_WRITES, problems.PRECONDITION_REQUIRED),
+            (*_WRITES, *refused, problems.PRECONDITION_REQUIRED),
             parameters=[EXPECTED_VERSION],
         )
 
@@ -507,7 +518,8 @@ class AggregateOpenApi:
 def component_roots(kit: ServiceKit) -> list[str]:
     """The classes the routes mention: the aggregate types, the tenant root and the toolkit's bodies."""
     classes = [*kit.documents.aggregates.values(), kit.documents.tenant_root]
-    return [*(cls.name for cls in classes), *TOOLKIT_BODIES]
+    refusing = [InUseProblem.__name__] if refusing_classes(kit.view) else []
+    return [*(cls.name for cls in classes), *TOOLKIT_BODIES, *refusing]
 
 
 def _target_in(raw: dict[str, JsonSchema], pointer: str) -> JsonSchema:

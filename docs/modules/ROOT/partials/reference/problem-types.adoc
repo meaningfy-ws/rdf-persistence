@@ -11,6 +11,7 @@
 |`method-not-allowed` |405 |Method not allowed |The route has no such method.
 |`not-acceptable` |406 |Not acceptable |The service produces nothing the client accepts.
 |`conflict` |409 |Version conflict |The write lost a race, or the thing to create already exists.
+|`in-use` |409 |In use |The delete would leave other aggregates pointing at a class that refuses it; the answer names them.
 |`key-conflict` |409 |Key conflict |The write would give an aggregate a key value that another aggregate of its class holds.
 |`payload-too-large` |413 |Payload too large |The body is larger than the service takes.
 |`unsupported-media-type` |415 |Unsupported media type |The route does not take the media type of the body.

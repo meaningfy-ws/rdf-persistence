@@ -42,7 +42,7 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
 )
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
-from rdf_persistence.persistence.services.session import Session
+from rdf_persistence.persistence.services.session import Readable, Session
 from rdf_persistence.schema.services import vocabulary as v
 
 COLLECTION_MIXIN = "ReferenceCollection"
@@ -195,14 +195,17 @@ class ReferenceCollections:
         }
         return self._listed(named | await self._rule_holders(iri))
 
-    async def delete_cascade(self, collection: str, if_version: str) -> None:
+    async def delete_cascade(
+        self, collection: str, if_version: str, *, readable: Readable | None = None
+    ) -> None:
         """Delete the collection and each of its members, in one request, all or nothing.
 
         The members are those the collection names and those that meet its rule and that the caller
         may read, resolved now: not deep (a member that is a collection is deleted, its own members
         stay) and not the collection itself. An aggregate that only meets the rule and that the
         caller may not read stays, unmentioned. A member that is already gone is skipped. A plain
-        delete of the collection keeps its members.
+        delete of the collection keeps its members. ``readable`` tells which referrers of a refused
+        member the caller may see (none: the session's full reach).
 
         Raises:
             LookupError: The schema does not import the collection module.
@@ -220,6 +223,9 @@ class ReferenceCollections:
                 the message gives the limit, not the number of members.
             Conflict: ``collection`` is not at ``if_version``, or a member changed, or no longer
                 meets the rule, since it was read; nothing is deleted.
+            InUse: (a ``Conflict``) A member of a class the session refuses to remove is referred
+                to by an aggregate outside the cascade; the whole cascade is refused and nothing is
+                deleted. The collection's own link, and links from other deleted members, do not count.
             DatabaseGone: The tenant database does not exist.
         """
         if collection == str(self._access.tenant):
@@ -240,7 +246,7 @@ class ReferenceCollections:
         self._require_of_member_class(collection, stored, heads)
         by_rule = held[1]
         plan = self._plan(collection, stored) if by_rule else None
-        async with self._session.transaction() as transaction:
+        async with self._session.transaction(readable=readable) as transaction:
             await transaction.remove(collection, if_version)
             for head in heads:
                 iri, version = str(head.head_iri), str(head.head_version)
