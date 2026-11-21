@@ -375,5 +375,8 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
   package path and what `install_service` does. The other questions about starting a service
   (relative paths, listing workflow files, bad files at start, the smallest composition root,
   `no-note` on roles and workflows) belong to `user-manual/serve.adoc`: a follow-up issue.
+- **D-16 Follow-up issues.** #258 the library reads the roles file in the locale's encoding
+  (D-11, L1 S2); #259 the library's whole-model workflow check in `write` (D-12a); #260 a
+  nesting role fixes `member_class` (D-14); #261 the service-start docs (D-15).
 - **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
   order holds and the consumer may convert its access package.
