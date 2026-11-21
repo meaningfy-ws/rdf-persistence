@@ -50,7 +50,7 @@ parallel group, then runs `make refresh-map`.
   `grep -rniE "equivalence class|\bstage [0-9]|\btask [0-9]+\.[0-9]+" tests --include=*.py` is
   empty; `make check-architecture` passes with the new contract;
   `make refresh-map` exit 0 with "Removed rows (0)".
-- [ ] 1.7 Lead: stage-1 full gates, one L2+L3 pass (P-0005), fixes, gates again, rebase on
+- [x] 1.7 Lead: stage-1 full gates, one L2+L3 pass (P-0005), fixes, gates again, rebase on
   `develop`, ticks.
 
 ## 2. Stage 2: production seams and clean-ups
@@ -65,7 +65,7 @@ parallel group, then runs `make refresh-map`.
   `tmp_path`, each `Documents` gets its own.
 - [x] 2.5 PD-15. Accept: both delta scenarios pass as the two tests PD-15 names; the Redis test
   passes `poll_seconds=0.05`.
-- [ ] 2.6 Lead: the `rp-messages` delta (DEC-1) checked against `Transaction`'s docstring and
+- [x] 2.6 Lead: the `rp-messages` delta (DEC-1) checked against `Transaction`'s docstring and
   `test_an_empty_commit_does_not_spend_the_command_for_the_real_one_after_it`
   (`tests/unit/messaging/test_messagebus_adversarial.py:353`); stage-2 full gates; one L2+L3 pass;
   fixes; gates again; rebase on `develop`.
