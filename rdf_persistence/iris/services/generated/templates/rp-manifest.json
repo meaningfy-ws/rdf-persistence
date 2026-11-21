@@ -39,7 +39,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/importable.py",
-      "sha256": "e7be9f46583094199da17d8e6c6ce02ee821170a45d937a229cdf8cb36f4044c"
+      "sha256": "85f20675508382c15e635173e4a6f851f52c1741a9beed81b2d97bc7649e7151"
     },
     {
       "path": "rdf_persistence_generation/checks/python_package.py",
@@ -55,7 +55,7 @@
     },
     {
       "path": "rdf_persistence_generation/cli.py",
-      "sha256": "8df6567a603e2c96a207fcfb547332138277fcb764d0ee286396fb1ab8db251a"
+      "sha256": "44eeaf5b20a1e42978de0fd79ac419be1938ea6eab6ed5f1d6991a5d693468d8"
     },
     {
       "path": "rdf_persistence_generation/components.py",
@@ -83,7 +83,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_split.py",
-      "sha256": "0fa61328a0acf5af428a53a1e77818c3f8d93e76aa721782d19769abf890c678"
+      "sha256": "1e437ac492ec42d09989ce0b7ae4e9db542c6e6a1592ca1ea991c3d6bf8d1b82"
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_validators.py",

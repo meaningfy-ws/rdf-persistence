@@ -3,13 +3,16 @@
 Generation can succeed and still write a module that fails to import (an impossible MRO, a
 shadowed name, a cycle between modules) or does not type-check, so the written code is imported
 and type-checked, never trusted. Both run in a subprocess, which leaves this process's
-``sys.modules`` alone and sees the files as they now are.
+``sys.modules`` alone and sees the files as they now are; neither writes into the project.
 """
 
+import hashlib
 import importlib.util
+import json
 import os
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
@@ -21,13 +24,28 @@ TYPE_STEP = "type check"
 MYPY_CONFIG = Path(__file__).parents[1] / "mypy-generated.ini"
 MYPY_MISSING = "mypy is not installed: install rdf-persistence[generate]"
 MYPY_ERROR = ": error: "
+MYPY_CACHES = "rp-generate-mypy"  # under the system's temporary folder, one per project
 INIT = "__init__.py"
-# Puts the first argument's paths first on sys.path, then imports each module the others name;
-# prints one tab-separated line per failure.
+# argv: the search path to put first, a JSON object {package: folder}, the modules to import.
+# A package the path does not find in its folder is loaded from the folder, so a target whose
+# folder names do not spell its package is still checked; then each module is imported, and
+# each failure printed as one tab-separated line.
 IMPORT_SCRIPT = """\
-import importlib, os, sys
+import importlib, importlib.util, json, os, sys
 sys.path[:0] = sys.argv[1].split(os.pathsep)
-for name in sys.argv[2:]:
+for package, folder in json.loads(sys.argv[2]).items():
+    try:
+        found = importlib.util.find_spec(package)
+    except ImportError:
+        found = None
+    if found is None or folder not in (found.submodule_search_locations or []):
+        spec = importlib.util.spec_from_file_location(
+            package, os.path.join(folder, "__init__.py"), submodule_search_locations=[folder]
+        )
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[package] = module
+        spec.loader.exec_module(module)
+for name in sys.argv[3:]:
     try:
         importlib.import_module(name)
     except Exception as error:
@@ -35,20 +53,25 @@ for name in sys.argv[2:]:
 """
 
 
+def _folder(target: GenerationTarget, base: Path) -> Path:
+    return (base / python_folder(target)).resolve()
+
+
 def _modules(target: GenerationTarget, base: Path) -> list[str]:
     """The dotted names of the Python modules in the target's folder (not its subfolders: other targets')."""
-    folder = base / python_folder(target)
     return [
-        f"{target.package}.{file.stem}" for file in sorted(folder.glob("*.py")) if file.name != INIT
+        f"{target.package}.{file.stem}"
+        for file in sorted(_folder(target, base).glob("*.py"))
+        if file.name != INIT
     ]
 
 
 def _import_root(target: GenerationTarget, base: Path) -> Path | None:
     """The folder the target's package is imported from: its Python folder less one level per package part.
 
-    ``None`` when the folder's names do not spell the package; the caller's path must then find it.
+    ``None`` when the folder's names do not spell the package.
     """
-    folder = (base / python_folder(target)).resolve()
+    folder = _folder(target, base)
     parts = target.package.split(".")
     if folder.parts[-len(parts) :] != tuple(parts):
         return None
@@ -65,15 +88,21 @@ def _search_path(roots: Sequence[str]) -> str:
     return os.pathsep.join([*roots, *(entry or os.getcwd() for entry in sys.path)])
 
 
+def _checked(targets: Sequence[GenerationTarget], base: Path) -> list[GenerationTarget]:
+    """The targets that wrote Python modules, outer packages first."""
+    return sorted((t for t in targets if _modules(t, base)), key=lambda t: t.package)
+
+
 def import_problems(targets: Sequence[GenerationTarget], base: Path) -> list[CheckProblem]:
     """One problem per generated module that fails to import, naming it and the exception."""
-    schema_of = {
-        module: target.schema_file for target in targets for module in _modules(target, base)
-    }
+    checked = _checked(targets, base)
+    schema_of = {module: t.schema_file for t in checked for module in _modules(t, base)}
     if not schema_of:
         return []
+    folders = json.dumps({t.package: str(_folder(t, base)) for t in checked})
     result = subprocess.run(
-        [sys.executable, "-c", IMPORT_SCRIPT, _search_path(_roots(targets, base)), *schema_of],
+        [sys.executable, "-c", IMPORT_SCRIPT, _search_path(_roots(checked, base)), folders]
+        + list(schema_of),
         capture_output=True,
         text=True,
         check=False,
@@ -91,22 +120,33 @@ def import_problems(targets: Sequence[GenerationTarget], base: Path) -> list[Che
     return problems
 
 
-def _outermost(targets: Sequence[GenerationTarget], base: Path) -> list[str]:
-    """The targets' packages that hold modules, less those inside another: mypy checks a package's subpackages too."""
-    packages = sorted({t.package for t in targets if _modules(t, base)})
-    return [p for p in packages if not any(p.startswith(f"{other}.") for other in packages)]
+def _mypy_targets(checked: Sequence[GenerationTarget], base: Path) -> list[str]:
+    """mypy's arguments: ``-p`` for each outermost package found by its import root, the folder of each other.
+
+    mypy checks a package's subpackages too, so a package inside another listed one is left out.
+    """
+    rooted = [t.package for t in checked if _import_root(t, base)]
+    outermost = [p for p in rooted if not any(p.startswith(f"{other}.") for other in rooted)]
+    folders = [str(_folder(t, base)) for t in checked if not _import_root(t, base)]
+    return [*(arg for package in outermost for arg in ("-p", package)), *folders]
 
 
-def _mypy(targets: Sequence[GenerationTarget], base: Path) -> subprocess.CompletedProcess[str]:
+def _cache_dir(base: Path) -> Path:
+    """mypy's cache for the project: under the temporary folder, so a check writes nothing into the project."""
+    key = hashlib.sha256(str(base.resolve()).encode()).hexdigest()[:16]
+    return Path(tempfile.gettempdir()) / MYPY_CACHES / key
+
+
+def _mypy(checked: Sequence[GenerationTarget], base: Path) -> subprocess.CompletedProcess[str]:
     """mypy over the targets' packages, run with ``mypy-generated.ini``.
 
     ponytail: mypy finds the packages from its working folder (``mypy_path = .``), the first
     import root; targets imported from two different folders would need MYPYPATH, so far none do.
     """
-    roots = _roots(targets, base)
+    roots = _roots(checked, base)
     return subprocess.run(
         [sys.executable, "-m", "mypy", "--config-file", str(MYPY_CONFIG), "--no-error-summary"]
-        + [arg for package in _outermost(targets, base) for arg in ("-p", package)],
+        + ["--cache-dir", str(_cache_dir(base)), *_mypy_targets(checked, base)],
         cwd=roots[0] if roots else base,
         capture_output=True,
         text=True,
@@ -116,11 +156,12 @@ def _mypy(targets: Sequence[GenerationTarget], base: Path) -> subprocess.Complet
 
 def type_problems(targets: Sequence[GenerationTarget], base: Path) -> list[CheckProblem]:
     """One problem per mypy error over the targets' packages, naming the file and the line."""
-    if not any(_modules(target, base) for target in targets):
+    checked = _checked(targets, base)
+    if not checked:
         return []
     if importlib.util.find_spec("mypy") is None:
         return [CheckProblem(step=TYPE_STEP, message=MYPY_MISSING)]
-    result = _mypy(targets, base)
+    result = _mypy(checked, base)
     errors = [line for line in result.stdout.splitlines() if MYPY_ERROR in line]
     problems = [
         CheckProblem(step=TYPE_STEP, element=place, message=message)

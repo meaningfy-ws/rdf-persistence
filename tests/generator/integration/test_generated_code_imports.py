@@ -175,6 +175,7 @@ def test_the_check_type_checks_the_generated_package_and_names_the_module_and_th
     assert "type check" in error, error
     assert "app_typed.py" in error, "the module is not named"
     assert "Incompatible types in assignment" in error, "mypy's error is not given"
+    assert not list(project.rglob(".mypy_cache")), "the check wrote mypy's cache into the project"
 
 
 def test_a_root_subclass_whose_parent_is_in_another_module_has_the_parent_first_and_imports(

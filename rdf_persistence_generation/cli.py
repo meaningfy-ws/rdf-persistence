@@ -75,7 +75,9 @@ def _run(
 ) -> int:
     """Generate (or check) the targets and report; the exit code is 0 or 1."""
     problems = generate(targets, base, pipeline_steps or (), check=args.check)
-    if not problems:  # what was written imports, and in a check type-checks (#242)
+    # what was written imports, and in a check type-checks (#242); without the `generate` extra a
+    # check only compares the manifests, as before
+    if not problems and pipeline_steps is not None:
         problems += import_problems(targets, base)
         problems += type_problems(targets, base) if args.check else []
     if args.check:

@@ -39,7 +39,7 @@ import keyword
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from functools import cache
+from functools import cache, cached_property
 from pathlib import Path
 
 from linkml.generators.common.build import ClassResult
@@ -282,6 +282,9 @@ class SplitPydanticGenerator(PydanticGenerator):
         The stock generator orders the bases by the parents' places in this module and puts an
         imported one last, after the mixins it already has, which no MRO allows.
         """
+        reordered: dict[str, list[str]] | None = self._class_bases
+        if reordered is not None:  # reordered on the first access
+            return reordered
         bases: dict[str, list[str]] = super().class_bases
         for cls in self.schemaview.all_classes().values():
             name = self._get_class_python_name(cls.name)
@@ -296,9 +299,10 @@ class SplitPydanticGenerator(PydanticGenerator):
             **module.base_model.model_dump(), module=base_model_module(toolkit=self.toolkit)
         )
         alias_imports(module.python_imports)
-        drop_imports(module.python_imports, self._any_classes())
+        drop_imports(module.python_imports, self._any_classes)
         return module
 
+    @cached_property
     def _any_classes(self) -> set[str]:
         """The classes that stand for ``typing.Any`` (``class_uri: linkml:Any``): never generated, so never imported."""
         sv = self.schemaview
@@ -307,6 +311,12 @@ class SplitPydanticGenerator(PydanticGenerator):
             for cls in sv.all_classes().values()
             if cls.class_uri == ANY_CLASS_URI
         }
+
+    def _inline_as_simple_dict_with_value(self, slot_def: SlotDefinition) -> str | None:
+        """The stock value type of a simple-dict slot, as its alias: the stock generator reads it
+        from the type directly, not through ``generate_python_range`` (#243)."""
+        value: str | None = super()._inline_as_simple_dict_with_value(slot_def)
+        return alias_leaf(value) if value else value
 
     def _clean_injected_classes(self, injected_classes: list[str | type]) -> list[str] | None:
         """None: the only injected class, ``LinkMLMeta``, holds the metadata, which is off (#243)."""
@@ -325,7 +335,7 @@ class SplitPydanticGenerator(PydanticGenerator):
         names_a_class = (
             slot_range in sv.all_classes()
             and pyrange == self._get_class_python_name(slot_range)
-            and pyrange not in self._any_classes()
+            and pyrange not in self._any_classes
         )
         if slot_range in sv.all_enums() or names_a_class:
             return pyrange
