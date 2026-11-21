@@ -158,17 +158,21 @@ class WriteGuards:
         collected ones of the transaction overlaying them (as in ``_skeleton``). The text names no
         holder: it may be hidden.
         """
-        graphs = dict(await session.graphs_with(v.HAS_PART, URIRef(iri)))
-        for holder, triples in context.collected.items():
-            graphs[holder] = self._graph_of(triples)  # the collected state replaces the stored one
-        for holder, graph in graphs.items():
-            other = self._decoded_if_nesting(name, holder, graph)
-            if other is None or iri not in {str(m) for m in other.has_part or []}:
-                continue
+        for other in await self._holders(session, iri, name, context):
             if other.member_class != collection.member_class:
                 raise InvalidBody(
                     f"the member class of {iri} cannot change while a nesting collection holds it"
                 )
+
+    async def _holders(
+        self, session: Session, iri: str, name: str, context: GuardContext
+    ) -> list[ReferenceCollection]:
+        """The nesting collections of class ``name`` that name ``iri``, as the transaction leaves them."""
+        graphs = dict(await session.graphs_with(v.HAS_PART, URIRef(iri)))
+        for holder, triples in context.collected.items():
+            graphs[holder] = self._graph_of(triples)  # the collected state replaces the stored one
+        decoded = (self._decoded_if_nesting(name, h, g) for h, g in graphs.items())
+        return [d for d in decoded if d is not None and iri in {str(m) for m in d.has_part or []}]
 
     @staticmethod
     def _graph_of(triples: Iterable[Triple]) -> Graph:
@@ -346,10 +350,16 @@ class WriteGuards:
             iri = str(head.head_iri)
             if own not in (head.head_types or []) or iri in stored:
                 continue
-            if iri in context.collected:
-                graph = self._graph_of(context.collected[iri])
-            else:
-                graph, _, _ = await session.get_graph(iri)
+            graph = await self._collected_or_stored(session, iri, context)
             if self._decoded(name, iri, graph).member_class != collection.member_class:
                 wrong.append(iri)
         return wrong
+
+    async def _collected_or_stored(
+        self, session: Session, iri: str, context: GuardContext
+    ) -> Graph:
+        """The graph of ``iri`` as the transaction collected it, else as stored."""
+        if iri in context.collected:
+            return self._graph_of(context.collected[iri])
+        graph, _, _ = await session.get_graph(iri)
+        return graph
