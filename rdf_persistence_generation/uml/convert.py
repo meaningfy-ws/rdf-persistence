@@ -51,7 +51,7 @@ from rdf_persistence_generation.uml.modules import (
     reachable,
 )
 from rdf_persistence_generation.uml.naming import title_for
-from rdf_persistence_generation.uml.roles import role_entries
+from rdf_persistence_generation.uml.roles import ROLES_SUFFIX, role_entries, roles_file_text
 from rdf_persistence_generation.uml.slots import (
     SharedSlots,
     Usage,
@@ -397,11 +397,12 @@ def _lay_out(
 
 def convert(
     model: UmlModel, settings: UmlSettings, metamodel_prefixes: Mapping[str, str]
-) -> tuple[list[SchemaDefinition], list[ReportLine], list[CheckProblem]]:
+) -> tuple[list[SchemaDefinition], list[ReportLine], list[CheckProblem], dict[str, str]]:
     """Convert the subtree of ``model`` into a root schema and one module per package (or merged cycle).
 
-    Returns the schemas (root first, then the modules by path), the report lines and the problems, each
-    sorted. With any problem the schemas are empty: nothing is to be written.
+    Returns the schemas (root first, then the modules by path), the report lines, the problems, each
+    sorted, and the other files to write (PD-8): a path relative to ``--out`` to its text, empty when
+    nothing is drawn. With any problem the schemas and the files are empty: nothing is to be written.
     """
     prefixes = {each.prefix_name: each.namespace for each in settings.prefixes or []}
     ctx = Context(settings, metamodel_prefixes, prefixes)
@@ -421,12 +422,13 @@ def convert(
     kinds = _module_kinds(ctx, model, layout)
     built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx), kinds)
     use_toolkit_slots(ctx, toolkit_usages, classes, shared, built.slot_names)
-    role_entries(ctx, model)  # judged and reported now; task 1.3 writes the entries
+    entries = role_entries(ctx, model)
     problems = ctx.findings.problems()
     if problems:
-        return [], ctx.findings.report(), problems
+        return [], ctx.findings.report(), problems, {}
     schemas = _assemble(ctx, layout, built)
-    return schemas, ctx.findings.report(), []
+    files = {f"{settings.root_name}{ROLES_SUFFIX}": roles_file_text(entries)} if entries else {}
+    return schemas, ctx.findings.report(), [], files
 
 
 def _assemble(ctx: Context, layout: Layout, built: Built) -> list[SchemaDefinition]:

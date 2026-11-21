@@ -246,6 +246,7 @@ class Converted:
     schemas: dict[str, SchemaDefinition]
     report: list[ReportLine]
     problems: list[CheckProblem]
+    files: dict[str, str]
 
     def klass(self, module: str, name: str) -> ClassDefinition:
         return self.schemas[module].classes[name]
@@ -266,5 +267,5 @@ class Converted:
 
 
 def run(uml: UmlModel, **overrides: object) -> Converted:
-    schemas, report, problems = convert(uml, settings(**overrides), METAMODEL_PREFIXES)
-    return Converted({schema.name: schema for schema in schemas}, report, problems)
+    schemas, report, problems, files = convert(uml, settings(**overrides), METAMODEL_PREFIXES)
+    return Converted({schema.name: schema for schema in schemas}, report, problems, files)

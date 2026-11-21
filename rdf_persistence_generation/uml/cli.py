@@ -24,7 +24,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.problems import format_problems
 from rdf_persistence_generation.uml.convert import convert
 from rdf_persistence_generation.uml.qea import QeaUsageError, read_qea
-from rdf_persistence_generation.uml.write import write
+from rdf_persistence_generation.uml.write import StagedFileRefused, write
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2
 PROG = "rp-uml2linkml"
@@ -187,8 +187,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _usage_error(error.message)
     if not isinstance(model, UmlModel):
         return _problems_found(model)
-    schemas, report, problems = convert(model, settings, metamodel_prefixes())
+    schemas, report, problems, files = convert(model, settings, metamodel_prefixes())
     if problems:
         return _problems_found(problems)
-    write(schemas, report, args.out, args.root_name)
+    try:
+        write(schemas, report, args.out, args.root_name, files)
+    except StagedFileRefused as error:
+        print(f"{PROG}: {error}", file=sys.stderr)
+        return EXIT_FAILED
     return EXIT_OK

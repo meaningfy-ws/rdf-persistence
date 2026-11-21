@@ -289,5 +289,9 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
   is not Initial, and the workflow rule (2.2) reports it as `no_rule` with `node_type`. The reader
   judges no kind. Also as built: `UmlStateFlow.uml_tagged_values` reuses `UmlTaggedValue` (owner =
   connector id); `UmlStatechart.node_ids` holds only state nodes of the converted subtree.
+- **D-6 The refusal message (task 1.3).** `StagedFileRefused` carries the loader's message as is,
+  which names the staged file's temporary path; PD-4 promises "the loader message", and the case
+  only arises when a conversion rule missed something. The exception keeps PD-4's name without an
+  `Error` suffix (`noqa: N818`).
 - **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
   order holds and the consumer may convert its access package.

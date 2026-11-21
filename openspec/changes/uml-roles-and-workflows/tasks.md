@@ -19,7 +19,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
   actions; repeated action; unknown variable; variable twice; missing `role`; `Op` not `=`; two
   objects with one level and role), each asserting the problem text names the object. Then
   `uml/roles.py` and its call in `convert`, `ReportKind.ROLE`, the `UmlRule` codes.
-- [ ] 1.3 Write and final check (PD-3, PD-4), after 1.2. Generator unit, first, in
+- [x] 1.3 Write and final check (PD-3, PD-4), after 1.2. Generator unit, first, in
   `test_uml_write.py`: `<root>.roles.yaml` written in `(role, level)` order and read back by
   `load_role_definitions`, its text equal to PD-6's `safe_dump` call; no objects → no file; a second
   run byte-identical; a stray `<root>.roles.yaml` with no objects drawn → **no** `stale-file` line
