@@ -1,36 +1,36 @@
-# Hand-over: uml-to-linkml, after stage 1
+# Hand-over: uml-to-linkml, after stage 2
 
 ## Done
-Stage 1 (tasks 1.1–1.9), PR #212 (merged by the watch-and-merge command after this note). Task
-2.1 is done too: the rule table is frozen (D-20).
+Stage 2 (tasks 2.2–2.7, 2.9, 2.10 and the build half of 2.8), PR #228, merged by the
+watch-and-merge command after this note. Full review (L1, L2, L3, L4+L5), four accepted findings
+fixed (D-29 C-1..C-4), the checker passed. Gates on `3c1fcb40`: `make check-all` exit 0 (unit
+7592, feature 97, generator 1477), `make test-containers` exit 0 (334 passed). The acceptance demo
+ran on the consumer's real `.qea`, read-only (`evidence/acceptance.md`).
 
 ## Decided since the PLAN
-D-1 to D-22 (design.md, Delivery decisions). For stage 2 mind especially D-5 (cycles merge into
-one module), D-7 (SPIKE-1 passed: `activity_root` stays inactive), D-9..D-14 (model2owl
-alignment), D-16 (merge authority, admin included, on green CI), D-17, D-18, D-21 and D-22
-(review floor; carry-over in task 2.9).
+D-1..D-29 (design.md, Delivery decisions); stage 2 added D-23 (rule freeze with R-30), D-24 (W-1
+scope), D-25 (reader skips connectors to ignored objects), D-26 (build order, R-30 enumerations
+only), D-27 (2.6 as built), D-28 (develop merged in, not rebased), D-29 (the review's findings and
+floor).
 
 ## Open
-- To the developer at the end: W-1 of D-22 (D-18's `__slots__` working classes pass the model guard
-  unseen: generate them, use `SlotDefinition`, or list them in `HAND_WRITTEN`), and the delivery
-  decisions D-1..D-22 for validation (R-0007).
-- Upstream issues: #208 (split pydantic modules fail on import cycles), #209 (language strings).
-- IT-2's generate-and-import step is a strict xfail until task 2.3 writes `Described`.
-- The UML conventions page is drafted and committed off-branch as `88066c6f` (worktree
-  `.worktrees/uml-to-linkml-1.6`); cherry-pick it in task 2.7 and check it against the stage-2 code.
-- Builder worktrees `.worktrees/uml-to-linkml-1.1`, `-1.5`, `-1.6` and the ref
-  `backup/uml-to-linkml-pre-rebase` can be removed once #212 is merged (keep `-1.6` until
-  `88066c6f` is picked).
-- Builders: run `make test-fast check-quality` with `PYTEST_N=8`, and `make generate` after the last
-  edit of any file under `rdf_persistence_generation/` (D-8).
+- To the developer: the acceptance verdict (`evidence/acceptance.md`), and D-1..D-29 with D-29's
+  floor for validation (R-0007).
+- After acceptance: the docs stage is done in this EPIC (how-to cold-read, conventions page
+  checked against the code), so `evidence/docs-owed.md` says no docs owed; then archive the change
+  per `spec-stewardship` (`openspec archive uml-to-linkml --yes`) in a docs PR.
+- Upstream issues stay open: #208 (cyclic split modules), #209 (a language-string range).
+- The floor of D-29 (the reader/converter double ownership, `Context` order, `Usage`/`Composed`,
+  enum constants, `slots.py` split, disk-error staging, WAL side files) is a candidate follow-up
+  EPIC for the developer to decide.
+- Builder worktrees `.worktrees/uml-to-linkml-{1.6,2.5,2.6,2.7,2.9,2.10,w1,fix-c12,fix-c4}`, their
+  `wip/uml-to-linkml-*` branches and `backup/uml-to-linkml-stage2-pre-rebase` can be removed once
+  #228 is merged.
 
 ## Next
-Stage 2, task 2.2 (toolkit index), then 2.3 ∥ 2.4 ∥ 2.5, then 2.6 ∥ 2.7 with 2.9, then 2.8 (full
-five-lens review, acceptance demo on the real `.qea` read-only, archive). Read first: tasks.md §2,
-design.md PD-17..PD-21, D-1..D-22, specs/rp-uml-import/spec.md.
+The developer's acceptance, then archive. Read first: `evidence/acceptance.md`, design.md D-23..D-29.
 
 ## Prompt
-Act as the team lead. Deliver stage 2 of openspec/changes/uml-to-linkml from handover.md,
-following the epic-delivery skill and docs/modules/ROOT/pages/develop/agents.adoc; work in the
-worktree .worktrees/uml-to-linkml after rebasing it on develop; run builders in parallel where the
-files are disjoint.
+Act as the team lead. Close openspec/changes/uml-to-linkml from handover.md, following the
+epic-delivery skill: record the developer's acceptance verdict in evidence/acceptance.md, write
+evidence/docs-owed.md, archive the change per spec-stewardship in one PR, and merge it on green CI.
