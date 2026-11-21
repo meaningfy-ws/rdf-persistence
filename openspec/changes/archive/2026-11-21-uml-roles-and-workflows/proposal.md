@@ -110,7 +110,32 @@ rule). A model that draws none of these converts exactly as today.
 
 ## Impact
 
-`rdf_persistence_generation/uml/` (`qea.py`, `convert.py`, `write.py`, a new module per stage),
-`rdf_persistence_generation/model/rp_generation.yaml` and its generated module, `tests/generator/`
-(`uml_qea.py` builder), docs `reference/uml-conventions.adoc`, `howto/uml-to-linkml.adoc`. Not
-breaking: a model without these elements converts as before; one that has them used to fail.
+`rdf_persistence_generation/uml/` (`qea.py`, `convert.py`, `write.py`, `cli.py`; new `roles.py`,
+`workflows.py` and `dump.py`), `rdf_persistence_generation/model/rp_generation.yaml` and its
+generated module, `tests/generator/` (`uml_qea.py` builder, `uml_model.py`), docs
+`reference/uml-conventions.adoc`, `howto/uml-to-linkml.adoc`. Not breaking for the command line: a
+model without these elements converts and reports as before; one that has them used to fail.
+`convert` now returns a fourth value, the files it draws (PD-8); its only callers are the command
+line and the tests.
+
+## Delivery reconciliation
+
+What was delivered against this shape (rule P-0004). The decisions are in
+[design.md](design.md#delivery-decisions); this table only names them.
+
+| Shaped | Delivered | Why | Decision | PR |
+|---|---|---|---|---|
+| Two stages, stage 2 after stage 1 | Stage 2 built in parallel from task 1.1, rebased onto each stage-1 commit; stage 1 merged first | The developer asked to advance in parallel | D-1 | #257, #263 |
+| `module_kind` out of this EPIC (DEC-8) | Delivered before it, separately | Its order mattered for RISK-3 | D-3 | #247 |
+| The reader copies an Object's run state | It also keeps the text outside the `@VAR` blocks, which the role rule refuses | PD-3 makes that text a problem | D-4 | #257 |
+| `node_kind` `state` or `initial` | Also the raw `node_type`, so the rule names an unknown StateNode kind | PD-5 must name the NType | D-5 | #263 |
+| PlantUML snippets (PD-7) | Mermaid (`classDiagram`, `stateDiagram-v2`) | The docs build renders only Mermaid | D-7 | #257, #263 |
+| A Statechart diagram by its package (as first built) | By its states: a diagram showing a converted state, wherever it sits | The signed-off requirement | D-10 C2 | #263 |
+| Files written from hand-built mappings (as first built) | From the library's generated models through one `model_dump` helper; byte for byte as PD-6 | P-0007 | D-10 C1 | #263 |
+| The how-to's `rules=`/`workflows=` lines (PD-7) | Also a step 5 "Start the service" with a full `install_service` call | A cold reader could not reach a running service | D-13, D-15 | #263 |
+| The run on the consumer's model records counts (1.4, 2.4) | Recorded up to the model's own boundary problem; no file written from it yet | The consumer fixes its model; the developer accepted merging (D-12b) | D-8, D-12 | #257, #263 |
+
+Not delivered: the real-model run that writes the files (open in the hand-over, after the
+consumer's model fix). Follow-ups: #258 (the library's roles-file encoding), #259 (the library's
+whole-model workflow check in `write`), #260 (a nesting role fixes `member_class`), #261 (the
+service-start docs). The review's findings under the floor are in D-9 and D-11.
