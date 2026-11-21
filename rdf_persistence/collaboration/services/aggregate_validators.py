@@ -61,6 +61,7 @@ class AggregateValidators:
         roots = _checked_roots(view, mapping, folder)
         chains = {_iri(view, name): _chain(view, name) for name in roots}
         self._names = {_iri(view, name): name for name in roots}
+        self._class_names = {_iri(view, name): name for name in view.all_classes()}
         self._lines = {
             iri: frozenset(_iri(view, kin) for kin in chain) for iri, chain in chains.items()
         }
@@ -87,7 +88,7 @@ class AggregateValidators:
 
     def reader(self, session: Session, context: GuardContext) -> AggregateReader:
         """The reader for one write: it answers for ``session``'s caller and sees what ``context`` collected."""
-        return _Reader(session, context, self._names)
+        return _Reader(session, context, self._class_names)
 
     def model_class(self, type_iris: Iterable[str]) -> str | None:
         """The class name to decode a root typed ``type_iris`` as; None when its root types name none.
@@ -111,7 +112,7 @@ class AggregateValidators:
 
 
 class _Reader:
-    """The reader of one guarded write (PD-5): built from the session, the context and the root classes."""
+    """The reader of one guarded write (PD-5): built from the session, the context and the view's class IRI to name map."""
 
     def __init__(self, session: Session, context: GuardContext, names: Mapping[str, str]) -> None:
         self._session = session

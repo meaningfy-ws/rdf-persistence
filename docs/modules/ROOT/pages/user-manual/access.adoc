@@ -183,7 +183,7 @@ escapes a rule.
 === Ask the reader about other aggregates
 
 `reader.classes_of(iri)` answers with the set of class names of the aggregate at `iri`: its own
-types, not their ancestors. It answers an empty set when there is no such aggregate, when the
+types, not their ancestors; any class of the schema counts, the toolkit's too (a `Comment`). It answers an empty set when there is no such aggregate, when the
 value is not an aggregate IRI (a literal, a foreign or a malformed IRI) and when the caller may not
 read it. A hidden aggregate and an absent one look the same, so a rule cannot be used to find out
 whether a hidden aggregate exists.

@@ -437,15 +437,23 @@ async def test_an_aggregate_removed_earlier_in_the_transaction_still_answers_wit
             )
 
 
-async def test_a_type_that_is_not_a_root_class_is_dropped_from_the_answer():  # T-6
-    other = URIRef("https://example.org/ns/library#Chapter")
+async def test_a_type_the_view_does_not_know_is_dropped_from_the_answer():  # T-6
+    other = URIRef("https://example.org/ns/library#NoSuchClass")
     triples = [
         *toy_mapper().to_triples(shelf(shelf_iri(3))),
         (URIRef(shelf_iri(3)), RDF.type, other),
     ]
     async with reading_session() as session:
         reader = reader_of(session, {shelf_iri(3): triples})
-        assert await reader.classes_of(shelf_iri(3)) == {"Shelf"}, "Chapter is not a root"
+        assert await reader.classes_of(shelf_iri(3)) == {"Shelf"}, "NoSuchClass is not in the view"
+
+
+async def test_an_aggregate_of_a_class_that_is_not_a_root_answers_with_its_class_name():  # T-6
+    chapter = URIRef("http://purl.org/ontology/bibo/Chapter")
+    triples = [(URIRef(shelf_iri(3)), RDF.type, chapter)]
+    async with reading_session() as session:
+        reader = reader_of(session, {shelf_iri(3): triples})
+        assert await reader.classes_of(shelf_iri(3)) == {"Chapter"}, "any class of the view"
 
 
 @pytest.mark.parametrize("error", [StoreUnavailable("down"), DatabaseGone("gone")])
