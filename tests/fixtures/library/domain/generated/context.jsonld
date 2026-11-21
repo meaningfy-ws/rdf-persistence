@@ -269,6 +269,9 @@
             "replying": "http://www.w3.org/ns/oa#replying"
          }
       },
+      "nests": {
+         "@id": "rp:nests"
+      },
       "shade": {
          "@id": "shade"
       },

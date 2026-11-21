@@ -1281,6 +1281,10 @@
           "$ref": "#/components/schemas/MembershipRule",
           "description": "The rule that says which aggregates of the member class belong to the collection."
         },
+        "nests": {
+          "description": "Whether the collection may hold collections of its own class and member class as members, to any depth. Absent means false.",
+          "type": "boolean"
+        },
         "type": {
           "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
           "type": "string"
@@ -1690,6 +1694,10 @@
         "membership_rule": {
           "$ref": "#/components/schemas/MembershipRule",
           "description": "The rule that says which aggregates of the member class belong to the collection."
+        },
+        "nests": {
+          "description": "Whether the collection may hold collections of its own class and member class as members, to any depth. Absent means false.",
+          "type": "boolean"
         },
         "type": {
           "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",

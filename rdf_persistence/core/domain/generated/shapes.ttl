@@ -14,35 +14,35 @@ rp:Activity a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n57 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n193 , _:c14n222 , _:c14n26 , _:c14n7 , _:c14n83 , _:c14n93 ;
+	sh:property _:c14n194 , _:c14n223 , _:c14n26 , _:c14n7 , _:c14n83 , _:c14n93 ;
 	sh:targetClass prov:Activity .
 rp:Add a sh:NodeShape ;
 	rdfs:comment "An activity that added an aggregate." ;
 	rdfs:label "Add" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n141 ;
+	sh:ignoredProperties _:c14n142 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n111 , _:c14n164 , _:c14n172 , _:c14n177 , _:c14n188 , _:c14n227 ;
+	sh:property _:c14n112 , _:c14n165 , _:c14n173 , _:c14n178 , _:c14n189 , _:c14n228 ;
 	sh:targetClass rp:Add .
 rp:AggregateKey a sh:NodeShape ;
 	rdfs:comment "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates." ;
 	rdfs:label "Aggregate key" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n30 ;
-	sh:property _:c14n196 , _:c14n224 , _:c14n65 , _:c14n77 ;
+	sh:property _:c14n197 , _:c14n225 , _:c14n65 , _:c14n77 ;
 	sh:targetClass rp:AggregateKey .
 rp:AggregateRoot a sh:NodeShape ;
 	rdfs:comment "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole." ;
 	rdfs:label "Aggregate root" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n176 ;
+	sh:ignoredProperties _:c14n177 ;
 	sh:targetClass rp:AggregateRoot .
 rp:BlobEntry a sh:NodeShape ;
 	rdfs:comment "One object in a tenant's bucket, as a listing of the bucket reports it." ;
 	rdfs:label "Blob entry" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n78 ;
-	sh:property _:c14n133 , _:c14n180 ;
+	sh:property _:c14n134 , _:c14n181 ;
 	sh:targetClass rp:BlobEntry .
 rp:Comment a sh:NodeShape ;
 	rdfs:comment "A remark on an aggregate, or a reply to another remark. Each comment is an aggregate root of its own, whose target is always the aggregate it is about; a reply also names the comment it answers. The toolkit writes and reads it, since its audience limits who may see it. The session writes its author and time as the tracking of its graph." ;
@@ -50,23 +50,23 @@ rp:Comment a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n41 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n100 , _:c14n116 , _:c14n117 , _:c14n130 , _:c14n134 , _:c14n146 , _:c14n147 , _:c14n153 , _:c14n167 , _:c14n18 , _:c14n20 , _:c14n210 , _:c14n71 ;
+	sh:property _:c14n100 , _:c14n117 , _:c14n118 , _:c14n131 , _:c14n135 , _:c14n147 , _:c14n148 , _:c14n154 , _:c14n168 , _:c14n18 , _:c14n20 , _:c14n211 , _:c14n71 ;
 	sh:targetClass <http://www.w3.org/ns/oa#Annotation> .
 rp:CommitMarker a sh:NodeShape ;
 	rdfs:comment "The registry marker of one transaction's commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written." ;
 	rdfs:label "Commit marker" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n104 ;
+	sh:ignoredProperties _:c14n105 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n173 , _:c14n68 ;
+	sh:property _:c14n174 , _:c14n68 ;
 	sh:targetClass rp:CommitMarker .
 rp:DeleteFile a sh:NodeShape ;
 	rdfs:comment "The activity of removing a stored file, with the file aggregate it used and an invalidation of it." ;
 	rdfs:label "Delete file" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n219 ;
+	sh:ignoredProperties _:c14n220 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n119 , _:c14n161 , _:c14n185 , _:c14n187 , _:c14n215 , _:c14n216 , _:c14n84 ;
+	sh:property _:c14n120 , _:c14n162 , _:c14n186 , _:c14n188 , _:c14n216 , _:c14n217 , _:c14n84 ;
 	sh:targetClass rp:DeleteFile .
 rp:Described a sh:NodeShape ;
 	rdfs:comment "A mixin giving an object an IRI, a label and a description. The application writes them." ;
@@ -74,21 +74,21 @@ rp:Described a sh:NodeShape ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n59 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n175 , _:c14n2 , _:c14n80 ;
+	sh:property _:c14n176 , _:c14n2 , _:c14n80 ;
 	sh:targetClass rp:Described .
 rp:Generation a sh:NodeShape ;
 	rdfs:comment "The generation of one version of an entity by an activity." ;
 	rdfs:label "Generation" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n233 ;
-	sh:property _:c14n115 , _:c14n125 , _:c14n207 , _:c14n225 , _:c14n82 ;
+	sh:ignoredProperties _:c14n234 ;
+	sh:property _:c14n116 , _:c14n126 , _:c14n208 , _:c14n226 , _:c14n82 ;
 	sh:targetClass prov:Generation .
 rp:Grant a sh:NodeShape ;
 	rdfs:comment "A permission given to a principal on a tenant or on one aggregate, either by role or as a direct action; exactly one of role and action is given." ;
 	rdfs:label "Grant" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n142 ;
-	sh:property _:c14n143 , _:c14n144 , _:c14n195 , _:c14n38 ;
+	sh:ignoredProperties _:c14n143 ;
+	sh:property _:c14n144 , _:c14n145 , _:c14n196 , _:c14n38 ;
 	sh:targetClass odrl:Permission ;
 	sh:xone _:c14n50 .
 rp:Invalidation a sh:NodeShape ;
@@ -96,20 +96,20 @@ rp:Invalidation a sh:NodeShape ;
 	rdfs:label "Invalidation" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n101 ;
-	sh:property _:c14n13 , _:c14n145 , _:c14n15 , _:c14n17 , _:c14n64 ;
+	sh:property _:c14n13 , _:c14n146 , _:c14n15 , _:c14n17 , _:c14n64 ;
 	sh:targetClass prov:Invalidation .
 rp:KeyDuplicate a sh:NodeShape ;
 	rdfs:comment "A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant's database by the duplicates report." ;
 	rdfs:label "Key duplicate" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n49 ;
-	sh:property _:c14n154 , _:c14n44 , _:c14n53 , _:c14n73 ;
+	sh:property _:c14n155 , _:c14n44 , _:c14n53 , _:c14n73 ;
 	sh:targetClass rp:KeyDuplicate .
 rp:MembershipRule a sh:NodeShape ;
 	rdfs:comment "The rule of a collection, a part of its graph with no identifier of its own. An aggregate belongs when it equals every equality; a rule with no equality means every aggregate of the member class." ;
 	rdfs:label "Membership rule" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n202 ;
+	sh:ignoredProperties _:c14n203 ;
 	sh:property _:c14n95 ;
 	sh:targetClass rp:MembershipRule .
 rp:PendingLoad a sh:NodeShape ;
@@ -118,21 +118,21 @@ rp:PendingLoad a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n85 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n128 , _:c14n67 ;
+	sh:property _:c14n129 , _:c14n67 ;
 	sh:targetClass rp:PendingLoad .
 rp:Policy a sh:NodeShape ;
 	rdfs:comment "A set of permissions and prohibitions." ;
 	rdfs:label "Policy" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n182 ;
+	sh:ignoredProperties _:c14n183 ;
 	sh:targetClass odrl:Set .
 rp:PostComment a sh:NodeShape ;
 	rdfs:comment "The activity of posting a comment on an aggregate: the aggregate it used, and a generation of the comment. The text, the audience and the references belong to the command only; the comment holds them, and the stored record has none of them." ;
 	rdfs:label "Post comment" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n106 ;
+	sh:ignoredProperties _:c14n107 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n10 , _:c14n123 , _:c14n179 , _:c14n201 , _:c14n208 , _:c14n212 , _:c14n229 , _:c14n56 , _:c14n72 , _:c14n92 ;
+	sh:property _:c14n10 , _:c14n124 , _:c14n180 , _:c14n202 , _:c14n209 , _:c14n213 , _:c14n230 , _:c14n56 , _:c14n72 , _:c14n92 ;
 	sh:targetClass rp:PostComment .
 rp:PostReply a sh:NodeShape ;
 	rdfs:comment "The activity of posting a reply to a comment: a post of a comment that also names the comment it answers." ;
@@ -140,13 +140,13 @@ rp:PostReply a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n14 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n127 , _:c14n138 , _:c14n159 , _:c14n186 , _:c14n209 , _:c14n34 , _:c14n39 , _:c14n5 , _:c14n87 , _:c14n88 , _:c14n97 ;
+	sh:property _:c14n128 , _:c14n139 , _:c14n160 , _:c14n187 , _:c14n210 , _:c14n34 , _:c14n39 , _:c14n5 , _:c14n87 , _:c14n88 , _:c14n97 ;
 	sh:targetClass rp:PostReply .
 rp:Principal a sh:NodeShape ;
 	rdfs:comment "A reference to a user account in the identity provider, by IRI only." ;
 	rdfs:label "Principal" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n228 ;
+	sh:ignoredProperties _:c14n229 ;
 	sh:nodeKind sh:IRI ;
 	sh:property _:c14n102 ;
 	sh:targetClass prov:Agent .
@@ -154,37 +154,37 @@ rp:Prohibition a sh:NodeShape ;
 	rdfs:comment "The ODRL prohibition that forbids an assignee an action on a target; it wins over any permission." ;
 	rdfs:label "Prohibition" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n140 ;
-	sh:property _:c14n157 , _:c14n226 , _:c14n27 ;
+	sh:ignoredProperties _:c14n141 ;
+	sh:property _:c14n158 , _:c14n227 , _:c14n27 ;
 	sh:targetClass odrl:Prohibition .
 rp:Provenanced a sh:NodeShape ;
 	rdfs:comment "A mixin for entities whose derivation, generating activity and attribution are recorded." ;
 	rdfs:label "Provenanced" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n109 ;
-	sh:property _:c14n126 , _:c14n131 , _:c14n149 , _:c14n58 ;
+	sh:ignoredProperties _:c14n110 ;
+	sh:property _:c14n127 , _:c14n132 , _:c14n150 , _:c14n58 ;
 	sh:targetClass rp:Provenanced .
 rp:ReferenceCollection a sh:NodeShape ;
 	rdfs:comment "A mixin for an aggregate that collects other aggregates of one class: the members it names, and a rule that says which aggregates of that class belong. A collection of collections has the collection class as its member class." ;
 	rdfs:label "Reference collection" ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n24 ;
-	sh:property _:c14n11 , _:c14n184 , _:c14n89 ;
+	sh:property _:c14n103 , _:c14n11 , _:c14n185 , _:c14n89 ;
 	sh:targetClass dcmitype:Collection .
 rp:RegistryEntry a sh:NodeShape ;
 	rdfs:comment "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application." ;
 	rdfs:label "Registry entry" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n55 ;
-	sh:property _:c14n218 , _:c14n33 , _:c14n70 ;
+	sh:property _:c14n219 , _:c14n33 , _:c14n70 ;
 	sh:targetClass rp:RegistryEntry .
 rp:Remove a sh:NodeShape ;
 	rdfs:comment "An activity that removed an aggregate." ;
 	rdfs:label "Remove" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n205 ;
+	sh:ignoredProperties _:c14n206 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n105 , _:c14n150 , _:c14n181 , _:c14n213 , _:c14n22 , _:c14n28 ;
+	sh:property _:c14n106 , _:c14n151 , _:c14n182 , _:c14n214 , _:c14n22 , _:c14n28 ;
 	sh:targetClass rp:Remove .
 rp:Replace a sh:NodeShape ;
 	rdfs:comment "An activity that replaced an aggregate with a new version." ;
@@ -192,65 +192,65 @@ rp:Replace a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n21 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n139 , _:c14n169 , _:c14n198 , _:c14n31 , _:c14n6 , _:c14n81 ;
+	sh:property _:c14n140 , _:c14n170 , _:c14n199 , _:c14n31 , _:c14n6 , _:c14n81 ;
 	sh:targetClass rp:Replace .
 rp:RoleDefinition a sh:NodeShape ;
 	rdfs:comment "What a role may do and where it applies. An application supplies its role definitions as data; they are not stored." ;
 	rdfs:label "Role definition" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n156 ;
-	sh:property _:c14n183 , _:c14n214 , _:c14n63 ;
+	sh:ignoredProperties _:c14n157 ;
+	sh:property _:c14n184 , _:c14n215 , _:c14n63 ;
 	sh:targetClass rp:RoleDefinition .
 rp:Rule a sh:NodeShape ;
 	rdfs:comment "An ODRL rule that gives an assignee a ruling on an action over a target." ;
 	rdfs:label "Rule" ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n48 ;
-	sh:property _:c14n135 , _:c14n76 , _:c14n90 ;
+	sh:property _:c14n136 , _:c14n76 , _:c14n90 ;
 	sh:targetClass odrl:Rule .
 rp:SlotEquality a sh:NodeShape ;
 	rdfs:comment "One condition of a membership rule, a slot of the member class and the value it must equal." ;
 	rdfs:label "Slot equality" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n103 ;
-	sh:property _:c14n165 , _:c14n231 ;
+	sh:ignoredProperties _:c14n104 ;
+	sh:property _:c14n166 , _:c14n232 ;
 	sh:targetClass rp:SlotEquality .
 rp:StoredFile a sh:NodeShape ;
 	rdfs:comment "A mixin for the current content of a kept file; the bytes live in the tenant's bucket under the file key." ;
 	rdfs:label "Stored file" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n166 ;
-	sh:property _:c14n12 , _:c14n120 , _:c14n129 , _:c14n132 , _:c14n136 , _:c14n3 , _:c14n9 ;
+	sh:ignoredProperties _:c14n167 ;
+	sh:property _:c14n12 , _:c14n121 , _:c14n130 , _:c14n133 , _:c14n137 , _:c14n3 , _:c14n9 ;
 	sh:targetClass rp:StoredFile .
 rp:TenantAccess a sh:NodeShape ;
 	rdfs:comment "The access record of a tenant: its label, state and database name, with the grants and prohibitions that say who may do what in it." ;
 	rdfs:label "Tenant access" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n178 ;
+	sh:ignoredProperties _:c14n179 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n1 , _:c14n121 , _:c14n148 , _:c14n158 , _:c14n168 , _:c14n200 , _:c14n234 , _:c14n51 ;
+	sh:property _:c14n1 , _:c14n122 , _:c14n149 , _:c14n159 , _:c14n169 , _:c14n201 , _:c14n235 , _:c14n51 ;
 	sh:sparql _:c14n16 ;
 	sh:targetClass rp:TenantAccess .
 rp:TenantLabelled a sh:NodeShape ;
 	rdfs:comment "A mixin for what carries a tenant's label, one line of 1 to 200 characters that neither starts nor ends in a space; the access record and the service's request bodies share it, so the label is checked the same everywhere." ;
 	rdfs:label "Tenant labelled" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n114 ;
+	sh:ignoredProperties _:c14n115 ;
 	sh:property _:c14n75 ;
 	sh:targetClass rp:TenantLabelled .
 rp:TenantSweepReport a sh:NodeShape ;
 	rdfs:comment "The outcome of a sweep of one live tenant: the loaded graphs and bucket objects found orphaned past the grace period, and whether each list was removed." ;
 	rdfs:label "Tenant sweep report" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n170 ;
-	sh:property _:c14n112 , _:c14n113 , _:c14n151 , _:c14n203 , _:c14n223 , _:c14n40 , _:c14n86 ;
+	sh:ignoredProperties _:c14n171 ;
+	sh:property _:c14n113 , _:c14n114 , _:c14n152 , _:c14n204 , _:c14n224 , _:c14n40 , _:c14n86 ;
 	sh:targetClass rp:TenantSweepReport .
 rp:Tracked a sh:NodeShape ;
 	rdfs:comment "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity." ;
 	rdfs:label "Tracked" ;
 	sh:closed false ;
 	sh:ignoredProperties _:c14n43 ;
-	sh:property _:c14n155 , _:c14n189 , _:c14n190 , _:c14n69 ;
+	sh:property _:c14n156 , _:c14n190 , _:c14n191 , _:c14n69 ;
 	sh:targetClass rp:Tracked .
 rp:Transition a sh:NodeShape ;
 	rdfs:comment "One transition of an aggregate, as an activity: which aggregate it used, from which state to which, when, by whom and with which comment. The toolkit stores it as the activity of the commit that moves the aggregate, in the provenance graph, and keeps it when the aggregate is deleted. The payload slots belong to the command only: the stored record has none of them." ;
@@ -258,7 +258,7 @@ rp:Transition a sh:NodeShape ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n19 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n192 , _:c14n194 , _:c14n197 , _:c14n199 , _:c14n204 , _:c14n206 , _:c14n230 , _:c14n232 , _:c14n36 , _:c14n42 , _:c14n46 , _:c14n66 , _:c14n96 ;
+	sh:property _:c14n193 , _:c14n195 , _:c14n198 , _:c14n200 , _:c14n205 , _:c14n207 , _:c14n231 , _:c14n233 , _:c14n36 , _:c14n42 , _:c14n46 , _:c14n66 , _:c14n96 ;
 	sh:targetClass rp:Transition .
 rp:UnderWorkflow a sh:NodeShape ;
 	rdfs:comment "A mixin for an aggregate root that follows a workflow, which its class names with the workflow annotation. It gives the root its current state; only a transition changes it." ;
@@ -271,16 +271,16 @@ rp:Workflow a sh:NodeShape ;
 	rdfs:comment "The definition of a workflow, read from a file when the service starts and never stored: its name, its states, the state an aggregate starts in and the transitions between states. Its identifier is the IRI of the scheme whose concepts are the states, and it must stay stable once aggregates have states." ;
 	rdfs:label "Workflow" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n191 ;
+	sh:ignoredProperties _:c14n192 ;
 	sh:nodeKind sh:IRI ;
-	sh:property _:c14n118 , _:c14n171 , _:c14n37 , _:c14n4 , _:c14n45 ;
+	sh:property _:c14n119 , _:c14n172 , _:c14n37 , _:c14n4 , _:c14n45 ;
 	sh:targetClass rp:Workflow .
 rp:WorkflowTransition a sh:NodeShape ;
 	rdfs:comment "One transition of a workflow, from one state to another, with the roles that may make it. The states are named, not given as IRIs." ;
 	rdfs:label "Workflow transition" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n221 ;
-	sh:property _:c14n108 , _:c14n163 , _:c14n211 , _:c14n220 ;
+	sh:ignoredProperties _:c14n222 ;
+	sh:property _:c14n109 , _:c14n164 , _:c14n212 , _:c14n221 ;
 	sh:targetClass rp:WorkflowTransition .
 _:c14n0 rdf:first rp:storeName ;
 	rdf:rest rdf:nil .
@@ -305,36 +305,41 @@ _:c14n100 sh:datatype xsd:string ;
 	sh:order 2 ;
 	sh:path <http://www.w3.org/ns/oa#bodyValue> .
 _:c14n101 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n322 .
+	rdf:rest _:c14n361 .
 _:c14n102 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n103 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n390 .
+_:c14n103 sh:datatype xsd:boolean ;
+	sh:description "Whether the collection may hold collections of its own class and member class as members, to any depth. Absent means false." ;
+	sh:maxCount 1 ;
+	sh:name "Nests" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:nests .
 _:c14n104 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n271 .
-_:c14n105 sh:description "The IRI that identifies the object." ;
+	rdf:rest _:c14n284 .
+_:c14n105 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n266 .
+_:c14n106 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n106 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n378 .
-_:c14n107 rdf:first rp:expectedVersion ;
+_:c14n107 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n330 .
+_:c14n108 rdf:first rp:expectedVersion ;
 	rdf:rest _:c14n52 .
-_:c14n108 sh:datatype xsd:string ;
+_:c14n109 sh:datatype xsd:string ;
 	sh:description "The names of the roles of which one is needed to make the transition." ;
 	sh:minCount 1 ;
 	sh:name "Transition roles" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path rp:transitionRole .
-_:c14n109 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
 _:c14n11 sh:datatype xsd:string ;
 	sh:description "The schema name of the class of the aggregates the collection collects." ;
 	sh:maxCount 1 ;
@@ -343,22 +348,24 @@ _:c14n11 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:memberClass .
-_:c14n110 rdf:first dcterms:identifier ;
-	rdf:rest _:c14n424 .
-_:c14n111 sh:datatype xsd:dateTime ;
+_:c14n110 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n111 rdf:first dcterms:identifier ;
+	rdf:rest _:c14n425 .
+_:c14n112 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity ended." ;
 	sh:maxCount 1 ;
 	sh:name "Ended at time" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path prov:endedAtTime .
-_:c14n112 sh:description "The IRIs of the orphaned loaded graphs found, sorted." ;
+_:c14n113 sh:description "The IRIs of the orphaned loaded graphs found, sorted." ;
 	sh:minCount 1 ;
 	sh:name "Loaded graphs" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path rp:sweptLoadedGraph .
-_:c14n113 sh:datatype xsd:integer ;
+_:c14n114 sh:datatype xsd:integer ;
 	sh:description "The grace period in seconds; only what is older is reported." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -366,9 +373,9 @@ _:c14n113 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:olderThanSeconds .
-_:c14n114 rdf:first rdf:type ;
+_:c14n115 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n115 sh:datatype xsd:string ;
+_:c14n116 sh:datatype xsd:string ;
 	sh:description "The version token of the entity that was generated or invalidated." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -376,32 +383,25 @@ _:c14n115 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path rp:entityVersion .
-_:c14n116 sh:datatype xsd:dateTime ;
+_:c14n117 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was last committed." ;
 	sh:maxCount 1 ;
 	sh:name "Modified" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 10 ;
 	sh:path dcterms:modified .
-_:c14n117 sh:description "The IRI that identifies the object." ;
-	sh:maxCount 1 ;
-	sh:name "Identifier" ;
-	sh:nodeKind sh:IRI ;
-	sh:order 0 ;
-	sh:path dcterms:identifier .
 _:c14n118 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n119 sh:datatype xsd:dateTime ;
-	sh:description "The time the activity started." ;
+_:c14n119 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
-	sh:name "Started at time" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 3 ;
-	sh:path prov:startedAtTime .
+	sh:name "Identifier" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path dcterms:identifier .
 _:c14n12 sh:datatype xsd:string ;
 	sh:description "The media type of the file." ;
 	sh:maxCount 1 ;
@@ -409,14 +409,21 @@ _:c14n12 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:mediaType .
-_:c14n120 sh:datatype xsd:string ;
+_:c14n120 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity started." ;
+	sh:maxCount 1 ;
+	sh:name "Started at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path prov:startedAtTime .
+_:c14n121 sh:datatype xsd:string ;
 	sh:description "The name of the file as uploaded." ;
 	sh:maxCount 1 ;
 	sh:name "File name" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:fileName .
-_:c14n121 sh:datatype xsd:string ;
+_:c14n122 sh:datatype xsd:string ;
 	sh:description "The name of the wired store that holds the tenant's database; absent means the store named \"default\". It is lower case, starts with a letter and is at most 32 characters long." ;
 	sh:maxCount 1 ;
 	sh:name "Store name" ;
@@ -424,18 +431,18 @@ _:c14n121 sh:datatype xsd:string ;
 	sh:order 2 ;
 	sh:path rp:storeName ;
 	sh:pattern "^(?:^[a-z][a-z0-9-]{0,31}$)(?![\\s\\S])" .
-_:c14n122 rdf:first rp:role ;
+_:c14n123 rdf:first rp:role ;
 	rdf:rest rdf:nil .
-_:c14n123 sh:datatype xsd:string ;
+_:c14n124 sh:datatype xsd:string ;
 	sh:description "The text of the comment." ;
 	sh:maxCount 1 ;
 	sh:name "Body value" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path <http://www.w3.org/ns/oa#bodyValue> .
-_:c14n124 rdf:first rp:toStateName ;
+_:c14n125 rdf:first rp:toStateName ;
 	rdf:rest _:c14n98 .
-_:c14n125 sh:datatype xsd:dateTime ;
+_:c14n126 sh:datatype xsd:dateTime ;
 	sh:description "The time of the generation or invalidation, the end of its activity." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -443,17 +450,17 @@ _:c14n125 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path prov:atTime .
-_:c14n126 sh:description "The IRI of an entity this one was derived from." ;
+_:c14n127 sh:description "The IRI of an entity this one was derived from." ;
 	sh:name "Was derived from" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path prov:wasDerivedFrom .
-_:c14n127 sh:description "The IRIs of other aggregates the comment points to." ;
+_:c14n128 sh:description "The IRIs of other aggregates the comment points to." ;
 	sh:name "Comment references" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 4 ;
 	sh:path dcterms:references .
-_:c14n128 sh:datatype xsd:dateTime ;
+_:c14n129 sh:datatype xsd:dateTime ;
 	sh:description "The time a graph was put to the store by a load." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -461,12 +468,6 @@ _:c14n128 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:loadedAt .
-_:c14n129 sh:description "The principal that uploaded the file." ;
-	sh:maxCount 1 ;
-	sh:name "Uploaded by" ;
-	sh:nodeKind sh:IRI ;
-	sh:order 5 ;
-	sh:path rp:uploadedBy .
 _:c14n13 sh:datatype xsd:dateTime ;
 	sh:description "The time of the generation or invalidation, the end of its activity." ;
 	sh:maxCount 1 ;
@@ -475,21 +476,27 @@ _:c14n13 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path prov:atTime .
-_:c14n130 sh:description "Why the comment was made, a remark or a reply." ;
+_:c14n130 sh:description "The principal that uploaded the file." ;
+	sh:maxCount 1 ;
+	sh:name "Uploaded by" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 5 ;
+	sh:path rp:uploadedBy .
+_:c14n131 sh:description "Why the comment was made, a remark or a reply." ;
 	sh:in _:c14n79 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Motivated by" ;
 	sh:order 3 ;
 	sh:path <http://www.w3.org/ns/oa#motivatedBy> .
-_:c14n131 sh:datatype xsd:dateTime ;
+_:c14n132 sh:datatype xsd:dateTime ;
 	sh:description "The time this entity was generated." ;
 	sh:maxCount 1 ;
 	sh:name "Generated at time" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path prov:generatedAtTime .
-_:c14n132 sh:datatype xsd:string ;
+_:c14n133 sh:datatype xsd:string ;
 	sh:description "The SHA-256 digest of the file, in lowercase hexadecimal." ;
 	sh:maxCount 1 ;
 	sh:name "SHA-256" ;
@@ -497,71 +504,71 @@ _:c14n132 sh:datatype xsd:string ;
 	sh:order 3 ;
 	sh:path rp:sha256 ;
 	sh:pattern "^(?:^[0-9a-f]{64}$)(?![\\s\\S])" .
-_:c14n133 sh:datatype xsd:string ;
+_:c14n134 sh:datatype xsd:string ;
 	sh:description "The random key of the file in the tenant's bucket." ;
 	sh:maxCount 1 ;
 	sh:name "File key" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:fileKey .
-_:c14n134 sh:datatype xsd:dateTime ;
+_:c14n135 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was first committed." ;
 	sh:maxCount 1 ;
 	sh:name "Created" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 9 ;
 	sh:path dcterms:created .
-_:c14n135 sh:description "The principal the rule applies to." ;
+_:c14n136 sh:description "The principal the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Assignee" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path odrl:assignee .
-_:c14n136 sh:datatype xsd:dateTime ;
+_:c14n137 sh:datatype xsd:dateTime ;
 	sh:description "The time the file was uploaded." ;
 	sh:maxCount 1 ;
 	sh:name "Uploaded" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path dcterms:dateSubmitted .
-_:c14n137 rdf:first skos:prefLabel ;
+_:c14n138 rdf:first skos:prefLabel ;
 	rdf:rest _:c14n60 .
-_:c14n138 sh:description "The versions of entities the activity generated." ;
+_:c14n139 sh:description "The versions of entities the activity generated." ;
 	sh:name "Generations" ;
 	sh:node rp:Generation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 9 ;
 	sh:path rp:generation .
-_:c14n139 sh:datatype xsd:dateTime ;
+_:c14n14 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n290 .
+_:c14n140 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity ended." ;
 	sh:maxCount 1 ;
 	sh:name "Ended at time" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path prov:endedAtTime .
-_:c14n14 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n277 .
-_:c14n140 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n328 .
 _:c14n141 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n283 .
+	rdf:rest _:c14n296 .
 _:c14n142 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n396 .
-_:c14n143 sh:datatype xsd:string ;
+	rdf:rest _:c14n379 .
+_:c14n143 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n397 .
+_:c14n144 sh:datatype xsd:string ;
 	sh:description "The name of a role, matched against the application's role definitions." ;
 	sh:maxCount 1 ;
 	sh:name "Role" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:role .
-_:c14n144 sh:description "The action a direct permission allows, or a prohibition forbids." ;
-	sh:in _:c14n417 ;
+_:c14n145 sh:description "The action a direct permission allows, or a prohibition forbids." ;
+	sh:in _:c14n413 ;
 	sh:maxCount 1 ;
 	sh:name "Action" ;
 	sh:order 3 ;
 	sh:path odrl:action .
-_:c14n145 sh:datatype xsd:string ;
+_:c14n146 sh:datatype xsd:string ;
 	sh:description "The version token of the entity that was generated or invalidated." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -569,18 +576,18 @@ _:c14n145 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path rp:entityVersion .
-_:c14n146 sh:description "A principal that committed a later version of the graph." ;
+_:c14n147 sh:description "A principal that committed a later version of the graph." ;
 	sh:name "Contributor" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 12 ;
 	sh:path dcterms:contributor .
-_:c14n147 sh:description "The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI." ;
+_:c14n148 sh:description "The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI." ;
 	sh:maxCount 1 ;
 	sh:name "From state IRI" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 7 ;
 	sh:path rp:fromState .
-_:c14n148 sh:datatype xsd:string ;
+_:c14n149 sh:datatype xsd:string ;
 	sh:description "The preferred label of the object." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -589,25 +596,25 @@ _:c14n148 sh:datatype xsd:string ;
 	sh:order 6 ;
 	sh:path skos:prefLabel ;
 	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
-_:c14n149 sh:description "The principal this entity is attributed to." ;
-	sh:maxCount 1 ;
-	sh:name "Was attributed to" ;
-	sh:nodeKind sh:IRI ;
-	sh:order 2 ;
-	sh:path prov:wasAttributedTo .
 _:c14n15 sh:description "The IRI of the entity's class, when it had one." ;
 	sh:maxCount 1 ;
 	sh:name "Entity class" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 3 ;
 	sh:path rp:entityClass .
-_:c14n150 sh:description "The versions of entities the activity generated." ;
+_:c14n150 sh:description "The principal this entity is attributed to." ;
+	sh:maxCount 1 ;
+	sh:name "Was attributed to" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path prov:wasAttributedTo .
+_:c14n151 sh:description "The versions of entities the activity generated." ;
 	sh:name "Generations" ;
 	sh:node rp:Generation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 4 ;
 	sh:path rp:generation .
-_:c14n151 sh:datatype xsd:boolean ;
+_:c14n152 sh:datatype xsd:boolean ;
 	sh:description "Whether the orphaned bucket objects were removed." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -615,16 +622,16 @@ _:c14n151 sh:datatype xsd:boolean ;
 	sh:nodeKind sh:Literal ;
 	sh:order 5 ;
 	sh:path rp:removedBlobs .
-_:c14n152 rdf:first _:c14n421 ;
+_:c14n153 rdf:first _:c14n421 ;
 	rdf:rest rdf:nil .
-_:c14n153 sh:description "The IRI of the aggregate the comment is about." ;
+_:c14n154 sh:description "The IRI of the aggregate the comment is about." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Has target" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path <http://www.w3.org/ns/oa#hasTarget> .
-_:c14n154 sh:datatype xsd:string ;
+_:c14n155 sh:datatype xsd:string ;
 	sh:description "The name of a key across aggregates, as declared in `unique_keys`." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -632,47 +639,47 @@ _:c14n154 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:keyName .
-_:c14n155 sh:description "A principal that committed a later version of the graph." ;
+_:c14n156 sh:description "A principal that committed a later version of the graph." ;
 	sh:name "Contributor" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 3 ;
 	sh:path dcterms:contributor .
-_:c14n156 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n247 .
-_:c14n157 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
+_:c14n157 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n385 .
+_:c14n158 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Target" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path odrl:target .
-_:c14n158 sh:datatype xsd:string ;
+_:c14n159 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
 	sh:maxCount 1 ;
 	sh:name "Description" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 7 ;
 	sh:path dcterms:description .
-_:c14n159 sh:description "The IRI that identifies the object." ;
+_:c14n16 a sh:SPARQLConstraint ;
+	sh:message "TenantAccess.grants: One grant per assignee, target and role or action." ;
+	sh:select "SELECT DISTINCT $this\nWHERE {\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .\n  FILTER (!sameTerm(?first, ?second))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }\n  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }\n  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))\n  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }\n  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }\n  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }\n  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))\n}" .
+_:c14n160 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 5 ;
 	sh:path dcterms:identifier .
-_:c14n16 a sh:SPARQLConstraint ;
-	sh:message "TenantAccess.grants: One grant per assignee, target and role or action." ;
-	sh:select "SELECT DISTINCT $this\nWHERE {\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?first .\n  $this <https://meaningfy.ws/ns/rdf-persistence#grant> ?second .\n  FILTER (!sameTerm(?first, ?second))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/assignee> ?first_0 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/assignee> ?second_0 . }\n  FILTER ((!bound(?first_0) && !bound(?second_0)) || sameTerm(?first_0, ?second_0))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/target> ?first_1 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/target> ?second_1 . }\n  FILTER ((!bound(?first_1) && !bound(?second_1)) || sameTerm(?first_1, ?second_1))\n  OPTIONAL { ?first <https://meaningfy.ws/ns/rdf-persistence#role> ?first_2 . }\n  OPTIONAL { ?second <https://meaningfy.ws/ns/rdf-persistence#role> ?second_2 . }\n  FILTER ((!bound(?first_2) && !bound(?second_2)) || sameTerm(?first_2, ?second_2))\n  OPTIONAL { ?first <http://www.w3.org/ns/odrl/2/action> ?first_3 . }\n  OPTIONAL { ?second <http://www.w3.org/ns/odrl/2/action> ?second_3 . }\n  FILTER ((!bound(?first_3) && !bound(?second_3)) || sameTerm(?first_3, ?second_3))\n}" .
-_:c14n160 rdf:first rp:grant ;
+_:c14n161 rdf:first rp:grant ;
 	rdf:rest _:c14n47 .
-_:c14n161 sh:description "The IRI that identifies the object." ;
+_:c14n162 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path dcterms:identifier .
-_:c14n162 rdf:first rp:toState ;
-	rdf:rest _:c14n124 .
-_:c14n163 sh:datatype xsd:string ;
+_:c14n163 rdf:first rp:toState ;
+	rdf:rest _:c14n125 .
+_:c14n164 sh:datatype xsd:string ;
 	sh:description "The name of the state a transition enters. A stored record gives an IRI in to_state_iri." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -680,13 +687,13 @@ _:c14n163 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:toStateName .
-_:c14n164 sh:description "The versions of entities the activity generated." ;
+_:c14n165 sh:description "The versions of entities the activity generated." ;
 	sh:name "Generations" ;
 	sh:node rp:Generation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 4 ;
 	sh:path rp:generation .
-_:c14n165 sh:datatype xsd:string ;
+_:c14n166 sh:datatype xsd:string ;
 	sh:description "The name of the slot of the member class the condition looks at." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -694,15 +701,15 @@ _:c14n165 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:equalsSlot .
-_:c14n166 rdf:first rdf:type ;
+_:c14n167 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n167 sh:datatype xsd:string ;
+_:c14n168 sh:datatype xsd:string ;
 	sh:description "The names of the roles that may see the comment; none means everyone who may read the aggregate." ;
 	sh:name "Comment audience" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path rp:audience .
-_:c14n168 sh:datatype xsd:string ;
+_:c14n169 sh:datatype xsd:string ;
 	sh:description "The name of the tenant's database, the prefix, \"-t-\" and the tenant id (hyphens left out); the prefix is lower case, at most 20 characters, the tenant id 4 to 32 lower case letters and digits." ;
 	sh:maxCount 1 ;
 	sh:name "Database name" ;
@@ -710,12 +717,6 @@ _:c14n168 sh:datatype xsd:string ;
 	sh:order 1 ;
 	sh:path rp:databaseName ;
 	sh:pattern "^(?:^[a-z][a-z0-9]{0,19}-t-[a-z0-9]{4,32}$)(?![\\s\\S])" .
-_:c14n169 sh:description "The versions of entities the activity invalidated." ;
-	sh:name "Invalidations" ;
-	sh:node rp:Invalidation ;
-	sh:nodeKind sh:BlankNodeOrIRI ;
-	sh:order 5 ;
-	sh:path rp:invalidation .
 _:c14n17 sh:description "The IRI of the activity this generation or invalidation belongs to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -723,57 +724,63 @@ _:c14n17 sh:description "The IRI of the activity this generation or invalidation
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path prov:activity .
-_:c14n170 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n384 .
-_:c14n171 sh:description "The transitions of the workflow; they are part of its definition." ;
+_:c14n170 sh:description "The versions of entities the activity invalidated." ;
+	sh:name "Invalidations" ;
+	sh:node rp:Invalidation ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 5 ;
+	sh:path rp:invalidation .
+_:c14n171 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n248 .
+_:c14n172 sh:description "The transitions of the workflow; they are part of its definition." ;
 	sh:name "Workflow transitions" ;
 	sh:node rp:WorkflowTransition ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 4 ;
 	sh:path rp:workflowTransition .
-_:c14n172 sh:description "A principal that carried out the activity." ;
+_:c14n173 sh:description "A principal that carried out the activity." ;
 	sh:name "Was associated with" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path prov:wasAssociatedWith .
-_:c14n173 sh:description "A fresh urn:uuid IRI, never shared by two transactions." ;
+_:c14n174 sh:description "A fresh urn:uuid IRI, never shared by two transactions." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n174 rdf:first <http://www.w3.org/ns/oa#bodyValue> ;
-	rdf:rest _:c14n397 .
-_:c14n175 sh:description "The IRI that identifies the object." ;
+_:c14n175 rdf:first <http://www.w3.org/ns/oa#bodyValue> ;
+	rdf:rest _:c14n398 .
+_:c14n176 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n176 rdf:first rdf:type ;
+_:c14n177 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n177 sh:datatype xsd:dateTime ;
+_:c14n178 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity started." ;
 	sh:maxCount 1 ;
 	sh:name "Started at time" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path prov:startedAtTime .
-_:c14n178 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n265 .
-_:c14n179 sh:datatype xsd:dateTime ;
-	sh:description "The time the activity ended." ;
-	sh:maxCount 1 ;
-	sh:name "Ended at time" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 7 ;
-	sh:path prov:endedAtTime .
+_:c14n179 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n391 .
 _:c14n18 sh:description "The IRIs of other aggregates the comment points to." ;
 	sh:name "Comment references" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 5 ;
 	sh:path dcterms:references .
 _:c14n180 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity ended." ;
+	sh:maxCount 1 ;
+	sh:name "Ended at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 7 ;
+	sh:path prov:endedAtTime .
+_:c14n181 sh:datatype xsd:dateTime ;
 	sh:description "The time the object was last written to the bucket." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -781,120 +788,113 @@ _:c14n180 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path dcterms:modified .
-_:c14n181 sh:description "A principal that carried out the activity." ;
+_:c14n182 sh:description "A principal that carried out the activity." ;
 	sh:name "Was associated with" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path prov:wasAssociatedWith .
-_:c14n182 rdf:first dcterms:description ;
-	rdf:rest _:c14n110 .
-_:c14n183 sh:description "Where the role applies." ;
+_:c14n183 rdf:first dcterms:description ;
+	rdf:rest _:c14n111 .
+_:c14n184 sh:description "Where the role applies." ;
 	sh:in _:c14n8 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Level" ;
 	sh:order 1 ;
 	sh:path rp:level .
-_:c14n184 sh:description "The IRIs of the aggregates the collection names as its members." ;
+_:c14n185 sh:description "The IRIs of the aggregates the collection names as its members." ;
 	sh:name "Has part" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path dcterms:hasPart .
-_:c14n185 sh:description "A principal that carried out the activity." ;
+_:c14n186 sh:description "A principal that carried out the activity." ;
 	sh:name "Was associated with" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path prov:wasAssociatedWith .
-_:c14n186 sh:datatype xsd:string ;
+_:c14n187 sh:datatype xsd:string ;
 	sh:description "The names of the roles that may see the comment; none means everyone who may read the aggregate." ;
 	sh:name "Comment audience" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:audience .
-_:c14n187 sh:description "The versions of entities the activity generated." ;
+_:c14n188 sh:description "The versions of entities the activity generated." ;
 	sh:name "Generations" ;
 	sh:node rp:Generation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 5 ;
 	sh:path rp:generation .
-_:c14n188 sh:description "The versions of entities the activity invalidated." ;
+_:c14n189 sh:description "The versions of entities the activity invalidated." ;
 	sh:name "Invalidations" ;
 	sh:node rp:Invalidation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 5 ;
 	sh:path rp:invalidation .
-_:c14n189 sh:datatype xsd:dateTime ;
+_:c14n19 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n367 .
+_:c14n190 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was last committed." ;
 	sh:maxCount 1 ;
 	sh:name "Modified" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path dcterms:modified .
-_:c14n19 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n334 .
-_:c14n190 sh:datatype xsd:dateTime ;
+_:c14n191 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was first committed." ;
 	sh:maxCount 1 ;
 	sh:name "Created" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path dcterms:created .
-_:c14n191 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n346 .
-_:c14n192 sh:description "The IRI of the state an aggregate entered, on the comment a transition posted and on the transition's record. Defined here beside from_state_iri." ;
+_:c14n192 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n323 .
+_:c14n193 sh:description "The IRI of the state an aggregate entered, on the comment a transition posted and on the transition's record. Defined here beside from_state_iri." ;
 	sh:maxCount 1 ;
 	sh:name "To state IRI" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path rp:toState .
-_:c14n193 sh:datatype xsd:dateTime ;
+_:c14n194 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity started." ;
 	sh:maxCount 1 ;
 	sh:name "Started at time" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path prov:startedAtTime .
-_:c14n194 sh:description "The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI." ;
+_:c14n195 sh:description "The IRI of the state an aggregate left, on the comment a transition posted and on the transition's record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI." ;
 	sh:maxCount 1 ;
 	sh:name "From state IRI" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path rp:fromState .
-_:c14n195 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
+_:c14n196 sh:description "The IRI of the tenant, or of an aggregate's graph, the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Target" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 2 ;
 	sh:path odrl:target .
-_:c14n196 sh:description "The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope." ;
+_:c14n197 sh:description "The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Root class" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path rp:rootClass .
-_:c14n197 sh:datatype xsd:string ;
+_:c14n198 sh:datatype xsd:string ;
 	sh:description "The version of the aggregate the caller read; the move is made only if it still holds." ;
 	sh:maxCount 1 ;
 	sh:name "Expected version" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 5 ;
 	sh:path rp:expectedVersion .
-_:c14n198 sh:datatype xsd:dateTime ;
+_:c14n199 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity started." ;
 	sh:maxCount 1 ;
 	sh:name "Started at time" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path prov:startedAtTime .
-_:c14n199 sh:datatype xsd:dateTime ;
-	sh:description "The time the activity ended." ;
-	sh:maxCount 1 ;
-	sh:name "Ended at time" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 10 ;
-	sh:path prov:endedAtTime .
 _:c14n2 sh:datatype xsd:string ;
 	sh:description "A free-text description of the object." ;
 	sh:maxCount 1 ;
@@ -908,92 +908,99 @@ _:c14n20 sh:description "The IRI of the state an aggregate entered, on the comme
 	sh:nodeKind sh:IRI ;
 	sh:order 8 ;
 	sh:path rp:toState .
-_:c14n200 sh:description "Where the tenant is in its life." ;
+_:c14n200 sh:datatype xsd:dateTime ;
+	sh:description "The time the activity ended." ;
+	sh:maxCount 1 ;
+	sh:name "Ended at time" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 10 ;
+	sh:path prov:endedAtTime .
+_:c14n201 sh:description "Where the tenant is in its life." ;
 	sh:in _:c14n54 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "State" ;
 	sh:order 0 ;
 	sh:path rp:state .
-_:c14n201 sh:description "The IRI of the aggregate the activity used." ;
+_:c14n202 sh:description "The IRI of the aggregate the activity used." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Used resource" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path prov:used .
-_:c14n202 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n310 .
-_:c14n203 sh:datatype xsd:string ;
+_:c14n203 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n278 .
+_:c14n204 sh:datatype xsd:string ;
 	sh:description "The keys of orphaned objects the object store would not delete." ;
 	sh:minCount 1 ;
 	sh:name "Skipped blobs" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 6 ;
 	sh:path rp:skippedBlob .
-_:c14n204 sh:datatype xsd:string ;
+_:c14n205 sh:datatype xsd:string ;
 	sh:description "The name of the state a transition enters. A stored record gives an IRI in to_state_iri." ;
 	sh:maxCount 1 ;
 	sh:name "To state" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path rp:toStateName .
-_:c14n205 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n353 .
-_:c14n206 sh:description "The IRI that identifies the object." ;
+_:c14n206 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n337 .
+_:c14n207 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 7 ;
 	sh:path dcterms:identifier .
-_:c14n207 sh:description "The IRI of the activity this generation or invalidation belongs to." ;
+_:c14n208 sh:description "The IRI of the activity this generation or invalidation belongs to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Activity" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path prov:activity .
-_:c14n208 sh:description "The versions of entities the activity generated." ;
+_:c14n209 sh:description "The versions of entities the activity generated." ;
 	sh:name "Generations" ;
 	sh:node rp:Generation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 8 ;
 	sh:path rp:generation .
-_:c14n209 sh:description "The IRI of the comment this one answers." ;
+_:c14n21 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n373 .
+_:c14n210 sh:description "The IRI of the comment this one answers." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Replies to" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path rp:repliesTo .
-_:c14n21 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n371 .
-_:c14n210 sh:description "The IRI of the comment this one answers." ;
+_:c14n211 sh:description "The IRI of the comment this one answers." ;
 	sh:maxCount 1 ;
 	sh:name "Replies to" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 6 ;
 	sh:path rp:repliesTo .
-_:c14n211 sh:datatype xsd:boolean ;
+_:c14n212 sh:datatype xsd:boolean ;
 	sh:description "Whether the transition needs a comment; no by default." ;
 	sh:maxCount 1 ;
 	sh:name "Comment required" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:commentRequired .
-_:c14n212 sh:description "A principal that carried out the activity." ;
+_:c14n213 sh:description "A principal that carried out the activity." ;
 	sh:name "Was associated with" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 5 ;
 	sh:path prov:wasAssociatedWith .
-_:c14n213 sh:datatype xsd:dateTime ;
+_:c14n214 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity started." ;
 	sh:maxCount 1 ;
 	sh:name "Started at time" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path prov:startedAtTime .
-_:c14n214 sh:datatype xsd:string ;
+_:c14n215 sh:datatype xsd:string ;
 	sh:description "The name of a role, matched against the application's role definitions." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1001,29 +1008,27 @@ _:c14n214 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:role .
-_:c14n215 sh:description "The versions of entities the activity invalidated." ;
+_:c14n216 sh:description "The versions of entities the activity invalidated." ;
 	sh:name "Invalidations" ;
 	sh:node rp:Invalidation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 6 ;
 	sh:path rp:invalidation .
-_:c14n216 sh:description "The IRI of the aggregate the activity used." ;
+_:c14n217 sh:description "The IRI of the aggregate the activity used." ;
 	sh:maxCount 1 ;
 	sh:name "Used resource" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path prov:used .
-_:c14n217 sh:minCount 1 ;
+_:c14n218 sh:minCount 1 ;
 	sh:path odrl:action .
-_:c14n218 sh:description "The kind of graph a registry entry names." ;
+_:c14n219 sh:description "The kind of graph a registry entry names." ;
 	sh:in _:c14n25 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Kind" ;
 	sh:order 1 ;
 	sh:path rp:kind .
-_:c14n219 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n289 .
 _:c14n22 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity ended." ;
 	sh:maxCount 1 ;
@@ -1031,7 +1036,9 @@ _:c14n22 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path prov:endedAtTime .
-_:c14n220 sh:datatype xsd:string ;
+_:c14n220 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n302 .
+_:c14n221 sh:datatype xsd:string ;
 	sh:description "The name of the state a transition leaves. A stored record gives an IRI in from_state_iri." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1039,22 +1046,22 @@ _:c14n220 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:fromStateName .
-_:c14n221 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n340 .
-_:c14n222 sh:description "The IRI that identifies the object." ;
+_:c14n222 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n343 .
+_:c14n223 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n223 sh:datatype xsd:string ;
+_:c14n224 sh:datatype xsd:string ;
 	sh:description "The keys of the orphaned bucket objects found, sorted." ;
 	sh:minCount 1 ;
 	sh:name "Blobs" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:sweptBlob .
-_:c14n224 sh:datatype xsd:string ;
+_:c14n225 sh:datatype xsd:string ;
 	sh:description "The name of a key across aggregates, as declared in `unique_keys`." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1062,41 +1069,41 @@ _:c14n224 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:keyName .
-_:c14n225 sh:description "The IRI of the entity's class, when it had one." ;
+_:c14n226 sh:description "The IRI of the entity's class, when it had one." ;
 	sh:maxCount 1 ;
 	sh:name "Entity class" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 3 ;
 	sh:path rp:entityClass .
-_:c14n226 sh:description "The action a direct permission allows, or a prohibition forbids." ;
-	sh:in _:c14n407 ;
+_:c14n227 sh:description "The action a direct permission allows, or a prohibition forbids." ;
+	sh:in _:c14n408 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Action" ;
 	sh:order 2 ;
 	sh:path odrl:action .
-_:c14n227 sh:description "The IRI that identifies the object." ;
+_:c14n228 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n228 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n365 .
-_:c14n229 sh:datatype xsd:string ;
+_:c14n229 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n254 .
+_:c14n23 rdf:first rp:audience ;
+	rdf:rest _:c14n420 .
+_:c14n230 sh:datatype xsd:string ;
 	sh:description "The names of the roles that may see the comment; none means everyone who may read the aggregate." ;
 	sh:name "Comment audience" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path rp:audience .
-_:c14n23 rdf:first rp:audience ;
-	rdf:rest _:c14n419 .
-_:c14n230 sh:description "A principal that carried out the activity." ;
+_:c14n231 sh:description "A principal that carried out the activity." ;
 	sh:name "Was associated with" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 8 ;
 	sh:path prov:wasAssociatedWith .
-_:c14n231 sh:datatype xsd:string ;
+_:c14n232 sh:datatype xsd:string ;
 	sh:description "The value the slot must equal, in the lexical form a listing filter would send." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1104,99 +1111,97 @@ _:c14n231 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:equalsValue .
-_:c14n232 sh:description "The versions of entities the activity invalidated." ;
+_:c14n233 sh:description "The versions of entities the activity invalidated." ;
 	sh:name "Invalidations" ;
 	sh:node rp:Invalidation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 12 ;
 	sh:path rp:invalidation .
-_:c14n233 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n359 .
-_:c14n234 sh:description "The actions forbidden in the tenant; they live in the access record's graph." ;
+_:c14n234 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n355 .
+_:c14n235 sh:description "The actions forbidden in the tenant; they live in the access record's graph." ;
 	sh:name "Prohibitions" ;
 	sh:node rp:Prohibition ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 4 ;
 	sh:path rp:prohibition .
-_:c14n235 rdf:first rp:AggregateLevel ;
+_:c14n236 rdf:first rp:AggregateLevel ;
 	rdf:rest rdf:nil .
-_:c14n236 rdf:first dcterms:creator ;
-	rdf:rest _:c14n237 .
-_:c14n237 rdf:first dcterms:modified ;
+_:c14n237 rdf:first dcterms:creator ;
 	rdf:rest _:c14n238 .
-_:c14n238 rdf:first rdf:type ;
+_:c14n238 rdf:first dcterms:modified ;
 	rdf:rest _:c14n239 .
-_:c14n239 rdf:first rp:dataSchemaVersion ;
+_:c14n239 rdf:first rdf:type ;
 	rdf:rest _:c14n240 .
 _:c14n24 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n240 rdf:first rp:version ;
+_:c14n240 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n241 .
+_:c14n241 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n241 rdf:first dcterms:created ;
-	rdf:rest _:c14n236 .
-_:c14n242 rdf:first dcterms:creator ;
-	rdf:rest _:c14n243 .
-_:c14n243 rdf:first dcterms:modified ;
+_:c14n242 rdf:first dcterms:created ;
+	rdf:rest _:c14n237 .
+_:c14n243 rdf:first dcterms:creator ;
 	rdf:rest _:c14n244 .
-_:c14n244 rdf:first rdf:type ;
+_:c14n244 rdf:first dcterms:modified ;
 	rdf:rest _:c14n245 .
-_:c14n245 rdf:first rp:dataSchemaVersion ;
+_:c14n245 rdf:first rdf:type ;
 	rdf:rest _:c14n246 .
-_:c14n246 rdf:first rp:version ;
+_:c14n246 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n247 .
+_:c14n247 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n247 rdf:first dcterms:created ;
-	rdf:rest _:c14n242 .
-_:c14n248 rdf:first dcterms:creator ;
-	rdf:rest _:c14n249 .
-_:c14n249 rdf:first dcterms:modified ;
+_:c14n248 rdf:first dcterms:created ;
+	rdf:rest _:c14n243 .
+_:c14n249 rdf:first dcterms:creator ;
 	rdf:rest _:c14n250 .
 _:c14n25 rdf:first rp:Aggregate ;
 	rdf:rest _:c14n94 .
-_:c14n250 rdf:first rdf:type ;
+_:c14n250 rdf:first dcterms:modified ;
 	rdf:rest _:c14n251 .
-_:c14n251 rdf:first rp:dataSchemaVersion ;
+_:c14n251 rdf:first rdf:type ;
 	rdf:rest _:c14n252 .
-_:c14n252 rdf:first rp:version ;
+_:c14n252 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n253 .
+_:c14n253 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n253 rdf:first dcterms:created ;
-	rdf:rest _:c14n248 .
-_:c14n254 rdf:first dcterms:creator ;
-	rdf:rest _:c14n255 .
-_:c14n255 rdf:first dcterms:modified ;
+_:c14n254 rdf:first dcterms:created ;
+	rdf:rest _:c14n249 .
+_:c14n255 rdf:first dcterms:creator ;
 	rdf:rest _:c14n256 .
-_:c14n256 rdf:first rdf:type ;
+_:c14n256 rdf:first dcterms:modified ;
 	rdf:rest _:c14n257 .
-_:c14n257 rdf:first rp:dataSchemaVersion ;
+_:c14n257 rdf:first rdf:type ;
 	rdf:rest _:c14n258 .
-_:c14n258 rdf:first rp:version ;
+_:c14n258 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n259 .
+_:c14n259 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n259 rdf:first dcterms:created ;
-	rdf:rest _:c14n254 .
 _:c14n26 sh:description "The versions of entities the activity generated." ;
 	sh:name "Generations" ;
 	sh:node rp:Generation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 4 ;
 	sh:path rp:generation .
-_:c14n260 rdf:first dcterms:creator ;
-	rdf:rest _:c14n261 .
-_:c14n261 rdf:first dcterms:modified ;
+_:c14n260 rdf:first dcterms:created ;
+	rdf:rest _:c14n255 .
+_:c14n261 rdf:first dcterms:creator ;
 	rdf:rest _:c14n262 .
-_:c14n262 rdf:first rdf:type ;
+_:c14n262 rdf:first dcterms:modified ;
 	rdf:rest _:c14n263 .
-_:c14n263 rdf:first rp:dataSchemaVersion ;
+_:c14n263 rdf:first rdf:type ;
 	rdf:rest _:c14n264 .
-_:c14n264 rdf:first rp:version ;
+_:c14n264 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n265 .
+_:c14n265 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n265 rdf:first dcterms:created ;
-	rdf:rest _:c14n260 .
-_:c14n266 rdf:first dcterms:creator ;
-	rdf:rest _:c14n267 .
-_:c14n267 rdf:first dcterms:modified ;
+_:c14n266 rdf:first dcterms:created ;
+	rdf:rest _:c14n261 .
+_:c14n267 rdf:first dcterms:creator ;
 	rdf:rest _:c14n268 .
-_:c14n268 rdf:first rdf:type ;
+_:c14n268 rdf:first dcterms:modified ;
 	rdf:rest _:c14n269 .
-_:c14n269 rdf:first rp:dataSchemaVersion ;
+_:c14n269 rdf:first rdf:type ;
 	rdf:rest _:c14n270 .
 _:c14n27 sh:description "The principal the rule applies to." ;
 	sh:maxCount 1 ;
@@ -1205,25 +1210,25 @@ _:c14n27 sh:description "The principal the rule applies to." ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path odrl:assignee .
-_:c14n270 rdf:first rp:version ;
+_:c14n270 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n271 .
+_:c14n271 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n271 rdf:first dcterms:created ;
-	rdf:rest _:c14n266 .
-_:c14n272 rdf:first dcterms:creator ;
-	rdf:rest _:c14n273 .
-_:c14n273 rdf:first dcterms:modified ;
+_:c14n272 rdf:first dcterms:created ;
+	rdf:rest _:c14n267 .
+_:c14n273 rdf:first dcterms:creator ;
 	rdf:rest _:c14n274 .
-_:c14n274 rdf:first rdf:type ;
+_:c14n274 rdf:first dcterms:modified ;
 	rdf:rest _:c14n275 .
-_:c14n275 rdf:first rp:dataSchemaVersion ;
+_:c14n275 rdf:first rdf:type ;
 	rdf:rest _:c14n276 .
-_:c14n276 rdf:first rp:version ;
+_:c14n276 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n277 .
+_:c14n277 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n277 rdf:first dcterms:created ;
-	rdf:rest _:c14n272 .
-_:c14n278 rdf:first dcterms:creator ;
-	rdf:rest _:c14n279 .
-_:c14n279 rdf:first dcterms:modified ;
+_:c14n278 rdf:first dcterms:created ;
+	rdf:rest _:c14n273 .
+_:c14n279 rdf:first dcterms:creator ;
 	rdf:rest _:c14n280 .
 _:c14n28 sh:description "The versions of entities the activity invalidated." ;
 	sh:name "Invalidations" ;
@@ -1231,47 +1236,47 @@ _:c14n28 sh:description "The versions of entities the activity invalidated." ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 5 ;
 	sh:path rp:invalidation .
-_:c14n280 rdf:first rdf:type ;
+_:c14n280 rdf:first dcterms:modified ;
 	rdf:rest _:c14n281 .
-_:c14n281 rdf:first rp:dataSchemaVersion ;
+_:c14n281 rdf:first rdf:type ;
 	rdf:rest _:c14n282 .
-_:c14n282 rdf:first rp:version ;
+_:c14n282 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n283 .
+_:c14n283 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n283 rdf:first dcterms:created ;
-	rdf:rest _:c14n278 .
-_:c14n284 rdf:first dcterms:creator ;
-	rdf:rest _:c14n285 .
-_:c14n285 rdf:first dcterms:modified ;
+_:c14n284 rdf:first dcterms:created ;
+	rdf:rest _:c14n279 .
+_:c14n285 rdf:first dcterms:creator ;
 	rdf:rest _:c14n286 .
-_:c14n286 rdf:first rdf:type ;
+_:c14n286 rdf:first dcterms:modified ;
 	rdf:rest _:c14n287 .
-_:c14n287 rdf:first rp:dataSchemaVersion ;
+_:c14n287 rdf:first rdf:type ;
 	rdf:rest _:c14n288 .
-_:c14n288 rdf:first rp:version ;
+_:c14n288 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n289 .
+_:c14n289 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n289 rdf:first dcterms:created ;
-	rdf:rest _:c14n284 .
 _:c14n29 rdf:first <http://www.w3.org/ns/oa#replying> ;
 	rdf:rest rdf:nil .
-_:c14n290 rdf:first dcterms:creator ;
-	rdf:rest _:c14n291 .
-_:c14n291 rdf:first dcterms:modified ;
+_:c14n290 rdf:first dcterms:created ;
+	rdf:rest _:c14n285 .
+_:c14n291 rdf:first dcterms:creator ;
 	rdf:rest _:c14n292 .
-_:c14n292 rdf:first rdf:type ;
+_:c14n292 rdf:first dcterms:modified ;
 	rdf:rest _:c14n293 .
-_:c14n293 rdf:first rp:dataSchemaVersion ;
+_:c14n293 rdf:first rdf:type ;
 	rdf:rest _:c14n294 .
-_:c14n294 rdf:first rp:version ;
+_:c14n294 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n295 .
+_:c14n295 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n295 rdf:first dcterms:created ;
-	rdf:rest _:c14n290 .
-_:c14n296 rdf:first dcterms:creator ;
-	rdf:rest _:c14n297 .
-_:c14n297 rdf:first dcterms:modified ;
+_:c14n296 rdf:first dcterms:created ;
+	rdf:rest _:c14n291 .
+_:c14n297 rdf:first dcterms:creator ;
 	rdf:rest _:c14n298 .
-_:c14n298 rdf:first rdf:type ;
+_:c14n298 rdf:first dcterms:modified ;
 	rdf:rest _:c14n299 .
-_:c14n299 rdf:first rp:dataSchemaVersion ;
+_:c14n299 rdf:first rdf:type ;
 	rdf:rest _:c14n300 .
 _:c14n3 sh:datatype xsd:integer ;
 	sh:description "The size of the file in bytes." ;
@@ -1281,52 +1286,52 @@ _:c14n3 sh:datatype xsd:integer ;
 	sh:order 2 ;
 	sh:path rp:byteSize .
 _:c14n30 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n316 .
-_:c14n300 rdf:first rp:version ;
+	rdf:rest _:c14n349 .
+_:c14n300 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n301 .
+_:c14n301 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n301 rdf:first dcterms:created ;
-	rdf:rest _:c14n296 .
-_:c14n302 rdf:first dcterms:creator ;
-	rdf:rest _:c14n303 .
-_:c14n303 rdf:first dcterms:modified ;
-	rdf:rest _:c14n61 .
-_:c14n304 rdf:first dcterms:created ;
-	rdf:rest _:c14n302 .
-_:c14n305 rdf:first dcterms:creator ;
+_:c14n302 rdf:first dcterms:created ;
+	rdf:rest _:c14n297 .
+_:c14n303 rdf:first dcterms:creator ;
+	rdf:rest _:c14n304 .
+_:c14n304 rdf:first dcterms:modified ;
+	rdf:rest _:c14n305 .
+_:c14n305 rdf:first rdf:type ;
 	rdf:rest _:c14n306 .
-_:c14n306 rdf:first dcterms:modified ;
+_:c14n306 rdf:first rp:dataSchemaVersion ;
 	rdf:rest _:c14n307 .
-_:c14n307 rdf:first rdf:type ;
-	rdf:rest _:c14n308 .
-_:c14n308 rdf:first rp:dataSchemaVersion ;
-	rdf:rest _:c14n309 .
-_:c14n309 rdf:first rp:version ;
+_:c14n307 rdf:first rp:version ;
 	rdf:rest rdf:nil .
+_:c14n308 rdf:first dcterms:created ;
+	rdf:rest _:c14n303 .
+_:c14n309 rdf:first dcterms:creator ;
+	rdf:rest _:c14n310 .
 _:c14n31 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path dcterms:identifier .
-_:c14n310 rdf:first dcterms:created ;
-	rdf:rest _:c14n305 .
-_:c14n311 rdf:first dcterms:creator ;
-	rdf:rest _:c14n312 .
-_:c14n312 rdf:first dcterms:modified ;
-	rdf:rest _:c14n313 .
-_:c14n313 rdf:first rdf:type ;
-	rdf:rest _:c14n314 .
-_:c14n314 rdf:first rp:dataSchemaVersion ;
-	rdf:rest _:c14n315 .
-_:c14n315 rdf:first rp:version ;
-	rdf:rest rdf:nil .
-_:c14n316 rdf:first dcterms:created ;
+_:c14n310 rdf:first dcterms:modified ;
 	rdf:rest _:c14n311 .
-_:c14n317 rdf:first dcterms:creator ;
-	rdf:rest _:c14n318 .
-_:c14n318 rdf:first dcterms:modified ;
+_:c14n311 rdf:first rdf:type ;
+	rdf:rest _:c14n312 .
+_:c14n312 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n313 .
+_:c14n313 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n314 rdf:first dcterms:created ;
+	rdf:rest _:c14n309 .
+_:c14n315 rdf:first dcterms:creator ;
+	rdf:rest _:c14n316 .
+_:c14n316 rdf:first dcterms:modified ;
+	rdf:rest _:c14n61 .
+_:c14n317 rdf:first dcterms:created ;
+	rdf:rest _:c14n315 .
+_:c14n318 rdf:first dcterms:creator ;
 	rdf:rest _:c14n319 .
-_:c14n319 rdf:first rdf:type ;
+_:c14n319 rdf:first dcterms:modified ;
 	rdf:rest _:c14n320 .
 _:c14n32 sh:description "The current state of the aggregate, the IRI of a state of its workflow." ;
 	sh:maxCount 1 ;
@@ -1334,26 +1339,26 @@ _:c14n32 sh:description "The current state of the aggregate, the IRI of a state 
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path <http://www.w3.org/ns/adms#status> .
-_:c14n320 rdf:first rp:dataSchemaVersion ;
+_:c14n320 rdf:first rdf:type ;
 	rdf:rest _:c14n321 .
-_:c14n321 rdf:first rp:version ;
+_:c14n321 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n322 .
+_:c14n322 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n322 rdf:first dcterms:created ;
-	rdf:rest _:c14n317 .
-_:c14n323 rdf:first dcterms:creator ;
-	rdf:rest _:c14n324 .
-_:c14n324 rdf:first dcterms:modified ;
+_:c14n323 rdf:first dcterms:created ;
+	rdf:rest _:c14n318 .
+_:c14n324 rdf:first dcterms:creator ;
 	rdf:rest _:c14n325 .
-_:c14n325 rdf:first rdf:type ;
+_:c14n325 rdf:first dcterms:modified ;
 	rdf:rest _:c14n326 .
-_:c14n326 rdf:first rp:dataSchemaVersion ;
+_:c14n326 rdf:first rdf:type ;
 	rdf:rest _:c14n327 .
-_:c14n327 rdf:first rp:version ;
+_:c14n327 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n328 .
+_:c14n328 rdf:first rp:repliesTo ;
+	rdf:rest _:c14n329 .
+_:c14n329 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n328 rdf:first dcterms:created ;
-	rdf:rest _:c14n323 .
-_:c14n329 rdf:first dcterms:creator ;
-	rdf:rest _:c14n330 .
 _:c14n33 sh:description "The IRI of a named graph." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1361,26 +1366,26 @@ _:c14n33 sh:description "The IRI of a named graph." ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path rp:graph .
-_:c14n330 rdf:first dcterms:modified ;
-	rdf:rest _:c14n331 .
-_:c14n331 rdf:first rdf:type ;
+_:c14n330 rdf:first dcterms:created ;
+	rdf:rest _:c14n324 .
+_:c14n331 rdf:first dcterms:creator ;
 	rdf:rest _:c14n332 .
-_:c14n332 rdf:first rp:dataSchemaVersion ;
+_:c14n332 rdf:first dcterms:modified ;
 	rdf:rest _:c14n333 .
-_:c14n333 rdf:first rp:version ;
-	rdf:rest rdf:nil .
-_:c14n334 rdf:first dcterms:created ;
-	rdf:rest _:c14n329 .
-_:c14n335 rdf:first dcterms:creator ;
+_:c14n333 rdf:first rdf:type ;
+	rdf:rest _:c14n334 .
+_:c14n334 rdf:first prov:used ;
+	rdf:rest _:c14n335 .
+_:c14n335 rdf:first rp:dataSchemaVersion ;
 	rdf:rest _:c14n336 .
-_:c14n336 rdf:first dcterms:modified ;
-	rdf:rest _:c14n337 .
-_:c14n337 rdf:first rdf:type ;
-	rdf:rest _:c14n338 .
-_:c14n338 rdf:first rp:dataSchemaVersion ;
-	rdf:rest _:c14n339 .
-_:c14n339 rdf:first rp:version ;
+_:c14n336 rdf:first rp:version ;
 	rdf:rest rdf:nil .
+_:c14n337 rdf:first dcterms:created ;
+	rdf:rest _:c14n331 .
+_:c14n338 rdf:first dcterms:creator ;
+	rdf:rest _:c14n339 .
+_:c14n339 rdf:first dcterms:modified ;
+	rdf:rest _:c14n340 .
 _:c14n34 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity ended." ;
 	sh:maxCount 1 ;
@@ -1388,48 +1393,48 @@ _:c14n34 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 8 ;
 	sh:path prov:endedAtTime .
-_:c14n340 rdf:first dcterms:created ;
-	rdf:rest _:c14n335 .
-_:c14n341 rdf:first dcterms:creator ;
-	rdf:rest _:c14n342 .
-_:c14n342 rdf:first dcterms:modified ;
-	rdf:rest _:c14n343 .
-_:c14n343 rdf:first rdf:type ;
-	rdf:rest _:c14n344 .
-_:c14n344 rdf:first rp:dataSchemaVersion ;
-	rdf:rest _:c14n345 .
-_:c14n345 rdf:first rp:version ;
-	rdf:rest rdf:nil .
-_:c14n346 rdf:first dcterms:created ;
+_:c14n340 rdf:first rdf:type ;
 	rdf:rest _:c14n341 .
-_:c14n347 rdf:first dcterms:creator ;
+_:c14n341 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n342 .
+_:c14n342 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n343 rdf:first dcterms:created ;
+	rdf:rest _:c14n338 .
+_:c14n344 rdf:first dcterms:creator ;
+	rdf:rest _:c14n345 .
+_:c14n345 rdf:first dcterms:modified ;
+	rdf:rest _:c14n346 .
+_:c14n346 rdf:first rdf:type ;
+	rdf:rest _:c14n347 .
+_:c14n347 rdf:first rp:dataSchemaVersion ;
 	rdf:rest _:c14n348 .
-_:c14n348 rdf:first dcterms:modified ;
-	rdf:rest _:c14n349 .
-_:c14n349 rdf:first rdf:type ;
-	rdf:rest _:c14n350 .
+_:c14n348 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n349 rdf:first dcterms:created ;
+	rdf:rest _:c14n344 .
 _:c14n35 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n350 rdf:first prov:used ;
+_:c14n350 rdf:first dcterms:creator ;
 	rdf:rest _:c14n351 .
-_:c14n351 rdf:first rp:dataSchemaVersion ;
+_:c14n351 rdf:first dcterms:modified ;
 	rdf:rest _:c14n352 .
-_:c14n352 rdf:first rp:version ;
-	rdf:rest rdf:nil .
-_:c14n353 rdf:first dcterms:created ;
-	rdf:rest _:c14n347 .
-_:c14n354 rdf:first dcterms:creator ;
-	rdf:rest _:c14n355 .
-_:c14n355 rdf:first dcterms:modified ;
-	rdf:rest _:c14n356 .
-_:c14n356 rdf:first rdf:type ;
-	rdf:rest _:c14n357 .
-_:c14n357 rdf:first rp:dataSchemaVersion ;
-	rdf:rest _:c14n358 .
-_:c14n358 rdf:first rp:version ;
-	rdf:rest rdf:nil .
-_:c14n359 rdf:first dcterms:created ;
+_:c14n352 rdf:first rdf:type ;
+	rdf:rest _:c14n353 .
+_:c14n353 rdf:first rp:dataSchemaVersion ;
 	rdf:rest _:c14n354 .
+_:c14n354 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n355 rdf:first dcterms:created ;
+	rdf:rest _:c14n350 .
+_:c14n356 rdf:first dcterms:creator ;
+	rdf:rest _:c14n357 .
+_:c14n357 rdf:first dcterms:modified ;
+	rdf:rest _:c14n358 .
+_:c14n358 rdf:first rdf:type ;
+	rdf:rest _:c14n359 .
+_:c14n359 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n360 .
 _:c14n36 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity started." ;
 	sh:maxCount 1 ;
@@ -1437,25 +1442,25 @@ _:c14n36 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 9 ;
 	sh:path prov:startedAtTime .
-_:c14n360 rdf:first dcterms:creator ;
-	rdf:rest _:c14n361 .
-_:c14n361 rdf:first dcterms:modified ;
-	rdf:rest _:c14n362 .
-_:c14n362 rdf:first rdf:type ;
-	rdf:rest _:c14n363 .
-_:c14n363 rdf:first rp:dataSchemaVersion ;
-	rdf:rest _:c14n364 .
-_:c14n364 rdf:first rp:version ;
+_:c14n360 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n365 rdf:first dcterms:created ;
-	rdf:rest _:c14n360 .
-_:c14n366 rdf:first dcterms:creator ;
-	rdf:rest _:c14n367 .
-_:c14n367 rdf:first dcterms:modified ;
-	rdf:rest _:c14n368 .
-_:c14n368 rdf:first rdf:type ;
+_:c14n361 rdf:first dcterms:created ;
+	rdf:rest _:c14n356 .
+_:c14n362 rdf:first dcterms:creator ;
+	rdf:rest _:c14n363 .
+_:c14n363 rdf:first dcterms:modified ;
+	rdf:rest _:c14n364 .
+_:c14n364 rdf:first rdf:type ;
+	rdf:rest _:c14n365 .
+_:c14n365 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n366 .
+_:c14n366 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n367 rdf:first dcterms:created ;
+	rdf:rest _:c14n362 .
+_:c14n368 rdf:first dcterms:creator ;
 	rdf:rest _:c14n369 .
-_:c14n369 rdf:first rp:dataSchemaVersion ;
+_:c14n369 rdf:first dcterms:modified ;
 	rdf:rest _:c14n370 .
 _:c14n37 sh:datatype xsd:string ;
 	sh:description "The name of the state a new aggregate starts in, one of the states." ;
@@ -1465,26 +1470,26 @@ _:c14n37 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:initialState .
-_:c14n370 rdf:first rp:version ;
-	rdf:rest rdf:nil .
-_:c14n371 rdf:first dcterms:created ;
-	rdf:rest _:c14n366 .
-_:c14n372 rdf:first dcterms:creator ;
-	rdf:rest _:c14n373 .
-_:c14n373 rdf:first dcterms:modified ;
-	rdf:rest _:c14n374 .
-_:c14n374 rdf:first rdf:type ;
-	rdf:rest _:c14n375 .
-_:c14n375 rdf:first rp:dataSchemaVersion ;
-	rdf:rest _:c14n376 .
-_:c14n376 rdf:first rp:repliesTo ;
-	rdf:rest _:c14n377 .
-_:c14n377 rdf:first rp:version ;
-	rdf:rest rdf:nil .
-_:c14n378 rdf:first dcterms:created ;
+_:c14n370 rdf:first rdf:type ;
+	rdf:rest _:c14n371 .
+_:c14n371 rdf:first rp:dataSchemaVersion ;
 	rdf:rest _:c14n372 .
-_:c14n379 rdf:first dcterms:creator ;
-	rdf:rest _:c14n380 .
+_:c14n372 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n373 rdf:first dcterms:created ;
+	rdf:rest _:c14n368 .
+_:c14n374 rdf:first dcterms:creator ;
+	rdf:rest _:c14n375 .
+_:c14n375 rdf:first dcterms:modified ;
+	rdf:rest _:c14n376 .
+_:c14n376 rdf:first rdf:type ;
+	rdf:rest _:c14n377 .
+_:c14n377 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n378 .
+_:c14n378 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n379 rdf:first dcterms:created ;
+	rdf:rest _:c14n374 .
 _:c14n38 sh:description "The principal the rule applies to." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1492,26 +1497,26 @@ _:c14n38 sh:description "The principal the rule applies to." ;
 	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
 	sh:path odrl:assignee .
-_:c14n380 rdf:first dcterms:modified ;
+_:c14n380 rdf:first dcterms:creator ;
 	rdf:rest _:c14n381 .
-_:c14n381 rdf:first rdf:type ;
+_:c14n381 rdf:first dcterms:modified ;
 	rdf:rest _:c14n382 .
-_:c14n382 rdf:first rp:dataSchemaVersion ;
+_:c14n382 rdf:first rdf:type ;
 	rdf:rest _:c14n383 .
-_:c14n383 rdf:first rp:version ;
+_:c14n383 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n384 .
+_:c14n384 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n384 rdf:first dcterms:created ;
-	rdf:rest _:c14n379 .
-_:c14n385 rdf:first dcterms:creator ;
-	rdf:rest _:c14n386 .
-_:c14n386 rdf:first dcterms:modified ;
+_:c14n385 rdf:first dcterms:created ;
+	rdf:rest _:c14n380 .
+_:c14n386 rdf:first dcterms:creator ;
 	rdf:rest _:c14n387 .
-_:c14n387 rdf:first rdf:type ;
+_:c14n387 rdf:first dcterms:modified ;
 	rdf:rest _:c14n388 .
-_:c14n388 rdf:first rp:dataSchemaVersion ;
+_:c14n388 rdf:first rdf:type ;
 	rdf:rest _:c14n389 .
-_:c14n389 rdf:first rp:version ;
-	rdf:rest rdf:nil .
+_:c14n389 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n390 .
 _:c14n39 sh:datatype xsd:string ;
 	sh:description "The text of the comment." ;
 	sh:maxCount 1 ;
@@ -1519,26 +1524,26 @@ _:c14n39 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path <http://www.w3.org/ns/oa#bodyValue> .
-_:c14n390 rdf:first dcterms:created ;
-	rdf:rest _:c14n385 .
-_:c14n391 rdf:first dcterms:creator ;
-	rdf:rest _:c14n392 .
-_:c14n392 rdf:first dcterms:modified ;
+_:c14n390 rdf:first rp:version ;
+	rdf:rest rdf:nil .
+_:c14n391 rdf:first dcterms:created ;
+	rdf:rest _:c14n386 .
+_:c14n392 rdf:first dcterms:creator ;
 	rdf:rest _:c14n393 .
-_:c14n393 rdf:first rdf:type ;
+_:c14n393 rdf:first dcterms:modified ;
 	rdf:rest _:c14n394 .
-_:c14n394 rdf:first rp:dataSchemaVersion ;
+_:c14n394 rdf:first rdf:type ;
 	rdf:rest _:c14n395 .
-_:c14n395 rdf:first rp:version ;
+_:c14n395 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n396 .
+_:c14n396 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n396 rdf:first dcterms:created ;
-	rdf:rest _:c14n391 .
-_:c14n397 rdf:first prov:used ;
+_:c14n397 rdf:first dcterms:created ;
+	rdf:rest _:c14n392 .
+_:c14n398 rdf:first prov:used ;
 	rdf:rest _:c14n23 .
-_:c14n398 rdf:first odrl:annotate ;
+_:c14n399 rdf:first odrl:annotate ;
 	rdf:rest rdf:nil .
-_:c14n399 rdf:first rp:administer ;
-	rdf:rest _:c14n398 .
 _:c14n4 sh:datatype xsd:string ;
 	sh:description "The names of the states, lower case, starting with a letter, with digits, hyphens and underscores. The IRI of a state is the workflow's identifier, a slash and its name." ;
 	sh:minCount 1 ;
@@ -1554,62 +1559,64 @@ _:c14n40 sh:description "The IRI of the tenant." ;
 	sh:nodeKind sh:IRI ;
 	sh:order 0 ;
 	sh:path rp:tenant .
-_:c14n400 rdf:first odrl:delete ;
+_:c14n400 rdf:first rp:administer ;
 	rdf:rest _:c14n399 .
-_:c14n401 rdf:first odrl:modify ;
+_:c14n401 rdf:first odrl:delete ;
 	rdf:rest _:c14n400 .
-_:c14n402 rdf:first odrl:read ;
+_:c14n402 rdf:first odrl:modify ;
 	rdf:rest _:c14n401 .
-_:c14n403 rdf:first odrl:annotate ;
+_:c14n403 rdf:first odrl:read ;
+	rdf:rest _:c14n402 .
+_:c14n404 rdf:first odrl:annotate ;
 	rdf:rest rdf:nil .
-_:c14n404 rdf:first rp:administer ;
-	rdf:rest _:c14n403 .
-_:c14n405 rdf:first odrl:delete ;
+_:c14n405 rdf:first rp:administer ;
 	rdf:rest _:c14n404 .
-_:c14n406 rdf:first odrl:modify ;
+_:c14n406 rdf:first odrl:delete ;
 	rdf:rest _:c14n405 .
-_:c14n407 rdf:first odrl:read ;
+_:c14n407 rdf:first odrl:modify ;
 	rdf:rest _:c14n406 .
-_:c14n408 rdf:first odrl:annotate ;
+_:c14n408 rdf:first odrl:read ;
+	rdf:rest _:c14n407 .
+_:c14n409 rdf:first odrl:annotate ;
 	rdf:rest rdf:nil .
-_:c14n409 rdf:first rp:administer ;
-	rdf:rest _:c14n408 .
 _:c14n41 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n253 .
-_:c14n410 rdf:first odrl:delete ;
+	rdf:rest _:c14n260 .
+_:c14n410 rdf:first rp:administer ;
 	rdf:rest _:c14n409 .
-_:c14n411 rdf:first odrl:modify ;
+_:c14n411 rdf:first odrl:delete ;
 	rdf:rest _:c14n410 .
-_:c14n412 rdf:first odrl:read ;
+_:c14n412 rdf:first odrl:modify ;
 	rdf:rest _:c14n411 .
-_:c14n413 rdf:first odrl:annotate ;
+_:c14n413 rdf:first odrl:read ;
+	rdf:rest _:c14n412 .
+_:c14n414 rdf:first odrl:annotate ;
 	rdf:rest rdf:nil .
-_:c14n414 rdf:first rp:administer ;
-	rdf:rest _:c14n413 .
-_:c14n415 rdf:first odrl:delete ;
+_:c14n415 rdf:first rp:administer ;
 	rdf:rest _:c14n414 .
-_:c14n416 rdf:first odrl:modify ;
+_:c14n416 rdf:first odrl:delete ;
 	rdf:rest _:c14n415 .
-_:c14n417 rdf:first odrl:read ;
+_:c14n417 rdf:first odrl:modify ;
 	rdf:rest _:c14n416 .
-_:c14n418 rdf:first rp:repliesTo ;
-	rdf:rest _:c14n162 .
-_:c14n419 rdf:first rp:dataSchemaVersion ;
-	rdf:rest _:c14n107 .
+_:c14n418 rdf:first odrl:read ;
+	rdf:rest _:c14n417 .
+_:c14n419 rdf:first rp:repliesTo ;
+	rdf:rest _:c14n163 .
 _:c14n42 sh:description "The versions of entities the activity generated." ;
 	sh:name "Generations" ;
 	sh:node rp:Generation ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 11 ;
 	sh:path rp:generation .
-_:c14n420 sh:property _:c14n74 .
-_:c14n421 sh:property _:c14n217 .
-_:c14n422 rdf:first rp:version ;
+_:c14n420 rdf:first rp:dataSchemaVersion ;
+	rdf:rest _:c14n108 .
+_:c14n421 sh:property _:c14n218 .
+_:c14n422 sh:property _:c14n74 .
+_:c14n423 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n423 rdf:first rdf:type ;
-	rdf:rest _:c14n174 .
 _:c14n424 rdf:first rdf:type ;
-	rdf:rest _:c14n137 .
+	rdf:rest _:c14n175 .
+_:c14n425 rdf:first rdf:type ;
+	rdf:rest _:c14n138 .
 _:c14n43 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
 _:c14n44 sh:datatype xsd:string ;
@@ -1637,9 +1644,9 @@ _:c14n46 sh:description "The IRI of the comment the transition posted, when it h
 _:c14n47 rdf:first rp:prohibition ;
 	rdf:rest _:c14n91 .
 _:c14n48 rdf:first rdf:type ;
-	rdf:rest _:c14n122 .
+	rdf:rest _:c14n123 .
 _:c14n49 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n301 .
+	rdf:rest _:c14n314 .
 _:c14n5 sh:datatype xsd:dateTime ;
 	sh:description "The time the activity started." ;
 	sh:maxCount 1 ;
@@ -1647,8 +1654,8 @@ _:c14n5 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 7 ;
 	sh:path prov:startedAtTime .
-_:c14n50 rdf:first _:c14n420 ;
-	rdf:rest _:c14n152 .
+_:c14n50 rdf:first _:c14n422 ;
+	rdf:rest _:c14n153 .
 _:c14n51 sh:description "The permissions given in the tenant, by role or as direct actions; they live in the access record's graph." ;
 	sh:name "Grants" ;
 	sh:node rp:Grant ;
@@ -1656,7 +1663,7 @@ _:c14n51 sh:description "The permissions given in the tenant, by role or as dire
 	sh:order 3 ;
 	sh:path rp:grant .
 _:c14n52 rdf:first rp:fromState ;
-	rdf:rest _:c14n418 .
+	rdf:rest _:c14n419 .
 _:c14n53 sh:description "The IRI of the class of the roots." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1667,7 +1674,7 @@ _:c14n53 sh:description "The IRI of the class of the roots." ;
 _:c14n54 rdf:first rp:Active ;
 	rdf:rest _:c14n62 .
 _:c14n55 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n241 .
+	rdf:rest _:c14n242 .
 _:c14n56 sh:description "The IRI that identifies the object." ;
 	sh:maxCount 1 ;
 	sh:name "Identifier" ;
@@ -1675,7 +1682,7 @@ _:c14n56 sh:description "The IRI that identifies the object." ;
 	sh:order 4 ;
 	sh:path dcterms:identifier .
 _:c14n57 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n304 .
+	rdf:rest _:c14n317 .
 _:c14n58 sh:description "The activity that generated this entity." ;
 	sh:maxCount 1 ;
 	sh:name "Was generated by" ;
@@ -1690,13 +1697,13 @@ _:c14n6 sh:description "A principal that carried out the activity." ;
 	sh:order 1 ;
 	sh:path prov:wasAssociatedWith .
 _:c14n60 rdf:first rp:databaseName ;
-	rdf:rest _:c14n160 .
+	rdf:rest _:c14n161 .
 _:c14n61 rdf:first dcterms:references ;
-	rdf:rest _:c14n423 .
+	rdf:rest _:c14n424 .
 _:c14n62 rdf:first rp:Deleting ;
 	rdf:rest rdf:nil .
 _:c14n63 sh:description "The actions the role permits." ;
-	sh:in _:c14n412 ;
+	sh:in _:c14n418 ;
 	sh:minCount 1 ;
 	sh:name "Actions" ;
 	sh:order 2 ;
@@ -1784,7 +1791,7 @@ _:c14n75 sh:datatype xsd:string ;
 	sh:path skos:prefLabel ;
 	sh:pattern "^(?:^\\S(?:.{0,198}\\S)?$)(?![\\s\\S])" .
 _:c14n76 sh:description "The action a direct permission allows, or a prohibition forbids." ;
-	sh:in _:c14n402 ;
+	sh:in _:c14n403 ;
 	sh:maxCount 1 ;
 	sh:name "Action" ;
 	sh:order 2 ;
@@ -1796,7 +1803,7 @@ _:c14n77 sh:description "The predicates of the key's slots, in the order of the 
 	sh:order 2 ;
 	sh:path rp:keyPredicates .
 _:c14n78 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n295 .
+	rdf:rest _:c14n308 .
 _:c14n79 rdf:first <http://www.w3.org/ns/oa#commenting> ;
 	rdf:rest _:c14n29 .
 _:c14n8 rdf:first rp:SystemLevel ;
@@ -1835,7 +1842,7 @@ _:c14n84 sh:datatype xsd:dateTime ;
 	sh:order 4 ;
 	sh:path prov:endedAtTime .
 _:c14n85 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n259 .
+	rdf:rest _:c14n272 .
 _:c14n86 sh:datatype xsd:boolean ;
 	sh:description "Whether the orphaned loaded graphs were removed." ;
 	sh:maxCount 1 ;
@@ -1915,6 +1922,6 @@ _:c14n97 sh:description "The versions of entities the activity invalidated." ;
 	sh:order 10 ;
 	sh:path rp:invalidation .
 _:c14n98 rdf:first rp:transitionComment ;
-	rdf:rest _:c14n422 .
+	rdf:rest _:c14n423 .
 _:c14n99 rdf:first rp:TenantLevel ;
-	rdf:rest _:c14n235 .
+	rdf:rest _:c14n236 .
