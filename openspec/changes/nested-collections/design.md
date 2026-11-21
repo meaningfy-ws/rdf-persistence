@@ -217,3 +217,38 @@ None. The owner decided all four on 2026-11-20 (`inputs/qa.md`):
   EPIC's and the issue's `transitive=True` is written `deep=True` in the spec delta.
 - **OPEN-3 → decided:** a nested collection may have `nests: false` (PD-2).
 - **OPEN-4 → decided:** `members(C, deep=True)` lists items only; `members(C)` lists sub-folders (PD-6).
+
+## Delivery decisions
+
+- **D-1 Build order and joins (2026-11-21).** One stage, built by parallel builders in their own
+  worktrees and joined by merge: 1.1 ∥ 1.3, then 1.2, then 1.4 ∥ 1.5 ∥ 1.7, then 1.6 ∥ the
+  adversarial tester. `develop` was merged in at the start (it held `delete-refuses-referenced`
+  stage 2, #225, which touches the same guards); `make generate` after the merge changed nothing.
+- **D-2 The walk stays in the write guard.** PD-4's walk first landed as a module `nesting.py` with
+  two hand-written dataclasses; the model guard and the layout check refuse both. It is now the
+  private `_walk_from` of `write_guards.py`, returning plain values. The 1.4 builder's gate had not
+  run to the end (T1); the lead's run on the joined head found it.
+- **D-3 Tester findings (task 1.4, `test_collaboration_nesting_adversarial.py`).** Six defects, each
+  pinned by an `xfail(strict=True)` test. Fixed in the fix pass:
+  - T-1: a graph relied on at two versions in one transaction (it changed between two reads) raised
+    `ValueError`; it is a `Conflict` naming it. This reverses PD-5's `ValueError`, which assumed
+    the two reads could not differ.
+  - T-2: a stored nesting collection that does not decode blocked any save that walked the skeleton
+    and was named in the refusal (PD-7); it is skipped.
+  - T-3: a stored leaf (`nests` false) that names a shelf, written past the guard, turned into a
+    nesting collection with the same members was not walked; stored members count as already
+    nested only when the stored collection nests.
+
+  Under the floor, the tests stay `xfail(strict=True)`:
+  - T-4: the same-transaction overlay ignores removes, so a cycle through a collection removed
+    earlier in the transaction is refused. The error is on the safe side; a retry after the commit
+    succeeds.
+  - T-5: `delete_cascade` deletes a stored nested collection of another member class (written past
+    the guard) where a deep read raises `StoredDataInvalid`. PD-8 says the cascade deletes members;
+    only data that bypassed the guard reaches it.
+  - T-6: the "(k more)" of the cycle refusal counts the first way back the walk meets, not the
+    shortest. Cosmetic.
+
+  Not tested: a subclass of a collection class (the toy library has none, and the tester does not
+  edit schemas); the exact-class rule is enforced by `accepted_members` adding only the class's own
+  IRI.
