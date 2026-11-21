@@ -185,8 +185,8 @@ DATA_PLANE = {
 @pytest.mark.parametrize("operation", DATA_PLANE)
 @pytest.mark.parametrize(
     ("status", "error"),
-    # One case per branch of _raise_for_status; 500 stands for the whole `>= 500` class
-    # (503 is the same branch), 404 and 405 are the explicit pair.
+    # One case per branch of _raise_for_status; 500 stands for the whole `not is_success`
+    # fall-through (503, 401, 403 are the same branch), 404 and 405 are the explicit pair.
     [
         (405, DatabaseGone),
         (404, DatabaseGone),
