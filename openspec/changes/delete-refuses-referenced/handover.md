@@ -1,35 +1,35 @@
-# Hand-over: delete-refuses-referenced, after stage 1
+# Hand-over: delete-refuses-referenced, after stage 2
 
 ## Done
 
-Stage 1 (tasks 1.1, 1.2: the model), PR #224 (merged by the watch-and-merge command after this
-note). Already built ahead on stacked branches (D-1): task 2.1 on `feat/delete-refuses-referenced-s2`
-(046bb5ef, worktree `.worktrees/delete-refuses-referenced-s2`), task 2.2 in progress there; the
-stage-3 docs draft on `docs/delete-refuses-referenced-s3` (068494a3, worktree
-`.worktrees/delete-refuses-referenced-s3`).
+Stage 1, PR #224 (merged). Stage 2 (tasks 2.1–2.5, the fix pass, the full review), PR #225
+(merged by the watch-and-merge command after this note). Accepted by the owner on 2026-11-21
+(`evidence/acceptance.md`). The docs stage is written on `docs/delete-refuses-referenced-s3`
+(worktree `.worktrees/delete-refuses-referenced-s3`; `evidence/docs-owed.md`).
 
 ## Decided since the PLAN
 
-D-1 to D-7 (design.md, Delivery decisions). Scenarios signed off (evidence/clarity-gate.md).
+D-1 to D-14 (design.md, Delivery decisions). Scenarios signed off (evidence/clarity-gate.md).
 
 ## Open
 
-- S2 of the stage-1 review: the annotation on a non-root class is accepted and does nothing. Owner
-  question at the full review (D-6).
-- The stage-3 docs draft assumed ten details the PLAN leaves to the code (the `Referrer` JSON
-  member names, `session.remove` argument order, `open_session(..., removals=)`, `had_member`, …):
-  check them against the built code before the stage-3 PR.
-- The stage-2 branch must be rebased on develop once #224 merges.
+- #226: a commit that adds a comment on a root and removes that root loses the comment with a
+  misleading `Conflict` (predates this change).
+- #227: structural tidy-ups under the delivery floor (the judged root unnamed in `in_use`,
+  `ReferrerRow` by position, the guard inside `Transaction`, test helpers, docstrings).
+- Stage 1 review S2 (the annotation on a non-root class is inert) is under the floor (D-6); not
+  raised further.
 
 ## Next
 
-Stage 2, task 2.2 (in progress), then the adversarial tester on 2.2 (D-7), then 2.3 ∥ 2.4, 2.5.
-Read first: tasks.md §2, design.md PD-3 to PD-12 and D-7, specs/rp-service-api/spec.md.
+Stage 3 (docs): rebase `docs/delete-refuses-referenced-s3` on develop, `make docs-reference`,
+reconcile `proposal.md` with what was built (P-0004), tick 3.1 and 3.2, the full gates, the PR
+with one review pass, merge; then archive the change (`openspec archive delete-refuses-referenced
+--yes`) in its own PR.
 
 ## Prompt
 
 Act as the team lead and follow the epic-delivery skill and
-docs/modules/ROOT/pages/develop/agents.adoc. Deliver stage 2 of
-openspec/changes/delete-refuses-referenced from handover.md, in the worktree
-.worktrees/delete-refuses-referenced-s2 (branch feat/delete-refuses-referenced-s2): rebase it on
-develop first, then continue from task 2.2.
+docs/modules/ROOT/pages/develop/agents.adoc. Finish openspec/changes/delete-refuses-referenced
+from handover.md: deliver stage 3 (docs) from the worktree .worktrees/delete-refuses-referenced-s3
+after rebasing it on develop, then archive the change.
