@@ -77,11 +77,24 @@ def member_class_iris(view: SchemaView, member_class: str) -> set[str]:
     return {view.get_uri(c, expand=True) for c in view.class_descendants(member_class)}
 
 
+def accepted_members(
+    view: SchemaView, collection_class_name: str, collection: ReferenceCollection
+) -> set[str]:
+    """The IRIs of the classes whose aggregates ``collection`` may name (PD-2).
+
+    The member class and its descendants, and the collection's own class, exactly, when it nests.
+    A nested member must also have the member class of ``collection``; that is checked on its graph.
+    """
+    accepted = member_class_iris(view, collection.member_class)
+    if collection.nests:
+        accepted.add(view.get_uri(collection_class_name, expand=True))
+    return accepted
+
+
 def outside_member_class(
-    view: SchemaView, member_class: str, members: Sequence[str], heads: Sequence[AggregateHead]
+    accepted: set[str], members: Sequence[str], heads: Sequence[AggregateHead]
 ) -> list[str]:
-    """The ``members`` that are not stored aggregates of ``member_class`` or of a class derived from it."""
-    accepted = member_class_iris(view, member_class)
+    """The ``members`` that are not stored aggregates of one of the ``accepted`` classes."""
     stored = {str(h.head_iri): h for h in heads}
     return [
         m
@@ -260,7 +273,8 @@ class ReferenceCollections:
     ) -> None:
         """A stored collection is not trusted: a cascade deletes only aggregates of its member class."""
         found = [str(h.head_iri) for h in heads]
-        if outside_member_class(self._view, stored.member_class, found, heads):
+        accepted = accepted_members(self._view, type(stored).__name__, stored)
+        if outside_member_class(accepted, found, heads):
             raise StoredDataInvalid(
                 f"the collection {collection} names an aggregate that is not of its member class "
                 f"{stored.member_class}"
