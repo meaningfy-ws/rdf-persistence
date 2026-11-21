@@ -160,7 +160,9 @@ misspelt one (`rp_pth` for `rp_path`) is ignored, and the annotation it meant is
 |`toolkit-filled` |An attribute stands for a slot the toolkit fills itself (`started_at_time`) and
 asks a bound of it (`[1..1]`). The slot is not written and the bound is not carried over.
 |`toolkit-slot-kept` |An attribute stands for a toolkit slot but differs from it in `multivalued` or
-in range; the toolkit's definition is kept and the difference is not carried over.
+in range; the toolkit's definition is kept and the difference is not carried over. A reference
+collection's `dct:hasPart` role is not reported for its range, which becomes the collection's
+member class (xref:reference/uml-conventions.adoc#member-class[conventions page]).
 |`merged-cycle` |Packages that refer to each other were written as one module, because separate
 modules would import each other, whether the reference is a slot's range, a generalisation or a slot
 shared between packages (xref:reference/uml-conventions.adoc#shared-slots[conventions page]). The

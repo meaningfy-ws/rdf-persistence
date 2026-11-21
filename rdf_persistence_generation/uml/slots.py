@@ -30,6 +30,11 @@ from rdf_persistence_generation.uml.naming import (
 
 URI: Final = "uri"
 OWNED: Final = "owned"
+REFERENCE_COLLECTION: Final = (
+    "ReferenceCollection"  # the toolkit mixin whose member class a role fixes
+)
+HAS_PART: Final = "has_part"
+MEMBER_CLASS: Final = "member_class"
 MULTIPLICITY: Final = (
     "multiplicity"  # the name of the slot that carries a multiplicity's limits only
 )
@@ -502,13 +507,17 @@ def _cardinality_text(shape: SlotDefinition) -> str:
     return f"{lower}..{upper}"
 
 
-def _kept(ctx: Context, element: str, slot: SlotDefinition, shape: SlotDefinition) -> None:
-    """Report each way the UML shape differs from the toolkit slot, which is kept (PD-18)."""
+def _kept(
+    ctx: Context, element: str, slot: SlotDefinition, shape: SlotDefinition, member: bool
+) -> None:
+    """Report each way the UML shape differs from the toolkit slot, which is kept (PD-18).
+
+    A ``member`` role's range is carried, as the member class, so it is not reported (#241).
+    """
     name = str(slot.name)
-    differences = {
-        "multivalued": (bool(shape.multivalued), bool(slot.multivalued)),
-        "range": (shape.range, slot.range),
-    }
+    differences = {"multivalued": (bool(shape.multivalued), bool(slot.multivalued))}
+    if not member:
+        differences["range"] = (shape.range, slot.range)
     for what, (uml, toolkit) in differences.items():
         if toolkit is not None and uml != toolkit:
             ctx.findings.note(
@@ -530,23 +539,23 @@ def _use_toolkit_slot(
     definition: ClassDefinition,
     shared: SharedSlots,
     slot_names: dict[int, list[str]],
-) -> None:
+) -> bool:
+    """Use the toolkit slot for the usage; False when the toolkit fills it, so nothing is carried."""
     slot = ctx.toolkit.slot_by_uri(usage.iri)
     assert slot is not None  # split_toolkit kept only usages that have one
     name, label, shape = str(slot.name), usage.holder.label, usage.shape
-    element = f"{label}.{name}"
     if ctx.toolkit.is_filled(name):
         text = f"the toolkit fills {name}; [{_cardinality_text(shape)}] is not carried"
-        ctx.findings.note(ReportKind.TOOLKIT_FILLED, element, text)
-        return
+        ctx.findings.note(ReportKind.TOOLKIT_FILLED, f"{label}.{name}", text)
+        return False
     sources = _toolkit_names(ctx, definition)
     held = slot_names.setdefault(usage.holder.uml_class.object_id, [])
     if not ctx.toolkit.inherits(sources, name) and name not in held:
         held.append(name)
         shared.toolkit_imports.setdefault(label, set()).add(ctx.toolkit.module_of_slot(name))
-    _kept(ctx, element, slot, shape)
     if shape.required and not ctx.toolkit.required_on(sources, name):
         shared.class_usage.setdefault(label, {})[name] = SlotDefinition(name=name, required=True)
+    return True
 
 
 def use_toolkit_slots(
@@ -560,10 +569,72 @@ def use_toolkit_slots(
 
     The toolkit slot is not defined again: the class lists it unless a toolkit class it is built on brings it,
     its module is imported, and a ``slot_usage`` states ``required`` only where the toolkit's is not. A
-    toolkit-filled slot is dropped and reported.
+    toolkit-filled slot is dropped and reported. A reference collection's member role fixes its
+    ``member_class`` (``_member_roles``).
     """
+    members = _member_roles(ctx, usages, classes)
     for usage in sorted(usages, key=lambda each: (each.holder.label, each.order)):
-        _use_toolkit_slot(ctx, usage, classes[usage.holder.uml_class.object_id], shared, slot_names)
+        definition = classes[usage.holder.uml_class.object_id]
+        if _use_toolkit_slot(ctx, usage, definition, shared, slot_names):
+            slot = ctx.toolkit.slot_by_uri(usage.iri)
+            assert slot is not None  # split_toolkit kept only usages that have one
+            _kept(ctx, f"{usage.holder.label}.{slot.name}", slot, usage.shape, id(usage) in members)
+    _fix_member_classes(ctx, [each for each in usages if id(each) in members], shared)
+
+
+def _is_collection(definition: ClassDefinition, by_name: Mapping[str, ClassDefinition]) -> bool:
+    """Whether the class mixes ``ReferenceCollection`` in, itself or through a domain ``is_a``."""
+    seen: set[str] = set()
+    current: ClassDefinition | None = definition
+    while current is not None and current.name not in seen:
+        if REFERENCE_COLLECTION in current.mixins:
+            return True
+        seen.add(str(current.name))
+        current = by_name.get(current.is_a) if current.is_a else None
+    return False
+
+
+def _member_roles(
+    ctx: Context, usages: list[Usage], classes: Mapping[int, ClassDefinition]
+) -> set[int]:
+    """The ids of the ``dct:hasPart`` usages that name a collection's member class (#241).
+
+    The holder is a reference collection and the range a converted class other than the holder; a
+    role to the holder's own class is nesting and stays the toolkit's ``has_part``.
+    """
+    by_name = {str(each.name): each for each in classes.values()}
+    members: set[int] = set()
+    for usage in usages:
+        slot = ctx.toolkit.slot_by_uri(usage.iri)
+        target = usage.shape.range
+        if (
+            slot is not None
+            and slot.name == HAS_PART
+            and target in by_name
+            and target != usage.holder.label
+            and _is_collection(classes[usage.holder.uml_class.object_id], by_name)
+        ):
+            members.add(id(usage))
+    return members
+
+
+def _fix_member_classes(ctx: Context, members: list[Usage], shared: SharedSlots) -> None:
+    """Fix each collection's ``member_class`` to its member role's class; two classes are a problem."""
+    by_holder: dict[str, set[str]] = {}
+    for usage in members:
+        by_holder.setdefault(usage.holder.label, set()).add(str(usage.shape.range))
+    for label, targets in sorted(by_holder.items()):
+        if len(targets) > 1:
+            ctx.findings.problem(
+                UmlRule.TOOLKIT_SLOT,
+                label,
+                f"dct:hasPart roles to {' and '.join(sorted(targets))}: "
+                "a reference collection has one member class",
+            )
+            continue
+        shared.class_usage.setdefault(label, {})[MEMBER_CLASS] = SlotDefinition(
+            name=MEMBER_CLASS, equals_string=targets.pop()
+        )
 
 
 def attribute_usages(ctx: Context, holder: UmlElement) -> list[Usage]:

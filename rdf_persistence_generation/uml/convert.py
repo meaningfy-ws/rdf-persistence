@@ -16,6 +16,8 @@ from linkml_runtime.linkml_model import (
     SchemaDefinition,
 )
 
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
+from rdf_persistence_generation.checks.hard import ALLOWED_ANNOTATIONS
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
@@ -68,6 +70,7 @@ LINKML_TYPES: Final = "linkml:types"
 LINKML_PREFIX: Final = ("linkml", "https://w3id.org/linkml/")
 ANNOTATIONS_IMPORT: Final = "rdf_persistence/model/rp_annotations"
 MODULE_KIND: Final = "module_kind"
+MODULE_KINDS: Final = ALLOWED_ANNOTATIONS[RpAnnotation.MODULE_KIND]  # the metamodel's ModuleKind
 DOMAIN: Final = "domain"
 DEFAULT_RANGE: Final = "string"
 
@@ -255,6 +258,7 @@ class Built:
         self.classes, self.enums = definitions
         self.shared = shared
         self.slot_names = slot_names
+        self.kinds: dict[ModulePath, str] = {}
 
 
 def _build(ctx: Context, model: UmlModel) -> tuple[list[UmlElement], list[Usage], dict[int, str]]:
@@ -282,6 +286,37 @@ def _slot_names(usages: list[Usage], ctx: Context) -> dict[int, list[str]]:
     return names
 
 
+def _module_kinds(ctx: Context, model: UmlModel, layout: Layout) -> dict[ModulePath, str]:
+    """The ``module_kind`` of each module: its packages' tagged value, ``domain`` when none (#245).
+
+    A value the toolkit's metamodel does not list is a problem naming the package; packages written as
+    one module (a cycle) with different kinds are a problem naming the module.
+    """
+    kinds: dict[ModulePath, set[str]] = {}
+    for package in model.uml_packages or []:
+        path = ctx.paths.get(package.package_id)
+        if path is None or below_of(path) not in layout.merged:
+            continue  # a package with no class has no module
+        written = ctx.tags.get(package.object_id or 0, {}).get(MODULE_KIND, DOMAIN)
+        kind = written.strip().lower()
+        if kind not in MODULE_KINDS:
+            ctx.findings.problem(
+                UmlRule.PACKAGE_MODULE,
+                package.name,
+                f"{MODULE_KIND}: {kind!r} is not one of {', '.join(MODULE_KINDS)}",
+            )
+            continue
+        kinds.setdefault(layout.merged[below_of(path)], set()).add(kind)
+    for module, found in kinds.items():
+        if len(found) > 1:
+            ctx.findings.problem(
+                UmlRule.PACKAGE_MODULE,
+                layout.names[module],
+                f"its packages are written as one module but have the kinds {' and '.join(sorted(found))}",
+            )
+    return {module: min(found) for module, found in kinds.items()}
+
+
 def _write_module(
     ctx: Context, name: str, path: ModulePath, built: Built, members: list[UmlElement]
 ) -> SchemaDefinition:
@@ -294,7 +329,7 @@ def _write_module(
         title=title_for(first),
         description=(note or "").replace("\r\n", "\n").strip()
         or f"The {first} package of the {settings.root_name} model, converted from UML.",
-        annotations={MODULE_KIND: annotation(MODULE_KIND, DOMAIN)},
+        annotations={MODULE_KIND: annotation(MODULE_KIND, built.kinds.get(path, DOMAIN))},
     )
     for element in members:
         _place(schema, element, built)
@@ -391,6 +426,7 @@ def convert(
     classes = _classes(ctx, elements, usages, parent_of)
     built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx))
     use_toolkit_slots(ctx, toolkit_usages, classes, shared, built.slot_names)
+    built.kinds = _module_kinds(ctx, model, layout)
     problems = ctx.findings.problems()
     if problems:
         return [], ctx.findings.report(), problems

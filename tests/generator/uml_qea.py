@@ -240,7 +240,7 @@ EA_COLUMNS: dict[str, tuple[str, ...]] = {
 DDL: dict[str, str] = {
     "t_package": (
         "CREATE TABLE t_package (Package_ID INTEGER PRIMARY KEY, Name TEXT, Parent_ID INTEGER,"
-        " Notes TEXT)"
+        " Notes TEXT, ea_guid TEXT)"
     ),
     "t_object": (
         "CREATE TABLE t_object (Object_ID INTEGER PRIMARY KEY, Object_Type TEXT, Name TEXT,"
@@ -293,7 +293,18 @@ class QeaBuilder:
         return cursor.lastrowid or 0
 
     def package(self, name: str, parent: int = 0, note: str | None = None) -> int:
-        return self._insert("t_package", Name=name, Parent_ID=parent, Notes=note)
+        return self._insert(
+            "t_package", Name=name, Parent_ID=parent, Notes=note, ea_guid=f"{{PKG-{name}}}"
+        )
+
+    def package_element(self, package: int) -> int:
+        """The object EA draws a package as: in its parent package, with the package's ea_guid."""
+        name, parent, guid = self._db.execute(
+            "SELECT Name, Parent_ID, ea_guid FROM t_package WHERE Package_ID = ?", (package,)
+        ).fetchone()
+        return self._insert(
+            "t_object", Object_Type="Package", Name=name, Package_ID=parent, ea_guid=guid
+        )
 
     def cls(
         self,

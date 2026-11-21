@@ -507,16 +507,17 @@ class UmlModel(ConfiguredBaseModel):
 
 
 class UmlPackage(ConfiguredBaseModel):
-    "A package of the UML model, with its parent, so the package tree can be rebuilt."
+    "A package of the UML model, with its parent, so the package tree can be rebuilt, and the object that draws it, which owns its tagged values."
     package_id: int = Field(default=..., title="Package id", description="The id a UML model gives a package.")
     name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
     parent_id: Optional[int] = Field(default=None, title="Parent id", description="The id of the package that holds a package, absent for a top one.")
     note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
+    object_id: Optional[int] = Field(default=None, title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
 
 
 class UmlClass(ConfiguredBaseModel):
     "A class or an enumeration of the UML model. For an enumeration the attributes are its literals."
-    object_id: int = Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration or a boundary.")
+    object_id: int = Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
     name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
     object_type: str = Field(default=..., title="Object type", description="The kind of element a UML object is, as the model file names it (`Class`, `Enumeration`).")
     uml_alias: Optional[str] = Field(default=None, title="Alias", description="The alias of a UML element, the title the author gave it.")
@@ -571,7 +572,7 @@ class UmlTaggedValue(ConfiguredBaseModel):
 
 class UmlBoundary(ConfiguredBaseModel):
     "A boundary drawn on a diagram, with the classes and enumerations whose rectangles lie wholly inside it."
-    object_id: int = Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration or a boundary.")
+    object_id: int = Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
     name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
     diagram_id: int = Field(default=..., title="Diagram id", description="The id of the diagram a boundary is drawn on.")
     member_ids: Optional[list[int]] = Field(default=None, title="Member ids", description="The ids of the classes and enumerations that lie inside a boundary.")

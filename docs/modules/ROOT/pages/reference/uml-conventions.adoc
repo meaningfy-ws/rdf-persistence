@@ -397,6 +397,47 @@ slots:
     required: true
 ----
 
+[#member-class]
+=== A reference collection's member class
+
+A reference collection collects aggregates of one class, its member class. Draw that class as a
+`dct:hasPart` role from the collection to it. The class is a reference collection when it mixes
+`ReferenceCollection` in, by `rp_mixins` or a generalisation, or when a domain class it generalises
+does. The role uses the toolkit's `has_part`, as any toolkit slot does (<<toolkit-reuse>>). The class
+it points at is written as the collection's fixed `member_class`, so a collection of another class is
+refused by the generated model and by its shape. No `toolkit-slot-kept` line is written for that
+role's range, because the range is carried as the member class.
+
+* A `dct:hasPart` role to the collection's own class is nesting. It stays the toolkit's `has_part`
+and is reported as `toolkit-slot-kept` with its range, as before. Nesting is stated with `nests`.
+* `dct:hasPart` roles to two different classes on one collection fail the run
+(`[toolkit_slot] Shelf: dct:hasPart roles to Book and Map: a reference collection has one member class`).
+* On a class that is not a reference collection, a `dct:hasPart` role is a plain use of the
+toolkit's `has_part`.
+
+[mermaid]
+....
+classDiagram
+  class Shelf["lib:Shelf"] {
+    <<root>>
+  }
+  class Book["lib:Book"] {
+    <<root>>
+  }
+  Shelf --> "0..*" Book : dct:hasPart
+  note for Shelf "rp_mixins = ReferenceCollection"
+....
+
+[source,yaml]
+----
+classes:
+  Shelf:
+    mixins: [AggregateRoot, ReferenceCollection, Described, Tracked]
+    slot_usage:
+      member_class:
+        equals_string: Book
+----
+
 [#multiplicity]
 === Multiplicity
 
@@ -490,6 +531,37 @@ Two packages whose classes refer to each other cannot be two modules, as the gen
 modules would import each other. The packages of each import cycle are written as one module named
 after the first package in path order, with a `merged-cycle` line in the report.
 
+[#module-kind]
+A module is annotated `module_kind: domain` unless its package has a `module_kind` tagged value,
+which is written as the annotation instead. The value is one the toolkit's metamodel lists
+(`ModuleKind`: `domain`, `technical`, `access`), and any other value fails the run
+(`[package_module] access: module_kind: 'planet' is not one of domain, technical, access`). An
+application's access model is a package tagged `module_kind = access` whose classes generalise
+`rp:TenantAccess`. `rp-generate`'s boundary rule then keeps the domain modules from importing it, while
+the root schema imports it like any other module. Packages written as one module (an import cycle)
+with different kinds fail the run, naming the module.
+
+[mermaid]
+....
+classDiagram
+  namespace access {
+    class LibraryAccess["lib:LibraryAccess"]
+  }
+  class TenantAccess["rp:TenantAccess"]
+  TenantAccess <|-- LibraryAccess
+  note for LibraryAccess "package access: module_kind = access"
+....
+
+[source,yaml]
+----
+# library_access.yaml
+annotations:
+  module_kind: access
+classes:
+  LibraryAccess:
+    is_a: TenantAccess
+----
+
 [#shared-slots]
 === A slot shared across packages
 
@@ -564,6 +636,14 @@ such toolkit classes (`[no_rule] Book: two is_a sources, Series and Activity`)
 (`[toolkit_mixins] Book: Nope is not a toolkit class; the toolkit classes are ...`; for the option,
 the element is `--default-mixins`)
 |Correct the name; the message lists the toolkit's classes.
+
+|`dct:hasPart` roles from one reference collection to two different classes
+(`[toolkit_slot] Shelf: dct:hasPart roles to Book and Map: ...`)
+|Keep one role: a collection has one member class. Draw a second collection for the other class.
+
+|A package `module_kind` tagged value the metamodel does not list, or packages of different kinds
+that import each other
+|Use `domain`, `technical` or `access`; break the import cycle between packages of different kinds.
 
 |A class that straddles a boundary's edge, or is inside two boundaries
 |Move it wholly inside one boundary, or wholly outside.
