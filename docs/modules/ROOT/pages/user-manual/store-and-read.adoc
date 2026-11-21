@@ -371,7 +371,7 @@ classes:
     mixins: [AggregateRoot, Described, Tracked]
     annotations:
       rp_path: authors
-      rp_on_referenced_delete: refuse        # the only value; a class without it is deleted as before
+      rp_on_referenced_delete: refuse        # the only value, in any case; a class without it is deleted as before
 ----
 
 From then on, removing an `Author` fails while any other aggregate of the tenant holds a reference
@@ -379,7 +379,7 @@ to it, for example a book whose slot `written_by` has the author as value. A cla
 annotation is deleted as before. A schema with no refusing class adds no query and no guard to
 a removal.
 
-*Over HTTP.* `DELETE /{type}/{id}` answers 409 with a problem of type `in-use`, and the author
+*Over HTTP.* `DELETE …/authors/{id}` answers 409 with a problem of type `in-use`, and the author
 stays. The toolkit's problem handlers, which `install_service` puts on your app, map `InUse` to
 this answer: a route of yours that raises it gets the same 409 without registering anything. The
 body names the referrers the caller may read, as the kit's per-caller collaboration service does
@@ -465,7 +465,11 @@ and its roles permit the action:
 
 [source,python]
 ----
-checked = await kit.require_aggregate(authorization, tenant_id, "authors", author_id, action)
+from rdf_persistence import Action
+
+checked = await kit.require_aggregate(
+    authorization, tenant_id, "authors", author_id, Action.DELETE
+)
 async with kit.collaboration(checked) as collaboration:
     await kit.remove_with_files(
         tenant_id, checked.principal, checked.checked_target, if_version,

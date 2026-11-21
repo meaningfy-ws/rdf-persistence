@@ -96,7 +96,7 @@ aggregates] and xref:user-manual/store-and-read.adoc#key-on-live-data[Add a key 
 
 *Can I stop an aggregate from being deleted while others refer to it?*::
 Yes: annotate its class `rp_on_referenced_delete: refuse`. Removing it then raises `InUse` (a
-`Conflict`, so do not retry it) and `DELETE /{type}/{id}` answers 409 `in-use`, naming the referrers
+`Conflict`, so do not retry it) and `DELETE …/authors/{id}` answers 409 `in-use`, naming the referrers
 the caller may read and counting the rest; nothing is deleted. The check holds when the delete is
 applied, not for a write that names the IRI afterwards. See
 xref:user-manual/store-and-read.adoc#refuse-referenced[Refuse to delete an aggregate that others

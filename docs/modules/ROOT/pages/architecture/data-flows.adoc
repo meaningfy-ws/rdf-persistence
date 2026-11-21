@@ -532,8 +532,8 @@ refusal, the session looks for the other causes, in this order: a key another ag
 (`KeyConflict`); a removed root that another aggregate still refers to (`InUse`); an activity IRI
 already taken. `InUse` is read after the refusal like the version reasons: for each removed root
 of a refusing class, in IRI order, the session reads its referrers, leaves out the ones this
-transaction removes, and refuses for the first root that has any left, naming the referrers of
-that root. Only when none of these is found does it say that the commit lost a race.
+transaction removes, and refuses when any root has some left: `InUse.iris` holds every such
+root, and the referrers named are those of the first. Only when none of these is found does it say that the commit lost a race.
 
 [IMPORTANT]
 ====

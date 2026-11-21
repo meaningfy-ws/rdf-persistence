@@ -192,7 +192,8 @@ total. The tenant listing takes only `limit` and `offset`, and is paged in one q
 *The OpenAPI document* is FastAPI's (`/openapi.json`), completed from the schema. It lists every
 aggregate type's routes with their request and response bodies, a query parameter per filterable
 slot (and a `<slot>~` parameter, `minLength: 1`, per string-ranged slot), the problem responses of
-each route (413 on every operation with a body), the `ETag`,
+each route (413 on every operation with a body; the 409 `in-use` only on the DELETE route of a
+refusing class, with `InUseProblem` added as a component only when such a class exists), the `ETag`,
 `If-Match` and `Location` headers, and a
 bearer security scheme. Its component schemas come from `openapi-components.json`, which
 `rp-generate` writes with `gen-json-schema` (xref:architecture/generation.adoc#toolchain[step 5b]),

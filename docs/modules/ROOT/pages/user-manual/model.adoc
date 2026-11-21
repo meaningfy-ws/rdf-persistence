@@ -107,7 +107,7 @@ are reserved by the IRI layout, so `rp-generate` refuses them. The toolkit's rou
 `new_part` does not (xref:user-manual/store-and-read.adoc[Store and read aggregates]).
 
 To refuse the deletion of an aggregate while another aggregate refers to it, annotate its class
-`rp_on_referenced_delete: refuse`. `refuse` is the only value, and `rp-generate` refuses any other
+`rp_on_referenced_delete: refuse`. `refuse` (in any case) is the only value, and `rp-generate` refuses any other
 (the problem names the class and the value). A class carries it when it or an `is_a` ancestor does;
 a class that only mixes in an annotated class does not inherit it. What a refused delete answers
 and how to handle it are in
