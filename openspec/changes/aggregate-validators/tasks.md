@@ -14,7 +14,7 @@ Every task: the failing test first, in the tier named; task gate `make test-chan
   classes refused, `class_descendants(mixins=False)`), and the class IRI → rules map.
 - [ ] 1.2 Selection and running (PD-3, PD-7), after 1.1. Unit, first, same file: T-3, T-4, T-5.
   Then the selection over all root types and `run_aggregate_validators`.
-- [ ] 1.3 Session read check (PD-4), a port change. Unit, first, in
+- [x] 1.3 Session read check (PD-4), a port change. Unit, first, in
   `tests/unit/persistence/test_session_may_read.py`: a session opened with `may_read` exposes it;
   without, `None`. Then the keyword on `open_session`, `Tenancy.tenant_session` and the session.
   Accept: `make test-fast check-quality` green.

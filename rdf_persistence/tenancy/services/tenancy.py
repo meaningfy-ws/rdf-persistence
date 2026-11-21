@@ -189,6 +189,7 @@ class Tenancy:
         store: Store,
         listings: Listings | None = None,
         allowed_types: frozenset[URIRef] | None = None,
+        may_read: Callable[[str], bool] | None = None,
     ) -> AbstractAsyncContextManager[Session]:
         """A session on ``database`` of ``store``; ``listings`` default to the tenant ones, the type sets are PD-6's."""
         return open_session(
@@ -207,14 +208,20 @@ class Tenancy:
             record_activities=database != self._system,  # no tenancy activities (message-bus PD-9)
             on_commit=None if database == self._system else self._on_commit,
             removals=self._removals,
+            may_read=may_read,
         )
 
     def tenant_session(
-        self, tenant: str, principal: Principal
+        self,
+        tenant: str,
+        principal: Principal,
+        *,
+        may_read: Callable[[str], bool] | None = None,
     ) -> AbstractAsyncContextManager[Session]:
         """A session on the database of ``tenant`` for ``principal``; it refuses application classes (PD-6).
 
         The session is on the store that holds the tenant's database, found on entry (``store_of``).
+        ``may_read`` is kept on the session as ``Session.may_read`` (aggregate-validators PD-4).
 
         Raises:
             TenantBehind: The tenant's migration failed at start-up (``behind``); raised here, at the call.
@@ -223,10 +230,12 @@ class Tenancy:
         """
         if tenant in self.behind:
             raise TenantBehind(f"the tenant {tenant} is behind its schema: its migration failed")
-        return self._routed_session(tenant, principal)
+        return self._routed_session(tenant, principal, may_read)
 
     @asynccontextmanager
-    async def _routed_session(self, tenant: str, principal: Principal) -> AsyncIterator[Session]:
+    async def _routed_session(
+        self, tenant: str, principal: Principal, may_read: Callable[[str], bool] | None
+    ) -> AsyncIterator[Session]:
         """The tenant's session on its own store; ``NotFound`` and ``StoreNotWired`` come on entry."""
         store = await self.store_of(tenant)
         async with self._session(
@@ -235,6 +244,7 @@ class Tenancy:
             principal,
             self._application_types,
             store=store,
+            may_read=may_read,
         ) as session:
             yield session
 

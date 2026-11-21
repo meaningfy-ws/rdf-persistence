@@ -571,7 +571,9 @@ class Session:
         record_activities: bool = True,
         on_commit: OnCommit | None = None,
         removals: RemovalRefusal | None = None,
+        may_read: Callable[[str], bool] | None = None,
     ) -> None:
+        self._may_read = may_read  # kept for the reader; the session checks nothing with it (PD-4)
         self._removals = removals  # none: no removal is refused for being referenced (PD-7)
         self._record_activities = record_activities  # one activity per commit (message-bus PD-9)
         self._on_commit = on_commit  # awaited with the completed activity after a commit (PD-10)
@@ -594,6 +596,11 @@ class Session:
     def principal(self) -> Principal:
         """The principal this session writes for."""
         return self._principal
+
+    @property
+    def may_read(self) -> Callable[[str], bool] | None:
+        """Whether the principal may read an aggregate IRI, as the caller gave it; ``None`` if none was given."""
+        return self._may_read
 
     def now(self) -> datetime:
         """The time by this session's clock, the one its writes are stamped with."""
@@ -1847,6 +1854,7 @@ async def open_session(
     record_activities: bool = True,
     on_commit: OnCommit | None = None,
     removals: RemovalRefusal | None = None,
+    may_read: Callable[[str], bool] | None = None,
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
     (default: the default policy); ``listings`` lets the session ``find`` aggregates.
@@ -1862,6 +1870,8 @@ async def open_session(
     (message-bus PD-9, PD-10). A hook that commits on the session it was given is called again for
     that commit. ``removals`` names the classes whose roots a removal refuses while another aggregate
     refers to them and builds the ``InUse`` (none: no removal is refused for it, as for ``keys``).
+    ``may_read`` tells whether the principal may read an aggregate IRI; the session keeps it, exposes
+    it as ``Session.may_read`` and checks nothing with it (aggregate-validators PD-4).
     """
     yield Session(
         store,
@@ -1879,4 +1889,5 @@ async def open_session(
         record_activities=record_activities,
         on_commit=on_commit,
         removals=removals,
+        may_read=may_read,
     )
