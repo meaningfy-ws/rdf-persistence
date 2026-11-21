@@ -7,8 +7,7 @@
   test in `tests/unit/api/test_aggregate_validators_api.py` (A-1 to A-7; traceability in
   `tests/audit/scenario-map.csv`), green in `make check-all` and on the real store in
   `make test-containers`.
-- **Verdict:** not given. Validation ends with a person: the demo is owed to the developer, who
-  may run it from the tests above or with the example in
-  `docs/modules/ROOT/pages/user-manual/access.adoc#aggregate-validators`.
+- **Verdict:** accepted by the developer on 2026-11-21, after the merge (#266), without a demo: the
+  developer waived it on the evidence above.
 - **Open:** the first consumer's own rules (the rule #240 asks for) are written in the
   consumer, against the released toolkit.
