@@ -341,7 +341,7 @@ def test_a_provenance_quad_moves_its_graph_and_object_but_not_its_subject():
     }, "graph and object move to the new tenant, the activity subject stays"
 
 
-@pytest.mark.parametrize("which", [0, -1], ids=["meta", "provenance"])
+@pytest.mark.parametrize("which", [0, 3, -1], ids=["meta", "loaded", "provenance"])
 def test_a_graph_of_another_tenant_is_refused_naming_it(which):
     iris = iris_of()
     other = minted_graphs(iris, str(iris.tenant(OLD)))[which]

@@ -53,6 +53,17 @@ def test_each_wrapper_holds_the_lock_while_rdflib_parses(monkeypatch, lock, wrap
     assert lock.depth == 0, "and the lock was let go before the caller got the result"
 
 
+def test_prepare_query_applies_the_prefixes_it_is_given(lock):
+    query = sparql_parsing.prepare_query("SELECT * WHERE { ex:a ex:b ?o }", {"ex": "urn:example:"})
+    assert query is not None
+    assert lock.taken == 1
+
+
+def test_prepare_query_reads_a_text_with_no_prefixes_given(lock):
+    assert sparql_parsing.prepare_query(QUERY) is not None
+    assert sparql_parsing.prepare_query(QUERY, {}) is not None
+
+
 def test_prepare_update_applies_the_prefixes_it_is_given(lock):
     update = sparql_parsing.prepare_update("INSERT DATA { ex:a ex:b ex:c }", {"ex": "urn:example:"})
     assert update is not None

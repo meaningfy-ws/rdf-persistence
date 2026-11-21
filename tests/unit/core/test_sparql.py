@@ -570,6 +570,13 @@ def test_a_template_may_name_a_predicate_that_is_not_forbidden():
     )
 
 
+def test_a_template_with_a_filter_is_refused_because_a_template_is_read_as_one():
+    text = "?s <urn:p> ?o . FILTER (?o > 1)"
+    assert checked_group(text, template=False), "a where takes a filter"
+    with pytest.raises(SparqlError):
+        checked_group(text, template=True)
+
+
 def test_a_pattern_too_long_for_the_parser_is_refused_with_the_advice_to_split():
     text = " ".join(f"?s <urn:p{n}> ?o{n} ." for n in range(400))
     with pytest.raises(SparqlError, match="too long to check"):
@@ -591,6 +598,17 @@ T2 = term(URIRef("urn:y"))
 def test_a_term_field_keeps_the_sparql_term_it_is_given():
     """TC-14."""
     assert type(Pair(a=T1).a) is SparqlTerm, "the field must stay a SparqlTerm, not become a str"
+
+
+def test_a_term_field_of_a_model_built_now_takes_a_term_and_refuses_a_raw_string():
+    """The model is built inside the test: the field's schema comes from ``SparqlTerm`` at build time."""
+
+    class Built(BaseModel):
+        a: SparqlTerm
+
+    assert type(Built(a=T1).a) is SparqlTerm, "a SparqlTerm is taken as it is"
+    with pytest.raises(ValidationError):
+        Built(a="<urn:x>")  # type: ignore[arg-type]
 
 
 def test_a_term_field_refuses_a_raw_string():

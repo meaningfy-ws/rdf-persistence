@@ -85,3 +85,41 @@ def test_in_use_with_nothing_named_defaults_to_empty_and_zero():
 def test_in_use_is_unfiltered_unless_told_otherwise_and_keeps_what_it_was_told():  # D-10
     assert exceptions.InUse("in use").filtered is False, "no readable callable judged it by default"
     assert exceptions.InUse("in use", filtered=True).filtered is True, "the flag is kept"
+
+
+def test_a_key_conflict_keeps_the_roots_and_the_keys_it_was_given_as_tuples():
+    error = exceptions.KeyConflict("clash", iris=["urn:a"], keys=["isbn", "slug"])
+    assert error.iris == ("urn:a",), "the roots whose claim clashed are kept as a tuple"
+    assert error.keys == ("isbn", "slug"), "the key names are kept as a tuple"
+    assert str(error) == "clash", "the text is the message it was raised with"
+    assert isinstance(error, exceptions.Conflict), "a Conflict subclass"
+
+
+def test_a_key_conflict_with_nothing_named_defaults_to_empty():
+    error = exceptions.KeyConflict("clash")
+    assert (error.iris, error.keys) == ((), ()), "no roots and no keys by default"
+
+
+def test_a_failed_migration_keeps_the_schema_the_migration_and_the_cause_apart():
+    error = exceptions.MigrationFailed("failed", schema="urn:s", migration="m1", cause="timeout")
+    assert (error.schema, error.migration, error.cause) == ("urn:s", "m1", "timeout")
+    assert str(error) == "failed", "the text is the message it was raised with"
+
+
+def test_a_failed_migration_with_nothing_named_holds_empty_strings():
+    error = exceptions.MigrationFailed("failed")
+    assert (error.schema, error.migration, error.cause) == ("", "", ""), "each defaults to empty"
+
+
+def test_a_message_limit_error_keeps_the_limit_and_names_the_message_that_went_over():
+    error = exceptions.MessageLimitExceeded(5, "Create#7")
+    assert (error.limit, error.command) == (5, "Create#7"), "both are kept"
+    assert "5" in str(error), "the text names the limit"
+    assert str(error).endswith("by Create#7"), "the text ends by naming the message"
+
+
+def test_a_message_limit_error_without_a_command_names_none():
+    error = exceptions.MessageLimitExceeded(5)
+    assert (error.limit, error.command) == (5, None), "no command by default"
+    assert "5" in str(error), "the text names the limit"
+    assert "by" not in str(error), "no message is named"
