@@ -415,3 +415,22 @@ By the lead, 2026-11-21, under the owner's "work as a team leader with subagents
     refusal names the offending iri, which the problem detail carries).
   - L' is killed by a legal policy (a graph template that reads as another tenant's aggregate), so it
     is not equivalent.
+- **D-7 Final review (L1, L2, L3, L4+L5), accepted findings, one fixer:**
+  - L1 S-1: `exp-as-a-numeric-string` comes back to `INVALID_TOKENS` (19 cases): it alone fails when
+    `exp` loses `strict`, which sits in generated code that `make mutation` leaves out.
+  - L2 S1 = L3 S1: the two `draw_id` patches in `test_iris_application_adversarial.py` carry `# X4`.
+  - L2 S3: the application-apart test asserts that the refusal names the probe IRI, not its sentence;
+    `_require_application_apart__mutmut_2` and `_3` join the DEC-3 list.
+  - L2 N2: the relay's raising-block test commits after the block, as the `rp-events` scenario says.
+  - L2 N3: the stage-3 asserts get messages; the `prepare_query` test asserts the prefix resolved.
+  - L2 N4: an `rp-iri-policy` delta says a graph IRI is refused when it reads as an aggregate or
+    loaded graph *of that tenant*, which the code does and a stage-3 test pins.
+  - L1 N-1 = L4+L5 #2 (docstring part): `warm_up_once` says its digest must be that of the bytes the
+    shapes were parsed from; L4+L5 #1: `_shape_triples` says it is keyed by the digest and the bytes.
+  - L4+L5 #3: `tests/changed.py` names the docs-check test path as a constant; L2 N5:
+    `slow-markers.md` names `tests/unit/package/test_packaging.py`.
+  - The lead's: L2 S2 (the gates and `make mutation` at the final head in `evidence/`), L2 N1 (five
+    stage-3 map rows to "Policies are checked when settings are made").
+  Deferred to the handover (outside the PLAN or older than it): L3 N1 (a tooling guard for the X
+  marks), L3 N2 (`tests/e2e/library_app.py` used by a unit test), L4+L5 #2's `load_warm_shapes`,
+  #4 (`BOOK_JSON` as a builder), #5 (one fast-poll constant), #6 (the toy vocabulary in one home).
