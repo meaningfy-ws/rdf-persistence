@@ -219,14 +219,67 @@ install_service(
 change the workflows in EA, never in the files. The converter moves each into `workflows/` without
 touching the other files there.
 
+`<name>` is the workflow's name: the local part of the diagram's name, so the diagram `lib:loan`
+is written to `workflows/loan.workflow.yaml`. A class's `workflow` tag names that local name
+(`loan`), not the prefixed one.
+
 A transition names the roles that may take it, and the converter accepts only roles that a role
-definition in the converted packages draws. Convert the package that holds the role definitions
-together with the workflows. If your model keeps the roles in a package you leave out with
-`--exclude-package` (an access package, say), a workflow that names them fails with
-`[workflow_transition] <from> -> <to>: roles: <role> is not drawn as a role definition`. Convert that
-package first, and fix what stops its conversion, before you rely on the workflows. A model that
-leaves out the workflows' own package converts as before: a class's `workflow` tag is then written
-as it is, unchecked.
+definition drawn in the same run defines. Convert the roles and the workflows in one run: give
+`--package` a package that holds both the package of the role definitions and the package of the
+workflows, their common parent. If your model keeps the roles in a package you leave out with
+`--exclude-package` (an access package, say), or outside the `--package` package, a workflow that
+names them fails with
+`[workflow_transition] <from> -> <to>: roles: <role> is not drawn as a role definition`. Bring that
+package into the run, and fix what stops its conversion, before you rely on the workflows. A model
+that leaves out the workflows' own package converts as before: a class's `workflow` tag is then
+written as it is, unchecked.
+
+=== From the model to a running service
+
+The toy library draws its role definitions in a package `MODEL/library/Access` and the diagram
+`lib:loan` in `MODEL/library/Loans`; their common parent is `MODEL/library`. The `loan` workflow
+and the roles are converted in one run, with that parent as `--package`:
+
+[source,shell]
+----
+rp-uml2linkml library.qea --package MODEL/library --prefixes prefixes.yaml \
+  --out models/ --root-name library
+----
+
+The run writes into `models/`: the root schema `library.yaml` and a module file per package that
+holds classes, `library.roles.yaml` (the role definitions) and `workflows/loan.workflow.yaml`, with
+the report `library.uml-report.txt`. Point `[tool.rp-generate]` at `models/library.yaml` and run
+`rp-generate` (step 4). Then start the service with the files by their paths:
+
+[source,python]
+----
+from pathlib import Path
+
+from rdf_persistence import install_service
+
+from library.domain import generated
+
+kit = install_service(
+    app,
+    schema=Path("models/library.yaml"),
+    generated=generated,
+    store=store,
+    files=files,
+    identity=identity,
+    verifier=verifier,
+    settings=settings,
+    migrations=Path("migrations"),
+    rules=Path("models/library.roles.yaml"),
+    workflows=[Path("models/workflows/loan.workflow.yaml")],
+)
+----
+
+`app` is your FastAPI app; `store`, `files`, `identity`, `verifier` and `settings` are the adapters
+and settings your composition root builds (xref:user-manual/serve.adoc[Serve the application] shows
+it in full); every argument but `app` is passed by keyword. `generated` is the package `rp-generate` wrote, so
+generate before the service starts: `install_service` reads the context, the frames and the shapes
+from that package's folder, and stops with `OSError` when they are missing. Convert, then
+generate, then start.
 
 [#next]
 == 4. Check and generate
