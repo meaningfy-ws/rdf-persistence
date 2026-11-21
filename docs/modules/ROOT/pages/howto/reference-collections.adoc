@@ -44,14 +44,17 @@ The mixin adds four slots:
 [cols="1,3",options="header"]
 |===
 |Slot |What it holds
-|`member_class` |Required. The schema name of the class of the members, here `"Book"`.
+|`member_class` |Required. The schema name of the class of the members, here `"Book"`. On a collection that nests, the class of its items; its sub-collections are allowed in addition (see <<nesting>>).
 |`has_part` |The IRIs of the members the collection names, stated with `dct:hasPart`.
 |`membership_rule` |A rule that says which aggregates of the member class belong (see <<rule>>).
 |`nests` |Whether the collection may hold collections like itself (see <<nesting>>). Absent means false.
 |===
 
-A collection of collections is a shelf whose `member_class` is `"Shelf"`; a shelf that holds shelves
-of books is a nesting collection (see <<nesting>>). The mixin's class IRI is `dcmitype:Collection`.
+There are two ways to put shelves in a shelf. Use `nests` for folders (see <<nesting>>): a tree of
+shelves of books, whose cycles are refused and whose deep read lists the books. The other is a
+collection of collections, a shelf whose `member_class` is `"Shelf"`: it may name any shelf, it
+refuses no cycle, and its deep read lists the shelves it reaches as well as their books (see
+<<deep,Deep reads>>). The mixin's class IRI is `dcmitype:Collection`.
 
 To state `dct:hasPart` anywhere else in an application model, reuse the toolkit's `has_part` slot.
 Do not declare another slot with `slot_uri: dcterms:hasPart`: two slots for one IRI make JSON-LD
@@ -60,7 +63,10 @@ compaction pick one of the two terms, and on a collection class they would share
 [#save]
 == Save a collection
 
-Save it like any aggregate, with a `UnitOfWork` or through the generic API:
+Save it like any aggregate, with a `UnitOfWork` or through the generic API. The IRIs in the
+snippets (`b1_iri`, `s1_iri`, ...) are aggregate IRIs of the tenant that you minted before, as in
+xref:user-manual/store-and-read.adoc[step 8], for example
+`kit.iris.mint_aggregate(tenant, "shelf", "shelves")`, where `tenant` is the tenant IRI:
 
 [source,python]
 ----
@@ -150,41 +156,47 @@ members the rule matches would let that person count, by slot value, the aggrega
 read. The members a collection names are counted, because whoever saved the collection already
 held their IRIs. A member both named and matched is counted once, as named.
 
+[#deep]
 *Deep reads.* `collab.members(iri, deep=True)` also reads the members that are collections. Say
-shelf A names shelf B and B names book b1: `members(A)` gives B; `members(A, deep=True)` gives B
-and b1. Each collection is read once, so two shelves that name each other end the read instead of
-repeating it. A nested collection the caller may not read is not read further; it is counted in
+shelf A is a collection of collections (its `member_class` is `"Shelf"`) that names shelf B, and B
+names book b1: `members(A)` gives B; `members(A, deep=True)` gives B and b1. If A instead nests
+(see <<nesting>>), B is a sub-collection of A: `members(A)` still gives B, but `members(A, deep=True)`
+gives b1 only. Each collection is read once, so two shelves that name each other end the read
+instead of repeating it. A nested collection the caller may not read is not read further; it is counted in
 `hidden_count` if the collection above names it. A stored collection whose member class is not an
 aggregate root the schema serves makes a deep read fail with `StoredDataInvalid` naming that
 collection, as a rule that cannot be read does.
 
-For a nesting collection (see <<nesting>>) the deep read differs in one way: the sub-collections
-are structure, so `members(C, deep=True)` lists the items only, never the sub-collections. Each
-member the caller may not read is counted once in `hidden_count`; an unreadable sub-collection is
-counted once and not entered. `members(C)` without `deep` lists the sub-collections of C, as it
-lists any member.
-
 [#nesting]
 == Nesting collections
 
-A shelf can hold shelves of books, to any depth, when it sets `nests`:
+A shelf can hold shelves of books, to any depth, when it sets `nests`. Think of folders. In the
+example, `poetry_iri` and `library_iri` are two more IRIs minted as under <<save>>, and `b1` is the
+book saved with `b1_iri`:
 
 [source,python]
 ----
-poetry = Shelf(id=s2_iri, label="Poetry", description="Poetry.",
+poetry = Shelf(id=poetry_iri, label="Poetry", description="Poetry.",
                member_class="Book", has_part=[b1_iri])
-library = Shelf(id=s1_iri, label="Library", description="All shelves.",
-                member_class="Book", has_part=[s2_iri], nests=True)
+library = Shelf(id=library_iri, label="Library", description="All shelves.",
+                member_class="Book", has_part=[poetry_iri], nests=True)
+
+for item in (b1, poetry, library):      # one commit each, in this order
+    work = UnitOfWork(session, mapper)
+    work.add(item)
+    await work.commit()
 ----
 
-Store `poetry` first, then `library`: a member must be stored (see <<save>>). `nests: true` allows
-as members:
+Each member must be stored before the collection that names it, so the saves are three commits: a
+member saved in the same commit is not there yet and the save is refused (see <<save>>). A
+collection that nests allows as members:
 
 * books, as before;
 * collections of exactly the class of the shelf that holds them and of the same `member_class`.
 
 A sub-collection may have `nests` false: it is a leaf folder that holds books only. One with
-`nests` true may hold more shelves.
+`nests` true may hold more shelves. A sub-collection may sit in more than one parent: only a
+cycle is refused.
 
 A save is refused with `InvalidBody`, and stores nothing, when:
 
@@ -200,15 +212,33 @@ A save is refused with `InvalidBody`, and stores nothing, when:
 A shelf with `nests` false that names a shelf is refused as before. So is a replace that sets
 `nests` to false while the shelf still names sub-collections.
 
-The cycle message names the shelf you save (C) and the member that closes the cycle (N), and counts
-the shelves between them. It names no other, because you may not be allowed to read them.
+*Only a collection that nests refuses cycles.* A collection of collections (`member_class`
+`"Shelf"`) is not checked: two such shelves may name each other.
+
+In the cycle message, C is the shelf you save and N is the member of C that you added and that leads
+back to C. The number k counts the other shelves on the way from N back to C (0 when N names C
+itself). The message names no shelf between them, because you may not be allowed to read them.
 
 Two saves made at the same moment that together close a cycle are not both accepted. The second
 raises `Conflict`, naming a collection that changed meanwhile. Read again and save again: the save
 is then refused as a cycle, with the message above.
 
-`collections_of(poetry_iri)` names the shelf that holds it, as for any member. A cascade deletes
-direct members only (see <<Delete a collection>>).
+*Move a folder* N from parent P to parent Q by replacing P without N and Q with N (see
+<<save>> for a replace). Both work as two commits, in either order, or as two replaces in one
+`UnitOfWork` commit: the cycle check of the second replace sees the first. Q must not be N or lie
+inside N's tree: that is a cycle and is refused.
+
+*Reading a nesting collection.* The sub-collections the caller may read are structure:
+`members(C)` lists them as it lists any member, but `members(C, deep=True)` enters them and lists
+the items only, never the sub-collections. Each `membership_rule` is applied, that of C and that of
+each sub-collection entered. A rule matches aggregates of exactly the `member_class`, and a nesting
+collection's `member_class` is never a collection, so a rule on a nesting shelf matches books and
+never shelves: sub-collections are always named. For `hidden_count`, each member the collection
+*names* that the caller may not read, at any depth, is counted once; a member that only meets a
+rule is not counted, as above. An unreadable sub-collection is counted once and not entered.
+
+`collections_of(poetry_iri)` names the shelves that hold it directly (here `library_iri`), as
+for any member, not the holders of those. A cascade deletes direct members only (see <<Delete a collection>>).
 
 == Find the collections of a resource
 
@@ -219,7 +249,8 @@ print(found.member_iris)     # [s1_iri]: the shelves that name b3 or whose rule 
 ----
 
 The answer is again a `MemberList`; here `member_iris` holds the IRIs of the collections. A
-collection that holds the resource both ways is listed once.
+collection that holds the resource both ways is listed once. Only the direct holders are listed: for
+a book on a sub-collection, the sub-collection, not the shelves that nest it.
 
 == Delete a collection
 
@@ -251,7 +282,9 @@ book that starts to meet the rule during the cascade is not deleted.
 
 * The cascade is not deep. A member that is a collection is deleted; its own members stay.
   This holds for a nesting collection: a sub-collection is deleted as a member, and its own members
-  are kept.
+  are kept, with no collection left to name them. To delete a whole tree, cascade from the
+  bottom up: each leaf folder first, then its parent, up to the root, each with the version token
+  of that shelf. A parent still names the folders already gone; the cascade skips them.
 * A named member must be of the member class, and the member class must be an aggregate root the
   schema serves. A stored collection (written without the guard) that names another aggregate,
   such as the tenant's access record, or whose member class is not a served root (even the access
