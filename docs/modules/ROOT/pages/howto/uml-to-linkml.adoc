@@ -60,6 +60,9 @@ rp-uml2linkml library.qea --package MODEL/library --prefixes prefixes.yaml \
   --out models/ --root-name library
 ----
 
+When the model draws role definitions or workflows, `--package` must hold the packages of both
+(step 3 says why).
+
 The command reads the `.qea` and writes one schema file per package, a root schema
 `<root-name>.yaml` that imports them all, and a report `<root-name>.uml-report.txt` into `--out`
 (created when missing). In `--package MODEL/library`, `MODEL` is the root package of the model in
@@ -194,7 +197,7 @@ from pathlib import Path
 install_service(..., rules=Path("models/library.roles.yaml"))
 ----
 
-`install_service` reads it with `load_role_definitions`. The file is rewritten whole on every run,
+The full call is in <<serve,step 5>>. `install_service` reads it with `load_role_definitions`. The file is rewritten whole on every run,
 so change the roles in EA, never in the file.
 
 [#workflows-file]
@@ -215,7 +218,7 @@ install_service(
 )
 ----
 
-`install_service` reads each with `load_workflow`. The files are rewritten whole on every run, so
+The full call is in <<serve,step 5>>. `install_service` reads each with `load_workflow`. The files are rewritten whole on every run, so
 change the workflows in EA, never in the files. The converter moves each into `workflows/` without
 touching the other files there.
 
@@ -234,22 +237,34 @@ package into the run, and fix what stops its conversion, before you rely on the 
 that leaves out the workflows' own package converts as before: a class's `workflow` tag is then
 written as it is, unchecked.
 
-=== From the model to a running service
+[#next]
+== 4. Check and generate
 
-The toy library draws its role definitions in a package `MODEL/library/Access` and the diagram
-`lib:loan` in `MODEL/library/Loans`; their common parent is `MODEL/library`. The `loan` workflow
-and the roles are converted in one run, with that parent as `--package`:
+The converter checks that the model is convertible, not that the result is a valid toolkit model:
+whether every part of an aggregate is reachable from its root, whether a class has a description,
+and the other rules of `rp-generate` are the generator's checks. In the `pyproject.toml` of your
+project, point the `[tool.rp-generate]` entry at the root schema (`schema = "models/library.yaml"`,
+a path relative to that file; the keys are in
+xref:user-manual/generate.adoc#configure[Configure it]) and run it from that folder:
 
 [source,shell]
 ----
-rp-uml2linkml library.qea --package MODEL/library --prefixes prefixes.yaml \
-  --out models/ --root-name library
+rp-generate --check
 ----
 
-The run writes into `models/`: the root schema `library.yaml` and a module file per package that
-holds classes, `library.roles.yaml` (the role definitions) and `workflows/loan.workflow.yaml`, with
-the report `library.uml-report.txt`. Point `[tool.rp-generate]` at `models/library.yaml` and run
-`rp-generate` (step 4). Then start the service with the files by their paths:
+It lints and checks the schemas and writes nothing; what it reports is for you to fix in EA, then
+convert and check again. When it is clean, run `rp-generate` to write the code and the other
+targets. Commit the converted schemas with the UML change that produced them, so that the diff of
+the schemas shows what the model change did.
+
+[#serve]
+== 5. Start the service
+
+The toy library draws its role definitions in a package `MODEL/library/Access` and the diagram
+`lib:loan` in `MODEL/library/Loans`. Step 2 converted them in one run with their common parent,
+`MODEL/library`, as `--package`, and wrote into `models/` the root schema `library.yaml`,
+`library.roles.yaml` and `workflows/loan.workflow.yaml`. Once step 4 has generated the package, hand
+the files to the service by their paths:
 
 [source,python]
 ----
@@ -275,31 +290,18 @@ kit = install_service(
 ----
 
 `app` is your FastAPI app; `store`, `files`, `identity`, `verifier` and `settings` are the adapters
-and settings your composition root builds (xref:user-manual/serve.adoc[Serve the application] shows
-it in full); every argument but `app` is passed by keyword. `generated` is the package `rp-generate` wrote, so
-generate before the service starts: `install_service` reads the context, the frames and the shapes
-from that package's folder, and stops with `OSError` when they are missing. Convert, then
-generate, then start.
+and settings your composition root builds, and every argument but `app` is passed by keyword.
 
-[#next]
-== 4. Check and generate
-
-The converter checks that the model is convertible, not that the result is a valid toolkit model:
-whether every part of an aggregate is reachable from its root, whether a class has a description,
-and the other rules of `rp-generate` are the generator's checks. In the `pyproject.toml` of your
-project, point the `[tool.rp-generate]` entry at the root schema (`schema = "models/library.yaml"`,
-a path relative to that file; the keys are in
-xref:user-manual/generate.adoc#configure[Configure it]) and run it from that folder:
-
-[source,shell]
-----
-rp-generate --check
-----
-
-It lints and checks the schemas and writes nothing; what it reports is for you to fix in EA, then
-convert and check again. When it is clean, run `rp-generate` to write the code and the other
-targets. Commit the converted schemas with the UML change that produced them, so that the diff of
-the schemas shows what the model change did.
+* `migrations` is the folder of your migration files and of the schema lock `rp-generate` keeps;
+  it must exist, or the service refuses to start (`InvalidMigration`). It is the `migrations` key
+  of `[tool.rp-generate]`.
+* `generated` is the package that the `package` key of `[tool.rp-generate]` names (the import
+  path, `library.domain.generated` here): import it, as above. `install_service` reads the
+  context, the frames and the shapes from that package's folder, and stops with `OSError` when
+  they are missing, so generate (step 4) before the service starts.
+* `install_service` starts no server: it wires the routes, the problem responses and the start-up
+  work into your `app`, and you serve `app` yourself, for example with uvicorn. The adapters, the
+  start-up and the routes are in xref:user-manual/serve.adoc[Serve the application].
 
 == Limits
 

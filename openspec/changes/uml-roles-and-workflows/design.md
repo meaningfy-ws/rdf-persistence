@@ -368,5 +368,12 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
 - **D-14 Nesting and `member_class` (developer).** Beside this EPIC: a reference collection's
   `dct:hasPart` role to its own class should also fix `member_class` to that class, as the
   toolkit's `ReferenceCollection` description says; a follow-up issue (#241's converter).
+- **D-15 D-13 finished (lead).** The cold reader's second read found the new "running service"
+  section placed before step 4 (generate), so the page read as start-then-generate: a defect of
+  D-13's own fix, finished in the same D-n rather than as a second fix pass. The section is
+  step 5 "Start the service", with one checked line each on `migrations`, the `generated`
+  package path and what `install_service` does. The other questions about starting a service
+  (relative paths, listing workflow files, bad files at start, the smallest composition root,
+  `no-note` on roles and workflows) belong to `user-manual/serve.adoc`: a follow-up issue.
 - **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
   order holds and the consumer may convert its access package.
