@@ -151,9 +151,17 @@ def dune(iri: str, *, chapters: int = 2, **slots: str) -> Book:
     )
 
 
-def shelf(iri: str) -> Shelf:
-    """A shelf of books with the given IRI."""
-    return Shelf(id=iri, label="Shelf", description="A shelf.", member_class="Book")
+def shelf(iri: str, *, nests: bool = False) -> Shelf:
+    """A shelf of books with the given IRI; ``nests`` lets it hold shelves too.
+
+    ``nests`` false leaves the slot unset, the stored form of a flat shelf."""
+    return Shelf(
+        id=iri,
+        label="Shelf",
+        description="A shelf.",
+        member_class="Book",
+        nests=True if nests else None,
+    )
 
 
 def template(iri: str) -> Template:

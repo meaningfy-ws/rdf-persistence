@@ -179,6 +179,9 @@
             "replying": "http://www.w3.org/ns/oa#replying"
          }
       },
+      "nests": {
+         "@id": "nests"
+      },
       "owned_by": {
          "@type": "@id",
          "@id": "ownedBy"

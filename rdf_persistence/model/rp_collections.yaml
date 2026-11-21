@@ -30,6 +30,7 @@ classes:
       - member_class
       - has_part
       - membership_rule
+      - nests
     slot_usage:
       member_class:
         required: true
@@ -74,6 +75,13 @@ slots:
     range: MembershipRule
     annotations:
       owned: true
+  nests:
+    title: Nests
+    description: >-
+      Whether the collection may hold collections of its own class and member class as members, to
+      any depth. Absent means false.
+    slot_uri: rp:nests
+    range: boolean
   rule_equalities:
     title: Rule equalities
     description: The conditions of the rule, all of which an aggregate must meet.

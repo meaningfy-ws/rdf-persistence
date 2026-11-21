@@ -68,6 +68,8 @@ export interface Shelf {
   has_part?: string[];
   /** The rule that says which aggregates of the member class belong to the collection. */
   membership_rule?: MembershipRule;
+  /** Whether the collection may hold collections of its own class and member class as members, to any depth. Absent means false. */
+  nests?: boolean;
 }
 
 /** An author of the library; an aggregate root that books point at, and that cannot be deleted while a book still does. */

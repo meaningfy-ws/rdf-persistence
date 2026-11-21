@@ -831,6 +831,13 @@
           "required": false,
           "multivalued": false,
           "inlined": true
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#nests",
+          "range": "http://www.w3.org/2001/XMLSchema#boolean",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
         }
       ]
     },
