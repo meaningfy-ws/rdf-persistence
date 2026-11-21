@@ -38,9 +38,9 @@ from rdf_persistence.schema.services import vocabulary
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import ROLES, SETTINGS, keep_a_librarian
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
+from tests.unit.activity_helpers import activities
 from tests.unit.api.scene import NIL, PROBLEMS, Scene, problem_of
 from tests.unit.api.tenant_requests import put_root, rename
-from tests.unit.tenancy.test_session_activity import activities
 
 # --- tenants ------------------------------------------------------------------------------------
 

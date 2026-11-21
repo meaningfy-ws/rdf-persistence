@@ -28,8 +28,8 @@ from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
 from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.domain.generated.templates import Template
+from tests.tenancy_world import CREATOR, make_world
 from tests.toy import ADA, SETTINGS, access, dune, library, template, toy_mapper
-from tests.unit.tenancy.test_tenant_sweep import CREATOR, make_world
 
 APP_DATABASE = application_database_name(SETTINGS.prefix)
 EXPECTED_REFUSAL_TENANT = "is an application aggregate and does not belong in a tenant database"

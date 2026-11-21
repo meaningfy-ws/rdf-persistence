@@ -7,54 +7,26 @@ to a store, moves the data once and only once.
 from pathlib import Path
 
 import pytest
-import yaml
 from rdflib import RDF, Dataset, Literal, URIRef
 from rdflib.plugins.sparql.parser import parseUpdate
 
 from rdf_persistence.core.domain.exceptions import InvalidMigration, SparqlError
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind
-from rdf_persistence.iris.domain.layout import stamps_graph_iri
-from rdf_persistence.migrations.services.generated.rp_migrations_services import (
-    Migration,
-    MigrationStep,
-)
+from rdf_persistence.migrations.services.generated.rp_migrations_services import MigrationStep
 from rdf_persistence.migrations.services.migrations import load_migration, migration_request
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore
-
-BASE = "https://example.org/"
-STAMPS = stamps_graph_iri(BASE)
-SCHEMA = "https://example.org/ns/library"
-SHELF = "<https://example.org/ns/library#shelf>"
-PLACE = "<https://example.org/ns/library#place>"
-FILE = "1__2.yaml"
-
-
-def step(title: str = "rename shelf", **fields: str | None) -> MigrationStep:
-    return MigrationStep(title=title, **fields)
-
-
-def rename() -> MigrationStep:
-    return step(
-        where_pattern=f"?s {SHELF} ?o .",
-        delete_pattern=f"?s {SHELF} ?o .",
-        insert_pattern=f"?s {PLACE} ?o .",
-    )
-
-
-def migration(*steps: MigrationStep) -> Migration:
-    return Migration(schema_id=SCHEMA, from_version="1", to_version="2", steps=list(steps) or None)
-
-
-def write(folder: Path, content: Migration | str) -> Path:
-    path = folder / FILE
-    text = (
-        content
-        if isinstance(content, str)
-        else yaml.safe_dump(content.model_dump(exclude_none=True))
-    )
-    path.write_text(text, encoding="utf-8")
-    return path
+from tests.unit.migrations.migration_steps import (
+    FILE,
+    PLACE,
+    SCHEMA,
+    SHELF,
+    STAMPS,
+    migration,
+    rename,
+    step,
+    write,
+)
 
 
 def refusal(tmp_path: Path, *steps: MigrationStep) -> str:

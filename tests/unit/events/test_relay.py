@@ -31,8 +31,8 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
 from tests.logs import attributes
+from tests.tenancy_world import CREATOR, make_world
 from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, dune, library_slots, template, toy_mapper
-from tests.unit.tenancy.test_tenant_sweep import CREATOR, make_world
 
 DEPLOYMENT = "deployment-a"
 CONTEXT = context_link("https://lib.example")

@@ -1,5 +1,4 @@
 """Adversarial tests of ``migrate_dataset``: a client's dump is the input (schema-migrations PD-15, PD-5, PD-23)."""
-# ruff: noqa: F811  (fixtures imported from the tests they extend are named again as test arguments)
 
 import pytest
 from rdflib import XSD, Dataset, Literal, URIRef
@@ -9,27 +8,22 @@ from rdf_persistence.migrations.services.generated.rp_migrations_services import
 from rdf_persistence.migrations.services.migrations import Chain
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.tenancy.services.migration_runner import migrate_dataset
-from tests.unit.tenancy.migration_helpers import (
+from tests.migration_helpers import (
+    BOOK,
     ISBN,
     LIB,
+    LOADED,
     MID_ISBN,
     OLD_ISBN,
-    RP,
-    chain_of,
-    migration,
-    rename,
-)
-from tests.unit.tenancy.test_migrate_dataset import (  # noqa: F401  (fixtures)
-    BOOK,
-    LOADED,
     REGISTRY,
+    RP,
     STAMP,
     STAMPS,
+    chain_of,
     dataset,
-    lib_chain,
+    migration,
+    rename,
     stamp,
-    three,
-    toolkit_chain,
 )
 
 MARK = URIRef("https://example.org/ns/library#marked")

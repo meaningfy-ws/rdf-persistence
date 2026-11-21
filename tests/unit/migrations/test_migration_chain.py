@@ -1,32 +1,14 @@
 """The chain of one schema's versions, loaded from a folder of migration files (PD-4): TC-20 to TC-22."""
 
-from pathlib import Path
-
 import pytest
-import yaml
 
-from rdf_persistence.core.domain.exceptions import InvalidMigration
 from rdf_persistence.migrations.services.migrations import (
     first_version,
     load_chain,
     migration_file_name,
     pending_from,
 )
-
-SCHEMA = "https://example.org/ns/library"
-
-
-def put(folder: Path, from_version: str, to_version: str, *, name: str | None = None, **fields):
-    data = {"schema_id": SCHEMA, "from_version": from_version, "to_version": to_version, **fields}
-    path = folder / (name or f"{from_version}__{to_version}.yaml")
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-    return path
-
-
-def refused(folder: Path, current: str) -> str:
-    with pytest.raises(InvalidMigration) as error:
-        load_chain(folder, SCHEMA, current)
-    return str(error.value)
+from tests.unit.migrations.migration_steps import SCHEMA, put, refused
 
 
 def test_files_form_one_line_in_order(tmp_path):  # TC-20

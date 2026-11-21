@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from rdf_persistence.migrations.services.migrations import first_version, load_chain, pending_from
-from tests.unit.migrations.test_migration_chain import SCHEMA, put, refused
+from tests.unit.migrations.migration_steps import SCHEMA, put, refused
 
 
 def name_of(version: str) -> str:

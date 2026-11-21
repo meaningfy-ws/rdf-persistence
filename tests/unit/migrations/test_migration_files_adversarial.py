@@ -19,7 +19,7 @@ from rdf_persistence.migrations.services.generated.rp_migrations_services import
 from rdf_persistence.migrations.services.migrations import load_migration, migration_request
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore
-from tests.unit.migrations.test_migration_files import (
+from tests.unit.migrations.migration_steps import (
     FILE,
     PLACE,
     SCHEMA,

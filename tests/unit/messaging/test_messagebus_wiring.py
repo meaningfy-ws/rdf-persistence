@@ -5,143 +5,51 @@ The collaboration and the session are real, over the fake store; the session's `
 bus's ``publish``, as the kit wires it.
 """
 
-from collections.abc import AsyncIterator, Sequence
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
 from types import SimpleNamespace
 
 import pytest
-from rdflib import RDF, Graph, URIRef
+from rdflib import RDF, URIRef
 from rdflib.namespace import PROV
 
-from rdf_persistence import bootstrap, generated_models
-from rdf_persistence.access.domain.generated.rp_access import Action, RoleDefinition, RoleLevel
-from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence import bootstrap
 from rdf_persistence.collaboration.domain.generated.rp_discussion import (
     Comment,
     PostComment,
     PostReply,
 )
 from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
-from rdf_persistence.collaboration.services.collaboration import Collaboration
-from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
-from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import NotFound
-from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.files.domain.generated.rp_files import DeleteFile
-from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.messaging.services.messagebus import MessageBus, Work, command
-from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.messaging.services.messagebus import Work, command
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Add
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.testkit import FakeStore, RecordingObserver, fake_session
-from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from rdf_persistence.testkit import RecordingObserver
 from tests.fixtures.library.domain.generated.books import Book
-from tests.toy import (
-    ADA,
-    MODULES,
-    REVIEW_WORKFLOW,
-    ROLES,
-    TENANT,
-    TOY_SCHEMA,
-    ApproveBook,
-    ShelveBooks,
-    book_iri,
-    caller,
-    dune,
-    held,
-    role,
-    toy_mapper,
-)
-from tests.unit.provenance.test_activity_shape import (
+from tests.toy import ADA, ApproveBook, ShelveBooks, dune, toy_mapper
+from tests.unit.activity_helpers import (
+    activities,
     framed,
     mapped,
     toy,
     unordered,
     with_class_iris_expanded,
 )
-from tests.unit.tenancy.test_session_activity import activities, stored_graph
+from tests.unit.messaging.messagebus_helpers import (
+    B1,
+    B2,
+    B3,
+    DRAFT,
+    IN_REVIEW,
+    PROVENANCE,
+    provenance,
+    shelving,
+    types_of,
+    version_of,
+    world,
+)
 
-B1, B2, B3 = book_iri(1), book_iri(2), book_iri(3)
-VIEW = load_schema(TOY_SCHEMA)
-REVIEW = load_workflow(REVIEW_WORKFLOW)
-DRAFT, IN_REVIEW = (state_iri(REVIEW, s) for s in ("draft", "in_review"))
-PROVENANCE = URIRef(DEFAULT_IRIS.provenance(TENANT))
 APPROVE_BOOK = URIRef("https://example.org/ns/library#ApproveBook")
-
-
-@dataclass
-class World:
-    """One caller's session on a fake store, with a collaboration and a bus wired to publish."""
-
-    store: FakeStore
-    session: object
-    collaboration: Collaboration
-    bus: MessageBus
-
-
-@asynccontextmanager
-async def world(
-    *,
-    commands=None,
-    observers: dict[type[Activity], Sequence] | None = None,
-    mapper=True,
-    **dependencies,
-) -> AsyncIterator[World]:
-    rules = AccessRules(
-        [
-            *load_role_definitions(ROLES),
-            RoleDefinition(role="reviewer", level=RoleLevel.TENANT, actions=[Action.ANNOTATE]),
-        ]
-    )
-    bus = bootstrap(
-        commands=commands,
-        observers=observers,
-        mapper=toy_mapper() if mapper else None,
-        **dependencies,
-    )
-    store = FakeStore()
-    listings = Listings(VIEW)
-    guards = WriteGuards(
-        toy_mapper(), generated_models(*MODULES), listings, Workflows([REVIEW], VIEW, rules)
-    )
-    async with fake_session(
-        store,
-        tenant_iri=TENANT,
-        principal=Principal(id=ADA),
-        listings=listings,
-        guards=guards,
-        on_commit=bus.publish,
-    ) as session:
-        collaboration = Collaboration(
-            session,
-            view=VIEW,
-            rules=rules,
-            iris=DEFAULT_IRIS,
-            mapper=toy_mapper(),
-            models=generated_models(*MODULES),
-            listings=listings,
-            workflows=Workflows([REVIEW], VIEW, rules),
-            caller=caller(principal=ADA),
-            access=held(role("librarian"), role("reviewer")),
-        )
-        for iri in (B1, B2):
-            await session.add_graph(iri, toy_mapper().to_triples(dune(iri, chapters=1)))
-        yield World(store, session, collaboration, bus)
-
-
-async def version_of(world: World, iri: str = B1) -> str:
-    return (await world.session.get_graph(iri))[2]
-
-
-async def provenance(world: World) -> Graph:
-    return await stored_graph(world.store, PROVENANCE, FAKE_DATABASE)
-
-
-def types_of(graph: Graph, iri: str) -> set[URIRef]:
-    return {t for t in graph.objects(URIRef(iri), RDF.type) if isinstance(t, URIRef)}
 
 
 async def test_the_toolkit_handler_moves_a_book_and_records_a_transition():  # TC-73
@@ -294,24 +202,6 @@ async def test_a_command_handler_of_the_consumer_replaces_the_toolkits():  # TC-
     )  # type: ignore[arg-type]
 
     assert result == "mine", "the consumer's handler ran, not the toolkit's"
-
-
-def shelving(*, twice: bool = False, new_book: str | None = None):
-    """A ``ShelveBooks`` handler that relabels two books through ``work.unit_of_work()``."""
-
-    async def shelve(cmd: Activity, work: Work) -> None:
-        unit = work.unit_of_work()
-        for iri in (B1, B2):
-            book = await unit.get(Book, iri)
-            unit.add(book.model_copy(update={"label": "Shelved"}))
-        await unit.commit()
-        if twice:
-            again = work.unit_of_work()
-            book = await again.get(Book, B1)
-            again.add(book.model_copy(update={"label": "Again"}))
-            await again.commit()
-
-    return shelve
 
 
 async def test_a_handlers_unit_of_work_commits_one_activity_of_the_command():  # TC-106

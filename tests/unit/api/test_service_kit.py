@@ -64,8 +64,8 @@ from tests.toy_service import (
     assert_problem,
     principal_of,
 )
+from tests.unit.activity_helpers import activities
 from tests.unit.api.scene import Scene
-from tests.unit.tenancy.test_session_activity import activities
 
 PROBLEMS = f"{SETTINGS.base}problems/"
 FILE_KEY = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")

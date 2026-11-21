@@ -33,8 +33,7 @@ from rdf_persistence.tenancy.services.sweep import sweep
 from rdf_persistence.tenancy.services.tenant_dump import dump
 from rdf_persistence.tenancy.services.tenant_move import rewrite
 from rdf_persistence.testkit import assert_isomorphic
-from tests.toy import SETTINGS
-from tests.unit.tenancy.test_tenant_dump import (
+from tests.dump_helpers import (
     BLOB_BYTES,
     END,
     GRAPHS,
@@ -55,6 +54,7 @@ from tests.unit.tenancy.test_tenant_dump import (
     state_of,
     unpack,
 )
+from tests.toy import SETTINGS
 
 BLOCK = 512
 

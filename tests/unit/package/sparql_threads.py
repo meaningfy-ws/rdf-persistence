@@ -24,16 +24,18 @@ from rdf_persistence.core.domain.sparql import checked_group
 from rdf_persistence.core.domain.sparql_parsing import prepare_query
 from rdf_persistence.tenancy.services.migration_runner import migrate_dataset
 from rdf_persistence.testkit.fakes import FakeStore
-from tests.unit.tenancy.migration_helpers import (
+from tests.migration_helpers import (
     ISBN,
     LIB,
     OLD_ISBN,
     RP,
+    STAMPS,
     chain_of,
+    dataset,
     migration,
     rename,
+    stamp,
 )
-from tests.unit.tenancy.test_migrate_dataset import STAMPS, dataset, stamp
 
 THREADS = 8
 EX = Namespace("urn:example:")

@@ -31,9 +31,8 @@ from rdf_persistence.testkit import (  # noqa: F401  (no_network is a fixture)
     no_network,
 )
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.unit.persistence.loading_helpers import AGGREGATE, TENANT
 
-TENANT = "https://example.org/libraries/6f1c"
-AGGREGATE = f"{TENANT}/books/{UUID(int=1)}"
 TITLE = URIRef("http://purl.org/dc/terms/title")
 BOOK = URIRef("https://example.org/b")
 EXPECTED = Graph()

@@ -31,44 +31,10 @@ from rdf_persistence.provenance.domain.generated.rp_provenance import (
 from tests.logs import attributes
 from tests.spans import assert_no_text_in_spans
 from tests.toy import toy_mapper
+from tests.unit.messaging.messagebus_helpers import Recorder, ShelvedReplace, fakes
 
 NOW = datetime(2026, 11, 14, 10, 0, tzinfo=UTC)
 BOOK = "https://example.org/book/1"
-
-
-class ShelvedReplace(Replace):
-    """A consumer's subclass of a standard activity."""
-
-
-def fakes() -> tuple[SimpleNamespace, SimpleNamespace]:
-    """A session and a collaboration that holds it."""
-    session = SimpleNamespace(name="session")
-    return session, SimpleNamespace(name="collaboration", session=session)
-
-
-class Recorder:
-    """Records what the handlers and observers were called with, in order."""
-
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, Activity, Work]] = []
-
-    def names(self) -> list[str]:
-        return [name for name, _, _ in self.calls]
-
-    def handler(self, name: str, result: object = None):
-        async def handle(cmd: Activity, work: Work) -> object:
-            self.calls.append((name, cmd, work))
-            return result
-
-        handle.__qualname__ = name
-        return handle
-
-    def observer(self, name: str):
-        async def observe(activity: Activity, work: Work) -> None:
-            self.calls.append((name, activity, work))
-
-        observe.__qualname__ = name
-        return observe
 
 
 async def test_a_handler_gets_the_command_and_a_work_of_the_collaboration():  # TC-60

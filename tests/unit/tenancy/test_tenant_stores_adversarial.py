@@ -24,16 +24,16 @@ from rdf_persistence.tenancy.services.migration_runner import migrate_tenants
 from rdf_persistence.tenancy.services.sweep import sweep
 from rdf_persistence.tenancy.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
+from tests.dump_helpers import LIBRARY_SCHEMA
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes
+from tests.migration_helpers import LIB, chain_of, migration, rename
+from tests.tenancy_world import CREATOR
 from tests.toy import SETTINGS, library_slots, toy_mapper
-from tests.unit.tenancy.migration_helpers import LIB, chain_of, migration, rename
-from tests.unit.tenancy.test_tenancy_stores import (
+from tests.unit.tenancy.tenancy_helpers import (
     CLIENT_A,
-    CREATOR,
     IDS,
-    LIBRARY_SCHEMA,
     PREFIX,
     SYSTEM,
     TYPES,

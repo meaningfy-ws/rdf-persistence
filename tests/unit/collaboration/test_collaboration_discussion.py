@@ -63,7 +63,7 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
-from tests.unit.tenancy.test_session_activity import stored_graph
+from tests.unit.activity_helpers import stored_graph
 
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 S1 = shelf_iri(1)
