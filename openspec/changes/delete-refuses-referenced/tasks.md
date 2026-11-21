@@ -43,11 +43,11 @@ commit and never run `make generate`; the lead does, then `make check-generated`
 
 ## 3. Stage 3: docs and close
 
-- [ ] 3.1 Docs: `user-manual/store-and-read.adoc` new `[#refuse-referenced]` section (the
+- [x] 3.1 Docs: `user-manual/store-and-read.adoc` new `[#refuse-referenced]` section (the
   annotation, E1/E2/E5, matrix rows 4 and 6, RISK-1); `user-manual/model.adoc` annotation list;
   `architecture/api.adoc` the `in-use` problem; `questions.adoc` the question it answers; lead runs
   `make docs-reference`. Accept: `make check-docs` passes.
-- [ ] 3.2 Lead: `make refresh-map` (spec scenarios to TC-3, TC-8, TC-9, TC-10), `make check-all`,
+- [x] 3.2 Lead: `make refresh-map` (spec scenarios to TC-3, TC-8, TC-9, TC-10), `make check-all`,
   `make test-containers`, the MEDIUM review set, fixes, PR into `develop`.
 
 ## Roadmap
