@@ -120,8 +120,10 @@ SHALL NOT state `prov:hadMember`. Every collection service (`members`, `collecti
 
 A collection with `nests: true` SHALL accept as members collections of exactly the same collection
 class and `member_class`, which may themselves have `nests` false. It SHALL refuse a cycle with
-`InvalidBody` naming it, and a save that loses a race which would otherwise store a cycle SHALL be
-refused with a conflict. `members(deep=True)` SHALL list the items of the whole tree, without the
+`InvalidBody` naming the saved collection and the member that closes the cycle, and counting the
+collections between without naming them; a save that loses a race which would otherwise store a
+cycle SHALL be refused with a conflict. The member class of a collection that a nesting collection
+of its class holds SHALL NOT change. `members(deep=True)` SHALL list the items of the whole tree, without the
 nested collections themselves. (The issue's `transitive=True` is written `deep=True`: the existing
 flag is kept so that no caller breaks.) A collection whose member class is itself a collection
 class SHALL NOT set `nests`. A collection without `nests` SHALL behave as before.
@@ -139,7 +141,13 @@ class SHALL NOT set `nests`. A collection without `nests` SHALL behave as before
 #### Scenario: a cycle
 - **GIVEN** a collection that would contain itself through a nested one
 - **WHEN** it is saved
-- **THEN** it is refused with `InvalidBody` naming the cycle
+- **THEN** it is refused with `InvalidBody` naming the collection and the member that closes the
+  cycle, and counting the collections between without naming them
+
+#### Scenario: a held collection's member class
+- **GIVEN** a collection of `Book` that a nesting collection of `Book` holds
+- **WHEN** it is saved with another member class
+- **THEN** it is refused with `InvalidBody` that does not name the holder
 
 #### Scenario: racing saves
 - **GIVEN** two saves read before either commits, one adding collection B to A and one adding A to B
