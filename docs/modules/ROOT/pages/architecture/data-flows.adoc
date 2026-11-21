@@ -593,7 +593,9 @@ root classes that refuse it (`removals`, a `RemovalRefusal` port of the session;
 session knows no schema, so it asks `removals.refusing` for the classes. For each removed root
 typed with one of them, the commit adds one `FILTER NOT EXISTS` to the guards of the request:
 no aggregate graph refers to the root, with the same referrer pattern as `READ_REFERRERS`
-(`_REFERRERS`, one template for the read and the guard), leaving out the graphs this commit
+(`_REFERRERS`, one template for the read and the guard; both, the guard's builder and the links of
+a commit's own changes are in `persistence/services/referrers.py`, as the key guard is in
+`unique_keys.py`, and the transaction keeps the calls), leaving out the graphs this commit
 removes and the links of the dependents pairs (comments), which never block. The guard is added
 only when the session has `removals` with at least one refusing class, so a session without them
 sends the request as before. Because the store checks it when the request is applied, a referrer
@@ -603,7 +605,9 @@ the same commit whose new triples refer to a removed root of a refusing class ra
 sends nothing. It judges every type of the linking root as the guard does, so a link of a
 dependents pair is dropped only when every type of the root forms the pair. When the request is
 refused, the diagnosis names the referrers (above); the answer names only those the caller may
-read, as the `Readable` callable of the transaction judges.
+read, as the `Readable` callable of the transaction judges. The rows are `ReferrerRow` records,
+generated from `persistence/rp_persistence_rows.yaml`, and `removals.in_use` is given the root
+they refer to by name, the one the `Readable` callable judges them against.
 
 *A content guard.* A cascading delete of a collection (`ReferenceCollections.delete_cascade`)
 adds, besides the version tokens, one guard for each member that only meets the collection's rule:

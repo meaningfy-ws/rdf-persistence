@@ -6,7 +6,7 @@ the schema view they read from, so ``Collaboration`` and the removal guard name 
 
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.persistence.services.session import ReferrerRow
+from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 
 
 def classes_by_iri(view: SchemaView) -> dict[str, str]:
@@ -20,15 +20,15 @@ def named(view: SchemaView, rows: list[ReferrerRow]) -> set[tuple[str, str, str]
     A referrer with a type the schema knows is not also listed under the types it does not.
     """
     classes = classes_by_iri(view)
-    typed = {referrer for referrer, cls, _, _ in rows if cls in classes}
+    typed = {row.referrer for row in rows if row.referrer_class in classes}
     return {
         (
-            referrer,
-            classes.get(cls, cls),
-            slot_name(view, classes.get(subject or cls), predicate),
+            row.referrer,
+            classes.get(row.referrer_class, row.referrer_class),
+            slot_name(view, classes.get(row.subject_class or row.referrer_class), row.predicate),
         )
-        for referrer, cls, subject, predicate in rows
-        if cls in classes or referrer not in typed
+        for row in rows
+        if row.referrer_class in classes or row.referrer not in typed
     }
 
 

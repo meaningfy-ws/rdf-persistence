@@ -18,12 +18,9 @@ from rdflib import RDF, Dataset, Graph, Literal, URIRef
 from rdf_persistence import InUse
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 from rdf_persistence.persistence.services.mapper import UnitOfWork
-from rdf_persistence.persistence.services.session import (
-    ReferrerRow,
-    Session,
-    open_session,
-)
+from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Author, Book
@@ -47,13 +44,16 @@ class StubRefusal:
     ) -> None:
         self.refusing = refusing
         self.call_readable = call_readable
-        self.asked: list[tuple[tuple[str, ...], list[ReferrerRow], object]] = []
+        # (roots, rows, readable, the root the rows refer to), per call
+        self.asked: list[tuple[tuple[str, ...], list[ReferrerRow], object, str]] = []
 
-    async def in_use(self, roots: Sequence[str], rows: Sequence[ReferrerRow], readable) -> InUse:
-        self.asked.append((tuple(roots), list(rows), readable))
+    async def in_use(
+        self, roots: Sequence[str], root: str, rows: Sequence[ReferrerRow], readable
+    ) -> InUse:
+        self.asked.append((tuple(roots), list(rows), readable, root))
         if self.call_readable and readable is not None:
-            await readable(roots[0], rows)
-        named = tuple((row[0], "Book", "written_by") for row in rows)
+            await readable(root, rows)
+        named = tuple((row.referrer, "Book", "written_by") for row in rows)
         return InUse("in use", iris=tuple(roots), referrers=named)
 
 
@@ -144,7 +144,8 @@ async def test_e1_a_referenced_author_is_refused_and_stays(session, refusal):
     assert refused.value.referrers == ((B1, "Book", "written_by"),)
     assert await stored(session, A1), "nothing was deleted"
     assert refusal.asked[0][0] == (A1,)
-    assert [row[0] for row in refusal.asked[0][1]] == [B1], "the rows are the referrer's"
+    assert [row.referrer for row in refusal.asked[0][1]] == [B1], "the rows are the referrer's"
+    assert refusal.asked[0][3] == A1, "the root the rows refer to is named (#227)"
 
 
 async def test_e3_an_author_nobody_refers_to_is_removed(session):
@@ -200,11 +201,12 @@ async def test_two_refused_roots_are_named_together_and_the_first_one_gives_the_
             await t.remove(A1, version_1)
     assert refused.value.iris == (A1, A2)
     assert refused.value.referrers == ((B2, "Book", "written_by"),), "the rows of A1, sorted first"
+    assert refusal.asked[0][3] == A1, "and A1 is named as the root they refer to (#227)"
 
 
 async def test_the_readable_callable_reaches_the_schema_side(session, refusal):
     async def readable(iri: str, rows: Sequence[ReferrerRow]) -> set[str]:
-        return {row[0] for row in rows}
+        return {row.referrer for row in rows}
 
     version = await session.add_graph(A1, author(A1))
     await session.add_graph(B1, book(B1, by=A1))

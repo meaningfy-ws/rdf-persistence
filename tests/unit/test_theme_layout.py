@@ -99,6 +99,7 @@ LAYOUT: tuple[Move, ...] = (
         "store",
         "session",
         "unique_keys",
+        "referrers",
         "listing",
         "loading",
         "jsonld",
@@ -298,6 +299,15 @@ PLACED: tuple[Placed, ...] = (
         "settings",
         ("LimitSettings",),
         tail="settings.rp_persistence_settings",
+    ),
+    # Not served either: the row of a reverse-reference read, which the session's port hands over
+    # (#227). Born after the move, so its group's old module never held it.
+    Placed(
+        "persistence",
+        "services",
+        "service",
+        ("ReferrerRow",),
+        tail="rows.rp_persistence_rows",
     ),
     # D-8, settled at stage 3: `schema/vocabulary` builds all six term bundles, so `schema` is their lowest
     # user (PD-2); a bundle placed in `persistence` or `migrations` would make `schema` import a higher

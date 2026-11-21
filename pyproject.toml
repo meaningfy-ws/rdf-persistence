@@ -165,6 +165,12 @@ regenerate-command = "make generate"
 openapi = false
 
 [[tool.rp-generate]]
+schema = "rdf_persistence/model/technical/persistence/rp_persistence_rows.yaml"
+package = "rdf_persistence.persistence.services.generated.rows"
+regenerate-command = "make generate"
+openapi = false
+
+[[tool.rp-generate]]
 schema = "rdf_persistence/model/technical/persistence/rp_persistence_adapters.yaml"
 package = "rdf_persistence.persistence.adapters.generated"
 regenerate-command = "make generate"

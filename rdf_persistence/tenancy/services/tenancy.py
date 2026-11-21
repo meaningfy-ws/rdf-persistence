@@ -54,11 +54,10 @@ from rdf_persistence.migrations.services.migrations import stamp_if_none, stamp_
 from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import Mapper, UnitOfWork
+from rdf_persistence.persistence.services.referrers import Dependents, RemovalRefusal
 from rdf_persistence.persistence.services.session import (
     Clock,
-    Dependents,
     OnCommit,
-    RemovalRefusal,
     Session,
     WriteGuard,
     open_session,

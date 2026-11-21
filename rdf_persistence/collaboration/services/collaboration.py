@@ -30,9 +30,10 @@ from rdf_persistence.collaboration.services.transitions import Transitions
 from rdf_persistence.collaboration.services.workflows import Workflows
 from rdf_persistence.core.domain.exceptions import BadQuery, InvalidIri
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
-from rdf_persistence.persistence.services.session import ReferrerRow, Session
+from rdf_persistence.persistence.services.session import Session
 
 
 class Collaboration:
@@ -130,7 +131,7 @@ class Collaboration:
         judged = await self._discussion.judged(iri, rows)
         return {
             referrer
-            for referrer in {row[0] for row in rows}
+            for referrer in {row.referrer for row in rows}
             if (
                 judged[referrer]
                 if referrer in judged

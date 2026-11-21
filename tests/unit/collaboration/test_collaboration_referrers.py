@@ -196,4 +196,4 @@ async def test_a_link_is_dropped_only_for_the_class_a_dependent_pair_names():
     async with fake_session(tenant_iri=TENANT, dependents=[(note, shelf)]) as other:
         await put_book(other, B1, shelf=S1)
         kept = await other.referrer_rows(S1)
-    assert [r[0] for r in kept] == [B1], "the same predicate on another class still counts"
+    assert [r.referrer for r in kept] == [B1], "the same predicate on another class still counts"

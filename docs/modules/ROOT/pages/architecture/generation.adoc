@@ -327,6 +327,7 @@ have OpenAPI components; the others say `openapi = false`.
 |`schema/services/generated/templates/` |`schema/rp_schema_templates.yaml` |the bundles of rendered SPARQL terms the query templates share, each field a `SparqlTerm` (the type `sparql_term`, which its `python_import` annotation imports from `rdf_persistence.core.domain.sparql`): `RegistryTerms`, `KeyHeldTerms`, `KeyBranchTerms`, `OwnerTerms`, `ListingTerms`, `StampGuardTerms`. They sit in `schema` because `vocabulary`, which sets the fixed terms, is a module of that theme; `fill_terms` and `fragment_terms` take a bundle |no
 |`persistence/services/generated/` |`persistence/rp_persistence_services.yaml` |the request and plan records: `Page`, `Filter`, `ListRequest`, `Condition`, `ListPlan`, `AggregateHead`, and the one served `Any` |yes
 |`persistence/services/generated/settings/` |`persistence/rp_persistence_settings.yaml` |`LimitSettings` |no
+|`persistence/services/generated/rows/` |`persistence/rp_persistence_rows.yaml` |`ReferrerRow`, one link to a resource as the session reads it (the referrer, its class, the class of a part subject, the predicate) |no
 |`persistence/adapters/generated/` |`persistence/rp_persistence_adapters.yaml` |`FusekiDatasetList`, `FusekiDataset` |no
 |`migrations/services/generated/` |`migrations/rp_migrations_services.yaml` |`Migration`, `MigrationStep` |yes
 |`access/services/generated/` |`access/rp_access_services.yaml` |`VerifiedCaller` (what the token verifier returns), `GrantSet`, `CallerAccess`, `AccountSummary` |yes

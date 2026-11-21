@@ -17,12 +17,9 @@ from rdflib import RDF, URIRef
 from rdf_persistence import InUse
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.persistence.services.session import (
-    Dependents,
-    ReferrerRow,
-    Session,
-    open_session,
-)
+from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
+from rdf_persistence.persistence.services.referrers import Dependents
+from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
@@ -45,8 +42,10 @@ class StubRefusal:
 
     refusing = frozenset({AUTHOR_CLASS})
 
-    async def in_use(self, roots: Sequence[str], rows: Sequence[ReferrerRow], readable) -> InUse:
-        named = tuple((row[0], "Book", "written_by") for row in rows)
+    async def in_use(
+        self, roots: Sequence[str], root: str, rows: Sequence[ReferrerRow], readable
+    ) -> InUse:
+        named = tuple((row.referrer, "Book", "written_by") for row in rows)
         return InUse("in use", iris=tuple(roots), referrers=named)
 
 

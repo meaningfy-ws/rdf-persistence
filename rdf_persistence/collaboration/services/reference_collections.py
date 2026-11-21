@@ -42,7 +42,8 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
 )
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
-from rdf_persistence.persistence.services.session import Readable, Session
+from rdf_persistence.persistence.services.referrers import Readable
+from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
 
 COLLECTION_MIXIN = "ReferenceCollection"
@@ -202,9 +203,10 @@ class ReferenceCollections:
         self._rules.require(self._caller, self._access, iri, Action.READ)
         rows = await self._session.referrer_rows(iri)
         named = {
-            referrer
-            for referrer, referrer_class, _, predicate in rows
-            if predicate == str(v.HAS_PART) and URIRef(referrer_class) in self._collection_classes
+            row.referrer
+            for row in rows
+            if row.predicate == str(v.HAS_PART)
+            and URIRef(row.referrer_class) in self._collection_classes
         }
         return self._listed(named | await self._rule_holders(iri))
 

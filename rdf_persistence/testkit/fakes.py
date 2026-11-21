@@ -31,11 +31,10 @@ from rdf_persistence.files.domain.blob_keys import checked_blob_key
 from rdf_persistence.files.domain.generated.rp_files import BlobEntry
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.referrers import Dependents, RemovalRefusal
 from rdf_persistence.persistence.services.session import (
     Clock,
-    Dependents,
     OnCommit,
-    RemovalRefusal,
     Session,
     WriteGuard,
     open_session,

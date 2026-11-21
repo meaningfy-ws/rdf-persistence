@@ -12,10 +12,11 @@ from rdflib import URIRef
 
 from rdf_persistence.collaboration.services.referrer_naming import named
 from rdf_persistence.core.domain.exceptions import InUse
+from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
     LimitSettings,
 )
-from rdf_persistence.persistence.services.session import Readable, ReferrerRow
+from rdf_persistence.persistence.services.referrers import Readable
 from rdf_persistence.schema.services.schema_structure import refusing_classes
 
 
@@ -28,11 +29,17 @@ class ReferencedRemovals:
         self.refusing: frozenset[URIRef] = refusing_classes(view)
 
     async def in_use(
-        self, roots: Iterable[str], rows: Sequence[ReferrerRow], readable: Readable | None
+        self,
+        roots: Iterable[str],
+        root: str,
+        rows: Sequence[ReferrerRow],
+        readable: Readable | None,
     ) -> InUse:
-        """The ``InUse`` for the refused ``roots``, naming the referrers in ``rows`` (those of the first root).
+        """The ``InUse`` for the refused ``roots``, naming the referrers in ``rows``, which refer to
+        ``root``, one of them.
 
-        ``readable`` says which referrers the caller may read (``None``: all of them). The readable
+        ``readable`` says which referrers of ``root`` the caller may read (``None``: all of them),
+        judged against ``root`` itself: a comment is judged by the thread of the IRI given. The readable
         referrer aggregates are sorted by IRI; the first ``max_named_referrers`` are named with every
         ``(class, slot)`` item they hold, the rest are ``more_count``, and the unreadable ones are
         ``hidden_count``, each aggregate once.
@@ -40,7 +47,7 @@ class ReferencedRemovals:
         refused = sorted(roots)
         items = sorted(named(self._view, list(rows)))
         referrers = {referrer for referrer, _, _ in items}
-        allowed = referrers if readable is None else await readable(refused[0], rows)
+        allowed = referrers if readable is None else await readable(root, rows)
         shown = sorted(referrers & allowed)[: self._cap]
         return InUse(
             f"{', '.join(refused)} is still referred to",

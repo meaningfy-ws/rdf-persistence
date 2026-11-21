@@ -58,6 +58,7 @@ from rdf_persistence.core.services.telemetry import log_extra, traced
 from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     AggregateHead,
     Condition,
@@ -75,6 +76,19 @@ from rdf_persistence.persistence.services.listing import (
     total_of,
 )
 from rdf_persistence.persistence.services.loading import parse_graph
+from rdf_persistence.persistence.services.referrers import (
+    READ_REFERRERS,
+    Dependents,
+    Readable,
+    RemovalRefusal,
+    dependent_targets,
+    pair_values,
+    referrer_guards,
+    referrer_links,
+    referrers_pattern,
+    row_key,
+    row_of,
+)
 from rdf_persistence.persistence.services.store import Store
 from rdf_persistence.persistence.services.unique_keys import (
     KeyClaim,
@@ -274,113 +288,6 @@ READ_VERSIONS = (
     "SELECT ?g ?version WHERE { VALUES ?g { $graphs } "
     "OPTIONAL { GRAPH ?g { ?g $p_version ?version } } }"
 )
-
-
-# Every aggregate whose graph holds a statement with $iri as its object (PD-3): the referrer, its
-# class, the class of the statement's subject when that is a part (none when it is the referrer
-# itself) and the predicate. The bookkeeping about the graph itself and rdf:type are not references.
-# The reference pattern comes first, so the store starts from the triples that hold $iri.
-READ_REFERRERS = "SELECT DISTINCT ?referrer ?class ?subject_class ?p WHERE { $pattern }"
-# The pattern of a referrer, shared by the read and by the removal guard (PD-3): its variables end
-# in $n, empty for the read and the guard's index for a guard, so guards never join.
-_REFERRERS = """
-GRAPH ?g$n { ?s$n ?p$n $iri . ?referrer$n a ?class$n . OPTIONAL { ?s$n a ?subject_class$n FILTER (?s$n != ?referrer$n) } }
-GRAPH $registry { ?g$n $p_kind $aggregate ; $p_owned_by ?referrer$n }
-FILTER (?s$n != ?g$n && ?p$n != $rdf_type)
-$dependents
-"""
-# A link of a dependent record (a comment's target) is dropped only for the record's class (PD-3).
-_NOT_DEPENDENT = "FILTER NOT EXISTS { VALUES (?dt$n ?dl$n) { $pairs } FILTER (?p$n = ?dl$n && ?class$n = ?dt$n) }"
-# No aggregate graph but the ones this transaction removes refers to the removed root $root (PD-3).
-_REFERRER_GUARD = """
-FILTER NOT EXISTS {
-  GRAPH $graph { $root a ?t$n } VALUES ?t$n { $refusing }
-  $referrers
-  FILTER (?g$n NOT IN ($removed))
-}
-"""
-
-
-# One link to a resource, as the store holds it: (referrer, referrer class, subject class or None,
-# predicate), all IRIs; the schema names are the caller's to find.
-ReferrerRow = tuple[str, str, str | None, str]
-# The referrers among the rows that refer to a root, which the caller may read: given the root's IRI
-# and the rows, answers the referrer IRIs. Where none is given the session's full reach applies (PD-9).
-Readable = Callable[[str, Sequence[ReferrerRow]], Awaitable[set[str]]]
-
-
-class RemovalRefusal(Protocol):
-    """The schema side of a refused removal (PD-7): which root classes refuse one while referenced,
-    and the ``InUse`` that names the referrers. The session knows no schema; the kit builds this."""
-
-    refusing: frozenset[URIRef]
-
-    async def in_use(
-        self, roots: Sequence[str], rows: Sequence[ReferrerRow], readable: Readable | None
-    ) -> InUse:
-        """The refusal for the referenced ``roots`` (sorted), naming the referrers of the first,
-        whose ``rows`` these are; ``readable`` judges who the caller may see (none: all)."""
-        ...
-
-
-Dependents = Sequence[tuple[URIRef, URIRef]]
-
-
-def _pair_values(pairs: Dependents) -> SparqlTerm:
-    """The rows of a ``VALUES`` list, one ``(class predicate)`` per pair."""
-    return join(fragment("($cls $link)", cls=term(c), link=term(p)) for c, p in pairs)
-
-
-def _without_dependents(pairs: Dependents, n: SparqlTerm) -> SparqlTerm:
-    """The clause that drops the links of ``(class, predicate)`` ``pairs``; none at all when there are none."""
-    return fragment(_NOT_DEPENDENT, pairs=_pair_values(pairs), n=n) if pairs else SparqlTerm("")
-
-
-def _referrers_pattern(
-    iri: URIRef, registry: URIRef, dependents: Dependents, n: SparqlTerm
-) -> SparqlTerm:
-    """The pattern of the aggregates that refer to ``iri``, its variables ending in ``n``."""
-    return fragment(
-        _REFERRERS,
-        iri=term(iri),
-        registry=term(registry),
-        p_kind=term(v.REGISTRY_KIND),
-        aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
-        p_owned_by=term(v.REGISTRY_OWNED_BY),
-        rdf_type=term(RDF.type),
-        dependents=_without_dependents(dependents, n),
-        n=n,
-    )
-
-
-def _types_of(iri: str, triples: Sequence[Triple]) -> list[str]:
-    """Every class the ``triples`` give the root ``iri``, sorted; one empty name when it has none."""
-    own = URIRef(iri)
-    return sorted({str(o) for s, p, o in triples if s == own and p == RDF.type}) or [""]
-
-
-def _link_rows(iri: str, triples: Sequence[Triple]) -> list[tuple[str, ReferrerRow]]:
-    """The links the ``triples`` of the root ``iri`` make to other IRIs: ``(target, row)``, the row as
-    ``referrer_rows`` reads it (its subject class is none for a link of the root itself). A root of
-    several types makes one row per type, as the store answers one solution per ``rdf:type``."""
-    own, root_classes = URIRef(iri), _types_of(iri, triples)
-    part_class = {s: str(o) for s, p, o in triples if p == RDF.type and s != own}
-    links = [(s, p, o) for s, p, o in triples if p != RDF.type and o != own]
-    return [
-        (str(o), (iri, root_class, part_class.get(s), str(p)))
-        for s, p, o in links
-        if isinstance(o, URIRef)
-        for root_class in root_classes
-    ]
-
-
-def _dependent_targets(iri: str, triples: Sequence[Triple], pairs: Dependents) -> set[str]:
-    """The roots the record ``iri`` depends on: the objects of its links of a ``(class, predicate)``
-    pair whose class it has, as the removal's cascade (``_DROP_DEPENDENTS``) matches them."""
-    own = URIRef(iri)
-    types = {o for s, p, o in triples if s == own and p == RDF.type}
-    links = {link for cls, link in pairs if cls in types}
-    return {str(o) for s, p, o in triples if s == own and p in links}
 
 
 def _mark_key(mark: object, iri: str) -> tuple[int, datetime, str]:
@@ -605,7 +512,7 @@ def remove_parts(
             commit_marker=term(v.COMMIT_MARKER),
             root=term(root),
             aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
-            pairs=_pair_values(dependents),
+            pairs=pair_values(dependents),
         )
     return _at_version(graph, old_version), operations
 
@@ -831,22 +738,12 @@ class Session:
         """
         text = fill(
             READ_REFERRERS,
-            pattern=_referrers_pattern(
+            pattern=referrers_pattern(
                 URIRef(iri), self._registry, self._dependents, SparqlTerm("")
             ),
         )
-        rows = [
-            r for r in await self._store.query(self._database, text) if isinstance(r, ResultRow)
-        ]
-        return [
-            (
-                str(r.referrer),
-                str(r["class"]),
-                None if r.subject_class is None else str(r.subject_class),
-                str(r.p),
-            )
-            for r in rows
-        ]
+        results = await self._store.query(self._database, text)
+        return [row_of(r) for r in results if isinstance(r, ResultRow)]
 
     async def root_values(
         self, iri: str, predicates: Sequence[URIRef]
@@ -1356,6 +1253,10 @@ class Transaction:
         # (target, row) of each link an add or replace makes to another aggregate, kept only while
         # the session refuses some removals (PD-5)
         self._links: list[tuple[str, ReferrerRow]] = []
+        # the classes whose roots the session refuses to remove while referenced; none for a
+        # session without ``removals`` (G-3)
+        removals = session._removals
+        self._refusing = frozenset() if removals is None else frozenset(removals.refusing)
         self._changes: list[Change] = []  # what each change's event needs (PD-3)
         self._session = session
         self._marker = new_marker(session._clock())
@@ -1401,23 +1302,12 @@ class Transaction:
         self._operations.append(parts[1])
         self._confirm.append(confirm)
 
-    def _refusing(self) -> frozenset[URIRef]:
-        """The classes whose roots this session refuses to remove while referenced; none for a session
-        without ``removals`` (G-3)."""
-        removals = self._session._removals
-        return frozenset() if removals is None else frozenset(removals.refusing)
-
     def _note_links(self, iri: str, triples: Sequence[Triple]) -> None:
         """Keep the links the new ``triples`` of the root ``iri`` make to other IRIs, as the rows
         ``referrer_rows`` would read, for the check against the removals of this commit (PD-5); the
         link of a ``dependents`` pair is no referrer here either, as in the store guard (PD-3)."""
-        if self._refusing():
-            dependents = set(self._session._dependents)
-            self._links += [
-                (target, row)
-                for target, row in _link_rows(iri, triples)
-                if (URIRef(row[1]), URIRef(row[3])) not in dependents
-            ]
+        if self._refusing:
+            self._links += referrer_links(iri, triples, self._session._dependents)
 
     def _removed_graphs(self) -> dict[URIRef, str]:
         """Graph -> root of each aggregate this transaction removes."""
@@ -1651,7 +1541,10 @@ class Transaction:
         self._refuse_dependents_of_removed()
         excluded = self._excluded()
         key_guards = [guard(c, session._registry, excluded) for c in self._key_claims]
-        guards = [*self._guards, *key_guards, *self._referrer_guards()]
+        referrer_guarded = referrer_guards(
+            self._removed_graphs(), self._refusing, session._registry, session._dependents
+        )
+        guards = [*self._guards, *key_guards, *referrer_guarded]
         operations = list(self._operations)
         done = self._completed()
         confirm = list(self._confirm)
@@ -1763,28 +1656,6 @@ class Transaction:
             URIRef(root) for graph, root in self._roots.items() if self._read_at[graph] is not None
         ]
 
-    def _referrer_guards(self) -> list[SparqlTerm]:
-        """One guard per removed root: no aggregate graph this transaction does not remove refers to
-        it, when it is typed with a refusing class (PD-3). None without a refusing class (G-3)."""
-        session, refusing = self._session, self._refusing()
-        if not refusing:
-            return []
-        removed = self._removed_graphs()
-        return [
-            fragment(
-                _REFERRER_GUARD,
-                graph=term(graph),
-                root=term(URIRef(root)),
-                refusing=join(term(c) for c in sorted(refusing)),
-                referrers=_referrers_pattern(
-                    URIRef(root), session._registry, session._dependents, count(n)
-                ),
-                removed=term_list(sorted(removed)),
-                n=count(n),
-            )
-            for n, (graph, root) in enumerate(sorted(removed.items(), key=lambda item: item[1]))
-        ]
-
     async def _refuse_links_to_removed(self) -> None:
         """An add or replace of this commit that names a removed root of a refusing class is refused
         before anything is sent (PD-5); the types are read only when there is such a link."""
@@ -1794,9 +1665,10 @@ class Transaction:
         if not named or removals is None:  # links are kept only with removals
             return
         if refused := await self._refusing_among(named):
-            rows = {row for target, row in self._links if target == refused[0]}
-            ordered = sorted(rows, key=lambda r: (r[0], r[1], r[2] or "", r[3]))
-            raise await removals.in_use(tuple(refused), ordered, self._readable)
+            root = refused[0]
+            rows = {row_key(row): row for target, row in self._links if target == root}
+            ordered = [rows[key] for key in sorted(rows)]
+            raise await removals.in_use(tuple(refused), root, ordered, self._readable)
 
     def _refuse_dependents_of_removed(self) -> None:
         """An add or replace of this commit whose root is a dependent record (a ``dependents`` pair)
@@ -1811,7 +1683,7 @@ class Transaction:
         if not removed or not pairs:
             return
         for record, triples in sorted(self._collected.items()):
-            if target := min(_dependent_targets(record, triples, pairs) & removed, default=None):
+            if target := min(dependent_targets(record, triples, pairs) & removed, default=None):
                 raise Conflict(
                     f"{record} depends on {target}, which the same commit removes",
                     iris=tuple(sorted((record, target))),
@@ -1819,7 +1691,7 @@ class Transaction:
 
     async def _refusing_among(self, roots: list[str]) -> list[str]:
         """The ``roots`` (sorted) that are stored with a refusing class."""
-        refusing = {str(c) for c in self._refusing()}
+        refusing = {str(c) for c in self._refusing}
         heads = await self._session.heads(roots)
         return [h.head_iri for h in heads if h.head_iri and refusing & set(h.head_types or [])]
 
@@ -1834,13 +1706,13 @@ class Transaction:
         removed = set(self._removed_graphs().values())
         referenced: dict[str, list[ReferrerRow]] = {}
         for root in await self._refusing_among(sorted(removed)):
-            rows = [r for r in await session.referrer_rows(root) if r[0] not in removed]
+            rows = [r for r in await session.referrer_rows(root) if r.referrer not in removed]
             if rows:
                 referenced[root] = rows
         if not referenced:
             return None
         roots = tuple(referenced)  # in IRI order
-        return await removals.in_use(roots, referenced[roots[0]], self._readable)
+        return await removals.in_use(roots, roots[0], referenced[roots[0]], self._readable)
 
     async def _claims_held(self) -> list[KeyClaim]:
         """The claims of the transaction that another aggregate holds now (PD-9)."""
