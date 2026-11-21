@@ -7,16 +7,30 @@ import yaml
 from linkml_runtime.linkml_model.meta import SchemaDefinition
 
 from rdf_persistence.access.services.access import load_role_definitions
-from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition
+from rdf_persistence.collaboration.services.workflows import load_workflow
+from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition, InvalidWorkflow
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
     ReportLine,
+    UmlPrefix,
 )
 from rdf_persistence_generation.problems import format_problem, format_problems
 from rdf_persistence_generation.uml import write as write_module
 from rdf_persistence_generation.uml.write import StagedFileRefused, write
-from tests.generator.uml_model import BOOK, Converted, klass, model, object_, run
+from tests.generator.uml_model import (
+    BOOK,
+    PREFIXES,
+    Converted,
+    initial,
+    klass,
+    model,
+    object_,
+    run,
+    state,
+    state_flow,
+    statechart,
+)
 
 ROOT = "lib"
 ROLES_FILE = f"{ROOT}.roles.yaml"
@@ -256,4 +270,159 @@ def test_a_staged_file_the_loader_refuses_moves_nothing(
 
     assert sorted(file.name for file in out.iterdir()) == ["lib_main.yaml"], "nothing was moved"
     assert (out / "lib_main.yaml").read_text(encoding="utf-8") == "kept: yes\n"
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["out"], "no temp folder is left"
+
+
+# --- the workflow files (PD-4, PD-6, PD-8) -------------------------------------------------------
+
+LIBRARY = "https://example.org/ns/library/"
+WORKFLOW_FILE = "workflows/loan.workflow.yaml"
+LOAN_YAML = f"""\
+id: {LIBRARY}loan
+workflow_name: loan
+workflow_states:
+- approved
+- refused
+- requested
+- returned
+initial_state: requested
+workflow_transitions:
+- from_state: approved
+  to_state: returned
+  transition_roles:
+  - librarian
+  - reader
+- from_state: refused
+  to_state: requested
+  transition_roles:
+  - reader
+- from_state: requested
+  to_state: approved
+  transition_roles:
+  - librarian
+- from_state: requested
+  to_state: refused
+  transition_roles:
+  - librarian
+  comment_required: true
+"""
+INITIAL, REQUESTED, APPROVED, REFUSED, RETURNED, CHART = 50, 51, 52, 53, 54, 70
+
+
+def _loan() -> Converted:
+    """The design's concrete example: the diagram ``lib:loan`` and the roles it names."""
+    roles = tuple(
+        object_(
+            40 + n, name, ROLE_DEFINITION, ("role", name), ("level", "tenant"), ("actions", "read")
+        )
+        for n, name in enumerate(("librarian", "reader"))
+    )
+    nodes = (
+        initial(INITIAL),
+        state(REQUESTED, "requested"),
+        state(APPROVED, "approved"),
+        state(REFUSED, "refused"),
+        state(RETURNED, "returned"),
+    )
+    flows = (
+        state_flow(100, INITIAL, REQUESTED),
+        state_flow(101, REQUESTED, APPROVED, roles="librarian"),
+        state_flow(102, REQUESTED, REFUSED, roles="librarian", comment_required="true"),
+        state_flow(103, APPROVED, RETURNED, roles="librarian,reader"),
+        state_flow(104, REFUSED, REQUESTED, roles="reader"),
+    )
+    uml = model(
+        klass(BOOK, "lib:Book"),
+        klass(ROLE_DEFINITION, "rp:RoleDefinition"),
+        objects=roles,
+        state_nodes=nodes,
+        state_flows=flows,
+        statecharts=(statechart(CHART, "lib:loan", *(each.object_id for each in nodes)),),
+    )
+    converted = run(
+        uml,
+        root_name=ROOT,
+        prefixes=[
+            UmlPrefix(prefix_name=name, namespace=namespace)
+            for name, namespace in {**PREFIXES, "lib": LIBRARY}.items()
+        ],
+    )
+    assert converted.problems == [], converted.problem_texts()
+    return converted
+
+
+def test_the_workflow_file_is_written_as_the_design_example_and_read_back(tmp_path: Path) -> None:
+    converted = _loan()
+
+    _write(converted, tmp_path)
+
+    assert (tmp_path / WORKFLOW_FILE).read_text(encoding="utf-8") == LOAN_YAML
+    loaded = load_workflow(tmp_path / WORKFLOW_FILE)
+    assert (loaded.id, loaded.initial_state) == (f"{LIBRARY}loan", "requested")
+    assert sorted(converted.files) == [ROLES_FILE, WORKFLOW_FILE], "roles and workflow are files"
+
+
+def test_a_second_run_with_a_workflow_is_byte_identical(tmp_path: Path) -> None:
+    _write(_loan(), tmp_path)
+    first = {str(file): file.read_bytes() for file in sorted(tmp_path.rglob("*")) if file.is_file()}
+
+    _write(_loan(), tmp_path)
+
+    assert {
+        str(file): file.read_bytes() for file in sorted(tmp_path.rglob("*")) if file.is_file()
+    } == first
+    assert str(tmp_path / WORKFLOW_FILE) in first, "the workflow file is among them"
+
+
+def test_the_new_workflow_moves_in_beside_the_files_already_in_the_folder(tmp_path: Path) -> None:
+    (tmp_path / "workflows").mkdir()
+    (tmp_path / "workflows" / "x.workflow.yaml").write_text("keep: me\n", encoding="utf-8")
+
+    added = _write(_loan(), tmp_path)
+
+    assert sorted(file.name for file in (tmp_path / "workflows").iterdir()) == [
+        "loan.workflow.yaml",
+        "x.workflow.yaml",
+    ], "no ENOTEMPTY, and the other file kept"
+    assert (tmp_path / "workflows" / "x.workflow.yaml").read_text(encoding="utf-8") == "keep: me\n"
+    assert [(line.report_kind, line.element) for line in added] == [
+        (ReportKind.STALE_FILE, "workflows/x.workflow.yaml")
+    ], f"the other workflow file is reported: {added}"
+    assert "stale-file\tworkflows/x.workflow.yaml\t" in (tmp_path / "lib.uml-report.txt").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_the_workflow_this_run_writes_is_not_stale_on_a_rerun(tmp_path: Path) -> None:
+    _write(_loan(), tmp_path)
+
+    assert _write(_loan(), tmp_path) == [], "its own workflow file is not stale"
+
+
+def test_a_workflow_file_in_the_folder_is_unreported_when_no_workflow_is_drawn(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "workflows").mkdir()
+    (tmp_path / "workflows" / "x.workflow.yaml").write_text("keep: me\n", encoding="utf-8")
+
+    added = _write(_drawn(), tmp_path)
+
+    assert added == [], f"a hand-written workflow file is not stale: {added}"
+    assert "stale-file" not in (tmp_path / "lib.uml-report.txt").read_text(encoding="utf-8")
+
+
+def test_a_staged_workflow_the_loader_refuses_moves_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def refuse(path: Path):
+        raise InvalidWorkflow(f"{path.name}: refused")
+
+    monkeypatch.setattr(write_module, "load_workflow", refuse)
+    out = tmp_path / "out"
+    out.mkdir()
+
+    with pytest.raises(StagedFileRefused, match="loan.workflow.yaml: refused"):
+        _write(_loan(), out)
+
+    assert list(out.iterdir()) == [], "nothing was moved"
     assert sorted(path.name for path in tmp_path.iterdir()) == ["out"], "no temp folder is left"

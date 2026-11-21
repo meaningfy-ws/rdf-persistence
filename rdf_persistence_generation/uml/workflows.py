@@ -8,6 +8,7 @@ the one flow leaving the Initial node names the initial state, and every other f
 from collections import defaultdict
 from collections.abc import Callable, Collection
 
+import yaml
 from pydantic import ValidationError
 
 from rdf_persistence.collaboration.domain.generated.rp_workflow import Workflow
@@ -23,6 +24,8 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.uml.context import Context
 
 WORKFLOWS_FOLDER = "workflows/"
+WORKFLOWS_SUFFIX = ".workflow.yaml"  # the file is ``workflows/<workflow name>.workflow.yaml``
+DUMP_WIDTH = 100
 ROLES_TAG = "roles"
 COMMENT_TAG = "comment_required"
 WORKFLOW_TAG = "workflow"  # the class tag that names a workflow
@@ -31,6 +34,36 @@ COMMENT_VALUES = {"true": True, "false": False}
 
 Nodes = dict[int, UmlStateNode]
 Placement = dict[int, list[UmlStatechart]]
+
+
+def workflow_file_text(entry: Workflow) -> str:
+    """PD-6: the workflow in the key order of the library's fixture, ``comment_required`` only when true."""
+    transitions = [
+        {
+            "from_state": each.from_state,
+            "to_state": each.to_state,
+            "transition_roles": list(each.transition_roles),
+            **({COMMENT_TAG: True} if each.comment_required else {}),
+        }
+        for each in entry.workflow_transitions or []
+    ]
+    data = {
+        "id": entry.id,
+        "workflow_name": entry.workflow_name,
+        "workflow_states": list(entry.workflow_states),
+        "initial_state": entry.initial_state,
+        "workflow_transitions": transitions,
+    }
+    text: str = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=DUMP_WIDTH)
+    return text
+
+
+def workflow_files(entries: Collection[Workflow]) -> dict[str, str]:
+    """PD-8: each workflow's file, a path relative to ``--out`` to its text."""
+    return {
+        f"{WORKFLOWS_FOLDER}{each.workflow_name}{WORKFLOWS_SUFFIX}": workflow_file_text(each)
+        for each in entries
+    }
 
 
 class Drawn:

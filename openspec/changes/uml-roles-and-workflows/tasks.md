@@ -51,7 +51,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
   `test_uml_rules.py:1039-1042` row stays green); the design's concrete example. Then
   `uml/workflows.py` and its call in `convert` after roles, `ReportKind.WORKFLOW`/`DERIVED_IRI`,
   the `UmlRule` codes.
-- [ ] 2.3 Write and final check (PD-4, PD-6), after 2.2. Generator unit, first, in
+- [x] 2.3 Write and final check (PD-4, PD-6), after 2.2. Generator unit, first, in
   `test_uml_write.py`: the concrete example's file, byte for byte; read by `load_workflow`; rerun
   identical; `out/workflows/` holding another file: the new file moved in beside it (no
   `ENOTEMPTY`), `stale-file workflows/x.workflow.yaml` when a workflow is drawn, no line when none
