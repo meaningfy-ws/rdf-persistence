@@ -211,7 +211,14 @@ class WriteGuards:
 
     @staticmethod
     async def _stored_members(session: Session, iri: str) -> set[str]:
-        return {str(m) for m in (await session.root_values(iri, [v.HAS_PART]))[v.HAS_PART]}
+        """The members the stored collection already holds as nested ones: none if it does not nest.
+
+        A stored leaf (nests false) holds no nested member, whatever it names, so every nested member
+        of a leaf turned nesting is new and walked.
+        """
+        values = await session.root_values(iri, [v.HAS_PART, v.NESTS])
+        nests = Literal(True) in {Literal(n) for n in values[v.NESTS]}
+        return {str(m) for m in values[v.HAS_PART] if nests}
 
     async def _skeleton(
         self, session: Session, name: str, collection: ReferenceCollection, context: GuardContext
@@ -222,7 +229,8 @@ class WriteGuards:
         """
         skeleton: dict[str, tuple[str | None, list[str]]] = {}
         for iri, graph in (await session.graphs_with(v.NESTS, Literal(True))).items():
-            if (members := self._members_if_alike(name, collection, iri, graph)) is not None:
+            members = self._members_if_alike(name, collection, iri, graph)
+            if members is not None:
                 skeleton[iri] = (str(graph.value(graph_iri(iri), v.VERSION)), members)
         for iri, triples in context.collected.items():
             graph = Graph()
@@ -238,13 +246,25 @@ class WriteGuards:
     def _members_if_alike(
         self, name: str, collection: ReferenceCollection, iri: str, graph: Graph
     ) -> list[str] | None:
-        """The members of ``iri`` when it nests and is of ``collection``'s class and member class."""
+        """The members of ``iri`` when it nests and is of ``collection``'s class and member class.
+
+        A graph that does not decode is none: it is another collection's corruption, which neither
+        blocks this save nor is named by it.
+        """
+        other = self._decoded_if_alike(name, collection, iri, graph)
+        return None if other is None else [str(m) for m in other.has_part or []]
+
+    def _decoded_if_alike(
+        self, name: str, collection: ReferenceCollection, iri: str, graph: Graph
+    ) -> ReferenceCollection | None:
         if collection_class(self._collections, iri, graph) != name:
             return None
-        other = self._decoded(name, iri, graph)
-        if not other.nests or other.member_class != collection.member_class:
+        try:
+            other = decode_collection(self._mapper, self._models, name, iri, graph)
+        except ValueError:
             return None
-        return [str(m) for m in other.has_part or []]
+        alike = other.nests and other.member_class == collection.member_class
+        return other if alike else None
 
     async def _unlike_nested(
         self,
