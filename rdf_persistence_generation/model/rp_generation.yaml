@@ -1910,6 +1910,14 @@ enums:
         title: Role
         description: A role definition drawn as an object, with its role, level and actions.
         meaning: rp:ReportKindRole
+      workflow:
+        title: Workflow
+        description: A Statechart diagram read as a workflow, with its state and transition counts, or a workflow no class names.
+        meaning: rp:ReportKindWorkflow
+      derived_iri:
+        title: Derived IRI
+        description: A workflow whose diagram name has no prefix, so its IRI is made from the schema base.
+        meaning: rp:ReportKindDerivedIri
   UmlRule:
     title: UML rule
     description: >-
@@ -2024,3 +2032,27 @@ enums:
         title: Role duplicate
         description: PD-3, two role objects with one role and level.
         meaning: rp:UmlRuleRoleDuplicate
+      workflow_node:
+        title: Workflow node
+        description: PD-5, a state of the converted packages is placed on exactly one Statechart diagram.
+        meaning: rp:UmlRuleWorkflowNode
+      workflow_initial:
+        title: Workflow initial
+        description: PD-5, a Statechart diagram has one Initial node with one untagged flow to a state of the diagram.
+        meaning: rp:UmlRuleWorkflowInitial
+      workflow_transition:
+        title: Workflow transition
+        description: PD-5, a transition carries the tags `roles` (drawn roles only) and `comment_required`, runs between states of one diagram and is the only one between them.
+        meaning: rp:UmlRuleWorkflowTransition
+      workflow_definition:
+        title: Workflow definition
+        description: PD-5, the name, states and transitions of a diagram are a workflow definition of the toolkit, its states named once.
+        meaning: rp:UmlRuleWorkflowDefinition
+      workflow_duplicate:
+        title: Workflow duplicate
+        description: PD-5, two Statechart diagrams with one workflow name or one workflow IRI.
+        meaning: rp:UmlRuleWorkflowDuplicate
+      workflow_class:
+        title: Workflow class
+        description: PD-5, a class tagged `workflow` names a workflow a converted diagram draws, when one is converted.
+        meaning: rp:UmlRuleWorkflowClass

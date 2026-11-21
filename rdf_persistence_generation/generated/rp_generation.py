@@ -205,6 +205,10 @@ class ReportKind(str, _Enum):
     "A connector end with no multiplicity, read as zero or more."
     ROLE = "role"
     "A role definition drawn as an object, with its role, level and actions."
+    WORKFLOW = "workflow"
+    "A Statechart diagram read as a workflow, with its state and transition counts, or a workflow no class names."
+    DERIVED_IRI = "derived_iri"
+    "A workflow whose diagram name has no prefix, so its IRI is made from the schema base."
 
 
 class UmlRule(str, _Enum):
@@ -263,6 +267,18 @@ class UmlRule(str, _Enum):
     "PD-3, the values of a role object are a role definition of the toolkit, with at least one action and none twice."
     ROLE_DUPLICATE = "role_duplicate"
     "PD-3, two role objects with one role and level."
+    WORKFLOW_NODE = "workflow_node"
+    "PD-5, a state of the converted packages is placed on exactly one Statechart diagram."
+    WORKFLOW_INITIAL = "workflow_initial"
+    "PD-5, a Statechart diagram has one Initial node with one untagged flow to a state of the diagram."
+    WORKFLOW_TRANSITION = "workflow_transition"
+    "PD-5, a transition carries the tags `roles` (drawn roles only) and `comment_required`, runs between states of one diagram and is the only one between them."
+    WORKFLOW_DEFINITION = "workflow_definition"
+    "PD-5, the name, states and transitions of a diagram are a workflow definition of the toolkit, its states named once."
+    WORKFLOW_DUPLICATE = "workflow_duplicate"
+    "PD-5, two Statechart diagrams with one workflow name or one workflow IRI."
+    WORKFLOW_CLASS = "workflow_class"
+    "PD-5, a class tagged `workflow` names a workflow a converted diagram draws, when one is converted."
 
 
 

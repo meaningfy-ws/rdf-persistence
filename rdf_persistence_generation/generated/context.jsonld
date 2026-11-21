@@ -387,7 +387,9 @@
             "stale_file": "https://meaningfy.ws/ns/rdf-persistence#ReportKindStaleFile",
             "external_list": "https://meaningfy.ws/ns/rdf-persistence#ReportKindExternalList",
             "unspecified_multiplicity": "https://meaningfy.ws/ns/rdf-persistence#ReportKindUnspecifiedMultiplicity",
-            "role": "https://meaningfy.ws/ns/rdf-persistence#ReportKindRole"
+            "role": "https://meaningfy.ws/ns/rdf-persistence#ReportKindRole",
+            "workflow": "https://meaningfy.ws/ns/rdf-persistence#ReportKindWorkflow",
+            "derived_iri": "https://meaningfy.ws/ns/rdf-persistence#ReportKindDerivedIri"
          }
       },
       "required": {

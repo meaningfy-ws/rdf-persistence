@@ -37,10 +37,28 @@ PD_2_RULES = frozenset(
         "role_run_state",  # the role rules of uml-roles-and-workflows PD-3 have no R-n
         "role_definition",
         "role_duplicate",
+        "workflow_node",  # the workflow rules of uml-roles-and-workflows PD-5 have no R-n
+        "workflow_initial",
+        "workflow_transition",
+        "workflow_definition",
+        "workflow_duplicate",
+        "workflow_class",
     }
 )
 WITHOUT_A_RULE_NUMBER = frozenset(
-    {"no_rule", "activity_root", "role_run_state", "role_definition", "role_duplicate"}
+    {
+        "no_rule",
+        "activity_root",
+        "role_run_state",
+        "role_definition",
+        "role_duplicate",
+        "workflow_node",
+        "workflow_initial",
+        "workflow_transition",
+        "workflow_definition",
+        "workflow_duplicate",
+        "workflow_class",
+    }
 )
 RULE_NUMBER = re.compile(r"\bR-\d+\b")
 

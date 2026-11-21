@@ -65,6 +65,7 @@ from rdf_persistence_generation.uml.slots import (
     use_toolkit_slots,
 )
 from rdf_persistence_generation.uml.tags import package_kind
+from rdf_persistence_generation.uml.workflows import workflow_entries
 
 LINKML_TYPES: Final = "linkml:types"
 LINKML_PREFIX: Final = ("linkml", "https://w3id.org/linkml/")
@@ -423,6 +424,7 @@ def convert(
     built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx), kinds)
     use_toolkit_slots(ctx, toolkit_usages, classes, shared, built.slot_names)
     entries = role_entries(ctx, model)
+    workflow_entries(ctx, model, {each.role for each in entries})  # judged now; task 2.3 writes them
     problems = ctx.findings.problems()
     if problems:
         return [], ctx.findings.report(), problems, {}

@@ -43,7 +43,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
   each `no_rule`; a `<memo>` tag is read from `NOTES`; a model with neither reads as today. Then
   `QeaBuilder` (`state`, `statechart`, `state_flow`, the two tables), `TABLE_COLUMNS`, the records,
   `make generate`.
-- [ ] 2.2 Workflow rule (PD-5), after 2.1. Generator unit, first,
+- [x] 2.2 Workflow rule (PD-5), after 2.1. Generator unit, first,
   `tests/generator/unit/test_uml_workflows.py`, one parametrized table covering every error-matrix
   row of State node, Diagram, StateFlow, Class and Workflow, each asserting the element named; the
   CURIE name and the plain name (`derived-iri` line); two diagrams with one name; a class tagged
