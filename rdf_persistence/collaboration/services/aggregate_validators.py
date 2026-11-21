@@ -27,7 +27,7 @@ from rdf_persistence.schema.services.schema_structure import (
 
 
 class AggregateReader(Protocol):
-    """What a rule may ask about the aggregates a root names: their classes, and nothing else (DEC-2)."""
+    """What a rule may ask about the aggregates a root names: their classes, and nothing else."""
 
     async def classes_of(self, iri: str) -> frozenset[str]:
         """The class names of the aggregate at ``iri``; empty when there is none, or the writer may not read it."""

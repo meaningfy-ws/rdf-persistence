@@ -23,6 +23,7 @@ from rdf_persistence import (
 )
 from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import ToolkitSettings
 from rdf_persistence.api.entrypoints.service import install_service
+from rdf_persistence.collaboration.services.aggregate_validators import AggregateValidator
 from rdf_persistence.events.services.events import EventBus
 from rdf_persistence.files.services.files import FileStore
 from rdf_persistence.iris.services.generated.rp_iris_services import IdKind, IdSpec, IriPolicy
@@ -144,6 +145,7 @@ class ToyService:
         id_source: IdSource = draw_id,
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
+        aggregate_validators: Mapping[str, Sequence[AggregateValidator]] = {},
         workflows: Sequence[Path] = (REVIEW_WORKFLOW,),
         migrations: Path = TOY_MIGRATIONS,
         stores: Mapping[str, Store] = {},
@@ -189,6 +191,7 @@ class ToyService:
             id_source=id_source,
             grant_validators=grant_validators,
             root_validators=root_validators,
+            aggregate_validators=aggregate_validators,
             workflows=workflows,
             migrations=migrations,
             stores=stores,

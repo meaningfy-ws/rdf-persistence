@@ -1,7 +1,7 @@
 """What the routes share: the ports, the settings, and the pieces built from the application's schema (PD-13)."""
 
 import logging
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
@@ -34,6 +34,10 @@ from rdf_persistence.collaboration.domain.generated import (
     rp_collections,
     rp_discussion,
     rp_workflow,
+)
+from rdf_persistence.collaboration.services.aggregate_validators import (
+    AggregateValidator,
+    AggregateValidators,
 )
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.discussion import dependents as discussion_dependents
@@ -125,6 +129,7 @@ class ServiceKit:
         id_source: IdSource = draw_id,
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
+        aggregate_validators: Mapping[str, Sequence[AggregateValidator]] = {},
         workflows: Sequence[Path] = (),
         stores: Mapping[str, Store] = {},
         event_bus: EventBus | None = None,
@@ -147,8 +152,11 @@ class ServiceKit:
         Raises:
             InvalidWorkflow: A workflow file is not valid, or a class names a workflow no file defines.
             InvalidMigration: A chain of migration files, the toolkit's or the consumer's, is not valid.
-            ValueError: A name in ``stores`` is ``default``, or one raw store is wired under two names
-                (the default store included); ``Tenancy`` raises it and the message names the key.
+            ValueError: A key of ``aggregate_validators`` is not a root class of the schema or a parent
+                of one (the message names it); or a name in ``stores`` is ``default``, or one raw store
+                is wired under two names (the default store included); ``Tenancy`` raises it and the
+                message names the key.
+            TypeError: A rule of ``aggregate_validators`` is not callable.
         """
         view = load_schema(schema)
         self.view = view
@@ -210,7 +218,13 @@ class ServiceKit:
             access_class=access_class,
             iris=self.iris,
             listings=self.listings,
-            guards=WriteGuards(mapper, models, self.listings, self.workflows),
+            guards=WriteGuards(
+                mapper,
+                models,
+                self.listings,
+                self.workflows,
+                validators=AggregateValidators(view, aggregate_validators, schema.parent),
+            ),
             removals=ReferencedRemovals(view, self.toolkit.limits),
             grant_validators=grant_validators,
             root_validators=root_validators,
@@ -562,7 +576,10 @@ class ServiceKit:
             principal=authorised.principal, global_roles=authorised.global_roles
         )
         access = authorised.caller_access
-        async with self.session(access.tenant, authorised.principal) as session:
+        may_read = self.readable_by(caller, access)
+        async with self.tenancy.tenant_session(
+            access.tenant, Principal(id=authorised.principal), may_read=may_read
+        ) as session:
             yield Collaboration(
                 session,
                 view=self.view,
@@ -575,6 +592,10 @@ class ServiceKit:
                 access=access,
                 workflows=self.workflows,
             )
+
+    def readable_by(self, caller: VerifiedCaller, access: CallerAccess) -> Callable[[str], bool]:
+        """Whether ``caller``, holding ``access``, may read an aggregate IRI: what a session carries as ``may_read``."""
+        return lambda iri: self.rules.may(caller, access, iri, Action.READ)
 
     def session(self, tenant: str, principal: str) -> AbstractAsyncContextManager[Session]:
         """A session on the tenant's database for ``principal``."""

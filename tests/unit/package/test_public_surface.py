@@ -24,7 +24,7 @@ from tests.unit.layout_table import MOVED_MODULES, turned_on_classes, turned_on_
 ROOT = Path(__file__).resolve().parents[3]
 SNAPSHOT = ROOT / "tests" / "fixtures" / "public-surface.json"
 REFRESH = "RP_REFRESH_SNAPSHOT"
-NAMES = 151
+NAMES = 153
 _MISSING = object()
 
 
@@ -117,7 +117,7 @@ def refreshed_on_request() -> None:
 
 
 def test_the_snapshot_holds_the_names_of_the_public_surface():
-    """TC-03: 151 names, the very set of ``__all__``."""
+    """TC-03: 153 names, the very set of ``__all__``."""
     snapshot = _snapshot()
 
     assert len(snapshot) == NAMES, "the snapshot holds every name of the surface"

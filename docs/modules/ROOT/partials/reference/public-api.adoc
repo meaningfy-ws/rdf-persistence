@@ -12,7 +12,9 @@
 |`Activity` |class |Something that happened and generated or changed entities, carried out by principals.
 |`Add` |class |An activity that added an aggregate.
 |`AggregateKey` |class |A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates.
+|`AggregateReader` |class |What a rule may ask about the aggregates a root names: their classes, and nothing else.
 |`AggregateRoot` |class |A mixin for classes whose instances are aggregate roots.
+|`AggregateValidator` |function |
 |`Authorised` |class |What a route's access check settled: the caller's principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on, and the global roles the token granted the caller.
 |`BadQuery` |class |The store refused the SPARQL text as malformed.
 |`BlobEntry` |class |One object in a tenant's bucket, as a listing of the bucket reports it.

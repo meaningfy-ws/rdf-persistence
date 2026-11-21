@@ -85,7 +85,7 @@ class StoreTenancy:
         self.store = store
 
     @asynccontextmanager
-    async def tenant_session(self, tenant, principal):
+    async def tenant_session(self, tenant, principal, *, may_read=None):
         yield session_on(self.store)
 
 

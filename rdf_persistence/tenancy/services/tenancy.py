@@ -688,8 +688,18 @@ class Tenancy:
         """Every access record, in one query, ordered by IRI; it also fills the routing cache of each tenant."""
         return await self._records()
 
-    async def rename(self, tenant: str, label: str, if_version: str, principal: Principal) -> str:
+    async def rename(
+        self,
+        tenant: str,
+        label: str,
+        if_version: str,
+        principal: Principal,
+        *,
+        may_read: Callable[[str], bool] | None = None,
+    ) -> str:
         """Give the tenant a new label, in its root and in its access record, whose description follows; answers the record's new version.
+
+        ``may_read`` is kept on the session that writes the root, for the aggregate validators of its class.
 
         The record's version is checked and the label validated first, so a stale or invalid rename
         writes nothing. The root is written before the record: a failure between the two leaves the
@@ -705,12 +715,14 @@ class Tenancy:
             raise Conflict(f"{tenant} was changed by someone else since it was read")
         record.label = label  # validates the label before anything is written
         record.description = RECORD_DESCRIPTION.format(label=label.rstrip("."))
-        await self._relabel_root(tenant, label, principal)
+        await self._relabel_root(tenant, label, principal, may_read)
         return await self._replaced(tenant, principal, record, if_version)
 
-    async def _relabel_root(self, tenant: str, label: str, principal: Principal) -> None:
+    async def _relabel_root(
+        self, tenant: str, label: str, principal: Principal, may_read: Callable[[str], bool] | None
+    ) -> None:
         """Store ``label`` in the tenant's root, under the root's own version."""
-        async with self.tenant_session(tenant, principal) as session:
+        async with self.tenant_session(tenant, principal, may_read=may_read) as session:
             work = UnitOfWork(session, self._mapper)
             root = await work.get(self._root_class, tenant)
             old = root.model_copy(deep=True)

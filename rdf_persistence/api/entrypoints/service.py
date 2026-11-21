@@ -17,6 +17,7 @@ from rdf_persistence.api.entrypoints.kit import ServiceKit
 from rdf_persistence.api.entrypoints.openapi import install_openapi
 from rdf_persistence.api.entrypoints.problems import install_problem_handlers
 from rdf_persistence.api.entrypoints.router import build_router
+from rdf_persistence.collaboration.services.aggregate_validators import AggregateValidator
 from rdf_persistence.core.domain.exceptions import InvalidIri
 from rdf_persistence.events.services.events import EventBus
 from rdf_persistence.files.services.files import FileStore
@@ -49,6 +50,7 @@ def install_service(
     id_source: IdSource = draw_id,
     grant_validators: Sequence[GrantValidator] = (),
     root_validators: Sequence[RootValidator] = (),
+    aggregate_validators: Mapping[str, Sequence[AggregateValidator]] = {},
     workflows: Sequence[Path] = (),
     bus: MessageBus | None = None,
     stores: Mapping[str, Store] = {},
@@ -81,6 +83,11 @@ def install_service(
     ``grant_validators`` and ``root_validators`` are the consumer's own rules on tenant writes: each
     refuses a write by raising ``InvalidBody`` (422), before anything is written (see ``Tenancy``).
 
+    ``aggregate_validators`` maps the name of a class of the schema to the rules a consumer enforces on
+    the write of a root of that class, or of a class derived from it, whichever way it is written
+    (see ``AggregateValidator``). A key that is not a root class of the schema, or a parent of one,
+    stops the start-up (``ValueError``, naming it).
+
     ``workflows`` are the paths of the workflow files, one per workflow, that the classes of the schema
     name with the ``workflow`` annotation. They are checked here, so a bad file stops the service
     before it serves.
@@ -108,7 +115,7 @@ def install_service(
     of the toolkit's routes.
 
     Raises:
-        ValueError: ``stores`` has the key ``default``, or one ``Store`` object is wired under two names
+        ValueError: A key of ``aggregate_validators`` is not a root class or a parent of one. Or ``stores`` has the key ``default``, or one ``Store`` object is wired under two names
             (the default included); the message names the key. Or ``event_bus`` is given and ``settings.deployment`` is empty: the deployments
             could not tell their own messages from the others'.
         StoreNotWired: (at start-up) an access record names a store that is not wired.
@@ -145,6 +152,7 @@ def install_service(
         id_source=id_source,
         grant_validators=grant_validators,
         root_validators=root_validators,
+        aggregate_validators=aggregate_validators,
         workflows=workflows,
         stores=stores,
         event_bus=event_bus,

@@ -5,6 +5,7 @@ and the aggregate is read back so the caller can answer with what was stored. Wh
 for itself is HTTP: negotiation, headers and status.
 """
 
+from collections.abc import Callable
 from typing import cast
 
 from linkml_runtime.linkml_model.meta import ClassDefinition
@@ -70,11 +71,14 @@ class Aggregates:
         data: bytes,
         media_type: str,
         represented_as: str = JSON,
+        *,
+        may_read: Callable[[str], bool] | None = None,
     ) -> tuple[str, Stored]:
         """Store the body ``data`` as a new aggregate of ``cls`` served at ``rp_path``; answers its minted IRI and what was stored.
 
         ``represented_as`` is the representation the caller will be answered in; a write the
-        aggregate has no such form for is refused before anything is stored.
+        aggregate has no such form for is refused before anything is stored. ``may_read`` tells which
+        aggregates the writer may read, for the rules of the class (see ``AggregateReader``).
 
         Raises:
             NotAcceptable: The aggregate has no form in ``represented_as``; nothing was stored.
@@ -86,7 +90,7 @@ class Aggregates:
         if named:
             raise InvalidBody(f"a new {cls.name} cannot name its parts, found {min(named)}")
         self._documents.require_form(triples, represented_as)
-        async with self._tenancy.tenant_session(tenant, principal) as session:
+        async with self._tenancy.tenant_session(tenant, principal, may_read=may_read) as session:
             await session.add_graph(iri, triples)
             return iri, await session.get_graph(iri)
 
@@ -100,11 +104,14 @@ class Aggregates:
         media_type: str,
         if_version: str,
         represented_as: str = JSON,
+        *,
+        may_read: Callable[[str], bool] | None = None,
     ) -> Stored:
         """Replace the aggregate ``iri`` by the body ``data`` if it is still at ``if_version``; answers what was stored.
 
         ``represented_as`` is the representation the caller will be answered in; a replacement the
-        aggregate has no such form for is refused before anything changes.
+        aggregate has no such form for is refused before anything changes. ``may_read`` tells which
+        aggregates the writer may read, for the rules of the class (see ``AggregateReader``).
 
         What the service stored in the aggregate's ``internal`` slots stays: no body can set them.
 
@@ -120,7 +127,7 @@ class Aggregates:
         self._documents.require_form(triples, represented_as)
         if iri == tenant:
             await self._tenancy.vet_root(tenant, triples, principal)
-        async with self._tenancy.tenant_session(tenant, principal) as session:
+        async with self._tenancy.tenant_session(tenant, principal, may_read=may_read) as session:
             found = await session.get_graph(iri)
             self._require_class(found, iri, cls)
             stored = found[0]
