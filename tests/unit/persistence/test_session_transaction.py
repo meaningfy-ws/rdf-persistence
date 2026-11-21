@@ -631,11 +631,13 @@ async def test_relying_twice_on_one_version_adds_one_guard(session, seeded):
         assert len(t._guards) == 1, "the second call is a no-op"
 
 
-async def test_relying_on_two_versions_of_one_graph_raises(session, seeded):
+async def test_relying_on_two_versions_of_one_graph_is_a_conflict_naming_it(session, seeded):
     async with session.transaction() as t:
         t._rely_on(A, seeded[A])
-        with pytest.raises(ValueError, match=re.escape(A)):
+        with pytest.raises(Conflict, match=re.escape(A)) as refused:
             t._rely_on(A, "another-version")
+    assert refused.value.iris == (A,)
+    assert "changed by someone else since it was read" in str(refused.value)
 
 
 async def test_relying_after_the_block_ended_raises(session, seeded):

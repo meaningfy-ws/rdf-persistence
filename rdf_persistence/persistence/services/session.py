@@ -1429,13 +1429,14 @@ class Transaction:
 
         Raises:
             RuntimeError: The block has ended.
-            ValueError: The graph is relied on already at another version.
+            Conflict: The graph is relied on already at another version: it changed between two
+                reads of this transaction, so the commit would fail anyway.
         """
         self._require_open()
         graph = self._session._graph(iri)
         if (relied := self._relied.get(graph)) is not None:
             if relied[1] != version:
-                raise ValueError(f"{iri} is relied on at another version already")
+                raise Conflict(changed_text(str(iri), version), iris=(str(iri),))
             return
         self._guards.append(_at_version(graph, version))
         self._relied[graph] = (str(iri), version)

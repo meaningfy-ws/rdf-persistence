@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 import pytest
 
 from rdf_persistence import Conflict, InvalidBody, StoredDataInvalid
-from rdf_persistence.collaboration.services.nesting import Cycle, walk_from
+from rdf_persistence.collaboration.services.write_guards import _walk_from
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore, fake_session
 from tests.toy import TENANT, book_iri, shelf_iri, toy_mapper
@@ -35,51 +35,49 @@ from tests.unit.collaboration.test_write_guards import guards, save, version_of
 def test_walk_from_follows_a_chain_a_hundred_thousand_deep_without_recursing():
     skeleton = {f"n{i}": [f"n{i + 1}"] for i in range(100_000)}
     skeleton["n100000"] = ["root"]
-    walk = walk_from("root", ["n0"], skeleton)
-    assert walk.cycle == Cycle("n0", 100_000), "a cycle through every collection of the chain"
+    reached, cycle = _walk_from("root", ["n0"], skeleton)
+    assert cycle == ("n0", 100_000), "a cycle through every collection of the chain"
 
 
 def test_walk_from_reaches_every_node_of_a_long_chain_that_does_not_come_back():
     skeleton = {f"n{i}": [f"n{i + 1}"] for i in range(50_000)}
-    walk = walk_from("root", ["n0"], skeleton)
-    assert walk.cycle is None
-    assert len(walk.reached) == 50_001, "the end of the chain is reached and not entered"
+    reached, cycle = _walk_from("root", ["n0"], skeleton)
+    assert cycle is None
+    assert len(reached) == 50_001, "the end of the chain is reached and not entered"
 
 
 def test_walk_from_ends_on_a_cycle_that_does_not_pass_through_the_root():
     skeleton = {"a": ["b"], "b": ["a", "c"], "c": ["c"]}
-    walk = walk_from("root", ["a"], skeleton)
-    assert walk.cycle is None, "a loop elsewhere is not the saved collection's cycle"
-    assert walk.reached == {"a", "b", "c"}
+    reached, cycle = _walk_from("root", ["a"], skeleton)
+    assert cycle is None, "a loop elsewhere is not the saved collection's cycle"
+    assert reached == {"a", "b", "c"}
 
 
 def test_walk_from_enters_a_diamond_once_and_reports_the_cycle_through_it():
     skeleton = {"a": ["b", "c"], "b": ["d"], "c": ["d"], "d": ["root"]}
-    walk = walk_from("root", ["a"], skeleton)
-    assert walk.cycle == Cycle("a", 2), (
-        "a, then b or c, then d: two between a and the root, d counts"
-    )
+    reached, cycle = _walk_from("root", ["a"], skeleton)
+    assert cycle == ("a", 2), "a, then b or c, then d: two between a and the root, d counts"
 
 
 def test_walk_from_reports_a_cycle_through_a_node_a_first_path_already_entered():
     # d is entered by the long way first; the cycle it closes must still be found
     skeleton = {"a": ["d", "x"], "x": ["d"], "d": ["root"]}
-    walk = walk_from("root", ["a"], skeleton)
-    assert walk.cycle is not None
-    assert walk.cycle.closing == "a"
+    reached, cycle = _walk_from("root", ["a"], skeleton)
+    assert cycle is not None
+    assert cycle[0] == "a"
 
 
 def test_walk_from_names_the_new_member_a_cycle_enters_by_and_not_the_first_new_member():
     skeleton = {"a": ["x"], "b": ["y"], "y": ["root"]}
-    walk = walk_from("root", ["a", "b"], skeleton)
-    assert walk.cycle == Cycle("b", 1), "the second new member closes it, through y"
+    reached, cycle = _walk_from("root", ["a", "b"], skeleton)
+    assert cycle == ("b", 1), "the second new member closes it, through y"
 
 
 def test_walk_from_finds_a_cycle_through_a_node_both_new_members_lead_to():
     skeleton = {"a": ["d"], "b": ["d"], "d": ["root"]}
-    walk = walk_from("root", ["b", "a"], skeleton)
-    assert walk.cycle is not None
-    assert walk.cycle.between == 1
+    reached, cycle = _walk_from("root", ["b", "a"], skeleton)
+    assert cycle is not None
+    assert cycle[1] == 1
 
 
 @pytest.mark.parametrize(
@@ -91,26 +89,26 @@ def test_walk_from_finds_a_cycle_through_a_node_both_new_members_lead_to():
     ],
 )
 def test_walk_from_reaches_a_new_member_whatever_the_skeleton_says_of_it(skeleton, reached):
-    walk = walk_from("root", ["n"], skeleton)
-    assert walk.cycle is None
-    assert walk.reached == reached
+    walked, cycle = _walk_from("root", ["n"], skeleton)
+    assert cycle is None
+    assert walked == reached
 
 
 def test_walk_from_a_root_naming_itself_is_a_cycle_with_nothing_between():
-    assert walk_from("root", ["root"], {}).cycle == Cycle("root", 0)
+    assert _walk_from("root", ["root"], {})[1] == ("root", 0)
 
 
 def test_walk_from_nothing_new_walks_nothing():
-    walk = walk_from("root", [], {"a": ["root"]})
-    assert walk.cycle is None
-    assert walk.reached == frozenset()
+    reached, cycle = _walk_from("root", [], {"a": ["root"]})
+    assert cycle is None
+    assert reached == frozenset()
 
 
 def test_walk_from_never_enters_the_root_so_its_stored_members_are_not_followed():
     skeleton = {"root": ["old"], "old": ["new"], "new": ["root"]}
-    walk = walk_from("root", ["new"], skeleton)
-    assert walk.cycle == Cycle("new", 0), "root is met first, as new's member"
-    assert "old" not in walk.reached, "the root's stale stored edge is never followed"
+    reached, cycle = _walk_from("root", ["new"], skeleton)
+    assert cycle == ("new", 0), "root is met first, as new's member"
+    assert "old" not in reached, "the root's stale stored edge is never followed"
 
 
 @pytest.mark.xfail(
@@ -120,7 +118,7 @@ def test_walk_from_never_enters_the_root_so_its_stored_members_are_not_followed(
 )
 def test_walk_from_counts_the_shortest_way_back_when_there_are_two():
     skeleton = {"a": ["root", "b"], "b": ["c"], "c": ["d"], "d": ["root"]}
-    assert walk_from("root", ["a"], skeleton).cycle == Cycle("a", 0)
+    assert _walk_from("root", ["a"], skeleton)[1] == ("a", 0)
 
 
 # --- the guard: a save that closes a cycle ----------------------------------------------------
@@ -231,12 +229,6 @@ async def raw_and_guarded():
         yield raw, checked
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="new = nested - stored members ignores that a stored leaf (nests false) cannot hold "
-    "nested ones: a stored shelf that names a shelf anyway (written past the guard) is turned nesting "
-    "by a replace that keeps the member, and no walk runs, so a cycle is stored",
-)
 async def test_a_leaf_that_stores_a_shelf_and_is_turned_nesting_cannot_close_a_cycle_unchecked():
     async with raw_and_guarded() as (raw, checked):
         await put(raw, nesting(Y, X))  # Y nests X
@@ -251,11 +243,6 @@ async def test_a_leaf_that_stores_a_shelf_and_is_turned_nesting_cannot_close_a_c
 # --- races ------------------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="a second guard of one transaction reads a graph another writer changed meanwhile: "
-    "_rely_on raises ValueError ('relied on at another version') where the race is a Conflict",
-)
 async def test_a_graph_changed_between_two_saves_of_one_transaction_is_a_conflict_not_a_value_error():
     async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
         await save(session, nesting(Y), nesting(X), nesting(Z))
@@ -390,11 +377,6 @@ async def test_a_cascade_refuses_a_stored_nested_shelf_of_another_member_class(
 # --- a corrupt nesting graph in the skeleton --------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="_skeleton decodes every stored nesting shelf of the tenant: one that does not decode "
-    "refuses an unrelated save, and the InvalidBody names that other shelf's IRI (PD-7, RISK-8)",
-)
 async def test_a_corrupt_stored_shelf_does_not_block_a_save_nor_name_itself_in_the_refusal():
     async with raw_and_guarded() as (raw, checked):
         await save(checked, nesting(X), nesting(Z))
