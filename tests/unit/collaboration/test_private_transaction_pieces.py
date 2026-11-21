@@ -17,6 +17,8 @@ CALLERS = {
     "_allow_state": {"collaboration/services/transitions.py"},
     "_require_match": {"collaboration/services/reference_collections.py"},
     "_require_present": {"collaboration/services/discussion.py"},
+    # ``_rely_on`` is handed out as ``GuardContext.rely_on``, built only in ``Transaction._context``
+    "_rely_on": {DEFINED_IN},
 }
 
 

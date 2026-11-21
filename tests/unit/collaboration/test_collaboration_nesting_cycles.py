@@ -3,7 +3,7 @@
 import pytest
 
 from rdf_persistence import Conflict, InvalidBody
-from rdf_persistence.testkit import fake_session
+from rdf_persistence.testkit import FakeStore, fake_session
 from tests.toy import TENANT, shelf, shelf_iri, toy_mapper
 from tests.unit.collaboration.test_write_guards import guards, save, version_of
 
@@ -110,3 +110,83 @@ async def test_a_replace_that_adds_no_nested_shelf_adds_no_guard():
         renamed, nested = added
         assert renamed == 1, "a rename is guarded by its own replace only"
         assert nested > renamed, "a nested shelf added is guarded by what the walk read"
+
+
+# -- the member class of a nested collection cannot change under its parent (review C-1, W-4) --------
+
+
+def holding(iri: str, **slots):
+    """A flat shelf of books (no members) with the given slots changed."""
+    return shelf(iri).model_copy(update=slots)
+
+
+async def test_the_member_class_of_a_nested_shelf_cannot_change_while_a_nesting_shelf_holds_it():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await save(session, nesting(X, Y))
+        before = await version_of(session, Y)
+        text = f"the member class of {Y} cannot change while a nesting collection holds it"
+        with pytest.raises(InvalidBody, match=text) as refused:
+            await replace(session, holding(Y, member_class="Author"))
+        assert X not in str(refused.value), "the holder may be hidden from the saver"
+        assert await version_of(session, Y) == before, "the shelf is as stored"
+
+
+async def test_the_member_class_of_a_shelf_nobody_nests_can_change():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await replace(session, holding(Y, member_class="Author"))
+        assert await version_of(session, Y), "the replace was accepted"
+
+
+async def test_a_new_member_class_refuses_the_nested_shelves_the_stored_one_held():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await save(session, nesting(X, Y))
+        before = await version_of(session, X)
+        with pytest.raises(InvalidBody, match=f"not stored aggregates of Author: .*{Y}"):
+            await replace(session, nesting(X, Y).model_copy(update={"member_class": "Author"}))
+        assert await version_of(session, X) == before, "the shelf is as stored"
+
+
+async def test_the_member_class_of_a_shelf_cannot_change_once_a_collected_replace_nests_it():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await save(session, nesting(X))
+        versions = [await version_of(session, i) for i in (X, Y)]
+        with pytest.raises(InvalidBody, match="cannot change while a nesting collection holds it"):
+            await replace(session, nesting(X, Y), holding(Y, member_class="Author"))
+        assert [await version_of(session, i) for i in (X, Y)] == versions, "nothing is stored"
+
+
+async def test_a_replace_cannot_nest_a_shelf_whose_member_class_a_collected_replace_changed():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await save(session, nesting(X))
+        versions = [await version_of(session, i) for i in (X, Y)]
+        with pytest.raises(InvalidBody, match=f"not stored aggregates of Book: .*{Y}"):
+            await replace(session, holding(Y, member_class="Author"), nesting(X, Y))
+        assert [await version_of(session, i) for i in (X, Y)] == versions, "nothing is stored"
+
+
+async def test_the_member_class_changes_once_a_collected_replace_no_longer_nests_the_shelf():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await save(session, nesting(X, Y))
+        await replace(session, nesting(X), holding(Y, member_class="Author"))
+        assert await version_of(session, Y), "the replace was accepted"
+
+
+async def test_renaming_a_nesting_shelf_reads_no_more_for_more_nested_shelves():
+    counts = []
+    for nested in (1, 3):
+        store = FakeStore()
+        async with fake_session(store, tenant_iri=TENANT, guards=guards()) as session:
+            subs = [shelf_iri(10 + n) for n in range(nested)]
+            for sub in subs:
+                await save(session, holding(sub))
+            await save(session, nesting(X, *subs))
+            before = len(store.sent("query"))
+            await replace(session, nesting(X, *subs).model_copy(update={"label": "New"}))
+            counts.append(len(store.sent("query")) - before)
+    assert counts[0] == counts[1], "a stored nested shelf is not read again on each save"
