@@ -28,4 +28,6 @@ package with no root, and the missing notes.
 
 ## Verdict
 
-Pending: the developer accepts, or names what is wrong.
+**Accepted, with follow-ups** (the developer, 2026-11-21). The follow-up is the review's floor
+(`design.md` D-29), opened as #229 ("uml-to-linkml hardening"). The developer also validated the
+delivery decisions D-1..D-29 (R-0007). The consumer's model fixes listed above are the consumer's.

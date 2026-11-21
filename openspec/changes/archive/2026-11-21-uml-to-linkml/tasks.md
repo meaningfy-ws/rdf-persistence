@@ -88,7 +88,7 @@ schema change and its regenerated code go in one commit (`make generate`, then t
   a dependency to it → no slot, a `not-generated` line. W-1: `Bounds`, `Shape`, `Identity` replaced
   by `SlotDefinition`; `Element`, `PackagePath`, `End` by generated UML records; the model guard
   green with no new `HAND_WRITTEN` entry. Accept: green; goldens unchanged by W-1.
-- [ ] 2.8 Lead: full gates; the appetite's full review (P-0005); fixes; acceptance demo: the
+- [x] 2.8 Lead: full gates; the appetite's full review (P-0005); fixes; acceptance demo: the
   converter on the consumer's real `.qea`, read-only, output in `temp/` and never committed,
   showing exit code, problem count by rule and report count by kind; PR, CI green, merge; owner's
   acceptance; archive.
