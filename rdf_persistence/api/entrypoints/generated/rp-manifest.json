@@ -215,7 +215,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/convert.py",
-      "sha256": "d435bd4916414804febed5daf11462b65f792b6078c66034961448b5942f70b7"
+      "sha256": "3364a3da6daff9790fa9bd9fb256cf2414abd1feb99440150b7785f4c6e002f7"
     },
     {
       "path": "rdf_persistence_generation/uml/links.py",
@@ -235,7 +235,11 @@
     },
     {
       "path": "rdf_persistence_generation/uml/qea.py",
-      "sha256": "cc6d012f92c8eebfef8207d28ffd1b023d2869b055619e4e80ab15ca4d24b5d6"
+      "sha256": "60421ab198b83e9330efaf9965582e4569574edb6670fd8264ad9a700d58e594"
+    },
+    {
+      "path": "rdf_persistence_generation/uml/roles.py",
+      "sha256": "835b6c55f5b1dc7f4ed714d1dece89bacddc65955ac93232ef957e5c1273be81"
     },
     {
       "path": "rdf_persistence_generation/uml/slots.py",

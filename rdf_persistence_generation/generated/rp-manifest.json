@@ -111,7 +111,7 @@
     },
     {
       "path": "rdf_persistence_generation/model/rp_generation.yaml",
-      "sha256": "93e1a99cf0c9da915e3a337276241c61a3ab01f1054f894395cde96ade44411a"
+      "sha256": "c6f7c40550e1ac2fa3207b05231ed4297a30b05acb3095ef207da406d007fd33"
     },
     {
       "path": "rdf_persistence_generation/pipeline.py",
@@ -187,7 +187,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/convert.py",
-      "sha256": "d435bd4916414804febed5daf11462b65f792b6078c66034961448b5942f70b7"
+      "sha256": "3364a3da6daff9790fa9bd9fb256cf2414abd1feb99440150b7785f4c6e002f7"
     },
     {
       "path": "rdf_persistence_generation/uml/links.py",
@@ -207,7 +207,11 @@
     },
     {
       "path": "rdf_persistence_generation/uml/qea.py",
-      "sha256": "cc6d012f92c8eebfef8207d28ffd1b023d2869b055619e4e80ab15ca4d24b5d6"
+      "sha256": "60421ab198b83e9330efaf9965582e4569574edb6670fd8264ad9a700d58e594"
+    },
+    {
+      "path": "rdf_persistence_generation/uml/roles.py",
+      "sha256": "835b6c55f5b1dc7f4ed714d1dece89bacddc65955ac93232ef957e5c1273be81"
     },
     {
       "path": "rdf_persistence_generation/uml/slots.py",
@@ -233,15 +237,15 @@
     },
     {
       "path": "rdf_persistence_generation/generated/context.jsonld",
-      "sha256": "7c45f4147acd2083557d4c20a9f53d2d612a5d4e38e33f3819de11f4c798f292"
+      "sha256": "b02fb0e859b399d20f9268ed46ca8e1f7d1ed86f47676cd3670f32bb9f8bcd69"
     },
     {
       "path": "rdf_persistence_generation/generated/rp_generation.py",
-      "sha256": "5220603adbae2f9760459a4c9f6e33b86af0a635cc9fb584b00ee6f1ca2f6a53"
+      "sha256": "5645969cd023c0cae3774af65ce35c12b1b7b1dddf5a10af82baf4816d542690"
     },
     {
       "path": "rdf_persistence_generation/generated/shapes.ttl",
-      "sha256": "41f4eb63c2367e2b88287c1b4addad4b8bbf466817e91cc4c0ed0df80fe941a8"
+      "sha256": "9055c1d7f0cf1205154ae75498b9fe7d551e33bd599abe6cc046f40535da2049"
     }
   ]
 }

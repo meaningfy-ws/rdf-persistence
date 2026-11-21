@@ -195,6 +195,8 @@ class ReportKind(str, _Enum):
     "An enumeration with no literals, a list kept outside the model, so its slots range over a URI."
     UNSPECIFIED_MULTIPLICITY = "unspecified_multiplicity"
     "A connector end with no multiplicity, read as zero or more."
+    ROLE = "role"
+    "A role definition drawn as an object, with its role, level and actions."
 
 
 class UmlRule(str, _Enum):
@@ -247,6 +249,12 @@ class UmlRule(str, _Enum):
     "R-29, a link to a class that is not generated, or to an excluded package, is left out and reported."
     ACTIVITY_ROOT = "activity_root"
     "A root class that is an activity, which the toolkit\u0027s rules do not allow."
+    ROLE_RUN_STATE = "role_run_state"
+    "PD-3, the run state of a role object holds the variables `role`, `level` and `actions`, each once, with the operator `=` and nothing else."
+    ROLE_DEFINITION = "role_definition"
+    "PD-3, the values of a role object are a role definition of the toolkit, with at least one action and none twice."
+    ROLE_DUPLICATE = "role_duplicate"
+    "PD-3, two role objects with one role and level."
 
 
 
@@ -567,6 +575,7 @@ class UmlObject(ConfiguredBaseModel):
     classifier_id: _Optional[int] = _Field(default=None, title="Classifier id", description="The id of the class an attribute or an object is typed by, absent for a plain type.")
     package_path: _Optional[str] = _Field(default=None, title="Package path", description="The path of the package a UML element sits in, the package names joined by `/`.")
     run_values: _Optional[list[UmlRunValue]] = _Field(default=None, title="Run values", description="The variables a UML object\u0027s run state sets, in the order the model file writes them.")
+    run_state_rest: _Optional[str] = _Field(default=None, title="Run state rest", description="The text of a UML object\u0027s run state outside its variable blocks, stripped; absent when blank.")
 
 
 class UmlRunValue(ConfiguredBaseModel):

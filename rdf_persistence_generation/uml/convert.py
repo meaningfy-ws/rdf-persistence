@@ -51,6 +51,7 @@ from rdf_persistence_generation.uml.modules import (
     reachable,
 )
 from rdf_persistence_generation.uml.naming import title_for
+from rdf_persistence_generation.uml.roles import role_entries
 from rdf_persistence_generation.uml.slots import (
     SharedSlots,
     Usage,
@@ -420,6 +421,7 @@ def convert(
     kinds = _module_kinds(ctx, model, layout)
     built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx), kinds)
     use_toolkit_slots(ctx, toolkit_usages, classes, shared, built.slot_names)
+    role_entries(ctx, model)  # judged and reported now; task 1.3 writes the entries
     problems = ctx.findings.problems()
     if problems:
         return [], ctx.findings.report(), problems

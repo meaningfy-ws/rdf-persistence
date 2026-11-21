@@ -208,6 +208,31 @@ def test_an_object_without_a_classifier_or_a_run_state_keeps_them_absent(tmp_pat
     )
 
 
+@pytest.mark.parametrize(
+    ("run_state", "rest"),
+    [
+        pytest.param("@VAR;Variable=role;Value=owner;Op==;@ENDVAR;", None, id="no text outside"),
+        pytest.param(
+            "  stray @VAR;Variable=role;Value=owner;Op==;@ENDVAR; text\n"
+            "@VAR;Variable=level;Value=tenant;Op==;@ENDVAR;  ",
+            "stray  text",
+            id="the text left when the blocks are removed, stripped",
+        ),
+        pytest.param("only text", "only text", id="text and no block"),
+        pytest.param("  \n ", None, id="blank text is absent"),
+        pytest.param(None, None, id="no run state"),
+    ],
+)
+def test_an_object_keeps_the_text_outside_its_run_state_blocks(tmp_path, run_state, rest):
+    builder, ids = build_library(tmp_path)
+    builder.object_(ids["library"], "obj", 0, run_state)
+    record = as_model(read(builder)).uml_objects[0]
+    assert record.run_state_rest == rest, (
+        f"the text outside the @VAR blocks is copied for the role rule to judge (D-4): "
+        f"{record.run_state_rest!r}"
+    )
+
+
 def test_an_object_outside_the_subtree_is_not_read(tmp_path):
     builder, ids = build_library(tmp_path)
     builder.object_(ids["other"], "elsewhere", 0, _run_state(("role", "owner")))

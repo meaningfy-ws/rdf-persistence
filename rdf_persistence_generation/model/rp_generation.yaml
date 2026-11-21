@@ -356,6 +356,7 @@ classes:
       - classifier_id
       - package_path
       - run_values
+      - run_state_rest
     slot_usage:
       object_id:
         required: true
@@ -1150,6 +1151,11 @@ slots:
     range: UmlRunValue
     multivalued: true
     inlined_as_list: true
+  run_state_rest:
+    title: Run state rest
+    description: >-
+      The text of a UML object's run state outside its variable blocks, stripped; absent when blank.
+    slot_uri: rp:umlRunStateRest
   uml_name:
     title: UML name
     description: The name of a UML element, as drawn.
@@ -1797,6 +1803,10 @@ enums:
         title: Unspecified multiplicity
         description: A connector end with no multiplicity, read as zero or more.
         meaning: rp:ReportKindUnspecifiedMultiplicity
+      role:
+        title: Role
+        description: A role definition drawn as an object, with its role, level and actions.
+        meaning: rp:ReportKindRole
   UmlRule:
     title: UML rule
     description: >-
@@ -1899,3 +1909,15 @@ enums:
         title: Activity root
         description: A root class that is an activity, which the toolkit's rules do not allow.
         meaning: rp:UmlRuleActivityRoot
+      role_run_state:
+        title: Role run state
+        description: PD-3, the run state of a role object holds the variables `role`, `level` and `actions`, each once, with the operator `=` and nothing else.
+        meaning: rp:UmlRuleRoleRunState
+      role_definition:
+        title: Role definition
+        description: PD-3, the values of a role object are a role definition of the toolkit, with at least one action and none twice.
+        meaning: rp:UmlRuleRoleDefinition
+      role_duplicate:
+        title: Role duplicate
+        description: PD-3, two role objects with one role and level.
+        meaning: rp:UmlRuleRoleDuplicate

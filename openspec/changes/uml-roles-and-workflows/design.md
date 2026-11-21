@@ -283,5 +283,11 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
   `run_values` and drops the rest, but PD-3 makes non-blank text outside the blocks a problem.
   `UmlObject` gains `run_state_rest` (the text outside the blocks, stripped; absent when blank),
   filled by the reader; the role rule (1.2) judges it. The record stays a copy of the file.
+- **D-5 A state node's raw kind (task 2.1 → 2.2).** PD-2's `node_kind` (`state`, `initial`)
+  cannot carry the NType PD-5 step 2 must name ("StateNode kind <NType>"). `UmlStateNode` gains
+  `node_type` (the raw `NType`, StateNode rows only); `node_kind` is absent for a StateNode that
+  is not Initial, and the workflow rule (2.2) reports it as `no_rule` with `node_type`. The reader
+  judges no kind. Also as built: `UmlStateFlow.uml_tagged_values` reuses `UmlTaggedValue` (owner =
+  connector id); `UmlStatechart.node_ids` holds only state nodes of the converted subtree.
 - **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
   order holds and the consumer may convert its access package.

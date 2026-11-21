@@ -22,8 +22,10 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlLink,
     UmlLinkKind,
     UmlModel,
+    UmlObject,
     UmlPackage,
     UmlPrefix,
+    UmlRunValue,
     UmlSettings,
     UmlTaggedValue,
 )
@@ -177,8 +179,32 @@ def boundary(object_id: int, *members: int) -> UmlBoundary:
     )
 
 
+def object_(
+    object_id: int,
+    name: str,
+    classifier: int | None,
+    *values: tuple[str, str] | tuple[str, str, str],
+    rest: str | None = None,
+    package: str = "model/library",
+) -> UmlObject:
+    """An Object with its ``RunState`` values as ``(variable, value[, operator])``; ``Op`` is ``=`` by default."""
+    extra = {"run_state_rest": rest} if rest is not None else {}
+    return UmlObject(
+        object_id=object_id,
+        uml_name=name,
+        classifier_id=classifier,
+        package_path=package,
+        run_values=[
+            UmlRunValue(variable=each[0], value=each[1], operator=each[2] if len(each) > 2 else "=")
+            for each in values
+        ],
+        **extra,
+    )
+
+
 def model(
     *classes: UmlClass,
+    objects: tuple[UmlObject, ...] = (),
     links: tuple[UmlLink, ...] = (),
     tags: tuple[UmlTaggedValue, ...] = (),
     boundaries: tuple[UmlBoundary, ...] = (),
@@ -192,6 +218,7 @@ def model(
         uml_outside_packages=list(outside_packages),
         uml_outside_classes=list(outside),
         uml_classes=list(classes),
+        uml_objects=list(objects),
         uml_links=list(links),
         uml_tagged_values=list(tags),
         uml_boundaries=list(boundaries),

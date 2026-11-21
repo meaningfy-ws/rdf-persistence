@@ -263,6 +263,11 @@ def _run_values(run_state: object) -> list[UmlRunValue]:
     return values
 
 
+def _run_state_rest(run_state: object) -> str | None:
+    """The text of a ``RunState`` outside its ``@VAR`` blocks, stripped; the role rule judges it (D-4)."""
+    return _text(RUN_STATE_BLOCK.sub("", _text(run_state) or "").strip())
+
+
 def _plain_boundaries(rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
     """The boundaries without a stereotype: a stereotyped one is a legend, not an aggregate."""
     return [row for row in _of_types(rows, {BOUNDARY_TYPE}) if _text(row["Stereotype"]) is None]
@@ -387,6 +392,7 @@ class _Reading:
                 classifier_id=_integer(row["Classifier"]) or None,
                 package_path=self.paths[row["Package_ID"]],
                 run_values=_run_values(row["RunState"]),
+                run_state_rest=_run_state_rest(row["RunState"]),
             )
             for row in rows
         ]

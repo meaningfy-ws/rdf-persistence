@@ -13,7 +13,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
   a `.qea` lacking `t_object.RunState` is a usage error naming the column. Then `QeaBuilder`
   columns and `object_(...)`, `TABLE_COLUMNS`, `UmlObject`/`UmlRunValue` in `rp_generation.yaml`,
   `make generate`. Accept: `test_uml_qea_fixture.py` and `test_uml_golden.py` unchanged and green.
-- [ ] 1.2 Role rule (PD-3), after 1.1. Generator unit, first,
+- [x] 1.2 Role rule (PD-3), after 1.1. Generator unit, first,
   `tests/generator/unit/test_uml_roles.py`, one parametrized table per error-matrix row of an
   Object (valid entry; classifier a domain class; classifier 0; `level=planet`; action `fly`; empty
   actions; repeated action; unknown variable; variable twice; missing `role`; `Op` not `=`; two
