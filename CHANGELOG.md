@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-21
+
+### Fixed
+- **A subclass whose `is_a` parent is in another module imports** (#242, #249). The parent is now
+  the first Python base wherever it is declared; before, an imported parent came after the mixins it
+  already has, and the module failed to import (no consistent MRO). In existing output, only a class
+  whose parent sits in another module changes its base order, and with it its field order.
+- **A schema class named like a library name no longer shadows it** (#243, #249). Generated modules
+  import the capitalised `pydantic`, `typing`, `decimal` and `enum` names under `_` aliases
+  (`_Field`, `_Optional`, `_BaseModel`, `_Decimal`, `_Enum`, …), so a class named `Field` or
+  `Optional` is safe. The unused `LinkMLMeta` class is no longer generated. Regenerating changes
+  every generated module; nothing outside them refers to the new names.
+- **`rp-generate` checks the Python it writes** (#249). A run imports every generated module, and
+  `rp-generate --check` also runs mypy over the generated packages; either failure names the module
+  (or file and line) and the error, and the run exits 1. A run that used to report "no problems"
+  for unimportable output now fails, including two modules that import each other (#208). mypy
+  joins the `generate` extra; `make check-generated` type-checks too.
+- **A dependent record of a root the same commit removes is refused** (#226, #251). Adding or
+  replacing a dependent record (such as a comment's `has_target`) on a root the commit also removes
+  raises `Conflict`, naming the record and the root, before anything is sent. Before, depending on
+  the order, the record was dropped and reported as "removed by someone else", or stored dangling.
+- **`assert_public_imports` guards `rdf_persistence_generation` too** (#200, #251): any submodule
+  other than the package, its `testkit` and that testkit's plugins is refused and named.
+- **`rp-uml2linkml` carries a collection's member class and a package's module kind** (#241, #245
+  part 1, #247). A reference collection's `dct:hasPart` role to another converted class becomes its
+  `member_class`; roles to two different classes fail the run. A package's `module_kind` tagged
+  value becomes the module's annotation (`domain` when absent); an unknown value, or merged packages
+  with different kinds, fail the run. See "UML conventions".
+
 ## [0.8.0] - 2026-11-21
 
 ### Added
@@ -573,7 +602,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.5.0...v0.6.0
