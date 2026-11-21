@@ -12,7 +12,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
@@ -24,7 +23,7 @@ TYPE_STEP = "type check"
 MYPY_CONFIG = Path(__file__).parents[1] / "mypy-generated.ini"
 MYPY_MISSING = "mypy is not installed: install rdf-persistence[generate]"
 MYPY_ERROR = ": error: "
-MYPY_CACHES = "rp-generate-mypy"  # under the system's temporary folder, one per project
+MYPY_CACHES = "rp-generate-mypy"  # in the user's cache folder, one per project
 INIT = "__init__.py"
 # argv: the search path to put first, a JSON object {package: folder}, the modules to import.
 # A package the path does not find in its folder is loaded from the folder, so a target whose
@@ -132,9 +131,12 @@ def _mypy_targets(checked: Sequence[GenerationTarget], base: Path) -> list[str]:
 
 
 def _cache_dir(base: Path) -> Path:
-    """mypy's cache for the project: under the temporary folder, so a check writes nothing into the project."""
+    """mypy's cache for the project: in the user's own cache folder, so a check writes nothing into
+    the project, and no other user of a shared temporary folder can plant a cache that hides errors."""
+    import platformdirs  # lazy: linkml brings it with the `generate` extra, which this check needs
+
     key = hashlib.sha256(str(base.resolve()).encode()).hexdigest()[:16]
-    return Path(tempfile.gettempdir()) / MYPY_CACHES / key
+    return platformdirs.user_cache_path(MYPY_CACHES) / key
 
 
 def _mypy(checked: Sequence[GenerationTarget], base: Path) -> subprocess.CompletedProcess[str]:
