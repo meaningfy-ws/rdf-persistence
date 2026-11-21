@@ -7,23 +7,23 @@ from datetime import (
     datetime,
     time
 )
-from decimal import Decimal
-from enum import Enum
+from decimal import Decimal as _Decimal
+from enum import Enum as _Enum
 from typing import (
-    Any,
-    ClassVar,
-    Literal,
-    Optional,
-    Union
+    Any as _Any,
+    ClassVar as _ClassVar,
+    Literal as _Literal,
+    Optional as _Optional,
+    Union as _Union
 )
 
 from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    SerializationInfo,
-    SerializerFunctionWrapHandler,
+    BaseModel as _BaseModel,
+    ConfigDict as _ConfigDict,
+    Field as _Field,
+    RootModel as _RootModel,
+    SerializationInfo as _SerializationInfo,
+    SerializerFunctionWrapHandler as _SerializerFunctionWrapHandler,
     field_validator,
     model_serializer
 )
@@ -41,38 +41,19 @@ version = "None"
 
 from rdf_persistence import RpModel as ConfiguredBaseModel
 
-
-
-class LinkMLMeta(RootModel):
-    root: dict[str, Any] = {}
-    model_config = ConfigDict(frozen=True)
-
-    def __getattr__(self, key:str):
-        return getattr(self.root, key)
-
-    def __getitem__(self, key:str):
-        return self.root[key]
-
-    def __setitem__(self, key:str, value):
-        self.root[key] = value
-
-    def __contains__(self, key:str) -> bool:
-        return key in self.root
-
-
 linkml_meta = None
 
 
 class LibraryAccess(TenantAccess):
     "The access record of a library tenant; its grants are the metamodel\u0027s."
-    state: TenantState = Field(default=..., title="State", description="Where the tenant is in its life.")
-    database_name: str = Field(default=..., title="Database name", description="The name of the tenant\u0027s database, the prefix, \"-t-\" and the tenant id (hyphens left out); the prefix is lower case, at most 20 characters, the tenant id 4 to 32 lower case letters and digits.", json_schema_extra = { "rp_internal": True })
-    store_name: Optional[str] = Field(default=None, title="Store name", description="The name of the wired store that holds the tenant\u0027s database; absent means the store named \"default\". It is lower case, starts with a letter and is at most 32 characters long.", json_schema_extra = { "rp_internal": True })
-    grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
-    prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
-    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
-    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
-    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
+    state: TenantState = _Field(default=..., title="State", description="Where the tenant is in its life.")
+    database_name: str = _Field(default=..., title="Database name", description="The name of the tenant\u0027s database, the prefix, \"-t-\" and the tenant id (hyphens left out); the prefix is lower case, at most 20 characters, the tenant id 4 to 32 lower case letters and digits.", json_schema_extra = { "rp_internal": True })
+    store_name: _Optional[str] = _Field(default=None, title="Store name", description="The name of the wired store that holds the tenant\u0027s database; absent means the store named \"default\". It is lower case, starts with a letter and is at most 32 characters long.", json_schema_extra = { "rp_internal": True })
+    grants: _Optional[list[Grant]] = _Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
+    prohibitions: _Optional[list[Prohibition]] = _Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
+    description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")
 
     @field_validator("database_name")
     def pattern_database_name(cls, v):

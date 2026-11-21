@@ -753,8 +753,14 @@ first.
   surface's snapshot, `tests/fixtures/public-surface.json`, is a baseline of the thematic move and
   has its own target, `make refresh-surface`.
 . *Generated code compiles*: every generated module imports and passes mypy with the
-  `mypy-generated.ini` profile (the main run excludes generated folders); the TypeScript output
-  passes `tsc --noEmit --strict` in CI.
+  `rdf_persistence_generation/mypy-generated.ini` profile (the main run excludes generated
+  folders); the TypeScript output passes `tsc --noEmit --strict` in CI. `rp-generate` checks the
+  first on every run and `rp-generate --check` both, on whatever project they run (#242): each
+  module that fails to import is an `import check` problem naming the module and the exception,
+  each mypy error a `type check` problem naming the file and line, and the run exits 1. mypy is
+  left out of a plain run because it is slow there: measured after a regeneration, 12.9 s on the
+  toolkit's 24 targets, whose generation takes about 20 s (the import check takes 0.5 s); here
+  `make check-generated` runs it too.
 
 === Guards against hand-written models
 

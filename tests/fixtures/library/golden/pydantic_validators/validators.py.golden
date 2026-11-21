@@ -7,23 +7,23 @@ from datetime import (
     datetime,
     time
 )
-from decimal import Decimal
-from enum import Enum
+from decimal import Decimal as _Decimal
+from enum import Enum as _Enum
 from typing import (
-    Any,
-    ClassVar,
-    Literal,
-    Optional,
-    Union
+    Any as _Any,
+    ClassVar as _ClassVar,
+    Literal as _Literal,
+    Optional as _Optional,
+    Union as _Union
 )
 
 from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    SerializationInfo,
-    SerializerFunctionWrapHandler,
+    BaseModel as _BaseModel,
+    ConfigDict as _ConfigDict,
+    Field as _Field,
+    RootModel as _RootModel,
+    SerializationInfo as _SerializationInfo,
+    SerializerFunctionWrapHandler as _SerializerFunctionWrapHandler,
     field_validator,
     model_serializer,
     model_validator
@@ -36,32 +36,13 @@ version = "None"
 
 from rdf_persistence import RpModel as ConfiguredBaseModel
 
-
-
-class LinkMLMeta(RootModel):
-    root: dict[str, Any] = {}
-    model_config = ConfigDict(frozen=True)
-
-    def __getattr__(self, key:str):
-        return getattr(self.root, key)
-
-    def __getitem__(self, key:str):
-        return self.root[key]
-
-    def __setitem__(self, key:str, value):
-        self.root[key] = value
-
-    def __contains__(self, key:str) -> bool:
-        return key in self.root
-
-
 linkml_meta = None
 
 
 class Contact(ConfiguredBaseModel):
     "A contact reachable by exactly one of mail and phone."
-    mail: Optional[str] = Field(default=None, title="Mail", description="The mail address.")
-    phone: Optional[str] = Field(default=None, title="Phone", description="The phone number.")
+    mail: _Optional[str] = _Field(default=None, title="Mail", description="The mail address.")
+    phone: _Optional[str] = _Field(default=None, title="Phone", description="The phone number.")
 
     @model_validator(mode="after")
     def exactly_one_of_Contact(self) -> "Contact":
@@ -84,15 +65,15 @@ class Contact(ConfiguredBaseModel):
 
 class Customer(Contact):
     "A contact that is also a customer."
-    account: Optional[str] = Field(default=None, title="Account", description="The account number.")
-    mail: Optional[str] = Field(default=None, title="Mail", description="The mail address.")
-    phone: Optional[str] = Field(default=None, title="Phone", description="The phone number.")
+    account: _Optional[str] = _Field(default=None, title="Account", description="The account number.")
+    mail: _Optional[str] = _Field(default=None, title="Mail", description="The mail address.")
+    phone: _Optional[str] = _Field(default=None, title="Phone", description="The phone number.")
 
 
 class Reach(ConfiguredBaseModel):
     "A way to reach somebody by at least one of mail and phone."
-    mail: Optional[str] = Field(default=None, title="Mail", description="The mail address.")
-    phone: Optional[str] = Field(default=None, title="Phone", description="The phone number.")
+    mail: _Optional[str] = _Field(default=None, title="Mail", description="The mail address.")
+    phone: _Optional[str] = _Field(default=None, title="Phone", description="The phone number.")
 
     @model_validator(mode="after")
     def any_of_Reach(self) -> "Reach":
@@ -115,14 +96,14 @@ class Reach(ConfiguredBaseModel):
 
 class Entry(ConfiguredBaseModel):
     "A ledger entry, one per name and tag."
-    name: Optional[str] = Field(default=None, title="Name", description="The name of the entry.")
-    tag: Optional[str] = Field(default=None, title="Tag", description="The tag of the entry.")
+    name: _Optional[str] = _Field(default=None, title="Name", description="The name of the entry.")
+    tag: _Optional[str] = _Field(default=None, title="Tag", description="The tag of the entry.")
 
 
 class Ledger(ConfiguredBaseModel):
     "Entries and the people who care about them."
-    entries: Optional[list[Entry]] = Field(default=None, title="Entries", description="The entries.")
-    watchers: Optional[list[str]] = Field(default=None, title="Watchers", description="The names of those who watch.")
+    entries: _Optional[list[Entry]] = _Field(default=None, title="Entries", description="The entries.")
+    watchers: _Optional[list[str]] = _Field(default=None, title="Watchers", description="The names of those who watch.")
 
     @model_validator(mode="after")
     def unique_keys_entries_entry_key(self) -> "Ledger":
@@ -143,8 +124,8 @@ class Ledger(ConfiguredBaseModel):
 
 class Archive(Ledger):
     "A ledger that is kept."
-    entries: Optional[list[Entry]] = Field(default=None, title="Entries", description="The entries.")
-    watchers: Optional[list[str]] = Field(default=None, title="Watchers", description="The names of those who watch.")
+    entries: _Optional[list[Entry]] = _Field(default=None, title="Entries", description="The entries.")
+    watchers: _Optional[list[str]] = _Field(default=None, title="Watchers", description="The names of those who watch.")
 
 
 # Model rebuild

@@ -1,6 +1,12 @@
 """gen-pydantic in split mode: one module per schema module, metadata off, the toolkit's templates (PD-24).
 
-The stock generator lacks eleven things the toolkit needs, and this module adds them:
+The stock generator lacks thirteen things the toolkit needs, and this module adds them:
+
+* a class's ``is_a`` parent is its first base, in whatever module the parent is declared; the
+  stock generator puts an imported parent last, which no MRO allows next to its mixins (#242);
+* the module refers to the capitalised names it imports from ``pydantic``, ``typing``,
+  ``decimal`` and ``enum`` under ``_`` aliases (``_Field``, ``_Optional``), so a schema class
+  named ``Field`` shadows nothing (#243);
 
 * the metamodel's classes are imported from the toolkit's package, never regenerated: from
   ``<python_package>.<module>`` inside the toolkit's own runs, the ``python_package`` annotation of
@@ -27,12 +33,13 @@ The stock generator lacks eleven things the toolkit needs, and this module adds 
   named after the slot too, and keeps the alias; every other field keeps the stock name.
 """
 
+import ast
 import copy
 import keyword
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from functools import cache
+from functools import cache, cached_property
 from pathlib import Path
 
 from linkml.generators.common.build import ClassResult
@@ -87,9 +94,76 @@ INIT = "__init__.py"
 BASE_MODEL = "RpModel"
 BASE_MODULE = "base"
 GENERATED_LEAF = "generated"
+ANY_CLASS_URI = "linkml:Any"
 _LIST_DEFAULT = re.compile(
     r"string\((.*)\)"
 )  # the ifabsent of a multivalued slot: its names, comma-separated
+
+
+# The library names a generated module refers to under `_` aliases, so no schema class shadows
+# them (#243): a class named `Field` would rebind `Field`, and every later `x: str = Field(...)`
+# would build that class. A generated class is named in camel case, which never starts with `_`;
+# only a capitalised name needs an alias, since the lint refuses a lower-case class name
+# (standard_naming), so `datetime`, `re` or `field_validator` are safe as they are.
+LIBRARY_MODULES = frozenset({"decimal", "enum", "pydantic", "typing"})
+SHADOWABLE = frozenset(
+    {
+        "Any",
+        "BaseModel",
+        "ClassVar",
+        "ConfigDict",
+        "Decimal",
+        "Enum",
+        "Field",
+        "Literal",
+        "Optional",
+        "RootModel",
+        "SerializationInfo",
+        "SerializerFunctionWrapHandler",
+        "Union",
+    }
+)
+
+
+def alias_imports(imports: Imports) -> None:
+    """Import every shadowable library name as its alias (``from pydantic import Field as _Field``)."""
+    for each in imports.imports:
+        if each.module in LIBRARY_MODULES:
+            for name in each.objects or []:
+                if name.name in SHADOWABLE:
+                    name.alias = f"_{name.name}"
+
+
+def drop_imports(imports: Imports, names: set[str]) -> None:
+    """Import none of ``names`` from a schema's module; a module left with no name is not imported."""
+    for each in imports.imports:
+        if each.module not in LIBRARY_MODULES and each.objects:
+            each.objects = [name for name in each.objects if name.name not in names]
+    imports.imports = [each for each in imports.imports if each.objects != []]
+
+
+def alias_leaf(pyrange: str) -> str:
+    """A type's Python range (``Decimal``, ``Any``) as its alias; the caller knows it names no class."""
+    return f"_{pyrange}" if pyrange in SHADOWABLE else pyrange
+
+
+def alias_heads(expression: str) -> str:
+    """Alias the library names an annotation subscripts (``Optional[...]``); its leaves are left as they are.
+
+    A subscripted name is always the library's: a schema class is never subscripted. Offsets are
+    in UTF-8 bytes, so the splice is done on the encoded text.
+    """
+    heads = [
+        node.value.col_offset
+        for node in ast.walk(ast.parse(expression, mode="eval"))
+        if isinstance(node, ast.Subscript)
+        and isinstance(node.value, ast.Name)
+        and node.value.id in SHADOWABLE
+    ]
+    text = expression.encode()
+    for offset in sorted(heads, reverse=True):
+        text = text[:offset] + b"_" + text[offset:]
+    return text.decode()
 
 
 class InternalAttribute(PydanticAttribute):
@@ -201,12 +275,71 @@ class SplitPydanticGenerator(PydanticGenerator):
         package = annotation_text(schema, GenerationAnnotation.PYTHON_PACKAGE)
         return self.root_package is None or package in (None, self.root_package)
 
+    @property
+    def class_bases(self) -> dict[str, list[str]]:
+        """The stock bases with the ``is_a`` parent first, wherever it is declared (#242).
+
+        The stock generator orders the bases by the parents' places in this module and puts an
+        imported one last, after the mixins it already has, which no MRO allows.
+        """
+        reordered: dict[str, list[str]] | None = self._class_bases
+        if reordered is not None:  # reordered on the first access
+            return reordered
+        bases: dict[str, list[str]] = super().class_bases
+        for cls in self.schemaview.all_classes().values():
+            name = self._get_class_python_name(cls.name)
+            if cls.is_a and name in bases:
+                parent = self._get_class_python_name(cls.is_a)
+                bases[name] = [parent, *(base for base in bases[name] if base != parent)]
+        return bases
+
     def before_render_template(self, module: PydanticModule, sv: SchemaView) -> PydanticModule:
-        """Name the module ``RpModel`` is imported from (PD-8)."""
+        """Name the module ``RpModel`` is imported from (PD-8); import the library names as aliases (#243)."""
         module.base_model = RpBaseModel(
             **module.base_model.model_dump(), module=base_model_module(toolkit=self.toolkit)
         )
+        alias_imports(module.python_imports)
+        drop_imports(module.python_imports, self._any_classes)
         return module
+
+    @cached_property
+    def _any_classes(self) -> set[str]:
+        """The classes that stand for ``typing.Any`` (``class_uri: linkml:Any``): never generated, so never imported."""
+        sv = self.schemaview
+        return {
+            self._get_class_python_name(cls.name)
+            for cls in sv.all_classes().values()
+            if cls.class_uri == ANY_CLASS_URI
+        }
+
+    def _inline_as_simple_dict_with_value(self, slot_def: SlotDefinition) -> str | None:
+        """The stock value type of a simple-dict slot, as its alias: the stock generator reads it
+        from the type directly, not through ``generate_python_range`` (#243)."""
+        value: str | None = super()._inline_as_simple_dict_with_value(slot_def)
+        return alias_leaf(value) if value else value
+
+    def _clean_injected_classes(self, injected_classes: list[str | type]) -> list[str] | None:
+        """None: the only injected class, ``LinkMLMeta``, holds the metadata, which is off (#243)."""
+        return None
+
+    def generate_python_range(
+        self, slot_range: str, slot_def: SlotDefinition, class_def: ClassDefinition
+    ) -> str:
+        """The stock range, with a type's library name (``Decimal``, ``Any``) as its alias (#243).
+
+        A class or an enum keeps its name, even one that is also a library name: only this method
+        knows which of the two ``Decimal`` is.
+        """
+        pyrange: str = super().generate_python_range(slot_range, slot_def, class_def)
+        sv = self.schemaview
+        names_a_class = (
+            slot_range in sv.all_classes()
+            and pyrange == self._get_class_python_name(slot_range)
+            and pyrange not in self._any_classes
+        )
+        if slot_range in sv.all_enums() or names_a_class:
+            return pyrange
+        return alias_leaf(pyrange)
 
     def _get_imports(self, element: ClassDefinition | SlotDefinition | None = None) -> Imports:
         """The stock class imports, plus the enums of other modules that a slot ranges over, plus
@@ -255,11 +388,14 @@ class SplitPydanticGenerator(PydanticGenerator):
     def after_generate_class(self, cls: ClassResult, sv: SchemaView) -> ClassResult:
         # the stock generator escapes quotes for its triple-quoted template; ours quotes the text itself
         cls.cls.description = cls.source.description
+        if cls.cls.type_alias_value:  # a union_of class
+            cls.cls.type_alias_value = alias_heads(cls.cls.type_alias_value)
         return with_validators(cls, sv)
 
     def after_generate_slot(self, slot: SlotResult, sv: SchemaView) -> SlotResult:
         fields = {name: getattr(slot.attribute, name) for name in PydanticAttribute.model_fields}
         fields["description"] = slot.source.description  # the raw text, as for classes
+        fields["range"] = alias_heads(str(slot.attribute.range))  # #243
         if _named_after_slot(slot):
             fields["name"] = make_valid_python_identifier(underscore(slot.source.name))
             fields["alias"] = (

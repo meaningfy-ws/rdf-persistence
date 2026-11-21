@@ -109,7 +109,8 @@ check-freshness: ## rp-generate --check on both projects: lint, checks, and the 
 	@ uv run rp-generate --check --project $(TOY_PROJECT)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated code matches its sources$(END_BUILD_PRINT)"
 
-check-generated: generate ## Regenerate and fail if the result differs from what is committed (PD-19)
+check-generated: generate ## Regenerate, type-check the result and fail if it differs from what is committed (PD-19)
+	@ $(MAKE) --no-print-directory typecheck-generated
 	@ git diff --exit-code --stat -- $(GENERATED_GLOBS)
 	@ git ls-files --others --exclude-standard -- $(GENERATED_GLOBS) | grep . && exit 1 || true
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated output is fresh$(END_BUILD_PRINT)"
@@ -182,7 +183,7 @@ TOY_TS = $(wildcard tests/fixtures/library/web/src/domain/generated/*.ts)
 
 typecheck-generated: ## Run mypy on the generated Python only, with mypy-generated.ini (PD-27)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mypy on generated code$(END_BUILD_PRINT)"
-	@ uv run mypy --config-file mypy-generated.ini $(GENERATED_PY)
+	@ uv run mypy --config-file rdf_persistence_generation/mypy-generated.ini $(GENERATED_PY)
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generated code type checks passed$(END_BUILD_PRINT)"
 
 typecheck-ts: ## Run tsc --noEmit --strict (typescript 5.9.3) on the generated TypeScript (needs Node)

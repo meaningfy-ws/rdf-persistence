@@ -7,23 +7,23 @@ from datetime import (
     datetime,
     time
 )
-from decimal import Decimal
-from enum import Enum
+from decimal import Decimal as _Decimal
+from enum import Enum as _Enum
 from typing import (
-    Any,
-    ClassVar,
-    Literal,
-    Optional,
-    Union
+    Any as _Any,
+    ClassVar as _ClassVar,
+    Literal as _Literal,
+    Optional as _Optional,
+    Union as _Union
 )
 
 from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    SerializationInfo,
-    SerializerFunctionWrapHandler,
+    BaseModel as _BaseModel,
+    ConfigDict as _ConfigDict,
+    Field as _Field,
+    RootModel as _RootModel,
+    SerializationInfo as _SerializationInfo,
+    SerializerFunctionWrapHandler as _SerializerFunctionWrapHandler,
     field_validator,
     model_serializer
 )
@@ -35,28 +35,9 @@ version = "None"
 
 from rdf_persistence.core.domain.base import RpModel as ConfiguredBaseModel
 
-
-
-class LinkMLMeta(RootModel):
-    root: dict[str, Any] = {}
-    model_config = ConfigDict(frozen=True)
-
-    def __getattr__(self, key:str):
-        return getattr(self.root, key)
-
-    def __getitem__(self, key:str):
-        return self.root[key]
-
-    def __setitem__(self, key:str, value):
-        self.root[key] = value
-
-    def __contains__(self, key:str) -> bool:
-        return key in self.root
-
-
 linkml_meta = None
 
-class RegistryKind(str, Enum):
+class RegistryKind(str, _Enum):
     "The kinds of graph a registry entry can name."
     AGGREGATE = "aggregate"
     "The graph of an aggregate root."
@@ -64,7 +45,7 @@ class RegistryKind(str, Enum):
     "A graph loaded for an aggregate, whose lifecycle belongs to it."
 
 
-class RpAnnotation(str, Enum):
+class RpAnnotation(str, _Enum):
     "The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone. Each description says which element carries the tag and which values it accepts."
     OWNED = "owned"
     "Slot annotation, `true` when the slot\u0027s values are part of the aggregate and live in its graph; any other slot ranging over a class refers to another aggregate root, by IRI."
@@ -100,7 +81,7 @@ class RpAnnotation(str, Enum):
     "Permissible value annotation: the IANA media type of a serialisation."
 
 
-class ModuleKind(str, Enum):
+class ModuleKind(str, _Enum):
     "The kinds of schema module, the values of the module_kind annotation."
     DOMAIN = "domain"
     "A module of the application\u0027s domain; it imports no technical or access module."
@@ -110,7 +91,7 @@ class ModuleKind(str, Enum):
     "A module of access control, such as grants and tenancy."
 
 
-class DatabaseKind(str, Enum):
+class DatabaseKind(str, _Enum):
     "The databases an aggregate can live in, the values of the database annotation."
     TENANT = "tenant"
     "The tenant\u0027s own database, the default."
@@ -120,7 +101,7 @@ class DatabaseKind(str, Enum):
     "The application database, one per deployment, outside every tenant."
 
 
-class WritesKind(str, Enum):
+class WritesKind(str, _Enum):
     "How an aggregate root is written, the values of the rp_writes annotation."
     SERVICE = "service"
     "The consumer writes the root through a session; the API serves no generic create, replace or delete."
@@ -128,19 +109,19 @@ class WritesKind(str, Enum):
     "The toolkit writes and reads the root itself; no route serves it, and the consumer does not write it."
 
 
-class OnReferencedDelete(str, Enum):
+class OnReferencedDelete(str, _Enum):
     "What a delete does with an instance that is still referenced, the values of the rp_on_referenced_delete annotation."
     REFUSE = "refuse"
     "The delete is refused while another aggregate points at the instance."
 
 
-class GraphKind(str, Enum):
+class GraphKind(str, _Enum):
     "The special graphs a class can live in, the values of the graph annotation."
     META = "meta"
     "The tenant\u0027s meta graph, which holds the tenant root object."
 
 
-class UniqueScope(str, Enum):
+class UniqueScope(str, _Enum):
     "The scopes of a key across aggregates, the values of the rp_unique_scope annotation."
     TENANT = "tenant"
     "The key holds across all the aggregate roots of one class in a tenant\u0027s database."
@@ -154,42 +135,42 @@ class AggregateRoot(ConfiguredBaseModel):
 
 class Principal(ConfiguredBaseModel):
     "A reference to a user account in the identity provider, by IRI only."
-    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
 
 
 class RegistryEntry(ConfiguredBaseModel):
     "An entry of a tenant\u0027s registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application."
-    graph: str = Field(default=..., title="Graph", description="The IRI of a named graph.")
-    kind: RegistryKind = Field(default=..., title="Kind", description="The kind of graph a registry entry names.")
-    owned_by: str = Field(default=..., title="Owned by", description="The IRI of the aggregate root that owns the graph.")
+    graph: str = _Field(default=..., title="Graph", description="The IRI of a named graph.")
+    kind: RegistryKind = _Field(default=..., title="Kind", description="The kind of graph a registry entry names.")
+    owned_by: str = _Field(default=..., title="Owned by", description="The IRI of the aggregate root that owns the graph.")
 
 
 class PendingLoad(ConfiguredBaseModel):
     "The registry marker of a load not yet committed: one triple saying when the graph was put. It names no registry entry, so deleting it never deletes an entry."
-    id: str = Field(default=..., title="Identifier", description="The IRI of the graph the load put; the marker\u0027s subject, so no rp:graph triple.")
-    loaded_at: datetime  = Field(default=..., title="Loaded at", description="The time a graph was put to the store by a load.")
+    id: str = _Field(default=..., title="Identifier", description="The IRI of the graph the load put; the marker\u0027s subject, so no rp:graph triple.")
+    loaded_at: datetime  = _Field(default=..., title="Loaded at", description="The time a graph was put to the store by a load.")
 
 
 class CommitMarker(ConfiguredBaseModel):
     "The registry marker of one transaction\u0027s commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written."
-    id: str = Field(default=..., title="Identifier", description="A fresh urn:uuid IRI, never shared by two transactions.")
-    started_at: datetime  = Field(default=..., title="Started at", description="The time a transaction started.")
+    id: str = _Field(default=..., title="Identifier", description="A fresh urn:uuid IRI, never shared by two transactions.")
+    started_at: datetime  = _Field(default=..., title="Started at", description="The time a transaction started.")
 
 
 class AggregateKey(ConfiguredBaseModel):
     "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant\u0027s database hold the same values for its predicates."
-    key_name: str = Field(default=..., title="Key name", description="The name of a key across aggregates, as declared in `unique_keys`.")
-    root_class: str = Field(default=..., title="Root class", description="The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope.")
-    key_predicates: list[str] = Field(default=..., title="Key predicates", description="The predicates of the key\u0027s slots, in the order of the key.")
-    key_counts_absent: Optional[bool] = Field(default=False, title="Key counts absent", description="Whether an absent value of a slot of the key counts as a value: two roots that both lack a value then hold the same values, and the key refuses them. False when the key declares nulls as unequal or does not say.")
+    key_name: str = _Field(default=..., title="Key name", description="The name of a key across aggregates, as declared in `unique_keys`.")
+    root_class: str = _Field(default=..., title="Root class", description="The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope.")
+    key_predicates: list[str] = _Field(default=..., title="Key predicates", description="The predicates of the key\u0027s slots, in the order of the key.")
+    key_counts_absent: _Optional[bool] = _Field(default=False, title="Key counts absent", description="Whether an absent value of a slot of the key counts as a value: two roots that both lack a value then hold the same values, and the key refuses them. False when the key declares nulls as unequal or does not say.")
 
 
 class KeyDuplicate(ConfiguredBaseModel):
     "A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant\u0027s database by the duplicates report."
-    key_name: str = Field(default=..., title="Key name", description="The name of a key across aggregates, as declared in `unique_keys`.")
-    root_class: str = Field(default=..., title="Root class", description="The IRI of the class of the roots.")
-    key_values: list[str] = Field(default=..., title="Key values", description="The lexical forms of the shared values, in the order of the key.")
-    key_roots: list[str] = Field(default=..., title="Key roots", description="The IRIs of the roots that hold the values, sorted.")
+    key_name: str = _Field(default=..., title="Key name", description="The name of a key across aggregates, as declared in `unique_keys`.")
+    root_class: str = _Field(default=..., title="Root class", description="The IRI of the class of the roots.")
+    key_values: list[str] = _Field(default=..., title="Key values", description="The lexical forms of the shared values, in the order of the key.")
+    key_roots: list[str] = _Field(default=..., title="Key roots", description="The IRIs of the roots that hold the values, sorted.")
 
 
 # Model rebuild

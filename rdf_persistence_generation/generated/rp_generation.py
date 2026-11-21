@@ -7,23 +7,23 @@ from datetime import (
     datetime,
     time
 )
-from decimal import Decimal
-from enum import Enum
+from decimal import Decimal as _Decimal
+from enum import Enum as _Enum
 from typing import (
-    Any,
-    ClassVar,
-    Literal,
-    Optional,
-    Union
+    Any as _Any,
+    ClassVar as _ClassVar,
+    Literal as _Literal,
+    Optional as _Optional,
+    Union as _Union
 )
 
 from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    SerializationInfo,
-    SerializerFunctionWrapHandler,
+    BaseModel as _BaseModel,
+    ConfigDict as _ConfigDict,
+    Field as _Field,
+    RootModel as _RootModel,
+    SerializationInfo as _SerializationInfo,
+    SerializerFunctionWrapHandler as _SerializerFunctionWrapHandler,
     field_validator,
     model_serializer
 )
@@ -35,28 +35,9 @@ version = "None"
 
 from rdf_persistence.core.domain.base import RpModel as ConfiguredBaseModel
 
-
-
-class LinkMLMeta(RootModel):
-    root: dict[str, Any] = {}
-    model_config = ConfigDict(frozen=True)
-
-    def __getattr__(self, key:str):
-        return getattr(self.root, key)
-
-    def __getitem__(self, key:str):
-        return self.root[key]
-
-    def __setitem__(self, key:str, value):
-        self.root[key] = value
-
-    def __contains__(self, key:str) -> bool:
-        return key in self.root
-
-
 linkml_meta = None
 
-class HardRule(str, Enum):
+class HardRule(str, _Enum):
     "The rules of the hard check; a problem line starts with its rule."
     IRI = "iri"
     "An element needs an IRI, explicit or from a declared default prefix."
@@ -94,7 +75,7 @@ class HardRule(str, Enum):
     "The `python_package` of a schema module of the toolkit\u0027s own targets equals the `package` of the `[[tool.rp-generate]]` entry that generates it."
 
 
-class LockRule(str, Enum):
+class LockRule(str, _Enum):
     "How a change between two locks is treated."
     SAFE = "safe"
     "Nothing stored is lost or left invalid; the lock is rewritten."
@@ -106,7 +87,7 @@ class LockRule(str, Enum):
     "An IRI would change or data would move between graphs; no step can do it."
 
 
-class BoundaryRule(str, Enum):
+class BoundaryRule(str, _Enum):
     "The rules of the boundary check; a problem line starts with its rule."
     OWNERSHIP = "ownership"
     "A class is an aggregate root or is owned by a root."
@@ -120,7 +101,7 @@ class BoundaryRule(str, Enum):
     "A target\u0027s modules are of one kind, derived from them, and its package sits in a folder that kind allows."
 
 
-class TargetKind(str, Enum):
+class TargetKind(str, _Enum):
     "The kind of a generation target, derived from the modules it generates."
     DOMAIN = "domain"
     "Not every module the target generates is `module_kind: technical`."
@@ -128,7 +109,7 @@ class TargetKind(str, Enum):
     "Every module the target generates is `module_kind: technical`."
 
 
-class ConstraintKind(str, Enum):
+class ConstraintKind(str, _Enum):
     "The constraint kinds of v1 that the generated classes and shapes must agree on."
     REQUIRED = "required"
     "A required slot refuses a missing value."
@@ -154,7 +135,7 @@ class ConstraintKind(str, Enum):
     "No two items of a multivalued slot have equal key values."
 
 
-class GenerationAnnotation(str, Enum):
+class GenerationAnnotation(str, _Enum):
     "The annotations this module\u0027s schema carries for the toolchain itself."
     CLI_FLAG = "cli_flag"
     "On a GenerationTarget slot, the command-line flag that overrides it."
@@ -176,7 +157,7 @@ class GenerationAnnotation(str, Enum):
     "On the root schema of the metamodel (`rp.yaml`), the package an application\u0027s generated code imports the metamodel\u0027s classes from, which re-exports them."
 
 
-class UmlLinkKind(str, Enum):
+class UmlLinkKind(str, _Enum):
     "The kinds of connector the UML reader keeps."
     ASSOCIATION = "association"
     "A connector between two classes, with roles and cardinalities."
@@ -186,7 +167,7 @@ class UmlLinkKind(str, Enum):
     "A connector from a class to its parent."
 
 
-class ReportKind(str, Enum):
+class ReportKind(str, _Enum):
     "The kinds of line the conversion report holds; the report prints them with `-` where the schema has `_`."
     NOT_GENERATED = "not_generated"
     "A class left out because its stereotype is listed as not generated."
@@ -216,7 +197,7 @@ class ReportKind(str, Enum):
     "A connector end with no multiplicity, read as zero or more."
 
 
-class UmlRule(str, Enum):
+class UmlRule(str, _Enum):
     "The rules of the UML conversion, one value for each rule of the design\u0027s rule table that is in force; a problem names the one it breaks. `no_rule` stands for an element no rule maps."
     NO_RULE = "no_rule"
     "An element of the model that no rule maps; the run fails."
@@ -271,14 +252,14 @@ class UmlRule(str, Enum):
 
 class GenerationTarget(ConfiguredBaseModel):
     "One entry of the `[tool.rp-generate]` table of a `pyproject.toml`: a schema and the folders its generated artefacts are written to. Paths are relative to the folder of the `pyproject.toml`."
-    schema_file: str = Field(default=..., alias="schema", title="Schema file", description="The root LinkML schema file; the TOML key and the flag are `schema`, its alias: the field keeps the slot\u0027s name, which does not shadow a pydantic method.")
-    package: str = Field(default=..., title="Package", description="The Python import path of the generated package, a dotted identifier.")
-    python: Optional[str] = Field(default=None, title="Python folder", description="The folder that receives the classes, shapes, context, frames and the schema copy; the folder of `package` when absent.")
-    typescript: Optional[str] = Field(default=None, title="TypeScript folder", description="The folder that receives the TypeScript types; none are written when absent.")
-    diagrams: Optional[str] = Field(default=None, title="Diagrams folder", description="The folder that receives one Mermaid file per module; none are written when absent.")
-    openapi: Optional[bool] = Field(default=True, title="OpenAPI components", description="Whether the OpenAPI component schemas of the classes (`openapi-components.json`) are written next to the context. Only a schema whose classes a service serves needs them; on unless set to false.")
-    regenerate_command: Optional[str] = Field(default=None, alias="regenerate-command", title="Regenerate command", description="The command that regenerates this entry, named in the hint of a failed freshness check (TOML key `regenerate-command`); `rp-generate` when absent.")
-    migrations: Optional[str] = Field(default=None, title="Migrations folder", description="The folder of the target\u0027s migration files and schema lock, relative to the folder of the `pyproject.toml`; absent for a target that stores nothing of its own.")
+    schema_file: str = _Field(default=..., alias="schema", title="Schema file", description="The root LinkML schema file; the TOML key and the flag are `schema`, its alias: the field keeps the slot\u0027s name, which does not shadow a pydantic method.")
+    package: str = _Field(default=..., title="Package", description="The Python import path of the generated package, a dotted identifier.")
+    python: _Optional[str] = _Field(default=None, title="Python folder", description="The folder that receives the classes, shapes, context, frames and the schema copy; the folder of `package` when absent.")
+    typescript: _Optional[str] = _Field(default=None, title="TypeScript folder", description="The folder that receives the TypeScript types; none are written when absent.")
+    diagrams: _Optional[str] = _Field(default=None, title="Diagrams folder", description="The folder that receives one Mermaid file per module; none are written when absent.")
+    openapi: _Optional[bool] = _Field(default=True, title="OpenAPI components", description="Whether the OpenAPI component schemas of the classes (`openapi-components.json`) are written next to the context. Only a schema whose classes a service serves needs them; on unless set to false.")
+    regenerate_command: _Optional[str] = _Field(default=None, alias="regenerate-command", title="Regenerate command", description="The command that regenerates this entry, named in the hint of a failed freshness check (TOML key `regenerate-command`); `rp-generate` when absent.")
+    migrations: _Optional[str] = _Field(default=None, title="Migrations folder", description="The folder of the target\u0027s migration files and schema lock, relative to the folder of the `pyproject.toml`; absent for a target that stores nothing of its own.")
 
     @field_validator("schema_file")
     def pattern_schema_file(cls, v):
@@ -374,50 +355,50 @@ class GenerationTarget(ConfiguredBaseModel):
 
 class SchemaLock(ConfiguredBaseModel):
     "The RDF-facing summary of what a target stores, at one schema version: its stored classes and the enums they use. Committed as `schema.lock.json` in the target\u0027s migrations folder, so a change to what is stored is compared with it."
-    schema_id: str = Field(default=..., title="Schema id", description="The id of the schema a lock describes.")
-    schema_version: str = Field(default=..., title="Schema version", description="The `version` of the schema when the lock was written.")
-    locked_classes: Optional[list[LockedClass]] = Field(default=None, title="Locked classes", description="The stored classes of a lock, sorted by class IRI.")
-    locked_enums: Optional[list[LockedEnum]] = Field(default=None, title="Locked enums", description="The enums a lock records, sorted by name.")
+    schema_id: str = _Field(default=..., title="Schema id", description="The id of the schema a lock describes.")
+    schema_version: str = _Field(default=..., title="Schema version", description="The `version` of the schema when the lock was written.")
+    locked_classes: _Optional[list[LockedClass]] = _Field(default=None, title="Locked classes", description="The stored classes of a lock, sorted by class IRI.")
+    locked_enums: _Optional[list[LockedEnum]] = _Field(default=None, title="Locked enums", description="The enums a lock records, sorted by name.")
 
 
 class LockedClass(ConfiguredBaseModel):
     "A stored class as the lock records it, with its IRI, the type and path of a root, and its slots."
-    class_uri: str = Field(default=..., title="Class IRI", description="The IRI of a stored class.")
-    iri_type: Optional[str] = Field(default=None, title="IRI type", description="The `rp_iri_type` of a root class, the type segment of its aggregates\u0027 IRIs.")
-    root_path: Optional[str] = Field(default=None, title="Root path", description="The `rp_path` of a root class, the route segment of its aggregates.")
-    root_database: Optional[str] = Field(default=None, title="Root database", description="The database of a root class (`tenant`, `application` or `system`), where its aggregates are read from.")
-    locked_slots: Optional[list[LockedSlot]] = Field(default=None, title="Locked slots", description="The slots of a locked class, sorted by slot IRI.")
+    class_uri: str = _Field(default=..., title="Class IRI", description="The IRI of a stored class.")
+    iri_type: _Optional[str] = _Field(default=None, title="IRI type", description="The `rp_iri_type` of a root class, the type segment of its aggregates\u0027 IRIs.")
+    root_path: _Optional[str] = _Field(default=None, title="Root path", description="The `rp_path` of a root class, the route segment of its aggregates.")
+    root_database: _Optional[str] = _Field(default=None, title="Root database", description="The database of a root class (`tenant`, `application` or `system`), where its aggregates are read from.")
+    locked_slots: _Optional[list[LockedSlot]] = _Field(default=None, title="Locked slots", description="The slots of a locked class, sorted by slot IRI.")
 
 
 class LockedSlot(ConfiguredBaseModel):
     "A slot of a stored class as the lock records it, by its IRI."
-    slot_uri: str = Field(default=..., title="Slot IRI", description="The IRI of a slot.")
-    range: str = Field(default=..., title="Range", description="The IRI of the slot\u0027s range; the name of the enum when the range is an enum.")
-    required: Optional[bool] = Field(default=None, title="Required", description="Whether a value is required.")
-    multivalued: Optional[bool] = Field(default=None, title="Multivalued", description="Whether the slot takes several values.")
-    inlined: Optional[bool] = Field(default=None, title="Inlined", description="Whether the slot\u0027s values are stored inside the aggregate\u0027s graph.")
+    slot_uri: str = _Field(default=..., title="Slot IRI", description="The IRI of a slot.")
+    range: str = _Field(default=..., title="Range", description="The IRI of the slot\u0027s range; the name of the enum when the range is an enum.")
+    required: _Optional[bool] = _Field(default=None, title="Required", description="Whether a value is required.")
+    multivalued: _Optional[bool] = _Field(default=None, title="Multivalued", description="Whether the slot takes several values.")
+    inlined: _Optional[bool] = _Field(default=None, title="Inlined", description="Whether the slot\u0027s values are stored inside the aggregate\u0027s graph.")
 
 
 class LockedEnum(ConfiguredBaseModel):
     "An enum used as a range, with the `meaning` IRI of each value (its text when it has none)."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    enum_values: Optional[list[str]] = Field(default=None, title="Enum values", description="The `meaning` IRI of each value of an enum, or its text when it has none; sorted.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    enum_values: _Optional[list[str]] = _Field(default=None, title="Enum values", description="The `meaning` IRI of each value of an enum, or its text when it has none; sorted.")
 
 
 class LockChange(ConfiguredBaseModel):
     "One difference between two locks: the rule that treats it, a sentence, and what it is about (a class and a slot, or an enum and a value)."
-    rule: LockRule = Field(default=..., title="Rule", description="How the change is treated, by the table of the schema lock.")
-    what: str = Field(default=..., title="What", description="What changed, as a sentence.")
-    class_uri: Optional[str] = Field(default=None, title="Class IRI", description="The IRI of a stored class.")
-    slot_uri: Optional[str] = Field(default=None, title="Slot IRI", description="The IRI of a slot.")
-    enum_name: Optional[str] = Field(default=None, title="Enum name", description="The name of the enum a lock change is about.")
-    enum_value: Optional[str] = Field(default=None, title="Enum value", description="The `meaning` IRI, or the text, of the enum value a lock change is about.")
+    rule: LockRule = _Field(default=..., title="Rule", description="How the change is treated, by the table of the schema lock.")
+    what: str = _Field(default=..., title="What", description="What changed, as a sentence.")
+    class_uri: _Optional[str] = _Field(default=None, title="Class IRI", description="The IRI of a stored class.")
+    slot_uri: _Optional[str] = _Field(default=None, title="Slot IRI", description="The IRI of a slot.")
+    enum_name: _Optional[str] = _Field(default=None, title="Enum name", description="The name of the enum a lock change is about.")
+    enum_value: _Optional[str] = _Field(default=None, title="Enum value", description="The `meaning` IRI, or the text, of the enum value a lock change is about.")
 
 
 class ManifestEntry(ConfiguredBaseModel):
     "A file and the SHA-256 of its bytes, as recorded by a generation run."
-    path: str = Field(default=..., title="Path", description="A file path, POSIX, relative to the folder of the `pyproject.toml`.")
-    sha256: str = Field(default=..., title="SHA-256", description="The SHA-256 of a file\u0027s bytes, in lowercase hexadecimal.")
+    path: str = _Field(default=..., title="Path", description="A file path, POSIX, relative to the folder of the `pyproject.toml`.")
+    sha256: str = _Field(default=..., title="SHA-256", description="The SHA-256 of a file\u0027s bytes, in lowercase hexadecimal.")
 
     @field_validator("path")
     def pattern_path(cls, v):
@@ -448,38 +429,38 @@ class ManifestEntry(ConfiguredBaseModel):
 
 class GenerationManifest(ConfiguredBaseModel):
     "What one generation run read and wrote: the installed `linkml` version, the files it read and the files it wrote. Written as `rp-manifest.json` in the target\u0027s Python folder."
-    linkml: str = Field(default=..., title="LinkML version", description="The version of the `linkml` package that ran the generation.")
-    inputs: Optional[list[ManifestEntry]] = Field(default=None, title="Inputs", description="The files a generation run read, sorted by path.")
-    outputs: Optional[list[ManifestEntry]] = Field(default=None, title="Outputs", description="The files a generation run wrote, sorted by path; not the manifest itself.")
+    linkml: str = _Field(default=..., title="LinkML version", description="The version of the `linkml` package that ran the generation.")
+    inputs: _Optional[list[ManifestEntry]] = _Field(default=None, title="Inputs", description="The files a generation run read, sorted by path.")
+    outputs: _Optional[list[ManifestEntry]] = _Field(default=None, title="Outputs", description="The files a generation run wrote, sorted by path; not the manifest itself.")
 
 
 class ConstraintCase(ConfiguredBaseModel):
     "One row of the conformance table: a constraint kind, a class that declares it, and the instance files the generated class and shape must accept and refuse."
-    kind: ConstraintKind = Field(default=..., title="Constraint kind", description="The kind of constraint a case exercises.")
-    class_name: str = Field(default=..., title="Class name", description="The name of a class of the schema.")
-    valid: Optional[list[str]] = Field(default=None, title="Valid instances", description="Paths of instance files, beside the cases file, that the class and the shape must accept.")
-    invalid: Optional[list[str]] = Field(default=None, title="Invalid instances", description="Paths of instance files, beside the cases file, that the class and the shape must refuse.")
+    kind: ConstraintKind = _Field(default=..., title="Constraint kind", description="The kind of constraint a case exercises.")
+    class_name: str = _Field(default=..., title="Class name", description="The name of a class of the schema.")
+    valid: _Optional[list[str]] = _Field(default=None, title="Valid instances", description="Paths of instance files, beside the cases file, that the class and the shape must accept.")
+    invalid: _Optional[list[str]] = _Field(default=None, title="Invalid instances", description="Paths of instance files, beside the cases file, that the class and the shape must refuse.")
 
 
 class CliFlag(ConfiguredBaseModel):
     "A command-line flag of `rp-generate` and the GenerationTarget field it overrides."
-    option: str = Field(default=..., title="Option", description="The command-line option, with its leading dashes.")
-    field: str = Field(default=..., title="Field", description="The name of the GenerationTarget field the option overrides.")
+    option: str = _Field(default=..., title="Option", description="The command-line option, with its leading dashes.")
+    field: str = _Field(default=..., title="Field", description="The name of the GenerationTarget field the option overrides.")
 
 
 class GeneratedFile(ConfiguredBaseModel):
     "One file a generator renders, its name inside the target folder and its text."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    text: str = Field(default=..., title="Text", description="The text of a file.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    text: str = _Field(default=..., title="Text", description="The text of a file.")
 
 
 class CheckProblem(ConfiguredBaseModel):
     "One problem a check, a pipeline step or the freshness comparison found, with where and by which rule. Only the command line formats it for the developer."
-    rule: Optional[str] = Field(default=None, title="Rule", description="The id of the rule a problem breaks, a `HardRule` or `BoundaryRule` value or a lint rule name.")
-    element: Optional[str] = Field(default=None, title="Element", description="The element of the schema, or the file, a problem is about.")
-    message: str = Field(default=..., title="Message", description="What is wrong, in a line.")
-    schema_file: Optional[str] = Field(default=None, alias="schema", title="Schema file", description="The root LinkML schema file; the TOML key and the flag are `schema`, its alias: the field keeps the slot\u0027s name, which does not shadow a pydantic method.")
-    step: Optional[str] = Field(default=None, title="Step", description="The name of the pipeline step that found a problem.")
+    rule: _Optional[str] = _Field(default=None, title="Rule", description="The id of the rule a problem breaks, a `HardRule` or `BoundaryRule` value or a lint rule name.")
+    element: _Optional[str] = _Field(default=None, title="Element", description="The element of the schema, or the file, a problem is about.")
+    message: str = _Field(default=..., title="Message", description="What is wrong, in a line.")
+    schema_file: _Optional[str] = _Field(default=None, alias="schema", title="Schema file", description="The root LinkML schema file; the TOML key and the flag are `schema`, its alias: the field keeps the slot\u0027s name, which does not shadow a pydantic method.")
+    step: _Optional[str] = _Field(default=None, title="Step", description="The name of the pipeline step that found a problem.")
 
     @field_validator("schema_file")
     def pattern_schema_file(cls, v):
@@ -497,244 +478,244 @@ class CheckProblem(ConfiguredBaseModel):
 
 class UmlModel(ConfiguredBaseModel):
     "What the UML reader takes from a model file: the packages, the classes and enumerations with their attributes, the connectors, the tagged values and the boundaries. The converter reads nothing else."
-    uml_packages: Optional[list[UmlPackage]] = Field(default=None, title="UML packages", description="The packages of a UML model.")
-    uml_outside_packages: Optional[list[UmlPackage]] = Field(default=None, title="UML outside packages", description="The packages an outside class sits in, and their ancestors, that are not converted. With `uml_packages` they give the package path of an outside class.")
-    uml_classes: Optional[list[UmlClass]] = Field(default=None, title="UML classes", description="The classes and enumerations of a UML model.")
-    uml_outside_classes: Optional[list[UmlClass]] = Field(default=None, title="UML outside classes", description="The classes and enumerations at the far end of a link whose near end is a converted class, and that are not converted themselves (outside the subtree, or in an excluded package), without their attributes.")
-    uml_links: Optional[list[UmlLink]] = Field(default=None, title="UML links", description="The connectors of a UML model.")
-    uml_tagged_values: Optional[list[UmlTaggedValue]] = Field(default=None, title="UML tagged values", description="The tagged values of the classes of a UML model.")
-    uml_boundaries: Optional[list[UmlBoundary]] = Field(default=None, title="UML boundaries", description="The boundaries of a UML model.")
+    uml_packages: _Optional[list[UmlPackage]] = _Field(default=None, title="UML packages", description="The packages of a UML model.")
+    uml_outside_packages: _Optional[list[UmlPackage]] = _Field(default=None, title="UML outside packages", description="The packages an outside class sits in, and their ancestors, that are not converted. With `uml_packages` they give the package path of an outside class.")
+    uml_classes: _Optional[list[UmlClass]] = _Field(default=None, title="UML classes", description="The classes and enumerations of a UML model.")
+    uml_outside_classes: _Optional[list[UmlClass]] = _Field(default=None, title="UML outside classes", description="The classes and enumerations at the far end of a link whose near end is a converted class, and that are not converted themselves (outside the subtree, or in an excluded package), without their attributes.")
+    uml_links: _Optional[list[UmlLink]] = _Field(default=None, title="UML links", description="The connectors of a UML model.")
+    uml_tagged_values: _Optional[list[UmlTaggedValue]] = _Field(default=None, title="UML tagged values", description="The tagged values of the classes of a UML model.")
+    uml_boundaries: _Optional[list[UmlBoundary]] = _Field(default=None, title="UML boundaries", description="The boundaries of a UML model.")
 
 
 class UmlPackage(ConfiguredBaseModel):
     "A package of the UML model, with its parent, so the package tree can be rebuilt, and the object that draws it, which owns its tagged values."
-    package_id: int = Field(default=..., title="Package id", description="The id a UML model gives a package.")
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    parent_id: Optional[int] = Field(default=None, title="Parent id", description="The id of the package that holds a package, absent for a top one.")
-    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
-    object_id: Optional[int] = Field(default=None, title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
+    package_id: int = _Field(default=..., title="Package id", description="The id a UML model gives a package.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    parent_id: _Optional[int] = _Field(default=None, title="Parent id", description="The id of the package that holds a package, absent for a top one.")
+    note: _Optional[str] = _Field(default=None, title="Note", description="The note of a UML element.")
+    object_id: _Optional[int] = _Field(default=None, title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
 
 
 class UmlClass(ConfiguredBaseModel):
     "A class or an enumeration of the UML model. For an enumeration the attributes are its literals."
-    object_id: int = Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    object_type: str = Field(default=..., title="Object type", description="The kind of element a UML object is, as the model file names it (`Class`, `Enumeration`).")
-    uml_alias: Optional[str] = Field(default=None, title="Alias", description="The alias of a UML element, the title the author gave it.")
-    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
-    package_id: int = Field(default=..., title="Package id", description="The id a UML model gives a package.")
-    uml_stereotype: Optional[str] = Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
-    multiple_stereotypes: Optional[bool] = Field(default=None, title="Multiple stereotypes", description="Whether the model gives the element a second stereotype besides the first.")
-    is_abstract: Optional[bool] = Field(default=None, title="Is abstract", description="Whether a UML class is abstract.")
-    ea_guid: Optional[str] = Field(default=None, title="GUID", description="The globally unique id the modelling tool gives an object.")
-    uml_attributes: Optional[list[UmlAttribute]] = Field(default=None, title="UML attributes", description="The attributes of a class, or the literals of an enumeration, in the order the model gives them.")
+    object_id: int = _Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    object_type: str = _Field(default=..., title="Object type", description="The kind of element a UML object is, as the model file names it (`Class`, `Enumeration`).")
+    uml_alias: _Optional[str] = _Field(default=None, title="Alias", description="The alias of a UML element, the title the author gave it.")
+    note: _Optional[str] = _Field(default=None, title="Note", description="The note of a UML element.")
+    package_id: int = _Field(default=..., title="Package id", description="The id a UML model gives a package.")
+    uml_stereotype: _Optional[str] = _Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
+    multiple_stereotypes: _Optional[bool] = _Field(default=None, title="Multiple stereotypes", description="Whether the model gives the element a second stereotype besides the first.")
+    is_abstract: _Optional[bool] = _Field(default=None, title="Is abstract", description="Whether a UML class is abstract.")
+    ea_guid: _Optional[str] = _Field(default=None, title="GUID", description="The globally unique id the modelling tool gives an object.")
+    uml_attributes: _Optional[list[UmlAttribute]] = _Field(default=None, title="UML attributes", description="The attributes of a class, or the literals of an enumeration, in the order the model gives them.")
 
 
 class UmlAttribute(ConfiguredBaseModel):
     "An attribute of a UML class, or a literal of a UML enumeration."
-    attribute_id: int = Field(default=..., title="Attribute id", description="The id a UML model gives an attribute.")
-    owner_id: int = Field(default=..., title="Owner id", description="The id of the class or enumeration an attribute or a tagged value belongs to.")
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
-    declared_type: Optional[str] = Field(default=None, title="Declared type", description="The type of an attribute as the model writes it, a datatype or the name of a class.")
-    classifier_id: Optional[int] = Field(default=None, title="Classifier id", description="The id of the class an attribute is typed by, absent for a plain type.")
-    lower_bound: Optional[str] = Field(default=None, title="Lower bound", description="The lower bound of an attribute\u0027s multiplicity, as the model writes it.")
-    upper_bound: Optional[str] = Field(default=None, title="Upper bound", description="The upper bound of an attribute\u0027s multiplicity, as the model writes it (`*` for no bound).")
-    position: Optional[int] = Field(default=None, title="Position", description="The place of an attribute among those of its class.")
-    uml_stereotype: Optional[str] = Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
+    attribute_id: int = _Field(default=..., title="Attribute id", description="The id a UML model gives an attribute.")
+    owner_id: int = _Field(default=..., title="Owner id", description="The id of the class or enumeration an attribute or a tagged value belongs to.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    note: _Optional[str] = _Field(default=None, title="Note", description="The note of a UML element.")
+    declared_type: _Optional[str] = _Field(default=None, title="Declared type", description="The type of an attribute as the model writes it, a datatype or the name of a class.")
+    classifier_id: _Optional[int] = _Field(default=None, title="Classifier id", description="The id of the class an attribute is typed by, absent for a plain type.")
+    lower_bound: _Optional[str] = _Field(default=None, title="Lower bound", description="The lower bound of an attribute\u0027s multiplicity, as the model writes it.")
+    upper_bound: _Optional[str] = _Field(default=None, title="Upper bound", description="The upper bound of an attribute\u0027s multiplicity, as the model writes it (`*` for no bound).")
+    position: _Optional[int] = _Field(default=None, title="Position", description="The place of an attribute among those of its class.")
+    uml_stereotype: _Optional[str] = _Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
 
 
 class UmlLink(ConfiguredBaseModel):
     "A connector of the UML model: an association, a dependency or a generalisation, from its source class to its target class. Roles and cardinalities are those of each end; an end is the whole of an aggregation when its aggregate flag is set."
-    connector_id: int = Field(default=..., title="Connector id", description="The id a UML model gives a connector.")
-    link_kind: UmlLinkKind = Field(default=..., title="Link kind", description="Whether a connector is an association, a dependency or a generalisation.")
-    sub_type: Optional[str] = Field(default=None, title="Sub type", description="The sub type of a connector, as the model writes it.")
-    uml_stereotype: Optional[str] = Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
-    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
-    source_id: int = Field(default=..., title="Source id", description="The id of the class a connector starts at.")
-    target_id: int = Field(default=..., title="Target id", description="The id of the class a connector ends at.")
-    source_role: Optional[str] = Field(default=None, title="Source role", description="The role name at the source end of a connector.")
-    source_card: Optional[str] = Field(default=None, title="Source cardinality", description="The cardinality at the source end of a connector, as the model writes it.")
-    source_aggregate: Optional[int] = Field(default=None, title="Source aggregate", description="The aggregation flag of the source end of a connector, 0 for none, 1 for shared, 2 for composite.")
-    target_role: Optional[str] = Field(default=None, title="Target role", description="The role name at the target end of a connector.")
-    target_card: Optional[str] = Field(default=None, title="Target cardinality", description="The cardinality at the target end of a connector, as the model writes it.")
-    target_aggregate: Optional[int] = Field(default=None, title="Target aggregate", description="The aggregation flag of the target end of a connector, 0 for none, 1 for shared, 2 for composite.")
-    association_class: Optional[str] = Field(default=None, title="Association class", description="The id or name the model gives to the class an association is drawn as, absent for a plain one.")
-    direction: Optional[str] = Field(default=None, title="Direction", description="The direction of a connector as the model writes it (`Source -\u003e Destination`, `Bi-Directional`), absent when the model gives none.")
+    connector_id: int = _Field(default=..., title="Connector id", description="The id a UML model gives a connector.")
+    link_kind: UmlLinkKind = _Field(default=..., title="Link kind", description="Whether a connector is an association, a dependency or a generalisation.")
+    sub_type: _Optional[str] = _Field(default=None, title="Sub type", description="The sub type of a connector, as the model writes it.")
+    uml_stereotype: _Optional[str] = _Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
+    note: _Optional[str] = _Field(default=None, title="Note", description="The note of a UML element.")
+    source_id: int = _Field(default=..., title="Source id", description="The id of the class a connector starts at.")
+    target_id: int = _Field(default=..., title="Target id", description="The id of the class a connector ends at.")
+    source_role: _Optional[str] = _Field(default=None, title="Source role", description="The role name at the source end of a connector.")
+    source_card: _Optional[str] = _Field(default=None, title="Source cardinality", description="The cardinality at the source end of a connector, as the model writes it.")
+    source_aggregate: _Optional[int] = _Field(default=None, title="Source aggregate", description="The aggregation flag of the source end of a connector, 0 for none, 1 for shared, 2 for composite.")
+    target_role: _Optional[str] = _Field(default=None, title="Target role", description="The role name at the target end of a connector.")
+    target_card: _Optional[str] = _Field(default=None, title="Target cardinality", description="The cardinality at the target end of a connector, as the model writes it.")
+    target_aggregate: _Optional[int] = _Field(default=None, title="Target aggregate", description="The aggregation flag of the target end of a connector, 0 for none, 1 for shared, 2 for composite.")
+    association_class: _Optional[str] = _Field(default=None, title="Association class", description="The id or name the model gives to the class an association is drawn as, absent for a plain one.")
+    direction: _Optional[str] = _Field(default=None, title="Direction", description="The direction of a connector as the model writes it (`Source -\u003e Destination`, `Bi-Directional`), absent when the model gives none.")
 
 
 class UmlTaggedValue(ConfiguredBaseModel):
     "A named value attached to a class of the UML model, its text resolved from the memo when it is one."
-    owner_id: int = Field(default=..., title="Owner id", description="The id of the class or enumeration an attribute or a tagged value belongs to.")
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    tag_value: Optional[str] = Field(default=None, title="Tag value", description="The text of a tagged value.")
+    owner_id: int = _Field(default=..., title="Owner id", description="The id of the class or enumeration an attribute or a tagged value belongs to.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    tag_value: _Optional[str] = _Field(default=None, title="Tag value", description="The text of a tagged value.")
 
 
 class UmlBoundary(ConfiguredBaseModel):
     "A boundary drawn on a diagram, with the classes and enumerations whose rectangles lie wholly inside it."
-    object_id: int = Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    diagram_id: int = Field(default=..., title="Diagram id", description="The id of the diagram a boundary is drawn on.")
-    member_ids: Optional[list[int]] = Field(default=None, title="Member ids", description="The ids of the classes and enumerations that lie inside a boundary.")
+    object_id: int = _Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    diagram_id: int = _Field(default=..., title="Diagram id", description="The id of the diagram a boundary is drawn on.")
+    member_ids: _Optional[list[int]] = _Field(default=None, title="Member ids", description="The ids of the classes and enumerations that lie inside a boundary.")
 
 
 class UmlPrefix(ConfiguredBaseModel):
     "One prefix of the prefixes file and the namespace it stands for."
-    prefix_name: str = Field(default=..., title="Prefix name", description="The name of a prefix, the part of a CURIE before the colon.")
-    namespace: str = Field(default=..., title="Namespace", description="The IRI a prefix stands for.")
+    prefix_name: str = _Field(default=..., title="Prefix name", description="The name of a prefix, the part of a CURIE before the colon.")
+    namespace: str = _Field(default=..., title="Namespace", description="The IRI a prefix stands for.")
 
 
 class UmlName(ConfiguredBaseModel):
     "A written name resolved (PD-6): its local name and, when it was prefixed, the IRI it expands to and the CURIE written to the output."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    iri: Optional[str] = Field(default=None, title="IRI", description="The full IRI a prefixed name expands to; absent for an unprefixed name.")
-    curie: Optional[str] = Field(default=None, title="CURIE", description="The prefixed name written to the output, in the metamodel\u0027s prefix name when it names the namespace.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    iri: _Optional[str] = _Field(default=None, title="IRI", description="The full IRI a prefixed name expands to; absent for an unprefixed name.")
+    curie: _Optional[str] = _Field(default=None, title="CURIE", description="The prefixed name written to the output, in the metamodel\u0027s prefix name when it names the namespace.")
 
 
 class UmlSettings(ConfiguredBaseModel):
     "What one run of the UML converter is told: the keys of the prefixes file and the command line values the conversion depends on."
-    schema_base: str = Field(default=..., title="Schema base", description="The IRI a module\u0027s id is made from, followed by the module name.")
-    default_prefix: str = Field(default=..., title="Default prefix", description="The name of the prefix the converted modules use for unprefixed names.")
-    schema_version: str = Field(default=..., title="Schema version", description="The `version` of the schema when the lock was written.")
-    prefixes: Optional[list[UmlPrefix]] = Field(default=None, title="Prefixes", description="The prefixes of the prefixes file.")
-    subtree_package: str = Field(default=..., title="Subtree package", description="The name or path of the package whose subtree is converted.")
-    root_name: str = Field(default=..., title="Root name", description="The name of the root schema, and the prefix of the module names.")
-    exclude_packages: Optional[list[str]] = Field(default=None, title="Excluded packages", description="The paths of the packages left out of the conversion with their subtrees.")
-    default_mixins: Optional[list[str]] = Field(default=None, title="Default mixins", description="The mixins a root class and its labelled parts get by default.")
-    not_generated_stereotypes: Optional[list[str]] = Field(default=None, title="Not-generated stereotypes", description="The stereotypes whose classes are not generated, only listed in the report.")
+    schema_base: str = _Field(default=..., title="Schema base", description="The IRI a module\u0027s id is made from, followed by the module name.")
+    default_prefix: str = _Field(default=..., title="Default prefix", description="The name of the prefix the converted modules use for unprefixed names.")
+    schema_version: str = _Field(default=..., title="Schema version", description="The `version` of the schema when the lock was written.")
+    prefixes: _Optional[list[UmlPrefix]] = _Field(default=None, title="Prefixes", description="The prefixes of the prefixes file.")
+    subtree_package: str = _Field(default=..., title="Subtree package", description="The name or path of the package whose subtree is converted.")
+    root_name: str = _Field(default=..., title="Root name", description="The name of the root schema, and the prefix of the module names.")
+    exclude_packages: _Optional[list[str]] = _Field(default=None, title="Excluded packages", description="The paths of the packages left out of the conversion with their subtrees.")
+    default_mixins: _Optional[list[str]] = _Field(default=None, title="Default mixins", description="The mixins a root class and its labelled parts get by default.")
+    not_generated_stereotypes: _Optional[list[str]] = _Field(default=None, title="Not-generated stereotypes", description="The stereotypes whose classes are not generated, only listed in the report.")
 
 
 class UmlElement(ConfiguredBaseModel):
     "A class or an enumeration the conversion generates: the UML class it was read from, its resolved name, where its package sits and what the conversion has classified it as (PD-17, R-18, R-23)."
-    uml_class: UmlClass = Field(default=..., title="UML class", description="The class or enumeration of the UML model that an element was read from.")
-    resolved_name: UmlName = Field(default=..., title="Resolved name", description="The name an element was written with, resolved against the prefixes file.")
-    label: str = Field(default=..., title="Label", description="A readable label.")
-    module_path: Optional[list[str]] = Field(default=None, title="Module path", description="The names of the packages below the subtree package that an element sits in, outermost first.")
-    is_enum: Optional[bool] = Field(default=False, title="Is enumeration", description="Whether an element is an enumeration.")
-    is_root: Optional[bool] = Field(default=False, title="Is root", description="Whether an element is the root of an application aggregate.")
-    is_abstract: Optional[bool] = Field(default=False, title="Is abstract", description="Whether a UML class is abstract.")
-    is_tenant_root: Optional[bool] = Field(default=False, title="Is tenant root", description="Whether an element is the root of the tenant, a root of its own kind (R-18).")
-    is_abstract_root: Optional[bool] = Field(default=False, title="Is abstract root", description="Whether an element is an abstract root, set by the abstract-roots pass (R-23).")
+    uml_class: UmlClass = _Field(default=..., title="UML class", description="The class or enumeration of the UML model that an element was read from.")
+    resolved_name: UmlName = _Field(default=..., title="Resolved name", description="The name an element was written with, resolved against the prefixes file.")
+    label: str = _Field(default=..., title="Label", description="A readable label.")
+    module_path: _Optional[list[str]] = _Field(default=None, title="Module path", description="The names of the packages below the subtree package that an element sits in, outermost first.")
+    is_enum: _Optional[bool] = _Field(default=False, title="Is enumeration", description="Whether an element is an enumeration.")
+    is_root: _Optional[bool] = _Field(default=False, title="Is root", description="Whether an element is the root of an application aggregate.")
+    is_abstract: _Optional[bool] = _Field(default=False, title="Is abstract", description="Whether a UML class is abstract.")
+    is_tenant_root: _Optional[bool] = _Field(default=False, title="Is tenant root", description="Whether an element is the root of the tenant, a root of its own kind (R-18).")
+    is_abstract_root: _Optional[bool] = _Field(default=False, title="Is abstract root", description="Whether an element is an abstract root, set by the abstract-roots pass (R-23).")
 
 
 class UmlPackagePath(ConfiguredBaseModel):
     "Where a package sits: its names below the subtree package, whether an exclusion covers it, and its note."
-    below: Optional[list[str]] = Field(default=None, title="Below the subtree package", description="The names of the packages between the subtree package, which is left out, and a package, which is last.")
-    is_excluded: Optional[bool] = Field(default=False, title="Is excluded", description="Whether an `--exclude-package` covers a package.")
-    note: Optional[str] = Field(default=None, title="Note", description="The note of a UML element.")
+    below: _Optional[list[str]] = _Field(default=None, title="Below the subtree package", description="The names of the packages between the subtree package, which is left out, and a package, which is last.")
+    is_excluded: _Optional[bool] = _Field(default=False, title="Is excluded", description="Whether an `--exclude-package` covers a package.")
+    note: _Optional[str] = _Field(default=None, title="Note", description="The note of a UML element.")
 
 
 class UmlLinkEnd(ConfiguredBaseModel):
     "One end of a connector that may become a slot: the class that holds it, the one it points at, and the role and cardinality written at that end."
-    holder_id: int = Field(default=..., title="Holder id", description="The id of the class that holds the slot an end of a connector gives.")
-    other_id: int = Field(default=..., title="Other id", description="The id of the class that the slot an end of a connector gives points at.")
-    end_role: Optional[str] = Field(default=None, title="End role", description="The role written at the end of a connector that names the slot.")
-    end_card: Optional[str] = Field(default=None, title="End cardinality", description="The cardinality written at the end of a connector that names the slot, as the model writes it.")
-    owned_by_composite: Optional[bool] = Field(default=False, title="Owned by composite", description="Whether the destination of the slot is owned because the connector is a composite association.")
+    holder_id: int = _Field(default=..., title="Holder id", description="The id of the class that holds the slot an end of a connector gives.")
+    other_id: int = _Field(default=..., title="Other id", description="The id of the class that the slot an end of a connector gives points at.")
+    end_role: _Optional[str] = _Field(default=None, title="End role", description="The role written at the end of a connector that names the slot.")
+    end_card: _Optional[str] = _Field(default=None, title="End cardinality", description="The cardinality written at the end of a connector that names the slot, as the model writes it.")
+    owned_by_composite: _Optional[bool] = _Field(default=False, title="Owned by composite", description="Whether the destination of the slot is owned because the connector is a composite association.")
 
 
 class ReportLine(ConfiguredBaseModel):
     "One line of the report a conversion writes beside its output, saying what was left out or changed."
-    report_kind: ReportKind = Field(default=..., title="Report kind", description="What a report line says was left out or changed.")
-    element: str = Field(default=..., title="Element", description="The element of the schema, or the file, a problem is about.")
-    message: str = Field(default=..., title="Message", description="What is wrong, in a line.")
+    report_kind: ReportKind = _Field(default=..., title="Report kind", description="What a report line says was left out or changed.")
+    element: str = _Field(default=..., title="Element", description="The element of the schema, or the file, a problem is about.")
+    message: str = _Field(default=..., title="Message", description="What is wrong, in a line.")
 
 
 class PresenceRule(ConfiguredBaseModel):
     "A class-level rule over alternatives, and when its validator refuses."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    need: str = Field(default=..., title="Need", description="What a rule needs of its alternatives, in words.")
-    refused: str = Field(default=..., title="Refused", description="The Python condition under which a rule\u0027s validator refuses.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    need: str = _Field(default=..., title="Need", description="What a rule needs of its alternatives, in words.")
+    refused: str = _Field(default=..., title="Refused", description="The Python condition under which a rule\u0027s validator refuses.")
 
 
 class RuleAlternative(ConfiguredBaseModel):
     "One alternative of a rule, its readable label and the Python expression that tells it holds."
-    label: str = Field(default=..., title="Label", description="A readable label.")
-    holds: str = Field(default=..., title="Holds", description="The Python expression that tells an alternative holds.")
+    label: str = _Field(default=..., title="Label", description="A readable label.")
+    holds: str = _Field(default=..., title="Holds", description="The Python expression that tells an alternative holds.")
 
 
 class UniqueKeyOn(ConfiguredBaseModel):
     "A unique key that a class\u0027s multivalued slot is subject to, with the IRIs the constraint query needs."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    slot_iri: str = Field(default=..., title="Slot IRI", description="The expanded IRI of a slot.")
-    key_name: str = Field(default=..., title="Key name", description="The name of a unique key.")
-    description: Optional[str] = Field(default=None, title="Description", description="A description in words.")
-    key_iris: list[str] = Field(default=..., title="Key IRIs", description="The expanded IRIs of the slots that make up a unique key.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    slot_iri: str = _Field(default=..., title="Slot IRI", description="The expanded IRI of a slot.")
+    key_name: str = _Field(default=..., title="Key name", description="The name of a unique key.")
+    description: _Optional[str] = _Field(default=None, title="Description", description="A description in words.")
+    key_iris: list[str] = _Field(default=..., title="Key IRIs", description="The expanded IRIs of the slots that make up a unique key.")
 
 
 class Frame(ConfiguredBaseModel):
     "A JSON-LD frame, the types it selects, its references and the frames of its owned parts."
-    type_terms: list[str] = Field(default=..., title="Type terms", description="The context terms of the types a frame selects.")
-    references: list[str] = Field(default=..., title="References", description="The slots of a frame that hold references, left as IRIs.")
-    parts: list[FramePart] = Field(default=..., title="Parts", description="The frames of the owned parts nested in a frame, one per owned slot.")
+    type_terms: list[str] = _Field(default=..., title="Type terms", description="The context terms of the types a frame selects.")
+    references: list[str] = _Field(default=..., title="References", description="The slots of a frame that hold references, left as IRIs.")
+    parts: list[FramePart] = _Field(default=..., title="Parts", description="The frames of the owned parts nested in a frame, one per owned slot.")
 
 
 class FramePart(ConfiguredBaseModel):
     "The frame of the parts nested in one owned slot of a frame."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    frame: Frame = Field(default=..., title="Frame", description="The frame of the parts held by a slot.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    frame: Frame = _Field(default=..., title="Frame", description="The frame of the parts held by a slot.")
 
 
 class TsField(ConfiguredBaseModel):
     "A field of a TypeScript interface."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    type: str = Field(default=..., title="Type", description="The type of a value, as the target language names it.")
-    optional: bool = Field(default=..., title="Optional", description="Whether a field may be left out.")
-    doc: str = Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    type: str = _Field(default=..., title="Type", description="The type of a value, as the target language names it.")
+    optional: bool = _Field(default=..., title="Optional", description="Whether a field may be left out.")
+    doc: str = _Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
 
 
 class TsInterface(ConfiguredBaseModel):
     "A TypeScript interface and its fields."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    doc: str = Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
-    fields: list[TsField] = Field(default=..., title="Fields", description="The fields of an interface.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    doc: str = _Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
+    fields: list[TsField] = _Field(default=..., title="Fields", description="The fields of an interface.")
 
 
 class TsEnumValue(ConfiguredBaseModel):
     "A string literal of a TypeScript union type."
-    literal: str = Field(default=..., title="Literal", description="A string literal, quoted.")
-    doc: str = Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
+    literal: str = _Field(default=..., title="Literal", description="A string literal, quoted.")
+    doc: str = _Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
 
 
 class TsEnum(ConfiguredBaseModel):
     "A union of string literals that stands for an enum of the schema."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    doc: str = Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
-    values: list[TsEnumValue] = Field(default=..., title="Values", description="The values of a union type.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    doc: str = _Field(default=..., title="Doc", description="A one-line doc comment, empty when there is none.")
+    values: list[TsEnumValue] = _Field(default=..., title="Values", description="The values of a union type.")
 
 
 class TsImport(ConfiguredBaseModel):
     "The names a TypeScript module imports from another module."
-    module: str = Field(default=..., title="Module", description="The name of a schema module.")
-    names: list[str] = Field(default=..., title="Names", description="The names imported from a module.")
+    module: str = _Field(default=..., title="Module", description="The name of a schema module.")
+    names: list[str] = _Field(default=..., title="Names", description="The names imported from a module.")
 
 
 class TsModule(ConfiguredBaseModel):
     "One TypeScript file, for one module of the schema."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    enums: list[TsEnum] = Field(default=..., title="Enums", description="The enums a TypeScript module declares.")
-    interfaces: list[TsInterface] = Field(default=..., title="Interfaces", description="The interfaces a TypeScript module declares.")
-    imports: list[TsImport] = Field(default=..., title="Imports", description="The imports of a TypeScript module.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    enums: list[TsEnum] = _Field(default=..., title="Enums", description="The enums a TypeScript module declares.")
+    interfaces: list[TsInterface] = _Field(default=..., title="Interfaces", description="The interfaces a TypeScript module declares.")
+    imports: list[TsImport] = _Field(default=..., title="Imports", description="The imports of a TypeScript module.")
 
 
 class MmdAttribute(ConfiguredBaseModel):
     "An attribute line of a Mermaid class box."
-    type: str = Field(default=..., title="Type", description="The type of a value, as the target language names it.")
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    type: str = _Field(default=..., title="Type", description="The type of a value, as the target language names it.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
 
 
 class MmdClass(ConfiguredBaseModel):
     "One class box of a Mermaid diagram."
-    name: str = Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
-    stereotype: Optional[str] = Field(default=None, title="Stereotype", description="The stereotype of a class box, `root` or `owned`, absent for a plain class.")
-    attributes: list[MmdAttribute] = Field(default=..., title="Attributes", description="The attribute lines of a class box.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    stereotype: _Optional[str] = _Field(default=None, title="Stereotype", description="The stereotype of a class box, `root` or `owned`, absent for a plain class.")
+    attributes: list[MmdAttribute] = _Field(default=..., title="Attributes", description="The attribute lines of a class box.")
 
 
 class MmdModule(ConfiguredBaseModel):
     "One Mermaid class diagram, for one module of the schema."
-    classes: list[MmdClass] = Field(default=..., title="Classes", description="The class boxes of a diagram.")
-    links: list[str] = Field(default=..., title="Links", description="The relationship lines of a diagram.")
-    externals: list[str] = Field(default=..., title="Externals", description="The names of the classes a diagram draws as a name only.")
+    classes: list[MmdClass] = _Field(default=..., title="Classes", description="The class boxes of a diagram.")
+    links: list[str] = _Field(default=..., title="Links", description="The relationship lines of a diagram.")
+    externals: list[str] = _Field(default=..., title="Externals", description="The names of the classes a diagram draws as a name only.")
 
 
 # Model rebuild

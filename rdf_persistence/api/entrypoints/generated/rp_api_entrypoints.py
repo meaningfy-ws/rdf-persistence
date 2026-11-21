@@ -7,23 +7,23 @@ from datetime import (
     datetime,
     time
 )
-from decimal import Decimal
-from enum import Enum
+from decimal import Decimal as _Decimal
+from enum import Enum as _Enum
 from typing import (
-    Any,
-    ClassVar,
-    Literal,
-    Optional,
-    Union
+    Any as _Any,
+    ClassVar as _ClassVar,
+    Literal as _Literal,
+    Optional as _Optional,
+    Union as _Union
 )
 
 from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    SerializationInfo,
-    SerializerFunctionWrapHandler,
+    BaseModel as _BaseModel,
+    ConfigDict as _ConfigDict,
+    Field as _Field,
+    RootModel as _RootModel,
+    SerializationInfo as _SerializationInfo,
+    SerializerFunctionWrapHandler as _SerializerFunctionWrapHandler,
     field_validator,
     model_serializer
 )
@@ -76,7 +76,6 @@ from rdf_persistence.core.domain.generated.rp_core import (
 )
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     AggregateHead,
-    Any,
     Condition,
     Contains,
     Filter,
@@ -92,28 +91,9 @@ version = "None"
 
 from rdf_persistence.core.domain.base import RpModel as ConfiguredBaseModel
 
-
-
-class LinkMLMeta(RootModel):
-    root: dict[str, Any] = {}
-    model_config = ConfigDict(frozen=True)
-
-    def __getattr__(self, key:str):
-        return getattr(self.root, key)
-
-    def __getitem__(self, key:str):
-        return self.root[key]
-
-    def __setitem__(self, key:str, value):
-        self.root[key] = value
-
-    def __contains__(self, key:str) -> bool:
-        return key in self.root
-
-
 linkml_meta = None
 
-class ProblemSlug(str, Enum):
+class ProblemSlug(str, _Enum):
     "The kinds of problem the toolkit answers with, by the last segment of their problem type IRI, with the underscores written as hyphens."
     INVALID_TOKEN = "invalid_token"
     "No bearer token, or one the service refuses."
@@ -152,8 +132,8 @@ class ProblemSlug(str, Enum):
 
 class TenantCreate(TenantLabelled):
     "The body that creates a tenant, its label and the slots of the tenant\u0027s root object."
-    root: Any = Field(default=..., title="Root", description="The slots of the tenant\u0027s root object, as the application\u0027s schema defines them.")
-    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
+    root: _Any = _Field(default=..., title="Root", description="The slots of the tenant\u0027s root object, as the application\u0027s schema defines them.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
 
     @field_validator("label")
     def pattern_label(cls, v):
@@ -171,7 +151,7 @@ class TenantCreate(TenantLabelled):
 
 class LabelUpdate(TenantLabelled):
     "The body that replaces the label of a tenant."
-    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
 
     @field_validator("label")
     def pattern_label(cls, v):
@@ -189,38 +169,38 @@ class LabelUpdate(TenantLabelled):
 
 class Authorised(ConfiguredBaseModel):
     "What a route\u0027s access check settled: the caller\u0027s principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on, and the global roles the token granted the caller."
-    principal: str = Field(default=..., title="Principal", description="The user account the token identifies.")
-    caller_access: CallerAccess = Field(default=..., title="Caller access", description="The caller\u0027s access to the tenant, as the access check loaded it.")
-    checked_target: str = Field(default=..., title="Checked target", description="The IRI of the tenant or aggregate the access check was made on, which the route acts on.")
-    global_roles: Optional[list[str]] = Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
+    principal: str = _Field(default=..., title="Principal", description="The user account the token identifies.")
+    caller_access: CallerAccess = _Field(default=..., title="Caller access", description="The caller\u0027s access to the tenant, as the access check loaded it.")
+    checked_target: str = _Field(default=..., title="Checked target", description="The IRI of the tenant or aggregate the access check was made on, which the route acts on.")
+    global_roles: _Optional[list[str]] = _Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
 
 
 class Problem(ConfiguredBaseModel):
     "An RFC 9457 problem detail, the body of every error answer of the service."
-    type: str = Field(default=..., title="Problem type", description="The IRI that identifies the kind of problem.")
-    title: str = Field(default=..., title="Problem title", description="A short, fixed summary of the kind of problem.")
-    status: int = Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
-    detail: Optional[str] = Field(default=None, title="Problem detail", description="An explanation of this occurrence of the problem.")
-    instance: Optional[str] = Field(default=None, title="Problem instance", description="The IRI that identifies this occurrence of the problem.")
+    type: str = _Field(default=..., title="Problem type", description="The IRI that identifies the kind of problem.")
+    title: str = _Field(default=..., title="Problem title", description="A short, fixed summary of the kind of problem.")
+    status: int = _Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
+    detail: _Optional[str] = _Field(default=None, title="Problem detail", description="An explanation of this occurrence of the problem.")
+    instance: _Optional[str] = _Field(default=None, title="Problem instance", description="The IRI that identifies this occurrence of the problem.")
 
 
 class InUseProblem(Problem):
     "The problem detail of a delete refused because other aggregates still point at the resource: it names up to the configured number of referrers the caller may read, and counts the rest."
-    referrers: Optional[list[Referrer]] = Field(default=None, title="Referrers", description="The aggregates that point at the resource, ordered by IRI and slot.")
-    hidden_count: Optional[int] = Field(default=None, title="Hidden count", description="The number of referrers or members the caller may not read, so are not listed.", ge=0)
-    more_count: Optional[int] = Field(default=None, title="More count", description="The number of referrers the caller may read but the answer does not name, past the limit.", ge=0)
-    type: str = Field(default=..., title="Problem type", description="The IRI that identifies the kind of problem.")
-    title: str = Field(default=..., title="Problem title", description="A short, fixed summary of the kind of problem.")
-    status: int = Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
-    detail: Optional[str] = Field(default=None, title="Problem detail", description="An explanation of this occurrence of the problem.")
-    instance: Optional[str] = Field(default=None, title="Problem instance", description="The IRI that identifies this occurrence of the problem.")
+    referrers: _Optional[list[Referrer]] = _Field(default=None, title="Referrers", description="The aggregates that point at the resource, ordered by IRI and slot.")
+    hidden_count: _Optional[int] = _Field(default=None, title="Hidden count", description="The number of referrers or members the caller may not read, so are not listed.", ge=0)
+    more_count: _Optional[int] = _Field(default=None, title="More count", description="The number of referrers the caller may read but the answer does not name, past the limit.", ge=0)
+    type: str = _Field(default=..., title="Problem type", description="The IRI that identifies the kind of problem.")
+    title: str = _Field(default=..., title="Problem title", description="A short, fixed summary of the kind of problem.")
+    status: int = _Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
+    detail: _Optional[str] = _Field(default=None, title="Problem detail", description="An explanation of this occurrence of the problem.")
+    instance: _Optional[str] = _Field(default=None, title="Problem instance", description="The IRI that identifies this occurrence of the problem.")
 
 
 class ProblemKind(ConfiguredBaseModel):
     "A kind of problem the service answers with: the slug that ends its problem type IRI, its fixed title and the HTTP status it comes with."
-    slug: str = Field(default=..., title="Problem slug", description="The last segment of the problem type IRI, lower case words joined by hyphens.")
-    title: str = Field(default=..., title="Problem title", description="A short, fixed summary of the kind of problem.")
-    status: int = Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
+    slug: str = _Field(default=..., title="Problem slug", description="The last segment of the problem type IRI, lower case words joined by hyphens.")
+    title: str = _Field(default=..., title="Problem title", description="A short, fixed summary of the kind of problem.")
+    status: int = _Field(default=..., title="Problem status", description="The HTTP status code of the answer.")
 
     @field_validator("slug")
     def pattern_slug(cls, v):

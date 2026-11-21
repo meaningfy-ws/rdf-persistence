@@ -65,13 +65,12 @@ def test_the_generated_toy_classes_reflect_the_transform(toy_copy: Path) -> None
         for stmt in cls.body
         if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name)
     }
-    assert fields[("Chapter", "label")] == "Optional[str]", (
+    optional = "_Optional[str]"  # typing.Optional under its alias (#243)
+    assert fields[("Chapter", "label")] == optional, (
         "an unlabelled class must have an optional label"
     )
     assert fields[("Note", "label")] == "str", "a labelled class must keep a required label"
-    assert fields[("Book", "description")] == "Optional[str]", (
-        "a root's description is optional (PD-1)"
-    )
-    assert fields[("Chapter", "description")] == "Optional[str]", (
+    assert fields[("Book", "description")] == optional, "a root's description is optional (PD-1)"
+    assert fields[("Chapter", "description")] == optional, (
         "an owned class must not require a description"
     )

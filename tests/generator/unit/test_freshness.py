@@ -32,7 +32,7 @@ migrations = "migrations"
 
 [[tool.rp-generate]]
 schema = "part.yaml"
-package = "app.domain.generated.part"
+package = "app.domain.generated.inner"
 migrations = "part_migrations"
 """
 WITH_PART = SCHEMA.replace("  - linkml:types", "  - linkml:types\n  - part")
@@ -194,6 +194,7 @@ def test_without_the_extra_the_comparison_runs_and_the_version_is_not_compared(
     for name in [m for m in sys.modules if m.startswith("linkml.")]:
         monkeypatch.delitem(sys.modules, name)
     monkeypatch.setitem(sys.modules, "linkml", None)
+    monkeypatch.setitem(sys.modules, "mypy", None)  # the extra brings it (#242)
     monkeypatch.delitem(sys.modules, "rdf_persistence_generation.steps", raising=False)
     monkeypatch.delattr(
         generation, "steps", raising=False
@@ -233,10 +234,10 @@ def test_nested_target_folders_keep_each_manifest_apart(tmp_path: Path) -> None:
     outer = GenerationManifest.model_validate_json(
         (tmp_path / "app/domain/generated/rp-manifest.json").read_text()
     )
-    assert not [e for e in outer.outputs if "/part/" in e.path], (
+    assert not [e for e in outer.outputs if "/inner/" in e.path], (
         "the outer manifest lists the inner"
     )
-    assert (tmp_path / "app/domain/generated/part/rp-manifest.json").is_file(), "no inner manifest"
+    assert (tmp_path / "app/domain/generated/inner/rp-manifest.json").is_file(), "no inner manifest"
 
 
 NAMED = 'regenerate-command = "make generate-models"\n'
@@ -249,7 +250,7 @@ regenerate-command = "make a"
 
 [[tool.rp-generate]]
 schema = "part.yaml"
-package = "app.domain.generated.part"
+package = "app.domain.generated.inner"
 migrations = "part_migrations"
 regenerate-command = "make b"
 """

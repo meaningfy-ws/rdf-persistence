@@ -130,18 +130,12 @@ def _build_a_book_on_a_shelf() -> None:
     assert (book.label, str(book.shelf)) == ("Dune", "https://example.org/ns/library#shelf-1")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=ImportError,
-    reason=(
-        "SPIKE-2 (PD-14): rp-generate exits 0 but the split pydantic modules import each other at "
-        "module level (`from .app_shelves import Shelf` / `from .app_books import Book`), so the "
-        "package fails with a circular ImportError; PD-27 merges a cycle into one module"
-    ),
-)
-def test_two_domain_modules_that_import_each_other_generate_and_import(
+def test_two_domain_modules_that_import_each_other_are_refused_by_the_import_check(
     importable: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """SPIKE-2 (PD-14): the split modules import each other at module level, so the package fails
+    with a circular ImportError (#208; the converter merges a cycle into one module, PD-27). The
+    run and the check import what was written and say so, naming the module (#242)."""
     pyproject = _write_project(
         importable,
         {
@@ -150,10 +144,17 @@ def test_two_domain_modules_that_import_each_other_generate_and_import(
         },
     )
 
-    code = main(["--project", str(pyproject)])
+    run_code, run_error = main(["--project", str(pyproject)]), capsys.readouterr().err
+    check_code, check_error = (
+        main(["--check", "--project", str(pyproject)]),
+        capsys.readouterr().err,
+    )
 
-    assert code == 0, capsys.readouterr().err
-    _build_a_book_on_a_shelf()
+    for code, error in ((run_code, run_error), (check_code, check_error)):
+        assert code == 1, "a package that cannot be imported passed"
+        assert "import check" in error, error
+        assert f"{PACKAGE}.domain.generated.app_books" in error, "the module is not named"
+        assert "ImportError" in error, "the exception is not named"
 
 
 def test_the_same_two_classes_in_one_module_generate_and_import(

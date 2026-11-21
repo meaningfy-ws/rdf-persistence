@@ -7,23 +7,23 @@ from datetime import (
     datetime,
     time
 )
-from decimal import Decimal
-from enum import Enum
+from decimal import Decimal as _Decimal
+from enum import Enum as _Enum
 from typing import (
-    Any,
-    ClassVar,
-    Literal,
-    Optional,
-    Union
+    Any as _Any,
+    ClassVar as _ClassVar,
+    Literal as _Literal,
+    Optional as _Optional,
+    Union as _Union
 )
 
 from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    SerializationInfo,
-    SerializerFunctionWrapHandler,
+    BaseModel as _BaseModel,
+    ConfigDict as _ConfigDict,
+    Field as _Field,
+    RootModel as _RootModel,
+    SerializationInfo as _SerializationInfo,
+    SerializerFunctionWrapHandler as _SerializerFunctionWrapHandler,
     field_validator,
     model_serializer,
     model_validator
@@ -72,38 +72,19 @@ version = "None"
 
 from rdf_persistence.core.domain.base import RpModel as ConfiguredBaseModel
 
-
-
-class LinkMLMeta(RootModel):
-    root: dict[str, Any] = {}
-    model_config = ConfigDict(frozen=True)
-
-    def __getattr__(self, key:str):
-        return getattr(self.root, key)
-
-    def __getitem__(self, key:str):
-        return self.root[key]
-
-    def __setitem__(self, key:str, value):
-        self.root[key] = value
-
-    def __contains__(self, key:str) -> bool:
-        return key in self.root
-
-
 linkml_meta = None
 
 
 class VerifiedCaller(ConfiguredBaseModel):
     "What a token verifier returns for a valid token, the principal and its global roles."
-    principal: str = Field(default=..., title="Principal", description="The user account the token identifies.")
-    global_roles: Optional[list[str]] = Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
+    principal: str = _Field(default=..., title="Principal", description="The user account the token identifies.")
+    global_roles: _Optional[list[str]] = _Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
 
 
 class GrantSet(ConfiguredBaseModel):
     "The body that replaces the grants and prohibitions of a tenant; two grants with the same assignee, target and role or action are refused."
-    grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
-    prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
+    grants: _Optional[list[Grant]] = _Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
+    prohibitions: _Optional[list[Prohibition]] = _Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
 
     @model_validator(mode="after")
     def unique_keys_grants_grant_key(self) -> "GrantSet":
@@ -124,10 +105,10 @@ class GrantSet(ConfiguredBaseModel):
 
 class CallerAccess(ConfiguredBaseModel):
     "What the access check needs to know about one caller in one tenant: the tenant\u0027s state, and the grants and prohibitions of the access record that name the caller."
-    tenant: str = Field(default=..., title="Tenant", description="The IRI of the tenant.")
-    state: TenantState = Field(default=..., title="State", description="Where the tenant is in its life.")
-    grants: Optional[list[Grant]] = Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
-    prohibitions: Optional[list[Prohibition]] = Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
+    tenant: str = _Field(default=..., title="Tenant", description="The IRI of the tenant.")
+    state: TenantState = _Field(default=..., title="State", description="Where the tenant is in its life.")
+    grants: _Optional[list[Grant]] = _Field(default=None, title="Grants", description="The permissions given in the tenant, by role or as direct actions; they live in the access record\u0027s graph.")
+    prohibitions: _Optional[list[Prohibition]] = _Field(default=None, title="Prohibitions", description="The actions forbidden in the tenant; they live in the access record\u0027s graph.")
 
     @model_validator(mode="after")
     def unique_keys_grants_grant_key(self) -> "CallerAccess":
@@ -148,11 +129,11 @@ class CallerAccess(ConfiguredBaseModel):
 
 class AccountSummary(ConfiguredBaseModel):
     "What the identity port reports about one account of the identity provider: its id, its login name, its email (a service account has none), whether it may sign in, and its global roles."
-    account_id: str = Field(default=..., title="Account id", description="The identity provider\u0027s id of the account.")
-    user_name: str = Field(default=..., title="User name", description="The name the account signs in with.")
-    email: Optional[str] = Field(default=None, title="Email", description="The email address of a person\u0027s account.")
-    active: bool = Field(default=..., title="Active", description="Whether the account may sign in; a disabled account is refused new tokens.")
-    global_roles: Optional[list[str]] = Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
+    account_id: str = _Field(default=..., title="Account id", description="The identity provider\u0027s id of the account.")
+    user_name: str = _Field(default=..., title="User name", description="The name the account signs in with.")
+    email: _Optional[str] = _Field(default=None, title="Email", description="The email address of a person\u0027s account.")
+    active: bool = _Field(default=..., title="Active", description="Whether the account may sign in; a disabled account is refused new tokens.")
+    global_roles: _Optional[list[str]] = _Field(default=None, title="Global roles", description="The system-level roles the token grants the principal.")
 
     @field_validator("account_id")
     def pattern_account_id(cls, v):

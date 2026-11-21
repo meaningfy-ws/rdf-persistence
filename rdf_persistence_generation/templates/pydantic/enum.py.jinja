@@ -1,4 +1,4 @@
-class {{ name }}(str{% if values %}, Enum{% endif %}):
+class {{ name }}(str{% if values %}, _Enum{% endif %}):
 {% if description %}
     {{ description | tojson }}
 {% endif %}

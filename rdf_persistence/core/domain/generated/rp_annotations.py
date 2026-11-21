@@ -7,23 +7,23 @@ from datetime import (
     datetime,
     time
 )
-from decimal import Decimal
-from enum import Enum
+from decimal import Decimal as _Decimal
+from enum import Enum as _Enum
 from typing import (
-    Any,
-    ClassVar,
-    Literal,
-    Optional,
-    Union
+    Any as _Any,
+    ClassVar as _ClassVar,
+    Literal as _Literal,
+    Optional as _Optional,
+    Union as _Union
 )
 
 from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    SerializationInfo,
-    SerializerFunctionWrapHandler,
+    BaseModel as _BaseModel,
+    ConfigDict as _ConfigDict,
+    Field as _Field,
+    RootModel as _RootModel,
+    SerializationInfo as _SerializationInfo,
+    SerializerFunctionWrapHandler as _SerializerFunctionWrapHandler,
     field_validator,
     model_serializer
 )
@@ -37,41 +37,22 @@ version = "None"
 
 from rdf_persistence.core.domain.base import RpModel as ConfiguredBaseModel
 
-
-
-class LinkMLMeta(RootModel):
-    root: dict[str, Any] = {}
-    model_config = ConfigDict(frozen=True)
-
-    def __getattr__(self, key:str):
-        return getattr(self.root, key)
-
-    def __getitem__(self, key:str):
-        return self.root[key]
-
-    def __setitem__(self, key:str, value):
-        self.root[key] = value
-
-    def __contains__(self, key:str) -> bool:
-        return key in self.root
-
-
 linkml_meta = None
 
 
 class Described(ConfiguredBaseModel):
     "A mixin giving an object an IRI, a label and a description. The application writes them."
-    id: str = Field(default=..., title="Identifier", description="The IRI that identifies the object.")
-    label: str = Field(default=..., title="Label", description="The preferred label of the object.")
-    description: Optional[str] = Field(default=None, title="Description", description="A free-text description of the object.")
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
+    description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")
 
 
 class Tracked(ConfiguredBaseModel):
     "A mixin for the tracking statements of a commit. The session writes them about the aggregate\u0027s graph IRI, never about the root entity."
-    created: Optional[datetime ] = Field(default=None, title="Created", description="The time the graph was first committed.")
-    modified: Optional[datetime ] = Field(default=None, title="Modified", description="The time the graph was last committed.")
-    creator: Optional[str] = Field(default=None, title="Creator", description="The principal that first committed the graph.")
-    contributor: Optional[list[str]] = Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
+    created: _Optional[datetime ] = _Field(default=None, title="Created", description="The time the graph was first committed.")
+    modified: _Optional[datetime ] = _Field(default=None, title="Modified", description="The time the graph was last committed.")
+    creator: _Optional[str] = _Field(default=None, title="Creator", description="The principal that first committed the graph.")
+    contributor: _Optional[list[str]] = _Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
 
 
 # Model rebuild

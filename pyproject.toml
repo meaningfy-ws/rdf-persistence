@@ -56,6 +56,8 @@ rp-uml2linkml = "rdf_persistence_generation.uml.cli:main"
 # The generators, kept out of consumers' running services (PD-2).
 generate = [
     "linkml==1.12.1",
+    # `rp-generate --check` type-checks what it generated (#242).
+    "mypy==1.20.2",
 ]
 # The container fixtures of `rdf_persistence.testkit.containers` (PD-16).
 testkit = [
