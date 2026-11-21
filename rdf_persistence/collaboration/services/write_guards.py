@@ -25,7 +25,7 @@ from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
-from rdf_persistence.persistence.services.session import Session
+from rdf_persistence.persistence.services.session import GuardContext, Session
 
 
 class WriteGuards:
@@ -44,13 +44,15 @@ class WriteGuards:
         self._collections = collection_classes(mapper.view)
         self._workflows = workflows
 
-    async def prepare(
+    async def prepare(  # noqa: PLR0913 - the WriteGuard port's signature (nested-collections PD-5)
         self,
         session: Session,
         iri: str,
         triples: list[Triple],
         stored: Tracked | None,
         allowed_state: str | None,
+        *,
+        context: GuardContext,
     ) -> list[Triple]:
         """The triples to write for the root ``iri`` (``stored`` is ``None`` for an add).
 

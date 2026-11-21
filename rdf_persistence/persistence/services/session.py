@@ -12,10 +12,12 @@ guard per key a change claims, so the check and the write are one request; a cla
 
 import logging
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping, Sequence
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
+from types import MappingProxyType
 from typing import Protocol, cast
 
 from pydantic import BaseModel
@@ -531,11 +533,25 @@ def remove_parts(
     return _at_version(graph, old_version), operations
 
 
+@dataclass(frozen=True)
+class GuardContext:
+    """What a write guard may use of the transaction collecting the change.
+
+    ``collected`` holds the triples of the adds and replaces collected before this change, by root
+    IRI (a remove adds nothing). ``rely_on(iri, version)`` makes the commit fail, naming ``iri``, if
+    the graph of ``iri`` no longer has ``version`` when the request starts.
+    """
+
+    collected: Mapping[str, tuple[Triple, ...]]  # root IRI -> triples collected before this change
+    rely_on: Callable[[str, str], None]  # (root IRI, version read) -> None
+
+
 class WriteGuard(Protocol):
     """What a transaction asks before it collects an add or a replace (PD-6): the triples to write.
 
     ``stored`` is ``None`` for an add, the stored tracking for a replace. ``allowed_state`` is the one
-    state the transaction allows this root to take (PD-19), or ``None``. It raises to refuse.
+    state the transaction allows this root to take (PD-19), or ``None``. ``context`` is what the
+    transaction offers the guard. It raises to refuse.
     """
 
     async def prepare(
@@ -545,6 +561,8 @@ class WriteGuard(Protocol):
         triples: list[Triple],
         stored: Tracked | None,
         allowed_state: str | None,
+        *,
+        context: GuardContext,
     ) -> list[Triple]: ...
 
 
@@ -812,7 +830,9 @@ class Session:
             for iri, (types, version) in sorted(found.items())
         ]
 
-    async def graphs_with(self, predicate: URIRef, obj: URIRef | None = None) -> dict[str, Graph]:
+    async def graphs_with(
+        self, predicate: URIRef, obj: URIRef | Literal | None = None
+    ) -> dict[str, Graph]:
         """The stored triples of each registered aggregate whose root has ``predicate`` (with
         ``obj`` as its object, when given), one ``Graph`` per root, keyed by the root's IRI.
 
@@ -1251,6 +1271,10 @@ class Transaction:
         self._read_at: dict[URIRef, str | None] = {}
         self._wrote: dict[URIRef, str] = {}
         self._required: dict[URIRef, str] = {}  # graph -> root of each ``_require_present`` (PD-25)
+        # graph -> (root, version) of each ``_rely_on``; the graphs a guard read (nested-collections PD-5)
+        self._relied: dict[URIRef, tuple[str, str]] = {}
+        # root -> the triples collected for it by an add or a replace, offered to the write guards
+        self._collected: dict[str, tuple[Triple, ...]] = {}
         self._key_claims: list[KeyClaim] = []  # what the changes claim of the session's keys (PD-6)
         self._allowed: dict[str, str] = {}  # root -> the one state this transaction may set (PD-19)
 
@@ -1282,6 +1306,28 @@ class Transaction:
     def _require_open(self) -> None:
         if self._ended:
             raise RuntimeError("the transaction has ended; a change now would be dropped")
+
+    def _context(self) -> GuardContext:
+        """What the write guards may use while this transaction collects a change (PD-5)."""
+        return GuardContext(collected=MappingProxyType(self._collected), rely_on=self._rely_on)
+
+    def _rely_on(self, iri: str, version: str) -> None:
+        """Make the commit fail, naming ``iri``, if its graph no longer has ``version`` (PD-5).
+
+        A second call for the same graph and version changes nothing.
+
+        Raises:
+            RuntimeError: The block has ended.
+            ValueError: The graph is relied on already at another version.
+        """
+        self._require_open()
+        graph = self._session._graph(iri)
+        if (relied := self._relied.get(graph)) is not None:
+            if relied[1] != version:
+                raise ValueError(f"{iri} is relied on at another version already")
+            return
+        self._guards.append(_at_version(graph, version))
+        self._relied[graph] = (str(iri), version)
 
     def _claim(self, iri: str) -> URIRef:
         """The graph of ``iri``; a second change on the same graph, whatever string type, is refused."""
@@ -1319,7 +1365,7 @@ class Transaction:
         await session._check_commit(iri, loaded_graphs)
         if session._write_guards is not None:
             triples = await session._write_guards.prepare(
-                session, iri, triples, None, self._allowed.get(str(iri))
+                session, iri, triples, None, self._allowed.get(str(iri)), context=self._context()
             )
         key_claims = claims_of(session._keys, iri, triples)
         version = str(uuid.uuid4())
@@ -1334,6 +1380,7 @@ class Transaction:
         )
         change: Change = ((str(iri), class_in(iri, triples), version), None)
         self._collect(iri, graph, None, version, parts, self._holds(graph, version), change)
+        self._collected[str(iri)] = tuple(triples)
         self._key_claims += key_claims
         return version
 
@@ -1354,7 +1401,12 @@ class Transaction:
         if session._write_guards is not None:
             try:
                 triples = await session._write_guards.prepare(
-                    session, iri, triples, stored, self._allowed.get(str(iri))
+                    session,
+                    iri,
+                    triples,
+                    stored,
+                    self._allowed.get(str(iri)),
+                    context=self._context(),
                 )
             except Forbidden as refusal:
                 if (
@@ -1386,6 +1438,7 @@ class Transaction:
             (str(iri), was, if_version),
         )
         self._collect(iri, graph, if_version, version, parts, self._holds(graph, version), change)
+        self._collected[str(iri)] = tuple(triples)
         self._key_claims += key_claims
         return version
 
@@ -1593,7 +1646,7 @@ class Transaction:
         session = self._session
         text = fill(
             READ_VERSIONS,
-            graphs=join(term(graph) for graph in {**self._roots, **self._required}),
+            graphs=join(term(graph) for graph in {**self._roots, **self._required, **self._relied}),
             p_version=term(v.VERSION),
         )
         rows = [
@@ -1621,6 +1674,9 @@ class Transaction:
         for graph, root in self._required.items():
             if found.get(graph) is None:
                 reasons[root] = f"{root} was removed by someone else since it was read"
+        for graph, (root, version) in self._relied.items():
+            if (now := found.get(graph)) != version:
+                reasons[root] = changed_text(root, now)
         return dict(sorted(reasons.items()))
 
     async def _taken_activity(self) -> str | None:
