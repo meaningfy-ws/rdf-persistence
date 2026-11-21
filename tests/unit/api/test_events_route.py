@@ -252,28 +252,24 @@ async def test_a_resume_sends_what_was_relayed_after_the_id_then_live_events_non
 
 
 async def test_an_activity_relayed_after_the_named_one_is_sent_though_applied_before(
-    settled: Scene, fast: str, monkeypatch: pytest.MonkeyPatch, streams: set[asyncio.Task]
+    settled: Scene, fast: str, streams: set[asyncio.Task]
 ) -> None:  # TC-37a
     kit = settled.service.kit
-
-    async def not_now() -> None:
-        return None
-
-    monkeypatch.setattr(kit.relay, "run_once", not_now)  # the commits stay pending
     etag = settled.book_etag
-    for label in ("Applied first", "Applied second"):
-        response = await settled.http.put(
-            settled.book,
-            json={**DUNE_BODY, "label": label},
-            headers=settled.headers("ada", **{"If-Match": etag}),
-        )
-        etag = response.headers["etag"]
-    async with kit.session(settled.tenant_iri, kit.tenancy.toolkit.id) as session:
-        first, second = [iri for iri, _ in await session.pending_activities()]
-        await session.mark_relayed(second)  # relayed first
-        await session.mark_relayed(first)  # relayed last
-    bob = opening(streams, settled, events=1, **{"Last-Event-ID": second})
-    [event] = (await bob).events
+    async with kit.relay.paused():  # the commits stay pending
+        for label in ("Applied first", "Applied second"):
+            response = await settled.http.put(
+                settled.book,
+                json={**DUNE_BODY, "label": label},
+                headers=settled.headers("ada", **{"If-Match": etag}),
+            )
+            etag = response.headers["etag"]
+        async with kit.session(settled.tenant_iri, kit.tenancy.toolkit.id) as session:
+            first, second = [iri for iri, _ in await session.pending_activities()]
+            await session.mark_relayed(second)  # relayed first
+            await session.mark_relayed(first)  # relayed last
+        bob = opening(streams, settled, events=1, **{"Last-Event-ID": second})
+        [event] = (await bob).events
     assert event.id == first, "the event sent is the one relayed after the named id"
 
 
@@ -324,23 +320,19 @@ async def test_an_id_relayed_before_the_window_sends_a_reset(
 
 
 async def test_an_id_never_relayed_sends_a_reset(
-    settled: Scene, fast: str, monkeypatch: pytest.MonkeyPatch, streams: set[asyncio.Task]
+    settled: Scene, fast: str, streams: set[asyncio.Task]
 ) -> None:  # TC-38
     kit = settled.service.kit
-
-    async def not_now() -> None:
-        return None
-
-    monkeypatch.setattr(kit.relay, "run_once", not_now)
-    await settled.http.put(
-        settled.book,
-        json={**DUNE_BODY, "label": "Pending"},
-        headers=settled.headers("ada", **{"If-Match": settled.book_etag}),
-    )
-    async with kit.session(settled.tenant_iri, kit.tenancy.toolkit.id) as session:
-        [(pending, _)] = await session.pending_activities()
-    bob = opening(streams, settled, events=1, **{"Last-Event-ID": pending})
-    [reset] = (await bob).events
+    async with kit.relay.paused():  # the commit stays pending, so the id is never relayed
+        await settled.http.put(
+            settled.book,
+            json={**DUNE_BODY, "label": "Pending"},
+            headers=settled.headers("ada", **{"If-Match": settled.book_etag}),
+        )
+        async with kit.session(settled.tenant_iri, kit.tenancy.toolkit.id) as session:
+            [(pending, _)] = await session.pending_activities()
+        bob = opening(streams, settled, events=1, **{"Last-Event-ID": pending})
+        [reset] = (await bob).events
     assert reset.event == "reset", "an unknown id gets a reset event"
 
 
