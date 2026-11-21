@@ -89,7 +89,10 @@ XML_FORBIDDEN = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 @lru_cache(maxsize=8)
 def _shape_triples(digest: str, data: bytes) -> tuple[tuple[Node, Node, Node], ...]:
-    """The triples of the Turtle ``data``, parsed once per ``digest`` (the digest keys the cache)."""
+    """The triples of the Turtle ``data``, parsed once per ``digest`` and ``data`` (the cache is keyed by both).
+
+    The digest is carried for ``warm_up_once``, which keys its process-wide warm-up by it.
+    """
     return tuple(Graph().parse(data=data, format=TURTLE))
 
 

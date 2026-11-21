@@ -113,6 +113,7 @@ INVALID_TOKENS = [
     "expires-this-instant",
     "not-yet-valid",
     "exp-as-a-bool",
+    "exp-as-a-numeric-string",
     "nbf-as-a-numeric-string",
     "sub-as-a-number",
     "no-exp",
@@ -154,6 +155,7 @@ def make_invalid(name: str, signer: TokenSigner) -> str:
         "not-yet-valid": lambda: signer.issue(not_before_in=60),
         "expires-this-instant": lambda: signer.issue(expires_in=-DEFAULT_LEEWAY_SECONDS),
         "exp-as-a-bool": lambda: signer.issue(extra={"exp": True}),
+        "exp-as-a-numeric-string": lambda: signer.issue(extra={"exp": str(int(NOW) + 600)}),
         "nbf-as-a-numeric-string": lambda: signer.issue(extra={"nbf": "0"}),
         "sub-as-a-number": lambda: signer.issue(sub=None, extra={"sub": 123}),
         "alg-none-with-a-known-kid": lambda: jwt.encode(

@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
+from rdflib import URIRef
 
 from rdf_persistence.core.domain import sparql_parsing
 from tests.unit.builders import RecordingLock
@@ -55,13 +56,15 @@ def test_each_wrapper_holds_the_lock_while_rdflib_parses(monkeypatch, lock, wrap
 
 def test_prepare_query_applies_the_prefixes_it_is_given(lock):
     query = sparql_parsing.prepare_query("SELECT * WHERE { ex:a ex:b ?o }", {"ex": "urn:example:"})
-    assert query is not None
-    assert lock.taken == 1
+    assert repr(URIRef("urn:example:a")) in repr(query.algebra), (
+        "the prefix resolved to its namespace"
+    )
+    assert lock.taken == 1, "the parser lock was taken once"
 
 
 def test_prepare_query_reads_a_text_with_no_prefixes_given(lock):
-    assert sparql_parsing.prepare_query(QUERY) is not None
-    assert sparql_parsing.prepare_query(QUERY, {}) is not None
+    assert sparql_parsing.prepare_query(QUERY) is not None, "no prefixes argument"
+    assert sparql_parsing.prepare_query(QUERY, {}) is not None, "an empty prefixes mapping"
 
 
 def test_prepare_update_applies_the_prefixes_it_is_given(lock):

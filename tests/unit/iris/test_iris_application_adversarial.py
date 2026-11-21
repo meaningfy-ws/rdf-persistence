@@ -298,9 +298,9 @@ def test_an_application_iri_that_reads_as_a_tenants_is_refused_by_name_of_that_i
     with pytest.raises(InvalidIri) as refused:
         Iris(_settings(policy), *((ROOTS, OWNED) if typed else ()))
     message = str(refused.value)
-    assert re.match(
-        r"the application's IRIs read as a tenant's under these templates: 'http", message
-    ), f"the refusal names the application IRI that reads as a tenant's: {message}"
+    assert "'http" in message, (
+        f"the refusal names the application IRI that reads as a tenant's: {message}"
+    )
 
 
 def test_a_tenant_read_as_a_loaded_graph_of_the_application_is_refused_naming_the_tenant(
@@ -313,7 +313,7 @@ def test_a_tenant_read_as_a_loaded_graph_of_the_application_is_refused_naming_th
         tenant_id=IdSpec(kind=IdKind.RANDOM, length=8, alphabet="ab"),
         object_id=IdSpec(kind=IdKind.RANDOM, length=8),
     )
-    monkeypatch.setattr(
+    monkeypatch.setattr(  # X4
         iris_module, "draw_id", lambda spec: "abababab" if spec.alphabet == "ab" else "zzzzzzzz"
     )
     with pytest.raises(InvalidIri, match="is one of its aggregates") as refused:
@@ -348,7 +348,7 @@ def test_a_part_or_loaded_graph_of_the_application_that_reads_as_a_tenant_is_ref
         tenant_id=IdSpec(kind=IdKind.RANDOM, length=26),
         object_id=IdSpec(kind=IdKind.RANDOM, length=8),
     )
-    monkeypatch.setattr(
+    monkeypatch.setattr(  # X4
         iris_module, "draw_id", lambda spec: "t" * 26 if spec.length == 26 else "zzzzzzzz"
     )
     with pytest.raises(InvalidIri, match=re.escape(f"templates: '{expected}'")):

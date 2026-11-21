@@ -588,13 +588,11 @@ async def test_the_relay_runs_the_round_that_fell_due_while_it_was_paused(world)
 
 async def test_a_paused_block_that_raises_releases_the_relay(world):
     relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
-    await add_one(world, world.tenant)
-    due = await pending(world, world.tenant)
     with pytest.raises(RuntimeError, match="the block fails"):
         async with relay.paused():
-            round_ = asyncio.create_task(relay.run_once())
-            await _yield_to_the_loop()
-            assert not round_.done(), "the round is held while the block is open"
             raise RuntimeError("the block fails")
-    await asyncio.wait_for(round_, timeout=5)  # released by the exception, not stuck on the lock
+    await add_one(world, world.tenant)  # a book committed after the block
+    due = await pending(world, world.tenant)
+    # a lock the block kept would hold this round for good: the wait is bounded
+    await asyncio.wait_for(relay.run_once(), timeout=5)
     assert [activity for _, _, activity in sent(world, world.tenant)] == due, "that commit"

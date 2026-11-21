@@ -72,6 +72,8 @@ def _is_shared_infrastructure(parts: tuple[str, ...]) -> bool:
 
 # The tests of the rdf_persistence/ files that are in no theme (PD-11).
 PACKAGE_TESTS = "tests/unit/package/"
+# The test a change under docs/ selects.
+DOCS_CHECK_TEST = "tests/unit/tooling/test_check_docs.py"
 
 
 def _test_folder_of(parts: tuple[str, ...]) -> list[str] | None:
@@ -102,7 +104,7 @@ def _classify(path: str) -> Selection:
     if parts[0] in NO_TEST_ROOTS or (len(parts) == 1 and name.endswith(".md")):
         return Selection((), (), ())
     if parts[0] == "docs":
-        return Selection(("tests/unit/tooling/test_check_docs.py",), (), ())
+        return Selection((DOCS_CHECK_TEST,), (), ())
     if _is_shared_infrastructure(parts):
         return Selection((), (), (f"{path}: shared test infrastructure or schema",))
     if parts[0] == "rdf_persistence" and len(parts) > 1 and parts[1] == CORE_THEME:

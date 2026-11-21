@@ -62,7 +62,11 @@ def warm_up(shapes: Graph) -> None:
 
 def warm_up_once(shapes: Graph, digest: str) -> None:
     """Warm ``shapes`` up unless this process has warmed shapes of the same digest: the warm-up's effect
-    is process-wide. Read without the lock (a set lookup); decided again under it."""
+    is process-wide. Read without the lock (a set lookup); decided again under it.
+
+    The digest must be that of the bytes the shapes were parsed from (the caller's contract): a wrong
+    digest that was already warmed skips the warm-up ``validate_warm`` relies on.
+    """
     if digest in _WARMED_SHAPES:
         return
     with sparql_parsing.SPARQL_PARSER_LOCK:

@@ -102,7 +102,11 @@ def test_a_key_conflict_with_nothing_named_defaults_to_empty():
 
 def test_a_failed_migration_keeps_the_schema_the_migration_and_the_cause_apart():
     error = exceptions.MigrationFailed("failed", schema="urn:s", migration="m1", cause="timeout")
-    assert (error.schema, error.migration, error.cause) == ("urn:s", "m1", "timeout")
+    assert (error.schema, error.migration, error.cause) == (
+        "urn:s",
+        "m1",
+        "timeout",
+    ), "the schema, the migration and the cause are kept as given"
     assert str(error) == "failed", "the text is the message it was raised with"
 
 
