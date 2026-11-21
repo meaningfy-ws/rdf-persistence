@@ -8,26 +8,30 @@ owned (and so is the destination of a composite association).
 from rdf_persistence_generation.generated.rp_generation import (
     ReportKind,
     UmlBoundary,
+    UmlElement,
     UmlLink,
+    UmlLinkEnd,
     UmlLinkKind,
     UmlModel,
+    UmlName,
 )
 from rdf_persistence_generation.uml.context import (
     LEFT_EXCLUDED,
     LEFT_NOT_GENERATED,
     LEFT_OUTSIDE,
     Context,
-    Element,
+    is_boundary_root,
+    literals_of,
 )
 from rdf_persistence_generation.uml.naming import slot_name
 from rdf_persistence_generation.uml.slots import (
     COMPOSITE,
     UNSPECIFIED,
     URI,
-    Shape,
     Usage,
     check_bounds,
     described,
+    shape_of,
     slot_identity,
 )
 
@@ -36,27 +40,10 @@ DIRECTED = "Source -> Destination"
 BIDIRECTIONAL = "Bi-Directional"
 
 
-class End:
-    """One end of a connector that may become a slot: the class that holds it and the one it points at."""
-
-    __slots__ = ("card", "holder_id", "other_id", "owned_by_composite", "role")
-
-    def __init__(
-        self,
-        ids: tuple[int, int],
-        role_and_card: tuple[str | None, str | None],
-        owned_by_composite: bool = False,
-    ) -> None:
-        """``ids`` are the holder's and the target's; the role and the cardinality are the end's own."""
-        self.holder_id, self.other_id = ids
-        self.role, self.card = role_and_card
-        self.owned_by_composite = owned_by_composite
-
-
 def _boundary_pairs(ctx: Context, boundary: UmlBoundary) -> set[tuple[int, int]]:
     """The owned pairs of one boundary: from each member to each member but its root."""
     members = [m for m in boundary.member_ids or [] if m in ctx.elements]
-    roots = [m for m in members if ctx.elements[m].is_root]
+    roots = [m for m in members if is_boundary_root(ctx.elements[m])]
     if len(roots) != 1:
         ctx.findings.no_rule(
             boundary.name, f"a boundary needs exactly one root, this one has {len(roots)}"
@@ -89,11 +76,11 @@ def _name_of(ctx: Context, element_id: int) -> str:
     return ctx.class_names[element_id]
 
 
-def _range_of(ctx: Context, end: End, holder: Element, slot: str) -> str | None:
+def _range_of(ctx: Context, end: UmlLinkEnd, holder: UmlElement, slot: str) -> str | None:
     """The range a slot has; None when the target is in an excluded package and the slot is not made."""
     target = ctx.elements.get(end.other_id)
     if target is not None:
-        return URI if target.is_enum and not target.literals else target.label
+        return URI if target.is_enum and not literals_of(target) else target.label
     why = ctx.left_out.get(end.other_id)
     if why == LEFT_NOT_GENERATED:
         return URI
@@ -114,32 +101,47 @@ def _range_of(ctx: Context, end: End, holder: Element, slot: str) -> str | None:
     return None
 
 
-def _enum_holder(ctx: Context, holder: Element, element: str) -> bool:
+def _enum_holder(ctx: Context, holder: UmlElement, element: str) -> bool:
     """Whether an enumeration holds the slot, which no rule maps: a problem naming the slot."""
     if holder.is_enum:
         ctx.findings.no_rule(element, "a slot held by an enumeration")
-    return holder.is_enum
+    return bool(holder.is_enum)
 
 
-def _end_usage(ctx: Context, link: UmlLink, end: End, owned: set[tuple[int, int]]) -> Usage | None:
+def _end_name(ctx: Context, end: UmlLinkEnd, holder: UmlElement | None) -> UmlName | None:
+    """The resolved role of an end whose holder is generated; None for an end with no role."""
+    if holder is None or not end.end_role:
+        return None
+    return ctx.resolve(end.end_role, _name_of(ctx, end.holder_id))
+
+
+def _is_owned(end: UmlLinkEnd, owned: set[tuple[int, int]]) -> bool:
+    """Whether the slot an end gives is owned: a composite end, or a pair a boundary makes owned."""
+    return bool(end.owned_by_composite) or (end.holder_id, end.other_id) in owned
+
+
+def _end_usage(
+    ctx: Context, link: UmlLink, end: UmlLinkEnd, owned: set[tuple[int, int]]
+) -> Usage | None:
     holder = ctx.elements.get(end.holder_id)
-    name = ctx.resolve(end.role, _name_of(ctx, end.holder_id)) if end.role and holder else None
+    name = _end_name(ctx, end, holder)
     if holder is None or name is None:
         return None
     element = f"{holder.label}.{name.name}"
-    identity = slot_identity(ctx, name, element)
-    if identity is None:
+    identities = slot_identity(ctx, name, element)
+    if identities is None:
         return None
-    element = f"{holder.label}.{identity.name}"
+    slot = str(identities[0].name)
+    element = f"{holder.label}.{slot}"
     if _enum_holder(ctx, holder, element):
         return None
-    bounds = check_bounds(ctx, element, _card_text(ctx, element, end.card))
-    target_range = _range_of(ctx, end, holder, identity.name)
+    bounds = check_bounds(ctx, element, _card_text(ctx, element, end.end_card))
+    target_range = _range_of(ctx, end, holder, slot)
     if bounds is None or target_range is None:
         return None
-    is_owned = end.owned_by_composite or (end.holder_id, end.other_id) in owned
-    shape = Shape((target_range, described(ctx, element, link.note)), bounds, None, is_owned)
-    return Usage(holder, identity, (1, 0, identity.name), shape)
+    described_as = (target_range, described(ctx, element, link.note))
+    shape = shape_of(slot, described_as, bounds, owned=_is_owned(end, owned))
+    return Usage(holder, identities, (1, 0, slot), shape)
 
 
 def _card_text(ctx: Context, element: str, card: str | None) -> str:
@@ -191,15 +193,22 @@ def _refused(ctx: Context, link: UmlLink) -> bool:
     return True
 
 
-def _ends(link: UmlLink) -> list[End]:
-    forward = End(
-        (link.source_id, link.target_id),
-        (link.target_role, link.target_card),
+def _ends(link: UmlLink) -> list[UmlLinkEnd]:
+    forward = UmlLinkEnd(
+        holder_id=link.source_id,
+        other_id=link.target_id,
+        end_role=link.target_role,
+        end_card=link.target_card,
         owned_by_composite=link.source_aggregate == COMPOSITE,
     )
     if link.link_kind == UmlLinkKind.DEPENDENCY:
         return [forward]
-    backward = End((link.target_id, link.source_id), (link.source_role, link.source_card))
+    backward = UmlLinkEnd(
+        holder_id=link.target_id,
+        other_id=link.source_id,
+        end_role=link.source_role,
+        end_card=link.source_card,
+    )
     return [forward, backward]
 
 
@@ -209,6 +218,14 @@ def _dependency_target_ok(ctx: Context, link: UmlLink) -> bool:
         ctx.findings.no_rule(
             f"{_name_of(ctx, link.source_id)}.{role}".rstrip("."),
             "a dependency with a source role only, it needs a destination role",
+        )
+        return False
+    if ctx.not_generated_enum(link.target_id):
+        element = f"{_name_of(ctx, link.source_id)}.{slot_name(link.target_role)}"
+        ctx.findings.note(
+            ReportKind.NOT_GENERATED,
+            f"{element} -> {_name_of(ctx, link.target_id)}",
+            "the target is not generated, so no slot (R-30)",
         )
         return False
     target = ctx.elements.get(link.target_id)

@@ -7,8 +7,12 @@ Pure functions over package paths; a path is the tuple of package names below th
 import re
 from collections.abc import Mapping
 
-from rdf_persistence_generation.generated.rp_generation import UmlModel, UmlPackage, UmlSettings
-from rdf_persistence_generation.uml.context import PackagePath
+from rdf_persistence_generation.generated.rp_generation import (
+    UmlModel,
+    UmlPackage,
+    UmlPackagePath,
+    UmlSettings,
+)
 
 MAIN = "main"
 PATH_SEPARATOR = "/"
@@ -55,7 +59,7 @@ def _subtree_root(
     return tops[0] if tops else None
 
 
-def package_paths(model: UmlModel, settings: UmlSettings) -> dict[int, PackagePath]:
+def package_paths(model: UmlModel, settings: UmlSettings) -> dict[int, UmlPackagePath]:
     """The packages of the subtree, each with its path below the subtree package and its exclusion.
 
     The outside packages (D-17) are laid out with the converted ones, so a path under an
@@ -79,9 +83,11 @@ def _all_packages(model: UmlModel) -> dict[int, UmlPackage]:
 
 def _path_below(
     full: tuple[str, ...], root: tuple[str, ...] | None, note: str | None, excluded: list[str]
-) -> PackagePath:
+) -> UmlPackagePath:
     below = full[len(root or ()) :]
-    return PackagePath(below, _is_excluded(full, below, excluded), note)
+    return UmlPackagePath(
+        below=list(below), is_excluded=_is_excluded(full, below, excluded), note=note
+    )
 
 
 def segment_name(segment: str) -> str:
@@ -134,6 +140,22 @@ class _Tarjan:
         self.on_stack: set[ModulePath] = set()
         self.components: list[list[ModulePath]] = []
         self.counter = 0
+
+
+def reachable(edges: Mapping[ModulePath, set[ModulePath]]) -> dict[ModulePath, set[ModulePath]]:
+    """The modules each module reaches by imports, directly or through others (LinkML imports are transitive)."""
+    reached: dict[ModulePath, set[ModulePath]] = {}
+    for start in edges:
+        seen: set[ModulePath] = set()
+        pending = list(edges[start])
+        while pending:
+            node = pending.pop()
+            if node not in seen:
+                seen.add(node)
+                pending.extend(edges.get(node, ()))
+        seen.discard(start)
+        reached[start] = seen
+    return reached
 
 
 def cycle_components(

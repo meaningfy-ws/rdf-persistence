@@ -87,11 +87,11 @@ def test_three_faults_give_three_sorted_lines_exit_one_and_leave_out_unchanged(t
 
     code, lines = run(capsys, tmp_path, builder.finish())
 
-    assert code == 1
-    assert len(lines) == 3
-    assert lines == sorted(lines)
-    assert all(line.startswith("[no_rule] ") for line in lines)
-    assert snapshot(out) == before
+    assert code == 1, "model problems exit 1"
+    assert len(lines) == 3, f"three problems are printed: {lines}"
+    assert lines == sorted(lines), "the problems are printed sorted"
+    assert all(line.startswith("[no_rule] ") for line in lines), f"all are no_rule: {lines}"
+    assert snapshot(out) == before, "a failed run leaves the out folder as it was"
 
 
 def test_the_path_form_and_the_name_form_of_the_package_write_the_same_files(tmp_path, capsys):
@@ -103,9 +103,9 @@ def test_the_path_form_and_the_name_form_of_the_package_write_the_same_files(tmp
     (tmp_path / "out" / "app.yaml").unlink()
     by_name = run(capsys, tmp_path, qea, package="library")
 
-    assert by_path == by_name == (0, [])
-    assert "app_main.yaml" in path_files
-    assert snapshot(tmp_path / "out") == path_files
+    assert by_path == by_name == (0, []), f"both forms exit 0 silently: {by_path}, {by_name}"
+    assert "app_main.yaml" in path_files, f"the main module is written: {sorted(path_files)}"
+    assert snapshot(tmp_path / "out") == path_files, "the name form writes the same files"
 
 
 def test_a_package_with_no_class_or_enumeration_exits_one_and_writes_nothing(tmp_path, capsys):
@@ -114,11 +114,11 @@ def test_a_package_with_no_class_or_enumeration_exits_one_and_writes_nothing(tmp
 
     code, lines = run(capsys, tmp_path, builder.finish())
 
-    assert code == 1
+    assert code == 1, "an empty package exits 1"
     assert lines == [
         f"[package_module] {ROOT}: the package holds no class or enumeration to convert"
-    ]
-    assert not (tmp_path / "out").exists()
+    ], f"the problem is named: {lines}"
+    assert not (tmp_path / "out").exists(), "nothing is written"
 
 
 def test_an_out_folder_that_does_not_exist_is_not_created_by_a_failed_run(tmp_path, capsys):
@@ -127,8 +127,8 @@ def test_an_out_folder_that_does_not_exist_is_not_created_by_a_failed_run(tmp_pa
 
     code, _ = run(capsys, tmp_path, builder.finish())
 
-    assert code == 1
-    assert not (tmp_path / "out").exists()
+    assert code == 1, "model problems exit 1"
+    assert not (tmp_path / "out").exists(), "a failed run does not create the out folder"
 
 
 # --- the usage errors (exit 2): one line, prefixed -----------------------------------------------
@@ -140,7 +140,7 @@ def test_a_prefixes_file_without_a_key_is_a_usage_error(tmp_path, capsys):
 
     code, lines = run(capsys, tmp_path, builder.finish(), prefixes=broken)
 
-    assert (code, lines) == (2, [f"{PREFIX}{broken}: missing default_prefix"])
+    assert (code, lines) == (2, [f"{PREFIX}{broken}: missing default_prefix"]), (code, lines)
 
 
 def test_a_prefixes_file_that_is_not_a_mapping_is_a_usage_error(tmp_path, capsys):
@@ -149,7 +149,7 @@ def test_a_prefixes_file_that_is_not_a_mapping_is_a_usage_error(tmp_path, capsys
 
     code, lines = run(capsys, tmp_path, builder.finish(), prefixes=broken)
 
-    assert (code, lines) == (2, [f"{PREFIX}{broken}: not a mapping"])
+    assert (code, lines) == (2, [f"{PREFIX}{broken}: not a mapping"]), (code, lines)
 
 
 def test_a_prefixes_entry_that_is_not_a_mapping_is_a_usage_error(tmp_path, capsys):
@@ -158,7 +158,56 @@ def test_a_prefixes_entry_that_is_not_a_mapping_is_a_usage_error(tmp_path, capsy
 
     code, lines = run(capsys, tmp_path, builder.finish(), prefixes=broken)
 
-    assert (code, lines) == (2, [f"{PREFIX}{broken}: prefixes is not a mapping"])
+    assert (code, lines) == (2, [f"{PREFIX}{broken}: prefixes is not a mapping"]), (code, lines)
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        pytest.param(
+            "schema_base: https://example.org/ns/library/",
+            "schema_base: example.org/ns/library/",
+            "schema_base example.org/ns/library/ is not an absolute IRI",
+            id="schema_base",
+        ),
+        pytest.param(
+            "  lib: https://example.org/ns/library#",
+            "  lib: example.org/ns/library#",
+            "namespace example.org/ns/library# of prefix lib is not an absolute IRI",
+            id="namespace",
+        ),
+        pytest.param(
+            "  dct: http://purl.org/dc/terms/",
+            "  1dct: http://purl.org/dc/terms/",
+            "prefix 1dct is not an NCName",
+            id="prefix-name",
+        ),
+        pytest.param(
+            "default_prefix: lib",
+            "default_prefix: other",
+            "default_prefix other is not a key of prefixes",
+            id="default-prefix",
+        ),
+    ],
+)
+def test_a_prefixes_value_that_is_unusable_is_a_usage_error(tmp_path, capsys, old, new, message):
+    builder, _ = build_library(tmp_path)
+    assert old in PREFIXES, f"the fixture must hold {old!r}"
+    broken = prefixes_file(tmp_path, PREFIXES.replace(old, new))
+
+    code, lines = run(capsys, tmp_path, builder.finish(), prefixes=broken)
+
+    assert (code, lines) == (2, [f"{PREFIX}{broken}: {message}"]), (code, lines)
+    assert not (tmp_path / "out").exists(), "nothing is written"
+
+
+def test_a_root_name_that_is_not_an_ncname_is_a_usage_error(tmp_path, capsys):
+    builder, _ = build_library(tmp_path)
+
+    code, lines = run(capsys, tmp_path, builder.finish(), "--root-name", "my app")
+
+    assert (code, lines) == (2, [f"{PREFIX}--root-name my app is not an NCName"]), (code, lines)
+    assert not (tmp_path / "out").exists(), "nothing is written"
 
 
 def test_a_file_that_is_not_sqlite_is_a_usage_error(tmp_path, capsys):
@@ -170,7 +219,7 @@ def test_a_file_that_is_not_sqlite_is_a_usage_error(tmp_path, capsys):
     assert (code, lines) == (
         2,
         [f"{PREFIX}{text} is not an Enterprise Architect .qea (SQLite) file"],
-    )
+    ), (code, lines)
 
 
 def test_an_unknown_package_is_a_usage_error(tmp_path, capsys):
@@ -178,7 +227,7 @@ def test_an_unknown_package_is_a_usage_error(tmp_path, capsys):
 
     code, lines = run(capsys, tmp_path, builder.finish(), package="nothing")
 
-    assert (code, lines) == (2, [f"{PREFIX}no package nothing"])
+    assert (code, lines) == (2, [f"{PREFIX}no package nothing"]), (code, lines)
 
 
 def test_an_exclude_package_that_matches_nothing_is_a_usage_error(tmp_path, capsys):
@@ -188,15 +237,18 @@ def test_an_exclude_package_that_matches_nothing_is_a_usage_error(tmp_path, caps
         capsys, tmp_path, builder.finish(), "--exclude-package", "MODEL/library/nowhere"
     )
 
-    assert (code, lines) == (2, [f"{PREFIX}no package MODEL/library/nowhere under library"])
+    assert (code, lines) == (
+        2,
+        [f"{PREFIX}no package MODEL/library/nowhere under library"],
+    ), (code, lines)
 
 
 def test_help_exits_zero(capsys):
     with pytest.raises(SystemExit) as exit_info:
         main(["--help"])
 
-    assert exit_info.value.code == 0
-    assert "--prefixes" in capsys.readouterr().out
+    assert exit_info.value.code == 0, "--help exits 0"
+    assert "--prefixes" in capsys.readouterr().out, "the help names the --prefixes option"
 
 
 # --- the prefixes file becomes settings (PD-5, P-0007) -----------------------------------------
@@ -223,29 +275,29 @@ def test_the_prefixes_file_and_the_options_become_settings(tmp_path):
 
     settings = load_settings(prefixes_file(tmp_path), args)
 
-    assert isinstance(settings, UmlSettings)
+    assert isinstance(settings, UmlSettings), "the settings are a UmlSettings"
     assert (settings.schema_base, settings.default_prefix, settings.schema_version) == (
         "https://example.org/ns/library/",
         "lib",
         "1",
-    )
+    ), "the file's base, default prefix and version are read"
     assert [(p.prefix_name, p.namespace) for p in settings.prefixes or []] == [
         ("lib", "https://example.org/ns/library#"),
         ("dct", "http://purl.org/dc/terms/"),
-    ]
-    assert settings.subtree_package == ROOT
-    assert settings.root_name == "app"
-    assert settings.exclude_packages == ["MODEL/library/x"]
-    assert settings.default_mixins == ["Described", "Tracked"]
-    assert settings.not_generated_stereotypes == ["legend"]
+    ], "the prefixes keep the file's order"
+    assert settings.subtree_package == ROOT, "--package is the subtree"
+    assert settings.root_name == "app", "the root name defaults to app"
+    assert settings.exclude_packages == ["MODEL/library/x"], "--exclude-package is read"
+    assert settings.default_mixins == ["Described", "Tracked"], "the mixins default"
+    assert settings.not_generated_stereotypes == ["legend"], "--not-generated replaces the default"
 
 
 def test_the_metamodel_prefixes_name_the_toolkit_namespaces():
     prefixes = metamodel_prefixes()
 
-    assert prefixes["dcterms"] == "http://purl.org/dc/terms/"
-    assert prefixes["prov"] == "http://www.w3.org/ns/prov#"
-    assert prefixes["rp"] == "https://meaningfy.ws/ns/rdf-persistence#"
+    assert prefixes["dcterms"] == "http://purl.org/dc/terms/", "dcterms is Dublin Core terms"
+    assert prefixes["prov"] == "http://www.w3.org/ns/prov#", "prov is PROV-O"
+    assert prefixes["rp"] == "https://meaningfy.ws/ns/rdf-persistence#", "rp is the toolkit's"
 
 
 def test_the_defaults_are_the_documented_ones(tmp_path):
@@ -257,5 +309,5 @@ def test_the_defaults_are_the_documented_ones(tmp_path):
 
     settings = load_settings(prefixes_file(tmp_path), args)
 
-    assert settings.not_generated_stereotypes == ["loaded graph"]
-    assert not settings.exclude_packages
+    assert settings.not_generated_stereotypes == ["loaded graph"], "loaded graph is not generated"
+    assert not settings.exclude_packages, "nothing is excluded by default"

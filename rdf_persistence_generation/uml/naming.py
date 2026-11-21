@@ -6,11 +6,14 @@ Pure functions: the prefix maps are plain arguments, nothing is read or written 
 import re
 from collections.abc import Mapping
 
+from linkml_runtime.utils.metamodelcore import URIorCURIE
+
 from rdf_persistence_generation.generated.rp_generation import CheckProblem, UmlName, UmlRule
 
 CLASS_NAME_PATTERN = "[A-Z][a-zA-Z0-9]+"
 SLOT_NAME_PATTERN = "[a-z][_a-z0-9]+"
 CURIE_SEPARATOR = ":"
+PROBE_PREFIX = "pfx"
 
 _WORD = re.compile(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z0-9]+|[A-Z]+[0-9]*")
 _VOWELS = "aeiou"
@@ -74,6 +77,19 @@ def check_slot_name(name: str, element: str) -> CheckProblem | None:
         rule=UmlRule.ATTRIBUTE_SLOT.value,
         element=element,
         message=f"name {name} does not match {SLOT_NAME_PATTERN}",
+    )
+
+
+def check_local_name(local: str, element: str, rule: UmlRule) -> CheckProblem | None:
+    """A problem when a written local name cannot be the local part of a CURIE linkml accepts (D-29 C-1).
+
+    The test is the one ``linkml_runtime`` applies to a ``slot_uri`` or a ``meaning``, so a name that
+    passes here never reaches a ``ValueError`` when the definition is built.
+    """
+    if URIorCURIE.is_valid(f"{PROBE_PREFIX}{CURIE_SEPARATOR}{local}"):
+        return None
+    return CheckProblem(
+        rule=rule.value, element=element, message=f"'{local}' is not a valid local name"
     )
 
 

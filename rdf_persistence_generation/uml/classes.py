@@ -4,6 +4,8 @@
 their LinkML definitions; ``parents`` reads the generalisations. Slots are in ``slots``.
 """
 
+from collections.abc import Mapping
+
 from linkml_runtime.linkml_model import (
     Annotation,
     ClassDefinition,
@@ -15,6 +17,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
     UmlClass,
+    UmlElement,
     UmlLinkKind,
     UmlModel,
     UmlName,
@@ -25,25 +28,28 @@ from rdf_persistence_generation.uml.context import (
     LEFT_NOT_GENERATED,
     LEFT_OUTSIDE,
     Context,
-    Element,
+    below_of,
     local_of,
 )
+from rdf_persistence_generation.uml.mixins import RP_MIXINS, compose
 from rdf_persistence_generation.uml.naming import (
     CURIE_SEPARATOR,
     check_class_name,
+    check_local_name,
     check_slot_name,
     permissible_value_key,
     rp_path_for,
     title_for,
 )
+from rdf_persistence_generation.uml.tags import GRAPH, apply_tags
 
 CLASS_TYPE = "Class"
 ENUMERATION_TYPE = "Enumeration"
 ROOT_STEREOTYPE = "root"
+TENANT_STEREOTYPE = "tenant root"
 ABSTRACT_STEREOTYPE = "abstract"
-AGGREGATE_ROOT = "AggregateRoot"
 RP_PATH = "rp_path"
-RP_CORE_IMPORT = "rdf_persistence/model/rp_core"
+META = "meta"
 EMPTY_LIST_NOTE = "no literals; its list is kept outside the model, so slots range over a URI"
 
 
@@ -67,19 +73,33 @@ def _admit(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
         ctx.findings.no_rule(label, f"object type {uml.object_type}")
     elif uml.multiple_stereotypes:
         ctx.findings.no_rule(label, "more than one stereotype")
+    elif uml.object_type == CLASS_TYPE and ctx.toolkit_name(uml.name) is not None:
+        _use_drawn_toolkit_class(ctx, uml, label)
     elif stereotype in (ctx.settings.not_generated_stereotypes or []):
         _leave_out(ctx, uml, LEFT_NOT_GENERATED)
         ctx.findings.note(
             ReportKind.NOT_GENERATED, label, f"stereotype {stereotype}, not generated"
         )
-    elif stereotype.lower() not in ("", ROOT_STEREOTYPE, ABSTRACT_STEREOTYPE):
+    elif stereotype.lower() not in ("", ROOT_STEREOTYPE, TENANT_STEREOTYPE, ABSTRACT_STEREOTYPE):
         ctx.findings.no_rule(label, f"stereotype {stereotype}")
     else:
         _register(ctx, uml, path)
 
 
+def _use_drawn_toolkit_class(ctx: Context, uml: UmlClass, label: str) -> None:
+    """A toolkit class drawn inside the subtree is the toolkit's, not generated; a parent only (PD-17, R-28)."""
+    toolkit_class = str(ctx.toolkit_name(uml.name))
+    _leave_out(ctx, uml, LEFT_NOT_GENERATED)
+    ctx.drawn_toolkit[uml.object_id] = toolkit_class
+    ctx.findings.note(
+        ReportKind.NOT_GENERATED, label, f"drawn as the toolkit's {toolkit_class}, not generated"
+    )
+
+
 def _leave_out(ctx: Context, uml: UmlClass, why: str) -> None:
     ctx.left_out[uml.object_id] = why
+    if why == LEFT_NOT_GENERATED and uml.object_type == ENUMERATION_TYPE:
+        ctx.left_out_enums.add(uml.object_id)
 
 
 def _register(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
@@ -91,36 +111,52 @@ def _register(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
         ctx.findings.add(problem)
         return
     stereotype = _stereotype(uml).lower()
-    flags = (
-        uml.object_type == ENUMERATION_TYPE,
-        stereotype == ROOT_STEREOTYPE,
-        bool(uml.is_abstract) or stereotype == ABSTRACT_STEREOTYPE,
+    ctx.elements[uml.object_id] = UmlElement(
+        uml_class=uml,
+        resolved_name=name,
+        label=name.name,
+        module_path=list(path),
+        is_enum=uml.object_type == ENUMERATION_TYPE,
+        is_root=stereotype == ROOT_STEREOTYPE,
+        is_abstract=bool(uml.is_abstract) or stereotype == ABSTRACT_STEREOTYPE,
+        is_tenant_root=stereotype == TENANT_STEREOTYPE,
     )
-    ctx.elements[uml.object_id] = Element(uml, name, path, flags)
 
 
 def _collect_outside(ctx: Context, model: UmlModel) -> None:
     """The classes the reader found at a link's far end: excluded when their package is, else outside (D-17)."""
     for uml in model.uml_outside_classes or []:
         path = ctx.paths.get(uml.package_id)
-        _leave_out(ctx, uml, LEFT_EXCLUDED if path is not None and path.excluded else LEFT_OUTSIDE)
+        _leave_out(
+            ctx, uml, LEFT_EXCLUDED if path is not None and path.is_excluded else LEFT_OUTSIDE
+        )
         ctx.class_names[uml.object_id] = local_of(uml.name)
+        toolkit_class = ctx.toolkit_name(uml.name)
+        if toolkit_class is not None:
+            ctx.drawn_toolkit[uml.object_id] = toolkit_class  # R-28: not generated, a parent only
 
 
 def collect_elements(ctx: Context, model: UmlModel) -> None:
     """Classify every class of the subtree: generated, left out, or a problem; check names for clashes."""
     for tagged in model.uml_tagged_values or []:
-        ctx.tags.setdefault(tagged.owner_id, {})[tagged.name] = tagged.tag_value or ""
+        held = ctx.tags.setdefault(tagged.owner_id, {})
+        value = tagged.tag_value or ""
+        held[tagged.name] = (
+            f"{held[tagged.name]},{value}"
+            if tagged.name == RP_MIXINS and tagged.name in held
+            else value
+        )
+        ctx.tag_values.setdefault(tagged.owner_id, {}).setdefault(tagged.name, []).append(value)
     _collect_outside(ctx, model)
     for uml in sorted(model.uml_classes or [], key=lambda each: (each.name, each.object_id)):
         ctx.class_names[uml.object_id] = local_of(uml.name)
         path = ctx.paths.get(uml.package_id)
         if path is None:
             continue
-        if path.excluded:
+        if path.is_excluded:
             _leave_out(ctx, uml, LEFT_EXCLUDED)
         else:
-            _admit(ctx, uml, path.below)
+            _admit(ctx, uml, below_of(path))
     _check_clashes(ctx)
     _check_root_paths(ctx)
 
@@ -130,11 +166,26 @@ def _iri_of(ctx: Context, name: UmlName) -> str:
 
 
 def _check_clashes(ctx: Context) -> None:
-    seen: dict[str, Element] = {}
-    for element in sorted(ctx.elements.values(), key=lambda each: each.uml.object_id):
+    seen: dict[str, UmlElement] = {}
+    for element in sorted(ctx.elements.values(), key=lambda each: each.uml_class.object_id):
         first = seen.setdefault(element.label, element)
         if first is not element:
-            iris = sorted((_iri_of(ctx, first.name), _iri_of(ctx, element.name)))
+            iris = sorted((_iri_of(ctx, first.resolved_name), _iri_of(ctx, element.resolved_name)))
+            ctx.findings.problem(
+                UmlRule.CLASS_IRI,
+                element.label,
+                f"{iris[0]} and {iris[1]} both map to {element.label}",
+            )
+    _check_toolkit_names(ctx)
+
+
+def _check_toolkit_names(ctx: Context) -> None:
+    """A domain class named like a toolkit class, with another IRI, is a problem naming both (PD-6, S-11)."""
+    for element in sorted(ctx.elements.values(), key=lambda each: each.uml_class.object_id):
+        if element.is_enum or ctx.toolkit.class_by_name(element.label) is None:
+            continue
+        iris = sorted((_iri_of(ctx, element.resolved_name), ctx.toolkit.class_uri(element.label)))
+        if iris[0] != iris[1]:
             ctx.findings.problem(
                 UmlRule.CLASS_IRI,
                 element.label,
@@ -142,13 +193,13 @@ def _check_clashes(ctx: Context) -> None:
             )
 
 
-def root_path(ctx: Context, element: Element) -> str:
+def root_path(ctx: Context, element: UmlElement) -> str:
     """The ``rp_path`` of a root: its tagged value, else the plural of its name in kebab case (PD-12)."""
-    return ctx.tags.get(element.uml.object_id, {}).get(RP_PATH) or rp_path_for(element.label)
+    return ctx.tags.get(element.uml_class.object_id, {}).get(RP_PATH) or rp_path_for(element.label)
 
 
 def _check_root_paths(ctx: Context) -> None:
-    seen: dict[str, Element] = {}
+    seen: dict[str, UmlElement] = {}
     for element in sorted(ctx.elements.values(), key=lambda each: each.label):
         if not element.is_root:
             continue
@@ -169,41 +220,66 @@ def class_uri_of(ctx: Context, name: UmlName) -> str | None:
     return name.curie
 
 
-def _note_tags(ctx: Context, element: Element, skip: tuple[str, ...]) -> None:
-    for tag_name in sorted(ctx.tags.get(element.uml.object_id, {})):
+def _note_tags(ctx: Context, element: UmlElement, skip: tuple[str, ...]) -> None:
+    for tag_name in sorted(ctx.tags.get(element.uml_class.object_id, {})):
         if tag_name not in skip:
             ctx.findings.note(
                 ReportKind.IGNORED_TAG, element.label, f"tagged value {tag_name} is not used"
             )
 
 
-def _described(ctx: Context, element: Element) -> str | None:
-    description = description_of(element.uml.note)
+def _described(ctx: Context, element: UmlElement) -> str | None:
+    description = description_of(element.uml_class.note)
     if description is None:
         ctx.findings.note(ReportKind.NO_NOTE, element.label, "no note, so no description")
     return description
 
 
-def build_class(ctx: Context, element: Element, is_a: str | None) -> ClassDefinition:
-    """The class of a UML class: title, description, IRI, abstract flag, parent and the root's path."""
+def build_class(
+    ctx: Context, element: UmlElement, parent: str | None, owned: bool, defaults: list[str]
+) -> ClassDefinition:
+    """The class of a UML class: title, description, IRI, abstract flag, parent, mixins and the root's path.
+
+    ``parent`` is the domain parent; ``owned`` whether a boundary or composite makes the class a part;
+    ``defaults`` the default mixins (PD-17).
+    """
+    composed = compose(ctx, element, parent, owned, defaults)
     definition = ClassDefinition(
         name=element.label,
-        title=title_for(element.label, element.uml.uml_alias),
+        title=title_for(element.label, element.uml_class.uml_alias),
         description=_described(ctx, element),
-        class_uri=class_uri_of(ctx, element.name),
-        is_a=is_a,
+        class_uri=class_uri_of(ctx, element.resolved_name),
+        is_a=composed.is_a,
+        mixins=composed.mixins,
     )
     if element.is_abstract:
         definition.abstract = True
+    derived: dict[str, Annotation] = {}
     if element.is_root:
-        definition.mixins = [AGGREGATE_ROOT]
-        definition.annotations = {RP_PATH: annotation(RP_PATH, root_path(ctx, element))}
-    _note_tags(ctx, element, (RP_PATH,))
+        derived[RP_PATH] = annotation(RP_PATH, root_path(ctx, element))
+    if element.is_tenant_root:
+        derived[GRAPH] = annotation(GRAPH, META)
+        _check_tenant_graph(ctx, element)
+    apply_tags(ctx, element, definition, derived)
     return definition
 
 
+def _check_tenant_graph(ctx: Context, element: UmlElement) -> None:
+    """A tenant root lives in the meta graph, so a ``graph`` tag of another value is a problem (R-18)."""
+    written = ctx.tags.get(element.uml_class.object_id, {}).get(GRAPH)
+    if written is not None and written.strip().lower() != META:
+        ctx.findings.problem(
+            UmlRule.TENANT_ROOT,
+            element.label,
+            f"graph: {written!r} conflicts with the «tenant root» stereotype, which is graph {META}",
+        )
+
+
 def parents(ctx: Context, model: UmlModel) -> dict[int, str]:
-    """The ``is_a`` of each class: its one generalised domain class (PD-9, PD-30); others are problems."""
+    """The domain parent of each class (PD-9, PD-30); others are problems.
+
+    A generalisation to a drawn toolkit class is kept in ``ctx.drawn_parents`` for the mixins (R-28).
+    """
     found: dict[int, list[int]] = {}
     for each in sorted(model.uml_links or [], key=lambda link: link.connector_id):
         if each.link_kind != UmlLinkKind.GENERALISATION or each.source_id not in ctx.elements:
@@ -211,6 +287,10 @@ def parents(ctx: Context, model: UmlModel) -> dict[int, str]:
         child = ctx.elements[each.source_id]
         if child.is_enum:
             ctx.findings.no_rule(child.label, "generalisation from an enumeration")
+        elif each.target_id in ctx.drawn_toolkit:
+            ctx.drawn_parents.setdefault(each.source_id, []).append(
+                ctx.drawn_toolkit[each.target_id]
+            )
         else:
             found.setdefault(each.source_id, []).append(each.target_id)
     return {
@@ -220,12 +300,45 @@ def parents(ctx: Context, model: UmlModel) -> dict[int, str]:
     }
 
 
+def _concrete_below(
+    label: str, children: dict[str, list[UmlElement]], seen: set[str]
+) -> list[UmlElement]:
+    """The concrete classes that descend from ``label`` through any number of abstract ones."""
+    found: list[UmlElement] = []
+    for child in children.get(label, []):
+        if child.label in seen:
+            continue
+        seen.add(child.label)
+        found += _concrete_below(child.label, children, seen) if child.is_abstract else [child]
+    return found
+
+
+def mark_abstract_roots(ctx: Context, ranges: set[str], parent_of: Mapping[int, str]) -> None:
+    """Mark the abstract roots (R-23, PD-19).
+
+    An abstract class is one when it is the range of a generated slot (``ranges``), has concrete descendants
+    and all of them are «root».
+    """
+    children: dict[str, list[UmlElement]] = {}
+    for element in ctx.elements.values():
+        parent = parent_of.get(element.uml_class.object_id)
+        if parent is not None:
+            children.setdefault(parent, []).append(element)
+    for element in ctx.elements.values():
+        if element.is_enum or not element.is_abstract or element.is_root:
+            continue
+        below = _concrete_below(element.label, children, {element.label})
+        element.is_abstract_root = (
+            element.label in ranges and bool(below) and all(each.is_root for each in below)
+        )
+
+
 def _parent_label(ctx: Context, target: int) -> str | None:
     element = ctx.elements.get(target)
     return element.label if element is not None and not element.is_enum else None
 
 
-def _one_parent(ctx: Context, child: Element, targets: list[int]) -> str | None:
+def _one_parent(ctx: Context, child: UmlElement, targets: list[int]) -> str | None:
     labels = [_parent_label(ctx, target) for target in targets]
     if len(targets) > 1:
         ctx.findings.no_rule(child.label, "two or more parent classes")
@@ -236,7 +349,7 @@ def _one_parent(ctx: Context, child: Element, targets: list[int]) -> str | None:
     return None
 
 
-def _literal_meaning(ctx: Context, enum: Element, literal: str) -> str | None:
+def _literal_meaning(ctx: Context, enum: UmlElement, literal: str) -> str | None:
     if CURIE_SEPARATOR not in literal:
         meaning = f"{ctx.settings.default_prefix}:{literal}"
         ctx.findings.note(
@@ -250,9 +363,13 @@ def _literal_meaning(ctx: Context, enum: Element, literal: str) -> str | None:
 
 
 def _permissible_value(
-    ctx: Context, enum: Element, literal: str, note: str | None
+    ctx: Context, enum: UmlElement, literal: str, note: str | None
 ) -> PermissibleValue | None:
     element = f"{enum.label}.{local_of(literal)}"
+    invalid = check_local_name(local_of(literal), element, UmlRule.CLASS_IRI)
+    if invalid is not None:
+        ctx.findings.add(invalid)
+        return None
     description = description_of(note)
     if description is None:
         ctx.findings.note(ReportKind.NO_NOTE, element, "no note, so no description")
@@ -271,10 +388,10 @@ def _permissible_value(
     )
 
 
-def build_enum(ctx: Context, element: Element) -> EnumDefinition | None:
+def build_enum(ctx: Context, element: UmlElement) -> EnumDefinition | None:
     """The enum of a UML enumeration, its literals in position order; none for an empty one (D-10)."""
     literals = sorted(
-        element.uml.uml_attributes or [], key=lambda each: (each.position or 0, each.name)
+        element.uml_class.uml_attributes or [], key=lambda each: (each.position or 0, each.name)
     )
     if not literals:
         ctx.findings.note(ReportKind.EXTERNAL_LIST, element.label, EMPTY_LIST_NOTE)
@@ -292,7 +409,7 @@ def build_enum(ctx: Context, element: Element) -> EnumDefinition | None:
     _note_tags(ctx, element, ())
     return EnumDefinition(
         name=element.label,
-        title=title_for(element.label, element.uml.uml_alias),
+        title=title_for(element.label, element.uml_class.uml_alias),
         description=_described(ctx, element),
         permissible_values=values,
     )

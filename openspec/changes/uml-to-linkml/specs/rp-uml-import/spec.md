@@ -6,8 +6,14 @@
 `module_kind: domain` LinkML module per UML package, the packages of an import cycle together as one
 module, and a root schema importing them. When every class, slot and enumeration of the model
 carries a note, `rp-generate`'s lint and boundary check pass on the output unchanged; an element
-without a note gets no placeholder description, and the report lists it. The model follows the
-model2owl UML conventions; the toolkit's own conventions are stated on the UML conventions page.
+without a note gets no placeholder description, and the report lists it. A slot used in several
+packages is defined once, in the module the others reach by imports, and fails the run when there is
+none. A class or an enumeration whose stereotype is listed as not generated produces nothing, and
+the report names it. A link to such a class becomes a `range: uri` slot with no line of its own; a
+dependency to such an enumeration, or an attribute typed by one, gets a `not-generated` line and no
+slot. A connector with a note, text, boundary or package at an
+end is not read. The model follows the model2owl UML conventions; the toolkit's own conventions are
+stated on the UML conventions page.
 
 #### Scenario: a package with a root and a part
 - **GIVEN** a `.qea` with a package holding classes, attributes, associations, generalisations, an
@@ -74,7 +80,9 @@ model2owl UML conventions; the toolkit's own conventions are stated on the UML c
 The converter SHALL map toolkit concepts to the toolkit's own classes, slots and annotations: default
 mixins on roots and labelled parts, `rp_mixins` and drawn generalisations to toolkit classes, slots
 whose IRI is a toolkit slot's `slot_uri` (except `id`), and every class tagged value named like a
-toolkit class annotation.
+toolkit class annotation. A «tenant root» becomes the class of the tenant's meta graph, not an
+aggregate root; an abstract class whose concrete descendants are all roots, and which a slot ranges
+over, becomes an aggregate root.
 
 #### Scenario: a root that is an activity
 - **GIVEN** `«root» lib:Loan` tagged `rp_mixins=Activity` with `prov:startedAtTime [1..1]` and `rp_path=loans`

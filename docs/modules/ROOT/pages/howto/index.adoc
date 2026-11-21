@@ -17,6 +17,7 @@ relies on (xref:requirements/capabilities.adoc[Capabilities]).
 |xref:howto/reference-collections.adoc[Group resources you do not own] |rp-reference-collections
 |xref:howto/migrate.adoc[Change a schema that has stored data] |rp-schema-migrations
 |xref:howto/application-data.adoc[Keep data that belongs to no tenant] |rp-tenancy, rp-access
+|xref:howto/uml-to-linkml.adoc[Generate the model from UML] |rp-uml-import, rp-generation
 |===
 
 == Collaboration and events

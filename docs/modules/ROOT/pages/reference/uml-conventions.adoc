@@ -1,0 +1,622 @@
+= UML conventions
+:description: The conventions an Enterprise Architect class model follows so that rp-uml2linkml converts it into a toolkit-conformant LinkML schema: model2owl's UML conventions and the toolkit's own, each with its UML and the LinkML it becomes.
+
+_Which UML conventions does a model for rdf-persistence follow?_
+
+These conventions make an Enterprise Architect (EA) model convertible by `rp-uml2linkml`. They are
+the UML conventions of
+https://docs.ted.europa.eu/M2O/latest/uml/conceptual-model-conventions.html[model2owl], which the
+converter relies on (<<model2owl>>), plus the toolkit's own (<<toolkit>>). A model element that no
+convention maps stops the run (<<fails>>). The names in the examples (`lib:Book`, `lib:Chapter`,
+`lib:Shelf`, `lib:Loan`) belong to a small library model. Mermaid cannot put a colon in a
+relationship label, so the diagrams write a role without its prefix (`hasChapter`, for
+`lib:hasChapter`); in EA the role carries the prefix, as the YAML shows.
+
+[#model2owl]
+== The model2owl conventions the converter relies on
+
+The converter reads these as model2owl defines them; follow the linked pages for the full text.
+
+[cols="2,5,3",options="header"]
+|===
+|Convention |What the converter does with it |model2owl
+
+|Prefixed names, and their case
+|A class, attribute or role is written `pfx:Local`. A class or enumeration is in Pascal case
+(`Book`); an attribute or role is in lower camel case (`hasChapter`) and becomes a snake-case slot
+(`has_chapter`). An unprefixed name takes the prefixes file's `default_prefix`.
+|https://docs.ted.europa.eu/M2O/latest/uml/conv-general.html[General]
+
+|Declared prefixes
+|Every prefix in a name is declared in the prefixes file (`--prefixes`). An unknown prefix fails the
+run, once per prefix. A namespace the toolkit's metamodel names keeps the metamodel's prefix
+(`dct:` is written `dcterms:`).
+|https://docs.ted.europa.eu/M2O/latest/uml/conv-general.html[General]
+
+|XSD datatypes
+|An attribute is typed by an XSD datatype, or by an enumeration. Supported: `xsd:string`,
+`xsd:normalizedString`, `xsd:anyURI` (`uri`), `xsd:boolean`, `xsd:date`, `xsd:dateTime`,
+`xsd:time`, `xsd:integer`, `xsd:int`, `xsd:long`, `xsd:nonNegativeInteger` (`integer`, minimum 0),
+`xsd:positiveInteger` (`integer`, minimum 1), `xsd:decimal`, `xsd:double`, `xsd:float`. Any other
+type, and a class as a type, fails.
+|https://docs.ted.europa.eu/M2O/latest/uml/conv-attributes.html[Attributes]
+
+|Target roles and direction
+|The association's target role names the slot, on the source class. A source role is optional; with
+one, the association is drawn `Bi-Directional` and each end gives a slot. A dependency has a target
+role only. The direction is `Source -> Destination` or `Bi-Directional`; no other is accepted.
+|https://docs.ted.europa.eu/M2O/latest/uml/conv-conn-association.html[Associations]
+
+|A dependency to an enumeration
+|A dependency from a class to an enumeration, named by its target role, is a slot ranged by the
+enum. A dependency to a converted class fails; one to a class that is not generated or outside the
+package is a `range: uri` slot.
+|https://docs.ted.europa.eu/M2O/latest/uml/conv-conn-dependency.html[Dependencies]
+
+|A reused name is one property
+|Two classes that use the same name with the same IRI share one slot, defined once. The same name
+with another IRI fails.
+|https://docs.ted.europa.eu/M2O/latest/uml/conv-attributes.html[Attributes]
+
+|Definitions from notes
+|The note of a class, attribute, enumeration literal or connector becomes its `description`. An
+element with no note gets no description (never a placeholder) and one `no-note` line in the
+report; `rp-generate` then names it, as it requires a description.
+|https://docs.ted.europa.eu/M2O/latest/uml/conv-classes.html[Classes]
+|===
+
+[#toolkit]
+== The toolkit's conventions
+
+The converter writes the report `<root-name>.uml-report.txt` beside the schemas. Its lines are
+named in each subsection.
+
+[#root]
+=== A root
+
+A class stereotyped «root» is an aggregate root. It mixes in `AggregateRoot`, gets the default
+mixins (`--default-mixins`, `Described,Tracked`) and an `rp_path`. A part that an aggregate
+boundary or a composite association owns gets the default mixins too; a class that is neither a root
+nor a part gets none. A name in `--default-mixins` that is not a toolkit class fails (<<fails>>). The
+`rp_path` is the `rp_path`
+tagged value when the class has one, else the plural of the class name in kebab case (`Book` →
+`books`, `Library` → `libraries`, `Box` → `boxes`). The plural is simple and irregular nouns are not
+guessed: `Shelf` becomes `shelfs`, so give it `rp_path=shelves` (<<tagged-values>>). Two roots with
+one `rp_path` fail.
+
+[mermaid]
+....
+classDiagram
+  class Book["lib:Book"] {
+    <<root>>
+    xsd:string dct:title [1..1]
+  }
+....
+
+[source,yaml]
+----
+classes:
+  Book:
+    title: Book
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: books
+----
+
+[#boundary]
+=== An aggregate boundary
+
+Which classes belong to an aggregate is drawn, not inferred from names or packages. In EA, place a
+_Boundary_ object (no stereotype) on a diagram and put the root and its parts wholly inside its
+rectangle. The converter reads the geometry: a class whose rectangle lies inside the boundary is a
+member. A slot from a member to another member that is not the boundary's root is `owned`. A
+boundary holds exactly one «root» or «tenant root». A shared aggregation is a plain reference; a
+composite association (the source is the whole) also makes the destination's slot owned.
+
+Mermaid has no boundary shape, so the diagram draws the boundary as a `namespace`; in EA it is a
+Boundary object around the two classes, the root and its part.
+
+[mermaid]
+....
+classDiagram
+  namespace BookAggregate {
+    class Book["lib:Book"] {
+      <<root>>
+    }
+    class Chapter["lib:Chapter"]
+  }
+  Book --> "1..*" Chapter : hasChapter
+  Book --> "0..1" Shelf : shelvedOn
+  class Shelf["lib:Shelf"] {
+    <<root>>
+  }
+....
+
+[source,yaml]
+----
+slots:
+  has_chapter:
+    slot_uri: lib:hasChapter
+    range: Chapter
+    required: true
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: 'true'
+  shelved_on:
+    slot_uri: lib:shelvedOn
+    range: Shelf
+----
+
+`shelved_on` points at another root, outside the boundary, so it is a reference and not owned.
+
+A class that is only partly inside a boundary, or that is inside two, fails. A boundary with no
+root, or with two, fails. Whether every part is reachable from its root is `rp-generate`'s boundary
+check, not the converter's.
+
+[#tenant-root]
+=== A tenant root
+
+A class stereotyped «tenant root» is annotated `graph: meta`. It gets no `AggregateRoot` and no
+`rp_path`, but it takes the default mixins, and it counts as the one root of its boundary
+(<<boundary>>), so its parts are owned. A `graph` tagged value of `meta` is the same annotation;
+one with another value is a problem, `[tenant_root] Library: graph: 'data' conflicts with the
+«tenant root» stereotype, which is graph meta`.
+
+[mermaid]
+....
+classDiagram
+  class Library["lib:Library"] {
+    <<tenant root>>
+  }
+....
+
+[source,yaml]
+----
+classes:
+  Library:
+    title: Library
+    mixins: [Described, Tracked]
+    annotations:
+      graph: meta
+----
+
+[#abstract]
+=== Abstract classes
+
+A class is abstract when EA's _Abstract_ flag is set or its stereotype is «Abstract» (any case).
+It becomes `abstract: true`; the stereotype is not reported.
+
+An abstract class is also an aggregate root of its own when it is the range of a generated slot and
+all its concrete descendants are «root», counted through any abstract classes between them, so a
+slot can point at "any of them". It then mixes in `AggregateRoot` and has no `rp_path` and no
+default mixins; the concrete roots keep their own. A `unique_key` on it is scoped to the tenant
+(`rp_unique_scope: tenant`), as on a root (<<tagged-values>>).
+
+[mermaid]
+....
+classDiagram
+  class Holding["lib:Holding"] {
+    <<Abstract>>
+  }
+  class Book["lib:Book"] {
+    <<root>>
+  }
+  class Map["lib:Map"] {
+    <<root>>
+  }
+  Holding <|-- Book
+  Holding <|-- Map
+  Shelf --> "0..*" Holding : holds
+....
+
+[source,yaml]
+----
+classes:
+  Holding:
+    abstract: true
+    mixins: [AggregateRoot]
+  Book:
+    is_a: Holding
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: books
+----
+
+[#not-generated]
+=== Classes that are not generated
+
+A class whose stereotype is in the not-generated list produces no class. The list is
+`--not-generated <stereotype>`, repeatable; its default is `loaded graph`, and naming any replaces
+the default. A slot to such a class is `range: uri`, and the report has a `not-generated` line. An
+enumeration with such a stereotype (`workflow states`, say) is not generated either, and nothing
+points at it: a dependency to it, or an attribute typed by it, makes no slot. Each of these is one
+`not-generated` line, the same as for a class.
+
+A link that reaches a class the run leaves out is handled by where the class is:
+
+* a not-generated class: the slot is `range: uri`;
+* a class in an `--exclude-package` package (the option's path matches a package's path or its
+  tail): no slot is made, and the report has an `excluded-link` line;
+* a class outside the converted package that is not excluded: the slot is `range: uri`, and the
+  report has an `outside-link` line.
+
+[mermaid]
+....
+classDiagram
+  class Vocabulary["lib:Vocabulary"] {
+    <<loaded graph>>
+  }
+  Book --> "0..1" Vocabulary : classifiedBy
+....
+
+[source,yaml]
+----
+slots:
+  classified_by:
+    slot_uri: lib:classifiedBy
+    range: uri
+----
+
+[#tagged-values]
+=== Tagged values
+
+A tagged value on a class tells the converter something the diagram cannot. The tag name picks the
+meaning.
+
+[cols="2,5",options="header"]
+|===
+|Tag |Becomes
+
+|A class annotation named in the metamodel (as of this release: `graph`, `database`, `rp_path`,
+`rp_iri_type`, `rp_unlabelled`, `rp_writes`, `rp_on_referenced_delete`, `workflow`)
+|That annotation on the class. The names are those the metamodel marks as class annotations, read
+at run time, so an annotation the toolkit adds later needs no change in the converter; see
+xref:architecture/generation.adoc#annotations[Annotations] for the current set. Its value
+is checked by the rules `rp-generate` uses, read without regard to case; a bad value fails the run
+with `[class_annotation] Book: rp_writes: 'sometimes' is not one of ('service', 'toolkit')` (or
+`rp_path: 'Books' does not match <pattern>` for `rp_path`, `rp_iri_type` and `workflow`, which take
+a URL segment). A tag on a class overrides the annotation the converter derives, such as a root's
+`rp_path`. `workflow` also adds the `UnderWorkflow` mixin.
+
+|`rp_mixins=<Class>[,<Class>...]`
+|The named toolkit classes, as mixins when the class is a mixin and as `is_a` when it is not
+(`Activity`). The tag may repeat; the lists join. A class gets its mixins in one order, each once:
+`AggregateRoot`, the `rp_mixins` names in tag order, the toolkit parents drawn as generalisations in
+connector order, the default mixins, `UnderWorkflow`. An unknown name fails:
+`[toolkit_mixins] Book: Nope is not a toolkit class; the toolkit classes are <the list>`.
+
+|`unique_key = <name>: <a>, <b>[; nulls=equal]`
+|A `unique_keys` entry over the named slots of the class: an attribute, a role or a reused toolkit
+slot (<<toolkit-reuse>>), each by its slot name or its UML name. `<name>` is an identifier of ASCII letters, digits and underscores; the only clause is
+`nulls=equal`, which writes `consider_nulls_inequal: false`. On a root the key is scoped to the
+tenant (`rp_unique_scope: tenant`), and so is one on an abstract root (<<abstract>>). One key per tag; repeat the tag for more keys, each with its own
+name. A bad tag fails with the tag text and the cause:
+`[unique_key] Book: unique_key 'k: title, nothing': no attribute or role 'nothing' on Book`. The
+other causes are `expected <name>: <attribute>, <attribute> [; nulls=equal]` (no colon, no attribute, or a clause
+other than `nulls=equal`), `the name '1k' is not an identifier` and `a key of this name is declared
+twice`.
+
+|Any other tag
+|Ignored, with an `ignored-tag` line (`tagged value rp_pth is not used`); a tag name is exact, so a
+misspelt `rp_path` is such a tag. A tag named like a metamodel annotation that is not a class
+annotation (`owned`) fails: `[class_annotation] Book: owned: tagged value is not a class annotation`.
+|===
+
+A part tagged `rp_unlabelled=true` gets `Described` only, with the annotation, so its `label` is
+optional. On a root the tag adds only the annotation.
+
+A stereotype on an attribute is not used: the attribute converts as usual and the report has an
+`ignored-stereotype` line.
+
+[mermaid]
+....
+classDiagram
+  class Book["lib:Book"] {
+    <<root>>
+    rp_mixins = StoredFile
+    rp_writes = service
+    unique_key = title_subtitle: title, subtitle
+  }
+  class Chapter["lib:Chapter"] {
+    rp_unlabelled = true
+  }
+....
+
+[source,yaml]
+----
+classes:
+  Book:
+    mixins: [AggregateRoot, StoredFile, Described, Tracked]
+    unique_keys:
+      title_subtitle:
+        unique_key_slots: [title, subtitle]
+        annotations:
+          rp_unique_scope: tenant
+    annotations:
+      rp_path: books
+      rp_writes: service
+  Chapter:
+    mixins: [Described]
+    annotations:
+      rp_unlabelled: 'true'
+----
+
+[#toolkit-reuse]
+=== Toolkit classes and slots, reused by IRI
+
+A toolkit concept is drawn with its own IRI and the converter uses the toolkit's definition.
+
+* A class drawn with a toolkit class's IRI (`prov:Activity`, or `rp:ReferenceCollection`) is the
+toolkit's class, not generated. Drawn inside the converted subtree it is reported as
+`not-generated	Activity	drawn as the toolkit's Activity, not generated`, and a slot that points at
+it is `range: uri`; drawn outside the subtree, at the far end of a link, it is a class outside like
+any other (<<not-generated>>). A generalisation to it has the effect of `rp_mixins`: a mixin class is mixed in, a
+non-mixin becomes `is_a`. A «root» may be an `Activity`.
+* An attribute or role whose IRI is a toolkit slot's `slot_uri` uses that slot, and no new one is
+made; a `[1..1]` on a slot the toolkit does not already require becomes a `slot_usage` with
+`required: true`. A bound on a slot the toolkit fills itself (`started_at_time`) is not carried: the
+converter writes no slot and no `slot_usage` for it and reports
+`toolkit-filled	Loan.started_at_time	the toolkit fills started_at_time; [1..1] is not carried`.
+An attribute that differs from the toolkit slot in `multivalued` or in range keeps the toolkit's,
+with a line such as
+`toolkit-slot-kept	Book.label	the toolkit's label is kept; multivalued true is not carried`
+(the other bounds are not compared).
+* `dct:identifier` is the exception: it makes a new slot `identifier`
+(`slot_uri: dcterms:identifier`), because `id` is the resource's IRI and stays so.
+
+[mermaid]
+....
+classDiagram
+  class Activity["prov:Activity"]
+  class Loan["lib:Loan"] {
+    <<root>>
+    xsd:dateTime prov:startedAtTime [1..1]
+  }
+  class Book["lib:Book"] {
+    <<root>>
+    xsd:string dct:identifier [1..1]
+  }
+  Activity <|-- Loan
+....
+
+[source,yaml]
+----
+classes:
+  Loan:
+    is_a: Activity
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: loans
+  Book:
+    slots: [identifier]
+slots:
+  identifier:
+    slot_uri: dcterms:identifier
+    range: string
+    required: true
+----
+
+[#multiplicity]
+=== Multiplicity
+
+Any `m..n` is accepted, with integers `0 <= m <= n` or `n = *`, and the shorthands `n` (`n..n`)
+and `*` (`0..*`).
+
+[cols="2,3",options="header"]
+|===
+|Multiplicity |Slot
+
+|`m` of 1 or more |`required: true`
+|`n` above 1, or `*` |`multivalued: true`
+|`m` above 1 |`minimum_cardinality: m`
+|`n` above 1 and not `*` |`maximum_cardinality: n`
+|===
+
+A missing multiplicity is `0..*`, with an `unspecified-multiplicity` line in the report. Write
+`1..1` for exactly one. EA stores an attribute's blank multiplicity as `1..1`, the same as an
+explicit one, so the converter takes an attribute's bounds as stored: set an optional attribute
+explicitly (`0..1`). Only a connector's multiplicity can be missing.
+
+[mermaid]
+....
+classDiagram
+  class Book["lib:Book"] {
+    xsd:string dct:title [1..1]
+    xsd:string lib:subtitle [0..1]
+    xsd:string lib:keyword [1..5]
+  }
+....
+
+[source,yaml]
+----
+slots:
+  title:     {slot_uri: dcterms:title, range: string, required: true}
+  subtitle:  {slot_uri: lib:subtitle, range: string}
+  keyword:   {slot_uri: lib:keyword, range: string, required: true, multivalued: true,
+              maximum_cardinality: 5}
+----
+
+[#empty-enumeration]
+=== Empty enumerations
+
+An enumeration with literals is an enum: each literal becomes a permissible value keyed by its
+local name in snake case (`lib:onLoan` → `on_loan`), with its `meaning`. A literal written without
+a prefix takes the default prefix and an `implicit-meaning` line.
+
+An enumeration with no literals stands for a controlled list kept outside the model. Any slot
+ranged by it is `range: uri`, with an `external-list` line, and no enum is written.
+
+[mermaid]
+....
+classDiagram
+  class LoanStatus["lib:LoanStatus"] {
+    <<enumeration>>
+  }
+  class Subject["lib:Subject"] {
+    <<enumeration>>
+  }
+  Loan ..> LoanStatus : status
+  Book ..> Subject : subject
+....
+
+[source,yaml]
+----
+slots:
+  subject:
+    slot_uri: lib:subject
+    range: uri
+----
+
+`lib:LoanStatus` has literals and so becomes an enum. `lib:Subject` has none, so the slot
+`subject` is a URI.
+
+[#lang-string]
+=== Language strings
+
+An attribute typed `rdf:langString` (or `rdf:PlainLiteral`) is refused, never narrowed to `string`:
+the toolkit has no language-string range yet (issue #209). When it has, the same attribute
+converts with no change to the model.
+
+[#packages]
+=== Packages and modules
+
+Each package that holds a class or enumeration becomes one module `<root-name>_<package>.yaml`
+(`rare-books` → `app_rare_books`; a nested package `library/rare-books` →
+`app_library__rare_books`), and the root schema `<root-name>.yaml` imports them all. Classes
+directly in the `--package` package go to `<root-name>_main`.
+
+Two packages whose classes refer to each other cannot be two modules, as the generated Python
+modules would import each other. The packages of each import cycle are written as one module named
+after the first package in path order, with a `merged-cycle` line in the report.
+
+[#shared-slots]
+=== A slot shared across packages
+
+A name used in classes of several packages is one slot, defined once, in a home module: the module
+that every other using module reaches by imports, directly or through others. When several modules
+qualify, the first in path order is the home. A class in another module states a `slot_usage` only
+for the limits (`required`, `multivalued` and the like), the range or the description in which it
+differs from the slot. Placing the slot adds imports: each using module imports the home, and the
+home imports the module of the slot's range. If these imports make two modules import each other,
+they are written as one module, with a `merged-cycle` line (above).
+
+In the example, `lib:location` is used by `Book` (catalogue) and `Shelf` (shelves). The catalogue
+already refers to the shelves, so the slot is defined in `library_shelves`, and `Shelf`, where it is
+required, narrows it:
+
+[source,yaml]
+----
+# library_shelves.yaml
+slots:
+  location:
+    slot_uri: lib:location
+    range: string
+classes:
+  Shelf:
+    slots: [location]
+    slot_usage:
+      location:
+        required: true
+----
+
+When no using module is reached by all the others, the run fails with
+`[shared_slot_across_packages] location: used in library_catalogue, library_shelves and no one of them is imported by the others`.
+
+[#fails]
+== What fails
+
+The converter collects every problem, prints them sorted as `[<rule>] <element>: <reason>` (the
+rule is `no_rule` for an element no convention maps, else the name of the rule that was broken, such
+as `class_iri`, `class_annotation` or `unique_key`), writes nothing and exits 1. The lines go to
+standard error. Fix the EA model and run again.
+
+A connector one of whose ends is a note, a text or a boundary object, or a package, is ignored
+whatever its type, so a comment drawn onto a class never fails the run. A connector of a type no
+convention maps between two converted classes still fails.
+
+[cols="3,4",options="header"]
+|===
+|What the model has |Fix in EA
+
+|An association class (a class attached to an association)
+|Draw an ordinary class with two associations, one to each end.
+
+|An n-ary association (a diamond node), or any other element type: `Interface`, `Component`,
+`Activity`, `DataType`, `Object`
+|Model the relation as a class and use associations. Use only classes, enumerations and packages.
+
+|A multiplicity that is not valid: `2..1`, `a..b`
+|Write `m..n` with `m` not above `n`.
+
+|Two or more generalisations to domain classes
+|Keep one parent. Express the other as a slot, or as a toolkit mixin (`rp_mixins`).
+
+|Two `is_a` sources: a domain parent and a toolkit class that is not a mixin (`Activity`), or two
+such toolkit classes (`[no_rule] Book: two is_a sources, Series and Activity`)
+|Keep one. Name a toolkit mixin instead of the second.
+
+|A domain class named like a toolkit class, with another IRI
+(`[class_iri] Activity: <your IRI> and <the toolkit's IRI> both map to Activity`)
+|Rename the class.
+
+|A name in `rp_mixins` or in `--default-mixins` that is not a toolkit class
+(`[toolkit_mixins] Book: Nope is not a toolkit class; the toolkit classes are ...`; for the option,
+the element is `--default-mixins`)
+|Correct the name; the message lists the toolkit's classes.
+
+|A class that straddles a boundary's edge, or is inside two boundaries
+|Move it wholly inside one boundary, or wholly outside.
+
+|A boundary with no root, or with two
+|Put exactly one «root» (or «tenant root») in it.
+
+|A class stereotype that is not `root`, `tenant root`, `Abstract` or in the not-generated list
+|Remove the stereotype, or add it with `--not-generated` if the class is out of scope.
+
+|A class with two stereotypes
+|Keep one.
+
+|A stereotype on a connector
+|Remove it; a connector carries none of the toolkit's conventions.
+
+|A generalisation from an enumeration, or to a class that is not converted; a slot held by an
+enumeration
+|Generalise classes that are converted, and keep an enumeration to its literals.
+
+|A package that holds no class or enumeration to convert
+|Name the package that holds the model in `--package`.
+
+|No direction, a direction other than `Source -> Destination` or `Bi-Directional`; two roles on a
+`Source -> Destination` association
+|Set the direction in EA. For two roles, set `Bi-Directional`.
+
+|An association with no role at either end, or a dependency with no target role
+|Name the target role.
+
+|A dependency to a converted class
+|A dependency leads to an enumeration. For a class, use an association. A dependency to a class
+that is not generated or outside the package is a `range: uri` slot and does not fail.
+
+|An `Aggregation` connector, or a composite association whose whole is the destination
+|Draw the whole as the source of the composite association.
+
+|An attribute typed by a class, or by an XSD type not listed in <<model2owl>>
+|Use an XSD datatype or an enumeration, or draw an association.
+
+|`rdf:langString`
+|Wait for issue #209, or type the attribute `xsd:string` and accept losing the language.
+
+|A prefix not in the prefixes file, or two elements with one name and different IRIs
+|Declare the prefix; rename one element.
+
+|A slot name used in several packages where no one of them is reached by imports from all the
+others (`[shared_slot_across_packages] location: used in ... and no one of them is imported by the
+others`)
+|Move the classes into one package, or make one package refer to the rest (<<shared-slots>>).
+
+|A tagged value with a bad value (`[class_annotation]`), a tag named like a metamodel annotation
+that is not a class annotation, or a `unique_key` with a bad grammar, an unknown attribute or a
+repeated name (`[unique_key]`)
+|Fix the value; the message names the class, the tag and the cause (<<tagged-values>>).
+|===

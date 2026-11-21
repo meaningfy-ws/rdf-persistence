@@ -57,6 +57,16 @@ Write one LinkML file per module: each domain module holds one aggregate, a root
 `owned: true`. See xref:user-manual/model.adoc[step 3] and
 xref:architecture/generation.adoc#metamodel[the metamodel].
 
+*Which UML conventions does a model for rdf-persistence follow?*::
+model2owl's UML conventions plus the toolkit's own: «root» and «tenant root» classes, aggregates
+drawn as boundary objects, class tagged values, multiplicity and empty enumerations. Each is shown
+as UML and as the LinkML it becomes. See xref:reference/uml-conventions.adoc[UML conventions].
+
+*I draw my model in Enterprise Architect: how do I get the LinkML from it?*::
+Run `rp-uml2linkml` on the `.qea` file with a prefixes file; it writes the schemas and a report of
+what it left out, and `rp-generate --check` then checks them. See
+xref:howto/uml-to-linkml.adoc[Generate the model from UML].
+
 *How do I turn the model into code?*::
 Declare the outputs in a `[tool.rp-generate]` table of `pyproject.toml` and run `rp-generate`: it
 checks the schema, then writes the classes, shapes, context and frames, and, when asked, the

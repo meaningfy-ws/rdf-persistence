@@ -1,0 +1,198 @@
+= Generate the model from UML
+:description: How to write the LinkML schemas of a model from an Enterprise Architect .qea file with rp-uml2linkml: the prefixes file, the command and its options, the exit codes, the report, and the rp-generate run that follows.
+
+_How do I get the LinkML of my model from an Enterprise Architect (EA) UML model? What does the
+converter write, what does it tell me, and what do I run next?_
+
+This guide converts the class model you draw in EA into the LinkML schemas the rest of the toolkit
+reads. The UML is then the source you edit, and the LinkML is written whole from it on every run: do
+not edit the output by hand. `rp-generate` treats the result like any other schema, with the same
+checks and targets (xref:architecture/generation.adoc#application-schema[What the application
+writes]).
+
+*Before you start:*
+
+. An EA model saved as a `.qea` file (EA's SQLite format; an `.eap` file is not read). The converter
+only reads the file, so it never changes your model.
+. The toolkit installed with the `generate` extra, as for `rp-generate`: the package is
+`rdf-persistence` and the extra `generate` (`uv add 'rdf-persistence[generate]'`, or
+`pip install 'rdf-persistence[generate]'`). It puts `rp-uml2linkml` and `rp-generate` on your path.
+If your project runs tools through uv, prefix every command here with `uv run`.
+. A model that follows the xref:reference/uml-conventions.adoc[UML conventions]. Make it follow them
+first: an element no convention maps stops the run. In short, a _root_ is a class stereotyped
+«root», the entry point of an aggregate (the unit the toolkit stores and loads whole); a _part_ is a
+class drawn inside the same aggregate boundary as its root; `Described` is the mixin that gives an
+object a label and a description, and `Tracked` the one that carries the tracking
+statements a commit writes about it. A root and its parts get both by default.
+
+The names in the snippets (`lib:`, `Book`) belong to a small library model. In EA a name carries its
+prefix: the class is `lib:Book`, an attribute `dct:title`, a role `lib:hasChapter`.
+
+[#prefixes]
+== 1. Write the prefixes file
+
+The converter needs to know what each prefix in your EA names stands for. Write it as YAML. It is
+not final: when the model gains a prefix, add it here (a missing one stops the run, see step 2).
+
+[source,yaml]
+----
+schema_base: https://example.org/ns/library/   # a module's id is <schema_base><module name>
+default_prefix: lib                            # the prefix of a name written without one
+version: "1"                                   # the root schema's version, quoted
+prefixes:
+  lib: https://example.org/ns/library#
+  dct: http://purl.org/dc/terms/
+----
+
+All four keys are required. Declare every prefix a name in the model uses, and the
+`default_prefix` too: it must also be a key under `prefixes`, as `lib` is above. A name written
+without a prefix takes it. The run stops at a prefix it does not find, with exit 1 (step 2). The
+`xsd:` types of attributes need no entry. Name your prefixes as you like: where a namespace is one
+the toolkit's own metamodel also names, the output uses the metamodel's prefix (your `dct:` is
+written `dcterms:`).
+
+[#run]
+== 2. Convert
+
+[source,shell]
+----
+rp-uml2linkml library.qea --package MODEL/library --prefixes prefixes.yaml \
+  --out models/ --root-name library
+----
+
+The command reads the `.qea` and writes one schema file per package, a root schema
+`<root-name>.yaml` that imports them all, and a report `<root-name>.uml-report.txt` into `--out`
+(created when missing). In `--package MODEL/library`, `MODEL` is the root package of the model in
+EA's project browser, and `/` separates a package from its parent.
+
+A package becomes a module named `<root-name>_<package>`: the file is `<module name>.yaml` and the
+schema `id` is `schema_base` plus the module name (the root schema's `id` is `schema_base` plus
+`<root-name>`). The package is written below the `--package` package, in lower case with each run of
+other characters (a space, a hyphen) one `_`, and `__` between a package and its subpackage:
+with `--root-name library`, a package `Rare Books` directly below the `--package` package is
+`library_rare_books`, and its subpackage `Maps` is `library_rare_books__maps`. Classes directly in the `--package` package go to `<root-name>_main`.
+Packages that refer to each other are written as one module named after the first of them in path
+order (`merged-cycle`). The
+xref:reference/uml-conventions.adoc#packages[conventions page] gives the rest.
+
+[cols="2,5",options="header"]
+|===
+|Option |Meaning
+
+|`qea` |The `.qea` file. Required.
+|`--package` |The package to convert, with its subpackages: a name, or a path from the model's root
+package (`MODEL/library`) when the name is ambiguous. Required.
+|`--prefixes` |The prefixes file of step 1. Required.
+|`--out` |The folder to write into. Required.
+|`--root-name` |The root schema's name (default `app`). It is also the prefix of every module file
+and of the report.
+|`--exclude-package` |A package path to leave out with its subtree; repeatable. A connector that
+reaches an excluded package makes no slot (`excluded-link` in the report).
+|`--default-mixins` |The toolkit mixins of a root and of its parts, comma separated (default
+`Described,Tracked`). A name that is not a toolkit class is a model problem (exit 1).
+|`--not-generated` |A stereotype whose classes and enumerations are not generated; repeatable. The
+default is `loaded graph`; naming one or more replaces it, so name `loaded graph` again to keep it.
+Quote a stereotype with a space: `--not-generated "loaded graph"`.
+|===
+
+The run ends in one of three ways:
+
+[cols="1,5",options="header"]
+|===
+|Exit |What happened
+
+|0 |The files are written. Read the report (step 3).
+|1 |The model has problems. The converter prints every one, sorted, to standard error as
+`[<rule>] <element>: <reason>`, and writes nothing. `<rule>` is the name of the rule that was
+broken, or `no_rule` for an element no convention maps; an undeclared prefix is
+`[class_iri] lib2:Chapter: prefix lib2 is not in the prefixes file`. Fix them in EA (the table in
+xref:reference/uml-conventions.adoc#fails[What fails] names the fix for each) and run again.
+|2 |The setup cannot be used: an argument, the prefixes file (unreadable, not a mapping, a missing
+key), a file that is not an EA `.qea`, or a `--package` or `--exclude-package` that is unknown or
+(for `--package`) matches more than one package. A prefix the model uses but the file does not
+declare is not this case: it is exit 1. One line on standard error,
+`rp-uml2linkml: <message>`.
+|===
+
+The files are moved into `--out` only when the whole run succeeded, and the same model gives the
+same bytes, so a repeated run is safe and a diff of `--out` shows what you changed in EA. The
+converter deletes nothing: a `<root-name>_*.yaml` left from an earlier run that this run did not
+write stays, and is reported as `stale-file`. Delete it yourself when the package it came from is
+gone.
+
+[#report]
+== 3. Read the report
+
+The report has one line per item, sorted: the kind, the element and a message, separated by tabs.
+It records what the converter left out, assumed or did not use, so a line is a question to ask the
+modeller, not a failure of the run. One kind, `no-note`, blocks the next step (see its row).
+The element is named `Class` for a class or enumeration, `Class.attribute` for an attribute,
+`Enum.literal` for a literal and `Source.role -> Target` for a connector (some connector lines stop
+at `Source.role`).
+
+----
+no-note	Chapter	no note, so no description
+not-generated	Vocabulary	stereotype loaded graph, not generated
+----
+
+[cols="2,5",options="header"]
+|===
+|Kind |What it means
+
+|`no-note` |A class, enumeration, attribute, connector or enumeration literal has no note in EA, so the
+element has no `description`. The converter writes no placeholder. `rp-generate` requires one and
+refuses the schemas without it, so this line blocks step 4: add the note in EA.
+|`unspecified-multiplicity` |A connector end has no multiplicity and was read as `0..*`. Write
+`1..1`, `0..1` or the one you mean.
+|`not-generated` |A class or enumeration with a stereotype of the `--not-generated` list produced
+none, or a toolkit class drawn inside the converted package was used as the toolkit's own (`drawn as
+the toolkit's Activity, not generated`). A slot that points at a class is a URI; a dependency to such
+an enumeration, or an attribute typed by it, makes no slot.
+|`excluded-link` |A connector reaches a class in an `--exclude-package` package, so no slot was made.
+|`outside-link` |A connector reaches a class outside the converted package that is not excluded; the
+slot is a URI.
+|`external-list` |An enumeration has no literals, so it stands for a list kept outside the model; a
+slot over it is a URI and no enum was written.
+|`implicit-meaning` |An enumeration literal written without a prefix took the default prefix.
+|`ignored-tag` |A tagged value on a class that no rule uses. The tag name is read exactly, so a
+misspelt one (`rp_pth` for `rp_path`) is ignored, and the annotation it meant is not written.
+|`ignored-stereotype` |A stereotype on an attribute that no rule uses.
+|`toolkit-filled` |An attribute stands for a slot the toolkit fills itself (`started_at_time`) and
+asks a bound of it (`[1..1]`). The slot is not written and the bound is not carried over.
+|`toolkit-slot-kept` |An attribute stands for a toolkit slot but differs from it in `multivalued` or
+in range; the toolkit's definition is kept and the difference is not carried over.
+|`merged-cycle` |Packages that refer to each other were written as one module, because separate
+modules would import each other, whether the reference is a slot's range, a generalisation or a slot
+shared between packages (xref:reference/uml-conventions.adoc#shared-slots[conventions page]). The
+line names the packages.
+|`stale-file` |A file of an earlier run is still in `--out` (step 2).
+|===
+
+[#next]
+== 4. Check and generate
+
+The converter checks that the model is convertible, not that the result is a valid toolkit model:
+whether every part of an aggregate is reachable from its root, whether a class has a description,
+and the other rules of `rp-generate` are the generator's checks. In the `pyproject.toml` of your
+project, point the `[tool.rp-generate]` entry at the root schema (`schema = "models/library.yaml"`,
+a path relative to that file; the keys are in
+xref:user-manual/generate.adoc#configure[Configure it]) and run it from that folder:
+
+[source,shell]
+----
+rp-generate --check
+----
+
+It lints and checks the schemas and writes nothing; what it reports is for you to fix in EA, then
+convert and check again. When it is clean, run `rp-generate` to write the code and the other
+targets. Commit the converted schemas with the UML change that produced them, so that the diff of
+the schemas shows what the model change did.
+
+== Limits
+
+* The converter reads `.qea` files only, not the XMI export model2owl reads, and writes schemas;
+  it does not turn LinkML back into UML.
+* A model element that no convention maps stops the run. The converter does not guess; the
+  conventions page lists what is accepted.
+* An attribute typed `rdf:langString` is refused until the toolkit has a language-string range
+  (issue #209).

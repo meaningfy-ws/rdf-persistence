@@ -92,7 +92,8 @@ unchanged. It writes a report listing what it left out.
 - New command `rp-uml2linkml` and its module in `rdf_persistence_generation/`.
 - A small generic `.qea` fixture (built by a test helper, not checked in as a binary if avoidable)
   and golden LinkML output.
-- How-to page "Generate the model from UML", with its question added to `questions.adoc`.
+- How-to page "Generate the model from UML", with its question added to `questions.adoc`, and a
+  reference page "UML conventions" (D-20).
 
 ## Capabilities
 
@@ -106,8 +107,8 @@ unchanged. It writes a report listing what it left out.
 
 ## Impact
 
-Generator package only. New console script in `pyproject.toml`. No new dependency (stdlib
-`sqlite3`).
+Generator package only, plus `Review` in the toy model as the guard of DEC-4 (PD-34). New console
+script in `pyproject.toml`. No new dependency (stdlib `sqlite3`).
 
 ---
 
@@ -129,7 +130,13 @@ What was delivered against this shape, stage by stage (rule P-0004). The decisio
 | `--exclude-package` | One that matches no package is a usage error; the reader also names the far ends of links it leaves out | A typo must not convert everything; the report names left-out targets | D-17 | #212 |
 | An application root may be an `Activity` (DEC-4, if the spike passes) | Allowed: SPIKE-1 passed with no library change; `Review` stays in the toy as its guard | — | D-7 | #212 |
 | One how-to page | Also a UML conventions reference page with UML snippets | The developer asked for the toolkit's conventions to be written down | D-20 | stage 2 |
-| The rule table open until stage 2 | Frozen with no new rules | The developer had none | D-20 | #212 |
+| The rule table open until stage 2 | Frozen at R-1..R-30: one rule (R-30) added after a read-only run on the consumer's real model | An enumeration of workflow states is not generated, like a loaded graph | D-20, D-23 | stage 2 |
+| Toolkit-aware rules R-15, R-18, R-20..R-29 | Delivered as planned, plus: a «tenant root» takes the default mixins; a shared slot's home is the module the others reach transitively, and a cycle that sharing creates is merged; a `unique_key` may name a role or a reused toolkit slot; a toolkit class drawn inside the package is used, not generated | The toolkit's own tenant class has them; the real model's shared slots span packages; found while building | D-26, D-27 | stage 2 |
+| R-30 for not-generated stereotypes | Enumerations only; a not-generated class keeps its stage-1 behaviour | An attribute typed by a class must still fail (I-1) | D-26 | stage 2 |
+| The reader reads connectors between classes | It skips any connector with a note, text, boundary or package at an end, whatever its type | An association drawn to a note crashed the converter | D-25 | stage 2 |
+| The converter's records are generated models (PD-2) | Also its working data (`Element`, `PackagePath`, `End` as generated records; slot shapes as `SlotDefinition`); the per-call processing state stays hand-written | Stage-1 review W-1 | D-24 | stage 2 |
+| The generated output passes `rp-generate` (G-2) | The stage-2 golden passes lint, boundary, hard and rules, is generated in write mode and imports; the real model converts once its own clashes are fixed, and passes `rp-generate` once its missing notes are added too ([acceptance](evidence/acceptance.md)) | RISK-2: a quarter of the real model has no notes | D-29 C-4 | stage 2 |
 
-Stage 2 (the toolkit-aware rules, R-15, R-18, R-20..R-29, and the docs) is not delivered yet; this
-table is completed before its last merge.
+Not delivered: nothing the shape promised is left out. Upstream: #208 (cyclic split modules) and
+#209 (a language-string range) stay open in the toolkit; the converter refuses or merges until they
+land.

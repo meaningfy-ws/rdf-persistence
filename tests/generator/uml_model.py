@@ -31,7 +31,13 @@ from rdf_persistence_generation.uml.convert import convert
 
 NS = "https://example.org/ns/library#"
 BASE = "https://example.org/ns/library/"
-PREFIXES = {"lib": NS, "dct": "http://purl.org/dc/terms/", "bibo": "http://purl.org/ontology/bibo/"}
+PREFIXES = {
+    "lib": NS,
+    "dct": "http://purl.org/dc/terms/",
+    "bibo": "http://purl.org/ontology/bibo/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "rp": "https://meaningfy.ws/ns/rdf-persistence#",
+}
 METAMODEL_PREFIXES = {
     "dcterms": "http://purl.org/dc/terms/",
     "rp": "https://meaningfy.ws/ns/rdf-persistence#",

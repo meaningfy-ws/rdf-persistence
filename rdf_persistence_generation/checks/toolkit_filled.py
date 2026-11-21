@@ -48,15 +48,20 @@ def _aliases(
             )
 
 
-def toolkit_filled_problems(
-    view: SchemaView, classes: list[ClassDefinition]
-) -> Iterator[CheckProblem]:
-    """One problem for each slot a class narrows, redeclares or aliases though the toolkit fills it, and each required payload slot."""
-    filled = {
+def toolkit_filled_slots(view: SchemaView) -> dict[str, str]:
+    """The slots annotated ``toolkit_filled: true`` in ``view``, each name with its expanded ``slot_uri``."""
+    return {
         name: str(view.get_uri(slot, expand=True))
         for name, slot in view.all_slots(attributes=False).items()
         if flag(slot, RpAnnotation.TOOLKIT_FILLED)
     }
+
+
+def toolkit_filled_problems(
+    view: SchemaView, classes: list[ClassDefinition]
+) -> Iterator[CheckProblem]:
+    """One problem for each slot a class narrows, redeclares or aliases though the toolkit fills it, and each required payload slot."""
+    filled = toolkit_filled_slots(view)
     for cls in classes:
         yield from _redeclared(cls, set(filled))
         yield from _aliases(view, cls, filled)

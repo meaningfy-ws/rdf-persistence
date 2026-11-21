@@ -23,8 +23,8 @@ def _columns(connection: sqlite3.Connection, table: str) -> set[str]:
 
 
 def test_ea_columns_and_ddl_cover_the_seven_tables():
-    assert set(EA_COLUMNS) == set(PD3_TABLES)
-    assert set(DDL) == set(PD3_TABLES)
+    assert set(EA_COLUMNS) == set(PD3_TABLES), "EA_COLUMNS names the seven tables"
+    assert set(DDL) == set(PD3_TABLES), "DDL names the seven tables"
 
 
 @pytest.mark.parametrize("table", PD3_TABLES)
@@ -34,7 +34,9 @@ def test_ddl_columns_are_a_subset_of_the_ea_columns(table):
     connection.execute(DDL[table])
     ddl_columns = _columns(connection, table)
     assert ddl_columns, f"{table}: the DDL declares no column"
-    assert ddl_columns <= set(EA_COLUMNS[table]), ddl_columns - set(EA_COLUMNS[table])
+    assert ddl_columns <= set(EA_COLUMNS[table]), (
+        f"{table}: columns EA does not have: {ddl_columns - set(EA_COLUMNS[table])}"
+    )
 
 
 def _row_counts(path: Path) -> dict[str, int]:
@@ -66,7 +68,7 @@ def test_a_built_model_reopens_read_only_with_the_rows_written(tmp_path):
     builder.boundary(diagram=1, rect=(0, 100, 100, 0), members=[book, chapter])
     path = builder.finish()
 
-    assert path == tmp_path / "library.qea"
+    assert path == tmp_path / "library.qea", "finish returns the file's path"
     assert _row_counts(path) == {
         "t_package": 2,
         "t_object": 5,  # three classes, one enumeration, one boundary
@@ -75,7 +77,7 @@ def test_a_built_model_reopens_read_only_with_the_rows_written(tmp_path):
         "t_objectproperties": 2,
         "t_xref": 0,
         "t_diagramobjects": 3,  # the boundary and its two members
-    }
+    }, "the rows written are the rows read back"
 
 
 def test_builder_methods_return_ids_that_chain(tmp_path):
@@ -86,8 +88,8 @@ def test_builder_methods_return_ids_that_chain(tmp_path):
     second = builder.cls(child, "lib:Chapter")
     path = builder.finish()
 
-    assert len({root, child}) == 2
-    assert len({first, second}) == 2
+    assert len({root, child}) == 2, "two packages, two ids"
+    assert len({first, second}) == 2, "two classes, two ids"
     connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     try:
         parent_id = connection.execute(
@@ -98,4 +100,4 @@ def test_builder_methods_return_ids_that_chain(tmp_path):
         ).fetchone()[0]
     finally:
         connection.close()
-    assert (parent_id, owner) == (root, child)
+    assert (parent_id, owner) == (root, child), "the returned ids are the rows' keys"

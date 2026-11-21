@@ -20,29 +20,49 @@ from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
     ReportLine,
+    UmlElement,
     UmlModel,
     UmlRule,
     UmlSettings,
 )
 from rdf_persistence_generation.uml.classes import (
-    RP_CORE_IMPORT,
     annotation,
     build_class,
     build_enum,
     collect_elements,
+    mark_abstract_roots,
     parents,
 )
-from rdf_persistence_generation.uml.context import Context, Element
+from rdf_persistence_generation.uml.context import (
+    Context,
+    below_of,
+    is_boundary_root,
+    literals_of,
+    path_of,
+)
 from rdf_persistence_generation.uml.links import link_usages, owned_pairs
+from rdf_persistence_generation.uml.mixins import check_default_mixins
 from rdf_persistence_generation.uml.modules import (
     PATH_SEPARATOR,
     ModulePath,
     cycle_components,
     module_name,
     package_paths,
+    reachable,
 )
 from rdf_persistence_generation.uml.naming import title_for
-from rdf_persistence_generation.uml.slots import SharedSlots, Usage, attribute_usages, share
+from rdf_persistence_generation.uml.slots import (
+    SharedSlots,
+    Usage,
+    attribute_usages,
+    choose_homes,
+    is_owned,
+    name_slots,
+    share,
+    shared_edges,
+    split_toolkit,
+    use_toolkit_slots,
+)
 
 LINKML_TYPES: Final = "linkml:types"
 LINKML_PREFIX: Final = ("linkml", "https://w3id.org/linkml/")
@@ -57,7 +77,7 @@ class Layout:
 
     def __init__(
         self,
-        elements: list[Element],
+        elements: list[UmlElement],
         edges: Mapping[ModulePath, set[ModulePath]],
         merged: Mapping[ModulePath, ModulePath],
         names: Mapping[ModulePath, str],
@@ -67,8 +87,8 @@ class Layout:
         self.merged = merged
         self.names = names
 
-    def members(self, path: ModulePath) -> list[Element]:
-        return [each for each in self.elements if self.merged[each.path] == path]
+    def members(self, path: ModulePath) -> list[UmlElement]:
+        return [each for each in self.elements if self.merged[path_of(each)] == path]
 
     def refers_to(self, path: ModulePath) -> set[str]:
         """The modules the module at ``path`` imports."""
@@ -80,16 +100,16 @@ class Layout:
         }
 
 
-def _generated(ctx: Context) -> list[Element]:
+def _generated(ctx: Context) -> list[UmlElement]:
     """The elements that become a definition; an enumeration with no literal does not."""
     return [
         element
-        for element in sorted(ctx.elements.values(), key=lambda each: (each.path, each.label))
-        if not (element.is_enum and not element.literals)
+        for element in sorted(ctx.elements.values(), key=lambda each: (path_of(each), each.label))
+        if not (element.is_enum and not literals_of(element))
     ]
 
 
-def _usages(ctx: Context, model: UmlModel, elements: list[Element]) -> list[Usage]:
+def _usages(ctx: Context, model: UmlModel, elements: list[UmlElement]) -> list[Usage]:
     usages = [
         usage
         for element in elements
@@ -101,39 +121,88 @@ def _usages(ctx: Context, model: UmlModel, elements: list[Element]) -> list[Usag
 
 
 def _references(
-    elements: list[Element], usages: list[Usage], parent_of: Mapping[int, str]
+    elements: list[UmlElement], usages: list[Usage], parent_of: Mapping[int, str]
 ) -> dict[ModulePath, set[ModulePath]]:
     """For each package path, the package paths its classes refer to (``is_a``, slot ranges)."""
     by_label = {element.label: element for element in elements}
-    edges: dict[ModulePath, set[ModulePath]] = {element.path: set() for element in elements}
+    edges: dict[ModulePath, set[ModulePath]] = {path_of(element): set() for element in elements}
     for child_id, parent in parent_of.items():
-        child = next(each for each in elements if each.uml.object_id == child_id)
-        edges[child.path].add(by_label[parent].path)
+        child = next(each for each in elements if each.uml_class.object_id == child_id)
+        edges[path_of(child)].add(path_of(by_label[parent]))
     for usage in usages:
         target = by_label.get(usage.shape.range)
         if target is not None:
-            edges[usage.holder.path].add(target.path)
+            edges[path_of(usage.holder)].add(path_of(target))
     for path, targets in edges.items():
         targets.discard(path)
     return edges
 
 
-def _layout(
-    ctx: Context, elements: list[Element], edges: Mapping[ModulePath, set[ModulePath]]
-) -> dict[ModulePath, ModulePath]:
+Edges = dict[ModulePath, set[ModulePath]]
+
+
+def _merge(
+    edges: Mapping[ModulePath, set[ModulePath]],
+) -> tuple[dict[ModulePath, ModulePath], list[list[ModulePath]]]:
     """The path each package is written under: its own, or the first of the cycle it is in (D-5)."""
     merged = {path: path for path in edges}
-    root_name = ctx.settings.root_name
-    for component in cycle_components(list(edges), dict(edges)):
+    components = cycle_components(list(edges), dict(edges))
+    for component in components:
         for path in component:
             merged[path] = component[0]
+    return merged, components
+
+
+def _module_graph(
+    edges: Mapping[ModulePath, set[ModulePath]], merged: Mapping[ModulePath, ModulePath]
+) -> Edges:
+    """The imports between the modules the packages are written as."""
+    graph: Edges = {path: set() for path in set(merged.values())}
+    for source, targets in edges.items():
+        graph[merged[source]] |= {merged[target] for target in targets}
+    for path, targets in graph.items():
+        targets.discard(path)
+    return graph
+
+
+def _grown(
+    edges: Mapping[ModulePath, set[ModulePath]], added: Mapping[ModulePath, set[ModulePath]]
+) -> Edges:
+    grown: Edges = {path: set(targets) for path, targets in edges.items()}
+    for path, targets in added.items():
+        grown.setdefault(path, set()).update(targets)
+        grown[path].discard(path)
+    return grown
+
+
+def _settle(
+    usages: list[Usage], edges: Edges, by_label: Mapping[str, UmlElement]
+) -> tuple[
+    Edges, dict[ModulePath, ModulePath], list[list[ModulePath]], dict[str, ModulePath | None]
+]:
+    """The imports once the shared slots are placed, and the modules and homes that agree with them (PD-16).
+
+    A shared slot's home is chosen from the imports there are, and its placing adds imports, which can
+    make a cycle: so the choice is repeated, the imports only growing, until the modules stop changing.
+    """
+    merged, _ = _merge(edges)
+    while True:
+        homes = choose_homes(usages, merged, reachable(_module_graph(edges, merged)))
+        edges = _grown(edges, shared_edges(usages, merged, homes, by_label))
+        again, components = _merge(edges)
+        if again == merged:
+            return edges, merged, components, homes
+        merged = again
+
+
+def _note_merges(ctx: Context, components: list[list[ModulePath]]) -> None:
+    for component in components:
         names = ", ".join("/".join(path) or "main" for path in component)
         ctx.findings.note(
             ReportKind.MERGED_CYCLE,
-            module_name(root_name, component[0]),
+            module_name(ctx.settings.root_name, component[0]),
             f"the packages {names} are written as one module",
         )
-    return merged
 
 
 def _module_names(ctx: Context, paths: set[ModulePath]) -> dict[ModulePath, str]:
@@ -188,7 +257,7 @@ class Built:
         self.slot_names = slot_names
 
 
-def _build(ctx: Context, model: UmlModel) -> tuple[list[Element], list[Usage], dict[int, str]]:
+def _build(ctx: Context, model: UmlModel) -> tuple[list[UmlElement], list[Usage], dict[int, str]]:
     collect_elements(ctx, model)
     elements = _generated(ctx)
     return elements, _usages(ctx, model, elements), parents(ctx, model)
@@ -197,28 +266,28 @@ def _build(ctx: Context, model: UmlModel) -> tuple[list[Element], list[Usage], d
 def _enums(ctx: Context) -> dict[int, EnumDefinition]:
     """The enum of each enumeration; an empty one makes none but a report line (D-10)."""
     enums: dict[int, EnumDefinition] = {}
-    for element in sorted(ctx.elements.values(), key=lambda each: (each.path, each.label)):
+    for element in sorted(ctx.elements.values(), key=lambda each: (path_of(each), each.label)):
         built = build_enum(ctx, element) if element.is_enum else None
         if built is not None:
-            enums[element.uml.object_id] = built
+            enums[element.uml_class.object_id] = built
     return enums
 
 
 def _slot_names(usages: list[Usage], ctx: Context) -> dict[int, list[str]]:
     names: dict[int, list[str]] = {}
     for usage in sorted(usages, key=lambda each: each.order):
-        held = names.setdefault(usage.holder.uml.object_id, [])
+        held = names.setdefault(usage.holder.uml_class.object_id, [])
         if usage.name not in held:
             held.append(usage.name)
     return names
 
 
 def _write_module(
-    ctx: Context, name: str, path: ModulePath, built: Built, members: list[Element]
+    ctx: Context, name: str, path: ModulePath, built: Built, members: list[UmlElement]
 ) -> SchemaDefinition:
     settings = ctx.settings
     first = path[-1] if path else settings.subtree_package.rsplit(PATH_SEPARATOR, 1)[-1]
-    note = next((ctx.paths[i].note for i in ctx.paths if ctx.paths[i].below == path), None)
+    note = next((ctx.paths[i].note for i in ctx.paths if below_of(ctx.paths[i]) == path), None)
     schema = SchemaDefinition(
         id=settings.schema_base + name,
         name=name,
@@ -235,8 +304,8 @@ def _write_module(
     return schema
 
 
-def _place(schema: SchemaDefinition, element: Element, built: Built) -> None:
-    key = element.uml.object_id
+def _place(schema: SchemaDefinition, element: UmlElement, built: Built) -> None:
+    key = element.uml_class.object_id
     if element.is_enum:
         schema.enums[element.label] = built.enums[key]
         return
@@ -246,11 +315,55 @@ def _place(schema: SchemaDefinition, element: Element, built: Built) -> None:
     schema.classes[element.label] = definition
 
 
-def _imports(name: str, members: list[Element], refs: set[str]) -> list[str]:
-    toolkit = [ANNOTATIONS_IMPORT]
-    if any(element.is_root for element in members):
-        toolkit.append(RP_CORE_IMPORT)
+def _toolkit_imports(ctx: Context, members: list[ClassDefinition]) -> set[str]:
+    """The module of each toolkit class a module's classes use as ``is_a`` or mixin (PD-17)."""
+    used = {name for each in members for name in [each.is_a, *each.mixins] if name}
+    return {ctx.toolkit.module_of(name) for name in used if ctx.toolkit.class_by_name(name)}
+
+
+def _imports(
+    ctx: Context, name: str, members: list[UmlElement], built: Built, refs: set[str]
+) -> list[str]:
+    classes = [built.classes[each.uml_class.object_id] for each in members if not each.is_enum]
+    toolkit = {ANNOTATIONS_IMPORT} | _toolkit_imports(ctx, classes)
+    toolkit.update(*(built.shared.toolkit_imports.get(each.label, set()) for each in members))
     return [LINKML_TYPES, *sorted(toolkit), *sorted(refs - {name})]
+
+
+def _classes(
+    ctx: Context, elements: list[UmlElement], usages: list[Usage], parent_of: Mapping[int, str]
+) -> dict[int, ClassDefinition]:
+    """The class of each UML class; a part is a class an owned slot ranges over (PD-13, PD-17)."""
+    defaults = check_default_mixins(ctx)
+    owned = {usage.shape.range for usage in usages if is_owned(usage.shape)}
+    return {
+        e.uml_class.object_id: build_class(
+            ctx,
+            e,
+            parent_of.get(e.uml_class.object_id),
+            e.label in owned and not is_boundary_root(e),
+            defaults,
+        )
+        for e in elements
+        if not e.is_enum
+    }
+
+
+def _lay_out(
+    ctx: Context, elements: list[UmlElement], usages: list[Usage], parent_of: Mapping[int, str]
+) -> tuple[Layout, SharedSlots]:
+    """The modules the packages are written as, and the slots each of them defines or shares (R-24, D-5)."""
+    by_label = {element.label: element for element in elements}
+    edges, merged, components, homes = _settle(
+        usages, _references(elements, usages, parent_of), by_label
+    )
+    _note_merges(ctx, components)
+    names = _module_names(ctx, set(merged.values()))
+    module_of = {
+        element.uml_class.object_id: names[merged[path_of(element)]] for element in elements
+    }
+    named_homes = {name: names[path] if path else None for name, path in homes.items()}
+    return Layout(elements, edges, merged, names), share(ctx, usages, module_of, named_homes)
 
 
 def convert(
@@ -265,27 +378,23 @@ def convert(
     ctx = Context(settings, metamodel_prefixes, prefixes)
     ctx.paths = package_paths(model, settings)
     elements, usages, parent_of = _build(ctx, model)
+    toolkit_usages, usages = split_toolkit(ctx, usages)
+    name_slots(ctx, usages, toolkit_usages)
     if not ctx.elements and not ctx.findings.problems():
         ctx.findings.problem(
             UmlRule.PACKAGE_MODULE,
             settings.subtree_package,
             "the package holds no class or enumeration to convert",
         )
-    edges = _references(elements, usages, parent_of)
-    merged = _layout(ctx, elements, edges)
-    names = _module_names(ctx, set(merged.values()))
-    module_of = {element.uml.object_id: names[merged[element.path]] for element in elements}
-    shared = share(ctx, usages, module_of)
-    classes = {
-        e.uml.object_id: build_class(ctx, e, parent_of.get(e.uml.object_id))
-        for e in elements
-        if not e.is_enum
-    }
+    layout, shared = _lay_out(ctx, elements, usages, parent_of)
+    mark_abstract_roots(ctx, {usage.shape.range for usage in usages}, parent_of)
+    classes = _classes(ctx, elements, usages, parent_of)
     built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx))
+    use_toolkit_slots(ctx, toolkit_usages, classes, shared, built.slot_names)
     problems = ctx.findings.problems()
     if problems:
         return [], ctx.findings.report(), problems
-    schemas = _assemble(ctx, Layout(elements, edges, merged, names), built)
+    schemas = _assemble(ctx, layout, built)
     return schemas, ctx.findings.report(), []
 
 
@@ -296,7 +405,7 @@ def _assemble(ctx: Context, layout: Layout, built: Built) -> list[SchemaDefiniti
         name = layout.names[path]
         members = layout.members(path)
         schema = _write_module(ctx, name, path, built, members)
-        schema.imports = _imports(name, members, layout.refers_to(path))
+        schema.imports = _imports(ctx, name, members, built, layout.refers_to(path))
         _prefixes_of(ctx, schema)
         modules.append(schema)
     return [_root(ctx, [m.name for m in modules]), *modules]

@@ -56,33 +56,38 @@ schema change and its regenerated code go in one commit (`make generate`, then t
 - [x] 2.1 Lead: freeze the rule table (DEC-5): rules R-30… received since the PLAN appended with
   source and stage, or sent to a follow-up issue; the freeze date written under the table; any new
   rule's `UmlRule` value added (with 1.1's test updated).
-- [ ] 2.2 Toolkit index (PD-17, PD-18, PD-20 lookups): `uml/toolkit.py`; `_segment_pattern`
+- [x] 2.2 Toolkit index (PD-17, PD-18, PD-20 lookups): `uml/toolkit.py`; `_segment_pattern`
   renamed `segment_pattern` in `checks/hard.py` and its callers. Failing test first:
   `tests/generator/unit/test_uml_toolkit.py`: class annotations = the seven of F-1;
   `prov:Activity` → `Activity`, non-mixin; `skos:prefLabel` → `label`; `dcterms:identifier` not
   offered (it is `id`); `started_at_time` toolkit-filled. Accept: green; `make check-architecture`
   green (else the matrix's fallback module).
-- [ ] 2.3 Mixins (PD-17, R-25..R-28) and the DEC-4 branch, after 2.2 and 1.9. Failing tests first:
+- [x] 2.3 Mixins (PD-17, R-25..R-28) and the DEC-4 branch, after 2.2 and 1.9. Failing tests first:
   the TC-5 rows for R-25..R-28, the PD-17 conflict rows, and the `activity_root` row (active only
   if SPIKE-1 failed). Accept: green.
-- [ ] 2.4 Toolkit slots (PD-18, R-15, R-22), after 2.2: failing test first TC-6. Accept: green.
-- [ ] 2.5 Tagged values and keys (PD-20, PD-21, R-20, R-21), after 2.2: failing tests first TC-7,
+- [x] 2.4 Toolkit slots (PD-18, R-15, R-22), after 2.2: failing test first TC-6. Accept: green.
+- [x] 2.5 Tagged values and keys (PD-20, PD-21, R-20, R-21), after 2.2: failing tests first TC-7,
   TC-8. Accept: green.
-- [ ] 2.6 Tenant root, abstract roots, cross-package slots, left-out links (PD-19, PD-16 R-24,
+- [x] 2.6 Tenant root, abstract roots, cross-package slots, left-out links (PD-19, PD-16 R-24,
   PD-15 R-29, PD-14 as decided in 1.9), after 2.3..2.5: failing tests first the TC-5 rows for
   R-18, R-23, R-24, R-29 and TC-9's cross-package half; the stage-2 golden (the fixture of the
   design's worked example); IT-1 with all four steps; IT-3 (`uml_import.feature`, the spec
   delta's scenarios, the activity-root one as amended for PD-26). Accept: all green;
   `test_every_uml_rule_has_a_row` without `xfail`.
-- [ ] 2.7 Docs (PD-25), in parallel with 2.6: the how-to page, `nav.adoc`, `questions.adoc`,
+- [x] 2.7 Docs (PD-25), in parallel with 2.6: the how-to page, `nav.adoc`, `questions.adoc`,
   the `architecture/generation.adoc` line, `specs/rp-generation/spec.md` (MODIFIED delta).
   Accept: `make check-docs` green; `openspec validate uml-to-linkml --strict` green.
-- [ ] 2.9 Stage-1 review carry-over (design.md D-22, the items marked →2), with 2.6: make the
+- [x] 2.9 Stage-1 review carry-over (design.md D-22, the items marked →2), with 2.6: make the
   read-only test able to fail (W-4); test the unknown connector type, connectors to notes and
   boundaries, a boundary with two roots, a dependency to an excluded enumeration (W-5); messages on
   the new UML tests' asserts (W-6); correct the scenario-map evidence (W-7); drop the stale comment
   in `test_uml_cycle.py` and use the path form (W-8); import `convert` at module level (S-8); and
   PD-6's "domain class named like a toolkit class" check in 2.2 (S-11).
+- [x] 2.10 R-30 and W-1 (D-23, D-24), with 2.5 (R-30) and after 2.6 (W-1). Failing tests first:
+  an enumeration stereotyped as listed in `--not-generated` → no enum, a `not-generated` line, and
+  a dependency to it → no slot, a `not-generated` line. W-1: `Bounds`, `Shape`, `Identity` replaced
+  by `SlotDefinition`; `Element`, `PackagePath`, `End` by generated UML records; the model guard
+  green with no new `HAND_WRITTEN` entry. Accept: green; goldens unchanged by W-1.
 - [ ] 2.8 Lead: full gates; the appetite's full review (P-0005); fixes; acceptance demo: the
   converter on the consumer's real `.qea`, read-only, output in `temp/` and never committed,
   showing exit code, problem count by rule and report count by kind; PR, CI green, merge; owner's

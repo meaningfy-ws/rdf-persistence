@@ -74,7 +74,7 @@ Probe `temp/uml-probe/{boundaries,members,scoped,cycles}.py` on the first consum
 - Re-implementing `rp-generate`'s checks in the converter (anti-pattern A-3).
 - Any change to `rdf_persistence/` unless SPIKE-1 or SPIKE-2 requires it, then as its own task.
 
-## Rule table (frozen 2026-11-20: DEC-5, D-20)
+## Rule table (frozen 2026-11-20: DEC-5, D-20, final with R-30 by D-23)
 
 Sources: **B** = issue body table, **C1..C4** = the four comments in
 [inputs/seed.md](inputs/seed.md#comments). R-1..R-13 follow the body's row order and R-14..R-19
@@ -114,6 +114,7 @@ freeze is appended as R-30, R-31… with its source and date; the freeze date is
 | R-27 | tagged value `workflow=<name>` | `UnderWorkflow` mixin (+ the annotation, R-20) | C4.1 | active | 2 | PD-17 |
 | R-28 | drawn generalisation to a toolkit class | as R-26; the drawn toolkit class is not generated | C1 kept by C4.1 | active | 2 | PD-17 |
 | R-29 | association to a not-generated class / to an excluded package | `range: uri` / no slot, one report line | C4.2 | active | 2 | PD-15 |
+| R-30 | enumeration whose stereotype is listed in `--not-generated` (e.g. «workflow states») | no enum; a dependency to it makes no slot; one `not-generated` report line each (`UmlRule.not_generated`, as R-12) | D-23, real-model run | active | 2 | PD-15 |
 
 Run-level invariants (not mappings, so not rules): I-1 an unmapped element fails the run and
 nothing is written (`UmlRule.no_rule`); I-2 a second run is byte-identical; I-3 the report lists
@@ -493,6 +494,9 @@ metamodel. Every model problem is printed `[<rule>] <element>: <message>` by `fo
 | A PD-3 table or column missing (another EA version, a foreign file) | `sqlite_master` lookup; `pragma table_info` per table before the first select | `rp-uml2linkml: <path> has no table <t>` / `rp-uml2linkml: <path>: table <t> has no column <c>` | 2 |
 | `--package` unknown / ambiguous | `t_package` lookup | `no package <p>` / `package <p> is ambiguous: <path1>, <path2>; name it by path` | 2 |
 | Prefixes file missing key or not a mapping | load | `<file>: missing <key>` / `<file>: not a mapping` | 2 |
+| Prefixes file value unusable (D-29 C-2) | load | `<file>: schema_base <v> is not an absolute IRI` / `<file>: prefix <name> is not an NCName` / `<file>: namespace <v> of prefix <name> is not an absolute IRI` / `<file>: default_prefix <v> is not a key of prefixes` | 2 |
+| `--root-name` not an NCName (D-29 C-2) | argument check | `rp-uml2linkml: --root-name <v> is not an NCName` | 2 |
+| A written name that is not a valid local name (D-29 C-1) | PD-6, linkml's CURIE check | `[attribute_slot] Book.has title: 'has title' is not a valid local name` (a literal: `[class_iri]`) | 1 |
 | Unknown CURIE prefix | PD-6 | `[class_iri] <element>: prefix <pfx> is not in <file>` | 1 |
 | Unmapped element (association class, n-ary node, `Interface`, unknown stereotype, `2..5`, missing card, roleless association, two domain parents, `Aggregation` connector) | PD-3, PD-8, PD-9, PD-13, PD-15 | `[no_rule] <element>: <what it is>: no rule converts it` | 1 |
 | Boundary ambiguity (straddle, placed twice, two boundaries, unequal diagrams, 0 or 2 roots) | PD-4, PD-13 | `[no_rule] <boundary or class>: <reason>: no rule converts it` | 1 |
@@ -775,3 +779,107 @@ and its checkers page):
     fixture's docstring claims R-13, a composite, `excluded-link`, `merged-cycle`; S-11 PD-6's
     toolkit-name clash has no task (→2, task 2.2); S-12 a test helper repeats `format_problem`;
     S-13 `qea.py` holds the boundary geometry, `PackagePath` lives away from its builder.
+- **D-23 Rule freeze, final** (2026-11-20, the developer, one question round after the converter
+  ran read-only on the consumer's real `.qea`; amends D-20). The run (`evidence/real-model-run.md`)
+  met no Activity, Component, Interface, Abstraction or ControlFlow in the converted package: they
+  all sit in packages outside it, so none needs a rule. Of its 18 problems, 10 are stage-2 rules
+  (R-18, R-24) and 1 is new: R-30, an enumeration whose stereotype is listed in `--not-generated`
+  is not generated, and a dependency to it makes no slot; both are `not-generated` report lines
+  under `UmlRule.not_generated` (no new enum value). The rest are the consumer's model to fix, not
+  rules: a class straddling two boundaries, two IRIs sharing a local name (twice), a package whose
+  boundaries hold no «root», and a prefixes file without `schema_base` and `version`. No rule was
+  added to #196 after its four comments. The table is frozen at R-1..R-30; a later rule goes to a
+  follow-up issue.
+- **D-24 W-1 scope** (2026-11-20, the developer; closes W-1 of D-22). The converter's hand-written
+  *data* classes go: `Bounds`, `Shape` and `Identity` become LinkML's `SlotDefinition`; `Element`,
+  `PackagePath` and `End` become generated UML records (the `uml` technical schema of task 1.1).
+  The output side already uses `SchemaDefinition`, `ClassDefinition` and `SlotDefinition`. The
+  per-call processing state (`Context`, `Findings`, `Layout`, `Built`, `SharedSlots`, `_Reading`,
+  `_Boundaries`) stays: it holds indexes inside one call (P-0007 allows them), and no
+  `HAND_WRITTEN` exception is added. Task 2.10.
+- **D-25 Connectors to ignored objects** (2026-11-20, the lead, found in task 2.9; amends D-17).
+  The reader skips any connector one of whose ends is a `Note`, `Text`, `Boundary` or `Package`
+  object, whatever its `Connector_Type`: an association drawn to a note reached the converter as a
+  link whose end was listed nowhere, and the converter raised `LookupError`. An unmapped connector
+  type between converted classes stays `no_rule`.
+- **D-26 Stage-2 build order and joins** (2026-11-20, the lead, the developer: "advance in parallel
+  if possible, with subagents"; rule R-0004). 2.2, then 2.3; 2.4 after 2.3 (it needs each class's
+  mixins); 2.5, 2.7, 2.9 and R-30 of 2.10 each in its own builder worktree beside them; 2.6 after
+  2.5 joined, with W-6/W-8 of 2.9 for its files and two gaps the builders reported: a `unique_key`
+  naming a role or a reused toolkit slot, and a toolkit class drawn inside the subtree (PD-17). The
+  lead joins each branch, takes one side of the generated manifests and runs `make generate`
+  (P-0003). R-30 applies to not-generated *enumerations* only; a dependency to or an attribute typed
+  by a not-generated class keeps its stage-1 behaviour (I-1). Three tests failed once each under
+  the load of parallel builders and passed alone (`test_sparql` pattern-too-long,
+  `test_open_event_stream` 404, `test_templates` toy type check); the stage's full gates re-run
+  them.
+- **D-27 Task 2.6 as built** (2026-11-21, the lead; amends PD-16, PD-19, D-15). A «tenant root»
+  takes the default mixins (`Described`, `Tracked`), as the toolkit's own tenant class does; a
+  `graph` tag on it other than `meta` is one `[tenant_root]` problem, and the tag is not also checked
+  as a class annotation. A shared slot's home is the module every other using module reaches
+  transitively; sharing adds imports (user → home, home → its range's module), the homes are
+  recomputed until the modules stop changing, and a cycle that sharing creates is merged (PD-14).
+  D-15's stage-1 refusal of a cross-module slot is gone. A `unique_key` may name a role slot or a
+  reused toolkit slot. A toolkit class drawn inside the subtree is used as the toolkit class and
+  reported `not-generated` ("drawn as the toolkit's <Class>"). The spec delta's scenarios run as
+  `tests/generator/feature/uml_import.feature`, in the generator lane.
+- **D-28 Develop merged in, not rebased** (2026-11-21, the lead; departs from P-0002 in form, not
+  intent). The stage branch joins eight builder branches with merge commits; a rebase replays each
+  task on a base it was not built on and raises every join conflict again, commit by commit. So
+  `develop` is merged into the stage branch before the PR, which surfaces its conflicts before review
+  and CI as P-0002 wants. Develop brought a new class annotation (`rp_on_referenced_delete`): the
+  converter needed no change (PD-20, A-1); only the test that listed the class annotations did.
+- **D-29 Full review, accepted findings** (2026-11-21, PR #228; L1, L2, L3 apart, L4+L5 as one;
+  38 findings, none labelled Critical; six re-labelled by the lead into four, C-1..C-4, each with
+  its reason; the checker agreed with all four).
+  - **C-1 (L1 W-1): a name with a space crashes the run.** An attribute, role or literal written
+    `has title` passes the snake-case check (the words are joined) but its raw name reaches
+    `slot_uri`/`meaning`, and linkml raises `ValueError`: a traceback, not a problem, and the run
+    stops at the first one. Reason: it breaks I-1, G-4 and A-9 on an ordinary modelling slip (as
+    stage 1's W-3). Fix: check the written local name before building the definition; an invalid
+    one is an `attribute_slot` problem (a `class_iri` one for a literal's meaning), collected.
+  - **C-2 (L1 W-2): the prefixes file and `--root-name` are not checked.** A `default_prefix` not
+    under `prefixes` writes relative IRIs with exit 0 (stage 1's S-5); a namespace or `schema_base`
+    that is not an absolute IRI, a prefix or `--root-name` that is not an NCName, crash with a
+    traceback. Reason: silent wrong output, and the error matrix promises exit 2. Fix: each is a usage
+    error (exit 2, one `rp-uml2linkml:` line) in `load_settings` and the argument parse.
+  - **C-3 (L2 W1, W4, W7): the spec delta and the conventions page say what the code does not.** The
+    spec says the report names the links to a not-generated class (only an enumeration's are named,
+    D-26); the page lists seven class annotations (eight since develop, D-28) and says any
+    dependency to a class fails (only one to a converted class does). Reason: P-0004, the spec and
+    the reference must be true of the code before the archive. Fix: the text, not the code.
+  - **C-4 (L2 W3): the stage-2 golden is never generated.** IT-1 runs the four checks only; the
+    `rp-generation` scenario "writes its targets exactly as for a hand-written schema" is unproven
+    for an Activity root, an abstract root, a tenant root, `StoredFile` and tenant-scoped keys.
+    Reason: a spec scenario mapped to a test that cannot fail for it. Fix: IT-1 also generates the
+    stage-2 golden in write mode and imports the package (as `test_uml_cycle.py` does); a refusal
+    found there is fixed in the converter, or reported upstream if it is the toolkit's.
+
+  Under the floor (one line each; to the developer at the end with D-1..D-29):
+  - L1 S-1 harden the reader against a crafted `.qea` (`trusted_schema=OFF`, tables only).
+  - L1 S-2 no test pins the converter's name patterns to linkml's linter patterns.
+  - L2 W2 the feature's first scenario lacks a generalisation, a dependency and the URI/cardinality
+    Thens (the golden covers them).
+  - L2 W5 asserts without messages in the R-30 rows and two toolkit tests.
+  - L2 W6 Then steps bundling several asserts; two feature lines chained with "and".
+  - L2 S1 `test_every_uml_rule_has_a_row` counts enum values, not R-n; S2 a Then that accepts any
+    report kind; S3 the stage-2 spec sentences have no scenario of their own; S4 stale "R-1..R-29".
+  - L3 W1 / L4+L5 W-5 reader and converter still both own package paths, exclusion, admission and
+    the association-class test (D-22 W-2, again).
+  - L3 W2 / L4+L5 S-2 `convert` loads the toolkit itself; the metamodel is read twice.
+  - L3 W3 / L4+L5 W-6 `Usage` and `Composed` are hand-written data classes D-24 did not keep.
+  - L3 W4 / L4+L5 S-1 `Context` is filled in an order nothing enforces.
+  - L3 W5 / L4+L5 S-6 `slots.py` has five concerns; graph code in `convert.py`; boundary geometry
+    in `qea.py`.
+  - L3 W6 / L4+L5 W-4 annotation names and values re-declared as strings, not the generated enums
+    (A-1 in spirit).
+  - L3 S1..S3 shared helpers imported across peer passes; no contract for "convert is pure"; the
+    CLI's lazy imports.
+  - L4+L5 W-1 a disk error mid-move leaves a mixed `--out` (the error matrix accepts it; a re-run
+    rewrites all); staging beside `--out` fails across filesystems.
+  - L4+L5 W-2 every SQLite error reads as "not a .qea file".
+  - L4+L5 W-3 `mode=ro` on a WAL-mode file leaves `-shm`/`-wal` beside it (the real file is in
+    `delete` mode; `immutable=1` would close it).
+  - L4+L5 W-7 two exceptions outside `exceptions.py`; W-8 free strings for closed sets.
+  - L4+L5 S-3 repeated scans that an index would avoid; S-4 an `assert` and a `type: ignore` in
+    production code; S-5 small clean-ups.

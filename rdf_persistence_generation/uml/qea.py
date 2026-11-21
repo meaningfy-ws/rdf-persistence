@@ -411,6 +411,8 @@ class _Reading:
             start, end = row["Start_Object_ID"], row["End_Object_ID"]
             if start not in self.class_ids and end not in self.class_ids:
                 continue
+            if {self.object_types.get(start), self.object_types.get(end)} & IGNORED_TYPES:
+                continue  # a note, text, boundary or package end: no link, no problem (D-25)
             link = self._link(row)
             if link is not None:
                 links.append(link)
@@ -421,9 +423,7 @@ class _Reading:
         label = self._link_label(row)
         kind = LINK_KINDS.get(row["Connector_Type"])
         if kind is None:
-            ends = {self.object_types.get(start), self.object_types.get(end)}
-            if not ends & IGNORED_TYPES:
-                self.problems.append(_no_rule(label, f"{row['Connector_Type']} connector"))
+            self.problems.append(_no_rule(label, f"{row['Connector_Type']} connector"))
             return None
         association_class = None
         if kind is UmlLinkKind.ASSOCIATION:

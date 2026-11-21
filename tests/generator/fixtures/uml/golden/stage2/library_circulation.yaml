@@ -1,0 +1,47 @@
+name: library_circulation
+annotations:
+  module_kind:
+    tag: module_kind
+    value: domain
+description: Who has which book.
+title: Circulation
+id: https://example.org/ns/library/library_circulation
+imports:
+- linkml:types
+- rdf_persistence/model/rp_annotations
+- rdf_persistence/model/rp_core
+- rdf_persistence/model/rp_provenance
+- library_catalogue
+prefixes:
+  lib:
+    prefix_prefix: lib
+    prefix_reference: https://example.org/ns/library#
+  linkml:
+    prefix_prefix: linkml
+    prefix_reference: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+slots:
+  loaned_book:
+    name: loaned_book
+    description: The book that is lent.
+    title: Loaned book
+    slot_uri: lib:loanedBook
+    range: Book
+    required: true
+classes:
+  Loan:
+    name: Loan
+    annotations:
+      rp_path:
+        tag: rp_path
+        value: loans
+    description: A book lent to a reader.
+    title: Loan
+    is_a: Activity
+    mixins:
+    - AggregateRoot
+    - Described
+    - Tracked
+    slots:
+    - loaned_book

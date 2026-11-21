@@ -207,7 +207,7 @@ def _annotated_elements(schema: SchemaDefinition) -> Iterator[Element]:
 
 
 @cache
-def _segment_pattern() -> str:
+def segment_pattern() -> str:
     """The pattern an ``rp_path`` or ``rp_iri_type`` value must match: the one of the metamodel's ``url_segment`` slot."""
     return str(load_schema(CORE_MODEL).get_slot(URL_SEGMENT).pattern)
 
@@ -218,7 +218,7 @@ def _lowered(element: object, tag: Enum) -> str | None:
     return None if text is None else text.lower()
 
 
-def _annotation_problems(schema: SchemaDefinition, segment_pattern: str) -> Iterator[CheckProblem]:
+def _annotation_problems(schema: SchemaDefinition, pattern: str) -> Iterator[CheckProblem]:
     for element in _annotated_elements(schema):
         name = str(element.name)
         for tag, allowed in (*ALLOWED_ANNOTATIONS.items(), *GENERATION_ALLOWED_ANNOTATIONS.items()):
@@ -229,11 +229,11 @@ def _annotation_problems(schema: SchemaDefinition, segment_pattern: str) -> Iter
                 )
         for tag in PATTERNED_ANNOTATIONS:
             text = annotation_text(element, tag)
-            if text is not None and not re.fullmatch(segment_pattern, text):
+            if text is not None and not re.fullmatch(pattern, text):
                 yield rule_problem(
                     HardRule.ANNOTATION,
                     name,
-                    f"{tag.value}: {text!r} does not match {segment_pattern}",
+                    f"{tag.value}: {text!r} does not match {pattern}",
                 )
 
 
@@ -420,7 +420,7 @@ def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     classes = _stored_classes(schemas, folder)
     return [
         *(p for schema in schemas for p in _schema_problems(schema)),
-        *(p for schema in schemas for p in _annotation_problems(schema, _segment_pattern())),
+        *(p for schema in schemas for p in _annotation_problems(schema, segment_pattern())),
         *default_instance_problems(view, schemas),
         *_class_problems(view, classes),
     ]

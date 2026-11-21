@@ -391,6 +391,15 @@ class QeaBuilder:
             DestRole=role,
         )
 
+    def connector(self, connector_type: str, source: int, destination: int) -> int:
+        """A bare connector of any type, as EA writes the ones no rule maps (Realisation, NoteLink)."""
+        return self._insert(
+            "t_connector",
+            Connector_Type=connector_type,
+            Start_Object_ID=source,
+            End_Object_ID=destination,
+        )
+
     def generalisation(self, child: int, parent: int) -> int:
         return self._insert(
             "t_connector",
