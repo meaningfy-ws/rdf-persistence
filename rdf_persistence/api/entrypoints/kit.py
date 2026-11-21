@@ -65,7 +65,8 @@ from rdf_persistence.migrations.services.migrations import chain_of, current_ver
 from rdf_persistence.persistence.services.decoding import error_text
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import Mapper, generated_models_of
-from rdf_persistence.persistence.services.session import Readable, Session
+from rdf_persistence.persistence.services.referrers import Readable
+from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.persistence.services.store import (
     Store,
     ToolkitStore,

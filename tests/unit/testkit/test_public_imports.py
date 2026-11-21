@@ -1,5 +1,7 @@
 """``testkit.assert_public_imports``: a test file may use ``rdf_persistence`` and its ``testkit`` only (PD-20)."""
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -18,6 +20,10 @@ ALLOWED = [
     "from tests.toy import TOY_SCHEMA",
     "import httpx",
     "from rdf_persistencex import thing",
+    "from rdf_persistence_generation.testkit import Conformance",
+    "import rdf_persistence_generation.testkit",
+    'pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]',
+    "import rdf_persistence_generation.testkit.freshness",
 ]
 REFUSED = [
     "from rdf_persistence.access.services.access import AccessRules",
@@ -30,6 +36,14 @@ REFUSED = [
     "import rdf_persistence.testkit.zitadel",
     "from rdf_persistence.testkit.fakes import FakeStore",
     "if True:\n    from rdf_persistence.persistence.services import store",
+]
+# The generator package is guarded by the same rule: its testkit and the freshness plugin are public.
+GENERATOR_REFUSED = [
+    "from rdf_persistence_generation.testkit.conformance import Conformance",
+    "from rdf_persistence_generation.testkit import conformance",
+    "from rdf_persistence_generation.config import GenerationTarget",
+    "import rdf_persistence_generation.config",
+    "from rdf_persistence_generation import config",
 ]
 
 
@@ -58,6 +72,33 @@ def test_the_waiting_helpers_are_exported_from_the_public_module():
 def test_an_import_of_a_toolkit_layer_is_refused_and_named(tmp_path, source):
     with pytest.raises(AssertionError, match="rdf_persistence"):
         assert_public_imports(module(tmp_path, source))
+
+
+@pytest.mark.parametrize("source", GENERATOR_REFUSED)
+def test_an_import_of_a_generator_module_is_refused_and_named(tmp_path, source):
+    with pytest.raises(AssertionError, match="rdf_persistence_generation"):
+        assert_public_imports(module(tmp_path, source))
+
+
+def test_a_deep_generator_testkit_import_is_named_in_full(tmp_path):
+    source = "from rdf_persistence_generation.testkit.conformance import Conformance"
+    with pytest.raises(
+        AssertionError,
+        match=r"test_consumer\.py:1 imports rdf_persistence_generation\.testkit\.conformance",
+    ):
+        assert_public_imports(module(tmp_path, source))
+
+
+def test_guarding_the_generator_imports_never_imports_the_generator(tmp_path):
+    """#200: the guard reads the generator's folder; the library never imports the generator."""
+    path = module(tmp_path, "from rdf_persistence_generation.testkit import Conformance")
+    code = (
+        "import sys; from rdf_persistence.testkit import assert_public_imports; "
+        f"assert_public_imports({str(path)!r}); "
+        "print(any(m.startswith('rdf_persistence_generation') for m in sys.modules))"
+    )
+    ran = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    assert ran.stdout.strip() == "False", "no module of the generator was imported"
 
 
 def test_a_testkit_module_is_refused_by_name(tmp_path):

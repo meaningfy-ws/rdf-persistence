@@ -192,7 +192,7 @@ async def test_the_kit_removal_with_readable_names_only_what_it_lets_through(ser
     unseen = await lib.book(written_by=lib.author)
 
     async def readable(_root, rows) -> set[str]:
-        return {row[0] for row in rows} - {unseen}
+        return {row.referrer for row in rows} - {unseen}
 
     with pytest.raises(InUse) as refused:
         await _kit_remove(service, lib, readable=readable)

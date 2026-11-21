@@ -17,12 +17,9 @@ from rdflib import RDF, URIRef
 from rdf_persistence import InUse
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.persistence.services.session import (
-    Dependents,
-    ReferrerRow,
-    Session,
-    open_session,
-)
+from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
+from rdf_persistence.persistence.services.referrers import Dependents
+from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
@@ -45,13 +42,17 @@ class StubRefusal:
 
     refusing = frozenset({AUTHOR_CLASS})
 
-    async def in_use(self, roots: Sequence[str], rows: Sequence[ReferrerRow], readable) -> InUse:
-        named = tuple((row[0], "Book", "written_by") for row in rows)
+    async def in_use(
+        self, roots: Sequence[str], root: str, rows: Sequence[ReferrerRow], readable
+    ) -> InUse:
+        named = tuple((row.referrer, "Book", "written_by") for row in rows)
         return InUse("in use", iris=tuple(roots), referrers=named)
 
 
 def opened(
-    store: FakeStore, dependents: Dependents = COMMENT_PAIR
+    store: FakeStore,
+    dependents: Dependents = COMMENT_PAIR,
+    removals: StubRefusal | None = StubRefusal(),  # noqa: B008  (a stateless stub)
 ) -> AbstractAsyncContextManager[Session]:
     return open_session(
         store,
@@ -59,7 +60,7 @@ def opened(
         tenant_iri=TENANT,
         principal=Principal(id="https://example.org/people/ada"),
         clock=lambda: NOW,
-        removals=StubRefusal(),
+        removals=removals,
         dependents=dependents,
     )
 
@@ -118,23 +119,57 @@ async def test_the_dependent_pair_is_only_for_the_comment_class(session):
     assert await stored(session, A1), "nothing was deleted"
 
 
-async def test_a_comment_added_for_the_removed_author_in_the_same_commit_is_no_refusal(
+@pytest.mark.parametrize("remove_first", [False, True], ids=["add-then-remove", "remove-then-add"])
+@pytest.mark.parametrize("dependents_only", [False, True], ids=["refusing", "no-refusal"])
+async def test_a_comment_added_for_the_author_the_same_commit_removes_is_refused_unsent(
+    store, remove_first, dependents_only
+):
+    """#226 (D-T-1): the commit's cascade would drop the comment it adds, so the commit is refused
+    before it is sent, naming both roots; a dependent comment is no referrer, so never ``InUse``.
+    It holds with or without a removal refusal."""
+    removals = {"removals": None} if dependents_only else {}
+    async with opened(store, **removals) as session:
+        version = await session.add_graph(A1, author(A1))
+        sent = len(store.sent("update"))
+        with pytest.raises(Conflict) as refused:
+            async with session.transaction() as t:
+                if remove_first:
+                    await t.remove(A1, version)
+                await t.add_graph(C1, root(C1, v.ANNOTATION, (v.HAS_TARGET, A1)))
+                if not remove_first:
+                    await t.remove(A1, version)
+        assert not isinstance(refused.value, InUse), "a dependent comment is no referrer"
+        assert refused.value.iris == (A1, C1), "both roots are named"
+        assert "the same commit removes" in str(refused.value), "the reason is the commit's own"
+        assert len(store.sent("update")) == sent, "nothing was sent"
+        assert await stored(session, A1), "the author is kept"
+        assert not await stored(session, C1), "the comment is not stored"
+
+
+async def test_a_comment_replaced_to_target_the_author_the_same_commit_removes_is_refused(
     session, store
 ):
-    """found D-T-1 (D-9): PD-5 skips the dependents pairs as the guard does.
-
-    The commit is sent, not refused unsent. What follows is the commit's own cascade, which drops the
-    comment it adds with its target (a ``Conflict``; see the report of the fix); never ``InUse``.
-    """
+    """#226: a replace that makes a stored comment depend on the removed root is refused alike."""
     version = await session.add_graph(A1, author(A1))
+    c_version = await session.add_graph(C1, root(C1, v.ANNOTATION, (v.HAS_TARGET, B1)))
     sent = len(store.sent("update"))
-    try:
+    with pytest.raises(Conflict, match="the same commit removes"):
         async with session.transaction() as t:
-            await t.add_graph(C1, root(C1, v.ANNOTATION, (v.HAS_TARGET, A1)))
+            await t.replace_graph(C1, root(C1, v.ANNOTATION, (v.HAS_TARGET, A1)), c_version)
             await t.remove(A1, version)
-    except Conflict as refused:
-        assert not isinstance(refused, InUse), "a dependent comment is no referrer"
-    assert len(store.sent("update")) > sent, "the commit was sent"
+    assert len(store.sent("update")) == sent, "nothing was sent"
+    assert await stored(session, A1), "the author is kept"
+
+
+async def test_a_comment_on_another_root_is_added_beside_the_removal(session):
+    """probe of #226: only a dependent of the removed root is refused."""
+    a2 = f"{TENANT}/authors/{UUID(int=2)}"
+    version = await session.add_graph(A1, author(A1))
+    await session.add_graph(a2, author(a2))
+    async with session.transaction() as t:
+        await t.add_graph(C1, root(C1, v.ANNOTATION, (v.HAS_TARGET, a2)))
+        await t.remove(A1, version)
+    assert await stored(session, C1), "the comment on the other author is stored"
     assert not await stored(session, A1), "the author is removed"
 
 

@@ -142,7 +142,8 @@ session runs on every add and replace (a collection's members, a state that only
 changes). The kit builds them once and hands them to every session it opens; the session calls
 them through a protocol of its own (`WriteGuard`) and imports none of them. The second thing the
 kit builds for the session is the refusal of a removal that others still refer to: the session
-declares the port `RemovalRefusal` (the classes that refuse, and the `InUse` that names the
+declares the port `RemovalRefusal` (in `persistence/services/referrers.py`, beside the session; the
+classes that refuse, and the `InUse` that names the
 referrers), `ReferencedRemovals` (`collaboration/services/referenced_removals.py`) implements it
 from the schema, and the kit hands it to `Tenancy`, which gives it to every session it opens (the
 dotted arrow is that handover, not an import). The session imports no schema. An import contract

@@ -1,0 +1,45 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rp: <https://meaningfy.ws/ns/rdf-persistence#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+rp:ReferrerRow a sh:NodeShape ;
+	rdfs:comment "One link to a resource, as the store holds it: the referrer, its class, the class of the subject when it is a part, and the predicate, all IRIs; the schema names are the caller's to find." ;
+	rdfs:label "Referrer row" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n0 ;
+	sh:property _:c14n1 , _:c14n2 , _:c14n3 , _:c14n4 ;
+	sh:targetClass rp:ReferrerRow .
+_:c14n0 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n1 sh:datatype xsd:string ;
+	sh:description "The IRI of the aggregate root that holds the link." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Referrer" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path rp:referrer .
+_:c14n2 sh:datatype xsd:string ;
+	sh:description "The IRI of the predicate that links to the resource." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Predicate" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path rp:predicate .
+_:c14n3 sh:datatype xsd:string ;
+	sh:description "The IRI of the class of the statement's subject when that is a part of the referrer; absent when the subject is the referrer itself." ;
+	sh:maxCount 1 ;
+	sh:name "Subject class" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:subject_class .
+_:c14n4 sh:datatype xsd:string ;
+	sh:description "The IRI of a class of the referrer; a root of several classes gives one row per class." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Referrer class" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:referrer_class .

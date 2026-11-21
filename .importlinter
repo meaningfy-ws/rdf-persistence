@@ -172,6 +172,7 @@ layers =
     rdf_persistence.collaboration.services.discussion | rdf_persistence.collaboration.services.reference_collections | rdf_persistence.collaboration.services.workflows
     rdf_persistence.access.services.access
     rdf_persistence.persistence.services.session
+    rdf_persistence.persistence.services.referrers
 
 [importlinter:contract:session-and-provenance-without-mapper]
 name = the session and the activity shape never import the mapper, which imports the session (message-bus PD-6)

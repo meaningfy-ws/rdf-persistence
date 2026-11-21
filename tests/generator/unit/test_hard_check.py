@@ -1190,12 +1190,12 @@ def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings(
     (`rp_events_services`, `rp_events_settings`) and the `collaboration` theme's one
     (`rp_collaboration_services`) make twenty (6.1). The four theme targets of the domain model
     (`rp_tenancy`, `rp_provenance`, `rp_files`, `rp_collaboration`; domain-model-per-theme 2.1) make
-    twenty-four.
+    twenty-four. The `persistence` theme's `rp_persistence_rows` (#227) makes twenty-five.
     """
     targets = read_targets(REPO / "pyproject.toml")
-    assert len(targets) == 24, [t.schema_file for t in targets]
+    assert len(targets) == 25, [t.schema_file for t in targets]
     found = generate(targets, REPO, (steps.HARD_STEP,), check=True)
-    assert [format_problem(p) for p in found] == [], "the toolkit's 24 targets raise no problem"
+    assert [format_problem(p) for p in found] == [], "the toolkit's 25 targets raise no problem"
 
 
 def _flag_problems(tmp_path: Path, written: str) -> list[str]:

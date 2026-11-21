@@ -1,0 +1,54 @@
+id: https://meaningfy.ws/ns/rdf-persistence/persistence-rows
+name: rp_persistence_rows
+title: RDF persistence persistence rows module
+description: >-
+  The rows the session reads from the store and hands over its port, in the `persistence` theme: the
+  link of a referrer to a resource, as a reverse-reference read and the removal guard find it. Nothing
+  here is served by the HTTP service, so the toolkit's OpenAPI document and TypeScript types do not
+  carry them; that is why they are a schema of their own and not part of `rp_persistence_services`
+  (#227; thematic-structure PD-2).
+prefixes:
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+  linkml: https://w3id.org/linkml/
+default_prefix: rp
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: technical
+  python_package: rdf_persistence.persistence.services.generated.rows
+
+slots:
+  referrer:
+    title: Referrer
+    description: The IRI of the aggregate root that holds the link.
+    range: string
+    required: true
+  referrer_class:
+    title: Referrer class
+    description: The IRI of a class of the referrer; a root of several classes gives one row per class.
+    range: string
+    required: true
+  subject_class:
+    title: Subject class
+    description: >-
+      The IRI of the class of the statement's subject when that is a part of the referrer; absent when
+      the subject is the referrer itself.
+    range: string
+  predicate:
+    title: Predicate
+    description: The IRI of the predicate that links to the resource.
+    range: string
+    required: true
+
+classes:
+  ReferrerRow:
+    title: Referrer row
+    description: >-
+      One link to a resource, as the store holds it: the referrer, its class, the class of the subject
+      when it is a part, and the predicate, all IRIs; the schema names are the caller's to find.
+    slots:
+      - referrer
+      - referrer_class
+      - subject_class
+      - predicate

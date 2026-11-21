@@ -33,8 +33,10 @@ from rdf_persistence.core.domain.exceptions import InvalidBody, InvalidIri, NotF
 from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 from rdf_persistence.persistence.services.mapper import Mapper
-from rdf_persistence.persistence.services.session import Dependents, ReferrerRow, Session
+from rdf_persistence.persistence.services.referrers import Dependents
+from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.provenance.services.provenance import new_activity_id
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema_structure import (
@@ -229,7 +231,7 @@ class Discussion:
         """
         if self._view.get_class(COMMENT) is None:
             return {}
-        links = sorted({link for _, cls, _, link in rows if cls == str(v.ANNOTATION)})
+        links = sorted({row.predicate for row in rows if row.referrer_class == str(v.ANNOTATION)})
         on: defaultdict[str, set[str]] = defaultdict(set)
         for link in links:  # one read per link: the comments that refer to ``iri`` by it
             for comment in await self._referring(iri, link):

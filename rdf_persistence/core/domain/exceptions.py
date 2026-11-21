@@ -28,7 +28,8 @@ class Forbidden(PersistenceError):
 
 
 class Conflict(PersistenceError):
-    """The write lost a race, or the thing to create already exists.
+    """The write lost a race, or the thing to create already exists, or the changes of one commit
+    contradict each other (nothing is sent; a retry of the same commit fails the same way).
 
     ``iris`` are the root IRIs found conflicting, sorted; empty when the writer lost a race with no
     culprit left to name. A diagnosis read after the refusal, so it can itself race (PD-7).
