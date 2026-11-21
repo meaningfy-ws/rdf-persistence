@@ -29,6 +29,23 @@ passed in the fixer's worktree; the gates run again after the rebase on `develop
 | `make check-all`, total | exit 0 | 6 min 52 s |
 | `make test-containers` | 351 passed, exit 0 | 7 min 24 s |
 
+## Final head (stage 3 and the final review's fixes, rebased on `develop` cd380f5c)
+
+| Gate | Result | Time |
+|---|---|---|
+| `make check-all`, quality items | 31 passed, 0 failed | |
+| `make check-all`, unit and feature | 7762 passed, 4 xfailed | 2 min 44 s |
+| `make check-all`, generator e2e | 97 passed | 24 s |
+| `make check-all`, generator unit | 1616 passed, 1 xfailed | 1 min 12 s |
+| `make check-all`, total | exit 0 | 4 min 52 s |
+| `make test-containers` | 351 passed, exit 0 (before the UML rows moved, which only generator unit tests see) | 7 min 28 s |
+| `make mutation` (before the rebase, same `rdf_persistence` and selection) | 1091 mutants, 33 survivors = `tests/audit/equivalent-mutants.md`, exactly | |
+
+The first `check-all` after this rebase failed the cross-test-import guard: `develop`'s #263 made
+`test_uml_rules.py` import its rows from two test modules. The rows moved to
+`tests/generator/unit/uml_role_rows.py` and `uml_workflow_rows.py` (no test id changed), then the
+run above.
+
 ## Found outside this change
 
 `tests/unit/core/test_sparql.py::test_any_string_literal_round_trips` fails on the Hypothesis
