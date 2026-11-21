@@ -33,20 +33,21 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import assert_isomorphic
-from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
+from tests.toy import (
+    BOOK,
+    BOOK_JSON,
+    TENANT,
+    TOY_SCHEMA,
+    book_iri,
+    dune,
+    encoded,
+    toy_mapper,
+)
 from tests.unit.conftest import GENERATED
 
-BOOK = book_iri(1)
 GRAPH = graph_iri(BOOK)
 BIBO = "http://purl.org/ontology/bibo/"
 BOOK_TYPE = URIRef(f"{BIBO}Book")
-BOOK_JSON = {
-    "label": "Dune",
-    "description": "A planet.",
-    "genre": "fiction",
-    "authors": ["Herbert"],
-    "chapters": [{"number": 1, "notes": [{"label": "n", "description": "d", "text": "t"}]}],
-}
 
 
 def _flat_documents() -> Documents:
@@ -90,10 +91,6 @@ def documents(request) -> Documents:
 async def parse(documents: Documents, *args, **kwargs):
     """``Documents.parse`` in the toy tenant, which the flat policy needs to mint a part's IRI."""
     return await documents.parse(*args, tenant=TENANT, **kwargs)
-
-
-def encoded(body: object) -> bytes:
-    return json.dumps(body).encode()
 
 
 def with_context(documents: Documents, body: dict) -> dict:

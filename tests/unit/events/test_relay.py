@@ -6,21 +6,16 @@ fakes. Faults are injected by wrapping the store, the bus or ``Tenancy.tenants``
 """
 
 import asyncio
-import json
 import logging
-from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
 from opentelemetry import trace
 from opentelemetry.trace import StatusCode
 
-from rdf_persistence import generated_models
 from rdf_persistence.core.domain.exceptions import StoreUnavailable
-from rdf_persistence.events.services.events import context_link
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
-from rdf_persistence.events.services.relay import Relay, chain_order
-from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.events.services.relay import chain_order
 from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.provenance.domain.generated.rp_provenance import (
     Generation,
@@ -28,26 +23,26 @@ from rdf_persistence.provenance.domain.generated.rp_provenance import (
     Replace,
 )
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
 from tests.logs import attributes
-from tests.tenancy_world import CREATOR, make_world
-from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, dune, library_slots, template, toy_mapper
-
-DEPLOYMENT = "deployment-a"
-CONTEXT = context_link("https://lib.example")
-LOGGER = "rdf_persistence.events.services.relay"
-VIEW = load_schema(TOY_SCHEMA)
-NOW = datetime(2026, 11, 15, 9, 0, tzinfo=UTC)
-LONG_AGO = '"2001-01-01T00:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime>'
-
-
-class RecordingOffer:
-    def __init__(self) -> None:
-        self.offered: list[tuple[str, str]] = []
-
-    def offer(self, tenant: str, activity) -> None:
-        self.offered.append((tenant, activity.id))
+from tests.relay_helpers import (
+    CONTEXT,
+    CREATOR,
+    DEPLOYMENT,
+    LOGGER,
+    LONG_AGO,
+    NOW,
+    RecordingOffer,
+    add_one,
+    add_replace_remove,
+    book,
+    classes,
+    insert_in_provenance,
+    pending,
+    sent,
+    triples,
+)
+from tests.toy import template, toy_mapper
 
 
 class FlakyBus(InMemoryEventBus):
@@ -65,80 +60,6 @@ class FlakyBus(InMemoryEventBus):
         await super().publish(envelope, body)
 
 
-@pytest.fixture
-async def world() -> SimpleNamespace:
-    made = await make_world(Iris(SETTINGS), SETTINGS)
-    made.second = (await made.tenancy.create("Bruges", library_slots(), CREATOR)).id
-    made.app_iri = str(made.iris.application)
-    await made.tenancy.ensure_application_database()
-    made.broker = InMemoryBroker()
-    made.bus = InMemoryEventBus(made.broker)
-    made.relay = lambda bus="default", hub=None, **kw: Relay(
-        made.tenancy,
-        VIEW,
-        generated_models(*MODULES),
-        toy_mapper(),
-        made.bus if bus == "default" else bus,
-        hub,
-        deployment=DEPLOYMENT,
-        context=CONTEXT,
-        **kw,
-    )
-    await made.relay(None).run_once()  # the roots the tenants were created with are not under test
-    return made
-
-
-def book(world: SimpleNamespace, tenant: str) -> str:
-    return str(world.iris.mint_aggregate(tenant, "Book", "books"))
-
-
-def triples(iri: str) -> list:
-    return list(toy_mapper().to_triples(dune(iri)))
-
-
-def commit(world: SimpleNamespace, tenant: str):
-    return world.tenancy.tenant_session(tenant, CREATOR)
-
-
-async def add_replace_remove(world: SimpleNamespace, tenant: str) -> str:
-    iri = book(world, tenant)
-    async with commit(world, tenant) as session:
-        version = await session.add_graph(iri, triples(iri))
-        version = await session.replace_graph(iri, triples(iri), version)
-        await session.remove(iri, version)
-    return iri
-
-
-async def add_one(world: SimpleNamespace, tenant: str) -> str:
-    iri = book(world, tenant)
-    async with commit(world, tenant) as session:
-        await session.add_graph(iri, triples(iri))
-    return iri
-
-
-async def pending(world: SimpleNamespace, tenant: str, application: bool = False) -> list[str]:
-    opened = (
-        world.tenancy.application_session(world.tenancy.toolkit)
-        if application
-        else world.tenancy.tenant_session(tenant, world.tenancy.toolkit)
-    )
-    async with opened as session:
-        return [iri for iri, _ in await session.pending_activities()]
-
-
-def sent(world: SimpleNamespace, tenant: str | None = None) -> list[tuple[str, str, str]]:
-    """(tenant, class IRI, activity id) of every message, in publication order."""
-    return [
-        (e.tenant, e.activity_class, json.loads(body)["id"])
-        for e, body in world.broker.messages
-        if tenant in (None, e.tenant)
-    ]
-
-
-def classes(world: SimpleNamespace, tenant: str) -> list[str]:
-    return [c for _, c, _ in sent(world, tenant)]
-
-
 async def pin_equal_marks(world: SimpleNamespace, tenant: str) -> None:
     graph = world.iris.provenance(tenant)
     await world.store.update(
@@ -146,13 +67,6 @@ async def pin_equal_marks(world: SimpleNamespace, tenant: str) -> None:
         f"DELETE {{ GRAPH <{graph}> {{ ?a <{v.PENDING_SINCE}> ?t }} }} "
         f"INSERT {{ GRAPH <{graph}> {{ ?a <{v.PENDING_SINCE}> {LONG_AGO} }} }} "
         f"WHERE {{ GRAPH <{graph}> {{ ?a <{v.PENDING_SINCE}> ?t }} }}",
-    )
-
-
-async def insert_in_provenance(world: SimpleNamespace, tenant: str, body: str) -> None:
-    graph = world.iris.provenance(tenant)
-    await world.store.update(
-        world.tenancy.database_of(tenant), f"INSERT DATA {{ GRAPH <{graph}> {{ {body} }} }}"
     )
 
 

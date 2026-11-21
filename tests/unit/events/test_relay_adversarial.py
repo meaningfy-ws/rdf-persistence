@@ -21,9 +21,7 @@ from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
 from tests.logs import attributes
-from tests.toy import ApproveBook, library_slots, toy_mapper
-from tests.unit.events import test_relay
-from tests.unit.events.test_relay import (
+from tests.relay_helpers import (
     CREATOR,
     LOGGER,
     LONG_AGO,
@@ -39,8 +37,8 @@ from tests.unit.events.test_relay import (
     sent,
     triples,
 )
+from tests.toy import ApproveBook, library_slots, toy_mapper
 
-world = test_relay.world  # the relay tests' fixture, shared
 APPROVE = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c1a1"
 
 

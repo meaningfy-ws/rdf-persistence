@@ -9,8 +9,7 @@ from rdf_persistence.api.entrypoints.service import LIFESPAN_STARTED
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.provenance.domain.generated.rp_provenance import Add
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
-from tests.unit.api.test_service_kit import installed, made
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, installed, made, principal_of
 
 
 def relayed_book(broker: InMemoryBroker) -> list:

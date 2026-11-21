@@ -12,8 +12,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
     LimitSettings,
 )
 from rdf_persistence.schema.services.schema import load_schema
-from tests.toy import TENANT, TOY_SCHEMA, book_iri
-from tests.unit.api.test_documents import BOOK, BOOK_JSON, encoded
+from tests.toy import BOOK, BOOK_JSON, TENANT, TOY_SCHEMA, book_iri, encoded
 from tests.unit.conftest import GENERATED
 
 MAX_NODES = LimitSettings().max_document_nodes  # the default limit of a ``Documents``

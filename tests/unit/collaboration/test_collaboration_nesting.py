@@ -7,7 +7,7 @@ from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.testkit import fake_session
 from tests.fixtures.library.domain.generated.books import Shelf
 from tests.toy import TENANT, book_iri, dune, shelf, shelf_iri, toy_mapper
-from tests.unit.collaboration.test_write_guards import guards, save
+from tests.unit.collaboration.collaboration_data import guards, save
 
 S1 = shelf_iri(1)
 

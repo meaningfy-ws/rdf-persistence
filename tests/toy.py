@@ -1,5 +1,6 @@
 """The toy library's mapper and small builders of its objects, shared by the mapper tests."""
 
+import json
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -99,6 +100,20 @@ def shelf_iri(n: object) -> str:
     return f"{TENANT}/shelves/{UUID(int=int(n))}"  # a minted aggregate IRI ends in a UUID
 
 
+BOOK = book_iri(1)
+BOOK_JSON = {
+    "label": "Dune",
+    "description": "A planet.",
+    "genre": "fiction",
+    "authors": ["Herbert"],
+    "chapters": [{"number": 1, "notes": [{"label": "n", "description": "d", "text": "t"}]}],
+}
+
+
+def encoded(body: object) -> bytes:
+    return json.dumps(body).encode()
+
+
 def graph_of(iri: str) -> str:
     return str(graph_iri(iri))
 
@@ -161,6 +176,13 @@ def shelf(iri: str, *, nests: bool = False) -> Shelf:
         description="A shelf.",
         member_class="Book",
         nests=True if nests else None,
+    )
+
+
+def poetry(slot: str = "genre", value: str = "poetry") -> rp_collections.MembershipRule:
+    """A membership rule: the aggregates whose ``slot`` equals ``value``."""
+    return rp_collections.MembershipRule(
+        rule_equalities=[rp_collections.SlotEquality(equals_slot=slot, equals_value=value)]
     )
 
 

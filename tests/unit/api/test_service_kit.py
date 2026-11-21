@@ -23,7 +23,6 @@ from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import (
     ToolkitSettings,
 )
 from rdf_persistence.api.entrypoints.router import build_router
-from rdf_persistence.api.entrypoints.service import install_service
 from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
 from rdf_persistence.core.domain.exceptions import (
     CommitTooLarge,
@@ -46,22 +45,22 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Replace
 from rdf_persistence.schema.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.testkit import FakeStore, RecordingObserver, open_event_stream
-from tests.fixtures.library.domain import generated
 from tests.toy import (
-    REVIEW_WORKFLOW,
     ROLES,
     SETTINGS,
-    TOY_MIGRATIONS,
     TOY_SCHEMA,
     book_iri,
     dune,
 )
 from tests.toy_service import (
+    A_UUID,
     DUNE_BODY,
     EXAMPLE_POLICY,
     TENANT_BODY,
     ToyService,
     assert_problem,
+    installed,
+    made,
     principal_of,
 )
 from tests.unit.activity_helpers import activities
@@ -69,17 +68,8 @@ from tests.unit.api.scene import Scene
 
 PROBLEMS = f"{SETTINGS.base}problems/"
 FILE_KEY = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")
-A_UUID = "6f1c0c1e-0000-4000-8000-000000000001"
 LIBRARY_SCHEMA = "https://example.org/ns/library"
 TOOLKIT_SCHEMA = "https://meaningfy.ws/ns/rdf-persistence"
-
-
-async def made(client: httpx.AsyncClient, headers: dict[str, str]) -> tuple[str, str, str]:
-    """A tenant, and a book in it: ``(tenant path, book path, book ETag)``."""
-    tenant = await client.post("/libraries", json=TENANT_BODY, headers=headers)
-    path = tenant.headers["location"]
-    book = await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)
-    return path, book.headers["location"], book.headers["etag"]
 
 
 # --- the token dependency: a 401 is a problem and no handler runs -------------------------------
@@ -273,24 +263,6 @@ async def test_start_up_sweeps_the_orphans_of_a_crashed_creation() -> None:
     async with second.app.router.lifespan_context(second.app):
         pass
     assert ORPHAN not in await store.list_datasets(), "the orphan database was dropped"
-
-
-def installed(app: FastAPI, toy: ToyService, **changes) -> FastAPI:
-    """``app`` with the toy service installed on it, sharing ``toy``'s ports unless ``changes`` says otherwise."""
-    wiring = {
-        "schema": TOY_SCHEMA,
-        "generated": generated,
-        "store": toy.store,
-        "files": toy.files,
-        "identity": toy.kit.identity,
-        "verifier": toy.kit.verifier,
-        "rules": toy.kit.rules,
-        "settings": toy.settings,
-        "workflows": [REVIEW_WORKFLOW],
-        "migrations": TOY_MIGRATIONS,
-    }
-    install_service(app, **{**wiring, **changes})
-    return app
 
 
 async def test_the_apps_own_lifespan_runs_inside_the_start_up() -> None:

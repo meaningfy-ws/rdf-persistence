@@ -224,3 +224,32 @@ async def drop_buckets(files: FileStore, prefix: str) -> None:
     """Delete every bucket of the tenants of the service that has ``prefix``."""
     for bucket in await files.list_buckets(f"{prefix}-"):
         await files.delete_bucket(bucket)
+
+
+A_UUID = "6f1c0c1e-0000-4000-8000-000000000001"
+
+
+async def made(client: httpx.AsyncClient, headers: dict[str, str]) -> tuple[str, str, str]:
+    """A tenant, and a book in it: ``(tenant path, book path, book ETag)``."""
+    tenant = await client.post("/libraries", json=TENANT_BODY, headers=headers)
+    path = tenant.headers["location"]
+    book = await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)
+    return path, book.headers["location"], book.headers["etag"]
+
+
+def installed(app: FastAPI, toy: ToyService, **changes) -> FastAPI:
+    """``app`` with the toy service installed on it, sharing ``toy``'s ports unless ``changes`` says otherwise."""
+    wiring = {
+        "schema": TOY_SCHEMA,
+        "generated": generated,
+        "store": toy.store,
+        "files": toy.files,
+        "identity": toy.kit.identity,
+        "verifier": toy.kit.verifier,
+        "rules": toy.kit.rules,
+        "settings": toy.settings,
+        "workflows": [REVIEW_WORKFLOW],
+        "migrations": TOY_MIGRATIONS,
+    }
+    install_service(app, **{**wiring, **changes})
+    return app

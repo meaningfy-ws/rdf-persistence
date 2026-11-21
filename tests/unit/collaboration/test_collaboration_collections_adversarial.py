@@ -33,8 +33,6 @@ from rdf_persistence.core.domain.exceptions import (
     SparqlError,
     StoreUnavailable,
 )
-from rdf_persistence.core.domain.sparql import term
-from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     Filter,
     ListRequest,
@@ -67,16 +65,18 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
-from tests.unit.collaboration.test_collaboration_cascade import (
+from tests.unit.collaboration.collaboration_data import (
     HEADS,
     a_shelf,
     before,
+    cascade_poetry,
+    cascade_put,
+    cascade_stored,
+    everything_said,
     gone,
-    poetry,
-    put,
+    marker_left,
     put_book,
     regenre,
-    stored,
     version,
 )
 
@@ -85,7 +85,6 @@ S1, S2, A, B, C = (
     shelf_iri(n) for n in (51, 52, 53, 54, 55)
 )  # no UUID of a book is one of a shelf
 OTHER_TENANT = "https://example.org/libraries/00000000"
-MARKER_LEFT = "ASK { GRAPH $registry { ?m a $marker } }"
 LIB = "https://example.org/ns/library#"
 SCAN_CLASS = URIRef(f"{LIB}Scan")
 BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
@@ -95,11 +94,6 @@ EVIL = 'x" } . ?s ?p ?o } ; DROP ALL ; # \n\r\t\\ \u0000 <a> {'
 
 def uuid_of(iri: str) -> str:
     return iri.rsplit("/", 1)[1]
-
-
-def everything_said(error: BaseException) -> str:
-    """Every text an error carries: its message, repr, arguments and the ``iris`` of a conflict."""
-    return " ".join([str(error), repr(error), *map(str, error.args), *getattr(error, "iris", ())])
 
 
 # -- sessions and writers -----------------------------------------------------------------------
@@ -144,18 +138,12 @@ async def shelve(session, *books: str, rule: MembershipRule | None = None, shelf
     """Store a poetry book for each of ``books`` and a shelf naming them (and with ``rule``); its version."""
     for iri in books:
         await put_book(session, iri, Genre.POETRY)
-    await put(session, a_shelf(shelf, has_part=list(books) or None, membership_rule=rule))
+    await cascade_put(session, a_shelf(shelf, has_part=list(books) or None, membership_rule=rule))
     return await version(session, shelf)
 
 
 async def heads_of(session, iris) -> dict[str, str]:
     return {str(h.head_iri): str(h.head_version) for h in await session.heads(list(iris))}
-
-
-async def marker_left(session) -> bool:
-    return await session._ask(
-        MARKER_LEFT, registry=term(DEFAULT_IRIS.registry(TENANT)), marker=term(v.COMMIT_MARKER)
-    )
 
 
 def drifted(old: dict[str, str], now: dict[str, str], *changed: str) -> list[str]:
@@ -188,7 +176,7 @@ async def test_a_conflicting_cascade_leaves_everything_and_no_marker(guarded, co
 
 async def test_a_cascade_too_large_leaves_everything_and_no_marker(toy_session, collaboration):
     members = [book_iri(n) for n in range(1, LimitSettings().max_roots + 1)]
-    await put(toy_session, a_shelf(S1, has_part=members))
+    await cascade_put(toy_session, a_shelf(S1, has_part=members))
     old = await heads_of(toy_session, [S1])
     with pytest.raises(CommitTooLarge):
         await as_ada(collaboration, toy_session).delete_cascade(S1, old[S1])
@@ -221,8 +209,8 @@ async def test_a_named_member_removed_before_the_heads_is_skipped(guarded, colla
     ver = await shelve(guarded, B1, B2)
     before(guarded._store, "query", lambda: gone(guarded._store, B2), when=HEADS)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1), "the rest is deleted"
-    assert not await stored(guarded, B1), "the rest is deleted"
+    assert not await cascade_stored(guarded, S1), "the rest is deleted"
+    assert not await cascade_stored(guarded, B1), "the rest is deleted"
 
 
 async def test_a_named_member_replaced_before_the_heads_is_deleted_at_its_new_version(
@@ -231,8 +219,8 @@ async def test_a_named_member_replaced_before_the_heads_is_deleted_at_its_new_ve
     ver = await shelve(guarded, B1, B2)
     before(guarded._store, "query", lambda: regenre(guarded._store, B2, Genre.FICTION), when=HEADS)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1), "it went with the shelf"
-    assert not await stored(guarded, B2), "it went with the shelf"
+    assert not await cascade_stored(guarded, S1), "it went with the shelf"
+    assert not await cascade_stored(guarded, B2), "it went with the shelf"
 
 
 async def test_a_named_member_removed_and_added_again_before_the_heads_is_deleted(
@@ -247,7 +235,7 @@ async def test_a_named_member_removed_and_added_again_before_the_heads_is_delete
 
     before(guarded._store, "query", again, when=HEADS)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, B2), "the new B2 is deleted with the shelf"
+    assert not await cascade_stored(guarded, B2), "the new B2 is deleted with the shelf"
 
 
 async def test_a_named_member_removed_after_the_heads_is_a_conflict_not_a_skip(
@@ -278,7 +266,7 @@ async def test_a_named_member_removed_and_added_again_after_the_heads_is_a_confl
         await as_ada(collaboration, guarded).delete_cascade(S1, ver)
     assert refused.value.iris == (B2,), "its version is not the one that was read"
     assert drifted(old, await heads_of(guarded, old)) == [], "nothing else was deleted"
-    assert await stored(guarded, B2), "the new B2 is not deleted"
+    assert await cascade_stored(guarded, B2), "the new B2 is not deleted"
 
 
 # Class: a collection replaced after it was read, whatever the replacement; one case.
@@ -300,13 +288,13 @@ async def test_the_collection_replaced_after_it_was_read_is_a_conflict(
         await as_ada(collaboration, guarded).delete_cascade(S1, ver)
     assert refused.value.iris == (S1,), "the collection is named"
     assert drifted(old, await heads_of(guarded, old)) == [], "no member was deleted"
-    assert await stored(guarded, S1), "and the new collection is stored"
+    assert await cascade_stored(guarded, S1), "and the new collection is stored"
 
 
 async def test_a_rule_member_regenred_back_and_forth_is_a_conflict_though_it_still_matches(
     guarded, collaboration
 ):  # Error matrix: a member changed since resolved
-    ver = await shelve(guarded, B3, rule=poetry())
+    ver = await shelve(guarded, B3, rule=cascade_poetry())
 
     async def back_and_forth():
         await regenre(guarded._store, B3, Genre.FICTION)
@@ -316,14 +304,14 @@ async def test_a_rule_member_regenred_back_and_forth_is_a_conflict_though_it_sti
     with pytest.raises(Conflict) as refused:
         await as_ada(collaboration, guarded).delete_cascade(S1, ver)
     assert refused.value.iris == (B3,), "its version changed"
-    assert await stored(guarded, S1), "nothing is deleted"
-    assert await stored(guarded, B3), "nothing is deleted"
+    assert await cascade_stored(guarded, S1), "nothing is deleted"
+    assert await cascade_stored(guarded, B3), "nothing is deleted"
 
 
 async def test_a_rule_member_regenred_back_and_forth_before_the_heads_is_deleted(
     guarded, collaboration
 ):  # pinned: the heads read the latest version and the member still matches
-    ver = await shelve(guarded, B3, rule=poetry())
+    ver = await shelve(guarded, B3, rule=cascade_poetry())
 
     async def back_and_forth():
         await regenre(guarded._store, B3, Genre.FICTION)
@@ -331,30 +319,30 @@ async def test_a_rule_member_regenred_back_and_forth_before_the_heads_is_deleted
 
     before(guarded._store, "query", back_and_forth, when=HEADS)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, B3), "it matched at the heads and at the send"
+    assert not await cascade_stored(guarded, B3), "it matched at the heads and at the send"
 
 
 async def test_a_rule_member_removed_after_its_remove_was_collected_is_a_conflict(
     guarded, collaboration
 ):
-    ver = await shelve(guarded, B3, rule=poetry())
+    ver = await shelve(guarded, B3, rule=cascade_poetry())
     before(guarded._store, "update", lambda: gone(guarded._store, B3))
     with pytest.raises(Conflict) as refused:
         await as_ada(collaboration, guarded).delete_cascade(S1, ver)
     assert refused.value.iris == (B3,), "the removed member is named"
-    assert await stored(guarded, S1), "the shelf stays"
+    assert await cascade_stored(guarded, S1), "the shelf stays"
 
 
 async def test_a_rule_member_removed_before_the_heads_is_skipped(guarded, collaboration):
-    ver = await shelve(guarded, B3, B5, rule=poetry())
+    ver = await shelve(guarded, B3, B5, rule=cascade_poetry())
     before(guarded._store, "query", lambda: gone(guarded._store, B5), when=HEADS)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1), "the rest is deleted"
-    assert not await stored(guarded, B3), "the rest is deleted"
+    assert not await cascade_stored(guarded, S1), "the rest is deleted"
+    assert not await cascade_stored(guarded, B3), "the rest is deleted"
 
 
 async def test_a_new_rule_match_during_the_cascade_is_not_deleted(guarded, collaboration):
-    ver = await shelve(guarded, B3, rule=poetry())
+    ver = await shelve(guarded, B3, rule=cascade_poetry())
 
     async def another_poetry_book():
         async with second_writer(guarded._store) as other:
@@ -362,9 +350,11 @@ async def test_a_new_rule_match_during_the_cascade_is_not_deleted(guarded, colla
 
     before(guarded._store, "update", another_poetry_book)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1), "resolved ones go"
-    assert not await stored(guarded, B3), "resolved ones go"
-    assert await stored(guarded, B6), "the new match survives (Error matrix: resolved at the call)"
+    assert not await cascade_stored(guarded, S1), "resolved ones go"
+    assert not await cascade_stored(guarded, B3), "resolved ones go"
+    assert await cascade_stored(guarded, B6), (
+        "the new match survives (Error matrix: resolved at the call)"
+    )
 
 
 async def test_two_cascades_of_one_collection_both_succeed_and_leave_everything_gone_and_no_marker(
@@ -373,7 +363,9 @@ async def test_two_cascades_of_one_collection_both_succeed_and_leave_everything_
     ver = await shelve(guarded, B1, B2)
     before(guarded._store, "update", lambda: cascade_of(collaboration, guarded._store, S1, ver))
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)  # the loser reports no error
-    assert not any([await stored(guarded, i) for i in (S1, B1, B2)]), "the winner deleted all"
+    assert not any([await cascade_stored(guarded, i) for i in (S1, B1, B2)]), (
+        "the winner deleted all"
+    )
     assert not await marker_left(guarded), "no commit marker"
 
 
@@ -385,8 +377,8 @@ async def test_a_cascade_racing_a_plain_delete_of_the_collection_is_a_conflict(
     with pytest.raises(Conflict) as refused:
         await as_ada(collaboration, guarded).delete_cascade(S1, ver)
     assert refused.value.iris == (S1,), "the collection went"
-    assert await stored(guarded, B1), "the members stay"
-    assert await stored(guarded, B2), "the members stay"
+    assert await cascade_stored(guarded, B1), "the members stay"
+    assert await cascade_stored(guarded, B2), "the members stay"
 
 
 async def test_a_cascade_whose_every_member_is_already_gone_deletes_the_collection(
@@ -396,7 +388,7 @@ async def test_a_cascade_whose_every_member_is_already_gone_deletes_the_collecti
     await gone(guarded._store, B1)
     await gone(guarded._store, B2)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1), "the collection is deleted"
+    assert not await cascade_stored(guarded, S1), "the collection is deleted"
 
 
 async def test_a_cascade_whose_every_member_goes_between_the_read_and_the_heads(
@@ -410,7 +402,7 @@ async def test_a_cascade_whose_every_member_goes_between_the_read_and_the_heads(
 
     before(guarded._store, "query", all_gone, when=HEADS)
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, S1), "the collection is deleted"
+    assert not await cascade_stored(guarded, S1), "the collection is deleted"
 
 
 # -- 2. the cascade: who may --------------------------------------------------------------------
@@ -431,7 +423,7 @@ async def test_a_caller_who_may_delete_the_collection_and_no_member_is_told_the_
         await collaboration(caller(), access_, guarded).delete_cascade(S1, ver)
     assert B1 in str(refused.value), "both are named: they are readable"
     assert B2 in str(refused.value), "both are named: they are readable"
-    assert await stored(guarded, S1), "nothing is deleted"
+    assert await cascade_stored(guarded, S1), "nothing is deleted"
 
 
 async def test_members_the_caller_may_not_read_are_counted_and_never_named_anywhere(
@@ -471,7 +463,7 @@ async def test_a_caller_with_delete_on_every_member_only_through_direct_grants_c
     ver = await shelve(guarded, B1, B2)
     grants = [direct(Action.DELETE, graph_of(i)) for i in (S1, B1, B2)]
     await collaboration(caller(), held(role("reader"), *grants), guarded).delete_cascade(S1, ver)
-    assert not any([await stored(guarded, i) for i in (S1, B1, B2)]), "all deleted"
+    assert not any([await cascade_stored(guarded, i) for i in (S1, B1, B2)]), "all deleted"
 
 
 async def test_a_direct_delete_grant_on_the_members_only_does_not_allow_the_collection(
@@ -482,7 +474,7 @@ async def test_a_direct_delete_grant_on_the_members_only_does_not_allow_the_coll
     with pytest.raises(Forbidden) as refused:
         await collaboration(caller(), access_, guarded).delete_cascade(S1, ver)
     assert leaks(refused.value, B1) == [], "the refusal is about the collection and names no member"
-    assert await stored(guarded, B1), "nothing is deleted"
+    assert await cascade_stored(guarded, B1), "nothing is deleted"
 
 
 async def test_a_tenant_level_prohibition_of_delete_refuses_the_cascade(guarded, collaboration):
@@ -491,7 +483,7 @@ async def test_a_tenant_level_prohibition_of_delete_refuses_the_cascade(guarded,
     with pytest.raises(Forbidden) as refused:
         await collaboration(caller(), access_, guarded).delete_cascade(S1, ver)
     assert leaks(refused.value, B1, B2) == [], "no member is named"
-    assert all([await stored(guarded, i) for i in (S1, B1, B2)]), "nothing is deleted"
+    assert all([await cascade_stored(guarded, i) for i in (S1, B1, B2)]), "nothing is deleted"
 
 
 async def test_a_prohibition_of_delete_on_one_member_refuses_the_cascade_even_for_a_librarian(
@@ -502,8 +494,8 @@ async def test_a_prohibition_of_delete_on_one_member_refuses_the_cascade_even_fo
     with pytest.raises(Forbidden) as refused:
         await collaboration(caller(), access_, guarded).delete_cascade(S1, ver)
     assert B2 in str(refused.value), "b2 is readable and refused: named"
-    assert await stored(guarded, B1), "nothing is deleted"
-    assert await stored(guarded, S1), "nothing is deleted"
+    assert await cascade_stored(guarded, B1), "nothing is deleted"
+    assert await cascade_stored(guarded, S1), "nothing is deleted"
 
 
 async def test_a_caller_who_sees_nothing_of_the_collection_is_told_it_is_not_found(
@@ -513,7 +505,7 @@ async def test_a_caller_who_sees_nothing_of_the_collection_is_told_it_is_not_fou
     with pytest.raises(NotFound) as refused:
         await collaboration(caller(), held(), guarded).delete_cascade(S1, ver)
     assert leaks(refused.value, B1) == [], "nothing of the members"
-    assert await stored(guarded, S1), "the collection is stored"
+    assert await cascade_stored(guarded, S1), "the collection is stored"
 
 
 async def test_a_caller_prohibited_from_reading_the_collection_learns_nothing_of_the_members(
@@ -525,8 +517,8 @@ async def test_a_caller_prohibited_from_reading_the_collection_learns_nothing_of
         await collaboration(caller(), access_, guarded).delete_cascade(S1, ver)
     assert isinstance(refused.value, (Forbidden, NotFound)), "a refusal of access"
     assert leaks(refused.value, B1) == [], "nothing of the members"
-    assert await stored(guarded, S1), "nothing is deleted"
-    assert await stored(guarded, B1), "nothing is deleted"
+    assert await cascade_stored(guarded, S1), "nothing is deleted"
+    assert await cascade_stored(guarded, B1), "nothing is deleted"
 
 
 # -- 3. the cascade: odd shapes -----------------------------------------------------------------
@@ -535,8 +527,8 @@ async def test_a_caller_prohibited_from_reading_the_collection_learns_nothing_of
 async def test_a_collection_that_names_the_tenant_root_does_not_delete_it(
     toy_session, collaboration
 ):  # no guard: a stored collection is not trusted to hold only aggregates of its member class
-    await put(toy_session, library())
-    await put(toy_session, a_shelf(S1, has_part=[TENANT]))
+    await cascade_put(toy_session, library())
+    await cascade_put(toy_session, a_shelf(S1, has_part=[TENANT]))
     with suppress(PersistenceError):  # a refusal or a skip are both fine
         await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
     assert await toy_session.get_graph(TENANT), "the tenant root is stored"
@@ -546,14 +538,14 @@ async def test_a_collection_that_names_the_access_record_does_not_delete_it(
     toy_session, collaboration
 ):  # the record is registered as an aggregate, and a librarian may delete it
     record = access()
-    await put(toy_session, record)
-    await put(toy_session, a_shelf(S1, has_part=[record.id]))
+    await cascade_put(toy_session, record)
+    await cascade_put(toy_session, a_shelf(S1, has_part=[record.id]))
     ver = await version(toy_session, S1)
     with pytest.raises(StoredDataInvalid, match=S1) as refused:  # PD-27 item 1
         await as_ada(collaboration, toy_session).delete_cascade(S1, ver)
     assert record.id not in everything_said(refused.value), "the member is not named"
-    assert await stored(toy_session, record.id), "the tenant's access record is stored"
-    assert await stored(toy_session, S1), "the shelf is kept: nothing is deleted"
+    assert await cascade_stored(toy_session, record.id), "the tenant's access record is stored"
+    assert await cascade_stored(toy_session, S1), "the shelf is kept: nothing is deleted"
 
 
 # Class: a member IRI the policy does not mint for an aggregate (a graph IRI, another tenant's).
@@ -568,7 +560,7 @@ async def test_a_member_that_is_no_aggregate_of_the_tenant_refuses_without_delet
     toy_session, collaboration, member
 ):  # written without guards
     await put_book(toy_session, B1)
-    await put(toy_session, a_shelf(S1, has_part=[B1, member]))
+    await cascade_put(toy_session, a_shelf(S1, has_part=[B1, member]))
     old = await heads_of(toy_session, [S1, B1])
     with pytest.raises(PersistenceError):
         await as_ada(collaboration, toy_session).delete_cascade(S1, old[S1])
@@ -578,24 +570,24 @@ async def test_a_member_that_is_no_aggregate_of_the_tenant_refuses_without_delet
 
 async def test_a_member_listed_twice_is_deleted_once(toy_session, collaboration):
     await put_book(toy_session, B1)
-    await put(toy_session, a_shelf(S1, has_part=[B1, B1]))
+    await cascade_put(toy_session, a_shelf(S1, has_part=[B1, B1]))
     await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
-    assert not await stored(toy_session, S1), "both gone"
-    assert not await stored(toy_session, B1), "both gone"
+    assert not await cascade_stored(toy_session, S1), "both gone"
+    assert not await cascade_stored(toy_session, B1), "both gone"
 
 
 async def test_a_member_that_is_both_named_and_matched_is_deleted_and_not_guarded_twice(
     guarded, collaboration
 ):
-    ver = await shelve(guarded, B3, rule=poetry())
+    ver = await shelve(guarded, B3, rule=cascade_poetry())
     await as_ada(collaboration, guarded).delete_cascade(S1, ver)
-    assert not await stored(guarded, B3), "deleted once"
+    assert not await cascade_stored(guarded, B3), "deleted once"
 
 
 async def test_a_member_both_named_and_matched_that_is_regenred_after_the_heads_is_a_conflict(
     guarded, collaboration
 ):
-    ver = await shelve(guarded, B3, rule=poetry())
+    ver = await shelve(guarded, B3, rule=cascade_poetry())
     before(guarded._store, "update", lambda: regenre(guarded._store, B3, Genre.FICTION))
     with pytest.raises(Conflict) as refused:
         await as_ada(collaboration, guarded).delete_cascade(S1, ver)
@@ -607,38 +599,38 @@ async def test_a_member_of_another_class_named_by_an_unguarded_collection_is_ref
 ):  # PD-27 item 1: a Scan under a shelf of books
     scan_iri = f"{TENANT}/scans/{UUID(int=1)}"
     await toy_session.add_graph(scan_iri, [(URIRef(scan_iri), RDF.type, SCAN_CLASS)])
-    await put(toy_session, a_shelf(S1, has_part=[scan_iri]))
+    await cascade_put(toy_session, a_shelf(S1, has_part=[scan_iri]))
     ver = await version(toy_session, S1)
     with pytest.raises(StoredDataInvalid, match=S1) as refused:
         await as_ada(collaboration, toy_session).delete_cascade(S1, ver)
     assert scan_iri not in everything_said(refused.value), "the member is not named"
-    assert await stored(toy_session, scan_iri), "a Scan is not a member of a shelf of books"
-    assert await stored(toy_session, S1), "the shelf is kept: nothing is deleted"
+    assert await cascade_stored(toy_session, scan_iri), "a Scan is not a member of a shelf of books"
+    assert await cascade_stored(toy_session, S1), "the shelf is kept: nothing is deleted"
 
 
 async def test_a_collection_listing_itself_among_collections_is_deleted_once_with_its_peer(
     toy_session, collaboration
 ):
-    await put(toy_session, a_shelf(A, member_class="Shelf", has_part=[S1]))
-    await put(toy_session, a_shelf(S1, member_class="Shelf", has_part=[S1, A]))
+    await cascade_put(toy_session, a_shelf(A, member_class="Shelf", has_part=[S1]))
+    await cascade_put(toy_session, a_shelf(S1, member_class="Shelf", has_part=[S1, A]))
     await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
-    assert not await stored(toy_session, S1), "both gone"
-    assert not await stored(toy_session, A), "both gone"
+    assert not await cascade_stored(toy_session, S1), "both gone"
+    assert not await cascade_stored(toy_session, A), "both gone"
 
 
 async def test_a_nested_collection_that_lists_the_outer_does_not_loop_or_delete_more(
     guarded, collaboration
 ):
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(A, member_class="Book", has_part=[B1]))
-    await put(guarded, a_shelf(S1, member_class="Shelf", has_part=[A]))
+    await cascade_put(guarded, a_shelf(A, member_class="Book", has_part=[B1]))
+    await cascade_put(guarded, a_shelf(S1, member_class="Shelf", has_part=[A]))
     stored_a = await guarded.get_graph(A)
     reverse = toy_mapper().to_triples(a_shelf(A, member_class="Shelf", has_part=[S1]))
     await guarded.replace_graph(A, reverse, stored_a[2])
     await as_ada(collaboration, guarded).delete_cascade(S1, await version(guarded, S1))
-    assert not await stored(guarded, S1), "both shelves go"
-    assert not await stored(guarded, A), "both shelves go"
-    assert await stored(guarded, B1), "the book that a replaced shelf no longer names stays"
+    assert not await cascade_stored(guarded, S1), "both shelves go"
+    assert not await cascade_stored(guarded, A), "both shelves go"
+    assert await cascade_stored(guarded, B1), "the book that a replaced shelf no longer names stays"
 
 
 async def books_through_one_transaction(session, count: int, first: int = 1) -> list[str]:
@@ -663,9 +655,9 @@ async def test_rule_members_that_make_the_collection_and_members_exactly_the_lim
     toy_session, collaboration, small_limit
 ):
     iris = await books_through_one_transaction(toy_session, LIMIT - 1)
-    await put(toy_session, a_shelf(S1, membership_rule=MembershipRule()))
+    await cascade_put(toy_session, a_shelf(S1, membership_rule=MembershipRule()))
     await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
-    assert not await stored(toy_session, S1), "the shelf is gone"
+    assert not await cascade_stored(toy_session, S1), "the shelf is gone"
     assert await heads_of(toy_session, iris) == {}, "and the books with it"
 
 
@@ -673,10 +665,10 @@ async def test_rule_members_one_over_the_limit_are_refused_and_nothing_is_delete
     toy_session, collaboration, small_limit
 ):
     iris = await books_through_one_transaction(toy_session, LIMIT)
-    await put(toy_session, a_shelf(S1, membership_rule=MembershipRule()))
+    await cascade_put(toy_session, a_shelf(S1, membership_rule=MembershipRule()))
     with pytest.raises(CommitTooLarge, match=str(LIMIT)):
         await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
-    assert await stored(toy_session, S1), "the shelf is stored"
+    assert await cascade_stored(toy_session, S1), "the shelf is stored"
     assert len(await heads_of(toy_session, iris)) == LIMIT, "every book is stored"
     assert not await marker_left(toy_session), "no commit marker"
 
@@ -685,26 +677,28 @@ async def test_named_and_rule_members_count_once_each_against_the_limit(
     toy_session, collaboration, small_limit
 ):
     iris = await books_through_one_transaction(toy_session, LIMIT - 1)
-    await put(toy_session, a_shelf(S1, has_part=iris[:3], membership_rule=MembershipRule()))
+    await cascade_put(toy_session, a_shelf(S1, has_part=iris[:3], membership_rule=MembershipRule()))
     await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
-    assert not await stored(toy_session, S1), "the same books named and matched count once"
+    assert not await cascade_stored(toy_session, S1), "the same books named and matched count once"
 
 
 async def test_a_rule_member_that_is_the_collection_itself_is_not_counted_twice(
     toy_session, collaboration, small_limit
 ):  # a shelf of shelves whose rule matches every shelf, itself included
-    await put(toy_session, a_shelf(A, member_class="Shelf"))
-    await put(toy_session, a_shelf(B, member_class="Shelf"))
-    await put(toy_session, a_shelf(S1, member_class="Shelf", membership_rule=MembershipRule()))
+    await cascade_put(toy_session, a_shelf(A, member_class="Shelf"))
+    await cascade_put(toy_session, a_shelf(B, member_class="Shelf"))
+    await cascade_put(
+        toy_session, a_shelf(S1, member_class="Shelf", membership_rule=MembershipRule())
+    )
     await as_ada(collaboration, toy_session).delete_cascade(S1, await version(toy_session, S1))
-    assert not any([await stored(toy_session, i) for i in (S1, A, B)]), "all three are gone"
+    assert not any([await cascade_stored(toy_session, i) for i in (S1, A, B)]), "all three are gone"
 
 
 async def test_a_cascade_of_something_that_is_not_a_collection_is_bad_query(guarded, collaboration):
     await put_book(guarded, B1)
     with pytest.raises(BadQuery):
         await as_ada(collaboration, guarded).delete_cascade(B1, await version(guarded, B1))
-    assert await stored(guarded, B1), "the book is stored"
+    assert await cascade_stored(guarded, B1), "the book is stored"
 
 
 async def test_a_cascade_of_a_missing_collection_is_not_found(guarded, collaboration):
@@ -727,8 +721,8 @@ async def test_a_collection_iri_that_is_not_one_of_the_tenant_deletes_nothing(
     ver = await shelve(guarded, B1)
     with pytest.raises(PersistenceError):
         await as_ada(collaboration, guarded).delete_cascade(collection, ver)
-    assert await stored(guarded, S1), "nothing is deleted"
-    assert await stored(guarded, B1), "nothing is deleted"
+    assert await cascade_stored(guarded, S1), "nothing is deleted"
+    assert await cascade_stored(guarded, B1), "nothing is deleted"
 
 
 # Class: an if_version that is not the version; the empty one and hostile text.
@@ -745,9 +739,9 @@ async def test_an_if_version_that_is_not_the_version_is_a_conflict_and_deletes_n
     await shelve(guarded, B1)
     with pytest.raises(Conflict):
         await as_ada(collaboration, guarded).delete_cascade(S1, if_version)
-    assert await stored(guarded, S1), "nothing is deleted"
-    assert await stored(guarded, B1), "nothing is deleted"
-    assert await stored(guarded, B1), "and no injected statement ran"
+    assert await cascade_stored(guarded, S1), "nothing is deleted"
+    assert await cascade_stored(guarded, B1), "nothing is deleted"
+    assert await cascade_stored(guarded, B1), "and no injected statement ran"
 
 
 # -- 4. the write guard -------------------------------------------------------------------------
@@ -759,7 +753,7 @@ def bad_shelf(iri: str = S1, **slots) -> Shelf:
 
 
 async def other_shelf(session) -> None:
-    await put(session, a_shelf(S2))
+    await cascade_put(session, a_shelf(S2))
 
 
 async def through_transaction_add(session, model) -> None:
@@ -787,7 +781,7 @@ async def test_every_write_path_refuses_a_collection_of_the_wrong_class(guarded,
     await other_shelf(guarded)
     with pytest.raises(InvalidBody, match=S2):
         await write(guarded, bad_shelf())
-    assert not await stored(guarded, S1), "nothing is stored"
+    assert not await cascade_stored(guarded, S1), "nothing is stored"
     assert not await marker_left(guarded), "no commit marker"
 
 
@@ -817,7 +811,7 @@ async def test_every_write_path_refuses_a_replace_that_turns_a_valid_collection_
 ):
     await put_book(guarded, B1)
     await other_shelf(guarded)
-    await put(guarded, a_shelf(S1, has_part=[B1]))
+    await cascade_put(guarded, a_shelf(S1, has_part=[B1]))
     ver = await version(guarded, S1)
     with pytest.raises(InvalidBody, match=S2):
         await replace(guarded, bad_shelf(), ver)
@@ -825,7 +819,7 @@ async def test_every_write_path_refuses_a_replace_that_turns_a_valid_collection_
 
 
 async def test_a_replace_that_drops_the_member_class_into_a_part_class_is_refused(guarded):
-    await put(guarded, a_shelf(S1))
+    await cascade_put(guarded, a_shelf(S1))
     ver = await version(guarded, S1)
     with pytest.raises(InvalidBody, match="Chapter"):
         await replace_by_session(guarded, a_shelf(S1, member_class="Chapter"), ver)
@@ -837,27 +831,27 @@ async def test_a_replace_that_drops_the_member_class_into_a_part_class_is_refuse
 async def test_a_member_class_that_is_not_a_served_root_is_refused(guarded, member_class):
     with pytest.raises(InvalidBody, match=member_class):
         await through_session_add(guarded, a_shelf(S1, member_class=member_class))
-    assert not await stored(guarded, S1), "nothing is stored"
+    assert not await cascade_stored(guarded, S1), "nothing is stored"
 
 
 async def test_a_collection_of_its_own_class_is_saved_with_collections_in_it(guarded):
     await other_shelf(guarded)
     await through_session_add(guarded, a_shelf(S1, member_class="Shelf", has_part=[S2]))
-    assert await stored(guarded, S1), "a shelf of shelves"
+    assert await cascade_stored(guarded, S1), "a shelf of shelves"
 
 
 async def test_a_collection_that_names_itself_is_refused_until_it_is_stored(guarded):  # D-6
     with pytest.raises(InvalidBody, match=S1):
         await through_session_add(guarded, a_shelf(S1, member_class="Shelf", has_part=[S1]))
-    assert not await stored(guarded, S1), "nothing is stored"
+    assert not await cascade_stored(guarded, S1), "nothing is stored"
 
 
 async def test_a_collection_that_names_itself_on_replace_is_saved(guarded):
-    await put(guarded, a_shelf(S1, member_class="Shelf"))
+    await cascade_put(guarded, a_shelf(S1, member_class="Shelf"))
     await replace_by_session(
         guarded, a_shelf(S1, member_class="Shelf", has_part=[S1]), await version(guarded, S1)
     )
-    assert await stored(guarded, S1), "it is stored, and now names itself"
+    assert await cascade_stored(guarded, S1), "it is stored, and now names itself"
 
 
 async def test_a_root_typed_with_a_collection_class_and_another_is_guarded_as_a_collection(guarded):
@@ -865,7 +859,7 @@ async def test_a_root_typed_with_a_collection_class_and_another_is_guarded_as_a_
     triples = [*toy_mapper().to_triples(bad_shelf()), (URIRef(S1), RDF.type, BOOK_CLASS)]
     with pytest.raises(InvalidBody, match=S2):
         await guarded.add_graph(S1, triples)
-    assert not await stored(guarded, S1), "nothing is stored"
+    assert not await cascade_stored(guarded, S1), "nothing is stored"
 
 
 async def test_a_root_typed_with_the_other_class_first_is_guarded_all_the_same(guarded):
@@ -873,7 +867,7 @@ async def test_a_root_typed_with_the_other_class_first_is_guarded_all_the_same(g
     triples = [(URIRef(S1), RDF.type, BOOK_CLASS), *toy_mapper().to_triples(bad_shelf())]
     with pytest.raises(InvalidBody, match=S2):
         await guarded.add_graph(S1, triples)
-    assert not await stored(guarded, S1), "nothing is stored"
+    assert not await cascade_stored(guarded, S1), "nothing is stored"
 
 
 def shelf_triples(**slots):
@@ -903,7 +897,7 @@ async def test_a_collection_whose_triples_do_not_decode_is_refused_with_a_toolki
     with pytest.raises(InvalidBody) as refused:  # PD-27 item 2
         await guarded.add_graph(S1, triples)
     assert not isinstance(refused.value, ValidationError), "not a bare pydantic error"
-    assert not await stored(guarded, S1), "nothing is stored"
+    assert not await cascade_stored(guarded, S1), "nothing is stored"
 
 
 @pytest.mark.parametrize(
@@ -916,28 +910,30 @@ async def test_a_collection_whose_triples_do_not_decode_is_refused_with_a_toolki
 async def test_raw_triples_the_mapper_never_writes_are_stored_by_the_guard(guarded, extra):
     """PD-27, rejected: the guard checks the decoded model, and the generic API checks the shape first."""
     await guarded.add_graph(S1, [*shelf_triples(), (URIRef(S1), *extra)])
-    assert await stored(guarded, S1), "a literal rule or a second member class is stored as given"
+    assert await cascade_stored(guarded, S1), (
+        "a literal rule or a second member class is stored as given"
+    )
 
 
 async def test_members_given_as_literals_are_refused_and_nothing_is_stored(guarded):
     triples = [*shelf_triples(), (URIRef(S1), URIRef(HAS_PART_P), Literal("just text"))]
     with pytest.raises(PersistenceError):
         await guarded.add_graph(S1, triples)
-    assert not await stored(guarded, S1), "nothing is stored"
+    assert not await cascade_stored(guarded, S1), "nothing is stored"
 
 
 async def test_a_member_that_is_a_blank_node_is_refused_and_nothing_is_stored(guarded):
     triples = [*shelf_triples(), (URIRef(S1), URIRef(HAS_PART_P), BNode("b"))]
     with pytest.raises(PersistenceError):
         await guarded.add_graph(S1, triples)
-    assert not await stored(guarded, S1), "nothing is stored"
+    assert not await cascade_stored(guarded, S1), "nothing is stored"
 
 
 async def test_a_member_of_another_tenant_is_an_invalid_iri(guarded):
     other = book_iri(1).replace(TENANT, OTHER_TENANT)
     with pytest.raises(InvalidIri, match=OTHER_TENANT):
         await through_session_add(guarded, a_shelf(S1, has_part=[other]))
-    assert not await stored(guarded, S1), "nothing is stored"
+    assert not await cascade_stored(guarded, S1), "nothing is stored"
 
 
 async def test_a_member_of_this_tenant_that_exists_only_in_another_database_is_not_stored(guarded):
@@ -945,7 +941,7 @@ async def test_a_member_of_this_tenant_that_exists_only_in_another_database_is_n
         await put_book(elsewhere, B1)
     with pytest.raises(InvalidBody, match=B1):
         await through_session_add(guarded, a_shelf(S1, has_part=[B1]))
-    assert not await stored(guarded, S1), "the guard asks this tenant's database only"
+    assert not await cascade_stored(guarded, S1), "the guard asks this tenant's database only"
 
 
 @pytest.mark.slow
@@ -964,7 +960,7 @@ async def test_a_refused_collection_in_a_transaction_with_valid_changes_writes_n
         async with guarded.transaction() as transaction:
             await transaction.add_graph(B1, toy_mapper().to_triples(dune(B1, chapters=0)))
             await transaction.add_graph(S1, toy_mapper().to_triples(bad_shelf()))
-    assert not await stored(guarded, B1), "the valid book of the transaction is not stored"
+    assert not await cascade_stored(guarded, B1), "the valid book of the transaction is not stored"
     assert len(guarded._store.sent("update")) == sent, "no request was sent"
 
 
@@ -974,7 +970,7 @@ async def test_a_refused_collection_first_in_a_transaction_writes_nothing(guarde
         async with guarded.transaction() as transaction:
             await transaction.add_graph(S1, toy_mapper().to_triples(bad_shelf()))
             await transaction.add_graph(B1, toy_mapper().to_triples(dune(B1, chapters=0)))
-    assert not await stored(guarded, B1), "the valid book is not stored"
+    assert not await cascade_stored(guarded, B1), "the valid book is not stored"
 
 
 async def test_a_refused_collection_the_caller_catches_in_a_transaction_can_be_corrected(guarded):
@@ -983,7 +979,7 @@ async def test_a_refused_collection_the_caller_catches_in_a_transaction_can_be_c
         with pytest.raises(InvalidBody):
             await transaction.add_graph(S1, toy_mapper().to_triples(bad_shelf()))
         await transaction.add_graph(S1, toy_mapper().to_triples(a_shelf(S1)))
-    assert await stored(guarded, S1), "the corrected shelf is stored"
+    assert await cascade_stored(guarded, S1), "the corrected shelf is stored"
 
 
 async def test_a_guarded_session_costs_a_book_write_no_extra_query_even_in_a_transaction():
@@ -1017,7 +1013,7 @@ async def test_members_names_nothing_of_a_hidden_member_in_any_field(guarded, co
 
 
 async def test_a_hidden_member_both_named_and_matched_is_counted_once(guarded, collaboration):
-    await shelve(guarded, B2, rule=poetry())
+    await shelve(guarded, B2, rule=cascade_poetry())
     found = await as_bob(collaboration, guarded, B2).members(S1)
     assert found.hidden_count == 1, "one IRI, counted once"
 
@@ -1027,9 +1023,9 @@ async def test_a_hidden_member_reached_by_two_collections_of_a_deep_read_is_coun
 ):
     await put_book(guarded, B1)
     await put_book(guarded, B2)
-    await put(guarded, a_shelf(A, member_class="Book", has_part=[B1, B2]))
-    await put(guarded, a_shelf(B, member_class="Book", has_part=[B2]))
-    await put(guarded, a_shelf(S1, member_class="Shelf", has_part=[A, B]))
+    await cascade_put(guarded, a_shelf(A, member_class="Book", has_part=[B1, B2]))
+    await cascade_put(guarded, a_shelf(B, member_class="Book", has_part=[B2]))
+    await cascade_put(guarded, a_shelf(S1, member_class="Shelf", has_part=[A, B]))
     found = await as_bob(collaboration, guarded, B2).members(S1, deep=True)
     assert found.member_iris == sorted([A, B, B1]), "the readable ones"
     assert found.hidden_count == 1, "b2 once, though two shelves hold it"
@@ -1037,18 +1033,18 @@ async def test_a_hidden_member_reached_by_two_collections_of_a_deep_read_is_coun
 
 async def test_a_diamond_of_collections_lists_the_shared_members_once(guarded, collaboration):
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(C, member_class="Book", has_part=[B1]))
-    await put(guarded, a_shelf(A, member_class="Shelf", has_part=[C]))
-    await put(guarded, a_shelf(B, member_class="Shelf", has_part=[C]))
-    await put(guarded, a_shelf(S1, member_class="Shelf", has_part=[A, B]))
+    await cascade_put(guarded, a_shelf(C, member_class="Book", has_part=[B1]))
+    await cascade_put(guarded, a_shelf(A, member_class="Shelf", has_part=[C]))
+    await cascade_put(guarded, a_shelf(B, member_class="Shelf", has_part=[C]))
+    await cascade_put(guarded, a_shelf(S1, member_class="Shelf", has_part=[A, B]))
     found = await as_ada(collaboration, guarded).members(S1, deep=True)
     assert found.member_iris == sorted([A, B, C, B1]), "c and b1 once each"
 
 
 async def test_a_deep_read_through_a_collection_that_lists_itself_ends(guarded, collaboration):
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(A, member_class="Book", has_part=[B1]))
-    await put(guarded, a_shelf(S1, member_class="Shelf"))
+    await cascade_put(guarded, a_shelf(A, member_class="Book", has_part=[B1]))
+    await cascade_put(guarded, a_shelf(S1, member_class="Shelf"))
     stored_s = await guarded.get_graph(S1)
     triples = toy_mapper().to_triples(a_shelf(S1, member_class="Shelf", has_part=[S1, A]))
     await guarded.replace_graph(S1, triples, stored_s[2])
@@ -1059,9 +1055,9 @@ async def test_a_deep_read_through_a_collection_that_lists_itself_ends(guarded, 
 async def test_a_long_chain_of_collections_is_read_to_the_end(guarded, collaboration):
     shelves = [shelf_iri(100 + n) for n in range(30)]
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(shelves[-1], member_class="Book", has_part=[B1]))
+    await cascade_put(guarded, a_shelf(shelves[-1], member_class="Book", has_part=[B1]))
     for outer, inner in reversed(list(zip(shelves, shelves[1:], strict=False))):
-        await put(guarded, a_shelf(outer, member_class="Shelf", has_part=[inner]))
+        await cascade_put(guarded, a_shelf(outer, member_class="Shelf", has_part=[inner]))
     found = await as_ada(collaboration, guarded).members(shelves[0], deep=True)
     assert found.member_iris == sorted([*shelves[1:], B1]), "every level, and the book"
 
@@ -1078,21 +1074,21 @@ async def test_a_deep_read_of_a_collection_of_books_does_not_open_a_book(guarded
 async def test_a_rule_value_with_metacharacters_matches_only_what_equals_it(
     toy_session, collaboration, value
 ):  # stored without guards; PD-7: the conditions are the ones find uses
-    await put(toy_session, dune(B1, chapters=0, isbn=value))
+    await cascade_put(toy_session, dune(B1, chapters=0, isbn=value))
     await put_book(toy_session, B2)
     rule = MembershipRule(rule_equalities=[SlotEquality(equals_slot="isbn", equals_value=value)])
-    await put(toy_session, a_shelf(S1, membership_rule=rule))
+    await cascade_put(toy_session, a_shelf(S1, membership_rule=rule))
     found = await as_ada(collaboration, toy_session).members(S1)
     assert found.member_iris == [B1], "the book whose isbn is exactly that text, and no other"
-    assert await stored(toy_session, B2), "nothing was dropped"
-    assert await stored(toy_session, S1), "nothing was dropped"
+    assert await cascade_stored(toy_session, B2), "nothing was dropped"
+    assert await cascade_stored(toy_session, S1), "nothing was dropped"
 
 
 async def test_a_rule_value_that_is_not_a_value_of_its_slot_is_stored_data_invalid(
     toy_session, collaboration
 ):
     rule = MembershipRule(rule_equalities=[SlotEquality(equals_slot="genre", equals_value=EVIL)])
-    await put(toy_session, a_shelf(S1, membership_rule=rule))
+    await cascade_put(toy_session, a_shelf(S1, membership_rule=rule))
     with pytest.raises(StoredDataInvalid, match=S1):
         await as_ada(collaboration, toy_session).members(S1)
 
@@ -1103,7 +1099,7 @@ async def test_a_rule_slot_the_listing_does_not_accept_is_stored_data_invalid(
     toy_session, collaboration, slot
 ):
     rule = MembershipRule(rule_equalities=[SlotEquality(equals_slot=slot, equals_value="x")])
-    await put(toy_session, a_shelf(S1, membership_rule=rule))
+    await cascade_put(toy_session, a_shelf(S1, membership_rule=rule))
     with pytest.raises(StoredDataInvalid, match=S1):
         await as_ada(collaboration, toy_session).members(S1)
 
@@ -1111,7 +1107,9 @@ async def test_a_rule_slot_the_listing_does_not_accept_is_stored_data_invalid(
 async def test_a_stored_member_class_that_is_no_longer_served_is_stored_data_invalid(
     toy_session, collaboration
 ):
-    await put(toy_session, a_shelf(S1, member_class="Chapter", membership_rule=poetry()))
+    await cascade_put(
+        toy_session, a_shelf(S1, member_class="Chapter", membership_rule=cascade_poetry())
+    )
     with pytest.raises(StoredDataInvalid, match=S1):
         await as_ada(collaboration, toy_session).members(S1)
 
@@ -1128,7 +1126,7 @@ async def test_members_of_a_missing_iri_is_not_found(guarded, collaboration):
 
 
 async def test_members_of_the_tenant_root_is_not_a_crash(toy_session, collaboration):
-    await put(toy_session, library())
+    await cascade_put(toy_session, library())
     with pytest.raises(BadQuery):
         await as_ada(collaboration, toy_session).members(TENANT)
 
@@ -1146,7 +1144,7 @@ async def test_an_aggregate_with_a_rule_triple_but_no_collection_class_does_not_
     toy_session, collaboration
 ):  # PD-7: one CONSTRUCT of every graph whose root has rp:membershipRule
     await put_book(toy_session, B1, Genre.POETRY)
-    await put(toy_session, a_shelf(S1, membership_rule=poetry()))
+    await cascade_put(toy_session, a_shelf(S1, membership_rule=cascade_poetry()))
     stray = [(URIRef(B2), RDF.type, BOOK_CLASS), (URIRef(B2), URIRef(RULE_P), BNode("r"))]
     await toy_session.add_graph(B2, stray)
     found = await as_ada(collaboration, toy_session).collections_of(B1)
@@ -1157,9 +1155,9 @@ async def test_a_bad_rule_of_one_collection_of_the_class_fails_collections_of_fo
     toy_session, collaboration
 ):  # pinned, a robustness finding: S2's rule breaks the question about B1 for every caller
     await put_book(toy_session, B1, Genre.POETRY)
-    await put(toy_session, a_shelf(S1, membership_rule=poetry()))
+    await cascade_put(toy_session, a_shelf(S1, membership_rule=cascade_poetry()))
     bad = MembershipRule(rule_equalities=[SlotEquality(equals_slot="colour", equals_value="red")])
-    await put(toy_session, a_shelf(S2, membership_rule=bad))
+    await cascade_put(toy_session, a_shelf(S2, membership_rule=bad))
     with pytest.raises(StoredDataInvalid, match=S2):
         await as_ada(collaboration, toy_session).collections_of(B1)
 
@@ -1169,7 +1167,7 @@ async def test_a_bad_collection_the_caller_may_not_read_is_not_named_when_collec
 ):  # PD-27 item 4
     await put_book(toy_session, B1, Genre.POETRY)
     bad = MembershipRule(rule_equalities=[SlotEquality(equals_slot="colour", equals_value="red")])
-    await put(toy_session, a_shelf(S2, membership_rule=bad))
+    await cascade_put(toy_session, a_shelf(S2, membership_rule=bad))
     with pytest.raises(StoredDataInvalid) as refused:
         await as_bob(collaboration, toy_session, S2).collections_of(B1)
     assert S2 not in everything_said(refused.value), "the hidden collection is not named"
@@ -1183,7 +1181,7 @@ async def test_a_collection_of_another_class_with_a_bad_rule_does_not_fail_colle
 ):
     await put_book(toy_session, B1, Genre.POETRY)
     bad = MembershipRule(rule_equalities=[SlotEquality(equals_slot="colour", equals_value="red")])
-    await put(toy_session, a_shelf(S2, member_class="Scan", membership_rule=bad))
+    await cascade_put(toy_session, a_shelf(S2, member_class="Scan", membership_rule=bad))
     found = await as_ada(collaboration, toy_session).collections_of(B1)
     assert found.member_iris is None, "a shelf of scans cannot hold a book"
 
@@ -1195,15 +1193,19 @@ async def test_collections_of_an_aggregate_with_two_types_lists_the_collections_
     await toy_session.add_graph(
         iri, [(URIRef(iri), RDF.type, BOOK_CLASS), (URIRef(iri), RDF.type, SCAN_CLASS)]
     )
-    await put(toy_session, a_shelf(S1, member_class="Book", membership_rule=MembershipRule()))
-    await put(toy_session, a_shelf(S2, member_class="Scan", membership_rule=MembershipRule()))
+    await cascade_put(
+        toy_session, a_shelf(S1, member_class="Book", membership_rule=MembershipRule())
+    )
+    await cascade_put(
+        toy_session, a_shelf(S2, member_class="Scan", membership_rule=MembershipRule())
+    )
     found = await as_ada(collaboration, toy_session).collections_of(iri)
     assert found.member_iris == [S1, S2], "it is a book and a scan"
 
 
 async def test_collections_of_names_nothing_of_a_hidden_holder(guarded, collaboration):
     await shelve(guarded, B1)
-    await put(guarded, a_shelf(S2, has_part=[B1]))
+    await cascade_put(guarded, a_shelf(S2, has_part=[B1]))
     found = await as_bob(collaboration, guarded, S2).collections_of(B1)
     assert found.member_iris == [S1], "bob may read s1 only"
     assert said_in(found, S2) == [], "no IRI or UUID of s2"
@@ -1213,7 +1215,7 @@ async def test_collections_of_names_nothing_of_a_hidden_holder(guarded, collabor
 async def test_a_collection_holding_by_name_and_by_rule_is_one_hidden_holder(
     guarded, collaboration
 ):
-    await shelve(guarded, B3, rule=poetry())
+    await shelve(guarded, B3, rule=cascade_poetry())
     found = await as_bob(collaboration, guarded, S1).collections_of(B3)
     assert found.hidden_count == 1, "the same collection, counted once"
 
@@ -1250,7 +1252,7 @@ async def test_heads_of_a_hostile_iri_raises_a_sparql_error_and_runs_nothing(gua
     await put_book(guarded, B1)
     with pytest.raises(SparqlError):
         await guarded.heads([B1, hostile])
-    assert await stored(guarded, B1), "nothing was dropped"
+    assert await cascade_stored(guarded, B1), "nothing was dropped"
 
 
 async def test_heads_names_a_repeated_iri_once(guarded):
@@ -1270,8 +1272,8 @@ async def test_heads_of_an_aggregate_with_two_types_lists_both_types(guarded):
 
 async def test_heads_has_the_access_record_but_not_the_tenant_root(toy_session):
     # pinned: the tenant root is not an Aggregate entry of the registry, the access record is
-    await put(toy_session, library())
-    await put(toy_session, access())
+    await cascade_put(toy_session, library())
+    await cascade_put(toy_session, access())
     found = await toy_session.heads([TENANT, f"{TENANT}/access"])
     assert [h.head_iri for h in found] == [f"{TENANT}/access"], "only the access record"
 
@@ -1320,7 +1322,7 @@ def book_conditions(genre: str = "poetry"):
 
 
 async def test_matches_is_exact_about_the_class(guarded):
-    await put(guarded, a_shelf(S1))
+    await cascade_put(guarded, a_shelf(S1))
     ancestor = str(load_schema(TOY_SCHEMA).get_uri("ReferenceCollection", expand=True))
     assert not await guarded.matches(S1, ancestor, []), "a shelf is not exactly a collection mixin"
     assert await guarded.matches(S1, str(SHELF_CLASS), []), "but it is exactly a shelf"
@@ -1360,11 +1362,11 @@ async def test_matches_of_a_hostile_class_iri_raises_a_sparql_error(guarded, hos
     await put_book(guarded, B1)
     with pytest.raises(SparqlError):
         await guarded.matches(B1, hostile, [])
-    assert await stored(guarded, B1), "nothing was dropped"
+    assert await cascade_stored(guarded, B1), "nothing was dropped"
 
 
 async def test_matches_is_false_for_an_aggregate_of_another_class(guarded):
-    await put(guarded, a_shelf(S1))
+    await cascade_put(guarded, a_shelf(S1))
     assert not await guarded.matches(S1, str(BOOK_CLASS), []), "a shelf is not a book"
 
 
@@ -1374,18 +1376,18 @@ async def test_require_match_with_no_condition_guards_only_the_class(guarded):
     async with guarded.transaction() as transaction:
         await transaction.remove(B1, await version(guarded, B1))
         transaction._require_match(B2, str(BOOK_CLASS), [])
-    assert not await stored(guarded, B1), "it commits when B2 is a book"
+    assert not await cascade_stored(guarded, B1), "it commits when B2 is a book"
 
 
 async def test_require_match_with_a_wrong_class_fails_the_commit_and_names_no_one(guarded):
     await put_book(guarded, B1)
-    await put(guarded, a_shelf(S1))
+    await cascade_put(guarded, a_shelf(S1))
     with pytest.raises(Conflict) as refused:
         async with guarded.transaction() as transaction:
             await transaction.remove(B1, await version(guarded, B1))
             transaction._require_match(S1, str(BOOK_CLASS), [])
     assert refused.value.iris == (), "a match guard names no one (PD-15)"
-    assert await stored(guarded, B1), "b1 is stored"
+    assert await cascade_stored(guarded, B1), "b1 is stored"
 
 
 async def test_the_same_iri_matched_twice_is_guarded_twice_without_joining(guarded):
@@ -1396,7 +1398,7 @@ async def test_the_same_iri_matched_twice_is_guarded_twice_without_joining(guard
         await transaction.remove(B2, await version(guarded, B2))
         transaction._require_match(B1, target, conditions)
         transaction._require_match(B1, target, conditions)
-    assert not await stored(guarded, B2), "both guards hold: it commits"
+    assert not await cascade_stored(guarded, B2), "both guards hold: it commits"
 
 
 async def test_two_match_guards_where_one_fails_fail_the_commit(guarded):
@@ -1409,7 +1411,7 @@ async def test_two_match_guards_where_one_fails_fail_the_commit(guarded):
             await transaction.remove(B3, await version(guarded, B3))
             transaction._require_match(B1, target, conditions)
             transaction._require_match(B2, target, conditions)
-    assert await stored(guarded, B3), "all or nothing"
+    assert await cascade_stored(guarded, B3), "all or nothing"
 
 
 async def test_a_match_guard_on_an_iri_with_a_change_in_the_transaction(guarded):
@@ -1418,7 +1420,7 @@ async def test_a_match_guard_on_an_iri_with_a_change_in_the_transaction(guarded)
     async with guarded.transaction() as transaction:
         await transaction.remove(B1, await version(guarded, B1))
         transaction._require_match(B1, target, conditions)
-    assert not await stored(guarded, B1), "the guard is read before the removal is applied"
+    assert not await cascade_stored(guarded, B1), "the guard is read before the removal is applied"
 
 
 async def test_a_match_guard_on_an_iri_with_no_change_races_with_a_regenre(guarded):
@@ -1431,7 +1433,7 @@ async def test_a_match_guard_on_an_iri_with_no_change_races_with_a_regenre(guard
             await transaction.remove(B1, await version(guarded, B1))
             transaction._require_match(B2, target, conditions)
     assert refused.value.iris == (), "no root of the transaction changed: no one is named"
-    assert await stored(guarded, B1), "b1 is stored"
+    assert await cascade_stored(guarded, B1), "b1 is stored"
 
 
 async def test_a_match_guard_after_the_transaction_ended_is_refused(guarded):

@@ -18,7 +18,7 @@ from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import ROLES, direct
-from tests.unit.api.test_iri_policy_checks import (
+from tests.unit.api.iri_policy_helpers import (
     ADA,
     BASE,
     BOOK_CLASS,

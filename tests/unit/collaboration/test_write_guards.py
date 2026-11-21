@@ -43,19 +43,17 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
-from tests.unit.collaboration.test_collaboration_workflow_adversarial import copy_schema, edit
+from tests.unit.collaboration.collaboration_data import (
+    copy_schema,
+    edit,
+    guards,
+    save,
+    version_of,
+)
 
 ELSEWHERE = "https://elsewhere.org/b"
 REVIEW = load_workflow(REVIEW_WORKFLOW)
 DRAFT, IN_REVIEW, ACCEPTED = (state_iri(REVIEW, s) for s in ("draft", "in_review", "accepted"))
-
-
-def guards(*, workflows: bool = False) -> WriteGuards:
-    view = load_schema(TOY_SCHEMA)
-    kept = (
-        Workflows([REVIEW], view, AccessRules(load_role_definitions(ROLES))) if workflows else None
-    )
-    return WriteGuards(toy_mapper(), generated_models(*MODULES), Listings(view), kept)
 
 
 def rule(slot: str, value: str) -> MembershipRule:
@@ -64,17 +62,6 @@ def rule(slot: str, value: str) -> MembershipRule:
 
 def a_shelf(n: int = 1, **slots):
     return shelf(shelf_iri(n)).model_copy(update=slots)
-
-
-async def save(session, *objects) -> None:
-    work = UnitOfWork(session, toy_mapper())
-    for obj in objects:
-        work.add(obj)
-    await work.commit()
-
-
-async def version_of(session, iri: str) -> str:
-    return (await session.get_graph(iri))[2]
 
 
 async def test_a_collection_of_stored_books_is_saved_and_its_members_are_untouched():  # TC-15

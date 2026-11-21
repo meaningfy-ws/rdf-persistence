@@ -3,9 +3,16 @@
 import httpx
 
 from rdf_persistence import GrantSet, Problem
-from rdf_persistence.access.domain.generated.rp_access import Grant
+from rdf_persistence.access.domain.generated.rp_access import (
+    Action,
+    Grant,
+    Prohibition,
+    RoleDefinition,
+    RoleLevel,
+)
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.media import JSON, PROBLEM_JSON
-from tests.toy import SETTINGS
+from tests.toy import ROLES, SETTINGS
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 
 PROBLEMS = f"{SETTINGS.base}problems/"
@@ -62,3 +69,34 @@ class Scene:
 def problem_of(response: httpx.Response) -> Problem:
     assert response.headers["content-type"] == PROBLEM_JSON, response.text
     return Problem.model_validate(response.json())
+
+
+async def ada_and_mia_are_members(scene: Scene) -> str:
+    """Add a ``member`` role (read, modify, delete) to the rules and make mia one; the new access ETag."""
+    member = RoleDefinition(
+        role="member",
+        level=RoleLevel.TENANT,
+        actions=[Action.READ, Action.MODIFY, Action.DELETE],
+    )
+    scene.service.kit.rules = AccessRules([*load_role_definitions(ROLES), member]).with_iris(
+        scene.service.kit.iris
+    )
+    return await scene.set_grants(
+        GrantSet(
+            grants=[
+                Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
+                Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="member"),
+            ]
+        )
+    )
+
+
+async def everyone_has_a_role(scene: Scene, *prohibitions: Prohibition) -> None:
+    """ada a librarian, mia a member (read, modify, delete), rita a reader; ``prohibitions`` on top."""
+    scene.access_etag = await ada_and_mia_are_members(scene)
+    grants = [
+        Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
+        Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="member"),
+        Grant(assignee=principal_of("rita"), target=scene.tenant_iri, role="reader"),
+    ]
+    await scene.set_grants(GrantSet(grants=grants, prohibitions=list(prohibitions) or None))

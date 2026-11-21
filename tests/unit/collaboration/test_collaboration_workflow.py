@@ -6,70 +6,61 @@ and drops the records with their aggregate, the way the kit opens one. "Another 
 session on the same fake store, made to act at a stated moment by wrapping one operation of it.
 """
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 from rdflib import RDF, XSD, Graph, URIRef
 
-from rdf_persistence import Action, generated_models
+from rdf_persistence import Action
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.collaboration.domain.generated.rp_discussion import Motivation
 from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
-from rdf_persistence.collaboration.services.collaboration import Collaboration
-from rdf_persistence.collaboration.services.discussion import dependents as discussion_dependents
-from rdf_persistence.collaboration.services.workflows import Workflows
-from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
     InvalidBody,
     NotFound,
 )
-from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.persistence.services.listing import Listings
-from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.testkit import FakeStore, assert_isomorphic, fake_session
+from rdf_persistence.testkit import FakeStore, assert_isomorphic
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import (
     ADA,
     BOB,
-    MODULES,
     ROLES,
-    TENANT,
     TOY_SCHEMA,
     ban,
-    book_iri,
-    caller,
     direct,
     dune,
     graph_of,
-    held,
     role,
     shelf,
-    shelf_iri,
     toy_mapper,
 )
 from tests.unit.collaboration.collaboration_data import (
     ACCEPTED,
+    B1,
+    B2,
     DRAFT,
     IN_REVIEW,
+    PROVENANCE,
     RETIRED,
-    REVIEW,
+    S1,
+    T0,
+    collab,
+    comments_on,
+    go,
+    opened,
+    put,
+    records_of,
+    status_of,
+    version,
 )
 
-B1, B2 = book_iri(1), book_iri(2)
-S1 = shelf_iri(1)
-PROVENANCE = URIRef(DEFAULT_IRIS.provenance(TENANT))
 BOOK_CLASS = "http://purl.org/ontology/bibo/Book"
 COMMENT_CLASS = str(v.ANNOTATION)
-VIEW = load_schema(TOY_SCHEMA)
-T0 = datetime(2026, 11, 14, 9, tzinfo=UTC)
 
 
 @pytest.fixture(scope="module")
@@ -80,108 +71,6 @@ def rules(tmp_path_factory: pytest.TempPathFactory) -> AccessRules:
         ROLES.read_text() + "- {role: librarian, level: aggregate, actions: [read, modify]}\n"
     )
     return AccessRules(load_role_definitions(path))
-
-
-@pytest.fixture
-def now() -> dict[str, datetime]:
-    """The time the session's clock tells; a test moves it."""
-    return {"t": T0}
-
-
-@pytest.fixture
-async def store() -> FakeStore:
-    fake = FakeStore()
-    await fake.create_dataset(FAKE_DATABASE)
-    return fake
-
-
-def combined(view=VIEW):
-    """What a remove drops with its aggregate: the comments (a transition's activity stays, PD-11)."""
-    return discussion_dependents(view)
-
-
-@asynccontextmanager
-async def opened(
-    store: FakeStore, now: dict[str, datetime], who: str, rules: AccessRules, *, guarded=True
-) -> AsyncIterator[Session]:
-    """A session the way the kit opens one: write guards with the workflows, the records dropped with their aggregate."""
-    listings = Listings(VIEW)
-    guards = WriteGuards(
-        toy_mapper(), generated_models(*MODULES), listings, Workflows([REVIEW], VIEW, rules)
-    )
-    async with fake_session(
-        store,
-        tenant_iri=TENANT,
-        principal=Principal(id=who),
-        clock=lambda: now["t"],
-        listings=listings,
-        guards=guards if guarded else None,
-        dependents=combined() if guarded else (),
-    ) as session:
-        yield session
-
-
-@pytest.fixture
-async def session(store, now, rules) -> AsyncIterator[Session]:
-    async with opened(store, now, ADA, rules) as ada:
-        yield ada
-
-
-@pytest.fixture
-async def plain(store, now, rules) -> AsyncIterator[Session]:
-    """A session with no workflow guard: what wrote the books before their class named a workflow."""
-    async with opened(store, now, ADA, rules, guarded=False) as unguarded:
-        yield unguarded
-
-
-def collab(rules: AccessRules, session: Session, who: str, *grants, bans=None, view=VIEW):
-    return Collaboration(
-        session,
-        view=view,
-        rules=rules,
-        iris=DEFAULT_IRIS,
-        mapper=toy_mapper(),
-        models=generated_models(*MODULES),
-        listings=Listings(view),
-        workflows=Workflows([REVIEW], view, rules),
-        caller=caller(principal=who),
-        access=held(*grants, bans=bans),
-    )
-
-
-@pytest.fixture
-def ada(rules, session) -> Collaboration:
-    return collab(rules, session, ADA, role("librarian"))
-
-
-@pytest.fixture
-def bob(rules, session) -> Collaboration:
-    return collab(rules, session, BOB, role("reader", who=BOB))
-
-
-async def put(session: Session, model) -> None:
-    await session.add_graph(model.id, toy_mapper().to_triples(model))
-
-
-@pytest.fixture
-async def books(session: Session) -> None:
-    for iri in (B1, B2):
-        await put(session, dune(iri, chapters=1))
-
-
-async def version(session: Session, iri: str) -> str:
-    return (await session.get_graph(iri))[2]
-
-
-async def status_of(session: Session, iri: str) -> list[str]:
-    return sorted(
-        map(str, (await session.root_values(iri, [v.WORKFLOW_STATUS]))[v.WORKFLOW_STATUS])
-    )
-
-
-async def records_of(session: Session, iri: str) -> list[str]:
-    """The IRIs of the transition activities that used ``iri``, as the provenance graph holds them."""
-    return sorted(await session.activities(v.TRANSITION, v.USED, URIRef(iri)))
 
 
 async def provenance_of(store: FakeStore) -> Graph:
@@ -196,14 +85,6 @@ def parts_of(graph: Graph, activity: str, link: URIRef) -> set[tuple[str, str]]:
         (str(graph.value(p, v.ENTITY)), str(graph.value(p, v.ENTITY_CLASS)))
         for p in graph.objects(URIRef(activity), link)
     }
-
-
-async def comments_on(session: Session, iri: str) -> list[str]:
-    return sorted(await session.graphs_with(v.HAS_TARGET, URIRef(iri)))
-
-
-async def go(who: Collaboration, session: Session, to: str, iri: str = B1, **more) -> str:
-    return await who.transition(iri, to, if_version=await version(session, iri), **more)
 
 
 def before(store: FakeStore, operation: str, action) -> None:

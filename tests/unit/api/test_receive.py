@@ -33,8 +33,7 @@ from rdf_persistence.testkit import (
 from tests.fixtures.library.domain.generated.templates import Template
 from tests.logs import attributes
 from tests.toy import toy_mapper
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
-from tests.unit.api.test_service_kit import made
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, made, principal_of
 
 LOGGER = "rdf_persistence.api.entrypoints.kit"
 

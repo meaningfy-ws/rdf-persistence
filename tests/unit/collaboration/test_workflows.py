@@ -12,7 +12,7 @@ from rdf_persistence.core.domain.exceptions import InvalidWorkflow
 from rdf_persistence.schema.services.schema import load_schema
 from tests.toy import REVIEW_WORKFLOW, ROLES, TOY_SCHEMA
 from tests.toy_service import ToyService
-from tests.unit.collaboration.test_collaboration_workflow_adversarial import copy_schema, edit
+from tests.unit.collaboration.collaboration_data import copy_schema, edit
 
 LIBRARY = "https://example.org/ns/library#"
 VIEW = load_schema(TOY_SCHEMA)

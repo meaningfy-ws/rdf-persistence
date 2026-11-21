@@ -1,5 +1,7 @@
 """Small builders for metamodel objects, so each test states only what it varies."""
 
+from types import TracebackType
+
 from rdf_persistence import Action, Grant, Prohibition, TenantAccess, TenantState
 
 TENANT = "https://example.org/tenant/acme"
@@ -36,3 +38,23 @@ def tenant_access(
         grants=grants,
         prohibitions=prohibitions,
     )
+
+
+class RecordingLock:
+    """A lock that only counts how many times it is held and how deep."""
+
+    def __init__(self) -> None:
+        self.depth = 0
+        self.taken = 0
+
+    def __enter__(self) -> None:
+        self.depth += 1
+        self.taken += 1
+
+    def __exit__(
+        self,
+        kind: type[BaseException] | None,
+        error: BaseException | None,
+        trace: TracebackType | None,
+    ) -> None:
+        self.depth -= 1

@@ -34,7 +34,6 @@ from rdf_persistence.core.domain.exceptions import (
     UnknownRole,
 )
 from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
@@ -64,12 +63,12 @@ from tests.toy import (
     toy_mapper,
 )
 from tests.unit.activity_helpers import stored_graph
+from tests.unit.collaboration.collaboration_data import has_entry
 
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 S1 = shelf_iri(1)
 VIEW = load_schema(TOY_SCHEMA)
 T0 = datetime(2026, 11, 14, 9, tzinfo=UTC)
-ENTRY = "ASK { GRAPH $registry { $graph ?p ?o } }"
 PROVENANCE = URIRef(DEFAULT_IRIS.provenance(TENANT))
 NEW_ACTIVITY = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c0aa"
 
@@ -152,13 +151,6 @@ async def version(session: Session, iri: str) -> str:
 
 async def comments_on(session: Session, iri: str) -> list[str]:
     return sorted(await session.graphs_with(v.HAS_TARGET, URIRef(iri)))
-
-
-async def has_entry(store: FakeStore, iri: str) -> bool:
-    text = fill(
-        ENTRY, registry=term(DEFAULT_IRIS.registry(TENANT)), graph=term(URIRef(graph_of(iri)))
-    )
-    return bool((await store.query(FAKE_DATABASE, text)).askAnswer)
 
 
 def before(store: FakeStore, operation: str, action, when: str = "") -> None:

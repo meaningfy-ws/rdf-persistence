@@ -5,35 +5,15 @@ spy that notes the depth at the moment it runs, then parses for real.
 """
 
 from collections.abc import Callable
-from types import TracebackType
 from typing import Any
 
 import pytest
 
 from rdf_persistence.core.domain import sparql_parsing
+from tests.unit.builders import RecordingLock
 
 QUERY = "SELECT ?s WHERE { ?s ?p ?o }"
 UPDATE = "INSERT DATA { <urn:a> <urn:b> <urn:c> }"
-
-
-class RecordingLock:
-    """A lock that only counts how many times it is held and how deep."""
-
-    def __init__(self) -> None:
-        self.depth = 0
-        self.taken = 0
-
-    def __enter__(self) -> None:
-        self.depth += 1
-        self.taken += 1
-
-    def __exit__(
-        self,
-        kind: type[BaseException] | None,
-        error: BaseException | None,
-        trace: TracebackType | None,
-    ) -> None:
-        self.depth -= 1
 
 
 @pytest.fixture

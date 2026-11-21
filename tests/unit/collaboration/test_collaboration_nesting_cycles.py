@@ -4,33 +4,18 @@ import pytest
 
 from rdf_persistence import Conflict, InvalidBody
 from rdf_persistence.testkit import FakeStore, fake_session
-from tests.toy import TENANT, shelf, shelf_iri, toy_mapper
-from tests.unit.collaboration.test_write_guards import guards, save, version_of
+from tests.toy import TENANT, shelf, shelf_iri
+from tests.unit.collaboration.collaboration_data import (
+    chain,
+    guards,
+    nesting,
+    replace,
+    replace_in,
+    save,
+    version_of,
+)
 
 X, Y, Z = shelf_iri(1), shelf_iri(2), shelf_iri(3)
-
-
-def nesting(iri: str, *members: str):
-    """A shelf that nests the given shelves."""
-    return shelf(iri, nests=True).model_copy(update={"has_part": list(members) or None})
-
-
-async def replace_in(session, t, *shelves) -> None:
-    """Collect, in the transaction ``t``, the replacement of each stored shelf by ``shelves``."""
-    for each in shelves:
-        triples = toy_mapper().to_triples(each)
-        await t.replace_graph(str(each.id), triples, await version_of(session, str(each.id)))
-
-
-async def replace(session, *shelves) -> None:
-    async with session.transaction() as t:
-        await replace_in(session, t, *shelves)
-
-
-async def chain(session, length: int) -> None:
-    """Store ``length`` nesting shelves, each one naming the one stored before it."""
-    for n in range(1, length + 1):
-        await save(session, nesting(shelf_iri(n), *([shelf_iri(n - 1)] if n > 1 else [])))
 
 
 # (the length of the chain, the number of collections the refusal counts between the two ends).

@@ -8,12 +8,12 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import fake_session
 from tests.toy import MODULES, TENANT, TOY_SCHEMA, book_iri, shelf_iri, toy_mapper
-from tests.unit.collaboration.test_collaboration_cascade import stored
-from tests.unit.collaboration.test_collaboration_collections import a_shelf as plain_shelf
-from tests.unit.collaboration.test_collaboration_collections import (
+from tests.unit.collaboration.collaboration_data import a_shelf as plain_shelf
+from tests.unit.collaboration.collaboration_data import (
     as_ada,
     as_bob_without,
-    put,
+    cascade_stored,
+    collections_put,
     put_book,
 )
 
@@ -38,9 +38,9 @@ async def three_levels(session) -> None:
     """L1 holds b0 and L2; L2 holds b1 and L3; L3 holds b2."""
     for iri in (B0, B1, B2):
         await put_book(session, iri)
-    await put(session, nesting(L3, B2))
-    await put(session, nesting(L2, B1, L3))
-    await put(session, nesting(L1, B0, L2))
+    await collections_put(session, nesting(L3, B2))
+    await collections_put(session, nesting(L2, B1, L3))
+    await collections_put(session, nesting(L1, B0, L2))
 
 
 async def test_a_deep_read_lists_the_items_of_every_level_and_no_sub_collection(
@@ -79,8 +79,8 @@ async def test_a_deep_read_counts_an_unreadable_sub_collection_and_does_not_ente
 async def test_an_item_named_at_two_levels_is_listed_and_counted_once(guarded, collaboration):
     for iri in (B1, B2):
         await put_book(guarded, iri)
-    await put(guarded, nesting(L2, B1, B2))
-    await put(guarded, nesting(L1, B1, L2))
+    await collections_put(guarded, nesting(L2, B1, B2))
+    await collections_put(guarded, nesting(L1, B1, L2))
     visible = await as_ada(collaboration, guarded).members(L1, deep=True)
     assert visible.member_iris == sorted([B1, B2]), "b1 is at two levels, listed once"
     hidden = await as_bob_without(collaboration, guarded, B1).members(L1, deep=True)
@@ -98,21 +98,21 @@ async def test_a_cascade_of_a_nesting_shelf_deletes_the_sub_shelf_and_keeps_its_
 ):
     for iri in (B0, B1):
         await put_book(guarded, iri)
-    await put(guarded, nesting(L2, B1))
-    await put(guarded, nesting(L1, B0, L2))
+    await collections_put(guarded, nesting(L2, B1))
+    await collections_put(guarded, nesting(L1, B0, L2))
     version = (await guarded.get_graph(L1))[2]
     await as_ada(collaboration, guarded).delete_cascade(L1, version)
-    assert not any([await stored(guarded, i) for i in (L1, L2, B0)]), (
+    assert not any([await cascade_stored(guarded, i) for i in (L1, L2, B0)]), (
         "the shelf, its sub-shelf and its book"
     )
-    assert await stored(guarded, B1), "the book of the sub-shelf stays"
+    assert await cascade_stored(guarded, B1), "the book of the sub-shelf stays"
 
 
 async def test_a_deep_read_refuses_a_stored_nested_shelf_of_another_member_class(
     toy_session, collaboration
 ):
     """Written without guards: the nested shelf holds authors, the nesting one holds books."""
-    await put(toy_session, plain_shelf(L2, member_class="Author"))
-    await put(toy_session, nesting(L1, L2))
+    await collections_put(toy_session, plain_shelf(L2, member_class="Author"))
+    await collections_put(toy_session, nesting(L1, L2))
     with pytest.raises(StoredDataInvalid, match=L2):
         await as_ada(collaboration, toy_session).members(L1, deep=True)

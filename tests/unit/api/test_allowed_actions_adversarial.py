@@ -14,11 +14,10 @@ from rdf_persistence.core.domain.exceptions import StoreUnavailable
 from rdf_persistence.core.domain.media import JSON, JSON_LD, TURTLE
 from rdf_persistence.iris.domain.layout import graph_iri
 from tests.toy_service import DUNE_BODY, principal_of
-from tests.unit.api.scene import Scene
-from tests.unit.api.test_router import _everyone_has_a_role
+from tests.unit.api.scene import Scene, everyone_has_a_role
 
 ROOT_BODY = {"label": "Ghent", "description": "d", "city": "c"}
-# who -> (subject, global roles); mia is the member [read, modify, delete] of _everyone_has_a_role
+# who -> (subject, global roles); mia is the member [read, modify, delete] of everyone_has_a_role
 WHO: dict[str, tuple[str, tuple[str, ...]]] = {
     "ada": ("ada", ()),
     "mia": ("mia", ()),
@@ -97,7 +96,7 @@ CASES: dict[str, tuple[str, list[Callable[[Scene], Prohibition]]]] = {
 
 async def _set_up(scene: Scene, case: str) -> str:
     who, bans = CASES[case]
-    await _everyone_has_a_role(scene, *(ban(scene) for ban in bans))
+    await everyone_has_a_role(scene, *(ban(scene) for ban in bans))
     return who
 
 
@@ -130,7 +129,7 @@ async def test_a_listed_action_is_allowed_and_an_unlisted_one_is_refused(
 async def test_deleting_the_tenant_is_allowed_exactly_when_the_tenant_read_lists_delete(
     scene, who
 ) -> None:
-    await _everyone_has_a_role(scene)
+    await everyone_has_a_role(scene)
     listed = await _listed(await scene.http.get(scene.tenant, headers=_as(scene, who)))
     etag = await _fresh_access_etag(scene)
     refused = await scene.http.delete(scene.tenant, headers=_as(scene, who, **{"If-Match": etag}))
@@ -140,7 +139,7 @@ async def test_deleting_the_tenant_is_allowed_exactly_when_the_tenant_read_lists
 
 
 async def test_the_actions_come_in_the_documented_order(scene) -> None:
-    await _everyone_has_a_role(scene)
+    await everyone_has_a_role(scene)
     listed = await _listed(await scene.http.get(scene.tenant, headers=_as(scene, "ada")))
     assert listed == ROUTED, (
         "read, modify, delete, administer; the librarian role names no annotate"
@@ -148,7 +147,7 @@ async def test_the_actions_come_in_the_documented_order(scene) -> None:
 
 
 async def test_the_header_never_repeats_or_invents_an_action(scene) -> None:
-    await _everyone_has_a_role(scene)
+    await everyone_has_a_role(scene)
     for who in WHO:
         listed = await _listed(await scene.http.get(scene.tenant, headers=_as(scene, who)))
         assert len(set(listed)) == len(listed), f"{who}: no repeat in {listed}"
@@ -193,7 +192,7 @@ async def test_a_prohibition_aimed_at_another_book_leaves_this_book_alone(scene)
         f"{scene.tenant}/books", json=DUNE_BODY, headers=scene.headers("ada")
     )
     other_graph = str(graph_iri(other.json()["id"]))
-    await _everyone_has_a_role(
+    await everyone_has_a_role(
         scene, Prohibition(assignee=principal_of("mia"), target=other_graph, action=Action.MODIFY)
     )
     mine = await scene.http.get(scene.book, headers=_as(scene, "mia"))
@@ -206,7 +205,7 @@ async def test_a_prohibition_aimed_at_another_book_leaves_this_book_alone(scene)
 async def test_a_prohibition_of_read_on_the_tenant_refuses_the_read_and_the_listing_hides_it(
     scene,
 ) -> None:
-    await _everyone_has_a_role(scene, _ban("mia", _tenant, Action.READ)(scene))
+    await everyone_has_a_role(scene, _ban("mia", _tenant, Action.READ)(scene))
     refused = await scene.http.get(scene.tenant, headers=_as(scene, "mia"))
     assert refused.status_code == 403, "refused"
     assert ALLOWED_ACTIONS not in refused.headers, "no header on a refusal"
@@ -237,7 +236,7 @@ async def test_the_listing_item_equals_the_tenant_read_header(scene, case) -> No
 
 
 async def test_the_tenant_listing_answers_the_same_items_whatever_the_accept(scene) -> None:
-    await _everyone_has_a_role(scene)
+    await everyone_has_a_role(scene)
     bodies = []
     for accept in (JSON, JSON_LD):
         response = await scene.http.get("/libraries", headers=_as(scene, "mia", Accept=accept))
@@ -266,7 +265,7 @@ async def test_a_tenant_being_deleted_is_gone_from_the_listing_and_the_read(
 @pytest.mark.parametrize("accept", [JSON, JSON_LD, TURTLE])
 @pytest.mark.parametrize("on", ["book", "tenant"])
 async def test_every_representation_of_a_read_carries_the_header(scene, accept, on) -> None:
-    await _everyone_has_a_role(scene)
+    await everyone_has_a_role(scene)
     target = scene.book if on == "book" else scene.tenant
     response = await scene.http.get(target, headers=_as(scene, "mia", Accept=accept))
     assert response.status_code == 200, response.text
