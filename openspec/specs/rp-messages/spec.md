@@ -4,7 +4,9 @@
 What a commit records of itself and who hears of it: one PROV activity per commit, kept as the
 audit trail, and an in-process message bus that sends a command to the handler of its nearest
 class and hands each committed activity to the observers of its class and every ancestor.
+
 ## Requirements
+
 ### Requirement: Every commit records one activity with its PROV events
 
 Every successful commit to a tenant database or to the application database SHALL record, in the
@@ -118,9 +120,11 @@ no aggregate root.
 A command's record (a `Served`) SHALL carry only statements about its own activity or about blank
 nodes, and SHALL be refused when it carries a statement about another subject that is not a blank
 node, a type, a slot the session fills, an IRI that is not a `urn:uuid:` UUID, or a class the schema
-does not have. A `Served` SHALL serve one commit and SHALL be spent by a refused or an empty one; a
-second commit serving it SHALL be refused. A unit of work in batch mode SHALL record one activity
-per batch.
+does not have. A `Served` SHALL serve one commit: it SHALL be spent when its commit's request is
+sent, whether the store accepts or refuses it, and a second commit serving it SHALL be refused. A
+commit that sends nothing (an empty one) SHALL NOT spend it, so a helper that commits before there is
+anything to write does not use up its command. A unit of work in batch mode SHALL record one
+activity per batch.
 
 #### Scenario: a statement about another resource
 - **GIVEN** a `ShelveBooks` record that also states a title for a book that is not a blank node
@@ -131,6 +135,11 @@ per batch.
 - **GIVEN** a `ShelveBooks` record that ada's commit served and that was refused as a conflict
 - **WHEN** a second commit serves the same record
 - **THEN** it is refused
+
+#### Scenario: an empty commit spends nothing
+- **GIVEN** a `ShelveBooks` handler whose unit of work commits once with nothing to write
+- **WHEN** it then adds a book and commits again
+- **THEN** the second commit is recorded as the command, once
 
 #### Scenario: a batched unit of work
 - **GIVEN** a unit of work in batch mode that adds two batches of books, with no command
@@ -147,4 +156,3 @@ observer of a commit made outside a `handle` call SHALL NOT be able to send a co
 - **GIVEN** an observer of `ShelveBooks` that sends a `ShelveBooks` command
 - **WHEN** a `ShelveBooks` command is handled
 - **THEN** the call stops with an error naming the limit
-

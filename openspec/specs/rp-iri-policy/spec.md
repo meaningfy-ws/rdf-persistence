@@ -4,7 +4,9 @@
 How the toolkit mints, matches and parses every IRI it makes (tenants, aggregates, parts, loaded
 graphs, access records, meta and registry graphs, principals) from a configured policy, and why a
 policy cannot change once a deployment has data. From change `iri-policy` (#26).
+
 ## Requirements
+
 ### Requirement: Without a policy, IRIs are today's
 
 When `ServiceSettings` sets no `iri_policy`, the toolkit SHALL mint and accept exactly the IRIs and
@@ -167,7 +169,7 @@ length. They SHALL be refused with `InvalidIri` by `check_iri_policy`, which the
 is built and which a caller may run on the settings alone. A schema SHALL fail generation when two classes share an `rp_iri_type`
 or one equals a reserved word. Building the service's `Iris` SHALL refuse a policy whose access,
 meta, registry or provenance IRI, for the same tenant, equals another of them or the tenant IRI, or reads as an
-aggregate or loaded graph. The provenance template defaults to `{tenant}/provenance`.
+aggregate or loaded graph of that tenant. The provenance template defaults to `{tenant}/provenance`.
 
 #### Scenario: a template without its id
 - **WHEN** settings are made with aggregate template `{base}{tenant_id}/{type}`
@@ -225,4 +227,3 @@ to one with the default.
 - **GIVEN** a tenant dump whose manifest predates the `application` template
 - **WHEN** it is restored on a service with the default `application` template
 - **THEN** the policy check of the restore passes
-

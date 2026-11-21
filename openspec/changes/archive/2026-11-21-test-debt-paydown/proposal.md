@@ -89,7 +89,8 @@ domain test kills. The `rp-messages` spec also contradicts the code on empty com
 
 ## Delivered (reconciled 2026-11-21, P-0004)
 
-One pull request, `change/test-debt-paydown-build` (DEC-2, PD-14), PR: see the merge record below.
+One pull request, `change/test-debt-paydown-build` (DEC-2, PD-14): #265, merged on green CI at
+ad85eddd on 2026-11-21. Accepted by the owner on 2026-11-21 ("yes archive and clean up").
 
 | Shape | Delivered | Differs, and why |
 |---|---|---|
