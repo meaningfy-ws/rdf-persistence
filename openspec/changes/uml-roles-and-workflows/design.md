@@ -355,5 +355,18 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
   changes PD-4. Kept as decided until the developer says otherwise. (b) L2 W5: no roles or
   workflow file has yet been written from the consumer's model (D-8); the EPIC merges with that
   open, and the rerun after the consumer's boundary fix is in the hand-over.
+- **D-12 answered (developer, 2026-11-21).** (a) A follow-up issue adds the library's whole-model
+  workflow check to `write`; PD-4 stands for this EPIC. (b) Both stages merge now; the
+  real-model rerun is an open item of the hand-over.
+- **D-13 The how-to page (cold reader, developer: fix now).** The cold reader could not follow
+  `howto/uml-to-linkml.adoc` from roles and workflows to a running service: RISK-3's note says
+  both "together" and "first", and no example goes from `rp-uml2linkml` to a full
+  `install_service(...)` call. One docs fixer: the note says one run whose `--package` holds both
+  the roles' and the workflows' packages; an end-to-end example (command, files written,
+  `rp-generate`, the `install_service` call with its import, and the order); then the full gates
+  once (`make check-all`, `check-diagrams`).
+- **D-14 Nesting and `member_class` (developer).** Beside this EPIC: a reference collection's
+  `dct:hasPart` role to its own class should also fix `member_class` to that class, as the
+  toolkit's `ReferenceCollection` description says; a follow-up issue (#241's converter).
 - **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
   order holds and the consumer may convert its access package.
