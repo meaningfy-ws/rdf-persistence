@@ -8,7 +8,7 @@ mark, offer to the hub. A failed publish stops that database for the round, so n
 import asyncio
 import contextlib
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager
 
 from linkml_runtime.utils.schemaview import SchemaView
@@ -129,6 +129,16 @@ class Relay:
             with traced("rp.relay.round", LogContext(step="relay-round"), root=True):
                 for tenant, opener, offers in await self._targets():
                     await self._relay_database(tenant, opener, offers)
+
+    @contextlib.asynccontextmanager
+    async def paused(self) -> AsyncIterator[None]:
+        """Hold the relay still: no round runs while the block is open, so committed activities stay pending.
+
+        A wake-up during the block makes one round after it; leaving by an exception releases the relay too.
+        The lock is not reentrant: calling ``run_once()`` inside the block waits for itself and hangs.
+        """
+        async with self._lock:
+            yield
 
     async def _targets(self) -> list[tuple[str, Opener, bool]]:
         """(tenant IRI, how to open its session, whether the hub is offered its activities)."""

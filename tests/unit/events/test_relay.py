@@ -525,3 +525,63 @@ async def test_tc35_a_failed_database_is_error_the_round_is_not_and_the_next_ten
         ("rp.relay.database", world.tenant)
     ], "only the failed database's span is ERROR"
     assert classes(world, world.second) == [str(v.ADD)], "the next tenant is still relayed"
+
+
+# -- PD-2: the relay can be held still -----------------------------------------------------------
+
+
+async def _stop(task: "asyncio.Task[None]") -> None:
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+async def test_a_commit_made_while_the_relay_is_paused_stays_pending(world):
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
+    task = asyncio.create_task(relay.run())
+    try:
+        async with relay.paused():
+            await add_one(world, world.tenant)
+            relay.wake()
+            assert len(await pending(world, world.tenant)) == 1, "the commit is still pending"
+            assert sent(world, world.tenant) == [], "nothing went out while the block was open"
+    finally:
+        await _stop(task)
+
+
+async def test_the_relay_runs_the_round_that_fell_due_while_it_was_paused(world):
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
+    task = asyncio.create_task(relay.run())
+    try:
+        async with relay.paused():
+            await add_one(world, world.tenant)
+            due = await pending(world, world.tenant)
+            relay.wake()
+        await wait_until_async(
+            lambda: _truth(len(sent(world, world.tenant)) == 1),
+            "the publication",
+            poll_seconds=0.01,
+        )
+        assert [activity for _, _, activity in sent(world, world.tenant)] == due, "that commit"
+    finally:
+        await _stop(task)
+
+
+async def test_a_paused_block_that_raises_releases_the_relay(world):
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
+    task = asyncio.create_task(relay.run())
+    try:
+        with pytest.raises(RuntimeError, match="the block fails"):
+            async with relay.paused():
+                raise RuntimeError("the block fails")
+        await add_one(world, world.tenant)
+        due = await pending(world, world.tenant)
+        relay.wake()
+        await wait_until_async(
+            lambda: _truth(len(sent(world, world.tenant)) == 1),
+            "the publication",
+            poll_seconds=0.01,
+        )
+        assert [activity for _, _, activity in sent(world, world.tenant)] == due, "that commit"
+    finally:
+        await _stop(task)
