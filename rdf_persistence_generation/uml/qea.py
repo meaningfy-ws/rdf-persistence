@@ -321,10 +321,7 @@ class _Reading:
         return self.object_names.get(object_id) or str(object_id)
 
     def _packages(self) -> list[UmlPackage]:
-        packages = [self._package(row) for row in self._by_path(self.package_rows)]
-        for package in packages:
-            package.object_id = self.package_objects.get(package.package_id)
-        return packages
+        return [self._package(row) for row in self._by_path(self.package_rows)]
 
     def _outside_rows(self, links: Iterable[UmlLink]) -> list[sqlite3.Row]:
         """The classes and enumerations at the far end of a link, not converted, once each."""
@@ -346,13 +343,13 @@ class _Reading:
     def _by_path(self, rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
         return sorted(rows, key=lambda row: (self.paths[row["Package_ID"]], row["Package_ID"]))
 
-    @staticmethod
-    def _package(row: sqlite3.Row) -> UmlPackage:
+    def _package(self, row: sqlite3.Row) -> UmlPackage:
         return UmlPackage(
             package_id=row["Package_ID"],
             name=row["Name"] or "",
             parent_id=row["Parent_ID"] or None,
             note=_text(row["Notes"]),
+            object_id=self.package_objects.get(row["Package_ID"]),
         )
 
     def _second_stereotypes(self) -> dict[str, list[str]]:

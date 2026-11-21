@@ -30,11 +30,8 @@ from rdf_persistence_generation.uml.naming import (
 
 URI: Final = "uri"
 OWNED: Final = "owned"
-REFERENCE_COLLECTION: Final = (
-    "ReferenceCollection"  # the toolkit mixin whose member class a role fixes
-)
-HAS_PART: Final = "has_part"
-MEMBER_CLASS: Final = "member_class"
+HAS_PART: Final = "has_part"  # the toolkit slot of a collection's members (dcterms:hasPart)
+MEMBER_CLASS: Final = "member_class"  # the toolkit slot a reference collection's member role fixes
 MULTIPLICITY: Final = (
     "multiplicity"  # the name of the slot that carries a multiplicity's limits only
 )
@@ -582,12 +579,17 @@ def use_toolkit_slots(
     _fix_member_classes(ctx, [each for each in usages if id(each) in members], shared)
 
 
-def _is_collection(definition: ClassDefinition, by_name: Mapping[str, ClassDefinition]) -> bool:
-    """Whether the class mixes ``ReferenceCollection`` in, itself or through a domain ``is_a``."""
+def _is_collection(
+    ctx: Context, definition: ClassDefinition, by_name: Mapping[str, ClassDefinition]
+) -> bool:
+    """Whether a toolkit class the class is built on, itself or through a domain ``is_a``, has ``member_class``.
+
+    The toolkit's metamodel says which classes are reference collections, never a name here.
+    """
     seen: set[str] = set()
     current: ClassDefinition | None = definition
     while current is not None and current.name not in seen:
-        if REFERENCE_COLLECTION in current.mixins:
+        if ctx.toolkit.inherits(_toolkit_names(ctx, current), MEMBER_CLASS):
             return True
         seen.add(str(current.name))
         current = by_name.get(current.is_a) if current.is_a else None
@@ -612,7 +614,7 @@ def _member_roles(
             and slot.name == HAS_PART
             and target in by_name
             and target != usage.holder.label
-            and _is_collection(classes[usage.holder.uml_class.object_id], by_name)
+            and _is_collection(ctx, classes[usage.holder.uml_class.object_id], by_name)
         ):
             members.add(id(usage))
     return members

@@ -68,6 +68,15 @@ def _annotation_of(ctx: Context, element: UmlElement, name: str, text: str) -> A
     return None
 
 
+def package_kind(ctx: Context, package: str, written: str) -> str | None:
+    """A package's ``module_kind`` tagged value, checked like a class annotation's; None, a problem, when wrong (#245)."""
+    why = _value_problem(RpAnnotation.MODULE_KIND, written)
+    if why is None:
+        return written.lower()
+    ctx.findings.problem(UmlRule.PACKAGE_MODULE, package, why)
+    return None
+
+
 def _value_problem(tag: RpAnnotation, text: str) -> str | None:
     """What is wrong with the value, by the hard check's rule (read case-blind, as it does); None when nothing."""
     allowed = ALLOWED_ANNOTATIONS.get(tag)

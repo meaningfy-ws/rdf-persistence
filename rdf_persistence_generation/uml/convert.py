@@ -16,8 +16,6 @@ from linkml_runtime.linkml_model import (
     SchemaDefinition,
 )
 
-from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
-from rdf_persistence_generation.checks.hard import ALLOWED_ANNOTATIONS
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
@@ -53,6 +51,7 @@ from rdf_persistence_generation.uml.modules import (
     reachable,
 )
 from rdf_persistence_generation.uml.naming import title_for
+from rdf_persistence_generation.uml.tags import package_kind
 from rdf_persistence_generation.uml.slots import (
     SharedSlots,
     Usage,
@@ -70,7 +69,6 @@ LINKML_TYPES: Final = "linkml:types"
 LINKML_PREFIX: Final = ("linkml", "https://w3id.org/linkml/")
 ANNOTATIONS_IMPORT: Final = "rdf_persistence/model/rp_annotations"
 MODULE_KIND: Final = "module_kind"
-MODULE_KINDS: Final = ALLOWED_ANNOTATIONS[RpAnnotation.MODULE_KIND]  # the metamodel's ModuleKind
 DOMAIN: Final = "domain"
 DEFAULT_RANGE: Final = "string"
 
@@ -254,11 +252,12 @@ class Built:
         definitions: tuple[dict[int, ClassDefinition], dict[int, EnumDefinition]],
         shared: SharedSlots,
         slot_names: dict[int, list[str]],
+        kinds: dict[ModulePath, str],
     ) -> None:
         self.classes, self.enums = definitions
         self.shared = shared
         self.slot_names = slot_names
-        self.kinds: dict[ModulePath, str] = {}
+        self.kinds = kinds
 
 
 def _build(ctx: Context, model: UmlModel) -> tuple[list[UmlElement], list[Usage], dict[int, str]]:
@@ -298,15 +297,9 @@ def _module_kinds(ctx: Context, model: UmlModel, layout: Layout) -> dict[ModuleP
         if path is None or below_of(path) not in layout.merged:
             continue  # a package with no class has no module
         written = ctx.tags.get(package.object_id or 0, {}).get(MODULE_KIND, DOMAIN)
-        kind = written.strip().lower()
-        if kind not in MODULE_KINDS:
-            ctx.findings.problem(
-                UmlRule.PACKAGE_MODULE,
-                package.name,
-                f"{MODULE_KIND}: {kind!r} is not one of {', '.join(MODULE_KINDS)}",
-            )
-            continue
-        kinds.setdefault(layout.merged[below_of(path)], set()).add(kind)
+        kind = package_kind(ctx, package.name, written)
+        if kind is not None:
+            kinds.setdefault(layout.merged[below_of(path)], set()).add(kind)
     for module, found in kinds.items():
         if len(found) > 1:
             ctx.findings.problem(
@@ -424,9 +417,9 @@ def convert(
     layout, shared = _lay_out(ctx, elements, usages, parent_of)
     mark_abstract_roots(ctx, {usage.shape.range for usage in usages}, parent_of)
     classes = _classes(ctx, elements, usages, parent_of)
-    built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx))
+    kinds = _module_kinds(ctx, model, layout)
+    built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx), kinds)
     use_toolkit_slots(ctx, toolkit_usages, classes, shared, built.slot_names)
-    built.kinds = _module_kinds(ctx, model, layout)
     problems = ctx.findings.problems()
     if problems:
         return [], ctx.findings.report(), problems

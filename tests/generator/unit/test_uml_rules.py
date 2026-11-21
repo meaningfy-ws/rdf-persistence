@@ -2753,19 +2753,25 @@ _HAS_PART = "dct:hasPart"
 _COLLECTION_ROOT = 17  # lib:Collection, the abstract class the collections generalise
 
 
-def _shelf(*targets: int, generalised: bool = False, collection: bool = True) -> object:
+def _shelf(
+    *targets: int, generalised: bool = False, collection: bool = True, drawn: bool = False
+) -> object:
     """Shelf (a root, a reference collection when ``collection``) with a ``dct:hasPart`` role to each target.
 
-    ``generalised`` makes Shelf a collection through an abstract ``lib:Collection`` that mixes it in.
+    ``generalised`` makes Shelf a collection through an abstract ``lib:Collection`` that mixes it in;
+    ``drawn`` through a generalisation to ``rp:ReferenceCollection`` drawn outside the subtree. The
+    series is drawn outside too, a target that is not converted.
     """
     holder = _COLLECTION_ROOT if generalised else SHELF
-    tags = (tag(holder, "rp_mixins", "ReferenceCollection"),) if collection else ()
+    tagged = collection and not drawn
+    tags = (tag(holder, "rp_mixins", "ReferenceCollection"),) if tagged else ()
     parent = (klass(_COLLECTION_ROOT, "lib:Collection", abstract=True),) if generalised else ()
     roles = tuple(
         link(n, SHELF, target, target_role=_HAS_PART, target_card="0..*")
         for n, target in enumerate(targets, start=1)
     )
     is_a = (generalisation(9, SHELF, _COLLECTION_ROOT),) if generalised else ()
+    is_a += (generalisation(10, SHELF, _COLLECTION),) if drawn else ()
     return model(
         klass(SHELF, "lib:Shelf", stereotype="root"),
         klass(BOOK, "lib:Book", stereotype="root"),
@@ -2773,6 +2779,7 @@ def _shelf(*targets: int, generalised: bool = False, collection: bool = True) ->
         *parent,
         links=(*roles, *is_a),
         tags=tags,
+        **_drawn((_COLLECTION, "rp:ReferenceCollection"), (SERIES, "lib:Series")),
     )
 
 
@@ -2803,6 +2810,18 @@ ROWS_MEMBER_CLASS = [
         UmlRule.TOOLKIT_SLOT,
         _shelf(BOOK, generalised=True),
         _member_class("Book"),
+    ),
+    Row(
+        "a class that generalises a drawn rp:ReferenceCollection gets the member class too",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(BOOK, drawn=True),
+        _member_class("Book"),
+    ),
+    Row(
+        "a hasPart role to a class that is not converted is a URI, the toolkit's own range",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(SERIES),
+        _member_class(None),
     ),
     Row(
         "a hasPart role to the collection's own class (nesting) keeps today's behaviour",
@@ -2875,6 +2894,12 @@ ROWS_MODULE_KIND = [
         UmlRule.PACKAGE_MODULE,
         _kinded((_LIBRARY_ELEMENT, "access")),
         _kinds(app_library="access", app_shelves="domain"),
+    ),
+    Row(
+        "a module_kind tagged value is read case-blind, as a class annotation's is",
+        UmlRule.PACKAGE_MODULE,
+        _kinded((_LIBRARY_ELEMENT, "Access")),
+        _kinds(app_library="access"),
     ),
     Row(
         "a package with no module_kind tagged value is a domain module",

@@ -402,8 +402,8 @@ slots:
 
 A reference collection collects aggregates of one class, its member class. Draw that class as a
 `dct:hasPart` role from the collection to it. The class is a reference collection when it mixes
-`ReferenceCollection` in, by `rp_mixins` or a generalisation, or when a domain class it generalises
-does. The role uses the toolkit's `has_part`, as any toolkit slot does (<<toolkit-reuse>>). The class
+`ReferenceCollection` (or another toolkit class that brings `member_class`) in, by `rp_mixins` or a
+generalisation, or when a domain class it generalises does. The role uses the toolkit's `has_part`, as any toolkit slot does (<<toolkit-reuse>>). The class
 it points at is written as the collection's fixed `member_class`, so a collection of another class is
 refused by the generated model and by its shape. No `toolkit-slot-kept` line is written for that
 role's range, because the range is carried as the member class.
@@ -533,13 +533,17 @@ after the first package in path order, with a `merged-cycle` line in the report.
 
 [#module-kind]
 A module is annotated `module_kind: domain` unless its package has a `module_kind` tagged value,
-which is written as the annotation instead. The value is one the toolkit's metamodel lists
-(`ModuleKind`: `domain`, `technical`, `access`), and any other value fails the run
-(`[package_module] access: module_kind: 'planet' is not one of domain, technical, access`). An
+which is written as the annotation instead; a package's other tagged values are not read. The value
+is one the toolkit's metamodel lists (`ModuleKind`: `domain`, `technical`, `access`, read
+case-blind). `technical` fits only when every converted package is technical: a target generates
+one kind, so `rp-generate` refuses technical modules beside domain ones (`target_kind`). Any other
+value fails the run
+(`[package_module] access: module_kind: 'planet' is not one of ('domain', 'technical', 'access')`). An
 application's access model is a package tagged `module_kind = access` whose classes generalise
 `rp:TenantAccess`. `rp-generate`'s boundary rule then keeps the domain modules from importing it, while
 the root schema imports it like any other module. Packages written as one module (an import cycle)
-with different kinds fail the run, naming the module.
+with different kinds fail the run, naming the module
+(`[package_module] app_library: its packages are written as one module but have the kinds access and domain`).
 
 [mermaid]
 ....
@@ -643,7 +647,8 @@ the element is `--default-mixins`)
 
 |A package `module_kind` tagged value the metamodel does not list, or packages of different kinds
 that import each other
-|Use `domain`, `technical` or `access`; break the import cycle between packages of different kinds.
+|Use `domain` or `access` (`technical` only when every package is); break the import cycle between
+packages of different kinds.
 
 |A class that straddles a boundary's edge, or is inside two boundaries
 |Move it wholly inside one boundary, or wholly outside.
