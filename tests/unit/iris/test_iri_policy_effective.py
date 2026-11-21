@@ -64,6 +64,17 @@ def test_differences_are_dotted_field_names():
     )
 
 
+def test_a_part_set_in_one_policy_and_unset_in_the_other_is_one_difference():
+    """Fails if a dict on one side only is walked into (``and`` read as ``or``) instead of compared."""
+    spec = IdSpec(kind=IdKind.RANDOM, length=8)
+    assert policy_differences(IriPolicy(object_id=spec), IriPolicy()) == ["object_id"], (
+        "an id spec in the stored policy only is one difference"
+    )
+    assert policy_differences(IriPolicy(), IriPolicy(object_id=spec)) == ["object_id"], (
+        "an id spec in the configured policy only is one difference"
+    )
+
+
 # Class: every base (the IRI is the base plus a fixed segment).
 BASE = "https://a.example/"
 

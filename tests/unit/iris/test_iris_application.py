@@ -207,3 +207,48 @@ def test_tc26_the_effective_policy_holds_the_application_template() -> None:
         "the default and its spelling are one policy"
     )
     assert unset.application_template == APPLICATION, "the base is written in"
+
+
+# -- the graphs of a tenant stay apart from it, from each other and from its aggregates (PD-14d) -----
+
+GRAPH_SLOTS = ["access", "meta", "registry", "provenance"]
+
+
+@pytest.mark.parametrize("slot", GRAPH_SLOTS)
+def test_a_graph_template_that_mints_the_tenant_itself_is_refused_naming_the_graph(
+    slot: str,
+) -> None:
+    """Fails if a graph of the tenant is not checked against the tenant, or is named wrongly."""
+    with pytest.raises(InvalidIri, match=f"the {slot} template mints the same IRI as the tenant"):
+        _iris(IriPolicy(**{f"{slot}_template": "{tenant}"}))
+
+
+def test_a_graph_template_that_mints_the_tenants_iri_for_a_tenant_only_is_refused() -> None:
+    """Fails if the probe tenant is not checked (only the application is): for the application the
+    template mints ``{base}tenants/app``, which is not the application."""
+    with pytest.raises(InvalidIri, match="same IRI as the tenant"):
+        _iris(IriPolicy(provenance_template="{base}tenants/{tenant_id}"))
+
+
+def test_a_graph_template_that_mints_another_graph_is_refused_naming_both() -> None:
+    """Fails if the graphs minted so far are not remembered under their names."""
+    with pytest.raises(InvalidIri, match="the registry template mints the same IRI as the meta"):
+        _iris(IriPolicy(registry_template="{tenant}/meta"))
+
+
+def test_a_graph_template_that_reads_as_an_aggregate_of_the_tenant_is_refused() -> None:
+    """Fails if a graph IRI is not matched against the aggregate pattern and its tenant."""
+    with pytest.raises(
+        InvalidIri, match="the meta template mints an IRI that reads as an aggregate"
+    ):
+        _iris(IriPolicy(meta_template="{tenant}/meta/{tenant_id}"))
+
+
+def test_a_graph_template_that_reads_as_an_aggregate_of_another_tenant_is_accepted() -> None:
+    """Fails if any aggregate-shaped graph IRI is refused, whoever the aggregate belongs to."""
+    iris = _iris(IriPolicy(meta_template="{tenant}/a/b/{tenant_id}"))
+    tenant = iris.mint_tenant()
+    tenant_id = str(tenant).rsplit("/", 1)[1]
+    assert iris.meta(tenant) == URIRef(f"{tenant}/a/b/{tenant_id}"), (
+        "the policy is accepted and mints"
+    )

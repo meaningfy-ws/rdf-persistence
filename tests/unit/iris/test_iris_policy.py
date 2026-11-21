@@ -382,6 +382,103 @@ def test_an_iris_is_frozen(consumer):
         consumer.root_types = frozenset()
 
 
+def test_changing_the_settings_after_building_changes_nothing_that_is_minted():
+    """Fails if ``Iris`` keeps a shallow copy of the settings: the caller's nested policy would leak in."""
+    mine = _settings(_example_policy(), deployment="k3f9a2x")
+    iris = Iris(mine, ROOT_TYPES, OWNED_TYPES)
+    mine.iri_policy.aggregate_template = "{tenant}/changed/{id}"
+    assert iris.mint_aggregate(TENANT, "ontology-file", "files").startswith(
+        f"{BASE}p4x8k2m/ontology-file/"
+    ), "the policy the caller changed afterwards is not the one that mints"
+
+
+# --- what the part template writes, and what a principal is ---------------------------------------
+
+
+def test_a_default_part_template_needs_no_type():
+    assert not Iris(_settings()).part_needs_type(), "the default part IRI has no type in it"
+
+
+def test_a_part_template_that_writes_the_type_needs_one():
+    policy = IriPolicy(part_template="{root}/parts/{type}/{id}")
+    assert Iris(_settings(policy), ROOT_TYPES, OWNED_TYPES).part_needs_type(), (
+        "a part template with {type} needs the class's type"
+    )
+
+
+def test_a_principal_is_written_by_the_template_with_the_base():
+    iris = Iris(_settings(IriPolicy(principal_template="{base}people/{sub}")))
+    assert iris.principal("https://id.example.org", "a b") == URIRef(f"{BASE}people/a%20b"), (
+        "the settings' base is written into the principal template"
+    )
+
+
+def test_the_slashes_at_the_end_of_an_issuer_are_dropped_and_no_other_character():
+    principal = Iris(_settings()).principal("https://id.example.org/tenantX//", "s")
+    assert principal == URIRef("https://id.example.org/tenantX/users/s"), (
+        "only the trailing slashes of the issuer go"
+    )
+
+
+def test_a_variable_written_twice_in_a_template_must_read_the_same_twice():
+    """Fails if a repeated variable is not a backreference (the second one would match any id)."""
+    iris = Iris(
+        _settings(_example_policy(access_template="{base}acc/{tenant_id}/{tenant_id}")),
+    )
+    assert iris.tenant_of_access(f"{BASE}acc/p4x8k2m/p4x8k2m") == URIRef(TENANT), (
+        "the same id twice is the access record of that tenant"
+    )
+    with pytest.raises(InvalidIri):
+        iris.tenant_of_access(f"{BASE}acc/p4x8k2m/q4x8k2m")
+
+
+def test_what_is_minted_for_a_tenant_is_its_aggregate_whatever_the_tenant_spells(default):
+    """Fails if ``.`` in a pattern stops at a line break."""
+    tenant = f"{DEFAULT_TENANT}\nx"
+    root = default.mint_aggregate(tenant, "", "files")
+    assert default.is_aggregate(tenant, root), "an aggregate minted for a tenant is its own"
+
+
+# --- what no policy lets through --------------------------------------------------------------------
+
+
+def test_with_no_root_types_nothing_is_an_aggregate():
+    """Fails if an empty set of types matches the empty type (a ``(?:)`` alternation)."""
+    iris = Iris(_settings(_example_policy(), deployment="k3f9a2x"))
+    assert not iris.is_aggregate(TENANT, f"{BASE}p4x8k2m//a8f3k29dm4x1q"), (
+        "an aggregate IRI with no type is not one when the schema has no root types"
+    )
+
+
+def test_a_tenant_id_of_the_wrong_form_names_itself_in_the_refusal():
+    with pytest.raises(NotFound) as refused:
+        Iris(_settings()).tenant("not an id")
+    assert "not an id" in str(refused.value), "the refusal names the id it refuses"
+
+
+def test_an_aggregate_id_of_the_wrong_form_names_itself_in_the_refusal(consumer):
+    with pytest.raises(NotFound) as refused:
+        consumer.aggregate(TENANT, "ontology-file", "files", "not an id")
+    assert "not an id" in str(refused.value), "the refusal names the id it refuses"
+
+
+def test_no_id_that_is_not_reserved_is_refused_after_many_draws():
+    iris = Iris(_settings(_example_policy()), id_source=lambda spec: "library")
+    with pytest.raises(InvalidIri) as refused:
+        iris.mint_tenant()
+    assert "reserved" in str(refused.value), "the refusal says why no id came"
+
+
+def test_an_access_record_of_a_reserved_tenant_id_names_itself_in_the_refusal():
+    iris = Iris(
+        _settings(_example_policy(access_template="{base}acc/{tenant_id}"), deployment="k3f9a2x")
+    )
+    iri = f"{BASE}acc/k3f9a2x"
+    with pytest.raises(InvalidIri) as refused:
+        iris.tenant_of_access(iri)
+    assert iri in str(refused.value), "the refusal names the IRI it refuses"
+
+
 # --- a loaded graph of the tenant root (tenant-root-loads) --------------------------------------
 
 
