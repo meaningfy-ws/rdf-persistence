@@ -555,3 +555,17 @@ toolkit's run SHALL write no root module that imports every theme.
 #### Scenario: the combined shapes
 - **WHEN** the toolkit is generated
 - **THEN** `rdf_persistence/core/domain/generated/` holds one `shapes.ttl`, one `context.jsonld` and the frames, built from every domain module, with the same set of frames as before the split, the migrations lock sits beside the metamodel, and the committed files equal a regeneration
+
+### Requirement: LinkML may be generated from a UML class model
+
+The LinkML a project generates from MAY itself be written by `rp-uml2linkml` from an Enterprise
+Architect model instead of by hand. `rp-generate` SHALL treat that LinkML as any other schema: the
+same checks, the same targets and the same freshness rules, with no step that knows where the
+LinkML came from. The UML model is then the source the modellers edit, and the LinkML is
+regenerated whole from it.
+
+#### Scenario: a converted schema is generated like a hand-written one
+- **GIVEN** a project whose LinkML was written by `rp-uml2linkml`
+- **WHEN** `rp-generate` runs
+- **THEN** it applies its lint, boundary, hard and rules steps and writes its targets exactly as for
+  a hand-written schema

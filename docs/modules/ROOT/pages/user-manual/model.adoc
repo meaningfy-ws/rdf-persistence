@@ -106,6 +106,20 @@ Two classes may not share one, and `content`, `graph`, `parts`, `access`, `meta`
 are reserved by the IRI layout, so `rp-generate` refuses them. The toolkit's routes read `rp_iri_type`;
 `new_part` does not (xref:user-manual/store-and-read.adoc[Store and read aggregates]).
 
+To refuse the deletion of an aggregate while another aggregate refers to it, annotate its class
+`rp_on_referenced_delete: refuse`. `refuse` (in any case) is the only value, and `rp-generate` refuses any other
+(the problem names the class and the value). A class carries it when it or an `is_a` ancestor does;
+a class that only mixes in an annotated class does not inherit it. What a refused delete answers
+and how to handle it are in
+xref:user-manual/store-and-read.adoc#refuse-referenced[Refuse to delete an aggregate that others refer to].
+
+[source,yaml]
+----
+    annotations:
+      rp_path: authors
+      rp_on_referenced_delete: refuse        # DELETE /authors/{id} is 409 while a book refers to it
+----
+
 The root schema imports the modules. It carries a quoted `version:`, because the schema defines
 aggregate roots of its own, so its `rp-generate` entry needs `migrations`
 (xref:user-manual/generate.adoc#configure[Generate the code]); without the version the hard check

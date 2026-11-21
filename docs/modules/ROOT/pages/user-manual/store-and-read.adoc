@@ -354,6 +354,169 @@ async with kit.session(tenant, principal) as session:
         print(duplicate.key_name, duplicate.key_values, duplicate.key_roots)
 ----
 
+[#refuse-referenced]
+=== Refuse to delete an aggregate that others refer to
+
+_Books refer to an author. How do I stop the author from being deleted while a book still does?_
+Annotate the author's class `rp_on_referenced_delete: refuse` in the model
+(xref:user-manual/model.adoc[Write the model]), and regenerate (`make generate`):
+
+[source,yaml]
+----
+classes:
+  Author:
+    title: Author
+    description: A person who wrote books; an aggregate root.
+    class_uri: lib:Author
+    mixins: [AggregateRoot, Described, Tracked]
+    annotations:
+      rp_path: authors
+      rp_on_referenced_delete: refuse        # the only value, in any case; a class without it is deleted as before
+----
+
+From then on, removing an `Author` fails while any other aggregate of the tenant holds a reference
+to it, for example a book whose slot `written_by` has the author as value. A class without the
+annotation is deleted as before. A schema with no refusing class adds no query and no guard to
+a removal.
+
+*Over HTTP.* `DELETE …/authors/{id}` answers 409 with a problem of type `in-use`, and the author
+stays. The toolkit's problem handlers, which `install_service` puts on your app, map `InUse` to
+this answer: a route of yours that raises it gets the same 409 without registering anything. The
+body names the referrers the caller may read, as the kit's per-caller collaboration service does
+(see xref:howto/reverse-references.adoc[Find what refers to a resource]). In this example, the author
+is referred to by one book the caller may read and one it may not:
+
+[source,json]
+----
+{
+  "type": "https://…/problems/in-use",
+  "title": "In use",
+  "status": 409,
+  "referrers": [{"referrer": "https://…/books/b1", "referrer_class": "Book", "referrer_slot": "written_by"}],
+  "more_count": 0,
+  "hidden_count": 1
+}
+----
+
+* `referrers` holds the readable referrers, sorted by IRI, one item per referrer and slot. The
+  member is always there, and is `[]` when none is readable; `more_count` and `hidden_count` are
+  always there too, 0 when there is nothing to count.
+* `hidden_count` is the number of referrer aggregates the caller may not read. When only
+  unreadable ones refer to the author, `referrers` is `[]` and `hidden_count` is their
+  number: the caller learns that the author is in use, not by what.
+* `more_count` is the number of readable referrer aggregates left out by the cap. At most
+  `limits.max_named_referrers` aggregates are named (default 20). The cap counts referrer
+  aggregates, while `referrers` lists one item per aggregate and slot, so a book that holds the
+  author in two slots takes one place of the cap and two items. With 0, none is named and all
+  are counted in `more_count`. Set it from the composition root, like any limit
+  (xref:howto/settings.adoc[Configure the toolkit]): `LimitSettings(max_named_referrers=50)`.
+* The 409 has no `detail`, like the other 409 problems. A stale `If-Match` on the same request
+  is still 409 `conflict`, never `in-use`.
+* An HTTP answer never names what the caller may not read. `InUse` carries `filtered`, true when a
+  `readable` callable judged its referrers (it is explained under _Your own routes_). The problem
+  handlers answer a filtered `InUse` as above. An unfiltered one, raised by a removal made
+  without `readable`, is answered with `referrers: []`, `more_count: 0` and every referrer
+  aggregate counted in `hidden_count`. The generic DELETE route and `delete_cascade` pass
+  `readable`, so their answers are filtered.
+
+With no referrer, the delete answers 204 as before. The comments on the author do not count as
+referrers. A comment (see xref:howto/discussion.adoc[Comment on a resource without editing it]) is a record that depends
+on its target and is removed with it, so a stored comment never blocks the delete. Adding a comment
+on a target in the same commit that removes it is not supported today
+(https://github.com/meaningfy-ws/rdf-persistence/issues/226[issue #226]).
+
+*In code.* `session.remove` raises `InUse`, which holds the same facts (`iris`: all the refused
+roots found referenced, sorted; `referrers`: those of the first of them only, one tuple per
+referrer and slot, as on the wire). `kit` is the service kit that `install_service` returns;
+`tenant` and `principal` are the tenant id and the principal id; `author_iri` is the author's IRI
+and `version` the version you read it at (the `If-Match` value over HTTP):
+
+[source,python]
+----
+from rdf_persistence import Conflict, InUse
+
+async with kit.session(tenant, principal) as session:
+    try:
+        await session.remove(author_iri, version)
+    except InUse as refused:          # before Conflict: InUse is a subclass of it
+        print(refused.iris)           # the roots found referenced, sorted
+        print(refused.referrers)      # (referrer IRI, class name, slot name), first root only
+        print(refused.more_count, refused.hidden_count)
+    except Conflict:
+        ...                           # a stale version: read again and retry
+----
+
+A session at this level checks no access, so it has the full reach: every referrer is readable and
+`hidden_count` is 0 (`readable=None`). The principal you pass to `kit.session` is recorded, as the
+author of the commit, and does not narrow what the session reads. The generic route passes a
+`readable=` callable to `session.remove` that narrows to what the caller may read. In process,
+`InUse` names every referrer up to the cap, so `more_count` can be non-zero, and `filtered` is
+false. The same refusal applies to a `UnitOfWork` (`work.remove(author)` then `commit()`), to
+`remove_with_files` and to `delete_cascade`, because all of them end in one transaction.
+
+*Your own routes.* A route of yours that removes, through
+`kit.remove_with_files(tenant, principal, iri, if_version, *, readable=None)` or `session.remove`,
+passes `readable` to have the readable referrers named in the 409. It is an async callable
+`(iri, rows) -> set of the referrer IRIs the caller may read`; the collaboration of the caller
+provides it, as `collaboration.readable_referrers`, where `collaboration` is what the async context
+manager `kit.collaboration(checked)` yields. `checked` is the `Authorised`
+that `kit.require_aggregate` answers for the caller and the aggregate, once its token is verified
+and its roles permit the action:
+
+[source,python]
+----
+from rdf_persistence import Action
+
+checked = await kit.require_aggregate(
+    authorization, tenant_id, "authors", author_id, Action.DELETE
+)
+async with kit.collaboration(checked) as collaboration:
+    await kit.remove_with_files(
+        tenant_id, checked.principal, checked.checked_target, if_version,
+        readable=collaboration.readable_referrers,
+    )
+----
+
+Without `readable` the refusal is unfiltered, and the 409 answers `referrers: []` with every
+referrer aggregate in `hidden_count`.
+
+What to expect:
+
+* *Do not retry on `InUse`.* It is a subclass of `Conflict`, so a retry loop that catches
+  `Conflict` (<<handle-a-conflict>>) catches it too, and the retry fails the same way until the
+  referrers are gone. Catch `InUse` before `Conflict` and tell the user instead; the refused
+  delete changed nothing, so it may be tried again once the references are removed.
+* *Removing the referrer frees the author; replacing it does not.* A graph the commit removes is
+  no referrer, so removing the book and the author in one commit succeeds. A commit that replaces
+  the book without its `written_by` and removes the author is refused: the check sees the link
+  as stored. That one needs two commits: replace the book first, then delete the author. A commit
+  that adds a book referring to the author and removes the author raises `InUse` before anything
+  is sent.
+* *A collection that names the author counts.* A `ReferenceCollection` (a shelf) that holds the
+  author as a member refers to it, so `DELETE /authors/a1` is refused naming
+  `(shelf, Shelf, has_part)`. Remove the author from the shelf first.
+* *`delete_cascade` is all or nothing.* It removes a collection and its members in one
+  transaction. If a member of a refusing class is referred to from outside the cascade, the whole
+  cascade raises `InUse` (`iris` lists the refused members) and nothing is deleted. The collection
+  itself and the other members removed by the same cascade do not count as referrers.
+* *Batches are not one transaction.* With `commit(batches=True)` a unit of work that holds more
+  roots than `max_roots` (<<transaction-batches>>) sends several requests. If the author falls in
+  an earlier batch than the book that stops referring to it, that batch raises `InUse` and the
+  batches before it stay committed; its message ends with "n of m batches committed before it".
+  The unit of work keeps the rest, so fix the cause and call `commit(batches=True)` again. To
+  avoid it, put the referrers' commit before the author's, or keep the commit within `max_roots`
+  so that it is one transaction.
+* *A session you open yourself does not refuse.* `kit.session` and the generic router wire the
+  refusal. `open_session` (and `Tenancy`) refuse nothing unless you pass `removals=`, a
+  `ReferencedRemovals(view, limits)` (from `rdf_persistence.collaboration.services.referenced_removals`,
+  the object the kit builds from the schema and gives its own sessions). A session opened without
+  it deletes a referenced aggregate. In a unit test, `fake_session(..., removals=...)` of
+  `rdf_persistence.testkit` takes it the same way.
+* *The guarantee has a limit.* The check and the delete are one atomic update request, so no
+  referrer can commit between them: if no aggregate refers to the author then, it is deleted.
+  What is not blocked is a referrer written after the delete, which names an author that is
+  gone. The toolkit checks nowhere that a referenced aggregate exists, so that reference dangles.
+
 [#transaction-batches]
 === Save more than 500 aggregates
 

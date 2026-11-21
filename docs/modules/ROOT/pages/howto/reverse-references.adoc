@@ -112,12 +112,14 @@ xref:architecture/access-control.adoc[Access control and identity].
 * *The tenant root is never listed as a referrer*, even if one of its slots holds the IRI.
 * *An aggregate stored with no type is not found.* The mapper and the generic API always write the
   type; only triples written by hand can lack it.
-* *`referrers` informs; it protects nothing.* The toolkit has no referential integrity: a delete is
-  never refused because of referrers. To keep a shelf that still holds books, call `referrers`
-  in your own delete route and refuse there, also when the list is empty and `hidden_count` is
-  not 0. The answer of a delete check opens the collaboration as well: an action other than
-  `read` implies `read`. Another request can still add a reference between your check and your
-  delete; nothing locks the resource.
+* *`referrers` informs; it protects nothing.* The toolkit has no general referential integrity: a
+  delete is refused because of referrers only for a class annotated `rp_on_referenced_delete:
+  refuse` (xref:user-manual/store-and-read.adoc#refuse-referenced[Refuse to delete an aggregate
+  that others refer to]). For any other class, to keep a shelf that still holds books, call
+  `referrers` in your own delete route and refuse there, also when the list is empty and
+  `hidden_count` is not 0. The answer of a delete check opens the collaboration as well: an action
+  other than `read` implies `read`. Another request can still add a reference between your check
+  and your delete; nothing locks the resource.
 * *A graph loaded into an aggregate is not read.* Only the aggregate's own graph counts; a triple
   in RDF you loaded for it is not a reference.
 * *Narrowing compares names, exactly.* `class_name="Book"` keeps the items shown as `Book`, not
