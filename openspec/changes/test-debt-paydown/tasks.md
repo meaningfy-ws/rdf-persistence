@@ -63,7 +63,7 @@ parallel group, then runs `make refresh-map`.
   timings drops by ≥ 25 % (before and after, one checkout); the revised `test_shacl` test passes;
   a new test in `tests/unit/api/test_shacl.py`: two same-size rewrites of a shapes file in
   `tmp_path`, each `Documents` gets its own.
-- [ ] 2.5 PD-15. Accept: both delta scenarios pass as the two tests PD-15 names; the Redis test
+- [x] 2.5 PD-15. Accept: both delta scenarios pass as the two tests PD-15 names; the Redis test
   passes `poll_seconds=0.05`.
 - [ ] 2.6 Lead: the `rp-messages` delta (DEC-1) checked against `Transaction`'s docstring and
   `test_an_empty_commit_does_not_spend_the_command_for_the_real_one_after_it`

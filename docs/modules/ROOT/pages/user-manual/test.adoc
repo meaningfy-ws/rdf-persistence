@@ -168,4 +168,6 @@ Before you rely on an adapter of your own, run the testkit's conformance suites 
 `store_conformance`, `file_store_conformance` and `identity_conformance` under
 `rdf_persistence.testkit`. Each has `CASES` and a `run_case` to run one of them on your adapter.
 The toolkit runs the same suites on its fakes and on Fuseki, Garage, Zitadel and Redis in
-containers; the fourth suite, `event_bus_conformance`, is for an event bus and runs on Redis.
+containers; the fourth suite, `event_bus_conformance`, is for an event bus and runs on Redis. Its
+`run_case` takes `poll_seconds` (default `POLL_SECONDS`, one second) for every wait of the case; a
+bus that delivers within milliseconds can pass a shorter interval, such as `poll_seconds=0.05`.
