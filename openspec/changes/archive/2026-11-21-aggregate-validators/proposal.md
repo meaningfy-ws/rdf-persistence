@@ -96,7 +96,7 @@ Not breaking: the keyword is optional.
 
 ## Delivery reconciliation
 
-One stage, one PR. What was built against what this EPIC promised (P-0004):
+One stage, one PR (#266). What was built against what this EPIC promised (P-0004):
 
 | Promise | Built | State |
 |---|---|---|
