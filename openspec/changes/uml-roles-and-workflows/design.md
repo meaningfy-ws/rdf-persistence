@@ -313,5 +313,46 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
   - S2: `write`'s docstring narrows PD-8's path to a top-level name; stage 2 (2.3) widens it.
   - S3: an Object classified by a class the reader did not read is named by EA's numeric id.
   - S4: the conventions page copies the levels and actions the library defines.
+- **D-10 Full review, accepted (one fix pass).** Re-labelled Critical by the lead, each with its
+  reason:
+  - C1 (L4 W1, L4 W6, L3 S3): the workflow rule builds transitions and the workflow as bare
+    dicts and both serialisers copy the field lists by hand, though the library's generated
+    `Workflow`, `WorkflowTransition` and `RoleDefinition` exist. Reason: hard rule P-0007 and
+    AGENTS.md principle 2. Fix: build the generated models and write both files from
+    `model_dump(mode="json", exclude_defaults=True)` through one YAML helper, keeping the
+    files byte for byte as PD-6 states (key order, `comment_required` only when true).
+  - C2 (L2 W3): the reader selects Statechart diagrams by the diagram's package, but the
+    signed-off requirement reads "each Statechart diagram whose nodes are in the converted
+    packages"; an empty or foreign placeholder diagram in a converted package fails the run.
+    Reason: divergence from a signed-off requirement. Fix: a Statechart diagram is a workflow
+    when it holds at least one state node of the converted packages, wherever the diagram sits;
+    one holding none is not read. Tests: an empty Statechart in a converted package converts as
+    before; a diagram in an excluded package showing converted states is read.
+  - C3 (L2 W2): the conventions page names `workflow_transition` for a StateFlow with a name or
+    a guard, which the reader refuses as `no_rule` (PD-1). Reason: it misleads the modeller and
+    the page is edited for C2 anyway. Fix: the page's "What fails" rows and the design's error
+    matrix row say `no_rule`.
+- **D-11 Full review, under the floor** (no fix in this EPIC; follow-up candidates):
+  - L1 W1: `write` does not refuse a `files` key that leaves `--out` (safe today: names come
+    from the validated `workflow_name` and the NCName `--root-name`). L1 S1: element names go
+    unescaped into the tab-separated report.
+  - L1 S2: the library's `load_role_definitions` reads in the locale's encoding and lets
+    `UnicodeDecodeError` through; a library defect, filed as an issue of this repository, not
+    worked around in the converter.
+  - L4 W2 (two copies of the `ValidationError` formatting; no truncation), W3 / L3 S2 (one
+    constant for the output folder and the derived IRI segment), W4 (a refused role also makes
+    its transitions report "not drawn"), W5 (overloaded `drawn` names), S1–S8.
+  - L3 S1 (the writer infers each file's kind from its name).
+  - L2 W1 (gate evidence): answered by a logged `make refresh-map` on the PR's head. L2 W4 and
+    D-9 W3 (scenarios mapped at requirement level only, since a row is per test id). L2 S1,
+    S2 (spec wording of "a drawn workflow"), S3 (two untested messages), S4 (tagged values on a
+    State are neither read nor refused).
+  - D-9's stage-1 items stay under the floor; none was re-labelled.
+- **D-12 For the developer.** (a) L3 W1: PD-4 runs only the per-file loaders, so the library's
+  whole-model checks at service start (`Workflows._check`, `_by_class`) never run on the
+  converter's output; recommended: also run them in `write` when a workflow is drawn, which
+  changes PD-4. Kept as decided until the developer says otherwise. (b) L2 W5: no roles or
+  workflow file has yet been written from the consumer's model (D-8); the EPIC merges with that
+  open, and the rerun after the consumer's boundary fix is in the hand-over.
 - **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
   order holds and the consumer may convert its access package.
