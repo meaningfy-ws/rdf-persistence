@@ -150,11 +150,15 @@ def pytest_collection_modifyitems(items: list) -> None:
 
 @pytest.fixture(scope="session")
 def _span_exporter() -> InMemorySpanExporter:
-    """The one exporter of the process: the global provider is set once, and xdist workers are processes."""
+    """The exporter of this session: the global provider is set once per process (xdist workers are
+    processes), so a second session in the same process (mutmut's stats run, then its clean run) adds
+    its exporter to the provider the first one set."""
     exporter = InMemorySpanExporter()
-    provider = TracerProvider()
+    provider = trace.get_tracer_provider()
+    if not isinstance(provider, TracerProvider):
+        provider = TracerProvider()
+        trace.set_tracer_provider(provider)
     provider.add_span_processor(SimpleSpanProcessor(exporter))
-    trace.set_tracer_provider(provider)
     return exporter
 
 
