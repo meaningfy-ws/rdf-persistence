@@ -109,12 +109,19 @@ questions (each change's `inputs/qa.md`).
   `testkit.open_event_stream`. The GitHub Release tells the consumer what it gets and what to do
   (regenerate against `has_part`, raise its lock's schema version where the lock names a collection
   class) and asks it to upgrade once, for `v2-02` to `v2-05`.
+- **2026-11-21: released as 0.8.1** (PATCH; #253 the CHANGELOG, #250 the release PR; tag `v0.8.1`,
+  `main` fast-forwarded). It carries the fixes MWB2's `v2-02` phase B hit: the generator's
+  cross-module `is_a` order (#242) and library-name aliases (#243), with `rp-generate` now importing
+  its output and `--check` running mypy on it (#249); the converter's member class and `module_kind`
+  (#241, #245 part 1, #247); and #226 and #200 (#251). #249 and #251 were each green, but merged
+  together they left the rows target stale on `develop`; #255 regenerated it (P-0003). The
+  consumer moves its lock from `v0.8.0` to `v0.8.1` and regenerates.
 - **Worktrees** go in `.worktrees/` (P-0015), never beside the repository; a stage PR merges on green
   CI without waiting for the developer (P-0013).
 
 Open follow-ups, each under the floor of its review: #125 (`aggregate-events`), #189
 (`target-kind-from-the-model`), #192 (`domain-model-per-theme`). Not shaped yet; the consumer's
-upgrade to 0.8.0 is planned in MWBv2 (D-12).
+upgrade to 0.8.1 is planned in MWBv2 (D-12).
 
 ### The first consumer's needs, second wave (shaped 2026-11-21)
 
