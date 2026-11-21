@@ -32,6 +32,17 @@ def test_directory_row_gives_every_marker(directory: str, expected: set[str]) ->
     )
 
 
+def test_every_test_file_has_a_row_in_the_path_table() -> None:
+    unmarked = sorted(
+        path.relative_to(TESTS_ROOT_DIR).as_posix()
+        for path in TESTS_ROOT_DIR.rglob("test_*.py")
+        if not markers_for_path(path.as_posix())
+    )
+    assert unmarked == [], (
+        f"test files with no row in _MARKERS_BY_DIR (tests/conftest.py): {unmarked}"
+    )
+
+
 def test_path_outside_the_table_gets_no_marker() -> None:
     assert markers_for_path(f"{ROOT}/test_x.py") == (), "a path outside the table gets no marker"
 
@@ -139,8 +150,9 @@ def test_a_test_past_its_timeout_does_not_replace_the_xdist_worker(
     assert "replacing crashed worker" not in output, f"the worker was replaced: {output}"
 
 
+@pytest.mark.parametrize("workers", [(), ("-n", "2")], ids=["serial", "two-workers"])
 def test_the_hypothesis_profile_is_derandomized_under_ci(
-    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
+    pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch, workers: tuple[str, ...]
 ) -> None:
     """The root conftest loads the `ci` profile at import, so every xdist worker has it."""
     monkeypatch.setenv("CI", "1")
@@ -153,5 +165,5 @@ def test_the_hypothesis_profile_is_derandomized_under_ci(
         "    assert settings.default.derandomize, 'the profile is not derandomized'\n"
         "    assert settings.default.max_examples == 20, 'the repo ci profile is not loaded'\n"
     )
-    result = pytester.runpytest_subprocess("-p", "no:randomly", "-p", "no:cacheprovider")
+    result = pytester.runpytest_subprocess("-p", "no:randomly", "-p", "no:cacheprovider", *workers)
     result.assert_outcomes(passed=1)

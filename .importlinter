@@ -236,6 +236,21 @@ forbidden_modules =
     tests.toy
     tests.toy_service
 
+[importlinter:contract:tenant-move-test-imports-only-its-module]
+name = the tenant-move test imports the module, the iris policy and the domain, nothing else
+; It cannot join the domain-tests contract: it imports a services module and the iris policy on purpose.
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    tests.unit.tenancy.test_tenant_move
+forbidden_modules =
+    rdf_persistence.schema
+    rdf_persistence.*.adapters
+    rdf_persistence.*.entrypoints
+    rdf_persistence.testkit
+    tests.toy
+    tests.toy_service
+
 [importlinter:contract:sparql-parser-only-through-the-wrappers]
 name = nothing imports rdflib.plugins.sparql or pyshacl but the wrappers
 ; rdflib is a root package above, so its submodules can be named; indirect chains through rdflib itself

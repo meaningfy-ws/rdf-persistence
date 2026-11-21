@@ -65,6 +65,11 @@ def toy_key() -> rsa.RSAPrivateKey:
     return shared_key()
 
 
+ADA = "ada"  # the librarian who makes a tenant
+RITA = "rita"  # a reader of it
+OMAR = "omar"  # an outsider to it
+
+
 def principal_of(sub: str) -> str:
     """The principal IRI a token with ``sub`` identifies."""
     return str(DEFAULT_IRIS.principal(ISSUER, sub))
