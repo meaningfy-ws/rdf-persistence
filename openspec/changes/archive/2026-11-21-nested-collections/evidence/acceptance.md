@@ -32,4 +32,5 @@ the member class repairs it.
 
 ## Verdict
 
-Pending the developer.
+2026-11-21, the developer: "Accept, with follow-ups". The D-5 race: "File an issue". Follow-ups in
+#235 (the race, T-4..T-6, S-1, S-3, the untested cases).

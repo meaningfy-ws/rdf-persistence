@@ -70,7 +70,7 @@ MWB2 opened seven issues; each is one EPIC, in the consumer's order (D-12). The 
 | 1a | `uml-to-linkml` | MEDIUM (2 stages) | #196 | none | `v2-02` phase B, now | 8.8, accepted (R-0005); delivered 2026-11-21 (#212, #228), accepted, archived; hardening follow-up #229 |
 | 1b | `collection-has-part` | SMALL (**BREAKING**) | #199 | none | `v2-02` 2.1b, now | 9.0, delivered 2026-11-20 (#207), archived |
 | 2 | `delete-refuses-referenced` | MEDIUM (re-shaped from SMALL) | #201 | none | `v2-03` 7.1 | 8.4 → 9.2 |
-| 3 | `nested-collections` | SMALL | #198 | 1b | `v2-03` 7.2 | 8.5 → 9.1 |
+| 3 | `nested-collections` | SMALL | #198 | 1b | `v2-03` 7.2 | 8.5 → 9.1, delivered 2026-11-21 (#234), accepted, archived; follow-up #235 |
 | 4 | `unique-key-nulls-equal` | SMALL | #202 | none | `v2-04` stage C, `v2-05` 6.1 | 8.7 → 9.2, delivered 2026-11-20 (#211), archived |
 | 5 | `listing-contains-filter` | SMALL | #203 | none | `v2-05` 4.4 | 8.8, accepted (R-0005); delivered 2026-11-20 (#216), accepted, archived |
 | 6 | `testkit-event-stream` | SMALL (re-shaped from TINY) | #204 | none; before `test-debt-paydown` | not blocking | 8.5 → 9.0, delivered 2026-11-20 (#213), archived |
@@ -99,6 +99,9 @@ questions (each change's `inputs/qa.md`).
   accepted with a follow-up (#229, the review's floor) and archived; the hand-written working classes
   were decided as D-24 (generated UML records, LinkML's `SlotDefinition`). The 0.8.0 release (#210)
   is no longer held.
+- **2026-11-21:** `nested-collections` delivered (#234: the `nests` slot, the cycle check with version
+  guards a write guard relies on through `GuardContext`, deep reads of a tree), accepted with a
+  follow-up (#235: the member-class race, D-5, and the floor) and archived.
 - **Worktrees** go in `.worktrees/` (P-0015), never beside the repository; a stage PR merges on green
   CI without waiting for the developer (P-0013).
 
