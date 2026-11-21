@@ -678,6 +678,104 @@ A role definition that the toolkit would refuse stops the run, naming the Object
 converter then loads the staged file with the toolkit's `load_role_definitions`, as a last check;
 if that refuses it, the run exits 1 with the loader's message and moves nothing.
 
+[#workflows]
+=== A workflow
+
+A workflow, the states a class's objects pass through and who may move them, is drawn as an EA
+_Statechart_ diagram. Draw it so:
+
+* *The diagram.* A Statechart diagram in a converted package. Its name is the workflow's name and
+IRI. A diagram named `pfx:local` is the workflow `local` whose IRI is what `pfx` expands to, plus
+`local`; the prefix is declared in the prefixes file like any other. A diagram named without a
+prefix (`loan`) gets the IRI `schema_base` + `workflows/loan`, and one `derived-iri` report line
+says so. Choose the name before the first data is stored: renaming the diagram to a prefixed name
+later changes the workflow's IRI, which stored data refers to. The name follows the toolkit's name
+pattern: a lower-case letter, then lower-case letters, digits and `-` (`loan`, `loan-review`).
+* *The states.* One _State_ element for each state, named as the state is called, placed on the
+diagram. A state sits on exactly one Statechart diagram. A substate, a state with entry, do or exit
+behaviour, a final node or any other pseudostate is refused, not ignored.
+* *The initial state.* One _Initial_ node, and one _StateFlow_ out of it to a state of the diagram,
+with no tagged value. The state it reaches is the initial state.
+* *The transitions.* Every other _StateFlow_ between two states of the diagram, with the tagged
+values below. A flow with a name, a guard, a trigger, a stereotype or another tagged value is
+refused.
+* *The class.* A class tagged `workflow` (<<tagged-values>>) names the workflow of its objects by
+the workflow's name. When the converted packages hold a Statechart diagram, every such tag must name
+one of them; a diagram that no class names is only reported.
+
+[cols="1,4",options="header"]
+|===
+|Tagged value of a StateFlow |Value
+
+|`roles`
+|Required. Comma-separated role names; each is a `role` of a role definition drawn in the converted
+packages (<<roles>>), at any level. A role no definition draws fails the run, so draw and convert
+the roles with the workflows (xref:howto/uml-to-linkml.adoc#workflows-file[the how-to] gives the
+order).
+
+|`comment_required`
+|Optional, `true` or `false`, written exactly so. A transition that needs a comment from whoever
+takes it.
+|===
+
+The converter asks the toolkit's own `Workflow` to judge the result, so the name pattern and the
+rules of a workflow are always the toolkit's. It writes one file for each diagram, with the states
+sorted by name and the transitions by their two states, to `workflows/<name>.workflow.yaml` under
+`--out`, in the format `install_service(workflows=...)` loads, and a `workflow` report line:
+`workflow` `<diagram>` `<n> states, <m> transitions`. A model that draws no Statechart diagram
+writes no `workflows/` file. The converter moves each workflow file into `workflows/` on its own,
+so the folder may hold other files; they are kept.
+
+[mermaid]
+....
+stateDiagram-v2
+  [*] --> requested
+  requested --> approved : roles = librarian
+  requested --> refused : roles = librarian, comment_required = true
+  approved --> returned : roles = librarian, reader
+  refused --> requested : roles = reader
+....
+
+The diagram is named `lib:loan`, `lib` standing for `https://example.org/ns/library/`, and the
+roles `librarian` and `reader` are drawn as in <<roles>>. The label of an arrow lists the tagged
+values of the StateFlow. The file it becomes:
+
+[source,yaml]
+----
+# workflows/loan.workflow.yaml
+id: https://example.org/ns/library/loan
+workflow_name: loan
+workflow_states:
+- approved
+- refused
+- requested
+- returned
+initial_state: requested
+workflow_transitions:
+- from_state: approved
+  to_state: returned
+  transition_roles:
+  - librarian
+  - reader
+- from_state: refused
+  to_state: requested
+  transition_roles:
+  - reader
+- from_state: requested
+  to_state: approved
+  transition_roles:
+  - librarian
+- from_state: requested
+  to_state: refused
+  transition_roles:
+  - librarian
+  comment_required: true
+----
+
+A diagram that the toolkit would refuse stops the run, naming the element (<<fails>>). As for the
+roles, the converter then loads each staged file with the toolkit's `load_workflow`; if that
+refuses one, the run exits 1 with the loader's message and moves nothing.
+
 [#fails]
 == What fails
 
@@ -715,6 +813,34 @@ twice (`[role_definition] <object>: level: Input should be 'system', 'tenant' or
 |Two role definitions with one role and level (`[role_duplicate] <object>: <role> at <level> is also
 defined by <other>`)
 |Keep one, or give the second another level.
+
+|A Statechart diagram with no Initial node, two, or an Initial node with no flow or several leaving
+it, or one whose flow carries a tagged value (`[workflow_initial] <diagram>: ...`)
+|Draw one Initial node and one untagged flow from it to a state (<<workflows>>).
+
+|A state on no Statechart diagram or on two (`[workflow_node] <state>: ...`); a node that is a
+substate, a final node or another pseudostate, or a state with entry, do or exit behaviour
+(`[no_rule] <node>: ...`)
+|Place each state on exactly one diagram. Draw only States and one Initial node, flat.
+
+|A transition that has no `roles`, names a role no role definition draws, has a tag other than
+`roles` and `comment_required`, a `comment_required` that is not `true` or `false`, a name, a guard,
+leads into the Initial node, runs between two diagrams or repeats another between the same two
+states (`[workflow_transition] requested -> approved: roles: archivist is not drawn as a role
+definition`)
+|Fix the tagged values, or draw the role definition (<<roles>>); keep one flow between two states.
+A flow with a stereotype or a trigger, or one that reaches outside the converted packages, is
+`[no_rule]`: remove it.
+
+|A diagram whose name breaks the toolkit's name pattern, whose states repeat a name, or that the
+toolkit's `Workflow` refuses otherwise (`[workflow_definition] <diagram>: ...`); two diagrams with
+one workflow name or one IRI (`[workflow_duplicate]`)
+|Rename the diagram or the state; give each diagram its own name.
+
+|With a Statechart diagram converted, a class whose `workflow` tag names no drawn workflow
+(`[workflow_class] <class>: workflow: 'x' is drawn by no Statechart diagram`)
+|Correct the tag, or draw the workflow. With no Statechart diagram converted, the tag is written as
+it is, unchecked.
 
 |A multiplicity that is not valid: `2..1`, `a..b`
 |Write `m..n` with `m` not above `n`.

@@ -56,7 +56,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
   identical; `out/workflows/` holding another file: the new file moved in beside it (no
   `ENOTEMPTY`), `stale-file workflows/x.workflow.yaml` when a workflow is drawn, no line when none
   is. Then the per-file move in `write`.
-- [ ] 2.4 Acceptance and docs (PD-7), after 2.3. Generator feature, first: two scenarios in
+- [x] 2.4 Acceptance and docs (PD-7), after 2.3. Generator feature, first: two scenarios in
   `uml_import.feature` (a four-state, five-transition workflow accepted; an undefined role refused).
   Then the UML conventions section with a PlantUML state-diagram snippet and its file; the how-to's
   `workflows=[...]` line and RISK-3's order note. Run on the probed model, add to

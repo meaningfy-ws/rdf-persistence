@@ -146,3 +146,21 @@ Feature: A UML class model becomes LinkML that the toolkit accepts
     When the model is converted
     Then the conversion fails naming "visitor" and "planet"
     And nothing is written
+
+  # spec: rp-uml-import / a drawn workflow
+  Scenario: A drawn workflow
+    Given a Statechart diagram "lib:loan" with an Initial node, four states and five tagged transitions, and a class tagged "workflow=loan"
+    When the model is converted
+    Then the conversion succeeds
+    And the library's workflow loader reads the file "workflows/loan.workflow.yaml"
+    And the workflow has the states "approved", "refused", "requested" and "returned" and the initial state "requested"
+    And the workflow has the five transitions the diagram draws
+    And the workflow's IRI is "https://example.org/ns/library#loan"
+    And the report has a "workflow" line naming "lib:loan"
+
+  # spec: rp-uml-import / an undefined role
+  Scenario: An undefined role
+    Given a Statechart diagram "lib:loan" whose transition from "requested" to "approved" is tagged "roles=archivist", and no role definition "archivist"
+    When the model is converted
+    Then the conversion fails naming "requested -> approved" and "archivist"
+    And nothing is written
