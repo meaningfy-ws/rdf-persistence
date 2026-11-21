@@ -105,3 +105,54 @@ def lint_contracts(
         check=False,
     )
     return Linted(done.returncode, broken_in(done.stdout, contracts), done.stdout)
+
+
+# The contracts that keep a technical model out of a domain and a layer from reaching the one above it
+# (thematic-structure PD-6): `domain-never-imports-technical-models` and `layers` are gone, and these
+# take their place. The first words of each contract's `name` are what a BROKEN line carries.
+CONTRACT_DOMAIN = "domain-of-a-theme-imports-no-upper-layer"
+CONTRACT_SERVICES = "services-of-a-theme-import-no-adapters-or-entrypoints"
+CONTRACT_ENTRYPOINTS = "entrypoints-of-themes-import-no-adapters"
+CONTRACT_RUNTIME = "runtime-without-extras"
+
+SCRATCH_LAYOUT = {
+    "__init__.py": "",
+    "core/__init__.py": "",
+    "core/domain/__init__.py": "",
+    "core/domain/generated/__init__.py": "",
+    "core/domain/generated/rp_core.py": "",
+    "iris/__init__.py": "",
+    "iris/domain/__init__.py": "",
+    "iris/domain/layout.py": "",
+    "persistence/__init__.py": "",
+    "persistence/services/__init__.py": "",
+    "persistence/services/session.py": "",
+    "access/__init__.py": "",
+    "access/adapters/__init__.py": "",
+    "access/adapters/generated/__init__.py": "",
+    "access/adapters/generated/rp_access_adapters.py": "",
+    "api/__init__.py": "",
+    "api/entrypoints/__init__.py": "",
+    "api/entrypoints/router.py": "",
+    "api/entrypoints/generated/__init__.py": "",
+    "api/entrypoints/generated/rp_api_entrypoints.py": "",
+    "api/entrypoints/generated/settings/__init__.py": "",
+    "api/entrypoints/generated/settings/rp_api_settings.py": "",
+}
+KEPT_CONTRACTS = (CONTRACT_DOMAIN, CONTRACT_SERVICES, CONTRACT_ENTRYPOINTS, CONTRACT_RUNTIME)
+# the runtime contract also names the generator and test tools, which are no package of the scratch copy
+SCRATCH_OVERRIDES = {
+    CONTRACT_RUNTIME: {
+        "forbidden_modules": "\nrdf_persistence.testkit",
+        "source_modules": (
+            "\nrdf_persistence.*.domain\nrdf_persistence.*.services\nrdf_persistence.*.adapters"
+        ),
+    }
+}
+
+
+def lint_scratch(tmp_path: Path, planted: dict[str, str]) -> Linted:
+    """The kept contracts on the scratch layout: exit code, broken contracts, report."""
+    return lint_contracts(
+        tmp_path, {**SCRATCH_LAYOUT, **planted}, KEPT_CONTRACTS, SCRATCH_OVERRIDES
+    )

@@ -20,8 +20,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.pipeline import Run, render_step, stage
 
-from .test_freshness import MANIFEST, read_manifest
-from .test_generate_cli import project
+from .golden import MANIFEST, project, read_manifest
 
 VALID_PATHS = ["a.py", "a/b/c.py", ".hidden/x", "rdf_persistence/model/rp.yaml", "a..b/c", "..x"]
 INVALID_PATHS = ["", "/a", "../a", "a/../b", "a/..", "C:/a", "a\\b", "a//b", "./a", "a/", "."]

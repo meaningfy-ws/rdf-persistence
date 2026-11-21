@@ -10,7 +10,8 @@ import pytest
 
 from rdf_persistence_generation.generated.rp_generation import HardRule
 
-from .test_hard_check import DEFAULT_INSTANCE_SCHEMA, problems_of
+from .checks import DEFAULT_INSTANCE_SCHEMA
+from .checks import hard_check_problems as problems_of
 
 SCHEMA = DEFAULT_INSTANCE_SCHEMA.format(name_required="false", name_default="")
 RULE = f"[{HardRule.DEFAULT_INSTANCE.value}]"

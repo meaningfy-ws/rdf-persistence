@@ -2,7 +2,7 @@
 
 The themes keep their order and a domain reaches no technical model. These tests read ``.importlinter``
 and name the contract that does it; the themes come from
-``TURNED_ON`` of ``test_theme_layout``, so a stage that turns a theme on is checked without an edit here.
+``TURNED_ON`` of ``layout_table``, so a stage that turns a theme on is checked without an edit here.
 
 Each probe plants one import in a scratch package whose theme folders are the turned-on themes, runs the
 repository's own contract on it (copied from ``.importlinter``, re-rooted), and expects it to be named
@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from tests.unit.import_contracts import lint_contracts, run_contracts
-from tests.unit.package.test_theme_layout import TURNED_ON
+from tests.unit.layout_table import TURNED_ON
 
 ROOT = Path(__file__).resolve().parents[3]
 THEMES = tuple(sorted(TURNED_ON))

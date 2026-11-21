@@ -16,46 +16,10 @@ from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.exceptions import StepError
 from rdf_persistence_generation.generated.rp_generation import CheckProblem
 from rdf_persistence_generation.pipeline import Run, Step, generate
-
-PYPROJECT = """
-[tool.rp-generate]
-schema = "m.yaml"
-package = "app.domain.generated"
-migrations = "migrations"
-"""
-
-SCHEMA = """
-id: https://example.org/ns/m
-name: m
-title: Module
-version: "1"
-description: A module for the tests.
-prefixes:
-  tst: https://example.org/ns/m#
-  linkml: https://w3id.org/linkml/
-default_prefix: tst
-default_range: string
-imports:
-  - linkml:types
-  - rdf_persistence/model/rp_core
-  - rdf_persistence/model/rp_annotations
-classes:
-  Thing:
-    title: Thing
-    description: A thing.
-    mixins: [AggregateRoot, Described]
-    annotations:
-      rp_path: things
-"""
+from tests.generator.unit.golden import SCHEMA, project
 
 OUTPUT = Path("app/domain/generated/m.py")
 PROJECT_FILES = ["app", "m.yaml", "migrations", "pyproject.toml"]  # what a run leaves in the folder
-
-
-def project(tmp_path: Path, schema: str = SCHEMA, pyproject: str = PYPROJECT) -> Path:
-    (tmp_path / "pyproject.toml").write_text(pyproject, encoding="utf-8")
-    (tmp_path / "m.yaml").write_text(schema, encoding="utf-8")
-    return tmp_path / "pyproject.toml"
 
 
 def tree(root: Path) -> dict[Path, bytes]:

@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence.schema.services.schema_structure import generation_view
 from rdf_persistence_generation.generated.rp_generation import (
     LockChange,
     LockedClass,
@@ -12,40 +11,32 @@ from rdf_persistence_generation.generated.rp_generation import (
     LockRule,
     SchemaLock,
 )
-from rdf_persistence_generation.lock import changes, described, draft, summarise
+from rdf_persistence_generation.lock import changes, described, draft
 
 from .conftest import ROOT_SCHEMA, Breaker
+from .lock_helpers import (
+    BOOK,
+    BOOK_SLOTS,
+    DROP_SHELF,
+    ISBN,
+    ISBN_REQUIRED,
+    NEW_PATH,
+    SHELF,
+    XSD_STRING,
+    Edits,
+    lock_of,
+    locks_after,
+)
 
-BOOK = "http://purl.org/ontology/bibo/Book"
-SHELF = "https://example.org/ns/library#Shelf"
 SHELF_SLOT = "https://example.org/ns/library#shelf"
-ISBN = "http://purl.org/ontology/bibo/isbn"
-XSD_STRING = "http://www.w3.org/2001/XMLSchema#string"
 
-# (module, old, new) edits, each applied to the first match.
-Edits = tuple[tuple[str, str, str], ...]
-
-BOOK_SLOTS = "slots: [isbn, authors, published, genre, chapters, shelf, sequel_of, written_by]"
 SUBTITLE_SLOT = "slots:\n  subtitle:\n    slot_uri: lib:subtitle\n    range: string\n  isbn:"
-ISBN_DEF = "    slot_uri: bibo:isbn\n    range: string\n"
 AUTHORS_MULTI = "    slot_uri: schema:author\n    range: string\n    multivalued: true\n"
 NEW_ROOT = (
     "slots:\n  isbn:",
     "  Rack:\n    class_uri: lib:Rack\n    mixins: [AggregateRoot, Described, Tracked]\n"
     "    annotations:\n      rp_path: racks\n      database: tenant\n\nslots:\n  isbn:",
 )
-
-
-def lock_of(root: Path) -> SchemaLock:
-    return summarise(generation_view(root), root.parent)
-
-
-def locks_after(toy: Path, break_toy: Breaker, edits: Edits) -> tuple[SchemaLock, SchemaLock]:
-    """The toy's lock before and after ``edits``."""
-    before = lock_of(toy / ROOT_SCHEMA)
-    for edit in edits:
-        break_toy(*edit)
-    return before, lock_of(toy / ROOT_SCHEMA)
 
 
 def classes_of(lock: SchemaLock) -> dict[str, LockedClass]:
@@ -149,7 +140,6 @@ ADD_SUBTITLE_REQUIRED: Edits = (
     *ADD_SUBTITLE,
     ("books.yaml", "range: string\n  isbn:", "range: string\n    required: true\n  isbn:"),
 )
-ISBN_REQUIRED: Edits = (("books.yaml", ISBN_DEF, ISBN_DEF + "    required: true\n"),)
 AUTHORS_SINGLE: Edits = (
     ("books.yaml", AUTHORS_MULTI, AUTHORS_MULTI.replace("    multivalued: true\n", "")),
 )
@@ -214,8 +204,6 @@ def test_no_change_gives_no_differences(toy_copy: Path) -> None:
 
 
 # ---- TC-03: the drop draft ---------------------------------------------------------------------
-
-DROP_SHELF: Edits = (("books.yaml", "slot_uri: lib:shelf\n", "slot_uri: lib:shelfMark\n"),)
 
 
 def test_a_removed_slot_iri_is_destructive_and_drafts_a_drop(
@@ -306,7 +294,6 @@ RENAME_ROOT: Edits = (
     ("books.yaml", "  Shelf:\n    title: Shelf", "  Rack:\n    title: Shelf"),
     ("books.yaml", "range: Shelf", "range: Rack"),
 )
-NEW_PATH: Edits = (("books.yaml", "rp_path: books", "rp_path: volumes"),)
 NEW_TYPE: Edits = (("books.yaml", "rp_path: books", "rp_path: books\n      rp_iri_type: tome"),)
 NOT_OWNED: Edits = (
     (

@@ -14,8 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.package import test_theme_layout
-from tests.unit.package.test_theme_layout import MOVED_MODULES, PLACED, Placed, turned_on_pairs
+from tests.unit.layout_table import MOVED_MODULES, PLACED, Placed, turned_on_pairs
 
 ROOT = Path(__file__).resolve().parents[3]
 SCANNED = ("rdf_persistence", "rdf_persistence_generation", "tests", "docs", ".github")
@@ -34,6 +33,7 @@ SCANNED_FILES = (
 SKIPPED_SUFFIXES = frozenset({".pyc", ".png", ".svg", ".whl", ".json", ".csv", ".ico", ".lock"})
 SKIPPED_PARTS = frozenset({"__pycache__", "node_modules", ".venv", "golden", "generated"})
 THIS_FILE = "tests/unit/package/test_no_old_module_paths.py"
+TURNED_ON_TARGET = "tests.unit.layout_table.TURNED_ON"
 # Files that may name an old path: each stage that adds a shim lists the shim's test here, with the why.
 EXEMPT: frozenset[str] = frozenset(
     {
@@ -45,6 +45,8 @@ EXEMPT: frozenset[str] = frozenset(
         "rdf_persistence/testkit/guards.py",
         "tests/unit/testkit/test_guards.py",
         "tests/unit/package/test_theme_layout.py",
+        # the table of old and new paths that test reads.
+        "tests/unit/layout_table.py",
         # stage 2 (D-13 S2): the probe that an old import path is a ModuleNotFoundError names the paths
         # that never existed or are gone, which is the point of the probe; it still names
         # `rdf_persistence.domain.generated` (two lines), so it stays.
@@ -249,17 +251,17 @@ def test_a_moved_generated_module_path_is_found(tmp_path):
 
 
 def test_a_generated_module_with_a_group_still_off_is_not_scanned(monkeypatch):
-    monkeypatch.setattr(test_theme_layout, "TURNED_ON", frozenset({"persistence"}))
+    monkeypatch.setattr(TURNED_ON_TARGET, frozenset({"persistence"}))
 
     assert OLD_WIRE not in dict(moved_generated_pairs()), "access still has classes in rp_wire"
 
-    monkeypatch.setattr(test_theme_layout, "TURNED_ON", frozenset({"persistence", "access"}))
+    monkeypatch.setattr(TURNED_ON_TARGET, frozenset({"persistence", "access"}))
 
     assert OLD_WIRE in dict(moved_generated_pairs()), "every row of rp_wire is on"
 
 
 def test_the_pairs_of_a_theme_turned_on_are_its_old_and_new_paths(monkeypatch):
-    monkeypatch.setattr(test_theme_layout, "TURNED_ON", frozenset({"persistence"}))
+    monkeypatch.setattr(TURNED_ON_TARGET, frozenset({"persistence"}))
 
     pairs = dict(turned_on_pairs())
 

@@ -15,27 +15,14 @@ from rdflib import Graph
 
 from rdf_persistence import Grant, GrantSet, Page, TenantCreate, TenantSummary
 from rdf_persistence.testkit import assert_isomorphic, assert_public_imports
-from tests.e2e.world import World, running_world
-from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre, Note
+from tests.e2e.world import LIBRARIAN, World, dune, running_world
 from tests.fixtures.library.domain.generated.library import Library
 from tests.toy_service import assert_problem, body_of
 
 JSON, JSON_LD, TURTLE = "application/json", "application/ld+json", "text/turtle"
-LIBRARIAN, READER, OUTSIDER, ADMIN = "librarian", "reader", "outsider", "admin"
+READER, OUTSIDER, ADMIN = "reader", "outsider", "admin"
 SCAN_BYTES = b"%PDF-1.7 a scanned copy of Dune"
 SCAN_MEDIA_TYPE = "application/pdf"
-
-
-def dune(label: str = "Dune") -> Book:
-    note = Note.model_construct(label="Spice", description="The spice must flow.", text="Arrakis")
-    chapter = Chapter.model_construct(number=1, notes=[note])
-    return Book.model_construct(
-        label=label,
-        description="A planet.",
-        genre=Genre.FICTION,
-        authors=["Herbert"],
-        chapters=[chapter],
-    )
 
 
 @pytest.fixture

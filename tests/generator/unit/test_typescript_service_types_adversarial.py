@@ -16,8 +16,9 @@ from rdf_persistence_generation.extensions import typescript
 from rdf_persistence_generation.generated.rp_generation import GeneratedFile
 from rdf_persistence_generation.manifest import current_inputs
 
+from .checks import add_api_module
+from .checks import boundary_problems as problems_of
 from .conftest import ROOT_SCHEMA
-from .test_boundary_check import add_api_module, problems_of
 
 SERVICE_INPUT = "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml"
 EXPORT = re.compile(r'export \* from "\./(\w+)";')

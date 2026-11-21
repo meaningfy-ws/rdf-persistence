@@ -18,10 +18,8 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.manifest import recorded_path
 
-from .test_generate_cli import PYPROJECT, SCHEMA, project
+from .golden import DEFAULT_HINT, MANIFEST, NAMED, PYPROJECT, SCHEMA, check, project, read_manifest
 
-DEFAULT_HINT = "run `rp-generate` to regenerate, then commit the result"
-MANIFEST = Path("app/domain/generated/rp-manifest.json")
 OUTPUT = "app/domain/generated/m.py"
 PART = SCHEMA.replace("name: m", "name: part").replace("Thing:", "Part:").replace("things", "parts")
 NESTED = """
@@ -44,18 +42,6 @@ def generated(tmp_path: Path) -> Path:
     pyproject = project(tmp_path)
     assert main(["--project", str(pyproject)]) == 0, "the project must generate"
     return pyproject
-
-
-def read_manifest(pyproject: Path) -> GenerationManifest:
-    return GenerationManifest.model_validate_json(
-        (pyproject.parent / MANIFEST).read_text(encoding="utf-8")
-    )
-
-
-def check(pyproject: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str]:
-    capsys.readouterr()
-    code = main(["--project", str(pyproject), "--check"])
-    return code, capsys.readouterr().err
 
 
 def test_a_fresh_run_passes_the_check(generated: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -240,7 +226,6 @@ def test_nested_target_folders_keep_each_manifest_apart(tmp_path: Path) -> None:
     assert (tmp_path / "app/domain/generated/inner/rp-manifest.json").is_file(), "no inner manifest"
 
 
-NAMED = 'regenerate-command = "make generate-models"\n'
 TWO_COMMANDS = """
 [[tool.rp-generate]]
 schema = "m.yaml"

@@ -12,7 +12,7 @@ from rdf_persistence_generation.lock_step import _write_draft
 from rdf_persistence_generation.manifest import MANIFEST_NAME
 
 from .conftest import TOY, Breaker
-from .test_lock import (
+from .lock_helpers import (
     BOOK_SLOTS,
     DROP_SHELF,
     ISBN_REQUIRED,

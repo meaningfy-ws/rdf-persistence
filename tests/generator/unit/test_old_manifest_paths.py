@@ -10,9 +10,15 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence_generation.cli import main
-from tests.generator.unit.test_freshness import DEFAULT_HINT, MANIFEST, check
-from tests.generator.unit.test_freshness_plugin import INI, TEST, make_project
-from tests.generator.unit.test_generate_cli import project
+from tests.generator.unit.golden import (
+    DEFAULT_HINT,
+    INI,
+    MANIFEST,
+    TEST,
+    check,
+    make_project,
+    project,
+)
 
 NEW_PREFIX = "rdf_persistence_generation/"
 OLD_PREFIX = "rdf_persistence/generation/"

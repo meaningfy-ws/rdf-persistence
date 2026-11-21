@@ -19,7 +19,7 @@ from types import ModuleType
 import pytest
 
 import rdf_persistence
-from tests.unit.package.test_theme_layout import MOVED_MODULES, turned_on_classes, turned_on_pairs
+from tests.unit.layout_table import MOVED_MODULES, turned_on_classes, turned_on_pairs
 
 ROOT = Path(__file__).resolve().parents[3]
 SNAPSHOT = ROOT / "tests" / "fixtures" / "public-surface.json"

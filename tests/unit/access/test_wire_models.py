@@ -9,7 +9,7 @@ import ast
 from importlib import import_module
 from pathlib import Path
 
-from tests.unit.package.test_theme_layout import PACKAGE, PLACED, ROOT
+from tests.unit.layout_table import PACKAGE, PLACED, ROOT
 
 WIRE_PACKAGE = "rdf_persistence.access.adapters.generated"
 WIRE_MODULE = f"{WIRE_PACKAGE}.rp_access_adapters"

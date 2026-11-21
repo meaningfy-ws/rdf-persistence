@@ -11,7 +11,7 @@ from types import ModuleType
 
 import pytest
 
-from tests.generator.e2e.test_generated_library_served import PACKAGE, generated_toy
+from tests.generator.e2e.generated_toy import PACKAGE, generated_toy
 
 pytestmark = pytest.mark.slow
 

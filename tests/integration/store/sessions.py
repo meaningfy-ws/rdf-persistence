@@ -53,6 +53,11 @@ def keyed_book(iri: str, isbn: str | Literal) -> list:
     ]
 
 
+def title(root: str, text: str) -> list:
+    """The one triple that gives the book at ``root`` its title."""
+    return [(URIRef(root), TITLE, Literal(text))]
+
+
 def graph_of(triples: list) -> Graph:
     """A graph holding exactly ``triples``."""
     graph = Graph()

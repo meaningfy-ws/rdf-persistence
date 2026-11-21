@@ -14,12 +14,14 @@ refresh-golden`` sets it); a plain test run never writes them.
 import os
 from pathlib import Path
 
+import pytest
 from rdflib import Graph
 from rdflib.compare import graph_diff, isomorphic, to_isomorphic
 
 from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.config import read_targets
-from rdf_persistence_generation.generated.rp_generation import GenerationTarget
+from rdf_persistence_generation.generated.rp_generation import GenerationManifest, GenerationTarget
 from rdf_persistence_generation.pipeline import Run, Step
 
 from .conftest import ROOT_SCHEMA, TOY
@@ -33,6 +35,71 @@ TOY_TARGET = read_targets(TOY / "pyproject.toml")[0]
 STALE_TREE = (
     "the committed tree differs from a fresh render: run `make generate` and review the diff"
 )
+
+# --- the small generated project the generator's CLI, freshness and plugin tests share ----------
+
+PYPROJECT = """
+[tool.rp-generate]
+schema = "m.yaml"
+package = "app.domain.generated"
+migrations = "migrations"
+"""
+
+SCHEMA = """
+id: https://example.org/ns/m
+name: m
+title: Module
+version: "1"
+description: A module for the tests.
+prefixes:
+  tst: https://example.org/ns/m#
+  linkml: https://w3id.org/linkml/
+default_prefix: tst
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+classes:
+  Thing:
+    title: Thing
+    description: A thing.
+    mixins: [AggregateRoot, Described]
+    annotations:
+      rp_path: things
+"""
+
+DEFAULT_HINT = "run `rp-generate` to regenerate, then commit the result"
+MANIFEST = Path("app/domain/generated/rp-manifest.json")
+NAMED = 'regenerate-command = "make generate-models"\n'
+TEST = "def test_it():\n    assert True\n"
+INI = "[pytest]\nrp_generate_projects =\n    pyproject.toml\n    other/pyproject.toml\n"
+
+
+def project(tmp_path: Path, schema: str = SCHEMA, pyproject: str = PYPROJECT) -> Path:
+    (tmp_path / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+    (tmp_path / "m.yaml").write_text(schema, encoding="utf-8")
+    return tmp_path / "pyproject.toml"
+
+
+def make_project(folder: Path) -> Path:
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "pyproject.toml").write_text(PYPROJECT, encoding="utf-8")
+    (folder / "m.yaml").write_text(SCHEMA, encoding="utf-8")
+    assert main(["--project", str(folder / "pyproject.toml")]) == 0, "the project must generate"
+    return folder
+
+
+def read_manifest(pyproject: Path) -> GenerationManifest:
+    return GenerationManifest.model_validate_json(
+        (pyproject.parent / MANIFEST).read_text(encoding="utf-8")
+    )
+
+
+def check(pyproject: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str]:
+    capsys.readouterr()
+    code = main(["--project", str(pyproject), "--check"])
+    return code, capsys.readouterr().err
 
 
 def run_toy(step: Step, staging: Path, target: GenerationTarget = TOY_TARGET) -> Path:

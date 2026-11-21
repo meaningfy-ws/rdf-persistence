@@ -17,7 +17,22 @@ from rdf_persistence import (
 )
 from rdf_persistence.testkit import access_token
 from tests.e2e.library_app import build_library_app, library_settings
+from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre, Note
 from tests.toy_service import drop_buckets, drop_databases, unique_prefix
+
+LIBRARIAN = "librarian"
+
+
+def dune(label: str = "Dune") -> Book:
+    note = Note.model_construct(label="Spice", description="The spice must flow.", text="Arrakis")
+    chapter = Chapter.model_construct(number=1, notes=[note])
+    return Book.model_construct(
+        label=label,
+        description="A planet.",
+        genre=Genre.FICTION,
+        authors=["Herbert"],
+        chapters=[chapter],
+    )
 
 
 @dataclass(frozen=True)
