@@ -18,9 +18,9 @@ Every task: the failing test first, in the tier named; task gate `make test-chan
   `tests/unit/persistence/test_session_may_read.py`: a session opened with `may_read` exposes it;
   without, `None`. Then the keyword on `open_session`, `Tenancy.tenant_session` and the session.
   Accept: `make test-fast check-quality` green.
-- [ ] 1.4 Reader (PD-5), after 1.1 and 1.3. Unit, first, in the 1.1 file: T-6, T-7. Then the reader
+- [x] 1.4 Reader (PD-5), after 1.1 and 1.3. Unit, first, in the 1.1 file: T-6, T-7. Then the reader
   (per `prepare`, `context.collected`, `not_aggregates`, `heads`).
-- [ ] 1.5 In the guard (PD-6, PD-8, PD-9), after 1.2 and 1.4. Unit, first, same file: T-8, T-9,
+- [x] 1.5 In the guard (PD-6, PD-8, PD-9), after 1.2 and 1.4. Unit, first, same file: T-8, T-9,
   T-10, T-11, a refused add leaves no graph, a refused replace leaves the stored version, a refused
   unit-of-work commit raises `InvalidBody`. Then `WriteGuards(..., validators=)` (keyword with an
   empty default, so existing constructions in tests keep working) and the call at the end of

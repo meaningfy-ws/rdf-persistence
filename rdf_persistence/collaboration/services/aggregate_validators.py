@@ -13,9 +13,12 @@ from typing import Protocol
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
+from rdflib import RDF, URIRef
 
 from rdf_persistence.core.domain.exceptions import DatabaseGone, InvalidBody, StoreUnavailable
 from rdf_persistence.core.domain.generated.rp_core import Principal
+from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.persistence.services.session import GuardContext, Session
 from rdf_persistence.schema.services.schema_structure import (
     own_classes,
     own_schemas,
@@ -82,6 +85,19 @@ class AggregateValidators:
         rules = self._rules.get(most_specific)
         return None if rules is None else (self._names[most_specific], rules)
 
+    def reader(self, session: Session, context: GuardContext) -> AggregateReader:
+        """The reader for one write: it answers for ``session``'s caller and sees what ``context`` collected."""
+        return _Reader(session, context, self._names)
+
+    def model_class(self, type_iris: Iterable[str]) -> str | None:
+        """The class name to decode a root typed ``type_iris`` as; None when its root types name none.
+
+        None also when they lie on two lines: no single class decodes such a root.
+        """
+        types = sorted({iri for iri in type_iris if iri in self._names})
+        most_specific = self._most_specific(types)
+        return None if most_specific is None else self._names[most_specific]
+
     def _most_specific(self, types: list[str]) -> str | None:
         """The type every other one is an ancestor of; None when there is none, or no type at all."""
         return next(
@@ -92,6 +108,36 @@ class AggregateValidators:
         if any(iri in self._rules for iri in types):
             names = ", ".join(sorted(self._names[iri] for iri in types))
             raise InvalidBody(f"{root_iri} has root types on two lines: {names}")
+
+
+class _Reader:
+    """The reader of one guarded write (PD-5): built from the session, the context and the root classes."""
+
+    def __init__(self, session: Session, context: GuardContext, names: Mapping[str, str]) -> None:
+        self._session = session
+        self._context = context
+        self._names = names
+
+    async def classes_of(self, iri: str) -> frozenset[str]:
+        if self._session.not_aggregates([iri]):
+            return frozenset()  # not an aggregate IRI of the tenant: no query
+        may_read = self._session.may_read
+        if may_read is not None and not may_read(iri):
+            return frozenset()  # the same answer as for an aggregate that is not there
+        return frozenset(self._names[t] for t in await self._types(iri) if t in self._names)
+
+    async def _types(self, iri: str) -> list[str]:
+        """The type IRIs of ``iri``: as collected earlier in this transaction, else as stored."""
+        collected = self._context.collected.get(iri)
+        if collected is not None:
+            return root_types(iri, collected)
+        return [t for head in await self._session.heads([iri]) for t in head.head_types or []]
+
+
+def root_types(iri: str, triples: Iterable[Triple]) -> list[str]:
+    """The ``rdf:type`` IRIs the triples give the subject ``iri``."""
+    root = URIRef(iri)
+    return [str(o) for s, p, o in triples if s == root and p == RDF.type]
 
 
 async def run_aggregate_validators(

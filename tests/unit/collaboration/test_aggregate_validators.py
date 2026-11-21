@@ -1,23 +1,53 @@
 """Aggregate validators: registration, selection and running (aggregate-validators PD-1, PD-2, PD-3, PD-7, T-1 to T-5)."""
 
 import functools
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 import pytest
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
+from rdflib import RDF, URIRef
 
-from rdf_persistence import DatabaseGone, InvalidBody, Principal, StoreUnavailable
+from rdf_persistence import (
+    AccessRules,
+    Conflict,
+    DatabaseGone,
+    InvalidBody,
+    Principal,
+    StoreUnavailable,
+    generated_models,
+    load_role_definitions,
+)
 from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateReader,
     AggregateValidator,
     AggregateValidators,
     run_aggregate_validators,
 )
+from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
+from rdf_persistence.collaboration.services.write_guards import WriteGuards
+from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.session import GuardContext, Session, open_session
 from rdf_persistence.schema.services.schema import load_schema
-from tests.toy import ADA, TENANT, TOY_SCHEMA, shelf, shelf_iri
+from rdf_persistence.testkit import FakeStore, fake_session
+from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.toy import (
+    ADA,
+    MODULES,
+    REVIEW_WORKFLOW,
+    ROLES,
+    TENANT,
+    TOY_SCHEMA,
+    book_iri,
+    dune,
+    shelf,
+    shelf_iri,
+    toy_mapper,
+)
+from tests.unit.collaboration.collaboration_data import save
 
 FOLDER = TOY_SCHEMA.parent
 TOY_NS = "https://example.org/ns/library#"
@@ -279,3 +309,338 @@ def test_a_root_typed_on_two_lines_with_no_rule_on_either_is_not_refused(
     view, folder = shapes
     validators = AggregateValidators(view, {}, folder)
     assert validators.select("urn:s", [SHAPES_NS + "Shelf", SHAPES_NS + "Book"]) is None
+
+
+def test_the_model_class_is_the_most_specific_root_type_whatever_the_rules(
+    shapes: tuple[SchemaView, Path],
+):  # PD-6, the stored root
+    view, folder = shapes
+    validators = AggregateValidators(view, {}, folder)
+    assert (
+        validators.model_class([SHAPES_NS + "Shelf", SHAPES_NS + "SpecialShelf"]) == "SpecialShelf"
+    )
+    assert validators.model_class([SHAPES_NS + "Shelf", SHAPES_NS + "Book"]) is None, "two lines"
+    assert validators.model_class([SHAPES_NS + "Item"]) is None, "not a root"
+
+
+# The reader (PD-5: T-6, T-7)
+
+
+@asynccontextmanager
+async def reading_session(
+    store: FakeStore | None = None, *, may_read: Callable[[str], bool] | None = None
+) -> AsyncIterator[Session]:
+    """A session on a store, opened with the caller's read check (``fake_session`` does not take one)."""
+    store = store or FakeStore()
+    if FAKE_DATABASE not in await store.list_datasets():
+        await store.create_dataset(FAKE_DATABASE)
+    async with open_session(
+        store, database=FAKE_DATABASE, tenant_iri=TENANT, principal=WHO, may_read=may_read
+    ) as session:
+        yield session
+
+
+def context(collected: dict[str, list] | None = None) -> GuardContext:
+    held = {iri: tuple(triples) for iri, triples in (collected or {}).items()}
+    return GuardContext(collected=held, rely_on=lambda *_: None)
+
+
+def reader_of(session: Session, collected: dict[str, list] | None = None) -> AggregateReader:
+    return toy({}).reader(session, context(collected))
+
+
+async def store_both(session: Session) -> None:
+    for model in (shelf(shelf_iri(1)), dune(book_iri(1))):
+        await session.add_graph(str(model.id), toy_mapper().to_triples(model))
+
+
+def counting_queries(store: FakeStore) -> list[str]:
+    """Every query the store answers from now on."""
+    seen: list[str] = []
+    original = store.query
+
+    async def spy(dataset: str, text: str):
+        seen.append(text)
+        return await original(dataset, text)
+
+    store.query = spy  # type: ignore[method-assign]
+    return seen
+
+
+async def test_a_stored_aggregate_answers_with_its_own_class_not_its_ancestors():  # T-6
+    async with reading_session() as session:
+        await store_both(session)
+        reader = reader_of(session)
+        assert await reader.classes_of(shelf_iri(1)) == {"Shelf"}, "a shelf is a Shelf only"
+        assert await reader.classes_of(book_iri(1)) == {"Book"}, "a book is a Book only"
+
+
+async def test_an_aggregate_the_store_does_not_hold_answers_empty():  # T-6
+    async with reading_session() as session:
+        assert await reader_of(session).classes_of(shelf_iri(7)) == frozenset()
+
+
+async def test_a_writer_who_may_not_read_the_aggregate_gets_the_same_empty_answer_as_for_none():  # T-6
+    async with reading_session(may_read=lambda iri: False) as session:
+        await store_both(session)
+        assert await reader_of(session).classes_of(shelf_iri(1)) == frozenset(), "hidden is absent"
+
+
+async def test_the_read_check_is_asked_about_the_iri_and_a_yes_lets_the_class_through():  # T-6
+    asked: list[str] = []
+
+    def may_read(iri: str) -> bool:
+        asked.append(iri)
+        return iri == shelf_iri(1)
+
+    async with reading_session(may_read=may_read) as session:
+        await store_both(session)
+        reader = reader_of(session)
+        assert await reader.classes_of(shelf_iri(1)) == {"Shelf"}, "readable"
+        assert await reader.classes_of(book_iri(1)) == frozenset(), "not readable"
+    assert asked == [shelf_iri(1), book_iri(1)], "the check is asked once per IRI"
+
+
+@pytest.mark.parametrize("iri", ["a literal", "https://elsewhere.org/x", "not an iri at all"])
+async def test_what_is_not_an_aggregate_iri_answers_empty_without_a_query(iri: str):  # T-6
+    store = FakeStore()
+    async with reading_session(store) as session:
+        seen = counting_queries(store)
+        assert await reader_of(session).classes_of(iri) == frozenset()
+        assert seen == [], "no query for a non-aggregate"
+
+
+async def test_an_aggregate_collected_earlier_in_the_transaction_answers_with_its_root_types():  # T-6
+    triples = toy_mapper().to_triples(shelf(shelf_iri(3)))
+    store = FakeStore()
+    async with reading_session(store) as session:
+        seen = counting_queries(store)
+        reader = reader_of(session, {shelf_iri(3): triples})
+        assert await reader.classes_of(shelf_iri(3)) == {"Shelf"}
+        assert seen == [], "the collected change answers, not the store"
+
+
+async def test_an_aggregate_collected_later_is_not_visible():  # T-6
+    async with reading_session() as session:
+        reader = reader_of(session)  # the context of the change before it: nothing collected yet
+        assert await reader.classes_of(shelf_iri(3)) == frozenset()
+
+
+async def test_an_aggregate_removed_earlier_in_the_transaction_still_answers_with_its_stored_types():  # T-6
+    async with reading_session() as session:
+        await store_both(session)
+        version = (await session.get_graph(shelf_iri(1)))[2]
+        async with session.transaction() as t:
+            await t.remove(shelf_iri(1), version)
+            assert await reader_of(session).classes_of(shelf_iri(1)) == {"Shelf"}, (
+                "the store, before the commit"
+            )
+
+
+async def test_a_type_that_is_not_a_root_class_is_dropped_from_the_answer():  # T-6
+    other = URIRef("https://example.org/ns/library#Chapter")
+    triples = [
+        *toy_mapper().to_triples(shelf(shelf_iri(3))),
+        (URIRef(shelf_iri(3)), RDF.type, other),
+    ]
+    async with reading_session() as session:
+        reader = reader_of(session, {shelf_iri(3): triples})
+        assert await reader.classes_of(shelf_iri(3)) == {"Shelf"}, "Chapter is not a root"
+
+
+@pytest.mark.parametrize("error", [StoreUnavailable("down"), DatabaseGone("gone")])
+async def test_a_store_error_met_by_the_reader_passes_unwrapped(error: Exception):  # T-7
+    store = FakeStore()
+    async with reading_session(store) as session:
+
+        async def failing(dataset: str, text: str):
+            raise error
+
+        store.query = failing  # type: ignore[method-assign]
+        with pytest.raises(type(error)) as raised:
+            await reader_of(session).classes_of(shelf_iri(1))
+        assert raised.value is error, "not wrapped"
+
+
+# In the guard (PD-6, PD-8, PD-9: T-8 to T-11)
+
+REVIEW = load_workflow(REVIEW_WORKFLOW)
+DRAFT = state_iri(REVIEW, "draft")
+
+
+def guarded(
+    mapping: dict[str, Sequence[AggregateValidator]] | None, *, workflows: bool = False
+) -> WriteGuards:
+    view = load_schema(TOY_SCHEMA)
+    rules = AccessRules(load_role_definitions(ROLES))
+    kept = Workflows([REVIEW], view, rules) if workflows else None
+    return WriteGuards(
+        toy_mapper(),
+        generated_models(*MODULES),
+        Listings(view),
+        kept,
+        validators=None if mapping is None else toy(mapping),
+    )
+
+
+def no_bad_label(old: Any, new: Any, who: Any, reader: Any) -> None:
+    if new.label == "bad":
+        raise InvalidBody("no bad labels")
+
+
+def relabelled(iri: str, label: str):
+    return shelf(iri).model_copy(update={"label": label})
+
+
+async def stored_shelf(session: Session, iri: str = shelf_iri(1)) -> str:
+    """Store a shelf by the toolkit's own path, whatever the guard says; its version."""
+    await save(session, shelf(iri))
+    return (await session.get_graph(iri))[2]
+
+
+async def test_a_refused_add_leaves_no_graph():
+    async with fake_session(
+        tenant_iri=TENANT, guards=guarded({"Shelf": [no_bad_label]})
+    ) as session:
+        with pytest.raises(InvalidBody, match="no bad labels"):
+            await session.add_graph(
+                shelf_iri(1), toy_mapper().to_triples(relabelled(shelf_iri(1), "bad"))
+            )
+        assert await session.heads([shelf_iri(1)]) == [], "nothing was written"
+
+
+async def test_a_refused_replace_leaves_the_stored_version():
+    async with fake_session(
+        tenant_iri=TENANT, guards=guarded({"Shelf": [no_bad_label]})
+    ) as session:
+        version = await stored_shelf(session)
+        triples = toy_mapper().to_triples(relabelled(shelf_iri(1), "bad"))
+        with pytest.raises(InvalidBody, match="no bad labels"):
+            await session.replace_graph(shelf_iri(1), triples, version)
+        assert (await session.get_graph(shelf_iri(1)))[2] == version, "the stored version stands"
+
+
+async def test_a_refused_unit_of_work_commit_raises_invalid_body_and_writes_nothing():
+    async with fake_session(
+        tenant_iri=TENANT, guards=guarded({"Shelf": [no_bad_label]})
+    ) as session:
+        with pytest.raises(InvalidBody, match="no bad labels"):
+            await save(session, shelf(shelf_iri(2)), relabelled(shelf_iri(1), "bad"))
+        assert await session.heads([shelf_iri(1), shelf_iri(2)]) == [], "one refusal, no write"
+
+
+async def test_a_rule_sees_old_none_on_an_add_and_the_stored_aggregate_on_a_replace():
+    seen: list[tuple[Any, Any]] = []
+
+    def watch(old: Any, new: Any, who: Any, reader: Any) -> None:
+        seen.append((old, new))
+
+    async with fake_session(tenant_iri=TENANT, guards=guarded({"Shelf": [watch]})) as session:
+        version = await stored_shelf(session)
+        assert seen[0][0] is None, "an add has no old"
+        await session.replace_graph(
+            shelf_iri(1), toy_mapper().to_triples(relabelled(shelf_iri(1), "next")), version
+        )
+    old, new = seen[1]
+    assert (old.label, new.label) == ("Shelf", "next"), "old is what is stored, new what is written"
+    assert old.created is not None, "old carries tracking"
+    assert new.created is None, "new does not"
+
+
+async def test_a_rule_gets_the_principal_of_the_session_and_a_reader():
+    seen: list[Any] = []
+
+    def watch(old: Any, new: Any, who: Any, reader: Any) -> None:
+        seen.extend([who, reader])
+
+    async with fake_session(
+        tenant_iri=TENANT, principal=WHO, guards=guarded({"Shelf": [watch]})
+    ) as session:
+        await stored_shelf(session)
+    assert seen[0] == WHO, "the writer"
+    assert hasattr(seen[1], "classes_of"), "the reader"
+
+
+async def test_a_rule_reads_the_class_of_a_member_through_its_reader():
+    classes: list[frozenset[str]] = []
+
+    async def members(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        classes.extend([await reader.classes_of(i) for i in new.has_part or []])
+
+    async with fake_session(tenant_iri=TENANT, guards=guarded({"Shelf": [members]})) as session:
+        await save(session, dune(book_iri(1)))
+        await save(session, shelf(shelf_iri(1)).model_copy(update={"has_part": [book_iri(1)]}))
+    assert classes == [frozenset({"Book"})]
+
+
+async def test_a_class_without_a_rule_is_not_decoded_or_read():  # T-8
+    calls: list[str] = []
+    for mapping in (None, {}, {"Library": [no_bad_label]}):
+        async with fake_session(tenant_iri=TENANT, guards=guarded(mapping)) as session:
+            version = await stored_shelf(session)
+            for name in ("get_graph", "heads"):
+                original = getattr(session, name)
+
+                async def spy(*args: Any, _name: str = name, _original: Any = original):
+                    calls.append(_name)
+                    return await _original(*args)
+
+                setattr(session, name, spy)
+            triples = toy_mapper().to_triples(relabelled(shelf_iri(1), "next"))
+            await session.replace_graph(shelf_iri(1), triples, version)
+        calls.append("|")
+    runs = "".join(calls).split("|")
+    assert runs[0] == runs[1] == runs[2], (
+        "the same reads with no rule, none for this class, or none at all"
+    )
+
+
+async def test_a_rule_on_a_class_under_a_workflow_sees_the_state_the_guard_kept():  # T-9
+    seen: list[Any] = []
+
+    def watch(old: Any, new: Any, who: Any, reader: Any) -> None:
+        seen.append(new.workflow_status)
+
+    async with fake_session(
+        tenant_iri=TENANT, guards=guarded({"Book": [watch]}, workflows=True)
+    ) as session:
+        await save(session, dune(book_iri(1)))
+        version = (await session.get_graph(book_iri(1)))[2]
+        await session.replace_graph(
+            book_iri(1), toy_mapper().to_triples(dune(book_iri(1), chapters=1)), version
+        )
+    assert seen == [DRAFT, DRAFT], "the initial state on the add, the kept state on the replace"
+
+
+async def test_a_stored_aggregate_that_no_longer_decodes_is_a_runtime_error_naming_it():  # T-10
+    store = FakeStore()
+    async with fake_session(store, tenant_iri=TENANT) as plain:
+        # stored raw, as legacy data: a shelf with no label, which the generated class refuses
+        triples = [(URIRef(shelf_iri(1)), RDF.type, URIRef(SHELF))]
+        version = await plain.add_graph(shelf_iri(1), triples)
+    async with fake_session(
+        store, tenant_iri=TENANT, guards=guarded({"Shelf": [accepts]})
+    ) as session:
+        with pytest.raises(RuntimeError, match=f"stored {shelf_iri(1)} does not decode"):
+            await session.replace_graph(
+                shelf_iri(1), toy_mapper().to_triples(shelf(shelf_iri(1))), version
+            )
+
+
+async def test_a_new_body_that_does_not_decode_is_an_invalid_body():
+    async with fake_session(tenant_iri=TENANT, guards=guarded({"Shelf": [accepts]})) as session:
+        with pytest.raises(InvalidBody, match=shelf_iri(1)):
+            await session.add_graph(shelf_iri(1), [(URIRef(shelf_iri(1)), RDF.type, URIRef(SHELF))])
+
+
+async def test_a_stale_replace_a_rule_refuses_is_invalid_body_and_one_it_accepts_is_a_conflict():  # T-11
+    async with fake_session(
+        tenant_iri=TENANT, guards=guarded({"Shelf": [no_bad_label]})
+    ) as session:
+        await stored_shelf(session)
+        refused = toy_mapper().to_triples(relabelled(shelf_iri(1), "bad"))
+        with pytest.raises(InvalidBody, match="no bad labels"):
+            await session.replace_graph(shelf_iri(1), refused, "stale")
+        accepted = toy_mapper().to_triples(relabelled(shelf_iri(1), "fine"))
+        with pytest.raises(Conflict):
+            await session.replace_graph(shelf_iri(1), accepted, "stale")
