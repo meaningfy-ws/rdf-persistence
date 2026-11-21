@@ -93,3 +93,18 @@ class name that is not a root or a parent of a root, naming it. With no validato
 `collaboration/services/write_guards.py`, the session's opening (`persistence/services/session.py`,
 `tenancy/services/tenancy.py`), the public surface (`__init__.py`, `tests/fixtures/public-surface.json`).
 Not breaking: the keyword is optional.
+
+## Delivery reconciliation
+
+One stage, one PR. What was built against what this EPIC promised (P-0004):
+
+| Promise | Built | State |
+|---|---|---|
+| `aggregate_validators` on `install_service` and `ServiceKit` | `api/entrypoints/service.py`, `kit.py` | delivered |
+| `AggregateValidator`, `AggregateReader` exported beside `RootValidator` | `rdf_persistence/__init__.py`, public-surface fixture, reference partial | delivered |
+| Rules run in the write guard on every guarded add and replace; start-up checks the names | `collaboration/services/aggregate_validators.py`, `write_guards.py` | delivered |
+| The generic API's writes hand the caller's read check to the session | `Session.may_read`; router create/replace/tenant-root PUT, rename, `kit.collaboration` | delivered |
+| Docs: how-to on consumer rules; public API partial | `user-manual/access.adoc#aggregate-validators`, `architecture/data-flows.adoc`, `questions.adoc` | delivered |
+| DEC-5: PATCH acceptance proved with PUT | A-2 (refused replace) | delivered as decided |
+
+Deviations: none from DEC-1 to DEC-5; delivery decisions D-1 to D-6 in `design.md`.
