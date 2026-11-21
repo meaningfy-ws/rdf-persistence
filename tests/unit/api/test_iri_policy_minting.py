@@ -96,7 +96,7 @@ class RecordingTenancy:
         self.session = RecordingSession()
 
     @asynccontextmanager
-    async def tenant_session(self, tenant, principal):
+    async def tenant_session(self, tenant, principal, *, may_read=None):
         yield self.session
 
 
@@ -152,7 +152,7 @@ async def test_a_flat_object_is_stored_beside_its_part_and_its_loaded_graph():
 
     class Tenancy:
         @asynccontextmanager
-        async def tenant_session(self, tenant, principal):
+        async def tenant_session(self, tenant, principal, *, may_read=None):
             yield session
 
     body = {"label": "Dune", "description": "A planet.", "chapters": [{"number": 1}]}

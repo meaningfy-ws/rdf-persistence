@@ -147,6 +147,10 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.api.entrypoints.router import limited_body
     from rdf_persistence.api.entrypoints.service import install_service
     from rdf_persistence.api.services.file_removal import remove_with_files
+    from rdf_persistence.collaboration.services.aggregate_validators import (
+        AggregateReader,
+        AggregateValidator,
+    )
     from rdf_persistence.collaboration.services.collaboration import Collaboration
     from rdf_persistence.collaboration.services.generated.rp_collaboration_services import (
         MemberList,
@@ -281,6 +285,8 @@ _LAZY_MODULES = {
     "GrantValidator": f"{_TENANCY}.tenancy",
     "RootValidator": f"{_TENANCY}.tenancy",
     "Collaboration": f"{_COLLABORATION}.collaboration",
+    "AggregateReader": f"{_COLLABORATION}.aggregate_validators",
+    "AggregateValidator": f"{_COLLABORATION}.aggregate_validators",
     "Workflows": f"{_COLLABORATION}.workflows",
     "MessageBus": f"{_MESSAGING}.messagebus",
     "Work": f"{_MESSAGING}.messagebus",
@@ -305,7 +311,9 @@ __all__ = [
     "Activity",
     "Add",
     "AggregateKey",
+    "AggregateReader",
     "AggregateRoot",
+    "AggregateValidator",
     "Authorised",
     "BadQuery",
     "BlobEntry",

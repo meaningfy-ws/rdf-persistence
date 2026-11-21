@@ -132,6 +132,7 @@ LAYOUT: tuple[Move, ...] = (
         "workflows",
         "transitions",
         "write_guards",
+        "aggregate_validators",
         "collaboration",
     ),
     *_rows("messaging", "services", "messagebus"),

@@ -126,6 +126,12 @@ Pass `grant_validators` or `root_validators` to `install_service`; a validator r
 to refuse, the answer is 422 and nothing is written. See
 xref:user-manual/access.adoc#validators[Enforce your own rules on tenant writes].
 
+*How do I refuse a write to an aggregate that breaks a rule of my application?*::
+Pass `aggregate_validators` to `install_service`: a mapping from a class name to rules, each
+`(old, new, principal, reader)`, sync or async; a rule raises `InvalidBody` to refuse, the answer
+is 422 and nothing is written. See
+xref:user-manual/access.adoc#aggregate-validators[Enforce your own rules on aggregate writes].
+
 *How do I serve it over HTTP?*::
 Call `install_service` once in your composition root; it serves every aggregate root of the schema
 that has an `rp_path`, and returns a `ServiceKit` for your own routes. See xref:user-manual/serve.adoc[step 12] and

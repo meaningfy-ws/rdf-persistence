@@ -167,18 +167,19 @@ class DocumentApi:
         return await limited_body(request, self._kit.max_body_bytes), media_type
 
     async def create(
-        self, request: Request, caller: VerifiedCaller, tenant: str, rp_path: str
+        self, request: Request, caller: VerifiedCaller, access: CallerAccess, rp_path: str
     ) -> Response:
         media_type = accepted_media_type(request.headers.get(ACCEPT))
         data, body_type = await self._body(request)
         iri, read = await self._kit.aggregates.create(
-            tenant,
+            access.tenant,
             Principal(id=caller.principal),
             self._cls,
             rp_path,
             data,
             body_type,
             represented_as=media_type,
+            may_read=self._kit.readable_by(caller, access),
         )
         location = f"{request.url.path.rstrip('/')}/{_last_segment(iri)}"
         return await self._response(read, media_type, status=HTTPStatus.CREATED, location=location)
@@ -194,8 +195,9 @@ class DocumentApi:
         return current
 
     async def replace(
-        self, request: Request, caller: VerifiedCaller, tenant: str, iri: str
+        self, request: Request, caller: VerifiedCaller, access: CallerAccess, iri: str
     ) -> Response:
+        tenant = access.tenant
         media_type = accepted_media_type(request.headers.get(ACCEPT))
         principal = Principal(id=caller.principal)
 
@@ -204,7 +206,15 @@ class DocumentApi:
         )
         data, body_type = await self._body(request)
         read = await self._kit.aggregates.replace(
-            tenant, principal, self._cls, iri, data, body_type, expected, represented_as=media_type
+            tenant,
+            principal,
+            self._cls,
+            iri,
+            data,
+            body_type,
+            expected,
+            represented_as=media_type,
+            may_read=self._kit.readable_by(caller, access),
         )
         return await self._response(read, media_type)
 
@@ -264,7 +274,7 @@ class TenantApi:
     async def replace_root(
         self, request: Request, caller: VerifiedCaller, access: CallerAccess
     ) -> Response:
-        return await self._root.replace(request, caller, access.tenant, access.tenant)
+        return await self._root.replace(request, caller, access, access.tenant)
 
     async def listing(self, request: Request, caller: VerifiedCaller) -> Response:
         """One page of the tenants the caller may read, ordered by IRI.
@@ -324,7 +334,11 @@ class TenantApi:
         )
         update = await read_model(request, LabelUpdate, self._kit.max_body_bytes)
         version = await self._kit.tenancy.rename(
-            access.tenant, update.label, expected, Principal(id=caller.principal)
+            access.tenant,
+            update.label,
+            expected,
+            Principal(id=caller.principal),
+            may_read=self._kit.readable_by(caller, access),
         )
         summary = TenantSummary(id=access.tenant, label=update.label, state=TenantState.ACTIVE)
         return model_response(summary, version=version)
@@ -409,7 +423,7 @@ def add_aggregate_routes(
     async def create(
         request: Request, caller: VerifiedCaller = as_caller, access: CallerAccess = may_create
     ) -> Response:
-        return await api.create(request, caller, access.tenant, rp_path)
+        return await api.create(request, caller, access, rp_path)
 
     async def read(
         request: Request,
@@ -423,8 +437,7 @@ def add_aggregate_routes(
         caller: VerifiedCaller = as_caller,
         checked: Authorised = may_modify,
     ) -> Response:
-        tenant = checked.caller_access.tenant
-        return await api.replace(request, caller, tenant, checked.checked_target)
+        return await api.replace(request, caller, checked.caller_access, checked.checked_target)
 
     async def remove(
         request: Request,

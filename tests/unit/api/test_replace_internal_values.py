@@ -84,7 +84,7 @@ async def test_a_replace_keeps_the_internal_value_the_service_stored(documents: 
 
     class Tenancy:
         @asynccontextmanager
-        async def tenant_session(self, tenant, principal):
+        async def tenant_session(self, tenant, principal, *, may_read=None):
             yield session
 
     aggregates = Aggregates(documents, Tenancy())  # type: ignore[arg-type]

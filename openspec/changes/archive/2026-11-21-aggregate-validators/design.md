@@ -232,3 +232,49 @@ No `.feature` file: root-validator coverage is unit tier today, and this change 
   runs there too. Intended; documented.
 - **RISK-5**: a rule refusing the tenant root on create leaves a database and bucket for the sweep
   (PD-8). Accepted; documented with the advice to use `root_validators` for such rules.
+
+## Delivery decisions
+
+Taken by the lead during delivery (R-0007); the developer may overrule any of them.
+
+- **D-1** The reader asks `session.not_aggregates` before `may_read`, not after (PD-5's order).
+  Both answer the same empty set; this way the caller's check is never called on a literal or a
+  malformed IRI.
+- **D-2** The API tier does not test "a derived class" (A-3): the toy schema has no abstract
+  parent of a root, and adding one is a schema change for one test. The unit tier proves it (T-2,
+  T-5, on a small inline schema `Item` > `Shelf` > `SpecialShelf`). Recorded under the floor.
+- **D-3** Shapes the PLAN left open: `AggregateValidators(view, mapping, folder)` with `folder`
+  required (the root and toolkit checks need it; the kit passes `schema.parent`);
+  `select(root_iri, type_iris) -> (class name, rules) | None`; `model_class(type_iris)` for the
+  stored `old`, chosen by PD-3's rule whether or not the stored class has rules;
+  `ServiceKit.readable_by(caller, access)` builds the `may_read` the router and
+  `kit.collaboration` pass; `kit.collaboration` opens `tenancy.tenant_session(..., may_read=)`
+  directly, since `kit.session` takes no `may_read`.
+- **D-4** `install_service`'s default for `aggregate_validators` is `{}`, as `stores` already is;
+  it is never mutated.
+- **D-5** Review: one L2+L3 pass, as `tasks.md` §2 sets for this one-stage SMALL EPIC (P-0005).
+- **D-6** Four test doubles of `Tenancy.tenant_session` under `tests/unit/api` gained the
+  `may_read` keyword. Nothing flags a stale double when a port gains a keyword; a shared double is
+  a follow-up, not this EPIC.
+- **D-7** Review (one L2+L3 pass): 0 Critical, 1 Warning, 4 Suggestions. The lead raises W1 to
+  Critical C1: the reader named only the consumer's own root classes, so a readable aggregate of a
+  toolkit class (a comment) answered empty, against the spec's "SHALL give the classes of a stored
+  aggregate" and PD-5's "the view's class IRI → name map". Fixed in one pass: the reader maps over
+  every class of the view.
+- **D-8** Under the floor (not fixed in this EPIC):
+  - S1: `_decoded_stored` narrows `self._validators` with an `assert`; harmless while its one
+    caller checks first.
+  - S2: the T-6 row "a member added later in the same unit of work" is tested only as "absent"; the
+    code path is the same (nothing collected, nothing stored).
+  - S3: with an empty mapping the kit still builds `AggregateValidators`, so each guarded write
+    scans its triples for root types; no decode and no read (G-4 holds).
+  - S4: no test for a rule refusing the tenant root on create (PD-8, RISK-5); the refusal path is
+    the guard's, tested by A-7's tenant-root PUT.
+- **D-9** Automated security review flagged the reader's fail-open when a session has no
+  `may_read`. That is PD-4 and RISK-2, accepted by the owner: every HTTP write that holds a caller
+  passes `may_read` (create, replace, tenant-root PUT, rename, `kit.collaboration`), and the
+  sessions opened without it only read, remove (no rule runs), or write as the toolkit. No change.
+  It flagged too that, after C1, the reader reports any stored class, so a client might assert a
+  type to fool a rule. It cannot over HTTP: `Documents` refuses a root with an `rdf:type` outside
+  the route class's family, and a tenant session refuses application types; code that writes
+  through a unit of work is the consumer's own, trusted. No change.
