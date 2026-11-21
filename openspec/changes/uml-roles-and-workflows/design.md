@@ -302,5 +302,16 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
   no root), before any role is written. Its three role Objects are well-formed (read-only query).
   The converter is not changed for it: the consumer fixes its model, and the counts in
   `evidence/real-model-run.md` are filled from the next run (stage 2's 2.4 run repeats it).
+- **D-9 Stage 1 review (L2+L3, one pass): no Critical finding.** W1 (gate evidence) is answered by
+  a logged `make refresh-map` on HEAD `919aa2be` (exit 0, 0 unmapped) and the PR body's corrected
+  gate line. Under the floor, carried to the full review at the end of stage 2:
+  - W2: no test for a `Note=` key in a `@VAR` block, for a stray `<root>.roles.yaml` with the
+    run's own root name, or for a block with no `Variable`.
+  - W3: the scenario "an object of another class" is mapped at requirement level only.
+  - S1: task 1.1 regenerated the stale library file `rp_persistence_rows.py` (develop's freshness
+    check let it through); named in the PR body.
+  - S2: `write`'s docstring narrows PD-8's path to a top-level name; stage 2 (2.3) widens it.
+  - S3: an Object classified by a class the reader did not read is named by EA's numeric id.
+  - S4: the conventions page copies the levels and actions the library defines.
 - **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
   order holds and the consumer may convert its access package.
