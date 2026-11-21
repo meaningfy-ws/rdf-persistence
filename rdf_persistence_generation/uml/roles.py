@@ -9,7 +9,6 @@ action at all, is refused here too, naming the object.
 from collections import defaultdict
 from collections.abc import Sequence
 
-import yaml
 from pydantic import ValidationError
 
 from rdf_persistence.access.domain.generated.rp_access import RoleDefinition
@@ -20,6 +19,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlRule,
 )
 from rdf_persistence_generation.uml.context import Context
+from rdf_persistence_generation.uml.dump import yaml_text
 
 TOOLKIT_CLASS = RoleDefinition.__name__  # how ``ctx.drawn_toolkit`` names the drawn class
 VARIABLES = tuple(RoleDefinition.model_fields)  # role, level, actions: the fields are the variables
@@ -27,17 +27,11 @@ OPERATOR = "="
 ACTION_SEPARATOR = ","
 ACTIONS_VARIABLE = "actions"
 ROLES_SUFFIX = ".roles.yaml"  # the file is ``<root name>.roles.yaml``
-DUMP_WIDTH = 100
 
 
 def roles_file_text(entries: Sequence[RoleDefinition]) -> str:
     """PD-6: the entries, in the given order, as the YAML list the library's loader reads."""
-    data = [
-        {"role": each.role, "level": str(each.level), ACTIONS_VARIABLE: list(each.actions)}
-        for each in entries
-    ]
-    text: str = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=DUMP_WIDTH)
-    return text
+    return yaml_text(list(entries))
 
 
 def role_entries(ctx: Context, model: UmlModel) -> list[RoleDefinition]:

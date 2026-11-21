@@ -8,10 +8,9 @@ the one flow leaving the Initial node names the initial state, and every other f
 from collections import defaultdict
 from collections.abc import Callable, Collection
 
-import yaml
 from pydantic import ValidationError
 
-from rdf_persistence.collaboration.domain.generated.rp_workflow import Workflow
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Workflow, WorkflowTransition
 from rdf_persistence_generation.generated.rp_generation import (
     ReportKind,
     UmlModel,
@@ -22,10 +21,10 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlStateNodeKind,
 )
 from rdf_persistence_generation.uml.context import Context
+from rdf_persistence_generation.uml.dump import yaml_text
 
 WORKFLOWS_FOLDER = "workflows/"
 WORKFLOWS_SUFFIX = ".workflow.yaml"  # the file is ``workflows/<workflow name>.workflow.yaml``
-DUMP_WIDTH = 100
 ROLES_TAG = "roles"
 COMMENT_TAG = "comment_required"
 WORKFLOW_TAG = "workflow"  # the class tag that names a workflow
@@ -38,24 +37,7 @@ Placement = dict[int, list[UmlStatechart]]
 
 def workflow_file_text(entry: Workflow) -> str:
     """PD-6: the workflow in the key order of the library's fixture, ``comment_required`` only when true."""
-    transitions = [
-        {
-            "from_state": each.from_state,
-            "to_state": each.to_state,
-            "transition_roles": list(each.transition_roles),
-            **({COMMENT_TAG: True} if each.comment_required else {}),
-        }
-        for each in entry.workflow_transitions or []
-    ]
-    data = {
-        "id": entry.id,
-        "workflow_name": entry.workflow_name,
-        "workflow_states": list(entry.workflow_states),
-        "initial_state": entry.initial_state,
-        "workflow_transitions": transitions,
-    }
-    text: str = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=DUMP_WIDTH)
-    return text
+    return yaml_text(entry)
 
 
 def workflow_files(entries: Collection[Workflow]) -> dict[str, str]:
@@ -279,9 +261,9 @@ def _start_problem(flow: UmlStateFlow, target: UmlStateNode) -> str | None:
 
 def _transitions(
     ctx: Context, nodes: Nodes, flows: list[UmlStateFlow], roles: Collection[str]
-) -> list[dict] | None:
-    """The transitions as mappings sorted by source and target; None after a problem."""
-    found: dict[tuple[str, str], dict] = {}
+) -> list[WorkflowTransition] | None:
+    """The transitions sorted by source and target; None after a problem."""
+    found: dict[tuple[str, str], WorkflowTransition] = {}
     failed = False
     for flow in flows:
         entry = _transition(ctx, nodes, flow, roles)
@@ -298,21 +280,19 @@ def _transitions(
 
 def _transition(
     ctx: Context, nodes: Nodes, flow: UmlStateFlow, roles: Collection[str]
-) -> dict | None:
+) -> WorkflowTransition | None:
     label = _label(nodes, flow)
     why = _transition_problem(nodes, flow, roles)
     if isinstance(why, str):
         ctx.findings.problem(UmlRule.WORKFLOW_TRANSITION, label, why)
         return None
     named, comment = why
-    entry: dict[str, object] = {
-        "from_state": nodes[flow.source_id].uml_name,
-        "to_state": nodes[flow.target_id].uml_name,
-        "transition_roles": named,
-    }
-    if comment:
-        entry["comment_required"] = True
-    return entry
+    return WorkflowTransition(
+        from_state=nodes[flow.source_id].uml_name,
+        to_state=nodes[flow.target_id].uml_name,
+        transition_roles=named,
+        comment_required=comment,
+    )
 
 
 def _transition_problem(
@@ -357,17 +337,19 @@ def _roles_of(written: str, roles: Collection[str]) -> list[str] | str:
 
 
 def _validated(
-    ctx: Context, drawn: Drawn, states: list[str], initial_state: str, transitions: list[dict]
+    ctx: Context,
+    drawn: Drawn,
+    states: list[str],
+    initial_state: str,
+    transitions: list[WorkflowTransition],
 ) -> Workflow | None:
     try:
-        return Workflow.model_validate(
-            {
-                "id": drawn.iri,
-                "workflow_name": drawn.name,
-                "workflow_states": states,
-                "initial_state": initial_state,
-                "workflow_transitions": transitions,
-            }
+        return Workflow(
+            id=drawn.iri,
+            workflow_name=drawn.name,
+            workflow_states=states,
+            initial_state=initial_state,
+            workflow_transitions=transitions,
         )
     except ValidationError as error:
         for found in error.errors():

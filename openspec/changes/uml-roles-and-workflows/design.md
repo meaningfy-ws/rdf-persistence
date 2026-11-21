@@ -204,7 +204,8 @@ workflow_transitions:
 | Diagram | name `zz:loan` with unknown prefix | problem (F-7) |
 | Diagram | plain name `loan` | **written**, `derived-iri` report line |
 | Diagram | name `Loan_Flow` (breaks the pattern) | problem naming the diagram |
-| StateFlow | tag other than `roles`/`comment_required`, a name, PDATA set, `comment_required=yes` | problem naming the transition |
+| StateFlow | tag other than `roles`/`comment_required`, `comment_required=yes` | problem naming the transition |
+| StateFlow | a name, PDATA set | `no_rule` naming it (PD-1) |
 | StateFlow | no `roles`, or a role not drawn | problem naming the transition (and role) |
 | StateFlow | into Initial, across diagrams, duplicate `(from, to)` | problem naming it |
 | StateFlow | one end outside the converted packages | `no_rule` |

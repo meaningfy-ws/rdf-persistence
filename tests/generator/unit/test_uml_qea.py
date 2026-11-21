@@ -759,6 +759,40 @@ def test_a_statechart_outside_the_subtree_is_not_read(tmp_path):
     assert model.uml_state_nodes in (None, []), "nor are its states"
 
 
+def test_an_empty_statechart_in_a_converted_package_is_not_read(tmp_path):
+    builder, ids = build_loan(tmp_path)
+    builder.statechart("placeholder", ids["library"], [])
+    model = as_model(read(builder))
+    assert [chart.uml_name for chart in model.uml_statecharts] == ["loan"], (
+        "a diagram that shows no converted state node is no workflow, wherever it sits (C2)"
+    )
+
+
+def test_a_statechart_in_an_excluded_package_showing_converted_states_is_read(tmp_path):
+    builder, ids = build_library(tmp_path)
+    start = builder.state(ids["library"], "Start", ntype=INITIAL_NTYPE)
+    requested = builder.state(ids["library"], "requested")
+    builder.state_flow(start, requested)
+    chart = builder.statechart("loan", ids["rare"], [start, requested])
+    model = as_model(read(builder, excluded=(f"{ROOT}/rare-books",)))
+    (found,) = model.uml_statecharts
+    assert (found.diagram_id, found.package_path, found.node_ids) == (
+        chart,
+        f"{ROOT}/rare-books",
+        sorted([start, requested]),
+    ), "the diagram is selected by the converted nodes it shows, not by its package (C2)"
+
+
+def test_a_statechart_in_a_sibling_package_showing_converted_states_is_read(tmp_path):
+    builder, ids = build_library(tmp_path)
+    requested = builder.state(ids["library"], "requested")
+    chart = builder.statechart("loan", ids["other"], [requested])
+    (found,) = as_model(read(builder)).uml_statecharts
+    assert (found.diagram_id, found.package_path) == (chart, "MODEL/other"), (
+        "a diagram outside the converted packages is read when it shows a converted state (C2)"
+    )
+
+
 def test_a_state_node_of_another_kind_is_still_read_with_its_type(tmp_path):
     builder, ids = build_library(tmp_path)
     final = builder.state(ids["library"], "End", ntype=4)

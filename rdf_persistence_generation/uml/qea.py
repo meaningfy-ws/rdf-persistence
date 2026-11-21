@@ -783,8 +783,8 @@ class _StateMachines:
         rows = [
             row
             for row in reading._select("t_diagram")
-            if row["Diagram_Type"] == STATECHART_TYPE and row["Package_ID"] in reading.package_ids
-        ]
+            if row["Diagram_Type"] == STATECHART_TYPE and placed[row["Diagram_ID"]]
+        ]  # a workflow is a diagram that shows a converted state node, wherever it sits
         return [
             UmlStatechart(
                 diagram_id=row["Diagram_ID"],

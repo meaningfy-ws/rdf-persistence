@@ -684,7 +684,8 @@ if that refuses it, the run exits 1 with the loader's message and moves nothing.
 A workflow, the states a class's objects pass through and who may move them, is drawn as an EA
 _Statechart_ diagram. Draw it so:
 
-* *The diagram.* A Statechart diagram in a converted package. Its name is the workflow's name and
+* *The diagram.* A Statechart diagram that shows at least one state of the converted packages,
+wherever the diagram itself sits; a Statechart diagram that shows none is not read. Its name is the workflow's name and
 IRI. A diagram named `pfx:local` is the workflow `local` whose IRI is what `pfx` expands to, plus
 `local`; the prefix is declared in the prefixes file like any other. A diagram named without a
 prefix (`loan`) gets the IRI `schema_base` + `workflows/loan`, and one `derived-iri` report line
@@ -824,13 +825,13 @@ substate, a final node or another pseudostate, or a state with entry, do or exit
 |Place each state on exactly one diagram. Draw only States and one Initial node, flat.
 
 |A transition that has no `roles`, names a role no role definition draws, has a tag other than
-`roles` and `comment_required`, a `comment_required` that is not `true` or `false`, a name, a guard,
+`roles` and `comment_required`, a `comment_required` that is not `true` or `false`,
 leads into the Initial node, runs between two diagrams or repeats another between the same two
 states (`[workflow_transition] requested -> approved: roles: archivist is not drawn as a role
 definition`)
 |Fix the tagged values, or draw the role definition (<<roles>>); keep one flow between two states.
-A flow with a stereotype or a trigger, or one that reaches outside the converted packages, is
-`[no_rule]`: remove it.
+A flow with a name, a guard, a stereotype or a trigger, or one that reaches outside the converted
+packages, is `[no_rule]`: remove it.
 
 |A diagram whose name breaks the toolkit's name pattern, whose states repeat a name, or that the
 toolkit's `Workflow` refuses otherwise (`[workflow_definition] <diagram>: ...`); two diagrams with
