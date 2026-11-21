@@ -408,8 +408,9 @@ By the lead, 2026-11-21, under the owner's "work as a team leader with subagents
     sessions in one process, and the span fixture's second provider was ignored. `also_copy` gains
     the generator and the fixture adds its exporter to a provider already set; `only_mutate` and the
     test selection are unchanged (PD-13 holds).
-  - Before: 1091 mutants, 84 survived, 23 with no test (`inputs/survivors-before.md`). After: 32,
-    each in `tests/audit/equivalent-mutants.md` (3 that no legal input tells apart, 29 under DEC-3).
+  - Before: 1091 mutants, 84 survived, 23 with no test (`inputs/survivors-before.md`). After: 33
+    (32 at 3.4, one more after D-7), each in `tests/audit/equivalent-mutants.md` (3 that no legal
+    input tells apart, 30 under DEC-3).
   - DEC-3 is read as "wording": a test may assert what a message must name, where a caller or a
     docstring relies on it (`MessageLimitExceeded` names its limit and ends `by <command>`; an iri
     refusal names the offending iri, which the problem detail carries).
@@ -420,7 +421,8 @@ By the lead, 2026-11-21, under the owner's "work as a team leader with subagents
     `exp` loses `strict`, which sits in generated code that `make mutation` leaves out.
   - L2 S1 = L3 S1: the two `draw_id` patches in `test_iris_application_adversarial.py` carry `# X4`.
   - L2 S3: the application-apart test asserts that the refusal names the probe IRI, not its sentence;
-    `_require_application_apart__mutmut_2` and `_3` join the DEC-3 list.
+    `_require_application_apart__mutmut_3` joins the DEC-3 list (`_2` stays killed: another test
+    asserts the IRI that follows `templates:`).
   - L2 N2: the relay's raising-block test commits after the block, as the `rp-events` scenario says.
   - L2 N3: the stage-3 asserts get messages; the `prepare_query` test asserts the prefix resolved.
   - L2 N4: an `rp-iri-policy` delta says a graph IRI is refused when it reads as an aggregate or

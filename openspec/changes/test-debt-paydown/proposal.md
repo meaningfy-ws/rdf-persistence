@@ -104,7 +104,7 @@ One pull request, `change/test-debt-paydown-build` (DEC-2, PD-14), PR: see the m
 | Stage 2: `ToyService()` cost | shapes parsed once per content, warmed once per process: median 324 ms → 116 ms (−64 %) | `warm_up_once` lives in `shacl.py` (D-5 S4) |
 | Stage 2: `poll_seconds` | on `run_case`, documented in the user manual | — |
 | Stage 2: `rp-messages` (DEC-1) | spec corrected; code unchanged | — |
-| Stage 3: mutation | 1091 mutants; survivors 107 → 34, each in `tests/audit/equivalent-mutants.md` | `make mutation` did not start on `develop`; two harness fixes, selection unchanged (D-6) |
+| Stage 3: mutation | 1091 mutants; survivors 107 → 33, each in `tests/audit/equivalent-mutants.md` | `make mutation` did not start on `develop`; two harness fixes, selection unchanged (D-6) |
 
 Not delivered: nothing the shape promised. Found and left for their own issues (handover): the
 SPARQL literal escape of `'\x1f0000'`, the TC-36 race under load, and the review's deferred items

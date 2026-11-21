@@ -1,7 +1,7 @@
 # Equivalent mutants
 
 The mutants `make mutation` leaves alive, each with why no test should kill it (test-debt-paydown
-PD-12). The selection is `setup.cfg [mutmut]` (mutmut 3.8.1); after stage 3 it leaves exactly the 32
+PD-12). The selection is `setup.cfg [mutmut]` (mutmut 3.8.1); after stage 3 it leaves exactly the 33
 below. A survivor that is not in this file is a gap to close or to add here with its reason.
 
 ## No legal input tells them apart
@@ -50,3 +50,5 @@ or a type name inside it, with other text or with `None`.
 - `rdf_persistence.core.domain.sparql.x__any_node_problem__mutmut_7`: as above
 - `rdf_persistence.core.domain.sparql.x__template_node_problem__mutmut_3`: as above
 - `rdf_persistence.tenancy.services.tenant_move.x_check_graphs__mutmut_11`
+- `rdf_persistence.iris.services.iris.xǁIrisǁ_require_application_apart__mutmut_3`: `IRIs` written
+  `iris` in the refusal's sentence
