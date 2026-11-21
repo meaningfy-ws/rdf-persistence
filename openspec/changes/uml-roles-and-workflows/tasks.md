@@ -35,7 +35,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
 
 ## 2. Stage 2: workflows
 
-- [ ] 2.1 Reader and records (PD-1, PD-2). Generator unit, first, in `test_uml_qea.py`: a model
+- [x] 2.1 Reader and records (PD-1, PD-2). Generator unit, first, in `test_uml_qea.py`: a model
   with a Statechart diagram, an Initial node, two States and two StateFlows (tags in
   `t_connectortag`) reads into `UmlStatechart`, `UmlStateNode`s and `UmlStateFlow`s; a StateFlow
   with one end outside the subtree is `no_rule`; a substate (`ParentID` ≠ 0), a State owning a
@@ -43,7 +43,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
   each `no_rule`; a `<memo>` tag is read from `NOTES`; a model with neither reads as today. Then
   `QeaBuilder` (`state`, `statechart`, `state_flow`, the two tables), `TABLE_COLUMNS`, the records,
   `make generate`.
-- [ ] 2.2 Workflow rule (PD-5), after 2.1. Generator unit, first,
+- [x] 2.2 Workflow rule (PD-5), after 2.1. Generator unit, first,
   `tests/generator/unit/test_uml_workflows.py`, one parametrized table covering every error-matrix
   row of State node, Diagram, StateFlow, Class and Workflow, each asserting the element named; the
   CURIE name and the plain name (`derived-iri` line); two diagrams with one name; a class tagged
@@ -51,12 +51,12 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
   `test_uml_rules.py:1039-1042` row stays green); the design's concrete example. Then
   `uml/workflows.py` and its call in `convert` after roles, `ReportKind.WORKFLOW`/`DERIVED_IRI`,
   the `UmlRule` codes.
-- [ ] 2.3 Write and final check (PD-4, PD-6), after 2.2. Generator unit, first, in
+- [x] 2.3 Write and final check (PD-4, PD-6), after 2.2. Generator unit, first, in
   `test_uml_write.py`: the concrete example's file, byte for byte; read by `load_workflow`; rerun
   identical; `out/workflows/` holding another file: the new file moved in beside it (no
   `ENOTEMPTY`), `stale-file workflows/x.workflow.yaml` when a workflow is drawn, no line when none
   is. Then the per-file move in `write`.
-- [ ] 2.4 Acceptance and docs (PD-7), after 2.3. Generator feature, first: two scenarios in
+- [x] 2.4 Acceptance and docs (PD-7), after 2.3. Generator feature, first: two scenarios in
   `uml_import.feature` (a four-state, five-transition workflow accepted; an undefined role refused).
   Then the UML conventions section with a PlantUML state-diagram snippet and its file; the how-to's
   `workflows=[...]` line and RISK-3's order note. Run on the probed model, add to

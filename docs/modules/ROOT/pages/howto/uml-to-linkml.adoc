@@ -60,6 +60,9 @@ rp-uml2linkml library.qea --package MODEL/library --prefixes prefixes.yaml \
   --out models/ --root-name library
 ----
 
+When the model draws role definitions or workflows, `--package` must hold the packages of both
+(step 3 says why).
+
 The command reads the `.qea` and writes one schema file per package, a root schema
 `<root-name>.yaml` that imports them all, and a report `<root-name>.uml-report.txt` into `--out`
 (created when missing). In `--package MODEL/library`, `MODEL` is the root package of the model in
@@ -169,8 +172,15 @@ shared between packages (xref:reference/uml-conventions.adoc#shared-slots[conven
 line names the packages.
 |`role` |A role definition drawn as an Object was written to the roles file:
 `<role> at <level>: <actions>` (<<roles-file>>).
+|`workflow` |A Statechart diagram was written as a workflow file:
+`<n> states, <m> transitions` (<<workflows-file>>). A diagram that no class's `workflow` tag names is
+reported too, as `named by no class`: not a failure, as the class may be in an excluded package.
+|`derived-iri` |A Statechart diagram is named without a prefix, so the workflow's IRI was made from
+`schema_base` and the name: `the IRI <iri> is derived from the diagram name`. Name the diagram with
+a prefix (`lib:loan`) to choose the IRI, before the first data is stored.
 |`stale-file` |A file of an earlier run is still in `--out` (step 2), or, when the run draws at
-least one role, a `*.roles.yaml` other than `<root-name>.roles.yaml`.
+least one role, a `*.roles.yaml` other than `<root-name>.roles.yaml`, or, when it draws at least one
+workflow, a `workflows/*.workflow.yaml` this run did not write.
 |===
 
 [#roles-file]
@@ -187,8 +197,45 @@ from pathlib import Path
 install_service(..., rules=Path("models/library.roles.yaml"))
 ----
 
-`install_service` reads it with `load_role_definitions`. The file is rewritten whole on every run,
+The full call is in <<serve,step 5>>. `install_service` reads it with `load_role_definitions`. The file is rewritten whole on every run,
 so change the roles in EA, never in the file.
+
+[#workflows-file]
+=== The workflow files
+
+When the model draws Statechart diagrams (xref:reference/uml-conventions.adoc#workflows[conventions
+page]), the converter also writes one `workflows/<name>.workflow.yaml` under `--out` for each; a
+model that draws none gets no such file. Hand the files to the service, by their paths:
+
+[source,python]
+----
+from pathlib import Path
+
+install_service(
+    ...,
+    rules=Path("models/library.roles.yaml"),
+    workflows=[Path("models/workflows/loan.workflow.yaml")],
+)
+----
+
+The full call is in <<serve,step 5>>. `install_service` reads each with `load_workflow`. The files are rewritten whole on every run, so
+change the workflows in EA, never in the files. The converter moves each into `workflows/` without
+touching the other files there.
+
+`<name>` is the workflow's name: the local part of the diagram's name, so the diagram `lib:loan`
+is written to `workflows/loan.workflow.yaml`. A class's `workflow` tag names that local name
+(`loan`), not the prefixed one.
+
+A transition names the roles that may take it, and the converter accepts only roles that a role
+definition drawn in the same run defines. Convert the roles and the workflows in one run: give
+`--package` a package that holds both the package of the role definitions and the package of the
+workflows, their common parent. If your model keeps the roles in a package you leave out with
+`--exclude-package` (an access package, say), or outside the `--package` package, a workflow that
+names them fails with
+`[workflow_transition] <from> -> <to>: roles: <role> is not drawn as a role definition`. Bring that
+package into the run, and fix what stops its conversion, before you rely on the workflows. A model
+that leaves out the workflows' own package converts as before: a class's `workflow` tag is then
+written as it is, unchecked.
 
 [#next]
 == 4. Check and generate
@@ -209,6 +256,52 @@ It lints and checks the schemas and writes nothing; what it reports is for you t
 convert and check again. When it is clean, run `rp-generate` to write the code and the other
 targets. Commit the converted schemas with the UML change that produced them, so that the diff of
 the schemas shows what the model change did.
+
+[#serve]
+== 5. Start the service
+
+The toy library draws its role definitions in a package `MODEL/library/Access` and the diagram
+`lib:loan` in `MODEL/library/Loans`. Step 2 converted them in one run with their common parent,
+`MODEL/library`, as `--package`, and wrote into `models/` the root schema `library.yaml`,
+`library.roles.yaml` and `workflows/loan.workflow.yaml`. Once step 4 has generated the package, hand
+the files to the service by their paths:
+
+[source,python]
+----
+from pathlib import Path
+
+from rdf_persistence import install_service
+
+from library.domain import generated
+
+kit = install_service(
+    app,
+    schema=Path("models/library.yaml"),
+    generated=generated,
+    store=store,
+    files=files,
+    identity=identity,
+    verifier=verifier,
+    settings=settings,
+    migrations=Path("migrations"),
+    rules=Path("models/library.roles.yaml"),
+    workflows=[Path("models/workflows/loan.workflow.yaml")],
+)
+----
+
+`app` is your FastAPI app; `store`, `files`, `identity`, `verifier` and `settings` are the adapters
+and settings your composition root builds, and every argument but `app` is passed by keyword.
+
+* `migrations` is the folder of your migration files and of the schema lock `rp-generate` keeps;
+  it must exist, or the service refuses to start (`InvalidMigration`). It is the `migrations` key
+  of `[tool.rp-generate]`.
+* `generated` is the package that the `package` key of `[tool.rp-generate]` names (the import
+  path, `library.domain.generated` here): import it, as above. `install_service` reads the
+  context, the frames and the shapes from that package's folder, and stops with `OSError` when
+  they are missing, so generate (step 4) before the service starts.
+* `install_service` starts no server: it wires the routes, the problem responses and the start-up
+  work into your `app`, and you serve `app` yourself, for example with uvicorn. The adapters, the
+  start-up and the routes are in xref:user-manual/serve.adoc[Serve the application].
 
 == Limits
 

@@ -14,6 +14,8 @@ import yaml
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from rdf_persistence.access.services.access import load_role_definitions
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Workflow
+from rdf_persistence.collaboration.services.workflows import load_workflow
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.steps import BOUNDARY_STEP, LINT_STEP
@@ -49,6 +51,7 @@ class World:
         self.ids: dict[str, int] = {}
         self.qea: Path | None = None
         self.code: int | None = None
+        self.workflow: Workflow | None = None
         self.capsys = capsys
         self.out = folder / "out"
         self.again = folder / "again"
@@ -264,6 +267,59 @@ def _role_with_level(world: World, name: str, level: str) -> None:
     _role_object(world, name, name, level, "read")
 
 
+LOAN_TRANSITIONS = [
+    # (from, to, tags): the five tagged transitions of the spec's scenario, besides the untagged initial flow
+    ("requested", "approved", {"roles": "librarian"}),
+    ("requested", "refused", {"roles": "librarian", "comment_required": "true"}),
+    ("approved", "returned", {"roles": "librarian,reader"}),
+    ("refused", "requested", {"roles": "reader"}),
+    ("refused", "returned", {"roles": "librarian"}),
+]
+
+
+def _draw_loan(
+    world: World, chart: str, transitions: list[tuple[str, str, dict[str, str]]]
+) -> None:
+    """Draw the Statechart ``chart``: an Initial node into ``requested``, the four states, the transitions."""
+    _role_object(world, "librarian", "librarian", "tenant", "read,modify")
+    _role_object(world, "reader", "reader", "tenant", "read")
+    builder = world.builder
+    nodes = {"initial": builder.state(world.library, "initial", ntype=3)}
+    for name in ("requested", "approved", "refused", "returned"):
+        nodes[name] = builder.state(world.library, name)
+    builder.state_flow(nodes["initial"], nodes["requested"])
+    for source, target, tags in transitions:
+        builder.state_flow(nodes[source], nodes[target], tags)
+    builder.statechart(chart, world.library, nodes.values())
+
+
+@given(
+    parsers.parse(
+        'a Statechart diagram "{chart}" with an Initial node, four states and five tagged '
+        'transitions, and a class tagged "{written}"'
+    )
+)
+def _loan_workflow(world: World, chart: str, written: str) -> None:
+    _draw_loan(world, chart, LOAN_TRANSITIONS)
+    name, value = written.split("=", 1)
+    world.builder.tag(world.ids["book"], name, value)
+
+
+@given(
+    parsers.parse(
+        'a Statechart diagram "{chart}" whose transition from "{source}" to "{target}" is tagged '
+        '"{written}", and no role definition "{role}"'
+    )
+)
+def _loan_with_undefined_role(
+    world: World, chart: str, source: str, target: str, written: str, role: str
+) -> None:
+    name, value = written.split("=", 1)
+    assert value == role, "the scenario tags the transition with the role it leaves undefined"
+    others = [each for each in LOAN_TRANSITIONS if (each[0], each[1]) != (source, target)]
+    _draw_loan(world, chart, [(source, target, {name: value}), *others])
+
+
 # --- When -----------------------------------------------------------------------------------------------
 
 
@@ -452,6 +508,44 @@ def _roles_file(world: World, first: str, second: str, third: str) -> None:
 def _loader_reads(world: World) -> None:
     loaded = load_role_definitions(world.out / f"{ROOT_NAME}.roles.yaml")
     assert len(loaded) == 3, "the loader accepts the file and finds the three roles"
+
+
+# --- Then: the workflow file ---------------------------------------------------------------------------
+
+
+@then(parsers.parse('the library\'s workflow loader reads the file "{path}"'))
+def _workflow_loaded(world: World, path: str) -> None:
+    world.workflow = load_workflow(world.out / path)
+
+
+@then(
+    parsers.parse(
+        'the workflow has the states "{a}", "{b}", "{c}" and "{d}" and the initial state "{initial}"'
+    )
+)
+def _workflow_states(world: World, a: str, b: str, c: str, d: str, initial: str) -> None:
+    assert world.workflow.workflow_states == [a, b, c, d], "the four states, sorted"
+    assert world.workflow.initial_state == initial, "the state the initial flow leads to"
+
+
+@then("the workflow has the five transitions the diagram draws")
+def _workflow_transitions(world: World) -> None:
+    found = [
+        (each.from_state, each.to_state, list(each.transition_roles), bool(each.comment_required))
+        for each in world.workflow.workflow_transitions
+    ]
+    assert found == [
+        ("approved", "returned", ["librarian", "reader"], False),
+        ("refused", "requested", ["reader"], False),
+        ("refused", "returned", ["librarian"], False),
+        ("requested", "approved", ["librarian"], False),
+        ("requested", "refused", ["librarian"], True),
+    ], "the five transitions, sorted by (from, to), with their roles and comment flag"
+
+
+@then(parsers.parse('the workflow\'s IRI is "{iri}"'))
+def _workflow_iri(world: World, iri: str) -> None:
+    assert world.workflow.id == iri, "the prefix of the diagram's name is expanded"
 
 
 # --- Then: the report ----------------------------------------------------------------------------------

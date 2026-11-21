@@ -45,6 +45,7 @@ from tests.generator.uml_model import (
     tag,
 )
 from tests.generator.unit.test_uml_roles import ROLE_ROWS
+from tests.generator.unit.test_uml_workflows import WORKFLOW_ROWS
 
 Check = Callable[[Converted], None]
 
@@ -2991,5 +2992,5 @@ def test_a_rule_row(row: Row) -> None:
 
 @pytest.mark.parametrize("rule", list(UmlRule))
 def test_every_uml_rule_has_a_row(rule: UmlRule) -> None:
-    rows = [*ROWS, *ROLE_ROWS]  # the role rules keep their table in test_uml_roles.py
+    rows = [*ROWS, *ROLE_ROWS, *WORKFLOW_ROWS]  # the role and workflow rules keep their own tables
     assert rule in {row.rule for row in rows}, f"the rule {rule.value} has no row in ROWS"

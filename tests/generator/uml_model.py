@@ -27,6 +27,10 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlPrefix,
     UmlRunValue,
     UmlSettings,
+    UmlStatechart,
+    UmlStateFlow,
+    UmlStateNode,
+    UmlStateNodeKind,
     UmlTaggedValue,
 )
 from rdf_persistence_generation.uml.convert import convert
@@ -202,9 +206,48 @@ def object_(
     )
 
 
+def state(object_id: int, name: str) -> UmlStateNode:
+    """A State of a state machine, as the reader gives it (D-5: no ``node_type``)."""
+    return UmlStateNode(object_id=object_id, uml_name=name, node_kind=UmlStateNodeKind.STATE)
+
+
+def initial(object_id: int, name: str = "initial") -> UmlStateNode:
+    """The Initial node (``NType`` 3)."""
+    return UmlStateNode(
+        object_id=object_id, uml_name=name, node_kind=UmlStateNodeKind.INITIAL, node_type=3
+    )
+
+
+def other_node(object_id: int, name: str, node_type: int) -> UmlStateNode:
+    """A StateNode that is not Initial (a final node is 4): no ``node_kind``, the raw ``node_type`` (D-5)."""
+    return UmlStateNode(object_id=object_id, uml_name=name, node_type=node_type)
+
+
+def state_flow(connector_id: int, source: int, target: int, **tags: str) -> UmlStateFlow:
+    """A StateFlow between two state nodes, its tags as written (a tag name may be passed with ``**{...}``)."""
+    return UmlStateFlow(
+        connector_id=connector_id,
+        source_id=source,
+        target_id=target,
+        uml_tagged_values=[tag(connector_id, name, value) for name, value in tags.items()],
+    )
+
+
+def statechart(
+    diagram_id: int, name: str, *node_ids: int, package: str = "model/library"
+) -> UmlStatechart:
+    """A Statechart diagram with the state nodes placed on it."""
+    return UmlStatechart(
+        diagram_id=diagram_id, uml_name=name, package_path=package, node_ids=list(node_ids)
+    )
+
+
 def model(
     *classes: UmlClass,
     objects: tuple[UmlObject, ...] = (),
+    state_nodes: tuple[UmlStateNode, ...] = (),
+    state_flows: tuple[UmlStateFlow, ...] = (),
+    statecharts: tuple[UmlStatechart, ...] = (),
     links: tuple[UmlLink, ...] = (),
     tags: tuple[UmlTaggedValue, ...] = (),
     boundaries: tuple[UmlBoundary, ...] = (),
@@ -219,6 +262,9 @@ def model(
         uml_outside_classes=list(outside),
         uml_classes=list(classes),
         uml_objects=list(objects),
+        uml_state_nodes=list(state_nodes),
+        uml_state_flows=list(state_flows),
+        uml_statecharts=list(statecharts),
         uml_links=list(links),
         uml_tagged_values=list(tags),
         uml_boundaries=list(boundaries),
