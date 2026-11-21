@@ -7,18 +7,18 @@ merged into `develop`. One stage.
 
 ## 1. Stage 1: nesting collections
 
-- [ ] 1.1 Slot (PD-1). Unit, first: `tests/unit/collaboration/test_collaboration_nesting.py`
+- [x] 1.1 Slot (PD-1). Unit, first: `tests/unit/collaboration/test_collaboration_nesting.py`
   `test_a_shelf_without_nests_does_not_nest` (absent ≡ false after a round trip) fails on the
   missing field. Then `nests` in `rp_collections.yaml`, `vocabulary.NESTS`, `make generate`,
   `tests/toy.py` `shelf(iri, *, nests=False)`. Accept: `make check-generated` clean; the generator's
   lock check asks for no migration.
-- [ ] 1.2 Write guard membership (PD-2, PD-3). Unit, first, in the same file, one parametrized
+- [x] 1.2 Write guard membership (PD-2, PD-3). Unit, first, in the same file, one parametrized
   table (positive and negative per rule): a nested Shelf of Book accepted; refused, as
   `InvalidBody`: nested of another member class, a subclass collection, `nests` false naming a
   shelf, `nests` with member class `Shelf`; flat shelf unchanged. Then `accepted_members` and its use
   in `_check_collection`. Accept: spec scenarios "a nested collection" (save half), "another
   member class" and "nesting over a collection member class" pass.
-- [ ] 1.3 Transaction pieces (PD-5, PD-9, PD-10), a port change. Unit, first, in
+- [x] 1.3 Transaction pieces (PD-5, PD-9, PD-10), a port change. Unit, first, in
   `tests/unit/persistence/test_session_transaction.py` (the `graphs_with` case in
   `test_session_graphs_with.py`): `_rely_on(x, v0)` then a
   replace of x by another session before commit → the commit raises `Conflict` with
@@ -31,7 +31,7 @@ merged into `develop`. One stage.
   `WriteGuards.prepare` (which passes nothing new to `keep_state`), `_versions_found`, `_reasons`,
   the `graphs_with` signature; update the existing `prepare` call in
   `tests/unit/collaboration/test_write_guards.py` (`context` is keyword-only, no default). Accept: those tests pass; `make test-fast check-quality` green.
-- [ ] 1.4 Cycle check (PD-4, PD-7), after 1.3. Unit, first: self (replace), 2-cycle, 3-cycle,
+- [x] 1.4 Cycle check (PD-4, PD-7), after 1.3. Unit, first: self (replace), 2-cycle, 3-cycle,
   cycle inside one transaction, the race (two transactions collected, then committed in turn: the
   second raises `Conflict` naming the first's collection, and a retry raises `InvalidBody`), the
   leaf race (T1 adds leaf N to C; T2 sets `nests` on N naming C and commits first; T1 gets
@@ -39,17 +39,17 @@ merged into `develop`. One stage.
   and the refusal text names no intermediate IRI. Then the walk in
   `WriteGuards._check_collection`. Accept: spec scenarios "a cycle", "racing saves" and "a leaf
   race" pass. The adversarial tester runs right after this task (agents.adoc).
-- [ ] 1.5 Reads (PD-6, PD-8). Unit, first: `members(deep=True)` lists the items of a 3-level
+- [x] 1.5 Reads (PD-6, PD-8). Unit, first: `members(deep=True)` lists the items of a 3-level
   tree and not its sub-collections; `hidden_count` for an unreadable item at level 2, an
   unreadable nested collection (counted 1, not entered), an item named at two levels (counted
   once); `collections_of(sub)` gives its parent; `delete_cascade` of a nesting shelf deletes the
   sub-shelf and keeps its books; the existing deep-read tests pass unchanged. Then `_gather` and
   `_require_of_member_class`; `deep` keeps its name (OPEN-2). Accept: spec scenarios of the delta
   and of "Collections can contain collections" pass.
-- [ ] 1.6 Integration on Fuseki, `tests/integration/store/test_collaboration.py`: the race of 1.4
+- [x] 1.6 Integration on Fuseki, `tests/integration/store/test_collaboration.py`: the race of 1.4
   against the real store, and a deep read of a 3-level tree. Accept: `make test-containers`
   passes both.
-- [ ] 1.7 Docs: `howto/reference-collections.adoc` gains *Nesting collections* (the flag, the
+- [x] 1.7 Docs: `howto/reference-collections.adoc` gains *Nesting collections* (the flag, the
   cycle refusal, the conflict on a race); the *Deep reads* paragraph says that for a nesting
   collection `deep=True` lists items only. Accept: `make check-docs` passes.
 - [ ] 1.8 Lead: `make check-all`, `make test-containers`, the SMALL review set, fixes, the PR,

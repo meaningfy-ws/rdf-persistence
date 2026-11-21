@@ -2638,6 +2638,15 @@
             "in": "query"
           },
           {
+            "description": "Only the shelves whose nests is this value.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "name": "nests",
+            "in": "query"
+          },
+          {
             "description": "The most items on the page.",
             "required": false,
             "schema": {
@@ -2670,11 +2679,13 @@
                 "has_part",
                 "label",
                 "member_class",
+                "nests",
                 "-id",
                 "-description",
                 "-has_part",
                 "-label",
-                "-member_class"
+                "-member_class",
+                "-nests"
               ]
             },
             "name": "sort",
@@ -6950,6 +6961,10 @@
           "membership_rule": {
             "$ref": "#/components/schemas/MembershipRule",
             "description": "The rule that says which aggregates of the member class belong to the collection."
+          },
+          "nests": {
+            "type": "boolean",
+            "description": "Whether the collection may hold collections of its own class and member class as members, to any depth. Absent means false."
           },
           "type": {
             "type": "string",

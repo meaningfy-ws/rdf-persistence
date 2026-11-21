@@ -77,11 +77,24 @@ def member_class_iris(view: SchemaView, member_class: str) -> set[str]:
     return {view.get_uri(c, expand=True) for c in view.class_descendants(member_class)}
 
 
+def accepted_members(
+    view: SchemaView, collection_class_name: str, collection: ReferenceCollection
+) -> set[str]:
+    """The IRIs of the classes whose aggregates ``collection`` may name (PD-2).
+
+    The member class and its descendants, and the collection's own class, exactly, when it nests.
+    A nested member must also have the member class of ``collection``; that is checked on its graph.
+    """
+    accepted = member_class_iris(view, collection.member_class)
+    if collection.nests:
+        accepted.add(view.get_uri(collection_class_name, expand=True))
+    return accepted
+
+
 def outside_member_class(
-    view: SchemaView, member_class: str, members: Sequence[str], heads: Sequence[AggregateHead]
+    accepted: set[str], members: Sequence[str], heads: Sequence[AggregateHead]
 ) -> list[str]:
-    """The ``members`` that are not stored aggregates of ``member_class`` or of a class derived from it."""
-    accepted = member_class_iris(view, member_class)
+    """The ``members`` that are not stored aggregates of one of the ``accepted`` classes."""
     stored = {str(h.head_iri): h for h in heads}
     return [
         m
@@ -260,7 +273,8 @@ class ReferenceCollections:
     ) -> None:
         """A stored collection is not trusted: a cascade deletes only aggregates of its member class."""
         found = [str(h.head_iri) for h in heads]
-        if outside_member_class(self._view, stored.member_class, found, heads):
+        accepted = accepted_members(self._view, type(stored).__name__, stored)
+        if outside_member_class(accepted, found, heads):
             raise StoredDataInvalid(
                 f"the collection {collection} names an aggregate that is not of its member class "
                 f"{stored.member_class}"
@@ -316,9 +330,14 @@ class ReferenceCollections:
         return MemberList(member_iris=sorted(readable) or None, hidden_count=len(named - readable))
 
     async def _gather(self, root: str, deep: bool) -> Held:
-        """The members of ``root``, and with ``deep`` of the collections among them, breadth first."""
+        """The members of ``root``, and with ``deep`` of the collections among them, breadth first (PD-6).
+
+        The sub-collections a nesting collection holds that the caller may read are structure: entered,
+        never listed. One it may not read stays among the members, to be counted, and is not entered.
+        """
         named: set[str] = set()
         ruled: set[str] = set()
+        structure: set[str] = set()
         visited = {root}
         queue = [(root, await self._collection(root))]
         while queue:
@@ -328,9 +347,56 @@ class ReferenceCollections:
             found = await self._direct(iri, collection)
             named |= found[0]
             ruled |= found[1]
-            if deep and COLLECTION_MIXIN in self._view.class_ancestors(collection.member_class):
-                queue += await self._nested(found[0] | found[1], visited)
-        return named, ruled - named
+            if deep:
+                entered, subs = await self._descend(iri, collection, found[0] | found[1], visited)
+                queue += entered
+                structure |= subs
+        return named - structure, ruled - named - structure
+
+    async def _descend(
+        self, iri: str, collection: ReferenceCollection, members: set[str], visited: set[str]
+    ) -> tuple[list[tuple[str, ReferenceCollection]], set[str]]:
+        """The collections among ``members`` to read next, and the ones of them that are structure.
+
+        A collection of collections enters its members that are collections, which stay members; a
+        nesting one enters its sub-collections, which are structure. ``visited`` grows by those entered.
+        """
+        if COLLECTION_MIXIN in self._view.class_ancestors(collection.member_class):
+            return await self._nested(members, visited), set()
+        if not collection.nests:
+            return [], set()
+        subs = await self._sub_collections(iri, collection, members)
+        entered = [(sub, c) for sub, c in subs if sub not in visited]
+        visited |= {sub for sub, _ in entered}
+        return entered, {sub for sub, _ in subs}
+
+    async def _sub_collections(
+        self, iri: str, collection: ReferenceCollection, members: set[str]
+    ) -> list[tuple[str, ReferenceCollection]]:
+        """The members of a nesting ``collection`` that are collections of its own class, that the caller
+        may read (PD-2), sorted.
+
+        Raises:
+            StoredDataInvalid: One of them has another member class than ``collection``.
+        """
+        own = self._view.get_uri(type(collection).__name__, expand=True)
+        heads = await self._session.heads(sorted(members))
+        candidates = sorted(
+            str(h.head_iri)
+            for h in heads
+            if own in (h.head_types or []) and self._may(str(h.head_iri), Action.READ)
+        )
+        subs = []
+        for sub in candidates:
+            with suppress(NotFound, BadQuery):  # a member that is gone, or no longer a collection
+                found = await self._collection(sub)
+                if found.member_class != collection.member_class:
+                    raise StoredDataInvalid(
+                        f"the collection {sub} is nested in {iri} but has another member class "
+                        f"than {collection.member_class}"
+                    )
+                subs.append((sub, found))
+        return subs
 
     async def _nested(
         self, members: set[str], visited: set[str]

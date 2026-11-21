@@ -1121,6 +1121,10 @@
     required: false
     multivalued: false
     range: MembershipRule
+  - name: nests
+    required: false
+    multivalued: false
+    range: boolean
 - class_name: Referrer
   slots:
   - name: referrer
@@ -1435,6 +1439,10 @@
     required: false
     multivalued: false
     range: datetime
+  - name: nests
+    required: false
+    multivalued: false
+    range: boolean
 - class_name: ShelveBooks
   slots:
   - name: ended_at_time
