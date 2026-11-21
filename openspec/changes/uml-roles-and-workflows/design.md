@@ -293,5 +293,14 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
   which names the staged file's temporary path; PD-4 promises "the loader message", and the case
   only arises when a conversion rule missed something. The exception keeps PD-4's name without an
   `Error` suffix (`noqa: N818`).
+- **D-7 Diagrams in Mermaid (task 1.4).** PD-7 says PlantUML, but the docs build renders only
+  `[mermaid]` blocks (`make check-diagrams`). A role definition is drawn as a `classDiagram` box
+  named `<object> : rp:RoleDefinition` with its run-state values as rows (Mermaid has no object
+  diagram); stage 2's state diagram uses `stateDiagram-v2`.
+- **D-8 The real-model run (task 1.4).** The run on the first consumer's model, its access package
+  now converted, stops at one `no_rule` of the model itself (a boundary in the access package with
+  no root), before any role is written. Its three role Objects are well-formed (read-only query).
+  The converter is not changed for it: the consumer fixes its model, and the counts in
+  `evidence/real-model-run.md` are filled from the next run (stage 2's 2.4 run repeats it).
 - **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
   order holds and the consumer may convert its access package.

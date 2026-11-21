@@ -27,7 +27,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
   file the loader refuses (patched loader) → nothing moved, and in `test_uml_cli.py` exit 1 with
   `rp-uml2linkml: <message>`. Then `convert`'s `files` (PD-8), `write(files=)`,
   `StagedFileRefused`, its handling in `cli.py`.
-- [ ] 1.4 Acceptance and docs (PD-7), after 1.3. Generator feature, first: two scenarios in
+- [x] 1.4 Acceptance and docs (PD-7), after 1.3. Generator feature, first: two scenarios in
   `uml_import.feature` (three roles accepted; `level=planet` refused naming the object). Then the
   UML conventions section with a PlantUML object-diagram snippet and the file it becomes; the
   how-to's `install_service(rules=...)` line. Run on the probed model (read-only copy), record

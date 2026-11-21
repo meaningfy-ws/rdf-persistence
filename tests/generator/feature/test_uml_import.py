@@ -13,6 +13,7 @@ import pytest
 import yaml
 from pytest_bdd import given, parsers, scenarios, then, when
 
+from rdf_persistence.access.services.access import load_role_definitions
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.steps import BOUNDARY_STEP, LINT_STEP
@@ -32,6 +33,7 @@ package = "{PACKAGE}.domain.generated"
 python = "{PACKAGE}/domain/generated"
 migrations = "migrations"
 """
+TOOLKIT_NAMESPACE = "https://meaningfy.ws/ns/rdf-persistence#"
 COUNTS = {"no": 0, "one": 1}
 NONE = "none"
 
@@ -51,6 +53,14 @@ class World:
         self.out = folder / "out"
         self.again = folder / "again"
 
+    def prefixes(self) -> Path:
+        """The library's prefixes plus ``rp``, which a drawn toolkit class (``rp:RoleDefinition``) needs."""
+        path = write_prefixes(self.folder)
+        path.write_text(
+            path.read_text(encoding="utf-8") + f"  rp: {TOOLKIT_NAMESPACE}\n", encoding="utf-8"
+        )
+        return path
+
     def convert(self, out: Path, *options: str) -> None:
         self.qea = self.qea or self.builder.finish()
         self.code = main(
@@ -59,7 +69,7 @@ class World:
                 "--package",
                 "MODEL",
                 "--prefixes",
-                str(write_prefixes(self.folder)),
+                str(self.prefixes()),
                 "--out",
                 str(out),
                 "--root-name",
@@ -226,6 +236,32 @@ def _excluded_loan(world: World) -> None:
     circulation = world.builder.package("circulation", parent=world.model, note="The loans.")
     loan = world.builder.cls(circulation, "lib:Loan", note="A loan.")
     world.builder.association(book, loan, "lib:loan", "0..1", note="Its loan.")
+
+
+def _role_object(world: World, name: str, role: str, level: str, actions: str) -> int:
+    """An Object classified by the drawn ``rp:RoleDefinition``, its run state holding role, level and actions."""
+    if "role_definition" not in world.ids:
+        _book(world)  # the package also draws a domain class, as a real model does
+        world.ids["role_definition"] = world.builder.cls(world.library, "rp:RoleDefinition")
+    run_state = "".join(
+        f"@VAR;Variable={variable};Value={value};Op==;@ENDVAR;"
+        for variable, value in (("role", role), ("level", level), ("actions", actions))
+    )
+    return world.builder.object_(
+        world.library, name, world.ids["role_definition"], run_state=run_state
+    )
+
+
+@given("three role definition objects with valid run-state values")
+def _three_roles(world: World) -> None:
+    _role_object(world, "librarian", "librarian", "tenant", "read,modify,delete,administer")
+    _role_object(world, "member", "member", "tenant", "read,annotate")
+    _role_object(world, "reader", "reader", "tenant", "read")
+
+
+@given(parsers.parse('a role definition object "{name}" with the level "{level}"'))
+def _role_with_level(world: World, name: str, level: str) -> None:
+    _role_object(world, name, name, level, "read")
 
 
 # --- When -----------------------------------------------------------------------------------------------
@@ -401,6 +437,21 @@ def _no_slot(world: World, name: str) -> None:
 def _book_lacks(world: World, name: str) -> None:
     assert name not in world.klass("Book").get("slots", []), f"the book has no slot {name}"
     assert name not in world.module().get("slots", {}), f"no slot {name} is defined"
+
+
+# --- Then: the roles file ------------------------------------------------------------------------------
+
+
+@then(parsers.parse('the roles file holds the three roles "{first}", "{second}" and "{third}"'))
+def _roles_file(world: World, first: str, second: str, third: str) -> None:
+    found = yaml.safe_load((world.out / f"{ROOT_NAME}.roles.yaml").read_text(encoding="utf-8"))
+    assert [each["role"] for each in found] == [first, second, third], "the three roles, sorted"
+
+
+@then("the library's role loader reads the roles file")
+def _loader_reads(world: World) -> None:
+    loaded = load_role_definitions(world.out / f"{ROOT_NAME}.roles.yaml")
+    assert len(loaded) == 3, "the loader accepts the file and finds the three roles"
 
 
 # --- Then: the report ----------------------------------------------------------------------------------

@@ -167,8 +167,28 @@ becomes the collection's member class (xref:reference/uml-conventions.adoc#membe
 modules would import each other, whether the reference is a slot's range, a generalisation or a slot
 shared between packages (xref:reference/uml-conventions.adoc#shared-slots[conventions page]). The
 line names the packages.
-|`stale-file` |A file of an earlier run is still in `--out` (step 2).
+|`role` |A role definition drawn as an Object was written to the roles file:
+`<role> at <level>: <actions>` (<<roles-file>>).
+|`stale-file` |A file of an earlier run is still in `--out` (step 2), or, when the run draws at
+least one role, a `*.roles.yaml` other than `<root-name>.roles.yaml`.
 |===
+
+[#roles-file]
+=== The roles file
+
+When the model draws role definitions (xref:reference/uml-conventions.adoc#roles[conventions page]),
+the converter also writes `<root-name>.roles.yaml` beside the schemas; a model that draws none gets
+no such file. Hand the file to the service as the access rules, by its path:
+
+[source,python]
+----
+from pathlib import Path
+
+install_service(..., rules=Path("models/library.roles.yaml"))
+----
+
+`install_service` reads it with `load_role_definitions`. The file is rewritten whole on every run,
+so change the roles in EA, never in the file.
 
 [#next]
 == 4. Check and generate
