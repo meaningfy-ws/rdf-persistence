@@ -9,10 +9,14 @@ by trying member classes, the class of a hidden aggregate whose IRI it holds, ne
 (RISK-8, accepted). What a collection is lives in ``reference_collections``.
 """
 
+from collections.abc import Sequence
+
 from rdflib import Graph
 
 from rdf_persistence.collaboration.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.collaboration.services.reference_collections import (
+    COLLECTION_MIXIN,
+    accepted_members,
     collection_class,
     collection_classes,
     decode_collection,
@@ -23,6 +27,7 @@ from rdf_persistence.collaboration.services.workflows import Workflows
 from rdf_persistence.core.domain.exceptions import BadQuery, InvalidBody, InvalidIri
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.persistence.services.generated.rp_persistence_services import AggregateHead
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.persistence.services.session import GuardContext, Session
@@ -71,7 +76,7 @@ class WriteGuards:
             graph.add(triple)
         name = collection_class(self._collections, iri, graph)
         if name is not None:
-            await self._check_collection(session, self._decoded(name, iri, graph))
+            await self._check_collection(session, name, self._decoded(name, iri, graph))
         if self._workflows is None:
             return triples
         return await self._workflows.keep_state(session, iri, triples, stored, allowed_state)
@@ -83,19 +88,45 @@ class WriteGuards:
             # the generated class refuses the triples; its text names internals
             raise InvalidBody(f"the triples of {iri} are not those of a {name}") from error
 
-    async def _check_collection(self, session: Session, collection: ReferenceCollection) -> None:
+    async def _check_collection(
+        self, session: Session, name: str, collection: ReferenceCollection
+    ) -> None:
+        view = self._mapper.view
         try:
             self._listings.served_root(collection.member_class)
         except ValueError as error:
             raise InvalidBody(str(error)) from error
+        if collection.nests and COLLECTION_MIXIN in view.class_ancestors(collection.member_class):
+            raise InvalidBody("nests needs a member class that is not a collection")
         members = collection.has_part or []
         if outside := session.not_aggregates(members):
             raise InvalidIri(f"not aggregate IRIs of the tenant: {outside}")
         heads = await session.heads(members)
-        wrong = outside_member_class(self._mapper.view, collection.member_class, members, heads)
+        wrong = outside_member_class(accepted_members(view, name, collection), members, heads)
+        if not wrong and collection.nests:
+            wrong = await self._unlike_nested(session, name, collection, heads)
         if wrong:
             raise InvalidBody(f"not stored aggregates of {collection.member_class}: {wrong}")
         try:
             rule_plan(self._listings, collection)
         except BadQuery as error:
             raise InvalidBody(str(error)) from error
+
+    async def _unlike_nested(
+        self,
+        session: Session,
+        name: str,
+        collection: ReferenceCollection,
+        heads: Sequence[AggregateHead],
+    ) -> list[str]:
+        """The nested members (stored with exactly the collection's class) whose member class differs."""
+        own = self._mapper.view.get_uri(name, expand=True)
+        wrong = []
+        for head in heads:
+            if own not in (head.head_types or []):
+                continue
+            iri = str(head.head_iri)
+            graph, _, _ = await session.get_graph(iri)
+            if self._decoded(name, iri, graph).member_class != collection.member_class:
+                wrong.append(iri)
+        return wrong
