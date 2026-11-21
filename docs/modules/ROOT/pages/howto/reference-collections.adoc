@@ -39,7 +39,7 @@ classes:
       database: tenant
 ----
 
-The mixin adds three slots:
+The mixin adds four slots:
 
 [cols="1,3",options="header"]
 |===
@@ -47,10 +47,11 @@ The mixin adds three slots:
 |`member_class` |Required. The schema name of the class of the members, here `"Book"`.
 |`has_part` |The IRIs of the members the collection names, stated with `dct:hasPart`.
 |`membership_rule` |A rule that says which aggregates of the member class belong (see <<rule>>).
+|`nests` |Whether the collection may hold collections like itself (see <<nesting>>). Absent means false.
 |===
 
-A collection of collections is a shelf whose `member_class` is `"Shelf"`. The mixin's class IRI is
-`dcmitype:Collection`.
+A collection of collections is a shelf whose `member_class` is `"Shelf"`; a shelf that holds shelves
+of books is a nesting collection (see <<nesting>>). The mixin's class IRI is `dcmitype:Collection`.
 
 To state `dct:hasPart` anywhere else in an application model, reuse the toolkit's `has_part` slot.
 Do not declare another slot with `slot_uri: dcterms:hasPart`: two slots for one IRI make JSON-LD
@@ -157,6 +158,58 @@ repeating it. A nested collection the caller may not read is not read further; i
 aggregate root the schema serves makes a deep read fail with `StoredDataInvalid` naming that
 collection, as a rule that cannot be read does.
 
+For a nesting collection (see <<nesting>>) the deep read differs in one way: the sub-collections
+are structure, so `members(C, deep=True)` lists the items only, never the sub-collections. Each
+member the caller may not read is counted once in `hidden_count`; an unreadable sub-collection is
+counted once and not entered. `members(C)` without `deep` lists the sub-collections of C, as it
+lists any member.
+
+[#nesting]
+== Nesting collections
+
+A shelf can hold shelves of books, to any depth, when it sets `nests`:
+
+[source,python]
+----
+poetry = Shelf(id=s2_iri, label="Poetry", description="Poetry.",
+               member_class="Book", has_part=[b1_iri])
+library = Shelf(id=s1_iri, label="Library", description="All shelves.",
+                member_class="Book", has_part=[s2_iri], nests=True)
+----
+
+Store `poetry` first, then `library`: a member must be stored (see <<save>>). `nests: true` allows
+as members:
+
+* books, as before;
+* collections of exactly the class of the shelf that holds them and of the same `member_class`.
+
+A sub-collection may have `nests` false: it is a leaf folder that holds books only. One with
+`nests` true may hold more shelves.
+
+A save is refused with `InvalidBody`, and stores nothing, when:
+
+[cols="2,1",options="header"]
+|===
+|Refused when |Message
+|A member is a collection of another member class |"not stored aggregates of Book" (the wording for any wrong member)
+|A member is a collection of another class, or of a subclass of the shelf's class |the same
+|`nests` is true and the `member_class` is itself a collection class |"nests needs a member class that is not a collection"
+|The save would make a cycle: a shelf that names itself, or one that names a shelf above it |"saving C would make a cycle: C → N → (k more) → C"
+|===
+
+A shelf with `nests` false that names a shelf is refused as before. So is a replace that sets
+`nests` to false while the shelf still names sub-collections.
+
+The cycle message names the shelf you save (C) and the member that closes the cycle (N), and counts
+the shelves between them. It names no other, because you may not be allowed to read them.
+
+Two saves made at the same moment that together close a cycle are not both accepted. The second
+raises `Conflict`, naming a collection that changed meanwhile. Read again and save again: the save
+is then refused as a cycle, with the message above.
+
+`collections_of(poetry_iri)` names the shelf that holds it, as for any member. A cascade deletes
+direct members only (see <<Delete a collection>>).
+
 == Find the collections of a resource
 
 [source,python]
@@ -197,6 +250,8 @@ deleted together, or none is and the call raises. A member that is already gone 
 book that starts to meet the rule during the cascade is not deleted.
 
 * The cascade is not deep. A member that is a collection is deleted; its own members stay.
+  This holds for a nesting collection: a sub-collection is deleted as a member, and its own members
+  are kept.
 * A named member must be of the member class, and the member class must be an aggregate root the
   schema serves. A stored collection (written without the guard) that names another aggregate,
   such as the tenant's access record, or whose member class is not a served root (even the access
