@@ -44,8 +44,8 @@ from tests.generator.uml_model import (
     run,
     tag,
 )
-from tests.generator.unit.test_uml_roles import ROLE_ROWS
-from tests.generator.unit.test_uml_workflows import WORKFLOW_ROWS
+from tests.generator.unit.uml_role_rows import ROLE_ROWS
+from tests.generator.unit.uml_workflow_rows import WORKFLOW_ROWS
 
 Check = Callable[[Converted], None]
 
