@@ -11,7 +11,7 @@ by trying member classes, the class of a hidden aggregate whose IRI it holds, ne
 
 from collections.abc import Collection, Iterable, Mapping, Sequence
 
-from rdflib import Graph, Literal
+from rdflib import Graph, Literal, URIRef
 
 from rdf_persistence.collaboration.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.collaboration.services.reference_collections import (
@@ -127,20 +127,52 @@ class WriteGuards:
         *,
         adding: bool,
     ) -> None:
-        heads = await self._check_members(session, name, collection)
+        if not adding:
+            await self._check_held_member_class(session, iri, name, collection)
+        # the nested members already stored stay valid (the check above); only new ones are checked
+        stored = (
+            await self._stored_members(session, iri) if collection.nests and not adding else set()
+        )
+        heads = await self._check_members(session, name, collection, stored)
         try:
             rule_plan(self._listings, collection)
         except BadQuery as error:
             raise InvalidBody(str(error)) from error
         if collection.nests:
-            await self._check_no_cycle(
-                session, iri, name, collection, heads, context, adding=adding
-            )
+            await self._check_no_cycle(session, iri, name, collection, heads, context, stored)
+
+    async def _check_held_member_class(
+        self, session: Session, iri: str, name: str, collection: ReferenceCollection
+    ) -> None:
+        """Refuse another member class for a collection that a nesting one of its class holds (C-1).
+
+        The holder's member class is the stored one of ``iri``: a nested member is checked against it
+        when the holder is saved, so it must not drift after. The text names no holder: it may be hidden.
+        """
+        for holder, graph in (await session.graphs_with(v.HAS_PART, URIRef(iri))).items():
+            other = self._decoded_if_nesting(name, holder, graph)
+            if other is not None and other.member_class != collection.member_class:
+                raise InvalidBody(
+                    f"the member class of {iri} cannot change while a nesting collection holds it"
+                )
+
+    def _decoded_if_nesting(self, name: str, iri: str, graph: Graph) -> ReferenceCollection | None:
+        """``iri`` decoded when it is a collection of class ``name`` that nests: else none."""
+        if collection_class(self._collections, iri, graph) != name:
+            return None
+        try:
+            other = decode_collection(self._mapper, self._models, name, iri, graph)
+        except ValueError:
+            return None  # another collection's corruption is not this save's to name
+        return other if other.nests else None
 
     async def _check_members(
-        self, session: Session, name: str, collection: ReferenceCollection
+        self, session: Session, name: str, collection: ReferenceCollection, stored: set[str]
     ) -> Sequence[AggregateHead]:
-        """The heads of the members, once the member class and the members are checked."""
+        """The heads of the members, once the member class and the members are checked.
+
+        ``stored`` are the nested members the stored collection already holds: not checked again.
+        """
         view = self._mapper.view
         try:
             self._listings.served_root(collection.member_class)
@@ -154,7 +186,7 @@ class WriteGuards:
         heads = await session.heads(members)
         wrong = outside_member_class(accepted_members(view, name, collection), members, heads)
         if not wrong and collection.nests:
-            wrong = await self._unlike_nested(session, name, collection, heads)
+            wrong = await self._unlike_nested(session, name, collection, heads, stored)
         if wrong:
             raise InvalidBody(f"not stored aggregates of {collection.member_class}: {wrong}")
         return heads
@@ -167,13 +199,11 @@ class WriteGuards:
         collection: ReferenceCollection,
         heads: Sequence[AggregateHead],
         context: GuardContext,
-        *,
-        adding: bool,
+        stored: set[str],
     ) -> None:
         """Refuse a nested member that leads back to the collection, and rely on what was walked (PD-4)."""
         own = self._mapper.view.get_uri(name, expand=True)
         nested = {str(h.head_iri) for h in heads if own in (h.head_types or [])}
-        stored = set() if adding else await self._stored_members(session, iri)
         if not (new := sorted(nested - stored)):
             return  # nothing nested is added: no walk, no guard
         skeleton = await self._skeleton(session, name, collection, context)
@@ -218,7 +248,9 @@ class WriteGuards:
         """
         values = await session.root_values(iri, [v.HAS_PART, v.NESTS])
         nests = Literal(True) in {Literal(n) for n in values[v.NESTS]}
-        return {str(m) for m in values[v.HAS_PART] if nests}
+        if not nests:
+            return set()
+        return {str(m) for m in values[v.HAS_PART]}
 
     async def _skeleton(
         self, session: Session, name: str, collection: ReferenceCollection, context: GuardContext
@@ -272,14 +304,19 @@ class WriteGuards:
         name: str,
         collection: ReferenceCollection,
         heads: Sequence[AggregateHead],
+        stored: set[str],
     ) -> list[str]:
-        """The nested members (stored with exactly the collection's class) whose member class differs."""
+        """The new nested members (stored with exactly the collection's class) whose member class differs.
+
+        A member the stored collection already nests is not read: its member class cannot have changed
+        while it is held (``_check_held_member_class``).
+        """
         own = self._mapper.view.get_uri(name, expand=True)
         wrong = []
         for head in heads:
-            if own not in (head.head_types or []):
-                continue
             iri = str(head.head_iri)
+            if own not in (head.head_types or []) or iri in stored:
+                continue
             graph, _, _ = await session.get_graph(iri)
             if self._decoded(name, iri, graph).member_class != collection.member_class:
                 wrong.append(iri)
