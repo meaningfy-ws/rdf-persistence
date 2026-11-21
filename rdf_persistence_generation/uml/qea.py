@@ -25,8 +25,10 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlLink,
     UmlLinkKind,
     UmlModel,
+    UmlObject,
     UmlPackage,
     UmlRule,
+    UmlRunValue,
     UmlTaggedValue,
 )
 from rdf_persistence_generation.problems import format_problem
@@ -44,6 +46,8 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
         "Stereotype",
         "Abstract",
         "ea_guid",
+        "Classifier",
+        "RunState",
     ),
     "t_attribute": (
         "ID",
@@ -89,6 +93,7 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
 CLASS_TYPE = "Class"
 ENUMERATION_TYPE = "Enumeration"
 BOUNDARY_TYPE = "Boundary"
+OBJECT_TYPE = "Object"  # an instance of a drawn class: read as a UmlObject, never a problem
 CONVERTED_TYPES = frozenset({CLASS_TYPE, ENUMERATION_TYPE})
 # Object types that are drawing furniture, never converted and never a problem.
 PACKAGE_TYPE = "Package"  # the object that draws a package; it shares the package's ea_guid
@@ -105,6 +110,8 @@ NO_CLASS = "0"  # what EA writes in `PDATA1` when no class backs the association
 MULTIPLE_STEREOTYPES = 2
 STEREOTYPES_XREF = "Stereotypes"
 XREF_STEREOTYPE_NAME = re.compile(r"Name=([^;]+);")
+ASSIGNMENT = "="  # splits `Key=value` at the first one, so `Op==` has the value `=`
+RUN_STATE_BLOCK = re.compile(r"@VAR;(?P<body>.*?)@ENDVAR;", re.DOTALL)
 PATH_SEPARATOR = "/"
 
 
@@ -236,7 +243,24 @@ def _package_objects(
 
 def _unexpected(rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
     """Rows whose object type is neither converted nor drawing furniture."""
-    return [row for row in rows if row["Object_Type"] not in CONVERTED_TYPES | IGNORED_TYPES]
+    known = CONVERTED_TYPES | IGNORED_TYPES | {OBJECT_TYPE}
+    return [row for row in rows if row["Object_Type"] not in known]
+
+
+def _run_values(run_state: object) -> list[UmlRunValue]:
+    """The ``@VAR`` blocks of a ``RunState``, copied as written; judging them is the role rule's."""
+    values = []
+    for block in RUN_STATE_BLOCK.finditer(_text(run_state) or ""):
+        parts = (part.partition(ASSIGNMENT) for part in block.group("body").split(";"))
+        fields = {key: value for key, separator, value in parts if separator}
+        values.append(
+            UmlRunValue(
+                variable=fields.get("Variable"),
+                value=fields.get("Value"),
+                operator=fields.get("Op"),
+            )
+        )
+    return values
 
 
 def _plain_boundaries(rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
@@ -285,6 +309,7 @@ class _Reading:
         in_subtree = [row for row in objects if row["Package_ID"] in self.package_ids]
         self.class_rows = _of_types(in_subtree, CONVERTED_TYPES)
         self.unexpected_rows = _unexpected(in_subtree)
+        self.object_instance_rows = _of_types(in_subtree, (OBJECT_TYPE,))
         self.class_ids = {row["Object_ID"] for row in self.class_rows}
         self.boundary_rows = _plain_boundaries(objects)
         self.package_objects = _package_objects(self.package_rows, objects)
@@ -311,6 +336,7 @@ class _Reading:
             uml_links=links,
             uml_tagged_values=self._tags(),
             uml_boundaries=_Boundaries(self, self._select("t_diagramobjects")).read(),
+            uml_objects=self._objects(),
         )
         if not self.problems:
             return model
@@ -351,6 +377,19 @@ class _Reading:
             note=_text(row["Notes"]),
             object_id=self.package_objects.get(row["Package_ID"]),
         )
+
+    def _objects(self) -> list[UmlObject]:
+        rows = sorted(self.object_instance_rows, key=lambda r: (r["Name"] or "", r["Object_ID"]))
+        return [
+            UmlObject(
+                object_id=row["Object_ID"],
+                uml_name=row["Name"] or "",
+                classifier_id=_integer(row["Classifier"]) or None,
+                package_path=self.paths[row["Package_ID"]],
+                run_values=_run_values(row["RunState"]),
+            )
+            for row in rows
+        ]
 
     def _second_stereotypes(self) -> dict[str, list[str]]:
         found: dict[str, list[str]] = {}

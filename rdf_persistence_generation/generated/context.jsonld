@@ -282,6 +282,9 @@
       "openapi": {
          "@id": "openapiComponents"
       },
+      "operator": {
+         "@id": "umlRunOperator"
+      },
       "option": {
          "@id": "option"
       },
@@ -307,6 +310,9 @@
       },
       "package_id": {
          "@id": "umlPackageId"
+      },
+      "package_path": {
+         "@id": "umlPackagePath"
       },
       "parent_id": {
          "@id": "umlParentId"
@@ -386,6 +392,11 @@
       },
       "rule": {
          "@id": "rule"
+      },
+      "run_values": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlRunValues"
       },
       "schema_base": {
          "@id": "schemaBase"
@@ -487,6 +498,14 @@
          "@container": "@set",
          "@id": "umlLinks"
       },
+      "uml_name": {
+         "@id": "umlName"
+      },
+      "uml_objects": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlObjects"
+      },
       "uml_outside_classes": {
          "@type": "@id",
          "@container": "@set",
@@ -517,10 +536,16 @@
          "@container": "@set",
          "@id": "validInstances"
       },
+      "value": {
+         "@id": "umlRunValue"
+      },
       "values": {
          "@type": "@id",
          "@container": "@set",
          "@id": "tsValues"
+      },
+      "variable": {
+         "@id": "umlRunVariable"
       },
       "what": {
          "@id": "what"
@@ -628,6 +653,9 @@
       "UmlName": {
          "@id": "UmlName"
       },
+      "UmlObject": {
+         "@id": "UmlObject"
+      },
       "UmlPackage": {
          "@id": "UmlPackage"
       },
@@ -636,6 +664,9 @@
       },
       "UmlPrefix": {
          "@id": "UmlPrefix"
+      },
+      "UmlRunValue": {
+         "@id": "UmlRunValue"
       },
       "UmlSettings": {
          "@id": "UmlSettings"

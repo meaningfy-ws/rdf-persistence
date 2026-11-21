@@ -268,3 +268,20 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
   consumer's run fails with a clear message.
 - **RISK-4**: the stage-1 reader change (new required columns) refuses a hand-built test `.qea`
   lacking them; only the builder is affected, which this change updates.
+
+## Delivery decisions
+
+- **D-1 Parallel stages (lead, 2026-11-21).** The owner asked to advance in parallel. The tasks of
+  each stage chain (1.1 → 1.4, 2.1 → 2.4) and stage 2's reader edits the files of 1.1, so stage 2
+  starts in its own worktree as soon as 1.1 is committed, branched from it; 2.1 runs while 1.2–1.4
+  run, and stage 2 rebases onto develop after stage 1 merges (P-0002, P-0003 for generated files).
+  DEC-7 (stage 1 does not wait for stage 2) holds; only stage 2's start moves earlier.
+- **D-2 Review set.** MEDIUM, no `RISK-` row names a stage's files as risky: per P-0005 one L2 and
+  one L3 pass per stage, the full review (L1, L2, L3, L4 with L5) once at the end of stage 2. No
+  tester: the PLAN has no `## Invariants` section and the appetite is below LARGE.
+- **D-4 RunState outside the blocks (task 1.1 → 1.2).** The reader copies the `@VAR` blocks into
+  `run_values` and drops the rest, but PD-3 makes non-blank text outside the blocks a problem.
+  `UmlObject` gains `run_state_rest` (the text outside the blocks, stripped; absent when blank),
+  filled by the reader; the role rule (1.2) judges it. The record stays a copy of the file.
+- **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
+  order holds and the consumer may convert its access package.

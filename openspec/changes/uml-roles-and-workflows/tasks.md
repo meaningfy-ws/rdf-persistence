@@ -7,7 +7,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
 
 ## 1. Stage 1: role definitions
 
-- [ ] 1.1 Reader and records (PD-1, PD-2). Generator unit, first, in
+- [x] 1.1 Reader and records (PD-1, PD-2). Generator unit, first, in
   `tests/generator/unit/test_uml_qea.py`: a `QeaBuilder` model with one `Object` (classifier → a
   drawn `rp:RoleDefinition`, a `RunState`) reads into one `UmlObject` with its three `run_values`;
   a `.qea` lacking `t_object.RunState` is a usage error naming the column. Then `QeaBuilder`
