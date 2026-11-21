@@ -268,3 +268,50 @@ real model run is recorded in `evidence/real-model-run.md` (counts only), as in 
   consumer's run fails with a clear message.
 - **RISK-4**: the stage-1 reader change (new required columns) refuses a hand-built test `.qea`
   lacking them; only the builder is affected, which this change updates.
+
+## Delivery decisions
+
+- **D-1 Parallel stages (lead, 2026-11-21).** The owner asked to advance in parallel. The tasks of
+  each stage chain (1.1 → 1.4, 2.1 → 2.4) and stage 2's reader edits the files of 1.1, so stage 2
+  starts in its own worktree as soon as 1.1 is committed, branched from it; 2.1 runs while 1.2–1.4
+  run, and stage 2 rebases onto develop after stage 1 merges (P-0002, P-0003 for generated files).
+  DEC-7 (stage 1 does not wait for stage 2) holds; only stage 2's start moves earlier.
+- **D-2 Review set.** MEDIUM, no `RISK-` row names a stage's files as risky: per P-0005 one L2 and
+  one L3 pass per stage, the full review (L1, L2, L3, L4 with L5) once at the end of stage 2. No
+  tester: the PLAN has no `## Invariants` section and the appetite is below LARGE.
+- **D-4 RunState outside the blocks (task 1.1 → 1.2).** The reader copies the `@VAR` blocks into
+  `run_values` and drops the rest, but PD-3 makes non-blank text outside the blocks a problem.
+  `UmlObject` gains `run_state_rest` (the text outside the blocks, stripped; absent when blank),
+  filled by the reader; the role rule (1.2) judges it. The record stays a copy of the file.
+- **D-5 A state node's raw kind (task 2.1 → 2.2).** PD-2's `node_kind` (`state`, `initial`)
+  cannot carry the NType PD-5 step 2 must name ("StateNode kind <NType>"). `UmlStateNode` gains
+  `node_type` (the raw `NType`, StateNode rows only); `node_kind` is absent for a StateNode that
+  is not Initial, and the workflow rule (2.2) reports it as `no_rule` with `node_type`. The reader
+  judges no kind. Also as built: `UmlStateFlow.uml_tagged_values` reuses `UmlTaggedValue` (owner =
+  connector id); `UmlStatechart.node_ids` holds only state nodes of the converted subtree.
+- **D-6 The refusal message (task 1.3).** `StagedFileRefused` carries the loader's message as is,
+  which names the staged file's temporary path; PD-4 promises "the loader message", and the case
+  only arises when a conversion rule missed something. The exception keeps PD-4's name without an
+  `Error` suffix (`noqa: N818`).
+- **D-7 Diagrams in Mermaid (task 1.4).** PD-7 says PlantUML, but the docs build renders only
+  `[mermaid]` blocks (`make check-diagrams`). A role definition is drawn as a `classDiagram` box
+  named `<object> : rp:RoleDefinition` with its run-state values as rows (Mermaid has no object
+  diagram); stage 2's state diagram uses `stateDiagram-v2`.
+- **D-8 The real-model run (task 1.4).** The run on the first consumer's model, its access package
+  now converted, stops at one `no_rule` of the model itself (a boundary in the access package with
+  no root), before any role is written. Its three role Objects are well-formed (read-only query).
+  The converter is not changed for it: the consumer fixes its model, and the counts in
+  `evidence/real-model-run.md` are filled from the next run (stage 2's 2.4 run repeats it).
+- **D-9 Stage 1 review (L2+L3, one pass): no Critical finding.** W1 (gate evidence) is answered by
+  a logged `make refresh-map` on HEAD `919aa2be` (exit 0, 0 unmapped) and the PR body's corrected
+  gate line. Under the floor, carried to the full review at the end of stage 2:
+  - W2: no test for a `Note=` key in a `@VAR` block, for a stray `<root>.roles.yaml` with the
+    run's own root name, or for a block with no `Variable`.
+  - W3: the scenario "an object of another class" is mapped at requirement level only.
+  - S1: task 1.1 regenerated the stale library file `rp_persistence_rows.py` (develop's freshness
+    check let it through); named in the PR body.
+  - S2: `write`'s docstring narrows PD-8's path to a top-level name; stage 2 (2.3) widens it.
+  - S3: an Object classified by a class the reader did not read is named by EA's numeric id.
+  - S4: the conventions page copies the levels and actions the library defines.
+- **D-3 Part 1 landed.** #245 part 1 (`module_kind`) merged in #247 before stage 1, so RISK-3's
+  order holds and the consumer may convert its access package.

@@ -599,6 +599,85 @@ classes:
 When no using module is reached by all the others, the run fails with
 `[shared_slot_across_packages] location: used in library_catalogue, library_shelves and no one of them is imported by the others`.
 
+[#roles]
+=== A role definition
+
+A role definition, the grant of a set of actions to a role at a level, is drawn as an EA Object
+(an instance, not a class). Its classifier is the toolkit class `rp:RoleDefinition`, drawn once in
+the converted packages like any toolkit class (<<toolkit-reuse>>); declare the `rp` prefix in the
+prefixes file (`rp: https://meaningfy.ws/ns/rdf-persistence#`). The Object's run state, in EA's
+_Run State_ dialog, sets three variables, each once, with the operator `=`:
+
+[cols="1,4",options="header"]
+|===
+|Variable |Value
+
+|`role`
+|The role's name.
+
+|`level`
+|One of the toolkit's role levels: `system`, `tenant` or `aggregate`.
+
+|`actions`
+|Comma-separated, at least one, none twice: `read`, `modify`, `delete`, `administer` or
+`annotate`.
+|===
+
+The converter does not copy these lists: it asks the toolkit's own `RoleDefinition` to judge each
+Object, so the levels and the actions are always the toolkit's. It writes the definitions, sorted by
+role and then level, to `<root-name>.roles.yaml` beside the schemas, in the format
+`install_service(rules=...)` loads (xref:howto/uml-to-linkml.adoc#roles-file[the how-to]), and one `role` report line per definition:
+`role` `<object name>` `<role> at <level>: <actions>`. A model that draws no role definition gets
+no roles file.
+
+Mermaid has no object diagram, so the diagram draws each Object as a box named
+`<object> : <classifier>`, with its run-state values as the rows.
+
+[mermaid]
+....
+classDiagram
+  class librarian["librarian : rp:RoleDefinition"] {
+    role = librarian
+    level = tenant
+    actions = read, modify, delete, administer
+  }
+  class member["member : rp:RoleDefinition"] {
+    role = member
+    level = tenant
+    actions = read, annotate
+  }
+  class reader["reader : rp:RoleDefinition"] {
+    role = reader
+    level = tenant
+    actions = read
+  }
+....
+
+[source,yaml]
+----
+# library.roles.yaml
+- role: librarian
+  level: tenant
+  actions:
+  - read
+  - modify
+  - delete
+  - administer
+- role: member
+  level: tenant
+  actions:
+  - read
+  - annotate
+- role: reader
+  level: tenant
+  actions:
+  - read
+----
+
+A role definition that the toolkit would refuse stops the run, naming the Object (<<fails>>). The
+converter then loads the staged file with the toolkit's `load_role_definitions`, as a last check;
+if that refuses it, the run exits 1 with the loader's message and moves nothing.
+
 [#fails]
 == What fails
 
@@ -619,8 +698,23 @@ convention maps between two converted classes still fails.
 |Draw an ordinary class with two associations, one to each end.
 
 |An n-ary association (a diamond node), or any other element type: `Interface`, `Component`,
-`Activity`, `DataType`, `Object`
-|Model the relation as a class and use associations. Use only classes, enumerations and packages.
+`Activity`, `DataType`, or an `Object` that is not a role definition (`[no_rule] <name>: Object of
+<class>`)
+|Model the relation as a class and use associations. Use only classes, enumerations, packages and,
+for roles, Objects of `rp:RoleDefinition` (<<roles>>).
+
+|A role definition Object whose run state is wrong: a variable other than `role`, `level` and
+`actions`, one missing or given twice, an operator other than `=`, or text outside the blocks
+(`[role_run_state] <object>: variable level is missing`)
+|Set `role`, `level` and `actions` once each, with `=`, in the Object's run state (<<roles>>).
+
+|A role definition the toolkit refuses: a level or an action it does not list, no action, or one
+twice (`[role_definition] <object>: level: Input should be 'system', 'tenant' or 'aggregate' (given 'planet')`)
+|Use a level and actions from the table in <<roles>>.
+
+|Two role definitions with one role and level (`[role_duplicate] <object>: <role> at <level> is also
+defined by <other>`)
+|Keep one, or give the second another level.
 
 |A multiplicity that is not valid: `2..1`, `a..b`
 |Write `m..n` with `m` not above `n`.

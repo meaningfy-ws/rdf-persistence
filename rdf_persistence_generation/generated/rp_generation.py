@@ -195,6 +195,8 @@ class ReportKind(str, _Enum):
     "An enumeration with no literals, a list kept outside the model, so its slots range over a URI."
     UNSPECIFIED_MULTIPLICITY = "unspecified_multiplicity"
     "A connector end with no multiplicity, read as zero or more."
+    ROLE = "role"
+    "A role definition drawn as an object, with its role, level and actions."
 
 
 class UmlRule(str, _Enum):
@@ -247,6 +249,12 @@ class UmlRule(str, _Enum):
     "R-29, a link to a class that is not generated, or to an excluded package, is left out and reported."
     ACTIVITY_ROOT = "activity_root"
     "A root class that is an activity, which the toolkit\u0027s rules do not allow."
+    ROLE_RUN_STATE = "role_run_state"
+    "PD-3, the run state of a role object holds the variables `role`, `level` and `actions`, each once, with the operator `=` and nothing else."
+    ROLE_DEFINITION = "role_definition"
+    "PD-3, the values of a role object are a role definition of the toolkit, with at least one action and none twice."
+    ROLE_DUPLICATE = "role_duplicate"
+    "PD-3, two role objects with one role and level."
 
 
 
@@ -485,6 +493,7 @@ class UmlModel(ConfiguredBaseModel):
     uml_links: _Optional[list[UmlLink]] = _Field(default=None, title="UML links", description="The connectors of a UML model.")
     uml_tagged_values: _Optional[list[UmlTaggedValue]] = _Field(default=None, title="UML tagged values", description="The tagged values of the classes of a UML model.")
     uml_boundaries: _Optional[list[UmlBoundary]] = _Field(default=None, title="UML boundaries", description="The boundaries of a UML model.")
+    uml_objects: _Optional[list[UmlObject]] = _Field(default=None, title="UML objects", description="The objects of a UML model, the instances of its drawn classes.")
 
 
 class UmlPackage(ConfiguredBaseModel):
@@ -518,7 +527,7 @@ class UmlAttribute(ConfiguredBaseModel):
     name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
     note: _Optional[str] = _Field(default=None, title="Note", description="The note of a UML element.")
     declared_type: _Optional[str] = _Field(default=None, title="Declared type", description="The type of an attribute as the model writes it, a datatype or the name of a class.")
-    classifier_id: _Optional[int] = _Field(default=None, title="Classifier id", description="The id of the class an attribute is typed by, absent for a plain type.")
+    classifier_id: _Optional[int] = _Field(default=None, title="Classifier id", description="The id of the class an attribute or an object is typed by, absent for a plain type.")
     lower_bound: _Optional[str] = _Field(default=None, title="Lower bound", description="The lower bound of an attribute\u0027s multiplicity, as the model writes it.")
     upper_bound: _Optional[str] = _Field(default=None, title="Upper bound", description="The upper bound of an attribute\u0027s multiplicity, as the model writes it (`*` for no bound).")
     position: _Optional[int] = _Field(default=None, title="Position", description="The place of an attribute among those of its class.")
@@ -557,6 +566,23 @@ class UmlBoundary(ConfiguredBaseModel):
     name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
     diagram_id: int = _Field(default=..., title="Diagram id", description="The id of the diagram a boundary is drawn on.")
     member_ids: _Optional[list[int]] = _Field(default=None, title="Member ids", description="The ids of the classes and enumerations that lie inside a boundary.")
+
+
+class UmlObject(ConfiguredBaseModel):
+    "An object of the UML model, an instance of a drawn class, with the class that types it, the package it sits in and the values its run state sets, as the model file writes them."
+    object_id: int = _Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
+    uml_name: str = _Field(default=..., title="UML name", description="The name of a UML element, as drawn.")
+    classifier_id: _Optional[int] = _Field(default=None, title="Classifier id", description="The id of the class an attribute or an object is typed by, absent for a plain type.")
+    package_path: _Optional[str] = _Field(default=None, title="Package path", description="The path of the package a UML element sits in, the package names joined by `/`.")
+    run_values: _Optional[list[UmlRunValue]] = _Field(default=None, title="Run values", description="The variables a UML object\u0027s run state sets, in the order the model file writes them.")
+    run_state_rest: _Optional[str] = _Field(default=None, title="Run state rest", description="The text of a UML object\u0027s run state outside its variable blocks, stripped; absent when blank.")
+
+
+class UmlRunValue(ConfiguredBaseModel):
+    "One variable a UML object\u0027s run state sets: its name, its value and its operator, as written."
+    variable: _Optional[str] = _Field(default=None, title="Variable", description="The name of a variable a run state sets.")
+    value: _Optional[str] = _Field(default=None, title="Value", description="The text a run state gives a variable, as written.")
+    operator: _Optional[str] = _Field(default=None, title="Operator", description="The operator a run state applies between a variable and its value, as written.")
 
 
 class UmlPrefix(ConfiguredBaseModel):
@@ -739,6 +765,8 @@ UmlAttribute.model_rebuild()
 UmlLink.model_rebuild()
 UmlTaggedValue.model_rebuild()
 UmlBoundary.model_rebuild()
+UmlObject.model_rebuild()
+UmlRunValue.model_rebuild()
 UmlPrefix.model_rebuild()
 UmlName.model_rebuild()
 UmlSettings.model_rebuild()

@@ -173,6 +173,72 @@ def test_an_unexpected_object_type_is_a_no_rule_problem(tmp_path):
     )
 
 
+def _run_state(*variables: tuple[str, str]) -> str:
+    """A ``RunState`` as EA writes it: one ``@VAR`` block per variable, ``Op`` always ``=``."""
+    return "".join(f"@VAR;Variable={name};Value={value};Op==;@ENDVAR;" for name, value in variables)
+
+
+def test_an_object_reads_into_a_record_with_its_classifier_and_run_values(tmp_path):
+    builder, ids = build_library(tmp_path)
+    role_definition = builder.cls(ids["library"], "rp:RoleDefinition")
+    owner = builder.object_(
+        ids["library"],
+        "owner at tenant",
+        role_definition,
+        _run_state(("role", "owner"), ("level", "tenant"), ("actions", "read,modify")),
+    )
+    model = as_model(read(builder))
+    found = [(o.object_id, o.uml_name, o.classifier_id, o.package_path) for o in model.uml_objects]
+    assert found == [(owner, "owner at tenant", role_definition, ROOT)], (
+        "an Object in the subtree is one record, named, classified and placed, not a problem"
+    )
+    assert [(v.variable, v.value, v.operator) for v in model.uml_objects[0].run_values] == [
+        ("role", "owner", "="),
+        ("level", "tenant", "="),
+        ("actions", "read,modify", "="),
+    ], "its RunState blocks are copied as written, in order, unvalidated"
+
+
+def test_an_object_without_a_classifier_or_a_run_state_keeps_them_absent(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.object_(ids["library"], "bare", 0, None)
+    record = as_model(read(builder)).uml_objects[0]
+    assert (record.classifier_id, record.run_values) == (None, []), (
+        "classifier 0 is no classifier and an empty RunState has no values"
+    )
+
+
+@pytest.mark.parametrize(
+    ("run_state", "rest"),
+    [
+        pytest.param("@VAR;Variable=role;Value=owner;Op==;@ENDVAR;", None, id="no text outside"),
+        pytest.param(
+            "  stray @VAR;Variable=role;Value=owner;Op==;@ENDVAR; text\n"
+            "@VAR;Variable=level;Value=tenant;Op==;@ENDVAR;  ",
+            "stray  text",
+            id="the text left when the blocks are removed, stripped",
+        ),
+        pytest.param("only text", "only text", id="text and no block"),
+        pytest.param("  \n ", None, id="blank text is absent"),
+        pytest.param(None, None, id="no run state"),
+    ],
+)
+def test_an_object_keeps_the_text_outside_its_run_state_blocks(tmp_path, run_state, rest):
+    builder, ids = build_library(tmp_path)
+    builder.object_(ids["library"], "obj", 0, run_state)
+    record = as_model(read(builder)).uml_objects[0]
+    assert record.run_state_rest == rest, (
+        f"the text outside the @VAR blocks is copied for the role rule to judge (D-4): "
+        f"{record.run_state_rest!r}"
+    )
+
+
+def test_an_object_outside_the_subtree_is_not_read(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.object_(ids["other"], "elsewhere", 0, _run_state(("role", "owner")))
+    assert as_model(read(builder)).uml_objects == [], "only the converted subtree is read"
+
+
 def test_an_association_class_is_a_no_rule_problem(tmp_path):
     builder, ids = build_library(tmp_path)
     builder.association(ids["book"], ids["chapter"], role="lib:x", card="1", sub_type="Class")
@@ -396,6 +462,17 @@ def test_a_missing_column_is_named_with_its_table(tmp_path):
     with pytest.raises(QeaUsageError) as error:
         read_qea(path, ROOT, ())
     assert error.value.message == f"{path}: table t_connector has no column Direction", (
+        error.value.message
+    )
+
+
+def test_a_missing_run_state_column_is_named_with_its_table(tmp_path):
+    builder, _ = build_library(tmp_path)
+    path = builder.finish()
+    _alter(path, "ALTER TABLE t_object DROP COLUMN RunState")
+    with pytest.raises(QeaUsageError) as error:
+        read_qea(path, ROOT, ())
+    assert error.value.message == f"{path}: table t_object has no column RunState", (
         error.value.message
     )
 

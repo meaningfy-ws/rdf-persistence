@@ -130,3 +130,19 @@ Feature: A UML class model becomes LinkML that the toolkit accepts
     Then the conversion succeeds
     And the book has no slot "loan"
     And the report has an "excluded-link" line naming "Book.loan"
+
+  # spec: rp-uml-import / three roles
+  Scenario: Three roles
+    Given three role definition objects with valid run-state values
+    When the model is converted
+    Then the conversion succeeds
+    And the roles file holds the three roles "librarian", "member" and "reader"
+    And the library's role loader reads the roles file
+    And the report has a "role" line naming "reader"
+
+  # spec: rp-uml-import / an unknown level
+  Scenario: An unknown level
+    Given a role definition object "visitor" with the level "planet"
+    When the model is converted
+    Then the conversion fails naming "visitor" and "planet"
+    And nothing is written

@@ -34,9 +34,14 @@ PD_2_RULES = frozenset(
         "shared_slot_across_packages",
         "toolkit_mixins",
         "left_out_link",
+        "role_run_state",  # the role rules of uml-roles-and-workflows PD-3 have no R-n
+        "role_definition",
+        "role_duplicate",
     }
 )
-WITHOUT_A_RULE_NUMBER = frozenset({"no_rule", "activity_root"})
+WITHOUT_A_RULE_NUMBER = frozenset(
+    {"no_rule", "activity_root", "role_run_state", "role_definition", "role_duplicate"}
+)
 RULE_NUMBER = re.compile(r"\bR-\d+\b")
 
 

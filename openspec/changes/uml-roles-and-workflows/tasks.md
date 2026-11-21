@@ -7,19 +7,19 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
 
 ## 1. Stage 1: role definitions
 
-- [ ] 1.1 Reader and records (PD-1, PD-2). Generator unit, first, in
+- [x] 1.1 Reader and records (PD-1, PD-2). Generator unit, first, in
   `tests/generator/unit/test_uml_qea.py`: a `QeaBuilder` model with one `Object` (classifier → a
   drawn `rp:RoleDefinition`, a `RunState`) reads into one `UmlObject` with its three `run_values`;
   a `.qea` lacking `t_object.RunState` is a usage error naming the column. Then `QeaBuilder`
   columns and `object_(...)`, `TABLE_COLUMNS`, `UmlObject`/`UmlRunValue` in `rp_generation.yaml`,
   `make generate`. Accept: `test_uml_qea_fixture.py` and `test_uml_golden.py` unchanged and green.
-- [ ] 1.2 Role rule (PD-3), after 1.1. Generator unit, first,
+- [x] 1.2 Role rule (PD-3), after 1.1. Generator unit, first,
   `tests/generator/unit/test_uml_roles.py`, one parametrized table per error-matrix row of an
   Object (valid entry; classifier a domain class; classifier 0; `level=planet`; action `fly`; empty
   actions; repeated action; unknown variable; variable twice; missing `role`; `Op` not `=`; two
   objects with one level and role), each asserting the problem text names the object. Then
   `uml/roles.py` and its call in `convert`, `ReportKind.ROLE`, the `UmlRule` codes.
-- [ ] 1.3 Write and final check (PD-3, PD-4), after 1.2. Generator unit, first, in
+- [x] 1.3 Write and final check (PD-3, PD-4), after 1.2. Generator unit, first, in
   `test_uml_write.py`: `<root>.roles.yaml` written in `(role, level)` order and read back by
   `load_role_definitions`, its text equal to PD-6's `safe_dump` call; no objects → no file; a second
   run byte-identical; a stray `<root>.roles.yaml` with no objects drawn → **no** `stale-file` line
@@ -27,7 +27,7 @@ stages, one PR each, each merged on green CI (P-0013). Records change through
   file the loader refuses (patched loader) → nothing moved, and in `test_uml_cli.py` exit 1 with
   `rp-uml2linkml: <message>`. Then `convert`'s `files` (PD-8), `write(files=)`,
   `StagedFileRefused`, its handling in `cli.py`.
-- [ ] 1.4 Acceptance and docs (PD-7), after 1.3. Generator feature, first: two scenarios in
+- [x] 1.4 Acceptance and docs (PD-7), after 1.3. Generator feature, first: two scenarios in
   `uml_import.feature` (three roles accepted; `level=planet` refused naming the object). Then the
   UML conventions section with a PlantUML object-diagram snippet and the file it becomes; the
   how-to's `install_service(rules=...)` line. Run on the probed model (read-only copy), record

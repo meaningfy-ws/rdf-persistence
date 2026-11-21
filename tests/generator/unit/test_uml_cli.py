@@ -121,6 +121,36 @@ def test_a_package_with_no_class_or_enumeration_exits_one_and_writes_nothing(tmp
     assert not (tmp_path / "out").exists(), "nothing is written"
 
 
+def test_a_roles_file_the_loader_refuses_exits_one_with_its_message_and_writes_nothing(
+    tmp_path, capsys, monkeypatch
+):
+    from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition
+    from rdf_persistence_generation.uml import write as write_module
+
+    def refuse(path):
+        raise InvalidRoleDefinition("entry 1: refused")
+
+    monkeypatch.setattr(write_module, "load_role_definitions", refuse)
+    builder, ids = build_library(tmp_path)
+    role_definition = builder.cls(ids["library"], "rp:RoleDefinition")
+    builder.object_(
+        ids["library"],
+        "reader",
+        role_definition,
+        "".join(
+            f"@VAR;Variable={name};Value={value};Op==;@ENDVAR;"
+            for name, value in (("role", "reader"), ("level", "tenant"), ("actions", "read"))
+        ),
+    )
+
+    toolkit = prefixes_file(tmp_path, PREFIXES + "  rp: https://meaningfy.ws/ns/rdf-persistence#\n")
+
+    code, lines = run(capsys, tmp_path, builder.finish(), prefixes=toolkit)
+
+    assert (code, lines) == (1, [f"{PREFIX}entry 1: refused"]), (code, lines)
+    assert not any((tmp_path / "out").glob("*")), "nothing is moved into out"
+
+
 def test_an_out_folder_that_does_not_exist_is_not_created_by_a_failed_run(tmp_path, capsys):
     builder, ids = build_library(tmp_path)
     builder.extra_stereotypes(ids["book"], "root", "loaded graph")

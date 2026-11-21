@@ -215,6 +215,7 @@ classes:
       - uml_links
       - uml_tagged_values
       - uml_boundaries
+      - uml_objects
   UmlPackage:
     title: UML package
     description: >-
@@ -343,6 +344,33 @@ classes:
         required: true
       diagram_id:
         required: true
+  UmlObject:
+    title: UML object
+    description: >-
+      An object of the UML model, an instance of a drawn class, with the class that types it, the
+      package it sits in and the values its run state sets, as the model file writes them.
+    class_uri: rp:UmlObject
+    slots:
+      - object_id
+      - uml_name
+      - classifier_id
+      - package_path
+      - run_values
+      - run_state_rest
+    slot_usage:
+      object_id:
+        required: true
+      uml_name:
+        required: true
+  UmlRunValue:
+    title: UML run value
+    description: >-
+      One variable a UML object's run state sets: its name, its value and its operator, as written.
+    class_uri: rp:UmlRunValue
+    slots:
+      - variable
+      - value
+      - operator
   UmlPrefix:
     title: UML prefix
     description: One prefix of the prefixes file and the namespace it stands for.
@@ -1109,6 +1137,45 @@ slots:
     range: UmlBoundary
     multivalued: true
     inlined_as_list: true
+  uml_objects:
+    title: UML objects
+    description: The objects of a UML model, the instances of its drawn classes.
+    slot_uri: rp:umlObjects
+    range: UmlObject
+    multivalued: true
+    inlined_as_list: true
+  run_values:
+    title: Run values
+    description: The variables a UML object's run state sets, in the order the model file writes them.
+    slot_uri: rp:umlRunValues
+    range: UmlRunValue
+    multivalued: true
+    inlined_as_list: true
+  run_state_rest:
+    title: Run state rest
+    description: >-
+      The text of a UML object's run state outside its variable blocks, stripped; absent when blank.
+    slot_uri: rp:umlRunStateRest
+  uml_name:
+    title: UML name
+    description: The name of a UML element, as drawn.
+    slot_uri: rp:umlName
+  package_path:
+    title: Package path
+    description: The path of the package a UML element sits in, the package names joined by `/`.
+    slot_uri: rp:umlPackagePath
+  variable:
+    title: Variable
+    description: The name of a variable a run state sets.
+    slot_uri: rp:umlRunVariable
+  value:
+    title: Value
+    description: The text a run state gives a variable, as written.
+    slot_uri: rp:umlRunValue
+  operator:
+    title: Operator
+    description: The operator a run state applies between a variable and its value, as written.
+    slot_uri: rp:umlRunOperator
   uml_attributes:
     title: UML attributes
     description: The attributes of a class, or the literals of an enumeration, in the order the model gives them.
@@ -1158,7 +1225,7 @@ slots:
     range: integer
   classifier_id:
     title: Classifier id
-    description: The id of the class an attribute is typed by, absent for a plain type.
+    description: The id of the class an attribute or an object is typed by, absent for a plain type.
     slot_uri: rp:umlClassifierId
     range: integer
   diagram_id:
@@ -1736,6 +1803,10 @@ enums:
         title: Unspecified multiplicity
         description: A connector end with no multiplicity, read as zero or more.
         meaning: rp:ReportKindUnspecifiedMultiplicity
+      role:
+        title: Role
+        description: A role definition drawn as an object, with its role, level and actions.
+        meaning: rp:ReportKindRole
   UmlRule:
     title: UML rule
     description: >-
@@ -1838,3 +1909,15 @@ enums:
         title: Activity root
         description: A root class that is an activity, which the toolkit's rules do not allow.
         meaning: rp:UmlRuleActivityRoot
+      role_run_state:
+        title: Role run state
+        description: PD-3, the run state of a role object holds the variables `role`, `level` and `actions`, each once, with the operator `=` and nothing else.
+        meaning: rp:UmlRuleRoleRunState
+      role_definition:
+        title: Role definition
+        description: PD-3, the values of a role object are a role definition of the toolkit, with at least one action and none twice.
+        meaning: rp:UmlRuleRoleDefinition
+      role_duplicate:
+        title: Role duplicate
+        description: PD-3, two role objects with one role and level.
+        meaning: rp:UmlRuleRoleDuplicate

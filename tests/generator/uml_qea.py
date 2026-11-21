@@ -245,7 +245,7 @@ DDL: dict[str, str] = {
     "t_object": (
         "CREATE TABLE t_object (Object_ID INTEGER PRIMARY KEY, Object_Type TEXT, Name TEXT,"
         " Alias TEXT, Note TEXT, Package_ID INTEGER, Stereotype TEXT, Abstract TEXT,"
-        " ea_guid TEXT)"
+        " ea_guid TEXT, Classifier INTEGER, RunState TEXT)"
     ),
     "t_attribute": (
         "CREATE TABLE t_attribute (ID INTEGER PRIMARY KEY, Object_ID INTEGER, Name TEXT,"
@@ -323,6 +323,24 @@ class QeaBuilder:
             Package_ID=package,
             Stereotype=stereotype,
             Abstract="1" if abstract else "0",
+        )
+        self._db.execute(
+            "UPDATE t_object SET ea_guid = ? WHERE Object_ID = ?",
+            (f"{{GUID-{object_id}}}", object_id),
+        )
+        return object_id
+
+    def object_(
+        self, package: int, name: str, classifier: int, run_state: str | None = None
+    ) -> int:
+        """An ``Object`` (an instance of a drawn class): its classifier's id and its ``RunState``."""
+        object_id = self._insert(
+            "t_object",
+            Object_Type="Object",
+            Name=name,
+            Package_ID=package,
+            Classifier=classifier,
+            RunState=run_state,
         )
         self._db.execute(
             "UPDATE t_object SET ea_guid = ? WHERE Object_ID = ?",
