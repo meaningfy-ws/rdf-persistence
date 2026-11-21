@@ -18,5 +18,6 @@ diagram rename (RISK-2).
 Run 2 found five small defects (a stale `safe_dump` line in PD-3, F-1 on `Stereotype`, the tasks
 header, a mutable default, the stale roles-file glob); all fixed after the run.
 
-Scenarios (specs/rp-uml-import/spec.md, the design's error matrix, tasks 1.4 and 2.4): sign-off by
-the owner pending.
+Scenarios (specs/rp-uml-import/spec.md, the design's error matrix, tasks 1.4 and 2.4): signed off
+by the owner, 2026-11-21 ('signed off'). The planner's readings in inputs/qa.md (DEC-4) and PD-5's
+scope of the workflow-tag check stand with the sign-off.

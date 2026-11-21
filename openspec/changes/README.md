@@ -125,8 +125,8 @@ fixed separately and is not in either.
 
 | # | Id | Appetite | Issue | Depends on | Needed by (MWB2) | PLAN (gate, 2026-11-21) |
 |---|---|---|---|---|---|---|
-| 8 | `aggregate-validators` | SMALL | #240 | none | `v2-02` phase B, the package's 0..1 collection limits | 8.1 → 8.9, accepted (R-0005) |
-| 9 | `uml-roles-and-workflows` | MEDIUM (2 stages: roles, workflows) | #245 parts 2, 3 | `uml-to-linkml` (archived); for the consumer, #245 part 1 (RISK-3) | `v2-02` phase B, its hand-written roles and workflow files | 8.0 → 9.0 |
+| 8 | `aggregate-validators` | SMALL | #240 | none | `v2-02` phase B, the package's 0..1 collection limits | 8.1 → 8.9, accepted (R-0005); scenarios signed off, ready for an epic session |
+| 9 | `uml-roles-and-workflows` | MEDIUM (2 stages: roles, workflows) | #245 parts 2, 3 | `uml-to-linkml` (archived); for the consumer, #245 part 1 (RISK-3) | `v2-02` phase B, its hand-written roles and workflow files | 8.0 → 9.0; scenarios signed off, ready for an epic session |
 
 ### Why this order
 
