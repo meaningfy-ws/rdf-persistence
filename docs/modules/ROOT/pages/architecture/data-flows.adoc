@@ -621,7 +621,10 @@ them to every session it opens when the schema imports `rp_discussion`, and a se
 without them drops only the aggregate. The same pairs also leave a comment's link to its target
 out of `Session.referrer_rows`, so what `referrers` omits and what a remove drops cannot differ.
 The operation starts from the link to the removed root and checks the registry afterwards, so a
-tenant with no comment pays next to nothing for it. The dependents are comments only. A
+tenant with no comment pays next to nothing for it. A commit that adds or replaces a comment on a
+root it also removes is refused before anything is sent (`Conflict` naming both roots): the
+operation would drop the comment in the same request, or leave it dangling, depending on the
+order of the changes. The dependents are comments only. A
 transition's activity is not one: it lives in the provenance graph, and a remove adds its own
 activity there and drops no other (<<commit>>, _The activity_).
 

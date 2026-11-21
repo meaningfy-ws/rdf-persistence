@@ -374,6 +374,15 @@ def _link_rows(iri: str, triples: Sequence[Triple]) -> list[tuple[str, ReferrerR
     ]
 
 
+def _dependent_targets(iri: str, triples: Sequence[Triple], pairs: Dependents) -> set[str]:
+    """The roots the record ``iri`` depends on: the objects of its links of a ``(class, predicate)``
+    pair whose class it has, as the removal's cascade (``_DROP_DEPENDENTS``) matches them."""
+    own = URIRef(iri)
+    types = {o for s, p, o in triples if s == own and p == RDF.type}
+    links = {link for cls, link in pairs if cls in types}
+    return {str(o) for s, p, o in triples if s == own and p in links}
+
+
 def _mark_key(mark: object, iri: str) -> tuple[int, datetime, str]:
     """Total sort key of a pending mark: a zoned time by its value, any other mark (a string, a
     naive time) after every valid one, so one bad mark never stalls the relay of a database."""
@@ -1624,6 +1633,8 @@ class Transaction:
                 aggregate holds a value a change claims; nothing changed. The second kind is a
                 diagnosis read after the refusal (PD-15).
             Conflict: A guard failed; nothing changed, and ``iris`` names the roots found conflicting.
+                Or a change adds a dependent record of a root the same commit removes; nothing is
+                sent, and ``iris`` names both (#226).
         """
         if not self._roots:
             return
@@ -1637,6 +1648,7 @@ class Transaction:
         if clash := same_value(self._key_claims):
             raise key_conflict(clash, within_commit=True)
         await self._refuse_links_to_removed()
+        self._refuse_dependents_of_removed()
         excluded = self._excluded()
         key_guards = [guard(c, session._registry, excluded) for c in self._key_claims]
         guards = [*self._guards, *key_guards, *self._referrer_guards()]
@@ -1785,6 +1797,25 @@ class Transaction:
             rows = {row for target, row in self._links if target == refused[0]}
             ordered = sorted(rows, key=lambda r: (r[0], r[1], r[2] or "", r[3]))
             raise await removals.in_use(tuple(refused), ordered, self._readable)
+
+    def _refuse_dependents_of_removed(self) -> None:
+        """An add or replace of this commit whose root is a dependent record (a ``dependents`` pair)
+        of a root the commit removes is refused before anything is sent (#226): the removal's
+        cascade would drop the record in the same request, or it would dangle.
+
+        Raises:
+            Conflict: Naming the record and the removed root.
+        """
+        removed = set(self._removed_graphs().values())
+        pairs = self._session._dependents
+        if not removed or not pairs:
+            return
+        for record, triples in sorted(self._collected.items()):
+            if target := min(_dependent_targets(record, triples, pairs) & removed, default=None):
+                raise Conflict(
+                    f"{record} depends on {target}, which the same commit removes",
+                    iris=tuple(sorted((record, target))),
+                )
 
     async def _refusing_among(self, roots: list[str]) -> list[str]:
         """The ``roots`` (sorted) that are stored with a refusing class."""

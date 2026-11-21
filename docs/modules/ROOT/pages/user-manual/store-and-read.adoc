@@ -421,8 +421,12 @@ is referred to by one book the caller may read and one it may not:
 
 With no referrer, the delete answers 204 as before. The comments on the author do not count as
 referrers. A comment (see xref:howto/discussion.adoc[Comment on a resource without editing it]) is a record that depends
-on its target and is removed with it, so a stored comment never blocks the delete. Adding a comment
-on a target in the same commit that removes it is not supported today
+on its target and is removed with it, so a stored comment never blocks the delete. A commit that
+adds or replaces a comment on a target it also removes contradicts itself: it is refused before
+anything is sent, with a `Conflict` (409) naming the comment and the target, and retrying it
+unchanged fails the same way. This check comes after the check of the commit's own links and
+before the store's guard, so a commit that also removes a target that a stored aggregate refers
+to gets this `Conflict` first and `InUse` only once the comment is dropped
 (https://github.com/meaningfy-ws/rdf-persistence/issues/226[issue #226]).
 
 *In code.* `session.remove` raises `InUse`, which holds the same facts (`iris`: all the refused
