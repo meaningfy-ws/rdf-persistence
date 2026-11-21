@@ -56,7 +56,7 @@ Work outside the table, all delivered and archived: `test-suite-grooming`, `alig
 
 | Id | Appetite | PLAN | Next |
 |---|---|---|---|
-| `test-debt-paydown` | LARGE (three stages, one PR) | gate void (2026-11-20: paths stale after the thematic restructure) | re-plan after wave 2 (`inputs/handover.md`) |
+| `test-debt-paydown` | LARGE (three stages, one PR) | re-planned 2026-11-21, gate 8.9 accepted (DEC-5, R-0005) | ready for an epic session; scenario sign-off pending |
 | `ldes-view` | MEDIUM | no | a shaping session |
 | `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
 

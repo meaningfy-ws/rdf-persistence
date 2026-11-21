@@ -1,147 +1,196 @@
 
-## tests.unit.services.test_tenant_sweep  (16 importers)  names: make_worldx11, CREATORx9, TURTLEx3, BOOK_TYPEx2, HOURx2, FILE_KEYx2, bookx2, EventFiles, Events, FLAT, ALL_QUADS, LOADED_AT, NOW, OWNED_BY
+## tests.unit.tenancy.test_tenant_sweep  (17 importers)  names: make_worldx12, CREATORx10, TURTLEx3, BOOK_TYPEx2, FILE_KEYx2, bookx2, HOURx2, EventFiles, Events, FLAT, ALL_QUADS, LOADED_AT, NOW, OWNED_BY
    <- tests/feature/test_events.py: make_world
    <- tests/integration/tenancy/test_tenant_dump.py: BOOK_TYPE, CREATOR, TURTLE
    <- tests/integration/tenancy/test_tenant_sweep.py: CREATOR, TURTLE
-   <- tests/unit/services/test_application_session.py: CREATOR, make_world
-   <- tests/unit/services/test_messagebus_adversarial.py: CREATOR, EventFiles, Events
-   <- tests/unit/services/test_migration_runner.py: HOUR, make_world
-   <- tests/unit/services/test_migration_runner_adversarial.py: make_world
-   <- tests/unit/services/test_pending_mark.py: CREATOR, make_world
-   <- tests/unit/services/test_relay.py: CREATOR, make_world
-   <- tests/unit/services/test_remove_with_files.py: CREATOR, FILE_KEY, book, make_world
-   <- tests/unit/services/test_restore_across_versions_adversarial.py: make_world
-   <- tests/unit/services/test_session_activity.py: CREATOR, make_world
-   <- tests/unit/services/test_session_activity_adversarial.py: make_world
-   <- tests/unit/services/test_tenant_dump.py: BOOK_TYPE, FLAT, TURTLE
-   <- tests/unit/services/test_tenant_dump.py: make_world
-   <- tests/unit/services/test_tenant_sweep_adversarial.py: ALL_QUADS, CREATOR, FILE_KEY, HOUR, LOADED_AT, NOW, OWNED_BY, book
+   <- tests/unit/api/test_remove_with_files.py: CREATOR, FILE_KEY, book, make_world
+   <- tests/unit/events/test_relay.py: CREATOR, make_world
+   <- tests/unit/messaging/test_messagebus_adversarial.py: CREATOR, EventFiles, Events
+   <- tests/unit/persistence/test_session_activity_adversarial.py: make_world
+   <- tests/unit/provenance/test_activity_root.py: CREATOR, make_world
+   <- tests/unit/tenancy/test_application_session.py: CREATOR, make_world
+   <- tests/unit/tenancy/test_migration_runner.py: HOUR, make_world
+   <- tests/unit/tenancy/test_migration_runner_adversarial.py: make_world
+   <- tests/unit/tenancy/test_pending_mark.py: CREATOR, make_world
+   <- tests/unit/tenancy/test_restore_across_versions_adversarial.py: make_world
+   <- tests/unit/tenancy/test_session_activity.py: CREATOR, make_world
+   <- tests/unit/tenancy/test_tenant_dump.py: BOOK_TYPE, FLAT, TURTLE
+   <- tests/unit/tenancy/test_tenant_dump.py: make_world
+   <- tests/unit/tenancy/test_tenant_sweep_adversarial.py: ALL_QUADS, CREATOR, FILE_KEY, HOUR, LOADED_AT, NOW, OWNED_BY, book
 
-## tests.unit.services.test_session_activity  (10 importers)  names: activitiesx7, stored_graphx5, openedx4, B1x3, B2x3, bookx3, PROVENANCEx3, B3x2, Hookx2, Xx2, RESTORER, VIEW, BOOK_CLASS, SHELF_CLASS, events, only_activity, ticking
-   <- tests/unit/entrypoints/test_router.py: activities
-   <- tests/unit/entrypoints/test_service_kit.py: activities
-   <- tests/unit/services/test_collaboration_discussion.py: stored_graph
-   <- tests/unit/services/test_decode_activity.py: B1, B2, B3, book, opened
-   <- tests/unit/services/test_messagebus_adversarial.py: activities
-   <- tests/unit/services/test_messagebus_wiring.py: activities, stored_graph
-   <- tests/unit/services/test_pending_mark.py: B1, B2, PROVENANCE, RESTORER, VIEW, Hook, activities, book, opened, stored_graph
-   <- tests/unit/services/test_relayed_since.py: PROVENANCE, X, activities, opened
-   <- tests/unit/services/test_remove_with_files.py: stored_graph
-   <- tests/unit/services/test_session_activity_adversarial.py: B1, B2, B3, BOOK_CLASS, PROVENANCE, SHELF_CLASS, Hook, X, activities, book, events, only_activity, opened, stored_graph, ticking
+## tests.unit.tenancy.test_session_activity  (11 importers)  names: activitiesx7, stored_graphx6, openedx5, PROVENANCEx4, B1x3, B2x3, bookx3, B3x2, Hookx2, Xx2, eventsx2, only_activityx2, BOOK_CLASS, SHELF_CLASS, ticking, RESTORER, VIEW
+   <- tests/unit/api/test_remove_with_files.py: stored_graph
+   <- tests/unit/api/test_router.py: activities
+   <- tests/unit/api/test_service_kit.py: activities
+   <- tests/unit/collaboration/test_collaboration_discussion.py: stored_graph
+   <- tests/unit/messaging/test_messagebus_adversarial.py: activities
+   <- tests/unit/messaging/test_messagebus_wiring.py: activities, stored_graph
+   <- tests/unit/persistence/test_decode_activity.py: B1, B2, B3, book, opened
+   <- tests/unit/persistence/test_session_activity_adversarial.py: B1, B2, B3, BOOK_CLASS, PROVENANCE, SHELF_CLASS, Hook, X, activities, book, events, only_activity, opened, stored_graph, ticking
+   <- tests/unit/provenance/test_activity_root.py: PROVENANCE, events, only_activity, opened, stored_graph
+   <- tests/unit/tenancy/test_pending_mark.py: B1, B2, PROVENANCE, RESTORER, VIEW, Hook, activities, book, opened, stored_graph
+   <- tests/unit/tenancy/test_relayed_since.py: PROVENANCE, X, activities, opened
 
-## tests.unit.services.test_tenant_dump  (6 importers)  names: BASE_STAMPSx4, MANIFESTx3, TOY_CHAINSx3, VIEWx3, editedx3, iris_ofx3, movedx3, BLOB_BYTESx2, RESTORERx2, dumpedx2, manifest_ofx2, populatedx2, read_bookx2, refusedx2, restoredx2, MAX_BYTES, BOOK_DESCRIPTION, CITY, LIBRARY_SCHEMA, OLD_CITY, OLD_DESCRIPTION, OWNER, STAMPS, TOOLKIT_SCHEMA, TOOLKIT_VERSION, aged, chains, stamp_line, stamped, stamps_held, token_of, with_stamps, END, GRAPHS, at_version, make_world, pack, state_of, unpack
+## tests.unit.tenancy.test_tenant_dump  (7 importers)  names: BASE_STAMPSx4, TOY_CHAINSx4, VIEWx4, iris_ofx4, movedx4, MANIFESTx3, RESTORERx3, editedx3, dumpedx3, manifest_ofx3, populatedx3, restoredx3, BLOB_BYTESx2, LIBRARY_SCHEMAx2, TOOLKIT_SCHEMAx2, make_worldx2, stamps_heldx2, read_bookx2, refusedx2, MAX_BYTES, BOB, BOOK_DESCRIPTION, CITY, OLD_CITY, OLD_DESCRIPTION, OWNER, STAMPS, TOOLKIT_VERSION, aged, chains, stamp_line, stamped, token_of, with_stamps, END, GRAPHS, at_version, pack, state_of, unpack
    <- tests/feature/test_events.py: BASE_STAMPS
    <- tests/integration/tenancy/test_tenant_dump.py: BASE_STAMPS, BLOB_BYTES, MANIFEST, MAX_BYTES, RESTORER, TOY_CHAINS, VIEW, edited, iris_of, moved
-   <- tests/unit/services/test_pending_mark.py: BASE_STAMPS, TOY_CHAINS
-   <- tests/unit/services/test_restore_across_versions_adversarial.py: BOOK_DESCRIPTION, CITY, LIBRARY_SCHEMA, MANIFEST, OLD_CITY, OLD_DESCRIPTION, OWNER, RESTORER, STAMPS, TOOLKIT_SCHEMA, TOOLKIT_VERSION, VIEW, aged, chains, dumped, edited, iris_of, manifest_of, moved, populated, read_book, refused, restored, stamp_line, stamped, stamps_held, token_of, with_stamps
-   <- tests/unit/services/test_session_activity.py: BASE_STAMPS, TOY_CHAINS
-   <- tests/unit/services/test_tenant_dump_adversarial.py: BLOB_BYTES, END, GRAPHS, MANIFEST, VIEW, at_version, dumped, edited, iris_of, make_world, manifest_of, moved, pack, populated, read_book, refused, restored, state_of, unpack
+   <- tests/unit/tenancy/test_pending_mark.py: BASE_STAMPS, TOY_CHAINS
+   <- tests/unit/tenancy/test_restore_across_versions.py: BOB, LIBRARY_SCHEMA, RESTORER, TOOLKIT_SCHEMA, TOY_CHAINS, VIEW, dumped, iris_of, make_world, manifest_of, moved, populated, restored, stamps_held
+   <- tests/unit/tenancy/test_restore_across_versions_adversarial.py: BOOK_DESCRIPTION, CITY, LIBRARY_SCHEMA, MANIFEST, OLD_CITY, OLD_DESCRIPTION, OWNER, RESTORER, STAMPS, TOOLKIT_SCHEMA, TOOLKIT_VERSION, VIEW, aged, chains, dumped, edited, iris_of, manifest_of, moved, populated, read_book, refused, restored, stamp_line, stamped, stamps_held, token_of, with_stamps
+   <- tests/unit/tenancy/test_session_activity.py: BASE_STAMPS, TOY_CHAINS
+   <- tests/unit/tenancy/test_tenant_dump_adversarial.py: BLOB_BYTES, END, GRAPHS, MANIFEST, VIEW, at_version, dumped, edited, iris_of, make_world, manifest_of, moved, pack, populated, read_book, refused, restored, state_of, unpack
 
-## tests.unit.entrypoints.test_service_kit  (4 importers)  names: madex3, installed, A_UUID
+## tests.generator.unit.test_generate_cli  (5 importers)  names: projectx4, SCHEMAx3, PYPROJECTx2
+   <- tests/generator/unit/test_freshness.py: PYPROJECT, SCHEMA, project
+   <- tests/generator/unit/test_freshness_plugin.py: PYPROJECT, SCHEMA
+   <- tests/generator/unit/test_generation_inputs.py: project
+   <- tests/generator/unit/test_old_manifest_paths.py: project
+   <- tests/generator/unit/test_transform.py: SCHEMA, project
+
+## tests.unit.test_theme_layout  (5 importers)  names: PLACEDx2, MOVED_MODULESx2, turned_on_pairsx2, TURNED_ONx2, PACKAGE, ROOT, Placed, turned_on_classes
+   <- tests/unit/access/test_wire_models.py: PACKAGE, PLACED, ROOT
+   <- tests/unit/test_no_old_module_paths.py: MOVED_MODULES, PLACED, Placed, turned_on_pairs
+   <- tests/unit/test_public_surface.py: MOVED_MODULES, turned_on_classes, turned_on_pairs
+   <- tests/unit/test_theme_contracts.py: TURNED_ON
+   <- tests/unit/testkit/test_model_guard.py: TURNED_ON
+
+## tests.unit.collaboration.test_collaboration_cascade  (5 importers)  names: beforex3, storedx3, HEADS, a_shelf, gone, poetry, put, put_book, regenre, version
+   <- tests/unit/collaboration/test_collaboration_collections_adversarial.py: HEADS, a_shelf, before, gone, poetry, put, put_book, regenre, stored, version
+   <- tests/unit/collaboration/test_collaboration_discussion_adversarial.py: before
+   <- tests/unit/collaboration/test_collaboration_nested_reads.py: stored
+   <- tests/unit/collaboration/test_collaboration_nesting_adversarial.py: stored
+   <- tests/unit/collaboration/test_collaboration_workflow_adversarial.py: before
+
+## tests.unit.api.test_service_kit  (4 importers)  names: madex3, installed, A_UUID
    <- tests/feature/test_incoming_events.py: made
-   <- tests/unit/entrypoints/test_event_wiring.py: installed, made
-   <- tests/unit/entrypoints/test_receive.py: made
-   <- tests/unit/entrypoints/test_toy_key_adversarial.py: A_UUID
+   <- tests/unit/api/test_event_wiring.py: installed, made
+   <- tests/unit/api/test_receive.py: made
+   <- tests/unit/api/test_toy_key_adversarial.py: A_UUID
 
-## tests.unit.generation.test_generate_cli  (4 importers)  names: SCHEMAx3, projectx3, PYPROJECTx2
-   <- tests/unit/generation/test_freshness.py: PYPROJECT, SCHEMA, project
-   <- tests/unit/generation/test_generation_inputs.py: project
-   <- tests/unit/generation/test_transform.py: SCHEMA, project
-   <- tests/unit/testkit/test_freshness_plugin.py: PYPROJECT, SCHEMA
+## tests.generator.unit.test_freshness  (4 importers)  names: DEFAULT_HINTx3, MANIFESTx2, NAMED, read_manifest, check
+   <- tests/generator/unit/test_freshness_plugin.py: DEFAULT_HINT, NAMED
+   <- tests/generator/unit/test_generation_inputs.py: MANIFEST, read_manifest
+   <- tests/generator/unit/test_old_manifest_paths.py: DEFAULT_HINT, MANIFEST, check
+   <- tests/generator/unit/test_testkit_moved.py: DEFAULT_HINT
 
-## tests.unit.services.test_collaboration_cascade  (3 importers)  names: beforex3, HEADS, a_shelf, gone, poetry, put, put_book, regenre, stored, version
-   <- tests/unit/services/test_collaboration_collections_adversarial.py: HEADS, a_shelf, before, gone, poetry, put, put_book, regenre, stored, version
-   <- tests/unit/services/test_collaboration_discussion_adversarial.py: before
-   <- tests/unit/services/test_collaboration_workflow_adversarial.py: before
+## tests.unit.collaboration.test_collaboration_collections  (4 importers)  names: a_shelfx2, as_adax2, as_bob_withoutx2, putx2, put_bookx2, poetry
+   <- tests/unit/collaboration/test_collaboration_nested_reads.py: a_shelf
+   <- tests/unit/collaboration/test_collaboration_nested_reads.py: as_ada, as_bob_without, put, put_book
+   <- tests/unit/collaboration/test_collaboration_nesting_adversarial.py: a_shelf, as_ada, as_bob_without, put, put_book
+   <- tests/unit/persistence/test_session_graphs_with.py: poetry
 
-## tests.unit.services.test_session_unique_keys  (3 importers)  names: bookx2, ISBN
-   <- tests/unit/services/test_pending_mark.py: book
-   <- tests/unit/services/test_session_activity_adversarial.py: ISBN
-   <- tests/unit/services/test_session_activity_adversarial.py: book
+## tests.unit.collaboration.test_write_guards  (3 importers)  names: guardsx3, savex3, version_ofx2
+   <- tests/unit/collaboration/test_collaboration_nesting.py: guards, save
+   <- tests/unit/collaboration/test_collaboration_nesting_adversarial.py: guards, save, version_of
+   <- tests/unit/collaboration/test_collaboration_nesting_cycles.py: guards, save, version_of
 
-## tests.unit.services.test_pending_mark  (2 importers)  names: RESTORER, TOY_CHAINS, PLUMBING, three_commits
-   <- tests/feature/test_events.py: RESTORER, TOY_CHAINS
-   <- tests/unit/services/test_relayed_since.py: PLUMBING, three_commits
+## tests.unit.persistence.test_session_unique_keys  (3 importers)  names: bookx2, ISBN
+   <- tests/unit/persistence/test_session_activity_adversarial.py: ISBN
+   <- tests/unit/persistence/test_session_activity_adversarial.py: book
+   <- tests/unit/tenancy/test_pending_mark.py: book
 
-## tests.unit.services.test_relay  (2 importers)  names: add_onex2, bookx2, commitx2, pendingx2, triplesx2, CREATOR, LOGGER, LONG_AGO, NOW, RecordingOffer, add_replace_remove, classes, insert_in_provenance, sent
+## tests.unit.events.test_relay  (2 importers)  names: add_onex2, bookx2, commitx2, pendingx2, triplesx2, CREATOR, LOGGER, LONG_AGO, NOW, RecordingOffer, add_replace_remove, classes, insert_in_provenance, sent
    <- tests/feature/test_events.py: add_one, book, commit, pending, triples
-   <- tests/unit/services/test_relay_adversarial.py: CREATOR, LOGGER, LONG_AGO, NOW, RecordingOffer, add_one, add_replace_remove, book, classes, commit, insert_in_provenance, pending, sent, triples
+   <- tests/unit/events/test_relay_adversarial.py: CREATOR, LOGGER, LONG_AGO, NOW, RecordingOffer, add_one, add_replace_remove, book, classes, commit, insert_in_provenance, pending, sent, triples
 
-## tests.unit.services.test_migration_runner  (2 importers)  names: ISBNx2, LIBx2, MID_ISBNx2, OLD_ISBNx2, STAMPSx2, chain_ofx2, migrationx2, renamex2, CREATOR, RP, held, old_book, put_stamp, quads, second_tenant
+## tests.unit.tenancy.test_pending_mark  (2 importers)  names: RESTORER, TOY_CHAINS, PLUMBING, three_commits
+   <- tests/feature/test_events.py: RESTORER, TOY_CHAINS
+   <- tests/unit/tenancy/test_relayed_since.py: PLUMBING, three_commits
+
+## tests.generator.unit.test_lock  (2 importers)  names: BOOK_SLOTSx2, Editsx2, BOOK, ISBN, SHELF, XSD_STRING, lock_of, locks_after, DROP_SHELF, ISBN_REQUIRED, NEW_PATH
+   <- tests/generator/unit/test_lock_adversarial.py: BOOK, BOOK_SLOTS, ISBN, SHELF, XSD_STRING, Edits, lock_of, locks_after
+   <- tests/generator/unit/test_lock_step.py: BOOK_SLOTS, DROP_SHELF, ISBN_REQUIRED, NEW_PATH, Edits
+
+## tests.generator.unit.test_freshness_plugin  (2 importers)  names: INIx2, TESTx2, make_projectx2
+   <- tests/generator/unit/test_old_manifest_paths.py: INI, TEST, make_project
+   <- tests/generator/unit/test_testkit_moved.py: INI, TEST, make_project
+
+## tests.unit.tenancy.test_migration_runner  (2 importers)  names: ISBNx2, LIBx2, MID_ISBNx2, OLD_ISBNx2, STAMPSx2, chain_ofx2, migrationx2, renamex2, CREATOR, RP, held, old_book, put_stamp, quads, second_tenant
    <- tests/integration/store/test_migration_requests.py: ISBN, LIB, MID_ISBN, OLD_ISBN, STAMPS, chain_of, migration, rename
-   <- tests/unit/services/test_migration_runner_adversarial.py: CREATOR, ISBN, LIB, MID_ISBN, OLD_ISBN, RP, STAMPS, chain_of, held, migration, old_book, put_stamp, quads, rename, second_tenant
+   <- tests/unit/tenancy/test_migration_runner_adversarial.py: CREATOR, ISBN, LIB, MID_ISBN, OLD_ISBN, RP, STAMPS, chain_of, held, migration, old_book, put_stamp, quads, rename, second_tenant
 
-## tests.unit.generation.test_freshness  (2 importers)  names: MANIFEST, read_manifest, DEFAULT_HINT, NAMED
-   <- tests/unit/generation/test_generation_inputs.py: MANIFEST, read_manifest
-   <- tests/unit/testkit/test_freshness_plugin.py: DEFAULT_HINT, NAMED
+## tests.unit.api.test_documents  (2 importers)  names: BOOK_JSONx2, encodedx2, BOOK
+   <- tests/unit/api/test_documents_strict.py: BOOK, BOOK_JSON, encoded
+   <- tests/unit/persistence/test_jsonld.py: BOOK_JSON, encoded
 
-## tests.unit.generation.test_lock  (2 importers)  names: BOOK_SLOTSx2, Editsx2, BOOK, ISBN, SHELF, XSD_STRING, lock_of, locks_after, DROP_SHELF, ISBN_REQUIRED, NEW_PATH
-   <- tests/unit/generation/test_lock_adversarial.py: BOOK, BOOK_SLOTS, ISBN, SHELF, XSD_STRING, Edits, lock_of, locks_after
-   <- tests/unit/generation/test_lock_step.py: BOOK_SLOTS, DROP_SHELF, ISBN_REQUIRED, NEW_PATH, Edits
+## tests.unit.collaboration.test_collaboration_collections_adversarial  (2 importers)  names: everything_saidx2, marker_leftx2
+   <- tests/unit/collaboration/test_collaboration_discussion_adversarial.py: everything_said, marker_left
+   <- tests/unit/collaboration/test_collaboration_workflow_adversarial.py: everything_said, marker_left
 
-## tests.unit.services.test_collaboration_collections_adversarial  (2 importers)  names: everything_saidx2, marker_leftx2
-   <- tests/unit/services/test_collaboration_discussion_adversarial.py: everything_said, marker_left
-   <- tests/unit/services/test_collaboration_workflow_adversarial.py: everything_said, marker_left
-
-## tests.unit.services.test_collaboration_workflow_adversarial  (2 importers)  names: copy_schemax2, editx2
-   <- tests/unit/services/test_workflows.py: copy_schema, edit
-   <- tests/unit/services/test_write_guards.py: copy_schema, edit
+## tests.unit.collaboration.test_collaboration_workflow_adversarial  (2 importers)  names: copy_schemax2, editx2
+   <- tests/unit/collaboration/test_workflows.py: copy_schema, edit
+   <- tests/unit/collaboration/test_write_guards.py: copy_schema, edit
 
 ## tests.e2e.test_library  (1 importers)  names: LIBRARIAN, dune
    <- tests/e2e/test_library_policy.py: LIBRARIAN, dune
 
-## tests.unit.entrypoints.test_events_route  (1 importers)  names: Block, Follow, another_book, follow, listening, mount, replace, reshape_grants, with_carol
-   <- tests/feature/test_events.py: Block, Follow, another_book, follow, listening, mount, replace, reshape_grants, with_carol
+## tests.unit.api.test_events_route  (1 importers)  names: another_book, events_of, listening, mount, replace, reshape_grants, with_carol
+   <- tests/feature/test_events.py: another_book, events_of, listening, mount, replace, reshape_grants, with_carol
+
+## tests.unit.test_technical_split  (1 importers)  names: lint_scratch
+   <- tests/feature/test_technical_models.py: lint_scratch
+
+## tests.generator.e2e.test_generated_library_served  (1 importers)  names: PACKAGE, generated_toy
+   <- tests/generator/e2e/test_generated_library_served_adversarial.py: PACKAGE, generated_toy
+
+## tests.generator.unit.test_hard_check  (1 importers)  names: DEFAULT_INSTANCE_SCHEMA, problems_of
+   <- tests/generator/unit/test_default_instance_adversarial.py: DEFAULT_INSTANCE_SCHEMA, problems_of
+
+## tests.unit.testkit.test_shape_snapshot  (1 importers)  names: METAMODEL_PACKAGE, generated_models
+   <- tests/generator/unit/test_generation_shape.py: METAMODEL_PACKAGE, generated_models
+
+## tests.generator.unit.test_boundary_check  (1 importers)  names: add_api_module, problems_of
+   <- tests/generator/unit/test_typescript_service_types_adversarial.py: add_api_module, problems_of
 
 ## tests.integration.store.test_session  (1 importers)  names: BEN, TENANT, TITLE, book, session_for, title
    <- tests/integration/store/test_transaction.py: BEN, TENANT, TITLE, book, session_for, title
 
-## tests.unit.entrypoints.test_router  (1 importers)  names: _everyone_has_a_role
-   <- tests/unit/entrypoints/test_allowed_actions_adversarial.py: _everyone_has_a_role
+## tests.unit.api.test_router  (1 importers)  names: _everyone_has_a_role
+   <- tests/unit/api/test_allowed_actions_adversarial.py: _everyone_has_a_role
 
-## tests.unit.generation.test_boundary_check  (1 importers)  names: add_api_module, problems_of
-   <- tests/unit/generation/test_typescript_service_types_adversarial.py: add_api_module, problems_of
+## tests.unit.api.test_iri_policy_checks  (1 importers)  names: ADA, BASE, BOOK_CLASS, DOCUMENTS, IRIS, TENANT, TTL, StoreTenancy, body, book, chapter_ids, create, loaded, replace, session_on
+   <- tests/unit/api/test_iri_policy_adversarial.py: ADA, BASE, BOOK_CLASS, DOCUMENTS, IRIS, TENANT, TTL, StoreTenancy, body, book, chapter_ids, create, loaded, replace, session_on
 
-## tests.unit.services.test_collaboration_discussion  (1 importers)  names: has_entry
-   <- tests/unit/services/test_collaboration_discussion_adversarial.py: has_entry
+## tests.unit.core.test_sparql_parsing  (1 importers)  names: RecordingLock
+   <- tests/unit/api/test_shacl.py: RecordingLock
 
-## tests.unit.services.test_collaboration_workflow  (1 importers)  names: ACCEPTED, B1, B2, DRAFT, IN_REVIEW, PROVENANCE, RETIRED, REVIEW, S1, T0, VIEW, comments_on, go, opened, put, records_of, status_of, version
-   <- tests/unit/services/test_collaboration_workflow_adversarial.py: ACCEPTED, B1, B2, DRAFT, IN_REVIEW, PROVENANCE, RETIRED, REVIEW, S1, T0, VIEW, comments_on, go, opened, put, records_of, status_of, version
+## tests.unit.collaboration.test_collaboration_discussion  (1 importers)  names: has_entry
+   <- tests/unit/collaboration/test_collaboration_discussion_adversarial.py: has_entry
 
-## tests.unit.services.test_documents  (1 importers)  names: BOOK, BOOK_JSON, encoded
-   <- tests/unit/services/test_documents_strict.py: BOOK, BOOK_JSON, encoded
+## tests.unit.collaboration.test_collaboration_nesting_cycles  (1 importers)  names: chain, nesting, replace, replace_in
+   <- tests/unit/collaboration/test_collaboration_nesting_adversarial.py: chain, nesting, replace, replace_in
 
-## tests.unit.services.test_iri_policy_checks  (1 importers)  names: ADA, BASE, BOOK_CLASS, DOCUMENTS, IRIS, TENANT, TTL, StoreTenancy, body, book, chapter_ids, create, loaded, replace, session_on
-   <- tests/unit/services/test_iri_policy_adversarial.py: ADA, BASE, BOOK_CLASS, DOCUMENTS, IRIS, TENANT, TTL, StoreTenancy, body, book, chapter_ids, create, loaded, replace, session_on
+## tests.unit.collaboration.test_collaboration_workflow  (1 importers)  names: ACCEPTED, B1, B2, DRAFT, IN_REVIEW, PROVENANCE, RETIRED, REVIEW, S1, T0, VIEW, comments_on, go, opened, put, records_of, status_of, version
+   <- tests/unit/collaboration/test_collaboration_workflow_adversarial.py: ACCEPTED, B1, B2, DRAFT, IN_REVIEW, PROVENANCE, RETIRED, REVIEW, S1, T0, VIEW, comments_on, go, opened, put, records_of, status_of, version
 
-## tests.unit.services.test_tenancy  (1 importers)  names: CREATOR, PREFIX, _tenancy_drawing
-   <- tests/unit/services/test_iri_policy_redraw_adversarial.py: CREATOR, PREFIX, _tenancy_drawing
+## tests.unit.messaging.test_messagebus  (1 importers)  names: Recorder, ShelvedReplace, fakes
+   <- tests/unit/messaging/test_messagebus_adversarial.py: Recorder, ShelvedReplace, fakes
 
-## tests.unit.services.test_messagebus  (1 importers)  names: Recorder, ShelvedReplace, fakes
-   <- tests/unit/services/test_messagebus_adversarial.py: Recorder, ShelvedReplace, fakes
+## tests.unit.messaging.test_messagebus_wiring  (1 importers)  names: B1, B2, B3, DRAFT, IN_REVIEW, PROVENANCE, World, provenance, shelving, types_of, version_of, world
+   <- tests/unit/messaging/test_messagebus_adversarial.py: B1, B2, B3, DRAFT, IN_REVIEW, PROVENANCE, World, provenance, shelving, types_of, version_of, world
 
-## tests.unit.services.test_messagebus_wiring  (1 importers)  names: B1, B2, B3, DRAFT, IN_REVIEW, PROVENANCE, World, provenance, shelving, types_of, version_of, world
-   <- tests/unit/services/test_messagebus_adversarial.py: B1, B2, B3, DRAFT, IN_REVIEW, PROVENANCE, World, provenance, shelving, types_of, version_of, world
+## tests.unit.provenance.test_activity_shape  (1 importers)  names: framed, mapped, toy, unordered, with_class_iris_expanded
+   <- tests/unit/messaging/test_messagebus_wiring.py: framed, mapped, toy, unordered, with_class_iris_expanded
 
-## tests.unit.services.test_activity_shape  (1 importers)  names: framed, mapped, toy, unordered, with_class_iris_expanded
-   <- tests/unit/services/test_messagebus_wiring.py: framed, mapped, toy, unordered, with_class_iris_expanded
+## tests.unit.migrations.test_migration_chain  (1 importers)  names: SCHEMA, put, refused
+   <- tests/unit/migrations/test_migration_chain_adversarial.py: SCHEMA, put, refused
 
-## tests.unit.services.test_migrate_dataset  (1 importers)  names: BOOK, LOADED, REGISTRY, STAMP, STAMPS, dataset, lib_chain, stamp, three, toolkit_chain
-   <- tests/unit/services/test_migrate_dataset_adversarial.py: BOOK, LOADED, REGISTRY, STAMP, STAMPS, dataset, lib_chain, stamp, three, toolkit_chain
+## tests.unit.migrations.test_migration_files  (1 importers)  names: FILE, PLACE, SCHEMA, SHELF, STAMPS, migration, rename, step, write
+   <- tests/unit/migrations/test_migration_files_adversarial.py: FILE, PLACE, SCHEMA, SHELF, STAMPS, migration, rename, step, write
 
-## tests.unit.services.test_migration_chain  (1 importers)  names: SCHEMA, put, refused
-   <- tests/unit/services/test_migration_chain_adversarial.py: SCHEMA, put, refused
+## tests.unit.persistence.test_loading  (1 importers)  names: AGGREGATE, TENANT
+   <- tests/unit/persistence/test_loading_formats_adversarial.py: AGGREGATE, TENANT
 
-## tests.unit.services.test_migration_files  (1 importers)  names: FILE, PLACE, SCHEMA, SHELF, STAMPS, migration, rename, step, write
-   <- tests/unit/services/test_migration_files_adversarial.py: FILE, PLACE, SCHEMA, SHELF, STAMPS, migration, rename, step, write
+## tests.unit.tenancy.test_tenancy  (1 importers)  names: CREATOR, PREFIX, _tenancy_drawing
+   <- tests/unit/tenancy/test_iri_policy_redraw_adversarial.py: CREATOR, PREFIX, _tenancy_drawing
 
-## tests.unit.services.test_session_activity_adversarial  (1 importers)  names: KEYS, X, overtaken_commit
-   <- tests/unit/services/test_pending_mark.py: KEYS, X, overtaken_commit
+## tests.unit.tenancy.test_migrate_dataset  (1 importers)  names: BOOK, LOADED, REGISTRY, STAMP, STAMPS, dataset, lib_chain, stamp, three, toolkit_chain
+   <- tests/unit/tenancy/test_migrate_dataset_adversarial.py: BOOK, LOADED, REGISTRY, STAMP, STAMPS, dataset, lib_chain, stamp, three, toolkit_chain
 
-## tests.unit.services.test_collaboration_collections  (1 importers)  names: poetry
-   <- tests/unit/services/test_session_graphs_with.py: poetry
+## tests.unit.persistence.test_session_activity_adversarial  (1 importers)  names: KEYS, X, overtaken_commit
+   <- tests/unit/tenancy/test_pending_mark.py: KEYS, X, overtaken_commit
 
-## tests.unit.services.test_tenancy_stores  (1 importers)  names: CLIENT_A, CREATOR, IDS, LIBRARY_SCHEMA, PREFIX, SYSTEM, TYPES, cold, made_on, operations, tenant_databases, wired
-   <- tests/unit/services/test_tenant_stores_adversarial.py: CLIENT_A, CREATOR, IDS, LIBRARY_SCHEMA, PREFIX, SYSTEM, TYPES, cold, made_on, operations, tenant_databases, wired
+## tests.unit.tenancy.test_tenancy_stores  (1 importers)  names: CLIENT_A, CREATOR, IDS, LIBRARY_SCHEMA, PREFIX, SYSTEM, TYPES, cold, made_on, operations, tenant_databases, wired
+   <- tests/unit/tenancy/test_tenant_stores_adversarial.py: CLIENT_A, CREATOR, IDS, LIBRARY_SCHEMA, PREFIX, SYSTEM, TYPES, cold, made_on, operations, tenant_databases, wired
 
-TOTAL import statements: 79 source modules: 33
+TOTAL import statements: 108 source modules: 43

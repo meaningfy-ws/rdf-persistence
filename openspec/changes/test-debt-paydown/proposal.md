@@ -24,22 +24,23 @@ domain test kills. The `rp-messages` spec also contradicts the code on empty com
 
 ## Solution outline
 
-1. **Stage 1, test structure:** the rule-5 monkeypatches replaced where a real seam exists (a
-   public `Relay.paused()`, rdflib `Dataset` subclasses, injected generator steps, edited fixture
-   files; two `test_receive` patches and the "no generate extra" test stay as recorded
-   exceptions); the unit half of P-31; the remaining P-20 rows; the 79 cross-test-module imports
-   moved to helper modules or conftests, then guarded; `event_bus_conformance` gains
-   `poll_seconds` (it helps the Redis lane only); the review's under-the-floor items.
-2. **Stage 2, production clean-ups that tests need:** the real-time waits removed without a new
-   clock parameter (assert on the next visible event; `keep_alive=0` and `publish_timeout=0` where
-   the code already takes them); the Fuseki `>= 500` branch removed; `auth.py`'s scheme check kept
-   with the test it lacks (a JWT sent as `Basic`), its empty-token check removed; the
-   `ToyService()` shape parsing cached per process (about 35 % of its 89 ms); the `rp-messages`
-   spec corrected (an empty commit spends nothing, as the code documents).
-3. **Stage 3, mutation:** `make mutation` re-run first (the list predates the final fixes); then a
-   test for each behaviour-changing survivor of `domain/` (facts: 40 killable, 1 to timebox, 32
-   equivalent with the reason recorded); the selection widened to the services layer's pure
-   modules only if stage 3 finishes inside its appetite.
+(Reconciled with the re-plan of 2026-11-21; design.md has the detail.)
+
+1. **Stage 1, test structure:** the root-level unit tests moved to `tests/unit/tooling/` and
+   `tests/unit/package/`; the 113 cross-test-module imports moved to helper modules or conftests,
+   then guarded; monkeypatches of toolkit code replaced where a real seam exists (rdflib `Dataset`
+   subclasses, injected generator steps, edited fixture data, settings) and every other one put in
+   one of five recorded exception classes; the short waits (0.001 s keep-alive, 0.01 s publish
+   timeout); #215 S1-S3; the unit half of P-31; the remaining P-20 rows; the review's
+   under-the-floor items.
+2. **Stage 2, production seams that tests need:** a public `Relay.paused()` (and its two users);
+   the store's redundant `>= 500` branch removed; `auth.py`'s scheme and empty-token checks kept,
+   with the tests they lack; the `ToyService()` shapes parsed once per content and warmed once per
+   process (at least 25 % of its ≈ 242 ms); `event_bus_conformance` gains `poll_seconds`; the
+   `rp-messages` spec corrected (an empty commit spends nothing, as the code documents).
+3. **Stage 3, mutation:** `make mutation` re-run first on today's selection (the `domain` of every
+   theme, the iris policy, the tenant move); a test for each behaviour-changing survivor; the rest
+   recorded as equivalent with their reasons. The selection is not widened.
 
 ## Key decisions
 
@@ -50,13 +51,19 @@ domain test kills. The `rp-messages` spec also contradicts the code on empty com
 - **DEC-2:** one pull request; CI on the PR must be green before the merge (the grooming merged
   before CI and broke it). Source: lead, after the grooming.
 - **DEC-3:** message-only mutants (an error message's text changed) are equivalent: rule 9 forbids
-  asserting message text. Source: the grooming's mutation analysis.
+  asserting message text. Source: the grooming's mutation analysis. (2026-11-21: "rule 9" is a
+  stale citation; the reason stands: a message's wording is not behaviour a caller relies on.)
 - **DEC-4:** production changes are limited to what a test needs (an injected clock or interval, a
   redundant branch removed, a set-up cost cut) and keep every public behaviour.
 
 - **Superseded in the PLAN** (logged, not a re-shape): the waits need no clock and move to stage 1,
   the services mutation widening is dropped, and `auth.py`'s empty-token check stays (a consumer's
   verifier may accept an empty token); see design.md PD-3, PD-4, PD-6, PD-13.
+- **Re-planned 2026-11-21** (logged, not a re-shape; the bet holds): the PLAN was rebased on the
+  thematic layout. The owner's answers (`inputs/qa.md`) add PD-16 (#215 S1-S3) and PD-17 (triage of
+  every monkeypatch of toolkit code), extend PD-7 (warm once per shapes), keep PD-11's moves and
+  keep DEC-2 over P-0013's per-stage PRs. The counts above (79 imports, 40 killable, 89 ms) are the
+  first PLAN's; design.md has today's.
 
 ## Rabbit-holes
 
@@ -76,3 +83,4 @@ domain test kills. The `rp-messages` spec also contradicts the code on empty com
 - `rp-testkit` (modified): `poll_seconds` on the event-bus conformance kit.
 - `rp-events` (modified, to confirm in the PLAN): a public `Relay.paused()` for tests that need
   commits to stay pending.
+- `rp-developer-checks` (modified): a change outside a theme selects `tests/unit/package/`.
