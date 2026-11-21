@@ -38,6 +38,14 @@ async def test_an_object_narrows_the_aggregates(toy_session):
     assert sorted(books) == [B1], "only the aggregate typed as a book"
 
 
+async def test_a_literal_object_narrows_the_aggregates(toy_session):
+    flag = URIRef("https://example.org/ns/library#flag")
+    await toy_session.add_graph(S1, [(URIRef(S1), flag, Literal(True))])
+    await toy_session.add_graph(S2, [(URIRef(S2), flag, Literal(False))])
+    found = await toy_session.graphs_with(flag, Literal(True))
+    assert sorted(found) == [S1], "only the root stating true"
+
+
 async def test_triples_about_another_subject_stay_in_the_graph_that_holds_them(toy_session):
     stray = toy_mapper().to_triples(shelf(S2))
     await toy_session.add_graph(S1, [*toy_mapper().to_triples(shelf(S1)), *stray])

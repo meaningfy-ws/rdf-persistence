@@ -586,3 +586,87 @@ async def test_a_remove_without_pairs_is_the_request_it_always_was(store, sessio
     assert removal in text, "the removal is the text remove_parts gives without pairs"
     assert "?d " not in text, "no dependents operation"
     assert await stored(session, C), "the would-be dependent stays"
+
+
+# -- _rely_on: a guard may rely on the version of a graph it read (nested-collections 1.3) ----------
+
+
+async def test_a_relied_on_graph_replaced_meanwhile_refuses_the_commit_and_names_it(
+    store, session, other, seeded
+):
+    with pytest.raises(Conflict) as refused:
+        async with session.transaction() as t:
+            t._rely_on(A, seeded[A])
+            await t.add_graph(C, title(C, "new"))
+            await other.replace_graph(A, title(A, "theirs"), seeded[A])
+    assert refused.value.iris == (A,), "the conflict names the relied-on root"
+    assert str(refused.value) == f"{A} was changed by someone else since it was read", "in words"
+    assert not await stored(session, C), "nothing was written"
+    assert not await a_marker_is_left(store), "and no commit marker is left"
+
+
+async def test_a_relied_on_graph_removed_meanwhile_refuses_the_commit_and_names_it(
+    session, other, seeded
+):
+    with pytest.raises(Conflict) as refused:
+        async with session.transaction() as t:
+            t._rely_on(A, seeded[A])
+            await t.add_graph(C, title(C, "new"))
+            await other.remove(A, seeded[A])
+    assert refused.value.iris == (A,), "the conflict names the relied-on root"
+    assert str(refused.value) == f"{A} was removed by someone else since it was read", "removed"
+
+
+async def test_a_relied_on_graph_that_did_not_change_lets_the_commit_through(session, seeded):
+    async with session.transaction() as t:
+        t._rely_on(A, seeded[A])
+        await t.add_graph(C, title(C, "new"))
+    assert await stored(session, C), "a is as it was read"
+
+
+async def test_relying_twice_on_one_version_adds_one_guard(session, seeded):
+    async with session.transaction() as t:
+        t._rely_on(A, seeded[A])
+        t._rely_on(A, seeded[A])
+        assert len(t._guards) == 1, "the second call is a no-op"
+
+
+async def test_relying_on_two_versions_of_one_graph_raises(session, seeded):
+    async with session.transaction() as t:
+        t._rely_on(A, seeded[A])
+        with pytest.raises(ValueError, match=re.escape(A)):
+            t._rely_on(A, "another-version")
+
+
+async def test_relying_after_the_block_ended_raises(session, seeded):
+    async with session.transaction() as t:
+        await t.add_graph(C, title(C, "new"))
+    with pytest.raises(RuntimeError, match="ended"):
+        t._rely_on(A, seeded[A])
+
+
+class Recording:
+    """A write guard that keeps what its context holds at each call and writes the triples as given."""
+
+    def __init__(self) -> None:
+        self.collected: list[dict] = []
+
+    async def prepare(self, session, iri, triples, stored, allowed_state, *, context):
+        self.collected.append(dict(context.collected))
+        return triples
+
+
+async def test_the_context_holds_the_triples_collected_earlier_in_the_transaction(store, seeded):
+    guard = Recording()
+    async with (
+        fake_session(store, tenant_iri=TENANT, guards=guard) as guarded,
+        guarded.transaction() as t,
+    ):
+        await t.add_graph(C, title(C, "c"))
+        await t.replace_graph(A, title(A, "a2"), seeded[A])
+        await t.remove(B, seeded[B])
+        await t.add_graph(D, title(D, "d"))
+    assert guard.collected[0] == {}, "nothing before the first change"
+    assert set(guard.collected[1]) == {C}, "the add is seen by the replace"
+    assert set(guard.collected[2]) == {C, A}, "the add and the replace are seen by the next change"
+    assert guard.collected[2][C] == tuple(title(C, "c")), "as the triples collected"

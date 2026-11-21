@@ -72,6 +72,8 @@ HAND_WRITTEN = (
     "rdf_persistence_generation/extensions/shacl.py:RpShaclGenerator",
     # holds a SchemaView, the generated classes and an rdflib Graph of the shapes
     "rdf_persistence_generation/testkit/conformance.py:Conformance",
+    # holds a callable, the rely_on of the transaction a write guard is handed (nested-collections PD-5)
+    "rdf_persistence/persistence/services/session.py:GuardContext",
 )
 
 

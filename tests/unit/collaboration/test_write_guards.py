@@ -26,7 +26,7 @@ from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
-from rdf_persistence.persistence.services.session import Session, Transaction
+from rdf_persistence.persistence.services.session import GuardContext, Session, Transaction
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore, fake_session
@@ -173,7 +173,10 @@ async def test_a_book_through_a_guarded_session_costs_no_extra_query():
 async def test_the_guard_leaves_a_non_collection_untouched():
     triples = list(toy_mapper().to_triples(dune(book_iri(1))))
     async with fake_session(tenant_iri=TENANT) as session:
-        prepared = await guards().prepare(session, book_iri(1), triples, None, None)
+        context = GuardContext(collected={}, rely_on=lambda iri, version: None)
+        prepared = await guards().prepare(
+            session, book_iri(1), triples, None, None, context=context
+        )
         assert prepared == triples, "the triples of a book are written as they are"
 
 
