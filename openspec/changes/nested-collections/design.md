@@ -252,3 +252,32 @@ None. The owner decided all four on 2026-11-20 (`inputs/qa.md`):
   Not tested: a subclass of a collection class (the toy library has none, and the tester does not
   edit schemas); the exact-class rule is enforced by `accepted_members` adding only the class's own
   IRI.
+- **D-4 Review findings (SMALL: one pass, L2 + L3; nine findings).** Accepted, one fix pass:
+  - C-1 (Critical): a replace of a nested collection could change its `member_class`, which broke
+    the parent's deep reads and refused every later save of the parent. A replace that changes the
+    member class of a collection a nesting collection of its class holds is refused.
+  - W-4, re-labelled Critical because it sits on C-1's path: every save of a nesting collection read
+    the graph of every nested member. With C-1 fixed, stored nested members stay valid, so only the
+    new ones are read (PD-4 step 1: a rename is not slowed).
+  - W-5, with C-1 (same function): the T-3 rule in `_stored_members` is an early return.
+  - W-2, re-labelled Critical because it departs from a decision (PD-32 item 5 of the session): the
+    new private piece `_rely_on` is pinned by `test_private_transaction_pieces.py`.
+  - W-1, re-labelled Critical because the docs are untrue of the code: the architecture pages said a
+    write guard adds no guard to the request; they now describe `GuardContext` and `_rely_on`.
+  - W-3, re-labelled Critical because the map is a gate: one spec scenario had no row and two tests
+    mapped to the wrong scenario.
+
+  Under the floor: S-1 (arguments threaded through three methods), S-2 (the exact-class test and
+  the triples-to-graph loop repeated), S-3 (a static method that calls another by class name). C-1's
+  check costs every replace of a collection one `graphs_with` query for its holders.
+- **D-5 Security review of the C-1 fix (automated, two findings).** Fixed: a nesting collection
+  that changed its own member class kept its stored nested members unchecked (W-4 skipped them);
+  they are skipped only when the stored member class is the new one. Fixed: C-1's search for holders
+  ignored the collections collected earlier in the same transaction; it overlays them as the cycle
+  check does. Accepted as a risk, like RISK-1: across two transactions, T1 changes the member class
+  of S (it found no holder) while T2 makes a nesting collection hold S, and T2 commits first. T1 has
+  nothing to rely on (version guards cannot state that a holder is absent), so both commit, and deep
+  reads of the holder raise `StoredDataInvalid` until a replace puts S's member class back. In the
+  other order T2 relies on S's version and gets a `Conflict`. Likelihood low (a member-class change
+  racing a nesting save of the same collection); a guard on absence is a follow-up if it is ever
+  seen.
