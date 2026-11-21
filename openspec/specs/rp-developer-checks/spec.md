@@ -114,10 +114,10 @@ hook itself fails.
 `make test-changed` SHALL run, without coverage, the unit and feature test folders that match the
 files changed against the merge base with `develop` (committed, uncommitted and untracked), slow
 tests in them included. A file of `rdf_persistence/<theme>/` SHALL select `tests/unit/<theme>/`, and
-a test under `tests/unit/<theme>/` that folder. A change in the `core` theme, which every other
+a test under a folder of `tests/unit/` that folder. A change in the `core` theme, which every other
 theme imports, to shared test infrastructure, or to a file no rule maps, SHALL run `make test-fast`
 instead. A change in a file of `rdf_persistence/` that is in no theme and not in the testkit SHALL
-select the root-level unit tests only. Selected folders SHALL run in parallel; a selection
+select `tests/unit/package/` only. Selected folders SHALL run in parallel; a selection
 of test files alone SHALL run on one process. Container tests SHALL NOT run; a changed container test
 SHALL be named with the hint `make test-containers`.
 
@@ -134,7 +134,7 @@ SHALL be named with the hint `make test-containers`.
 #### Scenario: a change outside a theme
 - **GIVEN** a branch whose only change against `develop` is `rdf_persistence/__init__.py`
 - **WHEN** `make test-changed` runs
-- **THEN** pytest runs the root-level unit tests and no theme folder
+- **THEN** pytest runs `tests/unit/package/` and no theme folder
 
 #### Scenario: a changed test file
 - **GIVEN** an edited `tests/unit/tenancy/test_tenancy_stores.py` and nothing else
@@ -142,9 +142,15 @@ SHALL be named with the hint `make test-containers`.
 - **THEN** pytest runs `tests/unit/tenancy/`, in parallel
 
 #### Scenario: a changed root-level test file
-- **GIVEN** an edited `tests/unit/test_public_api.py` and nothing else
+- **GIVEN** an edited test file directly in `tests/unit/` (none is left there by this change; a new
+  one) and nothing else
 - **WHEN** `make test-changed` runs
 - **THEN** pytest runs that file only, on one process
+
+#### Scenario: a changed tooling test file
+- **GIVEN** an edited `tests/unit/tooling/test_markers.py` and nothing else
+- **WHEN** `make test-changed` runs
+- **THEN** pytest runs `tests/unit/tooling/`, in parallel
 
 #### Scenario: a change to shared test infrastructure
 - **GIVEN** an edited `tests/conftest.py`, `pytest.ini`, `pyproject.toml`, `uv.lock`, `Makefile`,

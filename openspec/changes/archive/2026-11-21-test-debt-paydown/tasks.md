@@ -82,7 +82,7 @@ parallel group, then runs `make refresh-map`.
   (PD-12). Accept: as 3.2, in its files.
 - [x] 3.4 `tests/audit/equivalent-mutants.md`: every remaining survivor with its one-line reason.
   Accept: `make mutation`'s survivors = the file's list, exactly.
-- [ ] 3.5 Lead: full gates; the final review (L1, L2, L3 apart, L4+L5 one); fixes; `proposal.md`
+- [x] 3.5 Lead: full gates; the final review (L1, L2, L3 apart, L4+L5 one); fixes; `proposal.md`
   reconciled (P-0004); rebase on `develop` and full gates again; `make refresh-map`; the PR
   ("Closes #215 S1-S3" in the body); CI green (PD-14); merge; acceptance by the owner; no docs
   owed beyond `testing.adoc` (said in `evidence/docs-owed.md`); archive.
