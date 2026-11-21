@@ -1,4 +1,4 @@
-"""The toy library served over the API with fakes, for the router's tests (task 5.2)."""
+"""The toy library served over the API with fakes, for the router's tests."""
 
 import uuid
 from collections.abc import Mapping, Sequence

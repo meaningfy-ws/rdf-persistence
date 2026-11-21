@@ -2982,6 +2982,8 @@ tests/unit/persistence/test_schema_structure_databases.py::test_the_application_
 tests/unit/persistence/test_schema_structure_databases.py::test_the_default_database_serves_the_tenant_roots_only,requirement,rp-tenancy,The application keeps its own aggregates outside any tenant,,high,covered code; spec id
 tests/unit/persistence/test_schema_structure_databases.py::test_the_system_database_serves_the_system_roots,requirement,rp-tenancy,The application keeps its own aggregates outside any tenant,,high,covered code; spec id
 tests/unit/persistence/test_session.py::test_an_iri_outside_the_tenant_is_refused_before_any_request,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,high,name; covered code
+tests/unit/persistence/test_utc_now.py::test_the_default_clock_is_timezone_aware_utc,capability,rp-aggregate-store,,,low,name; covered code (session.utc_now); test-debt-paydown PD-11; no spec requirement
+tests/unit/persistence/test_utc_now.py::test_the_default_clock_reads_the_current_time,capability,rp-aggregate-store,,,low,name; covered code (session.utc_now); test-debt-paydown PD-11; no spec requirement
 tests/unit/tenancy/test_session_activity.py::test_a_hook_is_not_called_when_the_request_failed_in_the_store,requirement,rp-messages,One message per commit reaches observers along the class hierarchy,,high,name; covered code; spec id
 tests/unit/tenancy/test_session_activity.py::test_a_root_of_several_classes_names_the_first_in_sorted_order,requirement,rp-messages,Every commit records one activity with its PROV events,,high,covered code; spec id
 tests/unit/tenancy/test_session_activity.py::test_tc22_an_add_records_one_add_for_the_principal_with_one_generation,requirement,rp-messages,Every commit records one activity with its PROV events,,high,covered code; spec id
@@ -3789,6 +3791,7 @@ tests/unit/package/test_lazy_exports.py::test_a_lazy_name_is_loaded_on_first_use
 tests/unit/package/test_lazy_exports.py::test_an_unknown_top_level_name_is_an_attribute_error,capability,rp-package-boundaries,,,medium,spec id PD-8c
 tests/unit/package/test_lazy_exports.py::test_importing_the_domain_or_a_generated_module_loads_nothing_heavy,capability,rp-package-boundaries,,,medium,spec id PD-8c
 tests/unit/tooling/test_markers.py::test_a_serial_run_fails_the_test_past_its_timeout_naming_it_and_the_next_test_runs,scenario,rp-developer-checks,A test cannot hang the checks,"a test that never returns, in a serial run",high,name+open change
+tests/unit/tooling/test_markers.py::test_every_test_file_has_a_row_in_the_path_table,capability,rp-developer-checks,,,low,name; marker completeness (test-debt-paydown PD-11); no spec requirement
 tests/unit/tooling/test_markers.py::test_a_test_past_its_timeout_fails_naming_itself_and_the_next_test_runs,scenario,rp-developer-checks,A test cannot hang the checks,"a test that never returns, in a parallel lane",high,name+open change
 tests/unit/tooling/test_markers.py::test_checkout_under_a_directory_named_like_a_row_is_not_matched,capability,rp-developer-checks,,,medium,spec id PD-16
 tests/unit/tooling/test_markers.py::test_directory_row_gives_every_marker,capability,rp-developer-checks,,,medium,spec id PD-16
