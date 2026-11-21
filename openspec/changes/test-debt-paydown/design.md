@@ -371,4 +371,34 @@ the gate to reach 9").
 
 ## Delivery decisions
 
-(Filled during delivery.)
+By the lead, 2026-11-21, under the owner's "work as a team leader with subagents in parallel".
+
+- **D-1 Order:** 2.2, 2.3, 2.4, 2.5 and the first half of 2.1 ran in parallel with stage 1, each
+  in its own worktree, since they touch no file 1.1 or 1.2 moves; their commits were picked onto
+  the build branch. Stages 1 and 2 share one L2+L3 pass (P-0005) and one gate run; PD-14's one PR
+  is unchanged.
+- **D-2 PD-9:** `no-exp` stays (18 cases, not 17): no other test fails when the claims stop
+  requiring `exp`, and the no-drop-without-a-survivor rule outranks the count.
+- **D-3 PD-4:** the keep-alive test's call phase stays at about 0.12 s (target 0.1 s): the wait is
+  ~7 ms, the rest is the test's two grant PUTs, which belong in the call phase.
+- **D-4 PD-17:** the two pass-through spies on `tenancy.tenants` in `test_relay.py` are X2, not X3
+  as the list said; `test_environment.py` and `test_testkit_lazy_import.py`'s `sys.modules`
+  patches are X5. The kit's restore limit is set through `ToyService(max_restore_bytes=)`, since
+  `installed()` returns the app.
+- **D-5 Stage-1 review (L2+L3), accepted findings, one fixer:**
+  - W1: the three `paused()` tests pass with a no-op `paused()` over the non-suspending fakes; the
+    held test starts `run_once()` as a task inside the block and asserts it is not done after a few
+    loop turns (with a control without `paused()`), then that it publishes after.
+  - S1: TC-82's docstring says "publishes nothing" follows from `kit.bus is None`.
+  - S2: `DelayedPair.failing()` makes the next publish raise at once, as the wrapped pair's does.
+  - S3: the PD-15 tests say in a comment why they time real waits (the scenario is about time).
+  - S4: the warm-once set and its lock move to `api/services/shacl.py` as `warm_up_once(shapes,
+    digest)`; `documents.py` calls it.
+  - S6: `tests/unit/api/scene.py` and `tests/unit/import_contracts.py` move to `tests/`, since
+    another tier imports them (PD-8's rule over its table); `collaboration_data.py` predates the
+    change and stays.
+  - S7: the `sys.modules` line in `test_testkit_lazy_import.py` carries its trailing `# X5`.
+  - S8: `paused()` gets one sentence in `user-manual/test.adoc`; the ticks are the lead's.
+  Rejected: S4's cache-key note (hashing the bytes is cheap and keeps the cache correct), S5 (the
+  contract is refresh-b §3's text and forbids what the mutation selection needs). W2 is the lead's
+  (`evidence/gates-stage1.md`).
