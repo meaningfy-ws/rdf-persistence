@@ -69,3 +69,21 @@ rest) and the count of unreadable ones. Nothing is deleted.
 ## Impact
 
 Metamodel, session/unit of work, generic routes, problem catalogue, docs (how-to on deleting).
+
+## As built
+
+Reconciled after stage 2 (PRs #224, #225); the decisions are D-1 to D-14 in `design.md`.
+
+- `InUse` carries the refused roots, the first root's `(referrer, class, slot)` rows,
+  `more_count`, `hidden_count` and `filtered`. The outline's `InUse(referrers, hidden_count)` is
+  its core.
+- The 409 fails closed (D-10): an `InUse` that no `readable` callable filtered is answered with
+  `referrers: []` and every referrer counted in `hidden_count`. This holds for every route,
+  including the application's own. In-process callers keep the full names.
+- An add in the same commit that links to a removed refusing root is refused before anything is
+  sent. Like the guard, the check judges every `rdf:type` of the linking root and skips dependent
+  records (D-9, D-12).
+- A collection's link to a member is its `has_part` slot (D-8). A cascade refuses as a whole
+  when a member is referenced from outside it.
+- Out of scope, filed: #226 (a comment added in the commit that removes its target), #227
+  (tidy-ups under the delivery floor).

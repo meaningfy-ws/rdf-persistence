@@ -96,7 +96,7 @@ def workflow_name_of(view: SchemaView, class_name: str) -> str | None:
 def refuses_deletion(view: SchemaView, class_name: str) -> bool:
     """True when the class or an ``is_a`` ancestor says ``rp_on_referenced_delete: refuse``; mixins do not count (PD-2)."""
     return any(
-        annotation_text(view.get_class(ancestor), RpAnnotation.RP_ON_REFERENCED_DELETE)
+        annotation(view.get_class(ancestor), RpAnnotation.RP_ON_REFERENCED_DELETE)
         == OnReferencedDelete.REFUSE.value
         for ancestor in view.class_ancestors(class_name, mixins=False)
     )

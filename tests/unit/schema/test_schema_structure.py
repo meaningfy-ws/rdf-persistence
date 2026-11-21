@@ -607,6 +607,30 @@ def test_a_subclass_of_a_refusing_class_refuses_but_a_mixing_in_class_does_not()
     assert URIRef(R + "Mixed") not in refusing
 
 
+CASED_REFUSING = (
+    HEAD
+    + """
+classes:
+  Capitalised:
+    title: Capitalised
+    description: Writes the refuse value with a capital.
+    class_uri: r:Capitalised
+    annotations: {rp_on_referenced_delete: Refuse}
+  Shouting:
+    title: Shouting
+    description: Writes the refuse value in capitals.
+    class_uri: r:Shouting
+    annotations: {rp_on_referenced_delete: REFUSE}
+"""
+)
+
+
+def test_a_refuse_value_in_any_case_refuses_deletion_as_the_generator_accepts_it() -> None:
+    assert refusing_classes(SchemaView(CASED_REFUSING)) == frozenset(
+        URIRef(R + name) for name in ("Capitalised", "Shouting")
+    )
+
+
 def test_a_root_under_a_system_database_ancestor_is_no_served_root() -> None:
     """F-5: the database annotation is inherited, as in_system_database reads it."""
     view = SchemaView(SYSTEM_BASE)
