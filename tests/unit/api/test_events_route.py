@@ -97,6 +97,9 @@ async def test_the_default_route_is_served_with_the_link_and_no_event_before_a_c
     assert "link" in opened.headers, "the stream links to the context"
     [first] = opened.events
     assert first.event == "Replace", "the first event is the commit: none came before it"
+    assert [g.entity for g in Replace.model_validate_json(first.data).generations] == [
+        settled.book_iri
+    ], "the first event is the sentinel's own commit, of the book"
 
 
 async def test_a_reader_barred_from_one_book_hears_only_the_other_books_event(
@@ -126,10 +129,12 @@ async def test_a_grant_removed_while_following_ends_the_stream_at_the_next_event
 
 
 async def test_a_grant_removed_while_following_ends_the_stream_at_the_next_keep_alive(
-    settled: Scene, fast: str, streams: set[asyncio.Task]
+    settled: Scene, streams: set[asyncio.Task]
 ) -> None:  # TC-35
+    # 0.001 s is the least the route allows: the keep-alive comes at once, no wait for it
+    idle = mount(settled.service, "/idle", sse=short_times(keep_alive_seconds=0.001))
     await reshape_grants(settled, with_carol())
-    carol = opening(streams, settled, "carol", events=3)  # more than comes
+    carol = opening(streams, settled, "carol", idle, events=3)  # more than comes
     await listening(settled.service.kit.hub)
     await reshape_grants(settled, without_carol)
     assert (await carol).events == [], "no commit, and the stream is over"
@@ -234,13 +239,16 @@ async def test_a_resume_sends_what_was_relayed_after_the_id_then_live_events_non
     etag = await replace(settled, settled.book, etag, "Two")
     etag = await replace(settled, settled.book, etag, "Three")
     a1, a2, a3 = [e.id for e in (await listener).events]
-    bob = opening(streams, settled, events=3, **{"Last-Event-ID": a1})
-    await listening(settled.service.kit.hub)  # the replay is sent once it is subscribed
-    await replace(settled, settled.book, etag, "Four")
+    bob = opening(streams, settled, events=4, **{"Last-Event-ID": a1})
+    witness = opening(streams, settled, "rita", events=2)  # hears the two live events as committed
+    await listening(settled.service.kit.hub, 2)  # the replay is sent once it is subscribed
+    etag = await replace(settled, settled.book, etag, "Four")
+    await replace(settled, settled.book, etag, "Five")
+    a4, a5 = [e.id for e in (await witness).events]
     got = [e.id for e in (await bob).events]
-    assert got[:2] == [a2, a3], "a resume sends what was relayed after the id"
-    assert len(got) == 3, "then the live event"
-    assert got[2] not in (a1, a2, a3), "a resume does not repeat an activity already sent"
+    assert got == [a2, a3, a4, a5], "the replay in commit order, then both live events, none twice"
+    assert len(set(got)) == 4, "four distinct activities"
+    assert a1 not in got, "the named one is not sent again"
 
 
 async def test_an_activity_relayed_after_the_named_one_is_sent_though_applied_before(
@@ -274,20 +282,20 @@ async def test_a_resume_does_not_send_what_the_caller_may_not_read(
 ) -> None:  # TC-37b
     emma_iri, emma, emma_etag = await another_book(settled)
     await reshape_grants(settled, with_carol(hide=settled.book_iri))
-    witness = opening(streams, settled, "rita", events=2)
+    witness = opening(streams, settled, "rita", events=3)
     await listening(settled.service.kit.hub)
-    etag = await replace(settled, settled.book, settled.book_etag, "Hidden from carol")
-    emma_etag = await replace(settled, emma, emma_etag, "Open to carol")
-    a2, a3 = [e.id for e in (await witness).events]
-    carol = opening(streams, settled, "carol", events=2, **{"Last-Event-ID": a2})
-    await listening(settled.service.kit.hub)  # the replay is sent once it is subscribed
-    await replace(settled, settled.book, etag, "Hidden again")
-    await replace(settled, emma, emma_etag, "Sentinel")  # visible, committed after the hidden one
-    resumed, sentinel = (await carol).events
-    assert resumed.id == a3, "the event sent is the one the caller may read"
-    assert [g.entity for g in Replace.model_validate_json(sentinel.data).generations] == [
+    emma_etag = await replace(settled, emma, emma_etag, "Open to carol")  # a1, visible, the anchor
+    # a2 is hidden from carol and in her replay; a3, the sentinel, is visible and committed after it
+    await replace(settled, settled.book, settled.book_etag, "Hidden from carol")
+    await replace(settled, emma, emma_etag, "Sentinel")
+    a1, a2, a3 = [e.id for e in (await witness).events]
+    carol = opening(streams, settled, "carol", events=1, **{"Last-Event-ID": a1})
+    [resumed] = (await carol).events
+    assert resumed.id != a2, "the hidden replace, in the replay, is not sent"
+    assert resumed.id == a3, "the event sent is the sentinel, the next one the caller may read"
+    assert [g.entity for g in Replace.model_validate_json(resumed.data).generations] == [
         emma_iri
-    ], "the next event is the sentinel: the hidden one did not come"
+    ], "the sentinel replaced the visible book"
 
 
 async def test_an_id_that_cannot_anchor_a_resume_sends_one_reset_then_the_live_events(

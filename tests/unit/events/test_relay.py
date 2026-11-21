@@ -215,6 +215,8 @@ class HangingBus(InMemoryEventBus):
     async def publish(self, envelope, body) -> None:
         if envelope.tenant == self._tenant:
             await asyncio.Event().wait()
+        # The other tenant must not suspend here: a wait would run into the short timeout below and
+        # time that tenant out too, so the test could no longer tell the hung tenant from the rest.
         await super().publish(envelope, body)
 
 
@@ -223,7 +225,7 @@ async def test_d18_a_publish_that_hangs_times_out_and_stops_that_database_only(w
     await add_one(world, world.second)
     relay = world.relay(
         HangingBus(world.broker, world.tenant),
-        events=EventSettings(publish_timeout_seconds=0.05),
+        events=EventSettings(publish_timeout_seconds=0.01),
     )
     with caplog.at_level(logging.WARNING, logger=LOGGER):
         await asyncio.wait_for(relay.run_once(), 5)
@@ -315,7 +317,7 @@ async def test_tc16_a_store_that_fails_for_one_tenant_does_not_stop_the_others(
             raise StoreUnavailable("the store fails for one tenant")
         return await real(dataset, sparql)
 
-    monkeypatch.setattr(world.store, "query", query)
+    monkeypatch.setattr(world.store, "query", query)  # X3
     with caplog.at_level(logging.DEBUG, logger=LOGGER):
         await world.relay().run_once()
     assert sent(world, world.tenant) == [], "the failing tenant gets nothing"
@@ -340,7 +342,7 @@ async def test_tc16_the_loop_survives_a_failed_round_and_publishes_after_a_wake(
             raise RuntimeError("a round fails as a whole")
         return await real()
 
-    monkeypatch.setattr(world.tenancy, "tenants", tenants)
+    monkeypatch.setattr(world.tenancy, "tenants", tenants)  # X3
     relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
     task = asyncio.create_task(relay.run())
     try:
@@ -434,7 +436,7 @@ async def test_tc18a_wakes_during_a_round_cause_exactly_one_more_round(world, mo
             await release.wait()
         return await real()
 
-    monkeypatch.setattr(world.tenancy, "tenants", tenants)
+    monkeypatch.setattr(world.tenancy, "tenants", tenants)  # X2
     relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
     task = asyncio.create_task(relay.run())
     try:
@@ -467,7 +469,7 @@ async def test_rounds_never_overlap(world, monkeypatch):
         finally:
             inside -= 1
 
-    monkeypatch.setattr(world.tenancy, "tenants", tenants)
+    monkeypatch.setattr(world.tenancy, "tenants", tenants)  # X2
     relay = world.relay()
     await asyncio.gather(relay.run_once(), relay.run_once(), relay.run_once())
     assert peak == 1, "two rounds never overlap"
@@ -512,7 +514,7 @@ async def test_tc35_a_failed_database_is_error_the_round_is_not_and_the_next_ten
             raise StoreUnavailable("the store fails for one tenant")
         return await real(dataset, sparql)
 
-    monkeypatch.setattr(world.store, "query", query)
+    monkeypatch.setattr(world.store, "query", query)  # X3
     await world.relay().run_once()
 
     finished = spans()
