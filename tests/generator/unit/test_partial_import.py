@@ -7,7 +7,7 @@ import pytest
 
 from rdf_persistence_generation.cli import main
 
-from .conftest import TOY
+from .golden import TOY
 from .terms import terms_of
 
 LEAKED = ("TenantAccess", "Grant", "StoredFile", "Provenanced")

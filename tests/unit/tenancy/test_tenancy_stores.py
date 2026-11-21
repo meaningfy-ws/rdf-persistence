@@ -5,7 +5,6 @@
 
 import logging
 from types import SimpleNamespace
-from uuid import UUID
 
 import pytest
 from rdflib import URIRef
@@ -22,53 +21,35 @@ from rdf_persistence.core.domain.exceptions import (
     TenantBehind,
 )
 from rdf_persistence.core.domain.generated import rp_core
-from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.sparql import fill, term
-from rdf_persistence.iris.domain.layout import graph_iri, system_database_name
+from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.mapper import Mapper, UnitOfWork, generated_models
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.tenancy.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
-from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
+from tests.tenancy_world import CREATOR
+from tests.toy import SETTINGS, dune, library_slots, toy_mapper
 from tests.unit.builders import TENANT, tenant_access
+from tests.unit.tenancy.tenancy_helpers import (
+    CLIENT_A,
+    IDS,
+    PREFIX,
+    SYSTEM,
+    TYPES,
+    cold,
+    drawing,
+    made_on,
+    operations,
+    tenant_databases,
+    wired,
+)
 
-CREATOR = Principal(id=ADA)
-SYSTEM = system_database_name(SETTINGS.prefix)
-PREFIX = "lib-t-"
-CLIENT_A = "client-a"
-LIBRARY_SCHEMA = "https://example.org/ns/library"
-IDS = [str(UUID(int=n)) for n in (1, 2, 3)]
 ASK = "ASK { GRAPH $g { ?s ?p ?o } }"
-TYPES = iri_types(load_schema(TOY_SCHEMA))
-
-
-def _drawing(*ids: str):
-    """An id source that answers ``ids`` in turn and fails if asked for more."""
-    drawn = iter(ids)
-    return lambda spec: next(drawn)
-
-
-def wired(d: FakeStore, files: FakeFileStore, *ids: str, **stores: FakeStore) -> Tenancy:
-    """A tenancy on ``d`` with ``stores`` beside it; ``ids`` are the tenant ids it draws, in turn."""
-    iris = Iris(SETTINGS, *TYPES, id_source=_drawing(*ids))
-    return Tenancy(
-        d,
-        files,
-        SETTINGS,
-        mapper=toy_mapper(),
-        root_class=Library,
-        access_class=LibraryAccess,
-        iris=iris,
-        stamps=[(LIBRARY_SCHEMA, "1")],
-        stores=stores,
-    )
 
 
 @pytest.fixture
@@ -79,26 +60,8 @@ async def world() -> SimpleNamespace:
     return SimpleNamespace(d=d, a=a, files=files, tenancy=tenancy)
 
 
-def cold(world: SimpleNamespace, **stores: FakeStore) -> Tenancy:
-    """Another instance over the same stores: it has read nothing yet."""
-    return wired(world.d, world.files, **stores)
-
-
-def operations(store: FakeStore) -> int:
-    return sum(len(store.sent(operation)) for operation in FakeStore.OPERATIONS)
-
-
-def tenant_databases(store: FakeStore) -> list[str]:
-    return [name for name in store._datasets if name.startswith(PREFIX)]
-
-
 async def holds(store: FakeStore, database: str, graph: URIRef) -> bool:
     return bool((await store.query(database, fill(ASK, g=term(graph)))).askAnswer)
-
-
-async def made_on(world: SimpleNamespace, store: str | None = None) -> str:
-    kwargs = {} if store is None else {"store": store}
-    return (await world.tenancy.create("Ghent", library_slots(), CREATOR, **kwargs)).id
 
 
 # -- PD-1, PD-2: the record's store name ---------------------------------------------------------------
@@ -330,7 +293,7 @@ async def test_tc41_a_delete_on_a_store_that_is_not_wired_changes_nothing(world)
 def drawn_name(world: SimpleNamespace, tenant_id: str) -> str:
     """The database and bucket name of the tenant that draws ``tenant_id``."""
     return world.tenancy.database_of(
-        str(Iris(SETTINGS, *TYPES, id_source=_drawing(tenant_id)).mint_tenant())
+        str(Iris(SETTINGS, *TYPES, id_source=drawing(tenant_id)).mint_tenant())
     )
 
 

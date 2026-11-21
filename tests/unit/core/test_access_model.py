@@ -1,7 +1,7 @@
 """The access classes of the metamodel as gen-pydantic renders them.
 
 The schema's own rules (exactly_one_of, unique_keys) are enforced by the model validators of the toolkit's
-gen-pydantic extension (task 1.13).
+gen-pydantic extension (PD-24).
 """
 
 import pytest

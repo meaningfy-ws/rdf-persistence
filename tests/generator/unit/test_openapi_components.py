@@ -11,8 +11,7 @@ from rdf_persistence.schema.services.schema_structure import is_bookkeeping, is_
 from rdf_persistence_generation.components import TYPE_SCHEMA, render
 from rdf_persistence_generation.steps import COMPONENTS_STEP
 
-from .conftest import ROOT_SCHEMA, TOY
-from .golden import TOY_TARGET, assert_matches_toy, run_toy
+from .golden import ROOT_SCHEMA, TOY, TOY_TARGET, assert_matches_toy, run_toy
 
 BOOKKEEPING = {"created", "modified", "creator", "contributor", "version"}
 

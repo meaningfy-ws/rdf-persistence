@@ -31,32 +31,18 @@ from rdf_persistence.persistence.services.unique_keys import (
     same_value,
 )
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import TENANT, TOY_SCHEMA, book_iri, dune, graph_of, toy_mapper_limited
+from tests.toy import TENANT, book_iri, dune, graph_of, toy_mapper_limited
+from tests.unit.activity_helpers import BIBO, BOOK, ISBN, KEYS, TITLE
+from tests.unit.activity_helpers import isbn_book as book
 
 A, B, C, D, E = (book_iri(n) for n in (1, 2, 3, 4, 5))
 OTHER_TENANT = "https://example.org/libraries/other"
-BIBO = "http://purl.org/ontology/bibo/"
-BOOK, ISBN = URIRef(BIBO + "Book"), URIRef(BIBO + "isbn")
-TITLE = URIRef("http://purl.org/dc/terms/title")
-KEYS = aggregate_keys(load_schema(TOY_SCHEMA))
 LONG_ISBN = "9780441172719"
 HOSTILE = "'\"} ; DROP ALL ; #"
 ENTRY = "ASK { GRAPH $registry { $graph ?p ?o } }"
 HAS_ISBN = "ASK { GRAPH $graph { $root $isbn $value } }"
-
-
-def book(iri: str, *isbns: str | Literal, title: str | None = None) -> list:
-    """The triples of a book root holding ``isbns``; none gives a book without ISBN."""
-    root = URIRef(iri)
-    return [
-        (root, RDF.type, BOOK),
-        *((root, ISBN, i if isinstance(i, Literal) else Literal(i)) for i in isbns),
-        *(((root, TITLE, Literal(title)),) if title else ()),
-    ]
 
 
 def opened(

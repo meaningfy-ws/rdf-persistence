@@ -1,4 +1,4 @@
-"""Adversarial tests of the testkit target and the ``replaced`` sites (technical-models stage 4).
+"""Adversarial tests of the testkit target and the ``replaced`` sites (technical-models).
 
 Attacks: the testkit imported without the extras, ``FieldFlags`` in the model-shape comparison, and the
 three sites that rebuild a model with ``replaced``.

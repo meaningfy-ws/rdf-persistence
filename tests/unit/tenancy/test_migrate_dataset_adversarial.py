@@ -1,5 +1,4 @@
 """Adversarial tests of ``migrate_dataset``: a client's dump is the input (schema-migrations PD-15, PD-5, PD-23)."""
-# ruff: noqa: F811  (fixtures imported from the tests they extend are named again as test arguments)
 
 import pytest
 from rdflib import XSD, Dataset, Literal, URIRef
@@ -9,27 +8,22 @@ from rdf_persistence.migrations.services.generated.rp_migrations_services import
 from rdf_persistence.migrations.services.migrations import Chain
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.tenancy.services.migration_runner import migrate_dataset
-from tests.unit.tenancy.migration_helpers import (
+from tests.migration_helpers import (
+    BOOK,
     ISBN,
     LIB,
+    LOADED,
     MID_ISBN,
     OLD_ISBN,
-    RP,
-    chain_of,
-    migration,
-    rename,
-)
-from tests.unit.tenancy.test_migrate_dataset import (  # noqa: F401  (fixtures)
-    BOOK,
-    LOADED,
     REGISTRY,
+    RP,
     STAMP,
     STAMPS,
+    chain_of,
     dataset,
-    lib_chain,
+    migration,
+    rename,
     stamp,
-    three,
-    toolkit_chain,
 )
 
 MARK = URIRef("https://example.org/ns/library#marked")
@@ -115,7 +109,7 @@ def test_a_stamp_at_the_last_version_that_the_next_migration_could_never_match_i
         migrate_dataset(data, chains_of(toolkit_chain, lib_chain), STAMPS)
 
 
-# equivalence class: a stamp that is not the exact text of a version of the chain; the empty one
+# Class: a stamp that is not the exact text of a version of the chain; the empty one
 # and a padded " 1" (which only an exact-text comparison tells from "1") stand for it
 @pytest.mark.parametrize("version", ["", " 1"])
 def test_a_version_that_only_looks_like_one_of_the_chain_is_refused(
@@ -175,8 +169,19 @@ def test_a_second_migration_that_fails_is_refused_naming_it_not_the_first(tmp_pa
 # -- resource: the in-memory migration stays near linear in the graphs -----------------------------------------
 
 
-def many_graphs(count: int) -> Dataset:
-    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
+class CountingDataset(Dataset):
+    """A dataset that counts each walk over all its named graphs (``contexts``)."""
+
+    walks = 0
+
+    def contexts(self, *args, **kwargs):
+        self.walks += 1
+        return super().contexts(*args, **kwargs)
+
+
+def many_graphs(count: int) -> CountingDataset:
+    data = dataset(stamp(RP, "1"), stamp(LIB, "1"), kind=CountingDataset)
+    assert isinstance(data, CountingDataset)
     for i in range(count):
         graph = URIRef(f"https://example.org/library/libraries/t/books/b{i}")
         data.graph(graph).add((graph, v.VERSION, Literal(f"token-{i}")))
@@ -185,29 +190,22 @@ def many_graphs(count: int) -> Dataset:
     return data
 
 
-def full_scans_to_migrate(count: int, chains: list[tuple[str, Chain]], monkeypatch) -> int:
+def full_scans_to_migrate(count: int, chains: list[tuple[str, Chain]]) -> int:
     """How many times the migration walks every named graph of the dataset (``Dataset.contexts``)."""
-    scans = []
-    walk_all_graphs = Dataset.contexts
-
-    def counted(self, *args, **kwargs):
-        scans.append(1)
-        return walk_all_graphs(self, *args, **kwargs)
-
     data = many_graphs(count)
-    with monkeypatch.context() as patch:
-        patch.setattr(Dataset, "contexts", counted)
-        migrate_dataset(data, chains, STAMPS)
-    return len(scans)
+    before = data.walks
+    migrate_dataset(data, chains, STAMPS)
+    return data.walks - before
 
 
 def test_a_plain_rename_walks_the_graphs_a_number_of_times_that_does_not_grow_with_them(
-    lib_chain, toolkit_chain, monkeypatch
+    lib_chain, toolkit_chain
 ):
     """PD-26: the loaded-graph exclusion walked every graph once per solution row (3N+6 walks), so a client's
     dump of a few thousand aggregates held the process for hours. A count, not a time: the machine's load
     does not change it."""
     chains = chains_of(toolkit_chain, lib_chain)
-    small = full_scans_to_migrate(20, chains, monkeypatch)
-    large = full_scans_to_migrate(80, chains, monkeypatch)
+    small = full_scans_to_migrate(20, chains)
+    large = full_scans_to_migrate(80, chains)
+    assert small > 0, "the migration walks the graphs, so the count measures something"
     assert large == small, f"20 graphs took {small} full walks, 80 graphs took {large}"

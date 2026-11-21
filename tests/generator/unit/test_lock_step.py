@@ -1,4 +1,4 @@
-"""What ``rp-generate`` does with the schema lock and the migration files (task 1.3b, PD-3, PD-4)."""
+"""What ``rp-generate`` does with the schema lock and the migration files (PD-3, PD-4)."""
 
 import shutil
 from pathlib import Path
@@ -11,8 +11,8 @@ from rdf_persistence_generation.generated.rp_generation import SchemaLock
 from rdf_persistence_generation.lock_step import _write_draft
 from rdf_persistence_generation.manifest import MANIFEST_NAME
 
-from .conftest import TOY, Breaker
-from .test_lock import (
+from .golden import TOY, Breaker
+from .lock_helpers import (
     BOOK_SLOTS,
     DROP_SHELF,
     ISBN_REQUIRED,

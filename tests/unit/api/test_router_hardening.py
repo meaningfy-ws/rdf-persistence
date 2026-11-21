@@ -1,4 +1,4 @@
-"""What the stage 5 review found, as requests (PD-14b): strict bodies, bounded bodies, every error a problem."""
+"""What the review of the router found, as requests (PD-14b): strict bodies, bounded bodies, every error a problem."""
 
 import json
 from collections.abc import AsyncIterator
@@ -17,9 +17,9 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
     LimitSettings,
 )
 from rdf_persistence.schema.services import vocabulary as v
+from tests.scene import PROBLEMS, Scene, problem_of
 from tests.toy import SETTINGS
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of, store_scan
-from tests.unit.api.scene import PROBLEMS, Scene, problem_of
 
 RP = "https://meaningfy.ws/ns/rdf-persistence#"
 ODRL = "http://www.w3.org/ns/odrl/2/"
@@ -137,8 +137,12 @@ async def test_a_body_of_too_many_objects_is_a_413_before_it_is_typed_or_expande
 
         return wrapper
 
-    monkeypatch.setattr(Documents, "_plain_document", spied("typed", Documents._plain_document))
-    monkeypatch.setattr(Documents, "_triples", staticmethod(spied("expanded", Documents._triples)))
+    monkeypatch.setattr(  # X2
+        Documents, "_plain_document", spied("typed", Documents._plain_document)
+    )
+    monkeypatch.setattr(  # X2
+        Documents, "_triples", staticmethod(spied("expanded", Documents._triples))
+    )
     chapters = [{"number": n} for n in range(LimitSettings().max_document_nodes + 1)]
     response = await scene.http.post(
         f"{scene.tenant}/books",

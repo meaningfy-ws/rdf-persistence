@@ -23,8 +23,7 @@ from rdf_persistence.core.domain.exceptions import (
     StoreUnavailable,
     TenantBehind,
 )
-from rdf_persistence.core.domain.generated.rp_core import Principal
-from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri, stamps_graph_iri
+from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.migrations.services.migrations import (
     Chain,
@@ -47,90 +46,31 @@ from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
-from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
-from tests.unit.conftest import GENERATED
-from tests.unit.tenancy.migration_helpers import (
+from tests.migration_helpers import (
     ISBN,
     LIB,
-    MID_ISBN,
     OLD_ISBN,
     RP,
+    STAMPS,
+    book_of,
     chain_of,
+    held,
     migration,
+    old_book,
+    put_stamp,
+    quads,
     rename,
+    second_tenant,
 )
-from tests.unit.tenancy.test_tenant_sweep import HOUR, make_world
-
-STAMPS = stamps_graph_iri(SETTINGS.base)
-CREATOR = Principal(id=ADA)
-ALL = "SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } }"
-
-
-# -- chains ---------------------------------------------------------------------------------------
-
-
-@pytest.fixture
-def lib_chain(tmp_path) -> Chain:
-    """``[1, 2]``: version 2 moves the ISBN from its old predicate to the book's."""
-    step = migration(LIB, "1", "2", rename(OLD_ISBN, ISBN))
-    return chain_of(tmp_path / "lib", LIB, step, current="2")
-
-
-@pytest.fixture
-def three(tmp_path) -> Chain:
-    """``[1, 2, 3]``: the ISBN goes old, then middle, then the book's predicate."""
-    steps = (
-        migration(LIB, "1", "2", rename(OLD_ISBN, MID_ISBN)),
-        migration(LIB, "2", "3", rename(MID_ISBN, ISBN)),
-    )
-    return chain_of(tmp_path / "three", LIB, *steps, current="3")
-
+from tests.tenancy_world import CREATOR, HOUR, make_world
+from tests.toy import GENERATED, SETTINGS, TOY_SCHEMA, library_slots, toy_mapper
 
 # -- the world ------------------------------------------------------------------------------------
-
-
-def book_of(tenant: str) -> str:
-    return f"{tenant}/books/{UUID(int=1)}"
-
-
-async def put_stamp(store, database: str, schema: str, version: str) -> None:
-    await store.update(
-        database,
-        f'INSERT DATA {{ GRAPH <{STAMPS}> {{ <{schema}> <{v.DATA_SCHEMA_VERSION}> "{version}" }} }}',
-    )
-
-
-async def held(store, database: str) -> dict[str, str]:
-    rows = await store.query(
-        database, f"SELECT ?s ?v WHERE {{ GRAPH <{STAMPS}> {{ ?s <{v.DATA_SCHEMA_VERSION}> ?v }} }}"
-    )
-    return {str(row.s): str(row.v) for row in rows}  # type: ignore[union-attr]
-
-
-async def quads(store, database: str) -> frozenset[tuple]:
-    return frozenset(tuple(map(str, row)) for row in await store.query(database, ALL))
-
-
-async def old_book(world: SimpleNamespace, tenant: str) -> str:
-    """Store a book of ``tenant`` whose ISBN "A3" sits under the old predicate."""
-    iri = book_of(tenant)
-    triples = [
-        (s, OLD_ISBN if p == ISBN else p, o)
-        for s, p, o in toy_mapper().to_triples(dune(iri, isbn="A3"))
-    ]
-    async with world.tenancy.tenant_session(tenant, CREATOR) as session:
-        await session.add_graph(iri, triples)
-    return iri
 
 
 async def read(world: SimpleNamespace, tenant: str) -> tuple[Graph, URIRef, str]:
     async with world.tenancy.tenant_session(tenant, CREATOR) as session:
         return await session.get_graph(book_of(tenant))
-
-
-async def second_tenant(world: SimpleNamespace) -> SimpleNamespace:
-    summary = await world.tenancy.create("Bruges", library_slots(), CREATOR)
-    return SimpleNamespace(id=summary.id, database=world.tenancy.database_of(summary.id))
 
 
 @pytest.fixture

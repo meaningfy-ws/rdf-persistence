@@ -70,12 +70,13 @@ def _is_shared_infrastructure(parts: tuple[str, ...]) -> bool:
     )
 
 
-def root_unit_tests() -> list[str]:
-    """The test files at the root of tests/unit, relative to the repository root."""
-    return sorted(p.as_posix() for p in Path("tests/unit").glob("test_*.py"))
+# The tests of the rdf_persistence/ files that are in no theme (PD-11).
+PACKAGE_TESTS = "tests/unit/package/"
+# The test a change under docs/ selects.
+DOCS_CHECK_TEST = "tests/unit/tooling/test_check_docs.py"
 
 
-def _test_folder_of(parts: tuple[str, ...], root_tests: Sequence[str]) -> list[str] | None:
+def _test_folder_of(parts: tuple[str, ...]) -> list[str] | None:
     """The tests that cover a path under tests/ or rdf_persistence/, None if no rule applies."""
     if parts[0] == "tests" and len(parts) > 2 and parts[1] == "unit":
         if len(parts) > 3:
@@ -92,18 +93,18 @@ def _test_folder_of(parts: tuple[str, ...], root_tests: Sequence[str]) -> list[s
     if parts[0] == "rdf_persistence" and len(parts) > 2 and parts[1] in OUTSIDE_THEMES | THEMES:
         return [f"tests/unit/{parts[1]}/"]
     if parts[0] == "rdf_persistence" and len(parts) > 1:
-        return list(root_tests)
+        return [PACKAGE_TESTS]
     return None
 
 
-def _classify(path: str, root_tests: Sequence[str]) -> Selection:
+def _classify(path: str) -> Selection:
     """What one changed path selects, hints and falls back on; the first matching rule wins."""
     parts = PurePosixPath(path).parts
     name = parts[-1]
     if parts[0] in NO_TEST_ROOTS or (len(parts) == 1 and name.endswith(".md")):
         return Selection((), (), ())
     if parts[0] == "docs":
-        return Selection(("tests/unit/test_check_docs.py",), (), ())
+        return Selection((DOCS_CHECK_TEST,), (), ())
     if _is_shared_infrastructure(parts):
         return Selection((), (), (f"{path}: shared test infrastructure or schema",))
     if parts[0] == "rdf_persistence" and len(parts) > 1 and parts[1] == CORE_THEME:
@@ -114,21 +115,19 @@ def _classify(path: str, root_tests: Sequence[str]) -> Selection:
         return Selection((), (), (f"{path}: helper imported by unit tests",))
     if parts[:2] == ("tests", "perf"):
         return Selection((), (f"{path}: run make test-perf",), ())
-    selected = _test_folder_of(parts, root_tests)
+    selected = _test_folder_of(parts)
     if selected is None:
         return Selection((), (), (f"{path}: no rule maps it to tests",))
     return Selection(tuple(selected), (), ())
 
 
-def select(
-    paths: Sequence[str], existing: Callable[[str], bool], root_tests: Sequence[str]
-) -> Selection:
-    """The selection for changed paths; `root_tests` are the test files at the root of tests/unit."""
+def select(paths: Sequence[str], existing: Callable[[str], bool]) -> Selection:
+    """The selection for changed paths; `existing` says whether a selected path is still there."""
     chosen: set[str] = set()
     hints: list[str] = []
     reasons: list[str] = []
     for path in paths:
-        one = _classify(path, root_tests)
+        one = _classify(path)
         chosen.update(one.paths)
         hints += one.hints
         reasons += one.fallback_reasons
@@ -180,7 +179,7 @@ def main() -> int:
     except GitError as error:
         print(f"{error}; running make test-fast", file=sys.stderr)
         return FALLBACK_EXIT
-    selection = select(changed, lambda path: Path(path).exists(), root_unit_tests())
+    selection = select(changed, lambda path: Path(path).exists())
     if selection.fallback_reasons:
         print(*selection.fallback_reasons, sep="\n", file=sys.stderr)
         return FALLBACK_EXIT

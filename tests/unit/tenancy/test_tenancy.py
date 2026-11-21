@@ -55,13 +55,13 @@ from tests.toy import (
     toy_mapper,
 )
 from tests.toy_service import body_of, scan_of_dune
+from tests.unit.tenancy.tenancy_helpers import PREFIX, tenancy_drawing
 
 ODRL = "http://www.w3.org/ns/odrl/2/"
 NOW = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
 IRIS = Iris(SETTINGS)
 CREATOR = Principal(id=ADA)
 SYSTEM = system_database_name(SETTINGS.prefix)
-PREFIX = "lib-t-"
 
 
 class MovableStore(FakeStore):
@@ -445,7 +445,7 @@ async def test_each_create_and_drop_step_is_logged_with_the_tenant_and_resource_
     ], "each step is logged with the tenant and resource"
 
 
-# --- changing the access record: the label and the grants (task 5.2) ---------------------------
+# --- changing the access record: the label and the grants ---------------------------
 
 BEN = Principal(id="https://example.org/people/ben")
 
@@ -685,33 +685,15 @@ async def test_a_root_label_other_than_the_tenants_is_refused_before_anything_is
     assert files.sent("create_bucket") == [], "no bucket"
 
 
-# -- the IRI policy: tenants are minted through Iris (iri-policy task 3.1, PD-3a, PD-5, PD-6) --
+# -- the IRI policy: tenants are minted through Iris (iri-policy PD-3a, PD-5, PD-6) --
 
 A_ID = str(UUID(int=1))
 B_ID = str(UUID(int=2))
 A_HEX = A_ID.replace("-", "")
 
 
-def _drawing(*ids: str):
-    """An id source that answers ``ids`` in turn and fails if asked for more."""
-    drawn = iter(ids)
-    return lambda spec: next(drawn)
-
-
-def _tenancy_drawing(store, files, *ids: str) -> Tenancy:
-    return Tenancy(
-        store,
-        files,
-        SETTINGS,
-        mapper=toy_mapper(),
-        root_class=Library,
-        access_class=LibraryAccess,
-        iris=Iris(SETTINGS, id_source=_drawing(*ids)),
-    )
-
-
 async def test_a_tenant_id_that_has_an_access_record_is_drawn_again(store, files):
-    made = _tenancy_drawing(store, files, A_ID, A_ID, B_ID)
+    made = tenancy_drawing(store, files, A_ID, A_ID, B_ID)
     await made.ensure_system_database()
     first = await made.create("Ghent", library_slots(), CREATOR)
     second = await made.create("Bruges", library_slots(), CREATOR)
@@ -721,7 +703,7 @@ async def test_a_tenant_id_that_has_an_access_record_is_drawn_again(store, files
 
 
 async def test_a_tenant_id_that_only_an_orphan_database_uses_is_drawn_again(store, files):
-    made = _tenancy_drawing(store, files, A_ID, B_ID)
+    made = tenancy_drawing(store, files, A_ID, B_ID)
     await made.ensure_system_database()
     await store.create_dataset(PREFIX + A_HEX)
     created = await made.create("Ghent", library_slots(), CREATOR)
@@ -729,7 +711,7 @@ async def test_a_tenant_id_that_only_an_orphan_database_uses_is_drawn_again(stor
 
 
 async def test_five_clashing_draws_fail_and_create_nothing(store, files):
-    made = _tenancy_drawing(store, files, *[A_ID] * 5)
+    made = tenancy_drawing(store, files, *[A_ID] * 5)
     await made.ensure_system_database()
     await store.create_dataset(PREFIX + A_HEX)
     with pytest.raises(PersistenceError, match="no free tenant id"):

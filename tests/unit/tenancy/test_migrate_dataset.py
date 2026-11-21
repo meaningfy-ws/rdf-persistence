@@ -4,59 +4,37 @@ The dataset holds a stamps graph, a book graph that keeps its ISBN under an old,
 registry. Chains are files in ``tmp_path``; the request is the very text the store gets.
 """
 
-from pathlib import Path
-
 import pytest
 from rdflib import RDF, XSD, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.compare import isomorphic
 
 from rdf_persistence.core.domain.exceptions import InvalidBody, SparqlError
-from rdf_persistence.core.domain.generated.rp_core import RegistryKind
-from rdf_persistence.iris.domain.layout import stamps_graph_iri
-from rdf_persistence.migrations.services.generated.rp_migrations_services import MigrationStep
+from rdf_persistence.migrations.services.generated.rp_migrations_services import (
+    Migration,
+    MigrationStep,
+)
 from rdf_persistence.migrations.services.migrations import Chain
 from rdf_persistence.migrations.services.migrations import chain_of as chain_of_schema
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
-from rdf_persistence.tenancy.services import migration_runner
 from rdf_persistence.tenancy.services.migration_runner import migrate_dataset
-from tests.toy import SETTINGS
-from tests.unit.tenancy.migration_helpers import (
+from tests.migration_helpers import (
+    BOOK,
     ISBN,
     LIB,
+    LOADED,
     MID_ISBN,
     OLD_ISBN,
+    REGISTRY,
     RP,
+    STAMP,
+    STAMPS,
+    TOKEN,
     chain_of,
+    dataset,
     migration,
-    rename,
+    stamp,
 )
-
-STAMPS = stamps_graph_iri(SETTINGS.base)
-BOOK = URIRef("https://example.org/library/libraries/t/books/b")
-LOADED = URIRef("https://example.org/library/libraries/t/loaded/l")
-REGISTRY = URIRef("https://example.org/library/libraries/t/registry")
-TOKEN = Literal("token-1")
-STAMP = URIRef(str(v.DATA_SCHEMA_VERSION))
-
-
-def stamp(schema: str, version: str) -> tuple[URIRef, URIRef, Literal]:
-    return URIRef(schema), STAMP, Literal(version)
-
-
-def dataset(*stamps: tuple[URIRef, URIRef, Literal], isbn: URIRef = OLD_ISBN) -> Dataset:
-    """A dump with the given stamps, a book whose ISBN is under ``isbn``, a loaded graph and its registry."""
-    data = Dataset()
-    for statement in stamps:
-        data.graph(STAMPS).add(statement)
-    data.graph(BOOK).add((BOOK, v.VERSION, TOKEN))
-    data.graph(BOOK).add((BOOK, isbn, Literal("A3")))
-    data.graph(LOADED).add((BOOK, OLD_ISBN, Literal("loaded")))
-    data.graph(REGISTRY).add(
-        (LOADED, v.REGISTRY_KIND, v.REGISTRY_KIND_IRIS[RegistryKind.LOADED_GRAPH])
-    )
-    data.graph(REGISTRY).add((REGISTRY, OLD_ISBN, Literal("registry")))
-    return data
 
 
 def isbns(data: Dataset, graph: URIRef) -> set[str]:
@@ -65,29 +43,6 @@ def isbns(data: Dataset, graph: URIRef) -> set[str]:
 
 def stamped(data: Dataset) -> dict[str, str]:
     return {str(s): str(o) for s, _, o in data.graph(STAMPS)}
-
-
-@pytest.fixture
-def lib_chain(tmp_path: Path) -> Chain:
-    """``[1, 2]``: version 2 moves the ISBN from its old predicate to the book's."""
-    return chain_of(
-        tmp_path / "lib", LIB, migration(LIB, "1", "2", rename(OLD_ISBN, ISBN)), current="2"
-    )
-
-
-@pytest.fixture
-def three(tmp_path: Path) -> Chain:
-    """``[1, 2, 3]``: the ISBN goes old, then middle, then the book's predicate."""
-    steps = (
-        migration(LIB, "1", "2", rename(OLD_ISBN, MID_ISBN)),
-        migration(LIB, "2", "3", rename(MID_ISBN, ISBN)),
-    )
-    return chain_of(tmp_path / "three", LIB, *steps, current="3")
-
-
-@pytest.fixture
-def toolkit_chain(tmp_path: Path) -> Chain:
-    return chain_of(tmp_path / "rp", RP, current="1")
 
 
 # -- TC-51: an older dump is migrated in memory ------------------------------------------------------
@@ -216,27 +171,33 @@ def test_a_long_value_from_the_dump_is_cut_in_the_reason(lib_chain, toolkit_chai
     assert "..." in str(caught.value), "and the cut is marked"
 
 
-NOTHING = "INSERT DATA { GRAPH <urn:g> { <urn:a> <urn:b> <urn:c> } }"
-DROP_STAMPS = f"DELETE WHERE {{ GRAPH <{STAMPS}> {{ ?s ?p ?o }} }}"
+class Inert(Dataset):
+    """A dataset whose update does nothing: the request leaves the stamp where it was."""
+
+    def update(self, *_, **__) -> None:
+        return None
+
+
+class Unstamping(Dataset):
+    """A dataset whose update empties the stamps graph: the request leaves no stamp."""
+
+    def update(self, *_, **__) -> None:
+        self.graph(STAMPS).remove((None, None, None))
 
 
 def test_a_request_that_leaves_the_stamp_where_it_was_is_refused_as_going_backwards(
-    lib_chain, toolkit_chain, monkeypatch
+    lib_chain, toolkit_chain
 ):
     """The forward-only rule of the store (PD-23) holds in memory: the stamp read back is not ``to`` or later."""
-    monkeypatch.setattr(migration_runner, "migration_request", lambda *_: NOTHING)
-    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
+    data = dataset(stamp(RP, "1"), stamp(LIB, "1"), kind=Inert)
     with pytest.raises(InvalidBody) as caught:
         migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
     assert "went backwards" in str(caught.value), "the reason says the stamp did not move forward"
     assert f"1__2 of {LIB}" in str(caught.value), "the reason names the migration"
 
 
-def test_a_request_that_removes_the_stamp_is_refused_as_leaving_none(
-    lib_chain, toolkit_chain, monkeypatch
-):
-    monkeypatch.setattr(migration_runner, "migration_request", lambda *_: DROP_STAMPS)
-    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
+def test_a_request_that_removes_the_stamp_is_refused_as_leaving_none(lib_chain, toolkit_chain):
+    data = dataset(stamp(RP, "1"), stamp(LIB, "1"), kind=Unstamping)
     with pytest.raises(InvalidBody, match="there is no stamp") as caught:
         migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
     assert "None" not in str(caught.value), "a missing stamp is not the version 'None' (PD-25.8)"
@@ -264,16 +225,15 @@ def test_what_is_not_the_requests_fault_escapes_as_it_is(lib_chain, toolkit_chai
         migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
 
 
-def test_a_defect_in_our_own_request_text_escapes_and_is_not_blamed_on_the_dump(
-    lib_chain, toolkit_chain, monkeypatch
-):
-    def broken(*_):
-        raise SparqlError("a template of ours is wrong")
-
-    monkeypatch.setattr(migration_runner, "migration_request", broken)
-    data = dataset(stamp(RP, "1"), stamp(LIB, "1"))
-    with pytest.raises(SparqlError):
-        migrate_dataset(data, [(RP, toolkit_chain), (LIB, lib_chain)], STAMPS)
+def test_a_defect_in_our_own_request_text_escapes_and_is_not_blamed_on_the_dump(toolkit_chain):
+    """A schema id SPARQL cannot carry reaches the request builder, which refuses it as a defect of ours."""
+    schema = "https://ex.org/a b"
+    step = Migration(schema_id=schema, from_version="1", to_version="2")
+    hand_built: Chain = (("1", "2"), (step,))
+    data = dataset(stamp(RP, "1"), stamp(schema, "1"))
+    with pytest.raises(SparqlError) as caught:
+        migrate_dataset(data, [(RP, toolkit_chain), (schema, hand_built)], STAMPS)
+    assert "migration_request" in {frame.name for frame in caught.traceback}, "the attack ran it"
 
 
 # -- collection-has-part TC-2 to TC-6: the toolkit's 2 to 3 restates the members of a collection ----------

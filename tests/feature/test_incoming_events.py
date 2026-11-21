@@ -19,8 +19,7 @@ from rdf_persistence.testkit import (
     RecordingObserver,
     wait_until_async,
 )
-from tests.toy_service import DUNE_BODY, ToyService
-from tests.unit.api.test_service_kit import made
+from tests.toy_service import DUNE_BODY, ToyService, made
 
 scenarios("incoming_events.feature")
 

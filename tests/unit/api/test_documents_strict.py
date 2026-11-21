@@ -12,9 +12,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
     LimitSettings,
 )
 from rdf_persistence.schema.services.schema import load_schema
-from tests.toy import TENANT, TOY_SCHEMA, book_iri
-from tests.unit.api.test_documents import BOOK, BOOK_JSON, encoded
-from tests.unit.conftest import GENERATED
+from tests.toy import BOOK, BOOK_JSON, GENERATED, TENANT, TOY_SCHEMA, book_iri, encoded
 
 MAX_NODES = LimitSettings().max_document_nodes  # the default limit of a ``Documents``
 
@@ -116,7 +114,7 @@ async def test_an_internal_slot_is_refused_in_an_owned_part_of_a_json_ld_body(
         await parsed(documents, book_class, body, JSON_LD, iri=BOOK)
 
 
-# equivalence classes: a character the N-Quads parser refuses first (< > "), one only the IRI check refuses ({ } | ^ \ `)
+# Classes: a character the N-Quads parser refuses first (< > "), one only the IRI check refuses ({ } | ^ \ `)
 @pytest.mark.parametrize("char", ["<", "{"])
 async def test_a_reference_that_is_not_a_valid_iri_is_an_invalid_body(
     documents, scan_class, char

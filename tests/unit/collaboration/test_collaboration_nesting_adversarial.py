@@ -13,21 +13,21 @@ from rdf_persistence.collaboration.services.write_guards import _walk_from
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore, fake_session
 from tests.toy import TENANT, book_iri, shelf_iri, toy_mapper
-from tests.unit.collaboration.test_collaboration_cascade import stored
-from tests.unit.collaboration.test_collaboration_collections import (
+from tests.unit.collaboration.collaboration_data import (
     a_shelf,
     as_ada,
     as_bob_without,
-    put,
-    put_book,
-)
-from tests.unit.collaboration.test_collaboration_nesting_cycles import (
+    cascade_stored,
     chain,
+    collections_put,
+    guards,
     nesting,
+    put_book,
     replace,
     replace_in,
+    save,
+    version_of,
 )
-from tests.unit.collaboration.test_write_guards import guards, save, version_of
 
 # --- walk_from: the pure walk ----------------------------------------------------------------
 
@@ -152,7 +152,7 @@ async def test_an_add_of_a_shelf_over_a_deep_stored_tree_is_accepted():
         await save(
             session, nesting(shelf_iri(9), shelf_iri(5))
         )  # nobody names it: no cycle possible
-        assert await stored(session, shelf_iri(9))
+        assert await cascade_stored(session, shelf_iri(9))
 
 
 async def test_an_add_of_a_shelf_naming_itself_is_refused_as_not_stored():
@@ -168,7 +168,7 @@ async def test_an_add_and_a_replace_naming_each_other_in_one_transaction_are_ref
             async with session.transaction() as t:
                 await t.add_graph(X, toy_mapper().to_triples(nesting(X, Y)))
                 await replace_in(session, t, nesting(Y, X))
-        assert not await stored(session, X), "nothing is stored"
+        assert not await cascade_stored(session, X), "nothing is stored"
 
 
 @pytest.mark.parametrize("order", list(itertools.permutations(range(3))))
@@ -196,7 +196,7 @@ async def test_a_replace_after_a_remove_of_a_shelf_on_the_path_is_not_refused_fo
         async with session.transaction() as t:
             await t.remove(Y, await version_of(session, Y))
             await replace_in(session, t, nesting(X, Z))
-        assert not await stored(session, Y)
+        assert not await cascade_stored(session, Y)
 
 
 async def test_the_refusal_of_a_four_cycle_names_neither_shelf_between():
@@ -231,8 +231,10 @@ async def raw_and_guarded():
 
 async def test_a_leaf_that_stores_a_shelf_and_is_turned_nesting_cannot_close_a_cycle_unchecked():
     async with raw_and_guarded() as (raw, checked):
-        await put(raw, nesting(Y, X))  # Y nests X
-        await put(raw, a_shelf(X, has_part=[Y]))  # X is a leaf that nonetheless names Y (corrupt)
+        await collections_put(raw, nesting(Y, X))  # Y nests X
+        await collections_put(
+            raw, a_shelf(X, has_part=[Y])
+        )  # X is a leaf that nonetheless names Y (corrupt)
         try:
             await replace(checked, nesting(X, Y))
         except InvalidBody:
@@ -306,8 +308,8 @@ async def test_a_deep_read_of_a_stored_cycle_ends_and_lists_each_item_once(
 ):
     for iri in (B1, B2):
         await put_book(toy_session, iri)
-    await put(toy_session, tree(L2, B2, L1))  # written without guards: L1 -> L2 -> L1
-    await put(toy_session, tree(L1, B1, L2))
+    await collections_put(toy_session, tree(L2, B2, L1))  # written without guards: L1 -> L2 -> L1
+    await collections_put(toy_session, tree(L1, B1, L2))
     found = await as_ada(collaboration, toy_session).members(L1, deep=True)
     assert found.member_iris == sorted([B1, B2])
     assert found.hidden_count == 0, "neither shelf is counted, they are structure"
@@ -315,7 +317,7 @@ async def test_a_deep_read_of_a_stored_cycle_ends_and_lists_each_item_once(
 
 async def test_a_deep_read_of_a_shelf_naming_itself_ends(toy_session, collaboration):
     await put_book(toy_session, B1)
-    await put(toy_session, tree(L1, B1, L1))
+    await collections_put(toy_session, tree(L1, B1, L1))
     found = await as_ada(collaboration, toy_session).members(L1, deep=True)
     assert found.member_iris == [B1]
 
@@ -324,9 +326,9 @@ async def test_an_unreadable_sub_shelf_named_at_two_levels_is_counted_once(
     toy_session, collaboration
 ):
     await put_book(toy_session, B1)
-    await put(toy_session, tree(L2, B1))
-    await put(toy_session, tree(L3, L2))
-    await put(toy_session, tree(L1, L2, L3))
+    await collections_put(toy_session, tree(L2, B1))
+    await collections_put(toy_session, tree(L3, L2))
+    await collections_put(toy_session, tree(L1, L2, L3))
     found = await as_bob_without(collaboration, toy_session, L2).members(L1, deep=True)
     assert found.hidden_count == 1, "L2 is named by L1 and by L3, counted once"
     assert found.member_iris is None, "what L2 holds is neither listed nor counted"
@@ -337,9 +339,9 @@ async def test_an_item_unreadable_and_named_at_every_level_is_counted_once(
 ):
     await put_book(toy_session, B1)
     await put_book(toy_session, B2)
-    await put(toy_session, tree(L3, B1, B2))
-    await put(toy_session, tree(L2, B1, L3))
-    await put(toy_session, tree(L1, B1, L2))
+    await collections_put(toy_session, tree(L3, B1, B2))
+    await collections_put(toy_session, tree(L2, B1, L3))
+    await collections_put(toy_session, tree(L1, B1, L2))
     found = await as_bob_without(collaboration, toy_session, B1).members(L1, deep=True)
     assert found.member_iris == [B2]
     assert found.hidden_count == 1
@@ -348,12 +350,14 @@ async def test_an_item_unreadable_and_named_at_every_level_is_counted_once(
 async def test_a_cascade_refuses_a_stored_shelf_naming_a_shelf_without_nests(
     toy_session, collaboration
 ):
-    await put(toy_session, a_shelf(L2))
-    await put(toy_session, a_shelf(L1, has_part=[L2]))  # a leaf that names a shelf: corrupt
+    await collections_put(toy_session, a_shelf(L2))
+    await collections_put(
+        toy_session, a_shelf(L1, has_part=[L2])
+    )  # a leaf that names a shelf: corrupt
     version = (await toy_session.get_graph(L1))[2]
     with pytest.raises(StoredDataInvalid):
         await as_ada(collaboration, toy_session).delete_cascade(L1, version)
-    assert await stored(toy_session, L2)
+    assert await cascade_stored(toy_session, L2)
 
 
 @pytest.mark.xfail(
@@ -366,12 +370,12 @@ async def test_a_cascade_refuses_a_stored_nested_shelf_of_another_member_class(
     toy_session, collaboration
 ):
     """The nested shelf holds authors, the nesting one holds books (written past the guard)."""
-    await put(toy_session, a_shelf(L2, member_class="Author"))
-    await put(toy_session, tree(L1, L2))
+    await collections_put(toy_session, a_shelf(L2, member_class="Author"))
+    await collections_put(toy_session, tree(L1, L2))
     version = (await toy_session.get_graph(L1))[2]
     with pytest.raises(StoredDataInvalid):
         await as_ada(collaboration, toy_session).delete_cascade(L1, version)
-    assert await stored(toy_session, L2), "nothing is deleted"
+    assert await cascade_stored(toy_session, L2), "nothing is deleted"
 
 
 # --- a corrupt nesting graph in the skeleton --------------------------------------------------

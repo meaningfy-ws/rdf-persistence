@@ -7,54 +7,26 @@ to a store, moves the data once and only once.
 from pathlib import Path
 
 import pytest
-import yaml
 from rdflib import RDF, Dataset, Literal, URIRef
 from rdflib.plugins.sparql.parser import parseUpdate
 
 from rdf_persistence.core.domain.exceptions import InvalidMigration, SparqlError
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind
-from rdf_persistence.iris.domain.layout import stamps_graph_iri
-from rdf_persistence.migrations.services.generated.rp_migrations_services import (
-    Migration,
-    MigrationStep,
-)
+from rdf_persistence.migrations.services.generated.rp_migrations_services import MigrationStep
 from rdf_persistence.migrations.services.migrations import load_migration, migration_request
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore
-
-BASE = "https://example.org/"
-STAMPS = stamps_graph_iri(BASE)
-SCHEMA = "https://example.org/ns/library"
-SHELF = "<https://example.org/ns/library#shelf>"
-PLACE = "<https://example.org/ns/library#place>"
-FILE = "1__2.yaml"
-
-
-def step(title: str = "rename shelf", **fields: str | None) -> MigrationStep:
-    return MigrationStep(title=title, **fields)
-
-
-def rename() -> MigrationStep:
-    return step(
-        where_pattern=f"?s {SHELF} ?o .",
-        delete_pattern=f"?s {SHELF} ?o .",
-        insert_pattern=f"?s {PLACE} ?o .",
-    )
-
-
-def migration(*steps: MigrationStep) -> Migration:
-    return Migration(schema_id=SCHEMA, from_version="1", to_version="2", steps=list(steps) or None)
-
-
-def write(folder: Path, content: Migration | str) -> Path:
-    path = folder / FILE
-    text = (
-        content
-        if isinstance(content, str)
-        else yaml.safe_dump(content.model_dump(exclude_none=True))
-    )
-    path.write_text(text, encoding="utf-8")
-    return path
+from tests.unit.migrations.migration_steps import (
+    FILE,
+    PLACE,
+    SCHEMA,
+    SHELF,
+    STAMPS,
+    migration,
+    rename,
+    step,
+    write,
+)
 
 
 def refusal(tmp_path: Path, *steps: MigrationStep) -> str:
@@ -154,7 +126,7 @@ def test_a_blank_node_in_delete_or_insert_is_refused(tmp_path, clause, pattern):
     assert "step 1" in refused, "the step is named"
 
 
-# equivalence class: a predicate of the toolkit's own list; one per clause stands for it
+# Class: a predicate of the toolkit's own list; one per clause stands for it
 @pytest.mark.parametrize("predicate", [v.VERSION])
 @pytest.mark.parametrize("clause", ["insert_pattern", "delete_pattern"])
 def test_a_template_naming_a_toolkit_predicate_is_refused(
@@ -184,7 +156,7 @@ def test_graph_and_service_are_refused_in_any_pattern(tmp_path, clause, keyword)
     assert clause in refusal(tmp_path, step(**fields)), "the pattern is named"
 
 
-# equivalence classes: a reserved ?rp_ variable (?rp_x is the same), the dollar form
+# Classes: a reserved ?rp_ variable (?rp_x is the same), the dollar form
 @pytest.mark.parametrize("variable", ["?rp_registry", "$rp_registry"])
 def test_a_reserved_variable_is_refused(tmp_path, variable):
     refused = refusal(
@@ -249,7 +221,7 @@ def test_a_request_with_the_wrong_number_of_operations_is_refused(tmp_path, monk
     from rdf_persistence.migrations.services import migrations
 
     smuggled = migrations.migration_request
-    monkeypatch.setattr(
+    monkeypatch.setattr(  # X3
         migrations,
         "migration_request",
         lambda m, stamps: smuggled(m, stamps) + ";\nCLEAR ALL",

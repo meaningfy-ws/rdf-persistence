@@ -5,7 +5,7 @@ from pathlib import Path
 from rdf_persistence.testkit.model_shape import model_shape_diff
 from rdf_persistence.testkit.shape_snapshot import class_shapes
 from rdf_persistence_generation.config import TOOLKIT_ROOTS
-from tests.unit.testkit.test_shape_snapshot import METAMODEL_PACKAGE, generated_models
+from tests.metamodel import METAMODEL_PACKAGE, generated_models
 
 ROOT = Path(__file__).parents[3]
 GENERATION = ROOT / "rdf_persistence_generation" / "model" / "rp_generation.yaml"

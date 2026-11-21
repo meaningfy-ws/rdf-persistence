@@ -1,7 +1,6 @@
 """The stored shape of an activity and its round trip through RDF, JSON-LD and the model (message-bus PD-3, PD-4, RISK-7)."""
 
 from datetime import UTC, datetime, timedelta
-from functools import cache
 
 import pytest
 from rdflib import RDF, Graph, URIRef
@@ -18,9 +17,14 @@ from rdf_persistence.provenance.domain.generated.rp_provenance import (
 from rdf_persistence.provenance.services.provenance import activity_triples
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import assert_isomorphic
-from rdf_persistence_generation.testkit.conformance import Conformance
-from rdf_persistence_generation.testkit.roundtrip import without_framing
-from tests.toy import ADA, BOB, TENANT, TOY_SCHEMA, book_iri, toy_mapper
+from tests.toy import ADA, BOB, TENANT, book_iri, toy_mapper
+from tests.unit.activity_helpers import (
+    framed,
+    mapped,
+    toy,
+    unordered,
+    with_class_iris_expanded,
+)
 
 RP = "https://meaningfy.ws/ns/rdf-persistence#"
 BOOK_CLASS = "https://example.org/ns/library#Book"
@@ -29,11 +33,6 @@ STARTED = datetime(2026, 11, 14, 10, 0, tzinfo=UTC)
 ENDED = STARTED + timedelta(seconds=2)
 PROVENANCE_GRAPH = URIRef(f"{TENANT}/provenance")
 ACTIVITY_TYPES = [URIRef(f"{RP}Replace"), PROV.Activity]
-
-
-@cache
-def toy() -> Conformance:
-    return Conformance.of(TOY_SCHEMA)
 
 
 def part[P: (Generation, Invalidation)](
@@ -116,26 +115,6 @@ def stored(model: Activity) -> Graph:
     return graph
 
 
-def mapped(model: Activity) -> Graph:
-    """The mapper's graph: the activity's own class only, without the ancestor types the session adds (TC-11)."""
-    return toy_mapper().to_graph(model)
-
-
-def unordered[M: Activity](model: M) -> M:
-    """``model`` with its parts in the order of ``(entity, entity_version)``: RDF keeps no order (PD-4)."""
-
-    def order(parts):
-        return sorted(parts, key=lambda p: (p.entity, p.entity_version)) if parts else parts
-
-    return model.model_copy(
-        update={
-            "generations": order(model.generations),
-            "invalidations": order(model.invalidations),
-            "was_associated_with": sorted(model.was_associated_with or []) or None,
-        }
-    )
-
-
 def without_ancestor_type(model: Activity, graph: Graph) -> Graph:
     """``graph`` as the session writes it, minus the ``prov:Activity`` type the mapper does not write."""
     trimmed = Graph()
@@ -159,30 +138,6 @@ def test_tc11_the_mapper_writes_the_same_graph_but_the_ancestor_type(model: Acti
 def test_tc12_the_json_of_the_model_expands_to_the_mapped_graph(model: Activity) -> None:
     graph = toy().graph_of(model, type(model).__name__)
     assert_isomorphic(mapped(model), graph)
-
-
-def framed(model: Activity) -> dict:
-    name = type(model).__name__
-    body = without_framing(toy().documents.frame(mapped(model), toy().view.get_class(name)))
-    assert isinstance(body, dict), "one activity is one object"
-    return body
-
-
-def with_class_iris_expanded(body: dict) -> dict:
-    """``body`` with the compact IRI of each ``entity_class`` written out, with the context's prefixes.
-
-    Compaction writes a value of an ``@id`` term as ``lib:Book`` when the context has the prefix ``lib``.
-    """
-    prefixes = toy().documents.context
-    parts = ("generations", "invalidations")
-
-    def expanded(part: dict) -> dict:
-        prefix, _, rest = part.get("entity_class", "").partition(":")
-        if prefix not in prefixes or not rest:
-            return part
-        return {**part, "entity_class": f"{prefixes[prefix]}{rest}"}
-
-    return {**body, **{p: [expanded(x) for x in body[p]] for p in parts if p in body}}
 
 
 @EVERY_ACTIVITY

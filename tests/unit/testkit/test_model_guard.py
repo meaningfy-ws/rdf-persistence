@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence.testkit.guards import SCANNED_LAYERS, assert_models_generated
-from tests.unit.test_theme_layout import TURNED_ON
+from tests.unit.layout_table import TURNED_ON
 
 REPO = Path(__file__).resolve().parents[3]
 GENERATOR = "rdf_persistence_generation"

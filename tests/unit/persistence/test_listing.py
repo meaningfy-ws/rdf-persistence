@@ -73,7 +73,7 @@ def test_a_name_ending_in_a_tilde_is_a_contains_filter(param, expected):
     )
 
 
-# equivalence class: a limit that is not digits (abc); 0 and 201 are the range's boundaries
+# Class: a limit that is not digits (abc); 0 and 201 are the range's boundaries
 @pytest.mark.parametrize(
     "params",
     [
@@ -131,7 +131,7 @@ def test_a_value_is_typed_by_the_range_of_its_slot(view, slot, text, expected):
     )
 
 
-# equivalence classes: an IRI with no scheme ("relative/path"), one with a character IRIs forbid ("<")
+# Classes: an IRI with no scheme ("relative/path"), one with a character IRIs forbid ("<")
 @pytest.mark.parametrize(
     ("slot", "text"),
     [

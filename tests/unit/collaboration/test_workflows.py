@@ -12,7 +12,7 @@ from rdf_persistence.core.domain.exceptions import InvalidWorkflow
 from rdf_persistence.schema.services.schema import load_schema
 from tests.toy import REVIEW_WORKFLOW, ROLES, TOY_SCHEMA
 from tests.toy_service import ToyService
-from tests.unit.collaboration.test_collaboration_workflow_adversarial import copy_schema, edit
+from tests.unit.collaboration.collaboration_data import copy_schema, edit
 
 LIBRARY = "https://example.org/ns/library#"
 VIEW = load_schema(TOY_SCHEMA)
@@ -214,7 +214,7 @@ def test_from_files_gives_the_same_workflows_as_the_constructor(tmp_path):
 
 
 # PD-32 item 4: the id rule of the SPARQL layer, a hash at the end, a long input cut short.
-# equivalence classes: a character IRIs forbid ({; | ^ ` are the same), a hash end, a slash end, not absolute
+# Classes: a character IRIs forbid ({; | ^ ` are the same), a hash end, a slash end, not absolute
 BAD_IDS = [
     "https://ex.org/{review}",
     "C:\\path",

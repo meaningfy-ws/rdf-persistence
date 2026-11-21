@@ -18,7 +18,7 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import MODULES, TOY_SCHEMA, ApproveBook, toy_mapper
-from tests.unit.tenancy.test_session_activity import B1, B2, B3, book, opened
+from tests.unit.activity_helpers import B1, B2, B3, book, opened
 
 VIEW = load_schema(TOY_SCHEMA)
 MODELS = generated_models(*MODULES)

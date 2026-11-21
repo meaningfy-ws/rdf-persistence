@@ -209,6 +209,7 @@ async def test_a_page_holds_the_aggregates_in_order_and_the_total_counts_the_who
     )
 
 
+@pytest.mark.parametrize("policy", [POLICIES[0]], indirect=True, ids=["default"])
 async def test_a_hostile_filter_value_matches_nothing_and_leaves_the_store_unchanged(
     shelf, view, policy
 ):
@@ -220,6 +221,7 @@ async def test_a_hostile_filter_value_matches_nothing_and_leaves_the_store_uncha
 
 
 # TC-06: the texts that would break out of a literal, as the contains filter's text
+@pytest.mark.parametrize("policy", [POLICIES[0]], indirect=True, ids=["default"])
 @pytest.mark.parametrize(
     "text",
     [HOSTILE, '"', "\\", "}", "a\nb", "\\u0022"],

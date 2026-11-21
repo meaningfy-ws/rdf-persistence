@@ -1,4 +1,4 @@
-"""The toy library served over the API with fakes, for the router's tests (task 5.2)."""
+"""The toy library served over the API with fakes, for the router's tests."""
 
 import uuid
 from collections.abc import Mapping, Sequence
@@ -63,6 +63,11 @@ EXAMPLE_POLICY = IriPolicy(
 def toy_key() -> rsa.RSAPrivateKey:
     """The process's shared signing key (each xdist worker is one process)."""
     return shared_key()
+
+
+ADA = "ada"  # the librarian who makes a tenant
+RITA = "rita"  # a reader of it
+OMAR = "omar"  # an outsider to it
 
 
 def principal_of(sub: str) -> str:
@@ -132,6 +137,7 @@ class ToyService:
         package=generated,
         prefix: str | None = None,
         max_body_bytes: int | None = None,
+        max_restore_bytes: int | None = None,
         mount: str = "",
         iri_policy: IriPolicy | None = None,
         verifier_iris: Iris = DEFAULT_IRIS,
@@ -155,6 +161,7 @@ class ToyService:
                 "roles_claim": self.signer.roles_claim,
                 "prefix": prefix or SETTINGS.prefix,
                 "max_body_bytes": max_body_bytes or SETTINGS.max_body_bytes,
+                "max_restore_bytes": max_restore_bytes or SETTINGS.max_restore_bytes,
                 "iri_policy": iri_policy,
                 "deployment": deployment,
                 "public_url": public_url,
@@ -224,3 +231,32 @@ async def drop_buckets(files: FileStore, prefix: str) -> None:
     """Delete every bucket of the tenants of the service that has ``prefix``."""
     for bucket in await files.list_buckets(f"{prefix}-"):
         await files.delete_bucket(bucket)
+
+
+A_UUID = "6f1c0c1e-0000-4000-8000-000000000001"
+
+
+async def made(client: httpx.AsyncClient, headers: dict[str, str]) -> tuple[str, str, str]:
+    """A tenant, and a book in it: ``(tenant path, book path, book ETag)``."""
+    tenant = await client.post("/libraries", json=TENANT_BODY, headers=headers)
+    path = tenant.headers["location"]
+    book = await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)
+    return path, book.headers["location"], book.headers["etag"]
+
+
+def installed(app: FastAPI, toy: ToyService, **changes) -> FastAPI:
+    """``app`` with the toy service installed on it, sharing ``toy``'s ports unless ``changes`` says otherwise."""
+    wiring = {
+        "schema": TOY_SCHEMA,
+        "generated": generated,
+        "store": toy.store,
+        "files": toy.files,
+        "identity": toy.kit.identity,
+        "verifier": toy.kit.verifier,
+        "rules": toy.kit.rules,
+        "settings": toy.settings,
+        "workflows": [REVIEW_WORKFLOW],
+        "migrations": TOY_MIGRATIONS,
+    }
+    install_service(app, **{**wiring, **changes})
+    return app

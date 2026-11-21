@@ -2,7 +2,7 @@
 
 import httpx
 
-from tests.unit.api.scene import Scene
+from tests.scene import Scene
 
 
 async def rename(scene: Scene, label: str, etag: str) -> httpx.Response:

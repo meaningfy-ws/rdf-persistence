@@ -18,25 +18,24 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.tenancy.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.dump_helpers import BASE_STAMPS, RESTORER, TOY_CHAINS, VIEW
+from tests.tenancy_world import CREATOR, make_world
 from tests.toy import SETTINGS, template, toy_mapper
-from tests.unit.persistence.test_session_activity_adversarial import KEYS, X, overtaken_commit
-from tests.unit.persistence.test_session_unique_keys import book as isbn_book
-from tests.unit.tenancy.test_session_activity import (
+from tests.unit.activity_helpers import (
     B1,
     B2,
+    KEYS,
     PROVENANCE,
-    RESTORER,
-    VIEW,
     Hook,
+    X,
     activities,
     book,
+    isbn_book,
     opened,
+    overtaken_commit,
     stored_graph,
 )
-from tests.unit.tenancy.test_tenant_dump import BASE_STAMPS, TOY_CHAINS
-from tests.unit.tenancy.test_tenant_sweep import CREATOR, make_world
-
-PLUMBING = (v.PENDING_SINCE, v.RELAYED_AT, v.PUBLICATION_FAILED)
+from tests.unit.tenancy.tenancy_helpers import PLUMBING, three_commits
 
 
 @pytest.fixture
@@ -190,12 +189,6 @@ async def test_tc05_a_restore_drops_every_mark_and_keeps_the_activities():
     assert [a.id for a in found] == [a.id for a in original], "both activities are restored"
     stored = await stored_graph(world.store, restored, record.database_name)
     assert [t for p in PLUMBING for t in stored.triples((None, p, None))] == [], "no plumbing"
-
-
-async def three_commits(session) -> None:
-    version = await session.add_graph(B1, book(B1))
-    version = await session.replace_graph(B1, book(B1), version)
-    await session.remove(B1, version)
 
 
 async def test_tc43_pending_activities_are_the_unrelayed_ones_in_pending_since_order(store):

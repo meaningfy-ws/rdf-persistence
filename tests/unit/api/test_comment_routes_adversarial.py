@@ -3,8 +3,8 @@
 from rdflib import Literal, URIRef
 
 from rdf_persistence.schema.services import vocabulary as v
+from tests.scene import PROBLEMS, problem_of
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
-from tests.unit.api.scene import PROBLEMS, problem_of
 from tests.unit.collaboration.collaboration_data import OA, RP, SECRET, annotation, stored
 
 

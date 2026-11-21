@@ -7,8 +7,9 @@ import pytest
 from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.tenancy.services.tenancy import MAX_TENANT_CLASH_DRAWS
 from rdf_persistence.testkit import FakeFileStore, FakeStore
+from tests.tenancy_world import CREATOR
 from tests.toy import library_slots
-from tests.unit.tenancy.test_tenancy import CREATOR, PREFIX, _tenancy_drawing
+from tests.unit.tenancy.tenancy_helpers import PREFIX, tenancy_drawing
 
 
 @pytest.fixture
@@ -26,7 +27,7 @@ FREE = str(UUID(int=2))
 
 
 async def made(store, files, *ids: str):
-    tenancy = _tenancy_drawing(store, files, *ids)
+    tenancy = tenancy_drawing(store, files, *ids)
     await tenancy.ensure_system_database()
     await store.create_dataset(PREFIX + TAKEN.replace("-", ""))  # an orphan database holds TAKEN
     return tenancy

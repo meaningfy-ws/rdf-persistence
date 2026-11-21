@@ -12,8 +12,7 @@ import textwrap
 
 import pytest
 
-from tests.generator.unit.test_freshness import DEFAULT_HINT
-from tests.generator.unit.test_freshness_plugin import INI, TEST, make_project
+from tests.generator.unit.golden import DEFAULT_HINT, INI, TEST, make_project
 
 NEW = "rdf_persistence_generation.testkit"
 # the lazy public names of the generator's testkit -> (module, attribute)

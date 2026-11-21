@@ -8,8 +8,8 @@ from rdf_persistence.core.domain.exceptions import Forbidden, InvalidToken, NotF
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.iris.domain.layout import graph_iri
 from tests.fixtures.library.domain.generated.scans import Scan
+from tests.scene import Scene
 from tests.toy_service import principal_of, store_scan
-from tests.unit.api.scene import Scene
 
 
 def authorization(scene: Scene, who: str) -> str:

@@ -5,52 +5,34 @@ the end of a response, and these responses end only when the follower leaves.
 """
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from fastapi import APIRouter
 
 from rdf_persistence import GrantSet
 from rdf_persistence.access.domain.generated.rp_access import Action, Grant, Prohibition
-from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import SseSettings
 from rdf_persistence.api.entrypoints.responses import CONTEXT_REL
-from rdf_persistence.api.entrypoints.sse import add_events_route
 from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.events.services.event_hub import EventHub
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
-from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Generation, Replace
-from rdf_persistence.testkit import OpenedStream, open_event_stream
+from rdf_persistence.testkit import open_event_stream
+from tests.events_follow import (
+    FOLLOW_TIMEOUT,
+    another_book,
+    drained,
+    events_of,
+    listening,
+    mount,
+    opening,
+    replace,
+    reshape_grants,
+    short_times,
+    with_carol,
+)
+from tests.scene import Scene
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
-from tests.unit.api.scene import Scene
-
-TIMEOUT = 3.0
-# The deadline of ``open_event_stream`` runs from the call, so it also covers the test's own commits; a
-# passing stream returns as soon as its events came, so the bound costs nothing when green.
-FOLLOW_TIMEOUT = 30.0
-WEEK = timedelta(days=7)
-KEEP_ALIVE = 0.05
-
-
-async def listening(hub: EventHub, n: int = 1) -> None:
-    """Until ``n`` followers are subscribed to ``hub``: the stream is reading from now on."""
-
-    async def subscribed() -> None:
-        while sum(len(queues) for queues in hub._queues.values()) < n:
-            await asyncio.sleep(0)
-
-    await asyncio.wait_for(subscribed(), TIMEOUT)
-
-
-async def drained(hub: EventHub) -> None:
-    """Until every follower of ``hub`` has taken what was offered: its first item is dequeued first."""
-
-    async def empty() -> None:
-        while any(queue.qsize() for queues in hub._queues.values() for queue in queues):
-            await asyncio.sleep(0)
-
-    await asyncio.wait_for(empty(), TIMEOUT)
 
 
 @pytest.fixture
@@ -64,49 +46,6 @@ async def streams() -> AsyncIterator[set[asyncio.Task]]:
     await asyncio.gather(*opened, return_exceptions=True)
 
 
-def opening(
-    streams: set[asyncio.Task],
-    scene: Scene,
-    who: str = "rita",
-    prefix: str = "/fast",
-    events: int = 0,
-    **headers: str,
-) -> "asyncio.Task[OpenedStream]":
-    """Start reading the tenant's stream as ``who``; await the task for the status, headers and events."""
-    task = asyncio.ensure_future(
-        open_event_stream(
-            scene.service.app,
-            events_of(scene, prefix),
-            headers={**scene.headers(who), **headers},
-            events=events,
-            timeout=FOLLOW_TIMEOUT,
-        )
-    )
-    streams.add(task)
-    return task
-
-
-def short_times(**changes) -> SseSettings:
-    """The settings of the route with the short times these tests need, ``changes`` on top."""
-    return SseSettings(
-        **{
-            "access_ttl_seconds": 0.001,
-            "keep_alive_seconds": KEEP_ALIVE,
-            "resume_window_seconds": WEEK.total_seconds(),
-            **changes,
-        }
-    )
-
-
-def mount(service: ToyService, prefix: str, **changes) -> str:
-    """The route of the tenants' events again, under ``prefix``, with short times; its prefix."""
-    router = APIRouter()
-    settings = {"sse": short_times(), "clock": lambda: datetime.now(UTC), **changes}
-    add_events_route(router, service.kit, **settings)
-    service.app.include_router(router, prefix=prefix)
-    return prefix
-
-
 @pytest.fixture
 def fast(service: ToyService) -> str:
     return mount(service, "/fast")
@@ -117,53 +56,6 @@ async def settled(scene: Scene) -> Scene:
     """The scene, with everything it committed already relayed: a follower hears only what follows."""
     await scene.service.kit.relay.run_once()
     return scene
-
-
-def events_of(scene: Scene, prefix: str = "/fast") -> str:
-    return f"{prefix}{scene.tenant}/rp-events"
-
-
-async def replace(scene: Scene, path: str, etag: str, label: str) -> str:
-    """Replace a book as ada, relay what that commits; the book's new ETag."""
-    response = await scene.http.put(
-        path,
-        json={**DUNE_BODY, "label": label},
-        headers=scene.headers("ada", **{"If-Match": etag}),
-    )
-    assert response.status_code == 200, response.text
-    await scene.service.kit.relay.run_once()
-    return response.headers["etag"]
-
-
-async def another_book(scene: Scene) -> tuple[str, str, str]:
-    """A second book: ``(IRI, path, ETag)``."""
-    made = await scene.http.post(
-        f"{scene.tenant}/books", json={**DUNE_BODY, "label": "Emma"}, headers=scene.headers("ada")
-    )
-    assert made.status_code == 201, made.text
-    await scene.service.kit.relay.run_once()
-    return made.json()["id"], made.headers["location"], made.headers["etag"]
-
-
-async def reshape_grants(scene: Scene, edit: Callable[[GrantSet], GrantSet]) -> None:
-    held = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
-    scene.access_etag = held.headers["etag"]
-    scene.access_etag = await scene.set_grants(edit(GrantSet.model_validate(held.json())))
-
-
-def with_carol(*, hide: str | None = None) -> Callable[[GrantSet], GrantSet]:
-    """Add carol as a reader of the tenant, barred from reading ``hide`` if given."""
-
-    def edit(held: GrantSet) -> GrantSet:
-        reader = Grant(assignee=principal_of("carol"), target=held.grants[0].target, role="reader")
-        ban = [
-            Prohibition(
-                assignee=principal_of("carol"), target=str(graph_iri(hide)), action=Action.READ
-            )
-        ]
-        return GrantSet(grants=[*held.grants, reader], prohibitions=ban if hide else None)
-
-    return edit
 
 
 def without_carol(held: GrantSet) -> GrantSet:
@@ -205,6 +97,9 @@ async def test_the_default_route_is_served_with_the_link_and_no_event_before_a_c
     assert "link" in opened.headers, "the stream links to the context"
     [first] = opened.events
     assert first.event == "Replace", "the first event is the commit: none came before it"
+    assert [g.entity for g in Replace.model_validate_json(first.data).generations] == [
+        settled.book_iri
+    ], "the first event is the sentinel's own commit, of the book"
 
 
 async def test_a_reader_barred_from_one_book_hears_only_the_other_books_event(
@@ -234,10 +129,12 @@ async def test_a_grant_removed_while_following_ends_the_stream_at_the_next_event
 
 
 async def test_a_grant_removed_while_following_ends_the_stream_at_the_next_keep_alive(
-    settled: Scene, fast: str, streams: set[asyncio.Task]
+    settled: Scene, streams: set[asyncio.Task]
 ) -> None:  # TC-35
+    # 0.001 s is the least the route allows: the keep-alive comes at once, no wait for it
+    idle = mount(settled.service, "/idle", sse=short_times(keep_alive_seconds=0.001))
     await reshape_grants(settled, with_carol())
-    carol = opening(streams, settled, "carol", events=3)  # more than comes
+    carol = opening(streams, settled, "carol", idle, events=3)  # more than comes
     await listening(settled.service.kit.hub)
     await reshape_grants(settled, without_carol)
     assert (await carol).events == [], "no commit, and the stream is over"
@@ -309,7 +206,7 @@ async def test_a_stream_ends_after_its_lifetime_and_a_resume_gets_what_came_afte
     assert late.event == "Replace", "the resumed event is a replace"
 
 
-# One class for the characters an IRI forbids (a space stands for them); empty and long are boundaries.
+# Class: the characters an IRI forbids (a space stands for them); empty and long are boundaries.
 @pytest.mark.parametrize("bad", ["a b", "", "x" * 300], ids=["space", "empty", "long"])
 async def test_a_last_event_id_that_is_no_activity_id_sends_a_reset_and_the_stream_goes_on(
     settled: Scene,
@@ -342,38 +239,37 @@ async def test_a_resume_sends_what_was_relayed_after_the_id_then_live_events_non
     etag = await replace(settled, settled.book, etag, "Two")
     etag = await replace(settled, settled.book, etag, "Three")
     a1, a2, a3 = [e.id for e in (await listener).events]
-    bob = opening(streams, settled, events=3, **{"Last-Event-ID": a1})
-    await listening(settled.service.kit.hub)  # the replay is sent once it is subscribed
-    await replace(settled, settled.book, etag, "Four")
+    bob = opening(streams, settled, events=4, **{"Last-Event-ID": a1})
+    witness = opening(streams, settled, "rita", events=2)  # hears the two live events as committed
+    await listening(settled.service.kit.hub, 2)  # the replay is sent once it is subscribed
+    etag = await replace(settled, settled.book, etag, "Four")
+    await replace(settled, settled.book, etag, "Five")
+    a4, a5 = [e.id for e in (await witness).events]
     got = [e.id for e in (await bob).events]
-    assert got[:2] == [a2, a3], "a resume sends what was relayed after the id"
-    assert len(got) == 3, "then the live event"
-    assert got[2] not in (a1, a2, a3), "a resume does not repeat an activity already sent"
+    assert got == [a2, a3, a4, a5], "the replay in commit order, then both live events, none twice"
+    assert len(set(got)) == 4, "four distinct activities"
+    assert a1 not in got, "the named one is not sent again"
 
 
 async def test_an_activity_relayed_after_the_named_one_is_sent_though_applied_before(
-    settled: Scene, fast: str, monkeypatch: pytest.MonkeyPatch, streams: set[asyncio.Task]
+    settled: Scene, fast: str, streams: set[asyncio.Task]
 ) -> None:  # TC-37a
     kit = settled.service.kit
-
-    async def not_now() -> None:
-        return None
-
-    monkeypatch.setattr(kit.relay, "run_once", not_now)  # the commits stay pending
     etag = settled.book_etag
-    for label in ("Applied first", "Applied second"):
-        response = await settled.http.put(
-            settled.book,
-            json={**DUNE_BODY, "label": label},
-            headers=settled.headers("ada", **{"If-Match": etag}),
-        )
-        etag = response.headers["etag"]
-    async with kit.session(settled.tenant_iri, kit.tenancy.toolkit.id) as session:
-        first, second = [iri for iri, _ in await session.pending_activities()]
-        await session.mark_relayed(second)  # relayed first
-        await session.mark_relayed(first)  # relayed last
-    bob = opening(streams, settled, events=1, **{"Last-Event-ID": second})
-    [event] = (await bob).events
+    async with kit.relay.paused():  # the commits stay pending
+        for label in ("Applied first", "Applied second"):
+            response = await settled.http.put(
+                settled.book,
+                json={**DUNE_BODY, "label": label},
+                headers=settled.headers("ada", **{"If-Match": etag}),
+            )
+            etag = response.headers["etag"]
+        async with kit.session(settled.tenant_iri, kit.tenancy.toolkit.id) as session:
+            first, second = [iri for iri, _ in await session.pending_activities()]
+            await session.mark_relayed(second)  # relayed first
+            await session.mark_relayed(first)  # relayed last
+        bob = opening(streams, settled, events=1, **{"Last-Event-ID": second})
+        [event] = (await bob).events
     assert event.id == first, "the event sent is the one relayed after the named id"
 
 
@@ -382,20 +278,20 @@ async def test_a_resume_does_not_send_what_the_caller_may_not_read(
 ) -> None:  # TC-37b
     emma_iri, emma, emma_etag = await another_book(settled)
     await reshape_grants(settled, with_carol(hide=settled.book_iri))
-    witness = opening(streams, settled, "rita", events=2)
+    witness = opening(streams, settled, "rita", events=3)
     await listening(settled.service.kit.hub)
-    etag = await replace(settled, settled.book, settled.book_etag, "Hidden from carol")
-    emma_etag = await replace(settled, emma, emma_etag, "Open to carol")
-    a2, a3 = [e.id for e in (await witness).events]
-    carol = opening(streams, settled, "carol", events=2, **{"Last-Event-ID": a2})
-    await listening(settled.service.kit.hub)  # the replay is sent once it is subscribed
-    await replace(settled, settled.book, etag, "Hidden again")
-    await replace(settled, emma, emma_etag, "Sentinel")  # visible, committed after the hidden one
-    resumed, sentinel = (await carol).events
-    assert resumed.id == a3, "the event sent is the one the caller may read"
-    assert [g.entity for g in Replace.model_validate_json(sentinel.data).generations] == [
+    emma_etag = await replace(settled, emma, emma_etag, "Open to carol")  # a1, visible, the anchor
+    # a2 is hidden from carol and in her replay; a3, the sentinel, is visible and committed after it
+    await replace(settled, settled.book, settled.book_etag, "Hidden from carol")
+    await replace(settled, emma, emma_etag, "Sentinel")
+    a1, a2, a3 = [e.id for e in (await witness).events]
+    carol = opening(streams, settled, "carol", events=1, **{"Last-Event-ID": a1})
+    [resumed] = (await carol).events
+    assert resumed.id != a2, "the hidden replace, in the replay, is not sent"
+    assert resumed.id == a3, "the event sent is the sentinel, the next one the caller may read"
+    assert [g.entity for g in Replace.model_validate_json(resumed.data).generations] == [
         emma_iri
-    ], "the next event is the sentinel: the hidden one did not come"
+    ], "the sentinel replaced the visible book"
 
 
 async def test_an_id_that_cannot_anchor_a_resume_sends_one_reset_then_the_live_events(
@@ -424,23 +320,19 @@ async def test_an_id_relayed_before_the_window_sends_a_reset(
 
 
 async def test_an_id_never_relayed_sends_a_reset(
-    settled: Scene, fast: str, monkeypatch: pytest.MonkeyPatch, streams: set[asyncio.Task]
+    settled: Scene, fast: str, streams: set[asyncio.Task]
 ) -> None:  # TC-38
     kit = settled.service.kit
-
-    async def not_now() -> None:
-        return None
-
-    monkeypatch.setattr(kit.relay, "run_once", not_now)
-    await settled.http.put(
-        settled.book,
-        json={**DUNE_BODY, "label": "Pending"},
-        headers=settled.headers("ada", **{"If-Match": settled.book_etag}),
-    )
-    async with kit.session(settled.tenant_iri, kit.tenancy.toolkit.id) as session:
-        [(pending, _)] = await session.pending_activities()
-    bob = opening(streams, settled, events=1, **{"Last-Event-ID": pending})
-    [reset] = (await bob).events
+    async with kit.relay.paused():  # the commit stays pending, so the id is never relayed
+        await settled.http.put(
+            settled.book,
+            json={**DUNE_BODY, "label": "Pending"},
+            headers=settled.headers("ada", **{"If-Match": settled.book_etag}),
+        )
+        async with kit.session(settled.tenant_iri, kit.tenancy.toolkit.id) as session:
+            [(pending, _)] = await session.pending_activities()
+        bob = opening(streams, settled, events=1, **{"Last-Event-ID": pending})
+        [reset] = (await bob).events
     assert reset.event == "reset", "an unknown id gets a reset event"
 
 

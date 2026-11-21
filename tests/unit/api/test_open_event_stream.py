@@ -10,7 +10,7 @@ import json
 import pytest
 
 from rdf_persistence.testkit import assert_public_imports, open_event_stream
-from tests.unit.api.scene import Scene
+from tests.scene import Scene
 
 TIMEOUT = 3.0
 # The deadline runs from the call, so it also covers the commits made after starting the task.
@@ -76,7 +76,11 @@ async def test_one_event_is_returned_with_the_activity_iri_as_its_id(settled: Sc
         await asyncio.gather(stream, return_exceptions=True)
     [event] = opened.events
     assert event.event == "Replace"
-    assert event.id == json.loads(event.data)["id"], "the activity's IRI"
+    data = json.loads(event.data)
+    assert event.id == data["id"], "the activity's IRI"
+    assert [g["entity"] for g in data["generations"]] == [settled.book_iri], (
+        "the event's data names the replaced book"
+    )
 
 
 async def test_a_caller_with_no_right_on_the_tenant_gets_404_without_waiting(

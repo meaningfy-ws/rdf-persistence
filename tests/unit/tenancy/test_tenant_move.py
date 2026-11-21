@@ -13,16 +13,50 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
     ServiceSettings,
 )
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.tenancy.services.tenant_move import check_graphs, glued_templates, rewrite
-from tests.toy import SETTINGS, TOY_SCHEMA
 
 OLD = "9f1e6c2a-3b4d-4e5f-8a9b-0c1d2e3f4a5b"
 NEW = "4c2b7d9e-1a2b-4c3d-9e4f-5a6b7c8d9e0f"
 BOOK = "book"
 USERS = "users"
+
+# Literals, so the test imports no schema or fixture module: the two metamodel terms the move keeps,
+# the settings of the toy service and the `{type}` values its schema gives the IRI policy.
+DATA_SCHEMA_VERSION = URIRef("https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion")
+ENTITY = URIRef("https://meaningfy.ws/ns/rdf-persistence#entity")
+SETTINGS = ServiceSettings(
+    base="https://example.org/library/",
+    prefix="lib",
+    tenant_segment="libraries",
+    creator_role="librarian",
+    roles_claim="urn:zitadel:iam:org:project:42:roles",
+)
+ROOT_TYPES = frozenset(
+    {
+        "library-access",
+        "shelf",
+        "scan",
+        "rp-comment",
+        "author",
+        "review",
+        "book",
+        "template",
+        "tenant-access",
+    }
+)
+OWNED_TYPES = frozenset(
+    {
+        "slot-equality",
+        "grant",
+        "generation",
+        "chapter",
+        "workflow-transition",
+        "membership-rule",
+        "prohibition",
+        "invalidation",
+        "note",
+    }
+)
 
 
 def quads_of(dataset: Dataset) -> set[tuple]:
@@ -42,7 +76,7 @@ def swap(iri: str, old: str = OLD, new: str = NEW) -> URIRef:
 
 
 def iris_of(settings: ServiceSettings = SETTINGS) -> Iris:
-    return Iris(settings, *iri_types(load_schema(TOY_SCHEMA)))
+    return Iris(settings, ROOT_TYPES, OWNED_TYPES)
 
 
 def policy_settings(**templates: str) -> ServiceSettings:
@@ -270,7 +304,7 @@ def test_a_quad_in_the_stamps_graph_passes_the_check():
     tenant = str(iris.tenant(NEW))
     stamp = (
         URIRef("urn:x:schema"),
-        v.DATA_SCHEMA_VERSION,
+        DATA_SCHEMA_VERSION,
         Literal("1"),
         stamps_graph_iri(SETTINGS.base),
     )
@@ -300,14 +334,14 @@ def test_a_provenance_quad_moves_its_graph_and_object_but_not_its_subject():
     iris = iris_of()
     old, new = str(iris.tenant(OLD)), str(iris.tenant(NEW))
     activity = URIRef("urn:uuid:a")
-    source = dataset_of((activity, v.ENTITY, URIRef(f"{old}/books/1"), iris.provenance(old)))
+    source = dataset_of((activity, ENTITY, URIRef(f"{old}/books/1"), iris.provenance(old)))
     moved = rewrite(source, SETTINGS.base, OLD, NEW)
     assert quads_of(moved) == {
-        (activity, v.ENTITY, URIRef(f"{new}/books/1"), URIRef(f"{new}/provenance"))
+        (activity, ENTITY, URIRef(f"{new}/books/1"), URIRef(f"{new}/provenance"))
     }, "graph and object move to the new tenant, the activity subject stays"
 
 
-@pytest.mark.parametrize("which", [0, -1], ids=["meta", "provenance"])
+@pytest.mark.parametrize("which", [0, 3, -1], ids=["meta", "loaded", "provenance"])
 def test_a_graph_of_another_tenant_is_refused_naming_it(which):
     iris = iris_of()
     other = minted_graphs(iris, str(iris.tenant(OLD)))[which]
@@ -327,7 +361,7 @@ def test_a_quad_in_the_default_graph_is_refused():
 def test_a_stamps_graph_quad_holding_the_old_id_is_copied_unchanged():
     """schema-migrations PD-23: a schema id is not a tenant IRI, so a restore leaves the stamps as they are."""
     schema = URIRef(f"{SETTINGS.base}{OLD}")
-    stamp = (schema, v.DATA_SCHEMA_VERSION, schema, stamps_graph_iri(SETTINGS.base))
+    stamp = (schema, DATA_SCHEMA_VERSION, schema, stamps_graph_iri(SETTINGS.base))
     assert quads_of(rewrite(dataset_of(stamp), SETTINGS.base, OLD, NEW)) == {stamp}, (
         "the stamp quad is copied unchanged"
     )

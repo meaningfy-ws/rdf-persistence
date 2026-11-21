@@ -1,10 +1,9 @@
 """Adversarial tests of a dump and a restore across schema versions (schema-migrations PD-15, PD-24 item 1, PD-7, PD-11).
 
 A restore takes a client's archive: its manifest and its ``graphs.nq`` are both hostile input. Each test builds the
-archive from a real dump with the helpers of ``test_tenant_dump`` and attacks one seam: the manifest against the
+archive from a real dump with the helpers of ``tests/dump_helpers.py`` and attacks one seam: the manifest against the
 stamp, the shape of a stamp, a chain that fails half way, a dump from a service ahead of or behind this one.
 """
-# ruff: noqa: F811  (fixtures imported from the tests they extend are named again as test arguments)
 
 import copy
 import io
@@ -24,25 +23,17 @@ from rdf_persistence.tenancy.services.generated.rp_tenancy_services import Tenan
 from rdf_persistence.tenancy.services.migration_runner import migrate_database
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.tenancy.services.tenant_dump import dump
-from tests.fixtures.library.domain.generated.library import Library
-from tests.fixtures.library.domain.generated.library_access import LibraryAccess
-from tests.toy import SETTINGS, toy_mapper
-from tests.unit.tenancy.migration_helpers import chain_of, migration, rename
-from tests.unit.tenancy.test_tenant_dump import (  # noqa: F401  (the fixtures)
+from tests.dump_helpers import (
     BOOK_DESCRIPTION,
     CITY,
     LIBRARY_SCHEMA,
     MANIFEST,
     OLD_CITY,
     OLD_DESCRIPTION,
-    OWNER,
-    RESTORER,
     STAMPS,
     TOOLKIT_SCHEMA,
     TOOLKIT_VERSION,
     VIEW,
-    aged,
-    chains,
     dumped,
     edited,
     iris_of,
@@ -53,12 +44,14 @@ from tests.unit.tenancy.test_tenant_dump import (  # noqa: F401  (the fixtures)
     refused,
     restored,
     stamp_line,
-    stamped,
     stamps_held,
-    token_of,
     with_stamps,
 )
-from tests.unit.tenancy.test_tenant_sweep import make_world
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
+from tests.migration_helpers import chain_of, migration, rename
+from tests.tenancy_world import make_world
+from tests.toy import SETTINGS, toy_mapper
 
 STAMPS_GRAPH = stamps_graph_iri(SETTINGS.base)
 STAMP = str(v.DATA_SCHEMA_VERSION)

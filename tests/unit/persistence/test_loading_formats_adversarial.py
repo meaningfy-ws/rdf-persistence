@@ -1,4 +1,4 @@
-"""A loaded JSON-LD file that breaks the one path is refused and writes nothing (stage 2, task 2.2, PD-6)."""
+"""A loaded JSON-LD file that breaks the one path is refused and writes nothing (PD-6)."""
 
 import json
 from collections.abc import AsyncIterator
@@ -12,7 +12,7 @@ from rdf_persistence.persistence.services.jsonld import ABSOLUTE_IRIS
 from rdf_persistence.persistence.services.loading import NOT_INLINE, ONE_GRAPH
 from rdf_persistence.testkit import FakeStore, fake_session, no_network  # noqa: F401  (fixture)
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.unit.persistence.test_loading import AGGREGATE, TENANT
+from tests.unit.persistence.loading_helpers import AGGREGATE, TENANT
 
 EX = "https://ex.org/"
 P = "http://ex.org/p"

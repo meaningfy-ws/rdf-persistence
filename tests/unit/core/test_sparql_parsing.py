@@ -5,41 +5,22 @@ spy that notes the depth at the moment it runs, then parses for real.
 """
 
 from collections.abc import Callable
-from types import TracebackType
 from typing import Any
 
 import pytest
+from rdflib import URIRef
 
 from rdf_persistence.core.domain import sparql_parsing
+from tests.unit.builders import RecordingLock
 
 QUERY = "SELECT ?s WHERE { ?s ?p ?o }"
 UPDATE = "INSERT DATA { <urn:a> <urn:b> <urn:c> }"
 
 
-class RecordingLock:
-    """A lock that only counts how many times it is held and how deep."""
-
-    def __init__(self) -> None:
-        self.depth = 0
-        self.taken = 0
-
-    def __enter__(self) -> None:
-        self.depth += 1
-        self.taken += 1
-
-    def __exit__(
-        self,
-        kind: type[BaseException] | None,
-        error: BaseException | None,
-        trace: TracebackType | None,
-    ) -> None:
-        self.depth -= 1
-
-
 @pytest.fixture
 def lock(monkeypatch: pytest.MonkeyPatch) -> RecordingLock:
     recording = RecordingLock()
-    monkeypatch.setattr(sparql_parsing, "SPARQL_PARSER_LOCK", recording)
+    monkeypatch.setattr(sparql_parsing, "SPARQL_PARSER_LOCK", recording)  # X2
     return recording
 
 
@@ -52,7 +33,7 @@ def spy(monkeypatch: pytest.MonkeyPatch, name: str, lock: RecordingLock) -> list
         depths.append(lock.depth)
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(sparql_parsing, name, recording)
+    monkeypatch.setattr(sparql_parsing, name, recording)  # X2
     return depths
 
 
@@ -71,6 +52,19 @@ def test_each_wrapper_holds_the_lock_while_rdflib_parses(monkeypatch, lock, wrap
     assert result is not None
     assert depths == [1], "rdflib parsed once, with the lock held"
     assert lock.depth == 0, "and the lock was let go before the caller got the result"
+
+
+def test_prepare_query_applies_the_prefixes_it_is_given(lock):
+    query = sparql_parsing.prepare_query("SELECT * WHERE { ex:a ex:b ?o }", {"ex": "urn:example:"})
+    assert repr(URIRef("urn:example:a")) in repr(query.algebra), (
+        "the prefix resolved to its namespace"
+    )
+    assert lock.taken == 1, "the parser lock was taken once"
+
+
+def test_prepare_query_reads_a_text_with_no_prefixes_given(lock):
+    assert sparql_parsing.prepare_query(QUERY) is not None, "no prefixes argument"
+    assert sparql_parsing.prepare_query(QUERY, {}) is not None, "an empty prefixes mapping"
 
 
 def test_prepare_update_applies_the_prefixes_it_is_given(lock):

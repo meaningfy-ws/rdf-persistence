@@ -1,6 +1,6 @@
-"""Adversarial tests of the claims of ``howto/settings.adoc`` (technical-models stage 4).
+"""Adversarial tests of the claims of ``howto/settings.adoc`` (technical-models).
 
-Attacks: a misspelt group or slot in an ``RP_`` variable, and the non-finite durations of stage 3's F-1.
+Attacks: a misspelt group or slot in an ``RP_`` variable, and the non-finite durations of the settings model's F-1.
 """
 
 import pytest
@@ -45,7 +45,7 @@ def test_a_single_underscore_after_the_group_is_not_a_group_separator() -> None:
 )
 @pytest.mark.parametrize("text", ["inf", "+inf", "Infinity", "1e999", "nan"])
 def test_a_non_finite_duration_is_refused(variable: str, text: str) -> None:
-    """Stage 3 F-1: a timeout or cache lifetime of infinity or NaN means never; it must be a ValidationError."""
+    """F-1 of the settings model: a timeout or cache lifetime of infinity or NaN means never; it must be a ValidationError."""
     with pytest.raises(ValidationError):
         settings_from_env(ToolkitSettings, environ={variable: text})
 

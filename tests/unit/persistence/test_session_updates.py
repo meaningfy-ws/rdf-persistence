@@ -301,7 +301,7 @@ def with_loaded_graph() -> tuple[Dataset, URIRef, RegistryEntry]:
     return dataset, loaded, loaded_entry
 
 
-# equivalence class: a stale guard, whether the replacement keeps the load or drops it (it drops it here)
+# Class: a stale guard, whether the replacement keeps the load or drops it (it drops it here)
 @pytest.mark.parametrize("call", ["replace", "remove"])
 def test_a_stale_guard_changes_no_graph_at_all(call):
     """Each operation of the update carries the guard: none may run once the version is stale."""

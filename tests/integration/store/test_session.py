@@ -25,6 +25,7 @@ from tests.integration.store.sessions import (
     book,
     graph_of,
     session_for,
+    title,
 )
 
 SELECT_GRAPHS = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }"
@@ -39,10 +40,6 @@ class RendezvousStore(FusekiStore):
         if self.barrier is not None:
             await self.barrier.wait()
         await super().update(dataset, sparql)
-
-
-def title(root: str, text: str) -> list:
-    return [(URIRef(root), TITLE, Literal(text))]
 
 
 def without_bookkeeping(graph: Graph) -> Graph:

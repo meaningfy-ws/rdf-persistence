@@ -205,7 +205,7 @@ def _update_named(run: Run) -> None:
 @then("that update is a child of the commit")
 def _update_child(run: Run) -> None:
     commits = run.named("rp.session.commit")
-    assert commits, "no rp.session.commit span: the commit span lands with task 2.3"
+    assert commits, "no rp.session.commit span: the commit must emit one"
     database = run.kit.tenancy.database_of(run.tenants[-1])
     assert any(
         child_of(s, commits[-1]) and s.attributes.get("db.namespace") == database
@@ -237,7 +237,7 @@ def _no_text(run: Run, text: str) -> None:
 @then("the commit, a store call and the observer's work share one trace")
 def _one_trace(run: Run) -> None:
     commits, observed = run.named("rp.session.commit"), run.named("rp.bus.observe")
-    assert commits, "no rp.session.commit span: the commit span lands with task 2.3"
+    assert commits, "no rp.session.commit span: the commit must emit one"
     assert observed, "no rp.bus.observe span"
     trace_id = commits[-1].context.trace_id
     assert observed[-1].context.trace_id == trace_id, "the observer is in another trace"

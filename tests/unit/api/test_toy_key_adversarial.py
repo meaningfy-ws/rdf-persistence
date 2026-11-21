@@ -3,8 +3,7 @@
 import jwt
 
 from rdf_persistence.testkit.tokens import TokenSigner
-from tests.toy_service import ToyService, toy_key
-from tests.unit.api.test_service_kit import A_UUID
+from tests.toy_service import A_UUID, ToyService, toy_key
 
 
 async def test_a_token_from_a_signer_with_another_key_is_a_401_even_under_the_same_kid() -> None:

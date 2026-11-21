@@ -1,17 +1,13 @@
 """Shared fixtures of the generation tests: a private, breakable copy of the toy library."""
 
 import shutil
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from rdf_persistence_generation.cli import main
 
-TOY = Path(__file__).parents[2] / "fixtures" / "library"
-ROOT_SCHEMA = "library.yaml"
-
-Breaker = Callable[[str, str, str], Path]
+from .golden import ROOT_SCHEMA, TOY, Breaker
 
 
 @pytest.fixture
@@ -78,7 +74,7 @@ def toolkit_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         ignore=shutil.ignore_patterns("migrations", "__pycache__", "generated"),
     )
     for module in ROOTS_USERS:
-        monkeypatch.setattr(f"{module}.TOOLKIT_ROOTS", (tmp_path.resolve(),))
+        monkeypatch.setattr(f"{module}.TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
     (tmp_path / "pyproject.toml").write_text(toolkit_domain_targets(), encoding="utf-8")
     return tmp_path
 

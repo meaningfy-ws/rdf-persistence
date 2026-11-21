@@ -1,25 +1,20 @@
 """The pytest plugin that stops a session on stale or hand-edited generated output (PD-26)."""
 
-from pathlib import Path
-
 import pytest
 
 from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.testkit import freshness
-from tests.generator.unit.test_freshness import DEFAULT_HINT, NAMED
-from tests.generator.unit.test_generate_cli import PYPROJECT, SCHEMA
+from tests.generator.unit.golden import (
+    DEFAULT_HINT,
+    INI,
+    NAMED,
+    PYPROJECT,
+    SCHEMA,
+    TEST,
+    make_project,
+)
 
 CONFTEST = 'pytest_plugins = ["rdf_persistence_generation.testkit.freshness"]\n'
-TEST = "def test_it():\n    assert True\n"
-INI = "[pytest]\nrp_generate_projects =\n    pyproject.toml\n    other/pyproject.toml\n"
-
-
-def make_project(folder: Path) -> Path:
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / "pyproject.toml").write_text(PYPROJECT, encoding="utf-8")
-    (folder / "m.yaml").write_text(SCHEMA, encoding="utf-8")
-    assert main(["--project", str(folder / "pyproject.toml")]) == 0, "the project must generate"
-    return folder
 
 
 @pytest.fixture

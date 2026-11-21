@@ -1,4 +1,4 @@
-"""Listings over the router and the fakes: the cases that write (task 5.4, PD-9, PD-15).
+"""Listings over the router and the fakes: the cases that write (PD-9, PD-15).
 
 The read-only cases share one store in ``test_listing_routes_read.py`` (PD-3); the five here
 change the store, so each gets a shelf of its own.

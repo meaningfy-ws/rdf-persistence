@@ -10,7 +10,7 @@ from rdf_persistence.testkit import assert_public_imports
 from rdf_persistence_generation.extensions.pydantic_split import METAMODEL_DIR
 from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
 
-from .conftest import TOY
+from .golden import TOY
 
 TOY_GENERATED = TOY / "domain" / "generated"
 TOP_PACKAGE = "rdf_persistence"

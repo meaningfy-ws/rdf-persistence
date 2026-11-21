@@ -102,8 +102,6 @@ class SparqlProtocolStore(HttpAdapter, ABC):
     ) -> None:
         """Map a status to the toolkit's errors; ``on_missing`` is raised for 404 and 405."""
         status = response.status_code
-        if status >= HTTPStatus.INTERNAL_SERVER_ERROR:
-            raise StoreUnavailable(f"{self.service} answered {status}")
         if status in (HTTPStatus.NOT_FOUND, HTTPStatus.METHOD_NOT_ALLOWED):
             raise on_missing(f"{self.service} answered {status} for {response.request.url.path}")
         if status == HTTPStatus.CONFLICT:
@@ -121,7 +119,8 @@ class SparqlProtocolStore(HttpAdapter, ABC):
                 ),
             )
             raise BadQuery(f"{self.service} refused the SPARQL text as malformed")
-        if not response.is_success:  # 401, 403, 415, a redirect...: not the caller's to tell apart
+        # 5xx, 401, 403, 415, a redirect...: not the caller's to tell apart
+        if not response.is_success:
             raise StoreUnavailable(f"{self.service} answered {status}")
 
     @staticmethod

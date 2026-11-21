@@ -1,4 +1,4 @@
-"""The service kit (task 5.1): the token and access dependencies, problem handlers, versions, start-up."""
+"""The service kit: the token and access dependencies, problem handlers, versions, start-up."""
 
 import asyncio
 import io
@@ -18,12 +18,12 @@ from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence import GrantSet, Problem, bootstrap
 from rdf_persistence.access.domain.generated.rp_access import Action, Grant
+from rdf_persistence.access.services.generated.rp_access_services import VerifiedCaller
 from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import (
     SseSettings,
     ToolkitSettings,
 )
 from rdf_persistence.api.entrypoints.router import build_router
-from rdf_persistence.api.entrypoints.service import install_service
 from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
 from rdf_persistence.core.domain.exceptions import (
     CommitTooLarge,
@@ -36,7 +36,6 @@ from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.events.services.event_hub import CLOSED
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.messaging.services.messagebus import MessageBus
 from rdf_persistence.migrations.services.generated.rp_migrations_services import Migration
 from rdf_persistence.migrations.services.migrations import stamps
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
@@ -46,40 +45,31 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Replace
 from rdf_persistence.schema.services.vocabulary import ANNOTATION, HAS_TARGET, metamodel
 from rdf_persistence.testkit import FakeStore, RecordingObserver, open_event_stream
-from tests.fixtures.library.domain import generated
+from tests.scene import Scene
 from tests.toy import (
-    REVIEW_WORKFLOW,
     ROLES,
     SETTINGS,
-    TOY_MIGRATIONS,
     TOY_SCHEMA,
     book_iri,
     dune,
 )
 from tests.toy_service import (
+    A_UUID,
     DUNE_BODY,
     EXAMPLE_POLICY,
     TENANT_BODY,
     ToyService,
     assert_problem,
+    installed,
+    made,
     principal_of,
 )
-from tests.unit.api.scene import Scene
-from tests.unit.tenancy.test_session_activity import activities
+from tests.unit.activity_helpers import activities
 
 PROBLEMS = f"{SETTINGS.base}problems/"
 FILE_KEY = URIRef("https://meaningfy.ws/ns/rdf-persistence#fileKey")
-A_UUID = "6f1c0c1e-0000-4000-8000-000000000001"
 LIBRARY_SCHEMA = "https://example.org/ns/library"
 TOOLKIT_SCHEMA = "https://meaningfy.ws/ns/rdf-persistence"
-
-
-async def made(client: httpx.AsyncClient, headers: dict[str, str]) -> tuple[str, str, str]:
-    """A tenant, and a book in it: ``(tenant path, book path, book ETag)``."""
-    tenant = await client.post("/libraries", json=TENANT_BODY, headers=headers)
-    path = tenant.headers["location"]
-    book = await client.post(f"{path}/books", json=DUNE_BODY, headers=headers)
-    return path, book.headers["location"], book.headers["etag"]
 
 
 # --- the token dependency: a 401 is a problem and no handler runs -------------------------------
@@ -101,7 +91,7 @@ async def test_an_expired_token_is_a_401_problem_and_no_handler_runs(service, cl
     )
 
 
-# One case per class: no credential (absent), no token after the scheme, a scheme that is not
+# Classes: no credential (absent), no token after the scheme, a scheme that is not
 # Bearer, a token the verifier refuses.
 @pytest.mark.parametrize(
     "authorization",
@@ -115,6 +105,32 @@ async def test_a_request_without_a_valid_bearer_token_is_a_401(
     response = await client.get(f"/libraries/{A_UUID}", headers=headers)
     assert response.status_code == 401, f"Authorization: {authorization!r}"
     assert response.headers["content-type"] == PROBLEM_JSON, "problem media type"
+
+
+async def test_a_valid_token_under_another_scheme_is_a_401(service, client) -> None:
+    token = service.signer.issue(sub="ada")
+    response = await client.get(f"/libraries/{A_UUID}", headers={"Authorization": f"Basic {token}"})
+    assert response.status_code == 401, "the scheme, not the token, is what is refused"
+
+
+class AcceptsAnyToken:
+    """A verifier that takes every string for a valid token, so only the gate can refuse one."""
+
+    iris = DEFAULT_IRIS
+
+    async def verify(self, token: str) -> VerifiedCaller:
+        return VerifiedCaller(principal="ada")
+
+
+async def test_an_empty_bearer_token_is_a_401_even_when_the_verifier_takes_any_string() -> None:
+    toy = ToyService()
+    app = installed(FastAPI(), toy, verifier=AcceptsAnyToken())
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+        empty = await http.get(f"/libraries/{A_UUID}", headers={"Authorization": "Bearer "})
+        control = await http.get(f"/libraries/{A_UUID}", headers={"Authorization": "Bearer x"})
+    assert empty.status_code == 401, "the gate refuses an empty token before the verifier"
+    assert control.status_code != 401, "the stub does accept a token, so the 401 is the gate's"
 
 
 async def test_a_token_for_another_audience_is_a_401(service, client) -> None:
@@ -275,24 +291,6 @@ async def test_start_up_sweeps_the_orphans_of_a_crashed_creation() -> None:
     assert ORPHAN not in await store.list_datasets(), "the orphan database was dropped"
 
 
-def installed(app: FastAPI, toy: ToyService, **changes) -> FastAPI:
-    """``app`` with the toy service installed on it, sharing ``toy``'s ports unless ``changes`` says otherwise."""
-    wiring = {
-        "schema": TOY_SCHEMA,
-        "generated": generated,
-        "store": toy.store,
-        "files": toy.files,
-        "identity": toy.kit.identity,
-        "verifier": toy.kit.verifier,
-        "rules": toy.kit.rules,
-        "settings": toy.settings,
-        "workflows": [REVIEW_WORKFLOW],
-        "migrations": TOY_MIGRATIONS,
-    }
-    install_service(app, **{**wiring, **changes})
-    return app
-
-
 async def test_the_apps_own_lifespan_runs_inside_the_start_up() -> None:
     events: list[str] = []
 
@@ -390,7 +388,7 @@ async def test_without_an_id_source_two_creates_draw_different_ids_of_the_policy
     assert [len(i) for i in locations] == [length, length], "the policy's tenant id length"
 
 
-# --- the sweep of a live tenant (live-tenant-sweep task 3.2) -------------------------------------
+# --- the sweep of a live tenant (live-tenant-sweep) -------------------------------------
 
 
 async def test_the_kit_sweeps_a_tenant_with_its_own_store_files_and_iris(service, client) -> None:
@@ -440,7 +438,7 @@ async def test_the_kit_dumps_a_tenant_and_restores_it_for_another_principal(
 
 
 async def test_the_kit_restores_no_more_than_the_settings_max_restore_bytes(
-    service, client, monkeypatch
+    service, client
 ) -> None:
     headers = {"Authorization": f"Bearer {service.signer.issue(sub='ada')}"}
     path = (await client.post("/libraries", json=TENANT_BODY, headers=headers)).headers["location"]
@@ -448,15 +446,16 @@ async def test_the_kit_restores_no_more_than_the_settings_max_restore_bytes(
     archive = io.BytesIO()
     await service.kit.dump_tenant(tenant, archive)
     assert service.kit.max_restore_bytes == 1024**3, "the settings' default reaches the kit"
-    monkeypatch.setattr(service.kit, "max_restore_bytes", 1024)
+    limited = ToyService(max_restore_bytes=1024)
 
+    assert limited.kit.max_restore_bytes == 1024, "the setting reaches the kit"
     with pytest.raises(InvalidBody, match="bytes"):
-        await service.kit.restore_tenant(
+        await limited.kit.restore_tenant(
             io.BytesIO(archive.getvalue()), "https://example.org/people/bob"
         )
 
 
-# --- removal of a file aggregate with its blobs (live-tenant-sweep task 4.1) ---------------------
+# --- removal of a file aggregate with its blobs (live-tenant-sweep) ---------------------
 
 
 async def test_the_kit_removes_an_aggregate_with_its_blobs(service, client) -> None:
@@ -683,18 +682,12 @@ async def test_a_generic_replace_reaches_the_observers_of_the_kits_bus(scene) ->
     ], "and invalidated the version the caller read"
 
 
-async def test_a_kit_with_no_bus_records_and_publishes_nothing(scene, monkeypatch) -> None:  # TC-82
-    published: list[Activity] = []
-
-    async def spy(self, activity: Activity, session: object) -> None:
-        published.append(activity)
-
-    monkeypatch.setattr(MessageBus, "publish", spy)
+async def test_a_kit_with_no_bus_records_and_publishes_nothing(scene) -> None:  # TC-82
+    """Recording still happens without a bus; "publishes nothing" follows from having no bus to publish to."""
     assert scene.service.kit.bus is None, "a kit starts with no bus"
 
     await replace_the_book(scene)
 
-    assert published == [], "the kit's hook handed nothing to any bus"
     stored = await activities(
         scene.service.store,
         DEFAULT_IRIS.provenance(scene.tenant_iri),

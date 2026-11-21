@@ -17,20 +17,7 @@ from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.tenancy.services.tenancy import Tenancy
-from tests.fixtures.library.domain.generated.library import Library
-from tests.fixtures.library.domain.generated.library_access import LibraryAccess
-from tests.toy import (
-    MODULES,
-    ROLES,
-    SETTINGS,
-    TOY_SCHEMA,
-    caller,
-    dune,
-    shelf,
-    toy_mapper,
-)
-from tests.unit.tenancy.test_tenant_dump import (
-    BOB,
+from tests.dump_helpers import (
     LIBRARY_SCHEMA,
     RESTORER,
     TOOLKIT_SCHEMA,
@@ -44,6 +31,19 @@ from tests.unit.tenancy.test_tenant_dump import (
     populated,
     restored,
     stamps_held,
+)
+from tests.fixtures.library.domain.generated.library import Library
+from tests.fixtures.library.domain.generated.library_access import LibraryAccess
+from tests.toy import (
+    BOB,
+    MODULES,
+    ROLES,
+    SETTINGS,
+    TOY_SCHEMA,
+    caller,
+    dune,
+    shelf,
+    toy_mapper,
 )
 
 HAD_MEMBER = URIRef("http://www.w3.org/ns/prov#hadMember")

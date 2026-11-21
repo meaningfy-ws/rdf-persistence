@@ -38,6 +38,7 @@ from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.fixtures.library.domain.generated.templates import Template
 from tests.logs import records_of
+from tests.tenancy_world import CREATOR, EventFiles, Events
 from tests.toy import (
     ADA,
     BOB,
@@ -50,23 +51,24 @@ from tests.toy import (
     template,
     toy_mapper,
 )
-from tests.unit.messaging.test_messagebus import Recorder, ShelvedReplace, fakes
-from tests.unit.messaging.test_messagebus_wiring import (
+from tests.unit.activity_helpers import activities
+from tests.unit.messaging.messagebus_helpers import (
     B1,
     B2,
     B3,
     DRAFT,
     IN_REVIEW,
     PROVENANCE,
+    Recorder,
+    ShelvedReplace,
     World,
+    fakes,
     provenance,
     shelving,
     types_of,
     version_of,
     world,
 )
-from tests.unit.tenancy.test_session_activity import activities
-from tests.unit.tenancy.test_tenant_sweep import CREATOR, EventFiles, Events
 
 NOW = datetime(2026, 11, 14, 10, 0, tzinfo=UTC)
 ALL_QUADS = "SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } }"

@@ -1,4 +1,4 @@
-"""Adversarial tests of ``settings_from_env`` (technical-models stage 3, task 3.4, PD-12, DEC-6).
+"""Adversarial tests of ``settings_from_env`` (technical-models PD-12, DEC-6).
 
 Attacks: variables the prefix or the group names do not claim.
 """

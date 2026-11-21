@@ -98,7 +98,7 @@ generated is edited by hand; no new test library.
   `rdf_persistence/api/services/documents.py` (`:106-109`), (a) `Documents.__init__` reads the bytes
   of `folder / SHAPES_FILE` each time and computes `digest = sha256(data).hexdigest()`; an
   `lru_cache(maxsize=8)` `_shape_triples(digest: str, data: bytes) -> tuple` parses `data` on a miss
-  with `Graph().parse(data=data, format="turtle")` and returns its triples; each `Documents` builds
+  with `Graph().parse(data=data, format=TURTLE)` (the `text/turtle` media type of `core.domain.media`; the packaging test forbids rdflib's short names) and returns its triples; each `Documents` builds
   its own `Graph` and adds them with `graph.addN((s, p, o, graph) for s, p, o in triples)` (rdflib
   7.6's `addN` drops quads of another context); (b) `warm_up` runs once per digest per process: a
   module-level `set` of warmed digests, checked first without the lock (a set lookup); on a miss,
@@ -371,4 +371,68 @@ the gate to reach 9").
 
 ## Delivery decisions
 
-(Filled during delivery.)
+By the lead, 2026-11-21, under the owner's "work as a team leader with subagents in parallel".
+
+- **D-1 Order:** 2.2, 2.3, 2.4, 2.5 and the first half of 2.1 ran in parallel with stage 1, each
+  in its own worktree, since they touch no file 1.1 or 1.2 moves; their commits were picked onto
+  the build branch. Stages 1 and 2 share one L2+L3 pass (P-0005) and one gate run; PD-14's one PR
+  is unchanged.
+- **D-2 PD-9:** `no-exp` stays (18 cases, not 17): no other test fails when the claims stop
+  requiring `exp`, and the no-drop-without-a-survivor rule outranks the count.
+- **D-3 PD-4:** the keep-alive test's call phase stays at about 0.12 s (target 0.1 s): the wait is
+  ~7 ms, the rest is the test's two grant PUTs, which belong in the call phase.
+- **D-4 PD-17:** the two pass-through spies on `tenancy.tenants` in `test_relay.py` are X2, not X3
+  as the list said; `test_environment.py` and `test_testkit_lazy_import.py`'s `sys.modules`
+  patches are X5. The kit's restore limit is set through `ToyService(max_restore_bytes=)`, since
+  `installed()` returns the app.
+- **D-5 Stage-1 review (L2+L3), accepted findings, one fixer:**
+  - W1: the three `paused()` tests pass with a no-op `paused()` over the non-suspending fakes; the
+    held test starts `run_once()` as a task inside the block and asserts it is not done after a few
+    loop turns (with a control without `paused()`), then that it publishes after.
+  - S1: TC-82's docstring says "publishes nothing" follows from `kit.bus is None`.
+  - S2: `DelayedPair.failing()` makes the next publish raise at once, as the wrapped pair's does.
+  - S3: the PD-15 tests say in a comment why they time real waits (the scenario is about time).
+  - S4: the warm-once set and its lock move to `api/services/shacl.py` as `warm_up_once(shapes,
+    digest)`; `documents.py` calls it.
+  - S6: `tests/unit/api/scene.py` and `tests/unit/import_contracts.py` move to `tests/`, since
+    another tier imports them (PD-8's rule over its table); `collaboration_data.py` predates the
+    change and stays.
+  - S7: the `sys.modules` line in `test_testkit_lazy_import.py` carries its trailing `# X5`.
+  - S8: `paused()` gets one sentence in `user-manual/test.adoc`; the ticks are the lead's.
+  Rejected: S4's cache-key note (hashing the bytes is cheap and keeps the cache correct), S5 (the
+  contract is refresh-b §3's text and forbids what the mutation selection needs). W2 is the lead's
+  (`evidence/gates-stage1.md`).
+- **D-6 Stage 3:**
+  - `make mutation` did not start on `develop`'s head: mutmut copies only `rdf_persistence`, and
+    `tests/conftest.py` loads a plugin from `rdf_persistence_generation`; mutmut runs two pytest
+    sessions in one process, and the span fixture's second provider was ignored. `also_copy` gains
+    the generator and the fixture adds its exporter to a provider already set; `only_mutate` and the
+    test selection are unchanged (PD-13 holds).
+  - Before: 1091 mutants, 84 survived, 23 with no test (`inputs/survivors-before.md`). After: 33
+    (32 at 3.4, one more after D-7), each in `tests/audit/equivalent-mutants.md` (3 that no legal
+    input tells apart, 30 under DEC-3).
+  - DEC-3 is read as "wording": a test may assert what a message must name, where a caller or a
+    docstring relies on it (`MessageLimitExceeded` names its limit and ends `by <command>`; an iri
+    refusal names the offending iri, which the problem detail carries).
+  - L' is killed by a legal policy (a graph template that reads as another tenant's aggregate), so it
+    is not equivalent.
+- **D-7 Final review (L1, L2, L3, L4+L5), accepted findings, one fixer:**
+  - L1 S-1: `exp-as-a-numeric-string` comes back to `INVALID_TOKENS` (19 cases): it alone fails when
+    `exp` loses `strict`, which sits in generated code that `make mutation` leaves out.
+  - L2 S1 = L3 S1: the two `draw_id` patches in `test_iris_application_adversarial.py` carry `# X4`.
+  - L2 S3: the application-apart test asserts that the refusal names the probe IRI, not its sentence;
+    `_require_application_apart__mutmut_3` joins the DEC-3 list (`_2` stays killed: another test
+    asserts the IRI that follows `templates:`).
+  - L2 N2: the relay's raising-block test commits after the block, as the `rp-events` scenario says.
+  - L2 N3: the stage-3 asserts get messages; the `prepare_query` test asserts the prefix resolved.
+  - L2 N4: an `rp-iri-policy` delta says a graph IRI is refused when it reads as an aggregate or
+    loaded graph *of that tenant*, which the code does and a stage-3 test pins.
+  - L1 N-1 = L4+L5 #2 (docstring part): `warm_up_once` says its digest must be that of the bytes the
+    shapes were parsed from; L4+L5 #1: `_shape_triples` says it is keyed by the digest and the bytes.
+  - L4+L5 #3: `tests/changed.py` names the docs-check test path as a constant; L2 N5:
+    `slow-markers.md` names `tests/unit/package/test_packaging.py`.
+  - The lead's: L2 S2 (the gates and `make mutation` at the final head in `evidence/`), L2 N1 (five
+    stage-3 map rows to "Policies are checked when settings are made").
+  Deferred to the handover (outside the PLAN or older than it): L3 N1 (a tooling guard for the X
+  marks), L3 N2 (`tests/e2e/library_app.py` used by a unit test), L4+L5 #2's `load_warm_shapes`,
+  #4 (`BOOK_JSON` as a builder), #5 (one fast-poll constant), #6 (the toy vocabulary in one home).

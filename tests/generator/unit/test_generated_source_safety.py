@@ -1,4 +1,4 @@
-"""Text from a schema never breaks out of the string it is rendered into (stage 1 review, injection)."""
+"""Text from a schema never breaks out of the string it is rendered into (injection)."""
 
 import importlib
 import inspect

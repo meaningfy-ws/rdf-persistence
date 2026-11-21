@@ -6,81 +6,40 @@ PD-6 to PD-10; TC-22 to TC-40d).
 
 import io
 import logging
-from collections.abc import AsyncIterator, Callable
-from contextlib import AbstractAsyncContextManager
-from datetime import UTC, datetime, timedelta
+from collections.abc import AsyncIterator
 
 import pytest
-from rdflib import RDF, Graph, URIRef
+from rdflib import RDF, URIRef
 
 from rdf_persistence.core.domain.exceptions import Conflict
-from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.iris.domain.layout import application_database_name
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Add, Remove, Replace
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.tenancy.services.tenant_dump import dump, restore
-from rdf_persistence.testkit import FakeStore, assert_isomorphic, fake_session
+from rdf_persistence.testkit import FakeStore, assert_isomorphic
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.dump_helpers import BASE_STAMPS, RESTORER, TOY_CHAINS, VIEW
 from tests.logs import attributes
-from tests.toy import ADA, BOB, SETTINGS, TENANT, TOY_SCHEMA, book_iri, dune, template, toy_mapper
-from tests.unit.tenancy.test_tenant_dump import BASE_STAMPS, TOY_CHAINS
-from tests.unit.tenancy.test_tenant_sweep import CREATOR, make_world
-
-B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
-PROVENANCE = DEFAULT_IRIS.provenance(TENANT)
-BOOK_CLASS = "http://purl.org/ontology/bibo/Book"
-SHELF_CLASS = "https://example.org/ns/library#Shelf"
-ADA_PRINCIPAL = Principal(id=ADA)
-ACTIVITY_CLASSES = {v.ADD: Add, v.REPLACE: Replace, v.REMOVE: Remove}
-X = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c001"
-VIEW = load_schema(TOY_SCHEMA)
-RESTORER = Principal(id=BOB)
-
-
-def ticking() -> Callable[[], datetime]:
-    """A clock that is one second later at every reading."""
-    now = [datetime(2026, 11, 14, 10, 0, tzinfo=UTC)]
-
-    def clock() -> datetime:
-        now[0] += timedelta(seconds=1)
-        return now[0]
-
-    return clock
-
-
-def opened(store: FakeStore, **keywords) -> AbstractAsyncContextManager[Session]:
-    return fake_session(
-        store,
-        tenant_iri=TENANT,
-        principal=ADA_PRINCIPAL,
-        clock=keywords.pop("clock", ticking()),
-        **keywords,
-    )
-
-
-async def stored_graph(store: FakeStore, graph: URIRef, database: str = FAKE_DATABASE) -> Graph:
-    text = f"CONSTRUCT {{ ?s ?p ?o }} WHERE {{ GRAPH <{graph}> {{ ?s ?p ?o }} }}"
-    return (await store.query(database, text)).graph or Graph()
-
-
-async def activities(
-    store: FakeStore, graph: URIRef = PROVENANCE, database: str = FAKE_DATABASE
-) -> list[Activity]:
-    """The activities of a provenance graph, decoded through the mapper, in start order."""
-    stored = await stored_graph(store, graph, database)
-    found = []
-    for subject in set(stored.subjects(RDF.type, v.ACTIVITY)):
-        types = set(stored.objects(subject, RDF.type))
-        cls = next((ACTIVITY_CLASSES[t] for t in types if t in ACTIVITY_CLASSES), Activity)
-        found.append(toy_mapper().from_graph(cls, str(subject), stored, graph))
-    return sorted(found, key=lambda a: (a.started_at_time, a.id))
-
-
-def events(parts) -> list[tuple]:
-    return sorted((p.entity, p.entity_class, p.entity_version) for p in parts or [])
+from tests.tenancy_world import CREATOR, make_world
+from tests.toy import ADA, BOB, SETTINGS, TENANT, template, toy_mapper
+from tests.unit.activity_helpers import (
+    B1,
+    B2,
+    B3,
+    BOOK_CLASS,
+    PROVENANCE,
+    SHELF_CLASS,
+    Hook,
+    X,
+    activities,
+    book,
+    events,
+    only_activity,
+    opened,
+    stored_graph,
+)
 
 
 def shape(activity: Activity) -> dict:
@@ -91,10 +50,6 @@ def shape(activity: Activity) -> dict:
         "generations": events(activity.generations),
         "invalidations": events(activity.invalidations),
     }
-
-
-def book(iri: str) -> list:
-    return list(toy_mapper().to_triples(dune(iri)))
 
 
 @pytest.fixture
@@ -108,22 +63,6 @@ async def store() -> FakeStore:
 async def session(store) -> AsyncIterator[Session]:
     async with opened(store) as s:
         yield s
-
-
-async def only_activity(store: FakeStore) -> Activity:
-    found = await activities(store)
-    assert len(found) == 1, f"one activity, found {len(found)}"
-    return found[0]
-
-
-class Hook:
-    """An ``on_commit`` that keeps what it was given."""
-
-    def __init__(self) -> None:
-        self.calls: list[tuple[Activity, Session]] = []
-
-    async def __call__(self, activity: Activity, session: Session) -> None:
-        self.calls.append((activity, session))
 
 
 # -- TC-22 to TC-26: the standard activity --------------------------------------------------------

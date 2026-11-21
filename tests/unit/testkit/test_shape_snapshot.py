@@ -1,9 +1,7 @@
 """The model-shape snapshot: a model change fails until `make refresh-snapshot` acknowledges it (PD-27)."""
 
-import importlib
 import json
 import os
-import pkgutil
 import shutil
 from pathlib import Path
 
@@ -18,6 +16,7 @@ from rdf_persistence.testkit.shape_snapshot import (
     snapshot_diff,
     write_snapshot,
 )
+from tests.metamodel import METAMODEL_PACKAGE, generated_models
 
 ROOT = Path(__file__).parents[3]
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -27,11 +26,6 @@ TOY = FIXTURES / "library" / "library.yaml"
 SERVICE = ROOT / "rdf_persistence" / "model" / "technical" / "api" / "rp_api_entrypoints.yaml"
 TESTKIT = ROOT / "rdf_persistence" / "model" / "technical" / "testkit" / "rp_testkit.yaml"
 TOY_PACKAGE = "tests.fixtures.library.domain.generated"
-# The metamodel's classes generate into one package per theme (domain-model-per-theme DEC-1).
-METAMODEL_PACKAGE = tuple(
-    f"rdf_persistence.{theme}.domain.generated"
-    for theme in ("core", "access", "provenance", "files", "collaboration")
-)
 SERVICE_PACKAGE = "rdf_persistence.api.entrypoints.generated"
 IRIS = ROOT / "rdf_persistence" / "model" / "technical" / "iris" / "rp_iris_services.yaml"
 IRIS_PACKAGE = "rdf_persistence.iris.services.generated"
@@ -75,26 +69,6 @@ def slot(
 
 def shape(name: str, *slots: SlotShape) -> ClassShape:
     return ClassShape(class_name=name, slots=list(slots))
-
-
-def generated_models(package: str | tuple[str, ...]) -> list[type[BaseModel]]:
-    """The pydantic classes each module of a generated package (or of each of several) declares itself."""
-    if isinstance(package, tuple):
-        return [model for one in package for model in generated_models(one)]
-    root = importlib.import_module(package)
-    modules = [
-        importlib.import_module(f"{package}.{info.name}")
-        for info in pkgutil.iter_modules(root.__path__)
-    ]
-    return [
-        value
-        for module in modules
-        for value in vars(module).values()
-        if isinstance(value, type)
-        and issubclass(value, BaseModel)
-        and value.__module__ == module.__name__
-        and value.__name__ not in {"ConfiguredBaseModel", "LinkMLMeta"}
-    ]
 
 
 # --- the snapshot ---------------------------------------------------------------------------

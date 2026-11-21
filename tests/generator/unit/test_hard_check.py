@@ -1,4 +1,4 @@
-"""The hard check (task 1.6, PD-11, PD-23): IRIs, titles, descriptions, meanings, paths, mixins."""
+"""The hard check (PD-11, PD-23): IRIs, titles, descriptions, meanings, paths, mixins."""
 
 import shutil
 from dataclasses import dataclass
@@ -19,7 +19,6 @@ from rdf_persistence_generation.checks.hard import (
     ALLOWED_ANNOTATIONS,
     METAMODEL_ANNOTATIONS,
     PATTERNED_ANNOTATIONS,
-    hard_problems,
     stored_schema_problems,
 )
 from rdf_persistence_generation.cli import main
@@ -32,22 +31,19 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.problems import format_problem
 
+from .checks import DEFAULT_INSTANCE_SCHEMA
+from .checks import hard_check_problems as problems_of
 from .conftest import (
-    ROOT_SCHEMA,
     TOOLKIT_DOMAIN,
-    Breaker,
     theme_package,
     toolkit_domain_targets,
 )
+from .golden import ROOT_SCHEMA, Breaker
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
 GENERATION_MODEL = (
     Path(__file__).parents[3] / "rdf_persistence_generation" / "model" / "rp_generation.yaml"
 )
-
-
-def problems_of(root: Path) -> list[str]:
-    return [format_problem(p) for p in hard_problems(load_schema(root), root.parent)]
 
 
 ACTIVITIES = "books_activities.yaml"
@@ -315,49 +311,6 @@ def test_a_slot_that_aliases_a_toolkit_filled_slot_is_refused(break_toy: Breaker
     assert "ShelveBooks" in found[0], f"the class is not named in {found[0]}"
     assert "shelf_note" in found[0], f"the slot is not named in {found[0]}"
     assert "started_at_time" in found[0], f"the toolkit-filled slot is not named in {found[0]}"
-
-
-DEFAULT_INSTANCE_SCHEMA = """
-id: https://example.org/ns/groups
-name: groups
-title: Groups
-description: A settings class that holds a group of its own.
-prefixes: {{g: "https://example.org/ns/g#", linkml: "https://w3id.org/linkml/"}}
-default_prefix: g
-default_range: string
-imports: [linkml:types]
-classes:
-  Group:
-    title: Group
-    description: A group of values.
-    slots: [size, name]
-    slot_usage:
-      size: {{ifabsent: "int(3)"}}
-      name: {{required: {name_required}{name_default}}}
-  Holder:
-    title: Holder
-    description: Holds a group.
-    slots: [group, label]
-slots:
-  size:
-    title: Size
-    description: A count.
-    range: integer
-  name:
-    title: Name
-    description: A name.
-  group:
-    title: Group slot
-    description: The group.
-    range: Group
-    annotations:
-      default_instance: 'true'
-  label:
-    title: Label
-    description: A label.
-    annotations:
-      default_instance: 'true'
-"""
 
 
 def _default_instance_problems(
@@ -1185,7 +1138,7 @@ def test_the_toolkits_seven_targets_pass_the_hard_check_with_their_own_settings(
     `rp_iris_services` and `rp_iris_templates`, are the ninth and the tenth (thematic-structure 3.1); the
     `persistence` theme's three (`rp_persistence_services`, `_settings`, `_adapters`) and the `migrations`
     theme's one are the eleventh to the fourteenth (4.2). `rp_wire` is the `access` theme's
-    `rp_access_adapters` from stage 5, beside `rp_access_services`, `rp_access_settings` and the
+    `rp_access_adapters`, beside `rp_access_services`, `rp_access_settings` and the
     `tenancy` theme's `rp_tenancy_services`: seventeen in all (5.1). The `events` theme's two
     (`rp_events_services`, `rp_events_settings`) and the `collaboration` theme's one
     (`rp_collaboration_services`) make twenty (6.1). The four theme targets of the domain model
@@ -1238,8 +1191,10 @@ def toolkit_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     shutil.copytree(
         METAMODEL.parent, tmp_path / MODEL_COPY, ignore=shutil.ignore_patterns("migrations")
     )
-    monkeypatch.setattr(f"{PACKAGE_CHECK}.TOOLKIT_ROOTS", (tmp_path.resolve(),))
-    monkeypatch.setattr("rdf_persistence_generation.steps.TOOLKIT_ROOTS", (tmp_path.resolve(),))
+    monkeypatch.setattr(f"{PACKAGE_CHECK}.TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
+    monkeypatch.setattr(  # X1
+        "rdf_persistence_generation.steps.TOOLKIT_ROOTS", (tmp_path.resolve(),)
+    )
     (tmp_path / "pyproject.toml").write_text(toolkit_domain_targets(), encoding="utf-8")
     return tmp_path
 

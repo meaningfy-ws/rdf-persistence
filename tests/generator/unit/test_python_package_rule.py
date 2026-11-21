@@ -1,4 +1,4 @@
-"""The ``python_package`` rules end to end through ``rp-generate`` (generator-package stage 3, DEC-7, PD-6)."""
+"""The ``python_package`` rules end to end through ``rp-generate`` (generator-package DEC-7, PD-6)."""
 
 from collections.abc import Callable
 from pathlib import Path
@@ -13,7 +13,8 @@ from rdf_persistence_generation.generated.rp_generation import HardRule
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.problems import format_problem
 
-from .conftest import ROOT_SCHEMA, TOOLKIT_DOMAIN, theme_package
+from .conftest import TOOLKIT_DOMAIN, theme_package
+from .golden import ROOT_SCHEMA
 
 FILES_PACKAGE = theme_package("files")
 ACCESS_PACKAGE = theme_package("access")

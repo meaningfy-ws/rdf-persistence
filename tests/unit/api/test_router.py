@@ -13,14 +13,7 @@ from pyld import jsonld
 from rdflib import Dataset, Graph
 
 from rdf_persistence import Forbidden, GrantSet, InvalidBody, Page, TenantSummary
-from rdf_persistence.access.domain.generated.rp_access import (
-    Action,
-    Grant,
-    Prohibition,
-    RoleDefinition,
-    RoleLevel,
-)
-from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence.access.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.api.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
 from rdf_persistence.core.domain.media import (
     DATASET_REPRESENTATIONS,
@@ -36,11 +29,18 @@ from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.provenance.domain.generated.rp_provenance import Replace
 from rdf_persistence.schema.services import vocabulary
 from rdf_persistence.testkit import assert_isomorphic
-from tests.toy import ROLES, SETTINGS, keep_a_librarian
+from tests.scene import (
+    NIL,
+    PROBLEMS,
+    Scene,
+    ada_and_mia_are_members,
+    everyone_has_a_role,
+    problem_of,
+)
+from tests.toy import SETTINGS, keep_a_librarian
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
-from tests.unit.api.scene import NIL, PROBLEMS, Scene, problem_of
+from tests.unit.activity_helpers import activities
 from tests.unit.api.tenant_requests import put_root, rename
-from tests.unit.tenancy.test_session_activity import activities
 
 # --- tenants ------------------------------------------------------------------------------------
 
@@ -267,28 +267,8 @@ async def _ada_is_prohibited(scene: Scene, action: Action) -> str:
     return await scene.set_grants(grants)
 
 
-async def _ada_and_mia_are_members(scene: Scene) -> str:
-    """Add a ``member`` role (read, modify, delete) to the rules and make mia one; the new access ETag."""
-    member = RoleDefinition(
-        role="member",
-        level=RoleLevel.TENANT,
-        actions=[Action.READ, Action.MODIFY, Action.DELETE],
-    )
-    scene.service.kit.rules = AccessRules([*load_role_definitions(ROLES), member]).with_iris(
-        scene.service.kit.iris
-    )
-    return await scene.set_grants(
-        GrantSet(
-            grants=[
-                Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
-                Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="member"),
-            ]
-        )
-    )
-
-
 async def test_a_member_may_delete_a_book_but_not_the_tenant(scene) -> None:  # T-2
-    etag = await _ada_and_mia_are_members(scene)
+    etag = await ada_and_mia_are_members(scene)
     refused = await scene.http.delete(
         scene.tenant, headers=scene.headers("mia", **{"If-Match": etag})
     )
@@ -435,7 +415,7 @@ async def test_a_drifted_root_label_is_refused_until_a_rename_repairs_it(scene) 
 
 
 async def test_the_root_read_carries_the_version_a_modifier_renames_with(scene) -> None:  # T-18
-    await _ada_and_mia_are_members(scene)
+    await ada_and_mia_are_members(scene)
     root = await scene.http.get(scene.tenant, headers=scene.headers("mia"))
     record_etag = root.headers[RECORD_ETAG]
     stale = await scene.http.put(
@@ -715,7 +695,7 @@ async def test_the_access_record_has_no_generic_route(scene) -> None:
         assert (await scene.http.get(path, headers=scene.headers("ada"))).status_code == 404, path
 
 
-# --- representations (task 5.3) -----------------------------------------------------------------
+# --- representations -----------------------------------------------------------------
 
 
 async def test_plain_json_points_at_the_context_by_a_link_header(scene) -> None:
@@ -888,7 +868,7 @@ async def test_a_tenant_root_replace_as_rdf_xml_that_cannot_be_written_is_a_406(
     assert len(scene.service.store.sent("update")) == writes, "nothing was written"
 
 
-# One case per class: produced but not accepted (turtle), an unknown type (text/plain stands for it).
+# Classes: produced but not accepted (turtle), an unknown type (text/plain stands for it).
 @pytest.mark.parametrize("content_type", [TURTLE, "text/plain"])
 async def test_a_body_in_another_format_is_a_415(scene, content_type) -> None:
     response = await scene.http.post(
@@ -1022,17 +1002,6 @@ async def test_a_prohibition_beats_a_role(scene) -> None:
 # --- reads tell the caller what it may do (PD-10) ---------------------------------------------------
 
 
-async def _everyone_has_a_role(scene: Scene, *prohibitions: Prohibition) -> None:
-    """ada a librarian, mia a member (read, modify, delete), rita a reader; ``prohibitions`` on top."""
-    scene.access_etag = await _ada_and_mia_are_members(scene)
-    grants = [
-        Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
-        Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="member"),
-        Grant(assignee=principal_of("rita"), target=scene.tenant_iri, role="reader"),
-    ]
-    await scene.set_grants(GrantSet(grants=grants, prohibitions=list(prohibitions) or None))
-
-
 @pytest.mark.parametrize(
     ("who", "allowed"),
     [
@@ -1045,14 +1014,14 @@ async def _everyone_has_a_role(scene: Scene, *prohibitions: Prohibition) -> None
     ],
 )
 async def test_the_tenant_read_lists_what_the_caller_may_do(scene, who, allowed) -> None:  # T-29
-    await _everyone_has_a_role(scene)
+    await everyone_has_a_role(scene)
     response = await scene.http.get(scene.tenant, headers=scene.headers(who))
     assert response.status_code == 200, response.text
     assert response.headers.get(ALLOWED_ACTIONS) == allowed, f"{who} on the tenant"
 
 
 async def test_the_aggregate_read_lists_what_the_caller_may_do(scene) -> None:  # T-29
-    await _everyone_has_a_role(scene)
+    await everyone_has_a_role(scene)
     response = await scene.http.get(scene.book, headers=scene.headers("mia"))
     assert response.status_code == 200, response.text
     assert response.headers.get(ALLOWED_ACTIONS) == "read, modify, delete", "the member on a book"
@@ -1060,7 +1029,7 @@ async def test_the_aggregate_read_lists_what_the_caller_may_do(scene) -> None:  
 
 async def test_a_refused_read_carries_no_allowed_actions(scene) -> None:  # T-30
     book_graph = str(graph_iri(scene.book_iri))
-    await _everyone_has_a_role(
+    await everyone_has_a_role(
         scene,
         Prohibition(assignee=principal_of("rita"), target=book_graph, action=Action.READ),
     )
@@ -1071,7 +1040,7 @@ async def test_a_refused_read_carries_no_allowed_actions(scene) -> None:  # T-30
 
 async def test_a_prohibition_takes_its_action_off_the_list(scene) -> None:  # T-30
     book_graph = str(graph_iri(scene.book_iri))
-    await _everyone_has_a_role(
+    await everyone_has_a_role(
         scene,
         Prohibition(assignee=principal_of("mia"), target=book_graph, action=Action.DELETE),
     )
@@ -1084,7 +1053,7 @@ async def test_a_prohibition_takes_its_action_off_the_list(scene) -> None:  # T-
 
 
 async def test_the_listing_items_carry_what_the_tenant_read_answers(scene) -> None:  # T-31
-    await _everyone_has_a_role(scene)
+    await everyone_has_a_role(scene)
     for who in ("ada", "mia", "rita"):
         headers = scene.headers(who)
         read = await scene.http.get(scene.tenant, headers=headers)

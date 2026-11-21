@@ -9,6 +9,7 @@ in the fake.
 import contextlib
 from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
+from contextvars import ContextVar
 from typing import Protocol
 
 import pytest
@@ -16,7 +17,9 @@ import pytest
 from rdf_persistence.events.services.events import EventBus
 from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Replace
-from rdf_persistence.testkit.bootstrap import wait_until_async
+from rdf_persistence.testkit.bootstrap import POLL_SECONDS, wait_until_async
+
+_POLL_SECONDS: ContextVar[float] = ContextVar("_POLL_SECONDS", default=POLL_SECONDS)
 
 ENVELOPE = EventEnvelope(
     tenant="https://example.org/tenants/t",
@@ -51,7 +54,9 @@ class Inbox:
         async def probe() -> bool:
             return len(self.got) >= count
 
-        await wait_until_async(probe, f"{count} message(s) received")
+        await wait_until_async(
+            probe, f"{count} message(s) received", poll_seconds=_POLL_SECONDS.get()
+        )
 
 
 Case = Callable[[BusPair], Awaitable[None]]
@@ -103,11 +108,17 @@ CASES: tuple[Case, ...] = (
 )
 
 
-async def run_case(case: Case, pair: BusPair) -> None:
-    """Run one case on the pair, then close both buses."""
+async def run_case(case: Case, pair: BusPair, *, poll_seconds: float = POLL_SECONDS) -> None:
+    """Run one case on the pair, then close both buses.
+
+    ``poll_seconds`` is the interval of every wait of the case (default: the testkit's
+    ``POLL_SECONDS``); a bus that delivers in milliseconds can ask for a shorter one.
+    """
+    token = _POLL_SECONDS.set(poll_seconds)
     try:
         await case(pair)
     finally:
+        _POLL_SECONDS.reset(token)
         for bus in (pair.a, pair.b):
             with contextlib.suppress(Exception):
                 await bus.close()

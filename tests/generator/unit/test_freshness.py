@@ -18,10 +18,8 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.manifest import recorded_path
 
-from .test_generate_cli import PYPROJECT, SCHEMA, project
+from .golden import DEFAULT_HINT, MANIFEST, NAMED, PYPROJECT, SCHEMA, check, project, read_manifest
 
-DEFAULT_HINT = "run `rp-generate` to regenerate, then commit the result"
-MANIFEST = Path("app/domain/generated/rp-manifest.json")
 OUTPUT = "app/domain/generated/m.py"
 PART = SCHEMA.replace("name: m", "name: part").replace("Thing:", "Part:").replace("things", "parts")
 NESTED = """
@@ -44,18 +42,6 @@ def generated(tmp_path: Path) -> Path:
     pyproject = project(tmp_path)
     assert main(["--project", str(pyproject)]) == 0, "the project must generate"
     return pyproject
-
-
-def read_manifest(pyproject: Path) -> GenerationManifest:
-    return GenerationManifest.model_validate_json(
-        (pyproject.parent / MANIFEST).read_text(encoding="utf-8")
-    )
-
-
-def check(pyproject: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str]:
-    capsys.readouterr()
-    code = main(["--project", str(pyproject), "--check"])
-    return code, capsys.readouterr().err
 
 
 def test_a_fresh_run_passes_the_check(generated: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -179,10 +165,27 @@ def test_a_project_never_generated_fails_the_check(
     assert DEFAULT_HINT in error, "the fixing command is not named"
 
 
+def rewritten(pyproject: Path, *, linkml: str | None = None, rehash: dict[str, str] | None = None):
+    """Rewrite each target's recorded manifest: its ``linkml`` version, and the hash of the inputs in ``rehash``."""
+    base = pyproject.parent
+    for target in read_targets(pyproject):
+        recorded = manifest_module.read_manifest(target, base)
+        assert recorded is not None, "the project was generated, so it has a manifest"
+        changes: dict = {}
+        if linkml is not None:
+            changes["linkml"] = linkml
+        if rehash:
+            changes["inputs"] = [
+                entry.model_copy(update={"sha256": rehash.get(entry.path, entry.sha256)})
+                for entry in recorded.inputs or []
+            ]
+        manifest_module.write_manifest(target, base, recorded.model_copy(update=changes))
+
+
 def test_a_changed_linkml_version_is_stale(
-    generated: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    generated: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(manifest_module, "linkml_version", lambda: "0.0.1")
+    rewritten(generated, linkml="0.0.1")
     code, error = check(generated, capsys)
     assert code == 1, "a different linkml version passed the check"
     assert "linkml" in error, "the version is not named"
@@ -193,13 +196,13 @@ def test_without_the_extra_the_comparison_runs_and_the_version_is_not_compared(
 ) -> None:
     for name in [m for m in sys.modules if m.startswith("linkml.")]:
         monkeypatch.delitem(sys.modules, name)
-    monkeypatch.setitem(sys.modules, "linkml", None)
-    monkeypatch.setitem(sys.modules, "mypy", None)  # the extra brings it (#242)
-    monkeypatch.delitem(sys.modules, "rdf_persistence_generation.steps", raising=False)
-    monkeypatch.delattr(
+    monkeypatch.setitem(sys.modules, "linkml", None)  # X5
+    monkeypatch.setitem(sys.modules, "mypy", None)  # X5: the extra brings it (#242)
+    monkeypatch.delitem(sys.modules, "rdf_persistence_generation.steps", raising=False)  # X5
+    monkeypatch.delattr(  # X5
         generation, "steps", raising=False
     )  # a from-import would find the attribute
-    monkeypatch.setattr(manifest_module, "linkml_version", lambda: None)
+    monkeypatch.setattr(manifest_module, "linkml_version", lambda: None)  # X5
     code, error = check(generated, capsys)
     assert code == 0, f"the comparison failed without the extra: {error}"
     (generated.parent / "m.yaml").write_text(SCHEMA + "# changed\n", encoding="utf-8")
@@ -240,7 +243,6 @@ def test_nested_target_folders_keep_each_manifest_apart(tmp_path: Path) -> None:
     assert (tmp_path / "app/domain/generated/inner/rp-manifest.json").is_file(), "no inner manifest"
 
 
-NAMED = 'regenerate-command = "make generate-models"\n'
 TWO_COMMANDS = """
 [[tool.rp-generate]]
 schema = "m.yaml"
@@ -424,22 +426,15 @@ def test_a_fresh_project_through_the_installed_command_exits_0_silently(generate
 
 @pytest.mark.slow
 def test_a_change_to_the_service_schema_makes_a_typescript_target_stale(
-    toy_copy: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    toy_copy: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     pyproject = toy_copy / "pyproject.toml"
     assert main(["--project", str(pyproject)]) == 0, "the toy must generate"
-    real = manifest_module.sha256_of
-    monkeypatch.setattr(
-        manifest_module,
-        "sha256_of",
-        lambda path: "0" * 64 if path.name == "rp_api_entrypoints.yaml" else real(path),
-    )
+    entrypoints = "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml"
+    rewritten(pyproject, rehash={entrypoints: "0" * 64})
     code, error = check(pyproject, capsys)
     assert code == 1, "a changed rp_api_entrypoints.yaml left rp_service.ts looking fresh"
-    assert (
-        "stale input: rdf_persistence/model/technical/api/rp_api_entrypoints.yaml (changed)"
-        in error
-    ), error
+    assert f"stale input: {entrypoints} (changed)" in error, error
 
 
 def test_a_file_is_recorded_under_its_package_or_relative_to_the_base(tmp_path: Path) -> None:

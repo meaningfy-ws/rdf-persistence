@@ -29,10 +29,8 @@ from rdf_persistence.testkit import (
     StreamEvent,
     open_event_stream,
 )
-from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, toy_mapper
-from tests.toy_service import ToyService
-from tests.unit.api.scene import Scene
-from tests.unit.api.test_events_route import (
+from tests.dump_helpers import BASE_STAMPS, RESTORER, TOY_CHAINS
+from tests.events_follow import (
     another_book,
     events_of,
     listening,
@@ -41,10 +39,11 @@ from tests.unit.api.test_events_route import (
     reshape_grants,
     with_carol,
 )
-from tests.unit.events.test_relay import add_one, book, commit, pending, triples
-from tests.unit.tenancy.test_pending_mark import RESTORER, TOY_CHAINS
-from tests.unit.tenancy.test_tenant_dump import BASE_STAMPS
-from tests.unit.tenancy.test_tenant_sweep import make_world
+from tests.relay_helpers import add_one, book, commit, pending, triples
+from tests.scene import Scene
+from tests.tenancy_world import make_world
+from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, toy_mapper
+from tests.toy_service import ToyService
 
 scenarios("events.feature")
 

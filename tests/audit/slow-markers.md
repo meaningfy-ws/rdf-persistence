@@ -41,7 +41,7 @@ or renamed by task 4.1 are located by function name.
 
 | Test | Seconds alone | Action | 2026-11-16 audit |
 |---|---|---|---|
-| `tests/unit/test_packaging.py::test_the_wheel_ships_the_py_typed_marker` | 0.07 | remove | none |
+| `tests/unit/package/test_packaging.py::test_the_wheel_ships_the_py_typed_marker` | 0.07 | remove | none |
 
 ## Listed by the first audit and left as they are (11)
 

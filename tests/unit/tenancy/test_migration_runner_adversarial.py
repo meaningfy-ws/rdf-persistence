@@ -39,9 +39,7 @@ from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
-from tests.toy import SETTINGS, TOY_SCHEMA, toy_mapper
-from tests.unit.tenancy.test_migration_runner import (
-    CREATOR,
+from tests.migration_helpers import (
     ISBN,
     LIB,
     MID_ISBN,
@@ -57,7 +55,8 @@ from tests.unit.tenancy.test_migration_runner import (
     rename,
     second_tenant,
 )
-from tests.unit.tenancy.test_tenant_sweep import make_world
+from tests.tenancy_world import CREATOR, make_world
+from tests.toy import SETTINGS, TOY_SCHEMA, toy_mapper
 
 RP_OLD = URIRef("urn:rp:old")
 RP_NEW = URIRef("urn:rp:new")
@@ -311,7 +310,7 @@ async def test_a_hostile_writer_moving_the_stamp_back_after_every_second_request
 # -- 3. stamps ------------------------------------------------------------------------------------
 
 
-# equivalence class: surrounding whitespace (leading space; trailing space and newline are the same)
+# Class: surrounding whitespace (leading space; trailing space and newline are the same)
 @pytest.mark.parametrize(
     "stamp_text",
     ["<urn:v:1>", '""', '" 1"', '"01"'],

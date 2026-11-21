@@ -89,7 +89,7 @@ def test_tc42_importing_the_package_reads_no_variable_and_loads_no_settings_libr
 def test_tc43_without_the_settings_extra_the_error_names_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setitem(sys.modules, "pydantic_settings", None)
+    monkeypatch.setitem(sys.modules, "pydantic_settings", None)  # X5
 
     with pytest.raises(ImportError, match=r"rdf-persistence\[settings\]"):
         settings_from_env(ToolkitSettings, environ={})

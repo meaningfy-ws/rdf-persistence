@@ -1,7 +1,7 @@
-"""Roots, parts and loaded graphs are minted through ``Iris`` (iri-policy task 3.2, PD-3, PD-3a, PD-7a).
+"""Roots, parts and loaded graphs are minted through ``Iris`` (iri-policy PD-3, PD-3a, PD-7a).
 
 Under the flat policy a root, its parts and its loaded graphs sit beside each other under the tenant
-(task 3.3 made the checks follow the policy); ``TYPED`` keeps parts below the root, by type.
+(the checks follow the policy, PD-4); ``TYPED`` keeps parts below the root, by type.
 """
 
 import json
@@ -32,8 +32,7 @@ from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Chapter
-from tests.toy import TENANT, TOY_SCHEMA, book_iri
-from tests.unit.conftest import GENERATED
+from tests.toy import GENERATED, TENANT, TOY_SCHEMA, book_iri
 
 BASE = "https://example.org/"
 FLAT = "{base}{tenant_id}/{type}/{id}"

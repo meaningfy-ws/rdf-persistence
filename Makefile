@@ -52,7 +52,7 @@ UNIT_LANE = --ignore=$(TEST_PATH)/integration --ignore=$(TEST_PATH)/e2e --ignore
 LIBRARY_LANE = $(UNIT_LANE) --ignore=$(TEST_PATH)/generator
 
 # Every parallel lane distributes by xdist_group, and every lane leaves the quarantined tests out
-# (tests/unit/test_lanes.py checks both).
+# (tests/unit/tooling/test_lanes.py checks both).
 PARALLEL       = -n auto --dist loadgroup
 NOT_QUARANTINE = and not quarantine
 
@@ -119,7 +119,7 @@ refresh-snapshot: ## Rewrite the reviewed model-shape snapshots after a delibera
 	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/testkit/test_shape_snapshot.py tests/generator/unit/test_generation_shape.py -q
 
 refresh-surface: ## Rewrite public-surface.json; this resets the move's public-surface baseline (TC-03), so run it only when a stage deliberately moves a public name (review the diff)
-	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/test_public_surface.py -q
+	@ RP_REFRESH_SNAPSHOT=1 uv run pytest tests/unit/package/test_public_surface.py -q
 
 refresh-map: ## Re-key the scenario-map rows of renamed test files (against BASE, default develop), drop those of vanished tests and list the collected tests with no row (exit 1 while some are unmapped)
 	@ uv run python -m tests.audit.refresh_map --base $(BASE)

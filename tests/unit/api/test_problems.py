@@ -1,4 +1,4 @@
-"""Every toolkit error becomes an RFC 9457 problem response (task 5.1, PD-15, the error matrix)."""
+"""Every toolkit error becomes an RFC 9457 problem response (PD-15, the error matrix)."""
 
 import inspect
 import logging
@@ -277,7 +277,7 @@ async def test_an_unmapped_failure_is_an_internal_error_problem_without_its_text
     assert "fuseki" not in response.text, "a fault of the service tells the caller nothing of it"
 
 
-# One class: both are the internal-error 500 of one handler (test_router_hardening covers both by routes).
+# Class: both are the internal-error 500 of one handler (test_router_hardening covers both by routes).
 @pytest.mark.parametrize("error", [exceptions.SparqlError])
 async def test_a_fault_of_the_service_hides_its_text(error: type[PersistenceError]) -> None:
     assert "fuseki" not in (await get(app_raising(error(SECRET)))).text, "no detail"

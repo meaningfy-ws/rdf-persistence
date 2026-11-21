@@ -1,4 +1,4 @@
-"""``Iris`` under hostile input and at the limits of what the schema allows (iri-policy stage 1).
+"""``Iris`` under hostile input and at the limits of what the schema allows (iri-policy).
 
 Every test names the production change that would make it fail.
 """

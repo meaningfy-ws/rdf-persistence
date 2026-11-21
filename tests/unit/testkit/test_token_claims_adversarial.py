@@ -1,4 +1,4 @@
-"""Adversarial tests of ``TokenSigner.issue`` built on ``JwtClaims.model_construct`` (technical-models stage 4).
+"""Adversarial tests of ``TokenSigner.issue`` built on ``JwtClaims.model_construct`` (technical-models).
 
 Attacks: every combination of the arguments, against the claims the former dict-building code made.
 """

@@ -2,7 +2,7 @@
 
 A helper, not a test module. It is the worked example of the design (``Book`` with ``rp_mixins=StoredFile``
 and a unique key, ``dct:identifier``, a ``1..*`` part ``Chapter`` in its boundary, ``shelvedOn`` to the root
-``Shelf``) with what stage 2 adds, each once: an activity root ``Loan``, a «tenant root» ``Library``, an
+``Shelf``) with what the extended model adds, each once: an activity root ``Loan``, a «tenant root» ``Library``, an
 abstract root ``Work`` that its two roots specialise and that a slot ranges over, and a slot (``location``)
 used in two packages, so it is defined once in the package the other imports. Every element has a note.
 """

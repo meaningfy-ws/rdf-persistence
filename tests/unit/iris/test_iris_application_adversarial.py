@@ -1,4 +1,4 @@
-"""``Iris`` for the application under hostile input and unusual policies (app-level-data task 2.1, PD-2, PD-3).
+"""``Iris`` for the application under hostile input and unusual policies (app-level-data PD-2, PD-3).
 
 Every test names the production change that would make it fail. The Hypothesis tests state invariants
 over many policies (default, flat, ``{tenant_id}``-only templates, short ids, ``{deployment}`` and
@@ -8,6 +8,7 @@ repeatable (the probe tenant of ``Iris.__init__`` draws with ``secrets`` and nev
 
 import contextlib
 import random
+import re
 from collections.abc import Callable
 from uuid import UUID
 
@@ -246,7 +247,7 @@ def test_a_tenant_read_as_an_aggregate_of_the_application_is_refused_on_its_own(
         object_id=IdSpec(kind=IdKind.RANDOM, length=8),
     )
     # the probes draw with ``secrets``: pin them, so refusal (a) cannot fire first by chance
-    monkeypatch.setattr(
+    monkeypatch.setattr(  # X4
         iris_module, "draw_id", lambda spec: "abababab" if spec.alphabet == "ab" else "zzzzzzzz"
     )
     with pytest.raises(InvalidIri, match="is one of its aggregates"):
@@ -284,6 +285,74 @@ def test_a_policy_whose_application_iris_read_as_a_tenants_is_refused(name: str)
 def test_a_policy_whose_application_iris_do_not_read_as_a_tenants_is_accepted(name: str) -> None:
     """Fails if ``_require_application_apart`` refuses what keeps the application apart."""
     _iris(ACCEPTED_NEAR_MISSES[name], _seeded(3))
+
+
+@pytest.mark.parametrize("name", list(REFUSED_AS_TENANT_SHAPED))
+@pytest.mark.parametrize("typed", [True, False], ids=["with types", "without types"])
+def test_an_application_iri_that_reads_as_a_tenants_is_refused_by_name_of_that_iri(
+    name: str, typed: bool
+) -> None:
+    """Fails if a kind of application IRI is not probed (an aggregate, a part, a loaded graph, also when
+    the schema has no types): the refusal would then come only from the tenant read as an aggregate."""
+    policy = REFUSED_AS_TENANT_SHAPED[name]
+    with pytest.raises(InvalidIri) as refused:
+        Iris(_settings(policy), *((ROOTS, OWNED) if typed else ()))
+    message = str(refused.value)
+    assert "'http" in message, (
+        f"the refusal names the application IRI that reads as a tenant's: {message}"
+    )
+
+
+def test_a_tenant_read_as_a_loaded_graph_of_the_application_is_refused_naming_the_tenant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Fails if the probe tenant is not asked of ``is_loaded_graph(A, tenant)``, or the refusal drops it."""
+    policy = IriPolicy(
+        application_template=APPLICATION_IS_THE_TENANTS_PATH,
+        loaded_graph_template=SHAPED,
+        tenant_id=IdSpec(kind=IdKind.RANDOM, length=8, alphabet="ab"),
+        object_id=IdSpec(kind=IdKind.RANDOM, length=8),
+    )
+    monkeypatch.setattr(  # X4
+        iris_module, "draw_id", lambda spec: "abababab" if spec.alphabet == "ab" else "zzzzzzzz"
+    )
+    with pytest.raises(InvalidIri, match="is one of its aggregates") as refused:
+        _iris(policy, _seeded(3))
+    assert f"{BASE}tenants/abababab" in str(refused.value), "the refusal names the tenant"
+
+
+def test_a_tenant_read_as_a_loaded_graph_of_something_else_is_accepted() -> None:
+    """Fails if the tenant is asked of ``is_loaded_graph`` for any owner, not the application's."""
+    iris = _iris(IriPolicy(loaded_graph_template=SHAPED), _seeded(3))
+    assert iris.application == URIRef(f"{BASE}app"), "the policy is accepted"
+
+
+FLAT_WORDS = {"tenant_template": "{base}{tenant_id}", "aggregate_template": "{base}{tenant_id}{id}"}
+
+
+@pytest.mark.parametrize(
+    ("slot", "expected"),
+    [
+        ("part_template", f"{BASE}appzzzzzzzzchapterzzzzzzzz"),
+        ("loaded_graph_template", f"{BASE}appzzzzzzzzcontentzzzzzzzz"),
+    ],
+)
+def test_a_part_or_loaded_graph_of_the_application_that_reads_as_a_tenant_is_refused_as_probed(
+    monkeypatch: pytest.MonkeyPatch, slot: str, expected: str
+) -> None:
+    """Fails if the probe of ``slot`` is not made of the application's first aggregate, its type and an
+    id: only then does it spell a 26-character tenant id (the aggregate itself spells 11)."""
+    policy = IriPolicy(
+        **FLAT_WORDS,
+        **{slot: "{root}{type}{id}"},
+        tenant_id=IdSpec(kind=IdKind.RANDOM, length=26),
+        object_id=IdSpec(kind=IdKind.RANDOM, length=8),
+    )
+    monkeypatch.setattr(  # X4
+        iris_module, "draw_id", lambda spec: "t" * 26 if spec.length == 26 else "zzzzzzzz"
+    )
+    with pytest.raises(InvalidIri, match=re.escape(f"templates: '{expected}'")):
+        Iris(_settings(policy), frozenset(), OWNED, _seeded(3))
 
 
 @INVARIANTS

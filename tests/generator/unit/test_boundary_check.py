@@ -1,4 +1,4 @@
-"""The boundary check (task 1.7, PD-23): ownership of the aggregate's parts and module kinds."""
+"""The boundary check (PD-23): ownership of the aggregate's parts and module kinds."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,7 +8,6 @@ import pytest
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence_generation import steps
 from rdf_persistence_generation.checks.boundary import (
-    boundary_problems,
     derived_kind,
     kind_folder_problems,
     mixed_kind_problems,
@@ -24,7 +23,9 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.problems import format_problem
 
-from .conftest import ROOT_SCHEMA, TOY, Breaker
+from .checks import API_MODULE, add_api_module
+from .checks import boundary_problems as problems_of
+from .golden import ROOT_SCHEMA, TOY, Breaker
 
 MODEL_DIR = Path(__file__).parents[3] / "rdf_persistence"
 METAMODEL = MODEL_DIR / "model" / "rp.yaml"
@@ -36,10 +37,6 @@ BOOK_SLOTS = "slots: [isbn, authors, published, genre, chapters, shelf, sequel_o
 BOOK_IMPORTS = "  - rdf_persistence/model/rp_collections\nannotations:\n  module_kind: domain"
 ACCESS_IMPORT = "  - rdf_persistence/model/rp_collections\n  - library_access\nannotations:\n  module_kind: domain"
 TENANCY_IMPORT = "  - rdf_persistence/model/rp_collections\n  - rdf_persistence/model/rp_tenancy\nannotations:\n  module_kind: domain"
-
-
-def problems_of(root: Path) -> list[str]:
-    return [format_problem(p) for p in boundary_problems(load_schema(root), root.parent)]
 
 
 @dataclass(frozen=True)
@@ -231,48 +228,6 @@ def test_check_mode_runs_the_boundary_check(break_toy: Breaker) -> None:
     assert main(["--project", str(root.parent / "pyproject.toml"), "--check"]) == 1, (
         "--check skipped the boundary check"
     )
-
-
-API_MODULE = """id: https://example.org/ns/library/api
-name: api
-title: API module
-description: The request and response shapes of the library's own routes.
-prefixes:
-  lib: https://example.org/ns/library#
-  linkml: https://w3id.org/linkml/
-default_prefix: lib
-default_range: string
-imports:
-  - linkml:types
-annotations:
-  module_kind: {kind}
-
-classes:
-  Account:
-    title: Account
-    description: What a route answers about an account; never stored.
-    class_uri: lib:Account
-    attributes:
-      account_id:
-        title: Account id
-        description: The identifier of the account.
-        identifier: true
-      active:
-        title: Active
-        description: Whether the account may sign in.
-        range: boolean
-"""
-
-
-def add_api_module(toy: Path, kind: str) -> Path:
-    """Write ``api.yaml`` of the given kind into the toy and import it from the root schema."""
-    (toy / "api.yaml").write_text(API_MODULE.format(kind=kind), encoding="utf-8")
-    root = toy / ROOT_SCHEMA
-    text = root.read_text(encoding="utf-8")
-    root.write_text(
-        text.replace("  - library_access\n", "  - library_access\n  - api\n", 1), encoding="utf-8"
-    )
-    return root
 
 
 @pytest.mark.slow

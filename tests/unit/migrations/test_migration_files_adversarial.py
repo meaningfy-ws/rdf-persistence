@@ -19,7 +19,7 @@ from rdf_persistence.migrations.services.generated.rp_migrations_services import
 from rdf_persistence.migrations.services.migrations import load_migration, migration_request
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore
-from tests.unit.migrations.test_migration_files import (
+from tests.unit.migrations.migration_steps import (
     FILE,
     PLACE,
     SCHEMA,
@@ -583,7 +583,7 @@ def test_a_hostile_version_in_a_file_loads_and_builds_the_expected_operations(tm
     )
 
 
-# equivalence classes: a character IRIREF forbids (two stand for them), the empty id
+# Classes: a character IRIREF forbids (two stand for them), the empty id
 @pytest.mark.parametrize("schema_id", ["https://example.org/a>b", "https://example.org/a b", ""])
 def test_a_schema_id_that_cannot_be_an_iri_is_refused_by_the_loader_and_the_builder(
     tmp_path, schema_id
@@ -684,7 +684,7 @@ def test_a_step_field_that_is_not_text_is_refused_naming_the_file(tmp_path, fiel
         load_migration(raw(tmp_path, text))
 
 
-# equivalence classes, one per YAML type: float, int (0x10 is the same), bool, null (~ is the same)
+# Classes: one per YAML type, float, int (0x10 is the same), bool, null (~ is the same)
 @pytest.mark.parametrize("version", ["1.10", "1.0", "010", "true", "null"])
 def test_an_unquoted_version_that_yaml_reads_as_another_type_is_refused(tmp_path, version):
     text = f"schema_id: {SCHEMA}\nfrom_version: {version}\nto_version: '9'\n"
@@ -698,7 +698,7 @@ def test_an_unquoted_version_that_yaml_reads_as_text_is_the_text_written(tmp_pat
     assert loaded.from_version == "1e3", "the file said one thing, the toolkit read the same"
 
 
-# equivalence class: a key the format does not know
+# Class: a key the format does not know
 @pytest.mark.parametrize("extra", ["graph: <urn:x>"])
 def test_a_key_the_format_does_not_know_is_refused(tmp_path, extra):
     with pytest.raises(InvalidMigration, match=FILE):

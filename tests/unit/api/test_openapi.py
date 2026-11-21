@@ -1,4 +1,4 @@
-"""Scenario 'the document lists the routes' (rp-service-api): the OpenAPI document over the toy library (task 5.5)."""
+"""Scenario 'the document lists the routes' (rp-service-api): the OpenAPI document over the toy library."""
 
 import json
 from http import HTTPStatus

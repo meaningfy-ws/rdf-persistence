@@ -1,4 +1,4 @@
-"""Removing a file aggregate with its blobs, over the fakes (live-tenant-sweep PD-10, task 4.1)."""
+"""Removing a file aggregate with its blobs, over the fakes (live-tenant-sweep PD-10)."""
 
 import logging
 from datetime import timedelta
@@ -16,9 +16,9 @@ from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes
+from tests.tenancy_world import CREATOR, FILE_KEY, book, make_world
 from tests.toy import SETTINGS, library_slots, toy_mapper
-from tests.unit.tenancy.test_session_activity import stored_graph
-from tests.unit.tenancy.test_tenant_sweep import CREATOR, FILE_KEY, book, make_world
+from tests.unit.activity_helpers import stored_graph
 
 
 @pytest.fixture

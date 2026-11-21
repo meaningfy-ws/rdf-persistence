@@ -13,9 +13,9 @@ from rdf_persistence import Mapper, UnitOfWork, generated_models
 from rdf_persistence.core.domain.exceptions import NotFound
 from rdf_persistence.core.domain.generated import rp_core
 from rdf_persistence_generation.cli import main as generate
+from tests.scene import NIL, Scene, problem_of
 from tests.toy import TOY_SCHEMA
 from tests.toy_service import SCAN_BODY, ToyService, principal_of, store_scan
-from tests.unit.api.scene import NIL, Scene, problem_of
 
 PACKAGE = "writelib"
 LIBRARY = TOY_SCHEMA.parent

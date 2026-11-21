@@ -21,15 +21,15 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books_activities import Review
+from tests.tenancy_world import CREATOR, make_world
 from tests.toy import ADA, MODULES, SETTINGS, TENANT, TOY_SCHEMA, toy_mapper
-from tests.unit.tenancy.test_session_activity import (
+from tests.unit.activity_helpers import (
     PROVENANCE,
     events,
     only_activity,
     opened,
     stored_graph,
 )
-from tests.unit.tenancy.test_tenant_sweep import CREATOR, make_world
 
 REVIEW_CLASS = "https://example.org/ns/library#Review"
 STARTED = datetime(2026, 11, 20, 9, 0, tzinfo=UTC)

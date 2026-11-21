@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.schema.services.schema_structure import is_toolkit_schema
-from rdf_persistence_generation import steps
 from rdf_persistence_generation.cli import build_parser, main
 from rdf_persistence_generation.config import GENERATOR_DIR, TOOLKIT_ROOTS, read_targets
 from rdf_persistence_generation.exceptions import ConfigError, SchemaGenerationError, StepError
@@ -18,10 +17,9 @@ from rdf_persistence_generation.generated.rp_generation import (
     GenerationTarget,
     ManifestEntry,
 )
-from rdf_persistence_generation.pipeline import Run, render_step, stage
+from rdf_persistence_generation.pipeline import Run, generate, render_step, stage
 
-from .test_freshness import MANIFEST, read_manifest
-from .test_generate_cli import project
+from .golden import MANIFEST, project, read_manifest
 
 VALID_PATHS = ["a.py", "a/b/c.py", ".hidden/x", "rdf_persistence/model/rp.yaml", "a..b/c", "..x"]
 INVALID_PATHS = ["", "/a", "../a", "a/../b", "a/..", "C:/a", "a\\b", "a//b", "./a", "a/", "."]
@@ -54,13 +52,13 @@ def test_a_hash_is_64_lowercase_hex_digits(digest: str) -> None:
 
 
 @pytest.mark.parametrize("field", FOLDER_FIELDS)
-@pytest.mark.parametrize("path", VALID_PATHS[:1])  # one class: the shapes are the manifest test's
+@pytest.mark.parametrize("path", VALID_PATHS[:1])  # Class: the shapes are the manifest test's
 def test_a_configured_path_may_be_relative(field: str, path: str) -> None:
     assert getattr(target(**{field: path}), field) == path, f"{path!r} was refused for {field}"
 
 
 @pytest.mark.parametrize("field", FOLDER_FIELDS)
-@pytest.mark.parametrize("path", INVALID_PATHS[:2])  # one class: the shapes are the manifest test's
+@pytest.mark.parametrize("path", INVALID_PATHS[:2])  # Class: the shapes are the manifest test's
 def test_a_configured_path_that_could_leave_the_project_is_refused(field: str, path: str) -> None:
     with pytest.raises(ValidationError):
         target(**{field: path})
@@ -196,32 +194,31 @@ def test_an_output_name_that_is_not_a_plain_file_name_is_a_step_error(run: Run, 
 # --- exceptions: schema faults are reported, bugs surface ---
 
 
-def test_a_schema_fault_raised_by_an_extension_is_reported_not_raised(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_a_schema_fault_raised_by_an_extension_is_reported_not_raised(tmp_path: Path) -> None:
     def refuse(_path: Path) -> list[GeneratedFile]:
         raise SchemaGenerationError("Thing: this schema asks for the impossible")
 
-    monkeypatch.setattr(
-        steps, "STEPS", (render_step("python", refuse, lambda run: run.python_dir),)
+    step = render_step("python", refuse, lambda run: run.python_dir)
+    problems = generate(read_targets(project(tmp_path)), tmp_path, (step,), check=False)
+    assert problems, "a schema fault did not fail the run"
+    assert "asks for the impossible" in " ".join(p.message for p in problems), (
+        "the fault was not reported"
     )
-    assert main(["--project", str(project(tmp_path))]) == 1, "a schema fault did not fail the run"
-    assert "asks for the impossible" in capsys.readouterr().err, "the fault was not reported"
 
 
 @pytest.mark.parametrize(
     "bug",
-    [KeyError("boom"), AttributeError("boom")],  # one class: anything but a SchemaGenerationError
+    [KeyError("boom"), AttributeError("boom")],  # Class: anything but a SchemaGenerationError
 )
 def test_a_bug_in_an_extension_is_not_reported_as_a_schema_problem(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bug: Exception
+    tmp_path: Path, bug: Exception
 ) -> None:
     def crash(_path: Path) -> list[GeneratedFile]:
         raise bug
 
-    monkeypatch.setattr(steps, "STEPS", (render_step("python", crash, lambda run: run.python_dir),))
+    step = render_step("python", crash, lambda run: run.python_dir)
     with pytest.raises(type(bug)):
-        main(["--project", str(project(tmp_path))])
+        generate(read_targets(project(tmp_path)), tmp_path, (step,), check=False)
 
 
 @pytest.mark.parametrize(
@@ -269,7 +266,7 @@ def test_every_served_schema_is_an_input_of_a_target_that_renders_typescript(
 
     toy = Path("tests/fixtures/library").resolve()
     second = GENERATOR_DIR / "model" / "rp_generation.yaml"
-    monkeypatch.setattr(manifest, "SERVED_SCHEMAS", (*manifest.SERVED_SCHEMAS, second))
+    monkeypatch.setattr(manifest, "SERVED_SCHEMAS", (*manifest.SERVED_SCHEMAS, second))  # X1
     target = read_targets(toy / "pyproject.toml")[0]
     with_types = {e.path for e in manifest.current_inputs(target, toy)}
     without_types = {

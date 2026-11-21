@@ -68,13 +68,17 @@ from tests.toy import (
     shelf_iri,
     toy_mapper,
 )
-from tests.unit.collaboration.collaboration_data import OA, RP, SECRET, annotation, stored
-from tests.unit.collaboration.test_collaboration_cascade import before
-from tests.unit.collaboration.test_collaboration_collections_adversarial import (
+from tests.unit.collaboration.collaboration_data import (
+    OA,
+    RP,
+    SECRET,
+    annotation,
+    before,
     everything_said,
+    has_entry,
     marker_left,
+    stored,
 )
-from tests.unit.collaboration.test_collaboration_discussion import has_entry
 
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 S1 = shelf_iri(1)

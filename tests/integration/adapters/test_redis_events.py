@@ -46,7 +46,7 @@ class RedisPair:
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
 async def test_the_redis_bus_conforms(redis, toolkit, case):
-    await run_case(case, RedisPair(redis, toolkit, claim_idle_seconds=0.5))
+    await run_case(case, RedisPair(redis, toolkit, claim_idle_seconds=0.5), poll_seconds=0.05)
 
 
 def test_the_redis_bus_takes_no_per_value_keyword_beside_its_events_group():  # TC-39, DEC-5

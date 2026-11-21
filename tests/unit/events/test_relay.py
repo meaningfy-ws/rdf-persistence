@@ -6,21 +6,16 @@ fakes. Faults are injected by wrapping the store, the bus or ``Tenancy.tenants``
 """
 
 import asyncio
-import json
 import logging
-from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
 from opentelemetry import trace
 from opentelemetry.trace import StatusCode
 
-from rdf_persistence import generated_models
 from rdf_persistence.core.domain.exceptions import StoreUnavailable
-from rdf_persistence.events.services.events import context_link
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
-from rdf_persistence.events.services.relay import Relay, chain_order
-from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.events.services.relay import chain_order
 from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.provenance.domain.generated.rp_provenance import (
     Generation,
@@ -28,26 +23,26 @@ from rdf_persistence.provenance.domain.generated.rp_provenance import (
     Replace,
 )
 from rdf_persistence.schema.services import vocabulary as v
-from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
 from tests.logs import attributes
-from tests.toy import MODULES, SETTINGS, TOY_SCHEMA, dune, library_slots, template, toy_mapper
-from tests.unit.tenancy.test_tenant_sweep import CREATOR, make_world
-
-DEPLOYMENT = "deployment-a"
-CONTEXT = context_link("https://lib.example")
-LOGGER = "rdf_persistence.events.services.relay"
-VIEW = load_schema(TOY_SCHEMA)
-NOW = datetime(2026, 11, 15, 9, 0, tzinfo=UTC)
-LONG_AGO = '"2001-01-01T00:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime>'
-
-
-class RecordingOffer:
-    def __init__(self) -> None:
-        self.offered: list[tuple[str, str]] = []
-
-    def offer(self, tenant: str, activity) -> None:
-        self.offered.append((tenant, activity.id))
+from tests.relay_helpers import (
+    CONTEXT,
+    CREATOR,
+    DEPLOYMENT,
+    LOGGER,
+    LONG_AGO,
+    NOW,
+    RecordingOffer,
+    add_one,
+    add_replace_remove,
+    book,
+    classes,
+    insert_in_provenance,
+    pending,
+    sent,
+    triples,
+)
+from tests.toy import template, toy_mapper
 
 
 class FlakyBus(InMemoryEventBus):
@@ -65,80 +60,6 @@ class FlakyBus(InMemoryEventBus):
         await super().publish(envelope, body)
 
 
-@pytest.fixture
-async def world() -> SimpleNamespace:
-    made = await make_world(Iris(SETTINGS), SETTINGS)
-    made.second = (await made.tenancy.create("Bruges", library_slots(), CREATOR)).id
-    made.app_iri = str(made.iris.application)
-    await made.tenancy.ensure_application_database()
-    made.broker = InMemoryBroker()
-    made.bus = InMemoryEventBus(made.broker)
-    made.relay = lambda bus="default", hub=None, **kw: Relay(
-        made.tenancy,
-        VIEW,
-        generated_models(*MODULES),
-        toy_mapper(),
-        made.bus if bus == "default" else bus,
-        hub,
-        deployment=DEPLOYMENT,
-        context=CONTEXT,
-        **kw,
-    )
-    await made.relay(None).run_once()  # the roots the tenants were created with are not under test
-    return made
-
-
-def book(world: SimpleNamespace, tenant: str) -> str:
-    return str(world.iris.mint_aggregate(tenant, "Book", "books"))
-
-
-def triples(iri: str) -> list:
-    return list(toy_mapper().to_triples(dune(iri)))
-
-
-def commit(world: SimpleNamespace, tenant: str):
-    return world.tenancy.tenant_session(tenant, CREATOR)
-
-
-async def add_replace_remove(world: SimpleNamespace, tenant: str) -> str:
-    iri = book(world, tenant)
-    async with commit(world, tenant) as session:
-        version = await session.add_graph(iri, triples(iri))
-        version = await session.replace_graph(iri, triples(iri), version)
-        await session.remove(iri, version)
-    return iri
-
-
-async def add_one(world: SimpleNamespace, tenant: str) -> str:
-    iri = book(world, tenant)
-    async with commit(world, tenant) as session:
-        await session.add_graph(iri, triples(iri))
-    return iri
-
-
-async def pending(world: SimpleNamespace, tenant: str, application: bool = False) -> list[str]:
-    opened = (
-        world.tenancy.application_session(world.tenancy.toolkit)
-        if application
-        else world.tenancy.tenant_session(tenant, world.tenancy.toolkit)
-    )
-    async with opened as session:
-        return [iri for iri, _ in await session.pending_activities()]
-
-
-def sent(world: SimpleNamespace, tenant: str | None = None) -> list[tuple[str, str, str]]:
-    """(tenant, class IRI, activity id) of every message, in publication order."""
-    return [
-        (e.tenant, e.activity_class, json.loads(body)["id"])
-        for e, body in world.broker.messages
-        if tenant in (None, e.tenant)
-    ]
-
-
-def classes(world: SimpleNamespace, tenant: str) -> list[str]:
-    return [c for _, c, _ in sent(world, tenant)]
-
-
 async def pin_equal_marks(world: SimpleNamespace, tenant: str) -> None:
     graph = world.iris.provenance(tenant)
     await world.store.update(
@@ -146,13 +67,6 @@ async def pin_equal_marks(world: SimpleNamespace, tenant: str) -> None:
         f"DELETE {{ GRAPH <{graph}> {{ ?a <{v.PENDING_SINCE}> ?t }} }} "
         f"INSERT {{ GRAPH <{graph}> {{ ?a <{v.PENDING_SINCE}> {LONG_AGO} }} }} "
         f"WHERE {{ GRAPH <{graph}> {{ ?a <{v.PENDING_SINCE}> ?t }} }}",
-    )
-
-
-async def insert_in_provenance(world: SimpleNamespace, tenant: str, body: str) -> None:
-    graph = world.iris.provenance(tenant)
-    await world.store.update(
-        world.tenancy.database_of(tenant), f"INSERT DATA {{ GRAPH <{graph}> {{ {body} }} }}"
     )
 
 
@@ -301,6 +215,8 @@ class HangingBus(InMemoryEventBus):
     async def publish(self, envelope, body) -> None:
         if envelope.tenant == self._tenant:
             await asyncio.Event().wait()
+        # The other tenant must not suspend here: a wait would run into the short timeout below and
+        # time that tenant out too, so the test could no longer tell the hung tenant from the rest.
         await super().publish(envelope, body)
 
 
@@ -309,7 +225,7 @@ async def test_d18_a_publish_that_hangs_times_out_and_stops_that_database_only(w
     await add_one(world, world.second)
     relay = world.relay(
         HangingBus(world.broker, world.tenant),
-        events=EventSettings(publish_timeout_seconds=0.05),
+        events=EventSettings(publish_timeout_seconds=0.01),
     )
     with caplog.at_level(logging.WARNING, logger=LOGGER):
         await asyncio.wait_for(relay.run_once(), 5)
@@ -401,7 +317,7 @@ async def test_tc16_a_store_that_fails_for_one_tenant_does_not_stop_the_others(
             raise StoreUnavailable("the store fails for one tenant")
         return await real(dataset, sparql)
 
-    monkeypatch.setattr(world.store, "query", query)
+    monkeypatch.setattr(world.store, "query", query)  # X3
     with caplog.at_level(logging.DEBUG, logger=LOGGER):
         await world.relay().run_once()
     assert sent(world, world.tenant) == [], "the failing tenant gets nothing"
@@ -426,7 +342,7 @@ async def test_tc16_the_loop_survives_a_failed_round_and_publishes_after_a_wake(
             raise RuntimeError("a round fails as a whole")
         return await real()
 
-    monkeypatch.setattr(world.tenancy, "tenants", tenants)
+    monkeypatch.setattr(world.tenancy, "tenants", tenants)  # X3
     relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
     task = asyncio.create_task(relay.run())
     try:
@@ -520,7 +436,7 @@ async def test_tc18a_wakes_during_a_round_cause_exactly_one_more_round(world, mo
             await release.wait()
         return await real()
 
-    monkeypatch.setattr(world.tenancy, "tenants", tenants)
+    monkeypatch.setattr(world.tenancy, "tenants", tenants)  # X2
     relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
     task = asyncio.create_task(relay.run())
     try:
@@ -553,7 +469,7 @@ async def test_rounds_never_overlap(world, monkeypatch):
         finally:
             inside -= 1
 
-    monkeypatch.setattr(world.tenancy, "tenants", tenants)
+    monkeypatch.setattr(world.tenancy, "tenants", tenants)  # X2
     relay = world.relay()
     await asyncio.gather(relay.run_once(), relay.run_once(), relay.run_once())
     assert peak == 1, "two rounds never overlap"
@@ -598,7 +514,7 @@ async def test_tc35_a_failed_database_is_error_the_round_is_not_and_the_next_ten
             raise StoreUnavailable("the store fails for one tenant")
         return await real(dataset, sparql)
 
-    monkeypatch.setattr(world.store, "query", query)
+    monkeypatch.setattr(world.store, "query", query)  # X3
     await world.relay().run_once()
 
     finished = spans()
@@ -609,3 +525,74 @@ async def test_tc35_a_failed_database_is_error_the_round_is_not_and_the_next_ten
         ("rp.relay.database", world.tenant)
     ], "only the failed database's span is ERROR"
     assert classes(world, world.second) == [str(v.ADD)], "the next tenant is still relayed"
+
+
+# -- PD-2: the relay can be held still -----------------------------------------------------------
+
+
+async def _stop(task: "asyncio.Task[None]") -> None:
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+async def _yield_to_the_loop() -> None:
+    """Let every ready task run; the in-memory fakes never suspend, so a few yields settle a round."""
+    for _ in range(10):
+        await asyncio.sleep(0)
+
+
+async def test_a_round_started_without_pausing_finishes_within_the_yields(world):
+    """Control for the paused tests: the same yields, no ``paused()``, and the round is done."""
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
+    await add_one(world, world.tenant)
+    round_ = asyncio.create_task(relay.run_once())
+    await _yield_to_the_loop()
+    assert round_.done(), "without a pause the round completes within the yields"
+    await round_
+    assert len(sent(world, world.tenant)) == 1
+
+
+async def test_a_commit_made_while_the_relay_is_paused_stays_pending(world):
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
+    async with relay.paused():
+        await add_one(world, world.tenant)
+        round_ = asyncio.create_task(relay.run_once())
+        await _yield_to_the_loop()
+        assert not round_.done(), "the round waits for the pause to end"
+        assert len(await pending(world, world.tenant)) == 1, "the commit is still pending"
+        assert sent(world, world.tenant) == [], "nothing went out while the block was open"
+    await round_
+    assert len(sent(world, world.tenant)) == 1, "the held round publishes once released"
+
+
+async def test_the_relay_runs_the_round_that_fell_due_while_it_was_paused(world):
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
+    task = asyncio.create_task(relay.run())
+    try:
+        async with relay.paused():
+            await add_one(world, world.tenant)
+            due = await pending(world, world.tenant)
+            relay.wake()
+            await _yield_to_the_loop()
+            assert sent(world, world.tenant) == [], "the wake-up round waits for the pause to end"
+        await wait_until_async(
+            lambda: _truth(len(sent(world, world.tenant)) == 1),
+            "the publication",
+            poll_seconds=0.01,
+        )
+        assert [activity for _, _, activity in sent(world, world.tenant)] == due, "that commit"
+    finally:
+        await _stop(task)
+
+
+async def test_a_paused_block_that_raises_releases_the_relay(world):
+    relay = world.relay(events=EventSettings(relay_interval_seconds=3600))
+    with pytest.raises(RuntimeError, match="the block fails"):
+        async with relay.paused():
+            raise RuntimeError("the block fails")
+    await add_one(world, world.tenant)  # a book committed after the block
+    due = await pending(world, world.tenant)
+    # a lock the block kept would hold this round for good: the wait is bounded
+    await asyncio.wait_for(relay.run_once(), timeout=5)
+    assert [activity for _, _, activity in sent(world, world.tenant)] == due, "that commit"

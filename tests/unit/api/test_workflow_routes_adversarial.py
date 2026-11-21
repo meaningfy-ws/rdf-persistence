@@ -11,9 +11,9 @@ from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import assert_isomorphic
+from tests.scene import PROBLEMS, Scene, problem_of
 from tests.toy import caller
 from tests.toy_service import DUNE_BODY, ToyService, assert_problem, principal_of
-from tests.unit.api.scene import PROBLEMS, Scene, problem_of
 from tests.unit.collaboration.collaboration_data import ACCEPTED, DRAFT, IN_REVIEW
 
 

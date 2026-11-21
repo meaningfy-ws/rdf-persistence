@@ -1,4 +1,4 @@
-"""Task 2.2: the toolkit index the converter looks names, IRIs and slots up in (PD-17, PD-18, PD-20; F-1, F-3, F-11).
+"""The toolkit index the converter looks names, IRIs and slots up in (PD-17, PD-18, PD-20; F-1, F-3, F-11).
 
 The index is read from the toolkit's own metamodel, so each test names a fact of it that a hard-coded
 table would get wrong the day the metamodel changes.

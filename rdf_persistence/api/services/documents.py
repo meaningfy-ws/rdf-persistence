@@ -10,10 +10,11 @@ frame, Turtle by serialising it. The statements the session makes about a graph 
 tracking) are bookkeeping, not content, and are left out.
 """
 
+import hashlib
 import json
 import re
 from collections.abc import Iterable, Iterator
-from functools import cached_property
+from functools import cached_property, lru_cache
 from pathlib import Path
 from typing import Any, cast
 
@@ -25,10 +26,16 @@ from pyld import jsonld
 from rdflib import RDF, SH, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.term import Node
 
-from rdf_persistence.api.services.shacl import validate_warm, warm_up
+from rdf_persistence.api.services.shacl import validate_warm, warm_up_once
 from rdf_persistence.core.domain.exceptions import InvalidBody, NotAcceptable, PayloadTooLarge
 from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
-from rdf_persistence.core.domain.media import DATASET_REPRESENTATIONS, JSON, JSON_LD, RDF_XML
+from rdf_persistence.core.domain.media import (
+    DATASET_REPRESENTATIONS,
+    JSON,
+    JSON_LD,
+    RDF_XML,
+    TURTLE,
+)
 from rdf_persistence.core.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
 from rdf_persistence.core.services.artifacts import (
     CONTEXT_FILE,
@@ -80,6 +87,24 @@ LANGUAGE_KEY = "@language"
 XML_FORBIDDEN = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 
+@lru_cache(maxsize=8)
+def _shape_triples(digest: str, data: bytes) -> tuple[tuple[Node, Node, Node], ...]:
+    """The triples of the Turtle ``data``, parsed once per ``digest`` and ``data`` (the cache is keyed by both).
+
+    The digest is carried for ``warm_up_once``, which keys its process-wide warm-up by it.
+    """
+    return tuple(Graph().parse(data=data, format=TURTLE))
+
+
+def _read_shapes(path: Path) -> tuple[Graph, str]:
+    """A graph of its own holding the shapes in ``path``, and the digest of their bytes."""
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    graph = Graph()
+    graph.addN((s, p, o, graph) for s, p, o in _shape_triples(digest, data))
+    return graph, digest
+
+
 class Documents:
     """The schema's context, frames and shapes, and what turns a body into triples and triples into a body."""
 
@@ -103,10 +128,9 @@ class Documents:
         self.context: dict = json.loads((folder / CONTEXT_FILE).read_text(encoding="utf-8"))[
             CONTEXT_KEY
         ]
-        self.shapes = Graph().parse(folder / SHAPES_FILE)
-        warm_up(
-            self.shapes
-        )  # so that validation in worker threads needs no parser lock (services.shacl)
+        self.shapes, digest = _read_shapes(folder / SHAPES_FILE)
+        # so that validation in worker threads needs no parser lock
+        warm_up_once(self.shapes, digest)
         self._class_of = {self._iri_of(c): c for c in view.all_classes().values()}
         self._slots = {
             name: {json_name(slot): slot for slot in view.class_induced_slots(name)}

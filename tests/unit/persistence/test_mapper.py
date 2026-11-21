@@ -352,7 +352,7 @@ def test_a_book_under_a_workflow_keeps_its_state_as_an_adms_status_iri():
 
 
 def test_the_workflow_file_of_the_toy_validates_into_the_generated_model():
-    """PD-17: the file is the model's own shape; the loader itself is task 4.2."""
+    """PD-17: the file is the model's own shape; the loader is tested apart."""
     text = (TOY_SCHEMA.parent / "review.workflow.yaml").read_text(encoding="utf-8")
     workflow = Workflow.model_validate(yaml.safe_load(text))
     assert workflow.id == REVIEW, "the identifier"
@@ -524,7 +524,7 @@ def test_tc21_a_served_command_keeps_no_statement_of_a_slot_the_session_fills(sl
     assert list(served.triples) == [], f"{slot} is the session's to write"
 
 
-# equivalence classes: not a urn:uuid IRI (https and urn:isbn are the same), the bare prefix
+# Classes: not a urn:uuid IRI (https and urn:isbn are the same), the bare prefix
 @pytest.mark.parametrize("bad", ["https://example.org/x", "urn:uuid"])
 def test_tc21a_a_command_whose_id_is_not_a_uuid_urn_is_refused_naming_the_id(bad):
     with pytest.raises(ValueError, match=bad):

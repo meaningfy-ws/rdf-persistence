@@ -38,10 +38,10 @@ from rdf_persistence.provenance.domain.generated.rp_provenance import (
 from rdf_persistence.provenance.services.provenance import Served
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.logs import attributes
+from tests.tenancy_world import make_world
 from tests.toy import (
     ADA,
     BOB,
@@ -53,13 +53,13 @@ from tests.toy import (
     toy_mapper,
     toy_mapper_limited,
 )
-from tests.unit.persistence.test_session_unique_keys import ISBN
-from tests.unit.persistence.test_session_unique_keys import book as isbn_book
-from tests.unit.tenancy.test_session_activity import (
+from tests.unit.activity_helpers import (
     B1,
     B2,
     B3,
     BOOK_CLASS,
+    ISBN,
+    KEYS,
     PROVENANCE,
     SHELF_CLASS,
     Hook,
@@ -67,16 +67,16 @@ from tests.unit.tenancy.test_session_activity import (
     activities,
     book,
     events,
+    isbn_book,
     only_activity,
     opened,
+    overtaken_commit,
     stored_graph,
     ticking,
 )
-from tests.unit.tenancy.test_tenant_sweep import make_world
 
 Y = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c002"
 EVE = "https://example.org/people/eve"
-KEYS = aggregate_keys(load_schema(TOY_SCHEMA))
 ALL_QUADS = "SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } }"
 PROV = "http://www.w3.org/ns/prov#"
 
@@ -245,24 +245,6 @@ async def test_an_overwritten_commit_is_recorded_not_published_and_conflicts(sto
         replaces = [a for a in await activities(store) if type(a) is Replace]
         assert len(replaces) == 2, "the false conflict's replace and the other writer's"
         assert hook.calls == [], "nothing was published"
-
-
-async def overtaken_commit(store, **options):
-    """A commit of two replaces; another writer changes one of the two graphs before the ASK, so the
-    commit applied and the call returns (PD-4)."""
-    async with opened(store, **options) as session, opened(store) as other:
-        v1 = await session.add_graph(B1, book(B1))
-        v2 = await session.add_graph(B2, book(B2))
-
-        async def overtake() -> None:
-            store.after_update = None
-            _, _, current = await other.get_graph(B1)
-            await other.replace_graph(B1, book(B1), current)
-
-        store.after_update = overtake
-        async with session.transaction() as transaction:
-            await transaction.replace_graph(B1, book(B1), v1)
-            await transaction.replace_graph(B2, book(B2), v2)
 
 
 async def test_an_overtaken_commit_that_applied_is_published_with_the_activity_it_recorded(store):

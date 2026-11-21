@@ -1,4 +1,4 @@
-"""The session, the aggregates service and the tenancy under a flat IRI policy, attacked (iri-policy stage 1)."""
+"""The session, the aggregates service and the tenancy under a flat IRI policy, attacked (iri-policy)."""
 
 import json
 
@@ -18,7 +18,7 @@ from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import ROLES, direct
-from tests.unit.api.test_iri_policy_checks import (
+from tests.unit.api.iri_policy_helpers import (
     ADA,
     BASE,
     BOOK_CLASS,
@@ -61,7 +61,7 @@ async def nothing_reached(store: FakeStore) -> None:
 # -- IRIs with trailing characters ----------------------------------------------------------------
 
 
-# equivalence class: any tail after the aggregate IRI fails the one full match of its template
+# Class: any tail after the aggregate IRI fails the one full match of its template
 @pytest.mark.parametrize("suffix", ["/", "#frag"], ids=repr)
 @pytest.mark.parametrize("call", ["add_graph", "get_graph", "load_graph", "remove"])
 async def test_an_aggregate_iri_with_a_tail_is_refused_before_the_store(store, suffix, call):
@@ -94,7 +94,7 @@ async def test_the_tenants_bookkeeping_graphs_are_not_aggregates_a_caller_may_co
 # -- loaded graphs --------------------------------------------------------------------------------
 
 
-# equivalence class: no loaded-graph template matches (another tenant's id is its own branch, `_belongs`)
+# Class: no loaded-graph template matches (another tenant's id is its own branch, `_belongs`)
 @pytest.mark.parametrize(
     "graph",
     [

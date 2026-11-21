@@ -84,3 +84,28 @@ domain test kills. The `rp-messages` spec also contradicts the code on empty com
 - `rp-events` (modified, to confirm in the PLAN): a public `Relay.paused()` for tests that need
   commits to stay pending.
 - `rp-developer-checks` (modified): a change outside a theme selects `tests/unit/package/`.
+- `rp-iri-policy` (modified, added at the final review, D-7): a graph IRI is refused when it reads as
+  an aggregate or loaded graph of that tenant, as the code does.
+
+## Delivered (reconciled 2026-11-21, P-0004)
+
+One pull request, `change/test-debt-paydown-build` (DEC-2, PD-14), PR: see the merge record below.
+
+| Shape | Delivered | Differs, and why |
+|---|---|---|
+| Stage 1: root unit tests moved | `tests/unit/tooling/` (13), `tests/unit/package/` (17) | — |
+| Stage 1: cross-test imports moved and guarded | helper homes under `tests/` and the tiers; `tests/unit/tooling/test_no_cross_test_imports.py` | `scene.py` and `import_contracts.py` went to `tests/`, being shared by tiers (D-5 S6) |
+| Stage 1: toolkit monkeypatches replaced or classed | real seams per PD-1; X1-X5 in `testing.adoc` rule 3, every kept line tagged | two spies reclassed X2, one X5 (D-4) |
+| Stage 1: short waits, #215 S1-S3 | 0.01 s publish timeout, 0.001 s keep-alive; S1-S3 in the events tests | the keep-alive test's call phase stays ≈ 0.12 s (D-3) |
+| Stage 1: token and email cases trimmed (PD-9) | 19 token cases, 1 email case | 19, not 17: `no-exp` (D-2) and `exp-as-a-numeric-string` (D-7) each alone guard a check |
+| Stage 2: `Relay.paused()` | public, three tests and a control; TC-37a and TC-38 use it | — |
+| Stage 2: the `>= 500` branch | removed; outcomes unchanged | — |
+| Stage 2: `auth.py` checks kept, tests added | two tests | — |
+| Stage 2: `ToyService()` cost | shapes parsed once per content, warmed once per process: median 324 ms → 116 ms (−64 %) | `warm_up_once` lives in `shacl.py` (D-5 S4) |
+| Stage 2: `poll_seconds` | on `run_case`, documented in the user manual | — |
+| Stage 2: `rp-messages` (DEC-1) | spec corrected; code unchanged | — |
+| Stage 3: mutation | 1091 mutants; survivors 107 → 33, each in `tests/audit/equivalent-mutants.md` | `make mutation` did not start on `develop`; two harness fixes, selection unchanged (D-6) |
+
+Not delivered: nothing the shape promised. Found and left for their own issues (handover): the
+SPARQL literal escape of `'\x1f0000'`, the TC-36 race under load, and the review's deferred items
+(D-7).

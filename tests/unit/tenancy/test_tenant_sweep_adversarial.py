@@ -13,9 +13,7 @@ from rdflib import XSD, Graph, Literal, URIRef
 
 from rdf_persistence.core.domain.exceptions import DatabaseGone, StoreUnavailable
 from rdf_persistence.core.domain.sparql import term
-from tests.toy import library_slots
-from tests.unit.tenancy import test_tenant_sweep as worked
-from tests.unit.tenancy.test_tenant_sweep import (
+from tests.tenancy_world import (
     ALL_QUADS,
     CREATOR,
     FILE_KEY,
@@ -25,8 +23,8 @@ from tests.unit.tenancy.test_tenant_sweep import (
     OWNED_BY,
     book,
 )
+from tests.toy import library_slots
 
-world = worked.world  # the worked-example fixture
 SUBJECT, PREDICATE = URIRef("https://example.org/s"), URIRef("https://example.org/p")
 
 
@@ -120,7 +118,7 @@ UNREADABLE = {
 }
 
 
-# design RF-1: such a marker counts as none. Equivalence classes: a datetime with no zone (naive), a value
+# design RF-1: such a marker counts as none. Classes: a datetime with no zone (naive), a value
 # that is no datetime (ill-typed; a date-only, a plain and a number literal are the same)
 @pytest.mark.parametrize("kind", UNREADABLE)
 @pytest.mark.parametrize("remove", [False, True])

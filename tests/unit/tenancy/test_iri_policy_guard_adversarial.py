@@ -68,7 +68,7 @@ async def plant(store: FakeStore, *texts: str, subject: URIRef = RECORD_GRAPH) -
 # --- (1) the guard: what is stored is not what the guard wrote ------------------------------------
 
 
-# equivalence classes: text that is no JSON ("not json"; the empty text is the same), JSON that is no policy
+# Classes: text that is no JSON ("not json"; the empty text is the same), JSON that is no policy
 @pytest.mark.parametrize("text", ["not json", '{"bogus": 1}', "[]"])
 async def test_a_corrupt_or_foreign_record_is_refused_with_a_toolkit_error(store, tenancy, text):
     await plant(store, text)
@@ -186,7 +186,7 @@ def iris_of(**templates) -> Iris:
     return Iris(settings_of(IriPolicy(**templates), deployment="dep1"))
 
 
-# equivalence classes: a template built on {base}, one built on {tenant}
+# Classes: a template built on {base}, one built on {tenant}
 @pytest.mark.parametrize(
     "access", ["{base}{deployment}/access/{tenant_id}", "{tenant}/{deployment}/access"]
 )
@@ -198,7 +198,7 @@ def test_a_custom_access_record_round_trips_to_its_tenant(access):
     )
 
 
-# equivalence classes: a sibling graph of the tenant (meta; registry, "" and x are the same), one nested under access
+# Classes: a sibling graph of the tenant (meta; registry, "" and x are the same), one nested under access
 @pytest.mark.parametrize("other", ["meta", "access/access"])
 def test_the_default_access_template_does_not_read_a_sibling_graph_as_a_record(other):
     iris = iris_of()
@@ -269,7 +269,7 @@ def test_a_meta_graph_is_not_an_aggregate_under_default_templates():
 ISSUER = "https://issuer.example"
 
 
-# equivalence class: every character `quote(sub, safe="")` encodes; one per delimiter the asserts watch, and a double encoding
+# Class: every character `quote(sub, safe="")` encodes; one per delimiter the asserts watch, and a double encoding
 @pytest.mark.parametrize("sub", ["a/b", "a?b#c", "%2F"])
 def test_an_odd_subject_stays_in_one_segment_and_decodes_back(sub):
     iri = str(Iris(SETTINGS).principal(ISSUER, sub))
@@ -280,7 +280,7 @@ def test_an_odd_subject_stays_in_one_segment_and_decodes_back(sub):
     assert unquote(tail) == sub, "the subject tail decodes back to the subject"
 
 
-# equivalence classes: an issuer with and without a trailing slash
+# Classes: an issuer with and without a trailing slash
 @pytest.mark.parametrize("issuer", [ISSUER, ISSUER + "/"])
 def test_a_trailing_slash_on_the_issuer_never_doubles_the_separator(issuer):
     iri = str(Iris(SETTINGS).principal(issuer, "u1"))

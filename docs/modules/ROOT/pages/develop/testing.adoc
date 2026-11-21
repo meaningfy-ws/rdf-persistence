@@ -24,7 +24,7 @@ _What makes a test acceptable here?_
 Place a test by the module it tests, not by where it used to sit: a test of the library stays in
 the library's pyramid, even if it uses the generator as a tool. A library test imports
 `rdf_persistence_generation` only if it is listed in `TOOL_USERS` in
-`tests/unit/test_library_tests_stay_apart.py`; that test fails on any other file, and on a stale
+`tests/unit/tooling/test_library_tests_stay_apart.py`; that test fails on any other file, and on a stale
 entry.
 
 `make test-unit` and `make test-feature` leave out `tests/generator/` and measure the coverage of
@@ -42,7 +42,16 @@ runs the generator's integration tests, never in CI.
 
 [start=3]
 . Prefer one fake that implements the real port, with a small API (`add`, `on(name, outcome,
-  times)`, `sent`), over `MagicMock`.
+  times)`, `sent`), over `MagicMock`. A test does not `monkeypatch.setattr` or `delattr` toolkit
+  code (`rdf_persistence*`); it uses a real seam: a setting, a constructor argument, a subclass of a
+  third-party class, or data. Five kinds of patch stay, each marked with a trailing `# X1` to `# X5`
+  comment:
+  `X1`, a configuration constant of the generator or the kit pointed at a copy;
+  `X2`, an order or a hand-off no public result shows, observed by a pass-through spy or an
+  instrumented lock;
+  `X3`, a fault or defect no port can produce, injected to prove a guard catches it;
+  `X4`, a random draw pinned;
+  `X5`, an absent optional dependency.
 . Build model objects with small builder functions, through the generated models, never bare
   dicts. Shared read-only data is session-scoped; mutable state is function-scoped (`tmp_path`).
   Deviation from the checklist's rule 6 (a factory library): model objects come from the named
@@ -54,7 +63,9 @@ runs the generator's integration tests, never in CI.
 . Assert on RDF by parsing it into a graph and comparing with `rdflib.compare.isomorphic`; on
   failure, print the graph diff. Never compare Turtle as strings.
 . Every query, guard, check or policy rule gets a positive and a negative case in a parametrized
-  table, plus a test that every rule in the catalogue has a row.
+  table, plus a test that every rule in the catalogue has a row. Where one case stands for a
+  class of inputs, a comment on that case says so in one form: `# Class: <what the class is>` for
+  one class, `# Classes: <the classes>` for several, naming the case that stands for the others.
 . Goldens are regenerated only by a make target. Turtle is compared by meaning, other formats by
   exact text, and the file set must match exactly.
 . Hypothesis tests cover invariants (round-trip, order independence, bounds); CI runs them

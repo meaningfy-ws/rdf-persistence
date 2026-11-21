@@ -11,7 +11,6 @@ a reader. "Another writer" is a second session on the same fake store, made to a
 
 import contextlib
 import inspect
-import shutil
 from datetime import timedelta
 from pathlib import Path
 
@@ -62,7 +61,6 @@ from tests.toy import (
     REVIEW_WORKFLOW,
     ROLES,
     TENANT,
-    TOY_SCHEMA,
     ban,
     book_iri,
     caller,
@@ -75,13 +73,7 @@ from tests.toy import (
     toy_mapper,
 )
 from tests.toy_service import ToyService
-from tests.unit.collaboration import test_collaboration_workflow as built
-from tests.unit.collaboration.test_collaboration_cascade import before
-from tests.unit.collaboration.test_collaboration_collections_adversarial import (
-    everything_said,
-    marker_left,
-)
-from tests.unit.collaboration.test_collaboration_workflow import (
+from tests.unit.collaboration.collaboration_data import (
     ACCEPTED,
     B1,
     B2,
@@ -93,24 +85,20 @@ from tests.unit.collaboration.test_collaboration_workflow import (
     S1,
     T0,
     VIEW,
+    before,
+    collab,
+    combined,
     comments_on,
+    copy_schema,
+    edit,
+    everything_said,
     go,
+    marker_left,
     opened,
     put,
     records_of,
     status_of,
     version,
-)
-
-# the fixtures of the builder's tests, shared: pytest finds a fixture by the name it is bound to here
-ada, bob, books, now, plain, session, store = (
-    built.ada,
-    built.bob,
-    built.books,
-    built.now,
-    built.plain,
-    built.session,
-    built.store,
 )
 
 LIB = "https://example.org/ns/library#"
@@ -897,7 +885,7 @@ async def test_a_subclass_inherits_the_workflow_through_a_guarded_session_and_a_
         principal=Principal(id=ADA),
         clock=lambda: now["t"],
         guards=guards,
-        dependents=built.combined(view),
+        dependents=combined(view),
     ) as session:
         await session.add_graph(novel, own)
         assert await status_of(session, novel) == [DRAFT], "the novel starts in the initial state"
@@ -907,7 +895,7 @@ async def test_a_subclass_inherits_the_workflow_through_a_guarded_session_and_a_
                 [*own, (URIRef(novel), v.WORKFLOW_STATUS, URIRef(ACCEPTED))],
                 await version(session, novel),
             )
-        who = built.collab(rules, session, ADA, role("librarian"), view=view)
+        who = collab(rules, session, ADA, role("librarian"), view=view)
         await who.transition(novel, "in_review", if_version=await version(session, novel))
         assert await status_of(session, novel) == [IN_REVIEW], "the transition found the workflow"
         [record] = await who.transitions(novel)
@@ -1522,20 +1510,6 @@ ABSTRACT_ROOT = """  Item:
   Shelf:
 """
 OVERRIDE = "      workflow: other\n"
-
-
-def copy_schema(tmp_path: Path) -> Path:
-    folder = tmp_path / "library"
-    shutil.copytree(
-        TOY_SCHEMA.parent, folder, ignore=shutil.ignore_patterns("__pycache__", "generated")
-    )
-    return folder
-
-
-def edit(folder: Path, module: str, old: str, new: str) -> None:
-    text = (folder / module).read_text(encoding="utf-8")
-    assert old in text, f"{old!r} is not in {module}"
-    (folder / module).write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
 def workflow_problems(folder: Path) -> list[str]:
