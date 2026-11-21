@@ -18,6 +18,7 @@ from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence import GrantSet, Problem, bootstrap
 from rdf_persistence.access.domain.generated.rp_access import Action, Grant
+from rdf_persistence.access.services.generated.rp_access_services import VerifiedCaller
 from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import (
     SseSettings,
     ToolkitSettings,
@@ -105,6 +106,32 @@ async def test_a_request_without_a_valid_bearer_token_is_a_401(
     response = await client.get(f"/libraries/{A_UUID}", headers=headers)
     assert response.status_code == 401, f"Authorization: {authorization!r}"
     assert response.headers["content-type"] == PROBLEM_JSON, "problem media type"
+
+
+async def test_a_valid_token_under_another_scheme_is_a_401(service, client) -> None:
+    token = service.signer.issue(sub="ada")
+    response = await client.get(f"/libraries/{A_UUID}", headers={"Authorization": f"Basic {token}"})
+    assert response.status_code == 401, "the scheme, not the token, is what is refused"
+
+
+class AcceptsAnyToken:
+    """A verifier that takes every string for a valid token, so only the gate can refuse one."""
+
+    iris = DEFAULT_IRIS
+
+    async def verify(self, token: str) -> VerifiedCaller:
+        return VerifiedCaller(principal="ada")
+
+
+async def test_an_empty_bearer_token_is_a_401_even_when_the_verifier_takes_any_string() -> None:
+    toy = ToyService()
+    app = installed(FastAPI(), toy, verifier=AcceptsAnyToken())
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+        empty = await http.get(f"/libraries/{A_UUID}", headers={"Authorization": "Bearer "})
+        control = await http.get(f"/libraries/{A_UUID}", headers={"Authorization": "Bearer x"})
+    assert empty.status_code == 401, "the gate refuses an empty token before the verifier"
+    assert control.status_code != 401, "the stub does accept a token, so the 401 is the gate's"
 
 
 async def test_a_token_for_another_audience_is_a_401(service, client) -> None:
