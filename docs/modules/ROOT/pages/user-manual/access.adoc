@@ -131,3 +131,138 @@ objects, so changing an argument has no effect on what is written. It returns no
 value is a bug. Any exception other than `InvalidBody` or pydantic's `ValidationError` (also 422)
 is a bug in the validator and answers 500, even another error of the toolkit such as `Forbidden`
 or an `HTTPException`.
+
+[#aggregate-validators]
+== Enforce your own rules on aggregate writes
+
+_How do I refuse a write to an aggregate that breaks a rule of my application, such as two members of one kind?_
+
+Give `install_service` `aggregate_validators`: a mapping from a schema class name to a list of
+rules. `ServiceKit` takes the same argument. A rule runs on every write of a root of that class, or of a
+class derived from it. It receives the old root (`None` on create), the new root, the caller and a
+*reader*. To refuse, raise `InvalidBody`: the answer is 422 `invalid-body` with your message as its
+`detail`, and nothing is written.
+
+[source,python]
+----
+from rdf_persistence import InvalidBody, install_service
+
+
+def one_of_each_kind(old, new, who, reader):  # plain: ignores the reader
+    kinds = [kind_of(i) for i in new.has_part or []]
+    if len(kinds) != len(set(kinds)):
+        raise InvalidBody("A shelf holds at most one collection of each kind.")
+
+
+async def members_differ_in_class(old, new, who, reader):  # async: reads classes
+    seen = [await reader.classes_of(i) for i in new.has_part or []]
+    known = [c for c in seen if c]
+    if len(set(known)) < len(known):
+        raise InvalidBody("two members of one class")
+
+
+install_service(
+    app,
+    aggregate_validators={"Shelf": [one_of_each_kind, members_differ_in_class]},
+    # ... and the other keyword arguments of the composition root
+)
+----
+
+`aggregate_validators` is a `Mapping[str, Sequence[AggregateValidator]]`, empty by default.
+A rule is a function or a coroutine function; both take `(old, new, principal, reader)` and return
+nothing. `old` and `new` are copies of the generated model, so changing them has no effect on what
+is written. `new` is what is about to be written: for a class under a workflow, it carries the
+state the toolkit kept.
+
+Rules run in a fixed order: those of the most general class first, then those of the more specific
+ones, and each list in the order given. The first refusal stops the write. If a root has two
+types that are not on one line of descent (a `Shelf` that is also a `Book`) and a rule applies to
+either, the write is refused with 422 naming both types, so a client cannot pick a type that
+escapes a rule.
+
+=== Ask the reader about other aggregates
+
+`reader.classes_of(iri)` answers with the set of class names of the aggregate at `iri`: its own
+types, not their ancestors. It answers an empty set when there is no such aggregate, when the
+value is not an aggregate IRI (a literal, a foreign or a malformed IRI) and when the caller may not
+read it. A hidden aggregate and an absent one look the same, so a rule cannot be used to find out
+whether a hidden aggregate exists.
+
+The reader answers for the caller of these writes: an HTTP create or replace (the tenant root's
+PUT included), a rename, a workflow transition, a collection edit and a comment. A write with no
+caller behind it reads every class: a message-bus handler, an `on_commit` handler or your own unit
+of work. Then a message of a rule may name a class that the person behind the message cannot
+read. For a comment, the reader judges the comment as any aggregate, not by its thread, so a rule
+may see as unknown a comment that the thread would show.
+
+Inside one unit of work, the reader sees the changes collected before the one being checked, and
+not those collected after it. A member added earlier is seen with its types; one added later is
+unknown. A member removed earlier still shows the types it has in the store, because nothing is
+written before the commit. Put the rule's dependencies in the order they should be seen.
+
+=== Which writes run the rules
+
+[cols="1,1",options="header"]
+|===
+|Run the rules |Do not run them
+
+|The generic API's create and replace, the tenant root's PUT included
+|Delete
+
+|A unit of work's commit
+|Restore (`import_quads`)
+
+|A message-bus handler
+|Migrations
+
+|A workflow transition
+|The start-up sweep
+|===
+
+System and application sessions share the guard, so a rule on an application-level root runs
+there too.
+
+=== What start-up checks
+
+The keys are checked when the service is built, so a mistake stops the start. A key must be a
+class of the schema that is not a mixin and not one of the toolkit's own classes (such as
+`TenantAccess`), and it, or a class derived from it, must be an aggregate root of your schema; the
+tenant root counts. Otherwise start-up raises `ValueError` naming the key and the reason. A rule
+that is not callable raises `TypeError`.
+
+=== Errors
+
+[cols="2,2",options="header"]
+|===
+|The rule |The answer
+
+|Raises `InvalidBody` or pydantic's `ValidationError`
+|422, with its message
+
+|Raises any other exception (a bug)
+|500: a `RuntimeError` that names the rule and the exception
+
+|Returns a value (even from a coroutine)
+|`TypeError`, 500
+
+|The reader meets a store outage
+|Passes as it is: 503, as for any write
+|===
+
+Outside HTTP, `InvalidBody` comes out of `commit` or the transition. A rule that is a
+`functools.partial` is named by its representation.
+
+=== Limits to know
+
+* *A broken rule blocks every write of its class.* A rule that always raises a bug also blocks
+transitions and bus handlers. The 500 names the rule; test your rules.
+* *A refusal of the tenant root on create leaves the database and the bucket.* They exist before
+the root is written. The start-up sweep removes them. A rule that must leave nothing behind
+belongs in `root_validators`, which runs before.
+* *A stale PUT.* If a rule refuses the body, the answer is 422, whatever the version. If the
+rules accept it, the version check at commit answers 409, as without rules.
+* *Cost.* Without `aggregate_validators`, nothing is decoded or read. With them, a replace reads
+the stored root once, and each `classes_of` call is one query.
+
+Tenant roots can have both kinds: `root_validators` run first, then the aggregate validators of
+the root's class. A refusal by either is a 422.

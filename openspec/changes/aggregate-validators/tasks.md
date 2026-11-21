@@ -25,14 +25,14 @@ Every task: the failing test first, in the tier named; task gate `make test-chan
   unit-of-work commit raises `InvalidBody`. Then `WriteGuards(..., validators=)` (keyword with an
   empty default, so existing constructions in tests keep working) and the call at the end of
   `prepare`, with the decoding of `new` and `old`.
-- [ ] 1.6 Wiring (PD-2, PD-4), after 1.5. API tests, first, in
+- [x] 1.6 Wiring (PD-2, PD-4), after 1.5. API tests, first, in
   `tests/unit/api/test_aggregate_validators_api.py`: A-1 to A-7 (every scenario of
   `specs/rp-service-api/spec.md`). Then the keyword on `install_service` and `ServiceKit`
   (`tests/toy_service.py` too); `DocumentApi.create` / `replace` take the `CallerAccess` (the
   routes at `router.py:409-427` and the tenant-root PUT at :267 pass it); `Aggregates.create` /
   `replace`, `kit.collaboration` and `Tenancy.rename` take and pass `may_read` (`DocumentApi.set_label` passes it). Accept: all pass;
   `tests/fixtures/public-surface.json` and `tests/unit/test_public_api.py` list the two new exports.
-- [ ] 1.7 Docs, after 1.6. `docs/modules/ROOT/pages/user-manual/access.adoc` (beside
+- [x] 1.7 Docs, after 1.6. `docs/modules/ROOT/pages/user-manual/access.adoc` (beside
   `root_validators`): the signature, the reader and who it answers for, which writes run rules and
   which do not, the order limit inside a unit of work, RISK-2, RISK-4, RISK-5;
   `architecture/data-flows.adoc` (the guard's last step); `partials/reference/public-api.adoc`.
