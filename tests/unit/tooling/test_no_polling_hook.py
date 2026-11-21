@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 HOOK = REPO_ROOT / ".claude" / "hooks" / "no_polling.py"
 
 _spec = importlib.util.spec_from_file_location("no_polling", HOOK)

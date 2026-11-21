@@ -13,7 +13,7 @@ import pytest
 from rdf_persistence import Grant, GrantSet, InvalidBody, Principal
 
 GUIDE = (
-    Path(__file__).parents[2]
+    Path(__file__).parents[3]
     / "docs"
     / "modules"
     / "ROOT"

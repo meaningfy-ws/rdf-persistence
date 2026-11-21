@@ -24,7 +24,7 @@ _What makes a test acceptable here?_
 Place a test by the module it tests, not by where it used to sit: a test of the library stays in
 the library's pyramid, even if it uses the generator as a tool. A library test imports
 `rdf_persistence_generation` only if it is listed in `TOOL_USERS` in
-`tests/unit/test_library_tests_stay_apart.py`; that test fails on any other file, and on a stale
+`tests/unit/tooling/test_library_tests_stay_apart.py`; that test fails on any other file, and on a stale
 entry.
 
 `make test-unit` and `make test-feature` leave out `tests/generator/` and measure the coverage of

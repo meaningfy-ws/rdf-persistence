@@ -9,7 +9,7 @@ from pathlib import Path
 
 from tests.changed import THEMES
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = ROOT / "rdf_persistence"
 
 

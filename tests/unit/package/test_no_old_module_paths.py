@@ -14,10 +14,10 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit import test_theme_layout
-from tests.unit.test_theme_layout import MOVED_MODULES, PLACED, Placed, turned_on_pairs
+from tests.unit.package import test_theme_layout
+from tests.unit.package.test_theme_layout import MOVED_MODULES, PLACED, Placed, turned_on_pairs
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SCANNED = ("rdf_persistence", "rdf_persistence_generation", "tests", "docs", ".github")
 SCANNED_FILES = (
     "Makefile",
@@ -33,7 +33,7 @@ SCANNED_FILES = (
 )
 SKIPPED_SUFFIXES = frozenset({".pyc", ".png", ".svg", ".whl", ".json", ".csv", ".ico", ".lock"})
 SKIPPED_PARTS = frozenset({"__pycache__", "node_modules", ".venv", "golden", "generated"})
-THIS_FILE = "tests/unit/test_no_old_module_paths.py"
+THIS_FILE = "tests/unit/package/test_no_old_module_paths.py"
 # Files that may name an old path: each stage that adds a shim lists the shim's test here, with the why.
 EXEMPT: frozenset[str] = frozenset(
     {
@@ -44,13 +44,13 @@ EXEMPT: frozenset[str] = frozenset(
         # test, which plants old paths in synthetic trees.
         "rdf_persistence/testkit/guards.py",
         "tests/unit/testkit/test_guards.py",
-        "tests/unit/test_theme_layout.py",
+        "tests/unit/package/test_theme_layout.py",
         # stage 2 (D-13 S2): the probe that an old import path is a ModuleNotFoundError names the paths
         # that never existed or are gone, which is the point of the probe; it still names
         # `rdf_persistence.domain.generated` (two lines), so it stays.
-        "tests/unit/test_technical_split.py",
+        "tests/unit/package/test_technical_split.py",
         # stage 8: the probe that the two removed shim paths cannot be imported names them.
-        "tests/unit/test_deprecated_paths_removed.py",
+        "tests/unit/package/test_deprecated_paths_removed.py",
     }
 )
 
@@ -221,7 +221,7 @@ def test_a_python_file_that_does_not_parse_is_reported_and_still_text_scanned(tm
         ("rdf_persistence/api/d.py", "from rdf_persistence.persistence.services import session\n"),
         ("openspec/changes/x/design.md", f"{OLD}\n"),
         ("CHANGELOG.md", f"{OLD}\n"),
-        ("tests/unit/test_no_old_module_paths.py", f"{OLD}\n"),
+        ("tests/unit/package/test_no_old_module_paths.py", f"{OLD}\n"),
     ],
 )
 def test_the_new_path_a_lookalike_and_the_exempt_files_are_not_hits(tmp_path, name, text):

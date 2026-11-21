@@ -59,7 +59,7 @@ def test_the_hook_fires_on_generated_output_on_purpose(path: str) -> None:
         "rdf_persistence_generation/testkit/freshness.py",
         "rdf_persistence_generation/testkit/strategies.py",
         "rdf_persistence/persistence/services/mapper.py",
-        "tests/unit/test_lanes.py",
+        "tests/unit/tooling/test_lanes.py",
     ],
 )
 def test_the_hook_stays_quiet_on_what_is_no_manifest_input(path: str) -> None:

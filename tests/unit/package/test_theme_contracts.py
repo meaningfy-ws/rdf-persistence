@@ -17,9 +17,9 @@ from pathlib import Path
 import pytest
 
 from tests.unit.import_contracts import lint_contracts, run_contracts
-from tests.unit.test_theme_layout import TURNED_ON
+from tests.unit.package.test_theme_layout import TURNED_ON
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 THEMES = tuple(sorted(TURNED_ON))
 THEME_LAYERS = ("domain", "services", "adapters", "entrypoints")
 DOMAIN_CONTRACT = "domain-of-a-theme-imports-no-upper-layer"

@@ -19,7 +19,7 @@ import yaml
 
 from tests.unit.import_contracts import Linted, lint_contracts
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 PACKAGE = ROOT / "rdf_persistence"
 MODEL = PACKAGE / "model"
 TECHNICAL = MODEL / "technical"

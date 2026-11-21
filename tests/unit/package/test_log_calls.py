@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2] / "rdf_persistence"
+ROOT = Path(__file__).resolve().parents[3] / "rdf_persistence"
 LEVELS = frozenset({"debug", "info", "warning", "error", "exception", "critical"})
 LOGGER_NAME = "log"
 LOGGER_FACTORY = ast.dump(ast.parse("logging.getLogger(__name__)", mode="eval").body)

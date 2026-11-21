@@ -13,7 +13,7 @@ from pathlib import Path
 
 def test_version_matches_pyproject() -> None:
     """``__version__`` is the ``pyproject.toml`` version, the one file release-please bumps (TC-01)."""
-    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    pyproject = Path(__file__).resolve().parents[3] / "pyproject.toml"
     declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
     module = importlib.import_module("rdf_persistence")
     assert module.__version__ == declared, "the package version is the declared one"

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 _SPEC = importlib.util.spec_from_file_location(
-    "check_docs", Path(__file__).resolve().parents[2] / "docs/tools/check_docs.py"
+    "check_docs", Path(__file__).resolve().parents[3] / "docs/tools/check_docs.py"
 )
 assert _SPEC, "the check script was found"
 assert _SPEC.loader, "the check script has a loader"

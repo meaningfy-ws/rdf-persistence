@@ -6,7 +6,7 @@ Feature: What the toolkit does can be followed in traces and logs, without a ten
   # Not projected here, each is a unit test named by its test case in the spec's tables:
   #   "no provider installed" (TC-14, tests/unit/core/test_telemetry.py): it needs an interpreter
   #     in which no provider was ever installed, and this lane's conftest installs one;
-  #   "the package loads no SDK" (TC-17, tests/unit/test_packaging.py): a fresh interpreter;
+  #   "the package loads no SDK" (TC-17, tests/unit/package/test_packaging.py): a fresh interpreter;
   #   "a traced event" (TC-28, tests/integration/adapters/test_redis_events.py): it needs a Redis
   #     broker, so it runs in the container lane.
 

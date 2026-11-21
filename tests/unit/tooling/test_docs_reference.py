@@ -6,7 +6,7 @@ import types
 from pathlib import Path
 
 _SPEC = importlib.util.spec_from_file_location(
-    "reference", Path(__file__).resolve().parents[2] / "docs/tools/reference.py"
+    "reference", Path(__file__).resolve().parents[3] / "docs/tools/reference.py"
 )
 assert _SPEC, "the reference script was found"
 assert _SPEC.loader, "the reference script has a loader"

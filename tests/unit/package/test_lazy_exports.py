@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 HEAVY = (
     "httpx",
     "anyio",

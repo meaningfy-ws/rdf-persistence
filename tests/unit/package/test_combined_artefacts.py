@@ -10,7 +10,7 @@ model changed on purpose (collection-has-part, PD-10). The content is proved by 
 
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "tests" / "fixtures" / "v0_6_0"
 GENERATED = ROOT / "rdf_persistence" / "core" / "domain" / "generated"
 LOCK = ROOT / "rdf_persistence" / "model" / "migrations" / "schema.lock.json"

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 MODEL = ROOT / "rdf_persistence" / "model"
 CORE = "rdf_persistence.core.domain.generated"
 

@@ -3,7 +3,7 @@
 import ast
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2] / "rdf_persistence"
+ROOT = Path(__file__).resolve().parents[3] / "rdf_persistence"
 LAYERS = ("domain", "services")
 SCHEMA_KEYED = {
     "persistence/services/mapper.py"

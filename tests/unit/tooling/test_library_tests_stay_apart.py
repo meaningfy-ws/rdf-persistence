@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 GENERATOR = "rdf_persistence_generation"
 GENERATOR_TESTS = "tests/generator/"
 PLUGINS_NAME = "pytest_plugins"

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = "rdf_persistence"
 LAYERS = ("domain", "services", "adapters", "entrypoints")
 # A stage adds its themes here (PD-1: the stage turns its rows on, and TC-01 then holds them).

@@ -19,9 +19,9 @@ from types import ModuleType
 import pytest
 
 import rdf_persistence
-from tests.unit.test_theme_layout import MOVED_MODULES, turned_on_classes, turned_on_pairs
+from tests.unit.package.test_theme_layout import MOVED_MODULES, turned_on_classes, turned_on_pairs
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SNAPSHOT = ROOT / "tests" / "fixtures" / "public-surface.json"
 REFRESH = "RP_REFRESH_SNAPSHOT"
 NAMES = 151

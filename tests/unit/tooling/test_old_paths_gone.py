@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 OLD_FOLDER = "rdf_persistence/generation"
 OLD_MODULE = "rdf_persistence.generation"
 # the files where a path list, a coverage source, a lane or a CI step could still name the old folder

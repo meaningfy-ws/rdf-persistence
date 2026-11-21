@@ -32,7 +32,7 @@ from rdf_persistence.testkit.tokens import ISSUER
 from rdf_persistence_generation.cli import main as generate
 from tests.toy_service import ToyService
 from tests.unit.import_contracts import Linted
-from tests.unit.test_technical_split import lint_scratch
+from tests.unit.package.test_technical_split import lint_scratch
 
 scenarios("technical_models.feature")
 

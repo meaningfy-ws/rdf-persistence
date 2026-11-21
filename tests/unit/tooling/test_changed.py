@@ -15,13 +15,14 @@ from tests.changed import (
     Selection,
     changed_files,
     pytest_arguments,
-    root_unit_tests,
     select,
 )
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 CONTAINER_TEST = "tests/integration/api/test_routes.py"
-ROOT_TESTS = ("tests/unit/test_a.py", "tests/unit/test_b.py")
+PACKAGE_TESTS = ("tests/unit/package/",)
+ROOT_FILE = "tests/unit/test_root_level.py"  # none is left in tests/unit/; a future one
+OTHER_ROOT_FILE = "tests/unit/test_other_root_level.py"
 LOADGROUP = ("--dist", "loadgroup")
 
 SELECTS = [
@@ -29,8 +30,10 @@ SELECTS = [
     (1, ".claude/settings.json", ()),
     (1, "temp/notes.txt", ()),
     (1, "README.md", ()),
-    (2, "docs/modules/ROOT/pages/index.adoc", ("tests/unit/test_check_docs.py",)),
-    (7, "tests/unit/test_public_api.py", ("tests/unit/test_public_api.py",)),
+    (2, "docs/modules/ROOT/pages/index.adoc", ("tests/unit/tooling/test_check_docs.py",)),
+    (7, ROOT_FILE, (ROOT_FILE,)),
+    (8, "tests/unit/tooling/test_markers.py", ("tests/unit/tooling/",)),
+    (8, "tests/unit/package/test_public_api.py", ("tests/unit/package/",)),
     (8, "tests/unit/core/test_exceptions.py", ("tests/unit/core/",)),
     (8, "tests/unit/api/helpers.py", ("tests/unit/api/",)),
     (8, "tests/unit/api/test_router.py", ("tests/unit/api/",)),
@@ -38,7 +41,7 @@ SELECTS = [
     (10, "rdf_persistence/api/services/example.py", ("tests/unit/api/",)),
     (10, "rdf_persistence/iris/domain/layout.py", ("tests/unit/iris/",)),
     (10, "rdf_persistence/testkit/containers/fuseki.py", ("tests/unit/testkit/",)),
-    (11, "rdf_persistence/__init__.py", ROOT_TESTS),
+    (11, "rdf_persistence/__init__.py", PACKAGE_TESTS),
 ]
 FALLS_BACK = [
     (3, "pytest.ini"),
@@ -68,7 +71,7 @@ NAMED_NOT_RUN = [
 
 
 def _select(paths: list[str], existing: Callable[[str], bool] = lambda _: True) -> Selection:
-    return select(paths, existing, ROOT_TESTS)
+    return select(paths, existing)
 
 
 def test_the_rows_cover_the_twelve_mapping_rules():
@@ -142,9 +145,7 @@ def test_a_changed_theme_file_selects_the_tests_of_its_theme(changed, expected):
 
 def test_a_changed_theme_file_whose_test_folder_does_not_exist_falls_back_with_a_reason():
     """A theme folder that is gone or never made must not leave an empty selection that exits 0."""
-    selection = select(
-        ["rdf_persistence/tenancy/services/sweep.py"], lambda path: False, ROOT_TESTS
-    )
+    selection = select(["rdf_persistence/tenancy/services/sweep.py"], lambda path: False)
 
     assert selection.paths == (), "nothing to run by path"
     assert "rdf_persistence/tenancy/services/sweep.py" in selection.fallback_reasons[0]
@@ -203,12 +204,39 @@ def test_the_theme_rule_and_the_generator_rule_are_kept():
         "rdf_persistence/__init__.py",
     ],
 )
-def test_a_change_outside_a_theme_and_the_testkit_selects_the_root_tests_only(changed):
-    """8.1: the two shims are gone, so a folder that is no theme has no tests of its own."""
+def test_a_change_outside_a_theme_and_the_testkit_selects_the_package_tests_only(changed):
+    """8.1: the two shims are gone, so a folder that is no theme has no tests of its own (PD-11)."""
     selection = _select([changed])
 
-    assert selection.paths == ROOT_TESTS, changed
+    assert selection.paths == PACKAGE_TESTS, changed
+    assert pytest_arguments(selection.paths, None) == [
+        *PACKAGE_TESTS,
+        "-n",
+        "auto",
+        *LOADGROUP,
+    ], "a folder runs in parallel"
     assert not selection.fallback_reasons, f"{changed} must not fall back"
+
+
+def test_a_changed_tooling_test_file_selects_the_tooling_folder_in_parallel():
+    selection = _select(["tests/unit/tooling/test_markers.py"])
+
+    assert selection.paths == ("tests/unit/tooling/",), "the folder, not the file"
+    assert pytest_arguments(selection.paths, None) == [
+        "tests/unit/tooling/",
+        "-n",
+        "auto",
+        *LOADGROUP,
+    ], "a folder runs in parallel"
+
+
+def test_a_changed_root_level_test_file_selects_that_file_on_one_process():
+    selection = _select([ROOT_FILE])
+
+    assert selection.paths == (ROOT_FILE,), "that file only"
+    assert pytest_arguments(selection.paths, None) == [ROOT_FILE, "-n", "0", *LOADGROUP], (
+        "one process"
+    )
 
 
 @pytest.mark.parametrize(("rule", "changed", "expected"), SELECTS)
@@ -233,15 +261,6 @@ def test_container_and_perf_tests_are_named_not_run(rule, changed, make_target):
 
     assert selection.paths == (), f"rule {rule}: nothing runs"
     assert selection.hints == (f"{changed}: run {make_target}",), f"rule {rule}: the hint"
-
-
-def test_the_root_level_unit_test_files_are_the_real_ones(monkeypatch):
-    monkeypatch.chdir(REPO)
-
-    listed = root_unit_tests()
-
-    assert "tests/unit/test_changed.py" in listed, "the listing holds real files"
-    assert listed == sorted(listed), "the listing is sorted"
 
 
 def test_the_worked_example_selects_one_folder_and_hints_at_the_container_test():
@@ -272,7 +291,7 @@ def test_a_changed_container_test_alone_gives_no_arguments():
 
 
 def test_a_lone_deleted_test_file_gives_no_arguments():
-    selection = _select(["tests/unit/test_public_api.py"], existing=lambda _: False)
+    selection = _select([ROOT_FILE], existing=lambda _: False)
 
     assert selection.paths == (), "a deleted file selects nothing"
     assert pytest_arguments(selection.paths, None) == [], "no paths, so no arguments"
@@ -293,16 +312,16 @@ def test_a_selected_file_inside_a_selected_folder_is_dropped():
 def test_a_file_outside_the_selected_folder_is_kept_and_paths_are_sorted():
     selection = _select(
         [
-            "tests/unit/test_public_api.py",
+            ROOT_FILE,
             "rdf_persistence/api/services/a.py",
-            "tests/unit/test_markers.py",
+            OTHER_ROOT_FILE,
         ]
     )
 
     assert selection.paths == (
         "tests/unit/api/",
-        "tests/unit/test_markers.py",
-        "tests/unit/test_public_api.py",
+        OTHER_ROOT_FILE,
+        ROOT_FILE,
     ), "sorted, the file outside the folder kept"
 
 
@@ -323,12 +342,12 @@ def test_fallback_wins_over_selected_paths():
 @pytest.mark.parametrize(
     ("paths", "expected_n"),
     [
-        (("tests/unit/test_public_api.py",), "0"),
-        (("tests/unit/test_markers.py", "tests/unit/test_public_api.py"), "0"),
+        ((ROOT_FILE,), "0"),
+        ((OTHER_ROOT_FILE, ROOT_FILE), "0"),
         (("tests/unit/api/",), "auto"),
         (("tests/feature/",), "auto"),
         (("tests/unit/api/", "tests/unit/persistence/"), "auto"),
-        (("tests/unit/api/", "tests/unit/test_markers.py"), "auto"),
+        (("tests/unit/api/", ROOT_FILE), "auto"),
     ],
 )
 def test_one_process_is_chosen_for_files_only(paths, expected_n):
@@ -428,7 +447,7 @@ def _run_main(monkeypatch, capsys, listing):
         (["openspec/changes/x/design.md"], 0, True, "nothing to run against develop"),
         (["Makefile"], 3, True, "Makefile"),
         (GitError("the base is missing"), 3, True, "the base is missing"),
-        (["tests/unit/test_markers.py"], 0, False, ""),
+        (["tests/unit/tooling/test_markers.py"], 0, False, ""),
     ],
 )
 def test_main_exits_with_the_status_its_listing_calls_for(
