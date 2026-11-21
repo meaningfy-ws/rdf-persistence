@@ -1112,6 +1112,8 @@ tests/unit/api/test_service_kit.py::test_a_kit_with_no_bus_records_and_publishes
 tests/unit/api/test_service_kit.py::test_a_path_that_is_not_a_tenant_id_is_a_404,requirement,rp-iri-policy,Only IRIs the policy would mint are accepted,,medium,name
 tests/unit/api/test_service_kit.py::test_a_read_answers_the_version_as_a_quoted_etag,requirement,rp-service-api,Writes are versioned,,high,name;covered code
 tests/unit/api/test_service_kit.py::test_a_request_without_a_valid_bearer_token_is_a_401,requirement,rp-identity,Every request carries a valid token,,high,name;covered code
+tests/unit/api/test_service_kit.py::test_a_valid_token_under_another_scheme_is_a_401,requirement,rp-identity,Every request carries a valid token,,high,name; covered code (auth.py scheme check); test-debt-paydown PD-6
+tests/unit/api/test_service_kit.py::test_an_empty_bearer_token_is_a_401_even_when_the_verifier_takes_any_string,requirement,rp-identity,Every request carries a valid token,,high,name; covered code (auth.py empty-token check); test-debt-paydown PD-6
 tests/unit/api/test_service_kit.py::test_a_reviewer_who_comments_is_still_refused_the_modify_of_the_book,scenario,rp-access,Commenting is its own action,a reviewer role,high,name;covered code;spec id
 tests/unit/api/test_service_kit.py::test_a_role_definitions_path_is_loaded_into_the_rules,capability,rp-access,,,medium,covered code
 tests/unit/api/test_service_kit.py::test_a_route_the_consumer_writes_gets_the_same_problem_answers,capability,rp-service-api,,,medium,name;covered code
@@ -4406,6 +4408,9 @@ tests/unit/tooling/test_lanes.py::test_the_library_lanes_leave_the_generators_te
 tests/unit/tooling/test_lanes.py::test_the_scan_job_keeps_its_gate_and_runs_whatever_the_lanes_did,requirement,rp-developer-checks,"CI runs the static checks and the tests in parallel jobs, without containers",,medium,name
 tests/unit/tooling/test_lanes.py::test_the_test_target_runs_the_three_lanes,requirement,rp-developer-checks,The unit and feature tests run in parallel,,medium,name; docstring PD-10
 tests/unit/tooling/test_library_tests_stay_apart.py::test_a_library_test_naming_the_generator_is_named_by_the_checker,scenario,rp-package-boundaries,The library never imports the generator,a library test imports the generator,high,name; docstring TC-27
+tests/unit/tooling/test_no_cross_test_imports.py::test_an_import_of_a_test_module_is_named,capability,rp-developer-checks,,,low,name; test-structure guard (test-debt-paydown PD-8); no spec requirement
+tests/unit/tooling/test_no_cross_test_imports.py::test_an_import_that_is_not_of_a_test_module_is_left_alone,capability,rp-developer-checks,,,low,name; test-structure guard (test-debt-paydown PD-8); no spec requirement
+tests/unit/tooling/test_no_cross_test_imports.py::test_no_test_file_imports_a_test_module,capability,rp-developer-checks,,,low,name; test-structure guard (test-debt-paydown PD-8); no spec requirement
 tests/unit/tooling/test_library_tests_stay_apart.py::test_a_library_test_not_reaching_the_generator_is_left_alone,requirement,rp-package-boundaries,The library never imports the generator,,medium,name; docstring TC-27
 tests/unit/tooling/test_library_tests_stay_apart.py::test_a_listed_file_that_does_not_exist_is_named_as_stale,requirement,rp-package-boundaries,The library never imports the generator,,medium,name; docstring TC-28a
 tests/unit/tooling/test_library_tests_stay_apart.py::test_a_listed_file_that_no_longer_imports_the_generator_is_named_as_stale,requirement,rp-package-boundaries,The library never imports the generator,,medium,name; docstring TC-28a
