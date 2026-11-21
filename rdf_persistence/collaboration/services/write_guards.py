@@ -97,9 +97,7 @@ class WriteGuards:
             InvalidIri: A member is not an aggregate IRI of the tenant.
             Forbidden: The triples of an aggregate under a workflow change its state.
         """
-        graph = Graph()
-        for triple in triples:
-            graph.add(triple)
+        graph = self._graph_of(triples)
         name = collection_class(self._collections, iri, graph)
         if name is not None:
             decoded = self._decoded(name, iri, graph)
@@ -181,15 +179,23 @@ class WriteGuards:
             graph.add(triple)
         return graph
 
-    def _decoded_if_nesting(self, name: str, iri: str, graph: Graph) -> ReferenceCollection | None:
-        """``iri`` decoded when it is a collection of class ``name`` that nests: else none."""
+    def _decoded_of_class(self, name: str, iri: str, graph: Graph) -> ReferenceCollection | None:
+        """``iri`` decoded when it is a collection of class ``name``: else none.
+
+        A graph that does not decode is none: it is another collection's corruption, which neither
+        blocks this save nor is named by it.
+        """
         if collection_class(self._collections, iri, graph) != name:
             return None
         try:
-            other = decode_collection(self._mapper, self._models, name, iri, graph)
+            return decode_collection(self._mapper, self._models, name, iri, graph)
         except ValueError:
-            return None  # another collection's corruption is not this save's to name
-        return other if other.nests else None
+            return None
+
+    def _decoded_if_nesting(self, name: str, iri: str, graph: Graph) -> ReferenceCollection | None:
+        """``iri`` decoded when it is a collection of class ``name`` that nests: else none."""
+        other = self._decoded_of_class(name, iri, graph)
+        return other if other is not None and other.nests else None
 
     async def _check_members(
         self,
@@ -233,7 +239,7 @@ class WriteGuards:
     ) -> None:
         """Refuse a nested member that leads back to the collection, and rely on what was walked (PD-4)."""
         own = self._mapper.view.get_uri(name, expand=True)
-        nested = {str(h.head_iri) for h in heads if own in (h.head_types or [])}
+        nested = {str(h.head_iri) for h in self._exact_heads(own, heads)}
         if not (new := sorted(nested - stored)):
             return  # nothing nested is added: no walk, no guard
         skeleton = await self._skeleton(session, name, collection, context)
@@ -261,13 +267,13 @@ class WriteGuards:
             context.rely_on(each, str(skeleton[each][0]))
         leaves = [i for i in reached if i not in skeleton]
         # a leaf (nests false) may be turned into a nesting collection meanwhile: guard it too
-        for head in await WriteGuards._alike_heads(session, own, leaves):
+        for head in WriteGuards._exact_heads(own, await session.heads(leaves)):
             context.rely_on(str(head.head_iri), str(head.head_version))
 
     @staticmethod
-    async def _alike_heads(session: Session, own: str, iris: list[str]) -> list[AggregateHead]:
-        """The heads of ``iris`` that are stored with exactly the class whose IRI is ``own``."""
-        return [h for h in await session.heads(iris) if own in (h.head_types or [])]
+    def _exact_heads(own: str, heads: Iterable[AggregateHead]) -> list[AggregateHead]:
+        """The ``heads`` stored with exactly the class whose IRI is ``own``."""
+        return [h for h in heads if own in (h.head_types or [])]
 
     @staticmethod
     async def _stored_members(session: Session, iri: str, member_class: str) -> set[str]:
@@ -296,10 +302,7 @@ class WriteGuards:
             if members is not None:
                 skeleton[iri] = (str(graph.value(graph_iri(iri), v.VERSION)), members)
         for iri, triples in context.collected.items():
-            graph = Graph()
-            for triple in triples:
-                graph.add(triple)
-            members = self._members_if_alike(name, collection, iri, graph)
+            members = self._members_if_alike(name, collection, iri, self._graph_of(triples))
             if members is None:
                 skeleton.pop(iri, None)
             else:
@@ -311,23 +314,12 @@ class WriteGuards:
     ) -> list[str] | None:
         """The members of ``iri`` when it nests and is of ``collection``'s class and member class.
 
-        A graph that does not decode is none: it is another collection's corruption, which neither
-        blocks this save nor is named by it.
+        A graph that does not decode is none (see ``_decoded_of_class``).
         """
-        other = self._decoded_if_alike(name, collection, iri, graph)
-        return None if other is None else [str(m) for m in other.has_part or []]
-
-    def _decoded_if_alike(
-        self, name: str, collection: ReferenceCollection, iri: str, graph: Graph
-    ) -> ReferenceCollection | None:
-        if collection_class(self._collections, iri, graph) != name:
+        other = self._decoded_if_nesting(name, iri, graph)
+        if other is None or other.member_class != collection.member_class:
             return None
-        try:
-            other = decode_collection(self._mapper, self._models, name, iri, graph)
-        except ValueError:
-            return None
-        alike = other.nests and other.member_class == collection.member_class
-        return other if alike else None
+        return [str(m) for m in other.has_part or []]
 
     async def _unlike_nested(  # noqa: PLR0913 - the root's class, its decoding, its heads, what is stored and collected
         self,
@@ -346,9 +338,9 @@ class WriteGuards:
         """
         own = self._mapper.view.get_uri(name, expand=True)
         wrong = []
-        for head in heads:
+        for head in self._exact_heads(own, heads):
             iri = str(head.head_iri)
-            if own not in (head.head_types or []) or iri in stored:
+            if iri in stored:
                 continue
             graph = await self._collected_or_stored(session, iri, context)
             if self._decoded(name, iri, graph).member_class != collection.member_class:
