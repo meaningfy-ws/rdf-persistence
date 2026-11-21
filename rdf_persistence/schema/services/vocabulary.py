@@ -186,6 +186,7 @@ TENANT_STATE_IRIS = enum_meanings("TenantState")
 HAS_PART = predicate("has_part")
 MEMBERSHIP_RULE = predicate("membership_rule")
 NESTS = predicate("nests")
+MEMBER_CLASS = predicate("member_class")
 
 # A comment is a Web Annotation: its class, the aggregate it targets and the aggregates it refers to (PD-12).
 ANNOTATION = class_iri("Comment")

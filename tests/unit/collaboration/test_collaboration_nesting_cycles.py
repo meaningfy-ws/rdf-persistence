@@ -139,6 +139,44 @@ async def test_the_member_class_of_a_shelf_nobody_nests_can_change():
         assert await version_of(session, Y), "the replace was accepted"
 
 
+async def test_a_new_member_class_refuses_the_nested_shelves_the_stored_one_held():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await save(session, nesting(X, Y))
+        before = await version_of(session, X)
+        with pytest.raises(InvalidBody, match=f"not stored aggregates of Author: .*{Y}"):
+            await replace(session, nesting(X, Y).model_copy(update={"member_class": "Author"}))
+        assert await version_of(session, X) == before, "the shelf is as stored"
+
+
+async def test_the_member_class_of_a_shelf_cannot_change_once_a_collected_replace_nests_it():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await save(session, nesting(X))
+        versions = [await version_of(session, i) for i in (X, Y)]
+        with pytest.raises(InvalidBody, match="cannot change while a nesting collection holds it"):
+            await replace(session, nesting(X, Y), holding(Y, member_class="Author"))
+        assert [await version_of(session, i) for i in (X, Y)] == versions, "nothing is stored"
+
+
+async def test_a_replace_cannot_nest_a_shelf_whose_member_class_a_collected_replace_changed():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await save(session, nesting(X))
+        versions = [await version_of(session, i) for i in (X, Y)]
+        with pytest.raises(InvalidBody, match=f"not stored aggregates of Book: .*{Y}"):
+            await replace(session, holding(Y, member_class="Author"), nesting(X, Y))
+        assert [await version_of(session, i) for i in (X, Y)] == versions, "nothing is stored"
+
+
+async def test_the_member_class_changes_once_a_collected_replace_no_longer_nests_the_shelf():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, holding(Y))
+        await save(session, nesting(X, Y))
+        await replace(session, nesting(X), holding(Y, member_class="Author"))
+        assert await version_of(session, Y), "the replace was accepted"
+
+
 async def test_renaming_a_nesting_shelf_reads_no_more_for_more_nested_shelves():
     counts = []
     for nested in (1, 3):
