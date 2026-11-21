@@ -72,15 +72,15 @@ parallel group, then runs `make refresh-map`.
 
 ## 3. Stage 3: mutation
 
-- [ ] 3.1 Lead: `make mutation`; the survivor list in `inputs/survivors-before.md` (commit,
+- [x] 3.1 Lead: `make mutation`; the survivor list in `inputs/survivors-before.md` (commit,
   selection).
   Each survivor is assigned there: to 3.3 if its killing test belongs in a `tests/unit/iris/` file
   other than `test_layout.py`, else to 3.2.
-- [ ] 3.2 Kill the survivors assigned to 3.2 in PD-12's 3.2 files, in parallel with 3.3. Accept:
+- [x] 3.2 Kill the survivors assigned to 3.2 in PD-12's 3.2 files, in parallel with 3.3. Accept:
   each is killed by a test in those files, or handed to 3.4 with its reason.
-- [ ] 3.3 Kill the survivors assigned to 3.3 in the other `tests/unit/iris/` files; L' timeboxed
+- [x] 3.3 Kill the survivors assigned to 3.3 in the other `tests/unit/iris/` files; L' timeboxed
   (PD-12). Accept: as 3.2, in its files.
-- [ ] 3.4 `tests/audit/equivalent-mutants.md`: every remaining survivor with its one-line reason.
+- [x] 3.4 `tests/audit/equivalent-mutants.md`: every remaining survivor with its one-line reason.
   Accept: `make mutation`'s survivors = the file's list, exactly.
 - [ ] 3.5 Lead: full gates; the final review (L1, L2, L3 apart, L4+L5 one); fixes; `proposal.md`
   reconciled (P-0004); rebase on `develop` and full gates again; `make refresh-map`; the PR

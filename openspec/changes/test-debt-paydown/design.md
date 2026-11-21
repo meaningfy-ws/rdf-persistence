@@ -402,3 +402,16 @@ By the lead, 2026-11-21, under the owner's "work as a team leader with subagents
   Rejected: S4's cache-key note (hashing the bytes is cheap and keeps the cache correct), S5 (the
   contract is refresh-b §3's text and forbids what the mutation selection needs). W2 is the lead's
   (`evidence/gates-stage1.md`).
+- **D-6 Stage 3:**
+  - `make mutation` did not start on `develop`'s head: mutmut copies only `rdf_persistence`, and
+    `tests/conftest.py` loads a plugin from `rdf_persistence_generation`; mutmut runs two pytest
+    sessions in one process, and the span fixture's second provider was ignored. `also_copy` gains
+    the generator and the fixture adds its exporter to a provider already set; `only_mutate` and the
+    test selection are unchanged (PD-13 holds).
+  - Before: 1091 mutants, 84 survived, 23 with no test (`inputs/survivors-before.md`). After: 32,
+    each in `tests/audit/equivalent-mutants.md` (3 that no legal input tells apart, 29 under DEC-3).
+  - DEC-3 is read as "wording": a test may assert what a message must name, where a caller or a
+    docstring relies on it (`MessageLimitExceeded` names its limit and ends `by <command>`; an iri
+    refusal names the offending iri, which the problem detail carries).
+  - L' is killed by a legal policy (a graph template that reads as another tenant's aggregate), so it
+    is not equivalent.
