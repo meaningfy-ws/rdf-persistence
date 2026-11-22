@@ -63,8 +63,9 @@ instructions are missing, route by the skills' descriptions and say so once.
 
 ## Working here
 
-- Run everything through `make` (Python through uv); never bare `python` or `pytest`. A gate prints
-  its result, not its log; run a long command once in the background and wait for its notice. The
+- Run everything through `make` (Python through uv); never bare `python` or `pytest`. The one
+  exception is the narrow check below, `uv run pytest <file>`, which no make target covers. A gate
+  prints its result, not its log; run a long command once in the background and wait for its notice. The
   hooks every session runs are `no-poll-loops` and `quiet-tools` from `meaningfy-core`; this
   repository ships none of its own.
 
@@ -80,8 +81,9 @@ instructions are missing, route by the skills' descriptions and say so once.
   project), `ast-grep` for one code shape in many files, Grep for docs, YAML and the Makefile,
   GitNexus for blast radius. A HIGH or CRITICAL impact goes to the developer. Limits per role:
   [`develop/agents.adoc#tools`](docs/modules/ROOT/pages/develop/agents.adoc). GitNexus repo name:
-  `rdf-persistence`. The GitNexus block lives in this file only, never in `CLAUDE.md`
-  (`make check-bindings`).
+  `rdf-persistence`. GitNexus guidance lives in this file only: `CLAUDE.md` never carries a
+  GitNexus block (the `gitnexus:start` markers or a GitNexus heading that `gitnexus analyze`
+  writes), which `make check-bindings` enforces.
 - Edit in place (Edit or Serena), never with `sed -i` or a heredoc rewrite. Temporary files go in
   `temp/`.
 - Branch off `develop` and open the PR into it; never commit to it. Commits follow
