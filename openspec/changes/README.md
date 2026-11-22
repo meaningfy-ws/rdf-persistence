@@ -136,11 +136,19 @@ fixed separately and is not in either.
 | 9 | `uml-roles-and-workflows` | MEDIUM (2 stages: roles, workflows) | #245 parts 2, 3 | `uml-to-linkml` (archived); for the consumer, #245 part 1 (RISK-3) | `v2-02` phase B, its hand-written roles and workflow files | 8.0 → 9.0; delivered in #257 and #263, archived in #264 |
 | 10 | `slot-resolution` | SMALL | #277, #278 | none | `v2-02` phase B, every write of an aggregate with a business `identifier` or its own `version` | not gated: delivered as a bug fix in #289, recorded after delivery and archived `2026-11-22-slot-resolution` |
 | 11 | `abstract-collection-member-class` | TINY | #274 | `uml-to-linkml` (archived), #241 | `v2-02` phase B, its abstract `Collection` and five concrete collections | no gate: run as a bug fix, delivered 2026-11-22 in #287; EPIC and PLAN written afterwards, archived `2026-11-22-abstract-collection-member-class` (#292) |
+| 12 | `tenant-root-owned-parts` | TINY | #276 | none | `v2-02` phase B, creating a tenant whose root owns two required parts | no gate: run as a bug fix, delivered 2026-11-22 in #288; recorded afterwards and archived `2026-11-22-tenant-root-owned-parts` (#291) |
 
 Row 11 was added on 2026-11-22, after the fact: the fix ran as a plain bug-fix session, and its
 spine was written and archived at the developer's request once it had merged. Found on the way:
 #290 (`make refresh-map` collects no tests), fixed in #294 and recorded the same way as
 `refresh-map-collect` (TINY, test tooling, no spec delta), archived `2026-11-22-refresh-map-collect`.
+From now on a bug fix opens its OpenSpec change before the fix (P-0020).
+
+**2026-11-22: released as 0.9.0** (MINOR; #262 the release PR, tag `v0.9.0`, `main`
+fast-forwarded; #298 the CHANGELOG). Rows 8 to 12 ship in it: aggregate validators, drawn role
+definitions and workflows, and the fixes for #277, #278, #274 and #276. The release PR merged
+before the CHANGELOG PR, so the CHANGELOG at the tag lacks the 0.9.0 section; the release notes
+link `develop`'s. The consumer refreshes its lock (it follows `develop`) and regenerates.
 
 ### Why this order
 
