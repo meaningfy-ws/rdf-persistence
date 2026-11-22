@@ -135,6 +135,11 @@ fixed separately and is not in either.
 | 8 | `aggregate-validators` | SMALL | #240 | none | `v2-02` phase B, the package's 0..1 collection limits | 8.1 → 8.9, accepted (R-0005); delivered in #266, archived `2026-11-21-aggregate-validators` |
 | 9 | `uml-roles-and-workflows` | MEDIUM (2 stages: roles, workflows) | #245 parts 2, 3 | `uml-to-linkml` (archived); for the consumer, #245 part 1 (RISK-3) | `v2-02` phase B, its hand-written roles and workflow files | 8.0 → 9.0; delivered in #257 and #263, archived in #264 |
 | 10 | `slot-resolution` | SMALL | #277, #278 | none | `v2-02` phase B, every write of an aggregate with a business `identifier` or its own `version` | not gated: delivered as a bug fix in #289, recorded after delivery and archived `2026-11-22-slot-resolution` |
+| 11 | `abstract-collection-member-class` | TINY | #274 | `uml-to-linkml` (archived), #241 | `v2-02` phase B, its abstract `Collection` and five concrete collections | no gate: run as a bug fix, delivered 2026-11-22 in #287; EPIC and PLAN written afterwards, archived `2026-11-22-abstract-collection-member-class` (#292) |
+
+Row 11 was added on 2026-11-22, after the fact: the fix ran as a plain bug-fix session, and its
+spine was written and archived at the developer's request once it had merged. Found on the way:
+#290 (`make refresh-map` collects no tests).
 
 ### Why this order
 
