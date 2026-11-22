@@ -46,6 +46,8 @@ linkml_meta = None
 
 class Template(Tracked, Described, AggregateRoot):
     "A report template shared by every library."
+    identifier: _Optional[str] = _Field(default=None, title="Identifier", description="A business code of the template, a literal; not its IRI, though the toolkit\u0027s id slot has the same slot_uri.")
+    version: _Optional[str] = _Field(default=None, title="Version", description="The edition of the template; a slot of this module, though the toolkit has an internal slot of the same name.")
     id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
     description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")

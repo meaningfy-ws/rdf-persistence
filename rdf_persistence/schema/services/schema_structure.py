@@ -35,7 +35,12 @@ from rdf_persistence.core.domain.generated.rp_core import (
     RpAnnotation,
     WritesKind,
 )
-from rdf_persistence.schema.services.schema import PACKAGE_DIR, PYTHON_PACKAGE, load_schema
+from rdf_persistence.schema.services.schema import (
+    PACKAGE_DIR,
+    PYTHON_PACKAGE,
+    load_schema,
+    prefer_application_slots,
+)
 
 AGGREGATE_ROOT = "AggregateRoot"
 ACTIVITY = "Activity"  # the class of the things that happened (rp_provenance)
@@ -456,8 +461,10 @@ def apply_defaults(
     """Make an unlabelled class's label optional (PD-11); a root's description stays optional (PD-1).
 
     Only the application's classes change; the toolkit's own schemas, those under ``roots``, are
-    left as they are (PD-23).
+    left as they are (PD-23). A stock generator's view resolves slot names as ``load_schema`` does
+    (#278).
     """
+    prefer_application_slots(view)
     if is_toolkit_schema(folder, roots=roots):
         return
     classes = own_classes(own_schemas(view, folder))

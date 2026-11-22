@@ -6,6 +6,8 @@ prefixes:
   lib: https://example.org/ns/library#
   linkml: https://w3id.org/linkml/
   rp: https://meaningfy.ws/ns/rdf-persistence#
+  dcterms: http://purl.org/dc/terms/
+  dcat: http://www.w3.org/ns/dcat#
 default_prefix: lib
 default_range: string
 imports:
@@ -21,6 +23,23 @@ classes:
     description: A report template shared by every library.
     class_uri: lib:Template
     mixins: [AggregateRoot, Described, Tracked]
+    slots: [identifier, version]
     annotations:
       rp_path: templates
       database: application
+
+slots:
+  identifier:
+    title: Identifier
+    description: >-
+      A business code of the template, a literal; not its IRI, though the toolkit's id slot has the
+      same slot_uri.
+    slot_uri: dcterms:identifier
+    range: string
+  version:
+    title: Version
+    description: >-
+      The edition of the template; a slot of this module, though the toolkit has an internal slot of
+      the same name.
+    slot_uri: dcat:version
+    range: string

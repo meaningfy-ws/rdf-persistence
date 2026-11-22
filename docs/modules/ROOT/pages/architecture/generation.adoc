@@ -225,6 +225,12 @@ are the generated enum `HardRule`. It fails generation when:
 . a class of the application breaks the activity contract (rule `TOOLKIT_FILLED`): it gives a
   `toolkit_filled` slot a `slot_usage`, an `ifabsent`, an attribute of its own or a `slot_uri` alias,
   or it has a slot that is both `payload` and required;
+. a slot of the application takes the name of a toolkit slot that a toolkit class carries, under
+  another `slot_uri` (rule `TOOLKIT_SLOT_NAME`). LinkML keeps one slot per name, so one of the two
+  would be lost; the problem names both slots, their IRIs and the toolkit classes, and the
+  application slot is renamed. A toolkit slot that no toolkit class carries (the session's
+  `version`) is no clash: the application's slot of that name wins in every view
+  (`load_schema`), whatever the import order;
 . a slot annotated `default_instance` (a `GenerationAnnotation`) cannot default to a new instance of
   its range (rule `DEFAULT_INSTANCE`): it is multivalued, its range is not a class, a required slot
   of the range class has no `ifabsent`, or the range class is declared after the class that holds the

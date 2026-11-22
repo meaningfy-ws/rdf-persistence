@@ -331,3 +331,29 @@ def test_a_change_is_described_by_its_target() -> None:
     )
     assert described(slot) == f"slot added: <{ISBN}> of <{BOOK}>", "a slot of its class"
     assert described(enum) == "enum value added: Genre x", "an enum and its value"
+
+
+# ---- #277: slots sharing an IRI ----------------------------------------------------------------
+
+IDENTIFIER = "http://purl.org/dc/terms/identifier"
+ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI"
+
+
+def _lock(*slots: LockedSlot) -> SchemaLock:
+    return SchemaLock(
+        schema_id="s",
+        schema_version="1",
+        locked_classes=[LockedClass(class_uri=BOOK, locked_slots=list(slots))],
+    )
+
+
+def test_a_second_slot_on_an_iri_already_locked_is_an_added_slot() -> None:
+    """The identifier and a business identifier share dcterms:identifier: one slot added, no range change."""
+    iri = LockedSlot(slot_uri=IDENTIFIER, range=ANY_URI, required=True)
+    business = LockedSlot(slot_uri=IDENTIFIER, range=XSD_STRING)
+    found = changes(_lock(iri), _lock(iri, business))
+    assert [(c.rule, c.what) for c in found] == [(LockRule.SAFE, "slot added")], [
+        described(c) for c in found
+    ]
+    removed = changes(_lock(iri, business), _lock(iri))
+    assert [c.rule for c in removed] == [LockRule.DESTRUCTIVE], [described(c) for c in removed]

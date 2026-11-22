@@ -26,7 +26,13 @@ from rdf_persistence.core.domain.generated.rp_core import (
     WritesKind,
 )
 from rdf_persistence.iris.domain.layout import LAYOUT_WORDS
-from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
+from rdf_persistence.schema.services.schema import (
+    PACKAGE_DIR,
+    load_schema,
+    slot_iri,
+    slot_name_clashes,
+    toolkit_carriers,
+)
 from rdf_persistence.schema.services.schema_structure import (
     AGGREGATE_ROOT,
     UNDER_WORKFLOW,
@@ -423,4 +429,22 @@ def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
         *(p for schema in schemas for p in _annotation_problems(schema, segment_pattern())),
         *default_instance_problems(view, schemas),
         *_class_problems(view, classes),
+        *_slot_name_problems(view, {schema.name for schema in schemas}),
     ]
+
+
+def _slot_name_problems(view: SchemaView, own: set[str]) -> Iterator[CheckProblem]:
+    """An application slot named like a toolkit slot a toolkit class carries, with another IRI (#278)."""
+    for schema, slot, key, theirs in slot_name_clashes(view):
+        carriers = toolkit_carriers(view, str(theirs.name))
+        if schema.name not in own or not carriers:
+            continue  # an uncarried toolkit slot gave way to the application's (load_schema)
+        toolkit = view.schema_map[key]
+        yield rule_problem(
+            HardRule.TOOLKIT_SLOT_NAME,
+            str(slot.name),
+            f"the slot {slot.name} of {schema.name} (<{slot_iri(view, schema, slot)}>) takes the "
+            f"name of the toolkit slot {theirs.name} of {toolkit.name} "
+            f"(<{slot_iri(view, toolkit, theirs)}>), which {', '.join(carriers)} carries: "
+            "rename the application slot",
+        )

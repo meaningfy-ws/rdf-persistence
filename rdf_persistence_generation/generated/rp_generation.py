@@ -67,6 +67,8 @@ class HardRule(str, _Enum):
     "The root schema of a target that sets `migrations` has a `version`, written as a quoted string in the YAML source, since an unquoted `1.10` is read as the number 1.1."
     TOOLKIT_FILLED = "toolkit_filled"
     "A class of the application does not give `slot_usage`, `ifabsent` or an attribute of its own to a slot annotated `toolkit_filled`, gives no slot of its own the `slot_uri` of one, and has no slot that is both `payload` and required."
+    TOOLKIT_SLOT_NAME = "toolkit_slot_name"
+    "A slot of the application does not take the name of a toolkit slot that a toolkit class carries under another `slot_uri`: LinkML keeps one slot per name, so one of the two would be lost. A toolkit slot that no toolkit class carries gives way to the application\u0027s."
     DEFAULT_INSTANCE = "default_instance"
     "A slot annotated `default_instance` ranges over a class, and every required slot of that class has an `ifabsent`, so the class can be built with no argument."
     PYTHON_PACKAGE = "python_package"

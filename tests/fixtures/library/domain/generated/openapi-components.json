@@ -1885,12 +1885,20 @@
           "readOnly": true,
           "type": "string"
         },
+        "identifier": {
+          "description": "A business code of the template, a literal; not its IRI, though the toolkit's id slot has the same slot_uri.",
+          "type": "string"
+        },
         "label": {
           "description": "The preferred label of the object.",
           "type": "string"
         },
         "type": {
           "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
+        "version": {
+          "description": "The edition of the template; a slot of this module, though the toolkit has an internal slot of the same name.",
           "type": "string"
         }
       },

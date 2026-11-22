@@ -33,6 +33,12 @@ def named(view: SchemaView, rows: list[ReferrerRow]) -> set[tuple[str, str, str]
 
 
 def slot_name(view: SchemaView, class_name: str | None, predicate: str) -> str:
-    """The slot of ``class_name`` whose ``slot_uri`` is ``predicate``, or ``predicate`` itself."""
+    """The slot of ``class_name`` whose ``slot_uri`` is ``predicate``, or ``predicate`` itself.
+
+    The identifier slot is the node's IRI, never a statement, so it never names one (#277).
+    """
     slots = view.class_induced_slots(class_name) if class_name else []
-    return next((s.name for s in slots if view.get_uri(s, expand=True) == predicate), predicate)
+    return next(
+        (s.name for s in slots if not s.identifier and view.get_uri(s, expand=True) == predicate),
+        predicate,
+    )
