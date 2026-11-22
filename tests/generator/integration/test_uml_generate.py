@@ -19,6 +19,7 @@ from pydantic import ValidationError
 from rdflib import RDF, SH, Graph, Literal, Namespace, URIRef
 
 from rdf_persistence.api.services.shacl import validate_locked
+from rdf_persistence_generation.checks.importable import type_problems
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.generated.rp_generation import UmlModel, UmlPackage
 from rdf_persistence_generation.pipeline import generate
@@ -191,6 +192,32 @@ def test_a_collection_s_drawn_member_class_refuses_another_class(
     shapes = Graph().parse(project / PACKAGE / "domain" / "generated" / "shapes.ttl")
     assert _member_class_refused(shapes, "Map"), "the shape refuses another member class"
     assert not _member_class_refused(shapes, "Book"), "the shape accepts the drawn member class"
+
+
+_COLLECTION, _RESOURCE = 17, 18  # lib:Collection and lib:Resource, both abstract (#274)
+
+
+def test_an_abstract_collection_narrowed_by_its_subclass_type_checks(tmp_path: Path) -> None:
+    """#274: an abstract Collection's role to an abstract Resource and Shelf's own role to Book."""
+    has_part = {"target_role": "dct:hasPart", "target_card": "0..*"}
+    uml = model(
+        klass(_COLLECTION, "lib:Collection", abstract=True),
+        klass(_RESOURCE, "lib:Resource", abstract=True),
+        klass(SHELF, "lib:Shelf", stereotype="root"),
+        klass(BOOK, "lib:Book", stereotype="root"),
+        links=(
+            link(1, _COLLECTION, _RESOURCE, **has_part),
+            link(2, SHELF, BOOK, **has_part),
+            generalisation(3, SHELF, _COLLECTION),
+            generalisation(4, BOOK, _RESOURCE),
+        ),
+        tags=(tag(_COLLECTION, "rp_mixins", "ReferenceCollection"),),
+    )
+    project = _converted_project(uml, tmp_path, default_mixins=["Described"])
+    targets = read_targets(project / "pyproject.toml")
+
+    assert generate(targets, project, STEPS, check=False) == [], "rp-generate accepts the schema"
+    assert type_problems(targets, project) == [], "the generated subclass narrows nothing typed"
 
 
 _ACCESS_PKG, _ACCESS_ELEMENT, _LIBRARY_ACCESS, _TENANT_ACCESS = 9, 40, 41, 42
