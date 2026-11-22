@@ -278,3 +278,15 @@ Taken by the lead during delivery (R-0007); the developer may overrule any of th
   type to fool a rule. It cannot over HTTP: `Documents` refuses a root with an `rdf:type` outside
   the route class's family, and a tenant session refuses application types; code that writes
   through a unit of work is the consumer's own, trusted. No change.
+
+### After the merge: the floor fixed (follow-up PR, the developer's "fix everything")
+
+- **D-10** S1 to S4 of D-8 are fixed. S1: `_decoded_stored` takes the narrowed validators, no
+  `assert`. S2: two real tests of a root added later and earlier in one unit of work (a plain
+  reference, since a collection root refuses unstored members). S3: `AggregateValidators.has_rules`
+  lets the guard return before reading root types when the mapping is empty. S4's test found
+  PD-8, RISK-5 and the error-matrix row wrong: a rule refusing the tenant root on create is a 422
+  and `Tenancy.create` drops the database and bucket it made (its `_drop_made` cleanup); only a
+  drop that itself fails leaves them for the start-up sweep. The code was right; the test and
+  `user-manual/access.adoc` now say so, and PD-8, RISK-5 and that row are superseded by this
+  entry.
