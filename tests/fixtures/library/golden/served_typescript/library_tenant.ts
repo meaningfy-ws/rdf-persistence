@@ -4,6 +4,8 @@
 export interface Library {
   /** The city where the library is located. */
   city?: string;
+  /** The library's charter, owned by it and kept in the tenant's meta graph. */
+  charter?: Charter;
   /** The IRI that identifies the object. */
   id: string;
   /** The preferred label of the object. */
@@ -18,4 +20,14 @@ export interface Library {
   creator?: string;
   /** A principal that committed a later version of the graph. */
   contributor?: string[];
+}
+
+/** A library's charter, an owned part of the tenant root; the service mints its IRI. */
+export interface Charter {
+  /** The IRI that identifies the object. */
+  id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** A free-text description of the object. */
+  description?: string;
 }

@@ -324,6 +324,20 @@
     required: false
     multivalued: false
     range: integer
+- class_name: Charter
+  slots:
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
 - class_name: Comment
   slots:
   - name: body_value
@@ -705,6 +719,10 @@
     range: string
 - class_name: Library
   slots:
+  - name: charter
+    required: false
+    multivalued: false
+    range: Charter
   - name: city
     required: false
     multivalued: false

@@ -53,7 +53,8 @@ Every generated class derives from the toolkit's strict base, `RpModel`. It refu
 fields, validates on assignment, and enforces the rules declared in the schema: `required`,
 ranges, patterns, `exactly_one_of`, `any_of` and `unique_keys`. Each object, owned parts included,
 has a required `id`: `Chapter(number=1)` fails with `id: Field required`. Only a request body to
-the service may leave a part's `id` out. The service then mints its IRI, by default
+the service, the `root` of a tenant's create included, may leave a part's `id` out; that `root`
+must. The service then mints its IRI, by default
 `{root_iri}/parts/{uuid4}`, and keeps it across commits. Under a custom IRI policy the part template
 decides. A JSON body's parts are typed by the schema's context, so nothing more is needed; a
 JSON-LD body must give each part's `@type`, and when the part template has `{type}` an untyped part,

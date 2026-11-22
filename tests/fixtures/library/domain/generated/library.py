@@ -94,7 +94,10 @@ from .books_activities import (
     ShelveBooks
 )
 from .library_access import LibraryAccess
-from .library_tenant import Library
+from .library_tenant import (
+    Charter,
+    Library
+)
 from .scans import Scan
 from .templates import Template
 

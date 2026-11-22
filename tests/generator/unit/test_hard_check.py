@@ -730,7 +730,7 @@ def test_a_scope_other_than_tenant_is_refused_naming_the_value_and_the_allowed_o
     ("module", "old", "slot", "cls"),
     [
         ("books.yaml", "    slots: [number, notes]\n", "number", "Chapter"),
-        ("library_tenant.yaml", "    slots: [city]\n", "city", "Library"),
+        ("library_tenant.yaml", "    slots: [city, charter]\n", "city", "Library"),
         ("library_access.yaml", "    is_a: TenantAccess\n", "database_name", "LibraryAccess"),
     ],
     ids=["owned-part", "tenant-root", "system-root"],
