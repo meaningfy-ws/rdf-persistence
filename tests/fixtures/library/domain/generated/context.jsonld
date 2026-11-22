@@ -74,6 +74,10 @@
          "@container": "@set",
          "@id": "chapter"
       },
+      "charter": {
+         "@type": "@id",
+         "@id": "charter"
+      },
       "city": {
          "@id": "schema:addressLocality"
       },
@@ -469,6 +473,9 @@
       },
       "Chapter": {
          "@id": "bibo:Chapter"
+      },
+      "Charter": {
+         "@id": "Charter"
       },
       "Comment": {
          "@id": "oa:Annotation"

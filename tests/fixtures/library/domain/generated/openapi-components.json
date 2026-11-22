@@ -407,6 +407,36 @@
       "title": "Chapter",
       "type": "object"
     },
+    "Charter": {
+      "additionalProperties": false,
+      "description": "A library's charter, an owned part of the tenant root; the service mints its IRI.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Charter",
+      "type": "object"
+    },
     "Comment": {
       "additionalProperties": false,
       "description": "A remark on an aggregate, or a reply to another remark. Each comment is an aggregate root of its own, whose target is always the aggregate it is about; a reply also names the comment it answers. The toolkit writes and reads it, since its audience limits who may see it. The session writes its author and time as the tracking of its graph.",
@@ -799,6 +829,10 @@
       "additionalProperties": false,
       "description": "A library; the tenant root. Its IRI is the tenant IRI and it lives in the tenant's meta graph.",
       "properties": {
+        "charter": {
+          "$ref": "#/components/schemas/Charter",
+          "description": "The library's charter, owned by it and kept in the tenant's meta graph."
+        },
         "city": {
           "description": "The city where the library is located.",
           "type": "string"

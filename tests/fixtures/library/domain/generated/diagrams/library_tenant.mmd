@@ -3,3 +3,7 @@ classDiagram
         <<root>>
         +string city
     }
+    class Charter {
+        <<owned>>
+    }
+    Library "1" *-- "0..1" Charter : charter

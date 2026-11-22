@@ -22,12 +22,25 @@ classes:
     description: A library; the tenant root. Its IRI is the tenant IRI and it lives in the tenant's meta graph.
     class_uri: schema:Library
     mixins: [Described, Tracked]
-    slots: [city]
+    slots: [city, charter]
     annotations:
       graph: meta
       database: tenant
+  Charter:
+    title: Charter
+    description: A library's charter, an owned part of the tenant root; the service mints its IRI.
+    class_uri: lib:Charter
+    mixins: [Described]
 
 slots:
+  charter:
+    title: Charter
+    description: The library's charter, owned by it and kept in the tenant's meta graph.
+    slot_uri: lib:charter
+    range: Charter
+    inlined: true
+    annotations:
+      owned: true
   city:
     title: City
     description: The city where the library is located.

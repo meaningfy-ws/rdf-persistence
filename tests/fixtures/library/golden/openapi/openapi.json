@@ -6265,6 +6265,36 @@
         "title": "Chapter",
         "description": "A chapter of a book, known by its number rather than a label; part of the book's aggregate. It owns its notes."
       },
+      "Charter": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "A free-text description of the object."
+          },
+          "id": {
+            "type": "string",
+            "format": "uri",
+            "description": "The IRI that identifies the object.",
+            "readOnly": true
+          },
+          "label": {
+            "type": "string",
+            "description": "The preferred label of the object."
+          },
+          "type": {
+            "type": "string",
+            "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "Charter",
+        "description": "A library's charter, an owned part of the tenant root; the service mints its IRI."
+      },
       "Filter": {
         "properties": {
           "contains": {
@@ -6539,6 +6569,10 @@
       },
       "Library": {
         "properties": {
+          "charter": {
+            "$ref": "#/components/schemas/Charter",
+            "description": "The library's charter, owned by it and kept in the tenant's meta graph."
+          },
           "city": {
             "type": "string",
             "description": "The city where the library is located."

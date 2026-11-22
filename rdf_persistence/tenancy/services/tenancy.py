@@ -13,6 +13,7 @@ from collections.abc import AsyncIterator, Callable, Iterable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
 from typing import Any
 
+from linkml_runtime.linkml_model.meta import ClassDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
 from rdflib import RDF, Dataset, Graph, URIRef
@@ -69,8 +70,10 @@ from rdf_persistence.schema.services.schema_structure import (
     LABEL,
     aggregate_keys,
     annotation_text,
+    holds_owned_part,
     internal_predicates,
     iri_type_of,
+    json_name,
     refuse_internal,
     root_class_iris,
     tenant_root_class,
@@ -431,7 +434,8 @@ class Tenancy:
         system database, on ``default``, and names ``store`` unless that is ``default`` (PD-2, PD-7).
 
         ``root_slots`` are the slots of the tenant's root object, whose ``id`` is the tenant IRI
-        minted here and whose ``label`` is the tenant's: the slots may leave it out or repeat it. The record gives
+        minted here and whose ``label`` is the tenant's: the slots may leave it out or repeat it. Its owned parts
+        get IRIs from the part template, as on any create, so they leave out their ``id`` too. The record gives
         ``creator`` the settings' ``creator_role`` on the tenant. Both objects are built and
         validated before anything is created, so a refused request leaves nothing (PD-8c). Once the database
         exists, a failure up to the end of the root's write drops the database and, if this call created it,
@@ -441,7 +445,8 @@ class Tenancy:
         the bucket stay for the start-up sweep.
 
         Raises:
-            InvalidBody: ``root_slots`` names an ``id`` or sets an ``internal`` slot: the service assigns those;
+            InvalidBody: ``root_slots`` names an ``id``, of the root or of a part, or sets an ``internal`` slot:
+                the service assigns those;
                 or gives a ``label`` other than ``label``: a tenant has one label (PD-3); or a root
                 validator refuses the new root.
             ValueError: ``label`` or ``root_slots`` is not valid (pydantic's ``ValidationError``).
@@ -456,7 +461,8 @@ class Tenancy:
         tenant = await self._free_tenant()
         name = self._iris.resource_name(tenant)
         record = self._new_record(tenant, name, label, creator, store)
-        tenant_root = self._root_class.model_validate({**root_slots, LABEL: label, ID_SLOT: tenant})
+        slots = self._with_part_iris(tenant_root_class(self._mapper.view).name, root_slots, tenant)
+        tenant_root = self._root_class.model_validate({**slots, LABEL: label, ID_SLOT: tenant})
         refuse_internal(self._mapper.to_graph(tenant_root), self._internal)
         _run_validators(self._root_validators, None, tenant_root, creator)
         await target.create_dataset(name)  # a Conflict here made nothing: there is nothing to drop
@@ -476,6 +482,46 @@ class Tenancy:
         self._store_names[tenant] = store
         _log_step("create-record", tenant, name)
         return TenantSummary(id=tenant, label=label, state=TenantState.ACTIVE)
+
+    def _with_part_iris(
+        self, class_name: str, slots: Mapping[str, Any], tenant: str
+    ) -> dict[str, Any]:
+        """``slots`` of a ``class_name`` in the tenant root's aggregate, each owned part, nested ones too, given an
+        IRI by the part template, as an ordinary create mints one (#276).
+
+        Raises:
+            InvalidBody: A part names its own ``id``: the IRI policy assigns it.
+        """
+        view = self._mapper.view
+        found = dict(slots)
+        for slot in view.class_induced_slots(class_name):
+            key = json_name(slot)
+            if key not in found or not holds_owned_part(view, slot):
+                continue
+            # ponytail: the slot's range names the type; a part typed as a subclass needs the body's type
+            part_class = view.get_class(str(slot.range))
+            value = found[key]
+            found[key] = (
+                [self._part_with_iri(part_class, p, tenant) for p in value]
+                if isinstance(value, list)
+                else self._part_with_iri(part_class, value, tenant)
+            )
+        return found
+
+    def _part_with_iri(self, part_class: ClassDefinition, part: Any, tenant: str) -> Any:
+        """``part`` of the tenant root's aggregate with its own parts given IRIs, and its IRI minted when its class
+        has an identifier."""
+        if not isinstance(part, Mapping):
+            return part  # not an object: the root's validation refuses it
+        if ID_SLOT in part:
+            raise InvalidBody("the service assigns the IRI of a part of a new tenant's root")
+        inner = self._with_part_iris(part_class.name, part, tenant)
+        if self._mapper.view.get_identifier_slot(part_class.name, use_key=False) is None:
+            return inner
+        return {
+            **inner,
+            ID_SLOT: str(self._iris.mint_part(tenant, tenant, iri_type_of(part_class))),
+        }
 
     def _new_record(
         self, tenant: str, name: str, label: str, creator: Principal, store: str

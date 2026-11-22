@@ -11,5 +11,10 @@
   "contributor": {
     "@embed": "@never",
     "@omitDefault": true
+  },
+  "charter": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "Charter"
   }
 }

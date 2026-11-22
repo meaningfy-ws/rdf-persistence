@@ -226,6 +226,13 @@
           "required": true,
           "multivalued": false,
           "inlined": false
+        },
+        {
+          "slot_uri": "https://example.org/ns/library#charter",
+          "range": "https://example.org/ns/library#Charter",
+          "required": false,
+          "multivalued": false,
+          "inlined": true
         }
       ]
     },
@@ -425,6 +432,35 @@
           "slot_uri": "http://purl.org/dc/terms/modified",
           "range": "http://www.w3.org/2001/XMLSchema#dateTime",
           "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://example.org/ns/library#Charter",
+      "iri_type": null,
+      "root_path": null,
+      "root_database": null,
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
           "multivalued": false,
           "inlined": false
         },

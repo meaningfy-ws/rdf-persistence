@@ -46,6 +46,7 @@ linkml_meta = None
 class Library(Tracked, Described):
     "A library; the tenant root. Its IRI is the tenant IRI and it lives in the tenant\u0027s meta graph."
     city: _Optional[str] = _Field(default=None, title="City", description="The city where the library is located.")
+    charter: _Optional[Charter] = _Field(default=None, title="Charter", description="The library\u0027s charter, owned by it and kept in the tenant\u0027s meta graph.")
     id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
     description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")
@@ -55,6 +56,14 @@ class Library(Tracked, Described):
     contributor: _Optional[list[str]] = _Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
 
 
+class Charter(Described):
+    "A library\u0027s charter, an owned part of the tenant root; the service mints its IRI."
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
+    description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 Library.model_rebuild()
+Charter.model_rebuild()
