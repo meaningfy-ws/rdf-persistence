@@ -256,9 +256,10 @@ Outside HTTP, `InvalidBody` comes out of `commit` or the transition. A rule that
 
 * *A broken rule blocks every write of its class.* A rule that always raises a bug also blocks
 transitions and bus handlers. The 500 names the rule; test your rules.
-* *A refusal of the tenant root on create leaves the database and the bucket.* They exist before
-the root is written. The start-up sweep removes them. A rule that must leave nothing behind
-belongs in `root_validators`, which runs before.
+* *A refusal of the tenant root on create is a 422 and leaves nothing.* The database and the
+bucket exist before the root is written, so the create drops the ones it made. Only if that drop
+itself fails are they left for the start-up sweep. `root_validators` run first, before the
+database exists.
 * *A stale PUT.* If a rule refuses the body, the answer is 422, whatever the version. If the
 rules accept it, the version check at commit answers 409, as without rules.
 * *Cost.* Without `aggregate_validators`, nothing is decoded or read. With them, a replace reads
