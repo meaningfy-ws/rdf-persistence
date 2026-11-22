@@ -130,15 +130,16 @@ class WriteGuards:
 
         Nothing is decoded or read when no rule applies (G-4).
         """
-        if self._validators is None:
+        validators = self._validators
+        if validators is None or not validators.has_rules:
             return
-        selected = self._validators.select(iri, root_types(iri, triples))
+        selected = validators.select(iri, root_types(iri, triples))
         if selected is None:
             return
         name, rules = selected
         new = self._decoded_new(name, iri, triples)
-        old = None if stored is None else await self._decoded_stored(session, iri)
-        reader = self._validators.reader(session, context)
+        old = None if stored is None else await self._decoded_stored(session, iri, validators)
+        reader = validators.reader(session, context)
         await run_aggregate_validators(rules, old, new, session.principal, reader)
 
     def _decoded_new(self, name: str, iri: str, triples: list[Triple]) -> BaseModel:
@@ -150,11 +151,12 @@ class WriteGuards:
         except ValueError as error:
             raise InvalidBody(f"the triples of {iri} are not those of a {name}") from error
 
-    async def _decoded_stored(self, session: Session, iri: str) -> BaseModel:
+    async def _decoded_stored(
+        self, session: Session, iri: str, validators: AggregateValidators
+    ) -> BaseModel:
         """The root as stored, tracking included; a 500 if it does not decode, the client cannot fix it."""
-        assert self._validators is not None  # the caller checked
         graph, tracked_in, _ = await session.get_graph(iri)
-        name = self._validators.model_class(str(t) for t in graph.objects(URIRef(iri), RDF.type))
+        name = validators.model_class(str(t) for t in graph.objects(URIRef(iri), RDF.type))
         try:
             if name is None:
                 raise ValueError("it has no single root class")

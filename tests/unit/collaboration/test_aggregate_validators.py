@@ -420,12 +420,6 @@ async def test_an_aggregate_collected_earlier_in_the_transaction_answers_with_it
         assert seen == [], "the collected change answers, not the store"
 
 
-async def test_an_aggregate_collected_later_is_not_visible():  # T-6
-    async with reading_session() as session:
-        reader = reader_of(session)  # the context of the change before it: nothing collected yet
-        assert await reader.classes_of(shelf_iri(3)) == frozenset()
-
-
 async def test_an_aggregate_removed_earlier_in_the_transaction_still_answers_with_its_stored_types():  # T-6
     async with reading_session() as session:
         await store_both(session)
@@ -579,6 +573,49 @@ async def test_a_rule_reads_the_class_of_a_member_through_its_reader():
         await save(session, dune(book_iri(1)))
         await save(session, shelf(shelf_iri(1)).model_copy(update={"has_part": [book_iri(1)]}))
     assert classes == [frozenset({"Book"})]
+
+
+async def shelf_class_seen_by_a_book_rule(*, shelf_first: bool) -> list[frozenset[str]]:
+    """Commit a book and the shelf it stands on in one unit of work; what the book's rule saw of the shelf.
+
+    The shelf is the book's ``shelf`` reference: a collection guard would refuse a shelf naming a
+    member that is not stored yet, a plain reference is not checked.
+    """
+    seen: list[frozenset[str]] = []
+
+    async def looks_at_the_shelf(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        seen.append(await reader.classes_of(new.shelf))
+
+    async with fake_session(
+        tenant_iri=TENANT, guards=guarded({"Book": [looks_at_the_shelf]})
+    ) as session:
+        book = dune(book_iri(1), shelf=shelf_iri(1))
+        objects = (shelf(shelf_iri(1)), book) if shelf_first else (book, shelf(shelf_iri(1)))
+        await save(session, *objects)
+    return seen
+
+
+async def test_a_root_added_later_in_the_same_unit_of_work_is_empty_to_the_rule():  # T-6
+    assert await shelf_class_seen_by_a_book_rule(shelf_first=False) == [frozenset()], (
+        "the shelf is collected after the book: not there yet"
+    )
+
+
+async def test_a_root_added_earlier_in_the_same_unit_of_work_has_its_class_for_the_rule():  # T-6
+    assert await shelf_class_seen_by_a_book_rule(shelf_first=True) == [frozenset({"Shelf"})], (
+        "the shelf is collected before the book"
+    )
+
+
+async def test_an_empty_mapping_does_not_even_read_the_root_types(
+    monkeypatch: pytest.MonkeyPatch,
+):  # G-4
+    def never(*_: Any) -> list[str]:
+        raise AssertionError("the root types were computed with no rule at all")
+
+    monkeypatch.setattr("rdf_persistence.collaboration.services.write_guards.root_types", never)
+    async with fake_session(tenant_iri=TENANT, guards=guarded({})) as session:
+        await stored_shelf(session)
 
 
 async def test_a_class_without_a_rule_is_not_decoded_or_read():  # T-8

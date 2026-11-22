@@ -68,6 +68,11 @@ class AggregateValidators:
         gathered = {iri: _gather(chain, mapping) for iri, chain in chains.items()}
         self._rules = {iri: found for iri, found in gathered.items() if found}
 
+    @property
+    def has_rules(self) -> bool:
+        """Whether any rule is registered; with none, a guarded write costs nothing (G-4)."""
+        return bool(self._rules)
+
     def select(self, root_iri: str, type_iris: Iterable[str]) -> Selection | None:
         """The rules for the root at ``root_iri`` typed ``type_iris``; None when no rule applies.
 

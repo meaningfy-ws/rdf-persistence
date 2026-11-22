@@ -17,7 +17,7 @@ from rdf_persistence.core.domain.media import JSON
 from tests.fixtures.library.domain.generated.books import Shelf
 from tests.scene import PROBLEMS, Scene, problem_of
 from tests.toy import graph_of, toy_mapper
-from tests.toy_service import DUNE_BODY, ToyService, principal_of
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 
 REFUSED = "a shelf holds one book at most"
 SHELF_BODY = {"label": "Shelf", "description": "A shelf.", "member_class": "Book"}
@@ -218,3 +218,26 @@ async def test_a_rule_on_the_tenant_root_class_refuses_a_root_put_with_a_422() -
         assert "not Bruges" in response.text
         root = await scene.http.get(scene.tenant, headers=scene.headers("ada"))
         assert root.headers["etag"] == scene.root_etag, "the root is as it was"
+
+
+async def test_a_rule_refusing_the_tenant_root_on_create_is_a_422_and_leaves_nothing() -> None:
+    # S4, D-10: the create drops the database and the bucket it made
+    def refuses_a_create(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        if old is None:
+            raise InvalidBody("no new libraries")
+
+    toy = ToyService(aggregate_validators={"Library": [refuses_a_create]})
+    async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
+        databases = await toy.store.list_datasets()
+        buckets = await toy.files.list_buckets("")
+        response = await http.post("/libraries", json=TENANT_BODY, headers=toy.bearer("ada"))
+        assert (response.status_code, problem_of(response).type) == (
+            422,
+            f"{PROBLEMS}invalid-body",
+        ), response.text
+        assert "no new libraries" in response.text, "the rule's message is the answer's"
+        assert "location" not in response.headers, "no tenant is announced"
+        assert await toy.store.list_datasets() == databases, "the database was dropped"
+        assert await toy.files.list_buckets("") == buckets, "the bucket was dropped"
+        listing = await http.get("/libraries", headers=toy.bearer("ada"))
+        assert listing.json()["items"] == [], "no tenant is served"
