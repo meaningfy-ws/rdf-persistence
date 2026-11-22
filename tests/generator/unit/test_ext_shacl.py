@@ -69,6 +69,14 @@ def test_the_identifier_slot_gives_no_property_shape(shapes: Graph) -> None:
     assert len(on_identifier) == 1, "the business identifier keeps its own property shape"
 
 
+def test_the_application_slot_named_like_an_internal_one_keeps_its_iri(shapes: Graph) -> None:
+    """#278: the toy's own ``version`` is on dcat:version, never on the toolkit's rp:version."""
+    template = URIRef(f"{LIB}Template")
+    paths = {shapes.value(p, SH.path) for p in shapes.objects(template, SH.property)}
+    assert URIRef("http://www.w3.org/ns/dcat#version") in paths, "the module's version"
+    assert URIRef(f"{RP}version") not in paths, "the toolkit's internal version"
+
+
 def test_a_mixin_shape_is_left_open_and_without_bookkeeping(shapes: Graph) -> None:
     mixin = URIRef(f"{RP}AggregateRoot")
     assert not BOOKKEEPING & ignored(shapes, str(mixin)), "an open shape needs no ignored list"

@@ -1636,6 +1636,13 @@ enums:
           to a slot annotated `toolkit_filled`, gives no slot of its own the `slot_uri` of one, and has
           no slot that is both `payload` and required.
         meaning: rp:HardRuleToolkitFilled
+      toolkit_slot_name:
+        title: Toolkit slot name
+        description: >-
+          A slot of the application does not take the name of a toolkit slot that a toolkit class
+          carries under another `slot_uri`: LinkML keeps one slot per name, so one of the two would be
+          lost. A toolkit slot that no toolkit class carries gives way to the application's.
+        meaning: rp:HardRuleToolkitSlotName
       default_instance:
         title: Default instance
         description: >-

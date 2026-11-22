@@ -4,6 +4,8 @@
 export interface Template {
   /** A business code of the template, a literal; not its IRI, though the toolkit's id slot has the same slot_uri. */
   identifier?: string;
+  /** The edition of the template; a slot of this module, though the toolkit has an internal slot of the same name. */
+  version?: string;
   /** The IRI that identifies the object. */
   id: string;
   /** The preferred label of the object. */

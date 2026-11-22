@@ -48,13 +48,20 @@ def test_the_references_point_into_the_components_of_an_openapi_document(schemas
 
 
 def test_no_bookkeeping_slot_is_in_any_schema(schemas: dict) -> None:
+    view = load_schema(TOY / ROOT_SCHEMA)
     leaked = {
         (name, prop)
         for name, schema in schemas.items()
         for prop in schema.get("properties", {})
         if prop in BOOKKEEPING
+        and (name not in view.all_classes() or is_bookkeeping(view.induced_slot(prop, name)))
     }
     assert not leaked, "the session writes them; the API never shows them"
+
+
+def test_an_application_slot_named_like_the_internal_version_is_shown(schemas: dict) -> None:
+    """#278: the toy's ``Template.version`` is its own slot, not the session's bookkeeping."""
+    assert "version" in schemas["Template"]["properties"], "the module's version is served"
 
 
 def test_the_bookkeeping_and_internal_slots_of_every_class_are_left_out(schemas: dict) -> None:

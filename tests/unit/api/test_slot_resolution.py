@@ -1,7 +1,7 @@
-"""An application slot that shares an IRI or a name with a toolkit slot keeps its value (#277).
+"""An application slot that shares an IRI or a name with a toolkit slot keeps its value (#277, #278).
 
 The toy's ``Template`` has a business ``identifier`` on ``dcterms:identifier``, the property of the
-toolkit's ``id``.
+toolkit's ``id``, and a ``version`` on ``dcat:version``, the name of the toolkit's internal version.
 """
 
 import json
@@ -19,8 +19,9 @@ from tests.fixtures.library.domain.generated.templates import Template
 from tests.toy import GENERATED, TENANT, TOY_SCHEMA, encoded, template, toy_mapper
 
 TEMPLATE = "https://example.org/templates/t1"
-CODE = "tpl-1"
-VALUES = {"identifier": CODE}
+DCAT_VERSION = URIRef("http://www.w3.org/ns/dcat#version")
+CODE, EDITION = "tpl-1", "2nd"
+VALUES = {"identifier": CODE, "version": EDITION}
 BODY = {"label": "Quarterly report", **VALUES}
 
 
@@ -43,14 +44,16 @@ async def test_a_body_with_the_values_becomes_their_triples_and_passes_the_shape
     )
     node = URIRef(TEMPLATE)
     assert (node, DCTERMS.identifier, Literal(CODE)) in graph, "the business identifier, a literal"
+    assert (node, DCAT_VERSION, Literal(EDITION)) in graph, "#278: the module's version, its IRI"
     await documents.validate(graph)  # #277: no shape asks dcterms:identifier to be an IRI
 
 
 def test_the_mapper_writes_and_reads_the_values(stored: Graph) -> None:
     node = URIRef(TEMPLATE)
     assert (node, DCTERMS.identifier, Literal(CODE)) in stored, "the identifier is written"
+    assert (node, DCAT_VERSION, Literal(EDITION)) in stored, "#278: the version is not dropped"
     read = toy_mapper().from_graph(Template, TEMPLATE, stored, None)
-    assert (read.id, read.identifier) == (TEMPLATE, CODE), "read back"
+    assert (read.id, read.identifier, read.version) == (TEMPLATE, CODE, EDITION), "read back"
 
 
 def test_the_identifier_slot_never_names_a_predicate() -> None:

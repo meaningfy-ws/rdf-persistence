@@ -129,6 +129,15 @@ FAULTS = (
     ),
     Fault(HardRule.MEANING, "books.yaml", "        meaning: schema:Fiction\n", "", "fiction"),
     Fault(HardRule.IRI, "books.yaml", "default_prefix: lib\n", "", "Genre"),
+    # #278: a slot of the application under the name of a slot a toolkit class carries
+    Fault(
+        HardRule.TOOLKIT_SLOT_NAME,
+        "templates.yaml",
+        "slots:\n  identifier:\n",
+        "slots:\n  graph:\n    title: Graph\n    description: Its own.\n    slot_uri: lib:graph\n"
+        "  identifier:\n",
+        "graph",
+    ),
     Fault(HardRule.RP_PATH, "books.yaml", "      rp_path: books\n", "", "Book"),
     Fault(HardRule.RP_PATH, "scans.yaml", "      rp_path: scans\n", "", "Scan"),
     Fault(

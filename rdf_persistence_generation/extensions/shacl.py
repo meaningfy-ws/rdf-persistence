@@ -38,6 +38,7 @@ from rdf_persistence.schema.services.schema_structure import (
     is_internal,
     is_owned,
 )
+from rdf_persistence.schema.services.vocabulary import BOOKKEEPING_PREDICATES
 from rdf_persistence_generation.config import TOOLKIT_ROOTS
 from rdf_persistence_generation.extensions.shacl_constraints import constraints_graph, shape_uri
 from rdf_persistence_generation.generated.rp_generation import GeneratedFile
@@ -57,12 +58,16 @@ class RpShaclGenerator(ShaclGenerator):
     use_class_uri_names: bool = False
 
     def _bookkeeping(self) -> set[URIRef]:
+        """The session's predicates, by IRI: an application slot may have taken the name of one (#278)."""
         sv = self.schemaview
-        return {
+        in_view = {
             URIRef(sv.get_uri(slot, expand=True))
             for slot in sv.all_slots().values()
             if is_bookkeeping(slot)
         }
+        if not in_view:  # a closure without the toolkit's bookkeeping slots has none to ignore
+            return in_view
+        return in_view | {URIRef(p) for p in BOOKKEEPING_PREDICATES}
 
     def _build_ignored_properties(self, g: Graph, c: ClassDefinition) -> BNode:
         node: BNode = super()._build_ignored_properties(g, c)

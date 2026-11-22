@@ -1569,6 +1569,10 @@
     required: false
     multivalued: false
     range: datetime
+  - name: version
+    required: false
+    multivalued: false
+    range: string
 - class_name: TenantAccess
   slots:
   - name: database_name

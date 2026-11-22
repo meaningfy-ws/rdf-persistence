@@ -938,6 +938,13 @@
           "required": true,
           "multivalued": false,
           "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/ns/dcat#version",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
         }
       ]
     },
