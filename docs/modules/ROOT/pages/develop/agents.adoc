@@ -5,8 +5,8 @@ The method agents follow here (the shaping and epic sessions, the team and its b
 a stage scaled by appetite, the lead's authority, how questions are put to the developer,
 verification and validation, and what to do when one of our own or an external library falls
 short) is owned by skillery's `epic-delivery` skill, installed with the `meaningfy-building` bundle
-(3.15.0 or later: the gate triggers and "builders run neither impact nor the change check" come
-from that version); shaping is `epic-planning`, and subagent dispatch and session hygiene are
+(3.22.0 or later: the lean method, with the gate table and the lead owning impact, comes from that
+version); shaping is `epic-planning`, and subagent dispatch and session hygiene are
 `guardrails` (`meaningfy-core`). The explanation for people is skillery's
 https://github.com/meaningfy-ws/skillery/blob/develop/docs/practice/ai-coding/working-with-agents.md[Working with agents].
 `AGENTS.md` at the repository root says what the project is, how it is developed and its
@@ -47,18 +47,24 @@ The standing rules and the report in <<brief>>.
 [#brief]
 == What every brief carries here
 
-On top of the brief the `epic-delivery` skill sets, every brief names:
+On top of the brief the `epic-delivery` skill sets, every brief carries this checklist, pasted in
+(the adversarial tester follows it too), so no builder opens a second page to load it:
 
-* the standing rules: models, not dicts; LinkML is the single source; the
-  xref:develop/testing.adoc[testing checklist] (the adversarial tester follows it too);
-* the report expected: files changed, tests added, each make target run with its time and test
-  count;
-* how to work: <<tools>> (which tool answers which question, and Serena's limits);
-* that the builder skips its own impact step: the `implementer` agent's definition still tells it
-  to re-index and run impact before every edit, which epic-delivery's stage loop and this repo
-  give to the lead (skillery issue #254). Until that is fixed, only the brief stops it.
+. Models, not dicts; LinkML is the single source, never edit a generated file.
+. A test lives in the tier folder of the layer it tests; the folder gives the marker.
+. No network outside container and e2e tests; no real sleeps (inject the clock, `testkit.wait_until`).
+. Prefer one fake of the real port over `MagicMock`; never patch toolkit code except the five
+  marked kinds (`# X1` to `# X5`, see xref:develop/testing.adoc[the testing checklist]).
+. Compare RDF as graphs (`rdflib.compare.isomorphic`), never as Turtle strings.
+. Each rule or guard gets a positive and a negative case in one parametrized table.
+. One assert per idea, each with a message.
+. Mark a test `slow` on the test itself, never a module `pytestmark`.
+. Report the files changed, the tests added, and each make target run with its time and test count.
+. Tools: Serena for symbols, `ast-grep` for a shape, Grep for text; no impact run, no re-index (the
+  lead's), no `s.shell`, no `s.mem`.
 
-The commit trace is in `AGENTS.md` (Working here).
+A builder in a worktree gets its absolute path named once in the brief, and activates it as its own
+Serena project. The commit trace is in `AGENTS.md` (Working here).
 
 [#tools]
 == Which tool answers which question
@@ -92,9 +98,9 @@ a separate worktree only for overlapping parallel work, or when another session 
 
 Why they are shaped this way (#111, measured over two weeks of sessions):
 
-* The lead runs impact and the change check once per task and builders run neither: builders
-  re-indexing and checking every symbol cost more than it found, and was followed for about 5 to
-  7 % of edits anyway.
+* The lead runs impact at stage start and before the stage's last commit, and builders run
+  neither: builders re-indexing and checking every symbol cost more than it found, and was followed
+  for about 5 to 7 % of edits anyway.
 * The builder's task gate is one command (`make test-changed check-quality`, or the `test-fast`
   variant), so every report has the same shape and the lead does not re-run it without a trigger;
   re-running `make check-quality` after every task cost 61 runs for 21 PRs.
@@ -158,14 +164,14 @@ merges it; the steps are in xref:develop/index.adoc#release[Cutting a release].
 == Habits that keep sessions consistent
 
 [#never-poll]
-* *Never poll:* wait in the foreground, on a background notice or with the Monitor tool. The hook
-  that denies `sleep` loops (`.claude/hooks/no_polling.py`) runs on plain `python3`, stdlib only,
-  on purpose: it must not depend on the project's environment.
+* *Never poll:* run a long command once in the background and wait for its notice, or use the
+  Monitor tool. The `no-poll-loops` and `quiet-tools` hooks of `meaningfy-core` enforce it; this
+  repository ships no hook of its own.
 
 [#reindex]
 * *Re-index GitNexus per stage, not per commit:* at the start of each stage, and again before an
   impact check on symbols an earlier task of the stage added or moved:
-  `gitnexus analyze --embeddings --skip-agents-md --skip-skills` (≈ 20 s). Per-commit runs cost 151
+  `make reindex` (≈ 20 s). Per-commit runs cost 151
   re-indexes for 298 commits. If it errors (developer, 2026-11-09), do not retry or investigate:
   run `gitnexus clean --force`, then `gitnexus analyze --embeddings --force --skip-agents-md
   --skip-skills` (≈ 4 min, in the background), then revert anything it wrote to `AGENTS.md`,

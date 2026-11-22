@@ -35,7 +35,14 @@ instructions are missing, route by the skills' descriptions and say so once.
   (briefs, gates, review set, tools per role, re-indexing) is in
   [`develop/agents.adoc`](docs/modules/ROOT/pages/develop/agents.adoc): the lead reads it at the
   start of an epic session.
-- **Rules:** this repository's rules for agents are in `docs/rules/`. At the start of an activity, load them with the rulebook skill; change them only through it, by pull request. Preferences and corrections go to the rulebook, never to the CLI's memory; project state goes to the spine and the repository's docs.
+- **Rules:** this repository's rules for agents are in `docs/rules/`. At the start of an activity, the
+  lead loads them with the rulebook skill; a subagent never loads them, its brief carries them
+  (`rules.py load --activity <a> --brief`). Change them only through the rulebook, by pull request.
+  Preferences and corrections go to the rulebook, never to the CLI's memory; project state goes to
+  the spine and the repository's docs.
+- **Where the rest lives, restated nowhere here:** the team, the stage loop and the lead's authority
+  → `epic-delivery`; session hygiene, subagent dispatch and the tools table → `guardrails`; what to
+  test and how each activity fails → `test-strategy`.
 
 ## Principles
 
@@ -56,12 +63,25 @@ instructions are missing, route by the skills' descriptions and say so once.
 
 ## Working here
 
-- Run everything through `make` (Python through uv); never bare `python` or `pytest`. Task gate:
-  `make test-changed check-quality` (`make test-fast check-quality` after changing `domain` or a
-  port). The full gates, `make check-all` and `make test-containers`, are the lead's.
-- Code tools: Serena for reading and editing symbols, `ast-grep` for one code shape in many files,
-  Grep for docs, YAML and the Makefile, GitNexus impact by the lead. Limits per role:
-  [`develop/agents.adoc#tools`](docs/modules/ROOT/pages/develop/agents.adoc).
+- Run everything through `make` (Python through uv); never bare `python` or `pytest`. A gate prints
+  its result, not its log; run a long command once in the background and wait for its notice. The
+  hooks every session runs are `no-poll-loops` and `quiet-tools` from `meaningfy-core`; this
+  repository ships none of its own.
+
+  | Gate | When and who | Command |
+  |---|---|---|
+  | Narrow checks | the builder, each edit | the tests the edit touches (`uv run pytest <file>`), `make lint` |
+  | Task gate | the builder, once per task | `make test-changed check-quality` (`make test-fast check-quality` after changing `domain` or a port) |
+  | Full gates | the lead, once per stage before the PR and once after the fix pass | `make check-all`; `make test-containers` when adapters changed |
+  | Docs gate | the checker, when the docs change | `make check-docs` |
+  | GitNexus | the lead, at stage start and before the stage's last commit; builders and reviewers run none | `make reindex`, then the GitNexus impact tool |
+
+- Code tools: Serena for reading and editing symbols (a worktree is activated as its own Serena
+  project), `ast-grep` for one code shape in many files, Grep for docs, YAML and the Makefile,
+  GitNexus for blast radius. A HIGH or CRITICAL impact goes to the developer. Limits per role:
+  [`develop/agents.adoc#tools`](docs/modules/ROOT/pages/develop/agents.adoc). GitNexus repo name:
+  `rdf-persistence`. The GitNexus block lives in this file only, never in `CLAUDE.md`
+  (`make check-bindings`).
 - Edit in place (Edit or Serena), never with `sed -i` or a heredoc rewrite. Temporary files go in
   `temp/`.
 - Branch off `develop` and open the PR into it; never commit to it. Commits follow
