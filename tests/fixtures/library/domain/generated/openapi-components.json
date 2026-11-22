@@ -1885,6 +1885,10 @@
           "readOnly": true,
           "type": "string"
         },
+        "identifier": {
+          "description": "A business code of the template, a literal; not its IRI, though the toolkit's id slot has the same slot_uri.",
+          "type": "string"
+        },
         "label": {
           "description": "The preferred label of the object.",
           "type": "string"

@@ -183,6 +183,9 @@
          "@type": "@id",
          "@id": "oa:hasTarget"
       },
+      "identifier": {
+         "@id": "dcterms:identifier"
+      },
       "initial_state": {
          "@id": "rp:initialState"
       },

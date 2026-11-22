@@ -87,7 +87,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/shacl.py",
-      "sha256": "4ee4b40a7b49304dae230656cd2857535901d37e79f74545fa3d671e10473c77"
+      "sha256": "9c35a7409660ec4047ea4c96de4874c6e00997e3477184b2937c39a580d25281"
     },
     {
       "path": "rdf_persistence_generation/extensions/shacl_constraints.py",
@@ -99,7 +99,7 @@
     },
     {
       "path": "rdf_persistence_generation/lock.py",
-      "sha256": "24e4cb72baa701eca1f8daa520822a9767ffd6f473254c793e6bd64a20e14763"
+      "sha256": "ba772de60f55c7d80088a946f34c01e242c88bf6be340c007c26ed96358db73d"
     },
     {
       "path": "rdf_persistence_generation/lock_step.py",

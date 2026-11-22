@@ -90,11 +90,25 @@ class RpShaclGenerator(ShaclGenerator):
                         g.remove((prop, SH["class"], None))
 
     def _require_iri_nodes(self, g: Graph) -> None:
-        """Add ``sh:nodeKind sh:IRI`` to the shape of every class with an identifier slot."""
+        """Add ``sh:nodeKind sh:IRI`` to the shape of every class with an identifier slot.
+
+        The identifier slot's own property shape goes (#277): its value is the node, never a
+        statement, so a business slot on the same property (``dcterms:identifier``) must not be
+        asked for an IRI. The stock generator numbers the properties of a class by its induced
+        slots (``sh:order``), which finds the identifier's among those sharing its path.
+        """
         sv = self.schemaview
         for cls in sv.all_classes().values():
-            if sv.get_identifier_slot(cls.name) is not None:
-                g.add((shape_uri(sv, cls), SH.nodeKind, SH.IRI))
+            if sv.get_identifier_slot(cls.name) is None:
+                continue
+            shape = shape_uri(sv, cls)
+            g.add((shape, SH.nodeKind, SH.IRI))
+            induced = sv.class_induced_slots(cls.name)
+            order = next(i for i, slot in enumerate(induced) if slot.identifier)
+            for prop in list(g.objects(shape, SH.property)):
+                if (prop, SH.order, Literal(order)) in g:
+                    g.remove((shape, SH.property, prop))
+                    g.remove((prop, None, None))
 
     def _relax_internal_slots(self, g: Graph) -> None:
         """Drop ``sh:minCount`` from the properties of ``internal`` slots."""

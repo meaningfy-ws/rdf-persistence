@@ -2,6 +2,8 @@
 
 /** A report template shared by every library. */
 export interface Template {
+  /** A business code of the template, a literal; not its IRI, though the toolkit's id slot has the same slot_uri. */
+  identifier?: string;
   /** The IRI that identifies the object. */
   id: string;
   /** The preferred label of the object. */

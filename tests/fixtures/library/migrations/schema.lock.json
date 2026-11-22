@@ -919,6 +919,13 @@
           "inlined": false
         },
         {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
           "slot_uri": "http://purl.org/dc/terms/modified",
           "range": "http://www.w3.org/2001/XMLSchema#dateTime",
           "required": false,

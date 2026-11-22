@@ -1557,6 +1557,10 @@
     required: true
     multivalued: false
     range: uri
+  - name: identifier
+    required: false
+    multivalued: false
+    range: string
   - name: label
     required: true
     multivalued: false

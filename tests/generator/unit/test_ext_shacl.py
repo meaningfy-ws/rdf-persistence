@@ -52,6 +52,23 @@ def test_the_ignored_list_keeps_the_type_predicate(shapes: Graph) -> None:
     assert RDF.type in ignored(shapes, f"{LIB}Chapter"), "rdf:type must stay ignored"
 
 
+def test_the_identifier_slot_gives_no_property_shape(shapes: Graph) -> None:
+    """#277: the identifier is the node's IRI, never a triple, so no property asks for one."""
+    iri_paths = [
+        shapes.value(prop, SH.path)
+        for prop in shapes.subjects(SH.nodeKind, SH.IRI)
+        if (prop, SH.path, DCTERMS.identifier) in shapes
+    ]
+    assert not iri_paths, "a property shape on dcterms:identifier asks for an IRI"
+    template = URIRef(f"{LIB}Template")
+    on_identifier = [
+        p
+        for p in shapes.objects(template, SH.property)
+        if (p, SH.path, DCTERMS.identifier) in shapes
+    ]
+    assert len(on_identifier) == 1, "the business identifier keeps its own property shape"
+
+
 def test_a_mixin_shape_is_left_open_and_without_bookkeeping(shapes: Graph) -> None:
     mixin = URIRef(f"{RP}AggregateRoot")
     assert not BOOKKEEPING & ignored(shapes, str(mixin)), "an open shape needs no ignored list"

@@ -207,23 +207,38 @@ def _class_changes(old: LockedClass, new: LockedClass) -> Iterator[LockChange]:
     yield from _class_slot_changes(old, new)
 
 
+def _by_iri(lock: LockedClass) -> dict[str, list[LockedSlot]]:
+    found: dict[str, list[LockedSlot]] = {}
+    for slot in lock.locked_slots or []:
+        found.setdefault(slot.slot_uri, []).append(slot)
+    return found
+
+
 def _class_slot_changes(old: LockedClass, new: LockedClass) -> Iterator[LockChange]:
+    """The slot changes of a class, slot by slot; slots that share an IRI (#277) are paired.
+
+    The slots an IRI keeps unchanged pair first; the rest pair in lock order, an unpaired old one
+    being removed and an unpaired new one added.
+    """
     uri = new.class_uri
-    old_slots = {s.slot_uri: s for s in old.locked_slots or []}
-    new_slots = {s.slot_uri: s for s in new.locked_slots or []}
+    old_slots, new_slots = _by_iri(old), _by_iri(new)
     for slot_uri in sorted(old_slots.keys() | new_slots.keys()):
-        if slot_uri not in new_slots:
+        before, after = list(old_slots.get(slot_uri, [])), list(new_slots.get(slot_uri, []))
+        for kept in [s for s in after if s in before]:
+            before.remove(kept)
+            after.remove(kept)
+        for old_slot, new_slot in zip(before, after, strict=False):
+            yield from _slot_changes(uri, old_slot, new_slot)
+        for _ in before[len(after) :]:
             yield LockChange(
                 rule=LockRule.DESTRUCTIVE,
                 what="slot removed (deletes data)",
                 class_uri=uri,
                 slot_uri=slot_uri,
             )
-        elif slot_uri not in old_slots:
-            rule = LockRule.NEEDS_STEP if new_slots[slot_uri].required else LockRule.SAFE
+        for added in after[len(before) :]:
+            rule = LockRule.NEEDS_STEP if added.required else LockRule.SAFE
             yield LockChange(rule=rule, what="slot added", class_uri=uri, slot_uri=slot_uri)
-        else:
-            yield from _slot_changes(uri, old_slots[slot_uri], new_slots[slot_uri])
 
 
 def _enum_changes(old: LockedEnum, new: LockedEnum) -> Iterator[LockChange]:
