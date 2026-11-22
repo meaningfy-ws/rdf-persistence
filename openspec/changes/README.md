@@ -134,6 +134,7 @@ fixed separately and is not in either.
 |---|---|---|---|---|---|---|
 | 8 | `aggregate-validators` | SMALL | #240 | none | `v2-02` phase B, the package's 0..1 collection limits | 8.1 → 8.9, accepted (R-0005); delivered in #266, archived `2026-11-21-aggregate-validators` |
 | 9 | `uml-roles-and-workflows` | MEDIUM (2 stages: roles, workflows) | #245 parts 2, 3 | `uml-to-linkml` (archived); for the consumer, #245 part 1 (RISK-3) | `v2-02` phase B, its hand-written roles and workflow files | 8.0 → 9.0; delivered in #257 and #263, archived in #264 |
+| 10 | `slot-resolution` | SMALL | #277, #278 | none | `v2-02` phase B, every write of an aggregate with a business `identifier` or its own `version` | not gated: delivered as a bug fix in #289, recorded after delivery and archived `2026-11-22-slot-resolution` |
 
 ### Why this order
 
