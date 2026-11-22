@@ -438,6 +438,44 @@ classes:
         equals_string: Book
 ----
 
+An abstract collection may draw a `dct:hasPart` role to an abstract class while each concrete
+subclass draws its own role to a class that descends from it. Then only the subclasses fix
+`member_class`: two fixed values on one class contradict each other, and the generated subclass
+would fail the type check. The abstract parent's role stays the toolkit's `has_part`, reported as
+`toolkit-slot-kept` with its range. An abstract collection whose subclasses draw no role of their
+own keeps its member class. A subclass's member class that does not descend from its parent's fails
+the run (`[toolkit_slot] Shelf: dct:hasPart role to Chapter does not narrow Collection's member class
+Resource: ...`).
+
+[mermaid]
+....
+classDiagram
+  class Collection["lib:Collection"] {
+    <<abstract>>
+  }
+  class Resource["lib:Resource"] {
+    <<abstract>>
+  }
+  Collection --> "0..*" Resource : hasPart
+  Shelf --|> Collection
+  Book --|> Resource
+  Shelf --> "0..*" Book : hasPart
+  note for Collection "rp_mixins = ReferenceCollection"
+....
+
+[source,yaml]
+----
+classes:
+  Collection:
+    abstract: true
+    mixins: [ReferenceCollection, ...]   # no member_class: its subclasses fix it
+  Shelf:
+    is_a: Collection
+    slot_usage:
+      member_class:
+        equals_string: Book
+----
+
 [#multiplicity]
 === Multiplicity
 
@@ -865,6 +903,11 @@ the element is `--default-mixins`)
 |`dct:hasPart` roles from one reference collection to two different classes
 (`[toolkit_slot] Shelf: dct:hasPart roles to Book and Map: ...`)
 |Keep one role: a collection has one member class. Draw a second collection for the other class.
+
+|A subclass's `dct:hasPart` role to a class that does not descend from its parent collection's
+member class (`[toolkit_slot] Shelf: dct:hasPart role to Chapter does not narrow ...`)
+|Point the subclass's role at a descendant of the parent's member class, or generalise the member
+class to it.
 
 |A package `module_kind` tagged value the metamodel does not list, or packages of different kinds
 that import each other

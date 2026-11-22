@@ -2753,17 +2753,25 @@ ROWS_DRAWN_INSIDE = [
 
 _HAS_PART = "dct:hasPart"
 _COLLECTION_ROOT = 17  # lib:Collection, the abstract class the collections generalise
+_RESOURCE = 18  # lib:Resource, the abstract class Book generalises (#274)
 
 
 def _shelf(
-    *targets: int, generalised: bool = False, collection: bool = True, drawn: bool = False
+    *targets: int,
+    generalised: bool = False,
+    collection: bool = True,
+    drawn: bool = False,
+    parent_role: int | None = None,
 ) -> object:
     """Shelf (a root, a reference collection when ``collection``) with a ``dct:hasPart`` role to each target.
 
     ``generalised`` makes Shelf a collection through an abstract ``lib:Collection`` that mixes it in;
     ``drawn`` through a generalisation to ``rp:ReferenceCollection`` drawn outside the subtree. The
-    series is drawn outside too, a target that is not converted.
+    series is drawn outside too, a target that is not converted. ``parent_role`` (implies
+    ``generalised``) draws the abstract parent's own ``dct:hasPart`` role to that target, Book
+    generalising an abstract ``lib:Resource``.
     """
+    generalised = generalised or parent_role is not None
     holder = _COLLECTION_ROOT if generalised else SHELF
     tagged = collection and not drawn
     tags = (tag(holder, "rp_mixins", "ReferenceCollection"),) if tagged else ()
@@ -2774,6 +2782,12 @@ def _shelf(
     )
     is_a = (generalisation(9, SHELF, _COLLECTION_ROOT),) if generalised else ()
     is_a += (generalisation(10, SHELF, _COLLECTION),) if drawn else ()
+    if parent_role is not None:
+        parent += (klass(_RESOURCE, "lib:Resource", abstract=True),)
+        roles += (
+            link(7, _COLLECTION_ROOT, parent_role, target_role=_HAS_PART, target_card="0..*"),
+        )
+        is_a += (generalisation(8, BOOK, _RESOURCE),)
     return model(
         klass(SHELF, "lib:Shelf", stereotype="root"),
         klass(BOOK, "lib:Book", stereotype="root"),
@@ -2794,6 +2808,24 @@ def _member_class(expected: str | None, *kept: str) -> Check:
         fixed = usage["member_class"].equals_string if "member_class" in usage else None
         assert fixed == expected, "the member class the hasPart role fixes"
         assert out.report_lines("toolkit_slot_kept") == list(kept), "the toolkit_slot_kept lines"
+
+    return check
+
+
+def _parent_member_class(expected: str | None, shelf: str | None) -> Check:
+    """The abstract Collection's ``member_class`` is fixed to ``expected``, Shelf's to ``shelf`` (#274)."""
+
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        for name, want in (("Collection", expected), ("Shelf", shelf)):
+            usage = out.klass("app_library", name).slot_usage
+            fixed = usage["member_class"].equals_string if "member_class" in usage else None
+            assert fixed == want, f"the member class {name}'s hasPart role fixes"
+        if expected is None:
+            kept = (
+                "Collection.has_part: the toolkit's has_part is kept; range resource is not carried"
+            )
+            assert kept in out.report_lines("toolkit_slot_kept"), "the parent's role is reported"
 
     return check
 
@@ -2842,6 +2874,24 @@ ROWS_MEMBER_CLASS = [
         UmlRule.TOOLKIT_SLOT,
         _shelf(BOOK, CHAPTER),
         _problem(UmlRule.TOOLKIT_SLOT, "Shelf", "Book", "Chapter"),
+    ),
+    Row(
+        "an abstract collection whose subclass draws its own member role fixes none; the subclass does",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(BOOK, parent_role=_RESOURCE),
+        _parent_member_class(None, "Book"),
+    ),
+    Row(
+        "an abstract collection whose subclasses draw no member role keeps its member class",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(parent_role=_RESOURCE),
+        _parent_member_class("Resource", None),
+    ),
+    Row(
+        "failure: a subclass's member class that does not descend from the parent's names both",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(CHAPTER, parent_role=_RESOURCE),
+        _problem(UmlRule.TOOLKIT_SLOT, "Shelf", "Chapter", "Collection", "Resource"),
     ),
 ]
 

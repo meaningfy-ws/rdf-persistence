@@ -605,7 +605,7 @@ def _member_roles(
     role to the holder's own class is nesting and stays the toolkit's ``has_part``.
     """
     by_name = {str(each.name): each for each in classes.values()}
-    members: set[int] = set()
+    members: list[Usage] = []
     for usage in usages:
         slot = ctx.toolkit.slot_by_uri(usage.iri)
         target = usage.shape.range
@@ -616,8 +616,45 @@ def _member_roles(
             and target != usage.holder.label
             and _is_collection(ctx, classes[usage.holder.uml_class.object_id], by_name)
         ):
-            members.add(id(usage))
-    return members
+            members.append(usage)
+    return {id(each) for each in _without_narrowed_parents(ctx, members, by_name)}
+
+
+def _lineage(name: str, by_name: Mapping[str, ClassDefinition]) -> list[str]:
+    """The class and its domain ``is_a`` ancestors, nearest first."""
+    found: list[str] = []
+    current: str | None = name
+    while current is not None and current in by_name and current not in found:
+        found.append(current)
+        current = by_name[current].is_a
+    return found
+
+
+def _without_narrowed_parents(
+    ctx: Context, members: list[Usage], by_name: Mapping[str, ClassDefinition]
+) -> list[Usage]:
+    """Drop the member role of an abstract collection whose subclass draws its own (#274).
+
+    Both fixing ``member_class`` contradict each other, so the parent's role stays the toolkit's
+    ``has_part`` and each subclass fixes its own. A subclass's member class that does not descend
+    from its parent's is a problem naming both.
+    """
+    targets = {each.holder.label: str(each.shape.range) for each in members}
+    narrowed: set[str] = set()
+    for label in sorted(targets):
+        parent = next((each for each in _lineage(label, by_name)[1:] if each in targets), None)
+        if parent is None:
+            continue
+        if targets[parent] not in _lineage(targets[label], by_name):
+            ctx.findings.problem(
+                UmlRule.TOOLKIT_SLOT,
+                label,
+                f"dct:hasPart role to {targets[label]} does not narrow {parent}'s member class "
+                f"{targets[parent]}: a subclass's member class descends from its parent's",
+            )
+        if by_name[parent].abstract:
+            narrowed.add(parent)
+    return [each for each in members if each.holder.label not in narrowed]
 
 
 def _fix_member_classes(ctx: Context, members: list[Usage], shared: SharedSlots) -> None:
