@@ -1,6 +1,7 @@
 """The scenario-map refresher drops rows of vanished tests and lists unmapped ids (PD-16)."""
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,20 @@ tests/unit/test_b.py::TestKlass::test_new
 
 3 tests collected in 0.10s
 """
+
+
+def test_the_collect_command_prints_node_ids_whatever_the_ini_verbosity() -> None:
+    """``pytest.ini`` adds ``-q``; a relative ``-qq`` then printed per-file counts, no ids."""
+    program, run_, pytest_, path, *flags = refresh_map.COLLECT_COMMAND
+    assert (program, run_, pytest_, path) == ("uv", "run", "pytest", "tests"), "the command's shape"
+    here = Path(__file__).relative_to(Path.cwd())
+    # Popen, not run: the module's autouse fixture fakes subprocess.run for the git calls
+    with subprocess.Popen(
+        [sys.executable, "-m", "pytest", str(here), *flags], stdout=subprocess.PIPE, text=True
+    ) as child:
+        out, _ = child.communicate()
+    name = test_the_collect_command_prints_node_ids_whatever_the_ini_verbosity.__name__
+    assert f"{here}::{name}" in function_ids(out), out[-500:]
 
 
 def _map_text(*rows: str) -> str:

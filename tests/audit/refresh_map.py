@@ -1,7 +1,7 @@
 """Refresh `scenario-map.csv` against the collected tests (test-suite-grooming PD-16).
 
-Standard library only. It reads `pytest --collect-only -qq` output (from a file, stdin or by
-running pytest), reduces each node id to its function id (the `[case]` suffix dropped), removes
+Standard library only. It reads the node ids of `pytest --collect-only --verbosity=-1` (from a
+file, stdin or by running pytest), reduces each node id to its function id (the `[case]` suffix dropped), removes
 the map rows whose function is gone, and lists the function ids that have no row yet, for a
 person to map. A row whose test file was renamed (`git diff --name-status -M --base`, or an
 explicit `--moved OLD=NEW` file or folder pair) is re-keyed to the new path when the same function
@@ -43,7 +43,18 @@ TEST_COLUMN = "test"
 TEMP_SUFFIX = ".tmp"
 STDIN_MARKER = "-"
 DEFAULT_MAP = Path(__file__).with_name("scenario-map.csv")
-COLLECT_COMMAND = ("uv", "run", "pytest", "tests", "--collect-only", "-qq", "-p", "no:randomly")
+# --verbosity sets the level outright, so the `-q` of pytest.ini's addopts cannot push it to the
+# per-file counts a relative `-qq` gives (one node id per line needs exactly -1).
+COLLECT_COMMAND = (
+    "uv",
+    "run",
+    "pytest",
+    "tests",
+    "--collect-only",
+    "--verbosity=-1",
+    "-p",
+    "no:randomly",
+)
 
 
 class MalformedMapError(ValueError):
@@ -180,7 +191,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--map", type=Path, default=DEFAULT_MAP, help="the scenario map CSV")
     parser.add_argument(
         "--collect",
-        help=f"file with `pytest --collect-only -qq` output, or {STDIN_MARKER} for stdin "
+        help=f"file with `pytest --collect-only --verbosity=-1` output, or {STDIN_MARKER} for stdin "
         "(default: run pytest)",
     )
     parser.add_argument(

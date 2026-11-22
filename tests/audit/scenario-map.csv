@@ -3814,6 +3814,7 @@ tests/unit/package/test_public_api.py::test_every_name_in_the_architecture_index
 tests/unit/package/test_public_api.py::test_the_iri_names_are_the_objects_of_services_iris,requirement,rp-package-boundaries,Consumers use the public API only,,high,name; covered code (rdf_persistence/__init__)
 tests/unit/tooling/test_refresh_map.py::test_a_collection_with_an_error_and_no_node_ids_leaves_the_map_untouched,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16, F-1)"
 tests/unit/tooling/test_refresh_map.py::test_a_parametrised_id_collapses_to_its_function,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
+tests/unit/tooling/test_refresh_map.py::test_the_collect_command_prints_node_ids_whatever_the_ini_verbosity,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/tooling/test_refresh_map.py::test_main_exits_one_only_when_ids_are_unmapped,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
 tests/unit/tooling/test_refresh_map.py::test_more_than_a_fifth_of_the_rows_going_refuses_the_rewrite,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16, F-1)"
 tests/unit/tooling/test_refresh_map.py::test_refresh_keeps_the_line_endings_of_the_map,capability,rp-developer-checks,,,medium,"name (audit tooling, PD-16)"
