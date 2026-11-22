@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-22
+
+### Added
+- **Aggregate validators: a consumer's rules on any root's writes** (`aggregate-validators`).
+  `install_service(aggregate_validators=...)` and `ServiceKit` take rules keyed by a schema class.
+  They are checked at start-up: the key must be a class, not a mixin and not a toolkit class, and a
+  root must derive from it. The write guard runs them last, on the old and new aggregate, with an
+  `AggregateReader` that answers the classes of a member the writing caller may read. A refusal
+  (`InvalidBody`, 422) stops the write before anything is stored. A rule that refuses the tenant
+  root on create leaves no database or bucket. `AggregateValidator` and `AggregateReader` are
+  exported. To support this, `open_session`, `Tenancy.tenant_session` and the session take an
+  optional `may_read` check (`Session.may_read`); existing calls keep working. See "Enforce
+  your own rules on aggregate writes" in "Control access".
+- **`rp-uml2linkml` converts drawn role definitions and workflows** (`uml-roles-and-workflows`,
+  #245 parts 2 and 3). Role definitions drawn as EA objects become the roles file that
+  `load_role_definitions` reads. Each Statechart becomes `workflows/<name>.workflow.yaml`, which
+  `load_workflow` reads; a transition's roles must be drawn role definitions. Constructs the
+  converter does not support fail the run and name the node, diagram or transition. Workflow files
+  are staged and read back before anything moves, and the consumer's other files in `workflows/`
+  are kept. See "UML conventions".
+- **`Relay.paused()`** holds the event relay still: committed activities stay pending while the
+  block is open, and the relay runs one round after it.
+- **The event-bus conformance suite can poll faster:** `run_case(..., poll_seconds=...)`.
+
+### Fixed
+- **A new tenant's root may own parts** (#276, #288). Tenant create answered
+  `422 <part>.id: Field required` for a root owning a part. It now mints each owned part's IRI,
+  nested parts included, from the part template, as an ordinary create does. A part that names its
+  own `id` in the create body is refused with 422.
+- **A business identifier on `dcterms:identifier` is accepted** (#277, #289). The toolkit's `id`
+  slot shares the property and gave every class shape a property shape asking for an IRI, so a
+  string identifier was refused as "not an IRI". The identifier slot no longer takes part in
+  property resolution; the node itself stays `sh:nodeKind sh:IRI`.
+- **A module's own slot wins over a toolkit slot of the same name** (#278, #289). A module slot
+  named `version` (`dcat:version`) resolved to the toolkit's internal `version` depending on import
+  order, so a value was dropped silently or every write was refused. Every view now keeps the
+  application's slot when no toolkit class carries the toolkit's one. When a toolkit class does
+  carry it, the clash is a hard-check problem, `toolkit_slot_name`, that names both definitions.
+- **`rp-uml2linkml` fixes `member_class` only below an abstract collection** (#274, #287). An
+  abstract reference collection whose concrete subclasses draw their own `dct:hasPart` role keeps
+  the toolkit's `has_part`; each subclass fixes its own member class. Before, the two fixed values
+  contradicted each other and `rp-generate --check` failed. A subclass member class that does not
+  descend from the parent's is a `toolkit_slot` problem.
+
+### Changed
+- **Shapes are parsed once per process** (`api`). A second `Documents` over the same shapes reuses
+  the parsed triples (keyed by their digest), and the warm-up runs once per process: building the
+  toy service takes about a third of the time it did.
+
+> **On upgrade:** run `rp-generate` and commit the output. The shapes change for every class
+> (no `id` property shape), and so can the context and the lock. A schema that reuses the name of
+> a slot a toolkit class carries now fails the hard check (`toolkit_slot_name`), so rename the
+> slot. Tenant-create bodies must leave part `id`s out.
+
 ## [0.8.1] - 2026-11-21
 
 ### Fixed
@@ -602,7 +656,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.6.0...v0.7.0
