@@ -16,7 +16,7 @@ REPO_ROOT    = $(shell pwd)
 PACKAGE_NAME = rdf_persistence
 GENERATOR_NAME = rdf_persistence_generation
 TEST_PATH    = $(REPO_ROOT)/tests
-PYTHON_PATHS = $(PACKAGE_NAME) $(GENERATOR_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools $(REPO_ROOT)/.claude/hooks
+PYTHON_PATHS = $(PACKAGE_NAME) $(GENERATOR_NAME) $(TEST_PATH) $(REPO_ROOT)/docs/tools
 BUILD_PATH   = $(REPO_ROOT)/dist
 
 # The release version: VERSION is the one source; release-please writes it and mirrors it into
@@ -33,11 +33,9 @@ FUSEKI_IMAGE_TAR = $(REPO_ROOT)/temp/fuseki-image.tar
 # The library's lanes measure `rdf_persistence` alone and the generator's lane `rdf_persistence_generation`
 # alone, each against its own pyramid (generator-package PD-10). `make test-containers` measures both.
 COV_FLAGS = --cov=$(PACKAGE_NAME) \
-            --cov-report=term-missing \
             --cov-report=xml:$(REPO_ROOT)/coverage.xml \
             --cov-fail-under=80
 GENERATOR_COV_FLAGS = --cov=$(GENERATOR_NAME) \
-                      --cov-report=term-missing \
                       --cov-report=xml:$(REPO_ROOT)/coverage-generator.xml \
                       --cov-fail-under=80
 
@@ -308,9 +306,24 @@ check-version: ## pyproject.toml carries the version in VERSION (CI job "spec, d
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Version $(VERSION) in sync$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
+# Bindings and code intelligence
+#-----------------------------------------------------------------------------
+.PHONY: check-bindings reindex
+
+check-bindings: ## Check that CLAUDE.md carries no GitNexus block (the block lives in AGENTS.md only)
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking the bindings$(END_BUILD_PRINT)"
+	@ if grep -qiE 'gitnexus:start|^#+ .*GitNexus' CLAUDE.md 2>/dev/null; then \
+	    echo "$(ICON_ERROR) check-bindings: CLAUDE.md carries a GitNexus block; keep it in AGENTS.md only"; exit 1; fi
+	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) CLAUDE.md carries no GitNexus block$(END_BUILD_PRINT)"
+
+# --skip-agents-md leaves AGENTS.md and CLAUDE.md untouched.
+reindex: ## Re-index GitNexus (the lead, at stage start and before the stage's last commit)
+	@ npx gitnexus analyze --embeddings --skip-agents-md --skip-skills
+
+#-----------------------------------------------------------------------------
 # Aggregates — run locally before a PR
 #-----------------------------------------------------------------------------
-check-quality: check-style check-types check-architecture check-spec-docs check-freshness ## All static checks: the groups above, without the slower check-generated
+check-quality: check-style check-types check-architecture check-bindings check-spec-docs check-freshness ## All static checks: the groups above, without the slower check-generated
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) All quality checks passed$(END_BUILD_PRINT)"
 
 check-all: check-quality test ## Full suite: quality + unit and feature tests (containers, locally only: make test-containers)
