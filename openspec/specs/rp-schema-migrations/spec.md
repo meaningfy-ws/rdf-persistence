@@ -5,7 +5,9 @@ Keep stored data in step with the schema: each database records the schema versi
 follows, `rp-generate` decides from a committed lock which schema changes need a migration, and
 reviewed migration files run at start-up and on a restored dump. Created by the change
 `schema-migrations` (archived 2026-11-15).
+
 ## Requirements
+
 ### Requirement: Each database records the schema version its data follows
 
 Every database (the system database, the application database and each tenant's) SHALL record, per
@@ -115,3 +117,13 @@ differs from the stamp the dump holds.
 - **WHEN** it is restored
 - **THEN** the service refuses it and creates nothing
 
+### Requirement: Slots that share an IRI are locked apart
+
+The lock SHALL keep each slot of a class, also when two slots share an IRI, and the comparison
+SHALL pair them: a slot added on an IRI already locked SHALL be a slot added, never a change of
+the other slot's range.
+
+#### Scenario: a business identifier beside the identifier
+- **GIVEN** a class locked with its identifier on `dcterms:identifier`
+- **WHEN** the class gains an optional business slot on `dcterms:identifier`
+- **THEN** the comparison reports one slot added, and generation succeeds without a new version
