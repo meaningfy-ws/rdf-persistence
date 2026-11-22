@@ -139,7 +139,8 @@ fixed separately and is not in either.
 
 Row 11 was added on 2026-11-22, after the fact: the fix ran as a plain bug-fix session, and its
 spine was written and archived at the developer's request once it had merged. Found on the way:
-#290 (`make refresh-map` collects no tests).
+#290 (`make refresh-map` collects no tests), fixed in #294 and recorded the same way as
+`refresh-map-collect` (TINY, test tooling, no spec delta), archived `2026-11-22-refresh-map-collect`.
 
 ### Why this order
 

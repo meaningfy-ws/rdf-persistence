@@ -81,6 +81,7 @@ Delivered in one PR, #287 (merge `1cb96dd`), as shaped. DEC-1 to DEC-4 hold.
 - Proof: the integration test fails on the parent commit and passes with the fix. On MWB2's
   phase-B `.qea`, `rp-generate --check` went from 5 type errors to none.
 - Gates: `make check-all` and `make test-containers` green, CI green.
-- Follow-up found on the way: #290 (`make refresh-map` collects no ids).
+- Follow-up found on the way: #290 (`make refresh-map` collects no ids), since fixed in #294 and
+  recorded as `refresh-map-collect`.
 - Retrospective spine: this change was written and archived after the merge, at the developer's
   request (2026-11-22).
