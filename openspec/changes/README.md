@@ -158,7 +158,7 @@ in-flight epic's own order (`consumer-gap-fixes/inputs/qa.md`).
 
 | # | Id | Appetite | Issues | Depends on | Needed by (MWB2) | State |
 |---|---|---|---|---|---|---|
-| 13 | `domain-values-and-fixes` | MEDIUM (4 stages) | #301, #303, #302, #300 | none | `v2-05` stage 1 (#301); `v2-02` round trips and the transition route | merging: #313 merged; #314, #315, #316 next, each rebased, regenerated (P-0003) and re-gated after the one before it; release 0.10.0 open (#317) |
+| 13 | `domain-values-and-fixes` | MEDIUM (4 stages) | #301, #303, #302, #300 | none | `v2-05` stage 1 (#301); `v2-02` round trips and the transition route | delivered 2026-11-24 in #313, #314, #315, #316; archived `2026-11-24-domain-values-and-fixes` (#321); release 0.10.0 open (#317) |
 | 14 | `consumer-gap-fixes` | SMALL (4 stages) | #304, #306, #311, #312 | row 13 merged | `v2-06`: one ontology collection per version (#304), roles, discussion, coverage | EPIC and PLAN gated (`evidence/clarity-gate.md`) |
 | 15 | `aggregate-guards` | SMALL to MEDIUM | #305, #309 | none | `v2-07` package range; `v2-06` CM delete while under review | not shaped |
 | 16 | `grant-roles` | SMALL | #307, #310 | row 14 (#306) | `v2-06` role rounds (RISK-2), audience warning | not shaped; #307 stance: a migration step may rename a role in, or drop it from, a tenant's grants (owner, 2026-11-24) |
