@@ -131,7 +131,11 @@ def test_files_moved_before_the_failure_stay_and_the_later_ones_are_absent(tmp_p
 
     with pytest.raises(OutputError):
         write(
-            list(converted.schemas.values()), converted.report, out, ROOT, files=converted.files,
+            list(converted.schemas.values()),
+            converted.report,
+            out,
+            ROOT,
+            files=converted.files,
             move=_failing_move(lambda index, _: index == 2),
         )
 
@@ -148,7 +152,11 @@ def test_a_cross_device_error_on_a_subfolder_is_an_output_error_naming_the_targe
 
     with pytest.raises(OutputError) as raised:
         write(
-            list(converted.schemas.values()), converted.report, out, ROOT, files=converted.files,
+            list(converted.schemas.values()),
+            converted.report,
+            out,
+            ROOT,
+            files=converted.files,
             move=_failing_move(lambda _, target: target.parent.name == "workflows", errno.EXDEV),
         )
 
