@@ -1,6 +1,10 @@
 """WriteGuards: the collection rule on the write path (PD-6, TC-15 to TC-20, TC-22)."""
 
 import inspect
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from contextlib import asynccontextmanager
+from typing import Any
+from uuid import UUID
 
 import pytest
 from linkml_runtime.linkml_model import SchemaDefinition
@@ -9,10 +13,15 @@ from rdflib import RDF, URIRef
 
 from rdf_persistence import (
     AccessRules,
+    Conflict,
+    DatabaseGone,
     Forbidden,
     InvalidBody,
     InvalidIri,
     NotFound,
+    Principal,
+    Refused,
+    StoreUnavailable,
     generated_models,
     load_role_definitions,
 )
@@ -20,18 +29,30 @@ from rdf_persistence.collaboration.domain.generated.rp_collections import (
     MembershipRule,
     SlotEquality,
 )
+from rdf_persistence.collaboration.services.aggregate_validators import (
+    AggregateReader,
+    DeleteValidator,
+    DeleteValidators,
+)
 from rdf_persistence.collaboration.services.reference_collections import member_class_iris
 from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
-from rdf_persistence.persistence.services.session import GuardContext, Session, Transaction
+from rdf_persistence.persistence.services.session import (
+    GuardContext,
+    Session,
+    Transaction,
+    open_session,
+)
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore, fake_session
-from tests.fixtures.library.domain.generated.books import Book
+from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.fixtures.library.domain.generated.books import Book, Magazine
 from tests.toy import (
+    ADA,
     MODULES,
     REVIEW_WORKFLOW,
     ROLES,
@@ -484,3 +505,246 @@ async def test_the_decision_table_of_a_replace(
         result = await flows.keep_state(session, ROOT, triples, Tracked(), allowed)
     assert states_of(result) == expected, "the states written"
     assert no_status(result) == no_status(triples), "nothing else is touched"
+
+
+# Delete rules: the guard's prepare_remove (aggregate-guards D-5 to D-8: T8 to T16)
+
+ON_LOAN = "on loan"  # the toy book has no status: its description stands for one
+MAGAZINE = f"{TENANT}/magazines/{UUID(int=1)}"
+
+
+def deleting(mapping: Mapping[str, Sequence[DeleteValidator]] | None) -> WriteGuards:
+    """Write guards with the delete rules ``mapping`` (none at all for None)."""
+    view = load_schema(TOY_SCHEMA)
+    return WriteGuards(
+        toy_mapper(),
+        generated_models(*MODULES),
+        Listings(view),
+        delete_validators=None
+        if mapping is None
+        else DeleteValidators(view, mapping, TOY_SCHEMA.parent),
+    )
+
+
+@asynccontextmanager
+async def deleting_session(
+    mapping: Mapping[str, Sequence[DeleteValidator]] | None,
+    *,
+    may_read: Callable[[str], bool] | None = None,
+    store: FakeStore | None = None,
+) -> AsyncIterator[Session]:
+    """A session with the delete rules ``mapping`` and the caller's read check (``fake_session`` takes none)."""
+    store = store or FakeStore()
+    if FAKE_DATABASE not in await store.list_datasets():
+        await store.create_dataset(FAKE_DATABASE)
+    async with open_session(
+        store,
+        database=FAKE_DATABASE,
+        tenant_iri=TENANT,
+        principal=Principal(id=ADA),
+        guards=deleting(mapping),
+        may_read=may_read,
+    ) as session:
+        yield session
+
+
+def not_while_on_loan(old: Any, who: Any, reader: AggregateReader) -> None:
+    if old.description == ON_LOAN:
+        raise Refused(f"{old.id} is on loan; return it before deleting it")
+
+
+def kept(old: Any, who: Any, reader: AggregateReader) -> None:
+    raise Refused("kept")
+
+
+def loan_book(number: int, description: str = "shelved", **slots: str) -> Book:
+    return dune(book_iri(number), **slots).model_copy(update={"description": description})
+
+
+@pytest.mark.parametrize(
+    ("description", "refused"),
+    [(ON_LOAN, True), ("shelved", False)],
+    ids=["on-loan-refused", "shelved-removed"],
+)  # T8, T9
+async def test_a_delete_rule_refuses_a_book_on_loan_and_lets_another_go(
+    description: str, refused: bool
+):
+    async with deleting_session({"Book": [not_while_on_loan]}) as session:
+        await save(session, loan_book(1, description))
+        version = await version_of(session, book_iri(1))
+        if refused:
+            with pytest.raises(Refused, match="is on loan"):
+                await session.remove(book_iri(1), version)
+        else:
+            await session.remove(book_iri(1), version)
+        assert bool(await session.heads([book_iri(1)])) is refused, "stored only if refused"
+
+
+@pytest.mark.parametrize(
+    ("key", "refused"),
+    [("LendingItem", True), ("Magazine", True), ("Pamphlet", False)],
+    ids=["parent-class", "own-class", "sibling-class"],
+)  # T10
+async def test_a_rule_of_a_parent_class_runs_for_a_derived_root(key: str, refused: bool):
+    async with deleting_session({key: [kept]}) as session:
+        await save(session, Magazine(id=MAGAZINE, label="Weekly"))
+        version = await version_of(session, MAGAZINE)
+        if refused:
+            with pytest.raises(Refused, match="kept"):
+                await session.remove(MAGAZINE, version)
+        else:
+            await session.remove(MAGAZINE, version)
+        assert bool(await session.heads([MAGAZINE])) is refused, "stored only if refused"
+
+
+async def test_a_refusal_inside_a_cascade_refuses_the_whole_commit_and_removes_nothing():  # T11
+    async with deleting_session({"Book": [not_while_on_loan]}) as session:
+        await save(session, shelf(shelf_iri(1)), loan_book(1), loan_book(2, ON_LOAN))
+        iris = [shelf_iri(1), book_iri(1), book_iri(2)]
+        versions = [await version_of(session, iri) for iri in iris]
+        with pytest.raises(Refused, match=f"{book_iri(2)} is on loan"):
+            async with session.transaction() as transaction:
+                for iri, version in zip(iris, versions, strict=True):
+                    await transaction.remove(iri, version)
+        assert [await version_of(session, iri) for iri in iris] == versions, "all three stay"
+
+
+def raises_invalid_body(old: Any, who: Any, reader: AggregateReader) -> None:
+    raise InvalidBody("a delete is no invalid body")
+
+
+def raises_value_error(old: Any, who: Any, reader: AggregateReader) -> None:
+    raise ValueError("a bug in the rule")
+
+
+def returns_a_value(old: Any, who: Any, reader: AggregateReader) -> Any:
+    return "refused"
+
+
+async def returns_a_value_late(old: Any, who: Any, reader: AggregateReader) -> Any:
+    return "refused"
+
+
+@pytest.mark.parametrize(
+    ("rule", "error"),
+    [
+        (raises_invalid_body, RuntimeError),
+        (raises_value_error, RuntimeError),
+        (returns_a_value, TypeError),
+        (returns_a_value_late, TypeError),
+    ],
+    ids=lambda case: getattr(case, "__name__", str(case)),
+)  # T12, E11, E12
+async def test_a_rule_that_is_buggy_is_an_error_naming_it_not_a_refusal(
+    rule: DeleteValidator, error: type[Exception]
+):
+    async with deleting_session({"Book": [rule]}) as session:
+        await save(session, loan_book(1))
+        with pytest.raises(error, match=rule.__name__):
+            await session.remove(book_iri(1), await version_of(session, book_iri(1)))
+        assert await session.heads([book_iri(1)]), "the book stays"
+
+
+async def test_a_stored_root_on_two_lines_under_a_delete_rule_is_a_runtime_error_naming_it():  # D-13
+    node = URIRef(shelf_iri(1))
+    view = load_schema(TOY_SCHEMA)
+    types = [URIRef(str(view.get_uri(name, expand=True))) for name in ("Shelf", "Book")]
+    store = FakeStore()
+    async with fake_session(store, tenant_iri=TENANT) as plain:  # no guard checks the types
+        version = await plain.add_graph(shelf_iri(1), [(node, RDF.type, t) for t in types])
+    async with deleting_session({"Shelf": [kept]}, store=store) as session:
+        with pytest.raises(RuntimeError, match=f"{shelf_iri(1)}.*two lines"):
+            await session.remove(shelf_iri(1), version)
+        assert await session.heads([shelf_iri(1)]), "the root stays"
+
+
+@pytest.mark.parametrize(
+    "error", [Refused, Conflict, StoreUnavailable, DatabaseGone]
+)  # T12, E16, D-12
+async def test_a_conflict_or_a_store_error_from_a_rule_passes_as_it_is(error: type[Exception]):
+    def raises(old: Any, who: Any, reader: AggregateReader) -> None:
+        raise error("from the rule")
+
+    async with deleting_session({"Book": [raises]}) as session:
+        await save(session, loan_book(1))
+        with pytest.raises(error, match="from the rule"):
+            await session.remove(book_iri(1), await version_of(session, book_iri(1)))
+
+
+@pytest.mark.parametrize(
+    ("key", "reason"),
+    [
+        ("Nope", "not a class"),
+        ("Described", "a mixin"),
+        ("TenantAccess", "a toolkit class"),
+        ("Chapter", "no root derives from it"),
+    ],
+)  # T13, E14
+def test_a_delete_rule_key_that_is_not_an_application_root_is_refused_with_its_reason(
+    key: str, reason: str
+):
+    with pytest.raises(ValueError, match=f"{key}.*{reason}"):
+        deleting({key: [kept]})
+
+
+def test_a_delete_rule_that_is_not_callable_is_a_type_error_naming_its_key():  # T13
+    with pytest.raises(TypeError, match="Book"):
+        deleting({"Book": ["not callable"]})  # type: ignore[list-item]
+
+
+async def reads_of_a_remove(guards: WriteGuards | None) -> list[str]:
+    """The reads a remove of a stored book makes, by name."""
+    calls: list[str] = []
+    async with fake_session(tenant_iri=TENANT, guards=guards) as session:
+        await save(session, loan_book(1))
+        version = await version_of(session, book_iri(1))
+        for name in ("get_graph", "heads", "root_values", "graphs_with"):
+            original = getattr(session, name)
+
+            async def spy(*args: Any, _name: str = name, _original: Any = original):
+                calls.append(_name)
+                return await _original(*args)
+
+            setattr(session, name, spy)
+        await session.remove(book_iri(1), version)
+    return calls
+
+
+async def test_a_remove_with_no_delete_rules_reads_nothing_more():  # T14, E15
+    bare = await reads_of_a_remove(None)
+    assert await reads_of_a_remove(deleting(None)) == bare, "no delete validators at all"
+    assert await reads_of_a_remove(deleting({})) == bare, "none with a rule"
+    assert len(await reads_of_a_remove(deleting({"Book": [not_while_on_loan]}))) > len(bare), (
+        "a rule for the class makes the read, so the counting sees it"
+    )
+
+
+@pytest.mark.parametrize("readable", [True, False], ids=["readable", "hidden"])  # T15, E2
+async def test_a_book_the_caller_may_not_read_is_none_to_a_delete_rule(readable: bool):
+    seen: list[Any] = []
+
+    async def looks_at_the_shelf(old: Any, who: Any, reader: AggregateReader) -> None:
+        seen.append(await reader.aggregate(old.shelf))
+
+    async with deleting_session(
+        {"Book": [looks_at_the_shelf]}, may_read=lambda iri: readable
+    ) as session:
+        await save(session, shelf(shelf_iri(1)), loan_book(1, shelf=shelf_iri(1)))
+        await session.remove(book_iri(1), await version_of(session, book_iri(1)))
+    assert [model is not None for model in seen] == [readable], "the shelf is seen only if readable"
+
+
+@pytest.mark.parametrize(
+    ("stale", "message"),
+    [(True, "changed by someone else"), (False, "is on loan")],
+    ids=["stale-version-wins", "current-version-the-rule"],
+)  # T16, E17
+async def test_a_stale_if_match_is_a_version_conflict_before_the_rules_refusal(
+    stale: bool, message: str
+):
+    async with deleting_session({"Book": [not_while_on_loan]}) as session:
+        await save(session, loan_book(1, ON_LOAN))
+        version = await version_of(session, book_iri(1))
+        with pytest.raises(Conflict, match=message) as raised:
+            await session.remove(book_iri(1), "stale" if stale else version)
+        assert isinstance(raised.value, Refused) is not stale, "only the current version is refused"

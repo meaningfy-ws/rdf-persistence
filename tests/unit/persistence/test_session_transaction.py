@@ -652,10 +652,29 @@ class Recording:
 
     def __init__(self) -> None:
         self.collected: list[dict] = []
+        self.removals: list[tuple[str, str, frozenset[str]]] = []
 
     async def prepare(self, session, iri, triples, stored, allowed_state, *, context):
         self.collected.append(dict(context.collected))
         return triples
+
+    async def prepare_remove(self, session, iri, if_version, *, context):
+        self.removals.append((iri, if_version, frozenset(context.removed)))
+
+
+async def test_a_remove_asks_the_guard_before_it_collects_anything(store, seeded):  # T17
+    guard = Recording()
+    async with (
+        fake_session(store, tenant_iri=TENANT, guards=guard) as guarded,
+        guarded.transaction() as t,
+    ):
+        await t.remove(A, seeded[A])
+        await t.remove(B, seeded[B])
+    assert guard.removals == [(A, seeded[A], frozenset()), (B, seeded[B], frozenset({A}))], (
+        "each remove is announced with its version, and the context holds the removals before it"
+    )
+    async with fake_session(store, tenant_iri=TENANT) as after:
+        assert not await after.heads([A, B]), "and the removals were committed"
 
 
 async def test_the_context_holds_the_triples_collected_earlier_in_the_transaction(store, seeded):

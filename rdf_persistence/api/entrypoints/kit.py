@@ -38,6 +38,8 @@ from rdf_persistence.collaboration.domain.generated import (
 from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateValidator,
     AggregateValidators,
+    DeleteValidator,
+    DeleteValidators,
 )
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.discussion import dependents as discussion_dependents
@@ -130,6 +132,7 @@ class ServiceKit:
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
         aggregate_validators: Mapping[str, Sequence[AggregateValidator]] = {},
+        delete_validators: Mapping[str, Sequence[DeleteValidator]] = {},
         workflows: Sequence[Path] = (),
         stores: Mapping[str, Store] = {},
         event_bus: EventBus | None = None,
@@ -156,7 +159,8 @@ class ServiceKit:
                 of one (the message names it); or a name in ``stores`` is ``default``, or one raw store
                 is wired under two names (the default store included); ``Tenancy`` raises it and the
                 message names the key.
-            TypeError: A rule of ``aggregate_validators`` is not callable.
+                The same for a key of ``delete_validators``.
+            TypeError: A rule of ``aggregate_validators`` or ``delete_validators`` is not callable.
         """
         view = load_schema(schema)
         self.view = view
@@ -225,6 +229,7 @@ class ServiceKit:
                 self.listings,
                 self.workflows,
                 validators=AggregateValidators(view, aggregate_validators, schema.parent),
+                delete_validators=DeleteValidators(view, delete_validators, schema.parent),
             ),
             removals=ReferencedRemovals(view, self.toolkit.limits),
             grant_validators=grant_validators,
@@ -538,9 +543,14 @@ class ServiceKit:
         if_version: str,
         *,
         readable: Readable | None = None,
+        may_read: Callable[[str], bool] | None = None,
     ) -> None:
         """Remove the aggregate ``iri`` at ``if_version`` and delete the blobs only it names in
         ``rp:fileKey``. A blob that cannot be deleted is logged; the sweep removes it later.
+
+        A consumer route that has a caller should pass ``readable_by(caller, access)`` as ``may_read``,
+        as the generic delete does: a delete rule's reader then hides the aggregates the caller may not
+        read (``None``: it reads every aggregate of the tenant).
 
         A consumer route should pass its collaboration's ``readable_referrers`` as ``readable``, to
         have the referrers the caller may read named when the removal is refused as in use; without
@@ -563,6 +573,7 @@ class ServiceKit:
             if_version,
             self.mapper,
             readable=readable,
+            may_read=may_read,
         )
 
     @asynccontextmanager

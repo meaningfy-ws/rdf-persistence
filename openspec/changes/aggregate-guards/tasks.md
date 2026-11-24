@@ -19,27 +19,27 @@ EPIC: aggregate-guards (proposal.md, #305, #309). Decisions: DEC-1 to DEC-7; des
 
 ## 2. Delete rules (#309), PR 2, branch `feat/delete-validators`
 
-- [ ] 2.1 Tests first: T8 to T17 (`design.md#stage-2-309-delete-rules`). RED: `ServiceKit` has no
+- [x] 2.1 Tests first: T8 to T17 (`design.md#stage-2-309-delete-rules`). RED: `ServiceKit` has no
   `delete_validators`.
-- [ ] 2.2 `DeleteValidator`, `DeleteValidators` and `run_delete_validators` ([D-6](design.md#d-6)).
+- [x] 2.2 `DeleteValidator`, `DeleteValidators` and `run_delete_validators` ([D-6](design.md#d-6)).
   The `WriteGuard.prepare_remove` port, its call in `Transaction.remove`, and `Recording`
   ([D-5](design.md#d-5)). `may_read` on `Aggregates.remove` and the route ([D-7](design.md#d-7)).
   The kit and `install_service` argument, and the top-level export of `DeleteValidator`. Covers
   DEC-4 and DEC-5. Accept: T8 to T17, E10 to E18; `make test-fast check-quality`.
-- [ ] 2.3 Docs: `user-manual/access.adoc` (delete rules, cascades and RISK-2, the comment exemption
+- [x] 2.3 Docs: `user-manual/access.adoc` (delete rules, cascades and RISK-2, the comment exemption
   [D-8](design.md#d-8)), `architecture/data-flows.adoc` (the remove path), and the question
   "How do I refuse a delete?" in `questions.adoc`. Run `make refresh-surface`. Accept:
   `make check-docs`.
-- [ ] 2.4 Lead: `make check-all`, `make test-containers`, one review pass, PR.
+- [x] 2.4 Lead: `make check-all`, `make test-containers`, one review pass, PR.
 
 ## 3. Close
 
-- [ ] 3.1 Scenario-map rows for the new tests (each stage adds its own).
+- [x] 3.1 Scenario-map rows for the new tests (each stage adds its own).
 - [ ] 3.2 After the last merge: reconcile the proposal, archive, and comment on #305 and #309.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 3.1 · [ ] 3.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 3.1 · [ ] 3.2
 
 ## Verification
 

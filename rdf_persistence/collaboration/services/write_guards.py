@@ -17,8 +17,10 @@ from rdflib import RDF, Graph, Literal, URIRef
 from rdf_persistence.collaboration.domain.generated.rp_collections import ReferenceCollection
 from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateValidators,
+    DeleteValidators,
     root_types,
     run_aggregate_validators,
+    run_delete_validators,
 )
 from rdf_persistence.collaboration.services.reference_collections import (
     COLLECTION_MIXIN,
@@ -30,14 +32,14 @@ from rdf_persistence.collaboration.services.reference_collections import (
     rule_plan,
 )
 from rdf_persistence.collaboration.services.workflows import Workflows
-from rdf_persistence.core.domain.exceptions import BadQuery, InvalidBody, InvalidIri
+from rdf_persistence.core.domain.exceptions import BadQuery, Conflict, InvalidBody, InvalidIri
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.persistence.services.generated.rp_persistence_services import AggregateHead
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
-from rdf_persistence.persistence.services.session import GuardContext, Session
+from rdf_persistence.persistence.services.session import GuardContext, Session, changed_text
 from rdf_persistence.schema.services import vocabulary as v
 
 
@@ -68,7 +70,7 @@ def _walk_from(
 class WriteGuards:
     """The checks of the writes of one schema, built once and shared by every session."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - the schema's parts and the two registries of rules
         self,
         mapper: Mapper,
         models: GeneratedModels,
@@ -76,8 +78,10 @@ class WriteGuards:
         workflows: Workflows | None = None,
         *,
         validators: AggregateValidators | None = None,
+        delete_validators: DeleteValidators | None = None,
     ) -> None:
         self._validators = validators
+        self._delete_validators = delete_validators
         self._mapper = mapper
         self._models = models
         self._listings = listings
@@ -117,6 +121,48 @@ class WriteGuards:
             triples = await self._workflows.keep_state(session, iri, triples, stored, allowed_state)
         await self._run_aggregate_validators(session, iri, triples, stored, context)
         return triples
+
+    async def prepare_remove(
+        self, session: Session, iri: str, if_version: str, *, context: GuardContext
+    ) -> None:
+        """Run the consumer's delete rules on the root ``iri`` before its removal is collected (D-5).
+
+        Nothing is read when no delete rule is registered (G-4, E15).
+
+        Raises:
+            Conflict: ``if_version`` is not the stored version: it wins over a refusal, as for a
+                replace (E17).
+            Refused: (a ``Conflict``) A rule refuses.
+            RuntimeError: A rule is buggy, or the stored root does not decode or has types on two
+                lines that a rule applies to.
+            TypeError: A rule returns a value.
+        """
+        deletes = self._delete_validators
+        if deletes is None or not deletes.has_rules:
+            return
+        graph, tracked_in, stored_version = await session.get_graph(iri)
+        try:
+            selected = deletes.select(iri, (str(t) for t in graph.objects(URIRef(iri), RDF.type)))
+        except (
+            InvalidBody
+        ) as error:  # stored data the client cannot fix, and a delete has no body (D-13)
+            raise RuntimeError(f"the stored {iri} is invalid: {error}") from error
+        if selected is None:
+            return
+        name, rules = selected
+        try:
+            old = self._mapper.from_graph(self._models.named(name), iri, graph, tracked_in)
+        except ValueError as error:
+            raise RuntimeError(f"the stored {iri} does not decode: {error}") from error
+        reader = deletes.reader(session, context, self._decode)
+        try:
+            await run_delete_validators(rules, old, session.principal, reader)
+        except Conflict as refusal:
+            if (
+                stored_version != if_version
+            ):  # the client read an older state: not the rule's refusal
+                raise Conflict(changed_text(iri, stored_version), iris=(iri,)) from refusal
+            raise
 
     async def _run_aggregate_validators(
         self,

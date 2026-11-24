@@ -132,6 +132,12 @@ Pass `aggregate_validators` to `install_service`: a mapping from a class name to
 is 422 and nothing is written. See
 xref:user-manual/access.adoc#aggregate-validators[Enforce your own rules on aggregate writes].
 
+*How do I refuse a delete?*::
+Pass `delete_validators` to `install_service`: a mapping from a class name to rules, each
+`(old, principal, reader)`, sync or async; a rule raises `Refused` to refuse, the answer is 409 `refused`
+with your message as its detail and nothing is removed, a collection's cascade included. See
+xref:user-manual/access.adoc#delete-validators[Refuse the delete of an aggregate].
+
 *How do I serve it over HTTP?*::
 Call `install_service` once in your composition root; it serves every aggregate root of the schema
 that has an `rp_path`, and returns a `ServiceKit` for your own routes. See xref:user-manual/serve.adoc[step 12] and

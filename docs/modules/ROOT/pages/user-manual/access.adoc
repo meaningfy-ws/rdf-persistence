@@ -250,7 +250,7 @@ being written; `old` and `new` are the two states of that root.
 |Run the rules |Do not run them
 
 |The generic API's create and replace, the tenant root's PUT included
-|Delete
+|Delete (it has rules of its own, <<delete-validators,below>>)
 
 |A unit of work's commit
 |Restore (`import_quads`)
@@ -318,3 +318,84 @@ reads is one read and one decoding per transaction.
 
 Tenant roots can have both kinds: `root_validators` run first, then the aggregate validators of
 the root's class. A refusal by either is a 422.
+
+[#delete-validators]
+== Refuse the delete of an aggregate
+
+_How do I refuse to delete a root while something holds it, such as a book that is on loan?_
+
+Give `install_service` `delete_validators`: a mapping from a schema class name to a list of rules.
+`ServiceKit` takes the same argument. A rule runs on every removal of a root of that class, or of a
+class derived from it, before anything is removed. It receives the stored root, the caller and the
+same *reader* the write rules get. To refuse, raise `Refused`: nothing is removed.
+
+[source,python]
+----
+from rdf_persistence import Refused, install_service
+
+
+def not_while_on_loan(old, who, reader):  # plain or async, as a write rule
+    if old.status == "on_loan":
+        raise Refused(f"{old.id} is on loan; return it before deleting it")
+
+
+install_service(
+    app,
+    delete_validators={"Book": [not_while_on_loan]},
+    # ... and the other keyword arguments of the composition root
+)
+----
+
+`delete_validators` is a `Mapping[str, Sequence[DeleteValidator]]`, empty by default. A rule takes
+`(old, principal, reader)` and returns nothing; `old` is a copy of the generated model, as stored,
+tracking included. The keys are checked at start-up as those of `aggregate_validators` are, and rules
+run in the same order: the most general class first. A stored root with types on two lines of
+descent is a bug in the data, not the client's: when a rule applies to one of them, the delete is a
+`RuntimeError` naming the root (500).
+
+The reader works as for a write, and answers for the caller of the delete: `reader.aggregate(iri)` is
+`None` for an aggregate the caller may not read, so a rule that depends on one the caller cannot see
+sees it as absent. It sees what the transaction removed earlier as absent too.
+
+*Every removal through a transaction runs the rules*, whichever way it is made: the generic `DELETE`
+route, `Session.remove`, a unit of work's `remove`, the cascade of a collection and `remove_with_files`.
+The comment records that go with a removed aggregate are dropped inside the removal and run no rule:
+they are the toolkit's own and no key can name them.
+
+=== Cascades and what a refusal says
+
+A collection's cascade removes the collection and its members in one commit. If one member's rule
+refuses, the whole commit is refused and nothing is removed, the collection included. The caller asked
+to delete the collection and learns about the member that blocked it, so *write the message to name
+its root*, as the example does (`old.id`): a message that does not say which member refuses leaves the
+caller guessing. The refusal reaches a caller who may not read that member only as far as the message
+you write, so do not put in it what the caller must not see.
+
+=== Errors of a delete rule
+
+[cols="2,2",options="header"]
+|===
+|The rule |The answer
+
+|Raises `Refused`
+|409 `refused`, with your message as its `detail`; nothing is removed
+
+|The `If-Match` version is stale and the rule refuses
+|409 `conflict` for the version, with no `detail`, as for a stale delete without rules
+
+|Raises a plain `Conflict` (a version clash the reader met)
+|409 `conflict`, with no `detail`
+
+|Raises any other exception, `InvalidBody` included (a delete has no body to call invalid)
+|500: a `RuntimeError` that names the rule and the exception
+
+|Returns a value (even from a coroutine)
+|`TypeError`, 500
+
+|The reader meets a store outage
+|Passes as it is: 503
+|===
+
+`refused` is the one 409 whose `detail` is sent, because the text is yours; a version conflict and a
+key conflict carry none. Without `delete_validators`, a removal reads nothing more than before. With them, a removal of a root of a
+class that has a rule reads the stored root once.

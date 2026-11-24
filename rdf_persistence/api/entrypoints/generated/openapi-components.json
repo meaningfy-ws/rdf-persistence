@@ -183,6 +183,7 @@
         "not_found",
         "conflict",
         "key_conflict",
+        "refused",
         "in_use",
         "precondition_required",
         "invalid_body",

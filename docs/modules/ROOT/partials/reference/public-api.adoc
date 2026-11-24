@@ -32,6 +32,7 @@
 |`DatabaseKind` |class |The databases an aggregate can live in, the values of the database annotation.
 |`DEFAULT_IRIS` |constant |
 |`DeleteFile` |class |The activity of removing a stored file, with the file aggregate it used and an invalidation of it.
+|`DeleteValidator` |function |
 |`Described` |class |A mixin giving an object an IRI, a label and a description.
 |`DirectorySettings` |class |How the user directory of the identity provider is read.
 |`EventBus` |class |Base class for protocol classes.
@@ -109,6 +110,7 @@
 |`ReferenceCollection` |class |A mixin for an aggregate that collects other aggregates of one class: the members it names, and a rule that says which aggregates of that class belong.
 |`Referrer` |class |One aggregate that points at another: its IRI, its schema class and the slot that holds the reference.
 |`ReferrerList` |class |The aggregates that point at one resource and that the caller may read, and the number of referrers left out because the caller may not read them.
+|`Refused` |class |A delete rule of the application refuses the removal of a root (aggregate-guards D-12).
 |`RegistryEntry` |class |An entry of a tenant's registry graph, naming a graph that belongs to an aggregate.
 |`RegistryKind` |class |The kinds of graph a registry entry can name.
 |`Remove` |class |An activity that removed an aggregate.

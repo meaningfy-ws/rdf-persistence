@@ -186,6 +186,52 @@ Under the floor:
 - R1-S7: `access.adoc` could say a missing aggregate is not cached and its absence not relied on.
 - R1-S8: `_Reader` mutates the context's `read_cache` by design (D-2); no action.
 
+### D-12
+
+**The developer, 2026-11-24, on the lead's question (P-0019).** The PLAN's Context said
+`problems.py` keeps a 409's message. It does not: `problem_for` keeps `detail` only for 400, 406,
+413, 415, 422 and 428, so a refusal would arrive as a bare "Version conflict". Decided:
+
+- `Refused(Conflict)` in `core/domain/exceptions.py`, exported from `rdf_persistence`. A delete
+  rule refuses by raising it (DEC-4's "the refusing exception is `Conflict`" now reads `Refused`).
+- A new problem slug `refused` (title "Refused", 409) in the LinkML `ProblemSlug` enum
+  (`model/technical/api/rp_api_entrypoints.yaml`), regenerated; `ERROR_KINDS` maps `Refused` to it
+  ahead of its base, and its `detail` is kept: only text the rule's author wrote is sent.
+  Version- and key-conflict texts stay hidden.
+- `run_delete_validators` lets `Refused` pass, and a plain `Conflict` too (a reader's version
+  clash, E6b), which stays the bare version conflict. D-5 step 4 applies to `Refused`.
+- Rejected: the same slug with a detail for the subclass only; no message; every 409's text.
+
+### D-13
+
+Stage 2 build (lead): the toy's `Book` has no status, so the tests refuse on
+`description == "on loan"`. T11 removes a shelf and two books in one transaction, the shape of
+a cascade. A stored root whose types lie on two lines, under a delete rule, is a `RuntimeError`
+naming it (stored data the client cannot fix, as D-3), not the write path's 422: a delete has no
+body.
+
+### D-14
+
+Stage 2 review (L2+L3, one pass): 7 findings, 0 Critical as labelled. Accepted:
+
+- **R2-W1, re-labelled Critical:** `file_removal.remove_with_files` opens its session without
+  `may_read`, so on that delete path a rule's reader sees aggregates the caller may not read, and
+  since D-12 a `Refused` message can name them to the client: a disclosure E2 rules out. Fix:
+  pass the caller's `may_read` through `ServiceKit.remove_with_files` and `remove_with_files`, as
+  D-7 does for the route, with a T15-style test.
+- **R2-W2 and R2-W3, one defect, re-labelled Critical:** the `install_service` and
+  `aggregate_validators` module docstrings, and `data-flows.adoc`, tell a consumer to refuse with
+  `Conflict`, which reaches the client with no message (D-12): the consumer's contract
+  contradicts the feature. Fix: name `Refused` and the `refused` problem.
+- **R2-S1:** the worked example and the No-go predate D-12; annotated (lead).
+
+Under the floor:
+
+- R2-W4: no test that tenant deletion runs no delete rule with one registered.
+- R2-W5: T11 runs a plain transaction, not `delete_cascade` or a unit of work; E18 has no test.
+- R2-S2: the stale-`If-Match` swap catches any `Conflict`, wider than D-12's `Refused`; harmless,
+  since a stale version is the version conflict whatever refused.
+
 ## Algorithm / approach
 
 ### Stage 1, #305: the reader hands over an aggregate
@@ -240,7 +286,7 @@ Tests first, in `tests/unit/collaboration/test_write_guards.py` (`prepare_remove
 Worked example:
 
 ```python
-from rdf_persistence import Conflict
+from rdf_persistence import Conflict  # as shaped; delivered as Refused (D-12)
 
 def not_while_on_loan(old: Book, who, reader):
     if old.status == "on_loan":

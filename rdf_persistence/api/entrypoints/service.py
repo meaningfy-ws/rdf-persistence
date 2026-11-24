@@ -17,7 +17,10 @@ from rdf_persistence.api.entrypoints.kit import ServiceKit
 from rdf_persistence.api.entrypoints.openapi import install_openapi
 from rdf_persistence.api.entrypoints.problems import install_problem_handlers
 from rdf_persistence.api.entrypoints.router import build_router
-from rdf_persistence.collaboration.services.aggregate_validators import AggregateValidator
+from rdf_persistence.collaboration.services.aggregate_validators import (
+    AggregateValidator,
+    DeleteValidator,
+)
 from rdf_persistence.core.domain.exceptions import InvalidIri
 from rdf_persistence.events.services.events import EventBus
 from rdf_persistence.files.services.files import FileStore
@@ -51,6 +54,7 @@ def install_service(
     grant_validators: Sequence[GrantValidator] = (),
     root_validators: Sequence[RootValidator] = (),
     aggregate_validators: Mapping[str, Sequence[AggregateValidator]] = {},
+    delete_validators: Mapping[str, Sequence[DeleteValidator]] = {},
     workflows: Sequence[Path] = (),
     bus: MessageBus | None = None,
     stores: Mapping[str, Store] = {},
@@ -88,6 +92,13 @@ def install_service(
     (see ``AggregateValidator``). A key that is not a root class of the schema, or a parent of one,
     stops the start-up (``ValueError``, naming it).
 
+    ``delete_validators`` maps the name of a class to the rules that refuse the removal of a root of
+    that class, or of a class derived from it: each is called as ``(old, principal, reader)`` and
+    refuses by raising ``Refused``, which the generic delete answers as the 409 ``refused`` problem
+    with the message as its ``detail``. They run on
+    every removal through a transaction, a cascade's included, and are keyed and checked like
+    ``aggregate_validators``.
+
     ``workflows`` are the paths of the workflow files, one per workflow, that the classes of the schema
     name with the ``workflow`` annotation. They are checked here, so a bad file stops the service
     before it serves.
@@ -115,7 +126,7 @@ def install_service(
     of the toolkit's routes.
 
     Raises:
-        ValueError: A key of ``aggregate_validators`` is not a root class or a parent of one. Or ``stores`` has the key ``default``, or one ``Store`` object is wired under two names
+        ValueError: A key of ``aggregate_validators`` or ``delete_validators`` is not a root class or a parent of one. Or ``stores`` has the key ``default``, or one ``Store`` object is wired under two names
             (the default included); the message names the key. Or ``event_bus`` is given and ``settings.deployment`` is empty: the deployments
             could not tell their own messages from the others'.
         StoreNotWired: (at start-up) an access record names a store that is not wired.
@@ -153,6 +164,7 @@ def install_service(
         grant_validators=grant_validators,
         root_validators=root_validators,
         aggregate_validators=aggregate_validators,
+        delete_validators=delete_validators,
         workflows=workflows,
         stores=stores,
         event_bus=event_bus,

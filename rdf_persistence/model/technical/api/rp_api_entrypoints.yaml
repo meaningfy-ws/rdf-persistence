@@ -200,6 +200,10 @@ enums:
         title: Key conflict
         meaning: rp:keyConflict
         description: The write would give an aggregate a key value that another aggregate of its class holds.
+      refused:
+        title: Refused
+        meaning: rp:refused
+        description: A delete rule of the application refuses the removal; the answer carries the rule's message.
       in_use:
         title: In use
         meaning: rp:inUse

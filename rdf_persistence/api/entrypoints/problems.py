@@ -45,6 +45,7 @@ _ROWS = {
     ProblemSlug.NOT_FOUND: ("Not found", HTTPStatus.NOT_FOUND),
     ProblemSlug.CONFLICT: ("Version conflict", HTTPStatus.CONFLICT),
     ProblemSlug.KEY_CONFLICT: ("Key conflict", HTTPStatus.CONFLICT),
+    ProblemSlug.REFUSED: ("Refused", HTTPStatus.CONFLICT),
     ProblemSlug.IN_USE: ("In use", HTTPStatus.CONFLICT),
     ProblemSlug.PRECONDITION_REQUIRED: ("Precondition required", HTTPStatus.PRECONDITION_REQUIRED),
     ProblemSlug.INVALID_BODY: ("Invalid body", HTTPStatus.UNPROCESSABLE_ENTITY),
@@ -72,6 +73,7 @@ FORBIDDEN = _kind(ProblemSlug.FORBIDDEN)
 NOT_FOUND = _kind(ProblemSlug.NOT_FOUND)
 CONFLICT = _kind(ProblemSlug.CONFLICT)
 KEY_CONFLICT = _kind(ProblemSlug.KEY_CONFLICT)
+REFUSED = _kind(ProblemSlug.REFUSED)
 IN_USE = _kind(ProblemSlug.IN_USE)
 PRECONDITION_REQUIRED = _kind(ProblemSlug.PRECONDITION_REQUIRED)
 INVALID_BODY = _kind(ProblemSlug.INVALID_BODY)
@@ -93,6 +95,7 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
     (errors.NotFound, NOT_FOUND),
     (errors.DatabaseGone, NOT_FOUND),
     (errors.TenantGone, NOT_FOUND),
+    (errors.Refused, REFUSED),  # found through the class first, so it wins over its base
     (errors.Conflict, CONFLICT),
     (errors.KeyConflict, KEY_CONFLICT),  # found through the class first, so it wins over its base
     (errors.InUse, IN_USE),  # likewise
@@ -159,7 +162,7 @@ def kind_of(error: BaseException) -> ProblemKind | None:
 
 def problem_for(base: str, kind: ProblemKind, detail: str | None = None) -> Problem:
     """The problem of ``kind``; ``detail`` is kept only for the statuses that explain what to fix."""
-    explained = HTTPStatus(kind.status) in _EXPLAINED
+    explained = HTTPStatus(kind.status) in _EXPLAINED or kind == REFUSED  # a rule's own text
     return Problem(
         type=f"{base}{PROBLEMS_PATH}{kind.slug}",
         title=kind.title,

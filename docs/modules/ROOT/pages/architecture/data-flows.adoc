@@ -442,7 +442,13 @@ nothing changes; the `ASK` for the new token then fails and the answer is 409.
 
 |Delete
 |`DELETE …/books/{id}` with `If-Match` (`delete` on the book); `Session.remove`
-|`Session.remove` reads the version (404 if there is none).
+|`Transaction.remove` reads the version (404 if there is none). Then it asks the write guards
+(`WriteGuard.prepare_remove`) before it collects anything. When the service has delete rules for the
+root's class, the guard reads the stored root once and runs them with the caller's reader; a refusal
+raises `Refused`, answered as the 409 `refused` problem with its message as `detail`, and a stale
+`If-Match` is the plain version conflict (no `detail`), not the rule's. With no
+delete rules nothing is read. Every removal goes this way, a collection's cascade included, so one
+refusing member refuses the whole commit. The comment records dropped with the root run no rule.
 |One update request (<<commit>>), guarded by the version: empty every loaded graph `B` owns, drop
 its registry entries, empty `B/graph`, and drop the comments that target `B` (its transition
 activities stay; see <<commit>>, _Delete removes dependents_). 409 if the graph is still there. Blobs are *not* deleted: use `remove_with_files`.

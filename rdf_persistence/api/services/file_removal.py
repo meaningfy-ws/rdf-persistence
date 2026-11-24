@@ -1,6 +1,7 @@
 """Removing a file aggregate together with the blobs only it names (live-tenant-sweep PD-10)."""
 
 import logging
+from collections.abc import Callable
 
 from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.core.domain.generated.rp_core import Principal
@@ -27,6 +28,7 @@ async def remove_with_files(
     mapper: Mapper | None = None,
     *,
     readable: Readable | None = None,
+    may_read: Callable[[str], bool] | None = None,
 ) -> None:
     """Remove the aggregate ``iri`` at ``if_version``, then delete from the tenant's bucket the blobs
     it named in ``rp:fileKey`` that no other graph names. A blob that cannot be deleted is logged and
@@ -34,6 +36,8 @@ async def remove_with_files(
     without one it is the standard ``Remove``. ``readable`` is what ``Session.remove`` takes: a
     consumer route passes its collaboration's ``readable_referrers`` to have the readable referrers
     of a refused removal named; without it the refusal is unfiltered and names nobody over HTTP.
+    ``may_read`` tells which aggregates the caller may read, so a delete rule's reader hides the
+    others (``None``: the session's full reach); a route passes ``ServiceKit.readable_by``.
 
     Raises:
         NotFound: The aggregate has no graph, or the tenant has no access record.
@@ -41,7 +45,7 @@ async def remove_with_files(
         InUse: The aggregate is a refusing class and another aggregate still refers to it.
     """
     access, _ = await tenancy.get(tenant)
-    async with tenancy.tenant_session(tenant, principal) as session:
+    async with tenancy.tenant_session(tenant, principal, may_read=may_read) as session:
         graph, _, _ = await session.get_graph(iri)
         keys = {str(k) for k in graph.objects(predicate=v.FILE_KEY)}
         served = None
