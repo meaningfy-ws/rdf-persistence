@@ -126,7 +126,8 @@ that does not know `refused` reads it as a 409.
 |---|---|---|
 | DEC-1, DEC-2, DEC-3, DEC-6: `reader.aggregate(iri)`, relied on, cached | As shaped; `_Reader` also takes `model_class` (D-10) | #334 |
 | `GuardContext` carries the removals | As shaped, with `read_cache`; both default (D-9) | #334 |
-| DEC-4: refusing exception is `Conflict` | `Refused(Conflict)` with a `refused` 409 that keeps the message (D-12, the developer's decision: no 409 text was ever sent) | stage 2 PR |
-| DEC-5: every transaction remove runs the rules | As shaped; a stored root on two lines under a rule is a 500, not a 422 (D-13) | stage 2 PR |
-| D-7: delete route passes `may_read` | As shaped | stage 2 PR |
+| DEC-4: refusing exception is `Conflict` | `Refused(Conflict)` with a `refused` 409 that keeps the message (D-12, the developer's decision: no 409 text was ever sent) | #346 |
+| DEC-5: every transaction remove runs the rules | As shaped; a stored root on two lines under a rule is a 500, not a 422 (D-13) | #346 |
+| D-7: delete route passes `may_read` | As shaped, and on `remove_with_files` too (D-14) | #346 |
+| Under the floor, not delivered | Tests for tenant deletion with a delete rule registered, for a cascade through `delete_cascade`, for E5, E8 and E18, and for the read cache on replace (D-11, D-14): the code paths exist, the tests do not | none |
 | Not promised | `make test-containers` was red on `develop` (#331); fixed in its own change, `generator-e2e-fixtures` | #339 |
