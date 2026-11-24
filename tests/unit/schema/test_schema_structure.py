@@ -239,7 +239,7 @@ def test_a_class_named_stored_file_without_the_class_uri_is_not_the_stored_file(
 
 
 def test_every_value_set_of_the_vocabulary_has_members() -> None:
-    sets = {ModuleKind: 3, DatabaseKind: 3, GraphKind: 1}
+    sets = {ModuleKind: 4, DatabaseKind: 3, GraphKind: 1}
     assert {k: len(k) for k in sets} == sets, "a value set of the annotation vocabulary changed"
 
 

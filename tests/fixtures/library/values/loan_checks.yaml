@@ -1,0 +1,69 @@
+id: https://example.org/ns/library/loan_checks
+name: loan_checks
+title: Loan checks module
+description: >-
+  The outcome of checking a loan: a status, the findings and the check that holds them. They are
+  domain values the library computes and never stores.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+annotations:
+  module_kind: value
+  python_package: tests.fixtures.library.domain.generated.values
+
+enums:
+  LoanStatus:
+    title: Loan status
+    description: Whether a loan passed its checks.
+    permissible_values:
+      ok:
+        title: Ok
+        description: Every check passed.
+        meaning: lib:LoanStatusOk
+      overdue:
+        title: Overdue
+        description: The book is past its due date.
+        meaning: lib:LoanStatusOverdue
+
+classes:
+  LoanFinding:
+    title: Loan finding
+    description: One thing a check found about a loan.
+    class_uri: lib:LoanFinding
+    slots:
+      - finding_code
+      - finding_message
+  LoanCheck:
+    title: Loan check
+    description: The outcome of checking a loan, its status and what was found.
+    class_uri: lib:LoanCheck
+    slots:
+      - check_status
+      - check_findings
+
+slots:
+  finding_code:
+    title: Finding code
+    description: The code of the finding.
+    slot_uri: lib:findingCode
+    required: true
+  finding_message:
+    title: Finding message
+    description: What the finding says.
+    slot_uri: lib:findingMessage
+  check_status:
+    title: Check status
+    description: Whether the loan passed.
+    slot_uri: lib:checkStatus
+    range: LoanStatus
+    required: true
+  check_findings:
+    title: Check findings
+    description: What the check found.
+    slot_uri: lib:checkFindings
+    range: LoanFinding
+    multivalued: true

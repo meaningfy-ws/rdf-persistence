@@ -117,7 +117,9 @@ def _boundary_problems(run: Run) -> list[CheckProblem]:
         *boundary_problems(run.view, folder),
         *(
             mixed
-            or kind_folder_problems(folder, run.target.package, derived_kind(run.view, folder))
+            or kind_folder_problems(
+                folder, run.target.package, derived_kind(run.view, folder), run.view
+            )
         ),
     ]
 

@@ -572,11 +572,13 @@ after the first package in path order, with a `merged-cycle` line in the report.
 [#module-kind]
 A module is annotated `module_kind: domain` unless its package has a `module_kind` tagged value,
 which is written as the annotation instead; a package's other tagged values are not read. The value
-is one the toolkit's metamodel lists (`ModuleKind`: `domain`, `technical`, `access`, read
+is one the toolkit's metamodel lists (`ModuleKind`: `domain`, `technical`, `access`, `value`, read
 case-blind). `technical` fits only when every converted package is technical: a target generates
-one kind, so `rp-generate` refuses technical modules beside domain ones (`target_kind`). Any other
+one kind, so `rp-generate` refuses technical modules beside domain ones (`target_kind`). A `value`
+module needs `python_package` added by hand when another target imports it
+(xref:architecture/generation.adoc#value-modules[Value modules]); the converter writes none. Any other
 value fails the run
-(`[package_module] access: module_kind: 'planet' is not one of ('domain', 'technical', 'access')`). An
+(`[package_module] access: module_kind: 'planet' is not one of ('domain', 'technical', 'access', 'value')`). An
 application's access model is a package tagged `module_kind = access` whose classes generalise
 `rp:TenantAccess`. `rp-generate`'s boundary rule then keeps the domain modules from importing it, while
 the root schema imports it like any other module. Packages written as one module (an import cycle)

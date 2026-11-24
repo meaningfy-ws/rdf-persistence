@@ -279,8 +279,8 @@ enums:
       module_kind:
         title: Module kind
         description: >-
-          Schema annotation, `domain`, `technical` or `access` (see ModuleKind): the kind of the module;
-          a domain module may not import a technical or an access one.
+          Schema annotation, `domain`, `technical`, `access` or `value` (see ModuleKind): the kind of the
+          module; a domain module may not import a technical or an access one, nor may a value module.
         meaning: rp:AnnotationModuleKind
       rp_path:
         title: Path
@@ -366,6 +366,13 @@ enums:
         title: Access
         description: A module of access control, such as grants and tenancy.
         meaning: rp:ModuleAccess
+      value:
+        title: Value
+        description: >-
+          A module of domain values that are never stored, such as a status, a finding or a report. It is
+          generated into the domain layer; a domain or technical module may import it, and it imports only
+          domain, value and toolkit modules.
+        meaning: rp:ModuleValue
   DatabaseKind:
     title: Database kind
     description: The databases an aggregate can live in, the values of the database annotation.

@@ -318,7 +318,8 @@ def test_a_technical_class_used_as_the_range_of_a_domain_class_is_still_a_refere
         encoding="utf-8",
     )
     found = problems_of(toy_copy / ROOT_SCHEMA)
-    assert any("[reference]" in p and "Account" in p for p in found), (
+    # D-2: a slot over a never-stored class is the holding rule's (module_kind), not the reference rule's
+    assert any("[module_kind]" in p and "Account" in p for p in found), (
         f"a domain class may not point at a technical class: {found}"
     )
 

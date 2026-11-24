@@ -133,9 +133,10 @@ def test_a_kind_spelt_target_kind_is_refused_naming_the_key(tmp_path: Path) -> N
 
 def test_the_toy_librarys_table_declares_no_kind() -> None:
     """Spec "a target without a kind": the table is read, and the model has no kind to hold."""
-    (toy,) = read_targets(TOY / "pyproject.toml")
+    targets = read_targets(TOY / "pyproject.toml")
     assert "target_kind" not in GenerationTarget.model_fields, "the model still holds a kind"
-    assert not hasattr(toy, "target_kind"), "the target still holds a kind"
+    assert targets, "the toy declares no target"
+    assert not any(hasattr(t, "target_kind") for t in targets), "a target still holds a kind"
 
 
 def test_the_regenerate_command_is_not_a_flag() -> None:

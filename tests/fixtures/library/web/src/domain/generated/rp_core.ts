@@ -17,7 +17,7 @@ export type RpAnnotation =
   | "graph"
   /** Class annotation, `tenant` (the default), `system` or `application` (see DatabaseKind): the database an aggregate lives in. */
   | "database"
-  /** Schema annotation, `domain`, `technical` or `access` (see ModuleKind): the kind of the module; a domain module may not import a technical or an access one. */
+  /** Schema annotation, `domain`, `technical`, `access` or `value` (see ModuleKind): the kind of the module; a domain module may not import a technical or an access one, nor may a value module. */
   | "module_kind"
   /** Class annotation, required on every aggregate root: its path segment in the API. It follows the pattern of the url_segment slot. */
   | "rp_path"
@@ -49,7 +49,9 @@ export type ModuleKind =
   /** A module of technical concerns, such as files or provenance. */
   | "technical"
   /** A module of access control, such as grants and tenancy. */
-  | "access";
+  | "access"
+  /** A module of domain values that are never stored, such as a status, a finding or a report. It is generated into the domain layer; a domain or technical module may import it, and it imports only domain, value and toolkit modules. */
+  | "value";
 
 /** The databases an aggregate can live in, the values of the database annotation. */
 export type DatabaseKind =
