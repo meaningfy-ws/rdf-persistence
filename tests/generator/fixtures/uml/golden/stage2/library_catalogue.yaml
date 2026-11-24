@@ -107,6 +107,10 @@ classes:
     - has_chapter
     - related_work
     - shelved_on
+    slot_usage:
+      location:
+        name: location
+        required: false
     unique_keys:
       title_subtitle:
         unique_key_name: title_subtitle

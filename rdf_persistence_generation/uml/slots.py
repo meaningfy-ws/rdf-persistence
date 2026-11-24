@@ -107,6 +107,8 @@ SHAPE_FIELDS: Final = (
 )
 # What the slot states only when every usage agrees; ``range`` and ``description`` always follow PD-16.
 LIMIT_FIELDS: Final = tuple(each for each in SHAPE_FIELDS if each not in ("range", "description"))
+# The boolean limits a usage writes as ``false`` when they differ, so it does not inherit a ``true``.
+EXPLICIT_FLAGS: Final = frozenset({"required", "multivalued"})
 
 
 def shape_of(
@@ -234,9 +236,13 @@ def usage_of(
     """The ``slot_usage`` of a class: what it has of its own, or None.
 
     That is its value of each differing limit, its range when it is not the slot's and its description
-    when it is non-empty and not the slot's; an empty description inherits the slot's.
+    when it is non-empty and not the slot's; an empty description inherits the slot's. A differing
+    ``required`` or ``multivalued`` is written ``false`` too, because an omitted flag inherits the
+    parent's ``true`` (D-5).
     """
     kwargs = _shape_kwargs(shape, differing)
+    for flag in EXPLICIT_FLAGS & differing:
+        kwargs[flag] = bool(getattr(shape, flag))
     if shape.range != slot.range:
         kwargs["range"] = shape.range
     if shape.description and shape.description != slot.description:
