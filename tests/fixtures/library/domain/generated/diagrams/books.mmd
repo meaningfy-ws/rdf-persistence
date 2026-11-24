@@ -12,6 +12,17 @@ classDiagram
     class Author {
         <<root>>
     }
+    class LendingItem {
+    }
+    class Magazine {
+        <<root>>
+    }
+    class Pamphlet {
+        <<root>>
+    }
+    class Loan {
+        <<root>>
+    }
     class Chapter {
         <<owned>>
         +integer number
@@ -25,5 +36,8 @@ classDiagram
     Book "1" --> "0..1" Shelf : shelf
     Book "1" --> "0..1" Book : sequel_of
     Book "1" --> "0..1" Author : written_by
+    LendingItem <|-- Magazine
+    LendingItem <|-- Pamphlet
+    Loan "1" --> "1" LendingItem : lends
     Chapter "1" *-- "*" Note : notes
     Note "1" --> "0..1" Book : about

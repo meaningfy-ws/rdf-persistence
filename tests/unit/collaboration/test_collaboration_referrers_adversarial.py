@@ -329,18 +329,18 @@ async def test_the_same_iri_held_by_a_root_slot_and_a_part_slot_is_listed_once_p
 async def test_a_referrer_of_a_class_the_schema_does_not_know_keeps_its_iris(
     toy_session, collaboration
 ):
-    await put_raw(toy_session, B3, f"{LIB}Magazine", (SHELF_P, S1))
+    await put_raw(toy_session, B3, f"{LIB}Gazette", (SHELF_P, S1))
     found = await as_ada(collaboration).referrers(S1)
-    assert refs(found) == [(B3, f"{LIB}Magazine", str(SHELF_P))], "class and slot stay as stored"
+    assert refs(found) == [(B3, f"{LIB}Gazette", str(SHELF_P))], "class and slot stay as stored"
     assert found.hidden_count == 0, "readable like any aggregate"
 
 
 async def test_a_referrer_of_an_unknown_class_is_hidden_like_any_other(toy_session, collaboration):
-    await put_raw(toy_session, B3, f"{LIB}Magazine", (SHELF_P, S1))
+    await put_raw(toy_session, B3, f"{LIB}Gazette", (SHELF_P, S1))
     found = await as_bob(collaboration, bob_reading_all_but(B3)).referrers(S1)
     assert (found.referrers, found.hidden_count) == (None, 1), "counted"
     assert B3 not in found.model_dump_json(), "unnamed"
-    assert "Magazine" not in found.model_dump_json(), "unnamed"
+    assert "Gazette" not in found.model_dump_json(), "unnamed"
 
 
 async def test_an_aggregate_with_two_types_names_a_known_slot_by_its_name(
@@ -350,7 +350,7 @@ async def test_an_aggregate_with_two_types_names_a_known_slot_by_its_name(
         B3,
         [
             (URIRef(B3), RDF.type, BOOK_CLASS),
-            (URIRef(B3), RDF.type, URIRef(f"{LIB}Magazine")),
+            (URIRef(B3), RDF.type, URIRef(f"{LIB}Gazette")),
             (URIRef(B3), SHELF_P, URIRef(S1)),
         ],
     )

@@ -90,6 +90,68 @@ export interface Author {
   contributor?: string[];
 }
 
+/** Something the library lends; an abstract aggregate root, so a loan points at any of its kinds by IRI. */
+export interface LendingItem {
+  /** The IRI that identifies the object. */
+  id: string;
+}
+
+/** A magazine the library lends; a concrete kind of item. */
+export interface Magazine {
+  /** The IRI that identifies the object. */
+  id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The time the graph was first committed. */
+  created?: string;
+  /** The time the graph was last committed. */
+  modified?: string;
+  /** The principal that first committed the graph. */
+  creator?: string;
+  /** A principal that committed a later version of the graph. */
+  contributor?: string[];
+}
+
+/** A pamphlet the library lends; a concrete kind of item. */
+export interface Pamphlet {
+  /** The IRI that identifies the object. */
+  id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The time the graph was first committed. */
+  created?: string;
+  /** The time the graph was last committed. */
+  modified?: string;
+  /** The principal that first committed the graph. */
+  creator?: string;
+  /** A principal that committed a later version of the graph. */
+  contributor?: string[];
+}
+
+/** A loan of an item; an aggregate root that points at the item, of whichever kind, by IRI. */
+export interface Loan {
+  /** The item the loan is of, another aggregate, abstract or concrete, stored as its IRI. */
+  lends: string;
+  /** The IRI that identifies the object. */
+  id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The time the graph was first committed. */
+  created?: string;
+  /** The time the graph was last committed. */
+  modified?: string;
+  /** The principal that first committed the graph. */
+  creator?: string;
+  /** A principal that committed a later version of the graph. */
+  contributor?: string[];
+}
+
 /** A chapter of a book, known by its number rather than a label; part of the book's aggregate. It owns its notes. */
 export interface Chapter {
   /** The position of a chapter in its book. */

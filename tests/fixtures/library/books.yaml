@@ -53,6 +53,42 @@ classes:
       rp_path: authors
       database: tenant
       rp_on_referenced_delete: refuse
+  LendingItem:
+    title: Lending item
+    description: Something the library lends; an abstract aggregate root, so a loan points at any of its kinds by IRI.
+    class_uri: lib:LendingItem
+    abstract: true
+    mixins: [AggregateRoot]
+  Magazine:
+    title: Magazine
+    description: A magazine the library lends; a concrete kind of item.
+    class_uri: lib:Magazine
+    is_a: LendingItem
+    mixins: [Described, Tracked]
+    annotations:
+      rp_path: magazines
+      database: tenant
+  Pamphlet:
+    title: Pamphlet
+    description: A pamphlet the library lends; a concrete kind of item.
+    class_uri: lib:Pamphlet
+    is_a: LendingItem
+    mixins: [Described, Tracked]
+    annotations:
+      rp_path: pamphlets
+      database: tenant
+  Loan:
+    title: Loan
+    description: A loan of an item; an aggregate root that points at the item, of whichever kind, by IRI.
+    class_uri: lib:Loan
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [lends]
+    slot_usage:
+      lends:
+        required: true
+    annotations:
+      rp_path: loans
+      database: tenant
   Chapter:
     title: Chapter
     description: A chapter of a book, known by its number rather than a label; part of the book's aggregate. It owns its notes.
@@ -135,6 +171,11 @@ slots:
     description: The author of the book, another aggregate, stored as its IRI.
     slot_uri: lib:writtenBy
     range: Author
+  lends:
+    title: Lends
+    description: The item the loan is of, another aggregate, abstract or concrete, stored as its IRI.
+    slot_uri: lib:lends
+    range: LendingItem
   about:
     title: About
     description: The book a note is about, another aggregate, stored as its IRI.

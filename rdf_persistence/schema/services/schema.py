@@ -6,10 +6,11 @@ from importlib import resources
 from pathlib import Path
 
 import yaml
-from linkml_runtime.linkml_model.meta import SchemaDefinition, SlotDefinition
+from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 
 PACKAGE = "rdf_persistence"
+AGGREGATE_ROOT = "AggregateRoot"  # the mixin that makes a class an aggregate root
 PACKAGE_DIR = Path(str(resources.files(PACKAGE))).resolve()
 API_ENTRYPOINTS_SCHEMA = PACKAGE_DIR / "model" / "technical" / "api" / "rp_api_entrypoints.yaml"
 IRIS_SCHEMA = PACKAGE_DIR / "model" / "technical" / "iris" / "rp_iris_services.yaml"
@@ -72,11 +73,66 @@ def load_schema(path: str | Path) -> SchemaView:
     """Open the schema at ``path``; ``rdf_persistence/model/<module>`` imports find the package's modules.
 
     An application slot named like a toolkit slot that no toolkit class carries wins over it
-    (``prefer_application_slots``), whatever the order of the imports.
+    (``prefer_application_slots``), whatever the order of the imports. An abstract aggregate root
+    names the identifier of its kinds (``give_identifier_to_abstract_roots``), so a slot over it is
+    a reference for every reader (#303).
     """
     view = SchemaView(str(path), importmap=metamodel_importmap())
     prefer_application_slots(view)
+    give_identifier_to_abstract_roots(view)
     return view
+
+
+def give_identifier_to_abstract_roots(view: SchemaView) -> None:
+    """Let each abstract aggregate root of the application declare the identifier its kinds carry.
+
+    A class with no identifier reads as having no reference to point at, so a slot over it is
+    inlined in the stock generators, in ``SchemaView.is_inlined`` and in the mapper alike
+    (DEC-6, #303). A root is a reference whether its range is abstract or concrete, so the abstract
+    root takes the identifier slot of its concrete descendants. The module is copied first; the
+    loaded module may be shared.
+
+    An abstract root with no descendant that has an identifier is left as it is: there is nothing to
+    point at. Descendants whose identifier slots differ cannot share one reference, so the root is
+    refused.
+
+    Raises:
+        ValueError: The descendants of an abstract root carry identifier slots of different names;
+            the message names the class and the slots.
+    """
+    view.imports_closure()
+    for key, module in list(view.schema_map.items()):
+        if is_toolkit_module(module):
+            continue
+        found = {
+            name: names
+            for name, cls in module.classes.items()
+            if (names := _kinds_identifier(view, cls))
+        }
+        if not found:
+            continue
+        copy = deepcopy(module)
+        for name, names in found.items():
+            if len(names) > 1:
+                raise ValueError(
+                    f"{name} is an abstract aggregate root whose kinds have different identifier "
+                    f"slots, {sorted(names)}; give them one"
+                )
+            copy.classes[name].slots.append(next(iter(names)))
+        view.schema_map[key] = copy
+        view.set_modified()
+
+
+def _kinds_identifier(view: SchemaView, cls: ClassDefinition) -> set[str]:
+    """The names of the identifier slots of the kinds of an abstract root with none of its own."""
+    if not cls.abstract or cls.mixin or AGGREGATE_ROOT not in view.class_ancestors(cls.name):
+        return set()
+    if view.get_identifier_slot(cls.name) is not None:
+        return set()
+    identifiers = (
+        view.get_identifier_slot(name) for name in view.class_descendants(cls.name, reflexive=False)
+    )
+    return {slot.name for slot in identifiers if slot is not None}
 
 
 def is_toolkit_module(schema: SchemaDefinition) -> bool:

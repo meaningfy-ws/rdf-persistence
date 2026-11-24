@@ -825,6 +825,27 @@
       "title": "KeyDuplicate",
       "type": "object"
     },
+    "LendingItem": {
+      "additionalProperties": false,
+      "description": "Something the library lends; an abstract aggregate root, so a loan points at any of its kinds by IRI.",
+      "properties": {
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "LendingItem",
+      "type": "object"
+    },
     "Library": {
       "additionalProperties": false,
       "description": "A library; the tenant root. Its IRI is the tenant IRI and it lives in the tenant's meta graph.",
@@ -911,6 +932,72 @@
         "label"
       ],
       "title": "LibraryAccess",
+      "type": "object"
+    },
+    "Loan": {
+      "additionalProperties": false,
+      "description": "A loan of an item; an aggregate root that points at the item, of whichever kind, by IRI.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "lends": {
+          "description": "The item the loan is of, another aggregate, abstract or concrete, stored as its IRI.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lends",
+        "id",
+        "label"
+      ],
+      "title": "Loan",
+      "type": "object"
+    },
+    "Magazine": {
+      "additionalProperties": false,
+      "description": "A magazine the library lends; a concrete kind of item.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Magazine",
       "type": "object"
     },
     "MembershipRule": {
@@ -1002,6 +1089,36 @@
       ],
       "title": "OnReferencedDelete",
       "type": "string"
+    },
+    "Pamphlet": {
+      "additionalProperties": false,
+      "description": "A pamphlet the library lends; a concrete kind of item.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Pamphlet",
+      "type": "object"
     },
     "PendingLoad": {
       "additionalProperties": false,
