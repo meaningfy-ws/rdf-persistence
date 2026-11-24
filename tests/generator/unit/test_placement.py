@@ -39,7 +39,13 @@ def test_a_flag_overrides_the_table(tmp_path: Path) -> None:
     project = tmp_path / "library"
     shutil.copytree(TOY, project, ignore=shutil.ignore_patterns("generated", "golden", "web"))
 
-    code = main(["--project", str(project / "pyproject.toml"), "--typescript-out", "client/types"])
+    # a flag needs one entry: keep the toy's first target, the library's domain
+    table = project / "pyproject.toml"
+    table.write_text(
+        table.read_text(encoding="utf-8").split("\n# A value module")[0], encoding="utf-8"
+    )
+
+    code = main(["--project", str(table), "--typescript-out", "client/types"])
 
     assert code == 0, "the run failed"
     assert (project / "client" / "types" / "index.ts").is_file(), "the flag was not used"

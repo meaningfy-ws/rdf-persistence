@@ -56,7 +56,7 @@ class RpAnnotation(str, _Enum):
     DATABASE = "database"
     "Class annotation, `tenant` (the default), `system` or `application` (see DatabaseKind): the database an aggregate lives in."
     MODULE_KIND = "module_kind"
-    "Schema annotation, `domain`, `technical` or `access` (see ModuleKind): the kind of the module; a domain module may not import a technical or an access one."
+    "Schema annotation, `domain`, `technical`, `access` or `value` (see ModuleKind): the kind of the module; a domain module may not import a technical or an access one, nor may a value module."
     RP_PATH = "rp_path"
     "Class annotation, required on every aggregate root: its path segment in the API. It follows the pattern of the url_segment slot."
     RP_IRI_TYPE = "rp_iri_type"
@@ -89,6 +89,8 @@ class ModuleKind(str, _Enum):
     "A module of technical concerns, such as files or provenance."
     ACCESS = "access"
     "A module of access control, such as grants and tenancy."
+    VALUE = "value"
+    "A module of domain values that are never stored, such as a status, a finding or a report. It is generated into the domain layer; a domain or technical module may import it, and it imports only domain, value and toolkit modules."
 
 
 class DatabaseKind(str, _Enum):

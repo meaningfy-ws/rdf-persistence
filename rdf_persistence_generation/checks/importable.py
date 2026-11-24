@@ -127,8 +127,15 @@ def _mypy_targets(checked: Sequence[GenerationTarget], base: Path) -> list[str]:
     """
     rooted = [t.package for t in checked if _import_root(t, base)]
     outermost = [p for p in rooted if not any(p.startswith(f"{other}.") for other in rooted)]
-    folders = [str(_folder(t, base)) for t in checked if not _import_root(t, base)]
+    listed = [_folder(t, base) for t in checked if not _import_root(t, base)]
+    folders = _outermost_folders(listed)
     return [*(arg for package in outermost for arg in ("-p", package)), *folders]
+
+
+def _outermost_folders(listed: Sequence[Path]) -> list[str]:
+    """The folders not inside another listed one: a value target's under its domain target's is checked with it."""
+    unique = list(dict.fromkeys(listed))
+    return [str(f) for f in unique if not any(other in f.parents for other in unique)]
 
 
 def _cache_dir(base: Path) -> Path:

@@ -1,0 +1,54 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix lib: <https://example.org/ns/library#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+lib:LoanCheck a sh:NodeShape ;
+	rdfs:comment "The outcome of checking a loan, its status and what was found." ;
+	rdfs:label "Loan check" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n5 ;
+	sh:property _:c14n2 , _:c14n7 ;
+	sh:targetClass lib:LoanCheck .
+lib:LoanFinding a sh:NodeShape ;
+	rdfs:comment "One thing a check found about a loan." ;
+	rdfs:label "Loan finding" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n1 ;
+	sh:property _:c14n0 , _:c14n6 ;
+	sh:targetClass lib:LoanFinding .
+_:c14n0 sh:datatype xsd:string ;
+	sh:description "What the finding says." ;
+	sh:maxCount 1 ;
+	sh:name "Finding message" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path lib:findingMessage .
+_:c14n1 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n2 sh:description "Whether the loan passed." ;
+	sh:in _:c14n3 ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Check status" ;
+	sh:order 0 ;
+	sh:path lib:checkStatus .
+_:c14n3 rdf:first lib:LoanStatusOk ;
+	rdf:rest _:c14n4 .
+_:c14n4 rdf:first lib:LoanStatusOverdue ;
+	rdf:rest rdf:nil .
+_:c14n5 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n6 sh:datatype xsd:string ;
+	sh:description "The code of the finding." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Finding code" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path lib:findingCode .
+_:c14n7 sh:description "What the check found." ;
+	sh:name "Check findings" ;
+	sh:nodeKind sh:BlankNodeOrIRI ;
+	sh:order 1 ;
+	sh:path lib:checkFindings .

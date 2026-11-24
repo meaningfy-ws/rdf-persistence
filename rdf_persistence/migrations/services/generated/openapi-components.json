@@ -242,7 +242,8 @@
       "enum": [
         "domain",
         "technical",
-        "access"
+        "access",
+        "value"
       ],
       "title": "ModuleKind",
       "type": "string"

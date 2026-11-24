@@ -31,7 +31,17 @@ from rdf_persistence_generation.problems import rule_problem
 
 # Classes reached by IRI, never owned (PD-23).
 REFERENCE_CLASSES = ("Principal", ACTIVITY)
-FORBIDDEN_FOR_DOMAIN = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
+VALUE = ModuleKind.VALUE.value
+
+
+_NO_TECHNICAL_OR_ACCESS = (ModuleKind.TECHNICAL.value, ModuleKind.ACCESS.value)
+# DEC-3, by the module's own kind: (the kinds it must not import, the hint appended to the problem).
+# A plain mapping, not a class: the repository declares data classes in LinkML.
+IMPORT_RULES: dict[str, tuple[tuple[str, ...], str]] = {
+    ModuleKind.DOMAIN.value: (_NO_TECHNICAL_OR_ACCESS, ""),
+    VALUE: (_NO_TECHNICAL_OR_ACCESS, ": move the class into a value or domain module"),
+}
+NEVER_STORED = (ModuleKind.TECHNICAL.value, VALUE)  # the kinds whose classes no root owns
 
 # PD-4: the folder before ``generated`` that each target kind allows, and the packages outside the themes.
 GENERATED = "generated"
@@ -42,12 +52,20 @@ THEME_PATH = (PACKAGE,)  # a theme sits directly under the library package
 FOLDER_EXEMPT = ("rdf_persistence.testkit", "rdf_persistence_generation")
 
 
+def _kind_of(schema: SchemaDefinition) -> str | None:
+    return annotation(schema, RpAnnotation.MODULE_KIND)
+
+
 def technical_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]:
-    """The classes of the modules annotated ``module_kind: technical``; a class is told apart by object, not by name."""
+    """The classes that are never stored: those of the modules annotated ``module_kind: technical`` or ``value``.
+
+    The name stays for the callers that read it as "exempt from the stored-class rules" (D-1); a class is
+    told apart by object, not by name.
+    """
     return [
         cls
         for schema in schemas
-        if annotation(schema, RpAnnotation.MODULE_KIND) == ModuleKind.TECHNICAL.value
+        if _kind_of(schema) in NEVER_STORED
         for cls in schema.classes.values()
     ]
 
@@ -82,12 +100,15 @@ def _may_be_referred_to(view: SchemaView, range_: str) -> bool:
     return AGGREGATE_ROOT in ancestors or any(name in ancestors for name in REFERENCE_CLASSES)
 
 
-def _reference_problems(view: SchemaView, classes: list[ClassDefinition]) -> Iterator[CheckProblem]:
+def _reference_problems(
+    view: SchemaView, classes: list[ClassDefinition], homes: dict[str, tuple[str, str]]
+) -> Iterator[CheckProblem]:
+    """A slot over a never-stored class is the holding rule's to report, so it is skipped here (D-2)."""
     for cls in classes:
         induced = {slot.name: slot for slot in view.class_induced_slots(cls.name)}
         for name in sorted(declared_slots(cls) & induced.keys()):
             slot = induced[name]
-            is_class_range = slot.range in view.all_classes()
+            is_class_range = slot.range in view.all_classes() and str(slot.range) not in homes
             if is_class_range and not is_owned(slot) and not _may_be_referred_to(view, slot.range):
                 yield rule_problem(
                     BoundaryRule.REFERENCE,
@@ -136,16 +157,19 @@ def _imported(view: SchemaView, schema: SchemaDefinition) -> Iterator[SchemaDefi
 
 
 def _module_problems(view: SchemaView, schemas: list[SchemaDefinition]) -> Iterator[CheckProblem]:
+    """A domain or value module imports no technical or access module (DEC-3); a value one is told where to go."""
     for schema in schemas:
-        if annotation(schema, RpAnnotation.MODULE_KIND) != ModuleKind.DOMAIN.value:
+        own_kind = _kind_of(schema)
+        if (rule := IMPORT_RULES.get(own_kind or "")) is None:
             continue
+        forbidden, hint = rule
         for imported in _imported(view, schema):
             kind = annotation(imported, RpAnnotation.MODULE_KIND)
-            if kind in FORBIDDEN_FOR_DOMAIN:
+            if kind in forbidden:
                 yield rule_problem(
                     BoundaryRule.MODULE_KIND,
                     schema.name,
-                    f"is a domain module and imports {imported.name}, a {kind} module",
+                    f"is a {own_kind} module and imports {imported.name}, a {kind} module{hint}",
                 )
 
 
@@ -153,50 +177,92 @@ def _is_technical(schema: SchemaDefinition) -> bool:
     return annotation(schema, RpAnnotation.MODULE_KIND) == ModuleKind.TECHNICAL.value
 
 
-def _held_technical_slots(
-    view: SchemaView, cls: ClassDefinition, homes: dict[str, str]
+def never_stored_homes(view: SchemaView) -> dict[str, tuple[str, str]]:
+    """Class name to (module name, module kind) for every class of a technical or value module of the view.
+
+    Read over the whole import closure, not one target's own modules: a value module in a folder of its
+    own is another target's, yet a stored class must not hold its classes either (D-2).
+    """
+    view.imports_closure()
+    return {
+        str(cls.name): (str(schema.name), str(_kind_of(schema)))
+        for schema in view.schema_map.values()
+        if _kind_of(schema) in NEVER_STORED
+        for cls in schema.classes.values()
+    }
+
+
+def _held_slots(
+    view: SchemaView, cls: ClassDefinition, homes: dict[str, tuple[str, str]]
 ) -> Iterator[tuple[str, str]]:
-    """The (slot, range) pairs of the slots ``cls`` declares that range over a technical class."""
+    """The (slot, range) pairs of the slots ``cls`` declares that range over a never-stored class."""
     induced = {slot.name: slot for slot in view.class_induced_slots(cls.name)}
     for name in sorted(declared_slots(cls) & induced.keys()):
         if str(induced[name].range) in homes:
             yield name, str(induced[name].range)
 
 
-def _holding_problems(view: SchemaView, schemas: list[SchemaDefinition]) -> Iterator[CheckProblem]:
-    """D-55 (4): only a technical module may hold a class of a technical module, however it came to import it."""
-    homes = {
-        cls.name: schema.name
-        for schema in schemas
-        if _is_technical(schema)
-        for cls in schema.classes.values()
-    }
+WHY_NOT_HELD = {
+    ModuleKind.TECHNICAL.value: "only a technical module holds a technical class",
+    VALUE: "a stored class never holds a value",
+}
+
+
+def _may_hold(holder: str | None, held: str) -> bool:
+    """A technical module holds anything; a value module holds a value; the rest hold neither (DEC-5)."""
+    return holder == ModuleKind.TECHNICAL.value or (holder == VALUE and held == VALUE)
+
+
+def _held_ancestors(
+    view: SchemaView, cls: ClassDefinition, homes: dict[str, tuple[str, str]]
+) -> Iterator[str]:
+    """The never-stored classes ``cls`` extends by ``is_a`` or ``mixins``: a stored class inherits them whole."""
+    for ancestor in view.class_ancestors(cls.name, reflexive=False):
+        if str(ancestor) in homes:
+            yield str(ancestor)
+
+
+def _holding_problems(
+    view: SchemaView, schemas: list[SchemaDefinition], homes: dict[str, tuple[str, str]]
+) -> Iterator[CheckProblem]:
+    """D-55 (4), DEC-5: a stored module never holds a technical or value class, by a slot or by inheritance."""
     for schema in schemas:
-        kind = annotation(schema, RpAnnotation.MODULE_KIND) or "no"
-        for cls in [] if _is_technical(schema) else schema.classes.values():
-            for name, held in _held_technical_slots(view, cls, homes):
+        kind = _kind_of(schema)
+        for cls in schema.classes.values():
+            held_by = [
+                (held, f"in the slot {name} of {cls.name}")
+                for name, held in _held_slots(view, cls, homes)
+            ] + [
+                (held, f"as an ancestor of {cls.name}")
+                for held in _held_ancestors(view, cls, homes)
+            ]
+            for held, where in held_by:
+                home, held_kind = homes[held]
+                if _may_hold(kind, held_kind):
+                    continue
                 yield rule_problem(
                     BoundaryRule.MODULE_KIND,
                     schema.name,
-                    f"is a module of {kind} kind and holds {held}, a class of the technical "
-                    f"module {homes[held]}, in the slot {name} of {cls.name}: "
-                    "only a technical module holds a technical class",
+                    f"is a module of {kind or 'no'} kind and holds {held}, a class of the {held_kind} "
+                    f"module {home}, {where}: {WHY_NOT_HELD[held_kind]}",
                 )
 
 
-def _technical_root_problems(
-    view: SchemaView, technical: list[ClassDefinition]
+def _never_stored_root_problems(
+    view: SchemaView, schemas: list[SchemaDefinition]
 ) -> Iterator[CheckProblem]:
-    """D-55 (4): a technical class is never stored, so it declares no root."""
-    roots = {root.name for root in aggregate_roots(view, technical)}
-    for cls in technical:
-        if cls.name in roots or is_tenant_root(cls):
-            yield rule_problem(
-                BoundaryRule.MODULE_KIND,
-                cls.name,
-                "is an aggregate root in a technical module: a technical class is never stored, "
-                "so it declares no root",
-            )
+    """D-55 (4), DEC-2: a technical or value class is never stored, so it declares no root."""
+    for kind in NEVER_STORED:
+        never_stored = technical_classes([s for s in schemas if _kind_of(s) == kind])
+        roots = {root.name for root in aggregate_roots(view, never_stored)}
+        for cls in never_stored:
+            if cls.name in roots or is_tenant_root(cls):
+                yield rule_problem(
+                    BoundaryRule.MODULE_KIND,
+                    cls.name,
+                    f"is an aggregate root in a {kind} module: a {kind} class is never stored, "
+                    "so it declares no root",
+                )
 
 
 def derived_kind(view: SchemaView, folder: Path) -> TargetKind:
@@ -247,8 +313,13 @@ def _in_a_theme(segments: list[str]) -> bool:
     )
 
 
-def _folder_message(package: str, kind: TargetKind, toolkit: bool) -> str | None:
-    """What is wrong with the folder of ``package`` for a target of ``kind``; ``None`` when it fits."""
+def _folder_message(
+    package: str, kind: TargetKind, toolkit: bool, has_value: bool = False
+) -> str | None:
+    """What is wrong with the folder of ``package`` for a target of ``kind``; ``None`` when it fits.
+
+    ``has_value``: a module of the target is ``module_kind: value``, so the hint says where it belongs.
+    """
     allowed = DOMAIN_FOLDERS if kind == TargetKind.DOMAIN else TECHNICAL_FOLDERS
     segments = package.split(".")
     layer = segments.index(GENERATED) - 1 if GENERATED in segments else -1
@@ -259,7 +330,7 @@ def _folder_message(package: str, kind: TargetKind, toolkit: bool) -> str | None
             "; if its modules are technical, annotate them module_kind: technical"
             if kind == TargetKind.DOMAIN
             else ""
-        )
+        ) + ("; a value module stays in domain" if has_value else "")
         return f"is not in a folder a {kind.value} target allows: {' or '.join(allowed)} before {GENERATED}{hint}"
     if toolkit and not _in_a_theme(segments[:layer]):
         return (
@@ -269,18 +340,24 @@ def _folder_message(package: str, kind: TargetKind, toolkit: bool) -> str | None
     return None
 
 
-def kind_folder_problems(folder: Path, package: str, kind: TargetKind) -> list[CheckProblem]:
+def kind_folder_problems(
+    folder: Path, package: str, kind: TargetKind, view: SchemaView | None = None
+) -> list[CheckProblem]:
     """The ``package`` of a target that sits in a folder its ``kind`` does not allow (PD-3, DEC-3).
 
     The segment before ``generated`` is ``domain`` for a domain target and a technical layer for a
     technical one; a group after ``generated`` is allowed, the testkit and the generator are exempt.
     For the toolkit's own run, the one before that is also a theme of the library
-    (``rdf_persistence.<theme>.<layer>``); a consumer's package has no theme to check.
+    (``rdf_persistence.<theme>.<layer>``); a consumer's package has no theme to check. With the ``view``,
+    a target holding a value module is told that it stays in domain.
     """
     if _is_exempt(package):
         return []
+    has_value = view is not None and any(
+        _kind_of(schema) == VALUE for schema in own_schemas(view, folder)
+    )
     message = _folder_message(
-        package, TargetKind(kind), is_toolkit_schema(folder, roots=TOOLKIT_ROOTS)
+        package, TargetKind(kind), is_toolkit_schema(folder, roots=TOOLKIT_ROOTS), has_value
     )
     return [rule_problem(BoundaryRule.TARGET_KIND, package, message)] if message else []
 
@@ -296,11 +373,12 @@ def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     technical = technical_classes(schemas)
     exempt = {id(cls) for cls in technical}
     stored = [cls for cls in classes if id(cls) not in exempt]
+    homes = never_stored_homes(view)
     return [
         *_ownership_problems(view, classes, technical),
-        *_reference_problems(view, stored),
+        *_reference_problems(view, stored, homes),
         *_direction_problems(view, classes),
         *_module_problems(view, schemas),
-        *_holding_problems(view, schemas),
-        *_technical_root_problems(view, technical),
+        *_holding_problems(view, schemas, homes),
+        *_never_stored_root_problems(view, schemas),
     ]

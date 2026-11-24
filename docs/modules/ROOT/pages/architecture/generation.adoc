@@ -74,7 +74,7 @@ PD-8a). Any other slot whose range is a class refers to another aggregate root, 
 |`Comment` |A remark on an aggregate, or a reply to one: an aggregate root of its own (`oa:Annotation`, path `rp-comments`), `rp_writes: toolkit`. See xref:howto/discussion.adoc[Comment on a resource without editing it].
 |`UnderWorkflow` (mixin), `Workflow`, `WorkflowTransition`, `Transition` |`UnderWorkflow` gives an aggregate root its current state (`workflow_status`, `adms:status`, the IRI of a state). `Workflow` and `WorkflowTransition` are the definition read from a file at start-up and never stored. `Transition` (`is_a: Activity`, `class_uri: rp:Transition`) is the record of one move. It is no aggregate root and has no path: it is an activity, stored in the tenant's provenance graph. See xref:howto/workflow.adoc[Put a resource through review].
 |`version` (slot) |The version token of every aggregate, stated about its graph IRI (not the root), written by the session; not part of any domain class.
-|`module_kind` (schema annotation) |`domain`, `technical` or `access`: what a schema module holds; the boundary check uses it (<<toolchain>>).
+|`module_kind` (schema annotation) |`domain`, `technical`, `access` or `value`: what a schema module holds; the boundary check uses it (<<toolchain>>, <<value-modules>>).
 |`bookkeeping` (slot annotation) |The session writes the slot about a graph (`version`, `created`, `modified`, `creator`, `contributor`); closed shapes ignore it.
 |`python_package` (schema annotation) |On a schema module of the toolkit's own targets: the Python package its classes are generated into. A toolkit run imports a metamodel class from `<python_package>.<module name>`. It equals the `package` of the `\[[tool.rp-generate]]` entry that generates the module; the hard check compares them (<<hard-check>>).
 |`public_package` (schema annotation) |On the metamodel's root schema, `rp.yaml`: the package an application's generated code imports the metamodel's classes from, which re-exports them. Only the toolkit sets it.
@@ -426,7 +426,7 @@ copies in its own folder, which miss other themes' shapes and must not be loaded
 A `\[[tool.rp-generate]]` entry has no `kind` key: the kind of a target is derived from the modules
 it generates: the modules its root schema imports from its own folder. A target is `technical` when
 every one of them is annotated `module_kind: technical`, and `domain` otherwise (an unannotated module, or
-one annotated `domain` or `access`).
+one annotated `domain`, `access` or `value`).
 
 [source,toml]
 ----
@@ -455,6 +455,37 @@ theme of the library (`rdf_persistence.<theme>.<layer>.generated`). Two packages
 themes and are exempt from the whole rule: `rdf_persistence.testkit` and `rdf_persistence_generation`.
 A consumer's target has no theme to check: `app.catalogue.domain.generated` and
 `app.services.generated` are both fine.
+
+[#value-modules]
+==== Value modules
+
+A value module, annotated `module_kind: value`, holds domain values that are never stored: the status,
+the finding and the report a pure domain function returns. Its classes are exempt from the same rules
+as a technical module's (ownership, owned-class and root rules), get no IRI, route or event, and may
+not be aggregate roots or tenant roots.
+
+*Where it lives.* In the domain layer: the segment before `generated` in its target's `package` is
+`domain`, so a value target ends in `domain.generated` or, as the toy's does, in
+`domain.generated.<group>` (`tests.fixtures.library.domain.generated.values`). A value module in a
+`services`, `adapters` or `entrypoints` package fails (rule `TARGET_KIND`, hint "a value module stays in
+domain"). It may share a target with domain modules, or have a target of its own; it never shares one
+with a technical module.
+
+*Who may import it.* A domain module and a technical module may import a value module. A value module
+imports only domain, value and toolkit modules: one that imports a technical or an access module fails
+(rule `MODULE_KIND`, hint to move the class into a value or domain module). The rule reads direct
+imports, as the domain rule does: an indirect path through an unannotated module is not walked.
+
+*What may hold it.* A stored class never holds a value class, inline or by reference, in whatever
+folder the value module is (rule `MODULE_KIND`); it may use a value module's enum, which is a literal.
+A technical or value class may hold a value class.
+
+*Across targets.* A module another target imports must declare `python_package`, so the importing
+target imports its classes instead of generating a second copy (<<cross-target>>): the toy's technical
+`loan_checks_response` holds `LoanCheck` from `loan_checks`, the one class. A value module converted
+from UML gets no `python_package` from the converter: add the annotation by hand when another target
+imports it. TypeScript is not generated across targets; set `typescript` on the value target itself when
+a consumer needs the types.
 
 [#python-import]
 ==== Two annotations for technical models

@@ -1,0 +1,31 @@
+id: https://example.org/ns/library/loan_checks_response
+name: loan_checks_response
+title: Loan checks response module
+description: A technical module whose answer holds the value classes of loan_checks, imported and never regenerated.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - ../values/loan_checks
+annotations:
+  module_kind: technical
+  python_package: tests.fixtures.library.services.generated
+
+classes:
+  LoanChecksResponse:
+    title: Loan checks response
+    description: The answer of a loan check, the outcomes of every check run.
+    class_uri: lib:LoanChecksResponse
+    slots:
+      - checks
+
+slots:
+  checks:
+    title: Checks
+    description: The outcomes of the checks.
+    slot_uri: lib:checks
+    range: LoanCheck
+    multivalued: true

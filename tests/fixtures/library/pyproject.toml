@@ -1,7 +1,21 @@
-[tool.rp-generate]
+[[tool.rp-generate]]
 schema = "library.yaml"
 package = "tests.fixtures.library.domain.generated"
 python = "domain/generated"
 typescript = "web/src/domain/generated"
 diagrams = "domain/generated/diagrams"
 migrations = "migrations"
+
+# A value module: domain values the library computes and never stores. No typescript (design D-3).
+[[tool.rp-generate]]
+schema = "values/loan_checks.yaml"
+package = "tests.fixtures.library.domain.generated.values"
+python = "domain/generated/values"
+openapi = false
+
+# A technical module that holds the value classes; it imports them from the value target.
+[[tool.rp-generate]]
+schema = "services/loan_checks_response.yaml"
+package = "tests.fixtures.library.services.generated"
+python = "services/generated"
+openapi = false
