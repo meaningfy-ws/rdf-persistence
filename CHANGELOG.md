@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-24
+
+### Added
+- **Delete rules** (`aggregate-guards` stage 2, #309, #346). `install_service` and `ServiceKit`
+  take `delete_validators`: a mapping from a class of the schema to rules called as
+  `(old, principal, reader)`, checked at start-up as `aggregate_validators` are. They run on every
+  transaction remove of a root of that class or a derived one, cascades included, before anything
+  is removed; with none registered, a remove reads nothing more. A rule refuses by raising
+  `Refused`, a new `Conflict` exported from `rdf_persistence` with `DeleteValidator`. The rule's
+  reader answers only for what the caller may read, on the generic delete and on
+  `remove_with_files` (which takes the caller's `may_read`). See "Control access".
+- **The `refused` problem** (#309). A rule's refusal answers 409 with the problem type `refused`,
+  whose `detail` is the rule's message; a version or key conflict still sends no text. A stale
+  `If-Match` is the version conflict, not the refusal. The `ProblemSlug` enum, the OpenAPI
+  components and the served TypeScript gain `refused`.
+- **Rename and drop roles in stored grants** (`grant-roles` stage 1, #307, #310, #345). A
+  migration file takes `grant_roles` with `rename: {old: new}` and `drop: [names]`; on the system
+  database it renames or drops the role of every stored grant (a rename that would duplicate a
+  grant the assignee already holds removes the duplicate), then rotates the version tokens. Other
+  databases and `migrate_dataset` get no grant operations. A drop of a renamed name, a chain, a
+  self-rename, a name renamed twice or an empty name is refused when the file loads. See "A model
+  round renames or drops a role" in the migration how-to.
+- **Stale grants reported at start-up** (#307, #345). After `migrate_shared`, the service warns
+  for each tenant whose grants name an undefined `(level, role)` and for each tenant no grant
+  administers; a store failure or an undecodable record is logged at ERROR. Start-up never stops.
+  `AccessRules` gains `undefined_roles` and `administered`.
+
 ### Changed
 - **A lone `dct:hasPart` role to the collection's own class now fixes `member_class`**
   (`converter-hardening`, #260). A reference collection whose only `dct:hasPart` role to a
@@ -753,7 +780,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.1...v0.9.0
