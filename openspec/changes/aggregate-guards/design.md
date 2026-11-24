@@ -186,6 +186,30 @@ Under the floor:
 - R1-S7: `access.adoc` could say a missing aggregate is not cached and its absence not relied on.
 - R1-S8: `_Reader` mutates the context's `read_cache` by design (D-2); no action.
 
+### D-12
+
+**The developer, 2026-11-24, on the lead's question (P-0019).** The PLAN's Context said
+`problems.py` keeps a 409's message. It does not: `problem_for` keeps `detail` only for 400, 406,
+413, 415, 422 and 428, so a refusal would arrive as a bare "Version conflict". Decided:
+
+- `Refused(Conflict)` in `core/domain/exceptions.py`, exported from `rdf_persistence`. A delete
+  rule refuses by raising it (DEC-4's "the refusing exception is `Conflict`" now reads `Refused`).
+- A new problem slug `refused` (title "Refused", 409) in the LinkML `ProblemSlug` enum
+  (`model/technical/api/rp_api_entrypoints.yaml`), regenerated; `ERROR_KINDS` maps `Refused` to it
+  ahead of its base, and its `detail` is kept: only text the rule's author wrote is sent.
+  Version- and key-conflict texts stay hidden.
+- `run_delete_validators` lets `Refused` pass, and a plain `Conflict` too (a reader's version
+  clash, E6b), which stays the bare version conflict. D-5 step 4 applies to `Refused`.
+- Rejected: the same slug with a detail for the subclass only; no message; every 409's text.
+
+### D-13
+
+Stage 2 build (lead): the toy's `Book` has no status, so the tests refuse on
+`description == "on loan"`. T11 removes a shelf and two books in one transaction, the shape of
+a cascade. A stored root whose types lie on two lines, under a delete rule, is a `RuntimeError`
+naming it (stored data the client cannot fix, as D-3), not the write path's 422: a delete has no
+body.
+
 ## Algorithm / approach
 
 ### Stage 1, #305: the reader hands over an aggregate

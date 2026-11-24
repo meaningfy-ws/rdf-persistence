@@ -40,16 +40,18 @@ behave as before, except that it answers empty for an aggregate the transaction 
 class name to rules, each called as `(old, principal, reader)`, either a plain function or a
 coroutine function, checked at start-up as aggregate validators are. The rules of a class SHALL
 run on every removal of a root of that class, or of a class derived from it, through a
-transaction, cascades included, before anything is removed. A rule that raises `Conflict` SHALL
-refuse the removal: the generic route answers 409 with its message, nothing in the transaction is
-removed or written, and any other exception from the rule is an error of the rule. Restore,
+transaction, cascades included, before anything is removed. A rule that raises `Refused` (a
+`Conflict`) SHALL refuse the removal: the generic route answers 409 with the problem type
+`refused` and the rule's message as its detail, nothing in the transaction is removed or written.
+A `Conflict` of the store passes as the version conflict it is, with no detail, and any other
+exception from the rule is an error of the rule. Restore,
 migrations and tenant deletion SHALL NOT run them. With no delete validators, removals SHALL
 behave as before.
 
 #### Scenario: a refused delete
 - **GIVEN** a delete validator for `Book` that refuses while the book is on loan
 - **WHEN** a client deletes a book on loan, at its version
-- **THEN** the answer is 409 with the validator's message, and the book is still stored at that version
+- **THEN** the answer is a 409 `refused` problem with the validator's message, and the book is still stored at that version
 
 #### Scenario: an allowed delete
 - **GIVEN** the same validator
@@ -59,7 +61,7 @@ behave as before.
 #### Scenario: a refusal inside a cascade
 - **GIVEN** a delete validator that refuses one member of a cascade
 - **WHEN** the cascade's transaction is committed
-- **THEN** it is refused, and nothing is removed
+- **THEN** it is refused with the member's message, and nothing is removed
 
 #### Scenario: a bad key
 - **WHEN** a service starts with a delete validator keyed by a name that is not an application class a root derives from
