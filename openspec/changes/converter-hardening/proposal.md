@@ -131,3 +131,24 @@ None.
 `rdf_persistence/core/services/yaml_files.py`; tests under `tests/generator/` and
 `tests/unit/access/`; three docs pages. No public API signature changes except `convert`'s third
 argument (a `Toolkit` instead of the prefixes mapping), which only the CLI and tests call.
+
+## Delivered (reconciliation, 2026-11-24)
+
+All in PR #349 (one stage, SMALL).
+
+| Outline item | State | Notes |
+|---|---|---|
+| 1. Read safely (PD-1, PD-2) | delivered | as designed |
+| 2. Write all or say so (PD-3, DEC-4) | delivered | adversarial tester found F-T1 (a read-only `--out` named the staging folder), fixed; F-T2 under the floor |
+| 3. Check as the service will (PD-4, DEC-3, #259) | delivered | `write` also takes `load_view`, a test seam |
+| 4. A collection of collections (PD-5, DEC-2, #260) | delivered, narrowed | OPEN-6 (owner, at delivery, after #274 landed): a lone self-role stays nesting when another collection in its `is_a` lineage fixes a member class |
+| 5. Roles read as UTF-8 (PD-6, DEC-5, #258) | delivered | |
+| 6. The cheap half of #229 (PD-7, PD-8) | delivered | `LeftOutReason` value `not_generated` (lint-forced); no new rule rows were needed, existing rows now cite their R-n |
+| 7. Docs (#261) | delivered, cold read partly met | D-3: a cold reader reaches an in-process toy service; the onboarding of a whole service goes to a tutorial, #344 |
+
+As delivered, What Changes and Capabilities hold as written above; Impact differs in:
+`write.py` also passes the complexity limits through `_lone_self_roles` (`slots.py`) and a sorted
+move; four docs pages changed (`user-manual/test.adoc` too, to pass `rules=` by path); shared test
+helpers moved to non-test modules (`tests/generator/unit/uml_cli_run.py`, `uml_write_rows.py`,
+`tests/generator/integration/generated_project.py`). Not delivered, by decision: the structural
+half of #229 (DEC-1) → #343.

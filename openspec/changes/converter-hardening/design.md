@@ -291,3 +291,15 @@ Under the floor:
 - **F-T2** (tester, Warning) An `OSError` with no `errno` raised by the move loses its message
   (`[Errno None] None`). Only an injected `move` raises one; `os.replace` always sets `errno`.
   Its test `test_a_move_error_without_errno_keeps_its_message` is deleted.
+- **R-W1** (review L2+L3, Warning) The only green `make check-all` predated the rebase. Met by
+  the run on the PR's head, recorded in the PR body.
+- **R-W2** (Warning) `reference/uml-conventions.adoc#member-class` cites the tracker ids DEC-2
+  and OPEN-6, which mean nothing to a modeller. The rule is stated in words beside them.
+- **R-W3** (Warning) An abstract collection with a self-role and a subclass with its own
+  self-role: both are member roles; #274's check drops the parent's (the subclass's class
+  descends from it), so the subclass fixes its own class. Correct, but untested.
+- **R-S4** (Suggestion) PD-4 rewrites the library's message to name `--out`; a `places`
+  argument on `Workflows` would be cleaner. Left as decided.
+- **R-S5** (Suggestion) `write` takes `move` and `load_view` as test seams (`noqa: PLR0913`);
+  a small writer class would hold them. Left for #343.
+- **R-S6** (Suggestion) Test helper modules export underscore names. Left.
