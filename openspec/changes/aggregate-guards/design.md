@@ -150,6 +150,15 @@ what the caller may not read (E2).
 Comment records dropped inside `remove_parts` run no delete rules (DEC-5's exemption). They are
 toolkit `Annotation` records, which no key can name.
 
+## Delivery decisions
+
+### D-9
+
+Stage 1 impact (lead, 2026-11-24): GitNexus rates `GuardContext` CRITICAL (80 direct), but every
+edge is an import of `session.py`. Three sites construct it: `Transaction._context` and the test
+helpers in `test_aggregate_validators.py` and `test_write_guards.py`. `removed` and `read_cache`
+take defaults (an empty frozenset, a fresh dict), so the helpers stay valid. Not escalated.
+
 ## Algorithm / approach
 
 ### Stage 1, #305: the reader hands over an aggregate

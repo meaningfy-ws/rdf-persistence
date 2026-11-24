@@ -13,9 +13,15 @@ from typing import Protocol
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
-from rdflib import RDF, URIRef
+from rdflib import RDF, Graph, URIRef
 
-from rdf_persistence.core.domain.exceptions import DatabaseGone, InvalidBody, StoreUnavailable
+from rdf_persistence.core.domain.exceptions import (
+    Conflict,
+    DatabaseGone,
+    InvalidBody,
+    NotFound,
+    StoreUnavailable,
+)
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.sparql import Triple
 from rdf_persistence.persistence.services.session import GuardContext, Session
@@ -27,11 +33,25 @@ from rdf_persistence.schema.services.schema_structure import (
 
 
 class AggregateReader(Protocol):
-    """What a rule may ask about the aggregates a root names: their classes, and nothing else."""
+    """What a rule may ask about the aggregates a root names: their classes, and the aggregate itself."""
 
     async def classes_of(self, iri: str) -> frozenset[str]:
         """The class names of the aggregate at ``iri``; empty when there is none, or the writer may not read it."""
         ...
+
+    async def aggregate(self, iri: str) -> BaseModel | None:
+        """The aggregate at ``iri`` as its model, a copy the rule may change; None when there is none, the
+        writer may not read it, or this transaction removed it earlier.
+
+        The write then depends on the version read: if the aggregate changes before the commit, the
+        commit fails with a ``Conflict`` naming it. A removal collected after the read is not seen.
+        """
+        ...
+
+
+# (model class name, root IRI, the root's graph, the graph IRI of its tracking or None) -> its model;
+# raises ValueError when the graph does not decode
+Decode = Callable[[str, str, Graph, URIRef | None], BaseModel]
 
 
 # old (None on create), new, who, reader; returns None, or an awaitable of None
@@ -91,9 +111,12 @@ class AggregateValidators:
         rules = self._rules.get(most_specific)
         return None if rules is None else (self._names[most_specific], rules)
 
-    def reader(self, session: Session, context: GuardContext) -> AggregateReader:
-        """The reader for one write: it answers for ``session``'s caller and sees what ``context`` collected."""
-        return _Reader(session, context, self._class_names)
+    def reader(self, session: Session, context: GuardContext, decode: Decode) -> AggregateReader:
+        """The reader for one write: it answers for ``session``'s caller and sees what ``context`` collected.
+
+        ``decode`` turns a root's graph into its model.
+        """
+        return _Reader(session, context, self._class_names, decode, self.model_class)
 
     def model_class(self, type_iris: Iterable[str]) -> str | None:
         """The class name to decode a root typed ``type_iris`` as; None when its root types name none.
@@ -117,20 +140,89 @@ class AggregateValidators:
 
 
 class _Reader:
-    """The reader of one guarded write (PD-5): built from the session, the context and the view's class IRI to name map."""
+    """The reader of one guarded write (PD-5): built from the session, the context, the view's class IRI to
+    name map, the function that decodes a root and the one that names its model class."""
 
-    def __init__(self, session: Session, context: GuardContext, names: Mapping[str, str]) -> None:
+    def __init__(
+        self,
+        session: Session,
+        context: GuardContext,
+        names: Mapping[str, str],
+        decode: Decode,
+        model_class: Callable[[Iterable[str]], str | None],
+    ) -> None:
         self._session = session
         self._context = context
         self._names = names
+        self._decode = decode
+        self._model_class = model_class
 
     async def classes_of(self, iri: str) -> frozenset[str]:
-        if self._session.not_aggregates([iri]):
-            return frozenset()  # not an aggregate IRI of the tenant: no query
-        may_read = self._session.may_read
-        if may_read is not None and not may_read(iri):
-            return frozenset()  # the same answer as for an aggregate that is not there
+        if not self._visible(iri) or iri in self._context.removed:
+            return frozenset()  # also what a removal collected earlier answers: the two reads agree
         return frozenset(self._names[t] for t in await self._types(iri) if t in self._names)
+
+    async def aggregate(self, iri: str) -> BaseModel | None:
+        """The aggregate at ``iri`` as its model, a copy that is the rule's own; None when there is none.
+
+        None also when the writer may not read it, when this transaction removed it earlier, and when
+        its root types name no single class. The stored aggregate is read once per transaction and
+        the commit fails, naming it, if it changed meanwhile (the version the reader saw is relied on).
+        A removal that the transaction collects after the read is not seen: the rule judged the aggregate
+        as it was (the commit then holds both changes).
+
+        Raises:
+            RuntimeError: The aggregate, stored or collected, does not decode.
+            Conflict: The aggregate is relied on already, in this transaction, at another version.
+        """
+        cache = self._context.read_cache
+        if not self._visible(iri) or iri in self._context.removed:
+            return None
+        model = cache.get(iri)
+        if model is None:
+            model = await self._read(iri)
+            if model is None:
+                return None
+            cache[iri] = model
+        return model.model_copy(deep=True)
+
+    def _visible(self, iri: str) -> bool:
+        """Whether ``iri`` is an aggregate IRI of the tenant the writer may read (no query)."""
+        if self._session.not_aggregates([iri]):
+            return False
+        may_read = self._session.may_read
+        return may_read is None or may_read(iri)  # a refusal is the answer for an absent aggregate
+
+    async def _read(self, iri: str) -> BaseModel | None:
+        """The model of ``iri`` as collected earlier in this transaction (no tracking), else as stored
+        (tracked, and relied on at the version read)."""
+        collected = self._context.collected.get(iri)
+        if collected is not None:
+            graph = Graph()
+            for triple in collected:
+                graph.add(triple)
+            return self._decoded(iri, graph, None, "collected")
+        try:
+            graph, tracked_in, version = await self._session.get_graph(iri)
+        except NotFound:
+            return None
+        model = self._decoded(iri, graph, tracked_in, "stored")
+        if model is not None:
+            self._context.rely_on(iri, version)
+        return model
+
+    def _decoded(
+        self, iri: str, graph: Graph, tracked_in: URIRef | None, where: str
+    ) -> BaseModel | None:
+        """The root as its model; None when its root types name no single class. A body that does not
+        decode is a bug (D-3): ``RuntimeError``."""
+        name = self._model_class(str(t) for t in graph.objects(URIRef(iri), RDF.type))
+        if name is None:
+            return None
+        try:
+            return self._decode(name, iri, graph, tracked_in)
+        except ValueError as error:
+            raise RuntimeError(f"the {where} {iri} does not decode: {error}") from error
 
     async def _types(self, iri: str) -> list[str]:
         """The type IRIs of ``iri``: as collected earlier in this transaction, else as stored."""
@@ -156,7 +248,8 @@ async def run_aggregate_validators(
     """Run ``rules`` in order on copies of ``old`` and ``new``; the first refusal stops the write (PD-7).
 
     ``InvalidBody`` and pydantic's ``ValidationError`` pass as they are (422), and so do the store errors
-    the reader may raise. Anything else a rule raises is a bug in it: ``RuntimeError`` naming the rule,
+    the reader may raise and the ``Conflict`` it raises when an aggregate read changed within the
+    transaction (409). Anything else a rule raises is a bug in it: ``RuntimeError`` naming the rule,
     chained to the error. A result other than None, after awaiting, is ``TypeError``.
     """
     for rule in rules:
@@ -170,7 +263,7 @@ async def run_aggregate_validators(
             )
             if inspect.isawaitable(result):
                 result = await result
-        except (InvalidBody, ValidationError, StoreUnavailable, DatabaseGone):
+        except (InvalidBody, ValidationError, StoreUnavailable, DatabaseGone, Conflict):
             raise
         except Exception as error:
             raise RuntimeError(

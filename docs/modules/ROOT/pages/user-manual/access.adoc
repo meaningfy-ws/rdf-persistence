@@ -197,8 +197,44 @@ may see as unknown a comment that the thread would show.
 
 Inside one unit of work, the reader sees the changes collected before the one being checked, and
 not those collected after it. A member added earlier is seen with its types; one added later is
-unknown. A member removed earlier still shows the types it has in the store, because nothing is
-written before the commit. Put the rule's dependencies in the order they should be seen.
+unknown. A member removed earlier is unknown too: `classes_of` answers empty and `aggregate`
+answers `None`. Put the rule's dependencies in the order they should be seen.
+
+=== Read a referenced aggregate
+
+`await reader.aggregate(iri)` hands over the aggregate at `iri` as its generated model, with
+its tracking when it is stored, or `None` in every case where `classes_of` answers an empty set,
+and also when its root types name no single root class. The rule gets its own copy: changing it
+has no effect on what a later rule or the write sees. The store is read once per transaction for
+each aggregate, however many rules ask. For an aggregate that an earlier change of the same unit of
+work added, the reader hands over the triples as collected, with no tracking.
+
+[source,python]
+----
+async def due_after_publication(old, new, who, reader):
+    book = await reader.aggregate(new.lends)  # a Loan names the Book it lends
+    if book is not None and book.published and new.due < book.published:
+        raise InvalidBody("a loan cannot be due before the book was published")
+----
+
+A model that does not decode, stored or collected, is a bug on your side and not the client's: the
+answer is 500, a `RuntimeError` naming the aggregate.
+
+The write now depends on the version of what it read:
+
+* *The version dependence.* The commit fails with 409 `conflict`, naming the aggregate, if that
+aggregate changed between the read and the commit. Where many writes name one aggregate and it is
+edited often, expect more retries; nothing is lost, and the client retries after re-reading. If
+the same transaction has already relied on the aggregate at another version, the read itself is the
+409.
+* *The rule runs on this side only.* A rule on the loan is not run again when the book changes, so
+the book's edit can break the order the rule checked. Where that matters, put the symmetric rule on
+the book: a rule on `Book` that refuses an edit that would break the order from the book's side,
+for example one that moves `published` later than a due date you can read.
+* *A remove after a read.* If one unit of work reads an aggregate in a rule and removes it
+later, the rule judged it as it was, and the commit holds both changes.
+* *A rule on the root it writes.* `reader.aggregate(new.id)` gives the stored copy, not the body
+being written; `old` and `new` are the two states of that root.
 
 === Which writes run the rules
 
@@ -247,6 +283,13 @@ that is not callable raises `TypeError`.
 
 |The reader meets a store outage
 |Passes as it is: 503, as for any write
+
+|An aggregate that the reader handed over changed before the commit, or the transaction relied on it
+at another version
+|409, naming the aggregate; nothing is written
+
+|An aggregate that the reader reads does not decode
+|500: a `RuntimeError` naming it
 |===
 
 Outside HTTP, `InvalidBody` comes out of `commit` or the transition. A rule that is a
@@ -263,7 +306,8 @@ database exists.
 * *A stale PUT.* If a rule refuses the body, the answer is 422, whatever the version. If the
 rules accept it, the version check at commit answers 409, as without rules.
 * *Cost.* Without `aggregate_validators`, nothing is decoded or read. With them, a replace reads
-the stored root once, and each `classes_of` call is one query.
+the stored root once, each `classes_of` call is one query, and each aggregate that `aggregate`
+reads is one read and one decoding per transaction.
 
 Tenant roots can have both kinds: `root_validators` run first, then the aggregate validators of
 the root's class. A refusal by either is a 422.

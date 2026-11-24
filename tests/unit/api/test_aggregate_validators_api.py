@@ -171,6 +171,31 @@ async def test_a_transition_through_the_kit_has_its_reader_judged_by_the_caller(
         assert seen.answers == [frozenset()], "the rule ran on the move and the caller may not read"
 
 
+async def refuses_a_forbidden_shelf(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+    shelf = await reader.aggregate(new.shelf) if new.shelf else None
+    if shelf is not None and shelf.label == "forbidden":
+        raise InvalidBody("the shelf is forbidden")
+
+
+async def test_a_rule_reads_the_aggregate_a_book_names_through_the_generic_route() -> None:  # T1
+    async with scene_with({"Book": [refuses_a_forbidden_shelf]}) as scene:
+        bad = (await post(scene, "shelves", {**SHELF_BODY, "label": "forbidden"})).json()["id"]
+        good = (await post(scene, "shelves", SHELF_BODY)).json()["id"]
+        refused = await post(scene, "books", {**DUNE_BODY, "shelf": bad})
+        assert refused.status_code == 422, refused.text
+        assert "the shelf is forbidden" in refused.text, "the rule's message is the answer's"
+        accepted = await post(scene, "books", {**DUNE_BODY, "shelf": good})
+        assert accepted.status_code == 201, accepted.text
+
+
+async def test_a_shelf_the_caller_may_not_read_is_none_to_the_rule_not_a_refusal() -> None:  # T2
+    async with scene_with({"Book": [refuses_a_forbidden_shelf]}) as scene:
+        bad = (await post(scene, "shelves", {**SHELF_BODY, "label": "forbidden"})).json()["id"]
+        await ban_reading(scene, bad)
+        response = await post(scene, "books", {**DUNE_BODY, "shelf": bad})
+        assert response.status_code == 201, "the hidden shelf reads as a missing one"
+
+
 def test_a_class_name_that_is_not_a_root_stops_the_start_up_naming_it() -> None:  # A-6
     with pytest.raises(ValueError, match="Chapter"):
         ToyService(aggregate_validators={"Chapter": [at_most_one_member]})

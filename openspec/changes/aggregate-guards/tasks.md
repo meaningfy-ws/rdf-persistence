@@ -4,14 +4,14 @@ EPIC: aggregate-guards (proposal.md, #305, #309). Decisions: DEC-1 to DEC-7; des
 
 ## 1. A rule reads a referenced aggregate (#305), PR 1, branch `feat/reader-aggregate`
 
-- [ ] 1.1 Tests first: T1 to T7b (`design.md#stage-1-305-the-reader-hands-over-an-aggregate`), in
+- [x] 1.1 Tests first: T1 to T7b (`design.md#stage-1-305-the-reader-hands-over-an-aggregate`), in
   the files named there. RED: `_Reader` has no `aggregate`.
-- [ ] 1.2 `GuardContext.removed` and `GuardContext.read_cache`, kept on the transaction
+- [x] 1.2 `GuardContext.removed` and `GuardContext.read_cache`, kept on the transaction
   ([D-2](design.md#d-2)). The reader's `decode` parameter and `_Reader.aggregate`
   ([D-1](design.md#d-1), [D-3](design.md#d-3)). `Conflict` passes `run_aggregate_validators`
   ([D-4](design.md#d-4)). Covers DEC-1 to DEC-3 and DEC-6. Accept: T1 to T7b, E1 to E9;
   `make test-fast check-quality` (port change).
-- [ ] 1.3 `user-manual/access.adoc`: reading a referenced aggregate, the version dependence
+- [x] 1.3 `user-manual/access.adoc`: reading a referenced aggregate, the version dependence
   (RISK-1), the symmetric rule (RISK-3), and a remove after a read (RISK-5). Accept:
   `make check-docs`.
 - [ ] 1.4 Lead: `make check-all`, `make test-containers` (T6 integration), one review pass, PR.
@@ -39,7 +39,7 @@ EPIC: aggregate-guards (proposal.md, #305, #309). Decisions: DEC-1 to DEC-7; des
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 3.1 · [ ] 3.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 1.4 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 3.1 · [ ] 3.2
 
 ## Verification
 

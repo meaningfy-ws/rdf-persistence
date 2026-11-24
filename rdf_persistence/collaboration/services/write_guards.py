@@ -139,8 +139,12 @@ class WriteGuards:
         name, rules = selected
         new = self._decoded_new(name, iri, triples)
         old = None if stored is None else await self._decoded_stored(session, iri, validators)
-        reader = validators.reader(session, context)
+        reader = validators.reader(session, context, self._decode)
         await run_aggregate_validators(rules, old, new, session.principal, reader)
+
+    def _decode(self, name: str, iri: str, graph: Graph, tracked_in: URIRef | None) -> BaseModel:
+        """The root ``iri`` of class ``name`` as its model, for the reader a rule gets."""
+        return self._mapper.from_graph(self._models.named(name), iri, graph, tracked_in)
 
     def _decoded_new(self, name: str, iri: str, triples: list[Triple]) -> BaseModel:
         """The root as written: no tracking slots, the session adds them after the guard."""

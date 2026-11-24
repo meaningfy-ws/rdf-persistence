@@ -12,9 +12,17 @@ guard per key a change claims, so the check and the write are one request; a cla
 
 import logging
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping, Sequence
+from collections.abc import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from types import MappingProxyType
@@ -523,11 +531,18 @@ class GuardContext:
 
     ``collected`` holds the triples of the adds and replaces collected before this change, by root
     IRI (a remove adds nothing). ``rely_on(iri, version)`` makes the commit fail, naming ``iri``, if
-    the graph of ``iri`` no longer has ``version`` when the request starts.
+    the graph of ``iri`` no longer has ``version`` when the request starts. ``removed`` holds the roots
+    the transaction has collected as removals so far. ``read_cache`` holds the models a reader has
+    handed over in this transaction, by root IRI; the transaction drops an entry when it collects a
+    change of that root.
     """
 
     collected: Mapping[str, tuple[Triple, ...]]  # root IRI -> triples collected before this change
     rely_on: Callable[[str, str], None]  # (root IRI, version read) -> None
+    removed: frozenset[str] = frozenset()  # root IRIs removed earlier in the transaction
+    read_cache: MutableMapping[str, BaseModel] = field(
+        default_factory=dict
+    )  # root IRI -> model read
 
 
 class WriteGuard(Protocol):
@@ -1281,6 +1296,8 @@ class Transaction:
         self._relied: dict[URIRef, tuple[str, str]] = {}
         # root -> the triples collected for it by an add or a replace, offered to the write guards
         self._collected: dict[str, tuple[Triple, ...]] = {}
+        self._removed: set[str] = set()  # the roots this transaction removes, for the readers
+        self._read_cache: dict[str, BaseModel] = {}  # root -> the model a reader handed over
         self._key_claims: list[KeyClaim] = []  # what the changes claim of the session's keys (PD-6)
         self._allowed: dict[str, str] = {}  # root -> the one state this transaction may set (PD-19)
 
@@ -1326,7 +1343,12 @@ class Transaction:
 
     def _context(self) -> GuardContext:
         """What the write guards may use while this transaction collects a change (PD-5)."""
-        return GuardContext(collected=MappingProxyType(self._collected), rely_on=self._rely_on)
+        return GuardContext(
+            collected=MappingProxyType(self._collected),
+            rely_on=self._rely_on,
+            removed=frozenset(self._removed),
+            read_cache=self._read_cache,
+        )
 
     def _rely_on(self, iri: str, version: str) -> None:
         """Make the commit fail, naming ``iri``, if its graph no longer has ``version`` (PD-5).
@@ -1399,6 +1421,8 @@ class Transaction:
         change: Change = ((str(iri), class_in(iri, triples), version), None)
         self._collect(iri, graph, None, version, parts, self._holds(graph, version), change)
         self._collected[str(iri)] = tuple(triples)
+        self._removed.discard(str(iri))  # added back after a remove: the readers see it again
+        self._read_cache.pop(str(iri), None)
         self._key_claims += key_claims
         self._note_links(iri, triples)
         return version
@@ -1458,6 +1482,8 @@ class Transaction:
         )
         self._collect(iri, graph, if_version, version, parts, self._holds(graph, version), change)
         self._collected[str(iri)] = tuple(triples)
+        self._removed.discard(str(iri))  # added back after a remove: the readers see it again
+        self._read_cache.pop(str(iri), None)
         self._key_claims += key_claims
         self._note_links(iri, triples)
         return version
@@ -1482,6 +1508,8 @@ class Transaction:
         )
         change: Change = (None, (str(iri), was, if_version))
         self._collect(iri, graph, if_version, None, parts, _absent(graph, len(self._roots)), change)
+        self._removed.add(str(iri))
+        self._read_cache.pop(str(iri), None)
 
     def _require_present(self, iri: str) -> None:
         """Guard the commit on the aggregate ``iri`` still having a version when the request is
