@@ -61,7 +61,9 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   `tests/generator/unit/test_uml_rules.py`, "a lone role to its own class fixes member_class"
   (`UmlRule.TOOLKIT_SLOT`; asserts `slot_usage.member_class.equals_string == "Shelf"` and no
   `toolkit-slot-kept` line for the role). Then the row "a role to its own class beside one to Book
-  stays nesting" (today's behaviour, pinned). Feature: the scenario "a collection of collections"
+  stays nesting" (today's behaviour, pinned), and the rows "a self-role on an abstract
+  collection whose subclass draws its own role stays nesting" and "a subclass's self-role under a
+  parent that fixes a member class stays nesting" (PD-5, OPEN-6; both run with no problem). Feature: the scenario "a collection of collections"
   in `uml_import.feature` / `test_uml_import.py`. Accept: both rows and the scenario pass.
 - [ ] 1.6 PD-7. Tier unit. First failing test:
   `tests/generator/unit/test_uml_toolkit.py::test_convert_uses_the_toolkit_it_is_given` (builds a

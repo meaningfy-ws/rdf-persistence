@@ -56,8 +56,9 @@ aggregate root; an abstract class whose concrete descendants are all roots, and 
 over, becomes an aggregate root. A reference collection's `dct:hasPart` role to another converted
 class fixes the collection's `member_class` to that class. A reference collection whose only
 `dct:hasPart` role to a converted class points at its own class SHALL have its own class as its
-`member_class` (a collection of collections); beside a role to another class, a role to its own
-class stays nesting.
+`member_class` (a collection of collections); beside a role to another class, or when a collection
+above or below it in the class hierarchy fixes a member class, a role to its own class stays
+nesting.
 
 #### Scenario: a reference collection's member class
 - **GIVEN** `«root» lib:Shelf` tagged `rp_mixins=ReferenceCollection` (or generalising a class that
@@ -74,6 +75,25 @@ class stays nesting.
 - **WHEN** it is converted
 - **THEN** `Shelf` has `slot_usage: {member_class: {equals_string: Shelf}}`, and the report has no
   `toolkit-slot-kept` line for the role
+
+#### Scenario: a role to its own class in a collection hierarchy
+- **GIVEN** an abstract `lib:Folder` tagged `rp_mixins=ReferenceCollection` whose only `dct:hasPart`
+  role points at `Folder`, and `«root» lib:Album` generalising it with a `dct:hasPart` role to
+  `«root» lib:Photo`
+- **WHEN** it is converted
+- **THEN** `Album` fixes `member_class` to `Photo`, `Folder` fixes none and its role stays the
+  toolkit's `has_part`, reported as `toolkit-slot-kept`, and the run has no problem; likewise a
+  subclass's lone role to its own class under a parent that fixes a member class stays nesting
+
+#### Scenario: an abstract collection narrowed by its subclasses
+- **GIVEN** an abstract `lib:Collection` tagged `rp_mixins=ReferenceCollection` with a `dct:hasPart`
+  role to an abstract `lib:Resource`, and `«root» lib:Shelf` generalising it with its own
+  `dct:hasPart` role to `«root» lib:Book`, which generalises `Resource`
+- **WHEN** it is converted and generated
+- **THEN** `Shelf` fixes `member_class` to `Book`, `Collection` fixes none and its role is reported
+  as `toolkit-slot-kept` with its range, and the generated code passes the type check; when no
+  subclass draws its own role, `Collection` keeps `Resource`; a subclass role to a class that does
+  not descend from `Resource` fails the run naming `Shelf`, its class, `Collection` and `Resource`
 
 #### Scenario: a root that is an activity
 - **GIVEN** `«root» lib:Loan` tagged `rp_mixins=Activity` with `prov:startedAtTime [1..1]` and `rp_path=loans`

@@ -81,7 +81,11 @@ The EPIC's DEC-1 to DEC-5 hold. Planning decisions:
   than the holder are the member candidates (as today); when there are none and the holder itself
   is a target, the holder is the member class. A holder with a role to itself and to `Book` keeps
   `member_class: Book` and its self-role stays `has_part` with its `toolkit-slot-kept` line, as
-  today.
+  today. A lone self-role is a member role only when no other collection in the holder's `is_a`
+  lineage (an ancestor or a descendant) has a member role; otherwise it stays nesting, as today, so
+  #274's `_without_narrowed_parents` never sees it (owner, OPEN-6, 2026-11-24: without this, an
+  abstract `Folder` with a self-role and a subclass `Album` with a role to `Photo` fails the run
+  "does not narrow", a model that converts today).
 - **PD-6 The roles loader** (#258, DEC-5). `yaml_files.py` gains `read_yaml(path, noun,
   error_type) -> object` (today's body of `read_mapping` without the mapping check);
   `read_mapping` calls it and keeps its check and messages. `load_role_definitions` calls
@@ -213,6 +217,8 @@ by the same run.
 | "an output folder that cannot be written" | `test_uml_cli.py::test_an_unwritable_out_is_a_usage_error` (unit) |
 | "a workflow the service would refuse" | `test_uml_write.py::test_the_start_up_check_refuses_a_staged_workflow` (unit) |
 | "a collection of collections" | `test_uml_rules.py` row "a lone role to its own class fixes member_class" (unit) + feature |
+| "a role to its own class in a collection hierarchy" | `test_uml_rules.py` rows "a self-role on an abstract collection whose subclass draws its own role stays nesting", "a subclass's self-role under a parent that fixes a member class stays nesting" (unit) |
+| "an abstract collection narrowed by its subclasses" | carried unchanged from #274; its existing rows and `test_uml_generate.py` |
 | "a tenant root", "an abstract root" | `tests/generator/feature/test_uml_import.py` (feature) |
 | rp-access "a non-ASCII role", "bytes that are not UTF-8", "a key given twice" | `tests/unit/access/test_access_roles.py` (unit) |
 

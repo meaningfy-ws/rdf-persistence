@@ -13,6 +13,7 @@ until the owner answers. The owner's answers go in the last column.
 | OPEN-3 | #258: read the roles file through the same reader as workflows, so a key given twice in one entry is refused too (stricter at service start) | Yes: one reader for the toolkit's YAML files | yes (DEC-5, RISK-6) | |
 | OPEN-4 | A disk or folder error while writing: exit 2 (setup unusable) rather than 1 (model problems)? | Exit 2 | exit 2 (DEC-4) | |
 | OPEN-5 | PD-3 stages inside `--out`, so a killed run (SIGKILL, power loss) leaves a hidden `out/.uml-write-*` folder that a consumer might commit. Accept it (reported as `stale-file` by the next run), stage elsewhere, or also write a `.gitignore` hint? | Accept, and have the how-to (task 1.8) say to add `.uml-write-*` to the consumer's `.gitignore`; staging elsewhere brings back `EXDEV`, and writing a `.gitignore` into `--out` is a file the consumer did not ask for | accept + how-to line (PD-3) | |
+| OPEN-6 | (2026-11-24, at delivery, after #274 added the parent/subclass member-class check) A lone self-role when a collection above or below it in the hierarchy fixes a member class: stays nesting, fails the run, or DEC-2 for concrete classes only? | Stays nesting: every model that converts today still converts | stays nesting (PD-5) | |
 
 Planner's decisions, not asked (design.md): `immutable=1` only when no `-wal` file exists (PD-1);
 a staging folder left by a killed run is reported, never deleted (PD-3); the whole-model check runs
