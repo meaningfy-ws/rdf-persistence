@@ -63,7 +63,7 @@ rp-uml2linkml library.qea --package MODEL/library --prefixes prefixes.yaml \
 ----
 
 When the model draws role definitions or workflows, `--package` must hold the packages of both
-(step 3 says why).
+(<<workflows-file,the workflow files>> says why: a workflow may name only roles drawn in the same run).
 
 The command reads the `.qea` and writes one schema file per package, a root schema
 `<root-name>.yaml` that imports them all, and a report `<root-name>.uml-report.txt` into `--out`
@@ -188,7 +188,8 @@ modules would import each other, whether the reference is a slot's range, a gene
 shared between packages (xref:reference/uml-conventions.adoc#shared-slots[conventions page]). The
 line names the packages.
 |`role` |A role definition drawn as an Object was written to the roles file:
-`<role> at <level>: <actions>` (<<roles-file>>).
+`<role> at <level>: <actions>` (<<roles-file>>). The level is where the role applies: `system`, `tenant`
+or `aggregate`.
 |`workflow` |A Statechart diagram was written as a workflow file:
 `<n> states, <m> transitions` (<<workflows-file>>). A diagram that no class's `workflow` tag names is
 reported too, as `named by no class`: not a failure, as the class may be in an excluded package.
@@ -333,7 +334,8 @@ and settings your composition root builds, and every argument but `app` is passe
 
 * `migrations` is the folder of your migration files and of the schema lock `rp-generate` keeps;
   it must exist, or the service refuses to start (`InvalidMigration`). It is the `migrations` key
-  of `[tool.rp-generate]`.
+  of `[tool.rp-generate]`; when that key is set, step 4's `rp-generate` run writes the lock into the
+  folder and so creates it. If you do not set the key, make an empty folder yourself.
 * `generated` is the package that the `package` key of `[tool.rp-generate]` names (the import
   path, `library.domain.generated` here): import it, as above. `install_service` reads the
   context, the frames and the shapes from that package's folder, and stops with `OSError` when
@@ -346,6 +348,13 @@ and settings your composition root builds, and every argument but `app` is passe
 * `install_service` starts no server: it wires the routes, the problem responses and the start-up
   work into your `app`, and you serve `app` yourself, for example with uvicorn. The adapters, the
   start-up and the routes are in xref:user-manual/serve.adoc[Serve the application].
+* The real adapters need Fuseki, Zitadel and an S3 store. For a toy service, pass the testkit's
+  in-memory `FakeStore()`, `FakeFileStore()` and `FakeIdentity()` instead
+  (xref:user-manual/test.adoc#whole-service[The whole service over the fakes]), and serve `app` as
+  in xref:user-manual/serve.adoc#adapters[Serve the application].
+* `settings.creator_role` (`"librarian"` in the toy library) must name a role of the roles file:
+  the creator of a tenant gets that role, so a name the file does not define gives the creator no
+  rights. The settings are in xref:howto/settings.adoc[Configure the deployment values].
 
 == Limits
 
