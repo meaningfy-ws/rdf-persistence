@@ -236,7 +236,7 @@ application derives its buttons from the definition and the caller's roles:
 
 [source,python]
 ----
-from rdf_persistence.collaboration.services.workflows import state_iri
+from rdf_persistence import state_iri
 
 workflow = kit.workflows.for_class("Book")    # by class name; for_iri(class_iri) by the class IRI
 caller = VerifiedCaller(principal=checked.principal, global_roles=checked.global_roles)

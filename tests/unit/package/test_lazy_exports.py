@@ -64,6 +64,15 @@ def test_a_lazy_name_is_loaded_on_first_use_and_then_kept() -> None:
     subprocess.run([sys.executable, "-c", probe], cwd=ROOT, check=True)
 
 
+def test_state_iri_is_exported_from_the_top_level() -> None:
+    import rdf_persistence
+    from rdf_persistence import state_iri
+    from rdf_persistence.collaboration.services import workflows
+
+    assert "state_iri" in rdf_persistence.__all__, "state_iri is listed in __all__"
+    assert state_iri is workflows.state_iri, "the top-level name is the workflows function"
+
+
 def test_an_unknown_top_level_name_is_an_attribute_error() -> None:
     import rdf_persistence
 
