@@ -303,8 +303,9 @@ the schemas shows what the model change did.
 The toy library draws its role definitions in a package `MODEL/library/Access` and the diagram
 `lib:loan` in `MODEL/library/Loans`. Step 2 converted them in one run with their common parent,
 `MODEL/library`, as `--package`, and wrote into `models/` the root schema `library.yaml`,
-`library.roles.yaml` and `workflows/loan.workflow.yaml`. Once step 4 has generated the package, hand
-the files to the service by their paths:
+`library.roles.yaml` and `workflows/loan.workflow.yaml` (the pages on serving and testing use the
+toy library's `review` workflow instead; a workflow file takes the name of its diagram). Once step 4
+has generated the package, hand the files to the service by their paths:
 
 [source,python]
 ----

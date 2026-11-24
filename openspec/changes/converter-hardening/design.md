@@ -281,6 +281,11 @@ complete under their recommended answers.
   tests: `test_a_read_only_out_is_an_output_error_naming_out`,
   `test_the_command_exits_two_with_one_line_for_a_read_only_out`.
 
+- **D-3** (owner, 2026-11-24) Task 1.8's cold read is partly met (`evidence/cold-read.md`):
+  after one fix pass the reader reaches an in-process toy service but still guesses at the
+  onboarding of a whole service. The two contradictions between pages are fixed here; the
+  rest is a tutorial, #344.
+
 Under the floor:
 
 - **F-T2** (tester, Warning) An `OSError` with no `errno` raised by the move loses its message
