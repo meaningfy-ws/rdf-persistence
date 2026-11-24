@@ -138,6 +138,10 @@
       "expected_version": {
          "@id": "rp:expectedVersion"
       },
+      "features": {
+         "@type": "@id",
+         "@id": "features"
+      },
       "file_name": {
          "@id": "rp:fileName"
       },
@@ -479,6 +483,9 @@
       "Book": {
          "@id": "bibo:Book"
       },
+      "BookCollection": {
+         "@id": "BookCollection"
+      },
       "Chapter": {
          "@id": "bibo:Chapter"
       },
@@ -496,6 +503,16 @@
       },
       "Described": {
          "@id": "rp:Described"
+      },
+      "Display": {
+         "@id": "Display",
+         "@context": {
+            "features": {
+               "@type": "@id",
+               "@id": "features",
+               "@container": "@set"
+            }
+         }
       },
       "Generation": {
          "@id": "prov:Generation"

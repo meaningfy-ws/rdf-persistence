@@ -50,6 +50,10 @@ TYPE_VALUES = (
 
 def _scalar(conformance: Conformance, slot: SlotDefinition) -> st.SearchStrategy:
     view = conformance.view
+    if slot.equals_string:  # a slot usage fixes the value: before any other branch
+        return st.just(slot.equals_string)
+    if slot.equals_string_in:
+        return st.sampled_from(slot.equals_string_in)
     if slot.identifier:
         return IRIS
     if slot.pattern:

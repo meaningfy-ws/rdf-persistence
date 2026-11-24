@@ -37,6 +37,30 @@ def test_a_toy_aggregate_survives_json_rdf_and_a_frame(
     round_trip(toy, data.draw(aggregate(toy, class_name)), class_name)
 
 
+@pytest.mark.parametrize(
+    ("class_name", "slot", "expected_type", "expected_value"),
+    [
+        ("BookCollection", "member_class", str, "Book"),  # equals_string
+        ("Shelf", "member_class", str, None),  # no equals_string: a free draw
+        ("Display", "features", list, None),  # made multivalued and required by the class
+    ],
+    ids=["equals-string", "free-draw", "multivalued-by-slot-usage"],
+)
+@given(data=st.data())
+def test_the_strategy_draws_a_slot_as_the_class_uses_it(
+    class_name: str, slot: str, expected_type: type, expected_value: object, data: st.DataObject
+) -> None:
+    toy = opened(TOY_SCHEMA)
+    drawn = data.draw(aggregate(toy, class_name))
+    value = getattr(drawn, slot)
+    assert isinstance(value, expected_type), f"{class_name}.{slot} is drawn as {value!r}"
+    assert expected_value is None or value == expected_value, (
+        f"{class_name}.{slot} is drawn as {value!r}, not {expected_value!r}"
+    )
+    assert value, f"{class_name}.{slot} is drawn empty"
+    round_trip(toy, drawn, class_name)
+
+
 @given(data=st.data())
 def test_the_tenant_access_record_survives_json_rdf_and_a_frame(data: st.DataObject) -> None:
     """Its internal database name is drawn and kept on the object, but never crosses the context."""

@@ -83,7 +83,9 @@ from rdf_persistence import (
 from .books import (
     Author,
     Book,
+    BookCollection,
     Chapter,
+    Display,
     Genre,
     LendingItem,
     Loan,

@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "books.yaml",
-      "sha256": "b1a0cf526b236d6e9c4aa58b7da3d38415d854894af18d5f6c2f579f77957f60"
+      "sha256": "85a6afa3c83350a0d501431e0b6a460d6ec044cb7d14d1ffdc35e9ee5bda5ee0"
     },
     {
       "path": "books_activities.yaml",
@@ -159,7 +159,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/jsonld_context.py",
-      "sha256": "94f72e1e5104a41b6e4677030f13533f633eeaa86d8b594e20e58ea8e097add0"
+      "sha256": "f4d1527ef341c3f9264cc775de7cc12268f9f6e397ae0d06f1211f1173288fa7"
     },
     {
       "path": "rdf_persistence_generation/extensions/mermaid.py",
@@ -352,8 +352,16 @@
       "sha256": "5bb65e90e14960bba577c2b52fcdf8cbd8d3b4bf8449e39f2b146f1aa95d782d"
     },
     {
+      "path": "domain/generated/BookCollection.frame.jsonld",
+      "sha256": "bd03cd02e61ee2a1c0d861ad43c88cba9d43869c635555b056d42e3d5f1bea6c"
+    },
+    {
       "path": "domain/generated/DeleteFile.frame.jsonld",
       "sha256": "7e1a5860a760651186fb4f8667aa02d310217386cd0b57dde06db1522afb5fa9"
+    },
+    {
+      "path": "domain/generated/Display.frame.jsonld",
+      "sha256": "586942af8731ebdde018de04de2aaf71cf1d7a78f95d3c58f1bb5df04479c6cd"
     },
     {
       "path": "domain/generated/Library.frame.jsonld",
@@ -421,7 +429,7 @@
     },
     {
       "path": "domain/generated/books.py",
-      "sha256": "bb97140f5878abd502720e567c2672441811ab3290ab115959cb1b5d1ace3acf"
+      "sha256": "1fd90759d6fb3ad054a48de68021256e17cc311223aad93121c9ec166e04abac"
     },
     {
       "path": "domain/generated/books_activities.py",
@@ -429,11 +437,11 @@
     },
     {
       "path": "domain/generated/context.jsonld",
-      "sha256": "7f1b94a936e180dc6dbaa98ef514ddc7edeb5eaf9d3b1527962fb8c800eb984a"
+      "sha256": "2435c558b77aab63e5f3b13b6f578dc5c362d4f2eba128f203e84ebce31d41a8"
     },
     {
       "path": "domain/generated/diagrams/books.mmd",
-      "sha256": "f7d72d506892209a11132408713631e9df73000a17206c5a7751a015360ee5d2"
+      "sha256": "28f037372043481b6e6449cadb00bf0c0fe8346b52d6d076edb0671d38c24e78"
     },
     {
       "path": "domain/generated/diagrams/books_activities.mmd",
@@ -457,7 +465,7 @@
     },
     {
       "path": "domain/generated/library.py",
-      "sha256": "d5a328094cf86b72155aafbcb5db53ec60c3e2e2ec200d7913df8a6238b19f59"
+      "sha256": "b812c648380567001bfcabfa0990938c71d47acff4f6f80b8af7a08b6285b877"
     },
     {
       "path": "domain/generated/library_access.py",
@@ -469,7 +477,7 @@
     },
     {
       "path": "domain/generated/openapi-components.json",
-      "sha256": "55530e12ebbb8d63baefd4c1fcd01d9225174c178914997f6c4e78d062483cb5"
+      "sha256": "2e1cb5816804c83043f2942651b2d49a5611e046e5c9ac522b8fbb3e15f0b696"
     },
     {
       "path": "domain/generated/scans.py",
@@ -477,7 +485,7 @@
     },
     {
       "path": "domain/generated/shapes.ttl",
-      "sha256": "15dfa8101dffa98684883996fdd1f4b9fcbc1a08b442ef5d9914881574872850"
+      "sha256": "50b64731cfef7c173794e2326dc54b835e11c604ba74c72646462a8daeb0d806"
     },
     {
       "path": "domain/generated/templates.py",
@@ -485,11 +493,11 @@
     },
     {
       "path": "migrations/schema.lock.json",
-      "sha256": "6b33d8680f36f36326c07fb28546db667b9b91cdce1b2cae1bda71209004ed6c"
+      "sha256": "8a077311c8d072dedde90144f35b5e4df67089880c71ddfc6a021b25747fe1cd"
     },
     {
       "path": "web/src/domain/generated/books.ts",
-      "sha256": "c76515e408afe0961e9745db7b627fcc7a75a6d5d6636cd6ff947f7a0d1a09f8"
+      "sha256": "9ab4d2d4f2dd076d2d62a0cf701f350c20b38230a6430ba1af94b8385eb89079"
     },
     {
       "path": "web/src/domain/generated/books_activities.ts",

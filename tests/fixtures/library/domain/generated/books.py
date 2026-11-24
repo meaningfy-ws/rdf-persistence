@@ -92,6 +92,29 @@ class Shelf(ReferenceCollection, Tracked, Described, AggregateRoot):
     nests: _Optional[bool] = _Field(default=None, title="Nests", description="Whether the collection may hold collections of its own class and member class as members, to any depth. Absent means false.")
 
 
+class BookCollection(ReferenceCollection, Described, AggregateRoot):
+    "A collection of books, whose member class is fixed to Book by a slot usage."
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
+    description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")
+    member_class: _Literal["Book"] = _Field(default=..., title="Member class", description="The schema name of the class of the aggregates the collection collects.")
+    has_part: _Optional[list[str]] = _Field(default=None, title="Has part", description="The IRIs of the aggregates the collection names as its members.")
+    membership_rule: _Optional[MembershipRule] = _Field(default=None, title="Membership rule", description="The rule that says which aggregates of the member class belong to the collection.")
+    nests: _Optional[bool] = _Field(default=None, title="Nests", description="Whether the collection may hold collections of its own class and member class as members, to any depth. Absent means false.")
+
+
+class Display(Tracked, Described, AggregateRoot):
+    "A display of the library, featuring several books through a slot that is single-valued where it is declared."
+    features: list[str] = _Field(default=..., title="Features", description="A book a display features, another aggregate, stored as its IRI; single-valued where declared.")
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
+    description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")
+    created: _Optional[datetime ] = _Field(default=None, title="Created", description="The time the graph was first committed.")
+    modified: _Optional[datetime ] = _Field(default=None, title="Modified", description="The time the graph was last committed.")
+    creator: _Optional[str] = _Field(default=None, title="Creator", description="The principal that first committed the graph.")
+    contributor: _Optional[list[str]] = _Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
+
+
 class Author(Tracked, Described, AggregateRoot):
     "An author of the library; an aggregate root that books point at, and that cannot be deleted while a book still does."
     id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
@@ -165,6 +188,8 @@ class Note(Described):
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 Book.model_rebuild()
 Shelf.model_rebuild()
+BookCollection.model_rebuild()
+Display.model_rebuild()
 Author.model_rebuild()
 LendingItem.model_rebuild()
 Magazine.model_rebuild()

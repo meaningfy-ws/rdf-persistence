@@ -76,6 +76,8 @@ def test_one_frame_per_aggregate_type_the_tenant_root_and_each_activity(staged: 
         [
             "Author.frame.jsonld",
             "Book.frame.jsonld",
+            "BookCollection.frame.jsonld",
+            "Display.frame.jsonld",
             "Library.frame.jsonld",
             "LibraryAccess.frame.jsonld",
             "Loan.frame.jsonld",
@@ -140,6 +142,22 @@ def test_framing_the_triples_of_a_book_returns_the_body(staged: Path) -> None:
     frame = read(staged, "Book.frame.jsonld") | {"@context": context}
     assert jsonld.frame(flat, frame) == {"@context": context, **BOOK_BODY}, (
         "the framed book differs"
+    )
+
+
+@pytest.mark.parametrize(
+    ("scope", "container"),
+    [("Display", "@set"), (None, None)],
+    ids=["made-multivalued-by-the-class", "single-valued-where-declared"],
+)
+def test_a_slot_made_multivalued_by_a_class_is_a_set_in_that_class_only(
+    staged: Path, scope: str | None, container: str | None
+) -> None:
+    """#302: `features` is single-valued at module level; Display's slot_usage makes it a list."""
+    context = read(staged, "context.jsonld")["@context"]
+    terms = context[scope].get("@context", {}) if scope else context
+    assert terms["features"].get("@container") == container, (
+        f"features in {scope or 'the global context'} has container {terms['features'].get('@container')}"
     )
 
 
@@ -261,3 +279,124 @@ def test_the_generated_context_of_the_generation_model_keeps_its_prefix_and_kind
     assert context["kind"]["@id"] == "constraintKind", (
         f"`kind` is not the slot `kind`'s: {context['kind']}"
     )
+
+
+USAGE_SCHEMA = """id: https://example.org/ns/usage
+name: usage
+title: Usage
+description: Classes that narrow a slot in different ways.
+prefixes: {usage: "https://example.org/ns/usage#", linkml: "https://w3id.org/linkml/"}
+default_prefix: usage
+default_range: string
+imports: [linkml:types]
+classes:
+  Both:
+    title: Both
+    description: Narrows the range of `single` and makes it multivalued.
+    slots: [single]
+    slot_usage:
+      single: {range: integer, multivalued: true}
+  Parent:
+    title: Parent
+    description: Makes `single` multivalued.
+    slots: [single]
+    slot_usage:
+      single: {multivalued: true}
+  Child:
+    title: Child
+    description: Inherits the usage of its parent.
+    is_a: Parent
+  Reverse:
+    title: Reverse
+    description: Makes `many` single-valued.
+    slots: [many]
+    slot_usage:
+      many: {multivalued: false}
+  Plain:
+    title: Plain
+    description: Uses both slots as declared.
+    slots: [single, many]
+  Abstract:
+    title: Abstract
+    description: An abstract class that makes `single` multivalued; it has no node.
+    abstract: true
+    slots: [single]
+    slot_usage:
+      single: {multivalued: true}
+  Mixed:
+    title: Mixed
+    description: A mixin that makes `single` multivalued; it has no node.
+    mixin: true
+    slots: [single]
+    slot_usage:
+      single: {multivalued: true}
+slots:
+  single:
+    title: Single
+    description: A single-valued slot.
+  many:
+    title: Many
+    description: A multivalued slot.
+    multivalued: true
+"""
+
+
+def usage_context(tmp_path: Path) -> dict:
+    schema = tmp_path / "usage.yaml"
+    schema.write_text(USAGE_SCHEMA, encoding="utf-8")
+    context: dict = json.loads(render_context(schema))["@context"]
+    return context
+
+
+def scoped_terms(context: dict, scope: str) -> dict:
+    """The type-scoped terms of the class ``scope``; empty when it has none."""
+    class_term = context.get(scope)
+    return class_term.get("@context", {}) if isinstance(class_term, dict) else {}
+
+
+@pytest.mark.parametrize(
+    ("scope", "term", "scoped", "container"),
+    [
+        ("Both", "single", True, "@set"),
+        ("Parent", "single", True, "@set"),
+        ("Child", "single", True, "@set"),
+        ("Reverse", "many", True, None),
+        ("Plain", "single", False, None),
+        ("Plain", "many", False, None),
+    ],
+    ids=[
+        "both-usages",
+        "own-usage",
+        "inherited-usage",
+        "multivalued-to-single",
+        "single-as-declared",
+        "multivalued-as-declared",
+    ],
+)
+def test_a_class_scopes_a_slot_by_how_it_uses_it(
+    tmp_path: Path, scope: str, term: str, scoped: bool, container: str | None
+) -> None:
+    entry = scoped_terms(usage_context(tmp_path), scope).get(term)
+    assert (entry is not None) == scoped, f"{scope} scoped term for {term}: {entry}"
+    assert (entry or {}).get("@container") == container, f"{term} in {scope}: {entry}"
+
+
+@pytest.mark.parametrize(
+    ("term", "container"), [("single", None), ("many", "@set")], ids=["single", "multivalued"]
+)
+def test_the_global_term_keeps_the_slot_as_declared(
+    tmp_path: Path, term: str, container: str | None
+) -> None:
+    entry = usage_context(tmp_path)[term]
+    assert entry.get("@container") == container, f"global {term}: {entry}"
+
+
+def test_a_range_narrowing_and_a_multivalued_usage_keep_both_terms(tmp_path: Path) -> None:
+    entry = scoped_terms(usage_context(tmp_path), "Both").get("single", {})
+    assert entry.get("@type") == "xsd:integer", f"the narrowed range is lost: {entry}"
+    assert entry.get("@container") == "@set", f"the multivalued usage is lost: {entry}"
+
+
+@pytest.mark.parametrize("name", ["Abstract", "Mixed"])
+def test_a_class_without_a_node_gets_no_scoped_term(tmp_path: Path, name: str) -> None:
+    assert scoped_terms(usage_context(tmp_path), name) == {}, f"{name} has no node type"

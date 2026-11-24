@@ -8,6 +8,7 @@ frame builder; the stock output is not edited.
 """
 
 import json
+from functools import cached_property
 from pathlib import Path
 
 from linkml.generators.jsonldcontextgen import ContextGenerator
@@ -41,6 +42,8 @@ from rdf_persistence_generation.generated.rp_generation import (
 # JSON carries these natively: a datatype tag would turn them into strings when framed back.
 NATIVE_JSON_DATATYPES = ("xsd:integer", "xsd:boolean")
 JSON_LD_VERSION = 1.1  # property-scoped contexts are a JSON-LD 1.1 feature
+CONTAINER_KEY = "@container"
+SET_CONTAINER = "@set"
 ALWAYS = "@always"
 NEVER = "@never"
 
@@ -90,7 +93,71 @@ class ToolkitContextGenerator(ContextGenerator):
     def end_schema(self, *args, **kwargs) -> str:
         self.context_body["@version"] = JSON_LD_VERSION
         self.context_body["type"] = TYPE_KEY
+        self._scope_multivalued_usages()
         return str(super().end_schema(*args, **kwargs))
+
+    def _scope_multivalued_usages(self) -> None:
+        """A class whose ``slot_usage`` makes a single-valued slot multivalued gets a type-scoped
+        term with ``@container: @set`` for it, so its framed values stay a list (#302); the slot's
+        global term, and so every other class, keeps one value."""
+        for cls in self._view.all_classes().values():
+            if cls.abstract or cls.mixin:
+                continue  # no node of its own, so no @type to scope by
+            terms = {
+                self._term_name(name): multivalued
+                for name, multivalued in self._changed_multiplicity(cls)
+            }
+            terms = {
+                term: multivalued
+                for term, multivalued in terms.items()
+                if term in self.context_body
+            }
+            if not terms:
+                continue
+            class_def = self.slot_class_maps.get(self._class_key(cls))  # the stock class terms
+            if class_def is None:
+                raise SchemaGenerationError(
+                    f"class {cls.name}: no context term to scope {sorted(terms)} in (set a class_uri)"
+                )
+            scoped = class_def.setdefault(CONTEXT_KEY, {})  # the stock may have set range terms
+            for term, multivalued in terms.items():
+                scoped[term] = self._scoped_entry(scoped.get(term), term, multivalued)
+
+    def _changed_multiplicity(self, cls: ClassDefinition) -> list[tuple[str, bool]]:
+        """The slots the class (or an ancestor) uses with another multiplicity than declared: name, multivalued."""
+        view = self._view
+        # the generator has materialised each slot_usage as a slot `<Class>_<slot>`; name the original
+        names = {str(s.usage_slot_name or s.name) for s in view.class_induced_slots(cls.name)}
+        used = {name: bool(view.induced_slot(name, cls.name).multivalued) for name in sorted(names)}
+        declared = {name: view.get_slot(name, attributes=False) for name in used}
+        return [
+            (name, multivalued)
+            for name, multivalued in used.items()
+            if declared[name] is not None and multivalued != bool(declared[name].multivalued)
+        ]
+
+    def _class_key(self, cls: ClassDefinition) -> str:
+        """The key the stock ``visit_class`` files the class term under."""
+        return str(self._curie(cls)) if self.use_curies else str(camelcase(cls.name))
+
+    def _scoped_entry(self, existing: object, term: str, multivalued: bool) -> dict:
+        """The scoped term: the stock's scoped one, else a copy of the global; a set only if multivalued."""
+        base = existing if existing is not None else self.context_body[term]
+        entry = dict(base) if isinstance(base, dict) else {"@id": base}
+        entry.pop(CONTAINER_KEY, None)
+        if multivalued:
+            entry[CONTAINER_KEY] = SET_CONTAINER
+        return entry
+
+    def _term_name(self, slot_name: str) -> str:
+        """The context term ``visit_slot`` wrote for the slot named ``slot_name``."""
+        slot = self._view.get_slot(slot_name)
+        return str(underscore(_term_of(str(slot.alias or slot.name), slot)))
+
+    @cached_property
+    def _view(self) -> SchemaView:
+        """A view of the merged schema the generator was given (it is built from a definition, not a view)."""
+        return SchemaView(self.schema)
 
 
 def render_context(schema_path: Path) -> str:

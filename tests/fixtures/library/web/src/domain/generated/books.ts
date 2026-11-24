@@ -72,6 +72,44 @@ export interface Shelf {
   nests?: boolean;
 }
 
+/** A collection of books, whose member class is fixed to Book by a slot usage. */
+export interface BookCollection {
+  /** The IRI that identifies the object. */
+  id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The schema name of the class of the aggregates the collection collects. */
+  member_class: string;
+  /** The IRIs of the aggregates the collection names as its members. */
+  has_part?: string[];
+  /** The rule that says which aggregates of the member class belong to the collection. */
+  membership_rule?: MembershipRule;
+  /** Whether the collection may hold collections of its own class and member class as members, to any depth. Absent means false. */
+  nests?: boolean;
+}
+
+/** A display of the library, featuring several books through a slot that is single-valued where it is declared. */
+export interface Display {
+  /** A book a display features, another aggregate, stored as its IRI; single-valued where declared. */
+  features: string[];
+  /** The IRI that identifies the object. */
+  id: string;
+  /** The preferred label of the object. */
+  label: string;
+  /** A free-text description of the object. */
+  description?: string;
+  /** The time the graph was first committed. */
+  created?: string;
+  /** The time the graph was last committed. */
+  modified?: string;
+  /** The principal that first committed the graph. */
+  creator?: string;
+  /** A principal that committed a later version of the graph. */
+  contributor?: string[];
+}
+
 /** An author of the library; an aggregate root that books point at, and that cannot be deleted while a book still does. */
 export interface Author {
   /** The IRI that identifies the object. */

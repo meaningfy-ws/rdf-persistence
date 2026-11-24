@@ -120,7 +120,9 @@ def test_the_aggregate_types_are_the_roots_with_a_path_in_the_tenant_database(
 ) -> None:
     assert sorted(default_documents.aggregates) == [
         "authors",
+        "book-collections",
         "books",
+        "displays",
         "loans",
         "magazines",
         "pamphlets",

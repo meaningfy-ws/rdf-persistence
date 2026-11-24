@@ -44,6 +44,30 @@ classes:
     annotations:
       rp_path: shelves
       database: tenant
+  BookCollection:
+    title: Book collection
+    description: A collection of books, whose member class is fixed to Book by a slot usage.
+    class_uri: lib:BookCollection
+    mixins: [AggregateRoot, Described, ReferenceCollection]
+    slot_usage:
+      member_class:
+        equals_string: Book
+    annotations:
+      rp_path: book-collections
+      database: tenant
+  Display:
+    title: Display
+    description: A display of the library, featuring several books through a slot that is single-valued where it is declared.
+    class_uri: lib:Display
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [features]
+    slot_usage:
+      features:
+        multivalued: true
+        required: true
+    annotations:
+      rp_path: displays
+      database: tenant
   Author:
     title: Author
     description: An author of the library; an aggregate root that books point at, and that cannot be deleted while a book still does.
@@ -165,6 +189,11 @@ slots:
     title: Sequel of
     description: The book this one follows, another aggregate, stored as its IRI.
     slot_uri: lib:sequelOf
+    range: Book
+  features:
+    title: Features
+    description: A book a display features, another aggregate, stored as its IRI; single-valued where declared.
+    slot_uri: lib:features
     range: Book
   written_by:
     title: Written by
