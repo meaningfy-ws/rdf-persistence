@@ -56,7 +56,7 @@ from tests.migration_helpers import (
     second_tenant,
 )
 from tests.tenancy_world import CREATOR, make_world
-from tests.toy import SETTINGS, TOY_SCHEMA, toy_mapper
+from tests.toy import SETTINGS, TOY_SCHEMA, toy_mapper, toy_rules
 
 RP_OLD = URIRef("urn:rp:old")
 RP_NEW = URIRef("urn:rp:new")
@@ -501,7 +501,7 @@ async def test_a_worker_that_loses_the_race_to_create_the_system_database_does_n
     store, files = FakeStore(), FakeFileStore()
     tenancy = Tenancy(
         store, files, SETTINGS, mapper=toy_mapper(), root_class=Library,
-        access_class=LibraryAccess, stamps=((LIB, "2"),),
+        access_class=LibraryAccess, rules=toy_rules(), stamps=((LIB, "2"),),
     )  # fmt: skip
     store.on("create_dataset", Conflict("another worker created it"))
     assert await tenancy.ensure_system_database() is False, "it was not this call's"

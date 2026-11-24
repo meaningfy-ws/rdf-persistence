@@ -216,6 +216,7 @@ class ServiceKit:
             mapper=mapper,
             root_class=models.named(self.documents.tenant_root.name),
             access_class=access_class,
+            rules=self.rules,
             iris=self.iris,
             listings=self.listings,
             guards=WriteGuards(

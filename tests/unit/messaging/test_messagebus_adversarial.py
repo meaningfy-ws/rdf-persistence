@@ -50,6 +50,7 @@ from tests.toy import (
     library_slots,
     template,
     toy_mapper,
+    toy_rules,
 )
 from tests.unit.activity_helpers import activities
 from tests.unit.messaging.messagebus_helpers import (
@@ -900,6 +901,7 @@ async def tenancy_publishing(published: list[Activity]) -> tuple[Tenancy, FakeSt
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         iris=Iris(SETTINGS),
         on_commit=hook,
     )

@@ -69,6 +69,14 @@ def problem_of(response: httpx.Response) -> Problem:
     return Problem.model_validate(response.json())
 
 
+def use_roles(scene: Scene, definitions: list[RoleDefinition]) -> None:
+    """Run the scene's service under ``definitions``: the kit's rules and the ones its tenancy checks grants with."""
+    rules = AccessRules(definitions).with_iris(scene.service.kit.iris)
+    scene.service.kit.rules = rules
+    # the kit gave the tenancy its rules at construction; a test that swaps the roles swaps them there too
+    scene.service.kit.tenancy._rules = rules
+
+
 async def ada_and_mia_are_members(scene: Scene) -> str:
     """Add a ``member`` role (read, modify, delete) to the rules and make mia one; the new access ETag."""
     member = RoleDefinition(
@@ -76,9 +84,7 @@ async def ada_and_mia_are_members(scene: Scene) -> str:
         level=RoleLevel.TENANT,
         actions=[Action.READ, Action.MODIFY, Action.DELETE],
     )
-    scene.service.kit.rules = AccessRules([*load_role_definitions(ROLES), member]).with_iris(
-        scene.service.kit.iris
-    )
+    use_roles(scene, [*load_role_definitions(ROLES), member])
     return await scene.set_grants(
         GrantSet(
             grants=[

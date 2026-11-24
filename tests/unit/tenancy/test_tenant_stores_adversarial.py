@@ -30,7 +30,7 @@ from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes
 from tests.migration_helpers import LIB, chain_of, migration, rename
 from tests.tenancy_world import CREATOR
-from tests.toy import SETTINGS, library_slots, toy_mapper
+from tests.toy import SETTINGS, library_slots, toy_mapper, toy_rules
 from tests.unit.tenancy.tenancy_helpers import (
     CLIENT_A,
     IDS,
@@ -393,6 +393,7 @@ def stores_of(name: str) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         stores={name: FakeStore()},
     )
 
@@ -421,6 +422,7 @@ def test_a_caller_that_changes_the_stores_it_was_given_does_not_change_the_wirin
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         stores=given,
     )
     given["client-b"] = FakeStore()

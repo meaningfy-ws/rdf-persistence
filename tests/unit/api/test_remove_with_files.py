@@ -17,7 +17,7 @@ from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes
 from tests.tenancy_world import CREATOR, FILE_KEY, book, make_world
-from tests.toy import SETTINGS, library_slots, toy_mapper
+from tests.toy import SETTINGS, library_slots, toy_mapper, toy_rules
 from tests.unit.activity_helpers import stored_graph
 
 
@@ -128,6 +128,7 @@ async def test_tc27_a_tenant_on_another_store_is_removed_there_with_its_blobs():
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         iris=iris,
         stores={"client-a": a},
     )

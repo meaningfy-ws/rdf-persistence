@@ -213,8 +213,15 @@ async def test_a_grant_set_replaces_the_grants(scene) -> None:
             "role": "reader",
             "action": "read",
         },
+        {"assignee": "https://example.org/people/x", "target": "TENANT", "role": "admin"},
     ],
-    ids=["unknown-role", "assignee-not-an-iri", "foreign-target", "role-and-action"],
+    ids=[
+        "unknown-role",
+        "assignee-not-an-iri",
+        "foreign-target",
+        "role-and-action",
+        "system-only-role",
+    ],
 )
 async def test_a_grant_set_the_check_could_not_honour_is_a_422_and_changes_nothing(
     scene, grant

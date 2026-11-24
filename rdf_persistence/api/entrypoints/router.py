@@ -320,7 +320,6 @@ class TenantApi:
             request.headers.get(IF_MATCH), self._access_version(access)
         )
         grants = await read_model(request, GrantSet, self._kit.max_body_bytes)
-        self._kit.rules.validate_grants(grants, access.tenant)
         version = await self._kit.tenancy.set_grants(
             access.tenant, grants, expected, Principal(id=caller.principal)
         )

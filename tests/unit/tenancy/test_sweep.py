@@ -19,7 +19,7 @@ from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
-from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
+from tests.toy import ADA, SETTINGS, library_slots, toy_mapper, toy_rules
 
 IRIS = Iris(SETTINGS)
 CREATOR = Principal(id=ADA)
@@ -40,7 +40,13 @@ def files() -> FakeFileStore:
 @pytest.fixture
 async def tenancy(store, files) -> Tenancy:
     made = Tenancy(
-        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     await made.ensure_system_database()
     return made
@@ -72,6 +78,7 @@ async def test_tc33_the_sweep_is_one_span_with_the_orphan_drop_inside(files, spa
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     await tenancy.ensure_system_database()
     await tenancy.create("Ghent", library_slots(), CREATOR)
@@ -140,7 +147,13 @@ async def test_the_sweep_drops_nothing_when_it_had_to_create_the_system_database
     store, files, caplog
 ):
     made = Tenancy(
-        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     await store.create_dataset(ORPHAN)
     await files.create_bucket(ORPHAN)
@@ -188,7 +201,13 @@ async def test_a_tenant_whose_deletion_stopped_is_finished(tenancy, store, files
 
 async def test_the_sweep_creates_the_system_database_on_a_first_start(store, files):
     made = Tenancy(
-        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     await sweep(made, store, files, SETTINGS)
     assert await store.list_datasets() == ["lib-system"], (
@@ -234,6 +253,7 @@ def wired(d, files, **stores) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         stores=stores,
     )
 

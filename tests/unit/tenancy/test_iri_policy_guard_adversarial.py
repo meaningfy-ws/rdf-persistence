@@ -23,7 +23,7 @@ from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
-from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
+from tests.toy import ADA, SETTINGS, library_slots, toy_mapper, toy_rules
 
 SYSTEM = "lib-system"
 RECORD_GRAPH = URIRef(f"{SETTINGS.base}{POLICY_SEGMENT}")
@@ -42,6 +42,7 @@ def new_tenancy(store: FakeStore) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
     )
 
 

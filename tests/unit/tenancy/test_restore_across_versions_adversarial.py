@@ -51,7 +51,7 @@ from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.migration_helpers import chain_of, migration, rename
 from tests.tenancy_world import make_world
-from tests.toy import SETTINGS, toy_mapper
+from tests.toy import SETTINGS, toy_mapper, toy_rules
 
 STAMPS_GRAPH = stamps_graph_iri(SETTINGS.base)
 STAMP = str(v.DATA_SCHEMA_VERSION)
@@ -80,7 +80,7 @@ def running_at(world: SimpleNamespace, toolkit: str, library: str) -> Tenancy:
     """A tenancy over ``world``'s stores whose configured stamps are the given versions."""
     return Tenancy(
         world.store, world.files, SETTINGS, mapper=toy_mapper(), root_class=Library,
-        access_class=LibraryAccess, iris=world.iris,
+        access_class=LibraryAccess, rules=toy_rules(), iris=world.iris,
         stamps=((TOOLKIT_SCHEMA, toolkit), (LIBRARY_SCHEMA, library)),
     )  # fmt: skip
 

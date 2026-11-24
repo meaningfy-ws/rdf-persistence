@@ -17,7 +17,7 @@ same refusal for the same input.
 
 #### Scenario: the same refusal on both paths
 - **WHEN** the same grant set naming an undefined role is sent to `PUT …/grants`
-- **THEN** the answer is the 400 `invalid-body` problem the service's refusal maps to
+- **THEN** the answer is the 422 `invalid-body` problem the service's refusal maps to
 
 #### Scenario: a stored bad grant can be dropped
 - **GIVEN** stored grants naming an undefined role

@@ -11,7 +11,7 @@ from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import assert_isomorphic
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
-from tests.toy import ADA, library_slots, toy_mapper
+from tests.toy import ADA, library_slots, toy_mapper, toy_rules
 
 CREATOR = Principal(id=ADA)
 FOREIGN = "other-t-" + "c" * 32
@@ -64,6 +64,7 @@ async def test_a_crash_during_creation_leaves_orphans_that_the_next_start_up_dro
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     with pytest.raises(StoreUnavailable):
         await crashing.create("Bruges", library_slots(), CREATOR)
@@ -102,6 +103,7 @@ async def test_the_sweep_finishes_a_deletion_the_process_did_not(tenancy, store,
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     with pytest.raises(StoreUnavailable):
         await dying.delete(summary.id, version)

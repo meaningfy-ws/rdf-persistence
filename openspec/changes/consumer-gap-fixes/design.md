@@ -100,7 +100,7 @@ Test first, in `tests/unit/tenancy/` (a new `test_set_grants_roles.py`, built wi
   `UnknownRole`, and the record's version is unchanged.
 - A refusing grant validator is not called.
 - A missing tenant with a bad role gives `NotFound` (E15).
-- The route returns the same 400 problem.
+- The route returns the same 422 problem (D-6).
 
 ### Stage 3, #311 (export)
 
@@ -146,7 +146,7 @@ Idempotency: every stage is a read or an if-version-guarded write, unchanged in 
 | E1 | `B` narrows an inherited `0..*` to `1`, with a key on it | `usage_of` writes `multivalued: false` | key accepted | n/a |
 | E2 | `B` narrows `1..1` to `0..1` | `usage_of` writes `required: false` | `B.p` optional | n/a |
 | E3 | every usage single-valued | `slot_of` (unchanged) | nothing written | n/a |
-| E4 | `set_grants`, undefined role | `validate_grants` in `set_grants` | `UnknownRole`, nothing stored; 400 `invalid-body` on HTTP | name a defined role |
+| E4 | `set_grants`, undefined role | `validate_grants` in `set_grants` | `UnknownRole`, nothing stored; 422 `invalid-body` on HTTP (D-6) | name a defined role |
 | E5 | `set_grants`, system-only role | as E4 | `UnknownRole` | as E4 |
 | E6 | `set_grants`, foreign target or non-IRI assignee | `validate_grants` | `InvalidGrant`, nothing stored | fix the grant |
 | E7 | stored grants name an undefined role; the new set drops it | `validate_grants` reads the new set only | stored: the clean-up path (RISK-2) | n/a |
@@ -183,6 +183,18 @@ Idempotency: every stage is a read or an if-version-guarded write, unchanged in 
   a comment on each issue naming the version.
 - **RISK-5 (a slot named `absent`).** Unlikely. Such a slot loses all listing support (E16).
   Mitigation: a CHANGELOG line; the listing docs list the reserved names.
+
+## Delivery decisions
+
+- **D-6 (stage 2, #306):** the refusal on `PUT …/grants` is **422** `invalid-body`, not 400 as
+  E4 and the `rp-tenancy` delta said: `problems.py` maps `UnknownRole`/`InvalidGrant` to 422, and
+  the existing route tests assert it. Nothing changed in behaviour; E4 and the delta now say 422.
+- **D-7 (stage 2, #306):** no tenancy how-to page exists, so RISK-2's "a refused set_grants"
+  paragraph is in `user-manual/access.adoc` ("Grant and prohibit"), next to the grants it explains.
+- **D-8 (stage 2, #306):** a test that swaps `kit.rules` after the kit is built now swaps the
+  tenancy's too, through `tests/scene.py` `use_roles`, because the tenancy takes its rules at
+  construction (D-4). The helper sets the tenancy's private `_rules`; no public setter is added,
+  since only tests change roles after start-up.
 
 ## Open Questions
 

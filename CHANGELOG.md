@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `1` now carries `multivalued: false` (and `required: false` for a `0..1` under a `1..1`), so
   `unique_key` can name it; before, the omitted flag inherited the parent's `true`. Regenerate
   converted schemas: every usage of a slot whose limits differ gets the explicit flags.
+- **`Tenancy` takes `rules`, and `set_grants` refuses an undefined or system-only role**
+  (`consumer-gap-fixes`, #306). `Tenancy(...)` has a new required keyword `rules: AccessRules`
+  (the toolkit's own composition root passes its rules; a consumer that builds `Tenancy` directly
+  must pass them). `Tenancy.set_grants` now runs `rules.validate_grants` after reading the record,
+  so it refuses what `PUT …/grants` refuses (`UnknownRole`, `InvalidGrant`); the route no longer
+  validates on its own and its 422 `invalid-body` answer is unchanged. Stored grants are not
+  migrated: a set that drops a stored bad role is accepted. See "Grant and prohibit" in "Control
+  access".
 
 ## [0.10.0] - 2026-11-24
 

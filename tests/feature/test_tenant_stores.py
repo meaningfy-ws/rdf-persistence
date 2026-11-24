@@ -40,6 +40,7 @@ from tests.toy import (
     dune,
     library_slots,
     toy_mapper,
+    toy_rules,
 )
 
 scenarios("tenant_stores.feature")
@@ -83,6 +84,7 @@ class Run:
             mapper=toy_mapper(),
             root_class=Library,
             access_class=LibraryAccess,
+            rules=toy_rules(),
             iris=Iris(SETTINGS, *TYPES),
             stamps=[
                 (metamodel().schema.id, metamodel().schema.version),

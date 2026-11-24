@@ -15,7 +15,7 @@ from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
-from tests.toy import ADA, BOB, SETTINGS, library_slots, toy_mapper
+from tests.toy import ADA, BOB, SETTINGS, library_slots, toy_mapper, toy_rules
 
 IRIS = Iris(SETTINGS)
 CREATOR = Principal(id=ADA)
@@ -37,6 +37,7 @@ async def tenancy(store) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     await made.ensure_system_database()
     return made

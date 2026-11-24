@@ -33,7 +33,7 @@ from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
 from tests.tenancy_world import CREATOR
-from tests.toy import SETTINGS, dune, library_slots, toy_mapper
+from tests.toy import SETTINGS, dune, library_slots, toy_mapper, toy_rules
 from tests.unit.builders import TENANT, tenant_access
 from tests.unit.tenancy.tenancy_helpers import (
     CLIENT_A,
@@ -99,6 +99,7 @@ def test_tc05_a_store_name_or_object_the_tenancy_cannot_route_is_refused_naming_
             mapper=toy_mapper(),
             root_class=Library,
             access_class=LibraryAccess,
+            rules=toy_rules(),
             stores={name: objects[ref] for name, ref in stores.items()},
         )
 

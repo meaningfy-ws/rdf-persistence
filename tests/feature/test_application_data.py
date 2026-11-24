@@ -25,7 +25,7 @@ from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.domain.generated.templates import Template
-from tests.toy import ADA, ROLES, SETTINGS, dune, library_slots, template, toy_mapper
+from tests.toy import ADA, ROLES, SETTINGS, dune, library_slots, template, toy_mapper, toy_rules
 from tests.toy_service import ToyService, principal_of
 
 scenarios("application_data.feature")
@@ -278,6 +278,7 @@ def _no_application_class(run: Run, annotation: str) -> None:
         mapper=_access_mapper(),
         root_class=TenantAccess,
         access_class=TenantAccess,
+        rules=toy_rules(),
     )
 
 
