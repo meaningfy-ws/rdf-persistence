@@ -224,7 +224,13 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
 - **RISK-5 Conflict with `converter-hardening`** in `uml/convert.py`. Likelihood: high if both run
   at once. Mitigation: stage 2 merges first (proposal Rabbit-holes); in `uml/` stage 1 only moves
   the Tarjan search out of `uml/modules.py` and changes the import of `cycle_components` at
-  `uml/convert.py:48` to `rdf_persistence_generation.module_cycles` (PD-4).
+  `uml/convert.py:49` to `rdf_persistence_generation.module_cycles` (PD-4).
+- **RISK-6 The whole-model start-up check on a cyclic output** (converter-hardening's RISK-4,
+  added by the owner 2026-11-24). `uml/write.py` loads the staged root schema with `load_schema`
+  (a `SchemaView`) before it moves the files; once stage 2 writes modules that import each other,
+  that load must follow a cyclic import. Likelihood low (`SchemaView` keeps a visited set); impact:
+  a converter run that writes a workflow would fail on any cyclic model. Mitigation: the test of
+  task 2.4 re-runs the check on a cyclic pair.
 - **Trade-off:** pass 2 re-renders the modules of a cycle (PD-7): time for cyclic targets only.
 
 ## Open Questions

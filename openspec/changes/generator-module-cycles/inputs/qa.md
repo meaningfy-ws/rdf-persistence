@@ -52,3 +52,14 @@ R-0003 (how the work succeeds or fails and how it is checked, test-first), R-000
 
 The owner parked the question round: the OPEN items above are unanswered. The PLAN stands
 under the recommended answers; nothing is decided until the owner answers.
+
+## Delivery start (2026-11-24)
+
+The owner asked the lead to deliver this PLAN after rebasing it on `develop`. Checked against
+`develop` after `converter-hardening` (#349, archived 2026-11-24): every symbol the PLAN names in
+`uml/` and `extensions/pydantic_split.py` is still there, the `rp-uml-import` delta differs from
+the live requirement only by its intended changes, and only line references moved (fixed). OPEN-3
+is settled by events: `converter-hardening` landed first and did not move the import-graph code,
+so stage 2 starts on it, as the PLAN's default says. OPEN-1, OPEN-2 and OPEN-4 proceed under their
+recommended answers (R-0007), shown to the owner at the end. Added: RISK-6 in design.md, the
+owner's request to re-run converter-hardening's RISK-4 check on a cyclic pair (task 2.4).

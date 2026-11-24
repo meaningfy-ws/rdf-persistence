@@ -72,7 +72,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   from a module of the cycle that only names it (`from .app_books import Shelf` runs but fails
   `mypy --strict`); the refusal message and its two fixes), `CHANGELOG.md` *Fixed*
   (#208) under `[Unreleased]` only, saying it replaces the refusal of two modules that import each
-  other described in `[0.8.1]` (line 25); released sections are never edited. The `rp-generation` delta of this change is already written. Accept: `make check-docs`
+  other described in `[0.8.1]`; released sections are never edited. The `rp-generation` delta of this change is already written. Accept: `make check-docs`
   green.
 - [ ] 1.6 **lead** — `make check-all`, `make test-containers`; the stage pass (L2+L3, one pass);
   accepted findings into design.md; PR into `develop`, merged on green CI; #208 closed by it.
@@ -116,13 +116,18 @@ named here run in CI's `test-generator` job (`make test-generator`).
   `module_kind=access` and `shelves` domain, linked both ways; `rp-uml2linkml` exit 0, then
   `rp-generate` exit 1 with a `boundary check` line naming `app_shelves` and `app_library`). Remove
   `test_module_import_cycle.py::test_the_same_two_classes_in_one_module_generate_and_import`
-  (PD-9). Accept: `make test-generator` green.
+  (PD-9). Then (RISK-6, converter-hardening's RISK-4) in `tests/generator/unit/test_uml_write.py`:
+  `test_the_start_up_check_loads_modules_that_import_each_other`, the whole-model start-up check
+  of `test_the_start_up_check_refuses_a_staged_workflow` re-run with the root schema importing two
+  modules that import each other (one class of each naming a workflow, the two sharing a class
+  IRI): `write` raises `StagedFileRefused` naming both workflows, so `load_schema` followed the
+  cyclic imports to the classes. Accept: `make test-generator` green.
 - [ ] 2.5 **docs** — after 2.3. `reference/uml-conventions.adoc`: `#packages` (one module per
   package; packages that refer to each other give modules that import each other),
   `#module-kind` (the merged-kinds failure removed; a cycle between kinds is refused by
   `rp-generate`'s boundary check), `#shared-slots` (no merge), the problems table (the `module_kind`
   row; a new row: classes inheriting both ways between two packages, refused by `rp-generate`,
-  fix by moving them into one package); `howto/uml-to-linkml.adoc` (lines 78 and 169: the
+  fix by moving them into one package); `howto/uml-to-linkml.adoc` (lines 80 and 186: the
   `merged-cycle` kind removed); `CHANGELOG.md`: only a **BREAKING** entry under `[Unreleased]` (DEC-4,
   RISK-3) stating that the merge of packages that refer to each other, and the failure of merged
   packages with different kinds, described in `[0.8.1]`, are removed; old and new layout; imports
