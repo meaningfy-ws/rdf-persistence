@@ -41,4 +41,4 @@ EPIC: domain-values-and-fixes (proposal.md, #301, #303, #302, #300). Decisions: 
 ## 5. Close
 
 - [x] 5.1 Scenario-map rows for the new tests (each stage adds its own).
-- [ ] 5.2 After the last merge: archive the change, tell MWB2 (#301 unblocks v2-05 stage 1).
+- [x] 5.2 After the last merge: archive the change, tell MWB2 (#301 unblocks v2-05 stage 1).

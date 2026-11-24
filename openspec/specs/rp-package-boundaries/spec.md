@@ -131,3 +131,14 @@ deprecation period (D-26); a consumer's generated code SHALL import `RpModel` fr
 #### Scenario: the public names
 - **WHEN** a consumer imports `FusekiStore`, `Tenancy` and `ServiceKit` from `rdf_persistence`
 - **THEN** it gets the same classes as before the move, with no warning
+
+### Requirement: The domain layer may import a value module
+
+A domain module SHALL be allowed to import a module annotated `module_kind: value`, which is a
+domain-layer module; it SHALL still not import a technical or an access module, directly or through
+a value module.
+
+#### Scenario: a domain function returns a generated value
+- **GIVEN** a domain module that imports a value module
+- **WHEN** the boundary check runs
+- **THEN** it reports no problem
