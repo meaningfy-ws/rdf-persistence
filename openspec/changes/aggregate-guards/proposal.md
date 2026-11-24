@@ -79,7 +79,8 @@ The existing structure is reused.
 - No query API on the reader (no listings, no `find`); one aggregate by IRI only.
 - No change to the write rules' signature or their 422.
 - No delete rules on tenant deletion, restore or migrations.
-- No consumer-defined HTTP status: `Conflict` is the only refusal.
+- No consumer-defined HTTP status: `Conflict` is the only refusal. *(Delivered: `Refused`, a
+  `Conflict`, answered as a 409 `refused` problem; D-12.)*
 
 ---
 
@@ -90,8 +91,13 @@ The existing structure is reused.
 - The `WriteGuard` port gains `prepare_remove`. `Transaction.remove` calls it before collecting.
 - `ServiceKit` and `install_service` take `delete_validators`, and `DeleteValidator` is exported
   from the top level.
-- Docs: `user-manual/access.adoc` (rules section), `architecture/data-flows.adoc`, `questions.adoc`
-  (the new question "How do I refuse a delete?").
+- *(as delivered, D-12)* A delete rule refuses with `Refused`, a `Conflict` exported from the top
+  level; the API answers it with a new 409 problem type `refused` whose detail is the rule's
+  message. Version and key conflicts still send no text.
+- The generic delete route opens its session with the caller's read access (D-7).
+- Docs: `user-manual/access.adoc` (rules section), `architecture/data-flows.adoc`,
+  `architecture/api.adoc` (the `refused` problem), `questions.adoc` (the new question "How do I
+  refuse a delete?").
 
 ## Capabilities
 
@@ -106,3 +112,21 @@ The existing structure is reused.
 package's exports, three docs pages. There are no breaking changes: the reader gains a method,
 and the kit gains an optional argument. Once the consumer refreshes its lock, it moves its
 range check and its CM delete check into rules.
+
+As delivered, also: `api/entrypoints/service.py` (`install_service`), `api/services/aggregates.py`
+and the delete route in `api/entrypoints/router.py` (D-7), `core/domain/exceptions.py` and
+`api/entrypoints/problems.py` (`Refused`, D-12), the `ProblemSlug` enum of
+`model/technical/api/rp_api_entrypoints.yaml` and what it regenerates (the OpenAPI components, the
+manifests, the served TypeScript), and `architecture/api.adoc`. Still no breaking change: a client
+that does not know `refused` reads it as a 409.
+
+## Reconciliation
+
+| Promise | Delivered | PR |
+|---|---|---|
+| DEC-1, DEC-2, DEC-3, DEC-6: `reader.aggregate(iri)`, relied on, cached | As shaped; `_Reader` also takes `model_class` (D-10) | #334 |
+| `GuardContext` carries the removals | As shaped, with `read_cache`; both default (D-9) | #334 |
+| DEC-4: refusing exception is `Conflict` | `Refused(Conflict)` with a `refused` 409 that keeps the message (D-12, the developer's decision: no 409 text was ever sent) | stage 2 PR |
+| DEC-5: every transaction remove runs the rules | As shaped; a stored root on two lines under a rule is a 500, not a 422 (D-13) | stage 2 PR |
+| D-7: delete route passes `may_read` | As shaped | stage 2 PR |
+| Not promised | `make test-containers` was red on `develop` (#331); fixed in its own change, `generator-e2e-fixtures` | #339 |
