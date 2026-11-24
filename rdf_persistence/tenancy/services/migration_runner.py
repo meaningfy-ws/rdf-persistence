@@ -44,9 +44,16 @@ log = logging.getLogger(__name__)
 
 
 async def migrate_database(
-    store: Store, database: str, chains: Sequence[SchemaChain], stamps_graph: URIRef
+    store: Store,
+    database: str,
+    chains: Sequence[SchemaChain],
+    stamps_graph: URIRef,
+    *,
+    grants: bool = False,
 ) -> None:
     """Bring ``database`` to the last version of every chain, in the order given.
+
+    ``grants`` is true for the system database: a migration's ``grant_roles`` apply there and nowhere else.
 
     Raises:
         MigrationFailed: The store failed, the stamp is unknown to the chain or doubled, or it did not
@@ -56,7 +63,7 @@ async def migrate_database(
     context = LogContext(step="migrate-database", db_namespace=database)
     with traced("rp.migration.database", context):
         for schema_id, chain in chains:
-            await _migrate_schema(store, database, schema_id, chain, stamps_graph)
+            await _migrate_schema(store, database, schema_id, chain, stamps_graph, grants=grants)
 
 
 async def migrate_shared(tenancy: Tenancy, store: Store, chains: Sequence[SchemaChain]) -> None:
@@ -68,7 +75,13 @@ async def migrate_shared(tenancy: Tenancy, store: Store, chains: Sequence[Schema
     with traced("rp.migration.shared", LogContext(step="migrate-shared")):
         for database in await _shared_databases(tenancy, store):
             try:
-                await migrate_database(store, database, chains, tenancy.stamps_graph)
+                await migrate_database(
+                    store,
+                    database,
+                    chains,
+                    tenancy.stamps_graph,
+                    grants=database == tenancy.system_database,
+                )
             except MigrationFailed as error:
                 log.error(
                     "a shared database could not be migrated",
@@ -191,7 +204,13 @@ async def _shared_databases(tenancy: Tenancy, store: Store) -> list[str]:
 
 
 async def _migrate_schema(
-    store: Store, database: str, schema_id: str, chain: Chain, stamps_graph: URIRef
+    store: Store,
+    database: str,
+    schema_id: str,
+    chain: Chain,
+    stamps_graph: URIRef,
+    *,
+    grants: bool = False,
 ) -> None:
     version = await _stamp_of(store, database, schema_id, chain, stamps_graph)
     while True:
@@ -207,7 +226,9 @@ async def _migrate_schema(
         if not pending:
             return
         # Each round ends at a later version of the finite chain or fails, so the loop ends (PD-23).
-        version = await _apply(store, database, schema_id, pending[0], chain, stamps_graph)
+        version = await _apply(
+            store, database, schema_id, pending[0], chain, stamps_graph, grants=grants
+        )
 
 
 async def _stamp_of(
@@ -246,6 +267,8 @@ async def _apply(
     migration: Migration,
     chain: Chain,
     stamps_graph: URIRef,
+    *,
+    grants: bool = False,
 ) -> str:
     """Send the request of ``migration`` and answer the stamp read back: ``to`` or a later version (PD-7, PD-23)."""
     context = LogContext(
@@ -256,7 +279,7 @@ async def _apply(
     )
     with traced("rp.migration.apply", context):
         try:
-            await store.update(database, migration_request(migration, stamps_graph))
+            await store.update(database, migration_request(migration, stamps_graph, grants=grants))
         except PersistenceError as error:
             raise _failed(database, schema_id, migration, error) from error
         version = await _read_stamp(store, database, schema_id, stamps_graph, migration)

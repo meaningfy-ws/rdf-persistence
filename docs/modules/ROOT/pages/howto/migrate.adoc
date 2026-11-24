@@ -434,6 +434,57 @@ steps:
     insert_pattern: "?s <http://www.w3.org/ns/adms#status> <https://example.org/ns/library/workflows/review/draft>"
 ----
 
+[#roles]
+== A model round renames or drops a role
+
+_The roles file of my application changed: a role has a new name, or is gone. What happens to the
+grants that tenants already hold?_
+
+A grant stores the role as a name (`rp:role`), in the tenant's access record in the system
+database. A migration can rename or drop that name for you, with `grant_roles` in the migration
+file, so you never write SPARQL over the stored grants. The roles file and the migration are one
+change: here `reader` becomes `member` and `guest` is retired.
+
+[source,yaml]
+----
+# migrations/library/2.0.0-to-2.1.0.yaml, beside the renamed roles file
+schema_id: https://example.org/library
+from_version: 2.0.0
+to_version: 2.1.0
+description: reader becomes member; guest is retired
+grant_roles:
+  rename: {reader: member}
+  drop: [guest]
+----
+
+* `rename` is a map from the old name to the new one. The renames apply in the order of the file,
+  each one completely before the next. Two old names may go to one new name (a merge, for example
+  `{reader: member, viewer: member}`): an assignee who held both on one target ends with one `member`
+  grant. For the same reason, when an assignee already holds the new name on the same target, the grant
+  with the old name is deleted and the existing one stays.
+* `drop` is a list of names. Every grant that names one of them is deleted, with its parts. The drops
+  run after the renames.
+* The file is refused when it is loaded, naming the file, if it drops a name it also renames from or
+  to, renames a name that is itself renamed (no chains), renames a name to itself, renames a name
+  twice, or holds an empty name.
+* A file may hold `grant_roles` and no steps. The version tokens of the access records are renewed,
+  and the stamp moves, as for any migration.
+* Only the system database gets these changes: it is where the access records are. A tenant database
+  and a dump restored with `migrate_dataset` get the stamp only.
+
+*Ship the roles file and the migration in one release.* At start-up the migration runs first. If the
+migration is deployed without the new roles file, the grants name `member` and the application does
+not define it, and granting for those tenants is refused until the file is deployed.
+
+*A rename applies at every level.* A grant on the tenant and a grant on one aggregate that name
+`reader` are both renamed. When a name means different things at two levels and only one of them
+changes, give each level its own role name in the roles file before you rename.
+
+*Rename rather than drop a role that administers.* Dropping a role deletes its grants. If it was the
+only grant that gave `administer` on a tenant, that tenant has no manager until an operator grants a
+role again. Rename the role to its successor instead, and drop only roles that nobody needs to
+administer with.
+
 [#cannot]
 == 5. What cannot be migrated, and how to avoid it
 

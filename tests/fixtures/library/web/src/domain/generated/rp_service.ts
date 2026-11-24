@@ -208,7 +208,23 @@ export interface MigrationStep {
   unresolved?: string;
 }
 
-/** The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order. */
+/** One role name a migration changes to another in the stored grants. */
+export interface RoleRename {
+  /** The role name a grant names before the migration. */
+  from_role: string;
+  /** The role name a grant names after the migration. */
+  to_role: string;
+}
+
+/** What a migration does to the role names in the stored grants of the system database: the renames, in the order they apply, then the names whose grants are deleted. In the file, `rename` is a map from the old name to the new one; loading turns it into the list. */
+export interface GrantRoles {
+  /** The role renames of a migration, in the order they apply. */
+  rename?: RoleRename[];
+  /** The role names whose grants a migration deletes, after the renames. */
+  drop?: string[];
+}
+
+/** The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order; and, optionally, the renames and drops of the role names in the stored grants. */
 export interface Migration {
   /** The id of the schema whose data the migration moves. */
   schema_id: string;
@@ -220,6 +236,8 @@ export interface Migration {
   description?: string;
   /** The steps of a migration, in the order they run. */
   steps?: MigrationStep[];
+  /** The renames and drops of role names in the stored grants of the system database. */
+  grant_roles?: GrantRoles;
 }
 
 /** What a token verifier returns for a valid token, the principal and its global roles. */

@@ -33,8 +33,19 @@
       "description": {
          "@id": "dcterms:description"
       },
+      "drop": {
+         "@container": "@set",
+         "@id": "roleDrop"
+      },
+      "from_role": {
+         "@id": "fromRole"
+      },
       "from_version": {
          "@id": "fromVersion"
+      },
+      "grant_roles": {
+         "@type": "@id",
+         "@id": "grantRoles"
       },
       "graph": {
          "@type": "@id",
@@ -94,6 +105,11 @@
          "@type": "@id",
          "@id": "ownedBy"
       },
+      "rename": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "roleRename"
+      },
       "root_class": {
          "@type": "@id",
          "@id": "rootClass"
@@ -113,6 +129,9 @@
       },
       "title": {
          "@id": "title"
+      },
+      "to_role": {
+         "@id": "toRole"
       },
       "to_version": {
          "@id": "toVersion"
@@ -143,6 +162,9 @@
       "Described": {
          "@id": "Described"
       },
+      "GrantRoles": {
+         "@id": "GrantRoles"
+      },
       "KeyDuplicate": {
          "@id": "KeyDuplicate"
       },
@@ -160,6 +182,9 @@
       },
       "RegistryEntry": {
          "@id": "RegistryEntry"
+      },
+      "RoleRename": {
+         "@id": "RoleRename"
       },
       "Tracked": {
          "@id": "Tracked"

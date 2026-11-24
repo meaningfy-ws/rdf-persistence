@@ -23,7 +23,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/migrations/rp_migrations_services.yaml",
-      "sha256": "e747d0b9fe9d6a07db82b6cf22bd59798685945d31678a5a6a060c8c4edd1a96"
+      "sha256": "c35978ff77d13f68796ba4b24cfc079f1c658b88e6906aa96be339c0432c6569"
     },
     {
       "path": "rdf_persistence/model/technical/tenancy/rp_tenancy_services.yaml",
@@ -269,7 +269,7 @@
     },
     {
       "path": "rdf_persistence/tenancy/services/generated/context.jsonld",
-      "sha256": "07b7f71335f7c1024e1d0e5b9ffb509bcb746e600a4d8486c08a4e44d89d1172"
+      "sha256": "809c8b2bf4898b075ecdf8f585c233761a0f64d09134f74bcdf9d87498d19f79"
     },
     {
       "path": "rdf_persistence/tenancy/services/generated/openapi-components.json",
@@ -277,11 +277,11 @@
     },
     {
       "path": "rdf_persistence/tenancy/services/generated/rp_tenancy_services.py",
-      "sha256": "d5ade140440ea64e81d2ddaf6f08766f40e853b9cf60e2bcf667410982089a68"
+      "sha256": "c4e9d9192e4ed8376725ffdeda06a31cfc66730629419a520b64a1dae00feea6"
     },
     {
       "path": "rdf_persistence/tenancy/services/generated/shapes.ttl",
-      "sha256": "7fef1f58a1d31c3abcc1fd46cc4edff432f310f98a1cbf1c34f40788a93e2ee7"
+      "sha256": "e8996fd065bcd41eaee166e22cc616ac6e277833a00012622076fabcbdb2ebb9"
     }
   ]
 }

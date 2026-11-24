@@ -95,6 +95,10 @@
       "description": {
          "@id": "dcterms:description"
       },
+      "drop": {
+         "@container": "@set",
+         "@id": "roleDrop"
+      },
       "created_at": {
          "@type": "xsd:dateTime",
          "@id": "dumpCreatedAt"
@@ -102,8 +106,15 @@
       "format_version": {
          "@id": "dumpFormatVersion"
       },
+      "from_role": {
+         "@id": "fromRole"
+      },
       "from_version": {
          "@id": "fromVersion"
+      },
+      "grant_roles": {
+         "@type": "@id",
+         "@id": "grantRoles"
       },
       "grants": {
          "@type": "@id",
@@ -241,6 +252,11 @@
       "removed_loaded_graphs": {
          "@id": "removedLoadedGraphs"
       },
+      "rename": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "roleRename"
+      },
       "role": {
          "@id": "role"
       },
@@ -307,6 +323,9 @@
       "title": {
          "@id": "title"
       },
+      "to_role": {
+         "@id": "toRole"
+      },
       "to_version": {
          "@id": "toVersion"
       },
@@ -342,6 +361,9 @@
       "Grant": {
          "@id": "ODRL:Permission"
       },
+      "GrantRoles": {
+         "@id": "GrantRoles"
+      },
       "IdSpec": {
          "@id": "IdSpec"
       },
@@ -374,6 +396,9 @@
       },
       "RoleDefinition": {
          "@id": "RoleDefinition"
+      },
+      "RoleRename": {
+         "@id": "RoleRename"
       },
       "Rule": {
          "@id": "ODRL:Rule"

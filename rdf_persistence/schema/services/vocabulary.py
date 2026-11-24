@@ -213,6 +213,8 @@ REPLIES_TO = predicate("replies_to")
 GRANTS = predicate("grants")
 PROHIBITIONS = predicate("prohibitions")
 ASSIGNEE = predicate("assignee")
+TARGET = predicate("target")
+ROLE = predicate("role")
 
 # A listing's query returns the size of the whole listing as this statement about the listed class.
 TOTAL = predicate("total", load_schema(PERSISTENCE_SCHEMA))
