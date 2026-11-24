@@ -105,7 +105,8 @@ in-flight `domain-values-and-fixes` has merged its last PR (its order, DEC-9, is
   runtime): the `absent` parameter on every listing.
 - `Tenancy`'s constructor takes `rules` (**BREAKING** for direct constructors).
 - Docs: `howto/workflow.adoc` (import), the listing reference (absence, reserved names), the
-  tenancy how-to (a refused `set_grants`, RISK-2), CHANGELOG (RISK-1, RISK-3).
+  access manual `user-manual/access.adoc` (a refused `set_grants`, RISK-2; no tenancy how-to
+  exists, D-7), CHANGELOG (RISK-1, RISK-3, RISK-5).
 
 ## Capabilities
 
@@ -124,4 +125,17 @@ in-flight `domain-values-and-fixes` has merged its last PR (its order, DEC-9, is
 `persistence/services/session.py`, `listing.py`, `core/domain/sparql.py`;
 `api/entrypoints/openapi.py`; four docs pages and the CHANGELOG. A consumer gets these after the release and its lock
 refresh. It then removes its own `validate_grants` call (harmless if kept) and its post-filter for
-#312.
+#312. Also `core/domain/sparql.py` gained `no_value_patterns` (D-9), and the public-surface
+snapshot and `public-api.adoc` partial list `state_iri`.
+
+## Reconciliation (as delivered, 2026-11-24)
+
+| Issue | Shaped as | Delivered | PR | Differs |
+|---|---|---|---|---|
+| #304 | DEC-1: differing `required`/`multivalued` written, `false` included | As shaped | #330 | Same defect remains for `minimum`/`maximum_cardinality`: follow-up #332 (outside the No-gos) |
+| #306 | DEC-2: `Tenancy(rules=…)`; `set_grants` validates; route call removed | As shaped | #335 | The HTTP refusal is 422 `invalid-body`, not 400 (D-6); the RISK-2 paragraph is in the access manual (D-7); tests swap the tenancy's rules through `use_roles` (D-8) |
+| #311 | DEC-3: `state_iri` exported lazily | As shaped | #336 | none |
+| #312 | DEC-4 to DEC-6: `find(slot=None)`, `?absent=<slot>`, `filter_absent` | As shaped | this stage's PR | Rendered by a new `no_value_patterns`, since `absent_patterns` was taken and skips blank nodes (D-9); E18 documented, not tested (D-10); DEC-5's syntax awaits the owner's review in the PR |
+
+Not delivered from the shape: nothing. The release (DEC-7, RISK-4) follows the archive. The
+pre-existing #331 (generator e2e tests under `make test-containers`) was met, not caused, here.
