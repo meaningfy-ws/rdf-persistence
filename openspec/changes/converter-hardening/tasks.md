@@ -11,7 +11,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
 
 ## 1. Stage 1: harden the converter
 
-- [ ] 1.1 #258, PD-6, DEC-5 (library). Tier unit. First failing test:
+- [x] 1.1 #258, PD-6, DEC-5 (library). Tier unit. First failing test:
   `tests/unit/access/test_access_roles.py::test_a_non_ascii_role_is_read_as_utf8_whatever_the_locale`
   (subprocess with `-X warn_default_encoding`, `EncodingWarning` an error around the load only,
   PD-6; loads a UTF-8 file with `rédacteur`; asserts exit 0 and the role read back; fails today on the `EncodingWarning`). Then
@@ -65,7 +65,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   collection whose subclass draws its own role stays nesting" and "a subclass's self-role under a
   parent that fixes a member class stays nesting" (PD-5, OPEN-6; both run with no problem). Feature: the scenario "a collection of collections"
   in `uml_import.feature` / `test_uml_import.py`. Accept: both rows and the scenario pass.
-- [ ] 1.6 PD-7. Tier unit. First failing test:
+- [x] 1.6 PD-7. Tier unit. First failing test:
   `tests/generator/unit/test_uml_toolkit.py::test_convert_uses_the_toolkit_it_is_given` (builds a
   `Toolkit` from the metamodel view, then `load_toolkit.cache_clear()` and a pass-through spy on
   `load_schema` in `toolkit.py`'s namespace, tagged `# X2` per `testing.adoc` rule 3; calls
@@ -128,7 +128,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
 1.3 and 1.5 then use; 1.2 (`qea.py`), 1.3 (`write.py`, `cli.py`) and 1.5 (`slots.py`) touch
 disjoint files.
 
-- [ ] 1.1 · [ ] 1.6 · [ ] 1.2 · [ ] 1.3 · [ ] 1.5 · [ ] 1.4 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
+- [x] 1.1 · [x] 1.6 · [ ] 1.2 · [ ] 1.3 · [ ] 1.5 · [ ] 1.4 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
 
 ## Verification
 
