@@ -39,7 +39,7 @@ xref:user-manual/tenants.adoc#create-a-tenant[Create a tenant]:
 import httpx
 from fastapi import FastAPI
 
-from rdf_persistence import AccessRules, JwksTokenVerifier, install_service, load_role_definitions
+from rdf_persistence import JwksTokenVerifier, install_service
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 
 signer = TokenSigner()
@@ -56,7 +56,7 @@ kit = install_service(
     files=FakeFileStore(),
     identity=FakeIdentity(),
     verifier=verifier,
-    rules=AccessRules(load_role_definitions(ROLES)),
+    rules=ROLES,
     settings=settings,
     workflows=[REVIEW_WORKFLOW],
     migrations=MIGRATIONS,

@@ -8,6 +8,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
+from pathlib import Path
 
 import httpx
 import pytest
@@ -30,6 +31,7 @@ from rdf_persistence.core.domain.exceptions import (
     Forbidden,
     InvalidBody,
     InvalidRoleDefinition,
+    InvalidWorkflow,
     NotFound,
 )
 from rdf_persistence.core.domain.media import PROBLEM_JSON
@@ -47,6 +49,7 @@ from rdf_persistence.schema.services.vocabulary import ANNOTATION, HAS_TARGET, m
 from rdf_persistence.testkit import FakeStore, RecordingObserver, open_event_stream
 from tests.scene import Scene
 from tests.toy import (
+    REVIEW_WORKFLOW,
     ROLES,
     SETTINGS,
     TOY_SCHEMA,
@@ -315,6 +318,41 @@ def test_an_invalid_role_definitions_file_refuses_to_start_naming_the_entry(tmp_
     )
     with pytest.raises(InvalidRoleDefinition, match="entry 2.*broken"):
         installed(FastAPI(), ToyService(), rules=bad)
+
+
+def test_a_relative_roles_path_is_opened_from_the_working_directory(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "roles.yaml").write_text(ROLES.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    installed(FastAPI(), ToyService(), rules=Path("roles.yaml"))  # no error: the file was found
+    monkeypatch.chdir(tmp_path.parent)
+    with pytest.raises(InvalidRoleDefinition, match="roles.yaml"):
+        installed(FastAPI(), ToyService(), rules=Path("roles.yaml"))
+
+
+def test_a_relative_workflow_path_is_opened_from_the_working_directory(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "review.workflow.yaml").write_text(
+        REVIEW_WORKFLOW.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    monkeypatch.chdir(tmp_path)
+    service = ToyService(workflows=(Path("review.workflow.yaml"),))
+    assert service.kit.workflows.for_class("Book") is not None, "the file was read"
+    monkeypatch.chdir(tmp_path.parent)
+    with pytest.raises(InvalidWorkflow, match="review.workflow.yaml"):
+        ToyService(workflows=(Path("review.workflow.yaml"),))
+
+
+@pytest.mark.parametrize("given", ["folder", "glob"])
+def test_a_folder_or_a_glob_in_workflows_is_no_workflow_file(tmp_path, given: str) -> None:
+    (tmp_path / "review.workflow.yaml").write_text(
+        REVIEW_WORKFLOW.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    path = tmp_path if given == "folder" else tmp_path / "*.workflow.yaml"
+    with pytest.raises(InvalidWorkflow, match="cannot read the workflow"):
+        ToyService(workflows=(path,))
 
 
 async def test_a_role_definitions_path_is_loaded_into_the_rules() -> None:

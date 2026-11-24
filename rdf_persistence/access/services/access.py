@@ -14,7 +14,6 @@ from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
 
-import yaml
 from pydantic import ValidationError
 from rdflib import Graph, URIRef
 
@@ -42,6 +41,7 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.core.domain.generated import rp_core
 from rdf_persistence.core.domain.sparql import fill, term
+from rdf_persistence.core.services.yaml_files import read_yaml
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.mapper import Mapper, generated_models
@@ -74,15 +74,11 @@ def load_role_definitions(path: Path) -> list[RoleDefinition]:
     """The role definitions in the YAML file ``path``, validated against ``rp_access``.
 
     Raises:
-        InvalidRoleDefinition: The file cannot be read, is not a YAML list, an entry is invalid
-            (no actions included), or a role is defined twice at one level; the message names the entry.
+        InvalidRoleDefinition: The file cannot be read, is not UTF-8, is not YAML, is nested too
+            deeply, gives a key twice, is not a list, an entry is invalid (no actions included), or
+            a role is defined twice at one level; the message names the file and the entry.
     """
-    try:
-        data = yaml.safe_load(path.read_text())
-    except OSError as error:
-        raise InvalidRoleDefinition(f"cannot read the role definitions {path}: {error}") from error
-    except yaml.YAMLError as error:
-        raise InvalidRoleDefinition(f"{path} is not valid YAML: {error}") from error
+    data = read_yaml(path, "role definitions", InvalidRoleDefinition)
     if not isinstance(data, list):
         raise InvalidRoleDefinition(f"{path} must hold a list of role definitions")
     definitions: dict[tuple[RoleLevel, str], RoleDefinition] = {}

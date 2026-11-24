@@ -5,6 +5,7 @@ their LinkML definitions; ``parents`` reads the generalisations. Slots are in ``
 """
 
 from collections.abc import Mapping
+from typing import Final
 
 from linkml_runtime.linkml_model import (
     Annotation,
@@ -13,8 +14,10 @@ from linkml_runtime.linkml_model import (
     PermissibleValue,
 )
 
+from rdf_persistence.core.domain.generated.rp_core import GraphKind, RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
+    LeftOutReason,
     ReportKind,
     UmlClass,
     UmlElement,
@@ -23,15 +26,8 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlName,
     UmlRule,
 )
-from rdf_persistence_generation.uml.context import (
-    LEFT_EXCLUDED,
-    LEFT_NOT_GENERATED,
-    LEFT_OUTSIDE,
-    Context,
-    below_of,
-    local_of,
-)
-from rdf_persistence_generation.uml.mixins import RP_MIXINS, compose
+from rdf_persistence_generation.uml.context import Context, below_of, local_of
+from rdf_persistence_generation.uml.mixins import compose
 from rdf_persistence_generation.uml.naming import (
     CURIE_SEPARATOR,
     check_class_name,
@@ -41,15 +37,14 @@ from rdf_persistence_generation.uml.naming import (
     rp_path_for,
     title_for,
 )
-from rdf_persistence_generation.uml.tags import GRAPH, apply_tags
+from rdf_persistence_generation.uml.qea import CLASS_TYPE, ENUMERATION_TYPE
+from rdf_persistence_generation.uml.tags import GRAPH, RP_MIXINS, apply_tags
 
-CLASS_TYPE = "Class"
-ENUMERATION_TYPE = "Enumeration"
 ROOT_STEREOTYPE = "root"
 TENANT_STEREOTYPE = "tenant root"
 ABSTRACT_STEREOTYPE = "abstract"
-RP_PATH = "rp_path"
-META = "meta"
+RP_PATH: Final = RpAnnotation.RP_PATH.value
+META: Final = GraphKind.META.value
 EMPTY_LIST_NOTE = "no literals; its list is kept outside the model, so slots range over a URI"
 
 
@@ -76,7 +71,7 @@ def _admit(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
     elif uml.object_type == CLASS_TYPE and ctx.toolkit_name(uml.name) is not None:
         _use_drawn_toolkit_class(ctx, uml, label)
     elif stereotype in (ctx.settings.not_generated_stereotypes or []):
-        _leave_out(ctx, uml, LEFT_NOT_GENERATED)
+        _leave_out(ctx, uml, LeftOutReason.NOT_GENERATED)
         ctx.findings.note(
             ReportKind.NOT_GENERATED, label, f"stereotype {stereotype}, not generated"
         )
@@ -89,16 +84,16 @@ def _admit(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
 def _use_drawn_toolkit_class(ctx: Context, uml: UmlClass, label: str) -> None:
     """A toolkit class drawn inside the subtree is the toolkit's, not generated; a parent only (PD-17, R-28)."""
     toolkit_class = str(ctx.toolkit_name(uml.name))
-    _leave_out(ctx, uml, LEFT_NOT_GENERATED)
+    _leave_out(ctx, uml, LeftOutReason.NOT_GENERATED)
     ctx.drawn_toolkit[uml.object_id] = toolkit_class
     ctx.findings.note(
         ReportKind.NOT_GENERATED, label, f"drawn as the toolkit's {toolkit_class}, not generated"
     )
 
 
-def _leave_out(ctx: Context, uml: UmlClass, why: str) -> None:
+def _leave_out(ctx: Context, uml: UmlClass, why: LeftOutReason) -> None:
     ctx.left_out[uml.object_id] = why
-    if why == LEFT_NOT_GENERATED and uml.object_type == ENUMERATION_TYPE:
+    if why == LeftOutReason.NOT_GENERATED and uml.object_type == ENUMERATION_TYPE:
         ctx.left_out_enums.add(uml.object_id)
 
 
@@ -128,7 +123,11 @@ def _collect_outside(ctx: Context, model: UmlModel) -> None:
     for uml in model.uml_outside_classes or []:
         path = ctx.paths.get(uml.package_id)
         _leave_out(
-            ctx, uml, LEFT_EXCLUDED if path is not None and path.is_excluded else LEFT_OUTSIDE
+            ctx,
+            uml,
+            LeftOutReason.EXCLUDED
+            if path is not None and path.is_excluded
+            else LeftOutReason.OUTSIDE,
         )
         ctx.class_names[uml.object_id] = local_of(uml.name)
         toolkit_class = ctx.toolkit_name(uml.name)
@@ -154,7 +153,7 @@ def collect_elements(ctx: Context, model: UmlModel) -> None:
         if path is None:
             continue
         if path.is_excluded:
-            _leave_out(ctx, uml, LEFT_EXCLUDED)
+            _leave_out(ctx, uml, LeftOutReason.EXCLUDED)
         else:
             _admit(ctx, uml, below_of(path))
     _check_clashes(ctx)

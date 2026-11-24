@@ -11,7 +11,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
 
 ## 1. Stage 1: harden the converter
 
-- [ ] 1.1 #258, PD-6, DEC-5 (library). Tier unit. First failing test:
+- [x] 1.1 #258, PD-6, DEC-5 (library). Tier unit. First failing test:
   `tests/unit/access/test_access_roles.py::test_a_non_ascii_role_is_read_as_utf8_whatever_the_locale`
   (subprocess with `-X warn_default_encoding`, `EncodingWarning` an error around the load only,
   PD-6; loads a UTF-8 file with `rédacteur`; asserts exit 0 and the role read back; fails today on the `EncodingWarning`). Then
@@ -20,7 +20,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   `read_mapping` on top of it, `load_role_definitions` through it. Accept: the three `rp-access`
   scenarios pass; every existing test in `tests/unit/access/` and `tests/unit/collaboration/`
   (workflow loading uses `read_mapping`) passes unchanged.
-- [ ] 1.2 PD-1, PD-2 (reader). Tier unit. First failing test:
+- [x] 1.2 PD-1, PD-2 (reader). Tier unit. First failing test:
   `tests/generator/unit/test_uml_qea.py::test_a_missing_path_is_named_as_missing` (rewrites
   `test_a_missing_file_is_not_an_ea_file`; asserts the `QeaUsageError` message `<path>: no such file`).
   Then `test_an_unreadable_file_is_a_read_error` (chmod 000; skipped when run as root),
@@ -31,7 +31,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   `test_a_view_named_like_a_table_is_refused`. Accept: the `rp-uml-import` scenarios "a missing
   model file", "a read error", "no side files", "a view in place of a table" pass; the existing
   "not a .qea" tests pass unchanged.
-- [ ] 1.3 PD-3, DEC-4 (writer). Tier unit. First failing test:
+- [x] 1.3 PD-3, DEC-4 (writer). Tier unit. First failing test:
   `tests/generator/unit/test_uml_write.py::test_a_failed_move_leaves_no_report_and_names_the_file`
   (an `--out` with a previous report; `os.replace` made to raise `OSError(ENOSPC)` on the second
   move through an injected `move` callable that `write` takes, default `os.replace`; asserts
@@ -41,7 +41,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   `tests/generator/unit/test_uml_cli.py::test_an_unwritable_out_is_a_usage_error` (`--out` is a
   file; exit 2, the matrix line). Accept: "an interrupted write", "an output folder that cannot be
   written" pass; `test_uml_write.py` existing tests pass.
-- [ ] 1.4 #259, PD-4, DEC-3 (after 1.3: same file). Tier unit. First failing test:
+- [x] 1.4 #259, PD-4, DEC-3 (after 1.3: same file). Tier unit. First failing test:
   `tests/generator/unit/test_uml_write.py::test_the_start_up_check_refuses_a_staged_workflow`
   (`write` given hand-built schemas, a workflow file and a roles file that each load alone, the
   schema holding two classes with one class IRI that name different workflows, a refusal of
@@ -57,7 +57,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   workflow rows in `uml_workflow_rows.py` and the feature scenario "A drawn workflow" (which now
   loads the real converted root and its `app_*` modules from staging through `load_schema`) pass
   unchanged.
-- [ ] 1.5 #260, PD-5, DEC-2. Tier unit, then feature. First failing test: a `Row` in
+- [x] 1.5 #260, PD-5, DEC-2. Tier unit, then feature. First failing test: a `Row` in
   `tests/generator/unit/test_uml_rules.py`, "a lone role to its own class fixes member_class"
   (`UmlRule.TOOLKIT_SLOT`; asserts `slot_usage.member_class.equals_string == "Shelf"` and no
   `toolkit-slot-kept` line for the role). Then the row "a role to its own class beside one to Book
@@ -65,7 +65,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   collection whose subclass draws its own role stays nesting" and "a subclass's self-role under a
   parent that fixes a member class stays nesting" (PD-5, OPEN-6; both run with no problem). Feature: the scenario "a collection of collections"
   in `uml_import.feature` / `test_uml_import.py`. Accept: both rows and the scenario pass.
-- [ ] 1.6 PD-7. Tier unit. First failing test:
+- [x] 1.6 PD-7. Tier unit. First failing test:
   `tests/generator/unit/test_uml_toolkit.py::test_convert_uses_the_toolkit_it_is_given` (builds a
   `Toolkit` from the metamodel view, then `load_toolkit.cache_clear()` and a pass-through spy on
   `load_schema` in `toolkit.py`'s namespace, tagged `# X2` per `testing.adoc` rule 3; calls
@@ -79,7 +79,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   is empty; `grep -nE "= \"(rp_path|owned|graph|module_kind|workflow|meta|domain)\"" rdf_persistence_generation/uml/*.py`
   is empty; `grep -n "^class .*Error\|^class StagedFileRefused" rdf_persistence_generation/uml/*.py`
   is empty; the golden tests (`test_uml_golden.py`) pass byte for byte.
-- [ ] 1.7 PD-8 (tests only; after 1.5: same files). Tier unit and feature. First failing test:
+- [x] 1.7 PD-8 (tests only; after 1.5: same files). Tier unit and feature. First failing test:
   `tests/generator/unit/test_uml_rules.py::test_every_cited_rule_has_a_row` (rewrites
   `test_every_uml_rule_has_a_row`; fails for R-22 and R-26..R-28 until their rows are added). Then
   `test_uml_naming.py::test_the_name_patterns_are_the_linters`; the feature's first scenario
@@ -88,7 +88,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   `tests/generator/feature/test_uml_import.py` holds more than one `assert` statement (the lead
   checks with `ast-grep`). RISK-7: the lead may cut
   the feature additions to an issue.
-- [ ] 1.8 #261 and the converter's docs (after 1.2-1.5). Docs, tier: `make check-docs`.
+- [x] 1.8 #261 and the converter's docs (after 1.2-1.5). Docs, tier: `make check-docs`.
   `user-manual/serve.adoc`: what the relative paths of `install_service` are relative to (expected:
   the process's working directory, the `Path`s being opened as given; the builder checks
   `rdf_persistence/api/entrypoints/service.py` and writes what the code does); that `workflows=` lists each file
@@ -105,7 +105,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
   `test_a_workflow_no_class_names_is_still_loaded`). Accept: `make check-docs` passes; a fresh
   cold reader follows the how-to to a started toy service and reports no open question (the lead
   records the read in `evidence/cold-read.md`).
-- [ ] 1.9 Lead, release notes (RISK-3, RISK-6), in the PR before the gates: under `## [Unreleased]`
+- [x] 1.9 Lead, release notes (RISK-3, RISK-6), in the PR before the gates: under `## [Unreleased]`
   in `CHANGELOG.md` (hand-written; release-please carries it into the release PR, as
   `develop/index.adoc#release` says), a `### Changed` entry each for DEC-2 (a lone self-role now
   writes `member_class`; what a model that meant nesting must draw) and DEC-5 (a roles file with a
@@ -128,7 +128,7 @@ file. Tests of the converter run in CI lane `test-generator`; those of the libra
 1.3 and 1.5 then use; 1.2 (`qea.py`), 1.3 (`write.py`, `cli.py`) and 1.5 (`slots.py`) touch
 disjoint files.
 
-- [ ] 1.1 · [ ] 1.6 · [ ] 1.2 · [ ] 1.3 · [ ] 1.5 · [ ] 1.4 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10
+- [x] 1.1 · [x] 1.6 · [x] 1.2 · [x] 1.3 · [x] 1.5 · [x] 1.4 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [ ] 1.10
 
 ## Verification
 

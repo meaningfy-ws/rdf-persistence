@@ -262,3 +262,44 @@ proving the "not a .qea" line for a non-SQLite file.
 
 None for the PLAN; the owner's questions are `inputs/qa.md` OPEN-1 to OPEN-4, and the PLAN is
 complete under their recommended answers.
+
+## Delivery decisions
+
+- **D-1** (lead, stage 1) The task gate (`make test-changed check-quality`) could not finish for
+  any builder: other sessions loaded the machine (load ≈ 20), `test-changed` widened to the fast
+  suite because every converter edit regenerates manifests in every package, and the 120 s
+  pytest timeout fired in unrelated library tests that pass alone. The lead re-ran each task's
+  affected tests (T1, named in each commit) and relies on `make check-all` before the PR.
+- **D-2** (lead) Builders worked in separate worktrees; the lead applied each task's source and
+  tests to the stage branch and ran `make generate` there (P-0003), so the regenerated manifests
+  never conflict.
+- **F-T1** (tester after 1.3, Critical, accepted) A read-only `--out` printed `cannot write
+  <out>/.uml-write-…: Permission denied`, naming the staging folder that `tempfile` failed to
+  create and that does not exist. The error-matrix row "`--out` … is not writable" says
+  `cannot write <out>`. Fix: an error naming the staging folder itself names `out`; an error
+  naming a file inside staging keeps naming that file (row "Disk full … while staging"). Kept
+  tests: `test_a_read_only_out_is_an_output_error_naming_out`,
+  `test_the_command_exits_two_with_one_line_for_a_read_only_out`.
+
+- **D-3** (owner, 2026-11-24) Task 1.8's cold read is partly met (`evidence/cold-read.md`):
+  after one fix pass the reader reaches an in-process toy service but still guesses at the
+  onboarding of a whole service. The two contradictions between pages are fixed here; the
+  rest is a tutorial, #344.
+
+Under the floor:
+
+- **F-T2** (tester, Warning) An `OSError` with no `errno` raised by the move loses its message
+  (`[Errno None] None`). Only an injected `move` raises one; `os.replace` always sets `errno`.
+  Its test `test_a_move_error_without_errno_keeps_its_message` is deleted.
+- **R-W1** (review L2+L3, Warning) The only green `make check-all` predated the rebase. Met by
+  the run on the PR's head, recorded in the PR body.
+- **R-W2** (Warning) `reference/uml-conventions.adoc#member-class` cites the tracker ids DEC-2
+  and OPEN-6, which mean nothing to a modeller. The rule is stated in words beside them.
+- **R-W3** (Warning) An abstract collection with a self-role and a subclass with its own
+  self-role: both are member roles; #274's check drops the parent's (the subclass's class
+  descends from it), so the subclass fixes its own class. Correct, but untested.
+- **R-S4** (Suggestion) PD-4 rewrites the library's message to name `--out`; a `places`
+  argument on `Workflows` would be cleaner. Left as decided.
+- **R-S5** (Suggestion) `write` takes `move` and `load_view` as test seams (`noqa: PLR0913`);
+  a small writer class would hold them. Left for #343.
+- **R-S6** (Suggestion) Test helper modules export underscore names. Left.

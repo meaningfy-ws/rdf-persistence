@@ -14,10 +14,10 @@ from rdf_persistence.collaboration.domain.generated.rp_workflow import (
 )
 from rdf_persistence_generation.generated.rp_generation import UmlModel
 from rdf_persistence_generation.uml.context import Context
+from rdf_persistence_generation.uml.toolkit import load_toolkit
 from rdf_persistence_generation.uml.workflows import workflow_entries
 from tests.generator.uml_model import (
     BOOK,
-    METAMODEL_PREFIXES,
     PREFIXES,
     initial,
     klass,
@@ -53,7 +53,7 @@ def test_a_workflow_row(row: WorkflowRow) -> None:
 
 def _entries(uml: UmlModel, roles=("librarian", "reader")) -> tuple[list[Workflow], Context]:
     ctx = Context(
-        settings(**OVERRIDES), METAMODEL_PREFIXES, dict(PREFIXES) | {"lib": LIBRARY, "oth": OTHER}
+        settings(**OVERRIDES), load_toolkit(), dict(PREFIXES) | {"lib": LIBRARY, "oth": OTHER}
     )
     return workflow_entries(ctx, uml, roles), ctx
 

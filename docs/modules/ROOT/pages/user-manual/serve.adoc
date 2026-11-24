@@ -23,7 +23,6 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 
 from rdf_persistence import (
-    AccessRules,
     Action,
     FileStore,
     Identity,
@@ -31,14 +30,13 @@ from rdf_persistence import (
     Store,
     TokenVerifier,
     install_service,
-    load_role_definitions,
 )
 
 from library.domain import generated
 
 SCHEMA = Path("models/library.yaml")
-ROLES = Path("models/library_roles.yaml")
-REVIEW_WORKFLOW = Path("models/review.workflow.yaml")  # the books' review workflow
+ROLES = Path("models/library.roles.yaml")  # the roles file; rp-uml2linkml writes it, or write your own
+REVIEW_WORKFLOW = Path("models/workflows/review.workflow.yaml")  # the books' review workflow
 MIGRATIONS = Path("migrations")  # the folder `rp-generate` keeps the lock and the migration files in
 
 
@@ -59,7 +57,7 @@ def build_library_app(
         files=files,
         identity=identity,
         verifier=verifier,
-        rules=AccessRules(load_role_definitions(ROLES)),
+        rules=ROLES,
         settings=settings,
         workflows=[REVIEW_WORKFLOW],
         migrations=MIGRATIONS,
@@ -86,6 +84,11 @@ def build_library_app(
     return app
 ----
 
+`rules` is the path of the roles file: pass the path, and `install_service` loads it. Pass an
+`AccessRules` built with `load_role_definitions` only when you change the definitions in code
+before the service reads them. The file names here are those `rp-uml2linkml` writes; a
+hand-written file may have any name.
+
 `migrations` is the folder of your migration files. At start-up the service brings every database
 to the version the schema runs, before it serves. A tenant whose migration failed is set aside:
 its requests for data (its aggregates, files and listings) answer 503 with the problem
@@ -96,13 +99,19 @@ other tenants are served. See xref:howto/migrate.adoc#startup[Change a schema th
 The routes for a scan's bytes are yours, because the toolkit serves no bytes; why, and the route
 that writes the scan's record, are in xref:user-manual/files.adoc[Keep files].
 
+[#adapters]
 == The adapters and the settings
 
-The adapters and the settings come from the deployment. The adapters of the store, the identity
-provider and the token verifier are async context managers, so open them for the life of the app:
+The adapters and the settings come from the deployment. These are the real ones, so a running
+Fuseki, Zitadel and an S3 store are needed. For a toy service with none of them, build the same app
+over the testkit's in-memory fakes, as in xref:user-manual/test.adoc#whole-service[The whole service
+over the fakes]. The adapters of the store, the identity provider and the token verifier are async
+context managers, so open them for the life of the app, and serve `app` inside the block:
 
 [source,python]
 ----
+import uvicorn
+
 from rdf_persistence import (
     FusekiStore,
     JwksTokenVerifier,
@@ -128,8 +137,12 @@ async with (
     app = build_library_app(
         store=store, files=files, identity=identity, verifier=verifier, settings=settings
     )
-    ...                                    # serve app, for example with uvicorn
+    server = uvicorn.Server(uvicorn.Config(app, port=8000))
+    await server.serve()                   # runs the app's start-up, then serves until stopped
 ----
+
+Run the whole block in one coroutine (`asyncio.run(main())`), so the adapters stay open while the
+server runs and close when it stops.
 
 To see traces and structured logs, install the OpenTelemetry SDK and call your telemetry set-up
 first in this composition root, before the stores are built; the toolkit installs none itself.
@@ -172,15 +185,60 @@ verifier = JwksTokenVerifier(
 On start-up, before your own lifespan, it creates the system database if it is missing, guards the
 IRI policy (xref:user-manual/iri-policy.adoc#policy-cannot-change[The policy cannot change]), creates the application database if the schema has an application class, migrates the system and application databases, runs the sweep (on every wired store, see xref:howto/tenant-stores.adoc#startup[Put tenants on several stores]), and migrates the tenants, each on its own store. It stops with `OSError` if the generated folder lacks the context, the shapes, a frame or
 `openapi-components.json`, and with `LookupError` if the schema has no tenant root or not exactly
-one access record class. `rules` may also be the path of the roles file.
+one access record class.
 
+[#workflows]
 If a class of your schema follows a workflow, pass the workflow files too, as a sequence of paths:
-`install_service(app, ..., workflows=[Path("models/review.workflow.yaml")])`. They are checked
-here, and a bad or missing file stops the service with `InvalidWorkflow`. See
-xref:howto/workflow.adoc[Put a resource through review].
+`install_service(app, ..., workflows=[Path("models/workflows/review.workflow.yaml")])`. They are checked
+here, before the service serves. See xref:howto/workflow.adoc[Put a resource through review].
+
+* *Paths.* A relative path is opened as given (`install_service` does not resolve it against the
+  schema or the file that holds the call), so it is relative to the working directory of the
+  process. Start the service from the same folder every time, or build the paths from
+  `Path(__file__)`. This holds for `rules=` and `workflows=` alike.
+* *Each file is listed.* `workflows=` takes the files, one path each. A folder or a glob is not
+  expanded: it is a file that cannot be read, and stops the start with `InvalidWorkflow`.
+* *A class names a workflow no file defines* (the file is left out of the list, or the class's
+  `workflow` tag has another name): `InvalidWorkflow`, naming the class and the files given.
+* *A workflow no class names* is accepted and loaded; it governs no class.
+* *A wrong, stale or missing file* stops the start, naming the file. For a workflow file that is
+  `InvalidWorkflow`: the file cannot be read or is not YAML, is no mapping, gives a key twice, is
+  no valid workflow, or a transition names a role that no role definition has (the usual sign of a
+  workflow file left from an older model). For the roles file it is `InvalidRoleDefinition`: it
+  cannot be read, is not UTF-8, gives a key twice in an entry, or holds an invalid entry.
+
+A model drawn in UML and converted with `rp-uml2linkml` has both files written for you; the
+steps are in xref:howto/uml-to-linkml.adoc#serve[Generate the model from UML].
 
 To react to commits (run a use case as a command, or call code after every commit), build a bus
 and set `kit.bus`; see xref:howto/event-driven.adoc[React to changes with commands and observers].
+
+[#smallest]
+== The smallest composition root
+
+The shortest call serves a schema with no workflow and the roles file as `rules`:
+
+[source,python]
+----
+install_service(
+    app,
+    schema=Path("models/library.yaml"),
+    generated=generated,
+    store=store,
+    files=files,
+    identity=identity,
+    verifier=verifier,
+    rules=Path("models/library.roles.yaml"),
+    settings=settings,
+    migrations=Path("migrations"),
+)
+----
+
+For a toy service, pass `FakeStore()`, `FakeFileStore()` and `FakeIdentity()` from
+`rdf_persistence.testkit` as `store`, `files` and `identity` (see
+xref:user-manual/test.adoc#whole-service[The whole service over the fakes]); nothing else needs to
+run. Everything else has a default. `workflows` defaults to none, which stops the start when a class
+names a workflow.
 
 == The service kit
 

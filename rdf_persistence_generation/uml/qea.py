@@ -17,6 +17,8 @@ from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 
+from rdf_persistence.core.services.yaml_files import SHOWN
+from rdf_persistence_generation.exceptions import QeaUsageError
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     UmlAttribute,
@@ -135,14 +137,7 @@ XREF_STEREOTYPE_NAME = re.compile(r"Name=([^;]+);")
 ASSIGNMENT = "="  # splits `Key=value` at the first one, so `Op==` has the value `=`
 RUN_STATE_BLOCK = re.compile(r"@VAR;(?P<body>.*?)@ENDVAR;", re.DOTALL)
 PATH_SEPARATOR = "/"
-
-
-class QeaUsageError(Exception):
-    """The file or the ``--package`` cannot be used (exit 2); ``message`` is the matrix text."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
+SQLITE_HEADER = b"SQLite format 3\x00"
 
 
 def read_qea(
@@ -150,32 +145,62 @@ def read_qea(
 ) -> UmlModel | list[CheckProblem]:
     """Read the subtree of ``package`` (a name, or a path ``A/B``) without the ``excluded`` paths.
 
-    Returns the model, or every ``no_rule`` problem found, sorted; raises ``QeaUsageError``.
+    Returns the model, or every ``no_rule`` problem found, sorted.
+
+    Raises:
+        QeaUsageError: The path is no file, cannot be read, is not SQLite, any ``sqlite3.Error``
+            occurs (corrupt, locked, changed during the read), a table or column is missing (a
+            view or trigger named like a table is no table), or the package is unknown or
+            ambiguous.
     """
     connection = _open(path)
     try:
         _check_schema(connection, path)
         return _Reading(connection, package, tuple(excluded)).read()
+    except sqlite3.Error as error:
+        raise _cannot_read(path, error) from error
     finally:
         connection.close()
 
 
+def _cannot_read(path: Path, reason: object) -> QeaUsageError:
+    return QeaUsageError(f"{path} cannot be read: {str(reason)[:SHOWN]}")
+
+
 def _open(path: Path) -> sqlite3.Connection:
-    not_sqlite = QeaUsageError(f"{path} is not an Enterprise Architect .qea (SQLite) file")
+    """Open the file read-only after checking it is there, readable and SQLite (PD-1).
+
+    With no ``-wal`` file beside it the file is opened ``immutable``, so SQLite creates no side
+    file; with one (EA has the model open) it is opened ``mode=ro``, as the side files are there.
+    """
+    if not path.is_file():
+        raise QeaUsageError(f"{path}: no such file")
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(len(SQLITE_HEADER))
+    except OSError as error:
+        raise _cannot_read(path, error.strerror or error) from error
+    if header != SQLITE_HEADER:
+        raise QeaUsageError(f"{path} is not an Enterprise Architect .qea (SQLite) file")
+    mode = "mode=ro" if Path(f"{path}-wal").exists() else "immutable=1"
     connection = None
     try:
-        connection = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+        connection = sqlite3.connect(f"{path.resolve().as_uri()}?{mode}", uri=True)
         connection.row_factory = sqlite3.Row
+        connection.execute("pragma trusted_schema=OFF")
+        connection.execute("pragma query_only=ON")
         connection.execute("select name from sqlite_master").fetchall()
-    except sqlite3.DatabaseError as error:
+    except sqlite3.Error as error:
         if connection is not None:
             connection.close()
-        raise not_sqlite from error
+        raise _cannot_read(path, error) from error
     return connection
 
 
 def _check_schema(connection: sqlite3.Connection, path: Path) -> None:
-    tables = {row[0] for row in connection.execute("select name from sqlite_master")}
+    tables = {
+        row[0] for row in connection.execute("select name from sqlite_master where type = 'table'")
+    }
     for table in TABLE_COLUMNS:
         if table not in tables:
             raise QeaUsageError(f"{path} has no table {table}")

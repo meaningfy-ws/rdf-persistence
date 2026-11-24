@@ -7,6 +7,7 @@ listed here (A-1). Results are ``linkml_runtime`` definitions.
 """
 
 import functools
+from collections.abc import Mapping
 from typing import Final
 
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
@@ -43,6 +44,22 @@ class Toolkit:
 
     def class_by_name(self, name: str) -> ClassDefinition | None:
         return self._classes.get(name)
+
+    def toolkit_class(self, name: str) -> ClassDefinition:
+        """The toolkit class ``name``; a ``KeyError`` when there is none (a caller bug: it checked first)."""
+        return self._classes[name]
+
+    def toolkit_slot(self, iri: str) -> SlotDefinition:
+        """The reusable toolkit slot whose expanded ``slot_uri`` is ``iri``; a ``KeyError`` when there is none."""
+        return self._slot_uris[iri]
+
+    def prefixes(self) -> Mapping[str, str]:
+        """The prefix name and namespace of every prefix the metamodel declares (PD-6)."""
+        return {
+            prefix.prefix_prefix: prefix.prefix_reference
+            for schema in self._view.all_schema()
+            for prefix in schema.prefixes.values()
+        }
 
     def class_names(self) -> list[str]:
         """The names of every toolkit class, sorted."""

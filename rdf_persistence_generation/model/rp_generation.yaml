@@ -1925,6 +1925,24 @@ enums:
         title: Derived IRI
         description: A workflow whose diagram name has no prefix, so its IRI is made from the schema base.
         meaning: rp:ReportKindDerivedIri
+  LeftOutReason:
+    title: Left-out reason
+    description: >-
+      Why the converter leaves a class of the drawing out of the generated schemas; a link to it is
+      then reported by this reason.
+    permissible_values:
+      not_generated:
+        title: Not generated
+        description: The class carries a stereotype listed as not generated, or is an enumeration of the toolkit.
+        meaning: rp:LeftOutReasonNotGenerated
+      excluded:
+        title: Excluded
+        description: The class sits in an excluded package.
+        meaning: rp:LeftOutReasonExcluded
+      outside:
+        title: Outside
+        description: The class sits in a package outside the converted subtree.
+        meaning: rp:LeftOutReasonOutside
   UmlRule:
     title: UML rule
     description: >-

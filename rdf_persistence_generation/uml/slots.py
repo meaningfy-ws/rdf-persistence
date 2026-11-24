@@ -11,6 +11,7 @@ from typing import Final
 
 from linkml_runtime.linkml_model import ClassDefinition, SlotDefinition
 
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import (
     ReportKind,
     UmlAttribute,
@@ -29,7 +30,7 @@ from rdf_persistence_generation.uml.naming import (
 )
 
 URI: Final = "uri"
-OWNED: Final = "owned"
+OWNED: Final = RpAnnotation.OWNED.value
 HAS_PART: Final = "has_part"  # the toolkit slot of a collection's members (dcterms:hasPart)
 MEMBER_CLASS: Final = "member_class"  # the toolkit slot a reference collection's member role fixes
 MULTIPLICITY: Final = (
@@ -544,8 +545,7 @@ def _use_toolkit_slot(
     slot_names: dict[int, list[str]],
 ) -> bool:
     """Use the toolkit slot for the usage; False when the toolkit fills it, so nothing is carried."""
-    slot = ctx.toolkit.slot_by_uri(usage.iri)
-    assert slot is not None  # split_toolkit kept only usages that have one
+    slot = ctx.toolkit.toolkit_slot(usage.iri)
     name, label, shape = str(slot.name), usage.holder.label, usage.shape
     if ctx.toolkit.is_filled(name):
         text = f"the toolkit fills {name}; [{_cardinality_text(shape)}] is not carried"
@@ -579,8 +579,7 @@ def use_toolkit_slots(
     for usage in sorted(usages, key=lambda each: (each.holder.label, each.order)):
         definition = classes[usage.holder.uml_class.object_id]
         if _use_toolkit_slot(ctx, usage, definition, shared, slot_names):
-            slot = ctx.toolkit.slot_by_uri(usage.iri)
-            assert slot is not None  # split_toolkit kept only usages that have one
+            slot = ctx.toolkit.toolkit_slot(usage.iri)
             _kept(ctx, f"{usage.holder.label}.{slot.name}", slot, usage.shape, id(usage) in members)
     _fix_member_classes(ctx, [each for each in usages if id(each) in members], shared)
 
@@ -605,13 +604,17 @@ def _is_collection(
 def _member_roles(
     ctx: Context, usages: list[Usage], classes: Mapping[int, ClassDefinition]
 ) -> set[int]:
-    """The ids of the ``dct:hasPart`` usages that name a collection's member class (#241).
+    """The ids of the ``dct:hasPart`` usages that name a collection's member class (#241, #260).
 
-    The holder is a reference collection and the range a converted class other than the holder; a
-    role to the holder's own class is nesting and stays the toolkit's ``has_part``.
+    The holder is a reference collection and the range a converted class. The roles to a class other
+    than the holder are the member candidates. A lone role to the holder's own class is the member
+    role too (DEC-2), unless another collection in the holder's ``is_a`` lineage has a member role
+    (OPEN-6): then it is nesting and stays the toolkit's ``has_part``. A self-role beside a role to
+    another class is nesting.
     """
     by_name = {str(each.name): each for each in classes.values()}
     members: list[Usage] = []
+    selves: list[Usage] = []
     for usage in usages:
         slot = ctx.toolkit.slot_by_uri(usage.iri)
         target = usage.shape.range
@@ -619,11 +622,26 @@ def _member_roles(
             slot is not None
             and slot.name == HAS_PART
             and target in by_name
-            and target != usage.holder.label
             and _is_collection(ctx, classes[usage.holder.uml_class.object_id], by_name)
         ):
-            members.append(usage)
+            (selves if target == usage.holder.label else members).append(usage)
+    members += _lone_self_roles(selves, {each.holder.label for each in members}, by_name)
     return {id(each) for each in _without_narrowed_parents(ctx, members, by_name)}
+
+
+def _lone_self_roles(
+    selves: list[Usage], holders: set[str], by_name: Mapping[str, ClassDefinition]
+) -> list[Usage]:
+    """The self-roles whose holder shares no ``is_a`` lineage with a holder of a member role (OPEN-6)."""
+    return [
+        usage
+        for usage in selves
+        if not any(
+            other in _lineage(usage.holder.label, by_name)
+            or usage.holder.label in _lineage(other, by_name)
+            for other in holders
+        )
+    ]
 
 
 def _lineage(name: str, by_name: Mapping[str, ClassDefinition]) -> list[str]:

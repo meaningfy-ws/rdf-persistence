@@ -1,10 +1,12 @@
 """The .qea reader (PD-3, PD-4): the subtree, the usage errors, the tagged values, the boundaries."""
 
+import os
 import sqlite3
 from pathlib import Path
 
 import pytest
 
+from rdf_persistence_generation.exceptions import QeaUsageError
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     UmlLinkKind,
@@ -12,7 +14,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlRule,
 )
 from rdf_persistence_generation.problems import format_problem
-from rdf_persistence_generation.uml.qea import QeaUsageError, read_qea
+from rdf_persistence_generation.uml.qea import read_qea
 from tests.generator.uml_qea import QeaBuilder
 
 ROOT = "MODEL/library"
@@ -420,13 +422,94 @@ def test_an_exclude_path_that_matches_no_package_is_a_usage_error(tmp_path):
     )
 
 
-def test_a_missing_file_is_not_an_ea_file(tmp_path):
+@pytest.mark.parametrize("kind", ["absent", "folder"])
+def test_a_missing_path_is_named_as_missing(tmp_path, kind):
     path = tmp_path / "absent.qea"
+    if kind == "folder":
+        path.mkdir()
     with pytest.raises(QeaUsageError) as error:
         read_qea(path, ROOT, ())
-    assert error.value.message == f"{path} is not an Enterprise Architect .qea (SQLite) file", (
-        error.value.message
-    )
+    assert error.value.message == f"{path}: no such file", error.value.message
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root reads any file")
+def test_an_unreadable_file_is_a_read_error(tmp_path):
+    builder, _ = build_library(tmp_path)
+    path = builder.finish()
+    path.chmod(0)
+    try:
+        with pytest.raises(QeaUsageError) as error:
+            read_qea(path, ROOT, ())
+    finally:
+        path.chmod(0o600)
+    assert error.value.message == f"{path} cannot be read: Permission denied", error.value.message
+
+
+def test_a_corrupt_page_is_a_read_error_not_a_traceback(tmp_path):
+    builder, _ = build_library(tmp_path)
+    path = builder.finish()
+    data = bytearray(path.read_bytes())
+    for offset in range(4096, len(data)):
+        data[offset] = 0xFF  # keep page 1 (the header and the schema), wreck the rest
+    path.write_bytes(bytes(data))
+    with pytest.raises(QeaUsageError) as error:
+        read_qea(path, ROOT, ())
+    assert error.value.message.startswith(f"{path} cannot be read: "), error.value.message
+
+
+def _wal_model(tmp_path: Path) -> Path:
+    builder, _ = build_library(tmp_path)
+    path = builder.finish()
+    connection = sqlite3.connect(path)
+    connection.execute("pragma journal_mode=wal")
+    connection.commit()
+    connection.close()  # the last connection closing removes -wal and -shm
+    for side in ("-wal", "-shm"):
+        Path(f"{path}{side}").unlink(missing_ok=True)
+    return path
+
+
+def test_reading_a_wal_model_leaves_no_side_files(tmp_path):
+    path = _wal_model(tmp_path)
+    before = path.read_bytes()
+    as_model(read_qea(path, ROOT, ()))
+    side_files = sorted(p.name for p in tmp_path.iterdir() if p.name.startswith(path.name + "-"))
+    assert side_files == [], f"the reader left {side_files}"
+    assert path.read_bytes() == before, "the reader changed the file"
+
+
+def test_a_wal_model_with_a_wal_file_is_read(tmp_path):
+    path = _wal_model(tmp_path)
+    holder = sqlite3.connect(path)
+    holder.execute("pragma journal_mode=wal")
+    holder.execute("update t_package set Notes = 'edited' where Name = 'library'")
+    holder.commit()  # the change sits in the -wal file while this connection stays open
+    try:
+        assert Path(f"{path}-wal").exists(), "the test needs a -wal file"
+        model = as_model(read_qea(path, ROOT, ()))
+    finally:
+        holder.close()
+    notes = [p.note for p in model.uml_packages or [] if p.name == "library"]
+    assert notes == ["edited"], f"the reader missed the -wal content: {notes}"
+
+
+@pytest.mark.parametrize("kind", ["view", "trigger", "index"])
+def test_a_view_named_like_a_table_is_refused(tmp_path, kind):
+    builder, _ = build_library(tmp_path)
+    path = builder.finish()
+    _alter(path, "DROP TABLE t_xref")
+    if kind == "view":
+        _alter(path, "CREATE VIEW t_xref AS SELECT 1 AS Client, 1 AS Name, 1 AS Description")
+    elif kind == "index":
+        _alter(path, "CREATE INDEX t_xref ON t_object (Name)")
+    else:
+        _alter(
+            path,
+            "CREATE TRIGGER t_xref AFTER INSERT ON t_object BEGIN SELECT 1; END",
+        )
+    with pytest.raises(QeaUsageError) as error:
+        read_qea(path, ROOT, ())
+    assert error.value.message == f"{path} has no table t_xref", error.value.message
 
 
 def test_a_text_file_is_not_an_ea_file(tmp_path):

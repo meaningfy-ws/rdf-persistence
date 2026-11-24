@@ -1,54 +1,45 @@
 """TC-10 (write part): the files, the sorted report, the stale-file line, the byte-identical rerun (PD-22, I-2)."""
 
+import errno
+import os
 from pathlib import Path
 
 import pytest
 import yaml
-from linkml_runtime.linkml_model.meta import SchemaDefinition
+from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition
 
 from rdf_persistence.access.services.access import load_role_definitions
 from rdf_persistence.collaboration.services.workflows import load_workflow
 from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition, InvalidWorkflow
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence_generation.exceptions import OutputError, StagedFileRefused
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
-    ReportLine,
-    UmlPrefix,
 )
 from rdf_persistence_generation.problems import format_problem, format_problems
 from rdf_persistence_generation.uml import write as write_module
-from rdf_persistence_generation.uml.write import StagedFileRefused, write
+from rdf_persistence_generation.uml.write import write
 from tests.generator.uml_model import (
     BOOK,
-    PREFIXES,
     Converted,
-    initial,
     klass,
     model,
     object_,
     run,
-    state,
-    state_flow,
-    statechart,
 )
 
-ROOT = "lib"
+from .uml_write_rows import (
+    LIBRARY,
+    ROLE_DEFINITION,
+    ROOT,
+    _loan,
+    _report,
+    _schemas,
+    _write,
+)
+
 ROLES_FILE = f"{ROOT}.roles.yaml"
-ROLE_DEFINITION = 30  # the drawn toolkit class rp:RoleDefinition
-
-
-def _schemas() -> list[SchemaDefinition]:
-    return [
-        SchemaDefinition(id="https://example.org/ns/library", name="lib_books"),
-        SchemaDefinition(id="https://example.org/ns/shelves", name="lib_shelves"),
-    ]
-
-
-def _report() -> list[ReportLine]:
-    return [
-        ReportLine(report_kind=ReportKind.NOT_GENERATED, element="lib:Shelf", message="stereotype"),
-        ReportLine(report_kind=ReportKind.NO_NOTE, element="lib:Book", message="no note"),
-    ]
 
 
 def _files(folder: Path) -> dict[str, bytes]:
@@ -178,16 +169,6 @@ def _two_roles() -> Converted:
     )
 
 
-def _write(converted: Converted, out: Path, report: list[ReportLine] | None = None):
-    return write(
-        list(converted.schemas.values()),
-        converted.report if report is None else report,
-        out,
-        ROOT,
-        files=converted.files,
-    )
-
-
 def test_the_roles_file_is_written_sorted_and_read_back_by_the_loader(tmp_path: Path) -> None:
     converted = _two_roles()
 
@@ -275,7 +256,6 @@ def test_a_staged_file_the_loader_refuses_moves_nothing(
 
 # --- the workflow files (PD-4, PD-6, PD-8) -------------------------------------------------------
 
-LIBRARY = "https://example.org/ns/library/"
 WORKFLOW_FILE = "workflows/loan.workflow.yaml"
 LOAN_YAML = f"""\
 id: {LIBRARY}loan
@@ -306,49 +286,6 @@ workflow_transitions:
   - librarian
   comment_required: true
 """
-INITIAL, REQUESTED, APPROVED, REFUSED, RETURNED, CHART = 50, 51, 52, 53, 54, 70
-
-
-def _loan() -> Converted:
-    """The design's concrete example: the diagram ``lib:loan`` and the roles it names."""
-    roles = tuple(
-        object_(
-            40 + n, name, ROLE_DEFINITION, ("role", name), ("level", "tenant"), ("actions", "read")
-        )
-        for n, name in enumerate(("librarian", "reader"))
-    )
-    nodes = (
-        initial(INITIAL),
-        state(REQUESTED, "requested"),
-        state(APPROVED, "approved"),
-        state(REFUSED, "refused"),
-        state(RETURNED, "returned"),
-    )
-    flows = (
-        state_flow(100, INITIAL, REQUESTED),
-        state_flow(101, REQUESTED, APPROVED, roles="librarian"),
-        state_flow(102, REQUESTED, REFUSED, roles="librarian", comment_required="true"),
-        state_flow(103, APPROVED, RETURNED, roles="librarian,reader"),
-        state_flow(104, REFUSED, REQUESTED, roles="reader"),
-    )
-    uml = model(
-        klass(BOOK, "lib:Book"),
-        klass(ROLE_DEFINITION, "rp:RoleDefinition"),
-        objects=roles,
-        state_nodes=nodes,
-        state_flows=flows,
-        statecharts=(statechart(CHART, "lib:loan", *(each.object_id for each in nodes)),),
-    )
-    converted = run(
-        uml,
-        root_name=ROOT,
-        prefixes=[
-            UmlPrefix(prefix_name=name, namespace=namespace)
-            for name, namespace in {**PREFIXES, "lib": LIBRARY}.items()
-        ],
-    )
-    assert converted.problems == [], converted.problem_texts()
-    return converted
 
 
 def test_the_workflow_file_is_written_as_the_design_example_and_read_back(tmp_path: Path) -> None:
@@ -426,3 +363,170 @@ def test_a_staged_workflow_the_loader_refuses_moves_nothing(
 
     assert list(out.iterdir()) == [], "nothing was moved"
     assert sorted(path.name for path in tmp_path.iterdir()) == ["out"], "no temp folder is left"
+
+
+# --- the write fails or is interrupted (PD-3, DEC-4, G-3) ----------------------------------------
+
+
+def _full_disk_on_the_second_move():
+    """A move that works once, then fails as a full disk, naming the target it was moving to."""
+    calls: list[Path] = []
+
+    def move(source: Path, target: Path) -> None:
+        calls.append(target)
+        if len(calls) == 2:
+            raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC), str(target))
+        os.replace(source, target)
+
+    return move, calls
+
+
+def test_a_failed_move_leaves_no_report_and_names_the_file(tmp_path: Path) -> None:
+    clean = tmp_path / "clean"
+    write(_schemas(), _report(), clean, ROOT)
+    out = tmp_path / "out"
+    write(_schemas(), [], out, ROOT)  # a previous run, with its report
+    assert (out / "lib.uml-report.txt").exists(), "the previous run left a report"
+    move, calls = _full_disk_on_the_second_move()
+
+    with pytest.raises(OutputError) as raised:
+        write(_schemas(), _report(), out, ROOT, move=move)
+
+    assert raised.value.path == calls[1], f"the error names the failing target: {raised.value.path}"
+    assert raised.value.reason == os.strerror(errno.ENOSPC), raised.value.reason
+    assert not (out / "lib.uml-report.txt").exists(), "an interrupted write leaves no report"
+    assert [path.name for path in out.iterdir() if path.name.startswith(".")] == [], (
+        "the staging folder is gone"
+    )
+    write(_schemas(), _report(), out, ROOT)
+    assert _files(out) == _files(clean), "a re-run writes the bytes of a clean run"
+
+
+def test_staging_happens_inside_out(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    seen: list[Path] = []
+
+    def move(source: Path, target: Path) -> None:
+        seen.append(source)
+        os.replace(source, target)
+
+    write(_schemas(), _report(), out, ROOT, move=move)
+
+    assert seen, "something was moved"
+    assert all(out in source.parents for source in seen), f"staged inside out: {seen}"
+    assert seen[-1].name == "lib.uml-report.txt", "the report is moved last"
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["out"], "nothing beside out"
+
+
+def test_a_left_staging_folder_is_reported_not_deleted(tmp_path: Path) -> None:
+    left = tmp_path / f"{write_module.STAGING_PREFIX}abc123"
+    left.mkdir()
+    (left / "lib_books.yaml").write_text("half: written\n", encoding="utf-8")
+
+    added = write(_schemas(), _report(), tmp_path, ROOT)
+
+    assert [(line.report_kind, line.element, line.message) for line in added] == [
+        (ReportKind.STALE_FILE, left.name, "left by an interrupted run; delete it")
+    ], f"the left folder is reported, not the run's own staging: {added}"
+    assert (left / "lib_books.yaml").exists(), "and never deleted"
+
+
+def test_an_output_folder_that_is_a_file_is_an_output_error(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    out.write_text("not a folder", encoding="utf-8")
+
+    with pytest.raises(OutputError) as raised:
+        write(_schemas(), _report(), out, ROOT)
+
+    assert raised.value.path == out, f"the error names --out: {raised.value.path}"
+
+
+# --- the whole-model start-up check (PD-4, DEC-3) ------------------------------------------------
+
+SHARED_IRI = f"{LIBRARY}Loanable"
+
+
+def _workflow_text(name: str) -> str:
+    return f"id: {LIBRARY}{name}\nworkflow_name: {name}\nworkflow_states:\n- open\ninitial_state: open\n"
+
+
+def _class(name: str, workflow: str) -> ClassDefinition:
+    return ClassDefinition(
+        name=name,
+        class_uri=SHARED_IRI if name in ("First", "Second") else f"{LIBRARY}{name}",
+        annotations={"workflow": workflow},
+    )
+
+
+def _root_schema(*classes: ClassDefinition) -> SchemaDefinition:
+    return SchemaDefinition(
+        id=LIBRARY.rstrip("/"),
+        name=ROOT,
+        prefixes={"lib": LIBRARY},
+        default_prefix="lib",
+        classes={each.name: each for each in classes},
+    )
+
+
+def _staged_files(*workflows: str) -> dict[str, str]:
+    files = {
+        ROLES_FILE: "- role: librarian\n  level: tenant\n  actions:\n  - read\n",
+    }
+    files.update({f"workflows/{name}.workflow.yaml": _workflow_text(name) for name in workflows})
+    return files
+
+
+def test_the_start_up_check_refuses_a_staged_workflow(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    schema = _root_schema(_class("First", "loan"), _class("Second", "return"))
+
+    with pytest.raises(StagedFileRefused) as raised:
+        write([schema], [], out, ROOT, files=_staged_files("loan", "return"))
+
+    text = str(raised.value)
+    assert text.startswith("the written files would stop the service: "), text
+    assert "class Second" in text, f"the class _by_iri reports: {text}"
+    assert SHARED_IRI in text, f"the shared class IRI: {text}"
+    assert "'loan'" in text, f"the first workflow: {text}"
+    assert "'return'" in text, f"the second workflow: {text}"
+    assert ".uml-write-" not in text, f"no staging path: {text}"
+    assert list(out.iterdir()) == [], "nothing was moved and no staging folder is left"
+
+
+def test_a_refusal_naming_a_file_names_it_under_out(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    schema = _root_schema(_class("Lonely", "missing"))
+
+    with pytest.raises(StagedFileRefused) as raised:
+        write([schema], [], out, ROOT, files=_staged_files("loan", "return"))
+
+    text = str(raised.value)
+    assert "class Lonely names workflow 'missing'" in text, text
+    for name in ("loan", "return"):
+        assert f"{out}/workflows/{name}.workflow.yaml" in text, f"listed under out: {text}"
+    assert ".uml-write-" not in text, f"no staging path: {text}"
+
+
+@pytest.mark.parametrize(
+    ("files", "loaded"),
+    [
+        (_staged_files(), False),
+        (_staged_files("loan"), True),
+    ],
+    ids=["no-workflow-loads-no-schema", "a-workflow-loads-the-root-schema"],
+)
+def test_a_run_without_workflows_loads_no_schema(
+    tmp_path: Path, files: dict[str, str], loaded: bool
+) -> None:
+    seen: list[Path] = []
+
+    def load(path: Path):
+        seen.append(path)
+        return load_schema(path)
+
+    out = tmp_path / "out"
+
+    write([_root_schema(_class("Loan", "loan"))], [], out, ROOT, files=files, load_view=load)
+
+    assert bool(seen) == loaded, f"the schema loads only for a workflow: {seen}"
+    assert [path.name for path in seen] == (["lib.yaml"] if loaded else []), seen

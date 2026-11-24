@@ -8,62 +8,15 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence_generation.generated.rp_generation import UmlSettings
-from rdf_persistence_generation.uml.cli import load_settings, main, metamodel_prefixes
+from rdf_persistence_generation.uml.cli import load_settings, main
+from rdf_persistence_generation.uml.toolkit import load_toolkit
 from tests.generator.uml_qea import QeaBuilder
 
-ROOT = "MODEL/library"
-PREFIX = "rp-uml2linkml: "
-PREFIXES = """\
-schema_base: https://example.org/ns/library/
-default_prefix: lib
-version: "1"
-prefixes:
-  lib: https://example.org/ns/library#
-  dct: http://purl.org/dc/terms/
-"""
+from .uml_cli_run import PREFIX, PREFIXES, ROOT, build_library, prefixes_file, run
+
 BOX = (-20, 30, 320, -298)  # (left, top, right, bottom)
 INSIDE = (0, 0, 100, -50)
 STRADDLING = (300, 0, 400, -50)
-
-
-def build_library(tmp_path: Path) -> tuple[QeaBuilder, dict[str, int]]:
-    builder = QeaBuilder(tmp_path / "library.qea")
-    ids: dict[str, int] = {}
-    ids["model"] = builder.package("MODEL")
-    ids["library"] = builder.package("library", parent=ids["model"])
-    ids["book"] = builder.cls(ids["library"], "lib:Book", stereotype="root", note="A book.")
-    ids["chapter"] = builder.cls(ids["library"], "lib:Chapter")
-    ids["folio"] = builder.cls(ids["library"], "lib:Folio")
-    return builder, ids
-
-
-def prefixes_file(tmp_path: Path, text: str = PREFIXES) -> Path:
-    path = tmp_path / "prefixes.yaml"
-    path.write_text(text, encoding="utf-8")
-    return path
-
-
-def run(
-    capsys: pytest.CaptureFixture[str],
-    tmp_path: Path,
-    qea: Path,
-    *options: str,
-    prefixes: Path | None = None,
-    package: str = ROOT,
-) -> tuple[int, list[str]]:
-    """Run the command into ``tmp_path/out``; return the exit code and the stderr lines."""
-    argv = [
-        str(qea),
-        "--package",
-        package,
-        "--prefixes",
-        str(prefixes or prefixes_file(tmp_path)),
-        "--out",
-        str(tmp_path / "out"),
-        *options,
-    ]
-    code = main(argv)
-    return code, capsys.readouterr().err.splitlines()
 
 
 def snapshot(folder: Path) -> dict[str, bytes]:
@@ -252,6 +205,16 @@ def test_a_file_that_is_not_sqlite_is_a_usage_error(tmp_path, capsys):
     ), (code, lines)
 
 
+def test_an_unwritable_out_is_a_usage_error(tmp_path, capsys):
+    builder, _ = build_library(tmp_path)
+    out = tmp_path / "out"
+    out.write_text("not a folder", encoding="utf-8")
+
+    code, lines = run(capsys, tmp_path, builder.finish())
+
+    assert (code, lines) == (2, [f"{PREFIX}cannot write {out}: File exists"]), (code, lines)
+
+
 def test_an_unknown_package_is_a_usage_error(tmp_path, capsys):
     builder, _ = build_library(tmp_path)
 
@@ -323,7 +286,7 @@ def test_the_prefixes_file_and_the_options_become_settings(tmp_path):
 
 
 def test_the_metamodel_prefixes_name_the_toolkit_namespaces():
-    prefixes = metamodel_prefixes()
+    prefixes = load_toolkit().prefixes()
 
     assert prefixes["dcterms"] == "http://purl.org/dc/terms/", "dcterms is Dublin Core terms"
     assert prefixes["prov"] == "http://www.w3.org/ns/prov#", "prov is PROV-O"

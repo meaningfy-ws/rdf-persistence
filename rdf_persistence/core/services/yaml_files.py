@@ -39,15 +39,15 @@ class _UniqueKeyLoader(yaml.SafeLoader):
         return mapping
 
 
-def read_mapping(path: Path, noun: str, error_type: type[Exception]) -> dict:
-    """The mapping the YAML file ``path`` holds.
+def read_yaml(path: Path, noun: str, error_type: type[Exception]) -> object:
+    """What the YAML file ``path`` holds, read as UTF-8 and refusing a key given twice.
 
     Raises:
-        error_type: The file cannot be read, is not UTF-8, is not YAML, is nested too deeply, is
-            not a mapping, or gives a key twice; the message names the file and says ``noun``.
+        error_type: The file cannot be read, is not UTF-8, is not YAML, is nested too deeply, or
+            gives a key twice; the message names the file and says ``noun``.
     """
     try:
-        data = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
+        data: object = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
     except OSError as error:
         raise error_type(f"cannot read the {noun} {path}: {error}") from error
     except UnicodeDecodeError as error:
@@ -56,6 +56,17 @@ def read_mapping(path: Path, noun: str, error_type: type[Exception]) -> dict:
         raise error_type(f"{path} is not valid YAML: {str(error)[:SHOWN]}") from error
     except RecursionError as error:
         raise error_type(f"{path} is nested too deeply to read") from error
+    return data
+
+
+def read_mapping(path: Path, noun: str, error_type: type[Exception]) -> dict:
+    """The mapping the YAML file ``path`` holds.
+
+    Raises:
+        error_type: The file cannot be read, is not UTF-8, is not YAML, is nested too deeply, is
+            not a mapping, or gives a key twice; the message names the file and says ``noun``.
+    """
+    data = read_yaml(path, noun, error_type)
     if not isinstance(data, dict):
         raise error_type(f"{path} must hold one {noun}, a mapping")
     return data

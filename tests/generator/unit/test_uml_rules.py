@@ -5,10 +5,13 @@ fragment of LinkML the rule's column promises, or the problem its failure branch
 test says every ``UmlRule`` value has a row.
 """
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pytest
+import yaml
 from linkml_runtime.dumpers import yaml_dumper
 from linkml_runtime.linkml_model.meta import UniqueKey
 from linkml_runtime.utils.schemaview import SchemaView
@@ -60,6 +63,7 @@ class Row:
     uml: object
     check: Check
     overrides: dict[str, object] = field(default_factory=dict)
+    cites: str | None = None  # the R-n this row proves, as the UmlRule descriptions cite it
 
 
 def _no_problems(out: Converted) -> None:
@@ -146,6 +150,7 @@ ROWS_R1 = [
         UmlRule.PACKAGE_MODULE,
         model(klass(BOOK, "lib:Book"), klass(SHELF, "lib:Shelf", SHELVES_PKG)),
         _two_modules,
+        cites="R-1",
     ),
     Row(
         "classes in the subtree package go to main",
@@ -221,6 +226,7 @@ ROWS_R2 = [
         UmlRule.CLASS_IRI,
         model(klass(BOOK, "lib:Book")),
         _implicit_iri,
+        cites="R-2",
     ),
     Row(
         "an unprefixed name has no explicit IRI",
@@ -306,6 +312,7 @@ ROWS_R3 = [
         UmlRule.ABSTRACT_CLASS,
         model(klass(BOOK, "lib:Book", abstract=True)),
         _abstract,
+        cites="R-3",
     ),
     Row(
         "the Abstract stereotype in any case",
@@ -346,6 +353,7 @@ ROWS_R4 = [
             links=(generalisation(1, BOOK, SERIES),),
         ),
         _is_a,
+        cites="R-4",
     ),
     Row(
         "a parent in another package is imported",
@@ -492,6 +500,7 @@ ROWS_R5 = [
             )
         ),
         _title_slot,
+        cites="R-5",
     ),
     Row(
         "an attribute typed by an enumeration ranges over it",
@@ -641,6 +650,7 @@ ROWS_R6 = [
             ),
         ),
         _both_ends,
+        cites="R-6",
     ),
     *[
         Row(
@@ -758,6 +768,7 @@ ROWS_R7 = [
         UmlRule.ENUMERATION,
         model(enumeration(GENRE, "lib:Genre", ("novel", "lib:onLoan"))),
         _enum,
+        cites="R-7",
     ),
     Row(
         "failure: two literals with one key",
@@ -795,6 +806,7 @@ ROWS_R8 = [
         UmlRule.DEPENDENCY_ENUM_SLOT,
         _dependency_link("genre"),
         _dependency,
+        cites="R-8",
     ),
     Row(
         "failure: a dependency with no role",
@@ -858,6 +870,7 @@ ROWS_R9 = [
             links=(link(1, BOOK, SHELF, target_role="shelf", note="On a shelf."),),
         ),
         _descriptions,
+        cites="R-9",
     ),
     Row(
         "failure branch: an empty note is no description and a report line",
@@ -874,6 +887,7 @@ ROWS_R9 = [
             links=(link(1, BOOK, SHELF, target_role="lib:hasChapter"),),
         ),
         _titles,
+        cites="R-19",
     ),
 ]
 
@@ -948,6 +962,7 @@ ROWS_R10 = [
         UmlRule.ROOT_CLASS,
         model(klass(BOOK, "lib:Book", stereotype="root")),
         _root,
+        cites="R-10",
     ),
     Row(
         "a rp_path tagged value overrides the derived path",
@@ -970,6 +985,7 @@ ROWS_R10 = [
         UmlRule.BOUNDARY_OWNED,
         _book_chapter("1..*", boundaries=(boundary(20, BOOK, CHAPTER),)),
         _owned(True),
+        cites="R-11",
     ),
     Row(
         "an owned single slot is inlined",
@@ -1037,6 +1053,7 @@ ROWS_R20 = [
         UmlRule.CLASS_ANNOTATION,
         _tagged_root(tag(BOOK, "rp_writes", "service"), tag(BOOK, "database", "system")),
         _annotated(rp_writes="service", database="system", rp_path="books"),
+        cites="R-20",
     ),
     Row(
         "the workflow tag is the workflow annotation",
@@ -1139,6 +1156,7 @@ ROWS_R21 = [
         UmlRule.UNIQUE_KEY,
         _keyed(tag(BOOK, "unique_key", "k: title, subtitle; nulls=equal")),
         _key("k", ["title", "subtitle"], scope="tenant", nulls_equal=True),
+        cites="R-21",
     ),
     Row(
         "a key on a part has no scope",
@@ -1309,6 +1327,7 @@ ROWS_R12 = [
             links=(link(1, BOOK, SERIES, target_role="series"),),
         ),
         _not_generated,
+        cites="R-12",
     ),
     Row(
         "a link to a class outside the subtree is a URI range and a report line (D-17)",
@@ -1320,6 +1339,7 @@ ROWS_R12 = [
             outside_packages=(UmlPackage(package_id=EXTERNAL_PKG, name="external"),),
         ),
         _outside,
+        cites="R-29",
     ),
     Row(
         "a link to a class in an excluded package makes no slot and a report line",
@@ -1355,6 +1375,7 @@ ROWS_R12 = [
         UmlRule.SHARED_SLOT,
         model(*_SHARED),
         _shared,
+        cites="R-13",
     ),
     Row(
         "failure: one slot name with two IRIs",
@@ -1873,6 +1894,7 @@ ROWS_R25 = [
         _book(),
         _mixed(["AggregateRoot", "Described", "Tracked"], imports=(_RP_CORE, _RP_ANNOTATIONS)),
         _DEFAULTS,
+        cites="R-25",
     ),
     Row(
         "the default mixins are the ones the command line gives",
@@ -1925,6 +1947,7 @@ ROWS_R26 = [
             imports=(_RP_PROVENANCE, _RP_CORE, _RP_ANNOTATIONS),
         ),
         _DEFAULTS,
+        cites="R-26",
     ),
     Row(
         "rp_mixins names keep the tag order, spaces ignored, and no mixin is repeated",
@@ -1976,6 +1999,7 @@ ROWS_R27 = [
         _book(("workflow", "review")),
         _mixed(["AggregateRoot", "Described", "Tracked", "UnderWorkflow"], imports=(_RP_WORKFLOW,)),
         _DEFAULTS,
+        cites="R-27",
     ),
 ]
 
@@ -1995,6 +2019,7 @@ ROWS_R28 = [
             ),
         ),
         _DEFAULTS,
+        cites="R-28",
     ),
     Row(
         "a drawn parent comes after the rp_mixins names",
@@ -2140,6 +2165,7 @@ ROWS_R22 = [
         UmlRule.TOOLKIT_SLOT,
         _with(attribute(1, BOOK, "dct:identifier")),
         _all(_identifier_slot, _line("toolkit_slot_kept")),
+        cites="R-22",
     ),
 ]
 
@@ -2158,6 +2184,7 @@ ROWS_R15 = [
                 "Book.started_at_time: the toolkit fills started_at_time; [1..1] is not carried",
             ),
         ),
+        cites="R-15",
     ),
     Row(
         "a toolkit slot the class inherits, with an optional bound, adds nothing",
@@ -2222,34 +2249,38 @@ def _states_enum() -> object:
 
 def _enum_left_out(out: Converted) -> None:
     _no_problems(out)
-    assert "Genre" not in out.schemas["app_library"].enums
-    assert "Genre: stereotype workflow states, not generated" in out.report_lines("not_generated")
+    assert "Genre" not in out.schemas["app_library"].enums, "a listed enumeration makes no enum"
+    assert "Genre: stereotype workflow states, not generated" in out.report_lines(
+        "not_generated"
+    ), "the enumeration has its not-generated line"
 
 
 def _no_slot_for_states(out: Converted) -> None:
     _enum_left_out(out)
-    assert "genre" not in out.schemas["app_library"].slots
-    assert out.klass("app_library", "Book").slots == []
+    assert "genre" not in out.schemas["app_library"].slots, "no slot for the listed enumeration"
+    assert out.klass("app_library", "Book").slots == [], "the Book lists no slot"
     assert [line.split(":")[0] for line in out.report_lines("not_generated")] == [
         "Book.genre -> Genre",
         "Genre",
-    ]
+    ], "the dependency and the enumeration have one line each"
 
 
 def _no_slot_for_typed_attribute(out: Converted) -> None:
     _enum_left_out(out)
-    assert "status" not in out.schemas["app_library"].slots
-    assert out.klass("app_library", "Book").slots == []
+    assert "status" not in out.schemas["app_library"].slots, "no slot for the typed attribute"
+    assert out.klass("app_library", "Book").slots == [], "the Book lists no slot"
     assert [line.split(":")[0] for line in out.report_lines("not_generated")] == [
         "Book.status",
         "Genre",
-    ]
+    ], "the attribute and the enumeration have one line each"
 
 
 def _class_dependency_stays_a_uri(out: Converted) -> None:
     _no_problems(out)
-    assert out.slot("app_library", "series").range == "uri"
-    assert out.report_lines("not_generated") == ["Series: stereotype loaded graph, not generated"]
+    assert out.slot("app_library", "series").range == "uri", "the dependency is a URI slot"
+    assert out.report_lines("not_generated") == [
+        "Series: stereotype loaded graph, not generated"
+    ], "the class has its one line and the dependency adds none"
 
 
 ROWS_R30 = [
@@ -2357,6 +2388,7 @@ ROWS_R18 = [
         model(klass(BOOK, "lib:Book", stereotype="tenant root")),
         _tenant,
         _DEFAULTS,
+        cites="R-18",
     ),
     Row(
         "a graph tag of meta on a tenant root is the same annotation",
@@ -2464,6 +2496,7 @@ ROWS_R23 = [
         _work_model(),
         _work_is_root,
         _DEFAULTS,
+        cites="R-23",
     ),
     Row(
         "an abstract class that no slot ranges over is not a root",
@@ -2637,6 +2670,7 @@ ROWS_R24 = [
                 "Shelf": _usage("app_shelves", required=True),
             },
         ),
+        cites="R-24",
     ),
     Row(
         "the home is the module every other reaches, not the first in path order",
@@ -2878,8 +2912,11 @@ def _member_class(expected: str | None, *kept: str) -> Check:
     return check
 
 
-def _parent_member_class(expected: str | None, shelf: str | None) -> Check:
-    """The abstract Collection's ``member_class`` is fixed to ``expected``, Shelf's to ``shelf`` (#274)."""
+def _parent_member_class(expected: str | None, shelf: str | None, kept: str | None = None) -> Check:
+    """The abstract Collection's ``member_class`` is fixed to ``expected``, Shelf's to ``shelf`` (#274).
+
+    ``kept`` is the holder.slot whose role stays the toolkit's ``has_part``, reported.
+    """
 
     def check(out: Converted) -> None:
         _no_problems(out)
@@ -2887,11 +2924,11 @@ def _parent_member_class(expected: str | None, shelf: str | None) -> Check:
             usage = out.klass("app_library", name).slot_usage
             fixed = usage["member_class"].equals_string if "member_class" in usage else None
             assert fixed == want, f"the member class {name}'s hasPart role fixes"
-        if expected is None:
-            kept = (
-                "Collection.has_part: the toolkit's has_part is kept; range resource is not carried"
-            )
-            assert kept in out.report_lines("toolkit_slot_kept"), "the parent's role is reported"
+        if kept is not None:
+            lines = out.report_lines("toolkit_slot_kept")
+            assert any(
+                each.startswith(f"{kept}: the toolkit's has_part is kept") for each in lines
+            ), f"{kept} is reported as kept"
 
     return check
 
@@ -2924,10 +2961,28 @@ ROWS_MEMBER_CLASS = [
         _member_class(None),
     ),
     Row(
-        "a hasPart role to the collection's own class (nesting) keeps today's behaviour",
+        "a lone role to its own class fixes member_class",
         UmlRule.TOOLKIT_SLOT,
         _shelf(SHELF),
-        _member_class(None, _RANGE_KEPT.format("shelf")),
+        _member_class("Shelf"),
+    ),
+    Row(
+        "a role to its own class beside one to Book stays nesting",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(SHELF, BOOK),
+        _member_class("Book", _RANGE_KEPT.format("shelf")),
+    ),
+    Row(
+        "a self-role on an abstract collection whose subclass draws its own role stays nesting",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(BOOK, parent_role=_COLLECTION_ROOT),
+        _parent_member_class(None, "Book", kept="Collection.has_part"),
+    ),
+    Row(
+        "a subclass's self-role under a parent that fixes a member class stays nesting",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(SHELF, parent_role=_RESOURCE),
+        _parent_member_class("Resource", None, kept="Shelf.has_part"),
     ),
     Row(
         "a hasPart role on a class that is not a reference collection changes nothing",
@@ -2945,7 +3000,7 @@ ROWS_MEMBER_CLASS = [
         "an abstract collection whose subclass draws its own member role fixes none; the subclass does",
         UmlRule.TOOLKIT_SLOT,
         _shelf(BOOK, parent_role=_RESOURCE),
-        _parent_member_class(None, "Book"),
+        _parent_member_class(None, "Book", kept="Collection.has_part"),
     ),
     Row(
         "an abstract collection whose subclasses draw no member role keeps its member class",
@@ -3107,7 +3162,32 @@ def test_a_rule_row(row: Row) -> None:
     row.check(run(row.uml, **row.overrides))  # each check states its own failure messages
 
 
-@pytest.mark.parametrize("rule", list(UmlRule))
-def test_every_uml_rule_has_a_row(rule: UmlRule) -> None:
+_GENERATION_MODEL = (
+    Path(__file__).parents[3] / "rdf_persistence_generation" / "model" / "rp_generation.yaml"
+)
+_CITATION = re.compile(r"R-(\d+)(?:\s*(?:to|\.\.)\s*R-(\d+))?")
+
+
+def _cited_rules() -> list[str]:
+    """The ``R-n`` the ``UmlRule`` descriptions cite, a range (``R-25 to R-28``) expanded."""
+    values = yaml.safe_load(_GENERATION_MODEL.read_text())["enums"]["UmlRule"]["permissible_values"]
+    cited: set[int] = set()
+    for value in values.values():
+        for first, last in _CITATION.findall(value.get("description") or ""):
+            cited.update(range(int(first), int(last or first) + 1))
+    return [f"R-{number}" for number in sorted(cited)]
+
+
+@pytest.mark.parametrize("cited", _cited_rules())
+def test_every_cited_rule_has_a_row(cited: str) -> None:
     rows = [*ROWS, *ROLE_ROWS, *WORKFLOW_ROWS]  # the role and workflow rules keep their own tables
-    assert rule in {row.rule for row in rows}, f"the rule {rule.value} has no row in ROWS"
+    assert cited in {getattr(row, "cites", None) for row in rows}, (
+        f"the rule {cited} has no row that cites it"
+    )
+
+
+def test_the_cited_rules_are_read_from_the_descriptions() -> None:
+    cited = _cited_rules()
+    assert {"R-1", "R-15", "R-22", "R-25", "R-26", "R-27", "R-28", "R-29"} <= set(cited), (
+        f"a range and a pair are expanded: {cited}"
+    )
