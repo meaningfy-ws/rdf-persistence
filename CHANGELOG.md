@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-24
+
 ### ⚠ BREAKING
 - **The UML converter writes explicit `required` and `multivalued` flags in a `slot_usage` whose
   limits differ** (`consumer-gap-fixes`, #304). A class that narrows an inherited `0..*` role to
@@ -28,6 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   combine with every other filter; the listing's `total` counts them. A `None` inside a list is a
   `ValueError`. A slot with an `ifabsent` default is never absent. `Filter` and `Condition` gain
   `absent`. See "Listings and paging" in the HTTP API reference.
+- **`state_iri` is public** (`consumer-gap-fixes`, #311). A consumer imports it from
+  `rdf_persistence` to build a workflow state IRI, as the workflow how-to shows.
+- **An aggregate validator reads a referenced aggregate** (`aggregate-guards` stage 1, #305,
+  #334). `await reader.aggregate(iri)` returns the generated model as the transaction leaves it,
+  or None when it is missing, removed earlier in the transaction, or not readable by the writer.
+  A read pins the aggregate's version: the commit fails as a `Conflict` naming it if it changed
+  meanwhile. See "Control access".
 
 ### Changed
 - `Session.find(cls, slot=None)` now matches the aggregates with no value for the slot; it matched
@@ -720,7 +729,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.0...v0.8.1
