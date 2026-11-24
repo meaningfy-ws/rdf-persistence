@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **A lone `dct:hasPart` role to the collection's own class now fixes `member_class`**
+  (`converter-hardening`, #260). A reference collection whose only `dct:hasPart` role to a
+  converted class points at itself becomes a collection of collections: its own class is its
+  member class. Beside a role to another class, or when another collection in its class
+  hierarchy fixes a member class, the self-role stays nesting, as before. A model that drew a
+  lone self-role to mean nesting now gets a `member_class` and refuses `nests` data after
+  regeneration: draw the member class instead. See "A reference collection's member class" in
+  the UML conventions.
+- **A roles file that gives a key twice in one entry now stops the service at start**
+  (`converter-hardening`, #258). `load_role_definitions` reads through the same reader as the
+  workflow files, so a repeated key is an `InvalidRoleDefinition` naming it; before, the last
+  value silently won.
+
+### Fixed
+- **Role definitions are read as UTF-8 whatever the locale** (#258); a byte that is not UTF-8
+  is an `InvalidRoleDefinition`, not a `UnicodeDecodeError`.
+- **`rp-uml2linkml` refuses workflows the service would refuse at start** (#259): it runs the
+  library's own start-up check on the files it is about to write, and moves nothing (exit 1).
+- **`rp-uml2linkml` names every read and write failure instead of a traceback** (#229): a
+  missing model file, an unreadable or corrupt `.qea`, and an `--out` that cannot be written
+  are one `rp-uml2linkml:` line each, exit 2. Reading a `.qea` no longer creates `-shm` or
+  `-wal` files beside it, and an interrupted write leaves no report in `--out`.
+
 ## [0.11.0] - 2026-11-24
 
 ### ⚠ BREAKING
