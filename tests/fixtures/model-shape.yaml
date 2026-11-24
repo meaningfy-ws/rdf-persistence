@@ -717,6 +717,12 @@
     required: true
     multivalued: false
     range: string
+- class_name: LendingItem
+  slots:
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
 - class_name: Library
   slots:
   - name: charter
@@ -839,6 +845,70 @@
     required: false
     multivalued: false
     range: string
+- class_name: Loan
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: lends
+    required: true
+    multivalued: false
+    range: LendingItem
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
+- class_name: Magazine
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
 - class_name: MemberList
   slots:
   - name: hidden_count
@@ -943,6 +1013,36 @@
     required: true
     multivalued: false
     range: integer
+- class_name: Pamphlet
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
 - class_name: PendingLoad
   slots:
   - name: id

@@ -229,6 +229,10 @@
       "label": {
          "@id": "skos:prefLabel"
       },
+      "lends": {
+         "@type": "@id",
+         "@id": "lends"
+      },
       "level": {
          "@id": "rp:level",
          "@type": "@vocab",
@@ -505,17 +509,29 @@
       "KeyDuplicate": {
          "@id": "rp:KeyDuplicate"
       },
+      "LendingItem": {
+         "@id": "LendingItem"
+      },
       "Library": {
          "@id": "schema:Library"
       },
       "LibraryAccess": {
          "@id": "LibraryAccess"
       },
+      "Loan": {
+         "@id": "Loan"
+      },
+      "Magazine": {
+         "@id": "Magazine"
+      },
       "MembershipRule": {
          "@id": "rp:MembershipRule"
       },
       "Note": {
          "@id": "Note"
+      },
+      "Pamphlet": {
+         "@id": "Pamphlet"
       },
       "PendingLoad": {
          "@id": "rp:PendingLoad"

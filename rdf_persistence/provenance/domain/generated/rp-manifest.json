@@ -11,11 +11,11 @@
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
-      "sha256": "4e160e59c499c5885fccb54fa1abf93f7564ace626dd008803ba59036077a019"
+      "sha256": "142df52a29d1930181b623bd29a30d9f05ab09863639e4ba99eaefaba168770b"
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
-      "sha256": "9a5479cff235641b473aaca97a0e8d4a640e7cc93655f2ae0b6e2b36ddd742f4"
+      "sha256": "69dac0b6746f2f33635983d4209930abf13230a68db890beadbea6b64fb456fb"
     },
     {
       "path": "rdf_persistence_generation/__init__.py",

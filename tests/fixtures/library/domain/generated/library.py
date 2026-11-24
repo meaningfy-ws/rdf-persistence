@@ -85,7 +85,11 @@ from .books import (
     Book,
     Chapter,
     Genre,
+    LendingItem,
+    Loan,
+    Magazine,
     Note,
+    Pamphlet,
     Shelf
 )
 from .books_activities import (

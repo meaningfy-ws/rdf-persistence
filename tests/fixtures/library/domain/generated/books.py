@@ -103,6 +103,45 @@ class Author(Tracked, Described, AggregateRoot):
     contributor: _Optional[list[str]] = _Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
 
 
+class LendingItem(AggregateRoot):
+    "Something the library lends; an abstract aggregate root, so a loan points at any of its kinds by IRI."
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+
+
+class Magazine(LendingItem, Tracked, Described):
+    "A magazine the library lends; a concrete kind of item."
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
+    description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")
+    created: _Optional[datetime ] = _Field(default=None, title="Created", description="The time the graph was first committed.")
+    modified: _Optional[datetime ] = _Field(default=None, title="Modified", description="The time the graph was last committed.")
+    creator: _Optional[str] = _Field(default=None, title="Creator", description="The principal that first committed the graph.")
+    contributor: _Optional[list[str]] = _Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
+
+
+class Pamphlet(LendingItem, Tracked, Described):
+    "A pamphlet the library lends; a concrete kind of item."
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
+    description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")
+    created: _Optional[datetime ] = _Field(default=None, title="Created", description="The time the graph was first committed.")
+    modified: _Optional[datetime ] = _Field(default=None, title="Modified", description="The time the graph was last committed.")
+    creator: _Optional[str] = _Field(default=None, title="Creator", description="The principal that first committed the graph.")
+    contributor: _Optional[list[str]] = _Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
+
+
+class Loan(Tracked, Described, AggregateRoot):
+    "A loan of an item; an aggregate root that points at the item, of whichever kind, by IRI."
+    lends: str = _Field(default=..., title="Lends", description="The item the loan is of, another aggregate, abstract or concrete, stored as its IRI.")
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    label: str = _Field(default=..., title="Label", description="The preferred label of the object.")
+    description: _Optional[str] = _Field(default=None, title="Description", description="A free-text description of the object.")
+    created: _Optional[datetime ] = _Field(default=None, title="Created", description="The time the graph was first committed.")
+    modified: _Optional[datetime ] = _Field(default=None, title="Modified", description="The time the graph was last committed.")
+    creator: _Optional[str] = _Field(default=None, title="Creator", description="The principal that first committed the graph.")
+    contributor: _Optional[list[str]] = _Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
+
+
 class Chapter(Described):
     "A chapter of a book, known by its number rather than a label; part of the book\u0027s aggregate. It owns its notes."
     number: _Optional[int] = _Field(default=None, title="Chapter number", description="The position of a chapter in its book.")
@@ -127,5 +166,9 @@ class Note(Described):
 Book.model_rebuild()
 Shelf.model_rebuild()
 Author.model_rebuild()
+LendingItem.model_rebuild()
+Magazine.model_rebuild()
+Pamphlet.model_rebuild()
+Loan.model_rebuild()
 Chapter.model_rebuild()
 Note.model_rebuild()

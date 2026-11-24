@@ -1,0 +1,19 @@
+{
+  "@context": "context.jsonld",
+  "@omitGraph": true,
+  "@embed": "@always",
+  "@omitDefault": true,
+  "@type": "Loan",
+  "lends": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "creator": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "contributor": {
+    "@embed": "@never",
+    "@omitDefault": true
+  }
+}
