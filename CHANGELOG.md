@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-<<<<<<< HEAD
 ### ⚠ BREAKING
 - **The UML converter writes explicit `required` and `multivalued` flags in a `slot_usage` whose
   limits differ** (`consumer-gap-fixes`, #304). A class that narrows an inherited `0..*` role to

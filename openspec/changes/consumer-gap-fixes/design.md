@@ -100,7 +100,7 @@ Test first, in `tests/unit/tenancy/` (a new `test_set_grants_roles.py`, built wi
   `UnknownRole`, and the record's version is unchanged.
 - A refusing grant validator is not called.
 - A missing tenant with a bad role gives `NotFound` (E15).
-- The route returns the same 400 problem.
+- The route returns the same 422 problem (D-6).
 
 ### Stage 3, #311 (export)
 
