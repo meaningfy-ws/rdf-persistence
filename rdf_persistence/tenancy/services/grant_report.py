@@ -7,6 +7,7 @@ grants included). It reads every access record once and never raises: a start-up
 
 import logging
 
+from rdf_persistence.access.domain.generated.rp_access import Grant
 from rdf_persistence.access.services.access import AccessRules
 from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
@@ -35,22 +36,25 @@ async def report_grants(tenancy: Tenancy, rules: AccessRules) -> None:
         )
         return
     for record in records:
-        tenant = tenancy.tenant_of(record)
-        grants = record.grants or []
-        undefined = rules.undefined_roles(grants, tenant)
-        if undefined:
-            log.warning(
-                "grants name undefined roles",
-                extra=log_extra(
-                    LogContext(
-                        step=STEP,
-                        tenant_id=tenant,
-                        undefined_roles=[f"{level.value}:{role}" for level, role in undefined],
-                    )
-                ),
-            )
-        if not rules.administered(grants, tenant):
-            log.warning(
-                "no grant administers the tenant",
-                extra=log_extra(LogContext(step=STEP, tenant_id=tenant)),
-            )
+        _report_tenant(rules, tenancy.tenant_of(record), record.grants or [])
+
+
+def _report_tenant(rules: AccessRules, tenant: str, grants: list[Grant]) -> None:
+    """Warn of the undefined roles of one tenant's ``grants``, and when none of them administers it."""
+    undefined = rules.undefined_roles(grants, tenant)
+    if undefined:
+        log.warning(
+            "grants name undefined roles",
+            extra=log_extra(
+                LogContext(
+                    step=STEP,
+                    tenant_id=tenant,
+                    undefined_roles=[f"{level.value}:{role}" for level, role in undefined],
+                )
+            ),
+        )
+    if not rules.administered(grants, tenant):
+        log.warning(
+            "no grant administers the tenant",
+            extra=log_extra(LogContext(step=STEP, tenant_id=tenant)),
+        )
