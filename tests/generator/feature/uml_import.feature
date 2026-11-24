@@ -158,6 +158,14 @@ Feature: A UML class model becomes LinkML that the toolkit accepts
     And the workflow's IRI is "https://example.org/ns/library#loan"
     And the report has a "workflow" line naming "lib:loan"
 
+  # spec: rp-uml-import / a collection of collections
+  Scenario: A collection of collections
+    Given a shelf root tagged "rp_mixins=ReferenceCollection" whose only part role points at the shelf
+    When the model is converted
+    Then the conversion succeeds
+    And the shelf's member class is fixed to "Shelf"
+    And the report has "no" "toolkit-slot-kept" lines
+
   # spec: rp-uml-import / an undefined role
   Scenario: An undefined role
     Given a Statechart diagram "lib:loan" whose transition from "requested" to "approved" is tagged "roles=archivist", and no role definition "archivist"

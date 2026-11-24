@@ -2878,8 +2878,13 @@ def _member_class(expected: str | None, *kept: str) -> Check:
     return check
 
 
-def _parent_member_class(expected: str | None, shelf: str | None) -> Check:
-    """The abstract Collection's ``member_class`` is fixed to ``expected``, Shelf's to ``shelf`` (#274)."""
+def _parent_member_class(
+    expected: str | None, shelf: str | None, kept: str | None = None
+) -> Check:
+    """The abstract Collection's ``member_class`` is fixed to ``expected``, Shelf's to ``shelf`` (#274).
+
+    ``kept`` is the holder.slot whose role stays the toolkit's ``has_part``, reported.
+    """
 
     def check(out: Converted) -> None:
         _no_problems(out)
@@ -2887,11 +2892,11 @@ def _parent_member_class(expected: str | None, shelf: str | None) -> Check:
             usage = out.klass("app_library", name).slot_usage
             fixed = usage["member_class"].equals_string if "member_class" in usage else None
             assert fixed == want, f"the member class {name}'s hasPart role fixes"
-        if expected is None:
-            kept = (
-                "Collection.has_part: the toolkit's has_part is kept; range resource is not carried"
+        if kept is not None:
+            lines = out.report_lines("toolkit_slot_kept")
+            assert any(each.startswith(f"{kept}: the toolkit's has_part is kept") for each in lines), (
+                f"{kept} is reported as kept"
             )
-            assert kept in out.report_lines("toolkit_slot_kept"), "the parent's role is reported"
 
     return check
 
@@ -2924,10 +2929,28 @@ ROWS_MEMBER_CLASS = [
         _member_class(None),
     ),
     Row(
-        "a hasPart role to the collection's own class (nesting) keeps today's behaviour",
+        "a lone role to its own class fixes member_class",
         UmlRule.TOOLKIT_SLOT,
         _shelf(SHELF),
-        _member_class(None, _RANGE_KEPT.format("shelf")),
+        _member_class("Shelf"),
+    ),
+    Row(
+        "a role to its own class beside one to Book stays nesting",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(SHELF, BOOK),
+        _member_class("Book", _RANGE_KEPT.format("shelf")),
+    ),
+    Row(
+        "a self-role on an abstract collection whose subclass draws its own role stays nesting",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(BOOK, parent_role=_COLLECTION_ROOT),
+        _parent_member_class(None, "Book", kept="Collection.has_part"),
+    ),
+    Row(
+        "a subclass's self-role under a parent that fixes a member class stays nesting",
+        UmlRule.TOOLKIT_SLOT,
+        _shelf(SHELF, parent_role=_RESOURCE),
+        _parent_member_class("Resource", None, kept="Shelf.has_part"),
     ),
     Row(
         "a hasPart role on a class that is not a reference collection changes nothing",
@@ -2945,7 +2968,7 @@ ROWS_MEMBER_CLASS = [
         "an abstract collection whose subclass draws its own member role fixes none; the subclass does",
         UmlRule.TOOLKIT_SLOT,
         _shelf(BOOK, parent_role=_RESOURCE),
-        _parent_member_class(None, "Book"),
+        _parent_member_class(None, "Book", kept="Collection.has_part"),
     ),
     Row(
         "an abstract collection whose subclasses draw no member role keeps its member class",

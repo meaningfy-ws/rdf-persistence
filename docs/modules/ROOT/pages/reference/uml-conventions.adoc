@@ -408,8 +408,10 @@ it points at is written as the collection's fixed `member_class`, so a collectio
 refused by the generated model and by its shape. No `toolkit-slot-kept` line is written for that
 role's range, because the range is carried as the member class.
 
-* A `dct:hasPart` role to the collection's own class is nesting. It stays the toolkit's `has_part`
-and is reported as `toolkit-slot-kept` with its range, as before. Nesting is stated with `nests`.
+* A `dct:hasPart` role to the collection's own class that is its only role to a converted class
+fixes the collection's own class as its member class (a collection of collections, DEC-2): see
+below. Beside a role to another class, it is nesting: it stays the toolkit's `has_part` and is
+reported as `toolkit-slot-kept` with its range, as before. Nesting is stated with `nests`.
 * `dct:hasPart` roles to two different classes on one collection fail the run
 (`[toolkit_slot] Shelf: dct:hasPart roles to Book and Map: a reference collection has one member class`).
 * On a class that is not a reference collection, a `dct:hasPart` role is a plain use of the
@@ -474,6 +476,61 @@ classes:
     slot_usage:
       member_class:
         equals_string: Book
+----
+
+A collection of collections draws one `dct:hasPart` role, to its own class. That lone role fixes the
+class as its own member class (DEC-2).
+
+[mermaid]
+....
+classDiagram
+  class Shelf["lib:Shelf"] {
+    <<root>>
+  }
+  Shelf --> "0..*" Shelf : hasPart
+  note for Shelf "rp_mixins = ReferenceCollection"
+....
+
+[source,yaml]
+----
+classes:
+  Shelf:
+    mixins: [AggregateRoot, ReferenceCollection, Described, Tracked]
+    slot_usage:
+      member_class:
+        equals_string: Shelf
+----
+
+The exception (OPEN-6): when another collection in the class's `is_a` lineage, an ancestor or a
+descendant, has a member role, the lone role to its own class is nesting, as before. Take an abstract
+`Folder` whose only role points at `Folder`, and its subclass `Album` with a role to `Photo`: `Album`
+fixes `member_class: Photo`, `Folder` fixes none, and `Folder`'s role stays the toolkit's `has_part`,
+reported as `toolkit-slot-kept`. Fixing both would contradict, and the run would fail "does not
+narrow" for a model that converts today.
+
+[mermaid]
+....
+classDiagram
+  class Folder["lib:Folder"] {
+    <<abstract>>
+  }
+  Folder --> "0..*" Folder : hasPart
+  Album --|> Folder
+  Album --> "0..*" Photo : hasPart
+  note for Folder "rp_mixins = ReferenceCollection"
+....
+
+[source,yaml]
+----
+classes:
+  Folder:
+    abstract: true
+    mixins: [ReferenceCollection, ...]   # no member_class; has_part is the toolkit's
+  Album:
+    is_a: Folder
+    slot_usage:
+      member_class:
+        equals_string: Photo
 ----
 
 [#multiplicity]

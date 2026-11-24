@@ -320,6 +320,18 @@ def _loan_with_undefined_role(
     _draw_loan(world, chart, [(source, target, {name: value}), *others])
 
 
+@given(
+    parsers.parse(
+        'a shelf root tagged "{written}" whose only part role points at the shelf'
+    )
+)
+def _shelf_of_shelves(world: World, written: str) -> None:
+    name, value = written.split("=", 1)
+    shelf = world.builder.cls(world.library, "lib:Shelf", stereotype="root", note="A shelf.")
+    world.builder.tag(shelf, name, value)
+    world.builder.association(shelf, shelf, "dct:hasPart", "0..*", note="The shelves it holds.")
+
+
 # --- When -----------------------------------------------------------------------------------------------
 
 
@@ -546,6 +558,13 @@ def _workflow_transitions(world: World) -> None:
 @then(parsers.parse('the workflow\'s IRI is "{iri}"'))
 def _workflow_iri(world: World, iri: str) -> None:
     assert world.workflow.id == iri, "the prefix of the diagram's name is expanded"
+
+
+@then(parsers.parse('the shelf\'s member class is fixed to "{expected}"'))
+def _member_class(world: World, expected: str) -> None:
+    usage = world.klass("Shelf").get("slot_usage", {})
+    fixed = usage.get("member_class", {}).get("equals_string")
+    assert fixed == expected, f"the shelf's member_class: {usage}"
 
 
 # --- Then: the report ----------------------------------------------------------------------------------

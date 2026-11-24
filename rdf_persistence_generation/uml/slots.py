@@ -604,13 +604,17 @@ def _is_collection(
 def _member_roles(
     ctx: Context, usages: list[Usage], classes: Mapping[int, ClassDefinition]
 ) -> set[int]:
-    """The ids of the ``dct:hasPart`` usages that name a collection's member class (#241).
+    """The ids of the ``dct:hasPart`` usages that name a collection's member class (#241, #260).
 
-    The holder is a reference collection and the range a converted class other than the holder; a
-    role to the holder's own class is nesting and stays the toolkit's ``has_part``.
+    The holder is a reference collection and the range a converted class. The roles to a class other
+    than the holder are the member candidates. A lone role to the holder's own class is the member
+    role too (DEC-2), unless another collection in the holder's ``is_a`` lineage has a member role
+    (OPEN-6): then it is nesting and stays the toolkit's ``has_part``. A self-role beside a role to
+    another class is nesting.
     """
     by_name = {str(each.name): each for each in classes.values()}
     members: list[Usage] = []
+    selves: list[Usage] = []
     for usage in usages:
         slot = ctx.toolkit.slot_by_uri(usage.iri)
         target = usage.shape.range
@@ -618,9 +622,17 @@ def _member_roles(
             slot is not None
             and slot.name == HAS_PART
             and target in by_name
-            and target != usage.holder.label
             and _is_collection(ctx, classes[usage.holder.uml_class.object_id], by_name)
         ):
+            (selves if target == usage.holder.label else members).append(usage)
+    holders = {each.holder.label for each in members}
+    for usage in selves:
+        label = usage.holder.label
+        related = any(
+            other in _lineage(label, by_name) or label in _lineage(other, by_name)
+            for other in holders
+        )
+        if not related:
             members.append(usage)
     return {id(each) for each in _without_narrowed_parents(ctx, members, by_name)}
 

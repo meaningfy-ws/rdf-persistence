@@ -303,7 +303,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/slots.py",
-      "sha256": "5a5ccaed8e7f390d5cc1c8b06b6abb49d3cbc63ffc6d7e414ab74cc5fae79324"
+      "sha256": "6641984612cd9cf9bdca544488d07bff599979d9d8afcfbf2f736cea17d00f33"
     },
     {
       "path": "rdf_persistence_generation/uml/tags.py",
