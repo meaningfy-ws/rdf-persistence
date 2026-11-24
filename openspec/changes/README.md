@@ -150,6 +150,22 @@ definitions and workflows, and the fixes for #277, #278, #274 and #276. The rele
 before the CHANGELOG PR, so the CHANGELOG at the tag lacks the 0.9.0 section; the release notes
 link `develop`'s. The consumer refreshes its lock (it follows `develop`) and regenerates.
 
+### The first consumer's needs, third wave (shaped 2026-11-24)
+
+These are issues #300 to #312, from MWB2's `v2-05` and `v2-06`. The owner's priority was #301,
+#300, #302, #304, then #303, then the rest. The owner sliced them by concern and kept the
+in-flight epic's own order (`consumer-gap-fixes/inputs/qa.md`).
+
+| # | Id | Appetite | Issues | Depends on | Needed by (MWB2) | State |
+|---|---|---|---|---|---|---|
+| 13 | `domain-values-and-fixes` | MEDIUM (4 stages) | #301, #303, #302, #300 | none | `v2-05` stage 1 (#301); `v2-02` round trips and the transition route | merging: #313 merged; #314, #315, #316 next, each rebased, regenerated (P-0003) and re-gated after the one before it; release 0.10.0 open (#317) |
+| 14 | `consumer-gap-fixes` | SMALL (4 stages) | #304, #306, #311, #312 | row 13 merged | `v2-06`: one ontology collection per version (#304), roles, discussion, coverage | EPIC and PLAN gated (`evidence/clarity-gate.md`) |
+| 15 | `aggregate-guards` | SMALL to MEDIUM | #305, #309 | none | `v2-07` package range; `v2-06` CM delete while under review | not shaped |
+| 16 | `grant-roles` | SMALL | #307, #310 | row 14 (#306) | `v2-06` role rounds (RISK-2), audience warning | not shaped; #307 stance: a migration step may rename a role in, or drop it from, a tenant's grants (owner, 2026-11-24) |
+| 17 | `reference-filters` | MEDIUM | #308 | row 14 (`absent` filter, same listing code) | `v2-06` CM list by source version | not shaped |
+
+Rows 15 to 17 are each shaped in their own session, in this order unless the consumer's need changes.
+
 ### Why this order
 
 1. **#72 and the release first, as fillers.** Both are independent and small. Cutting 0.2.0
