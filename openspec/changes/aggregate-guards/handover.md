@@ -1,20 +1,22 @@
-# Hand-over: aggregate-guards, after stage 1
+# Hand-over: aggregate-guards, after stage 2
 
 ## Done
-Stage 1 (#305, the reader hands over a referenced aggregate), PR feat/reader-aggregate (merged by
-the watch-and-merge command after this note).
+Stage 1, PR #334 (merged). Stage 2 (#309, delete rules), PR feat/delete-validators (merged by the
+watch-and-merge command after this note).
 
 ## Decided since the PLAN
-D-9, D-10, D-11 (design.md, Delivery decisions).
+D-9 to D-14 (design.md, Delivery decisions). D-12 is the developer's: a delete rule refuses with
+`Refused`, answered as a 409 `refused` problem that keeps the rule's message.
 
 ## Open
-- `make test-containers` fails 6 generator e2e tests and errors 1 router test on `develop` too
-  (#331); the fix is its own PR, `fix/generator-e2e-331` (change `generator-e2e-fixtures`).
-- Stage 2 is being built in `.worktrees/aggregate-guards-309` on top of this stage; it rebases on
-  `develop` once this PR merges.
+- Under the floor, stage 2: no tenant-deletion test with a delete rule registered (R2-W4); T11 is
+  a plain transaction, not `delete_cascade` (R2-W5). Stage 1's R1-W2 to R1-W5 likewise.
+- `ServiceKit.remove_with_files` has no route in the toolkit: a consumer route must pass
+  `readable_by(caller, access)` as `may_read` (its docstring says so).
 
 ## Next
-Stage 2, task 2.1. Read first: tasks.md §2, design.md D-5 to D-8, specs/rp-service-api.
+Close: task 3.2. Archive the change and comment on #305 and #309.
 
 ## Prompt
-Act as the team lead. Deliver stage 2 of openspec/changes/aggregate-guards from handover.md.
+Act as the team lead. Close openspec/changes/aggregate-guards from handover.md: archive it and
+comment on #305 and #309.
