@@ -201,6 +201,10 @@
          "@type": "xsd:float",
          "@id": "ttl_seconds"
       },
+      "rp.grants.undefined_roles": {
+         "@container": "@set",
+         "@id": "undefinedRoles"
+      },
       "unknown_kid_cooldown_seconds": {
          "@type": "xsd:float",
          "@id": "unknown_kid_cooldown_seconds"

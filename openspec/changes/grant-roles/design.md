@@ -279,3 +279,49 @@ The report and the header only read.
 ## Open Questions
 
 None.
+
+## Delivery decisions
+
+### D-8
+
+Stage 1 impact (lead, at stage start on `71aa56d2`): `migration_request` is HIGH, because the
+generator's `lock_problems` reaches it through `load_migration`. D-3 only adds the keyword
+`grants: bool = False`, so every existing caller builds the same request as before; T5 and the
+unchanged migration tests show it. Taken by the lead, not escalated; shown for validation at the
+end (R-0007).
+
+### D-9
+
+Develop moved after the PLAN was read: `Tenancy` now keeps `rules.with_iris(self._iris)`
+(consumer-gap-fixes D-4). `report_grants` takes each record's tenant from
+`tenancy.tenant_of(record)`, under that IRI policy, and `_level` compares a grant's target with
+it, so the report and `set_grants` agree on which roles are undefined. `_run_at_startup` passes
+`kit.rules`; no `with_iris` call is needed.
+
+### D-10
+
+The report's warning carries its `level:role` pairs in a new `LogContext` slot,
+`undefined_roles` (`rp.grants.undefined_roles`, multivalued) in `rp_core_services.yaml`, then
+`make generate` (P-0010, P-0011). D-5 named the attribute but no slot existed for it.
+
+### D-11
+
+Stage 1 review (one pass, L2+L3; `result: stage=1 role=reviewer lens=L2+L3 findings=5 accepted=2`).
+Two Warnings re-labelled Critical and fixed, in one fixer pass:
+
+- **R1-W1** (`migration_runner.py`): no test runs `grant_roles` through `migrate_shared`, though the
+  spec scenarios say "WHEN start-up migrates the system database". Re-labelled because #307's
+  deliverable could silently become a stamp move with every gate green. Fix: a runner test on the
+  fake store: the system database's grants change; the application and a tenant database get only
+  the stamp.
+- **R1-W2** (`tests/integration/store/`): no container test sends a grant operation, though stage 1
+  runs `make test-containers` because migrations run on Fuseki. Re-labelled because the gate the
+  developer asked for did not test what it was asked for. Fix: one Fuseki test of the merge (T3b)
+  and the drop (T2).
+
+Under the floor:
+
+- R1-W3: T8b stubs `Tenancy` with a `SimpleNamespace`; the wrapping of an undecodable record as
+  `StoredDataInvalid` is `Tenancy`'s, tested with it.
+- R1-S4: the T3b negative control catches any `ValueError`, not only the duplicate grant key.
+- R1-S5: no service-level test that a stale role is named at start-up and a request is served after.

@@ -5,36 +5,51 @@ registry. Chains are files in ``tmp_path``; the request is the very text the sto
 """
 
 import pytest
+from pydantic import ValidationError
 from rdflib import RDF, XSD, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.compare import isomorphic
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantAccess
+from rdf_persistence.access.services.access import _access_mapper
 from rdf_persistence.core.domain.exceptions import InvalidBody, SparqlError
+from rdf_persistence.core.domain.sparql_parsing import prepare_update
+from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.migrations.services.generated.rp_migrations_services import (
+    GrantRoles,
     Migration,
     MigrationStep,
+    RoleRename,
 )
-from rdf_persistence.migrations.services.migrations import Chain
+from rdf_persistence.migrations.services.migrations import Chain, migration_request
 from rdf_persistence.migrations.services.migrations import chain_of as chain_of_schema
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.tenancy.services.migration_runner import migrate_dataset
 from tests.migration_helpers import (
+    ACCESS_TOKEN,
     BOOK,
+    BOOK_GRAPH,
     ISBN,
     LIB,
     LOADED,
     MID_ISBN,
     OLD_ISBN,
+    OTHER_RECORD,
+    OTHER_TENANT,
+    RECORD,
     REGISTRY,
     RP,
     STAMP,
     STAMPS,
     TOKEN,
+    Held,
     chain_of,
     dataset,
     migration,
     stamp,
+    the_record,
 )
+from tests.toy import ADA, BOB, TENANT
 
 
 def isbns(data: Dataset, graph: URIRef) -> set[str]:
@@ -387,3 +402,215 @@ def test_the_consumers_drop_of_had_member_after_the_toolkits_step_keeps_the_memb
         "the members survive as dcterms:hasPart: the toolkit's chain ran first"
     )
     assert stamped(data) == {RP: "3", LIB: "2"}, "both chains ran"
+
+
+# -- grant-roles T1 to T7: a migration renames or drops the roles of the stored grants -----------------------
+
+
+def system_database(*records: tuple[URIRef, str, Held]) -> Dataset:
+    """A dump stamped ``1`` for the consumer's schema, with one access record graph per ``(iri, tenant, grants)``."""
+    data = Dataset()
+    data.graph(STAMPS).add(stamp(LIB, "1"))
+    for iri, tenant, held in records:
+        target = data.graph(graph_iri(str(iri)))
+        for triple in the_record(iri, tenant, held):
+            target.add(triple)
+    return data
+
+
+def sent(data: Dataset, roles: GrantRoles, *, grants: bool = True) -> None:
+    """Apply, to ``data``, the request of a migration of the consumer's schema that only has ``roles``."""
+    migration = Migration(schema_id=LIB, from_version="1", to_version="2", grant_roles=roles)
+    request = migration_request(migration, STAMPS, grants=grants)
+    data.update(prepare_update(request, dict(data.namespaces())))
+
+
+def renames(*pairs: tuple[str, str], drop: list[str] | None = None) -> GrantRoles:
+    return GrantRoles(
+        rename=[RoleRename(from_role=a, to_role=b) for a, b in pairs] or None, drop=drop
+    )
+
+
+def decoded(data: Dataset, iri: URIRef = RECORD) -> TenantAccess:
+    """The access record as the library reads it: a duplicate grant key makes this raise (RISK-1)."""
+    graph = data.graph(graph_iri(str(iri)))
+    return _access_mapper().from_graph(TenantAccess, str(iri), graph, graph_iri(str(iri)))
+
+
+def held_by(data: Dataset, iri: URIRef = RECORD) -> Held:
+    return {(g.assignee, g.target, g.role) for g in decoded(data, iri).grants or []}
+
+
+def parts_of(data: Dataset, iri: URIRef = RECORD) -> set:
+    return set(data.graph(graph_iri(str(iri))).objects(iri, v.GRANTS))
+
+
+def tokens_of(data: Dataset, iri: URIRef = RECORD) -> set[str]:
+    graph = graph_iri(str(iri))
+    return {str(o) for o in data.graph(graph).objects(graph, v.VERSION)}
+
+
+def test_t1_a_rename_changes_the_role_of_every_grant_that_names_it_and_nothing_else():
+    before: Held = {
+        (ADA, TENANT, "librarian"),
+        (BOB, TENANT, "reader"),
+        (ADA, BOOK_GRAPH, "reader"),
+    }
+    other: Held = {
+        (BOB, OTHER_TENANT, "reader"),
+        (BOB, OTHER_TENANT, "reader2"),
+        (ADA, OTHER_TENANT, "Reader"),
+    }
+    data = system_database((RECORD, TENANT, before), (OTHER_RECORD, OTHER_TENANT, other))
+    parts = parts_of(data)
+    sent(data, renames(("reader", "member")))
+    assert held_by(data) == {
+        (ADA, TENANT, "librarian"),
+        (BOB, TENANT, "member"),
+        (ADA, BOOK_GRAPH, "member"),
+    }, "the grants that named reader name member; the librarian grant is as it was"
+    assert held_by(data, OTHER_RECORD) == {
+        (BOB, OTHER_TENANT, "member"),
+        (BOB, OTHER_TENANT, "reader2"),
+        (ADA, OTHER_TENANT, "Reader"),
+    }, "every record is renamed; a role that only looks like the name (case, a suffix) is not"
+    assert parts_of(data) == parts, "the grant parts are the same nodes: renamed in place"
+
+
+def test_t2_a_drop_deletes_the_grants_naming_the_role_with_their_parts_and_keeps_the_others():
+    before: Held = {
+        (ADA, TENANT, "librarian"),
+        (BOB, TENANT, "guest"),
+        (ADA, BOOK_GRAPH, "guest"),
+        (BOB, BOOK_GRAPH, "reader"),
+    }
+    data = system_database((RECORD, TENANT, before))
+    parts = parts_of(data)
+    guests = {
+        part
+        for part in parts
+        if (part, v.ROLE, Literal("guest")) in data.graph(graph_iri(str(RECORD)))
+    }
+    assert len(guests) == 2, "the setup has two grant parts naming guest"
+    sent(data, renames(drop=["guest"]))
+    assert held_by(data) == {(ADA, TENANT, "librarian"), (BOB, BOOK_GRAPH, "reader")}, (
+        "only the guest grants went"
+    )
+    assert parts_of(data) == parts - guests, "the others keep their parts"
+    graph = data.graph(graph_iri(str(RECORD)))
+    for part in guests:
+        assert not list(graph.triples((part, None, None))), "a dropped part leaves no triple"
+
+
+@pytest.mark.parametrize(
+    ("pairs", "before", "after"),
+    [
+        (
+            [("reader", "member")],
+            {(BOB, TENANT, "reader"), (BOB, TENANT, "member")},
+            {(BOB, TENANT, "member")},
+        ),
+        (
+            [("reader", "member")],
+            {(BOB, TENANT, "reader"), (ADA, TENANT, "member")},
+            {(BOB, TENANT, "member"), (ADA, TENANT, "member")},
+        ),
+        (
+            [("reader", "member")],
+            {(BOB, TENANT, "reader"), (BOB, BOOK_GRAPH, "member")},
+            {(BOB, TENANT, "member"), (BOB, BOOK_GRAPH, "member")},
+        ),
+    ],
+    ids=["the same assignee and target", "another assignee", "another target"],
+)
+def test_t3_a_rename_onto_a_grant_that_exists_leaves_one_and_only_for_the_same_assignee_and_target(
+    pairs, before, after
+):
+    data = system_database((RECORD, TENANT, before))
+    sent(data, renames(*pairs))
+    assert held_by(data) == after, (
+        "the record decodes (no duplicate key) and holds one grant where there was a pair"
+    )
+
+
+def test_t3b_a_merge_leaves_one_grant_and_the_record_decodes():
+    before: Held = {(BOB, TENANT, "reader"), (BOB, TENANT, "viewer"), (ADA, TENANT, "viewer")}
+    data = system_database((RECORD, TENANT, before))
+    sent(data, renames(("reader", "member"), ("viewer", "member")))
+    assert held_by(data) == {(BOB, TENANT, "member"), (ADA, TENANT, "member")}, (
+        "one member grant per assignee and target"
+    )
+
+
+def test_t3b_the_operations_in_another_order_would_leave_a_duplicate():
+    """The negative control of T3b: the order of ``_operations`` is what the merge relies on (D-4)."""
+    data = system_database((RECORD, TENANT, {(BOB, TENANT, "reader"), (BOB, TENANT, "viewer")}))
+    migration = Migration(
+        schema_id=LIB,
+        from_version="1",
+        to_version="2",
+        grant_roles=renames(("reader", "member"), ("viewer", "member")),
+    )
+    first_dedup, first_rename, second_dedup, second_rename, *rest = migration_request(
+        migration, STAMPS, grants=True
+    ).split(";\n")
+    reordered = ";\n".join([first_dedup, second_dedup, first_rename, second_rename, *rest])
+    data.update(prepare_update(reordered, dict(data.namespaces())))
+    with pytest.raises((ValidationError, ValueError)):
+        decoded(data)
+
+
+def test_t3c_a_rename_applies_to_grants_at_every_level():
+    before: Held = {(BOB, TENANT, "reader"), (BOB, BOOK_GRAPH, "reader")}
+    data = system_database((RECORD, TENANT, before))
+    sent(data, renames(("reader", "member")))
+    assert held_by(data) == {(BOB, TENANT, "member"), (BOB, BOOK_GRAPH, "member")}, (
+        "the tenant-level and the aggregate-level grant are both renamed"
+    )
+
+
+def test_t4_the_same_migration_sent_twice_changes_nothing_the_second_time():
+    data = system_database((RECORD, TENANT, {(BOB, TENANT, "reader"), (BOB, TENANT, "guest")}))
+    roles = renames(("reader", "member"), drop=["guest"])
+    sent(data, roles)
+    once = set(data.quads())
+    assert stamped(data) == {LIB: "2"}, "the stamp moved"
+    sent(data, roles)
+    assert set(data.quads()) == once, "the stamp guard matches nothing the second time"
+
+
+def test_t5_a_migration_that_is_not_for_the_system_database_has_no_effect_on_grants(
+    tmp_path, toolkit_chain
+):
+    """``migrate_dataset`` and a tenant database pass no flag: only the stamp moves (E6)."""
+    data = system_database((RECORD, TENANT, {(BOB, TENANT, "reader"), (BOB, TENANT, "guest")}))
+    data.graph(STAMPS).add(stamp(RP, "1"))
+    migration_with_roles = Migration(
+        schema_id=LIB,
+        from_version="1",
+        to_version="2",
+        grant_roles=renames(("reader", "member"), drop=["guest"]),
+    )
+    chain = chain_of(tmp_path / "grants", LIB, migration_with_roles, current="2")
+    before = held_by(data)
+    migrate_dataset(data, [(RP, toolkit_chain), (LIB, chain)], STAMPS)
+    assert held_by(data) == before, "no grant changed"
+    assert stamped(data) == {RP: "1", LIB: "2"}, "the stamp moved"
+
+
+def test_t7_a_grant_only_migration_changes_the_version_token_of_the_access_record():
+    data = system_database(
+        (RECORD, TENANT, {(BOB, TENANT, "reader")}),
+        (OTHER_RECORD, OTHER_TENANT, {(BOB, OTHER_TENANT, "reader")}),
+    )
+    sent(data, renames(("reader", "member")))
+    for iri in (RECORD, OTHER_RECORD):
+        assert len(tokens_of(data, iri)) == 1, "the record has one token"
+        assert tokens_of(data, iri) != {str(ACCESS_TOKEN)}, "and it is a new one"
+
+
+def test_a_migration_with_no_matching_grant_still_moves_the_stamp_and_leaves_the_grants():
+    data = system_database((RECORD, TENANT, {(BOB, TENANT, "librarian")}))
+    sent(data, renames(("reader", "member"), drop=["guest"]))
+    assert held_by(data) == {(BOB, TENANT, "librarian")}, "nothing to rename or drop"
+    assert stamped(data) == {LIB: "2"}, "the stamp moved"

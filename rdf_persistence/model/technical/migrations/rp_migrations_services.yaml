@@ -38,11 +38,36 @@ classes:
       title:
         required: true
 
+  RoleRename:
+    title: Role rename
+    description: One role name a migration changes to another in the stored grants.
+    class_uri: rp:RoleRename
+    slots:
+      - from_role
+      - to_role
+    slot_usage:
+      from_role:
+        required: true
+      to_role:
+        required: true
+
+  GrantRoles:
+    title: Grant roles
+    description: >-
+      What a migration does to the role names in the stored grants of the system database: the
+      renames, in the order they apply, then the names whose grants are deleted. In the file,
+      `rename` is a map from the old name to the new one; loading turns it into the list.
+    class_uri: rp:GrantRoles
+    slots:
+      - rename
+      - drop
+
   Migration:
     title: Migration
     description: >-
       The reviewed file that moves the data of a database from one version of a schema to the next:
-      the schema's id, the two versions and the steps, in order.
+      the schema's id, the two versions and the steps, in order; and, optionally, the renames and
+      drops of the role names in the stored grants.
     class_uri: rp:Migration
     slots:
       - schema_id
@@ -50,6 +75,7 @@ classes:
       - to_version
       - description
       - steps
+      - grant_roles
     slot_usage:
       schema_id:
         required: true
@@ -102,6 +128,35 @@ slots:
     range: MigrationStep
     multivalued: true
     inlined_as_list: true
+  from_role:
+    title: From role
+    description: The role name a grant names before the migration.
+    slot_uri: rp:fromRole
+    range: string
+  to_role:
+    title: To role
+    description: The role name a grant names after the migration.
+    slot_uri: rp:toRole
+    range: string
+  rename:
+    title: Rename
+    description: The role renames of a migration, in the order they apply.
+    slot_uri: rp:roleRename
+    range: RoleRename
+    multivalued: true
+    inlined_as_list: true
+  drop:
+    title: Drop
+    description: The role names whose grants a migration deletes, after the renames.
+    slot_uri: rp:roleDrop
+    range: string
+    multivalued: true
+  grant_roles:
+    title: Grant roles
+    description: The renames and drops of role names in the stored grants of the system database.
+    slot_uri: rp:grantRoles
+    range: GrantRoles
+    inlined: true
   schema_id:
     title: Schema id
     description: The id of the LinkML schema whose stored data a dump manifest or a migration is about.

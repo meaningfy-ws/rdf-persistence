@@ -224,7 +224,7 @@ def test_a_request_with_the_wrong_number_of_operations_is_refused(tmp_path, monk
     monkeypatch.setattr(  # X3
         migrations,
         "migration_request",
-        lambda m, stamps: smuggled(m, stamps) + ";\nCLEAR ALL",
+        lambda m, stamps, **flags: smuggled(m, stamps, **flags) + ";\nCLEAR ALL",
     )
     with pytest.raises(InvalidMigration, match="parses into 4 operations, not the 3"):
         load_migration(write(tmp_path, migration(rename())))

@@ -106,6 +106,10 @@
       "rp.tenant.id": {
          "@id": "tenantId"
       },
+      "rp.grants.undefined_roles": {
+         "@container": "@set",
+         "@id": "undefinedRoles"
+      },
       "@version": 1.1,
       "type": "@type",
       "HttpSettings": {

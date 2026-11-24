@@ -35,6 +35,7 @@ from rdf_persistence.core.services.yaml_files import (
     shown,
 )
 from rdf_persistence.migrations.services.generated.rp_migrations_services import (
+    GrantRoles,
     Migration,
     MigrationStep,
 )
@@ -68,6 +69,21 @@ _STAMP_MOVE = (
     "WHERE { GRAPH $stamps { $schema_id $p_stamp $from_version } }"
 )
 
+# The patterns of the grant operations (grant-roles D-4): each becomes a MigrationStep, so it goes through
+# _STEP like a consumer's step. ``?rec``, ``?old``, ``?new``, ``?x``, ``?a``, ``?t``, ``?p`` and ``?o`` are
+# ordinary variables of the step; the role names enter as literals made with term().
+_DEDUP_WHERE = (  # a grant whose renamed form the same assignee holds on the same target (DEC-3)
+    "?rec $p_grant ?old . ?old $p_role $old_role ; $p_assignee ?a ; $p_target ?t . "
+    "?rec $p_grant ?new . ?new $p_role $new_role ; $p_assignee ?a ; $p_target ?t . "
+    "?old ?p ?o ."
+)
+_DEDUP_DELETE = "?rec $p_grant ?old . ?old ?p ?o ."
+_RENAME_WHERE = "?rec $p_grant ?x . ?x $p_role $old_role ."
+_RENAME_DELETE = "?x $p_role $old_role ."
+_RENAME_INSERT = "?x $p_role $new_role ."
+_DROP_WHERE = "?rec $p_grant ?x . ?x $p_role $role . ?x ?p ?o ."
+_DROP_DELETE = "?rec $p_grant ?x . ?x ?p ?o ."
+
 
 def load_migration(path: Path) -> Migration:
     """The migration in the YAML file ``path``, validated and checked step by step (PD-6).
@@ -79,14 +95,20 @@ def load_migration(path: Path) -> Migration:
             or one of the toolkit's own predicates in a template, a graph or service pattern or a
             reserved variable, or the request built from the migration does not parse into the
             expected operations; the file has a key twice, or the schema id has a codepoint
-            escape; the message names the file and the step.
+            escape; ``grant_roles`` drops a name it renames from or to, renames a name to a name it
+            renames or to itself, renames a name twice, or has an empty name; the message names the
+            file and the step.
     """
-    migration = _validated(path, read_mapping(path, "migration", InvalidMigration))
+    migration = _validated(
+        path, _with_renames_listed(read_mapping(path, "migration", InvalidMigration))
+    )
     if CODEPOINT_ESCAPE.search(migration.schema_id):
         raise InvalidMigration(f"{path}: schema_id has a codepoint escape (\\u or \\U)")
     for number, step in enumerate(migration.steps or [], start=1):
         if problem := _step_problem(step):
             raise InvalidMigration(f"{path}: step {number} ({shown(step.title)}): {problem}")
+    if problem := _grant_problem(migration.grant_roles):
+        raise InvalidMigration(f"{path}: grant_roles {problem}")
     if problem := _request_problem(migration):
         raise InvalidMigration(f"{path}: {problem}")
     return migration
@@ -222,6 +244,19 @@ def _one_per(files: dict[Path, Migration], field: str, verb: str) -> dict[str, P
     return found
 
 
+def _with_renames_listed(data: dict) -> dict:
+    """``data`` with ``grant_roles.rename`` as the list of pairs the model has, when the file wrote a map.
+
+    The file reads ``rename: {old: new}``; a map keeps the pairs in file order and cannot repeat an old
+    name. Anything else is left for the validation to refuse.
+    """
+    roles = data.get("grant_roles")
+    if not (isinstance(roles, dict) and isinstance(roles.get("rename"), dict)):
+        return data
+    pairs = [{"from_role": old, "to_role": new} for old, new in roles["rename"].items()]
+    return {**data, "grant_roles": {**roles, "rename": pairs}}
+
+
 def _validated(path: Path, data: dict) -> Migration:
     try:
         return Migration.model_validate(data)
@@ -229,30 +264,84 @@ def _validated(path: Path, data: dict) -> Migration:
         raise InvalidMigration(f"{path}: {problems_of(error)}") from error
 
 
-def migration_request(migration: Migration, stamps: URIRef) -> str:
+def migration_request(migration: Migration, stamps: URIRef, *, grants: bool = False) -> str:
     """The one update request that moves a database from ``from_version`` to ``to_version`` (PD-7).
 
-    Every step as PD-5 states it, then, if there is a step, the rotation of every ``rp:version``
-    token (PD-8), then the stamp move; each operation matches only the ``from_version`` stamp. A
-    pattern goes in only as ``checked_group`` answers it.
+    Every step as PD-5 states it, then, when ``grants`` is true and the file has ``grant_roles``, the
+    operations that rename or drop the roles of the stored grants (grant-roles D-4); then, if there is a
+    step or a grant operation, the rotation of every ``rp:version`` token (PD-8), then the stamp move;
+    each operation matches only the ``from_version`` stamp. A pattern goes in only as ``checked_group``
+    answers it. ``grants`` is true for the system database alone: the grants live there.
 
     Raises:
         SparqlError: The schema id is not an IRI that SPARQL can carry, or a pattern fails its check.
     """
-    return ";\n".join(_operations(migration, stamps))
+    return ";\n".join(_operations(migration, stamps, grants=grants))
 
 
-def _operations(migration: Migration, stamps: URIRef) -> list[SparqlTerm]:
-    """The operations of the request, one each: the steps, the rotation if any, the stamp move."""
+def _operations(migration: Migration, stamps: URIRef, *, grants: bool = False) -> list[SparqlTerm]:
+    """The operations of the request, one each: the steps, the grant operations if any, the rotation if
+    any, the stamp move."""
     guard = v.stamp_guard_terms(
         stamps, schema_id=URIRef(migration.schema_id), from_version=migration.from_version
     )
-    steps = migration.steps or []
-    operations = [_step_operation(step, guard) for step in steps]
-    if steps:
+    changes = [*(migration.steps or []), *(_grant_steps(migration.grant_roles) if grants else [])]
+    operations = [_step_operation(step, guard) for step in changes]
+    if changes:
         operations.append(fragment_terms(_ROTATION, guard, p_version=term(v.VERSION)))
     operations.append(fragment_terms(_STAMP_MOVE, guard, to=term(Literal(migration.to_version))))
     return operations
+
+
+def _grant_steps(roles: GrantRoles | None) -> list[MigrationStep]:
+    """The steps that rename and drop the roles of the stored grants, in the order that must be kept.
+
+    Each rename in file order: first the removal of the grants whose renamed form the same assignee holds
+    on the same target, then the rename itself; so a merge (two names renamed to one) leaves no duplicate
+    grant, which would stop the access record from decoding. The drops come last.
+    """
+    if roles is None:
+        return []
+    steps = [
+        step for pair in roles.rename or [] for step in _rename_steps(pair.from_role, pair.to_role)
+    ]
+    return [*steps, *(_drop_step(name) for name in roles.drop or [])]
+
+
+def _rename_steps(old: str, new: str) -> list[MigrationStep]:
+    grant, role = term(v.GRANTS), term(v.ROLE)
+    source, result = term(Literal(old)), term(Literal(new))
+    removal = MigrationStep(
+        title=f"delete the grant of {old!r} that {new!r} already gives",
+        where_pattern=fill(
+            _DEDUP_WHERE,
+            p_grant=grant,
+            p_role=role,
+            p_assignee=term(v.ASSIGNEE),
+            p_target=term(v.TARGET),
+            old_role=source,
+            new_role=result,
+        ),
+        delete_pattern=fill(_DEDUP_DELETE, p_grant=grant),
+    )
+    renaming = MigrationStep(
+        title=f"rename the role {old!r} to {new!r}",
+        where_pattern=fill(_RENAME_WHERE, p_grant=grant, p_role=role, old_role=source),
+        delete_pattern=fill(_RENAME_DELETE, p_role=role, old_role=source),
+        insert_pattern=fill(_RENAME_INSERT, p_role=role, new_role=result),
+    )
+    return [removal, renaming]
+
+
+def _drop_step(name: str) -> MigrationStep:
+    grant = term(v.GRANTS)
+    return MigrationStep(
+        title=f"delete the grants of the role {name!r}",
+        where_pattern=fill(
+            _DROP_WHERE, p_grant=grant, p_role=term(v.ROLE), role=term(Literal(name))
+        ),
+        delete_pattern=fill(_DROP_DELETE, p_grant=grant),
+    )
 
 
 def _step_operation(step: MigrationStep, guard: StampGuardTerms) -> SparqlTerm:
@@ -311,11 +400,44 @@ def _step_problem(step: MigrationStep) -> str | None:
     return None
 
 
+def _grant_problem(roles: GrantRoles | None) -> str | None:
+    """What is wrong with the ``grant_roles`` of a file, or None; two names renamed to one are a merge, allowed."""
+    if roles is None:
+        return None
+    pairs = [(pair.from_role, pair.to_role) for pair in roles.rename or []]
+    drops = roles.drop or []
+    return _name_problem(pairs, drops) or _overlap_problem(pairs, drops)
+
+
+def _name_problem(pairs: list[tuple[str, str]], drops: list[str]) -> str | None:
+    """An empty name, a rename to itself, or one name renamed twice."""
+    sources = [source for source, _ in pairs]
+    if any(not name.strip() for name in (*sources, *(target for _, target in pairs), *drops)):
+        return "has an empty role name"
+    return _named("renames {} to itself", [s for s, t in pairs if s == t]) or _named(
+        "renames {} more than once", [s for s in sources if sources.count(s) > 1]
+    )
+
+
+def _overlap_problem(pairs: list[tuple[str, str]], drops: list[str]) -> str | None:
+    """A chain of renames, or a dropped name that is also renamed from or to."""
+    sources = {source for source, _ in pairs}
+    targets = {target for _, target in pairs}
+    return _named("renames {} and also renames to it (no chains)", sources & targets) or _named(
+        "drops {}, which it also renames", set(drops) & (sources | targets)
+    )
+
+
+def _named(template: str, names: Collection[str]) -> str | None:
+    """``template`` with the first of ``names`` (in sorted order) shown, or None when there is none."""
+    return template.format(shown(min(names))) if names else None
+
+
 def _request_problem(migration: Migration) -> str | None:
     """What is wrong with the request built from the migration, or None."""
     try:
-        expected = len(_operations(migration, _CHECKED_STAMPS))
-        request = migration_request(migration, _CHECKED_STAMPS)
+        expected = len(_operations(migration, _CHECKED_STAMPS, grants=True))
+        request = migration_request(migration, _CHECKED_STAMPS, grants=True)
         found = len(parse_update(request).request)
     except SparqlError as error:
         return f"cannot build the request: {str(error)[:SHOWN]}"

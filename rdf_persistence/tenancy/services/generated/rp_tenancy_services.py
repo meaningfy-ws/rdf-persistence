@@ -70,8 +70,10 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
     ServiceSettings
 )
 from rdf_persistence.migrations.services.generated.rp_migrations_services import (
+    GrantRoles,
     Migration,
-    MigrationStep
+    MigrationStep,
+    RoleRename
 )
 
 

@@ -28,6 +28,7 @@ from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSett
 from rdf_persistence.iris.services.iris import IdSource, draw_id
 from rdf_persistence.messaging.services.messagebus import MessageBus
 from rdf_persistence.persistence.services.store import Store
+from rdf_persistence.tenancy.services.grant_report import report_grants
 from rdf_persistence.tenancy.services.iri_policy_guard import guard_iri_policy
 from rdf_persistence.tenancy.services.migration_runner import migrate_shared, migrate_tenants
 from rdf_persistence.tenancy.services.sweep import sweep
@@ -200,6 +201,7 @@ def _run_at_startup(app: FastAPI, kit: ServiceKit) -> None:
         await guard_iri_policy(kit.store, kit.tenancy, kit.settings)
         await kit.tenancy.ensure_application_database()
         await migrate_shared(kit.tenancy, kit.store, kit.chains)
+        await report_grants(kit.tenancy, kit.rules)
         await sweep(kit.tenancy, kit.store, kit.files, kit.settings)
         await migrate_tenants(kit.tenancy, kit.store, kit.chains)
         if kit.event_bus is not None:

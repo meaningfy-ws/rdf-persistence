@@ -629,6 +629,16 @@
     required: true
     multivalued: false
     range: uri
+- class_name: GrantRoles
+  slots:
+  - name: drop
+    required: false
+    multivalued: true
+    range: string
+  - name: rename
+    required: false
+    multivalued: true
+    range: RoleRename
 - class_name: GrantSet
   slots:
   - name: grants
@@ -1009,6 +1019,10 @@
     required: true
     multivalued: false
     range: string
+  - name: grant_roles
+    required: false
+    multivalued: false
+    range: GrantRoles
   - name: schema_id
     required: true
     multivalued: false
@@ -1468,6 +1482,16 @@
     multivalued: false
     range: RoleLevel
   - name: role
+    required: true
+    multivalued: false
+    range: string
+- class_name: RoleRename
+  slots:
+  - name: from_role
+    required: true
+    multivalued: false
+    range: string
+  - name: to_role
     required: true
     multivalued: false
     range: string

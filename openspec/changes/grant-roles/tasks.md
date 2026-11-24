@@ -5,19 +5,19 @@ EPIC: grant-roles (proposal.md, #307, #310). Decisions: DEC-1 to DEC-7; design.m
 
 ## 1. Grants in a migration, and the start-up report (#307), PR 1, branch `feat/grant-roles-migration`
 
-- [ ] 1.1 `GrantRoles`, `RoleRename` and `Migration.grant_roles` in `rp_migrations_services.yaml`, then
+- [x] 1.1 `GrantRoles`, `RoleRename` and `Migration.grant_roles` in `rp_migrations_services.yaml`, then
   `make generate` ([D-1](design.md#d-1), DEC-1).
-- [ ] 1.2 Tests first: T1 to T9 (`design.md#stage-1-307-grants-in-a-migration-the-start-up-report`), in
+- [x] 1.2 Tests first: T1 to T9 (`design.md#stage-1-307-grants-in-a-migration-the-start-up-report`), in
   the files named there. RED: `grant_roles` unknown, no report.
-- [ ] 1.3 The load map and checks ([D-1](design.md#d-1), [D-2](design.md#d-2)). The `grants` flag
+- [x] 1.3 The load map and checks ([D-1](design.md#d-1), [D-2](design.md#d-2)). The `grants` flag
   through `migration_request`, `migrate_database` and `migrate_shared` ([D-3](design.md#d-3)). The
   operations, sent through `_step_operation` in their order ([D-4](design.md#d-4)). Covers DEC-2
   to DEC-4. Accept: T1 to T7 (T3b and T3c included), E1 to E6 and E13 to E15;
   `make test-fast check-quality`.
-- [ ] 1.4 `AccessRules.undefined_roles` and `AccessRules.administered`, `report_grants` (on the
+- [x] 1.4 `AccessRules.undefined_roles` and `AccessRules.administered`, `report_grants` (on the
   existing `Tenancy.access_records()`), and the call in `_run_at_startup` ([D-5](design.md#d-5),
   DEC-5). Accept: T8, T8b, T9, E7 to E9.
-- [ ] 1.5 `howto/migrate.adoc`: "A model round renames or drops a role", with the worked example,
+- [x] 1.5 `howto/migrate.adoc`: "A model round renames or drops a role", with the worked example,
   the order (RISK-3) and the replacement grant (RISK-2). Accept: `make check-docs`.
 - [ ] 1.6 Lead: `make check-all`, `make test-containers` (migrations run on Fuseki), one review
   pass, PR. Answer #307 on the issue, with a link to the how-to. This EPIC lands with it.
@@ -40,7 +40,7 @@ EPIC: grant-roles (proposal.md, #307, #310). Decisions: DEC-1 to DEC-7; design.m
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [ ] 1.6 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 ·
   [ ] 3.1 · [ ] 3.2
 
 ## Verification

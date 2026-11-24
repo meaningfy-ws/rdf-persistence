@@ -122,6 +122,13 @@ slots:
     slot_uri: rp:resources
     alias: rp.sweep.resources
     multivalued: true
+  undefined_roles:
+    title: Undefined roles
+    description: >-
+      The roles a tenant's grants name that no role definition covers, each as `level:role`.
+    slot_uri: rp:undefinedRoles
+    alias: rp.grants.undefined_roles
+    multivalued: true
   activity_id:
     title: Activity id
     description: >-
@@ -257,6 +264,7 @@ classes:
       - policy_fields
       - system_created
       - resources
+      - undefined_roles
       - activity_id
       - activity_class
       - activity_class_iri

@@ -111,6 +111,32 @@
       "title": "Described",
       "type": "object"
     },
+    "GrantRoles": {
+      "additionalProperties": false,
+      "description": "What a migration does to the role names in the stored grants of the system database: the renames, in the order they apply, then the names whose grants are deleted. In the file, `rename` is a map from the old name to the new one; loading turns it into the list.",
+      "properties": {
+        "drop": {
+          "description": "The role names whose grants a migration deletes, after the renames.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "rename": {
+          "description": "The role renames of a migration, in the order they apply.",
+          "items": {
+            "$ref": "#/components/schemas/RoleRename"
+          },
+          "type": "array"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "title": "GrantRoles",
+      "type": "object"
+    },
     "GraphKind": {
       "description": "The special graphs a class can live in, the values of the graph annotation.",
       "enum": [
@@ -163,7 +189,7 @@
     },
     "Migration": {
       "additionalProperties": false,
-      "description": "The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order.",
+      "description": "The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order; and, optionally, the renames and drops of the role names in the stored grants.",
       "properties": {
         "description": {
           "description": "A free-text description of the object.",
@@ -172,6 +198,10 @@
         "from_version": {
           "description": "The version of the schema that the data follows before the migration.",
           "type": "string"
+        },
+        "grant_roles": {
+          "$ref": "#/components/schemas/GrantRoles",
+          "description": "The renames and drops of role names in the stored grants of the system database."
         },
         "schema_id": {
           "description": "The id of the schema whose data the migration moves.",
@@ -343,6 +373,30 @@
       ],
       "title": "RegistryKind",
       "type": "string"
+    },
+    "RoleRename": {
+      "additionalProperties": false,
+      "description": "One role name a migration changes to another in the stored grants.",
+      "properties": {
+        "from_role": {
+          "description": "The role name a grant names before the migration.",
+          "type": "string"
+        },
+        "to_role": {
+          "description": "The role name a grant names after the migration.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_role",
+        "to_role"
+      ],
+      "title": "RoleRename",
+      "type": "object"
     },
     "RpAnnotation": {
       "description": "The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone. Each description says which element carries the tag and which values it accepts.",
