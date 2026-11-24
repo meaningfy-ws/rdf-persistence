@@ -158,7 +158,7 @@ in-flight epic's own order (`consumer-gap-fixes/inputs/qa.md`).
 
 | # | Id | Appetite | Issues | Depends on | Needed by (MWB2) | State |
 |---|---|---|---|---|---|---|
-| 13 | `domain-values-and-fixes` | MEDIUM (4 stages) | #301, #303, #302, #300 | none | `v2-05` stage 1 (#301); `v2-02` round trips and the transition route | delivered 2026-11-24 in #313, #314, #315, #316; archived `2026-11-24-domain-values-and-fixes` (#321); release 0.10.0 open (#317) |
+| 13 | `domain-values-and-fixes` | MEDIUM (4 stages) | #301, #303, #302, #300 | none | `v2-05` stage 1 (#301); `v2-02` round trips and the transition route | delivered 2026-11-24 in #313, #314, #315, #316; archived `2026-11-24-domain-values-and-fixes` (#321); released as 0.10.0 (#317) |
 | 14 | `consumer-gap-fixes` | SMALL (4 stages) | #304, #306, #311, #312 | row 13 merged | `v2-06`: one ontology collection per version (#304), roles, discussion, coverage | planned: 8.2 → 9.2, pass (#322) |
 | 15 | `aggregate-guards` | SMALL (2 stages) | #305, #309 | none | `v2-07` package range; `v2-06` CM delete while under review | planned: 8.2 → 9.3, pass (#324) |
 | 16 | `grant-roles` | SMALL (2 stages) | #307, #310 | row 14 stage 2 (#306) | `v2-06` role rounds (RISK-2), audience warning | planned: 8.4 → 9.2, pass (#325); #307 answered by a `grant_roles` migration section |
@@ -167,6 +167,14 @@ in-flight epic's own order (`consumer-gap-fixes/inputs/qa.md`).
 Rows 14 to 16 were shaped on 2026-11-24 in one session, and each PLAN was attacked and gated by a
 fresh reviewer. Rows 14 and 15 can be delivered in parallel. Row 16 starts after row 14's stage 2.
 Row 17 is still to be shaped.
+
+**2026-11-24: released as 0.10.0** (MINOR, **BREAKING** for generated code; #327 the CHANGELOG,
+#317 the release PR; tag `v0.10.0`, `main` fast-forwarded). Row 13 ships in it: value modules
+(#301), the public `expected_version` and `matched_version` (#300), the `slot_usage` fix (#302)
+and the abstract-root fix (#303), which makes a slot over an abstract aggregate root an IRI in
+generated code. The CHANGELOG PR merged before the release PR this time, so the tag carries the
+0.10.0 section. The consumer refreshes its lock, regenerates and passes an IRI where it built the
+embedded class.
 
 ### Why this order
 
