@@ -779,15 +779,21 @@ async def test_an_aggregate_the_writer_may_not_read_or_that_is_not_there_is_none
 
 async def test_an_aggregate_added_earlier_in_the_unit_is_read_as_collected_with_no_guard():  # T4
     seen: list[Any] = []
-    async with (
-        guarded_session({"Book": [reading_the_shelf(seen)]}) as session,
-        session.transaction() as t,
-    ):
-        await t.add_graph(shelf_iri(1), toy_mapper().to_triples(shelf(shelf_iri(1))))
-        await t.add_graph(
-            book_iri(1), toy_mapper().to_triples(dune(book_iri(1), shelf=shelf_iri(1)))
-        )
-        assert t._relied == {}, "a collected aggregate is not relied on"  # the guard's own state
+    reads: list[str] = []
+    async with guarded_session({"Book": [reading_the_shelf(seen)]}) as session:
+        original = session.get_graph
+
+        async def spy(iri: str):
+            reads.append(iri)
+            return await original(iri)
+
+        session.get_graph = spy  # type: ignore[method-assign]  # X5: a counting spy on the read
+        async with session.transaction() as t:
+            await t.add_graph(shelf_iri(1), toy_mapper().to_triples(shelf(shelf_iri(1))))
+            await t.add_graph(
+                book_iri(1), toy_mapper().to_triples(dune(book_iri(1), shelf=shelf_iri(1)))
+            )
+    assert reads == [], "a collected aggregate is not read from the store, so not relied on"  # TC-5
     assert (seen[0].label, seen[0].created) == ("Shelf", None), "as written: no tracking"
 
 
@@ -917,3 +923,60 @@ async def test_a_stored_aggregate_that_does_not_decode_is_a_runtime_error():  # 
     async with guarded_session({"Book": [reading_the_shelf([])]}, store=store) as session:
         with pytest.raises(RuntimeError, match=f"{shelf_iri(1)} does not decode"):
             await add_book_on(session, shelf_iri(1))
+
+
+# The gaps the floor left out (aggregate-guards-test-gaps: TC-1 to TC-4)
+
+
+async def test_a_read_after_the_unit_replaced_the_aggregate_gives_the_replaced_value():  # TC-1
+    labels: list[str] = []
+
+    async def reads_label(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        labels.append((await reader.aggregate(new.shelf)).label)
+
+    async with guarded_session({"Book": [reads_label]}) as session:
+        version = await stored_shelf(session, shelf_iri(1))
+        async with session.transaction() as t:
+            await t.add_graph(
+                book_iri(1), toy_mapper().to_triples(dune(book_iri(1), shelf=shelf_iri(1)))
+            )
+            await t.replace_graph(
+                shelf_iri(1), toy_mapper().to_triples(relabelled(shelf_iri(1), "next")), version
+            )
+            await t.add_graph(
+                book_iri(2), toy_mapper().to_triples(dune(book_iri(2), shelf=shelf_iri(1)))
+            )
+    assert labels == ["Shelf", "next"], "the second rule reads the replacement, not the cached read"
+
+
+async def test_an_aggregate_removed_in_a_unit_cannot_be_added_back_in_it():  # TC-2, DEC-3
+    async with guarded_session({}) as session:
+        version = await stored_shelf(session, shelf_iri(1))
+        with pytest.raises(ValueError, match="already has a change"):
+            async with session.transaction() as t:
+                await t.remove(shelf_iri(1), version)
+                await t.add_graph(
+                    shelf_iri(1), toy_mapper().to_triples(relabelled(shelf_iri(1), "again"))
+                )
+
+
+async def test_an_aggregate_whose_types_name_no_single_root_class_is_none():  # TC-3, E5
+    chapter = URIRef("http://purl.org/ontology/bibo/Chapter")
+    triples = [(URIRef(shelf_iri(3)), RDF.type, chapter)]
+    async with reading_session() as session:
+        reader = reader_of(session, {shelf_iri(3): triples})
+        assert await reader.aggregate(shelf_iri(3)) is None, "Chapter is no root class"
+
+
+async def test_an_aggregate_read_then_removed_by_the_unit_leaves_both_changes_in_the_commit():  # TC-4, E8
+    seen: list[Any] = []
+    async with guarded_session({"Book": [reading_the_shelf(seen)]}) as session:
+        version = await stored_shelf(session, shelf_iri(1))
+        async with session.transaction() as t:
+            await t.add_graph(
+                book_iri(1), toy_mapper().to_triples(dune(book_iri(1), shelf=shelf_iri(1)))
+            )
+            await t.remove(shelf_iri(1), version)
+        assert seen[0].label == "Shelf", "the rule judged the aggregate as it was"
+        assert len(await session.heads([book_iri(1)])) == 1, "the add is committed"
+        assert await session.heads([shelf_iri(1)]) == [], "the removal is committed"

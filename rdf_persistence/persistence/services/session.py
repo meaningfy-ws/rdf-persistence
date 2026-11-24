@@ -1433,7 +1433,6 @@ class Transaction:
         change: Change = ((str(iri), class_in(iri, triples), version), None)
         self._collect(iri, graph, None, version, parts, self._holds(graph, version), change)
         self._collected[str(iri)] = tuple(triples)
-        self._removed.discard(str(iri))  # added back after a remove: the readers see it again
         self._read_cache.pop(str(iri), None)
         self._key_claims += key_claims
         self._note_links(iri, triples)
@@ -1494,7 +1493,6 @@ class Transaction:
         )
         self._collect(iri, graph, if_version, version, parts, self._holds(graph, version), change)
         self._collected[str(iri)] = tuple(triples)
-        self._removed.discard(str(iri))  # added back after a remove: the readers see it again
         self._read_cache.pop(str(iri), None)
         self._key_claims += key_claims
         self._note_links(iri, triples)

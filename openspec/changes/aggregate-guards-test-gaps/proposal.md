@@ -29,6 +29,11 @@ by breaking the line it pins, then restoring it), and the missing sentence in `a
   not only `Refused`: with a stale version, the version conflict is the true answer whatever
   refused. A test pins it for a reader's plain `Conflict`.
 
+- **DEC-3 (found by TC-2, lead, 2026-11-24):** `Transaction._claim` refuses a second change on one
+  IRI, so a root removed in a transaction cannot be added back in it, and the `_removed.discard`
+  that aggregate-guards D-10 added to add and replace could never run. The two dead lines are
+  deleted, and TC-2 pins the refusal (`ValueError`) instead of a re-add.
+
 ## Rabbit-holes
 
 - A cascade test through `delete_cascade` needs a collection in the toy; reuse what
@@ -36,7 +41,8 @@ by breaking the line it pins, then restoring it), and the missing sentence in `a
 
 ## No-gos
 
-- No new behaviour; no change to the public API.
+- No new behaviour; no change to the public API. (Delivered: one production change, the dead
+  `discard` lines removed, DEC-3.)
 
 ---
 
