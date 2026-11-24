@@ -196,7 +196,8 @@ def write(  # noqa: PLR0913 - the injected move (PD-3) and schema loader (PD-4) 
             (out / report_name).unlink(missing_ok=True)
             _move(staging, out, report_name, move)
     except OSError as error:
-        raise OutputError(
-            Path(error.filename) if error.filename else out, error.strerror or str(error)
-        ) from error
+        named = Path(error.filename) if error.filename else out
+        if named.parent == out and named.name.startswith(STAGING_PREFIX):
+            named = out  # the staging folder could not be made: it does not exist (F-T1)
+        raise OutputError(named, error.strerror or str(error)) from error
     return added

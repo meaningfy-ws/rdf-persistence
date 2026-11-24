@@ -239,7 +239,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/write.py",
-      "sha256": "9aa62489a5761242250e668d18bfa0eeebb1af0146e40a1d0a6804025b0250cb"
+      "sha256": "7dcf3af71caf7bab195f8c3b6af706d90215a3e699d28187142485fa4fe98994"
     }
   ],
   "outputs": [
