@@ -126,6 +126,8 @@ export interface Filter {
   value: string;
   /** Whether the filter matches a substring of the slot's text, ignoring case, rather than the value. */
   contains?: boolean;
+  /** Whether the filter matches the aggregates that hold no value for the slot, rather than a value; the filter's value is then empty and unread. */
+  absent?: boolean;
 }
 
 /** A value of `Session.find` that asks for a case-insensitive substring of a string slot rather than its value. */
@@ -158,6 +160,8 @@ export interface Condition {
   reference?: boolean;
   /** Whether the filter matches a substring of the slot's text, ignoring case, rather than the value. */
   contains?: boolean;
+  /** Whether the filter matches the aggregates that hold no value for the slot, rather than a value; the filter's value is then empty and unread. */
+  absent?: boolean;
 }
 
 /** A listing resolved against the slots of the listed type: the class, the typed conditions, the predicate to order by (none orders by IRI), the page, and the graphs of the aggregates the caller may not read. */

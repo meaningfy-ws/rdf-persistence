@@ -7,7 +7,7 @@ from uuid import UUID
 
 import pytest
 from linkml_runtime.utils.schemaview import SchemaView
-from rdflib import RDFS, Literal, URIRef
+from rdflib import RDFS, BNode, Literal, URIRef
 from rdflib.plugins.sparql import prepareQuery
 
 from rdf_persistence import new_part
@@ -20,8 +20,13 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
     ServiceSettings,
 )
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.persistence.services.generated.rp_persistence_services import (
+    Condition,
+    ListPlan,
+)
 from rdf_persistence.persistence.services.listing import (
     Listings,
+    condition_patterns,
     items_of,
     list_request,
     listing_query,
@@ -194,6 +199,16 @@ async def listed(
         ([("authors~", "e"), ("authors~", "j")], [3], 1),
         # every label holds an "e" (Dune too), so the total is 5; by -label: 3, 2, 1, 4, 5
         ([("label~", "e"), ("sort", "-label"), ("limit", "2"), ("offset", "1")], [2, 1], 5),
+        # DEC-4: absence; only Candide (4) holds no published date and no author
+        ([("absent", "published")], [4], 1),
+        ([("absent", "authors")], [4], 1),
+        ([("absent", "published"), ("absent", "authors")], [4], 1),
+        ([("absent", "published"), ("genre", "nonfiction")], [4], 1),
+        ([("absent", "published"), ("genre", "fiction")], [], 0),
+        ([("absent", "published"), ("label~", "can")], [4], 1),
+        ([("absent", "authors"), ("authors", "Herbert")], [], 0),  # E12: nothing is both
+        ([("absent", "description")], [], 0),
+        ([("absent", "published"), ("sort", "-label"), ("limit", "1")], [4], 1),
     ],
     ids=lambda v: (
         str(v)
@@ -308,6 +323,47 @@ async def test_a_subject_stored_in_two_listed_graphs_goes_to_one_item_only(view)
     assert sum(shared in set(triples.subjects()) for _, triples in items) == 1, (
         "a subject stored in two listed graphs goes to one item only"
     )
+
+
+async def test_an_aggregate_holding_only_a_blank_node_part_is_not_absent(shelf, view, policy):
+    """D-9: a part without an identifier is a blank node, and it is a value."""
+    iri = policy.book_iri(8)
+    _, triples = book(policy, 8, "Holder")
+    await shelf.add_graph(iri, [*triples, (URIRef(iri), CHAPTER, BNode())])
+    plan = ListPlan(
+        target=str(view.get_uri(view.get_class("Book"), expand=True)),
+        conditions=[Condition(predicate=str(CHAPTER), value="", absent=True)],
+        limit=50,
+        offset=0,
+    )
+    answer = await shelf.page(plan)
+    assert policy.book_iri(8) not in {str(root) for root, _ in items_of(answer, plan)}, (
+        "the book holding a blank-node chapter is not matched by absence"
+    )
+    assert total_of(answer, plan) == 5, "the five books with no chapter are matched, not it"
+
+
+def test_conditions_without_absence_render_as_before_and_an_absent_one_renders_a_not_exists(view):
+    """E14: the equal and contains parts are untouched; absence adds one FILTER NOT EXISTS."""
+    listings = Listings(view)
+    book_class = view.get_class("Book")
+
+    def patterns(*params: tuple[str, str]) -> str:
+        plan = listings.plan(book_class, list_request(list(params)))
+        return condition_patterns("root", plan.conditions or [])
+
+    equal = patterns(("label", "Dune"))
+    contains = patterns(("label~", "du"))
+    assert "NOT EXISTS" not in equal + contains, "no absence, no NOT EXISTS"
+    assert "FILTER EXISTS" in contains, "contains still renders FILTER EXISTS"
+    published = patterns(("absent", "published"))
+    assert published.count("FILTER NOT EXISTS") == 1, "one absent condition, one NOT EXISTS"
+    assert patterns(("label", "Dune"), ("absent", "published")).startswith(equal), (
+        "the equal patterns come first and are unchanged"
+    )
+    assert patterns(("label", "Dune"), ("label~", "du"), ("absent", "published")) == (
+        f"{equal} {contains} {published}"
+    ), "equal, then contains, then absent, each as it renders alone"
 
 
 def test_the_query_is_one_construct_with_the_total_and_no_value_pasted_in(view):

@@ -71,6 +71,7 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
     Page,
 )
 from rdf_persistence.persistence.services.listing import (
+    ABSENT,
     DESCENDING,
     LIMIT,
     OFFSET,
@@ -453,6 +454,11 @@ class AggregateOpenApi:
             *(p for name, slot in sorted(slots.items()) for p in self._filters(name, slot)),
             *_PAGING,
             _query(SORT, Schema(type="string", enum=sort_keys(self._view, self._cls)), order),
+            _query(
+                ABSENT,
+                Schema(type="array", items=Schema(type="string", enum=sorted(slots))),
+                "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            ),
         ]
 
     def listing(self) -> RouteDocs:

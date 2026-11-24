@@ -189,9 +189,23 @@ def test_a_listing_takes_a_parameter_per_slot_of_the_type_and_the_paging_ones(
     queries = {p["name"] for p in op["parameters"] if p["in"] == "query"}
     slots = listable_slots(toy.kit.view, cls)
     contains = {f"{name}~" for name, slot in slots.items() if holds_text(toy.kit.view, slot)}
-    assert queries == {*slots, *contains, "limit", "offset", "sort"}, (
-        "a listing takes a parameter per slot, a contains one per text slot, and the paging ones"
+    assert queries == {*slots, *contains, "limit", "offset", "sort", "absent"}, (
+        "a listing takes a parameter per slot, a contains one per text slot, the paging ones and absent"
     )
+
+
+def test_a_listing_takes_a_repeatable_absent_parameter_naming_a_listable_slot(
+    toy, document
+) -> None:  # D-3
+    cls = toy.kit.documents.aggregates["books"]
+    op = operation(document, f"{TENANT}/books", "get")
+    absent = next(p for p in op["parameters"] if p["name"] == "absent")
+    schema = absent["schema"]
+    assert schema["type"] == "array", "absent may be repeated"
+    assert schema["items"]["enum"] == sorted(listable_slots(toy.kit.view, cls)), (
+        "the enum is the listable slot names"
+    )
+    assert absent["required"] is False, "absent is optional"
 
 
 def test_a_listing_takes_a_contains_parameter_per_text_slot_right_after_its_equality_one(

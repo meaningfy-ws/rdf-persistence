@@ -45,6 +45,10 @@
       "additionalProperties": false,
       "description": "A filter of a listing resolved against the slots of the listed type: the aggregate has this statement, or a statement whose text contains the value. The value is an IRI when it is a reference, else a literal of the datatype.",
       "properties": {
+        "absent": {
+          "description": "Whether the filter matches the aggregates that hold no value for the slot, rather than a value; the filter's value is then empty and unread.",
+          "type": "boolean"
+        },
         "contains": {
           "description": "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value.",
           "type": "boolean"
@@ -102,6 +106,10 @@
       "additionalProperties": false,
       "description": "One filter of a listing, the name of a slot of the listed type and the value it must have, or whose text it must contain, as the text the caller sent.",
       "properties": {
+        "absent": {
+          "description": "Whether the filter matches the aggregates that hold no value for the slot, rather than a value; the filter's value is then empty and unread.",
+          "type": "boolean"
+        },
         "contains": {
           "description": "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value.",
           "type": "boolean"

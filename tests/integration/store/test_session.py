@@ -396,3 +396,30 @@ async def test_find_returns_the_aggregate_with_the_value_on_a_real_store(store, 
     assert await session.find(Scan, file_name="a") == [iris[0]], (
         "find returns the aggregate with the value"
     )
+
+
+async def test_find_by_none_returns_the_aggregates_with_no_value_on_a_real_store(store, database):
+    from rdf_persistence.persistence.services.listing import Listings
+    from rdf_persistence.schema.services.schema import load_schema
+    from tests.fixtures.library.domain.generated.scans import Scan
+    from tests.toy import TOY_SCHEMA, toy_mapper
+
+    session = Session(
+        store,
+        database=database,
+        tenant_iri=TENANT,
+        principal=ADA,
+        clock=Ticker(),
+        listings=Listings(load_schema(TOY_SCHEMA)),
+    )
+    iris = [
+        str(DEFAULT_IRIS.aggregate(TENANT, "scan", "scans", str(uuid.UUID(int=n)))) for n in (1, 2)
+    ]
+    for iri, media in zip(iris, (None, "text/plain"), strict=True):
+        await session.add_graph(
+            iri, toy_mapper().to_triples(Scan(id=iri, label="scan", media_type=media))
+        )
+    assert await session.find(Scan, media_type=None) == [iris[0]], "the scan with no media type"
+    assert await session.find(Scan, media_type=None, label="scan") == [iris[0]], "and a filter"
+    with pytest.raises(ValueError, match="None cannot be combined"):
+        await session.find(Scan, media_type=[None, "text/plain"])

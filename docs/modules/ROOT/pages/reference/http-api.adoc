@@ -172,7 +172,15 @@ A listing answers one page:
 slot's range: a reference takes an IRI.
 |`<slot>~=<text>` |A contains filter on a string slot: the value holds the text, ignoring case, as in
 `label~=dune`. Several filters must all hold. An empty text, or a slot that is not a string, answers 400.
+|`absent=<slot>` |The aggregates with no value for the slot, as in `absent=published`. May be repeated;
+every filter must hold, so `absent=s&s=x` matches nothing. An empty value, or a name that is not a
+filterable slot, answers 400. A slot with a default (`ifabsent`) is never absent, because the
+default is stored.
 |===
+
+The names `limit`, `offset`, `sort` and `absent` are reserved: a slot with one of these names
+cannot be filtered or sorted on, and has no parameter in the OpenAPI document. `?s=` (an empty
+value) is an equality filter on the empty string, never absence; use `absent=s`.
 
 The items are the aggregates as the representation frames them. An aggregate the caller is
 prohibited from reading is left out of the items and the total. The tenant listing takes only

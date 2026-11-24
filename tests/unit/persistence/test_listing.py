@@ -10,6 +10,7 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
     ListRequest,
 )
 from rdf_persistence.persistence.services.listing import (
+    RESERVED,
     Listings,
     list_request,
     listable_slots,
@@ -271,3 +272,49 @@ def test_the_sort_keys_are_the_identifier_and_the_listable_slots_up_and_down(vie
     assert (
         len(keys) == len(set(keys)) == 2 * (len(listable_slots(view, view.get_class("Book"))) + 1)
     ), "the sort keys are unique and cover every listable slot both ways and the identifier"
+
+
+# DEC-5, D-3: absent=<slot> asks for the aggregates with no value for the slot
+def test_each_absent_parameter_is_an_absence_filter_on_the_slot_it_names():
+    request = list_request([("absent", "published"), ("absent", "authors"), ("label", "x")])
+    assert request.filters == [
+        Filter(slot="label", value="x"),
+        Filter(slot="published", value="", absent=True),
+        Filter(slot="authors", value="", absent=True),
+    ], "absent is reserved: each value names a slot; the other parameters stay filters, first"
+
+
+def test_absent_is_a_reserved_name_so_a_slot_called_absent_is_not_listable(view):
+    assert {"absent"} <= RESERVED, "absent is reserved like sort"
+    assert "absent" not in listable_slots(view, view.get_class("Book")), "no slot named absent"
+
+
+def test_an_absence_filter_becomes_an_absent_condition_that_is_never_typed(listings, view):
+    plan = plan_of(listings, view, ("absent", "published"), ("absent", "genre"))
+    published = str(view.get_uri(view.get_slot("published"), expand=True))
+    assert [(c.predicate, c.value, c.absent, c.contains, c.reference) for c in plan.conditions] == [
+        (published, "", True, False, False),
+        (f"{SCHEMA_ORG}genre", "", True, False, False),
+    ], "the empty value is not typed (an enum would refuse it); the condition is absent"
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        [("absent", "nosuch")],  # E11
+        [("absent", "")],  # E13
+        [("absent~", "label")],  # E16: a contains filter on the reserved name
+        [("absent", "id")],
+        [("absent", "chapters")],
+    ],
+    ids=lambda p: "&".join(f"{k}={v}" for k, v in p),
+)
+def test_an_absence_filter_on_a_slot_the_type_does_not_offer_is_a_bad_query(listings, view, params):
+    with pytest.raises(BadQuery, match="has no slot"):
+        plan_of(listings, view, *params)
+
+
+def test_a_filter_that_is_both_contains_and_absent_is_a_bad_query(listings, view):  # E17
+    request = ListRequest(filters=[Filter(slot="label", value="", contains=True, absent=True)])
+    with pytest.raises(BadQuery):
+        listings.plan(view.get_class("Book"), request)

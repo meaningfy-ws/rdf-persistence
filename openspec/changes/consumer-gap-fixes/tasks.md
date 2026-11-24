@@ -34,13 +34,13 @@ EPIC: consumer-gap-fixes (proposal.md, #304, #306, #311, #312). Decisions: DEC-1
 
 ## 4. Absence in `find` and the listing (#312), PR 4, branch `fix/absent-filter`
 
-- [ ] 4.1 `filter_absent` in `rp_persistence_services.yaml`, then `make generate` (DEC-6, `design.md` D-1).
-- [ ] 4.2 Tests first: E9 to E14 and E16 to E18, in the files `design.md#stage-4-312-absence`
+- [x] 4.1 `filter_absent` in `rp_persistence_services.yaml`, then `make generate` (DEC-6, `design.md` D-1).
+- [x] 4.2 Tests first: E9 to E14 and E16 to E18, in the files `design.md#stage-4-312-absence`
   names. RED: `find(..., s=None)` returns nothing.
-- [ ] 4.3 `_filter`, `_items`, `list_request` with `absent` reserved, `_filtered`,
+- [x] 4.3 `_filter`, `_items`, `list_request` with `absent` reserved, `_filtered`,
   `condition_patterns`, and `absent_patterns` in `core/domain/sparql.py` (DEC-4, DEC-5,
   `design.md` D-2, D-3). Accept: E9 to E18; `make test-fast check-quality`.
-- [ ] 4.4 The `absent` parameter in `openapi.py` `_query_parameters`. `reference/http-api.adoc`:
+- [x] 4.4 The `absent` parameter in `openapi.py` `_query_parameters`. `reference/http-api.adoc`:
   absence, the reserved names, `ifabsent`. CHANGELOG "Changed" (RISK-3, RISK-5). Accept:
   `make check-docs`.
 - [ ] 4.5 Lead: `make check-all`, `make test-containers`, one review pass, and a PR that flags

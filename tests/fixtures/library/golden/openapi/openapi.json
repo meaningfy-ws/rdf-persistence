@@ -1657,6 +1657,30 @@
             },
             "name": "sort",
             "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "authors",
+                  "description",
+                  "genre",
+                  "isbn",
+                  "label",
+                  "published",
+                  "sequel_of",
+                  "shelf",
+                  "workflow_status",
+                  "written_by"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
+            "in": "query"
           }
         ],
         "responses": {
@@ -2689,6 +2713,25 @@
               ]
             },
             "name": "sort",
+            "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "has_part",
+                  "label",
+                  "member_class",
+                  "nests"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
             "in": "query"
           }
         ],
@@ -3724,6 +3767,25 @@
             },
             "name": "sort",
             "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "has_part",
+                  "label",
+                  "member_class",
+                  "nests"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
+            "in": "query"
           }
         ],
         "responses": {
@@ -4725,6 +4787,23 @@
             },
             "name": "sort",
             "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "features",
+                  "label"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
+            "in": "query"
           }
         ],
         "responses": {
@@ -5713,6 +5792,22 @@
               ]
             },
             "name": "sort",
+            "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "label"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
             "in": "query"
           }
         ],
@@ -6703,6 +6798,22 @@
             },
             "name": "sort",
             "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "label"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
+            "in": "query"
           }
         ],
         "responses": {
@@ -7691,6 +7802,22 @@
               ]
             },
             "name": "sort",
+            "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "label"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
             "in": "query"
           }
         ],
@@ -8692,6 +8819,23 @@
               ]
             },
             "name": "sort",
+            "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "label",
+                  "lends"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
             "in": "query"
           }
         ],
@@ -9717,6 +9861,25 @@
               ]
             },
             "name": "sort",
+            "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "ended_at_time",
+                  "label",
+                  "started_at_time",
+                  "was_associated_with"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
             "in": "query"
           }
         ],
@@ -10818,6 +10981,29 @@
             },
             "name": "sort",
             "in": "query"
+          },
+          {
+            "description": "Only the aggregates with no value for this slot. May be repeated: each must hold.",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string",
+                "enum": [
+                  "byte_size",
+                  "description",
+                  "file_name",
+                  "label",
+                  "media_type",
+                  "scan_of",
+                  "sha256",
+                  "uploaded",
+                  "uploaded_by"
+                ]
+              },
+              "type": "array"
+            },
+            "name": "absent",
+            "in": "query"
           }
         ],
         "responses": {
@@ -11402,6 +11588,10 @@
       },
       "Filter": {
         "properties": {
+          "absent": {
+            "type": "boolean",
+            "description": "Whether the filter matches the aggregates that hold no value for the slot, rather than a value; the filter's value is then empty and unread."
+          },
           "contains": {
             "type": "boolean",
             "description": "Whether the filter matches a substring of the slot's text, ignoring case, rather than the value."

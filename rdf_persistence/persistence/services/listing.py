@@ -28,6 +28,7 @@ from rdf_persistence.core.domain.sparql import (
     fill_terms,
     join,
     match_patterns,
+    no_value_patterns,
     order_by,
     term_list,
 )
@@ -49,12 +50,12 @@ from rdf_persistence.schema.services.schema_structure import (
     served_roots,
 )
 
-LIMIT, OFFSET, SORT = "limit", "offset", "sort"
+LIMIT, OFFSET, SORT, ABSENT = "limit", "offset", "sort", "absent"
 # The largest page a listing gives: the bound the generated request model enforces.
 PAGE = next(m.le for m in ListRequest.model_fields["limit"].metadata if hasattr(m, "le"))
 # The furthest position a page can start at: the bound the generated request model enforces.
 MAX_OFFSET = next(m.le for m in ListRequest.model_fields["offset"].metadata if hasattr(m, "le"))
-RESERVED = frozenset({LIMIT, OFFSET, SORT})
+RESERVED = frozenset({LIMIT, OFFSET, SORT, ABSENT})
 # A parameter name ending in it asks for a contains filter on the name without it.
 CONTAINS = "~"
 DESCENDING = "-"
@@ -111,11 +112,12 @@ def _paging(sent: Mapping[str, list[str]]) -> dict[str, int]:
 
 
 def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
-    """The listing a query string asks for: ``limit``, ``offset``, ``sort``, every other parameter a filter.
+    """The listing a query string asks for: ``limit``, ``offset``, ``sort``, ``absent``, every other parameter a filter.
 
     A name ending in ``~`` is a contains filter on the name without that last ``~`` (``label~=dune``);
     any other name is an equality filter. The value is taken as sent. The reserved names are compared
-    before the ``~`` is stripped, so ``sort~`` is a filter on the slot ``sort``.
+    before the ``~`` is stripped, so ``sort~`` is a filter on the slot ``sort``. Each ``absent`` value
+    names a slot the aggregates must hold no value for (``absent=published``).
 
     Raises:
         BadQuery: ``limit`` is not between 1 and ``PAGE``, ``offset`` is not between 0 and
@@ -130,7 +132,7 @@ def list_request(params: Iterable[tuple[str, str]]) -> ListRequest:
         for name, values in sent.items()
         if name not in RESERVED
         for value in values
-    ]
+    ] + [Filter(slot=name, value="", absent=True) for name in sent[ABSENT]]
     try:
         return ListRequest(
             **_paging(sent), sort=sent[SORT][0] if sent[SORT] else None, filters=filters or None
@@ -218,15 +220,18 @@ def condition_patterns(variable: str, conditions: Iterable[Condition]) -> Sparql
     """The patterns that hold every condition of a plan on ``?variable``: the one renderer of conditions.
 
     An equality condition is a ``?variable <predicate> <value> .`` triple pattern; a contains condition
-    is a ``FILTER EXISTS`` on a value of the predicate holding its text, ignoring case. The listing,
+    is a ``FILTER EXISTS`` on a value of the predicate holding its text, ignoring case; an absent
+    condition is a ``FILTER NOT EXISTS`` on a value of the predicate (``no_value_patterns``). The listing,
     ``Session.matches`` and the commit guard all render through it, so they agree.
     """
     conditions = list(conditions)
-    equal = [c for c in conditions if not c.contains]
+    equal = [c for c in conditions if not c.contains and not c.absent]
     containing = [(URIRef(c.predicate), Literal(c.value)) for c in conditions if c.contains]
+    absent = [URIRef(c.predicate) for c in conditions if c.absent]
     parts = [
         match_patterns(variable, condition_pairs(equal)),
         contains_patterns(variable, containing),
+        no_value_patterns(variable, absent),
     ]
     return join(part for part in parts if part)
 
@@ -267,8 +272,17 @@ class Listings:
         return slot
 
     def _filtered(self, cls: ClassDefinition, filter_: Filter) -> Condition:
-        """The condition of one filter: its slot resolved, its value typed (equality) or kept (contains)."""
+        """The condition of one filter: its slot resolved, its value typed (equality), kept (contains) or unread (absent).
+
+        Raises:
+            BadQuery: The slot is not listable, the filter is both contains and absent, or it fails
+                as ``_contains`` or ``typed_value`` say.
+        """
         slot = self._slot(cls, filter_.slot)
+        if filter_.absent:
+            if filter_.contains:
+                raise BadQuery(f"a filter on {filter_.slot!r} cannot be both contains and absent")
+            return Condition(predicate=str(self._predicate(slot)), value="", absent=True)
         if filter_.contains:
             return self._contains(cls, slot, filter_.value)
         return _condition(self._predicate(slot), typed_value(self._view, slot, filter_.value))

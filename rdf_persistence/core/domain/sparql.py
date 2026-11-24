@@ -209,6 +209,26 @@ def contains_patterns(variable: str, pairs: Iterable[tuple[URIRef, Literal]]) ->
     return SparqlTerm(" ".join(filters))
 
 
+def no_value_patterns(variable: str, predicates: Iterable[URIRef]) -> SparqlTerm:
+    """Render ``FILTER NOT EXISTS { ?variable <predicate> ?variable_aN . }`` for the n-th predicate (from 0).
+
+    A subject matches when it holds no statement of the predicate at all (D-9): a blank node is a value,
+    unlike in ``absent_patterns``, which a unique key reads. Each predicate has its own
+    ``?variable_aN``; no predicates render the empty pattern.
+
+    Raises:
+        SparqlError: The variable is not a plain name, or a predicate is not a safe IRI.
+    """
+    if not _VARIABLE.fullmatch(variable):
+        raise SparqlError(f"not a plain variable name: {variable!r}")
+    return SparqlTerm(
+        " ".join(
+            f"FILTER NOT EXISTS {{ ?{variable} {term(p)} ?{variable}_a{n} . }}"
+            for n, p in enumerate(predicates)
+        )
+    )
+
+
 def value_patterns(subject: str, predicates: Sequence[URIRef]) -> SparqlTerm:
     """Render ``?subject <predicate> ?v0 .``, ``?v1`` and so on, one pattern per predicate in order."""
     if not _VARIABLE.fullmatch(subject):

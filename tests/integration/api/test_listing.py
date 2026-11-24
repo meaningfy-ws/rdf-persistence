@@ -84,6 +84,46 @@ async def test_a_book_with_two_matching_values_is_listed_once_so_the_page_after_
     assert page["total"] == 3, "and the total counts each book once"
 
 
+async def test_an_absent_filter_against_fuseki_lists_the_books_with_no_value_and_counts_them(
+    toy, client
+) -> None:
+    made = await client.post("/libraries", json=TENANT_BODY, headers=toy.bearer("ada"))
+    path = f"{made.headers['location']}/books"
+    for label, authors, published in [
+        ("Dune", ["Herbert"], None),
+        ("Emma", [], None),
+        ("Ulysses", ["Joyce", "Herbert"], "1922-02-02"),
+        ("Candide", [], "1759-01-01"),
+    ]:
+        body = {**DUNE_BODY, "label": label, "authors": authors}
+        if published:
+            body["published"] = published
+        created = await client.post(path, json=body, headers=toy.bearer("ada"))
+        assert created.status_code == 201, created.text
+
+    async def listed(query: str) -> tuple[list[str], int]:
+        page = (await client.get(f"{path}?{query}&sort=label", headers=toy.bearer("ada"))).json()
+        return [book["label"] for book in page["items"]], page["total"]
+
+    assert await listed("absent=authors") == (["Candide", "Emma"], 2), "no author at all"
+    assert await listed("absent=published") == (["Dune", "Emma"], 2), "no publication date"
+    assert await listed("absent=authors&absent=published") == (["Emma"], 1), "both, repeated"
+    assert await listed("absent=authors&label~=c") == (["Candide"], 1), "with a contains filter"
+    assert await listed("absent=authors&authors=Herbert") == ([], 0), "E12: nothing is both"
+    one = (
+        await client.get(f"{path}?absent=authors&limit=1&sort=label", headers=toy.bearer("ada"))
+    ).json()
+    assert (len(one["items"]), one["total"]) == (1, 2), "the total counts the whole listing"
+
+
+@pytest.mark.parametrize("query", ["absent=nosuch", "absent="])  # E11, E13
+async def test_an_absent_filter_on_no_slot_is_a_bad_query_against_fuseki(
+    toy, client, query
+) -> None:
+    path = await library_of(toy, client, "ada", ["Dune"])
+    assert_problem(await client.get(f"{path}?{query}", headers=toy.bearer("ada")), 400, "bad-query")
+
+
 @pytest.mark.parametrize("slot", ["label", "label~"])
 @pytest.mark.parametrize("value", INJECTIONS, ids=range(len(INJECTIONS)))
 async def test_an_injection_through_a_filter_matches_nothing_and_changes_nothing(

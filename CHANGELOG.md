@@ -22,6 +22,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   migrated: a set that drops a stored bad role is accepted. See "Grant and prohibit" in "Control
   access".
 
+### Added
+- **Absence filter** (`consumer-gap-fixes`, #312). `Session.find(cls, slot=None)` and the listing
+  parameter `?absent=<slot>` (repeatable) match the aggregates with no value for the slot, and
+  combine with every other filter; the listing's `total` counts them. A `None` inside a list is a
+  `ValueError`. A slot with an `ifabsent` default is never absent. `Filter` and `Condition` gain
+  `absent`. See "Listings and paging" in the HTTP API reference.
+
+### Changed
+- `Session.find(cls, slot=None)` now matches the aggregates with no value for the slot; it matched
+  nothing before.
+- `absent` is a reserved listing name, like `limit`, `offset` and `sort`: a model slot named
+  `absent` can no longer be filtered or sorted on in a listing. Rename the slot.
+
 ## [0.10.0] - 2026-11-24
 
 ### ⚠ BREAKING
