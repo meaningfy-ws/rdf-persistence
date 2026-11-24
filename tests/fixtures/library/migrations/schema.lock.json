@@ -445,6 +445,63 @@
       ]
     },
     {
+      "class_uri": "https://example.org/ns/library#BookCollection",
+      "iri_type": "book-collection",
+      "root_path": "book-collections",
+      "root_database": "tenant",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/hasPart",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#memberClass",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#membershipRule",
+          "range": "https://meaningfy.ws/ns/rdf-persistence#MembershipRule",
+          "required": false,
+          "multivalued": false,
+          "inlined": true
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#nests",
+          "range": "http://www.w3.org/2001/XMLSchema#boolean",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
       "class_uri": "https://example.org/ns/library#Charter",
       "iri_type": null,
       "root_path": null,
@@ -469,6 +526,70 @@
           "range": "http://www.w3.org/2001/XMLSchema#string",
           "required": true,
           "multivalued": false,
+          "inlined": false
+        }
+      ]
+    },
+    {
+      "class_uri": "https://example.org/ns/library#Display",
+      "iri_type": "display",
+      "root_path": "displays",
+      "root_database": "tenant",
+      "locked_slots": [
+        {
+          "slot_uri": "http://purl.org/dc/terms/contributor",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/created",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/creator",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/description",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/identifier",
+          "range": "http://www.w3.org/2001/XMLSchema#anyURI",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://purl.org/dc/terms/modified",
+          "range": "http://www.w3.org/2001/XMLSchema#dateTime",
+          "required": false,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "http://www.w3.org/2004/02/skos/core#prefLabel",
+          "range": "http://www.w3.org/2001/XMLSchema#string",
+          "required": true,
+          "multivalued": false,
+          "inlined": false
+        },
+        {
+          "slot_uri": "https://example.org/ns/library#features",
+          "range": "http://purl.org/ontology/bibo/Book",
+          "required": true,
+          "multivalued": true,
           "inlined": false
         }
       ]

@@ -9,6 +9,13 @@ classDiagram
     class Shelf {
         <<root>>
     }
+    class BookCollection {
+        <<root>>
+        +string member_class
+    }
+    class Display {
+        <<root>>
+    }
     class Author {
         <<root>>
     }
@@ -36,6 +43,7 @@ classDiagram
     Book "1" --> "0..1" Shelf : shelf
     Book "1" --> "0..1" Book : sequel_of
     Book "1" --> "0..1" Author : written_by
+    Display "1" --> "1..*" Book : features
     LendingItem <|-- Magazine
     LendingItem <|-- Pamphlet
     Loan "1" --> "1" LendingItem : lends

@@ -1,0 +1,17 @@
+{
+  "@context": "context.jsonld",
+  "@omitGraph": true,
+  "@embed": "@always",
+  "@omitDefault": true,
+  "@type": "BookCollection",
+  "membership_rule": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "MembershipRule",
+    "rule_equalities": {
+      "@embed": "@always",
+      "@omitDefault": true,
+      "@type": "SlotEquality"
+    }
+  }
+}
