@@ -24,7 +24,7 @@ from tests.unit.layout_table import MOVED_MODULES, turned_on_classes, turned_on_
 ROOT = Path(__file__).resolve().parents[3]
 SNAPSHOT = ROOT / "tests" / "fixtures" / "public-surface.json"
 REFRESH = "RP_REFRESH_SNAPSHOT"
-NAMES = 153
+NAMES = 155
 _MISSING = object()
 
 

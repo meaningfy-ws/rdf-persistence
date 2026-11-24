@@ -37,6 +37,7 @@
 |`EventBus` |class |Base class for protocol classes.
 |`EventEnvelope` |class |What travels beside an activity on the event bus: the tenant it happened in, the deployment that published it, the class of its body and where to find the JSON-LD context that reads it.
 |`EventSettings` |class |The event bus, the relay that publishes from the outbox, and the hub that fans events out.
+|`expected_version` |function |The version an update or a delete expects, from an ``If-Match`` with one strong entity tag; no read.
 |`FileStore` |class |An object store with buckets, over S3 or in memory.
 |`Forbidden` |class |The caller may see the thing but is not allowed the action (403).
 |`FusekiStore` |class |A ``Store`` over Fuseki's SPARQL, Graph Store and admin endpoints, with basic auth.
@@ -77,6 +78,7 @@
 |`load_role_definitions` |function |The role definitions in the YAML file ``path``, validated against ``rp_access``.
 |`load_schema` |function |Open the schema at ``path``; ``rdf_persistence/model/<module>`` imports find the package's modules.
 |`Mapper` |class |Maps the generated classes of a schema to and from the triples of an aggregate.
+|`matched_version` |function |The one version a guarded write takes, from its ``If-Match``.
 |`MemberList` |class |The members of a collection that the caller may read, and the number of members left out because the caller may not read them.
 |`MembershipRule` |class |The rule of a collection, a part of its graph with no identifier of its own.
 |`MessageBus` |class |Dispatches commands to handlers (``handle``) and committed activities to observers (``publish``).

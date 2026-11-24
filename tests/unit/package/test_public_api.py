@@ -63,6 +63,8 @@ INDEXED_NAMES = [
     "Collaboration",
     "Workflows",
     "limited_body",
+    "expected_version",
+    "matched_version",
     "Iris",
     "IriPolicy",
     "IdSource",
