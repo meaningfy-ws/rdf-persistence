@@ -81,7 +81,9 @@ def with_a_newsletter(root: Path) -> tuple[Path, ModuleType]:
     (project / "__init__.py").write_text("")
     (project / "newsletters.yaml").write_text(NEWSLETTERS)
     schema = (
-        (project / "library.yaml").read_text().replace("  - scans\n", "  - scans\n  - newsletters\n")
+        (project / "library.yaml")
+        .read_text()
+        .replace("  - scans\n", "  - scans\n  - newsletters\n")
     )
     (project / "library.yaml").write_text(schema)
     (project / "pyproject.toml").write_text(PYPROJECT)
