@@ -74,6 +74,14 @@
         "value": {
           "description": "The value of the statement, an IRI or the lexical form of a literal.",
           "type": "string"
+        },
+        "via": {
+          "description": "The IRIs of the predicates of the references the condition crosses, in order, from the listed aggregate to the one whose statement is tested; empty when the condition is on the listed aggregate itself. The predicate and value are those of the last aggregate.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "required": [
