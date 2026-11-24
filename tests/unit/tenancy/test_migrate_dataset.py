@@ -9,13 +9,11 @@ from pydantic import ValidationError
 from rdflib import RDF, XSD, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.compare import isomorphic
 
-from rdf_persistence.access.domain.generated.rp_access import Grant
-from rdf_persistence.access.domain.generated.rp_tenancy import TenantAccess, TenantState
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantAccess
 from rdf_persistence.access.services.access import _access_mapper
 from rdf_persistence.core.domain.exceptions import InvalidBody, SparqlError
 from rdf_persistence.core.domain.sparql_parsing import prepare_update
 from rdf_persistence.iris.domain.layout import graph_iri
-from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.migrations.services.generated.rp_migrations_services import (
     GrantRoles,
     Migration,
@@ -28,23 +26,30 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.tenancy.services.migration_runner import migrate_dataset
 from tests.migration_helpers import (
+    ACCESS_TOKEN,
     BOOK,
+    BOOK_GRAPH,
     ISBN,
     LIB,
     LOADED,
     MID_ISBN,
     OLD_ISBN,
+    OTHER_RECORD,
+    OTHER_TENANT,
+    RECORD,
     REGISTRY,
     RP,
     STAMP,
     STAMPS,
     TOKEN,
+    Held,
     chain_of,
     dataset,
     migration,
     stamp,
+    the_record,
 )
-from tests.toy import ADA, BOB, DATABASE, SETTINGS, TENANT
+from tests.toy import ADA, BOB, TENANT
 
 
 def isbns(data: Dataset, graph: URIRef) -> set[str]:
@@ -400,26 +405,6 @@ def test_the_consumers_drop_of_had_member_after_the_toolkits_step_keeps_the_memb
 
 
 # -- grant-roles T1 to T7: a migration renames or drops the roles of the stored grants -----------------------
-
-OTHER_TENANT = "https://example.org/libraries/0b2e44d1"
-BOOK_GRAPH = f"{TENANT}/books/b1"  # an aggregate's graph: a grant on it is an aggregate-level grant
-RECORD = Iris(SETTINGS).access(TENANT)
-OTHER_RECORD = Iris(SETTINGS).access(OTHER_TENANT)
-ACCESS_TOKEN = Literal("access-token-1")
-
-# (assignee, target, role): a grant as the tests state it
-Held = set[tuple[str, str, str | None]]
-
-
-def the_record(iri: URIRef, tenant: str, held: Held) -> Graph:
-    """The access record of ``tenant`` holding ``held`` as grants, as the mapper writes it, with a version token."""
-    record = TenantAccess(
-        id=str(iri), label="Library", state=TenantState.ACTIVE, database_name=DATABASE,
-        grants=[Grant(assignee=a, target=t, role=r) for a, t, r in sorted(held)],
-    )  # fmt: skip
-    graph = _access_mapper().to_graph(record)
-    graph.add((graph_iri(str(iri)), v.VERSION, ACCESS_TOKEN))
-    return graph
 
 
 def system_database(*records: tuple[URIRef, str, Held]) -> Dataset:

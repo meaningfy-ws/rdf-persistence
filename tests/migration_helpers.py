@@ -9,10 +9,14 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import yaml
-from rdflib import Dataset, Literal, URIRef
+from rdflib import Dataset, Graph, Literal, URIRef
 
+from rdf_persistence.access.domain.generated.rp_access import Grant
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantAccess, TenantState
+from rdf_persistence.access.services.access import _access_mapper
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind
-from rdf_persistence.iris.domain.layout import stamps_graph_iri
+from rdf_persistence.iris.domain.layout import graph_iri, stamps_graph_iri
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.migrations.services.generated.rp_migrations_services import (
     Migration,
     MigrationStep,
@@ -20,7 +24,7 @@ from rdf_persistence.migrations.services.generated.rp_migrations_services import
 from rdf_persistence.migrations.services.migrations import Chain, load_chain
 from rdf_persistence.schema.services import vocabulary as v
 from tests.tenancy_world import CREATOR
-from tests.toy import SETTINGS, dune, library_slots, toy_mapper
+from tests.toy import DATABASE, SETTINGS, TENANT, dune, library_slots, toy_mapper
 
 LIB = "https://example.org/ns/library"
 RP = "https://meaningfy.ws/ns/rdf-persistence"
@@ -34,6 +38,25 @@ LOADED = URIRef("https://example.org/library/libraries/t/loaded/l")
 REGISTRY = URIRef("https://example.org/library/libraries/t/registry")
 TOKEN = Literal("token-1")
 STAMP = URIRef(str(v.DATA_SCHEMA_VERSION))
+OTHER_TENANT = "https://example.org/libraries/0b2e44d1"
+BOOK_GRAPH = f"{TENANT}/books/b1"  # an aggregate's graph: a grant on it is an aggregate-level grant
+RECORD = Iris(SETTINGS).access(TENANT)
+OTHER_RECORD = Iris(SETTINGS).access(OTHER_TENANT)
+ACCESS_TOKEN = Literal("access-token-1")
+
+# (assignee, target, role): a grant as the tests state it
+Held = set[tuple[str, str, str | None]]
+
+
+def the_record(iri: URIRef, tenant: str, held: Held) -> Graph:
+    """The access record of ``tenant`` holding ``held`` as grants, as the mapper writes it, with a version token."""
+    record = TenantAccess(
+        id=str(iri), label="Library", state=TenantState.ACTIVE, database_name=DATABASE,
+        grants=[Grant(assignee=a, target=t, role=r) for a, t, r in sorted(held)],
+    )  # fmt: skip
+    graph = _access_mapper().to_graph(record)
+    graph.add((graph_iri(str(iri)), v.VERSION, ACCESS_TOKEN))
+    return graph
 
 
 def rename(old: URIRef, new: URIRef) -> MigrationStep:

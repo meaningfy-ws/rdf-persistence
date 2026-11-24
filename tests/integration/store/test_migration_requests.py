@@ -42,27 +42,25 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
 from rdf_persistence.tenancy.services.migration_runner import migrate_database
 from tests.migration_helpers import (
+    BOOK_GRAPH,
     ISBN,
     LIB,
     MID_ISBN,
     OLD_ISBN,
+    OTHER_RECORD,
+    OTHER_TENANT,
+    RECORD,
     RP,
     STAMPS,
+    Held,
     chain_of,
     migration,
     put_stamp,
     rename,
-)
-from tests.toy import ADA, BOB
-from tests.unit.tenancy.test_migrate_dataset import (
-    BOOK_GRAPH,
-    OTHER_RECORD,
-    OTHER_TENANT,
-    RECORD,
-    Held,
     the_record,
 )
-from tests.unit.tenancy.test_migrate_dataset import TENANT as ACCESS_TENANT
+from tests.toy import ADA, BOB
+from tests.toy import TENANT as ACCESS_TENANT
 
 TENANT = "https://example.org/tenant/t1"
 BOOKS = tuple(URIRef(f"{TENANT}/books/{n}") for n in (1, 2))
