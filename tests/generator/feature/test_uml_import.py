@@ -53,6 +53,7 @@ class World:
         self.code: int | None = None
         self.workflow: Workflow | None = None
         self.capsys = capsys
+        self.stderr: str | None = None
         self.out = folder / "out"
         self.again = folder / "again"
 
@@ -80,6 +81,12 @@ class World:
                 *options,
             ]
         )
+
+    def error(self) -> str:
+        """The standard error of the run, read once so each Then sees the whole of it."""
+        if self.stderr is None:
+            self.stderr = self.capsys.readouterr().err
+        return self.stderr
 
     def module(self, name: str = LIBRARY_MODULE) -> dict:
         return yaml.safe_load((self.out / f"{name}.yaml").read_text(encoding="utf-8"))
@@ -127,10 +134,30 @@ def _chapters(world: World, card: str | None, **options: object) -> int:
 def _root_with_part(world: World) -> None:
     book, chapter = _book(world, stereotype="root"), _chapter(world)
     world.builder.attribute(book, "dct:title", "xsd:string", "1", "1", note="The title.")
-    _chapters(world, "1..*")
+    _chapters(world, "2..5")
+    resource = world.builder.cls(
+        world.library, "lib:Resource", stereotype="root", note="A resource."
+    )
+    world.builder.generalisation(book, resource)
+    genre = world.builder.cls(
+        world.library, "lib:Genre", object_type="Enumeration", note="The genres."
+    )
+    world.builder.attribute(genre, "lib:novel", note="A novel.")
+    world.builder.dependency(book, genre, "lib:genre", note="Its genre.")
     world.builder.boundary(diagram=1, rect=BOX, members=[])
     world.builder.place(1, book, INSIDE)
     world.builder.place(1, chapter, (10, -10, 60, -40))
+
+
+@given("an abstract class whose concrete subclasses are all roots, and a slot ranging over it")
+def _abstract_root(world: World) -> None:
+    builder = world.builder
+    item = builder.cls(world.library, "lib:Item", abstract=True, note="An item.")
+    for name in ("Book", "Magazine"):
+        subclass = builder.cls(world.library, f"lib:{name}", stereotype="root", note=f"A {name}.")
+        builder.generalisation(subclass, item)
+    shelf = builder.cls(world.library, "lib:Shelf", stereotype="root", note="A shelf.")
+    builder.association(shelf, item, "lib:items", "0..*", note="The items on it.")
 
 
 @given("two packages whose classes refer to each other")
@@ -320,11 +347,7 @@ def _loan_with_undefined_role(
     _draw_loan(world, chart, [(source, target, {name: value}), *others])
 
 
-@given(
-    parsers.parse(
-        'a shelf root tagged "{written}" whose only part role points at the shelf'
-    )
-)
+@given(parsers.parse('a shelf root tagged "{written}" whose only part role points at the shelf'))
 def _shelf_of_shelves(world: World, written: str) -> None:
     name, value = written.split("=", 1)
     shelf = world.builder.cls(world.library, "lib:Shelf", stereotype="root", note="A shelf.")
@@ -358,12 +381,15 @@ def _succeeds(world: World) -> None:
     assert world.code == 0, "the command must exit 0"
 
 
-@then(parsers.parse('the conversion fails naming "{first}" and "{second}"'))
-def _fails(world: World, first: str, second: str) -> None:
-    error = world.capsys.readouterr().err
+@then("the conversion fails")
+def _fails(world: World) -> None:
     assert world.code == 1, "the command must exit 1, the model having problems"
-    assert first in error, f"the problems must name {first}: {error}"
-    assert second in error, f"the problems must say {second}: {error}"
+
+
+@then(parsers.parse('the error names "{text}"'))
+def _error_names(world: World, text: str) -> None:
+    error = world.error()
+    assert text in error, f"the problems must say {text}: {error}"
 
 
 @then("nothing is written")
@@ -381,18 +407,40 @@ def _identical(world: World) -> None:
 # --- Then: the classes and slots -----------------------------------------------------------------------
 
 
-@then(parsers.parse('the book is an aggregate root with the path "{path}"'))
-def _root(world: World, path: str) -> None:
-    book = world.klass("Book")
-    assert "AggregateRoot" in book["mixins"], "the book has the aggregate-root mixin"
-    assert book["annotations"]["rp_path"]["value"] == path, "the book has its path"
+@then("the book is an aggregate root")
+def _root(world: World) -> None:
+    assert "AggregateRoot" in world.klass("Book")["mixins"], "the book has the aggregate-root mixin"
 
 
-@then("the book's chapters slot is owned and multivalued")
+@then(parsers.parse('the book\'s path is "{path}"'))
+def _book_path(world: World, path: str) -> None:
+    assert world.klass("Book")["annotations"]["rp_path"]["value"] == path, "the book has its path"
+
+
+@then('the book specialises the class "Resource"')
+def _specialises(world: World) -> None:
+    assert world.klass("Book")["is_a"] == "Resource", "the generalisation is the book's is_a"
+
+
+@then("the book's chapters slot is owned")
 def _owned(world: World) -> None:
     slot = world.module()["slots"]["chapters"]
     assert slot["annotations"]["owned"]["value"] == "true", "the chapters are owned"
-    assert slot["multivalued"] is True, "there are many chapters"
+
+
+@then("the book's chapters slot is multivalued")
+def _multivalued(world: World) -> None:
+    assert world.module()["slots"]["chapters"]["multivalued"] is True, "there are many chapters"
+
+
+@then(parsers.parse('the slot "{name}" has the IRI "{iri}"'))
+def _slot_iri(world: World, name: str, iri: str) -> None:
+    assert world.module()["slots"][name]["slot_uri"] == iri, f"the IRI of the slot {name}"
+
+
+@then(parsers.parse('the book\'s slot "{name}" ranges over the enumeration "{enum}"'))
+def _slot_enum(world: World, name: str, enum: str) -> None:
+    assert world.module()["slots"][name]["range"] == enum, f"the slot {name} ranges over {enum}"
 
 
 @then("the generator's lint and boundary checks accept the output")
@@ -415,6 +463,10 @@ def _accepted(world: World) -> None:
 def _one_module(world: World, module: str) -> None:
     written = sorted(file.name for file in world.out.glob(f"{ROOT_NAME}_*.yaml"))
     assert written == [f"{module}.yaml"], "one module holds both packages"
+
+
+@then(parsers.parse('the module "{module}" holds the classes "Book" and "Shelf"'))
+def _module_classes(world: World, module: str) -> None:
     assert sorted(world.module(module)["classes"]) == ["Book", "Shelf"], "it holds both classes"
 
 
@@ -423,29 +475,32 @@ def _no_description(world: World) -> None:
     assert "description" not in world.klass("Book"), "no placeholder description is written"
 
 
-@then(parsers.parse('the chapters slot is required "{required}" and multivalued "{many}"'))
-def _required_and_many(world: World, required: str, many: str) -> None:
+@then(parsers.parse('the chapters slot is required "{required}"'))
+def _required(world: World, required: str) -> None:
     slot = world.module()["slots"]["chapters"]
     assert bool(slot.get("required")) is (required == "yes"), (
         "required follows a lower bound of one"
     )
+
+
+@then(parsers.parse('the chapters slot is multivalued "{many}"'))
+def _many(world: World, many: str) -> None:
+    slot = world.module()["slots"]["chapters"]
     assert bool(slot.get("multivalued")) is (many == "yes"), (
         "multivalued follows an upper bound > 1"
     )
 
 
-@then(
-    parsers.parse(
-        'its minimum cardinality is "{minimum}" and its maximum cardinality is "{maximum}"'
-    )
-)
-def _cardinalities(world: World, minimum: str, maximum: str) -> None:
-    slot = world.module()["slots"]["chapters"]
-    for found, wanted, what in (
-        (slot.get("minimum_cardinality"), minimum, "minimum"),
-        (slot.get("maximum_cardinality"), maximum, "maximum"),
-    ):
-        assert (None if wanted == NONE else int(wanted)) == found, f"the {what} cardinality"
+@then(parsers.parse('its minimum cardinality is "{minimum}"'))
+def _minimum_cardinality(world: World, minimum: str) -> None:
+    found = world.module()["slots"]["chapters"].get("minimum_cardinality")
+    assert (None if minimum == NONE else int(minimum)) == found, "the minimum cardinality"
+
+
+@then(parsers.parse('its maximum cardinality is "{maximum}"'))
+def _maximum_cardinality(world: World, maximum: str) -> None:
+    found = world.module()["slots"]["chapters"].get("maximum_cardinality")
+    assert (None if maximum == NONE else int(maximum)) == found, "the maximum cardinality"
 
 
 @then(parsers.parse('the slot to the enumeration ranges over "{range_}"'))
@@ -458,15 +513,14 @@ def _abstract(world: World, name: str) -> None:
     assert world.klass(name)["abstract"] is True, f"{name} is abstract"
 
 
-@then(
-    parsers.parse(
-        'the loan is an activity and an aggregate root with the mixins "{first}" and "{second}"'
-    )
-)
+@then("the loan is an activity")
+def _activity(world: World) -> None:
+    assert world.klass("Loan")["is_a"] == "Activity", "the loan is an Activity"
+
+
+@then(parsers.parse('the loan is an aggregate root with the mixins "{first}" and "{second}"'))
 def _activity_root(world: World, first: str, second: str) -> None:
-    loan = world.klass("Loan")
-    assert loan["is_a"] == "Activity", "the loan is an Activity"
-    assert loan["mixins"] == ["AggregateRoot", first, second], "the loan's mixins"
+    assert world.klass("Loan")["mixins"] == ["AggregateRoot", first, second], "the loan's mixins"
 
 
 @then(parsers.parse('the loan\'s path is "{path}"'))
@@ -474,26 +528,61 @@ def _loan_path(world: World, path: str) -> None:
     assert world.klass("Loan")["annotations"]["rp_path"]["value"] == path, "the loan's path"
 
 
-@then("the loan defines no slot of its own and narrows no slot")
-def _loan_slots(world: World) -> None:
-    loan = world.klass("Loan")
+@then("the loan defines no slot of its own")
+def _loan_defines_no_slot(world: World) -> None:
     assert not world.module().get("slots"), "no new slot is defined"
-    assert "slot_usage" not in loan, "no toolkit slot is narrowed"
-    assert not loan.get("slots"), "the loan lists no slot"
 
 
-@then(parsers.parse('the book carries the annotation "{name}" with the value "{value}"'))
-def _annotated(world: World, name: str, value: str) -> None:
-    assert world.klass("Book")["annotations"][name]["value"] == value, f"the annotation {name}"
+@then("the loan narrows no slot")
+def _loan_narrows_no_slot(world: World) -> None:
+    assert "slot_usage" not in world.klass("Loan"), "no toolkit slot is narrowed"
 
 
-@then(parsers.parse('the book has the required string slot "{name}" with the IRI "{iri}"'))
-def _identifier(world: World, name: str, iri: str) -> None:
-    slot = world.module()["slots"][name]
-    assert slot["slot_uri"] == iri, "the identifier's IRI"
-    assert slot["range"] == "string", "the identifier is a string"
-    assert slot["required"] is True, "the identifier is required"
-    assert name in world.klass("Book")["slots"], "the book has the slot"
+@then("the loan lists no slot")
+def _loan_lists_no_slot(world: World) -> None:
+    assert not world.klass("Loan").get("slots"), "the loan lists no slot"
+
+
+@then(
+    parsers.parse(
+        'the class "{name}" carries the annotation "{annotation}" with the value "{value}"'
+    )
+)
+def _annotated(world: World, name: str, annotation: str, value: str) -> None:
+    found = world.klass(name)["annotations"][annotation]["value"]
+    assert found == value, f"the annotation {annotation} of {name}"
+
+
+@then(parsers.parse('the class "{name}" has no annotation "{annotation}"'))
+def _not_annotated(world: World, name: str, annotation: str) -> None:
+    assert annotation not in world.klass(name).get("annotations", {}), (
+        f"{name} carries no {annotation}"
+    )
+
+
+@then(parsers.parse('the class "{name}" mixes in "{mixin}"'))
+def _mixes_in(world: World, name: str, mixin: str) -> None:
+    assert mixin in world.klass(name).get("mixins", []), f"{name} lists the mixin {mixin}"
+
+
+@then(parsers.parse('the class "{name}" does not mix in "{mixin}"'))
+def _does_not_mix_in(world: World, name: str, mixin: str) -> None:
+    assert mixin not in world.klass(name).get("mixins", []), f"{name} lists no mixin {mixin}"
+
+
+@then(parsers.parse('the slot "{name}" is a string'))
+def _slot_is_a_string(world: World, name: str) -> None:
+    assert world.module()["slots"][name]["range"] == "string", f"the slot {name} is a string"
+
+
+@then(parsers.parse('the slot "{name}" is required'))
+def _slot_is_required(world: World, name: str) -> None:
+    assert world.module()["slots"][name]["required"] is True, f"the slot {name} is required"
+
+
+@then(parsers.parse('the book has the slot "{name}"'))
+def _book_has(world: World, name: str) -> None:
+    assert name in world.klass("Book")["slots"], f"the book lists the slot {name}"
 
 
 @then(parsers.parse('the library defines no slot "{name}"'))
@@ -504,7 +593,6 @@ def _no_slot(world: World, name: str) -> None:
 @then(parsers.parse('the book has no slot "{name}"'))
 def _book_lacks(world: World, name: str) -> None:
     assert name not in world.klass("Book").get("slots", []), f"the book has no slot {name}"
-    assert name not in world.module().get("slots", {}), f"no slot {name} is defined"
 
 
 # --- Then: the roles file ------------------------------------------------------------------------------
@@ -530,13 +618,13 @@ def _workflow_loaded(world: World, path: str) -> None:
     world.workflow = load_workflow(world.out / path)
 
 
-@then(
-    parsers.parse(
-        'the workflow has the states "{a}", "{b}", "{c}" and "{d}" and the initial state "{initial}"'
-    )
-)
-def _workflow_states(world: World, a: str, b: str, c: str, d: str, initial: str) -> None:
+@then(parsers.parse('the workflow has the states "{a}", "{b}", "{c}" and "{d}"'))
+def _workflow_states(world: World, a: str, b: str, c: str, d: str) -> None:
     assert world.workflow.workflow_states == [a, b, c, d], "the four states, sorted"
+
+
+@then(parsers.parse('the workflow has the initial state "{initial}"'))
+def _workflow_initial(world: World, initial: str) -> None:
     assert world.workflow.initial_state == initial, "the state the initial flow leads to"
 
 

@@ -1,10 +1,13 @@
 """TC-4: names, IRIs, titles, permissible-value keys and the root path (PD-6, PD-10, PD-12)."""
 
 import pytest
+from linkml.linter.rules import StandardNamingRule
 
 from rdf_persistence_generation.generated.rp_generation import CheckProblem, UmlName, UmlRule
 from rdf_persistence_generation.problems import format_problem
 from rdf_persistence_generation.uml.naming import (
+    CLASS_NAME_PATTERN,
+    SLOT_NAME_PATTERN,
     check_class_name,
     check_slot_name,
     permissible_value_key,
@@ -88,6 +91,17 @@ def test_a_class_name_that_breaks_the_pattern_is_a_problem(name: str) -> None:
     assert isinstance(problem, CheckProblem), f"{name} is refused as a class name"
     assert "[A-Z][a-zA-Z0-9]+" in problem.message, (
         f"the message gives the pattern: {problem.message}"
+    )
+
+
+def test_the_name_patterns_are_the_linters() -> None:
+    """The lint step's ``standard_naming`` rule (default config) is the one the checks repeat."""
+    patterns = StandardNamingRule.PATTERNS
+    assert patterns["uppercamel"].pattern == CLASS_NAME_PATTERN, (
+        f"the class pattern is the linter's upper camel case: {CLASS_NAME_PATTERN}"
+    )
+    assert patterns["snake"].pattern == SLOT_NAME_PATTERN, (
+        f"the slot pattern is the linter's snake case: {SLOT_NAME_PATTERN}"
     )
 
 
