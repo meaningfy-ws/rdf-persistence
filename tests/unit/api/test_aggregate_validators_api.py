@@ -7,11 +7,12 @@ from typing import Any
 import httpx
 import pytest
 
-from rdf_persistence import Action, GrantSet, InvalidBody, UnitOfWork
+from rdf_persistence import Action, Conflict, GrantSet, InvalidBody, UnitOfWork
 from rdf_persistence.access.domain.generated.rp_access import Prohibition
 from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateReader,
     AggregateValidator,
+    DeleteValidator,
 )
 from rdf_persistence.core.domain.media import JSON
 from tests.fixtures.library.domain.generated.books import Shelf
@@ -48,9 +49,10 @@ class Seen:
 
 @asynccontextmanager
 async def scene_with(
-    aggregate_validators: Mapping[str, Sequence[AggregateValidator]],
+    aggregate_validators: Mapping[str, Sequence[AggregateValidator]] = {},
+    delete_validators: Mapping[str, Sequence[DeleteValidator]] = {},
 ) -> AsyncIterator[Scene]:
-    toy = ToyService(aggregate_validators=aggregate_validators)
+    toy = ToyService(aggregate_validators=aggregate_validators, delete_validators=delete_validators)
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         yield await Scene.set_up(toy, http)
 
@@ -266,3 +268,61 @@ async def test_a_rule_refusing_the_tenant_root_on_create_is_a_422_and_leaves_not
         assert await toy.files.list_buckets("") == buckets, "the bucket was dropped"
         listing = await http.get("/libraries", headers=toy.bearer("ada"))
         assert listing.json()["items"] == [], "no tenant is served"
+
+
+# Delete rules through the generic route (aggregate-guards D-5 to D-8: T8, T9, T13, T15)
+
+ON_LOAN = "on loan"  # the toy book has no status: its description stands for one
+
+
+def not_while_on_loan(old: Any, who: Any, reader: AggregateReader) -> None:
+    if old.description == ON_LOAN:
+        raise Conflict(f"{old.id} is on loan; return it before deleting it")
+
+
+async def delete(scene: Scene, url: str, etag: str) -> httpx.Response:
+    return await scene.http.delete(url, headers=scene.headers("ada", **{"If-Match": etag}))
+
+
+@pytest.mark.parametrize(
+    ("description", "status"),
+    [(ON_LOAN, 409), ("shelved", 204)],
+    ids=["on-loan-refused", "shelved-removed"],
+)  # T8, T9
+async def test_a_delete_rule_answers_a_409_and_keeps_the_book(
+    description: str, status: int
+) -> None:
+    async with scene_with(delete_validators={"Book": [not_while_on_loan]}) as scene:
+        made = await post(scene, "books", {**DUNE_BODY, "description": description})
+        assert made.status_code == 201, made.text
+        url, etag = made.headers["location"], made.headers["etag"]
+        response = await delete(scene, url, etag)
+        assert response.status_code == status, response.text
+        after = await scene.http.get(url, headers=scene.headers("ada"))
+        if status == 409:
+            assert problem_of(response).type == f"{PROBLEMS}conflict", "a conflict problem"
+            assert (after.status_code, after.headers["etag"]) == (200, etag), "stored, unchanged"
+        else:
+            assert after.status_code == 404, "the book is gone"
+
+
+@pytest.mark.parametrize("readable", [True, False], ids=["readable", "hidden"])  # T15, E2
+async def test_a_delete_rule_reads_only_what_the_caller_may_read(readable: bool) -> None:
+    seen: list[bool] = []
+
+    async def looks_at_the_shelf(old: Any, who: Any, reader: AggregateReader) -> None:
+        seen.append(await reader.aggregate(old.shelf) is not None)
+
+    async with scene_with(delete_validators={"Book": [looks_at_the_shelf]}) as scene:
+        shelf = (await post(scene, "shelves", SHELF_BODY)).json()["id"]
+        made = await post(scene, "books", {**DUNE_BODY, "shelf": shelf})
+        if not readable:
+            await ban_reading(scene, shelf)
+        response = await delete(scene, made.headers["location"], made.headers["etag"])
+        assert response.status_code == 204, response.text
+        assert seen == [readable], "the shelf is seen only if the caller may read it"
+
+
+def test_a_delete_rule_key_that_is_not_a_root_stops_the_start_up_naming_it() -> None:  # T13
+    with pytest.raises(ValueError, match="Chapter"):
+        ToyService(delete_validators={"Chapter": [not_while_on_loan]})

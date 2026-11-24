@@ -151,6 +151,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
     from rdf_persistence.collaboration.services.aggregate_validators import (
         AggregateReader,
         AggregateValidator,
+        DeleteValidator,
     )
     from rdf_persistence.collaboration.services.collaboration import Collaboration
     from rdf_persistence.collaboration.services.generated.rp_collaboration_services import (
@@ -289,6 +290,7 @@ _LAZY_MODULES = {
     "Collaboration": f"{_COLLABORATION}.collaboration",
     "AggregateReader": f"{_COLLABORATION}.aggregate_validators",
     "AggregateValidator": f"{_COLLABORATION}.aggregate_validators",
+    "DeleteValidator": f"{_COLLABORATION}.aggregate_validators",
     "Workflows": f"{_COLLABORATION}.workflows",
     "state_iri": f"{_COLLABORATION}.workflows",
     "MessageBus": f"{_MESSAGING}.messagebus",
@@ -332,6 +334,7 @@ __all__ = [
     "DEFAULT_IRIS",
     "DatabaseKind",
     "DeleteFile",
+    "DeleteValidator",
     "Described",
     "DirectorySettings",
     "EventSettings",

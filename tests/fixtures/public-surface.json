@@ -22,6 +22,7 @@
   "DatabaseGone": "rdf_persistence.domain.exceptions",
   "DatabaseKind": "rdf_persistence.domain.generated.rp_core",
   "DeleteFile": "rdf_persistence.core.domain.generated.rp_files",
+  "DeleteValidator": "rdf_persistence.services.aggregate_validators",
   "Described": "rdf_persistence.domain.generated.rp_annotations",
   "DirectorySettings": "rdf_persistence.services.generated.settings.rp_settings",
   "EventBus": "rdf_persistence.services.events",

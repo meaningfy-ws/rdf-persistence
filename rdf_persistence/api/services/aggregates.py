@@ -146,19 +146,21 @@ class Aggregates:
         if_version: str,
         cls: ClassDefinition,
         readable: Readable | None = None,
+        may_read: Callable[[str], bool] | None = None,
     ) -> None:
         """Delete the aggregate ``iri`` if it is still at ``if_version``.
 
         ``readable`` says which referrers the caller may read; it shapes the ``InUse`` of a refusal
-        (``None``: every referrer is named).
+        (``None``: every referrer is named). ``may_read`` tells which aggregates the caller may read,
+        so a delete rule's reader hides the others (``None``: the session's full reach).
 
         Raises:
             NotFound: The aggregate has no graph, or is not of ``cls`` (a class derived from it will do).
-            Conflict: Its version is not ``if_version``; nothing changed.
+            Conflict: Its version is not ``if_version``, or a delete rule refuses; nothing changed.
             InUse: (a ``Conflict``) Its class refuses deletion while referred to and another aggregate
                 still refers to it; nothing changed.
         """
-        async with self._tenancy.tenant_session(tenant, principal) as session:
+        async with self._tenancy.tenant_session(tenant, principal, may_read=may_read) as session:
             self._require_class(await session.get_graph(iri), iri, cls)
             await session.remove(iri, if_version, readable=readable)
 

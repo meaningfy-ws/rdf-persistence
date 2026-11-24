@@ -32,6 +32,7 @@
 |`DatabaseKind` |class |The databases an aggregate can live in, the values of the database annotation.
 |`DEFAULT_IRIS` |constant |
 |`DeleteFile` |class |The activity of removing a stored file, with the file aggregate it used and an invalidation of it.
+|`DeleteValidator` |function |
 |`Described` |class |A mixin giving an object an IRI, a label and a description.
 |`DirectorySettings` |class |How the user directory of the identity provider is read.
 |`EventBus` |class |Base class for protocol classes.

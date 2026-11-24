@@ -38,6 +38,8 @@ from rdf_persistence.collaboration.domain.generated import (
 from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateValidator,
     AggregateValidators,
+    DeleteValidator,
+    DeleteValidators,
 )
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.discussion import dependents as discussion_dependents
@@ -130,6 +132,7 @@ class ServiceKit:
         grant_validators: Sequence[GrantValidator] = (),
         root_validators: Sequence[RootValidator] = (),
         aggregate_validators: Mapping[str, Sequence[AggregateValidator]] = {},
+        delete_validators: Mapping[str, Sequence[DeleteValidator]] = {},
         workflows: Sequence[Path] = (),
         stores: Mapping[str, Store] = {},
         event_bus: EventBus | None = None,
@@ -156,7 +159,8 @@ class ServiceKit:
                 of one (the message names it); or a name in ``stores`` is ``default``, or one raw store
                 is wired under two names (the default store included); ``Tenancy`` raises it and the
                 message names the key.
-            TypeError: A rule of ``aggregate_validators`` is not callable.
+                The same for a key of ``delete_validators``.
+            TypeError: A rule of ``aggregate_validators`` or ``delete_validators`` is not callable.
         """
         view = load_schema(schema)
         self.view = view
@@ -225,6 +229,7 @@ class ServiceKit:
                 self.listings,
                 self.workflows,
                 validators=AggregateValidators(view, aggregate_validators, schema.parent),
+                delete_validators=DeleteValidators(view, delete_validators, schema.parent),
             ),
             removals=ReferencedRemovals(view, self.toolkit.limits),
             grant_validators=grant_validators,

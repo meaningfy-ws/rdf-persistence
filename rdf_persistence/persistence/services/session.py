@@ -564,6 +564,16 @@ class WriteGuard(Protocol):
         context: GuardContext,
     ) -> list[Triple]: ...
 
+    async def prepare_remove(
+        self, session: "Session", iri: str, if_version: str, *, context: GuardContext
+    ) -> None:
+        """Called before a transaction collects the removal of the root ``iri`` (aggregate-guards D-5).
+
+        It raises to refuse, and collects nothing. ``if_version`` is the version the caller read: a
+        refusal for a stale one is the version conflict, not the guard's.
+        """
+        ...
+
 
 class Session:
     """Reads and commits whole graphs of one tenant database on behalf of one principal."""
@@ -1494,12 +1504,18 @@ class Transaction:
         """Collect the removal of the aggregate, its loaded graphs and entries, if it still has
         ``if_version``.
 
+        The session's write guards may refuse it first (``WriteGuard.prepare_remove``).
+
         Raises:
             NotFound: The aggregate has no graph.
         """
         session = self._session
         graph = self._claim(iri)
         _, _, was = await session._stored(graph, iri)
+        if session._write_guards is not None:
+            await session._write_guards.prepare_remove(
+                session, iri, if_version, context=self._context()
+            )
         parts = remove_parts(
             graph,
             session._registry,

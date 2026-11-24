@@ -4,12 +4,15 @@ A rule is registered for a class of the consumer's schema and runs on every guar
 root of that class or of a class derived from it. It refuses by raising ``InvalidBody``; it may be async and
 may ask the reader for the classes of the aggregates the root names. ``AggregateValidators`` checks the keys
 once, at start-up, and answers which rules apply to a root.
+
+Delete rules (aggregate-guards D-5 to D-8) are keyed the same way and run, as ``(old, principal, reader)``,
+on every removal of a root through a transaction; they refuse by raising ``Conflict``.
 """
 
 import inspect
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
@@ -103,13 +106,7 @@ class AggregateValidators:
             InvalidBody: The types are on two lines and a rule applies to one of them, so a client cannot
                 pick a type that escapes a rule.
         """
-        types = sorted({iri for iri in type_iris if iri in self._names})
-        most_specific = self._most_specific(types)
-        if most_specific is None:
-            self._refuse_two_lines(root_iri, types)
-            return None
-        rules = self._rules.get(most_specific)
-        return None if rules is None else (self._names[most_specific], rules)
+        return _select(root_iri, type_iris, self._names, self._lines, self._rules)
 
     def reader(self, session: Session, context: GuardContext, decode: Decode) -> AggregateReader:
         """The reader for one write: it answers for ``session``'s caller and sees what ``context`` collected.
@@ -123,20 +120,99 @@ class AggregateValidators:
 
         None also when they lie on two lines: no single class decodes such a root.
         """
-        types = sorted({iri for iri in type_iris if iri in self._names})
-        most_specific = self._most_specific(types)
-        return None if most_specific is None else self._names[most_specific]
+        return _model_class(type_iris, self._names, self._lines)
 
-    def _most_specific(self, types: list[str]) -> str | None:
-        """The type every other one is an ancestor of; None when there is none, or no type at all."""
-        return next(
-            (iri for iri in types if all(other in self._lines[iri] for other in types)), None
-        )
 
-    def _refuse_two_lines(self, root_iri: str, types: list[str]) -> None:
-        if any(iri in self._rules for iri in types):
-            names = ", ".join(sorted(self._names[iri] for iri in types))
-            raise InvalidBody(f"{root_iri} has root types on two lines: {names}")
+# old, who, reader; returns None, or an awaitable of None
+DeleteValidator = Callable[[BaseModel, Principal, AggregateReader], Awaitable[None] | None]
+
+# The model class name to decode a root as, and the delete rules that apply to it, most general first.
+DeleteSelection = tuple[str, tuple[DeleteValidator, ...]]
+
+
+class DeleteValidators:
+    """The delete rules of a service, keyed by class, checked against the schema and selected per root
+    (aggregate-guards D-6). They share the key checks and the chains with ``AggregateValidators``.
+
+    Raises:
+        ValueError: A key is not a class, is a mixin, is a toolkit class, or no root derives from it;
+            the message names the key and the reason.
+        TypeError: A rule is not callable; the message names the key.
+    """
+
+    def __init__(
+        self,
+        view: SchemaView,
+        mapping: Mapping[str, Sequence[DeleteValidator]],
+        folder: Path,
+    ) -> None:
+        roots = _checked_roots(view, mapping, folder, "delete validator")
+        chains = {_iri(view, name): _chain(view, name) for name in roots}
+        self._names = {_iri(view, name): name for name in roots}
+        self._class_names = {_iri(view, name): name for name in view.all_classes()}
+        self._lines = {
+            iri: frozenset(_iri(view, kin) for kin in chain) for iri, chain in chains.items()
+        }
+        gathered = {iri: _gather(chain, mapping) for iri, chain in chains.items()}
+        self._rules = {iri: found for iri, found in gathered.items() if found}
+
+    @property
+    def has_rules(self) -> bool:
+        """Whether any rule is registered; with none, a removal costs nothing (G-4)."""
+        return bool(self._rules)
+
+    def select(self, root_iri: str, type_iris: Iterable[str]) -> DeleteSelection | None:
+        """The delete rules for the root at ``root_iri`` typed ``type_iris``; None when none applies.
+
+        Raises:
+            InvalidBody: The types are on two lines and a rule applies to one of them, so a client cannot
+                pick a type that escapes a rule.
+        """
+        return _select(root_iri, type_iris, self._names, self._lines, self._rules)
+
+    def reader(self, session: Session, context: GuardContext, decode: Decode) -> AggregateReader:
+        """The reader for one removal: it answers for ``session``'s caller and sees what ``context`` holds."""
+        return _Reader(session, context, self._class_names, decode, self.model_class)
+
+    def model_class(self, type_iris: Iterable[str]) -> str | None:
+        """The class name to decode a root typed ``type_iris`` as; None when its root types name none."""
+        return _model_class(type_iris, self._names, self._lines)
+
+
+def _named_types(type_iris: Iterable[str], names: Mapping[str, str]) -> list[str]:
+    return sorted({iri for iri in type_iris if iri in names})
+
+
+def _most_specific(types: list[str], lines: Mapping[str, frozenset[str]]) -> str | None:
+    """The type every other one is an ancestor of; None when there is none, or no type at all."""
+    return next((iri for iri in types if all(other in lines[iri] for other in types)), None)
+
+
+def _model_class(
+    type_iris: Iterable[str], names: Mapping[str, str], lines: Mapping[str, frozenset[str]]
+) -> str | None:
+    most_specific = _most_specific(_named_types(type_iris, names), lines)
+    return None if most_specific is None else names[most_specific]
+
+
+def _select[Rule](
+    root_iri: str,
+    type_iris: Iterable[str],
+    names: Mapping[str, str],
+    lines: Mapping[str, frozenset[str]],
+    rules: Mapping[str, tuple[Rule, ...]],
+) -> tuple[str, tuple[Rule, ...]] | None:
+    """The model class and rules of the root ``root_iri``; None when no rule applies (PD-3)."""
+    types = _named_types(type_iris, names)
+    most_specific = _most_specific(types, lines)
+    if most_specific is None:
+        if any(iri in rules for iri in types):
+            raise InvalidBody(
+                f"{root_iri} has root types on two lines: {', '.join(sorted(names[i] for i in types))}"
+            )
+        return None
+    found = rules.get(most_specific)
+    return None if found is None else (names[most_specific], found)
 
 
 class _Reader:
@@ -273,15 +349,47 @@ async def run_aggregate_validators(
             raise TypeError(f"aggregate validator {name} returns None or raises, not {result!r}")
 
 
+async def run_delete_validators(
+    rules: Iterable[DeleteValidator],
+    old: BaseModel,
+    principal: Principal,
+    reader: AggregateReader,
+) -> None:
+    """Run ``rules`` in order on copies of ``old``; the first refusal stops the removal (D-5).
+
+    A rule refuses by raising ``Conflict``, which passes as it is, and so do the store errors the
+    reader may raise. Anything else a rule raises, ``InvalidBody`` included (a delete has no body to
+    call invalid), is a bug in it: ``RuntimeError`` naming the rule, chained to the error. A result
+    other than None, after awaiting, is ``TypeError``.
+    """
+    for rule in rules:
+        name = getattr(rule, "__qualname__", repr(rule))
+        try:
+            result: object = rule(old.model_copy(deep=True), principal, reader)
+            if inspect.isawaitable(result):
+                result = await result
+        except (StoreUnavailable, DatabaseGone, Conflict):
+            raise
+        except Exception as error:
+            raise RuntimeError(
+                f"delete validator {name} raised {type(error).__name__}: {error}"
+            ) from error
+        if result is not None:
+            raise TypeError(f"delete validator {name} returns None or raises, not {result!r}")
+
+
 def _checked_roots(
-    view: SchemaView, mapping: Mapping[str, Sequence[AggregateValidator]], folder: Path
+    view: SchemaView,
+    mapping: Mapping[str, Sequence[Any]],
+    folder: Path,
+    kind: str = "aggregate validator",
 ) -> set[str]:
     """The names of the roots of ``folder``, after checking every key and rule of ``mapping``."""
     own = {cls.name for cls in own_classes(own_schemas(view, folder))}
     roots = {cls.name for cls in root_classes(view, folder)}
     for key, rules in mapping.items():
         _check_key(view, key, own, roots)
-        _check_callable(key, rules)
+        _check_callable(key, rules, kind)
     return roots
 
 
@@ -294,16 +402,14 @@ def _chain(view: SchemaView, name: str) -> list[str]:
     return list(reversed(view.class_ancestors(name, mixins=False)))
 
 
-def _gather(
-    chain: list[str], mapping: Mapping[str, Sequence[AggregateValidator]]
-) -> tuple[AggregateValidator, ...]:
+def _gather[Rule](chain: list[str], mapping: Mapping[str, Sequence[Rule]]) -> tuple[Rule, ...]:
     return tuple(rule for ancestor in chain for rule in mapping.get(ancestor, ()))
 
 
-def _check_callable(key: str, rules: Sequence[object]) -> None:
+def _check_callable(key: str, rules: Sequence[object], kind: str) -> None:
     for rule in rules:
         if not callable(rule):
-            raise TypeError(f"the aggregate validator for {key} is not callable: {rule!r}")
+            raise TypeError(f"the {kind} for {key} is not callable: {rule!r}")
 
 
 def _check_key(view: SchemaView, key: str, own: set[str], roots: set[str]) -> None:

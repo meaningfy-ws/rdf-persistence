@@ -241,6 +241,7 @@ class DocumentApi:
                 expected,
                 self._cls,
                 readable=collaboration.readable_referrers,
+                may_read=self._kit.readable_by(caller, checked.caller_access),
             )
         return Response(status_code=HTTPStatus.NO_CONTENT)
 
