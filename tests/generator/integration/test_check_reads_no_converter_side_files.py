@@ -9,16 +9,12 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence_generation.cli import main
-from tests.generator.integration.test_generated_code_imports import (  # noqa: F401 (fixture)
-    module,
-    project,
-    root_class,
-    write_project,
-)
+
+from .generated_project import module, root_class, write_project
 
 
 def test_a_check_passes_beside_a_roles_file_and_a_workflow_file_that_are_garbage(
-    project: Path,  # noqa: F811 (the fixture imported above)
+    project: Path,  # the fixture of this folder's conftest.py
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     pyproject = write_project(project, {"app_main": module("app_main", root_class("Book"))})

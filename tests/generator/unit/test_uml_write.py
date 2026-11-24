@@ -16,43 +16,30 @@ from rdf_persistence_generation.exceptions import OutputError, StagedFileRefused
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
-    ReportLine,
-    UmlPrefix,
 )
 from rdf_persistence_generation.problems import format_problem, format_problems
 from rdf_persistence_generation.uml import write as write_module
 from rdf_persistence_generation.uml.write import write
 from tests.generator.uml_model import (
     BOOK,
-    PREFIXES,
     Converted,
-    initial,
     klass,
     model,
     object_,
     run,
-    state,
-    state_flow,
-    statechart,
 )
 
-ROOT = "lib"
+from .uml_write_rows import (
+    LIBRARY,
+    ROLE_DEFINITION,
+    ROOT,
+    _loan,
+    _report,
+    _schemas,
+    _write,
+)
+
 ROLES_FILE = f"{ROOT}.roles.yaml"
-ROLE_DEFINITION = 30  # the drawn toolkit class rp:RoleDefinition
-
-
-def _schemas() -> list[SchemaDefinition]:
-    return [
-        SchemaDefinition(id="https://example.org/ns/library", name="lib_books"),
-        SchemaDefinition(id="https://example.org/ns/shelves", name="lib_shelves"),
-    ]
-
-
-def _report() -> list[ReportLine]:
-    return [
-        ReportLine(report_kind=ReportKind.NOT_GENERATED, element="lib:Shelf", message="stereotype"),
-        ReportLine(report_kind=ReportKind.NO_NOTE, element="lib:Book", message="no note"),
-    ]
 
 
 def _files(folder: Path) -> dict[str, bytes]:
@@ -182,16 +169,6 @@ def _two_roles() -> Converted:
     )
 
 
-def _write(converted: Converted, out: Path, report: list[ReportLine] | None = None):
-    return write(
-        list(converted.schemas.values()),
-        converted.report if report is None else report,
-        out,
-        ROOT,
-        files=converted.files,
-    )
-
-
 def test_the_roles_file_is_written_sorted_and_read_back_by_the_loader(tmp_path: Path) -> None:
     converted = _two_roles()
 
@@ -279,7 +256,6 @@ def test_a_staged_file_the_loader_refuses_moves_nothing(
 
 # --- the workflow files (PD-4, PD-6, PD-8) -------------------------------------------------------
 
-LIBRARY = "https://example.org/ns/library/"
 WORKFLOW_FILE = "workflows/loan.workflow.yaml"
 LOAN_YAML = f"""\
 id: {LIBRARY}loan
@@ -310,49 +286,6 @@ workflow_transitions:
   - librarian
   comment_required: true
 """
-INITIAL, REQUESTED, APPROVED, REFUSED, RETURNED, CHART = 50, 51, 52, 53, 54, 70
-
-
-def _loan() -> Converted:
-    """The design's concrete example: the diagram ``lib:loan`` and the roles it names."""
-    roles = tuple(
-        object_(
-            40 + n, name, ROLE_DEFINITION, ("role", name), ("level", "tenant"), ("actions", "read")
-        )
-        for n, name in enumerate(("librarian", "reader"))
-    )
-    nodes = (
-        initial(INITIAL),
-        state(REQUESTED, "requested"),
-        state(APPROVED, "approved"),
-        state(REFUSED, "refused"),
-        state(RETURNED, "returned"),
-    )
-    flows = (
-        state_flow(100, INITIAL, REQUESTED),
-        state_flow(101, REQUESTED, APPROVED, roles="librarian"),
-        state_flow(102, REQUESTED, REFUSED, roles="librarian", comment_required="true"),
-        state_flow(103, APPROVED, RETURNED, roles="librarian,reader"),
-        state_flow(104, REFUSED, REQUESTED, roles="reader"),
-    )
-    uml = model(
-        klass(BOOK, "lib:Book"),
-        klass(ROLE_DEFINITION, "rp:RoleDefinition"),
-        objects=roles,
-        state_nodes=nodes,
-        state_flows=flows,
-        statecharts=(statechart(CHART, "lib:loan", *(each.object_id for each in nodes)),),
-    )
-    converted = run(
-        uml,
-        root_name=ROOT,
-        prefixes=[
-            UmlPrefix(prefix_name=name, namespace=namespace)
-            for name, namespace in {**PREFIXES, "lib": LIBRARY}.items()
-        ],
-    )
-    assert converted.problems == [], converted.problem_texts()
-    return converted
 
 
 def test_the_workflow_file_is_written_as_the_design_example_and_read_back(tmp_path: Path) -> None:

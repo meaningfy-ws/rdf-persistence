@@ -13,8 +13,8 @@ from linkml_runtime.linkml_model.meta import SchemaDefinition
 from rdf_persistence_generation.exceptions import OutputError
 from rdf_persistence_generation.generated.rp_generation import ReportKind
 from rdf_persistence_generation.uml.write import STAGING_PREFIX, write
-from tests.generator.unit.test_uml_cli import PREFIX, build_library, run
-from tests.generator.unit.test_uml_write import ROOT, _loan, _report, _schemas, _write
+from tests.generator.unit.uml_cli_run import PREFIX, build_library, run
+from tests.generator.unit.uml_write_rows import ROOT, _loan, _report, _schemas, _write
 
 REPORT = f"{ROOT}.uml-report.txt"
 
