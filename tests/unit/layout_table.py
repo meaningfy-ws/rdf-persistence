@@ -116,6 +116,7 @@ LAYOUT: tuple[Move, ...] = (
         "tenant_sweep",
         "tenant_dump",
         "migration_runner",
+        "grant_report",
         "iri_policy_guard",
         "tenant_move",
     ),

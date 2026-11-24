@@ -211,10 +211,25 @@ class AccessRules:
         rules: list[Grant | Prohibition] = [*(grants.grants or []), *(grants.prohibitions or [])]
         for rule in rules:
             self._validate_ends(rule, tenant)
-        for grant in grants.grants or []:
-            level = _level(grant.target, tenant)
-            if grant.role is not None and (level, grant.role) not in self._permits:
-                raise UnknownRole(f"no {level.value}-level role {grant.role!r} to grant")
+        undefined = self.undefined_roles(grants.grants or [], tenant)
+        if undefined:
+            level, role = undefined[0]
+            raise UnknownRole(f"no {level.value}-level role {role!r} to grant")
+
+    def undefined_roles(self, grants: Iterable[Grant], tenant: str) -> list[tuple[RoleLevel, str]]:
+        """The ``(level, role)`` pairs of ``grants`` that no role definition covers, in the grants' order.
+
+        The level of a grant is the tenant's when it targets ``tenant``, else an aggregate's.
+        """
+        pairs = ((_level(grant.target, tenant), grant.role) for grant in grants)
+        return [(level, role) for level, role in pairs if role is not None and (level, role) not in self._permits]
+
+    def administered(self, grants: Iterable[Grant], tenant: str) -> bool:
+        """True when a grant of ``grants`` gives ``administer`` on ``tenant``, by role or directly."""
+        return any(
+            grant.target == tenant and Action.ADMINISTER in self._granted(grant, tenant)
+            for grant in grants
+        )
 
     def _validate_ends(self, rule: Grant | Prohibition, tenant: str) -> None:
         own = (

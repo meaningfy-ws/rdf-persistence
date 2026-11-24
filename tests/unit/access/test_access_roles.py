@@ -181,3 +181,56 @@ def test_a_prohibition_is_held_to_the_same_targets_and_assignee():
 def test_two_grants_with_the_same_key_are_refused_by_the_grant_set_itself():
     with pytest.raises(ValidationError, match="grant_key"):
         grant_set(role("reader"), role("reader"))
+
+
+# T9 the message of the first undefined role is the one the grants route has always given
+def test_the_unknown_role_message_names_the_level_and_the_first_undefined_role():
+    grants = grant_set(role("reader"), role("archivist"), role("curator", BOOK_GRAPH))
+
+    with pytest.raises(UnknownRole) as raised:
+        rules().validate_grants(grants, TENANT)
+
+    assert str(raised.value) == "no tenant-level role 'archivist' to grant", "the message is kept"
+
+
+# (id, grants, the undefined pairs in the grants' order)
+UNDEFINED_ROLES = [
+    ("none", [role("reader"), direct(Action.READ)], []),
+    ("one-at-tenant-level", [role("reader"), role("archivist")], [(RoleLevel.TENANT, "archivist")]),
+    ("system-only-role", [role("admin")], [(RoleLevel.TENANT, "admin")]),
+    (
+        "two-levels-in-order",
+        [role("curator", BOOK_GRAPH), role("archivist")],
+        [(RoleLevel.AGGREGATE, "curator"), (RoleLevel.TENANT, "archivist")],
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("given", "expected"),
+    [(g, e) for _, g, e in UNDEFINED_ROLES],
+    ids=[i for i, _, _ in UNDEFINED_ROLES],
+)
+def test_undefined_roles_lists_the_pairs_no_definition_covers_in_the_grants_order(given, expected):
+    assert rules().undefined_roles(given, TENANT) == expected, "the undefined pairs"
+
+
+# (id, grants, administered)
+ADMINISTERED = [
+    ("a-role-with-administer", [role("librarian")], True),
+    ("a-direct-administer", [direct(Action.ADMINISTER)], True),
+    ("a-role-without-administer", [role("reader")], False),
+    ("a-direct-modify", [direct(Action.MODIFY)], False),
+    ("administer-on-an-aggregate-only", [direct(Action.ADMINISTER, BOOK_GRAPH)], False),
+    ("an-undefined-role", [role("archivist")], False),
+    ("no-grants", [], False),
+]
+
+
+@pytest.mark.parametrize(
+    ("given", "expected"),
+    [(g, e) for _, g, e in ADMINISTERED],
+    ids=[i for i, _, _ in ADMINISTERED],
+)
+def test_administered_is_true_when_a_grant_gives_administer_on_the_tenant(given, expected):
+    assert rules().administered(given, TENANT) is expected, "administer on the tenant"

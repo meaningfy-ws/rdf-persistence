@@ -59,6 +59,7 @@ class LogContext(ConfiguredBaseModel):
     policy_fields: _Optional[list[str]] = _Field(default=None, alias="rp.iri_policy.fields", title="Policy fields", description="The fields of the IRI policy that changed.")
     system_created: _Optional[bool] = _Field(default=None, alias="rp.sweep.system_created", title="System created", description="Whether this start-up just created the system database, so the sweep is skipped.")
     resources: _Optional[list[str]] = _Field(default=None, alias="rp.sweep.resources", title="Resources", description="The resources a sweep reached.")
+    undefined_roles: _Optional[list[str]] = _Field(default=None, alias="rp.grants.undefined_roles", title="Undefined roles", description="The roles a tenant\u0027s grants name that no role definition covers, each as `level:role`.")
     activity_id: _Optional[str] = _Field(default=None, alias="rp.activity.id", title="Activity id", description="The id of the activity a record concerns.")
     activity_class: _Optional[str] = _Field(default=None, alias="rp.activity.class", title="Activity class", description="The Python class name of the activity.")
     activity_class_iri: _Optional[str] = _Field(default=None, alias="rp.activity.class_iri", title="Activity class iri", description="The class IRI an event envelope carries.")

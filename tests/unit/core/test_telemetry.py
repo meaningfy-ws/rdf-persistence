@@ -51,6 +51,7 @@ FULL = {
     "policy_fields": ["a", "b"],
     "system_created": True,
     "resources": ["x"],
+    "undefined_roles": ["tenant:r"],
     "activity_id": "a1",
     "activity_class": "C",
     "activity_class_iri": "https://e/C",
@@ -93,7 +94,7 @@ def test_every_alias_is_dotted_and_free_of_a_log_record_attribute(caplog):
     reserved = set(vars(logging.makeLogRecord({})))
     aliases = {field.alias for field in LogContext.model_fields.values()}
 
-    assert len(aliases) == 29
+    assert len(aliases) == 30
     assert all("." in alias and alias not in reserved for alias in aliases)
 
     with caplog.at_level(logging.INFO):

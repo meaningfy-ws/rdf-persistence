@@ -378,6 +378,11 @@ attributes that apply to it, and always `rp.step`.
 |The resources the sweep names
 |`rp`
 
+|`rp.grants.undefined_roles`
+|string list
+|The `level:role` pairs a tenant's grants name that no role definition covers
+|`rp`
+
 |`rp.activity.id`
 |string
 |The activity's id
