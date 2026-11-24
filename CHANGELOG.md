@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-24
+
+### ⚠ BREAKING
+- **A slot over an abstract aggregate root is now generated as an IRI** (#303, #314). In a
+  consumer's generated code such a slot changes from the embedded class to `str` (Python),
+  `string` (TypeScript) and `sh:nodeKind sh:IRI` (shapes); the runtime mapper reads it as an IRI.
+  No valid instance could have used the embedded form. An abstract root whose concrete kinds
+  declare different identifier slots is now refused. See "Fixed" below for the cause.
+
+### Added
+- **Value modules for never-stored domain values** (`domain-values-and-fixes`, #301, #313). A
+  fourth module kind, `module_kind: value`, generates the classes and enums that pure domain logic
+  returns (a status, a finding, a report) into `<pkg>.domain.generated[.<group>]`. Their classes
+  skip the stored-class rules. A domain or technical module may import a value module; a value
+  module may import only domain, value and toolkit modules. A value class is never a root, and no
+  stored class holds one; a stored class may use a value enum. A technical target that imports a
+  value module gets its classes from the value package. See "Value modules" in "Model to code".
+- **`expected_version` and `matched_version` are public** (#300, #316). A consumer's own route
+  imports them from `rdf_persistence` and reads `If-Match` with the toolkit's rules: one strong
+  tag gives its version; a missing header, a list or `*` gives 428; a weak tag gives 409.
+
+### Fixed
+- **A slot over an abstract aggregate root is a reference** (#303, #314). The abstract root had
+  no identifier slot of its own (its concrete kinds take one from `Described`), so the generators
+  read the slot as inlined. `load_schema` and `apply_defaults` now give the abstract root its
+  kinds' identifier slot, so the runtime and every generator agree.
+- **The testkit and the context honour `slot_usage`** (#302, #315). The aggregate strategy draws
+  the value an `equals_string` or `equals_string_in` narrowing fixes. A class whose `slot_usage`
+  changes a slot's `multivalued` gets a type-scoped JSON-LD term, so framing returns a list where
+  the class holds one (and one value where it holds one). This also fixes the framed JSON the API
+  serves for such a class.
+
+> **On upgrade:** run `rp-generate` and commit the output. Code that built the embedded class for
+> a slot over an abstract root now passes the referenced aggregate's IRI. The context can gain
+> type-scoped terms for classes that narrow `multivalued` in `slot_usage`.
+
 ## [0.9.0] - 2026-11-22
 
 ### Added
@@ -656,7 +692,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.7.0...v0.8.0
