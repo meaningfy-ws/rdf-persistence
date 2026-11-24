@@ -37,7 +37,7 @@ from tests.migration_helpers import (
 )
 from tests.tenancy_world import HOUR, book
 from tests.tenancy_world import make_world as sweep_world
-from tests.toy import SETTINGS, toy_mapper
+from tests.toy import SETTINGS, toy_mapper, toy_rules
 
 
 @pytest.fixture
@@ -118,6 +118,6 @@ async def aged() -> SimpleNamespace:
     await move_predicate(world, world.tenant, CITY, OLD_CITY)
     world.running = Tenancy(
         world.store, world.files, SETTINGS, mapper=toy_mapper(), root_class=Library,
-        access_class=LibraryAccess, iris=world.iris, stamps=STAMPS,
+        access_class=LibraryAccess, rules=toy_rules(), iris=world.iris, stamps=STAMPS,
     )  # fmt: skip
     return world

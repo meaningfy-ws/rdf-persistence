@@ -25,7 +25,7 @@ from rdf_persistence.tenancy.services.tenancy import DEFAULT_STORE, Tenancy
 from rdf_persistence.testkit import FakeFileStore
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
-from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper
+from tests.toy import ADA, SETTINGS, TOY_SCHEMA, dune, library_slots, toy_mapper, toy_rules
 from tests.toy_service import drop_databases, unique_prefix
 
 CREATOR = Principal(id=ADA)
@@ -49,6 +49,7 @@ async def world(store, fuseki_b, toolkit) -> AsyncIterator[SimpleNamespace]:
             mapper=toy_mapper(),
             root_class=Library,
             access_class=LibraryAccess,
+            rules=toy_rules(),
             stores={CLIENT_A: other},
         )
         await tenancy.ensure_system_database()

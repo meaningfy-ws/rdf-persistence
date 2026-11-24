@@ -36,7 +36,7 @@ from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.fixtures.library.domain.generated.scans import Scan
 from tests.tenancy_world import BOOK_TYPE, CREATOR, TURTLE
-from tests.toy import SETTINGS, dune, library_slots, toy_mapper
+from tests.toy import SETTINGS, dune, library_slots, toy_mapper, toy_rules
 from tests.toy_service import SCAN_BODY, drop_buckets, drop_databases
 
 SCAN_TYPE = "scan"
@@ -52,6 +52,7 @@ async def tenancy(store, files, settings) -> AsyncIterator[Tenancy]:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         stamps=BASE_STAMPS,
     )
     await made.ensure_system_database()

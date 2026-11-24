@@ -130,6 +130,7 @@ class Tenancy:
         mapper: Mapper,
         root_class: type[BaseModel],
         access_class: type[TenantAccess],
+        rules: AccessRules,
         clock: Clock = utc_now,
         iris: Iris | None = None,
         listings: Listings | None = None,
@@ -158,6 +159,8 @@ class Tenancy:
         self._behind: frozenset[str] = frozenset()
         # not DEFAULT_IRIS: resource names need the settings' prefix, which DEFAULT_IRIS lacks (PD-12j)
         self._iris = iris or Iris(settings)
+        # the roles a grant may name, judged under this tenancy's IRI policy (consumer-gap-fixes D-4)
+        self._rules = rules.with_iris(self._iris)
         self._listings = listings
         self._guards = guards
         self._store = store
@@ -814,10 +817,14 @@ class Tenancy:
 
         Raises:
             NotFound: The tenant has no access record.
+            UnknownRole: A grant names a role not defined at its target's level (a system-only role
+                included); nothing changed.
+            InvalidGrant: A target is foreign to the tenant or an assignee is not an IRI; nothing changed.
             Conflict: The record is no longer at ``if_version``; nothing changed.
             InvalidBody: A grant validator refuses ``grants``; nothing changed.
         """
         record, _ = await self.get(tenant)
+        self._rules.validate_grants(grants, tenant)
         _run_validators(
             self._grant_validators,
             GrantSet(grants=record.grants, prohibitions=record.prohibitions),

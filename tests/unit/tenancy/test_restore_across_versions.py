@@ -44,6 +44,7 @@ from tests.toy import (
     dune,
     shelf,
     toy_mapper,
+    toy_rules,
 )
 
 HAD_MEMBER = URIRef("http://www.w3.org/ns/prov#hadMember")
@@ -75,7 +76,7 @@ async def world_at_toolkit_two() -> SimpleNamespace:
         await opened.add_graph(world.shelf, stored)
     world.running = Tenancy(
         world.store, world.files, SETTINGS, mapper=toy_mapper(), root_class=Library,
-        access_class=LibraryAccess, iris=iris,
+        access_class=LibraryAccess, rules=toy_rules(), iris=iris,
         stamps=((TOOLKIT_SCHEMA, RUNNING_TOOLKIT_VERSION), (LIBRARY_SCHEMA, "1")),
     )  # fmt: skip
     return world

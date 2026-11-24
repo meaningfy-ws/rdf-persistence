@@ -88,7 +88,7 @@ from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
 from tests.migration_helpers import chain_of, migration
 from tests.tenancy_world import BOOK_TYPE, FLAT
-from tests.toy import ADA, BOB, SETTINGS, dune, role, template, toy_mapper
+from tests.toy import ADA, BOB, SETTINGS, dune, role, template, toy_mapper, toy_rules
 
 FLAT_SETTINGS = ServiceSettings(
     base="https://example.org/",
@@ -211,7 +211,7 @@ async def test_tenancy_restore_refuses_a_stamp_that_is_not_a_plain_literal(world
 async def test_a_tenancy_that_configures_no_stamp_refuses_a_dump_that_has_one(world):
     plain = Tenancy(
         world.store, world.files, SETTINGS, mapper=toy_mapper(), root_class=Library,
-        access_class=LibraryAccess, iris=world.iris,
+        access_class=LibraryAccess, rules=toy_rules(), iris=world.iris,
     )  # fmt: skip
     parsed = stamp_graph_with(await dumped(world), stamp_line(LIBRARY_SCHEMA, "1"))
     with pytest.raises(InvalidBody, match=LIBRARY_SCHEMA):
@@ -711,6 +711,7 @@ async def test_tc20_a_root_validator_that_refuses_stops_the_restore():
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         iris=world.iris,
         stamps=BASE_STAMPS,
         root_validators=[refuse],
@@ -1082,6 +1083,7 @@ def beside(world: SimpleNamespace, other: FakeStore, iris: Iris | None = None) -
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         iris=iris or world.iris,
         stamps=BASE_STAMPS,
         stores={CLIENT_A: other},

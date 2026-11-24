@@ -45,7 +45,7 @@ from tests.tenancy_world import (
     book,
     make_world,
 )
-from tests.toy import SETTINGS, TOY_SCHEMA, library_slots, toy_mapper
+from tests.toy import SETTINGS, TOY_SCHEMA, library_slots, toy_mapper, toy_rules
 
 # -- the worked example ------------------------------------------------------------------------
 
@@ -189,6 +189,7 @@ async def test_tc28_the_sweep_of_a_tenant_on_another_store_acts_on_that_store():
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         iris=iris,
         stores={"client-a": a},
     )

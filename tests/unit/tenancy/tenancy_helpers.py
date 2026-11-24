@@ -18,7 +18,7 @@ from tests.dump_helpers import LIBRARY_SCHEMA
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.tenancy_world import CREATOR
-from tests.toy import SETTINGS, TOY_SCHEMA, library_slots, toy_mapper
+from tests.toy import SETTINGS, TOY_SCHEMA, library_slots, toy_mapper, toy_rules
 from tests.unit.activity_helpers import B1, book
 
 SYSTEM = system_database_name(SETTINGS.prefix)
@@ -43,6 +43,7 @@ def tenancy_drawing(store, files, *ids: str) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         iris=Iris(SETTINGS, id_source=drawing(*ids)),
     )
 
@@ -57,6 +58,7 @@ def wired(d: FakeStore, files: FakeFileStore, *ids: str, **stores: FakeStore) ->
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         iris=iris,
         stamps=[(LIBRARY_SCHEMA, "1")],
         stores=stores,

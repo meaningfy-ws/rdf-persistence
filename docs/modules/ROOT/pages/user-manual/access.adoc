@@ -69,6 +69,13 @@ itself.
 * A *prohibition* forbids one action and wins over every grant. A prohibition of `read` forbids
   every action, since each implies `read`.
 
+*A refused `set_grants`.* `Tenancy.set_grants` and `PUT …/grants` check the new set the same way,
+in one place: a role the roles file does not define at the target's level, or defines only at
+system level, answers `UnknownRole` (422 `invalid-body` over HTTP) and writes nothing; a foreign
+target or an assignee that is not an IRI answers `InvalidGrant`. Only the new set is checked, so a
+tenant whose stored grants name a role that is no longer defined is not stuck: read the grants,
+drop the grant the error names, and write the set again.
+
 == What the check answers
 
 *The check* runs on every tenant route, after the token is verified and before the route's own

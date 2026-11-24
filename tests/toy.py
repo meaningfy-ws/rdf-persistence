@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from rdf_persistence import (
+    AccessRules,
     Action,
     CallerAccess,
     Grant,
@@ -17,6 +18,7 @@ from rdf_persistence import (
     TenantState,
     VerifiedCaller,
     generated_models,
+    load_role_definitions,
     new_part,
 )
 from rdf_persistence.access.domain.generated import rp_access
@@ -77,6 +79,11 @@ MODULES = (
     rp_provenance,
     rp_workflow,
 )
+
+
+def toy_rules() -> AccessRules:
+    """The toy library's role definitions (``librarian`` and ``reader`` at tenant level), for a ``Tenancy``."""
+    return AccessRules(load_role_definitions(ROLES))
 
 
 @cache

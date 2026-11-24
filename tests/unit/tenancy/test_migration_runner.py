@@ -63,7 +63,7 @@ from tests.migration_helpers import (
     second_tenant,
 )
 from tests.tenancy_world import CREATOR, HOUR, make_world
-from tests.toy import GENERATED, SETTINGS, TOY_SCHEMA, library_slots, toy_mapper
+from tests.toy import GENERATED, SETTINGS, TOY_SCHEMA, library_slots, toy_mapper, toy_rules
 
 # -- the world ------------------------------------------------------------------------------------
 
@@ -106,7 +106,7 @@ async def test_a_new_system_database_holds_both_stamps_current_and_the_runner_se
     store, files = store_and_files
     tenancy = Tenancy(
         store, files, SETTINGS, mapper=toy_mapper(), root_class=Library,
-        access_class=LibraryAccess, stamps=((RP, "1"), (LIB, "2")),
+        access_class=LibraryAccess, rules=toy_rules(), stamps=((RP, "1"), (LIB, "2")),
     )  # fmt: skip
     assert await tenancy.ensure_system_database() is True, "this call created it"
     await guard_iri_policy(store, tenancy, SETTINGS)
@@ -123,12 +123,18 @@ async def test_a_new_system_database_holds_both_stamps_current_and_the_runner_se
 async def test_an_existing_system_database_is_not_stamped(store_and_files):
     store, files = store_and_files
     plain = Tenancy(
-        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     await plain.ensure_system_database()
     stamping = Tenancy(
         store, files, SETTINGS, mapper=toy_mapper(), root_class=Library,
-        access_class=LibraryAccess, stamps=((LIB, "2"),),
+        access_class=LibraryAccess, rules=toy_rules(), stamps=((LIB, "2"),),
     )  # fmt: skip
     assert await stamping.ensure_system_database() is False, "it was there"
     assert await held(store, stamping.system_database) == {}, (
@@ -605,6 +611,7 @@ def _wired(d, files, **stores) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         stores=stores,
     )
 

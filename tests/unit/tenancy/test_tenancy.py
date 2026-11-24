@@ -53,6 +53,7 @@ from tests.toy import (
     library,
     library_slots,
     toy_mapper,
+    toy_rules,
 )
 from tests.toy_service import body_of, scan_of_dune
 from tests.unit.tenancy.tenancy_helpers import PREFIX, tenancy_drawing
@@ -101,6 +102,7 @@ async def tenancy(store, files) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         clock=lambda: NOW,
     )
     await made.ensure_system_database()
@@ -116,7 +118,13 @@ async def test_a_conflict_on_creating_the_system_database_is_suppressed_and_answ
 ):
     """D-6 h: another worker won the race, so this call did not make it."""
     made = Tenancy(
-        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     store.on("create_dataset", Conflict("another worker created it"))
     assert await made.ensure_system_database() is False, "this call did not create it"
@@ -126,7 +134,13 @@ async def test_the_system_database_is_created_once_and_the_call_says_whether_it_
     store, files
 ):
     made = Tenancy(
-        store, files, SETTINGS, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     assert await made.ensure_system_database() is True, "the first call creates the system database"
     assert await made.ensure_system_database() is False, "the second call finds it already there"
@@ -237,7 +251,7 @@ async def test_create_stamps_the_new_database_before_it_writes_the_root(store, f
     """schema-migrations PD-10, TC-34: every pair of ``stamps``, right after the database is made."""
     made = Tenancy(
         store, files, SETTINGS, mapper=toy_mapper(), root_class=Library,
-        access_class=LibraryAccess, stamps=(("urn:schema:a", "1"), ("urn:schema:b", "7")),
+        access_class=LibraryAccess, rules=toy_rules(), stamps=(("urn:schema:a", "1"), ("urn:schema:b", "7")),
     )  # fmt: skip
     await made.ensure_system_database()
     before = len(store.sent("update"))
@@ -410,7 +424,13 @@ async def test_a_root_the_model_refuses_creates_nothing(tenancy, store, files):
 async def test_a_root_that_sets_an_internal_slot_creates_nothing(store, files):
     # no toy tenant root has an internal slot, so a class that has one stands in for the root
     tenancy = Tenancy(
-        store, files, SETTINGS, mapper=toy_mapper(), root_class=Scan, access_class=LibraryAccess
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Scan,
+        access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     root = scan_of_dune().model_copy(update={"label": "Ghent", "file_key": "SECRET"})
     with pytest.raises(InvalidBody, match="file_key"):
@@ -735,7 +755,13 @@ async def test_the_consumers_tenant_is_minted_by_its_policy(store, files):
         ),
     )
     made = Tenancy(
-        store, files, settings, mapper=toy_mapper(), root_class=Library, access_class=LibraryAccess
+        store,
+        files,
+        settings,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     await made.ensure_system_database()
     created = await made.create("Ghent", library_slots(), CREATOR)
@@ -760,6 +786,7 @@ def _validated(store, files, **validators) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
         clock=lambda: NOW,
         **validators,
     )

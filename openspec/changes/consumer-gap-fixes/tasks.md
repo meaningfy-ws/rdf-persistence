@@ -14,10 +14,10 @@ EPIC: consumer-gap-fixes (proposal.md, #304, #306, #311, #312). Decisions: DEC-1
 
 ## 2. One path for grants (#306), PR 2, branch `fix/set-grants-roles`
 
-- [ ] 2.1 Tests first: E4 to E8, E15, E19 in `tests/unit/tenancy/test_set_grants_roles.py`, plus one
+- [x] 2.1 Tests first: E4 to E8, E15, E19 in `tests/unit/tenancy/test_set_grants_roles.py`, plus one
   route test in `tests/unit/api/test_router.py` (`design.md#stage-2-306-grants`). RED: an undefined
   role is stored.
-- [ ] 2.2 `Tenancy(rules=…)` as a required keyword, stored as `rules.with_iris(self._iris)` after `self._iris` is resolved, and wired in `kit.py`.
+- [x] 2.2 `Tenancy(rules=…)` as a required keyword, stored as `rules.with_iris(self._iris)` after `self._iris` is resolved, and wired in `kit.py`.
   The call goes in `set_grants`, after `get`, and the route's call goes (DEC-2, `design.md` D-4).
   Update the direct constructors in the tests and their role definitions. CHANGELOG **BREAKING**
   (constructor). The tenancy how-to gets its paragraph (RISK-2). Accept: E4 to E8, E15, E19;

@@ -18,7 +18,7 @@ from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
-from tests.toy import ADA, SETTINGS, library_slots, toy_mapper
+from tests.toy import ADA, SETTINGS, library_slots, toy_mapper, toy_rules
 
 RECORD_GRAPH = URIRef(f"{SETTINGS.base}{POLICY_SEGMENT}")
 THIRTEEN = IriPolicy(object_id=IdSpec(kind=IdKind.RANDOM, length=13))
@@ -48,6 +48,7 @@ async def tenancy(store) -> Tenancy:
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     await made.ensure_system_database()
     return made
@@ -185,6 +186,7 @@ async def test_the_first_write_does_not_overwrite_a_rival_and_is_compared_with_i
         mapper=toy_mapper(),
         root_class=Library,
         access_class=LibraryAccess,
+        rules=toy_rules(),
     )
     await tenancy.ensure_system_database()
     with pytest.raises(IriPolicyChanged, match="object_id"):
