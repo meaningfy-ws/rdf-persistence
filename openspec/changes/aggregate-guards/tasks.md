@@ -14,7 +14,7 @@ EPIC: aggregate-guards (proposal.md, #305, #309). Decisions: DEC-1 to DEC-7; des
 - [x] 1.3 `user-manual/access.adoc`: reading a referenced aggregate, the version dependence
   (RISK-1), the symmetric rule (RISK-3), and a remove after a read (RISK-5). Accept:
   `make check-docs`.
-- [ ] 1.4 Lead: `make check-all`, `make test-containers` (T6 integration), one review pass, PR.
+- [x] 1.4 Lead: `make check-all`, `make test-containers` (T6 integration), one review pass, PR.
   This EPIC lands with it.
 
 ## 2. Delete rules (#309), PR 2, branch `feat/delete-validators`
@@ -39,7 +39,7 @@ EPIC: aggregate-guards (proposal.md, #305, #309). Decisions: DEC-1 to DEC-7; des
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 1.4 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 3.1 · [ ] 3.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 3.1 · [ ] 3.2
 
 ## Verification
 
