@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 import pytest
 from linkml_runtime.dumpers import yaml_dumper
 from linkml_runtime.linkml_model.meta import UniqueKey
+from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence_generation.generated.rp_generation import (
     UmlAttribute,
@@ -1275,7 +1276,9 @@ def _shared(out: Converted) -> None:
     assert out.klass("app_library", "Book").slot_usage["isbn"].required is True, (
         "Book, the required usage, carries required in its slot_usage"
     )
-    assert not out.klass("app_library", "Series").slot_usage, "Series has nothing of its own"
+    series = out.klass("app_library", "Series").slot_usage["isbn"]
+    assert series.required is False, "Series states required: false, or it would inherit a true"
+    assert series.multivalued is None, "Series has nothing else of its own"
     assert [name for name in out.schemas["app_library"].slots if name == "isbn"] == ["isbn"], (
         "the slot is defined once"
     )
@@ -1398,10 +1401,13 @@ _LINK_NOTE = "A connector."
 
 
 def _limits(definition: object) -> dict[str, object]:
-    """The limits a slot or slot_usage states: the keywords that are set and not false."""
+    """The limits a slot or slot_usage states: the keywords that are set; a false ``required`` or
+    ``multivalued`` counts, since a usage writes it to override the parent's true (D-5)."""
     found = {name: getattr(definition, name) for name in _LIMITS}
     return {
-        name: value for name, value in found.items() if value is not None and value is not False
+        name: value
+        for name, value in found.items()
+        if value is not None and (value is not False or name in ("required", "multivalued"))
     }
 
 
@@ -1540,7 +1546,7 @@ ROWS_R13 = [
         "a required on one usage only stays on it",
         UmlRule.SHARED_SLOT,
         _isbn_pair({}, {"lower": "0"}),
-        _agreed_and_narrowed("isbn", _TEXT, {"required": True}, {}),
+        _agreed_and_narrowed("isbn", _TEXT, {"required": True}, {"required": False}),
     ),
     Row(
         "the slot takes the first usage's range, a usage with another range carries its own",
@@ -1558,6 +1564,66 @@ ROWS_R13 = [
         UmlRule.SHARED_SLOT,
         _isbn_pair({}, {}),
         _agreed_and_narrowed("isbn", {**_TEXT, "required": True}, {}, {}),
+    ),
+]
+
+_ABSTRACT_PARENT, _CHILD, _VALUE, _NARROWER_VALUE = 51, 52, 53, 54
+
+
+def _narrowed_role(parent_card: str, child_card: str, *, root: bool = False) -> object:
+    """``A.p`` to ``V`` and ``B.p`` to ``W is_a V``, B being A's child, the two roles' cardinalities given."""
+    return model(
+        klass(_ABSTRACT_PARENT, "lib:Base", abstract=True),
+        klass(_CHILD, "lib:Derived", stereotype="root" if root else None),
+        klass(_VALUE, "lib:Value"),
+        klass(_NARROWER_VALUE, "lib:Narrower"),
+        links=(
+            generalisation(1, _CHILD, _ABSTRACT_PARENT),
+            generalisation(2, _NARROWER_VALUE, _VALUE),
+            link(3, _ABSTRACT_PARENT, _VALUE, target_role="lib:part", target_card=parent_card),
+            link(4, _CHILD, _NARROWER_VALUE, target_role="lib:part", target_card=child_card),
+        ),
+        tags=(tag(_CHILD, "unique_key", "k: part"),) if root else (),
+    )
+
+
+def _usage_is(expected: dict[str, object], *, single_valued: bool = False) -> Check:
+    """Derived's ``slot_usage`` for ``part`` states exactly ``expected``, explicit flags included."""
+
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        usage = out.klass("app_library", "Derived").slot_usage["part"]
+        found = {name: getattr(usage, name) for name in _LIMITS if getattr(usage, name) is not None}
+        assert found == expected, f"Derived.part must state {expected}, and it states {found}"
+        if single_valued:
+            view = SchemaView(yaml_dumper.dumps(out.schemas["app_library"]))
+            assert not view.induced_slot("part", "Derived").multivalued, (
+                "the induced slot of Derived.part must be single-valued"
+            )
+
+    return check
+
+
+ROWS_NARROWED = [
+    Row(
+        "a root narrowing an inherited 0..* role to 1 writes multivalued: false and the key is accepted",
+        UmlRule.SHARED_SLOT,
+        _narrowed_role("0..*", "1", root=True),
+        _usage_is(
+            {"range": "Narrower", "required": True, "multivalued": False}, single_valued=True
+        ),
+    ),
+    Row(
+        "a 0..1 role under a 1..1 role writes required: false",
+        UmlRule.SHARED_SLOT,
+        _narrowed_role("1..1", "0..1"),
+        _usage_is({"range": "Narrower", "required": False}),
+    ),
+    Row(
+        "agreeing usages write no limit in the slot_usage",
+        UmlRule.SHARED_SLOT,
+        _narrowed_role("0..1", "0..1"),
+        _usage_is({"range": "Narrower"}),
     ),
 ]
 
@@ -2567,7 +2633,7 @@ ROWS_R24 = [
             "app_catalogue",
             ["app_shelves"],
             usage_in={
-                "Book": _usage("app_catalogue"),
+                "Book": _usage("app_catalogue", required=False),
                 "Shelf": _usage("app_shelves", required=True),
             },
         ),
@@ -2995,6 +3061,7 @@ ROWS: list[Row] = [
     *ROWS_R21,
     *ROWS_R12,
     *ROWS_R13,
+    *ROWS_NARROWED,
     *ROWS_W3,
     *ROWS_D14,
     *ROWS_R25,
