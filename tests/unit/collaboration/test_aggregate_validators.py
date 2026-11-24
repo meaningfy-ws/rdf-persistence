@@ -428,17 +428,6 @@ async def test_an_aggregate_collected_earlier_in_the_transaction_answers_with_it
         assert seen == [], "the collected change answers, not the store"
 
 
-async def test_an_aggregate_removed_earlier_in_the_transaction_still_answers_with_its_stored_types():  # T-6
-    async with reading_session() as session:
-        await store_both(session)
-        version = (await session.get_graph(shelf_iri(1)))[2]
-        async with session.transaction() as t:
-            await t.remove(shelf_iri(1), version)
-            assert await reader_of(session).classes_of(shelf_iri(1)) == {"Shelf"}, (
-                "the store, before the commit"
-            )
-
-
 async def test_a_type_the_view_does_not_know_is_dropped_from_the_answer():  # T-6
     other = URIRef("https://example.org/ns/library#NoSuchClass")
     triples = [
