@@ -13,7 +13,9 @@ writes]).
 *Before you start:*
 
 . An EA model saved as a `.qea` file (EA's SQLite format; an `.eap` file is not read). The converter
-only reads the file, so it never changes your model.
+only reads the file, so it never changes your model. Save the model and close EA before you run it:
+the converter reads the file as it is on disk, and a file EA is writing at that moment can be read
+half old or refused (exit 2, `cannot be read`, step 2). Run it again once EA has saved.
 . The toolkit installed with the `generate` extra, as for `rp-generate`: the package is
 `rdf-persistence` and the extra `generate` (`uv add 'rdf-persistence[generate]'`, or
 `pip install 'rdf-persistence[generate]'`). It puts `rp-uml2linkml` and `rp-generate` on your path.
@@ -109,19 +111,33 @@ The run ends in one of three ways:
 `[<rule>] <element>: <reason>`, and writes nothing. `<rule>` is the name of the rule that was
 broken, or `no_rule` for an element no convention maps; an undeclared prefix is
 `[class_iri] lib2:Chapter: prefix lib2 is not in the prefixes file`. Fix them in EA (the table in
-xref:reference/uml-conventions.adoc#fails[What fails] names the fix for each) and run again.
+xref:reference/uml-conventions.adoc#fails[What fails] names the fix for each) and run again. When
+the model draws workflows, the converter also runs the check the service runs at start (<<whole-model>>);
+a workflow it refuses is exit 1 as well, on one line,
+`rp-uml2linkml: the written files would stop the service: <reason>`.
 |2 |The setup cannot be used: an argument, the prefixes file (unreadable, not a mapping, a missing
-key), a file that is not an EA `.qea`, or a `--package` or `--exclude-package` that is unknown or
-(for `--package`) matches more than one package. A prefix the model uses but the file does not
-declare is not this case: it is exit 1. One line on standard error,
-`rp-uml2linkml: <message>`.
+key), a `.qea` path that does not exist (`<path>: no such file`), that cannot be read
+(`<path> cannot be read: <reason>`) or that is not an EA `.qea`, a `--package` or
+`--exclude-package` that is unknown or (for `--package`) matches more than one package, or an
+`--out` that cannot be written (`cannot write <path>: <reason>`, naming the file or folder that
+failed: a full disk, a file where the folder should be). A prefix the model uses but the file does
+not declare is not this case: it is exit 1. One line on standard error, `rp-uml2linkml: <message>`.
 |===
 
-The files are moved into `--out` only when the whole run succeeded, and the same model gives the
-same bytes, so a repeated run is safe and a diff of `--out` shows what you changed in EA. The
-converter deletes nothing: a `<root-name>_*.yaml` left from an earlier run that this run did not
-write stays, and is reported as `stale-file`. Delete it yourself when the package it came from is
-gone.
+The files are staged in a folder inside `--out` and moved into place only when the whole run
+succeeded, and the same model gives the same bytes, so a repeated run is safe and a diff of `--out`
+shows what you changed in EA. After any failure, run it again. The report is moved last, so a run
+that stopped part-way leaves no `<root-name>.uml-report.txt`: its absence tells you the write did not
+finish. The converter deletes nothing of yours: a `<root-name>_*.yaml` left from an earlier run that
+this run did not write stays, and is reported as `stale-file`. Delete it yourself when the package
+it came from is gone.
+
+A run that is killed (a power loss, a `kill -9`) can leave its staging folder, `.uml-write-<random>`,
+in `--out`. The next run reports it as `stale-file` and does not delete it. Delete it yourself, and
+add `.uml-write-*` to your project's `.gitignore` so that it is never committed.
+
+Run the converter once at a time for one `--out`: two runs into the same folder at once are not
+supported, and the last to move a file wins.
 
 [#report]
 == 3. Read the report
@@ -144,7 +160,8 @@ not-generated	Vocabulary	stereotype loaded graph, not generated
 
 |`no-note` |A class, enumeration, attribute, connector or enumeration literal has no note in EA, so the
 element has no `description`. The converter writes no placeholder. `rp-generate` requires one and
-refuses the schemas without it, so this line blocks step 4: add the note in EA.
+refuses the schemas without it, so this line blocks step 4: add the note in EA. The kind covers
+those elements only: a role object, a state and a transition need no note, and get no line.
 |`unspecified-multiplicity` |A connector end has no multiplicity and was read as `0..*`. Write
 `1..1`, `0..1` or the one you mean.
 |`not-generated` |A class or enumeration with a stereotype of the `--not-generated` list produced
@@ -180,7 +197,8 @@ reported too, as `named by no class`: not a failure, as the class may be in an e
 a prefix (`lib:loan`) to choose the IRI, before the first data is stored.
 |`stale-file` |A file of an earlier run is still in `--out` (step 2), or, when the run draws at
 least one role, a `*.roles.yaml` other than `<root-name>.roles.yaml`, or, when it draws at least one
-workflow, a `workflows/*.workflow.yaml` this run did not write.
+workflow, a `workflows/*.workflow.yaml` this run did not write. Also a `.uml-write-*` folder a
+killed run left: `left by an interrupted run; delete it`.
 |===
 
 [#roles-file]
@@ -198,7 +216,9 @@ install_service(..., rules=Path("models/library.roles.yaml"))
 ----
 
 The full call is in <<serve,step 5>>. `install_service` reads it with `load_role_definitions`. The file is rewritten whole on every run,
-so change the roles in EA, never in the file.
+so change the roles in EA, never in the file. A file the service cannot read, or that holds an
+invalid entry or a key given twice in an entry, stops the start with `InvalidRoleDefinition`, naming
+the file and the entry.
 
 [#workflows-file]
 === The workflow files
@@ -237,6 +257,23 @@ package into the run, and fix what stops its conversion, before you rely on the 
 that leaves out the workflows' own package converts as before: a class's `workflow` tag is then
 written as it is, unchecked.
 
+[#whole-model]
+=== The whole-model check
+
+When the run draws at least one workflow, the converter, before it moves a file, loads the staged
+files the way the service loads them at start (the roles file, every workflow file and the root
+schema) and runs the service's own check on them. A set the service would refuse stops the run with
+exit 1, writes nothing, and names the reason with the files as they would be under `--out`:
+
+----
+rp-uml2linkml: the written files would stop the service: <reason>
+----
+
+The usual reasons are a class whose `workflow` tag names a diagram that is not drawn in the run
+(`class Lonely names workflow 'missing', which no file defines`) and two classes with one class IRI
+that name different workflows. Fix the model in EA and run again. A run that draws no workflow does
+not run the check.
+
 [#next]
 == 4. Check and generate
 
@@ -252,7 +289,9 @@ xref:user-manual/generate.adoc#configure[Configure it]) and run it from that fol
 rp-generate --check
 ----
 
-It lints and checks the schemas and writes nothing; what it reports is for you to fix in EA, then
+It lints and checks the schemas and writes nothing. It reads the schemas only: neither the roles
+file nor the workflow files, so a clean check says nothing about them; the service reads them when
+it starts (step 5). What it reports is for you to fix in EA, then
 convert and check again. When it is clean, run `rp-generate` to write the code and the other
 targets. Commit the converted schemas with the UML change that produced them, so that the diff of
 the schemas shows what the model change did.
@@ -299,6 +338,11 @@ and settings your composition root builds, and every argument but `app` is passe
   path, `library.domain.generated` here): import it, as above. `install_service` reads the
   context, the frames and the shapes from that package's folder, and stops with `OSError` when
   they are missing, so generate (step 4) before the service starts.
+* A relative path (`Path("models/library.roles.yaml")`) is opened as given, so it is relative to
+  the working directory of the process that starts the service, not to the file that holds the
+  call. List each workflow file: a folder or a glob is not read. A file that is wrong, missing or
+  left over from an older model stops the start; see
+  xref:user-manual/serve.adoc#workflows[what a wrong file does].
 * `install_service` starts no server: it wires the routes, the problem responses and the start-up
   work into your `app`, and you serve `app` yourself, for example with uvicorn. The adapters, the
   start-up and the routes are in xref:user-manual/serve.adoc[Serve the application].
