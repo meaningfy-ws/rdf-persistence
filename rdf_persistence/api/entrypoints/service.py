@@ -94,7 +94,8 @@ def install_service(
 
     ``delete_validators`` maps the name of a class to the rules that refuse the removal of a root of
     that class, or of a class derived from it: each is called as ``(old, principal, reader)`` and
-    refuses by raising ``Conflict``, which the generic delete answers 409 with its message. They run on
+    refuses by raising ``Refused``, which the generic delete answers as the 409 ``refused`` problem
+    with the message as its ``detail``. They run on
     every removal through a transaction, a cascade's included, and are keyed and checked like
     ``aggregate_validators``.
 

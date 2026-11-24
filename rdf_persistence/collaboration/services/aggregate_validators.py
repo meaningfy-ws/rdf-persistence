@@ -6,7 +6,8 @@ may ask the reader for the classes of the aggregates the root names. ``Aggregate
 once, at start-up, and answers which rules apply to a root.
 
 Delete rules (aggregate-guards D-5 to D-8) are keyed the same way and run, as ``(old, principal, reader)``,
-on every removal of a root through a transaction; they refuse by raising ``Conflict``.
+on every removal of a root through a transaction; they refuse by raising ``Refused``, which the generic delete answers as the 409 ``refused`` problem
+with the message as its ``detail``.
 """
 
 import inspect

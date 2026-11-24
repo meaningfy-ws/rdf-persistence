@@ -330,6 +330,26 @@ async def test_a_delete_rule_reads_only_what_the_caller_may_read(readable: bool)
         assert seen == [readable], "the shelf is seen only if the caller may read it"
 
 
+@pytest.mark.parametrize("readable", [True, False], ids=["readable", "hidden"])  # T15, R2-W1
+async def test_a_delete_rule_reached_through_remove_with_files_reads_only_what_the_caller_may_read(
+    readable: bool,
+) -> None:
+    seen: list[bool] = []
+
+    async def looks_at_the_shelf(old: Any, who: Any, reader: AggregateReader) -> None:
+        seen.append(await reader.aggregate(old.shelf) is not None)
+
+    async with scene_with(delete_validators={"Book": [looks_at_the_shelf]}) as scene:
+        shelf = (await post(scene, "shelves", SHELF_BODY)).json()["id"]
+        book = (await post(scene, "books", {**DUNE_BODY, "shelf": shelf})).json()["id"]
+        async with scene.service.kit.session(scene.tenant_iri, "ada") as session:
+            version = (await session.get_graph(book))[2]
+        await scene.service.kit.remove_with_files(
+            scene.tenant_iri, "ada", book, version, may_read=lambda iri: readable
+        )
+        assert seen == [readable], "the shelf is seen only if the caller may read it"
+
+
 def test_a_delete_rule_key_that_is_not_a_root_stops_the_start_up_naming_it() -> None:  # T13
     with pytest.raises(ValueError, match="Chapter"):
         ToyService(delete_validators={"Chapter": [not_while_on_loan]})

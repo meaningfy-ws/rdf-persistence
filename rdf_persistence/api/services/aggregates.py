@@ -156,7 +156,8 @@ class Aggregates:
 
         Raises:
             NotFound: The aggregate has no graph, or is not of ``cls`` (a class derived from it will do).
-            Conflict: Its version is not ``if_version``, or a delete rule refuses; nothing changed.
+            Conflict: Its version is not ``if_version``; nothing changed.
+            Refused: (a ``Conflict``) A delete rule refuses; nothing changed.
             InUse: (a ``Conflict``) Its class refuses deletion while referred to and another aggregate
                 still refers to it; nothing changed.
         """

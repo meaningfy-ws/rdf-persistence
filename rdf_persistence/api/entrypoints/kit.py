@@ -543,9 +543,14 @@ class ServiceKit:
         if_version: str,
         *,
         readable: Readable | None = None,
+        may_read: Callable[[str], bool] | None = None,
     ) -> None:
         """Remove the aggregate ``iri`` at ``if_version`` and delete the blobs only it names in
         ``rp:fileKey``. A blob that cannot be deleted is logged; the sweep removes it later.
+
+        A consumer route that has a caller should pass ``readable_by(caller, access)`` as ``may_read``,
+        as the generic delete does: a delete rule's reader then hides the aggregates the caller may not
+        read (``None``: it reads every aggregate of the tenant).
 
         A consumer route should pass its collaboration's ``readable_referrers`` as ``readable``, to
         have the referrers the caller may read named when the removal is refused as in use; without
@@ -568,6 +573,7 @@ class ServiceKit:
             if_version,
             self.mapper,
             readable=readable,
+            may_read=may_read,
         )
 
     @asynccontextmanager
