@@ -366,6 +366,112 @@ def test_conditions_without_absence_render_as_before_and_an_absent_one_renders_a
     ), "equal, then contains, then absent, each as it renders alone"
 
 
+SKOS_LABEL = "http://www.w3.org/2004/02/skos/core#prefLabel"
+PUBLISHED = "http://purl.org/dc/terms/issued"
+# What condition_patterns and listing_query returned for path-less conditions before `via` (E14).
+BEFORE_EQUAL = f'?root <{SKOS_LABEL}> "Dune" .'
+BEFORE_CONTAINS = (
+    f"FILTER EXISTS {{ ?root <{SKOS_LABEL}> ?root_c0 . "
+    'FILTER (CONTAINS(LCASE(STR(?root_c0)), LCASE("du"))) }'
+)
+BEFORE_ABSENT = f"FILTER NOT EXISTS {{ ?root <{PUBLISHED}> ?root_a0 . }}"
+_BEFORE_MATCHING = (
+    "\n  GRAPH <https://example.org/t/registry> { ?graph "
+    "<https://meaningfy.ws/ns/rdf-persistence#kind> "
+    "<https://meaningfy.ws/ns/rdf-persistence#Aggregate> ; "
+    "<https://meaningfy.ws/ns/rdf-persistence#ownedBy> ?root }\n"
+    "  GRAPH ?graph { ?root a <http://purl.org/ontology/bibo/Book> . "
+    f"{BEFORE_EQUAL} {BEFORE_CONTAINS} {BEFORE_ABSENT} }}\n"
+    "  FILTER (?graph NOT IN (<https://example.org/t/a/graph>, <https://example.org/t/b/graph>))\n"
+)
+BEFORE_QUERY_WITH_HIDDEN = (
+    "\nCONSTRUCT { ?s ?p ?o . ?s <https://meaningfy.ws/ns/rdf-persistence#listedIn> ?graph . "
+    "<http://purl.org/ontology/bibo/Book> <https://meaningfy.ws/ns/rdf-persistence#total> ?total } "
+    "WHERE {\n  { SELECT (COUNT(DISTINCT ?root) AS ?total) WHERE { "
+    + _BEFORE_MATCHING
+    + " } }\n  UNION\n  { { SELECT ?root ?graph WHERE { "
+    + _BEFORE_MATCHING
+    + " } ORDER BY ASC(?root) LIMIT 50 OFFSET 0 } GRAPH ?graph { ?s ?p ?o } }\n}\n"
+)
+
+
+def test_a_path_less_condition_set_renders_exactly_as_before_whatever_is_hidden(view):
+    """E14: the strings captured before `via` existed; hidden graphs change nothing without a path."""
+    listings = Listings(view)
+    book_class = view.get_class("Book")
+    hidden = ["https://example.org/t/a/graph", "https://example.org/t/b/graph"]
+
+    def patterns(*params: tuple[str, str]) -> str:
+        plan = listings.plan(book_class, list_request(list(params)))
+        return condition_patterns("root", plan.conditions or [], hidden)
+
+    assert patterns(("label", "Dune")) == BEFORE_EQUAL, "equal renders as before"
+    assert patterns(("label~", "du")) == BEFORE_CONTAINS, "contains renders as before"
+    assert patterns(("absent", "published")) == BEFORE_ABSENT, "absent renders as before"
+    plan = listings.plan(
+        book_class,
+        list_request([("label", "Dune"), ("label~", "du"), ("absent", "published")]),
+        hidden,
+    )
+    text = listing_query(URIRef("https://example.org/t/registry"), plan)
+    assert text == BEFORE_QUERY_WITH_HIDDEN, "the whole query with hidden graphs is unchanged"
+
+
+def _hop(subject: str, predicate: str, variable: str, hidden: str, inner: str) -> str:
+    return (
+        f"?{subject} <{predicate}> ?{variable} . "
+        f'BIND (IRI(CONCAT(STR(?{variable}), "/graph")) AS ?{variable}_g) '
+        f"FILTER (?{variable}_g NOT IN (<{hidden}>)) "
+        f"GRAPH ?{variable}_g {{ {inner} }}"
+    )
+
+
+def test_a_path_condition_renders_nested_hops_in_a_filter_exists_with_hidden_on_every_hop():
+    """D-2: FILTER EXISTS around the hops, `{variable}_p{n}_{j}` variables, NOT IN on each hop."""
+    first, second, hidden = "http://x/first", "http://x/second", "http://x/h/graph"
+    condition = Condition(predicate=SKOS_LABEL, value="herbert", contains=True, via=[first, second])
+    inner = (
+        f"FILTER EXISTS {{ ?root_p0_2 <{SKOS_LABEL}> ?root_p0_2_c0 . "
+        'FILTER (CONTAINS(LCASE(STR(?root_p0_2_c0)), LCASE("herbert"))) }'
+    )
+    second_hop = _hop("root_p0_1", second, "root_p0_2", hidden, inner)
+    first_hop = _hop("root", first, "root_p0_1", hidden, second_hop)
+    assert condition_patterns("root", [condition], [hidden]) == (
+        f"FILTER EXISTS {{ {first_hop} }}"
+    ), "two nested hops, the last segment a contains on the last target"
+    assert hidden not in condition_patterns("root", [condition]), "no hidden, no NOT IN"
+
+
+def test_path_conditions_number_their_variables_apart_after_the_path_less_ones():
+    one = Condition(predicate=SKOS_LABEL, value="a", via=["http://x/ref"])
+    two = Condition(predicate=SKOS_LABEL, value="b", via=["http://x/ref"])
+    plain = Condition(predicate=SKOS_LABEL, value="Dune")
+
+    def exists(n: int, value: str) -> str:
+        return (
+            f"FILTER EXISTS {{ ?root <http://x/ref> ?root_p{n}_1 . "
+            f'BIND (IRI(CONCAT(STR(?root_p{n}_1), "/graph")) AS ?root_p{n}_1_g) '
+            f'GRAPH ?root_p{n}_1_g {{ ?root_p{n}_1 <{SKOS_LABEL}> "{value}" . }} }}'
+        )
+
+    assert condition_patterns("root", [one, plain, two]) == (
+        f"{BEFORE_EQUAL} {exists(0, 'a')} {exists(1, 'b')}"
+    ), "the path-less condition renders first; each path condition has its own p{n}"
+
+
+def test_the_listing_query_passes_the_hidden_graphs_to_every_hop(view):
+    hidden = "https://example.org/t/h/graph"
+    plan = Listings(view).plan(view.get_class("Book"), list_request([("label", "Dune")]), [hidden])
+    plan.conditions = [
+        Condition(predicate=SKOS_LABEL, value="x", via=["http://x/ref"]),
+    ]
+    text = listing_query(URIRef("https://example.org/t/registry"), plan)
+    prepareQuery(text)
+    assert text.count(f"?root_p0_1_g NOT IN (<{hidden}>)") == 2, (
+        "the page and the count both filter the hop"
+    )
+
+
 def test_the_query_is_one_construct_with_the_total_and_no_value_pasted_in(view):
     plan = Listings(view).plan(view.get_class("Book"), list_request([("label", HOSTILE)]), [])
     text = listing_query(URIRef(f"{FAKE_TENANT}/registry"), plan)

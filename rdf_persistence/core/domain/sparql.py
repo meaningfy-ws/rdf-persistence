@@ -209,6 +209,40 @@ def contains_patterns(variable: str, pairs: Iterable[tuple[URIRef, Literal]]) ->
     return SparqlTerm(" ".join(filters))
 
 
+def hop_patterns(  # noqa: PLR0913 - the hop's two ends, its graph suffix, the hidden graphs and the inner patterns (D-2)
+    subject: str,
+    predicate: URIRef,
+    target: str,
+    suffix: str,
+    hidden: Sequence[URIRef],
+    inner: SparqlTerm,
+) -> SparqlTerm:
+    """Render one reference hop from ``?subject`` to ``?target``, with ``inner`` holding in the target's graph.
+
+    ``?subject <predicate> ?target .`` binds ``?target_g`` to the target's IRI plus ``suffix`` (the
+    aggregate's graph, which the caller knows and ``core`` does not), leaves out each ``hidden`` graph
+    with a ``NOT IN`` filter (none when ``hidden`` is empty) and puts ``inner`` in ``GRAPH ?target_g``.
+    The suffix goes through ``term`` as a literal, the predicate and each hidden graph as IRIs.
+
+    Raises:
+        SparqlError: A variable is not a plain name, or an IRI is not a safe one.
+    """
+    for variable in (subject, target):
+        if not _VARIABLE.fullmatch(variable):
+            raise SparqlError(f"not a plain variable name: {variable!r}")
+    if not isinstance(inner, SparqlTerm):
+        raise SparqlError(f"hop_patterns() takes a SparqlTerm inner, not {type(inner).__name__}")
+    bound = f"?{target}_g"
+    parts = [
+        f"?{subject} {term(predicate)} ?{target} .",
+        f"BIND (IRI(CONCAT(STR(?{target}), {term(Literal(suffix))})) AS {bound})",
+    ]
+    if hidden:
+        parts.append(f"FILTER ({bound} NOT IN ({term_list(hidden)}))")
+    parts.append(f"GRAPH {bound} {{ {inner} }}")
+    return SparqlTerm(" ".join(parts))
+
+
 def no_value_patterns(variable: str, predicates: Iterable[URIRef]) -> SparqlTerm:
     """Render ``FILTER NOT EXISTS { ?variable <predicate> ?variable_aN . }`` for the n-th predicate (from 0).
 

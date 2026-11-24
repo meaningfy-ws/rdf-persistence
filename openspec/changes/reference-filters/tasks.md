@@ -11,15 +11,15 @@ EPIC: reference-filters (proposal.md, #308). Decisions: DEC-1 to DEC-8; design.m
   `Listings._filtered` and `graph_iri`. Re-read the merged stage 4 code (`condition_patterns`,
   `_filtered`, the `Condition` model). Revise D-2 and D-4 in `design.md` before any code if it
   diverged (RISK-1). A HIGH or CRITICAL impact goes to the developer.
-- [ ] 1.2 Model: `condition_via` on `Condition` in `rp_persistence_services.yaml`, then
+- [x] 1.2 Model: `condition_via` on `Condition` in `rp_persistence_services.yaml`, then
   `make generate` (DEC-1, D-1). Accept: the generated `Condition(via=[…])` builds, and
   `make test-fast` stays green.
-- [ ] 1.3 Tests first for the renderer: `hop_patterns` in `tests/unit/core/test_sparql.py`, and
+- [x] 1.3 Tests first for the renderer: `hop_patterns` in `tests/unit/core/test_sparql.py`, and
   E14 (path-less rendering unchanged, as literals) in `tests/unit/persistence/test_listing_query.py`
   (`design.md#tests-first-all-red-before-the-code`). E14's literals (the `condition_patterns`
   strings and a whole `listing_query` text with hidden graphs) are captured from the code before
   any change. RED: `hop_patterns` does not exist.
-- [ ] 1.4 `GRAPH_SUFFIX` in `iris/domain/layout.py`. `hop_patterns` in `core/domain/sparql.py`. The
+- [x] 1.4 `GRAPH_SUFFIX` in `iris/domain/layout.py`. `hop_patterns` in `core/domain/sparql.py`. The
   `condition_patterns` dispatch with `hidden`, and `listing_query` passing `plan.hidden_graphs`
   (D-2, D-3). Accept: 1.3 green; `make test-fast check-quality`.
 - [ ] 1.5 Tests first for resolution and behaviour:

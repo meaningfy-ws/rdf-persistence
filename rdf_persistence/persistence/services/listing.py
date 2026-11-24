@@ -26,13 +26,14 @@ from rdf_persistence.core.domain.sparql import (
     contains_patterns,
     count,
     fill_terms,
+    hop_patterns,
     join,
     match_patterns,
     no_value_patterns,
     order_by,
     term_list,
 )
-from rdf_persistence.iris.domain.layout import root_of_graph
+from rdf_persistence.iris.domain.layout import GRAPH_SUFFIX, root_of_graph
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     Condition,
     Filter,
@@ -216,15 +217,51 @@ def condition_pairs(conditions: Iterable[Condition]) -> list[tuple[URIRef, URIRe
     return [(URIRef(c.predicate), _term(c)) for c in conditions]
 
 
-def condition_patterns(variable: str, conditions: Iterable[Condition]) -> SparqlTerm:
+def _path_patterns(variable: str, n: int, condition: Condition, hidden: list[URIRef]) -> SparqlTerm:
+    """One path condition, the ``n``-th of its plan: its hops nested in one ``FILTER EXISTS`` (D-2).
+
+    Hop ``j`` (from 1) binds ``?{variable}_p{n}_{j}``; the condition's own statement is tested on the last.
+    """
+    via = [URIRef(predicate) for predicate in condition.via or []]
+    last = f"{variable}_p{n}_{len(via)}"
+    if condition.contains:
+        patterns = contains_patterns(
+            last, [(URIRef(condition.predicate), Literal(condition.value))]
+        )
+    else:
+        patterns = match_patterns(last, condition_pairs([condition]))
+    for j in range(len(via), 0, -1):
+        subject = variable if j == 1 else f"{variable}_p{n}_{j - 1}"
+        patterns = hop_patterns(
+            subject, via[j - 1], f"{variable}_p{n}_{j}", GRAPH_SUFFIX, hidden, patterns
+        )
+    return SparqlTerm(f"FILTER EXISTS {{ {patterns} }}")
+
+
+def condition_patterns(
+    variable: str, conditions: Iterable[Condition], hidden: Iterable[str] = ()
+) -> SparqlTerm:
     """The patterns that hold every condition of a plan on ``?variable``: the one renderer of conditions.
 
     An equality condition is a ``?variable <predicate> <value> .`` triple pattern; a contains condition
     is a ``FILTER EXISTS`` on a value of the predicate holding its text, ignoring case; an absent
-    condition is a ``FILTER NOT EXISTS`` on a value of the predicate (``no_value_patterns``). The listing,
-    ``Session.matches`` and the commit guard all render through it, so they agree.
+    condition is a ``FILTER NOT EXISTS`` on a value of the predicate (``no_value_patterns``). A condition
+    with a ``via`` crosses references: its hops nest in one ``FILTER EXISTS``, one row per root, and each
+    hop leaves out the ``hidden`` graphs; a condition set with no path never reads ``hidden``. The
+    listing, ``Session.matches`` and the commit guard all render through it, so they agree.
     """
     conditions = list(conditions)
+    hidden_graphs = [URIRef(graph) for graph in hidden]
+    paths = [c for c in conditions if c.via]
+    parts = [
+        _root_patterns(variable, [c for c in conditions if not c.via]),
+        *(_path_patterns(variable, n, c, hidden_graphs) for n, c in enumerate(paths)),
+    ]
+    return join(part for part in parts if part)
+
+
+def _root_patterns(variable: str, conditions: list[Condition]) -> SparqlTerm:
+    """The conditions on the listed aggregate itself: equal, then contains, then absent."""
     equal = [c for c in conditions if not c.contains and not c.absent]
     containing = [(URIRef(c.predicate), Literal(c.value)) for c in conditions if c.contains]
     absent = [URIRef(c.predicate) for c in conditions if c.absent]
@@ -347,7 +384,7 @@ def listing_query(registry: URIRef, plan: ListPlan) -> str:
     terms = v.listing_terms(
         registry,
         target=URIRef(plan.target),
-        patterns=condition_patterns("root", plan.conditions or []),
+        patterns=condition_patterns("root", plan.conditions or [], plan.hidden_graphs or []),
         hidden=term_list(URIRef(graph) for graph in plan.hidden_graphs or []),
         order=order_by(*keys),
         limit=count(plan.limit),
