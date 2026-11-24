@@ -13,10 +13,12 @@ from pathlib import Path
 
 from linkml_runtime.dumpers import yaml_dumper
 from linkml_runtime.linkml_model.meta import SchemaDefinition
+from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.access.services.access import load_role_definitions
-from rdf_persistence.collaboration.services.workflows import load_workflow
+from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow
 from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition, InvalidWorkflow
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence_generation.exceptions import OutputError, StagedFileRefused
 from rdf_persistence_generation.generated.rp_generation import ReportKind, ReportLine
 from rdf_persistence_generation.uml.roles import ROLES_SUFFIX
@@ -67,13 +69,32 @@ def _stale_files(
     return stale
 
 
-def _check_staged(staging: Path, files: Mapping[str, str]) -> None:
-    """Read each staged file with the library's loader; a refusal is the conversion's miss (PD-4)."""
+def _check_staged(
+    staging: Path,
+    out: Path,
+    root_name: str,
+    files: Mapping[str, str],
+    load_view: Callable[[Path], SchemaView],
+) -> None:
+    """Read each staged file with the library's loader, then the workflows as the service does (PD-4).
+
+    A refusal is the conversion's miss. The whole-model check runs only when a workflow file is
+    staged; the library's message has the staging folder replaced by ``out``.
+    """
     for name in sorted(files):
         try:
             _load(staging / name)
         except (InvalidRoleDefinition, InvalidWorkflow) as error:
             raise StagedFileRefused(str(error)) from error
+    paths = sorted(staging / name for name in files if name.endswith(WORKFLOWS_SUFFIX))
+    if not paths:
+        return
+    try:
+        rules = AccessRules(load_role_definitions(staging / f"{root_name}{ROLES_SUFFIX}"))
+        Workflows.from_files(paths, load_view(staging / f"{root_name}{SCHEMA_SUFFIX}"), rules)
+    except (InvalidRoleDefinition, InvalidWorkflow) as error:
+        shown = str(error).replace(str(staging), str(out))
+        raise StagedFileRefused(f"the written files would stop the service: {shown}") from error
 
 
 def _load(path: Path) -> None:
@@ -121,13 +142,14 @@ def _move(staging: Path, out: Path, report_name: str, move: Callable[[Path, Path
             raise OSError(error.errno, error.strerror, str(target)) from error
 
 
-def write(  # noqa: PLR0913 - the injected move (PD-3) is the sixth input; the others are the run's
+def write(  # noqa: PLR0913 - the injected move (PD-3) and schema loader (PD-4) are the last inputs; the others are the run's
     schemas: Sequence[SchemaDefinition],
     report: Sequence[ReportLine],
     out: Path,
     root_name: str,
     files: Mapping[str, str] | None = None,
     move: Callable[[Path, Path], None] = os.replace,
+    load_view: Callable[[Path], SchemaView] = load_schema,
 ) -> list[ReportLine]:
     """Write each schema as ``<out>/<name>.yaml`` and the report; return the report lines added.
 
@@ -140,12 +162,17 @@ def write(  # noqa: PLR0913 - the injected move (PD-3) is the sixth input; the o
         files: The other files, a path relative to ``out`` to its text (PD-8); a ``*.roles.yaml``
             or ``workflows/*.workflow.yaml`` is read with the library's loader before anything is
             moved, and the files are moved one by one, so a folder in ``out`` keeps its other files.
+        move: Moves one staged file to its target; injected so a test can fail a move.
+        load_view: Opens the staged root schema for the start-up check of the workflows; it is
+            called only when a workflow file is staged.
 
     Returns:
         The lines this function added to the report (``stale-file``), already in the written file.
 
     Raises:
-        StagedFileRefused: The loader refuses a staged file; nothing was moved.
+        StagedFileRefused: The loader refuses a staged file, or the library's start-up check
+            (``Workflows.from_files`` over the staged root schema and roles) refuses the
+            workflows; nothing was moved.
         OutputError: A disk or folder error anywhere; ``path`` is the file it named, else ``out``.
             The staging folder is removed; the old report is deleted before the moves and the
             new one moved last, so an interrupted write leaves no report in ``out``.
@@ -164,7 +191,7 @@ def write(  # noqa: PLR0913 - the injected move (PD-3) is the sixth input; the o
             for schema in schemas:
                 yaml_dumper.dump(schema, str(staging / f"{schema.name}{SCHEMA_SUFFIX}"))
             _stage(staging, files)
-            _check_staged(staging, files)
+            _check_staged(staging, out, root_name, files, load_view)
             (staging / report_name).write_text(report_text([*report, *added]), encoding="utf-8")
             (out / report_name).unlink(missing_ok=True)
             _move(staging, out, report_name, move)

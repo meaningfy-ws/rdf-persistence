@@ -6,11 +6,12 @@ from pathlib import Path
 
 import pytest
 import yaml
-from linkml_runtime.linkml_model.meta import SchemaDefinition
+from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition
 
 from rdf_persistence.access.services.access import load_role_definitions
 from rdf_persistence.collaboration.services.workflows import load_workflow
 from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition, InvalidWorkflow
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence_generation.exceptions import OutputError, StagedFileRefused
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
@@ -505,3 +506,94 @@ def test_an_output_folder_that_is_a_file_is_an_output_error(tmp_path: Path) -> N
         write(_schemas(), _report(), out, ROOT)
 
     assert raised.value.path == out, f"the error names --out: {raised.value.path}"
+
+
+# --- the whole-model start-up check (PD-4, DEC-3) ------------------------------------------------
+
+SHARED_IRI = f"{LIBRARY}Loanable"
+
+
+def _workflow_text(name: str) -> str:
+    return f"id: {LIBRARY}{name}\nworkflow_name: {name}\nworkflow_states:\n- open\ninitial_state: open\n"
+
+
+def _class(name: str, workflow: str) -> ClassDefinition:
+    return ClassDefinition(
+        name=name,
+        class_uri=SHARED_IRI if name in ("First", "Second") else f"{LIBRARY}{name}",
+        annotations={"workflow": workflow},
+    )
+
+
+def _root_schema(*classes: ClassDefinition) -> SchemaDefinition:
+    return SchemaDefinition(
+        id=LIBRARY.rstrip("/"),
+        name=ROOT,
+        prefixes={"lib": LIBRARY},
+        default_prefix="lib",
+        classes={each.name: each for each in classes},
+    )
+
+
+def _staged_files(*workflows: str) -> dict[str, str]:
+    files = {
+        ROLES_FILE: "- role: librarian\n  level: tenant\n  actions:\n  - read\n",
+    }
+    files.update({f"workflows/{name}.workflow.yaml": _workflow_text(name) for name in workflows})
+    return files
+
+
+def test_the_start_up_check_refuses_a_staged_workflow(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    schema = _root_schema(_class("First", "loan"), _class("Second", "return"))
+
+    with pytest.raises(StagedFileRefused) as raised:
+        write([schema], [], out, ROOT, files=_staged_files("loan", "return"))
+
+    text = str(raised.value)
+    assert text.startswith("the written files would stop the service: "), text
+    assert "class Second" in text, f"the class _by_iri reports: {text}"
+    assert SHARED_IRI in text, f"the shared class IRI: {text}"
+    assert "'loan'" in text, f"the first workflow: {text}"
+    assert "'return'" in text, f"the second workflow: {text}"
+    assert ".uml-write-" not in text, f"no staging path: {text}"
+    assert list(out.iterdir()) == [], "nothing was moved and no staging folder is left"
+
+
+def test_a_refusal_naming_a_file_names_it_under_out(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    schema = _root_schema(_class("Lonely", "missing"))
+
+    with pytest.raises(StagedFileRefused) as raised:
+        write([schema], [], out, ROOT, files=_staged_files("loan", "return"))
+
+    text = str(raised.value)
+    assert "class Lonely names workflow 'missing'" in text, text
+    for name in ("loan", "return"):
+        assert f"{out}/workflows/{name}.workflow.yaml" in text, f"listed under out: {text}"
+    assert ".uml-write-" not in text, f"no staging path: {text}"
+
+
+@pytest.mark.parametrize(
+    ("files", "loaded"),
+    [
+        (_staged_files(), False),
+        (_staged_files("loan"), True),
+    ],
+    ids=["no-workflow-loads-no-schema", "a-workflow-loads-the-root-schema"],
+)
+def test_a_run_without_workflows_loads_no_schema(
+    tmp_path: Path, files: dict[str, str], loaded: bool
+) -> None:
+    seen: list[Path] = []
+
+    def load(path: Path):
+        seen.append(path)
+        return load_schema(path)
+
+    out = tmp_path / "out"
+
+    write([_root_schema(_class("Loan", "loan"))], [], out, ROOT, files=files, load_view=load)
+
+    assert bool(seen) == loaded, f"the schema loads only for a workflow: {seen}"
+    assert [path.name for path in seen] == (["lib.yaml"] if loaded else []), seen
