@@ -49,13 +49,13 @@ EPIC: consumer-gap-fixes (proposal.md, #304, #306, #311, #312). Decisions: DEC-1
 ## 5. Close
 
 - [x] 5.1 Scenario-map rows for the new tests (each stage adds its own).
-- [ ] 5.2 After the last merge: reconcile the proposal, archive, and ask for a release (RISK-4).
+- [x] 5.2 After the last merge: reconcile the proposal, archive, and ask for a release (RISK-4).
   Comment on #304, #306, #311 and #312 with the version.
 
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 3.1 · [x] 3.2 · [x] 3.3 ·
-  [x] 4.1 · [x] 4.2 · [x] 4.3 · [x] 4.4 · [x] 4.5 · [x] 5.1 · [ ] 5.2
+  [x] 4.1 · [x] 4.2 · [x] 4.3 · [x] 4.4 · [x] 4.5 · [x] 5.1 · [x] 5.2
 
 ## Verification
 
