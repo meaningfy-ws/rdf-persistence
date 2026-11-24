@@ -222,7 +222,11 @@ class AccessRules:
         The level of a grant is the tenant's when it targets ``tenant``, else an aggregate's.
         """
         pairs = ((_level(grant.target, tenant), grant.role) for grant in grants)
-        return [(level, role) for level, role in pairs if role is not None and (level, role) not in self._permits]
+        return [
+            (level, role)
+            for level, role in pairs
+            if role is not None and (level, role) not in self._permits
+        ]
 
     def administered(self, grants: Iterable[Grant], tenant: str) -> bool:
         """True when a grant of ``grants`` gives ``administer`` on ``tenant``, by role or directly."""

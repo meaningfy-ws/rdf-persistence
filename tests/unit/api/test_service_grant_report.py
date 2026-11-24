@@ -36,7 +36,9 @@ class Noted(logging.Handler):
             self.events.append(("report", UNADMINISTERED))
 
 
-async def test_start_up_reports_the_grants_after_the_shared_databases_and_before_the_sweep() -> None:
+async def test_start_up_reports_the_grants_after_the_shared_databases_and_before_the_sweep() -> (
+    None
+):
     store = OrderedStore()
     first = ToyService(store)
     async with first.app.router.lifespan_context(first.app), first.client() as http:

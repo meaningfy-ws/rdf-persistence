@@ -27,7 +27,11 @@ UNDEFINED = "grants name undefined roles"
 UNADMINISTERED = "no grant administers the tenant"
 STEP = "check-grants"
 LIBRARIAN_ONLY = AccessRules(
-    [d for d in load_role_definitions(ROLES) if d.role == "librarian" and d.level == RoleLevel.TENANT]
+    [
+        d
+        for d in load_role_definitions(ROLES)
+        if d.role == "librarian" and d.level == RoleLevel.TENANT
+    ]
 )
 
 
