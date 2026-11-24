@@ -1,5 +1,7 @@
 """TC-10 (write part): the files, the sorted report, the stale-file line, the byte-identical rerun (PD-22, I-2)."""
 
+import errno
+import os
 from pathlib import Path
 
 import pytest
@@ -9,7 +11,7 @@ from linkml_runtime.linkml_model.meta import SchemaDefinition
 from rdf_persistence.access.services.access import load_role_definitions
 from rdf_persistence.collaboration.services.workflows import load_workflow
 from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition, InvalidWorkflow
-from rdf_persistence_generation.exceptions import StagedFileRefused
+from rdf_persistence_generation.exceptions import OutputError, StagedFileRefused
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
@@ -427,3 +429,79 @@ def test_a_staged_workflow_the_loader_refuses_moves_nothing(
 
     assert list(out.iterdir()) == [], "nothing was moved"
     assert sorted(path.name for path in tmp_path.iterdir()) == ["out"], "no temp folder is left"
+
+
+# --- the write fails or is interrupted (PD-3, DEC-4, G-3) ----------------------------------------
+
+
+def _full_disk_on_the_second_move():
+    """A move that works once, then fails as a full disk, naming the target it was moving to."""
+    calls: list[Path] = []
+
+    def move(source: Path, target: Path) -> None:
+        calls.append(target)
+        if len(calls) == 2:
+            raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC), str(target))
+        os.replace(source, target)
+
+    return move, calls
+
+
+def test_a_failed_move_leaves_no_report_and_names_the_file(tmp_path: Path) -> None:
+    clean = tmp_path / "clean"
+    write(_schemas(), _report(), clean, ROOT)
+    out = tmp_path / "out"
+    write(_schemas(), [], out, ROOT)  # a previous run, with its report
+    assert (out / "lib.uml-report.txt").exists(), "the previous run left a report"
+    move, calls = _full_disk_on_the_second_move()
+
+    with pytest.raises(OutputError) as raised:
+        write(_schemas(), _report(), out, ROOT, move=move)
+
+    assert raised.value.path == calls[1], f"the error names the failing target: {raised.value.path}"
+    assert raised.value.reason == os.strerror(errno.ENOSPC), raised.value.reason
+    assert not (out / "lib.uml-report.txt").exists(), "an interrupted write leaves no report"
+    assert [path.name for path in out.iterdir() if path.name.startswith(".")] == [], (
+        "the staging folder is gone"
+    )
+    write(_schemas(), _report(), out, ROOT)
+    assert _files(out) == _files(clean), "a re-run writes the bytes of a clean run"
+
+
+def test_staging_happens_inside_out(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    seen: list[Path] = []
+
+    def move(source: Path, target: Path) -> None:
+        seen.append(source)
+        os.replace(source, target)
+
+    write(_schemas(), _report(), out, ROOT, move=move)
+
+    assert seen, "something was moved"
+    assert all(out in source.parents for source in seen), f"staged inside out: {seen}"
+    assert seen[-1].name == "lib.uml-report.txt", "the report is moved last"
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["out"], "nothing beside out"
+
+
+def test_a_left_staging_folder_is_reported_not_deleted(tmp_path: Path) -> None:
+    left = tmp_path / f"{write_module.STAGING_PREFIX}abc123"
+    left.mkdir()
+    (left / "lib_books.yaml").write_text("half: written\n", encoding="utf-8")
+
+    added = write(_schemas(), _report(), tmp_path, ROOT)
+
+    assert [(line.report_kind, line.element, line.message) for line in added] == [
+        (ReportKind.STALE_FILE, left.name, "left by an interrupted run; delete it")
+    ], f"the left folder is reported, not the run's own staging: {added}"
+    assert (left / "lib_books.yaml").exists(), "and never deleted"
+
+
+def test_an_output_folder_that_is_a_file_is_an_output_error(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    out.write_text("not a folder", encoding="utf-8")
+
+    with pytest.raises(OutputError) as raised:
+        write(_schemas(), _report(), out, ROOT)
+
+    assert raised.value.path == out, f"the error names --out: {raised.value.path}"

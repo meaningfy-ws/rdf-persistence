@@ -1,14 +1,14 @@
 """Writing the converted schemas and the report beside them (PD-22, I-2).
 
-The files are dumped into a temporary folder beside ``out`` and moved into place with
-``os.replace``. Nothing in ``out`` is deleted: a ``<root>_*.yaml`` this run did not write is
-reported as ``stale-file``. The other files the conversion draws (PD-8) are staged with them and
+The files are dumped into a temporary folder inside ``out`` and moved into place, the report
+last (PD-3). The only file deleted is the previous report. A ``<root>_*.yaml`` this run did not
+write, and a staging folder a killed run left, are reported as ``stale-file``, never deleted. The other files the conversion draws (PD-8) are staged with them and
 checked by the library's loader before anything is moved (PD-4); a file it refuses moves nothing.
 """
 
 import os
 import tempfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from linkml_runtime.dumpers import yaml_dumper
@@ -17,7 +17,7 @@ from linkml_runtime.linkml_model.meta import SchemaDefinition
 from rdf_persistence.access.services.access import load_role_definitions
 from rdf_persistence.collaboration.services.workflows import load_workflow
 from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition, InvalidWorkflow
-from rdf_persistence_generation.exceptions import StagedFileRefused
+from rdf_persistence_generation.exceptions import OutputError, StagedFileRefused
 from rdf_persistence_generation.generated.rp_generation import ReportKind, ReportLine
 from rdf_persistence_generation.uml.roles import ROLES_SUFFIX
 from rdf_persistence_generation.uml.workflows import WORKFLOWS_FOLDER, WORKFLOWS_SUFFIX
@@ -90,20 +90,44 @@ def _stage(staging: Path, files: Mapping[str, str]) -> None:
         target.write_text(text, encoding="utf-8")
 
 
-def _move(staging: Path, out: Path) -> None:
-    """Move every staged file into ``out``, one by one: a folder in ``out`` may hold the consumer's other files."""
-    for staged in sorted(file for file in staging.rglob("*") if file.is_file()):
+def _left_staging(out: Path) -> list[ReportLine]:
+    """The staging folders a killed run left in ``out``: reported, never deleted (another run may own one)."""
+    return [
+        ReportLine(
+            report_kind=ReportKind.STALE_FILE,
+            element=folder.name,
+            message="left by an interrupted run; delete it",
+        )
+        for folder in sorted(out.glob(f"{STAGING_PREFIX}*"))
+        if folder.is_dir()
+    ]
+
+
+def _move(staging: Path, out: Path, report_name: str, move: Callable[[Path, Path], None]) -> None:
+    """Move every staged file into ``out`` in path order, the report last.
+
+    A folder in ``out`` may hold the consumer's other files, so files move one by one. An
+    ``OSError`` is re-raised naming the target, as the real move names the staged source.
+    """
+    staged_files = sorted(file for file in staging.rglob("*") if file.is_file())
+    report = [file for file in staged_files if file.name == report_name and file.parent == staging]
+    others = [file for file in staged_files if file not in report]
+    for staged in [*others, *report]:
         target = out / staged.relative_to(staging)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(staged, target)
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            move(staged, target)
+        except OSError as error:
+            raise OSError(error.errno, error.strerror, str(target)) from error
 
 
-def write(
+def write(  # noqa: PLR0913 - the injected move (PD-3) is the sixth input; the others are the run's
     schemas: Sequence[SchemaDefinition],
     report: Sequence[ReportLine],
     out: Path,
     root_name: str,
     files: Mapping[str, str] | None = None,
+    move: Callable[[Path, Path], None] = os.replace,
 ) -> list[ReportLine]:
     """Write each schema as ``<out>/<name>.yaml`` and the report; return the report lines added.
 
@@ -122,19 +146,30 @@ def write(
 
     Raises:
         StagedFileRefused: The loader refuses a staged file; nothing was moved.
+        OutputError: A disk or folder error anywhere; ``path`` is the file it named, else ``out``.
+            The staging folder is removed; the old report is deleted before the moves and the
+            new one moved last, so an interrupted write leaves no report in ``out``.
+
+    The staging folder is made inside ``out`` (the same filesystem as the targets). A folder a
+    killed run left there is reported as ``stale-file``, never deleted.
     """
-    out.mkdir(parents=True, exist_ok=True)
     files = files or {}
     names = {f"{schema.name}{SCHEMA_SUFFIX}" for schema in schemas}
-    added = _stale_files(out, root_name, names, files)
-    with tempfile.TemporaryDirectory(dir=out.parent, prefix=STAGING_PREFIX) as folder:
-        staging = Path(folder)
-        for schema in schemas:
-            yaml_dumper.dump(schema, str(staging / f"{schema.name}{SCHEMA_SUFFIX}"))
-        _stage(staging, files)
-        _check_staged(staging, files)
-        (staging / f"{root_name}{REPORT_SUFFIX}").write_text(
-            report_text([*report, *added]), encoding="utf-8"
-        )
-        _move(staging, out)
+    report_name = f"{root_name}{REPORT_SUFFIX}"
+    try:
+        out.mkdir(parents=True, exist_ok=True)
+        added = [*_stale_files(out, root_name, names, files), *_left_staging(out)]
+        with tempfile.TemporaryDirectory(dir=out, prefix=STAGING_PREFIX) as folder:
+            staging = Path(folder)
+            for schema in schemas:
+                yaml_dumper.dump(schema, str(staging / f"{schema.name}{SCHEMA_SUFFIX}"))
+            _stage(staging, files)
+            _check_staged(staging, files)
+            (staging / report_name).write_text(report_text([*report, *added]), encoding="utf-8")
+            (out / report_name).unlink(missing_ok=True)
+            _move(staging, out, report_name, move)
+    except OSError as error:
+        raise OutputError(
+            Path(error.filename) if error.filename else out, error.strerror or str(error)
+        ) from error
     return added

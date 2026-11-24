@@ -191,7 +191,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/cli.py",
-      "sha256": "ea62c2e6f4b9ccb080e860b41813d57247b5d8c0596f3b117cd9dde1495880f1"
+      "sha256": "6e10cc86f13c6b6f734daaf6fe36cb633651bd5db6d4588fecb1c157ba5ba8e2"
     },
     {
       "path": "rdf_persistence_generation/uml/context.py",
@@ -247,7 +247,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/write.py",
-      "sha256": "22f01f1ed1f45064c081135bd3ff3bb901b0684a13b90dd5715a4bc4f40b9559"
+      "sha256": "9adb5aa8186f3e5d786e2b8835eb353debedd8f7602f699f96b21b40cc768af2"
     }
   ],
   "outputs": [

@@ -2,7 +2,7 @@
 
 The flow: parse, read the prefixes file into ``UmlSettings``, read the ``.qea``, convert, write.
 Exit 0 written; 1 the model has problems (all printed, sorted, nothing written); 2 the setup is
-unusable (arguments, prefixes file, ``.qea`` file or package), one ``rp-uml2linkml: <message>`` line.
+unusable (arguments, prefixes file, ``.qea`` file or package) or ``--out`` cannot be written, one ``rp-uml2linkml: <message>`` line.
 """
 
 import argparse
@@ -15,6 +15,7 @@ from linkml_runtime.utils.metamodelcore import NCName
 from linkml_runtime.utils.uri_validator import validate_uri
 
 from rdf_persistence_generation.exceptions import (
+    OutputError,
     PrefixesFileError,
     QeaUsageError,
     StagedFileRefused,
@@ -176,4 +177,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     except StagedFileRefused as error:
         print(f"{PROG}: {error}", file=sys.stderr)
         return EXIT_FAILED
+    except OutputError as error:
+        return _usage_error(f"cannot write {error.path}: {error.reason}")
     return EXIT_OK

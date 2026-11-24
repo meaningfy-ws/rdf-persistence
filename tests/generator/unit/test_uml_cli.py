@@ -253,6 +253,16 @@ def test_a_file_that_is_not_sqlite_is_a_usage_error(tmp_path, capsys):
     ), (code, lines)
 
 
+def test_an_unwritable_out_is_a_usage_error(tmp_path, capsys):
+    builder, _ = build_library(tmp_path)
+    out = tmp_path / "out"
+    out.write_text("not a folder", encoding="utf-8")
+
+    code, lines = run(capsys, tmp_path, builder.finish())
+
+    assert (code, lines) == (2, [f"{PREFIX}cannot write {out}: File exists"]), (code, lines)
+
+
 def test_an_unknown_package_is_a_usage_error(tmp_path, capsys):
     builder, _ = build_library(tmp_path)
 
