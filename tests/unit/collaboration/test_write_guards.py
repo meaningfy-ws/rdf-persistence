@@ -20,6 +20,7 @@ from rdf_persistence import (
     InvalidIri,
     NotFound,
     Principal,
+    Refused,
     StoreUnavailable,
     generated_models,
     load_role_definitions,
@@ -530,10 +531,12 @@ async def deleting_session(
     mapping: Mapping[str, Sequence[DeleteValidator]] | None,
     *,
     may_read: Callable[[str], bool] | None = None,
+    store: FakeStore | None = None,
 ) -> AsyncIterator[Session]:
     """A session with the delete rules ``mapping`` and the caller's read check (``fake_session`` takes none)."""
-    store = FakeStore()
-    await store.create_dataset(FAKE_DATABASE)
+    store = store or FakeStore()
+    if FAKE_DATABASE not in await store.list_datasets():
+        await store.create_dataset(FAKE_DATABASE)
     async with open_session(
         store,
         database=FAKE_DATABASE,
@@ -547,11 +550,11 @@ async def deleting_session(
 
 def not_while_on_loan(old: Any, who: Any, reader: AggregateReader) -> None:
     if old.description == ON_LOAN:
-        raise Conflict(f"{old.id} is on loan; return it before deleting it")
+        raise Refused(f"{old.id} is on loan; return it before deleting it")
 
 
 def kept(old: Any, who: Any, reader: AggregateReader) -> None:
-    raise Conflict("kept")
+    raise Refused("kept")
 
 
 def loan_book(number: int, description: str = "shelved", **slots: str) -> Book:
@@ -570,7 +573,7 @@ async def test_a_delete_rule_refuses_a_book_on_loan_and_lets_another_go(
         await save(session, loan_book(1, description))
         version = await version_of(session, book_iri(1))
         if refused:
-            with pytest.raises(Conflict, match="is on loan"):
+            with pytest.raises(Refused, match="is on loan"):
                 await session.remove(book_iri(1), version)
         else:
             await session.remove(book_iri(1), version)
@@ -587,7 +590,7 @@ async def test_a_rule_of_a_parent_class_runs_for_a_derived_root(key: str, refuse
         await save(session, Magazine(id=MAGAZINE, label="Weekly"))
         version = await version_of(session, MAGAZINE)
         if refused:
-            with pytest.raises(Conflict, match="kept"):
+            with pytest.raises(Refused, match="kept"):
                 await session.remove(MAGAZINE, version)
         else:
             await session.remove(MAGAZINE, version)
@@ -599,7 +602,7 @@ async def test_a_refusal_inside_a_cascade_refuses_the_whole_commit_and_removes_n
         await save(session, shelf(shelf_iri(1)), loan_book(1), loan_book(2, ON_LOAN))
         iris = [shelf_iri(1), book_iri(1), book_iri(2)]
         versions = [await version_of(session, iri) for iri in iris]
-        with pytest.raises(Conflict, match="is on loan"):
+        with pytest.raises(Refused, match=f"{book_iri(2)} is on loan"):
             async with session.transaction() as transaction:
                 for iri, version in zip(iris, versions, strict=True):
                     await transaction.remove(iri, version)
@@ -642,7 +645,22 @@ async def test_a_rule_that_is_buggy_is_an_error_naming_it_not_a_refusal(
         assert await session.heads([book_iri(1)]), "the book stays"
 
 
-@pytest.mark.parametrize("error", [Conflict, StoreUnavailable, DatabaseGone])  # T12, E16
+async def test_a_stored_root_on_two_lines_under_a_delete_rule_is_a_runtime_error_naming_it():  # D-13
+    node = URIRef(shelf_iri(1))
+    view = load_schema(TOY_SCHEMA)
+    types = [URIRef(str(view.get_uri(name, expand=True))) for name in ("Shelf", "Book")]
+    store = FakeStore()
+    async with fake_session(store, tenant_iri=TENANT) as plain:  # no guard checks the types
+        version = await plain.add_graph(shelf_iri(1), [(node, RDF.type, t) for t in types])
+    async with deleting_session({"Shelf": [kept]}, store=store) as session:
+        with pytest.raises(RuntimeError, match=f"{shelf_iri(1)}.*two lines"):
+            await session.remove(shelf_iri(1), version)
+        assert await session.heads([shelf_iri(1)]), "the root stays"
+
+
+@pytest.mark.parametrize(
+    "error", [Refused, Conflict, StoreUnavailable, DatabaseGone]
+)  # T12, E16, D-12
 async def test_a_conflict_or_a_store_error_from_a_rule_passes_as_it_is(error: type[Exception]):
     def raises(old: Any, who: Any, reader: AggregateReader) -> None:
         raise error("from the rule")
@@ -727,5 +745,6 @@ async def test_a_stale_if_match_is_a_version_conflict_before_the_rules_refusal(
     async with deleting_session({"Book": [not_while_on_loan]}) as session:
         await save(session, loan_book(1, ON_LOAN))
         version = await version_of(session, book_iri(1))
-        with pytest.raises(Conflict, match=message):
+        with pytest.raises(Conflict, match=message) as raised:
             await session.remove(book_iri(1), "stale" if stale else version)
+        assert isinstance(raised.value, Refused) is not stale, "only the current version is refused"

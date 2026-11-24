@@ -23,7 +23,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/api/rp_api_entrypoints.yaml",
-      "sha256": "917e0a4ff0746bbaddef0af426901ac0c0da74a5d4e1579f052446af91ab8cf5"
+      "sha256": "bd199f703679b812b3035e71f087cea98190524864f2b0812c5ba8535b8ee436"
     },
     {
       "path": "rdf_persistence/model/technical/collaboration/rp_collaboration_services.yaml",
@@ -277,11 +277,11 @@
     },
     {
       "path": "rdf_persistence/api/entrypoints/generated/openapi-components.json",
-      "sha256": "5424027435e02c2f5eeade44eb36c7edbc3b3b0b30048b0bcc0d4aaf97b733b0"
+      "sha256": "1177ea281f9c1bc6ae709c47859c388d50f4573d2f37262edccd3bc62c03e777"
     },
     {
       "path": "rdf_persistence/api/entrypoints/generated/rp_api_entrypoints.py",
-      "sha256": "7cdc992bdeb057f9c6969897271f02d77a36e06366775fb28ef5d7cd1af6ebcd"
+      "sha256": "2b4e356904f23769bf1e35a1be3ca34bb37a536b375fe56f90293f2231f274d8"
     },
     {
       "path": "rdf_persistence/api/entrypoints/generated/shapes.ttl",

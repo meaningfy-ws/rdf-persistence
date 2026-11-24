@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 import pytest
 
-from rdf_persistence import Action, Conflict, GrantSet, InvalidBody, UnitOfWork
+from rdf_persistence import Action, GrantSet, InvalidBody, Refused, UnitOfWork
 from rdf_persistence.access.domain.generated.rp_access import Prohibition
 from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateReader,
@@ -277,7 +277,7 @@ ON_LOAN = "on loan"  # the toy book has no status: its description stands for on
 
 def not_while_on_loan(old: Any, who: Any, reader: AggregateReader) -> None:
     if old.description == ON_LOAN:
-        raise Conflict(f"{old.id} is on loan; return it before deleting it")
+        raise Refused(f"{old.id} is on loan; return it before deleting it")
 
 
 async def delete(scene: Scene, url: str, etag: str) -> httpx.Response:
@@ -300,7 +300,14 @@ async def test_a_delete_rule_answers_a_409_and_keeps_the_book(
         assert response.status_code == status, response.text
         after = await scene.http.get(url, headers=scene.headers("ada"))
         if status == 409:
-            assert problem_of(response).type == f"{PROBLEMS}conflict", "a conflict problem"
+            problem = problem_of(response)
+            assert problem.type == f"{PROBLEMS}refused", "a refused problem"
+            assert "is on loan; return it before deleting it" in (problem.detail or ""), (
+                "the rule's message is the problem's detail"
+            )
+            stale = await delete(scene, url, '"stale"')
+            assert problem_of(stale).type == f"{PROBLEMS}conflict", "a version conflict"
+            assert problem_of(stale).detail is None, "a version conflict sends no text"
             assert (after.status_code, after.headers["etag"]) == (200, etag), "stored, unchanged"
         else:
             assert after.status_code == 404, "the book is gone"

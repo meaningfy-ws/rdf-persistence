@@ -57,6 +57,16 @@ class KeyConflict(Conflict):
         self.keys = tuple(keys)
 
 
+class Refused(Conflict):
+    """A delete rule of the application refuses the removal of a root (aggregate-guards D-12).
+
+    Its message is the rule author's own text, so the generic route sends it as the problem's
+    ``detail``, unlike the text of any other ``Conflict``. A subclass, so code that catches
+    ``Conflict`` catches it; it must not be retried as one: the same removal fails until the
+    rule's condition changes.
+    """
+
+
 class InUse(Conflict):
     """A removal is refused because an aggregate of the tenant still refers to a root it removes.
 

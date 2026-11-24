@@ -357,8 +357,8 @@ async def run_delete_validators(
 ) -> None:
     """Run ``rules`` in order on copies of ``old``; the first refusal stops the removal (D-5).
 
-    A rule refuses by raising ``Conflict``, which passes as it is, and so do the store errors the
-    reader may raise. Anything else a rule raises, ``InvalidBody`` included (a delete has no body to
+    A rule refuses by raising ``Refused`` (D-12), which passes as it is; so does a plain ``Conflict``
+    (the reader's version clash), and so do the store errors the reader may raise. Anything else a rule raises, ``InvalidBody`` included (a delete has no body to
     call invalid), is a bug in it: ``RuntimeError`` naming the rule, chained to the error. A result
     other than None, after awaiting, is ``TypeError``.
     """

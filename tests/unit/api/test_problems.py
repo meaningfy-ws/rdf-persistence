@@ -37,6 +37,7 @@ ROWS = [
     (exceptions.TenantGone, 404, "not-found"),
     (exceptions.Conflict, 409, "conflict"),
     (exceptions.KeyConflict, 409, "key-conflict"),
+    (exceptions.Refused, 409, "refused"),
     (exceptions.InUse, 409, "in-use"),
     (exceptions.PreconditionRequired, 428, "precondition-required"),
     (exceptions.InvalidBody, 422, "invalid-body"),
@@ -68,6 +69,7 @@ TITLES = {
     "not-found": "Not found",
     "conflict": "Version conflict",
     "key-conflict": "Key conflict",
+    "refused": "Refused",
     "in-use": "In use",
     "precondition-required": "Precondition required",
     "invalid-body": "Invalid body",
@@ -155,6 +157,15 @@ async def test_an_outage_hides_where_the_store_or_the_provider_is(
     error: type[PersistenceError],
 ) -> None:
     assert "fuseki" not in (await get(app_raising(error(SECRET)))).text, "no internal address"
+
+
+async def test_a_refusal_by_a_rule_keeps_its_message_and_a_version_conflict_keeps_none() -> None:
+    refused = assert_problem(
+        await get(app_raising(exceptions.Refused("b1 is on loan"))), 409, "refused"
+    )
+    assert refused.detail == "b1 is on loan", "the text a rule's author wrote is sent"
+    plain = assert_problem(await get(app_raising(exceptions.Conflict(SECRET))), 409, "conflict")
+    assert plain.detail is None, "a version conflict sends no text"
 
 
 async def test_a_rejected_body_says_why() -> None:

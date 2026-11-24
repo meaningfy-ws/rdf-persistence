@@ -130,17 +130,23 @@ class WriteGuards:
         Nothing is read when no delete rule is registered (G-4, E15).
 
         Raises:
-            Conflict: A rule refuses, or ``if_version`` is not the stored version: the stale
-                version wins, as for a replace (E17).
-            InvalidBody: The root has types on two lines and a rule applies to one of them.
-            RuntimeError: A rule is buggy, or the stored root does not decode.
+            Conflict: ``if_version`` is not the stored version: it wins over a refusal, as for a
+                replace (E17).
+            Refused: (a ``Conflict``) A rule refuses.
+            RuntimeError: A rule is buggy, or the stored root does not decode or has types on two
+                lines that a rule applies to.
             TypeError: A rule returns a value.
         """
         deletes = self._delete_validators
         if deletes is None or not deletes.has_rules:
             return
         graph, tracked_in, stored_version = await session.get_graph(iri)
-        selected = deletes.select(iri, (str(t) for t in graph.objects(URIRef(iri), RDF.type)))
+        try:
+            selected = deletes.select(iri, (str(t) for t in graph.objects(URIRef(iri), RDF.type)))
+        except (
+            InvalidBody
+        ) as error:  # stored data the client cannot fix, and a delete has no body (D-13)
+            raise RuntimeError(f"the stored {iri} is invalid: {error}") from error
         if selected is None:
             return
         name, rules = selected

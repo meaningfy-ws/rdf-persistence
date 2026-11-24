@@ -21,6 +21,8 @@ export type ProblemSlug =
   | "conflict"
   /** The write would give an aggregate a key value that another aggregate of its class holds. */
   | "key_conflict"
+  /** A delete rule of the application refuses the removal; the answer carries the rule's message. */
+  | "refused"
   /** The delete would leave other aggregates pointing at a class that refuses it; the answer names them. */
   | "in_use"
   /** An update or a delete came without the version it expects. */

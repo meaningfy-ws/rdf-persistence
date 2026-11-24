@@ -105,6 +105,8 @@ class ProblemSlug(str, _Enum):
     "The write lost a race, or the thing to create already exists."
     KEY_CONFLICT = "key_conflict"
     "The write would give an aggregate a key value that another aggregate of its class holds."
+    REFUSED = "refused"
+    "A delete rule of the application refuses the removal; the answer carries the rule\u0027s message."
     IN_USE = "in_use"
     "The delete would leave other aggregates pointing at a class that refuses it; the answer names them."
     PRECONDITION_REQUIRED = "precondition_required"

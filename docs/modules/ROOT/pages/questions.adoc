@@ -134,8 +134,8 @@ xref:user-manual/access.adoc#aggregate-validators[Enforce your own rules on aggr
 
 *How do I refuse a delete?*::
 Pass `delete_validators` to `install_service`: a mapping from a class name to rules, each
-`(old, principal, reader)`, sync or async; a rule raises `Conflict` to refuse, the answer is 409 and
-nothing is removed, a collection's cascade included. See
+`(old, principal, reader)`, sync or async; a rule raises `Refused` to refuse, the answer is 409 `refused`
+with your message as its detail and nothing is removed, a collection's cascade included. See
 xref:user-manual/access.adoc#delete-validators[Refuse the delete of an aggregate].
 
 *How do I serve it over HTTP?*::

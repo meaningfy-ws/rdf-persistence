@@ -13,6 +13,7 @@
 |`conflict` |409 |Version conflict |The write lost a race, or the thing to create already exists.
 |`in-use` |409 |In use |The delete would leave other aggregates pointing at a class that refuses it; the answer names them.
 |`key-conflict` |409 |Key conflict |The write would give an aggregate a key value that another aggregate of its class holds.
+|`refused` |409 |Refused |A delete rule of the application refuses the removal; the answer carries the rule's message.
 |`payload-too-large` |413 |Payload too large |The body is larger than the service takes.
 |`unsupported-media-type` |415 |Unsupported media type |The route does not take the media type of the body.
 |`invalid-body` |422 |Invalid body |The body is not a valid representation for its route.

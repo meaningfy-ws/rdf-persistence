@@ -90,6 +90,7 @@
   "ReferenceCollection": "rdf_persistence.core.domain.generated.rp_collections",
   "Referrer": "rdf_persistence.services.generated.service.rp_service",
   "ReferrerList": "rdf_persistence.services.generated.service.rp_service",
+  "Refused": "rdf_persistence.domain.exceptions",
   "RegistryEntry": "rdf_persistence.domain.generated.rp_core",
   "RegistryKind": "rdf_persistence.domain.generated.rp_core",
   "Remove": "rdf_persistence.core.domain.generated.rp_provenance",
