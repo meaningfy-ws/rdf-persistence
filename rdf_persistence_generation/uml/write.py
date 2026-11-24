@@ -130,10 +130,9 @@ def _move(staging: Path, out: Path, report_name: str, move: Callable[[Path, Path
     A folder in ``out`` may hold the consumer's other files, so files move one by one. An
     ``OSError`` is re-raised naming the target, as the real move names the staged source.
     """
-    staged_files = sorted(file for file in staging.rglob("*") if file.is_file())
-    report = [file for file in staged_files if file.name == report_name and file.parent == staging]
-    others = [file for file in staged_files if file not in report]
-    for staged in [*others, *report]:
+    report = staging / report_name
+    files = (file for file in staging.rglob("*") if file.is_file())
+    for staged in sorted(files, key=lambda file: (file == report, file)):  # the report last
         target = out / staged.relative_to(staging)
         try:
             target.parent.mkdir(parents=True, exist_ok=True)

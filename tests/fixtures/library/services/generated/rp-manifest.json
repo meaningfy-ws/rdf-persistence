@@ -215,7 +215,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/slots.py",
-      "sha256": "6641984612cd9cf9bdca544488d07bff599979d9d8afcfbf2f736cea17d00f33"
+      "sha256": "70b20aa0caf0039ad18c30246706d52057d21a285985642e4f71c703235a5f1f"
     },
     {
       "path": "rdf_persistence_generation/uml/tags.py",
@@ -231,7 +231,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/write.py",
-      "sha256": "7dcf3af71caf7bab195f8c3b6af706d90215a3e699d28187142485fa4fe98994"
+      "sha256": "2ccf1c688f0efbe1c66d5ab8963ecc0e9410ea8243c535295013080223fbdee8"
     },
     {
       "path": "services/loan_checks_response.yaml",

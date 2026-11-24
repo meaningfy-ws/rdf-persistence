@@ -625,16 +625,23 @@ def _member_roles(
             and _is_collection(ctx, classes[usage.holder.uml_class.object_id], by_name)
         ):
             (selves if target == usage.holder.label else members).append(usage)
-    holders = {each.holder.label for each in members}
-    for usage in selves:
-        label = usage.holder.label
-        related = any(
-            other in _lineage(label, by_name) or label in _lineage(other, by_name)
+    members += _lone_self_roles(selves, {each.holder.label for each in members}, by_name)
+    return {id(each) for each in _without_narrowed_parents(ctx, members, by_name)}
+
+
+def _lone_self_roles(
+    selves: list[Usage], holders: set[str], by_name: Mapping[str, ClassDefinition]
+) -> list[Usage]:
+    """The self-roles whose holder shares no ``is_a`` lineage with a holder of a member role (OPEN-6)."""
+    return [
+        usage
+        for usage in selves
+        if not any(
+            other in _lineage(usage.holder.label, by_name)
+            or usage.holder.label in _lineage(other, by_name)
             for other in holders
         )
-        if not related:
-            members.append(usage)
-    return {id(each) for each in _without_narrowed_parents(ctx, members, by_name)}
+    ]
 
 
 def _lineage(name: str, by_name: Mapping[str, ClassDefinition]) -> list[str]:
