@@ -325,3 +325,12 @@ Under the floor:
   `StoredDataInvalid` is `Tenancy`'s, tested with it.
 - R1-S4: the T3b negative control catches any `ValueError`, not only the duplicate grant key.
 - R1-S5: no service-level test that a stale role is named at start-up and a request is served after.
+
+### D-12
+
+Stage 2 impact (lead, at stage start on `16030e17`): `_with_allowed_actions` is HIGH, through
+`install_service` and `build_router`; its direct callers are `read_root` and `read` in
+`openapi.py`. D-7 only declares a second header beside `Allowed-Actions`, through one helper, so
+no existing response loses a header; T13 checks both sites. Taken by the lead, not escalated;
+shown for validation at the end (R-0007). `AccessRules.roles` (callers `Discussion.thread`,
+`Transitions._edge`) and `Collaboration` are LOW.
