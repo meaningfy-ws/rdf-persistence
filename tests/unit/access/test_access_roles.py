@@ -1,5 +1,8 @@
 """Role definitions and grant sets (PD-9, PD-10): a file is validated at start-up, a grant set before it is stored."""
 
+import os
+import subprocess
+import sys
 from uuid import UUID
 
 import pytest
@@ -70,6 +73,54 @@ def test_a_missing_role_file_is_refused_with_its_path(tmp_path):
     path = tmp_path / "absent.yaml"
     with pytest.raises(InvalidRoleDefinition, match="absent.yaml"):
         load_role_definitions(path)
+
+
+LOCALE_PROBE = """
+import sys
+import warnings
+from pathlib import Path
+
+from rdf_persistence.access.services.access import load_role_definitions
+
+path = Path(sys.argv[1])
+with warnings.catch_warnings():
+    warnings.simplefilter("error", EncodingWarning)
+    definitions = load_role_definitions(path)
+print(definitions[0].role)
+"""
+
+
+def test_a_non_ascii_role_is_read_as_utf8_whatever_the_locale(tmp_path):
+    path = tmp_path / "roles.yaml"
+    path.write_bytes("- {role: rédacteur, level: tenant, actions: [read]}\n".encode())
+    probe = tmp_path / "probe.py"
+    probe.write_text(LOCALE_PROBE, encoding="utf-8")
+    done = subprocess.run(
+        [sys.executable, "-X", "warn_default_encoding", str(probe), str(path)],
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONUTF8": "0", "PYTHONPATH": os.pathsep.join(sys.path)},
+    )
+    assert done.returncode == 0, (
+        f"the file is read with an explicit encoding: {done.stderr.decode()[-400:]}"
+    )
+    assert done.stdout.decode().strip() == "rédacteur", "the role keeps its accent"
+
+
+def test_bytes_that_are_not_utf8_are_an_invalid_role_definition(tmp_path):
+    path = tmp_path / "roles.yaml"
+    path.write_bytes(b"- {role: \xff, level: tenant, actions: [read]}\n")
+    with pytest.raises(InvalidRoleDefinition, match="is not UTF-8 text") as raised:
+        load_role_definitions(path)
+    assert "roles.yaml" in str(raised.value), "the error names the file"
+
+
+def test_a_key_given_twice_is_an_invalid_role_definition(tmp_path):
+    path = tmp_path / "roles.yaml"
+    path.write_text("- {role: a, role: b, level: tenant, actions: [read]}\n", encoding="utf-8")
+    with pytest.raises(InvalidRoleDefinition, match="'role' twice") as raised:
+        load_role_definitions(path)
+    assert "roles.yaml" in str(raised.value), "the error names the file"
 
 
 def test_a_role_may_be_defined_at_two_different_levels(tmp_path):
