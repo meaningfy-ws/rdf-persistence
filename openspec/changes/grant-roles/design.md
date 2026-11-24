@@ -303,3 +303,25 @@ it, so the report and `set_grants` agree on which roles are undefined. `_run_at_
 The report's warning carries its `level:role` pairs in a new `LogContext` slot,
 `undefined_roles` (`rp.grants.undefined_roles`, multivalued) in `rp_core_services.yaml`, then
 `make generate` (P-0010, P-0011). D-5 named the attribute but no slot existed for it.
+
+### D-11
+
+Stage 1 review (one pass, L2+L3; `result: stage=1 role=reviewer lens=L2+L3 findings=5 accepted=2`).
+Two Warnings re-labelled Critical and fixed, in one fixer pass:
+
+- **R1-W1** (`migration_runner.py`): no test runs `grant_roles` through `migrate_shared`, though the
+  spec scenarios say "WHEN start-up migrates the system database". Re-labelled because #307's
+  deliverable could silently become a stamp move with every gate green. Fix: a runner test on the
+  fake store: the system database's grants change; the application and a tenant database get only
+  the stamp.
+- **R1-W2** (`tests/integration/store/`): no container test sends a grant operation, though stage 1
+  runs `make test-containers` because migrations run on Fuseki. Re-labelled because the gate the
+  developer asked for did not test what it was asked for. Fix: one Fuseki test of the merge (T3b)
+  and the drop (T2).
+
+Under the floor:
+
+- R1-W3: T8b stubs `Tenancy` with a `SimpleNamespace`; the wrapping of an undecodable record as
+  `StoredDataInvalid` is `Tenancy`'s, tested with it.
+- R1-S4: the T3b negative control catches any `ValueError`, not only the duplicate grant key.
+- R1-S5: no service-level test that a stale role is named at start-up and a request is served after.
