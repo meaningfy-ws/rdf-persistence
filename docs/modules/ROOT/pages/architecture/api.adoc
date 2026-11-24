@@ -269,7 +269,7 @@ xref:architecture/access-control.adoc#check[the check].
 |Match `If-Match` to the one version the write takes: `*`, or a list of entity tags, by strong
 comparison. A single strong tag is that version with no read; `*` or a list reads the current version
 once. A weak tag names no version. A consumer's own route takes one strong tag with `expected_version`.
-|`negotiation.py`, `matched_version` (`expected_version` for a consumer's route)
+|`negotiation.py`, `matched_version` (`expected_version` for a consumer's route); both import from the top level, `from rdf_persistence import expected_version, matched_version`
 |428 (missing or malformed), 409 (weak, or none names the current version)
 
 |7

@@ -144,6 +144,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         ToolkitSettings,
     )
     from rdf_persistence.api.entrypoints.kit import ServiceKit
+    from rdf_persistence.api.entrypoints.negotiation import expected_version, matched_version
     from rdf_persistence.api.entrypoints.router import limited_body
     from rdf_persistence.api.entrypoints.service import install_service
     from rdf_persistence.api.services.file_removal import remove_with_files
@@ -259,6 +260,7 @@ _LAZY_MODULES = {
     "install_service": f"{_API_ENTRYPOINTS}.service",
     "ServiceKit": f"{_API_ENTRYPOINTS}.kit",
     "limited_body": f"{_API_ENTRYPOINTS}.router",
+    **dict.fromkeys(("expected_version", "matched_version"), f"{_API_ENTRYPOINTS}.negotiation"),
     "Identity": f"{_ACCESS}.identity",
     **dict.fromkeys(("DEFAULT_IRIS", "IdSource", "Iris"), _IRIS),
     "EventBus": f"{_EVENTS}.events",
@@ -445,12 +447,14 @@ __all__ = [
     "command",
     "context_link",
     "bootstrap",
+    "expected_version",
     "generated_models",
     "install_service",
     "limited_body",
     "load_caller_access",
     "load_role_definitions",
     "load_schema",
+    "matched_version",
     "new_part",
     "open_session",
     "sweep",

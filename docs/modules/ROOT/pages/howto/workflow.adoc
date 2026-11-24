@@ -188,12 +188,12 @@ async with kit.collaboration(checked) as collab:
 through the message bus (xref:howto/event-driven.adoc[React to changes]). `if_version` is the version token of
 the aggregate as the client read it (see xref:architecture/commits.adoc[How commits and conflicts work]).
 The generic API sends it as the `ETag` of a read, so a route of yours can pass the `If-Match`
-value on, with `expected_version(request.headers.get("If-Match"))` from
-`rdf_persistence.api.entrypoints.negotiation`. It takes one strong entity tag (`"v3"`) and reads
-nothing. It raises `PreconditionRequired` (428) when the header is missing, empty or not a single
+value on, with `expected_version(request.headers.get("If-Match"))`
+(`from rdf_persistence import expected_version, matched_version`). It takes one strong entity tag
+(`"v3"`) and reads nothing. It raises `PreconditionRequired` (428) when the header is missing, empty or not a single
 entity tag (`*`, a list, or an unquoted `v3`), and `Conflict` (409) for a weak tag (`W/"v3"`),
 which never matches. To accept `*` or a list of tags, as the generic API does, await
-`matched_version(if_match, current)` from the same module: `current` is an async callable that
+`matched_version(if_match, current)`: `current` is an async callable that
 returns the version the aggregate has now, called only when the header needs it. Reading the version with `UnitOfWork`, as above, is the alternative. The call
 checks, in this order:
 
