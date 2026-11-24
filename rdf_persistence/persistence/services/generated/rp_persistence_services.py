@@ -51,6 +51,7 @@ class Filter(ConfiguredBaseModel):
     slot: str = _Field(default=..., title="Filter slot", description="The name of the slot the filter is on.")
     value: str = _Field(default=..., title="Filter value", description="The value the slot must have, as text.")
     contains: _Optional[bool] = _Field(default=False, title="Filter contains", description="Whether the filter matches a substring of the slot\u0027s text, ignoring case, rather than the value.")
+    absent: _Optional[bool] = _Field(default=False, title="Filter absent", description="Whether the filter matches the aggregates that hold no value for the slot, rather than a value; the filter\u0027s value is then empty and unread.")
 
 
 class Contains(ConfiguredBaseModel):
@@ -73,6 +74,7 @@ class Condition(ConfiguredBaseModel):
     datatype: _Optional[str] = _Field(default=None, title="Condition datatype", description="The IRI of the datatype of a literal value; absent for a plain string.")
     reference: _Optional[bool] = _Field(default=False, title="Condition reference", description="Whether the value is an IRI rather than a literal.")
     contains: _Optional[bool] = _Field(default=False, title="Filter contains", description="Whether the filter matches a substring of the slot\u0027s text, ignoring case, rather than the value.")
+    absent: _Optional[bool] = _Field(default=False, title="Filter absent", description="Whether the filter matches the aggregates that hold no value for the slot, rather than a value; the filter\u0027s value is then empty and unread.")
 
 
 class ListPlan(ConfiguredBaseModel):

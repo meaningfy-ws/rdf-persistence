@@ -53,12 +53,15 @@ classes:
       - filter_slot
       - filter_value
       - filter_contains
+      - filter_absent
     slot_usage:
       filter_slot:
         required: true
       filter_value:
         required: true
       filter_contains:
+        ifabsent: "false"
+      filter_absent:
         ifabsent: "false"
   Contains:
     title: Contains
@@ -100,6 +103,7 @@ classes:
       - condition_datatype
       - condition_reference
       - filter_contains
+      - filter_absent
     slot_usage:
       condition_predicate:
         required: true
@@ -108,6 +112,8 @@ classes:
       condition_reference:
         ifabsent: "false"
       filter_contains:
+        ifabsent: "false"
+      filter_absent:
         ifabsent: "false"
   ListPlan:
     title: List plan
@@ -188,6 +194,14 @@ slots:
     description: Whether the filter matches a substring of the slot's text, ignoring case, rather than the value.
     slot_uri: rp:filterContains
     alias: contains
+    range: boolean
+  filter_absent:
+    title: Filter absent
+    description: >-
+      Whether the filter matches the aggregates that hold no value for the slot, rather than a
+      value; the filter's value is then empty and unread.
+    slot_uri: rp:filterAbsent
+    alias: absent
     range: boolean
   contains_text:
     title: Contains text

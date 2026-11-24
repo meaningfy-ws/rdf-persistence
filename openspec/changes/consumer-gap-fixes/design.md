@@ -48,7 +48,7 @@ grants; one renderer for absence.
   filter carries the value `""`, and nothing reads it. Rejected: making the value optional, which
   ripples into every reader of `Condition.value`.
 - **D-2:** `condition_patterns` splits three ways: equal (neither contains nor absent), containing,
-  and absent. The absent ones render through a new `absent_patterns(variable, predicates)` in
+  and absent. The absent ones render through a new `no_value_patterns(variable, predicates)` (D-9) in
   `core/domain/sparql.py`, next to `contains_patterns`. It writes
   `FILTER NOT EXISTS { ?{variable} <p> ?{variable}_a{n} . }`, and its variable name is checked as
   `contains_patterns` checks one. `Listings._filtered` resolves an absence filter with `_slot`
@@ -113,14 +113,14 @@ works, `"state_iri" in rdf_persistence.__all__`, and the object is the one in
 1. `rp_persistence_services.yaml`: a `filter_absent` slot (`slot_uri: rp:filterAbsent`,
    `alias: absent`, boolean) on `Filter` and `Condition`. Then `make generate`.
 2. Tests first.
-   - Unit, `tests/unit/core/` beside the `contains_patterns` tests: `absent_patterns` output, and
+   - Unit, `tests/unit/core/` beside the `contains_patterns` tests: `no_value_patterns` output, and
      `condition_patterns` with no absent condition rendering exactly as before (E14).
    - Unit, `tests/unit/api/test_listing_routes.py`: `list_request` with `absent`, E11, E13, E16, E17.
    - Integration on the toy: `tests/integration/store/test_session.py` (`find`: E9, E10, E18) and
      `tests/integration/api/test_listing.py` (`GET …?absent=`, with `total`, a multivalued slot, E12).
 3. `session._filter`: `None` gives `Filter(slot, value="", absent=True)`, and `_items` refuses
    `None` inside a list (DEC-4).
-4. `Listings._filtered`, `condition_patterns` and `absent_patterns`, as in D-2. The count query
+4. `Listings._filtered`, `condition_patterns` and `no_value_patterns`, as in D-2. The count query
    follows, because it calls `condition_patterns`.
 5. `openapi.py` `_query_parameters`: an `absent` parameter, an array whose enum is the listable slot
    names. Then `reference/http-api.adoc` (absence, the reserved names, E18).
@@ -135,7 +135,7 @@ Idempotency: every stage is a read or an if-version-guarded write, unchanged in 
 | Patch converted YAML or generated code for #304 | Fix `usage_of`; regenerate | LinkML is the single source |
 | Validate roles in both `set_grants` and the route | One call, in `set_grants` | Two paths drift (the bug itself) |
 | Build `AccessRules` inside `Tenancy` | Receive it; rebind with `with_iris` | The kit owns the role definitions |
-| Render absence in the listing only, or with `?_absent_n` | `absent_patterns` through `condition_patterns` | One renderer; the variable naming of `sparql.py` |
+| Render absence in the listing only, or with `?_absent_n` | `no_value_patterns` through `condition_patterns` | One renderer; the variable naming of `sparql.py` |
 | Treat `?slot=` (empty) as absence | `absent=<slot>` | An empty string can be a value (DEC-5) |
 | Post-filter `find` results in Python | Filter in SPARQL | Paging and `total` would be wrong |
 
@@ -195,6 +195,15 @@ Idempotency: every stage is a read or an if-version-guarded write, unchanged in 
   tenancy's too, through `tests/scene.py` `use_roles`, because the tenancy takes its rules at
   construction (D-4). The helper sets the tenancy's private `_rules`; no public setter is added,
   since only tests change roles after start-up.
+- **D-9 (stage 4, #312):** the listing's absence renderer is a new `no_value_patterns`, not the
+  existing `absent_patterns` (unique keys, `unique-key-nulls-equal`), whose name D-2 had taken.
+  `absent_patterns` skips blank nodes (PD-3); the mapper writes a part without an identifier as a
+  blank node, so reusing it would list an aggregate that holds such a part as having none.
+  `no_value_patterns` keeps D-2's shape (`?{v}_a{n}`, no blank-node filter); unique keys are
+  unchanged.
+- **D-10 (stage 4, #312):** E18 (a slot with `ifabsent`) is documented, not tested: the toy model
+  has no `ifabsent` slot, and adding one only for this row would change the toy for every test.
+  `find`'s docstring and `reference/http-api.adoc` state that such a slot is never absent.
 
 ## Open Questions
 

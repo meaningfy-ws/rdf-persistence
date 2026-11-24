@@ -11,6 +11,7 @@ from rdf_persistence import Action, Contains
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.exceptions import BadQuery
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
+from rdf_persistence.persistence.services.generated.rp_persistence_services import Filter
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import _filters
 from rdf_persistence.schema.services.schema import load_schema
@@ -102,6 +103,42 @@ async def test_find_pages_until_every_match_is_collected(listings):  # T-20
         expected = [await put_scan(session, n, "same") for n in range(1, 202)]
         found = await session.find(Scan, file_name="same")
         assert found == sorted(expected), "find pages until every match is collected"
+
+
+async def test_find_by_none_matches_the_aggregates_with_no_value_for_the_slot(listings):  # E9
+    async with fake_session(listings=listings) as session:
+        bare = await put_scan(session, 1, "a")
+        await put_scan(session, 2, "b", media_type="text/plain")
+        again = await put_scan(session, 3, "c")
+        assert await session.find(Scan, media_type=None) == [bare, again], (
+            "None asks for the scans with no media type"
+        )
+        assert await session.find(Scan, media_type=None, file_name="c") == [again], (
+            "None combines with an equality filter"
+        )
+        assert await session.find(Scan, media_type=None, file_name="b") == [], (
+            "an aggregate with a value for the slot is not absent"
+        )
+
+
+async def test_find_by_none_on_a_multivalued_slot_matches_those_with_no_value_at_all(listings):
+    async with fake_session(listings=listings) as session:
+        await put_book(session, 1, ["X"])
+        bare = await put_book(session, 2, [])
+        assert await session.find(Book, authors=None) == [bare], "no author at all"
+
+
+@pytest.mark.parametrize("value", [[None, "x"], ["x", None], [None]])
+async def test_find_refuses_none_inside_a_list(listings, value):  # E10
+    async with fake_session(listings=listings) as session:
+        with pytest.raises(ValueError, match="None cannot be combined with values for file_name"):
+            await session.find(Scan, file_name=value)
+
+
+def test_a_none_filter_is_an_absence_filter_with_an_empty_value():
+    assert _filters({"media_type": None}) == [Filter(slot="media_type", value="", absent=True)], (
+        "None is an absent filter, not the text 'None'"
+    )
 
 
 async def test_find_refuses_a_class_that_is_not_an_aggregate_root(listings):

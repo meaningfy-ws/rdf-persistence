@@ -24,6 +24,7 @@ from rdf_persistence.core.domain.sparql import (
     fragment_terms,
     join,
     match_patterns,
+    no_value_patterns,
     optional_value_patterns,
     order_by,
     term,
@@ -304,6 +305,37 @@ def test_empty_contains_patterns_are_empty():
 def test_contains_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
     with pytest.raises(SparqlError):
         contains_patterns(variable, [])
+
+
+def test_no_value_patterns_render_one_not_exists_per_predicate_counting_blank_nodes_as_values():
+    predicates = [URIRef(f"{EX}p"), URIRef(f"{EX}q")]
+    patterns = no_value_patterns("root", predicates)
+    assert patterns == (
+        f"FILTER NOT EXISTS {{ ?root <{EX}p> ?root_a0 . }} "
+        f"FILTER NOT EXISTS {{ ?root <{EX}q> ?root_a1 . }}"
+    ), "one NOT EXISTS per predicate, on its own variable, with no blank-node filter"
+    prepareQuery(fill("ASK { ?root a ?type . $patterns }", patterns=patterns))
+    graph = Graph()
+    graph.add((URIRef(f"{EX}s"), URIRef(f"{EX}p"), BNode()))
+    asked = fill(
+        "ASK { ?root ?x ?y . $patterns }", patterns=no_value_patterns("root", predicates[:1])
+    )
+    assert not graph.query(asked).askAnswer, "a blank node is a value: the subject is not matched"
+
+
+def test_no_value_patterns_are_empty_without_predicates():
+    assert no_value_patterns("root", []) == ""
+
+
+@pytest.mark.parametrize("variable", ["r o", "", "?x", "x } ; DROP ALL ; {"])
+def test_no_value_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
+    with pytest.raises(SparqlError):
+        no_value_patterns(variable, [])
+
+
+def test_no_value_patterns_refuse_an_iri_that_could_break_out():
+    with pytest.raises(SparqlError, match="IRI"):
+        no_value_patterns("root", [URIRef(f"{EX}a>b")])
 
 
 def test_contains_patterns_refuse_a_raw_string():

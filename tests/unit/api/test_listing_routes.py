@@ -124,6 +124,31 @@ async def test_a_contains_filter_that_cannot_hold_is_a_bad_query(dunes: Shelf, q
     assert_problem(await dunes.page_of(query), 400, PROBLEM_BAD_QUERY_SLUG)
 
 
+async def test_an_absent_filter_lists_the_books_with_no_value_and_counts_them(dunes: Shelf) -> None:
+    withdrawn = await dunes.http.post(
+        dunes.path,
+        json={**DUNE_BODY, "label": "Dated", "published": "1965-08-01"},
+        headers=dunes.headers(),
+    )
+    assert withdrawn.status_code == 201, withdrawn.text
+    page = Page.model_validate((await dunes.page_of("absent=published&sort=label")).json())
+    assert [i["label"] for i in page.items] == ["Children of Dune", "Dune", "Emma"], (
+        "the three books with no publication date, not the dated one"
+    )
+    assert page.total == 3, "and the total counts them"
+    both = Page.model_validate((await dunes.page_of("absent=published&genre=fiction")).json())
+    assert sorted(i["label"] for i in both.items) == ["Dune", "Emma"], "absence and equality hold"
+    assert both.total == 2, "and the total agrees"
+
+
+# E11, E13, E16
+@pytest.mark.parametrize("query", ["absent=nosuch", "absent=", "absent~=label", "absent=id"])
+async def test_an_absent_filter_that_names_no_listable_slot_is_a_bad_query(
+    dunes: Shelf, query: str
+) -> None:
+    assert_problem(await dunes.page_of(query), 400, PROBLEM_BAD_QUERY_SLUG)
+
+
 async def test_an_offset_beyond_the_largest_whole_number_a_page_can_start_at_is_a_bad_query(
     dunes: Shelf,
 ) -> None:

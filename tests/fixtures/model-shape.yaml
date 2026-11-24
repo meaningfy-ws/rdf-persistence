@@ -454,6 +454,11 @@
     multivalued: false
     range: string
     alias: value
+  - name: filter_absent
+    required: false
+    multivalued: false
+    range: boolean
+    alias: absent
   - name: filter_contains
     required: false
     multivalued: false
@@ -564,6 +569,11 @@
     range: uri
 - class_name: Filter
   slots:
+  - name: filter_absent
+    required: false
+    multivalued: false
+    range: boolean
+    alias: absent
   - name: filter_contains
     required: false
     multivalued: false

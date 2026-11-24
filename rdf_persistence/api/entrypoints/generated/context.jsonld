@@ -103,6 +103,9 @@
       "email": {
          "@id": "email"
       },
+      "absent": {
+         "@id": "filterAbsent"
+      },
       "contains": {
          "@id": "filterContains"
       },

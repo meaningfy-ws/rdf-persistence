@@ -1020,7 +1020,9 @@ class Session:
 
         A list or tuple value asks for all its items. A ``Contains`` value, alone or as an item,
         asks for a case-insensitive substring of a string slot instead of its value:
-        ``find(Book, label=Contains(text="dune"))``. Prohibitions are ignored (PD-6): a hidden
+        ``find(Book, label=Contains(text="dune"))``. A ``None`` asks for the aggregates with no
+        value for the slot (``find(Book, published=None)``); it stands alone, not in a list, and a
+        slot with a default is never absent. Prohibitions are ignored (PD-6): a hidden
         duplicate is still a duplicate; check each IRI with ``require_aggregate`` before showing it.
 
         Not a snapshot: the pages are separate queries, so a concurrent write can slip past a
@@ -1837,10 +1839,12 @@ def changed_text(root: str, found: str | None) -> str:
 
 
 def _items(name: str, value: object) -> list[object]:
-    """The values a filter asks for: a list or tuple gives its items, which may not be none."""
+    """The values a filter asks for: a list or tuple gives its items; a ``None`` asks for absence and stands alone."""
     items = list(value) if isinstance(value, list | tuple) else [value]
     if not items:
         raise ValueError(f"{name} is an empty list; give at least one value or leave it out")
+    if isinstance(value, list | tuple) and None in items:
+        raise ValueError(f"None cannot be combined with values for {name}")
     return items
 
 
@@ -1854,6 +1858,8 @@ def _filters(equals: dict[str, object]) -> list[Filter]:
 
 
 def _filter(name: str, item: object) -> Filter:
+    if item is None:
+        return Filter(slot=name, value="", absent=True)
     if isinstance(item, Contains):
         return Filter(slot=name, value=item.text, contains=True)
     return Filter(slot=name, value=_text(item))
