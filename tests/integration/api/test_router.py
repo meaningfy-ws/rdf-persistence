@@ -22,12 +22,12 @@ from tests.toy_service import (
 )
 
 LIBRARY = TOY_SCHEMA.parent
-PACKAGE = "magazinelib"
-MAGAZINES = """
-id: https://example.org/ns/library/magazines
-name: magazines
-title: Magazines module
-description: Magazines the library holds; the magazine is an aggregate root.
+PACKAGE = "newsletterlib"
+NEWSLETTERS = """
+id: https://example.org/ns/library/newsletters
+name: newsletters
+title: Newsletters module
+description: Newsletters the library holds; the newsletter is an aggregate root.
 prefixes:
   lib: https://example.org/ns/library#
   linkml: https://w3id.org/linkml/
@@ -42,20 +42,20 @@ annotations:
   module_kind: domain
 
 classes:
-  Magazine:
-    title: Magazine
-    description: A magazine of the library; an aggregate root.
-    class_uri: lib:Magazine
+  Newsletter:
+    title: Newsletter
+    description: A newsletter of the library; an aggregate root.
+    class_uri: lib:Newsletter
     mixins: [AggregateRoot, Described, Tracked]
     slots: [issues]
     annotations:
-      rp_path: magazines
+      rp_path: newsletters
       database: tenant
 
 slots:
   issues:
     title: Issues
-    description: How many issues of the magazine the library holds.
+    description: How many issues of the newsletter the library holds.
     slot_uri: lib:issues
     range: integer
 """
@@ -68,8 +68,8 @@ migrations = "migrations"
 """
 
 
-def with_a_magazine(root: Path) -> tuple[Path, ModuleType]:
-    """A copy of the toy library under ``root`` whose schema also has the aggregate root ``Magazine``, generated."""
+def with_a_newsletter(root: Path) -> tuple[Path, ModuleType]:
+    """A copy of the toy library under ``root`` whose schema also has the aggregate root ``Newsletter``, generated."""
     project = root / PACKAGE
     shutil.copytree(
         LIBRARY,
@@ -79,9 +79,11 @@ def with_a_magazine(root: Path) -> tuple[Path, ModuleType]:
         ),
     )
     (project / "__init__.py").write_text("")
-    (project / "magazines.yaml").write_text(MAGAZINES)
+    (project / "newsletters.yaml").write_text(NEWSLETTERS)
     schema = (
-        (project / "library.yaml").read_text().replace("  - scans\n", "  - scans\n  - magazines\n")
+        (project / "library.yaml")
+        .read_text()
+        .replace("  - scans\n", "  - scans\n  - newsletters\n")
     )
     (project / "library.yaml").write_text(schema)
     (project / "pyproject.toml").write_text(PYPROJECT)
@@ -94,7 +96,7 @@ def with_a_magazine(root: Path) -> tuple[Path, ModuleType]:
 @pytest.fixture
 def extended_model(tmp_path: Path):
     """The extended schema and its generated package; the import is undone afterwards."""
-    schema, package = with_a_magazine(tmp_path)
+    schema, package = with_a_newsletter(tmp_path)
     yield schema, package
     sys.path.remove(str(tmp_path))
     for name in [n for n in sys.modules if n == PACKAGE or n.startswith(f"{PACKAGE}.")]:
@@ -105,17 +107,17 @@ async def test_a_new_class_in_the_model_is_served_after_a_restart_with_no_code_a
     store, extended_model, toolkit
 ) -> None:
     schema, package = extended_model
-    magazine = {"label": "Fiction", "description": "Novels.", "issues": 120}
+    newsletter = {"label": "Fiction", "description": "Novels.", "issues": 120}
     before = ToyService(store, prefix=unique_prefix(), toolkit=toolkit)
     async with before.app.router.lifespan_context(before.app), before.client() as http:
         tenant = (
             await http.post("/libraries", json=TENANT_BODY, headers=before.bearer("ada"))
         ).headers["location"]
         missing = await http.post(
-            f"{tenant}/magazines", json=magazine, headers=before.bearer("ada")
+            f"{tenant}/newsletters", json=newsletter, headers=before.bearer("ada")
         )
     await drop_databases(store, before.settings.prefix)
-    assert missing.status_code == 404, "the model has no Magazine yet, so there is no route"
+    assert missing.status_code == 404, "the model has no Newsletter yet, so there is no route"
 
     after = ToyService(
         store, schema=schema, package=package, prefix=unique_prefix(), toolkit=toolkit
@@ -126,14 +128,14 @@ async def test_a_new_class_in_the_model_is_served_after_a_restart_with_no_code_a
                 await http.post("/libraries", json=TENANT_BODY, headers=after.bearer("ada"))
             ).headers["location"]
             created = await http.post(
-                f"{tenant}/magazines", json=magazine, headers=after.bearer("ada")
+                f"{tenant}/newsletters", json=newsletter, headers=after.bearer("ada")
             )
             read = await http.get(created.headers["location"], headers=after.bearer("ada"))
     finally:
         await drop_databases(store, after.settings.prefix)
     assert created.status_code == 201, created.text
-    assert "/magazines/" in created.json()["id"], "the IRI is minted below the new path"
-    assert (read.status_code, read.json()["issues"]) == (200, 120), "and the magazine is served"
+    assert "/newsletters/" in created.json()["id"], "the IRI is minted below the new path"
+    assert (read.status_code, read.json()["issues"]) == (200, 120), "and the newsletter is served"
 
 
 async def test_a_stale_replace_is_a_409_problem_and_the_book_is_unchanged(toy, client) -> None:

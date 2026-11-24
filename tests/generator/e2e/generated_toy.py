@@ -12,6 +12,7 @@ from rdf_persistence_generation.cli import main as generate
 
 TOY = Path(__file__).parents[2] / "fixtures" / "library"
 PACKAGE = "toy_e2e"
+TOY_PACKAGE = "tests.fixtures.library"
 
 
 @contextmanager
@@ -22,9 +23,10 @@ def generated_toy(tmp_path: Path) -> Iterator[ModuleType]:
     """
     folder = tmp_path / PACKAGE
     shutil.copytree(TOY, folder, ignore=shutil.ignore_patterns("__pycache__", "generated"))
-    exit_code = generate(
-        ["--project", str(folder / "pyproject.toml"), "--package", f"{PACKAGE}.domain.generated"]
-    )
+    # every target and module names its package; --package overrides only a single target
+    for text in [folder / "pyproject.toml", *folder.rglob("*.yaml")]:
+        text.write_text(text.read_text().replace(TOY_PACKAGE, PACKAGE))
+    exit_code = generate(["--project", str(folder / "pyproject.toml")])
     assert exit_code == 0, "the toy copy did not generate"
     sys.path.insert(0, str(tmp_path))
     importlib.invalidate_caches()
