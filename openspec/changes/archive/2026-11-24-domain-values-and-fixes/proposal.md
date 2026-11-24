@@ -132,3 +132,23 @@ the toy library, three docs pages. For a consumer after the bump: `module_kind: 
 a slot over an abstract root becomes `str` in its generated code (a breaking change for code that
 built the embedded object, which no valid instance could reach); its round trips pass for
 `slot_usage` classes.
+
+## As built
+
+Reconciled after the last merge (P-0004 asks for it before; recorded late, nothing differs from
+the merged code). Delivered in four PRs, merged into `develop` on 2026-11-24 on the local gate
+(P-0021, GitHub CI suspended):
+
+| Stage | Issue | PR | State |
+|---|---|---|---|
+| 1. Value modules | #301 | #313 | built as shaped, with D-8 (package `domain.generated[.<group>]`), D-9 (direct imports only) and D-10 (nested mypy folders) |
+| 2. Abstract root as IRI | #303 | #314 | built; the fix sits in `load_schema` and `apply_defaults` (D-11), not only `apply_defaults` as D-4 planned; `load_schema` rated CRITICAL by GitNexus, flagged (D-12) |
+| 3. `slot_usage` in the strategy | #302 | #315 | built; the multivalued case was a JSON-LD context defect, fixed with type-scoped terms (D-14), which also corrects the API's framed JSON |
+| 4. Version helpers public | #300 | #316 | built as shaped |
+
+- What Changes, Capabilities and Impact hold as written, with two additions: the context extension
+  (`extensions/jsonld_context.py`) and `load_schema` changed, and the generator's mypy step
+  (`checks/importable.py`).
+- Promised but not built: nothing. Out of scope as planned: TypeScript across targets for value
+  modules (D-3), `python_package` from the UML converter (D-6).
+- The spec deltas are true of the code.
