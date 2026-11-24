@@ -279,3 +279,27 @@ The report and the header only read.
 ## Open Questions
 
 None.
+
+## Delivery decisions
+
+### D-8
+
+Stage 1 impact (lead, at stage start on `71aa56d2`): `migration_request` is HIGH, because the
+generator's `lock_problems` reaches it through `load_migration`. D-3 only adds the keyword
+`grants: bool = False`, so every existing caller builds the same request as before; T5 and the
+unchanged migration tests show it. Taken by the lead, not escalated; shown for validation at the
+end (R-0007).
+
+### D-9
+
+Develop moved after the PLAN was read: `Tenancy` now keeps `rules.with_iris(self._iris)`
+(consumer-gap-fixes D-4). `report_grants` takes each record's tenant from
+`tenancy.tenant_of(record)`, under that IRI policy, and `_level` compares a grant's target with
+it, so the report and `set_grants` agree on which roles are undefined. `_run_at_startup` passes
+`kit.rules`; no `with_iris` call is needed.
+
+### D-10
+
+The report's warning carries its `level:role` pairs in a new `LogContext` slot,
+`undefined_roles` (`rp.grants.undefined_roles`, multivalued) in `rp_core_services.yaml`, then
+`make generate` (P-0010, P-0011). D-5 named the attribute but no slot existed for it.

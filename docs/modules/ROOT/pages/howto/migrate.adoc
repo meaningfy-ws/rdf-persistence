@@ -472,9 +472,12 @@ grant_roles:
 * Only the system database gets these changes: it is where the access records are. A tenant database
   and a dump restored with `migrate_dataset` get the stamp only.
 
-*Ship the roles file and the migration in one release.* At start-up the migration runs first. If the
-migration is deployed without the new roles file, the grants name `member` and the application does
-not define it, and granting for those tenants is refused until the file is deployed.
+*Ship the roles file and the migration in one release.* At start-up the migration runs first; then a
+report reads every access record and logs the warning `grants name undefined roles` for each tenant
+whose grants name a role the roles file does not define at the grant's level, with the tenant and
+the `level:role` pairs. If the migration is deployed without the new roles file, the grants name
+`member` and the application does not define it: the report names those tenants, and granting for
+them is refused until the file is deployed. The report never stops start-up.
 
 *A rename applies at every level.* A grant on the tenant and a grant on one aggregate that name
 `reader` are both renamed. When a name means different things at two levels and only one of them
@@ -482,8 +485,8 @@ changes, give each level its own role name in the roles file before you rename.
 
 *Rename rather than drop a role that administers.* Dropping a role deletes its grants. If it was the
 only grant that gave `administer` on a tenant, that tenant has no manager until an operator grants a
-role again. Rename the role to its successor instead, and drop only roles that nobody needs to
-administer with.
+role again; the start-up report logs `no grant administers the tenant` for it. Rename the role to its
+successor instead, and drop only roles that nobody needs to administer with.
 
 [#cannot]
 == 5. What cannot be migrated, and how to avoid it
