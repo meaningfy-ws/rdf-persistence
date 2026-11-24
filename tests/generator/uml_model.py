@@ -34,6 +34,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlTaggedValue,
 )
 from rdf_persistence_generation.uml.convert import convert
+from rdf_persistence_generation.uml.toolkit import load_toolkit
 
 NS = "https://example.org/ns/library#"
 BASE = "https://example.org/ns/library/"
@@ -42,10 +43,6 @@ PREFIXES = {
     "dct": "http://purl.org/dc/terms/",
     "bibo": "http://purl.org/ontology/bibo/",
     "prov": "http://www.w3.org/ns/prov#",
-    "rp": "https://meaningfy.ws/ns/rdf-persistence#",
-}
-METAMODEL_PREFIXES = {
-    "dcterms": "http://purl.org/dc/terms/",
     "rp": "https://meaningfy.ws/ns/rdf-persistence#",
 }
 
@@ -313,5 +310,5 @@ class Converted:
 
 
 def run(uml: UmlModel, **overrides: object) -> Converted:
-    schemas, report, problems, files = convert(uml, settings(**overrides), METAMODEL_PREFIXES)
+    schemas, report, problems, files = convert(uml, settings(**overrides), load_toolkit())
     return Converted({schema.name: schema for schema in schemas}, report, problems, files)

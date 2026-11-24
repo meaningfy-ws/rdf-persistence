@@ -102,3 +102,26 @@ def test_the_segment_pattern_of_the_hard_check_is_public_for_the_converter() -> 
 
 def test_a_slot_the_toolkit_does_not_have_is_not_filled(toolkit: Toolkit) -> None:
     assert not toolkit.is_filled("isbn"), "isbn is no toolkit slot"
+
+
+def test_convert_uses_the_toolkit_it_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
+    from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
+    from rdf_persistence_generation.config import METAMODEL_ROOT
+    from rdf_persistence_generation.uml import toolkit as toolkit_module
+    from rdf_persistence_generation.uml.convert import convert
+    from tests.generator.uml_model import BOOK, klass, model, settings
+
+    given = Toolkit(load_schema(PACKAGE_DIR / "model" / METAMODEL_ROOT))
+    load_toolkit.cache_clear()
+    loads: list[object] = []
+    real = toolkit_module.load_schema
+
+    def spy(*args: object, **kwargs: object) -> object:
+        loads.append(args)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(toolkit_module, "load_schema", spy)  # X2
+
+    convert(model(klass(BOOK, "Book")), settings(), given)
+
+    assert loads == [], "convert read the metamodel again instead of using the toolkit it was given"

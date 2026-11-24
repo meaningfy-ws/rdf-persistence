@@ -17,6 +17,7 @@ from linkml_runtime.linkml_model.meta import SchemaDefinition
 from rdf_persistence.access.services.access import load_role_definitions
 from rdf_persistence.collaboration.services.workflows import load_workflow
 from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition, InvalidWorkflow
+from rdf_persistence_generation.exceptions import StagedFileRefused
 from rdf_persistence_generation.generated.rp_generation import ReportKind, ReportLine
 from rdf_persistence_generation.uml.roles import ROLES_SUFFIX
 from rdf_persistence_generation.uml.workflows import WORKFLOWS_FOLDER, WORKFLOWS_SUFFIX
@@ -25,10 +26,6 @@ REPORT_SUFFIX = ".uml-report.txt"
 SCHEMA_SUFFIX = ".yaml"
 STAGING_PREFIX = ".uml-write-"
 FIELD_SEPARATOR = "\t"
-
-
-class StagedFileRefused(RuntimeError):  # noqa: N818 (the name PD-4 decides)
-    """The library's loader refuses a staged file (PD-4): a rule of the conversion missed it."""
 
 
 def report_text(report: Sequence[ReportLine]) -> str:

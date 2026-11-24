@@ -6,6 +6,7 @@ owned (and so is the destination of a composite association).
 """
 
 from rdf_persistence_generation.generated.rp_generation import (
+    LeftOutReason,
     ReportKind,
     UmlBoundary,
     UmlElement,
@@ -15,14 +16,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlModel,
     UmlName,
 )
-from rdf_persistence_generation.uml.context import (
-    LEFT_EXCLUDED,
-    LEFT_NOT_GENERATED,
-    LEFT_OUTSIDE,
-    Context,
-    is_boundary_root,
-    literals_of,
-)
+from rdf_persistence_generation.uml.context import Context, is_boundary_root, literals_of
 from rdf_persistence_generation.uml.naming import slot_name
 from rdf_persistence_generation.uml.slots import (
     COMPOSITE,
@@ -82,15 +76,15 @@ def _range_of(ctx: Context, end: UmlLinkEnd, holder: UmlElement, slot: str) -> s
     if target is not None:
         return URI if target.is_enum and not literals_of(target) else target.label
     why = ctx.left_out.get(end.other_id)
-    if why == LEFT_NOT_GENERATED:
+    if why == LeftOutReason.NOT_GENERATED:
         return URI
-    if why == LEFT_EXCLUDED:
+    if why == LeftOutReason.EXCLUDED:
         element = f"{holder.label}.{slot} -> {_name_of(ctx, end.other_id)}"
         ctx.findings.note(
             ReportKind.EXCLUDED_LINK, element, "the target is in an excluded package, so no slot"
         )
         return None
-    if why == LEFT_OUTSIDE:
+    if why == LeftOutReason.OUTSIDE:
         ctx.findings.note(
             ReportKind.OUTSIDE_LINK,
             f"{holder.label}.{slot}",

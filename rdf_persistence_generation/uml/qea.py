@@ -17,6 +17,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 
+from rdf_persistence_generation.exceptions import QeaUsageError
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     UmlAttribute,
@@ -135,14 +136,6 @@ XREF_STEREOTYPE_NAME = re.compile(r"Name=([^;]+);")
 ASSIGNMENT = "="  # splits `Key=value` at the first one, so `Op==` has the value `=`
 RUN_STATE_BLOCK = re.compile(r"@VAR;(?P<body>.*?)@ENDVAR;", re.DOTALL)
 PATH_SEPARATOR = "/"
-
-
-class QeaUsageError(Exception):
-    """The file or the ``--package`` cannot be used (exit 2); ``message`` is the matrix text."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
 
 
 def read_qea(

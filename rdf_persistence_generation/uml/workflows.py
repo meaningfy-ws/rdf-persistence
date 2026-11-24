@@ -11,6 +11,7 @@ from collections.abc import Callable, Collection
 from pydantic import ValidationError
 
 from rdf_persistence.collaboration.domain.generated.rp_workflow import Workflow, WorkflowTransition
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import (
     ReportKind,
     UmlModel,
@@ -27,7 +28,7 @@ WORKFLOWS_FOLDER = "workflows/"
 WORKFLOWS_SUFFIX = ".workflow.yaml"  # the file is ``workflows/<workflow name>.workflow.yaml``
 ROLES_TAG = "roles"
 COMMENT_TAG = "comment_required"
-WORKFLOW_TAG = "workflow"  # the class tag that names a workflow
+WORKFLOW_TAG = RpAnnotation.WORKFLOW.value  # the class tag that names a workflow
 ROLE_SEPARATOR = ","
 COMMENT_VALUES = {"true": True, "false": False}
 

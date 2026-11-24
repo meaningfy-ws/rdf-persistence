@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence_generation.generated.rp_generation import UmlSettings
-from rdf_persistence_generation.uml.cli import load_settings, main, metamodel_prefixes
+from rdf_persistence_generation.uml.cli import load_settings, main
+from rdf_persistence_generation.uml.toolkit import load_toolkit
 from tests.generator.uml_qea import QeaBuilder
 
 ROOT = "MODEL/library"
@@ -323,7 +324,7 @@ def test_the_prefixes_file_and_the_options_become_settings(tmp_path):
 
 
 def test_the_metamodel_prefixes_name_the_toolkit_namespaces():
-    prefixes = metamodel_prefixes()
+    prefixes = load_toolkit().prefixes()
 
     assert prefixes["dcterms"] == "http://purl.org/dc/terms/", "dcterms is Dublin Core terms"
     assert prefixes["prov"] == "http://www.w3.org/ns/prov#", "prov is PROV-O"

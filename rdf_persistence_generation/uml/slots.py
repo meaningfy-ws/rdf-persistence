@@ -11,6 +11,7 @@ from typing import Final
 
 from linkml_runtime.linkml_model import ClassDefinition, SlotDefinition
 
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import (
     ReportKind,
     UmlAttribute,
@@ -29,7 +30,7 @@ from rdf_persistence_generation.uml.naming import (
 )
 
 URI: Final = "uri"
-OWNED: Final = "owned"
+OWNED: Final = RpAnnotation.OWNED.value
 HAS_PART: Final = "has_part"  # the toolkit slot of a collection's members (dcterms:hasPart)
 MEMBER_CLASS: Final = "member_class"  # the toolkit slot a reference collection's member role fixes
 MULTIPLICITY: Final = (
@@ -544,8 +545,7 @@ def _use_toolkit_slot(
     slot_names: dict[int, list[str]],
 ) -> bool:
     """Use the toolkit slot for the usage; False when the toolkit fills it, so nothing is carried."""
-    slot = ctx.toolkit.slot_by_uri(usage.iri)
-    assert slot is not None  # split_toolkit kept only usages that have one
+    slot = ctx.toolkit.toolkit_slot(usage.iri)
     name, label, shape = str(slot.name), usage.holder.label, usage.shape
     if ctx.toolkit.is_filled(name):
         text = f"the toolkit fills {name}; [{_cardinality_text(shape)}] is not carried"
@@ -579,8 +579,7 @@ def use_toolkit_slots(
     for usage in sorted(usages, key=lambda each: (each.holder.label, each.order)):
         definition = classes[usage.holder.uml_class.object_id]
         if _use_toolkit_slot(ctx, usage, definition, shared, slot_names):
-            slot = ctx.toolkit.slot_by_uri(usage.iri)
-            assert slot is not None  # split_toolkit kept only usages that have one
+            slot = ctx.toolkit.toolkit_slot(usage.iri)
             _kept(ctx, f"{usage.holder.label}.{slot.name}", slot, usage.shape, id(usage) in members)
     _fix_member_classes(ctx, [each for each in usages if id(each) in members], shared)
 

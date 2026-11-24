@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence_generation.exceptions import QeaUsageError
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     UmlLinkKind,
@@ -12,7 +13,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlRule,
 )
 from rdf_persistence_generation.problems import format_problem
-from rdf_persistence_generation.uml.qea import QeaUsageError, read_qea
+from rdf_persistence_generation.uml.qea import read_qea
 from tests.generator.uml_qea import QeaBuilder
 
 ROOT = "MODEL/library"

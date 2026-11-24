@@ -213,6 +213,16 @@ class ReportKind(str, _Enum):
     "A workflow whose diagram name has no prefix, so its IRI is made from the schema base."
 
 
+class LeftOutReason(str, _Enum):
+    "Why the converter leaves a class of the drawing out of the generated schemas; a link to it is then reported by this reason."
+    NOT_GENERATED = "not_generated"
+    "The class carries a stereotype listed as not generated, or is an enumeration of the toolkit."
+    EXCLUDED = "excluded"
+    "The class sits in an excluded package."
+    OUTSIDE = "outside"
+    "The class sits in a package outside the converted subtree."
+
+
 class UmlRule(str, _Enum):
     "The rules of the UML conversion, one value for each rule of the design\u0027s rule table that is in force; a problem names the one it breaks. `no_rule` stands for an element no rule maps."
     NO_RULE = "no_rule"

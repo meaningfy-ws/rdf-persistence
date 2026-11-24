@@ -22,7 +22,9 @@ from rdf_persistence_generation.uml.context import Context
 
 RP_MIXINS: Final = "rp_mixins"  # a tag of the mixin rules (R-25..R-28), not read here
 UNIQUE_KEY: Final = "unique_key"
-GRAPH: Final = "graph"  # a tenant root's is set by its stereotype (R-18), so its tag is read there
+GRAPH: Final = (
+    RpAnnotation.GRAPH.value
+)  # a tenant root's is set by its stereotype (R-18), so its tag is read there
 NULLS_EQUAL: Final = "nulls=equal"
 KEY_FORM: Final = "<name>: <attribute>, <attribute> [; nulls=equal]"
 _KEY = re.compile(r"([^:;]*):([^;]*)(?:;(.*))?", re.DOTALL)

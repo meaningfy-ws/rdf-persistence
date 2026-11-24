@@ -10,6 +10,7 @@ from typing import Final
 
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
+    LeftOutReason,
     ReportKind,
     ReportLine,
     UmlElement,
@@ -20,14 +21,11 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.problems import format_problem
 from rdf_persistence_generation.uml.naming import CURIE_SEPARATOR, resolve_name
-from rdf_persistence_generation.uml.toolkit import load_toolkit
+from rdf_persistence_generation.uml.toolkit import Toolkit
 
 PREFIXES_FILE: Final = "the prefixes file"
 NO_RULE_TAIL: Final = "no rule converts it"
 TOOLKIT_PREFIX: Final = "rp"  # the metamodel's name for the toolkit's own namespace
-LEFT_NOT_GENERATED: Final = "not-generated"
-LEFT_EXCLUDED: Final = "excluded"
-LEFT_OUTSIDE: Final = "outside"
 
 
 def local_of(written: str) -> str:
@@ -91,16 +89,16 @@ class Context:
     def __init__(
         self,
         settings: UmlSettings,
-        metamodel_prefixes: Mapping[str, str],
+        toolkit: Toolkit,
         prefixes: dict[str, str],
     ) -> None:
         self.settings = settings
-        self.metamodel_prefixes = metamodel_prefixes
+        self.toolkit = toolkit
+        self.metamodel_prefixes: Mapping[str, str] = toolkit.prefixes()
         self.prefixes = prefixes
         self.findings = Findings()
-        self.toolkit = load_toolkit()
         self.elements: dict[int, UmlElement] = {}
-        self.left_out: dict[int, str] = {}
+        self.left_out: dict[int, LeftOutReason] = {}
         self.left_out_enums: set[int] = (
             set()
         )  # left out as not generated, and an enumeration (R-30)

@@ -8,15 +8,16 @@ problem. Which classes are toolkit classes comes from the toolkit's own metamode
 
 from typing import Final
 
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import UmlElement, UmlRule
 from rdf_persistence_generation.uml.context import Context, is_boundary_root
+from rdf_persistence_generation.uml.tags import RP_MIXINS
 
 AGGREGATE_ROOT: Final = "AggregateRoot"
 DESCRIBED: Final = "Described"
 UNDER_WORKFLOW: Final = "UnderWorkflow"
-RP_MIXINS: Final = "rp_mixins"
 RP_UNLABELLED: Final = "rp_unlabelled"
-WORKFLOW: Final = "workflow"
+WORKFLOW: Final = RpAnnotation.WORKFLOW.value
 TAG_SEPARATOR: Final = ","
 TRUE: Final = "true"
 DEFAULT_MIXINS_OPTION: Final = "--default-mixins"
@@ -71,7 +72,7 @@ def check_default_mixins(ctx: Context) -> list[str]:
 
 
 def _is_mixin(ctx: Context, name: str) -> bool:
-    return bool(ctx.toolkit.class_by_name(name).mixin)  # type: ignore[union-attr]
+    return bool(ctx.toolkit.toolkit_class(name).mixin)
 
 
 def _defaults(ctx: Context, element: UmlElement, owned: bool, defaults: list[str]) -> list[str]:

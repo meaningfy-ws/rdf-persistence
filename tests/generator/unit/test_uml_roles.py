@@ -11,9 +11,9 @@ from linkml_runtime.dumpers import yaml_dumper
 from rdf_persistence.access.domain.generated.rp_access import RoleDefinition
 from rdf_persistence_generation.uml.context import Context
 from rdf_persistence_generation.uml.roles import role_entries
+from rdf_persistence_generation.uml.toolkit import load_toolkit
 from tests.generator.uml_model import (
     BOOK,
-    METAMODEL_PREFIXES,
     klass,
     model,
     object_,
@@ -39,7 +39,7 @@ def test_a_role_object_changes_no_schema() -> None:
 
 
 def test_the_entries_are_role_definitions_sorted_by_role_then_level() -> None:
-    ctx = Context(settings(), METAMODEL_PREFIXES, {})
+    ctx = Context(settings(), load_toolkit(), {})
     ctx.drawn_toolkit[ROLE_DEFINITION] = "RoleDefinition"
     uml = _uml(
         object_(

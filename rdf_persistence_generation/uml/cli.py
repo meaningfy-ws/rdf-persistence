@@ -6,7 +6,6 @@ unusable (arguments, prefixes file, ``.qea`` file or package), one ``rp-uml2link
 """
 
 import argparse
-import functools
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -15,6 +14,12 @@ import yaml
 from linkml_runtime.utils.metamodelcore import NCName
 from linkml_runtime.utils.uri_validator import validate_uri
 
+from rdf_persistence_generation.exceptions import (
+    PrefixesFileError,
+    QeaUsageError,
+    StagedFileRefused,
+    UsageError,
+)
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     UmlModel,
@@ -23,8 +28,9 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.problems import format_problems
 from rdf_persistence_generation.uml.convert import convert
-from rdf_persistence_generation.uml.qea import QeaUsageError, read_qea
-from rdf_persistence_generation.uml.write import StagedFileRefused, write
+from rdf_persistence_generation.uml.qea import read_qea
+from rdf_persistence_generation.uml.toolkit import load_toolkit
+from rdf_persistence_generation.uml.write import write
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2
 PROG = "rp-uml2linkml"
@@ -33,14 +39,6 @@ DEFAULT_MIXINS = "Described,Tracked"
 DEFAULT_NOT_GENERATED = ("loaded graph",)
 LIST_SEPARATOR = ","
 REQUIRED_KEYS = ("schema_base", "default_prefix", "version", "prefixes")
-
-
-class UsageError(Exception):
-    """The setup cannot be used (exit 2); the message is the matrix text."""
-
-
-class PrefixesFileError(UsageError):
-    """The prefixes file cannot be used (exit 2); the message is the matrix text."""
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -147,23 +145,6 @@ def load_settings(path: Path, args: argparse.Namespace) -> UmlSettings:
     )
 
 
-@functools.cache
-def metamodel_prefixes() -> Mapping[str, str]:
-    """The prefix name and namespace of every prefix the toolkit's metamodel declares (PD-6).
-
-    Read once with ``linkml_runtime`` (the contract ``works-without-the-generate-extra`` allows it).
-    """
-    from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
-    from rdf_persistence_generation.config import METAMODEL_ROOT
-
-    view = load_schema(PACKAGE_DIR / "model" / METAMODEL_ROOT)
-    return {
-        prefix.prefix_prefix: prefix.prefix_reference
-        for schema in view.all_schema()
-        for prefix in schema.prefixes.values()
-    }
-
-
 def _usage_error(message: str) -> int:
     print(f"{PROG}: {message}", file=sys.stderr)
     return EXIT_USAGE
@@ -187,7 +168,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _usage_error(error.message)
     if not isinstance(model, UmlModel):
         return _problems_found(model)
-    schemas, report, problems, files = convert(model, settings, metamodel_prefixes())
+    schemas, report, problems, files = convert(model, settings, load_toolkit())
     if problems:
         return _problems_found(problems)
     try:

@@ -9,6 +9,7 @@ from linkml_runtime.linkml_model.meta import SchemaDefinition
 from rdf_persistence.access.services.access import load_role_definitions
 from rdf_persistence.collaboration.services.workflows import load_workflow
 from rdf_persistence.core.domain.exceptions import InvalidRoleDefinition, InvalidWorkflow
+from rdf_persistence_generation.exceptions import StagedFileRefused
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
@@ -17,7 +18,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.problems import format_problem, format_problems
 from rdf_persistence_generation.uml import write as write_module
-from rdf_persistence_generation.uml.write import StagedFileRefused, write
+from rdf_persistence_generation.uml.write import write
 from tests.generator.uml_model import (
     BOOK,
     PREFIXES,

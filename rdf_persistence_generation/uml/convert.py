@@ -16,6 +16,7 @@ from linkml_runtime.linkml_model import (
     SchemaDefinition,
 )
 
+from rdf_persistence.core.domain.generated.rp_core import ModuleKind, RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     ReportKind,
@@ -65,13 +66,14 @@ from rdf_persistence_generation.uml.slots import (
     use_toolkit_slots,
 )
 from rdf_persistence_generation.uml.tags import package_kind
+from rdf_persistence_generation.uml.toolkit import Toolkit
 from rdf_persistence_generation.uml.workflows import workflow_entries, workflow_files
 
 LINKML_TYPES: Final = "linkml:types"
 LINKML_PREFIX: Final = ("linkml", "https://w3id.org/linkml/")
 ANNOTATIONS_IMPORT: Final = "rdf_persistence/model/rp_annotations"
-MODULE_KIND: Final = "module_kind"
-DOMAIN: Final = "domain"
+MODULE_KIND: Final = RpAnnotation.MODULE_KIND.value
+DOMAIN: Final = ModuleKind.DOMAIN.value
 DEFAULT_RANGE: Final = "string"
 
 
@@ -397,7 +399,7 @@ def _lay_out(
 
 
 def convert(
-    model: UmlModel, settings: UmlSettings, metamodel_prefixes: Mapping[str, str]
+    model: UmlModel, settings: UmlSettings, toolkit: Toolkit
 ) -> tuple[list[SchemaDefinition], list[ReportLine], list[CheckProblem], dict[str, str]]:
     """Convert the subtree of ``model`` into a root schema and one module per package (or merged cycle).
 
@@ -406,7 +408,7 @@ def convert(
     nothing is drawn. With any problem the schemas and the files are empty: nothing is to be written.
     """
     prefixes = {each.prefix_name: each.namespace for each in settings.prefixes or []}
-    ctx = Context(settings, metamodel_prefixes, prefixes)
+    ctx = Context(settings, toolkit, prefixes)
     ctx.paths = package_paths(model, settings)
     elements, usages, parent_of = _build(ctx, model)
     toolkit_usages, usages = split_toolkit(ctx, usages)
