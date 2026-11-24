@@ -242,6 +242,9 @@ for example one that moves `published` later than a due date you can read.
 later, the rule judged it as it was, and the commit holds both changes.
 * *A rule on the root it writes.* `reader.aggregate(new.id)` gives the stored copy, not the body
 being written; `old` and `new` are the two states of that root.
+* *A missing aggregate.* An aggregate that is not there is not cached, so each rule that asks reads
+the store again. Its absence is not relied on, so an aggregate that another writer creates before
+the commit does not fail the commit.
 
 === Which writes run the rules
 

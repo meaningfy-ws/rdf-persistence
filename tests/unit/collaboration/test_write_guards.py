@@ -609,6 +609,17 @@ async def test_a_refusal_inside_a_cascade_refuses_the_whole_commit_and_removes_n
         assert [await version_of(session, iri) for iri in iris] == versions, "all three stay"
 
 
+async def test_a_unit_of_work_removing_a_root_a_rule_refuses_is_refused_and_removes_nothing():  # TC-8
+    async with deleting_session({"Book": [not_while_on_loan]}) as session:
+        await save(session, loan_book(1), loan_book(2, ON_LOAN))
+        work = UnitOfWork(session, toy_mapper())
+        for number in (1, 2):
+            work.remove(await work.get(Book, book_iri(number)))
+        with pytest.raises(Refused, match=f"{book_iri(2)} is on loan"):
+            await work.commit()
+        assert len(await session.heads([book_iri(1), book_iri(2)])) == 2, "both books stay"
+
+
 def raises_invalid_body(old: Any, who: Any, reader: AggregateReader) -> None:
     raise InvalidBody("a delete is no invalid body")
 
@@ -748,3 +759,22 @@ async def test_a_stale_if_match_is_a_version_conflict_before_the_rules_refusal(
         with pytest.raises(Conflict, match=message) as raised:
             await session.remove(book_iri(1), "stale" if stale else version)
         assert isinstance(raised.value, Refused) is not stale, "only the current version is refused"
+
+
+@pytest.mark.parametrize(
+    ("stale", "message"),
+    [(True, "changed by someone else"), (False, "the reader's clash")],
+    ids=["stale-version-wins", "current-version-the-rules-conflict"],
+)  # TC-10, R2-S2, DEC-2
+async def test_a_stale_if_match_is_a_version_conflict_whatever_conflict_the_rule_raised(
+    stale: bool, message: str
+):
+    def clashes(old: Any, who: Any, reader: AggregateReader) -> None:
+        # a plain Conflict, as the reader raises, not a Refused
+        raise Conflict("the reader's clash")
+
+    async with deleting_session({"Book": [clashes]}) as session:
+        await save(session, loan_book(1))
+        version = await version_of(session, book_iri(1))
+        with pytest.raises(Conflict, match=message):
+            await session.remove(book_iri(1), "stale" if stale else version)

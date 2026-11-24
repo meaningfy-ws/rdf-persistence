@@ -22,6 +22,10 @@ from rdf_persistence.collaboration.domain.generated.rp_discussion import (
     PostComment,
     PostReply,
 )
+from rdf_persistence.collaboration.services.aggregate_validators import (
+    AggregateReader,
+    DeleteValidators,
+)
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.discussion import dependents
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
@@ -462,6 +466,37 @@ async def test_removing_an_aggregate_removes_the_comments_on_it_and_keeps_the_ot
     assert await session.heads([on_b2]) == [], "the comment on b2 is gone"
     assert not await has_entry(store, on_b2), "with its registry entry"
     assert [h.head_iri for h in await session.heads([on_b1])] == [on_b1], "the other stays"
+
+
+async def test_removing_a_commented_root_runs_its_delete_rule_once_and_none_for_its_comments(
+    rules, store, now
+):  # TC-9, E18, D-8
+    ran: list[str] = []
+
+    def watch(old: Book, who: Principal, reader: AggregateReader) -> None:
+        ran.append(old.id)
+
+    listings = Listings(VIEW)
+    guards = WriteGuards(
+        toy_mapper(),
+        generated_models(*MODULES),
+        listings,
+        delete_validators=DeleteValidators(VIEW, {"Book": [watch]}, TOY_SCHEMA.parent),
+    )
+    async with fake_session(
+        store,
+        tenant_iri=TENANT,
+        principal=Principal(id=ADA),
+        clock=lambda: now["t"],
+        listings=listings,
+        guards=guards,
+        dependents=dependents(VIEW),
+    ) as session:
+        await put(session, dune(B1, chapters=1))
+        on_b1 = await collab(rules, session, ADA, grants=[role("reviewer")]).comment(B1, "on b1")
+        await session.remove(B1, await version(session, B1))
+        assert await session.heads([on_b1]) == [], "the comment went with its target"
+    assert ran == [B1], "the book's rule ran once, and no rule ran for the comment record"
 
 
 async def test_a_cascade_removes_the_comments_on_its_members(session, ada, books):  # D-7 item 4

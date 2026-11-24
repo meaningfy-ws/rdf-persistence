@@ -4,12 +4,17 @@
 wrapping one operation of the store: ``before`` runs it once, just before the first matching call.
 """
 
+from typing import Any
 from uuid import UUID
 
 import pytest
 
-from rdf_persistence import Action, StoredDataInvalid, generated_models
+from rdf_persistence import Action, Refused, StoredDataInvalid, generated_models
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
+from rdf_persistence.collaboration.services.aggregate_validators import (
+    AggregateReader,
+    DeleteValidators,
+)
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.referenced_removals import ReferencedRemovals
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
@@ -91,6 +96,36 @@ async def refusing():
         removals=ReferencedRemovals(view, LimitSettings()),
     ) as session:
         yield session
+
+
+@pytest.fixture
+async def deleting():
+    """A guarded session with a delete rule that keeps a book on loan (D-5)."""
+    view = load_schema(TOY_SCHEMA)
+
+    def not_while_on_loan(old: Any, who: Any, reader: AggregateReader) -> None:
+        if old.description == "on loan":
+            raise Refused(f"{old.id} is on loan; return it before deleting it")
+
+    guards = WriteGuards(
+        toy_mapper(),
+        generated_models(*MODULES),
+        Listings(view),
+        delete_validators=DeleteValidators(view, {"Book": [not_while_on_loan]}, TOY_SCHEMA.parent),
+    )
+    async with fake_session(tenant_iri=TENANT, listings=Listings(view), guards=guards) as session:
+        yield session
+
+
+async def test_a_cascade_whose_member_a_delete_rule_refuses_is_refused_and_removes_nothing(
+    deleting, collaboration
+):  # TC-7, E13
+    await put_book(deleting, B1)
+    await cascade_put(deleting, dune(B2, chapters=1).model_copy(update={"description": "on loan"}))
+    await cascade_put(deleting, a_shelf(S1, has_part=[B1, B2]))
+    with pytest.raises(Refused, match=f"{B2} is on loan"):
+        await as_ada(collaboration, deleting).delete_cascade(S1, await version(deleting, S1))
+    assert all([await cascade_stored(deleting, i) for i in (S1, B1, B2)]), "nothing is removed"
 
 
 async def put_author(session, iri: str) -> None:

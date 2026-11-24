@@ -11,10 +11,13 @@ from uuid import UUID
 import pytest
 from pydantic import ValidationError
 
+from rdf_persistence import generated_models
 from rdf_persistence.access.domain.generated.rp_access import Action, Grant, Prohibition
 from rdf_persistence.access.domain.generated.rp_tenancy import TenantState
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.access.services.generated.rp_access_services import GrantSet
+from rdf_persistence.collaboration.services.aggregate_validators import DeleteValidators
+from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
@@ -34,9 +37,11 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
 )
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
+from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore
 from tests.fixtures.library.domain.generated.library import Library
@@ -46,8 +51,10 @@ from tests.logs import attributes
 from tests.toy import (
     ADA,
     BOB,
+    MODULES,
     ROLES,
     SETTINGS,
+    TOY_SCHEMA,
     caller,
     keep_a_librarian,
     library,
@@ -296,6 +303,38 @@ async def test_delete_drops_the_database_the_bucket_and_the_record(tenancy, stor
     assert await tenancy.tenants() == [], "record"
     with pytest.raises(NotFound):
         await tenancy.get(summary.id)
+
+
+async def test_a_tenant_deletion_runs_no_delete_rule_of_the_service(store, files):  # TC-6, R2-W4
+    called: list[str] = []
+
+    def spy(old: object, who: object, reader: object) -> None:
+        called.append("rule")
+
+    view = load_schema(TOY_SCHEMA)
+    guards = WriteGuards(
+        toy_mapper(),
+        generated_models(*MODULES),
+        Listings(view),
+        delete_validators=DeleteValidators(view, {"Library": [spy]}, TOY_SCHEMA.parent),
+    )
+    made = Tenancy(
+        store,
+        files,
+        SETTINGS,
+        mapper=toy_mapper(),
+        root_class=Library,
+        access_class=LibraryAccess,
+        rules=toy_rules(),
+        clock=lambda: NOW,
+        guards=guards,
+    )
+    await made.ensure_system_database()
+    summary = await made.create("Ghent", library_slots(), CREATOR)
+    _, version = await made.get(summary.id)
+    await made.delete(summary.id, version)
+    assert await made.tenants() == [], "the tenant and its record are gone"
+    assert called == [], "no delete rule ran: a toolkit class takes no key"
 
 
 async def test_delete_marks_the_record_deleting_before_it_drops_anything(tenancy, store):
