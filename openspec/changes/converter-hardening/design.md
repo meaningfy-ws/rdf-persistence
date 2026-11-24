@@ -262,3 +262,27 @@ proving the "not a .qea" line for a non-SQLite file.
 
 None for the PLAN; the owner's questions are `inputs/qa.md` OPEN-1 to OPEN-4, and the PLAN is
 complete under their recommended answers.
+
+## Delivery decisions
+
+- **D-1** (lead, stage 1) The task gate (`make test-changed check-quality`) could not finish for
+  any builder: other sessions loaded the machine (load ≈ 20), `test-changed` widened to the fast
+  suite because every converter edit regenerates manifests in every package, and the 120 s
+  pytest timeout fired in unrelated library tests that pass alone. The lead re-ran each task's
+  affected tests (T1, named in each commit) and relies on `make check-all` before the PR.
+- **D-2** (lead) Builders worked in separate worktrees; the lead applied each task's source and
+  tests to the stage branch and ran `make generate` there (P-0003), so the regenerated manifests
+  never conflict.
+- **F-T1** (tester after 1.3, Critical, accepted) A read-only `--out` printed `cannot write
+  <out>/.uml-write-…: Permission denied`, naming the staging folder that `tempfile` failed to
+  create and that does not exist. The error-matrix row "`--out` … is not writable" says
+  `cannot write <out>`. Fix: an error naming the staging folder itself names `out`; an error
+  naming a file inside staging keeps naming that file (row "Disk full … while staging"). Kept
+  tests: `test_a_read_only_out_is_an_output_error_naming_out`,
+  `test_the_command_exits_two_with_one_line_for_a_read_only_out`.
+
+Under the floor:
+
+- **F-T2** (tester, Warning) An `OSError` with no `errno` raised by the move loses its message
+  (`[Errno None] None`). Only an injected `move` raises one; `os.replace` always sets `errno`.
+  Its test `test_a_move_error_without_errno_keeps_its_message` is deleted.
