@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whose `detail` is the rule's message; a version or key conflict still sends no text. A stale
   `If-Match` is the version conflict, not the refusal. The `ProblemSlug` enum, the OpenAPI
   components and the served TypeScript gain `refused`.
+- **Rename and drop roles in stored grants** (`grant-roles` stage 1, #307, #310, #345). A
+  migration file takes `grant_roles` with `rename: {old: new}` and `drop: [names]`; on the system
+  database it renames or drops the role of every stored grant (a rename that would duplicate a
+  grant the assignee already holds removes the duplicate), then rotates the version tokens. Other
+  databases and `migrate_dataset` get no grant operations. A drop of a renamed name, a chain, a
+  self-rename, a name renamed twice or an empty name is refused when the file loads. See "A model
+  round renames or drops a role" in the migration how-to.
+- **Stale grants reported at start-up** (#307, #345). After `migrate_shared`, the service warns
+  for each tenant whose grants name an undefined `(level, role)` and for each tenant no grant
+  administers; a store failure or an undecodable record is logged at ERROR. Start-up never stops.
+  `AccessRules` gains `undefined_roles` and `administered`.
 
 ### Changed
 - **A lone `dct:hasPart` role to the collection's own class now fixes `member_class`**
