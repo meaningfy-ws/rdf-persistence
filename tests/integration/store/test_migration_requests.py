@@ -13,15 +13,23 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from rdflib import Literal, URIRef
+from rdflib import Graph, Literal, URIRef
+from rdflib.compare import isomorphic
 from rdflib.namespace import DCTERMS, XSD
 
+from rdf_persistence.access.domain.generated.rp_tenancy import TenantAccess
+from rdf_persistence.access.services.access import _access_mapper
 from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
-from rdf_persistence.migrations.services.generated.rp_migrations_services import MigrationStep
+from rdf_persistence.migrations.services.generated.rp_migrations_services import (
+    GrantRoles,
+    Migration,
+    MigrationStep,
+    RoleRename,
+)
 from rdf_persistence.migrations.services.migrations import (
     Chain,
     migration_request,
@@ -42,8 +50,19 @@ from tests.migration_helpers import (
     STAMPS,
     chain_of,
     migration,
+    put_stamp,
     rename,
 )
+from tests.toy import ADA, BOB
+from tests.unit.tenancy.test_migrate_dataset import (
+    BOOK_GRAPH,
+    OTHER_RECORD,
+    OTHER_TENANT,
+    RECORD,
+    Held,
+    the_record,
+)
+from tests.unit.tenancy.test_migrate_dataset import TENANT as ACCESS_TENANT
 
 TENANT = "https://example.org/tenant/t1"
 BOOKS = tuple(URIRef(f"{TENANT}/books/{n}") for n in (1, 2))
@@ -317,6 +336,95 @@ async def test_a_second_run_of_the_toolkits_chain_changes_nothing(
     once = await quads(store, database)
     await migrate_database(store, database, [toolkit_chain], STAMPS)
     assert await quads(store, database) == once, "same triples, same token, stamp 3"
+
+
+# -- grant-roles T2, T3b on Fuseki: a migration renames or drops the roles of the stored grants -------------
+
+
+async def put_records(
+    store: FusekiStore, database: str, *records: tuple[URIRef, str, Held]
+) -> None:
+    """A system-shaped database: stamp 1 and one access record graph per ``(iri, tenant, grants)``."""
+    await put_stamp(store, database, LIB, "1")
+    for iri, tenant, grants in records:
+        await store.put_graph(database, graph_iri(str(iri)), the_record(iri, tenant, grants))
+
+
+async def stored_record(store: FusekiStore, database: str, iri: URIRef = RECORD) -> Graph:
+    """The graph of the access record as the store holds it (one result set, so its blank nodes agree)."""
+    graph = graph_iri(str(iri))
+    rows = await store.query(
+        database, f"SELECT ?s ?p ?o WHERE {{ GRAPH <{graph}> {{ ?s ?p ?o }} }}"
+    )
+    stored = Graph(identifier=graph)
+    for row in rows:
+        stored.add((row.s, row.p, row.o))  # type: ignore[union-attr]
+    return stored
+
+
+def without_token(graph: Graph) -> Graph:
+    kept = Graph()
+    for triple in graph:
+        if triple[1] != v.VERSION:
+            kept.add(triple)
+    return kept
+
+
+async def held_grants(store: FusekiStore, database: str, iri: URIRef = RECORD) -> Held:
+    """The grants of the access record as the library decodes it: a duplicate grant key makes this raise."""
+    graph = graph_iri(str(iri))
+    stored = await stored_record(store, database, iri)
+    record = _access_mapper().from_graph(TenantAccess, str(iri), stored, graph)
+    return {(g.assignee, g.target, g.role) for g in record.grants or []}
+
+
+def grant_roles_chain(folder: Path, roles: GrantRoles) -> Chain:
+    step = Migration(schema_id=LIB, from_version="1", to_version="2", grant_roles=roles)
+    return chain_of(folder / "grants", LIB, step, current="2")
+
+
+async def test_a_merge_leaves_one_grant_and_the_access_record_decodes(store, database, tmp_path):
+    await put_records(
+        store,
+        database,
+        (RECORD, ACCESS_TENANT, {(BOB, ACCESS_TENANT, "reader"), (BOB, ACCESS_TENANT, "viewer")}),
+    )
+    roles = GrantRoles(
+        rename=[
+            RoleRename(from_role="reader", to_role="member"),
+            RoleRename(from_role="viewer", to_role="member"),
+        ]
+    )
+    await migrate_database(
+        store, database, [(LIB, grant_roles_chain(tmp_path, roles))], STAMPS, grants=True
+    )
+    assert await held_grants(store, database) == {(BOB, ACCESS_TENANT, "member")}, (
+        "one member grant where an assignee held reader and viewer on one target, and it decodes"
+    )
+    assert await stamps(store, database, STAMPS) == {LIB: "2"}, "the stamp moved"
+
+
+async def test_a_drop_deletes_the_grants_naming_the_role_with_their_parts(
+    store, database, tmp_path
+):
+    kept: Held = {(ADA, ACCESS_TENANT, "librarian"), (BOB, BOOK_GRAPH, "reader")}
+    guests: Held = {(BOB, ACCESS_TENANT, "guest"), (ADA, BOOK_GRAPH, "guest")}
+    other: Held = {(BOB, OTHER_TENANT, "reader")}
+    await put_records(
+        store, database, (RECORD, ACCESS_TENANT, kept | guests), (OTHER_RECORD, OTHER_TENANT, other)
+    )
+    before = await stored_record(store, database)
+    assert len(list(before.subjects(v.ROLE, Literal("guest")))) == 2, "two grant parts name guest"
+    roles = GrantRoles(drop=["guest"])
+    await migrate_database(
+        store, database, [(LIB, grant_roles_chain(tmp_path, roles))], STAMPS, grants=True
+    )
+    assert await held_grants(store, database) == kept, "only the guest grants went"
+    assert await held_grants(store, database, OTHER_RECORD) == other, "another record is untouched"
+    after = await stored_record(store, database)
+    assert isomorphic(
+        without_token(after), without_token(the_record(RECORD, ACCESS_TENANT, kept))
+    ), "the record is the one that never held the guest grants: their parts left no triple"
 
 
 async def test_two_conditional_first_stamps_at_once_leave_one_stamp(store, database):

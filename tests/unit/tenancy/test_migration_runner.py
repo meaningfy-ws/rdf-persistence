@@ -14,6 +14,8 @@ import pytest
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCTERMS
 
+from rdf_persistence.access.domain.generated.rp_access import Grant
+from rdf_persistence.access.services.generated.rp_access_services import GrantSet
 from rdf_persistence.api.services.documents import Documents
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
@@ -25,6 +27,11 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.migrations.services.generated.rp_migrations_services import (
+    GrantRoles,
+    Migration,
+    RoleRename,
+)
 from rdf_persistence.migrations.services.migrations import (
     Chain,
     migration_request,
@@ -636,6 +643,57 @@ async def test_tc26_each_tenant_is_migrated_on_its_own_store(lib_chain):
     assert await held(d, tenancy.database_of(on_d)) == {LIB: "2"}, "the other on D is at 2"
     assert tenancy.system_database not in await a.list_datasets(), "A holds no system database"
     assert tenancy.application_database not in await a.list_datasets(), "nor an application one"
+
+
+# -- grant-roles R1-W1: a migration's grant_roles run on the system database only ----------------------------
+
+BOB_IRI = "https://example.org/people/bob"
+
+
+def _without_stamps(rows: frozenset[tuple]) -> frozenset[tuple]:
+    return frozenset(row for row in rows if row[0] != str(STAMPS))
+
+
+async def test_grant_roles_run_through_the_shared_migration_on_the_system_database_only(
+    world, tmp_path
+):
+    tenancy, store, tenant = world.tenancy, world.store, world.tenant
+    _, version = await tenancy.get(tenant)
+    grants = GrantSet(
+        grants=[
+            Grant(assignee=CREATOR.id, target=tenant, role="librarian"),
+            Grant(assignee=BOB_IRI, target=tenant, role="reader"),
+        ]
+    )
+    await tenancy.set_grants(tenant, grants, version, CREATOR)
+    await tenancy.ensure_application_database()
+    system, app = tenancy.system_database, tenancy.application_database
+    await put_stamp(store, system, LIB, "1")
+    await put_stamp(store, app, LIB, "1")
+    roles = GrantRoles(
+        rename=[RoleRename(from_role="reader", to_role="member")], drop=["librarian"]
+    )
+    step = Migration(schema_id=LIB, from_version="1", to_version="2", grant_roles=roles)
+    chain = chain_of(tmp_path / "grants", LIB, step, current="2")
+    app_before = _without_stamps(await quads(store, app))
+    tenant_before = _without_stamps(await quads(store, world.database))
+
+    await migrate_shared(tenancy, store, [(LIB, chain)])
+    assert await migrate_tenants(tenancy, store, [(LIB, chain)]) == set(), "no tenant is set aside"
+
+    record, _ = await tenancy.get(tenant)
+    assert {(g.assignee, g.target, g.role) for g in record.grants or []} == {
+        (BOB_IRI, tenant, "member")
+    }, "the system database's grants: reader renamed to member, the librarian grant dropped"
+    assert await held(store, system) == {LIB: "2"}, "the system database's stamp moved"
+    assert await held(store, app) == {LIB: "2"}, "the application database's stamp moved"
+    assert _without_stamps(await quads(store, app)) == app_before, (
+        "the application database got the stamp move only"
+    )
+    assert await held(store, world.database) == {LIB: "2"}, "the tenant database's stamp moved"
+    assert _without_stamps(await quads(store, world.database)) == tenant_before, (
+        "the tenant database got the stamp move only"
+    )
 
 
 async def test_a_tenant_whose_store_is_not_wired_stops_the_migration():
