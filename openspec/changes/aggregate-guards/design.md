@@ -150,6 +150,42 @@ what the caller may not read (E2).
 Comment records dropped inside `remove_parts` run no delete rules (DEC-5's exemption). They are
 toolkit `Annotation` records, which no key can name.
 
+## Delivery decisions
+
+### D-9
+
+Stage 1 impact (lead, 2026-11-24): GitNexus rates `GuardContext` CRITICAL (80 direct), but every
+edge is an import of `session.py`. Three sites construct it: `Transaction._context` and the test
+helpers in `test_aggregate_validators.py` and `test_write_guards.py`. `removed` and `read_cache`
+take defaults (an empty frozenset, a fresh dict), so the helpers stay valid. Not escalated.
+
+### D-10
+
+`_Reader.__init__` takes `model_class` (the bound `AggregateValidators.model_class`) besides
+`decode`, so D-1 step 4 can name the class of collected triples without the reader holding the
+schema view. An IRI added back after a remove in the same transaction leaves `removed`
+(lead-fixed in the stage 1 commit).
+
+### D-11
+
+Stage 1 review (L2+L3, one pass): 8 findings, 0 Critical as labelled. Accepted:
+
+- **R1-W1, re-labelled Critical:** the old test
+  `test_an_aggregate_removed_earlier_in_the_transaction_still_answers_with_its_stored_types`
+  asserted the `classes_of` contract the spec delta replaces, passing only because its helper
+  builds an empty context. A suite that asserts a withdrawn contract misleads its readers. Deleted
+  (lead-fixed), and its scenario-map row with it; T5 covers the new behaviour.
+
+Under the floor:
+
+- R1-W2: no test that a replace drops the read cache entry.
+- R1-W3: no test for add, remove, add of one IRI (the D-10 discard).
+- R1-W4: no test for E5 (types that name no single class) or E8 (a remove after a read).
+- R1-W5: T4 asserts on `Transaction._relied`, private state.
+- R1-S6: D-1 named one new `_Reader` parameter; D-10 records the second.
+- R1-S7: `access.adoc` could say a missing aggregate is not cached and its absence not relied on.
+- R1-S8: `_Reader` mutates the context's `read_cache` by design (D-2); no action.
+
 ## Algorithm / approach
 
 ### Stage 1, #305: the reader hands over an aggregate

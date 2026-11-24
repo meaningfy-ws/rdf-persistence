@@ -10,17 +10,31 @@ from collections.abc import AsyncIterator
 import pytest
 from rdflib import URIRef
 
+from rdf_persistence import generated_models
+from rdf_persistence.collaboration.services.aggregate_validators import AggregateValidators
+from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound
 from rdf_persistence.core.domain.sparql import fill, term
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.adapters.fuseki import FusekiStore
+from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
 from tests.fixtures.library.domain.generated.books import Book
-from tests.integration.store.sessions import BEN, TENANT, TITLE, book, session_for, title
-from tests.toy import dune, toy_mapper
+from tests.integration.store.sessions import (
+    ADA,
+    BEN,
+    TENANT,
+    TITLE,
+    Ticker,
+    book,
+    session_for,
+    title,
+)
+from tests.toy import MODULES, TOY_SCHEMA, dune, shelf, toy_mapper
 
 A, B, C = book(1), book(2), book(3)
 ENTRY = "ASK { GRAPH $registry { $graph ?p ?o } }"
@@ -173,6 +187,33 @@ async def test_it03_a_unit_of_work_that_changes_a_and_adds_b_refuses_both_when_b
     label_b = (await UnitOfWork(session, toy_mapper()).get(Book, B)).label
     assert label_b == "theirs", "B keeps the other edit"
     assert not await a_marker_is_left(store, database), "the marker was released"
+
+
+async def test_it07_an_aggregate_a_rule_read_that_changed_meanwhile_refuses_the_commit(
+    store, database, session
+):  # aggregate-guards T6: the guard is a real version check in the store
+    async def reads_the_shelf(old, new, who, reader) -> None:
+        await reader.aggregate(new.shelf)
+
+    view = load_schema(TOY_SCHEMA)
+    validators = AggregateValidators(view, {"Book": [reads_the_shelf]}, TOY_SCHEMA.parent)
+    guards = WriteGuards(
+        toy_mapper(), generated_models(*MODULES), Listings(view), validators=validators
+    )
+    mine = Session(
+        store, database=database, tenant_iri=TENANT, principal=ADA, clock=Ticker(), guards=guards
+    )
+    shelf_at = f"{TENANT}/shelves/{uuid.UUID(int=1)}"
+    version = await session.add_graph(shelf_at, toy_mapper().to_triples(shelf(shelf_at)))
+    with pytest.raises(Conflict) as refused:
+        async with mine.transaction() as t:
+            await t.add_graph(A, toy_mapper().to_triples(dune(A, shelf=shelf_at)))
+            await session.replace_graph(
+                shelf_at, toy_mapper().to_triples(shelf(shelf_at, nests=True)), version
+            )
+    assert refused.value.iris == (shelf_at,), "the conflict names the aggregate the rule read"
+    assert not await stored(session, A), "the book was not written"
+    assert not await a_marker_is_left(store, database), "no marker is left behind"
 
 
 COUNT_ENTRIES = "SELECT (COUNT(DISTINCT ?g) AS ?n) WHERE { GRAPH $registry { ?g $kind ?k } }"

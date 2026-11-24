@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import pytest
 from linkml_runtime.utils.schemaview import SchemaView
@@ -346,7 +347,14 @@ def context(collected: dict[str, list] | None = None) -> GuardContext:
 
 
 def reader_of(session: Session, collected: dict[str, list] | None = None) -> AggregateReader:
-    return toy({}).reader(session, context(collected))
+    models = generated_models(*MODULES)
+    return toy({}).reader(
+        session,
+        context(collected),
+        lambda name, iri, graph, tracked: toy_mapper().from_graph(
+            models.named(name), iri, graph, tracked
+        ),
+    )
 
 
 async def store_both(session: Session) -> None:
@@ -418,17 +426,6 @@ async def test_an_aggregate_collected_earlier_in_the_transaction_answers_with_it
         reader = reader_of(session, {shelf_iri(3): triples})
         assert await reader.classes_of(shelf_iri(3)) == {"Shelf"}
         assert seen == [], "the collected change answers, not the store"
-
-
-async def test_an_aggregate_removed_earlier_in_the_transaction_still_answers_with_its_stored_types():  # T-6
-    async with reading_session() as session:
-        await store_both(session)
-        version = (await session.get_graph(shelf_iri(1)))[2]
-        async with session.transaction() as t:
-            await t.remove(shelf_iri(1), version)
-            assert await reader_of(session).classes_of(shelf_iri(1)) == {"Shelf"}, (
-                "the store, before the commit"
-            )
 
 
 async def test_a_type_the_view_does_not_know_is_dropped_from_the_answer():  # T-6
@@ -689,3 +686,234 @@ async def test_a_stale_replace_a_rule_refuses_is_invalid_body_and_one_it_accepts
         accepted = toy_mapper().to_triples(relabelled(shelf_iri(1), "fine"))
         with pytest.raises(Conflict):
             await session.replace_graph(shelf_iri(1), accepted, "stale")
+
+
+# The reader hands over an aggregate (aggregate-guards D-1 to D-4: T1, T2, T4 to T7b)
+
+FORBIDDEN = "forbidden"
+AUTHOR = TOY_NS + "Author"
+
+
+@asynccontextmanager
+async def guarded_session(
+    mapping: dict[str, Sequence[AggregateValidator]],
+    *,
+    store: FakeStore | None = None,
+    may_read: Callable[[str], bool] | None = None,
+) -> AsyncIterator[Session]:
+    """A session with the rules ``mapping`` and the caller's read check (``fake_session`` takes none)."""
+    store = store or FakeStore()
+    if FAKE_DATABASE not in await store.list_datasets():
+        await store.create_dataset(FAKE_DATABASE)
+    async with open_session(
+        store,
+        database=FAKE_DATABASE,
+        tenant_iri=TENANT,
+        principal=WHO,
+        guards=guarded(mapping),
+        may_read=may_read,
+    ) as session:
+        yield session
+
+
+def reading_the_shelf(seen: list[Any]) -> AggregateValidator:
+    """A rule on books that keeps what the reader hands over of the shelf the book names."""
+
+    async def rule(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        seen.append(await reader.aggregate(new.shelf) if new.shelf else None)
+
+    return rule
+
+
+async def no_forbidden_shelf(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+    shelf_read = await reader.aggregate(new.shelf)
+    if shelf_read is not None and shelf_read.label == FORBIDDEN:
+        raise InvalidBody("the shelf is forbidden")
+
+
+async def add_book_on(session: Session, shelf_at: str, number: int = 1) -> None:
+    await session.add_graph(
+        book_iri(number), toy_mapper().to_triples(dune(book_iri(number), shelf=shelf_at))
+    )
+
+
+@pytest.mark.parametrize(
+    ("label", "refused"), [(FORBIDDEN, True), ("fine", False)]
+)  # T1: one table, the refusal and the pass
+async def test_a_rule_reads_the_aggregate_a_reference_names_and_refuses_on_what_it_says(
+    label: str, refused: bool
+):
+    async with guarded_session({"Book": [no_forbidden_shelf]}) as session:
+        await save(session, relabelled(shelf_iri(1), label))
+        if refused:
+            with pytest.raises(InvalidBody, match="the shelf is forbidden"):
+                await add_book_on(session, shelf_iri(1))
+        else:
+            await add_book_on(session, shelf_iri(1))
+        assert bool(await session.heads([book_iri(1)])) is not refused, "written only if accepted"
+
+
+async def test_the_reader_hands_over_the_stored_aggregate_as_its_model_with_tracking():  # T1
+    seen: list[Any] = []
+    async with guarded_session({"Book": [reading_the_shelf(seen)]}) as session:
+        await save(session, shelf(shelf_iri(1)))
+        await add_book_on(session, shelf_iri(1))
+    assert (seen[0].label, seen[0].created is not None) == ("Shelf", True), "decoded, tracked"
+
+
+@pytest.mark.parametrize(
+    "case", ["not readable", "missing", "not an aggregate iri"]
+)  # T2, E1, E2, E3: three ways to be absent, one answer
+async def test_an_aggregate_the_writer_may_not_read_or_that_is_not_there_is_none(case: str):
+    seen: list[Any] = []
+    target = {"not readable": shelf_iri(1), "missing": shelf_iri(9)}.get(
+        case, "https://elsewhere.org/x"
+    )
+    async with guarded_session(
+        {"Book": [reading_the_shelf(seen)]}, may_read=lambda iri: case != "not readable"
+    ) as session:
+        await save(session, shelf(shelf_iri(1)))
+        await add_book_on(session, target)
+    assert seen == [None], f"{case}: absent to the rule"
+
+
+async def test_an_aggregate_added_earlier_in_the_unit_is_read_as_collected_with_no_guard():  # T4
+    seen: list[Any] = []
+    async with (
+        guarded_session({"Book": [reading_the_shelf(seen)]}) as session,
+        session.transaction() as t,
+    ):
+        await t.add_graph(shelf_iri(1), toy_mapper().to_triples(shelf(shelf_iri(1))))
+        await t.add_graph(
+            book_iri(1), toy_mapper().to_triples(dune(book_iri(1), shelf=shelf_iri(1)))
+        )
+        assert t._relied == {}, "a collected aggregate is not relied on"  # the guard's own state
+    assert (seen[0].label, seen[0].created) == ("Shelf", None), "as written: no tracking"
+
+
+async def test_an_aggregate_removed_earlier_in_the_unit_is_none_and_has_no_classes():  # T5
+    seen: list[Any] = []
+    classes: list[frozenset[str]] = []
+
+    async def both(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        seen.append(await reader.aggregate(new.shelf))
+        classes.append(await reader.classes_of(new.shelf))
+
+    async with guarded_session({"Book": [both]}) as session:
+        version = await stored_shelf(session, shelf_iri(1))
+        async with session.transaction() as t:
+            await t.remove(shelf_iri(1), version)
+            await t.add_graph(
+                book_iri(1), toy_mapper().to_triples(dune(book_iri(1), shelf=shelf_iri(1)))
+            )
+    assert (seen, classes) == ([None], [frozenset()]), "the two reads agree: removed is absent"
+
+
+async def test_a_book_read_then_changed_before_the_commit_fails_the_commit_naming_it():  # T6
+    store = FakeStore()
+    async with (
+        guarded_session({"Book": [reading_the_shelf([])]}, store=store) as session,
+        fake_session(store, tenant_iri=TENANT) as other,
+    ):
+        await save(session, shelf(shelf_iri(1)))
+        with pytest.raises(Conflict) as caught:
+            async with session.transaction() as t:
+                await t.add_graph(
+                    book_iri(1), toy_mapper().to_triples(dune(book_iri(1), shelf=shelf_iri(1)))
+                )
+                version = (await other.get_graph(shelf_iri(1)))[2]
+                await other.replace_graph(
+                    shelf_iri(1),
+                    toy_mapper().to_triples(relabelled(shelf_iri(1), "changed")),
+                    version,
+                )
+        assert shelf_iri(1) in caught.value.iris, "the conflict names the aggregate read"
+        assert await session.heads([book_iri(1)]) == [], "nothing was written"
+
+
+async def test_a_read_that_clashes_with_a_guard_of_the_transaction_is_a_conflict_not_a_500():  # T6b
+    async def reads_when_asked(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        if new.label == "reads":
+            await reader.aggregate(shelf_iri(2))
+
+    store = FakeStore()
+    async with (
+        guarded_session({"Shelf": [reads_when_asked]}, store=store) as session,
+        fake_session(store, tenant_iri=TENANT) as other,
+    ):
+        await save(session, shelf(shelf_iri(2)))
+        with pytest.raises(Conflict) as caught:
+            async with session.transaction() as t:
+                # the nesting guard relies on the member at the version it has now
+                await t.add_graph(
+                    shelf_iri(1),
+                    toy_mapper().to_triples(
+                        shelf(shelf_iri(1), nests=True).model_copy(
+                            update={"has_part": [shelf_iri(2)]}
+                        )
+                    ),
+                )
+                version = (await other.get_graph(shelf_iri(2)))[2]
+                await other.replace_graph(
+                    shelf_iri(2),
+                    toy_mapper().to_triples(relabelled(shelf_iri(2), "changed")),
+                    version,
+                )
+                await t.add_graph(
+                    shelf_iri(3),
+                    toy_mapper().to_triples(relabelled(shelf_iri(3), "reads")),
+                )
+        assert shelf_iri(2) in caught.value.iris, "a 409 naming the member, not a RuntimeError"
+
+
+async def test_two_rules_reading_one_aggregate_read_the_store_once():  # T7
+    async def second(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        await reader.aggregate(new.shelf)
+
+    async with guarded_session({"Book": [reading_the_shelf([]), second]}) as session:
+        await save(session, shelf(shelf_iri(1)))
+        reads: list[str] = []
+        original = session.get_graph
+
+        async def spy(iri: str):
+            reads.append(iri)
+            return await original(iri)
+
+        session.get_graph = spy  # type: ignore[method-assign]  # X5: a counting spy on the read
+        await add_book_on(session, shelf_iri(1))
+    assert reads == [shelf_iri(1)], "the second read is the first one's copy"
+
+
+async def test_what_a_rule_does_to_the_aggregate_it_read_is_not_seen_by_the_next_read():  # E9
+    seen: list[str] = []
+
+    async def vandal(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        (await reader.aggregate(new.shelf)).label = "vandalised"
+
+    async def witness(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        seen.append((await reader.aggregate(new.shelf)).label)
+
+    async with guarded_session({"Book": [vandal, witness]}) as session:
+        await save(session, shelf(shelf_iri(1)))
+        await add_book_on(session, shelf_iri(1))
+    assert seen == ["Shelf"], "each read is a copy"
+
+
+async def test_collected_triples_that_do_not_decode_are_a_runtime_error():  # T7b, E4
+    author = f"{TENANT}/authors/{UUID(int=1)}"
+    async with (
+        guarded_session({"Book": [reading_the_shelf([])]}) as session,
+        session.transaction() as t,
+    ):
+        await t.add_graph(author, [(URIRef(author), RDF.type, URIRef(AUTHOR))])
+        with pytest.raises(RuntimeError, match=f"{author} does not decode"):
+            await t.add_graph(book_iri(1), toy_mapper().to_triples(dune(book_iri(1), shelf=author)))
+
+
+async def test_a_stored_aggregate_that_does_not_decode_is_a_runtime_error():  # E4
+    store = FakeStore()
+    async with fake_session(store, tenant_iri=TENANT) as plain:
+        await plain.add_graph(shelf_iri(1), [(URIRef(shelf_iri(1)), RDF.type, URIRef(SHELF))])
+    async with guarded_session({"Book": [reading_the_shelf([])]}, store=store) as session:
+        with pytest.raises(RuntimeError, match=f"{shelf_iri(1)} does not decode"):
+            await add_book_on(session, shelf_iri(1))
