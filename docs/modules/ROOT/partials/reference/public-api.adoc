@@ -127,6 +127,7 @@
 |`settings_from_env` |function |Build ``model`` from the variables ``<prefix><SLOT>`` and ``<prefix><GROUP>__<SLOT>``.
 |`SlotEquality` |class |One condition of a membership rule, a slot of the member class and the value it must equal.
 |`SseSettings` |class |The lifetime, the access check, the keep-alive and the resume window of the events route.
+|`state_iri` |function |The IRI of the state named ``state``: the workflow's identifier, a slash and the name.
 |`Store` |class |A SPARQL 1.1 store with a Graph Store endpoint and dataset administration.
 |`StoredDataInvalid` |class |What the store holds cannot be decoded: a fault of the service or its data, never of the request.
 |`StoredFile` |class |A mixin for the current content of a kept file; the bytes live in the tenant's bucket under the file key.

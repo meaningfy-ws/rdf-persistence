@@ -3802,6 +3802,7 @@ tests/unit/tooling/test_lanes.py::test_the_combined_coverage_keeps_the_80_percen
 tests/unit/package/test_lazy_exports.py::test_a_lazy_name_is_loaded_on_first_use_and_then_kept,capability,rp-package-boundaries,,,medium,spec id PD-8c
 tests/unit/package/test_lazy_exports.py::test_an_unknown_top_level_name_is_an_attribute_error,capability,rp-package-boundaries,,,medium,spec id PD-8c
 tests/unit/package/test_lazy_exports.py::test_importing_the_domain_or_a_generated_module_loads_nothing_heavy,capability,rp-package-boundaries,,,medium,spec id PD-8c
+tests/unit/package/test_lazy_exports.py::test_state_iri_is_exported_from_the_top_level,scenario,rp-service-api,A consumer builds a workflow state IRI through the public API,the top-level import,high,#311
 tests/unit/tooling/test_markers.py::test_a_serial_run_fails_the_test_past_its_timeout_naming_it_and_the_next_test_runs,scenario,rp-developer-checks,A test cannot hang the checks,"a test that never returns, in a serial run",high,name+open change
 tests/unit/tooling/test_markers.py::test_every_test_file_has_a_row_in_the_path_table,capability,rp-developer-checks,,,low,name; marker completeness (test-debt-paydown PD-11); no spec requirement
 tests/unit/tooling/test_markers.py::test_a_test_past_its_timeout_fails_naming_itself_and_the_next_test_runs,scenario,rp-developer-checks,A test cannot hang the checks,"a test that never returns, in a parallel lane",high,name+open change

@@ -151,6 +151,7 @@
   "open_session": "rdf_persistence.services.session",
   "remove_with_files": "rdf_persistence.services.file_removal",
   "settings_from_env": "rdf_persistence.entrypoints.environment",
+  "state_iri": "rdf_persistence.services.workflows",
   "sweep": "rdf_persistence.services.sweep",
   "sweep_tenant": "rdf_persistence.services.tenant_sweep",
   "zitadel_roles_claim": "rdf_persistence.adapters.zitadel"
