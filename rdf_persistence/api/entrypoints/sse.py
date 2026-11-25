@@ -102,6 +102,7 @@ def add_events_route(
             keep_alive=sse.keep_alive_seconds,
             max_lifetime=timedelta(seconds=sse.max_lifetime_seconds),
             clock=clock,
+            is_activity=lambda text: kit.iris.is_activity(tenant, text),
         )
         async for item in stream:
             yield _sent(item)

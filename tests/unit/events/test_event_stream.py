@@ -334,6 +334,33 @@ async def test_an_unknown_or_expired_id_sends_a_reset_then_the_live_events():  #
     await stream.aclose()
 
 
+PLACED = f"{TENANT}/activity/00000000-0000-4000-8000-000000000001"
+
+
+@pytest.mark.parametrize(
+    ("last_event_id", "asks_store"),
+    [
+        (PLACED, True),
+        (activity(9).id, False),
+        ("https://other.example/activity/00000000-0000-4000-8000-000000000001", False),
+    ],
+    ids=["the policy's iri", "a urn:uuid under the policy", "another tenant's iri"],
+)
+async def test_the_resume_id_is_checked_with_the_given_is_activity(
+    last_event_id: str, asks_store: bool
+):  # PD-7, PD-11
+    session = FakeSession(None)
+    stream = streaming(
+        EventHub(),
+        open_session=opener(session),
+        last_event_id=last_event_id,
+        is_activity=lambda text: text.startswith(f"{TENANT}/activity/"),
+    )
+    assert await next_of(stream) == RESET, "an unanchored id resets"
+    assert bool(session.asked) is asks_store, "the store is asked only for an id the policy reads"
+    await stream.aclose()
+
+
 async def test_the_subscription_ends_with_the_stream():
     hub = EventHub()
     stream = streaming(hub, keep_alive=0.01)
