@@ -1,10 +1,11 @@
-"""TC-5, TC-9: the conversion rules R-1..R-29, one table (PD-5..PD-21, D-5, D-10..D-14).
+"""TC-5, TC-9: the conversion rules R-1..R-31, one table (PD-5..PD-21, D-5, D-10..D-14).
 
 Each row builds a ``UmlModel`` directly (the reader is not involved), converts it and checks the
 fragment of LinkML the rule's column promises, or the problem its failure branch gives. The last
 test says every ``UmlRule`` value has a row.
 """
 
+import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -12,9 +13,14 @@ from pathlib import Path
 
 import pytest
 import yaml
+from linkml.generators.jsonschemagen import JsonSchemaGenerator
+from linkml.generators.pydanticgen import PydanticGenerator
+from linkml.generators.shaclgen import ShaclGenerator
 from linkml_runtime.dumpers import yaml_dumper
 from linkml_runtime.linkml_model.meta import UniqueKey
 from linkml_runtime.utils.schemaview import SchemaView
+from rdflib import Graph
+from rdflib.namespace import SH
 
 from rdf_persistence_generation.generated.rp_generation import (
     UmlAttribute,
@@ -1648,6 +1654,152 @@ ROWS_NARROWED = [
     ),
 ]
 
+# --- consumer-test-gaps stage 3 (#332): a redrawn role keeps its own cardinality bounds (D-7, D-8) -----
+
+_MIDDLE, _UNRELATED, _OTHER = 55, 56, 57
+_BOUNDS = ("minimum_cardinality", "maximum_cardinality")
+
+
+def _redrawn(
+    parent_card: str,
+    child_card: str,
+    *,
+    middle: bool = False,
+    unrelated: str | None = None,
+    other: str | None = None,
+    child_unrelated: bool = False,
+) -> object:
+    """``Base.part`` and ``Derived.part`` (``Derived`` below ``Base``, through ``Middle`` when asked), the
+    cardinalities given; ``Other`` is a class unrelated to ``Base`` that draws ``part`` too."""
+    parent_of_child = _MIDDLE if middle else _ABSTRACT_PARENT
+    classes = [
+        klass(_ABSTRACT_PARENT, "lib:Base", abstract=True),
+        klass(_CHILD, "lib:Derived"),
+        klass(_VALUE, "lib:Value"),
+    ]
+    links = [
+        link(3, _ABSTRACT_PARENT, _VALUE, target_role="lib:part", target_card=parent_card),
+        link(4, _CHILD, _VALUE, target_role="lib:part", target_card=child_card),
+    ]
+    if not child_unrelated:
+        links.append(generalisation(1, _CHILD, parent_of_child))
+    if middle:
+        classes.append(klass(_MIDDLE, "lib:Middle"))
+        links.append(generalisation(2, _MIDDLE, _ABSTRACT_PARENT))
+    if unrelated is not None:
+        classes.append(klass(_UNRELATED, "lib:Unrelated"))
+        links.append(link(5, _UNRELATED, _VALUE, target_role="lib:part", target_card=unrelated))
+    if other is not None:
+        classes.append(klass(_OTHER, "lib:Other"))
+        links.append(link(6, _OTHER, _VALUE, target_role="lib:part", target_card=other))
+    return model(*classes, links=tuple(links))
+
+
+def _written_bounds(holder: str, **expected: int) -> Check:
+    """``holder``'s slot_usage for ``part`` writes exactly the cardinalities ``expected`` (none when empty)."""
+
+    def check(out: Converted) -> None:
+        _no_problems(out)
+        usages = out.klass("app_library", holder).slot_usage
+        usage = usages["part"] if "part" in usages else None  # noqa: SIM401 (a JsonObj has no get)
+        found = {n: getattr(usage, n) for n in _BOUNDS if usage and getattr(usage, n) is not None}
+        assert found == expected, f"{holder}.part must write {expected}, and it writes {found}"
+
+    return check
+
+
+def _induced_bounds(holder: str, minimum: int | None, maximum: int | None) -> Check:
+    """What ``SchemaView.induced_slot`` gives ``holder.part``: the bounds the YAML must make true."""
+
+    def check(out: Converted) -> None:
+        view = SchemaView(yaml_dumper.dumps(out.schemas["app_library"]))
+        slot = view.induced_slot("part", holder)
+        assert slot.minimum_cardinality == minimum, (
+            f"the induced minimum of {holder}.part must be {minimum}, it is {slot.minimum_cardinality}"
+        )
+        assert slot.maximum_cardinality == maximum, (
+            f"the induced maximum of {holder}.part must be {maximum}, it is {slot.maximum_cardinality}"
+        )
+
+    return check
+
+
+def _unbounded(holder: str, ancestor: str, bound: str) -> Check:
+    return _problem(
+        UmlRule.CARDINALITY_UNBOUNDED,
+        f"{holder}.part",
+        ancestor,
+        bound,
+        "an unbounded role cannot redraw a bounded one: bound the role or unbind the ancestor's",
+    )
+
+
+ROWS_CARDINALITY = [
+    Row(
+        "E15: an inherited 2..* role redrawn as 1 writes minimum_cardinality 1",
+        UmlRule.SHARED_SLOT,
+        _redrawn("2..*", "1"),
+        _all(
+            _written_bounds("Derived", minimum_cardinality=1), _induced_bounds("Derived", 1, None)
+        ),
+    ),
+    Row(
+        "E16: an inherited 0..5 role redrawn as 0..1 writes maximum_cardinality 1",
+        UmlRule.SHARED_SLOT,
+        _redrawn("0..5", "0..1"),
+        _all(
+            _written_bounds("Derived", maximum_cardinality=1), _induced_bounds("Derived", None, 1)
+        ),
+    ),
+    Row(
+        "E17: an unbounded role under a 0..5 ancestor is a problem",
+        UmlRule.CARDINALITY_UNBOUNDED,
+        _redrawn("0..5", "0..*"),
+        _unbounded("Derived", "Base", "5"),
+        cites="R-31",
+    ),
+    Row(
+        "E18: an inherited 2..* role redrawn as 0..* writes minimum_cardinality 0",
+        UmlRule.SHARED_SLOT,
+        _redrawn("2..*", "0..*"),
+        _all(
+            _written_bounds("Derived", minimum_cardinality=0), _induced_bounds("Derived", 0, None)
+        ),
+    ),
+    Row(
+        "E19: usages that agree on both cardinalities write none",
+        UmlRule.SHARED_SLOT,
+        _redrawn("0..5", "0..5"),
+        _all(_written_bounds("Derived"), _written_bounds("Base")),
+    ),
+    Row(
+        "E20: a class unrelated to the bounded one may be unbounded",
+        UmlRule.CARDINALITY_UNBOUNDED,
+        _redrawn("0..5", "0..*", child_unrelated=True),
+        _all(_written_bounds("Derived"), _written_bounds("Base", maximum_cardinality=5)),
+    ),
+    Row(
+        "E21: an unbounded role under a single-valued 0..1 ancestor is a problem",
+        UmlRule.CARDINALITY_UNBOUNDED,
+        _redrawn("0..1", "0..*", unrelated="0..3"),
+        _unbounded("Derived", "Base", "1"),
+        cites="R-31",
+    ),
+    Row(
+        "E22: 0..0 reads as 0..1, the parse limit that predates this change",
+        UmlRule.SHARED_SLOT,
+        _redrawn("0..0", "0..3", child_unrelated=True),
+        _written_bounds("Base", maximum_cardinality=1),
+    ),
+    Row(
+        "E23: the walk passes through a class with no attributes",
+        UmlRule.CARDINALITY_UNBOUNDED,
+        _redrawn("0..5", "0..*", middle=True),
+        _unbounded("Derived", "Base", "5"),
+        cites="R-31",
+    ),
+]
+
 # --- W-3: elements no rule maps are problems, not silence (D-22) ----------------------------------------
 
 _NOVEL = ("lib:novel",)
@@ -3117,6 +3269,7 @@ ROWS: list[Row] = [
     *ROWS_R12,
     *ROWS_R13,
     *ROWS_NARROWED,
+    *ROWS_CARDINALITY,
     *ROWS_W3,
     *ROWS_D14,
     *ROWS_R25,
@@ -3160,6 +3313,32 @@ def test_a_unique_key_dumps_to_yaml_with_its_scope_and_nulls() -> None:
 )
 def test_a_rule_row(row: Row) -> None:
     row.check(run(row.uml, **row.overrides))  # each check states its own failure messages
+
+
+def test_a_zero_minimum_cardinality_is_accepted_by_the_generators_and_constrains_nothing() -> None:
+    """E18: Pydantic, SHACL and JSON Schema take ``minimum_cardinality: 0`` and add no bound."""
+    out = run(_redrawn("2..*", "0..*"))
+    text = yaml_dumper.dumps(out.schemas["app_library"])
+    pydantic = PydanticGenerator(text).serialize()
+    lengths = set(re.findall(r"min_length=(\d+)", pydantic.split("class Derived")[1]))
+    assert lengths <= {"0"}, (
+        f"Pydantic must add no minimum length above 0 for Derived.part: {lengths}"
+    )
+    shacl = ShaclGenerator(text).serialize()
+    graph = Graph().parse(data=shacl, format="turtle")
+    shapes = [s for s in graph.subjects(SH.targetClass, None) if str(s).endswith("Derived")]
+    counts = {
+        int(count)
+        for shape in shapes
+        for prop in graph.objects(shape, SH.property)
+        if str(graph.value(prop, SH.path)).endswith("part")
+        for count in graph.objects(prop, SH.minCount)
+    }
+    assert shapes, "SHACL must have a shape for Derived"
+    assert counts <= {0}, f"SHACL must state no minimum count above 0 for Derived.part: {counts}"
+    schema = json.loads(JsonSchemaGenerator(text).serialize())
+    part = schema["$defs"]["Derived"]["properties"]["part"]
+    assert part.get("minItems", 0) == 0, f"JSON Schema must add no minItems above 0: {part}"
 
 
 _GENERATION_MODEL = (

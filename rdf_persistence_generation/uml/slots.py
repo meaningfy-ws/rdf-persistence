@@ -41,6 +41,8 @@ UNSPECIFIED: Final = "0..*"
 _RANGE_ONLY = re.compile(r"(\d+)\.\.(\d+|\*)")
 _EXACT = re.compile(r"\d+")
 _MANY = "*"
+_MINIMUM: Final = "minimum_cardinality"
+_MAXIMUM: Final = "maximum_cardinality"
 LANG_STRINGS: Final = ("rdf:langString", "rdf:PlainLiteral")
 XSD: Final[dict[str, tuple[str, int | None]]] = {
     "xsd:string": ("string", None),
@@ -231,6 +233,23 @@ def slot_of(
     )
 
 
+def own_minimum(shape: SlotDefinition) -> int:
+    """The lower bound a shape's multiplicity gives: the stored minimum, else 1 when required, else 0 (D-7)."""
+    if shape.minimum_cardinality is not None:
+        return int(shape.minimum_cardinality)
+    return 1 if shape.required else 0
+
+
+def own_maximum(shape: SlotDefinition) -> int | None:
+    """The upper bound a shape's multiplicity gives: the stored maximum, else 1 when single-valued, else None (D-7).
+
+    ``None`` is unbounded. A single-valued ``0..1`` stores no maximum, so this is not ``maximum_cardinality``.
+    """
+    if shape.maximum_cardinality is not None:
+        return int(shape.maximum_cardinality)
+    return None if shape.multivalued else 1
+
+
 def usage_of(
     name: str, shape: SlotDefinition, differing: frozenset[str], slot: SlotDefinition
 ) -> SlotDefinition | None:
@@ -239,11 +258,20 @@ def usage_of(
     That is its value of each differing limit, its range when it is not the slot's and its description
     when it is non-empty and not the slot's; an empty description inherits the slot's. A differing
     ``required`` or ``multivalued`` is written ``false`` too, because an omitted flag inherits the
-    parent's ``true`` (D-5).
+    parent's ``true`` (D-5). A differing cardinality is the usage's own bound (D-7): an unset one would
+    inherit the ancestor's, and an unbounded maximum is not written.
     """
     kwargs = _shape_kwargs(shape, differing)
     for flag in EXPLICIT_FLAGS & differing:
         kwargs[flag] = bool(getattr(shape, flag))
+    if _MINIMUM in differing:
+        kwargs[_MINIMUM] = own_minimum(shape)
+    if _MAXIMUM in differing:
+        maximum = own_maximum(shape)
+        if maximum is None:
+            kwargs.pop(_MAXIMUM, None)
+        else:
+            kwargs[_MAXIMUM] = maximum
     if shape.range != slot.range:
         kwargs["range"] = shape.range
     if shape.description and shape.description != slot.description:
@@ -442,15 +470,58 @@ def _place_key(module_of: Mapping[int, str], usage: Usage) -> tuple[str, str, tu
     return (module_of[usage.holder.uml_class.object_id], usage.holder.label, usage.order)
 
 
+def _ancestor_bound(
+    usage: Usage, held: Mapping[str, Usage], lineage: tuple[Mapping[int, str], Mapping[str, int]]
+) -> tuple[str, int] | None:
+    """The nearest ``is_a`` ancestor that draws the same slot with a finite maximum, and that maximum (D-8).
+
+    The walk goes by label through every class, those with no attributes included, and stops on a cycle.
+    """
+    parent_of, ids_by_label = lineage
+    label, seen = usage.holder.label, {usage.holder.label}
+    while (label := parent_of.get(ids_by_label.get(label, -1), "")) and label not in seen:
+        seen.add(label)
+        ancestor = held.get(label)
+        bound = own_maximum(ancestor.shape) if ancestor is not None else None
+        if bound is not None:
+            return label, bound
+    return None
+
+
+def _check_unbounded(
+    ctx: Context,
+    name: str,
+    ordered: list[Usage],
+    lineage: tuple[Mapping[int, str], Mapping[str, int]],
+    differing: frozenset[str],
+) -> None:
+    """An unbounded role cannot redraw a bounded ``is_a`` ancestor's (D-8, DEC-5); only a differing maximum can."""
+    if _MAXIMUM not in differing:
+        return
+    held = {each.holder.label: each for each in ordered}
+    for each in ordered:
+        found = _ancestor_bound(each, held, lineage) if own_maximum(each.shape) is None else None
+        if found is not None:
+            ancestor, bound = found
+            ctx.findings.problem(
+                UmlRule.CARDINALITY_UNBOUNDED,
+                f"{each.holder.label}.{name}",
+                f"{ancestor}.{name} is bounded at {bound}, and an unbounded role cannot redraw a bounded one: "
+                "bound the role or unbind the ancestor's",
+            )
+
+
 def share(
     ctx: Context,
     usages: list[Usage],
     module_of: dict[int, str],
     homes: Mapping[str, str | None],
+    lineage: tuple[Mapping[int, str], Mapping[str, int]],
 ) -> SharedSlots:
     """One slot for each name (R-13): the slot states what every usage agrees on, each class its own rest.
 
-    ``homes`` names the module that defines each slot used in several modules (``choose_homes``).
+    ``homes`` names the module that defines each slot used in several modules (``choose_homes``);
+    ``lineage`` is ``parent_of`` (object id to parent label) and the object id of each class label.
     """
     shared = SharedSlots()
     by_name: dict[str, list[Usage]] = {}
@@ -466,6 +537,7 @@ def share(
         shapes = [each.shape for each in ordered]
         differing = differing_fields(shapes)
         slot = slot_of(first.identity, shapes, differing)
+        _check_unbounded(ctx, name, ordered, lineage, differing)
         shared.definitions[name] = slot
         shared.home[name] = homes.get(name) or module_of[first.holder.uml_class.object_id]
         for each in ordered:

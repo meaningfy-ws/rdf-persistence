@@ -34,6 +34,7 @@ PD_2_RULES = frozenset(
         "shared_slot_across_packages",
         "toolkit_mixins",
         "left_out_link",
+        "cardinality_unbounded",
         "role_run_state",  # the role rules of uml-roles-and-workflows PD-3 have no R-n
         "role_definition",
         "role_duplicate",

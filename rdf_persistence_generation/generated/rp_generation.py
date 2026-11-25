@@ -271,6 +271,8 @@ class UmlRule(str, _Enum):
     "R-25 to R-28, the default mixins, `rp_mixins`, `workflow` and a drawn toolkit parent."
     LEFT_OUT_LINK = "left_out_link"
     "R-29, a link to a class that is not generated, or to an excluded package, is left out and reported."
+    CARDINALITY_UNBOUNDED = "cardinality_unbounded"
+    "R-31, an unbounded role under an `is_a` ancestor whose role of the same name is bounded; a subclass cannot redraw a bounded role as unbounded."
     ACTIVITY_ROOT = "activity_root"
     "A root class that is an activity, which the toolkit\u0027s rules do not allow."
     ROLE_RUN_STATE = "role_run_state"
