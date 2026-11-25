@@ -242,6 +242,14 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   the analysis' private helper record goes the same way or becomes plain local data. Rejected:
   listing it in the guard's `HAND_WRITTEN` (kept for types that hold foreign runtime objects).
   Task 1.3's byte identity covers the targets' generated output, not `rp_generation.py`.
+- **D-2 (stage 1) No `make test-containers` for stage 1.** Stage 1 changes no adapter (only the
+  generator, its templates and tests); `AGENTS.md` runs the container suite when adapters change.
+  Task 1.6's line naming it is read under that rule; stage 2 changes no adapter either.
+- **D-3 (stage 1) The pre-commit GitNexus re-index was skipped.** `make reindex` failed while
+  another session's GitNexus process held the graph DB; the documented recovery
+  (`gitnexus clean --force`) would remove the index under that session. The stage's symbols did
+  not move from the stage-start impact (LOW: `cycle_components` one caller, `render` one caller in
+  `steps.py`), and `make check-all` covers the callers.
 
 ## Open Questions
 
