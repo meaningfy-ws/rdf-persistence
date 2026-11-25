@@ -15,6 +15,9 @@ from typing import Any
 
 from linkml_runtime.utils.schemaview import SchemaView
 
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import error_type, log_extra
+
 log = logging.getLogger(__name__)
 
 RELEASE_SWITCH = "TEST_RELEASE"
@@ -101,5 +104,9 @@ def after_test(
         clear()
         if nextitem is None or nextitem.module is not item.module:
             release()
-    except Exception:  # noqa: BLE001 -- releasing memory must never fail a test: logged only
-        log.warning("releasing memory after a test failed", exc_info=True)
+    except Exception as error:  # noqa: BLE001 -- releasing memory must never fail a test: logged only
+        log.warning(
+            "releasing memory after a test failed",
+            exc_info=True,
+            extra=log_extra(LogContext(step="release-test-memory", error_type=error_type(error))),
+        )
