@@ -421,6 +421,8 @@ folder by a relative path (for example `../../domain/generated/values/loan_check
 not copied into the importing target's folder, and the importing target's `index.ts` does not list
 it. When the owner does not set `typescript`, the module is copied into the importing target's
 folder as before, and so are the toolkit's own types (`rp_core.ts`, `rp_service.ts` and the rest).
+The owners are the other targets of the same run, so a run made from flags alone has none and
+copies every module.
 
 The stored-schema check and the lock stay with `rp.yaml`, whose closure holds every domain module
 and so every aggregate root: only that target declares `migrations` and writes the one lock. A

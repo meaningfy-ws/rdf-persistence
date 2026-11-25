@@ -204,14 +204,12 @@ def _typescript_folder(run: Run) -> Path | None:
 def _typescript_owners(run: Run) -> dict[str, Path]:
     """The folder of each other target of the project that writes TypeScript, by its package (PD-1).
 
-    A flags-only run has no ``pyproject.toml`` and so no owner: every module is copied.
+    The owners are the other targets of this run, so a run made from flags alone has none: every
+    module is copied.
     """
-    project = run.base / PYPROJECT
-    if not project.is_file():
-        return {}
     return {
         target.package: Path(target.typescript)
-        for target in read_targets(project)
+        for target in run.targets
         if target.typescript and target.package != run.target.package
     }
 

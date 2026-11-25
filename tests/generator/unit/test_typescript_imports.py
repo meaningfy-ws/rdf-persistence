@@ -4,14 +4,18 @@ consumer-friction PD-1 to PD-6: the owner of a module is found by its ``python_p
 project's targets; the importer drops the module's file and points its imports at the owner's folder.
 """
 
+import shutil
 from pathlib import Path
 
 import pytest
 
+from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.extensions import typescript
 from rdf_persistence_generation.generated.rp_generation import GenerationTarget
-from rdf_persistence_generation.steps import TYPESCRIPT_STEP
+from rdf_persistence_generation.pipeline import Run
+from rdf_persistence_generation.steps import TYPESCRIPT_STEP, _typescript_owners
 
 from .golden import TOY, assert_matches_toy, run_toy
 
@@ -80,3 +84,36 @@ def test_with_no_owner_the_module_is_copied_and_exported() -> None:  # TC-5
     assert "loan_checks.ts" in files, "no owner writes TypeScript, so the module is copied"
     assert 'from "./loan_checks"' in files["loan_checks_response.ts"], "the import stays local"
     assert 'export * from "./loan_checks";' in files["index.ts"], "the copy is exported"
+
+
+@pytest.mark.slow
+def test_a_flags_only_run_over_a_project_with_no_table_copies(tmp_path: Path) -> None:  # C1
+    project = tmp_path / "library"
+    shutil.copytree(TOY, project, ignore=shutil.ignore_patterns("generated", "golden", "web"))
+    (project / "pyproject.toml").write_text('[project]\nname = "toy"\n', encoding="utf-8")
+
+    code = main(
+        [
+            "--project",
+            str(project / "pyproject.toml"),
+            "--schema",
+            TECHNICAL_SCHEMA,
+            "--package",
+            "tests.fixtures.library.services.generated",
+            "--typescript-out",
+            "client/types",
+        ]
+    )
+
+    assert code == 0, "the run failed"
+    assert (project / "client/types/loan_checks.ts").is_file(), "a flags run knows no owner: copy"
+
+
+def test_the_runs_own_package_is_never_an_owner(tmp_path: Path) -> None:  # C1
+    own = toy_target(TECHNICAL_SCHEMA)
+    other = toy_target(VALUE_SCHEMA)
+    run = Run(own, TOY, tmp_path, load_schema(TOY / TECHNICAL_SCHEMA), targets=(own, other))
+
+    assert _typescript_owners(run) == {other.package: Path(str(other.typescript))}, (
+        "only the other target owns a module"
+    )

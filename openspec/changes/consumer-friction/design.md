@@ -15,10 +15,11 @@ in the same file already reads the project's targets with `read_targets(run.base
 ## Decisions
 
 - **PD-1 Who owns a module's TypeScript.** `steps._typescript_owners(run) -> dict[str, Path]`:
-  when `run.base / PYPROJECT` is a file, `{t.package: Path(t.typescript) for t in
-  read_targets(run.base / PYPROJECT) if t.typescript and t.package != run.target.package}`;
-  otherwise `{}` (a flags-only run copies, as today). Folders are relative to `run.base`, as
-  `_typescript_folder` treats them.
+  `{t.package: Path(t.typescript) for t in run.targets if t.typescript and t.package !=
+  run.target.package}`. Revised by D-5: the owners come from `run.targets` (the run's targets as
+  `generate` received them, flags applied; default `()`), never from the file, so a flags-only run
+  has none and copies, and the run's own package is never an owner. Folders are relative to
+  `run.base`, as `_typescript_folder` treats them.
 - **PD-2 The step.** `TYPESCRIPT_STEP` becomes a `Step("typescript", _write_typescript,
   writes=True)` in `steps.py`, whose `_write_typescript(run)` returns when `_typescript_folder(run)`
   is `None`, otherwise does what `render_step`'s `write` does (inside `schema_faults()`, then
@@ -175,3 +176,29 @@ integration lane, both in `make test-generator`; TC-7 in the library's unit lane
   lanes (unit 1/8–8/8, feature, generator, coverage floor) plus a local `make test-generator`,
   the lane that holds every test this change adds or edits apart from TC-7. A failure CI shows in
   the unit lanes is decided in Decide and fix; R-0001 is met for the quality half only.
+- **D-5 (lead, Decide and fix; review L2+L3, 6 findings).** Accepted, Critical: **F-1**
+  `_typescript_owners` re-reads `pyproject.toml` without the CLI flags, so a flags-only run in a
+  project whose `pyproject.toml` has no `[tool.rp-generate]` table raises an uncaught
+  `ConfigError` (it used to copy), and a one-row table whose `package` a flag overrides reads its
+  own original package as an owner. Fix: `Run` carries the project's targets as the CLI parsed
+  them (flags applied); `_typescript_owners` filters `run.targets` and never reads the file
+  (this also settles Warning **F-3**, the double read). New error-matrix row: flags-only run with
+  no table → copied, no error. Warning **F-2** (gate evidence) is the lead's: `make
+  test-generator` and every CI lane green, the 5 local failures named, before merge.
+  Under the floor: **F-4** `TsImport.module` holds a name or a relative path, told apart by a
+  leading `.` (PD-4 chose this in the gated PLAN; a separate slot would be a re-plan); **F-5**
+  `_write_typescript` repeats `render_step`'s body (one step; a `Run`-taking `render_step` can come
+  when a second step needs one); **F-6** a redundant `is not None` and one docs sentence on the
+  flags-only and no-package cases (the docs sentence is folded into F-1's fix).
+- **D-5 (lead, Decide and fix; review pass L2+L3 on PR #391).** Accepted: **C1**: a flags-only run
+  over a `pyproject.toml` with no `[tool.rp-generate]` row crashed (`_typescript_owners` re-read
+  the file without the flags, and `ConfigError` escaped `schema_faults`), and with one row plus a
+  `--package` flag the owners came from the row before the flag replaced it. Fix: `Run` carries the
+  run's targets as `generate` received them (flags applied, default `()`), and
+  `_typescript_owners(run)` reads `run.targets` instead of the file; PD-1 changes accordingly. Its
+  tests are W1's first two cases: a flags-only run over a table-less `pyproject.toml` copies, and the
+  run's own package is never an owner. Under the floor: W1's third case (a root with no
+  `python_package` still drops an owned module); W2 (procedural: the PR is merged only on green CI
+  with the `make test-generator` count in its body); S1 (the guard test's `if` between two cases);
+  S2 (PD-3 says `owners = {}` where the code defaults to `None`; `None` and `{}` mean the same, and
+  the docstring calls both folders relative to `folder` where they are relative to the project).
