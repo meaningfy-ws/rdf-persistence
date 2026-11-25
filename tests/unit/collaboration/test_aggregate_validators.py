@@ -610,7 +610,9 @@ async def test_an_empty_mapping_does_not_even_read_the_root_types(
     def never(*_: Any) -> list[str]:
         raise AssertionError("the root types were computed with no rule at all")
 
-    monkeypatch.setattr("rdf_persistence.collaboration.services.write_guards.root_types", never)
+    monkeypatch.setattr(
+        "rdf_persistence.collaboration.services.write_guards.root_types", never
+    )  # X2
     async with fake_session(tenant_iri=TENANT, guards=guarded({})) as session:
         await stored_shelf(session)
 

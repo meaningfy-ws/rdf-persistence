@@ -441,6 +441,12 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
 - **D-7 (stage 3), the D-7 scenario names only the start-up:** task 3.1's test proves a start-up
   longer than `timeout` does not raise; nothing in it delays shutdown, so the `rp-testkit` delta's
   THEN line drops "and shutdown" (no second real sleep).
+- **D-9 (stage 3, 2026-11-25), one patch marked X2 at the edge of its wording:** task 3.10's guard
+  found four unmarked patches of toolkit code. Three inject a fault no port produces (X3: the UML
+  writer's role and workflow loaders). The fourth, `test_aggregate_validators.py:613`, replaces
+  `write_guards.root_types` with a function that raises, proving the read does not happen when no
+  rule exists: a hand-off no public result shows (X2), though by a tripwire, not a pass-through
+  spy. Marked X2; the owner may prefer rewording rule 3's X2 or a seam.
 - **D-4 (stage 1 review, L2+L3, 2026-11-25), accepted findings, fixed in one pass:**
   F1 (L2) task 1.3's test lacks the deep read of each parent the task names: add it.
   F2 (L2) task 1.2's test finds the heads read by the text `"VALUES ?m"`: match the `READ_HEADS`
