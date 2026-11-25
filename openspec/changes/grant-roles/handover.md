@@ -1,29 +1,23 @@
-# Hand-over: grant-roles, after stage 1
+# Hand-over: grant-roles, after stage 2
 
 ## Done
-Stage 1 (#307: grants in a migration, the start-up report), PR #345 (merged by the watch-and-merge
-command after this note). #307 is answered on the issue with a link to `howto/migrate.adoc#roles`.
+Stage 1 (#307), PR #345, merged; #307 answered on the issue. Stage 2 (#310: roles held), PR #367
+(merged by the watch-and-merge command after this note). Task 3.1, the scenario-map rows of both
+stages, is in PR #367.
 
 ## Decided since the PLAN
-D-8, D-9, D-10, D-11 (design.md, Delivery decisions).
+D-8 to D-14 (design.md, Delivery decisions). D-13 is the developer's (E12: a role name holds no
+comma); the others are the lead's, for validation at the close (R-0007).
 
 ## Open
-- D-8 (`migration_request` HIGH impact, taken by the lead) and the two re-labelled findings of D-11
-  wait for the developer's validation at the end (R-0007).
-- Under the floor (D-11): R1-W3, R1-S4, R1-S5.
-- `aggregate-guards` (row 15) merged (#346) and was archived (#348) while stage 1 was in review;
-  stage 1 was rebased over it. Stage 2 touches `collaboration.py`, the router and `openapi.py`,
-  which it changed: read their current state, not the line numbers in design.md.
-- The GitNexus re-index failed once before the stage's last commit; the agents.adoc recovery
-  (`gitnexus clean --force`, then a forced `analyze`) restored it. Its `detect_changes` against
-  `develop` read "critical" but counted develop's newer generator files as the stage's (the index
-  predates the aggregate-guards merge); the stage's own sources are the five files of D-1 to D-5,
-  whose one HIGH impact is D-8. Re-index at stage 2 start.
+- Under the floor: R1-W3, R1-S4, R1-S5 (D-11); R2-S1, R2-S2 (D-14).
+- `make refresh-map` still lists unmapped tests of other changes (the UML and generator work,
+  `test_service_kit.py`); not grant-roles'.
 
 ## Next
-Stage 2 (#310), task 2.1, branch `feat/held-roles`. Read first: tasks.md §2, design.md D-6, D-7,
-the stage 2 T-table (T10–T13) and E10–E12, `specs/rp-access/spec.md` (roles held).
+Task 3.2 (close): reconcile `proposal.md` with what was built (P-0004), mark row 16 of
+`openspec/changes/README.md`, archive the change (`spec-stewardship`), comment on #307 and #310,
+and show the developer D-8 to D-14 for validation.
 
 ## Prompt
-Act as the team lead. Deliver stage 2 of openspec/changes/grant-roles from handover.md, then close
-with tasks 3.1 and 3.2.
+Act as the team lead. Close openspec/changes/grant-roles from handover.md: task 3.2.
