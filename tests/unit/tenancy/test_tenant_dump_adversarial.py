@@ -332,6 +332,16 @@ async def test_an_empty_source_tenant_id_is_refused_and_does_not_rewrite_everyth
     await refused(world, with_manifest(await dumped(world), source_tenant_id=empty))
 
 
+async def test_a_dump_made_under_another_activity_template_is_refused(world):
+    def under_the_tenant(payload: bytes) -> bytes:
+        manifest = TenantDump.model_validate_json(payload)
+        manifest.iri_policy.activity_template = "{tenant}/activity/{id}"
+        return manifest.model_dump_json().encode()
+
+    reason = await refused(world, edited(await dumped(world), MANIFEST, under_the_tenant))
+    assert "activity_template" in reason, "the reason names the differing field"
+
+
 async def test_extra_manifest_fields_are_refused_or_ignored_never_a_crash(world):
     def add(payload: bytes) -> bytes:
         return payload[:-1] + b', "surprise": {"nested": [1, 2]}}'
