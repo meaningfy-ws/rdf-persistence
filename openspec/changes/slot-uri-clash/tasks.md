@@ -8,7 +8,7 @@ lead does and ticks this file.
 
 ## 1. One stage — branch `change/slot-uri-clash`, one PR
 
-- [ ] 1.1 **unit + code** — design.md [PD-1](design.md#decisions) to PD-5, spec scenarios 1 and 3.
+- [x] 1.1 **unit + code** — design.md [PD-1](design.md#decisions) to PD-5, spec scenarios 1 and 3.
   First failing tests: three rows in `tests/generator/unit/test_hard_check.py`'s `FAULTS` table
   (`Fault(rule, module, old, new, element)`), rule `HardRule.SLOT_IRI` (they fail first on the
   missing enum value, then on no problem reported), all in module `books.yaml`:
@@ -30,7 +30,7 @@ lead does and ticks this file.
   after `_slot_name_problems`. Accept: the rows and the test pass;
   `test_the_toy_library_passes` and `test_the_toolkits_own_schemas_pass` pass unchanged (spec
   scenario 2); task gate green; RISK-3's list of tripped tests, or "none", in the report.
-- [ ] 1.2 **docs** — after 1.1. `docs/modules/ROOT/pages/architecture/generation.adoc`: a list item
+- [x] 1.2 **docs** — after 1.1. `docs/modules/ROOT/pages/architecture/generation.adoc`: a list item
   for rule `SLOT_IRI` right after the item that names rule `TOOLKIT_SLOT_NAME`, in its style;
   `CHANGELOG.md` under `[Unreleased]` only, in the section design.md D-1 names (RISK-1): models
   with two slots on one IRI are now refused, and how to fix them. Accept: `make check-docs` green.
@@ -39,7 +39,7 @@ lead does and ticks this file.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3
+- [x] 1.1 · [x] 1.2 · [ ] 1.3
 
 ## Verification
 
