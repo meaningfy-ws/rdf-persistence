@@ -171,3 +171,26 @@ None.
 No public API, outcome or generated meaning changes. Generated artefacts change only in the
 module that declares `more_count` and in one description text. Consumers: none affected; the
 follow-ups the owner accepted (OPEN-1 to OPEN-8) carry every behaviour change.
+
+## Reconciliation with what was delivered (2026-11-25)
+
+Delivered in three stacked PRs (`change/review-floors-s1`, `-s2`, `-s3`); the delivery decisions
+are `design.md` D-1 to D-10. Every P item of `inputs/triage.md` and all of #272, #273, #275 were
+done, with these differences from the shape:
+
+- **192-j2 narrowed (D-5):** the theme map is `tests/generator/theme_map.py`, used by the four
+  generator-side places; the two library-side places keep their own reading, because no library
+  test may import the generator (generator-package PD-9). Task 2.1's test lives in
+  `tests/generator/unit/`.
+- **The `rp-testkit` scenario names the start-up only (D-7):** no test pins the shutdown, so the
+  scenario and `user-manual/test.adoc` say start-up.
+- **Also in the generator:** `config.PYPROJECT` is a new constant (the freshness plugin imports
+  pytest, so the pipeline cannot import it from there), and 28 manifests carry new input hashes
+  only.
+- **Two recorded exceptions to `testing.adoc` rule 11** (PD-13): the wake test and the slow
+  lifespan test use real time; one patch is marked `# X2` at the edge of its wording (D-9, open
+  for the owner).
+- **Not done:** nothing the shape promised. The under-the-floor review findings are listed in
+  D-4, D-8 and D-10.
+
+What Changes, Capabilities and Impact above hold as delivered.
