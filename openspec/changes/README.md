@@ -57,7 +57,7 @@ Work outside the table, all delivered and archived: `test-suite-grooming`, `alig
 | Id | Appetite | PLAN | Next |
 |---|---|---|---|
 | `test-debt-paydown` | LARGE (three stages, one PR) | re-planned 2026-11-21, gate 8.9 accepted (DEC-5, R-0005) | ready for an epic session; scenario sign-off pending |
-| `activity-iri-policy` | SMALL (one stage) | #197; re-planned on develop 2026-11-25, attacked, gated 8.9 → 9.2, pass; OPEN-1, OPEN-5 answered | ready for an epic session; scenario sign-off pending (task 1.7) |
+| `activity-iri-policy` | SMALL (one stage) | #197; re-planned on develop 2026-11-25, attacked, gated 8.9 → 9.2, pass; OPEN-1, OPEN-5 answered | ready for an epic session; scenarios signed off 2026-11-25 |
 | `ldes-view` | MEDIUM | no | a shaping session |
 | `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
 

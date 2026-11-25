@@ -104,7 +104,8 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   policy's activity is `urn:uuid:` and a UUID; under `P` a transition with a comment, a comment and a
   replace each record an activity under the tenant, and the transition list, the comment's thread
   and the provenance read find them; a restart under another activity template fails naming it.
-  The developer signs off the scenarios before the steps are written. Lane: `make test-feature`.
+  Signed off 2026-11-25 as `features/iri_policy.feature` in this change: append those three
+  scenarios verbatim (no wording change without a new sign-off), with their steps, in one commit. Lane: `make test-feature`.
   Accept: the three pass.
 - [ ] 1.7a Integration (RISK-1), after 1.4: a new `tests/integration/store/test_activity_iri_policy.py`
   on Fuseki under `P`: IT-A1 a served commit records `t/activity/U` and `is_recorded` finds it;

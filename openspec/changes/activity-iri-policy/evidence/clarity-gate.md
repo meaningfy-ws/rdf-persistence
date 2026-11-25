@@ -33,3 +33,6 @@ not used.
 
 run 4, 2026-11-25, 8.9/10, fail (fresh reviewer, full gate on develop 12d84873)
 run 5, 2026-11-25, 9.2/10, pass (same reviewer, gaps-only re-gate)
+
+Scenario sign-off, 2026-11-25: the developer signed off task 1.7's three scenarios as written in
+`features/iri_policy.feature`.
