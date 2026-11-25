@@ -161,3 +161,9 @@ integration lane, both in `make test-generator`; TC-7 in the library's unit lane
   in its own worktree (`.worktrees/consumer-friction-372`, branch `change/consumer-friction-372`),
   its commit cherry-picked onto `change/consumer-friction`. Tester: no, SMALL. Review set: one pass
   (L2 with L3, `develop/agents.adoc#challenge`).
+- **D-3 (lead, Build).** Against `develop`, `make test-changed` cannot map the generator's
+  changes and falls back to the whole suite (32 min in task 1.1). Tasks 1.2 and 1.4 run their gate
+  with `BASE=<the stage head before the task>`, so it maps only the task's own files. The three
+  tests that failed under load in 1.1's gate (`test_transaction_attack.py` twice,
+  `test_sparql.py::test_a_pattern_too_long_for_the_parser_is_refused_with_the_advice_to_split`)
+  pass alone; the stage's `make check-all` decides whether they are flakes.

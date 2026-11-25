@@ -419,4 +419,7 @@ def test_the_service_schema_is_an_input_of_the_toy_manifest() -> None:
 def test_a_toy_generation_writes_rp_service_ts(toy_copy: Path) -> None:
     assert main(["--project", str(toy_copy / "pyproject.toml")]) == 0, "must generate"
     written = list(toy_copy.rglob("rp_service.ts"))
-    assert len(written) == 1, f"expected one rp_service.ts: {written}"
+    targets = [t for t in read_targets(toy_copy / "pyproject.toml") if t.typescript]
+    assert len(written) == len(targets), (
+        f"expected one rp_service.ts per TypeScript target: {written}"
+    )
