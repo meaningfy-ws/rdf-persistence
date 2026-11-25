@@ -343,11 +343,14 @@ def _three_placed(run: Run) -> None:
 @then("the comment's thread names the comment's activity")
 def _thread_names_the_comment(run: Run) -> None:
     assert run.book is not None, "the book was created"
+    assert run.tenant is not None, "the library was created"
     thread = _with_collaboration(run, lambda c: c.thread(run.book.json()["id"]))
-    assert run.comment in [c.id for c in thread], "the thread holds the comment"
-    activity = _generating(_provenance(run), run.comment)
-    assert re.fullmatch(f".*/activity/{UUID}", activity), (
-        "the comment's recorded activity is the one placed under the tenant"
+    read = [c.id for c in thread if c.id == run.comment]
+    assert read, "the thread holds the comment"
+    # A Comment has no activity slot, so the step reads its generating activity from provenance.
+    activity = _generating(_provenance(run), read[0])
+    assert re.fullmatch(f"{re.escape(run.tenant.json()['id'])}/activity/{UUID}", activity), (
+        f"the comment's recorded activity is placed under the library: {activity}"
     )
 
 

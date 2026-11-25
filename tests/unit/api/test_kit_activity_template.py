@@ -8,9 +8,8 @@ from tests.toy_service import ToyService
 
 
 def test_a_kit_whose_schema_root_is_minted_inside_the_activity_template_does_not_start():
-    with pytest.raises(InvalidIri, match="activity_template") as caught:
+    with pytest.raises(InvalidIri, match=r"IRIs of 'book' fall inside the activity_template"):
         ToyService(iri_policy=IriPolicy(activity_template="{tenant}/books/{id}"))
-    assert "book" in str(caught.value), "names the class's type"
 
 
 def test_a_kit_whose_activity_segment_no_root_uses_starts():
