@@ -712,7 +712,7 @@ classes:
 
 A role cannot be redrawn from a bounded ancestor's to an unbounded one (`0..5` to `0..*`; or `0..1`
 to `0..*` when another class bounds the same role at another maximum, so the ancestor's 1 is
-written), because LinkML would inherit the ancestor's maximum (R-30): the run fails with
+written), because LinkML would inherit the ancestor's maximum (R-31): the run fails with
 `[cardinality_unbounded] Derived.part: ...`. A class that is not an `is_a` descendant is not
 affected.
 

@@ -2101,7 +2101,7 @@ enums:
         meaning: rp:UmlRuleLeftOutLink
       cardinality_unbounded:
         title: Cardinality unbounded
-        description: R-30, an unbounded role under an `is_a` ancestor whose role of the same name is bounded; a subclass cannot redraw a bounded role as unbounded.
+        description: R-31, an unbounded role under an `is_a` ancestor whose role of the same name is bounded; a subclass cannot redraw a bounded role as unbounded.
         meaning: rp:UmlRuleCardinalityUnbounded
       activity_root:
         title: Activity root

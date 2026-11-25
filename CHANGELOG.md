@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Regenerate your model: slots whose usages differ gain explicit cardinalities. An unbounded role
   under a bounded `is_a` ancestor's (`0..5` redrawn `0..*`; or `0..1` redrawn `0..*` when another
   class bounds the same role at another maximum) now fails conversion with `cardinality_unbounded`
-  (R-30); bound the role or unbind the ancestor's.
+  (R-31); bound the role or unbind the ancestor's.
 
 ## [0.12.0] - 2026-11-24
 

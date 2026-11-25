@@ -1,4 +1,4 @@
-"""TC-5, TC-9: the conversion rules R-1..R-30, one table (PD-5..PD-21, D-5, D-10..D-14).
+"""TC-5, TC-9: the conversion rules R-1..R-31, one table (PD-5..PD-21, D-5, D-10..D-14).
 
 Each row builds a ``UmlModel`` directly (the reader is not involved), converts it and checks the
 fragment of LinkML the rule's column promises, or the problem its failure branch gives. The last
@@ -1756,7 +1756,7 @@ ROWS_CARDINALITY = [
         UmlRule.CARDINALITY_UNBOUNDED,
         _redrawn("0..5", "0..*"),
         _unbounded("Derived", "Base", "5"),
-        cites="R-30",
+        cites="R-31",
     ),
     Row(
         "E18: an inherited 2..* role redrawn as 0..* writes minimum_cardinality 0",
@@ -1783,7 +1783,7 @@ ROWS_CARDINALITY = [
         UmlRule.CARDINALITY_UNBOUNDED,
         _redrawn("0..1", "0..*", unrelated="0..3"),
         _unbounded("Derived", "Base", "1"),
-        cites="R-30",
+        cites="R-31",
     ),
     Row(
         "E22: 0..0 reads as 0..1, the parse limit that predates this change",
@@ -1796,7 +1796,7 @@ ROWS_CARDINALITY = [
         UmlRule.CARDINALITY_UNBOUNDED,
         _redrawn("0..5", "0..*", middle=True),
         _unbounded("Derived", "Base", "5"),
-        cites="R-30",
+        cites="R-31",
     ),
 ]
 

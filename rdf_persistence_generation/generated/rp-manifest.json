@@ -111,7 +111,7 @@
     },
     {
       "path": "rdf_persistence_generation/model/rp_generation.yaml",
-      "sha256": "6532d29d0d974ed5427ed72b23ce0b18550ba9f3b4f1384a006bb9713764290e"
+      "sha256": "72e0af336ebe13356dcbac6999cd73046958df551472529ad44ce5aaea29b355"
     },
     {
       "path": "rdf_persistence_generation/module_cycles.py",
@@ -257,7 +257,7 @@
     },
     {
       "path": "rdf_persistence_generation/generated/rp_generation.py",
-      "sha256": "d57d83a84652844e792769217379bf4763976a8366d4fbeff31904a0e296887e"
+      "sha256": "98f8ff65287182e6b3e6312e3f253cf8f7d334a9cec11df14861abb0ca51acc9"
     },
     {
       "path": "rdf_persistence_generation/generated/shapes.ttl",
