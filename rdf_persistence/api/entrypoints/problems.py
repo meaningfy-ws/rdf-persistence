@@ -9,7 +9,7 @@ route lacks) and of the consumer's own routes are problems too.
 
 import logging
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from http import HTTPStatus
 
 from fastapi import FastAPI, Request
@@ -24,7 +24,7 @@ from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import (
     ProblemKind,
     ProblemSlug,
 )
-from rdf_persistence.collaboration.services.generated.rp_collaboration_services import Referrer
+from rdf_persistence.collaboration.services.referrer_naming import referrer_item
 from rdf_persistence.core.domain import exceptions as errors
 from rdf_persistence.core.domain.exceptions import PersistenceError
 from rdf_persistence.core.domain.media import PROBLEM_JSON
@@ -171,13 +171,20 @@ def problem_for(base: str, kind: ProblemKind, detail: str | None = None) -> Prob
     )
 
 
-def in_use_problem(base: str, error: errors.InUse) -> InUseProblem:
+def in_use_problem(
+    base: str,
+    error: errors.InUse,
+    locate: Callable[[str, str], tuple[str, str] | None] | None = None,
+) -> InUseProblem:
     """The problem of a refused removal (PD-11): no ``detail``, the members say who refers.
 
     ``error.referrers`` are the readable referrers the guard found, and the counts say how many more
     exist, named or not; only structured members carry them, as the text of a 409 is never sent.
     An unfiltered error (no ``readable`` callable judged its referrers) names nobody: every
     referrer aggregate is counted in ``hidden_count`` (D-10, fail closed).
+
+    ``locate(class name, IRI)`` gives the ``(rp_path, id)`` a named referrer is served at, which sets
+    both location fields of its item; without it, or when it gives ``None``, neither is set.
     """
     plain = problem_for(base, IN_USE)
     if not error.filtered:
@@ -191,7 +198,7 @@ def in_use_problem(base: str, error: errors.InUse) -> InUseProblem:
     return InUseProblem(
         **plain.model_dump(),
         referrers=[
-            Referrer(referrer=iri, referrer_class=cls, referrer_slot=slot)
+            referrer_item(iri, cls, slot, locate(cls, iri) if locate else None)
             for iri, cls, slot in error.referrers
         ],
         more_count=error.more_count,
@@ -235,8 +242,15 @@ def validation_detail(error: ValidationError) -> str:
     return "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in error.errors())
 
 
-def install_problem_handlers(app: FastAPI, base: str) -> None:
-    """Make ``app`` answer every mapped toolkit error, every validation error and every unknown path as a problem."""
+def install_problem_handlers(
+    app: FastAPI,
+    base: str,
+    locate: Callable[[str, str], tuple[str, str] | None] | None = None,
+) -> None:
+    """Make ``app`` answer every mapped toolkit error, every validation error and every unknown path as a problem.
+
+    ``locate`` is given to ``in_use_problem``, so the referrers it names carry the address they are served at.
+    """
 
     async def toolkit_error(_: Request, error: Exception) -> Response:
         kind = kind_of(error)
@@ -257,7 +271,7 @@ def install_problem_handlers(app: FastAPI, base: str) -> None:
                 extra=log_extra(context),
             )
         if isinstance(error, errors.InUse):
-            return problem_response(in_use_problem(base, error))
+            return problem_response(in_use_problem(base, error, locate))
         return problem_response(problem_for(base, kind, str(error)))
 
     async def invalid_body(_: Request, error: Exception) -> Response:

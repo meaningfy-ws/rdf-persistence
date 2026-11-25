@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   meet at one version without patching the store. Hold `update` inside `kit.relay.paused()`. The
   testing page now shows how to aim a fault at the request with `kit.relay.paused()` (#319). See
   "Test the service".
+- **Referrers say where to read them** (`consumer-test-gaps` stage 2, #320). `Referrer` gains the
+  optional `referrer_rp_path` and `referrer_id`, set together in the `in-use` problem and in
+  `Collaboration.referrers` when the referrer's class is a served root and its IRI is an aggregate
+  IRI of the policy, so `GET {tenant_segment}/{t}/{referrer_rp_path}/{referrer_id}` reads it.
+  `Iris.aggregate_id_of(iri)` gives the id an aggregate IRI ends in; `install_problem_handlers` and
+  `in_use_problem` take an optional `locate`, which `install_service` wires. Neither field is set
+  for an unserved class, a foreign IRI or an unfiltered refusal, and the other members are unchanged.
 
 ## [0.12.0] - 2026-11-24
 

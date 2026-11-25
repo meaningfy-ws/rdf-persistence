@@ -338,6 +338,10 @@ export interface Referrer {
   referrer_class: string;
   /** The name of the slot that holds the reference; its IRI when the schema does not know the slot. */
   referrer_slot: string;
+  /** The path the service serves the referrer's class at, with ``referrer_id`` the address of the referrer; set together with ``referrer_id``, and absent when the class is not served or the IRI is not an aggregate IRI the policy mints. */
+  referrer_rp_path?: string;
+  /** The id of the referrer in its path, set together with ``referrer_rp_path`` and absent when that is. */
+  referrer_id?: string;
 }
 
 /** The aggregates that point at one resource and that the caller may read, and the number of referrers left out because the caller may not read them. */

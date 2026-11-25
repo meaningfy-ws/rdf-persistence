@@ -583,6 +583,14 @@ class Iris:
         found = self._aggregate_re.fullmatch(iri)
         return found is not None and self._belongs(_parts(found), tenant)
 
+    def aggregate_id_of(self, iri: str) -> str | None:
+        """The id an aggregate IRI ends in, or ``None`` for any other IRI (a tenant root, a foreign IRI).
+
+        It does not check the tenant: the IRI comes from the tenant's own read of its referrers.
+        """
+        found = self._aggregate_re.fullmatch(str(iri))
+        return None if found is None else _parts(found).id
+
     def is_loaded_graph(self, tenant: str | None, iri: str, root: str | None = None) -> bool:
         """True when ``iri`` is what the toolkit mints as a loaded graph of ``tenant`` (and of ``root``, when given)."""
         tenant = None if tenant is None else str(tenant)

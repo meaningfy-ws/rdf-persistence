@@ -1346,6 +1346,14 @@
     required: true
     multivalued: false
     range: string
+  - name: referrer_id
+    required: false
+    multivalued: false
+    range: string
+  - name: referrer_rp_path
+    required: false
+    multivalued: false
+    range: string
   - name: referrer_slot
     required: true
     multivalued: false

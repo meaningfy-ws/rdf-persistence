@@ -106,6 +106,17 @@ async def test_the_readable_referrers_are_those_the_caller_may_read(rules, sessi
     assert await ada.readable_referrers(S1, rows) == {B1, B2}, "ada may read both"
 
 
+async def test_a_listed_referrer_carries_the_address_it_is_served_at(ada, session):  # E9
+    await put_book(session, B1, shelf=S1)
+
+    listed = await ada.referrers(S1)
+
+    (row,) = listed.referrers
+    assert row.referrer_rp_path == "books", "the path the book class is served at"
+    assert row.referrer_id == B1.rsplit("/", 1)[1], "the id its IRI ends in"
+    assert f"{TENANT}/{row.referrer_rp_path}/{row.referrer_id}" == B1, "together they are its IRI"
+
+
 async def test_no_rows_have_no_readable_referrers(ada):
     assert await ada.readable_referrers(S1, []) == set()
 

@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
+from functools import partial
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -21,6 +22,7 @@ from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateValidator,
     DeleteValidator,
 )
+from rdf_persistence.collaboration.services.referrer_naming import located
 from rdf_persistence.core.domain.exceptions import InvalidIri
 from rdf_persistence.events.services.events import EventBus
 from rdf_persistence.files.services.files import FileStore
@@ -173,7 +175,7 @@ def install_service(
     )
     kit.bus = bus
     _require_same_principals(kit)
-    install_problem_handlers(app, settings.base)
+    install_problem_handlers(app, settings.base, partial(located, kit.view, kit.iris))
     app.include_router(build_router(kit), prefix=prefix)
     install_openapi(app, kit)
     _run_at_startup(app, kit)

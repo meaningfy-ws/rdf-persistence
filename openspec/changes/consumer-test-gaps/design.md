@@ -275,3 +275,9 @@ None. Both rounds answered every concern (`inputs/qa.md`).
   `relay.run_once()` after the block; it waits with `testkit.wait_until_async` until the live,
   woken relay has set `relayed_at`. The "Aim a fault" example on `user-manual/test.adoc` does the
   same, and its text and example agree.
+- **D-13 (stage 2, builder, confirmed by the lead):** task 2.4 named `reference/http-api.adoc`, but
+  that page holds no text on the `in-use` problem or the referrers listing. The two fields are
+  documented where those already are: `architecture/api.adoc` (the 409 `in-use` members),
+  `howto/reverse-references.adoc` (the `Referrer` item) and `user-manual/store-and-read.adoc` (the
+  example 409 body). The item is built by one helper, `referrer_item`, beside `located` in
+  `referrer_naming.py`, so the problem and the listing cannot drift (D-6).

@@ -30,6 +30,8 @@ classes:
       - referrer
       - referrer_class
       - referrer_slot
+      - referrer_rp_path
+      - referrer_id
     slot_usage:
       referrer:
         required: true
@@ -83,6 +85,21 @@ slots:
       The name of the slot that holds the reference; its IRI when the schema does not know the
       slot.
     slot_uri: rp:referrerSlot
+    range: string
+  referrer_rp_path:
+    title: Referrer path
+    description: >-
+      The path the service serves the referrer's class at, with ``referrer_id`` the address of the
+      referrer; set together with ``referrer_id``, and absent when the class is not served or the IRI
+      is not an aggregate IRI the policy mints.
+    slot_uri: rp:referrerRpPath
+    range: string
+  referrer_id:
+    title: Referrer id
+    description: >-
+      The id of the referrer in its path, set together with ``referrer_rp_path`` and absent when that
+      is.
+    slot_uri: rp:referrerId
     range: string
   referrers:
     title: Referrers
