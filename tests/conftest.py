@@ -51,8 +51,12 @@ settings.load_profile(
 )
 
 # Freshness of the generated code (PD-26) is checked at the start of every session; pytester runs
-# the plugin's own tests.
-pytest_plugins = ["pytester", "rdf_persistence_generation.testkit.freshness"]
+# the plugin's own tests. The memory plugin releases memory between tests and modules (PD-9).
+pytest_plugins = [
+    "pytester",
+    "rdf_persistence_generation.testkit.freshness",
+    "rdf_persistence.testkit.memory_plugin",
+]
 
 # The container fixtures plugin (PD-16). Only tests/integration/, tests/e2e/, tests/perf/store/ and
 # tests/generator/e2e/ load it, so the unit lanes, which ignore those folders (the Makefile's

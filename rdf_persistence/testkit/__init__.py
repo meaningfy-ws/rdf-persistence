@@ -20,6 +20,7 @@ from rdf_persistence.testkit.fakes import (
 )
 from rdf_persistence.testkit.generated.rp_testkit import OpenedStream, StreamEvent
 from rdf_persistence.testkit.guards import assert_models_generated
+from rdf_persistence.testkit.memory import clear_caches, release_memory
 from rdf_persistence.testkit.messages import RecordingObserver
 from rdf_persistence.testkit.model_shape import model_schema_diff, model_shape_diff
 from rdf_persistence.testkit.network import no_network
@@ -78,6 +79,7 @@ __all__ = [
     "new_key",
     "access_token",
     "class_shapes",
+    "clear_caches",
     "create_machine_user",
     "fake_session",
     "model_schema_diff",
@@ -86,6 +88,7 @@ __all__ = [
     "open_event_stream",
     "provision_project",
     "read_snapshot",
+    "release_memory",
     "shared_key",
     "snapshot_diff",
     "wait_until",
