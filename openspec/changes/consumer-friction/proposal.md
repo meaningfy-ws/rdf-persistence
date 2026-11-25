@@ -115,3 +115,32 @@ whose name holds "shapes" (#372): the escape, `exempt=`, exists but is documente
   scenario-map rows.
 - Consumers: MWB2 regenerates; its `services/generated/fragment_checks.ts` is removed and imports
   of those types move to `domain/generated/values/` (RISK-1).
+
+## Reconciliation (as delivered)
+
+Delivered in PR #391 (one stage, SMALL; #371 and #372 closed on merge). Decisions taken in delivery
+are `design.md` D-1 to D-4. Acceptance demo: `evidence/acceptance.md`; docs owed:
+`evidence/docs-owed.md` (none beyond stage 1). TODO(lead): confirm the merge, the PR number of the
+archive and the review and CI outcome before archiving.
+
+| Item | Final state | PR |
+|---|---|---|
+| DEC-1 import from the owner's TypeScript folder, no copy | Delivered: `_typescript_owners` and `_write_typescript` in `steps.py`, `owners` and `folder` in `typescript.render`; the toy's technical target writes no `loan_checks.ts` | #391 |
+| DEC-2 owner outside the project or without `typescript`: copy | Delivered: such a package is not in `owners`, so the module is written as before; the docs say so | #391 |
+| DEC-3 importer's `index.ts` does not export it | Delivered: no code needed (PD-5), pinned by a test | #391 |
+| DEC-4 #372 by documentation, `exempt=` | Delivered: docstring of `assert_models_generated`, user manual example, `generation.adoc`; a test pins the `*shapes*.ttl` case; `guards.py` code unchanged | #391 |
+| DEC-5 toy targets set `typescript` | Delivered: `pyproject.toml`, `TOY_TS`, two committed TypeScript trees; `make typecheck-ts` compiles the cross-folder import (TC-3: TODO(lead) CI "types" job result) | #391 |
+| DEC-6 BREAKING, flagged | Delivered: commit and `CHANGELOG.md` *BREAKING* line with the migration; PR names MWB2 `v2-05` | #391 |
+| Spec scenario 1, owner writes TypeScript | Proved: `test_typescript_imports.py` (TC-1), toy runs matching committed trees (TC-2), `make typecheck-ts` (TC-3) | #391 |
+| Spec scenario 2, owner's folder under importer's | Proved: `typescript.render` on a nested layout gives `./values/loan_checks` (TC-4) | #391 |
+| Spec scenario 3, owner writes no TypeScript | Proved: `owners={}` writes and exports the module (TC-5) | #391 |
+| Spec scenario 4, old copy removed | Proved: `tests/generator/integration/test_stale_typescript_copy.py` (TC-6) | #391 |
+| Docs: `generation.adoc`, `user-manual/generate.adoc`, `user-manual/generated-classes.adoc`, `assert_models_generated` docstring | Delivered | #391 |
+| `CHANGELOG.md` `[Unreleased]` *BREAKING* | Delivered | #391 |
+| Requirement merged into `rp-generation` | TODO(lead): done at archive | TODO(lead) |
+
+What Changes, Capabilities and the spec delta are true of the code. Impact grew by two older tests
+updated for the toy's three TypeScript targets (`tests/generator/unit/test_placement.py` and
+`test_typescript_service_types_adversarial.py`), the regenerated `rp-manifest.json` files and the
+`rp_generation` artefacts (generator inputs, RISK-3), and seven `tests/audit/scenario-map.csv` rows.
+Not delivered as shaped: nothing. Left open: TODO(lead) review findings under the floor, if any.
