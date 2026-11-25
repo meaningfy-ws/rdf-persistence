@@ -85,7 +85,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   `test_a_follower_resumes_after_an_activity_iri_of_the_policy`: on the toy service under `P`, a
   follower with `Last-Event-ID` the placed IRI of an earlier commit receives the two later events
   once; with `urn:uuid:<that U>` it is reset. Accept: passes; `tests/unit/events/` passes unchanged.
-- [ ] 1.6 Unit, tenancy (PD-8, DEC-3), after 1.2; parallel to 1.4. First, failing:
+- [x] 1.6 Unit, tenancy (PD-8, DEC-3), after 1.2; parallel to 1.4. First, failing:
   `tests/unit/tenancy/test_iri_policy_guard.py`
   `test_a_changed_activity_template_refuses_start_up_naming_it`: started under the default, then
   under `P` → `IriPolicyChanged` naming `activity_template`. Then in
@@ -123,7 +123,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 1.6 · [ ] 1.4 · [ ] 1.5 · [ ] 1.7a · [ ] 1.7 · [ ] 1.8 · [ ] 1.9
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.6 · [x] 1.4 · [x] 1.5 · [ ] 1.7a · [ ] 1.7 · [x] 1.8 · [ ] 1.9
   (1.6's first three tests need only 1.2; its restore test needs 1.4; 1.4 and 1.5 may run in
   parallel after 1.3.)
 
