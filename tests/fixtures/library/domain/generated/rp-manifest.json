@@ -67,7 +67,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/collaboration/rp_collaboration_services.yaml",
-      "sha256": "a47ed771fa9d8f09f44e42c58f40deb7955f7fdb660afff6fa82081037d4732d"
+      "sha256": "c89ce9ef36edd71fa5ac8ffdf9d032c0cb10506f16f37b1e7357bc4d5cb12ba0"
     },
     {
       "path": "rdf_persistence/model/technical/events/rp_events_services.yaml",
@@ -549,7 +549,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_service.ts",
-      "sha256": "35f0c9f276fcb2994aeb061130e4f04fda718de9570829d845871d4ca64617dd"
+      "sha256": "a7c0781d8bfca7bbd51e5edb009a5ea4175c2ad3c65c0b941fbbc69a4a81ee5f"
     },
     {
       "path": "web/src/domain/generated/rp_tenancy.ts",

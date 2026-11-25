@@ -77,6 +77,12 @@
       "referrer_class": {
          "@id": "referrerClass"
       },
+      "referrer_id": {
+         "@id": "referrerId"
+      },
+      "referrer_rp_path": {
+         "@id": "referrerRpPath"
+      },
       "referrer_slot": {
          "@id": "referrerSlot"
       },

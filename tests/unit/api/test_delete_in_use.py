@@ -11,6 +11,7 @@ from rdflib import URIRef
 from rdf_persistence import Action, GrantSet
 from rdf_persistence.access.domain.generated.rp_access import Prohibition
 from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import InUseProblem
+from rdf_persistence.api.entrypoints.problems import in_use_problem
 from rdf_persistence.core.domain.exceptions import InUse
 from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.schema.services import vocabulary as v
@@ -19,6 +20,7 @@ from tests.toy import graph_of
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, assert_problem, principal_of
 from tests.unit.collaboration.collaboration_data import annotation
 
+BASE = "https://example.org/library/"
 AUTHOR_BODY = {"label": "Herbert", "description": "An author."}
 
 
@@ -156,6 +158,58 @@ async def test_a_comment_on_the_author_goes_with_it(service, client):  # E9
     assert removed.status_code == 204, removed.text
     async with service.kit.session(lib.tenant, principal_of("ada")) as session:
         assert not await session.heads([comment]), "the comment went with the author"
+
+
+async def test_a_named_referrer_carries_the_address_it_is_served_at(service, client):  # E9 (ctg)
+    lib = await library(service, client)
+    b1 = await lib.book(written_by=lib.author)
+
+    body = in_use(await lib.delete(lib.author))
+
+    (row,) = body.referrers or []
+    assert (row.referrer_rp_path, row.referrer_id) == ("books", b1.rsplit("/", 1)[1]), (
+        "the path and the id of the book"
+    )
+    url = f"{lib.path}/{row.referrer_rp_path}/{row.referrer_id}"
+    found = await client.get(url, headers=lib.headers)
+    assert found.status_code == 200, f"the address built from the fields is served: {found.text}"
+
+
+async def test_the_listing_of_referrers_carries_the_address_it_is_served_at(
+    service, client
+):  # E9 (ctg)
+    lib = await library(service, client)
+    await lib.book(written_by=lib.author)
+    tenant_id = lib.path.rsplit("/", 1)[1]
+    authorised = await service.kit.require(lib.headers["Authorization"], tenant_id, Action.READ)
+
+    async with service.kit.collaboration(authorised) as collaboration:
+        found = await collaboration.referrers(lib.author)
+
+    (row,) = found.referrers or []
+    assert row.referrer_rp_path == "books", "the path of the book class"
+    url = f"{lib.path}/{row.referrer_rp_path}/{row.referrer_id}"
+    served = await client.get(url, headers=lib.headers)
+    assert served.status_code == 200, f"the address built from the fields is served: {served.text}"
+
+
+async def test_an_unfiltered_in_use_names_nobody_and_locates_nobody(service, client):  # E14
+    lib = await library(service, client)
+    await lib.book(written_by=lib.author)
+    async with service.kit.session(lib.tenant, principal_of("ada")) as session:
+        version = (await session.get_graph(lib.author))[2]
+    asked: list[tuple[str, str]] = []
+
+    def locate(class_name: str, iri: str) -> None:
+        asked.append((class_name, iri))
+
+    with pytest.raises(InUse) as refused:
+        await service.kit.remove_with_files(lib.tenant, "ada", lib.author, version)
+
+    problem = in_use_problem(BASE, refused.value, locate)
+    assert problem.referrers == [], "nobody is named"
+    assert problem.hidden_count == 1, "the referrer is counted as hidden"
+    assert asked == [], "nothing is located when nobody is named"
 
 
 async def test_a_stale_version_is_a_conflict_not_in_use_even_with_a_referrer(service, client):

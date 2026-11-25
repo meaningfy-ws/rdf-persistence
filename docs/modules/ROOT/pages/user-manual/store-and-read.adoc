@@ -392,7 +392,7 @@ is referred to by one book the caller may read and one it may not:
   "type": "https://…/problems/in-use",
   "title": "In use",
   "status": 409,
-  "referrers": [{"referrer": "https://…/books/b1", "referrer_class": "Book", "referrer_slot": "written_by"}],
+  "referrers": [{"referrer": "https://…/books/b1", "referrer_class": "Book", "referrer_slot": "written_by", "referrer_rp_path": "books", "referrer_id": "b1"}],
   "more_count": 0,
   "hidden_count": 1
 }
@@ -400,7 +400,10 @@ is referred to by one book the caller may read and one it may not:
 
 * `referrers` holds the readable referrers, sorted by IRI, one item per referrer and slot. The
   member is always there, and is `[]` when none is readable; `more_count` and `hidden_count` are
-  always there too, 0 when there is nothing to count.
+  always there too, 0 when there is nothing to count. Each item carries `referrer_rp_path` and
+  `referrer_id` (here `books` and `b1`), so `GET {tenant_segment}/{tenant}/{referrer_rp_path}/{referrer_id}`
+  reads the referrer. Both are absent, never one alone, for a referrer whose class is not served or
+  whose IRI is not an aggregate IRI of the IRI policy.
 * `hidden_count` is the number of referrer aggregates the caller may not read. When only
   unreadable ones refer to the author, `referrers` is `[]` and `hidden_count` is their
   number: the caller learns that the author is in use, not by what.

@@ -60,6 +60,8 @@ class Referrer(ConfiguredBaseModel):
     referrer: str = _Field(default=..., title="Referrer", description="The IRI of the aggregate that holds the reference.")
     referrer_class: str = _Field(default=..., title="Referrer class", description="The name of the schema class of the aggregate that holds the reference; its IRI when the schema does not know the class.")
     referrer_slot: str = _Field(default=..., title="Referrer slot", description="The name of the slot that holds the reference; its IRI when the schema does not know the slot.")
+    referrer_rp_path: _Optional[str] = _Field(default=None, title="Referrer path", description="The path the service serves the referrer\u0027s class at, with ``referrer_id`` the address of the referrer; set together with ``referrer_id``, and absent when the class is not served or the IRI is not an aggregate IRI the policy mints.")
+    referrer_id: _Optional[str] = _Field(default=None, title="Referrer id", description="The id of the referrer in its path, set together with ``referrer_rp_path`` and absent when that is.")
 
 
 class ReferrerList(ConfiguredBaseModel):

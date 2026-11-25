@@ -160,7 +160,9 @@ the holder. `refused` ("Refused") answers a delete that a rule of the applicatio
 carries the rule's message as its `detail`: it is text the application wrote. A further one, `in-use` ("In use"), answers the `DELETE` of an aggregate of a class annotated
 `rp_on_referenced_delete: refuse` while another aggregate refers to it. It is the one 409 that says
 more, in extension members and not in a `detail` (it has none): `referrers` (the readable referrers
-as `Referrer` items, capped by `limits.max_named_referrers`, `[]` when none is readable),
+as `Referrer` items, capped by `limits.max_named_referrers`, `[]` when none is readable; each item
+carries `referrer_rp_path` and `referrer_id`, the address to read it at, unless its class is not
+a served root or its IRI is not an aggregate IRI of the policy, when it carries neither),
 `more_count` (readable referrer aggregates left out by the cap) and `hidden_count` (referrer
 aggregates the caller may not read). The members are filtered by what the caller may read first,
 so the answer does not name what `referrers` would hide. An `InUse` raised by a removal made

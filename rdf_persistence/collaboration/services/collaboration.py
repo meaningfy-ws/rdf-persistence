@@ -6,7 +6,8 @@ unit of work, which bypass this class, are unaffected. The reads and the cascade
 collections are ``ReferenceCollections``'s; this class hands them over, so the public face is one.
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from functools import partial
 
 from linkml_runtime.utils.schemaview import SchemaView
 
@@ -21,11 +22,10 @@ from rdf_persistence.collaboration.domain.generated.rp_workflow import Transitio
 from rdf_persistence.collaboration.services.discussion import Discussion
 from rdf_persistence.collaboration.services.generated.rp_collaboration_services import (
     MemberList,
-    Referrer,
     ReferrerList,
 )
 from rdf_persistence.collaboration.services.reference_collections import ReferenceCollections
-from rdf_persistence.collaboration.services.referrer_naming import named
+from rdf_persistence.collaboration.services.referrer_naming import located, named, referrer_item
 from rdf_persistence.collaboration.services.transitions import Transitions
 from rdf_persistence.collaboration.services.workflows import Workflows
 from rdf_persistence.core.domain.exceptions import BadQuery, InvalidIri
@@ -120,7 +120,13 @@ class Collaboration:
         self._require_names(class_name, slot)
         rows = await self._session.referrer_rows(iri)
         readable = await self.readable_referrers(iri, rows)
-        return self._listed(named(self._view, rows), class_name, slot, readable)
+        return self._listed(
+            named(self._view, rows),
+            class_name,
+            slot,
+            readable,
+            partial(located, self._view, self._iris),
+        )
 
     async def readable_referrers(self, iri: str, rows: Sequence[ReferrerRow]) -> set[str]:
         """Of the referrers of ``iri`` in ``rows``, the IRIs the caller may read (PD-9, DEC-3).
@@ -246,11 +252,16 @@ class Collaboration:
         class_name: str | None,
         slot: str | None,
         readable: set[str],
+        locate: Callable[[str, str], tuple[str, str] | None],
     ) -> ReferrerList:
-        """The items of the ``readable`` referrers, narrowed and sorted, and the number of other referrers (PD-26)."""
+        """The items of the ``readable`` referrers, narrowed and sorted, and the number of other referrers (PD-26).
+
+        ``locate(class name, IRI)`` gives the ``(rp_path, id)`` a referrer is served at, or ``None``:
+        both fields of an item are set from it, or neither.
+        """
         referrers = {referrer for referrer, _, _ in named}
         items = [
-            Referrer(referrer=r, referrer_class=c, referrer_slot=s)
+            referrer_item(r, c, s, locate(c, r))
             for r, c, s in sorted(named)
             if r in readable and class_name in (None, c) and slot in (None, s)
         ]

@@ -55,6 +55,12 @@ Each `Referrer` holds `referrer` (the IRI of the aggregate), `referrer_class` (t
 schema class, here `Book`) and `referrer_slot` (the name of the slot that holds the reference,
 here `shelf`). A class or a slot the schema does not know is given as its IRI.
 
+A `Referrer` also holds `referrer_rp_path` (the path the service serves the referrer's class at,
+here `books`) and `referrer_id` (the id its IRI ends in), so a client reads the referrer at
+`{tenant_segment}/{tenant}/{referrer_rp_path}/{referrer_id}`. They are set together, and both are
+`None` when the class is not a served root or the IRI is not an aggregate IRI of the policy. A
+root of several classes gives one item per class, and only the served class's item has them.
+
 * A referrer that refers by two slots is listed twice, once per slot.
 * When a part of an aggregate holds the reference, the item names the aggregate, with the part's
   slot. A note in a chapter of book b2 that is `about` book b1 makes b2 a referrer of b1:

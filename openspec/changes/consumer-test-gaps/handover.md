@@ -1,20 +1,22 @@
-# Hand-over: consumer-test-gaps, after stage 1
+# Hand-over: consumer-test-gaps, after stage 2
 
 ## Done
-Stage 1 (testkit: `FakeStore.hold`, the `relay.paused()` docs and feature test), PR #355 (merged
-on a passing local `make check-all`, P-0021, after this note).
+Stage 2 (API: `referrer_rp_path` and `referrer_id` on `Referrer`), PR #360 (merged on a passing
+local `make check-all`, P-0021, after this note). Stage 1 is PR #355.
 
 ## Decided since the PLAN
-D-9, D-10, D-11, D-12 (design.md, Delivery decisions).
+D-9 to D-14 (design.md, Delivery decisions).
 
 ## Open
-Stages 2 and 3 are already built in `.worktrees/ctg-2` and `.worktrees/ctg-3` (D-9); each still
-needs its review pass, fix pass, gates and PR, in that order. The scenario map lacks rows for 84
-tests that predate this change (D-10): a follow-up, not this EPIC.
+Stage 3 is built and committed in `.worktrees/ctg-3` (D-9). It still needs its rebase, gates,
+review pass and PR. Follow-ups, not this EPIC:
+- The scenario map lacks rows for 84 tests that predate this change (D-10).
+- `located` takes the path from the class, not from the IRI, so the class path can differ from the
+  path inside the IRI (stage-2 review S3).
 
 ## Next
-Stage 2, task 2.5 (review and PR of `feat/referrer-location`). Read first: tasks.md §2,
-design.md D-4 to D-6, specs/rp-service-api.
+Stage 3, task 3.5 (gates, review and PR of `fix/narrowed-cardinality`). Read first: tasks.md §3,
+design.md D-7 and D-8, specs/rp-uml-import.
 
 ## Prompt
-Act as the team lead. Deliver stage 2 of openspec/changes/consumer-test-gaps from handover.md.
+Act as the team lead. Deliver stage 3 of openspec/changes/consumer-test-gaps from handover.md.

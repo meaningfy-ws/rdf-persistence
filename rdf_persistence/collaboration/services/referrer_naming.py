@@ -6,12 +6,49 @@ the schema view they read from, so ``Collaboration`` and the removal guard name 
 
 from linkml_runtime.utils.schemaview import SchemaView
 
+from rdf_persistence.collaboration.services.generated.rp_collaboration_services import Referrer
+from rdf_persistence.core.domain.generated.rp_core import RpAnnotation
+from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
+from rdf_persistence.schema.services.schema_structure import annotation_text, served_roots
 
 
 def classes_by_iri(view: SchemaView) -> dict[str, str]:
     """The name of each class of the schema, by its expanded IRI."""
     return {view.get_uri(c, expand=True): name for name, c in view.all_classes().items()}
+
+
+def located(view: SchemaView, iris: Iris, class_name: str, iri: str) -> tuple[str, str] | None:
+    """``(rp_path, id)``, the address a referrer is served at, or ``None`` when it has none.
+
+    The path is the ``rp_path`` of ``class_name`` when it is a served root (the test the generic router
+    uses); the id is the one ``iri`` ends in as an aggregate IRI. When either is missing, there is no
+    address, so neither is given.
+    """
+    path = next(
+        (
+            annotation_text(root, RpAnnotation.RP_PATH)
+            for root in served_roots(view)
+            if root.name == class_name
+        ),
+        None,
+    )
+    found = iris.aggregate_id_of(iri)
+    return None if path is None or found is None else (path, found)
+
+
+def referrer_item(
+    iri: str, class_name: str, slot: str, address: tuple[str, str] | None
+) -> Referrer:
+    """The ``Referrer`` of one row; ``address`` (from ``located``) sets both of its location fields, or neither."""
+    path, found = address or (None, None)
+    return Referrer(
+        referrer=iri,
+        referrer_class=class_name,
+        referrer_slot=slot,
+        referrer_rp_path=path,
+        referrer_id=found,
+    )
 
 
 def named(view: SchemaView, rows: list[ReferrerRow]) -> set[tuple[str, str, str]]:
