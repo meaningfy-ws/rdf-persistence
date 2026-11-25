@@ -10,7 +10,6 @@ import uuid
 from collections import Counter
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack
-from uuid import UUID
 
 import pytest
 from rdflib import URIRef
@@ -41,6 +40,8 @@ from tests.toy import (
     ROLES,
     TENANT,
     TOY_SCHEMA,
+    WRITTEN_BY,
+    author_iri,
     book_iri,
     caller,
     dune,
@@ -52,11 +53,10 @@ from tests.toy import (
 )
 
 ROUNDS = 20
-A1 = f"{TENANT}/authors/{UUID(int=1)}"
-A2 = f"{TENANT}/authors/{UUID(int=2)}"
+A1 = author_iri(1)
+A2 = author_iri(2)
 B1 = book_iri(1)
 S1 = shelf_iri(1)
-WRITTEN_BY = URIRef("https://example.org/ns/library#writtenBy")
 REVIEW = load_workflow(REVIEW_WORKFLOW)
 
 
@@ -152,7 +152,7 @@ async def test_it1_a_referrer_removed_at_the_same_time_never_leaves_a_dangling_r
 ):
     counts: Counter[str] = Counter()
     for n in range(ROUNDS):
-        author, book = f"{TENANT}/authors/{UUID(int=1000 + n)}", book_iri(1000 + n)
+        author, book = author_iri(1000 + n), book_iri(1000 + n)
         await put_author(session, author)
         await put_book(session, book, written_by=author)
         before = set((await session.get_graph(author))[0])

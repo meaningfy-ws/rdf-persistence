@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from rdflib import URIRef
+
 from rdf_persistence import (
     AccessRules,
     Action,
@@ -108,6 +110,12 @@ def shelf_iri(n: object) -> str:
     return f"{TENANT}/shelves/{UUID(int=int(n))}"  # a minted aggregate IRI ends in a UUID
 
 
+def author_iri(n: object) -> str:
+    return f"{TENANT}/authors/{UUID(int=int(n))}"  # a minted aggregate IRI ends in a UUID
+
+
+AUTHOR = URIRef("https://example.org/ns/library#Author")  # the toy's refusing class
+WRITTEN_BY = URIRef("https://example.org/ns/library#writtenBy")  # a book's link to its author
 BOOK = book_iri(1)
 BOOK_JSON = {
     "label": "Dune",

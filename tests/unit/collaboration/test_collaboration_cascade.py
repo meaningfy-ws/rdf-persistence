@@ -5,7 +5,6 @@ wrapping one operation of the store: ``before`` runs it once, just before the fi
 """
 
 from typing import Any
-from uuid import UUID
 
 import pytest
 
@@ -41,6 +40,7 @@ from tests.toy import (
     ROLES,
     TENANT,
     TOY_SCHEMA,
+    author_iri,
     ban,
     book_iri,
     caller,
@@ -70,7 +70,7 @@ from tests.unit.collaboration.collaboration_data import (
 
 DEFAULT_MAX_ROOTS = LimitSettings().max_roots  # the limit of a default mapper
 B1, B2, B3, B4, B9 = (book_iri(n) for n in (1, 2, 3, 4, 9))
-A1, A2 = (f"{TENANT}/authors/{UUID(int=n)}" for n in (1, 2))
+A1, A2 = (author_iri(n) for n in (1, 2))
 S1, A = shelf_iri(1), shelf_iri(3)
 
 

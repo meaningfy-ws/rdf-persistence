@@ -8,8 +8,6 @@ class that is not refusing. The fake store applies a request atomically, as Fuse
 
 import re
 from collections.abc import AsyncIterator, Sequence
-from contextlib import AbstractAsyncContextManager
-from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
@@ -24,55 +22,17 @@ from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Author, Book
-from tests.toy import TENANT, book_iri, dune, toy_mapper_limited
+from tests.toy import TENANT, WRITTEN_BY, author_iri, book_iri, dune, toy_mapper_limited
 from tests.unit.activity_helpers import KEYS, isbn_book
+from tests.unit.persistence.referrer_helpers import NOW, StubRefusal, author, opened, stored
 
 LIB = "https://example.org/ns/library#"
-AUTHOR_CLASS, SHELF_CLASS = URIRef(LIB + "Author"), URIRef(LIB + "Shelf")
+SHELF_CLASS = URIRef(LIB + "Shelf")
 BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
-WRITTEN_BY, SEQUEL_OF = URIRef(LIB + "writtenBy"), URIRef(LIB + "sequelOf")
-A1, A2 = (f"{TENANT}/authors/{UUID(int=n)}" for n in (1, 2))
+SEQUEL_OF = URIRef(LIB + "sequelOf")
+A1, A2 = (author_iri(n) for n in (1, 2))
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 NOTE = URIRef(LIB + "note")
-NOW = datetime(2026, 11, 20, tzinfo=UTC)
-
-
-class StubRefusal:
-    """The schema side of a removal refusal: what the session asks, kept for the tests to read."""
-
-    def __init__(
-        self, refusing: frozenset[URIRef] = frozenset({AUTHOR_CLASS}), call_readable: bool = False
-    ) -> None:
-        self.refusing = refusing
-        self.call_readable = call_readable
-        # (roots, rows, readable, the root the rows refer to), per call
-        self.asked: list[tuple[tuple[str, ...], list[ReferrerRow], object, str]] = []
-
-    async def in_use(
-        self, roots: Sequence[str], root: str, rows: Sequence[ReferrerRow], readable
-    ) -> InUse:
-        self.asked.append((tuple(roots), list(rows), readable, root))
-        if self.call_readable and readable is not None:
-            await readable(root, rows)
-        named = tuple((row.referrer, "Book", "written_by") for row in rows)
-        return InUse("in use", iris=tuple(roots), referrers=named)
-
-
-def opened(
-    store: FakeStore, removals: StubRefusal | None, who: str = "ada"
-) -> AbstractAsyncContextManager[Session]:
-    return open_session(
-        store,
-        database=FAKE_DATABASE,
-        tenant_iri=TENANT,
-        principal=Principal(id=f"https://example.org/people/{who}"),
-        clock=lambda: NOW,
-        removals=removals,
-    )
-
-
-def author(iri: str, *more: URIRef) -> list:
-    return [(URIRef(iri), RDF.type, c) for c in (AUTHOR_CLASS, *more)]
 
 
 def book(iri: str, **links: str) -> list:
@@ -80,13 +40,6 @@ def book(iri: str, **links: str) -> list:
     return [(URIRef(iri), RDF.type, BOOK_CLASS)] + [
         (URIRef(iri), names[name], URIRef(target)) for name, target in links.items()
     ]
-
-
-@pytest.fixture
-async def store() -> FakeStore:
-    fake = FakeStore()
-    await fake.create_dataset(FAKE_DATABASE)
-    return fake
 
 
 @pytest.fixture
@@ -104,14 +57,6 @@ async def session(store, refusal) -> AsyncIterator[Session]:
 async def other(store, refusal) -> AsyncIterator[Session]:
     async with opened(store, refusal, "ben") as s:
         yield s
-
-
-async def stored(session: Session, iri: str) -> bool:
-    try:
-        await session.get_graph(iri)
-    except NotFound:
-        return False
-    return True
 
 
 async def quads(store: FakeStore) -> set:
