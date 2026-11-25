@@ -44,11 +44,11 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
   check-quality`.
 - [x] 3.4 `howto/uml-to-linkml.adoc`: the rule row and the fix advice (RISK-4). CHANGELOG
   "Fixed" (RISK-1, RISK-4). Accept: `make check-docs`.
-- [ ] 3.5 Lead: `make check-all`, `make test-containers` (the generator e2e), one review pass, PR.
+- [x] 3.5 Lead: `make check-all`, `make test-containers` (the generator e2e), one review pass, PR.
 
 ## 4. Close
 
-- [ ] 4.1 Scenario-map rows for the new tests (each stage adds its own).
+- [x] 4.1 Scenario-map rows for the new tests (each stage adds its own).
 - [ ] 4.2 After the last merge: reconcile the proposal, archive, and ask for a release (DEC-6).
   Comment on #319, #320, #323 and #332 with the version, and tell the consumer which workaround
   each one removes.
@@ -56,7 +56,7 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 ·
-  [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [ ] 3.5 · [ ] 4.1 · [ ] 4.2
+  [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5 · [x] 4.1 · [ ] 4.2
 
 ## Verification
 

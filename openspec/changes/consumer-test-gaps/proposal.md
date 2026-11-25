@@ -125,3 +125,27 @@ stages by concern, one PR each: the testkit (#319, #323), the API (#320) and the
 enum (regenerated); `howto/uml-to-linkml.adoc` (the new problem); the CHANGELOG. After the release,
 the consumer removes `times=2` (#319), its `store.update` wrapper (#323) and its label-less
 referrer display (#320).
+
+As delivered, the Impact also holds `referrer_item` beside `located` (D-13), the docs of the two
+`Referrer` fields on `architecture/api.adoc`, `howto/reverse-references.adoc` and
+`user-manual/store-and-read.adoc` instead of `reference/http-api.adoc`, which has no `in-use` text
+(D-13, D-14), the new rule on `reference/uml-conventions.adoc` (P-0014), the shape snapshot
+(RISK-2), and a CHANGELOG "Added" entry for `hold`.
+
+## Reconciliation
+
+| Shaped | Delivered | PR |
+|---|---|---|
+| DEC-1 #319 by docs and a feature test, no new API | as shaped; E1 waits for the live relay's round after the block, not a `run_once` of its own (D-12) | #355 |
+| DEC-2 `FakeStore.hold(operation, until, timeout)` on the fake only | as shaped, one future per waiter (D-3); a hold fails unless it filled before its timeout (D-11) | #355 |
+| DEC-3 optional `referrer_rp_path` and `referrer_id`, set together | as shaped, through `located` and `referrer_item` for both answers (D-6, D-13) | #360 |
+| DEC-4 each differing cardinality as the usage's own bound; unbounded under a finite `is_a` ancestor is a problem | as shaped (D-7, D-8); the problem is rule R-31 (D-15); `0..1` redrawn `0..*` is one only when another usage differs on the maximum (D-16) | #361 |
+| DEC-5 the new problem is an error | as shaped | #361 |
+| DEC-6 three stages, three PRs, in order | as shaped for the PRs and their order; the stages were built in parallel worktrees (D-9) | #355, #360, #361 |
+| No-gos: no `match=`, no payload filter, no seam in `Session`, no read-by-IRI route, no TS map, no general narrowing check, `InUse.referrers` unchanged | held | all |
+
+Nothing shaped was left out. Left for follow-ups: 84 tests that predate this change have no
+scenario-map row (D-10); `located` takes the path from the class and not from the IRI's own
+`rp_path` group (stage-2 review S3); the rabbit-hole check of `on(after=…)` under a hold has no
+test of its own (stage-1 review S7). The delivery decisions D-9 to D-16 and the review findings
+are in `design.md` and the PR bodies.
