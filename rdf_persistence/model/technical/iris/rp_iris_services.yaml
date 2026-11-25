@@ -75,7 +75,8 @@ classes:
       policy is the default one. A template fills the variables allowed for its kind; the tenant,
       aggregate, part, loaded graph and principal templates end in their id variable, the access,
       meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph
-      templates name their tenant or, for the last two, their root.
+      templates name their tenant or, for the last two, their root. The activity template is the
+      default `urn:uuid:{id}` or names the tenant and ends in `{id}`.
     class_uri: rp:IriPolicy
     slots:
       - tenant_template
@@ -88,6 +89,7 @@ classes:
       - part_template
       - loaded_graph_template
       - principal_template
+      - activity_template
       - tenant_id
       - object_id
     slot_usage:
@@ -111,6 +113,8 @@ classes:
         ifabsent: string({root}/content/{id})
       principal_template:
         ifabsent: string({issuer}/users/{sub})
+      activity_template:
+        ifabsent: string(urn:uuid:{id})
 
 slots:
   base:
@@ -247,6 +251,15 @@ slots:
     slot_uri: rp:principalTemplate
     range: string
     pattern: '^(?:[a-z0-9/:.-]|\{(?:base|deployment|issuer|sub)\})*\{sub\}$'
+  activity_template:
+    title: Activity template
+    description: >-
+      The template of the IRI of an activity: the default `urn:uuid:{id}`, or a template that
+      contains `{tenant}` or `{tenant_id}` and ends in `{id}`, so a restore moves the activity
+      with its tenant.
+    slot_uri: rp:activityTemplate
+    range: string
+    pattern: '^urn:uuid:\{id\}$|^(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|id)\})*\{tenant(?:_id)?\}(?:[a-z0-9/:.-]|\{(?:base|deployment|tenant|tenant_id|id)\})*\{id\}$'
   tenant_id:
     title: Tenant id
     description: How the id of a new tenant is drawn; absent, a UUIDv4.

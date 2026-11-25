@@ -80,7 +80,7 @@ export interface IdSpec {
   alphabet?: string;
 }
 
-/** The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today's shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root. */
+/** The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today's shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root. The activity template is the default `urn:uuid:{id}` or names the tenant and ends in `{id}`. */
 export interface IriPolicy {
   /** The template of a tenant IRI; ends in `{tenant_id}`. */
   tenant_template?: string;
@@ -102,6 +102,8 @@ export interface IriPolicy {
   loaded_graph_template?: string;
   /** The template of the IRI of a principal; ends in `{sub}`. */
   principal_template?: string;
+  /** The template of the IRI of an activity: the default `urn:uuid:{id}`, or a template that contains `{tenant}` or `{tenant_id}` and ends in `{id}`, so a restore moves the activity with its tenant. */
+  activity_template?: string;
   /** How the id of a new tenant is drawn; absent, a UUIDv4. */
   tenant_id?: IdSpec;
   /** How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4. */

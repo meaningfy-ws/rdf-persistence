@@ -96,6 +96,7 @@ _UUID4 = IdSpec(kind=IdKind.UUID4)
 _TEMPLATE_SLOTS = tuple(name for name in IriPolicy.model_fields if name.endswith("_template"))
 _DEFAULT_POLICY = IriPolicy()
 _ID_SPECS = ("tenant_id", "object_id")
+_ACTIVITY_SLOT = "activity_template"
 
 
 def _canonical_spec(spec: IdSpec | None) -> IdSpec:
@@ -287,7 +288,9 @@ class Iris:
             self._fixed.deployment,
             APPLICATION_ID,
         }
-        for template in _templates(self._policy).values():
+        for name, template in _templates(self._policy).items():
+            if name == _ACTIVITY_SLOT and template == getattr(_DEFAULT_POLICY, name):
+                continue  # the default's words (urn, uuid) are no reason to hide a tenant or object id (PD-4)
             literals = (piece for piece in _VARIABLE.split(template) if piece[:1] != _OPEN_BRACE)
             words.update(word for literal in literals for word in _WORD.findall(literal))
         return frozenset(words - {""})

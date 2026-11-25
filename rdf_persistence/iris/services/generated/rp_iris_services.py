@@ -172,7 +172,7 @@ class IdSpec(ConfiguredBaseModel):
 
 
 class IriPolicy(ConfiguredBaseModel):
-    "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today\u0027s shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root."
+    "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today\u0027s shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root. The activity template is the default `urn:uuid:{id}` or names the tenant and ends in `{id}`."
     tenant_template: _Optional[str] = _Field(default="{base}{tenant_segment}/{tenant_id}", title="Tenant template", description="The template of a tenant IRI; ends in `{tenant_id}`.")
     application_template: _Optional[str] = _Field(default="{base}app", title="Application template", description="The template of the application IRI, the root of the application database\u0027s IRIs.")
     access_template: _Optional[str] = _Field(default="{tenant}/access", title="Access template", description="The template of the IRI of a tenant\u0027s access record; contains `{tenant}` or `{tenant_id}`.")
@@ -183,6 +183,7 @@ class IriPolicy(ConfiguredBaseModel):
     part_template: _Optional[str] = _Field(default="{root}/parts/{id}", title="Part template", description="The template of the IRI of an owned part; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.")
     loaded_graph_template: _Optional[str] = _Field(default="{root}/content/{id}", title="Loaded graph template", description="The template of the IRI of a loaded graph; contains `{tenant}`, `{tenant_id}` or `{root}` and ends in `{id}`.")
     principal_template: _Optional[str] = _Field(default="{issuer}/users/{sub}", title="Principal template", description="The template of the IRI of a principal; ends in `{sub}`.")
+    activity_template: _Optional[str] = _Field(default="urn:uuid:{id}", title="Activity template", description="The template of the IRI of an activity: the default `urn:uuid:{id}`, or a template that contains `{tenant}` or `{tenant_id}` and ends in `{id}`, so a restore moves the activity with its tenant.")
     tenant_id: _Optional[IdSpec] = _Field(default=None, title="Tenant id", description="How the id of a new tenant is drawn; absent, a UUIDv4.")
     object_id: _Optional[IdSpec] = _Field(default=None, title="Object id", description="How the id of a new aggregate root, part or loaded graph is drawn; absent, a UUIDv4.")
 
@@ -313,6 +314,19 @@ class IriPolicy(ConfiguredBaseModel):
                     raise ValueError(err_msg)
         elif isinstance(v, str) and not pattern.fullmatch(v):
             err_msg = "Invalid principal_template format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
+    @field_validator("activity_template")
+    def pattern_activity_template(cls, v):
+        pattern=re.compile("^urn:uuid:\\{id\\}$|^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|id)\\})*\\{id\\}$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid activity_template format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid activity_template format: " + str(v)
             raise ValueError(err_msg)
         return v
 

@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "rdf_persistence/model/technical/iris/rp_iris_services.yaml",
-      "sha256": "c826e00b6507bfac33c84bc583ceb92f9eb26be5aaff87f1544d493f74cc0dd9"
+      "sha256": "9f45a54a4571be3099f0806bf7b43ccb7238f732872b21df549ae6359db72265"
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
@@ -253,19 +253,19 @@
     },
     {
       "path": "rdf_persistence/iris/services/generated/context.jsonld",
-      "sha256": "a8ccce89ca61ed8b7f8f8701a0859b2b2dbf41009e63e2ef4e5cd0704cf85d03"
+      "sha256": "f393898e245b0c30acae22026957ed08d704c3fa9d3c2d1abf832a94a22578ca"
     },
     {
       "path": "rdf_persistence/iris/services/generated/openapi-components.json",
-      "sha256": "59e1af1a699e03d6e46a3060bb8939df57430486226fde8ea2fc8f5b229861c1"
+      "sha256": "0d2b01114f2b5bc71d74454bf12c0e47c276c6cd1ae41fd39cb7d0d6d7c8d055"
     },
     {
       "path": "rdf_persistence/iris/services/generated/rp_iris_services.py",
-      "sha256": "eccd9d19465a7386746a92ae5ddbd2134116f026105b83ad8550abe5e5f18a6f"
+      "sha256": "42f2179348982b80e97c8c4b0228a3dfc50bf83b7bc81b486de4ab87a17b4010"
     },
     {
       "path": "rdf_persistence/iris/services/generated/shapes.ttl",
-      "sha256": "6afe240c10f982fbc45035ad711b95907ee7a05de9bb95311422d70f582e7e69"
+      "sha256": "d41c7e30dcca6e1400562cdd422c4ff125fbc6f81198afb288cae7aaef8e90d0"
     }
   ]
 }

@@ -163,6 +163,29 @@ def test_a_template_with_allowed_variables_is_accepted(slot: str, template: str)
     assert getattr(IriPolicy(**{slot: template}), slot) == template, "an accepted template is kept"
 
 
+def test_the_activity_template_defaults_to_a_urn_uuid_and_ends_in_its_id() -> None:
+    assert IriPolicy().activity_template == "urn:uuid:{id}", "the default activity template"
+
+
+@pytest.mark.parametrize(
+    "template", ["{tenant}/activity", "{tenant}/{type}/{id}", "{base}activity/{id}"]
+)
+def test_an_activity_template_without_the_tenant_or_the_closing_id_is_refused(
+    template: str,
+) -> None:
+    with pytest.raises(ValidationError, match="activity_template"):
+        settings(iri_policy={"activity_template": template})
+
+
+@pytest.mark.parametrize(
+    "template", ["urn:uuid:{id}", "{base}{tenant_id}/activity/{id}", "{tenant}/activity/{id}"]
+)
+def test_an_activity_template_of_the_tenant_ending_in_the_id_is_accepted(template: str) -> None:
+    assert IriPolicy(activity_template=template).activity_template == template, (
+        "an accepted template is kept"
+    )
+
+
 @pytest.mark.parametrize("slot", ["access_template", "meta_template", "registry_template"])
 def test_a_tenant_graph_template_without_the_tenant_is_refused(slot: str) -> None:
     with pytest.raises(ValidationError, match=slot):

@@ -204,6 +204,12 @@ def test_a_type_the_deployment_or_a_layout_word_is_never_an_id(reserved):
     )
 
 
+def test_the_default_activity_template_reserves_no_word():
+    iris = Iris(_settings(IriPolicy(tenant_id=IdSpec(kind=IdKind.RANDOM, length=4))))
+    assert iris.tenant("uuid").endswith("/uuid"), "'uuid' is a tenant id under the default"
+    assert not {"urn", "uuid"} & iris._reserved, "the default activity template reserves no word"
+
+
 # --- only what the policy would mint is accepted ------------------------------------------------
 
 

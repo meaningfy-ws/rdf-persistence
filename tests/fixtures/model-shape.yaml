@@ -738,6 +738,10 @@
     required: false
     multivalued: false
     range: string
+  - name: activity_template
+    required: false
+    multivalued: false
+    range: string
   - name: aggregate_template
     required: false
     multivalued: false

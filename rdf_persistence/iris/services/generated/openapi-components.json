@@ -41,11 +41,16 @@
     },
     "IriPolicy": {
       "additionalProperties": false,
-      "description": "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today's shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root.",
+      "description": "The templates the toolkit mints and accepts IRIs by, one per kind of IRI, and the id specifications of tenant and object ids. Every slot defaults to today's shape, so an empty policy is the default one. A template fills the variables allowed for its kind; the tenant, aggregate, part, loaded graph and principal templates end in their id variable, the access, meta, registry and provenance templates contain the tenant, and the aggregate, part and loaded graph templates name their tenant or, for the last two, their root. The activity template is the default `urn:uuid:{id}` or names the tenant and ends in `{id}`.",
       "properties": {
         "access_template": {
           "description": "The template of the IRI of a tenant's access record; contains `{tenant}` or `{tenant_id}`.",
           "pattern": "^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id)\\})*$",
+          "type": "string"
+        },
+        "activity_template": {
+          "description": "The template of the IRI of an activity: the default `urn:uuid:{id}`, or a template that contains `{tenant}` or `{tenant_id}` and ends in `{id}`, so a restore moves the activity with its tenant.",
+          "pattern": "^urn:uuid:\\{id\\}$|^(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|id)\\})*\\{tenant(?:_id)?\\}(?:[a-z0-9/:.-]|\\{(?:base|deployment|tenant|tenant_id|id)\\})*\\{id\\}$",
           "type": "string"
         },
         "aggregate_template": {
