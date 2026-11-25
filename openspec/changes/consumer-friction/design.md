@@ -237,3 +237,9 @@ integration lane, both in `make test-generator`; TC-7 in the library's unit lane
   (they depend only on `SERVED_SCHEMAS`); a consumer with several TypeScript targets gains too.
   The rest of the gap is the two extra modules the toy now renders, inherent to DEC-5. One fixer,
   test-first; the lead re-measures the toy run and the lane.
+  Result (`perf(generator): build the served TypeScript types once per process`): the cache is
+  keyed on the served schemas' paths, so the two tests that patch `SERVED_SCHEMAS` (X1) keep
+  working; generated code unchanged, only the manifests' input hashes. One toy generation,
+  unprofiled: 6.45 s, develop 5.39 s (+20 %). The fix-pass `make check-all`: unit 8427 passed,
+  feature 99, generator 1789 passed in 93 s (110 s before the fix, 17 workers). CI on the rebased
+  head decides the merge.

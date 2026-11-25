@@ -119,10 +119,11 @@ whose name holds "shapes" (#372): the escape, `exempt=`, exists but is documente
 ## Reconciliation (as delivered)
 
 Delivered in PR #391 (one stage, SMALL; #371 and #372 closed on merge). Decisions taken in delivery
-are `design.md` D-1 to D-8. Acceptance demo: skipped by the developer, accepted
+are `design.md` D-1 to D-9. Acceptance demo: skipped by the developer, accepted
 (`evidence/acceptance.md`); docs owed: `evidence/docs-owed.md` (none beyond stage 1). Reviews: three
-L2+L3 passes (D-5, D-6, D-8), one Critical (C1), fixed. CI green on every lane after the rebase on
-0.15.0, the generator lane included (D-7).
+L2+L3 passes (D-5, D-6, D-8), one Critical (C1), fixed. The generator lane's CI failures came from
+this change: every TypeScript target rebuilt the served types, and the toy now has three; they are
+built once per process now (D-9, which corrects D-7).
 
 | Item | Final state | PR |
 |---|---|---|
@@ -145,6 +146,7 @@ updated for the toy's three TypeScript targets (`tests/generator/unit/test_place
 `test_typescript_service_types_adversarial.py`), the regenerated `rp-manifest.json` files and the
 `rp_generation` artefacts (generator inputs, RISK-3), and seven `tests/audit/scenario-map.csv` rows.
 The review's C1 (D-5) also grew it: `rdf_persistence_generation/pipeline.py` (`Run` carries the
-run's targets) and `tests/generator/unit/golden.py` (`run_toy` passes them).
+run's targets) and `tests/generator/unit/golden.py` (`run_toy` passes them). D-9 grew it by
+`extensions/typescript.py`'s `_served_modules` cache and its test in `test_ext_typescript.py`.
 Not delivered as shaped: nothing. Left open under the floor (D-5): W1's third case (no test for a
 root without `python_package`), W2, S1, S2; F-4, F-5, F-6 (D-6); L2-1, L2-2, L2-4, L3-1 (D-8).
