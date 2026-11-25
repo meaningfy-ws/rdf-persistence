@@ -12,7 +12,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
 
 ## 1. The queue and the worker count
 
-- [ ] 1.1 PD-1, PD-3, unit. `tests/queue.py`, `tests/unit/tooling/test_queue.py`, each test with
+- [x] 1.1 PD-1, PD-3, unit. `tests/queue.py`, `tests/unit/tooling/test_queue.py`, each test with
   a temporary `TEST_QUEUE` path. Red:
   `workers(cpus, available_mb, per_worker_mb)` as one parametrized table (20 cores with 40960,
   12288 and 1000 MB at 1536 → 17, 8, 1; 8 cores, `None` → 5; 7 → 4; 6 → 6; 4 → 4; 1 → 1; `cpus`
@@ -31,7 +31,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
   SIGTERM to a queued run whose command is a child that writes `ready` then waits: the command's
   process is gone and the lock is free afterwards (exec, PD-1);
   `TEST_QUEUE=off` opens no file; an unwritable folder exits 2 naming the path.
-- [ ] 1.2 PD-2, PD-3, unit, after 1.1. The Makefile: `PYTEST`, `PYTEST_N`, `PARALLEL`. Red in
+- [x] 1.2 PD-2, PD-3, unit, after 1.1. The Makefile: `PYTEST`, `PYTEST_N`, `PARALLEL`. Red in
   `tests/unit/tooling/test_lanes.py`: every recipe line holding `$(PARALLEL)`, and that of
   `test-containers`, runs `TEST_QUEUE_LABEL=$@ $(PYTEST)` and no bare `uv run pytest`; no recipe
   wraps `$(MAKE)` in `$(PYTEST)`; `make --no-print-directory --eval 'pn:;@echo $(PYTEST_N) $(PYTEST)' pn`
@@ -41,7 +41,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
   `tests/changed.py` equals the `--ignore` options of the Makefile's `UNIT_LANE` (PD-5), compared
   after replacing `$(TEST_PATH)` with `tests`.
 
-- [ ] 1.3 PD-9, DEC-10, unit (parallel with 1.1). `rdf_persistence/testkit/memory.py`,
+- [x] 1.3 PD-9, DEC-10, unit (parallel with 1.1). `rdf_persistence/testkit/memory.py`,
   `rdf_persistence/testkit/memory_plugin.py`, the two names in `testkit.__all__` (the lead
   refreshes the public-surface snapshot), the opt-in line in `tests/conftest.py`, `tests/unit/tooling/test_memory.py`. Red: `release()` reports at least one
   cache cleared for linkml-runtime and one for FastAPI (RISK-6); building three `ToyService()`
@@ -63,16 +63,16 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
 
 ## 2. Selection by execution
 
-- [ ] 2.1 **Lead.** PD-8: `uv add --dev pytest-testmon==2.4.0`, the `.gitignore` line, `uv sync`.
+- [x] 2.1 **Lead.** PD-8: `uv add --dev pytest-testmon==2.4.0`, the `.gitignore` line, `uv sync`.
   Red: none (a dependency); guard: `make test-fast` passes unchanged.
-- [ ] 2.2 PD-4, PD-5, unit, after 2.1. `plan()` in `tests/changed.py`. Red in
+- [x] 2.2 PD-4, PD-5, unit, after 2.1. `plan()` in `tests/changed.py`. Red in
   `tests/unit/tooling/test_changed.py`: the eleven rows of design.md's worked-examples table as one
   parametrized table over `plan(changed, has_data, existing)`, asserting the invocations T and F
   as full argument lists (PD-5), the hints, and the fallback reasons as quoted in the table; plus
   `plan()` called twice gives equal results. The existing
   tests of `select()` stay green with their assertions unchanged; the tests of `pytest_arguments`
   move to the invocation lists, case by case.
-- [ ] 2.3 PD-4, PD-6, unit, after 2.2 and 1.2 (both edit the Makefile and `test_lanes.py`).
+- [x] 2.3 PD-4, PD-6, unit, after 2.2 and 1.2 (both edit the Makefile and `test_lanes.py`).
   `main()`: the exit-code table of PD-4, the shared worktree lock around T, `PYTEST_CHANGED_N`;
   the Makefile's `test-changed` recipe falls back on 75 only.
   Red: `main()` with an injected runner (a parameter, not a patch) maps 0, 1, 2, 3, 4, 5 as PD-4
@@ -81,7 +81,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
   `test_main_exits_with_the_status_its_listing_calls_for` change from 3 to 75 and nothing else; a child holding the worktree lock exclusive makes
   `main()` wait until the child is killed (pattern of 1.1); in `test_lanes.py`, the recipe tests
   for 75, not 3.
-- [ ] 2.4 **Lead.** PD-6, PD-7, after 2.3. `tests/testmon_data.py` and `make test-seed`. Red in
+- [x] 2.4 **Lead.** PD-6, PD-7, after 2.3. `tests/testmon_data.py` and `make test-seed`. Red in
   `tests/unit/tooling/test_testmon_data.py`, on real SQLite files in `tmp_path`: `swap` with exit
   0 and 1 leaves one `.testmondata` in DELETE journal mode, readable, and no `-wal`/`-shm`
   beside it, also when a stale `.testmondata-wal` existed; `swap` with exit 2 deletes the seed
@@ -92,7 +92,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
   `environment.system_packages` row differs from the current environment's.
   In `test_lanes.py`: `test-seed` deletes `.testmondata.seed*` first, runs
   `TEST_QUEUE_LABEL=$@ TESTMON_DATAFILE=.testmondata.seed $(PYTEST)`, then the swap with pytest's exit code, and exits as PD-7.
-- [ ] 2.5 **Lead.** RISK-1, after 2.4, in a separate worktree off this branch (never the shared
+- [x] 2.5 **Lead.** RISK-1, after 2.4, in a separate worktree off this branch (never the shared
   one). `make test-seed` in the background; then, on a scratch commit applying PR #388's change to
   `rdf_persistence/core/domain/sparql.py`, `make test-changed` twice. Record in
   `evidence/selection.md`: the seed's wall time; the tests selected (count, and that
@@ -102,7 +102,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
 
 ## 3. Guards and the documentation for agents (after 1 and 2)
 
-- [ ] 3.1 **Lead.** DEC-6. `AGENTS.md`, *Working here*: the gate table's task-gate row loses
+- [x] 3.1 **Lead.** DEC-6. `AGENTS.md`, *Working here*: the gate table's task-gate row loses
   "(`make test-fast check-quality` after changing `domain` or a port)" and reads
   `make test-changed check-quality`; a `make test-seed` row, the lead's, at stage start in the
   background; one guard paragraph: builders never run by hand `make test-fast` (it runs only as
@@ -110,7 +110,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
   `make check-all`, `make test-seed` or `--testmon`; they wait through the completion
   notice, never `tail --pid`, `tail -f … | grep -m1` or a `timeout` around a wait; only the lead
   runs `make generate` or `uv sync` in a shared worktree. Proof: `make check-bindings`, review.
-- [ ] 3.2 **Lead.** DEC-6, DEC-7. `develop/agents.adoc`: in `#gates`, the first paragraph's "or
+- [x] 3.2 **Lead.** DEC-6, DEC-7. `develop/agents.adoc`: in `#gates`, the first paragraph's "or
   `make test-fast check-quality` after changing `domain` or a port in `services`, or when unsure
   what the change reaches" goes; the table's `make test-changed` row says the selection of PD-5
   and `PYTEST_CHANGED_N=` (not `PYTEST_N=`); the `make test-fast` row says "the fallback of
@@ -118,7 +118,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
   background). The brief checklist gains the guards of 3.1 as one item; `#never-poll` names the
   two `tail` forms.
   Proof: `make check-docs`.
-- [ ] 3.3 **Lead.** DEC-7, after 2.5. `develop/testing.adoc`, section `[#test-control]` *How test
+- [x] 3.3 **Lead.** DEC-7, after 2.5. `develop/testing.adoc`, section `[#test-control]` *How test
   runs are controlled*: the queue (what queues, the two lines it prints, `TEST_QUEUE`, `CI`); the
   worker counts (`PYTEST_N` for the queued lanes only, `PYTEST_CHANGED_N`); the selection (testmon
   read-only for Python files, folder rules for the rest and the generator, the fallback); the seed
@@ -148,7 +148,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.3 · [ ] 1.2 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4
+- [x] 1.1 · [x] 1.3 · [x] 1.2 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [ ] 4.1 · [ ] 4.2 · [ ] 4.3 · [ ] 4.4
 
 1.1, 1.3 and 2.2 can run in parallel (different files; 2.1 before 2.2); 1.2 after 1.1; 2.3 after
 2.2 and 1.2.

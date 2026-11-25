@@ -147,3 +147,28 @@ Makefile, `tests/changed.py`, `tests/conftest.py`, `rdf_persistence/testkit/memo
 `tests/unit/tooling/test_lanes.py`, `pyproject.toml`, `uv.lock`, `.gitignore`, `AGENTS.md`,
 `docs/modules/ROOT/pages/develop/{agents,testing,index}.adoc`, `questions.adoc`. No library or
 generator code changes outside the testkit, which gains a public API (DEC-10).
+
+## Delivered (reconciled 2026-11-25, P-0004)
+
+One stage, one PR (`change/agent-test-control`). Each outcome of the solution outline, as built:
+
+| Outline item | Delivered | Evidence |
+|---|---|---|
+| 1. One heavy run at a time | `tests/queue.py`; every parallel lane, `test-containers` and `test-seed` queue; CI does not | `make check-all`: each lane printed whose run it waited for and how long |
+| 3. Workers from cores and memory | `-n @workers` replaced at the lock: 17 on 20 cores with 45 GB free; 6 with 9 GB free | the `test queue:` lines of `check-all` and of task 1.2's probe |
+| 2. Builders run only what a change reaches | `plan()`/`main()` of `tests/changed.py`, testmon read-only, exit 75 for the fallback | `evidence/selection.md`: a `core` change selected the same 3,720 of 10,235 tests twice, regression caught, no fallback |
+| 3. The seed | `make test-seed`, swap only of a completed run | 10,235 tests, 7 min 39 s |
+| 5. Memory | the testkit's `clear_caches`, `release_memory`, `memory_plugin` (DEC-10), enabled here | `evidence/memory.md`: −82 % and −89 % peak memory, runs 29 to 41 % faster |
+| 4. Guards | `AGENTS.md`, `develop/agents.adoc` | `make check-bindings`, `make check-docs` |
+| 6. The page for agents | `develop/testing.adoc#test-control`, `questions.adoc`, the durations rows | a cold reader answered the five builder questions from the section alone |
+
+Differences from the shape, with their reasons:
+- PD-9 clears three caches, not two: `typing` held the last kit (D-3).
+- The package check had to compare packages as testmon stores them, without patch versions; the
+  replay found it (`evidence/selection.md`).
+- No review pass ran: the developer waived it for this EPIC (D-4).
+- A `core` hub selects about a third of the suite and, on 4 unqueued workers, took longer than the
+  fast lane on 17 idle ones; DEC-8's targets are measured after the merge (task 4.3).
+- Not delivered here, as decided: other repositories adopting the queue or the plugin (DEC-1,
+  DEC-10); loading each schema once per process, the per-kit `Annotated` dependency and the
+  linkml-runtime report (D-3's follow-ups).
