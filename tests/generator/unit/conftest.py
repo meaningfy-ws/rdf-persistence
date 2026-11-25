@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence_generation import config
 from rdf_persistence_generation.cli import main
+from tests.generator.theme_map import THEME_OF_ROOT, theme_package
 
 from .golden import ROOT_SCHEMA, TOY, Breaker
 
@@ -21,19 +23,7 @@ def toy_copy(tmp_path: Path) -> Path:
 
 
 METAMODEL_DIR = Path(__file__).parents[3] / "rdf_persistence" / "model"
-TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
-# The toolkit's four theme targets beside the combined `rp.yaml` one (domain-model-per-theme PD-6): the
-# root schema of each and the theme whose `domain.generated` package it generates.
-THEME_ROOTS = {
-    "rp_tenancy": "access",
-    "rp_provenance": "provenance",
-    "rp_files": "files",
-    "rp_collaboration": "collaboration",
-}
-
-
-def theme_package(theme: str) -> str:
-    return f"rdf_persistence.{theme}.domain.generated"
+TOOLKIT_DOMAIN = theme_package(THEME_OF_ROOT["rp"])
 
 
 def _entry(schema: str, package: str) -> str:
@@ -45,24 +35,8 @@ def _entry(schema: str, package: str) -> str:
 
 def toolkit_domain_targets() -> str:
     """The ``pyproject.toml`` text of the toolkit's five domain targets over a copy of the metamodel's folder."""
-    entries = [_entry("rp", TOOLKIT_DOMAIN)]
-    entries += [_entry(root, theme_package(theme)) for root, theme in THEME_ROOTS.items()]
+    entries = [_entry(root, theme_package(theme)) for root, theme in THEME_OF_ROOT.items()]
     return "\n".join(entries)
-
-
-# The modules that read ``TOOLKIT_ROOTS`` by name, so a test can make a temporary folder the toolkit's own.
-ROOTS_USERS = (
-    "rdf_persistence_generation.config",
-    "rdf_persistence_generation.steps",
-    "rdf_persistence_generation.checks.python_package",
-    "rdf_persistence_generation.checks.hard",
-    "rdf_persistence_generation.checks.boundary",
-    "rdf_persistence_generation.components",
-    "rdf_persistence_generation.lock_step",
-    "rdf_persistence_generation.extensions.shacl",
-    "rdf_persistence_generation.extensions.typescript",
-    "rdf_persistence_generation.extensions.pydantic_split",
-)
 
 
 @pytest.fixture
@@ -73,8 +47,7 @@ def toolkit_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         tmp_path / "model",
         ignore=shutil.ignore_patterns("migrations", "__pycache__", "generated"),
     )
-    for module in ROOTS_USERS:
-        monkeypatch.setattr(f"{module}.TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
+    monkeypatch.setattr(config, "TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
     (tmp_path / "pyproject.toml").write_text(toolkit_domain_targets(), encoding="utf-8")
     return tmp_path
 

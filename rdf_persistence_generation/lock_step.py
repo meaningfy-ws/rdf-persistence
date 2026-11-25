@@ -15,7 +15,7 @@ from rdf_persistence.core.domain.exceptions import InvalidMigration
 from rdf_persistence.migrations.services.generated.rp_migrations_services import Migration
 from rdf_persistence.migrations.services.migrations import load_migration, migration_file_name
 from rdf_persistence.schema.services.schema_structure import generation_view
-from rdf_persistence_generation.config import TOOLKIT_ROOTS, migrations_folder
+from rdf_persistence_generation.config import migrations_folder, toolkit_roots
 from rdf_persistence_generation.exceptions import refusing_unsupported_rules
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
@@ -42,7 +42,7 @@ def _current(run: Run) -> SchemaLock:
     """The lock of the schema as it is now, from the view the generators use."""
     with refusing_unsupported_rules(), schema_faults():
         return summarise(
-            generation_view(run.schema_path, roots=TOOLKIT_ROOTS), run.schema_path.parent
+            generation_view(run.schema_path, roots=toolkit_roots()), run.schema_path.parent
         )
 
 

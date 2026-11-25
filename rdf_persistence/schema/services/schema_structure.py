@@ -243,17 +243,34 @@ def stored_file_class(view: SchemaView) -> str | None:
     )
 
 
-def is_stored_file(view: SchemaView, cls: ClassDefinition) -> bool:
-    """True when ``cls`` is the stored-file class or has it among its ancestors."""
-    stored = stored_file_class(view)
+class _Unset:
+    """The type of ``_UNSET``: a ``stored_file`` that was not given, so it is computed."""
+
+
+_UNSET = _Unset()
+
+
+def is_stored_file(
+    view: SchemaView, cls: ClassDefinition, *, stored_file: str | None | _Unset = _UNSET
+) -> bool:
+    """True when ``cls`` is the stored-file class or has it among its ancestors.
+
+    ``stored_file`` is ``stored_file_class(view)`` when the caller has it already (PD-6): ``None``
+    then means the schema has no such class, and the caller is trusted; left out, it is computed.
+    """
+    stored = stored_file_class(view) if isinstance(stored_file, _Unset) else stored_file
     return stored is not None and stored in view.class_ancestors(cls.name)
 
 
-def is_service_written(view: SchemaView, cls: ClassDefinition) -> bool:
-    """True when the consumer writes the root through a session (PD-3): annotated, or a stored file."""
+def is_service_written(
+    view: SchemaView, cls: ClassDefinition, *, stored_file: str | None | _Unset = _UNSET
+) -> bool:
+    """True when the consumer writes the root through a session (PD-3): annotated, or a stored file.
+
+    ``stored_file`` is as in ``is_stored_file``.
+    """
     annotated = annotation(cls, RpAnnotation.RP_WRITES) == WritesKind.SERVICE.value
-    stored_file = is_stored_file(view, cls)
-    return annotated or stored_file
+    return annotated or is_stored_file(view, cls, stored_file=stored_file)
 
 
 def is_toolkit_written(cls: ClassDefinition) -> bool:
@@ -287,17 +304,21 @@ def generated_schemas(view: SchemaView, folder: Path) -> list[SchemaDefinition]:
     when the root names none, every module beside it is this target's. Python and the package check
     read this set; the shapes, the context, the frames, the lock and the diagrams read ``own_schemas``.
     """
-    schemas = own_schemas(view, folder)
-    package = python_package_of(view.schema)
-    if package is None:
-        return schemas
-    return [schema for schema in schemas if python_package_of(schema) in (None, package)]
+    root_package = python_package_of(view.schema)
+    return [
+        schema for schema in own_schemas(view, folder) if is_generated_with(schema, root_package)
+    ]
 
 
 def python_package_of(schema: SchemaDefinition) -> str | None:
     """The ``python_package`` annotation of ``schema`` as written; None when it names none."""
     found = schema.annotations.get(PYTHON_PACKAGE)
     return None if found is None else str(found.value)
+
+
+def is_generated_with(schema: SchemaDefinition, root_package: str | None) -> bool:
+    """True when a module beside the root is written into the root's package: it names that package, or the root names none (PD-1)."""
+    return root_package is None or python_package_of(schema) in (None, root_package)
 
 
 def own_classes(schemas: list[SchemaDefinition]) -> list[ClassDefinition]:

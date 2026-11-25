@@ -12,6 +12,7 @@ from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore
+from tests.schema_helpers import TENANT_STATE_IRIS
 from tests.toy import (
     ADA,
     BOB,
@@ -111,7 +112,7 @@ async def corrupt(store: FakeStore, predicate: URIRef, *values: URIRef | Literal
     await store.put_graph(SYSTEM, RECORD_GRAPH, graph)
 
 
-STATE_IRIS = v.TENANT_STATE_IRIS
+STATE_IRIS = TENANT_STATE_IRIS
 
 
 # Class: a record with no usable state; an unknown one, and a count other than one (two stands for none too).

@@ -40,7 +40,7 @@ from rdf_persistence.schema.services.schema_structure import (
     own_schemas,
     python_package_of,
 )
-from rdf_persistence_generation.config import TOOLKIT_ROOTS, python_folder, read_targets
+from rdf_persistence_generation.config import python_folder, read_targets, toolkit_roots
 from rdf_persistence_generation.exceptions import ConfigError
 from rdf_persistence_generation.generated.rp_generation import ConstraintCase, ConstraintKind
 
@@ -110,7 +110,7 @@ class Conformance:
         Every call reads the files again, so a regeneration between two calls is seen.
         """
         _, package, folder = _generating_target(schema)
-        view = generation_view(schema, roots=TOOLKIT_ROOTS)
+        view = generation_view(schema, roots=toolkit_roots())
         documents = Documents(view, folder)
         return Conformance(
             view=view,

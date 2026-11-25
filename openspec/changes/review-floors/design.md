@@ -446,3 +446,26 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   (P-0007), which PD-5 did not foresee. It holds a `Session`, a `GuardContext` and a
   `ReferenceCollection`, runtime objects LinkML cannot express, as `GuardContext` (allowed for the
   same write guard) does; so it joins `HAND_WRITTEN` with that reason (lead-fixed, light chore).
+- **D-5 (stage 2, 2026-11-25), the theme map stays on the generator's side:** PD-10 and task 2.1
+  missed `tests/unit/tooling/test_library_tests_stay_apart.py` (generator-package PD-9): no test
+  outside `tests/generator/` may import `rdf_persistence_generation` unless it is one of nine named
+  tool users, and `read_targets` is the generator's. The guard stays as it is. So the theme map is
+  `tests/generator/theme_map.py`, used by the generator-side places of 192-j2
+  (`tests/generator/unit/conftest.py`, `test_hard_check.py`, `test_boundary_check.py`,
+  `test_ext_pydantic_split.py`); the 2.1 test lives in `tests/generator/unit/` as
+  `test_theme_folders.py::test_each_theme_domain_generated_folder_holds_exactly_its_modules`; the
+  two library-side places keep their own reading (`tests/unit/layout_table.py` needs only the
+  theme package; `test_theme_domain_targets.py` compares raw TOML keys `read_targets` does not
+  return). 192-j2 is narrowed accordingly; the task 4.1 comment on #192 says so.
+- **D-8 (stage 2 review, L2+L3, 2026-11-25), accepted findings, fixed in one pass:**
+  G1 (L2) `test_theme_map.py` repeats the helper's own comprehension: pin known facts instead
+  (`rp` → `core`, `rp_tenancy` → `access`, the five roots of `pyproject.toml`).
+  G2 (L2) no test passes `stored_file=`: one test that `stored_file=None` means "no stored-file
+  class", one that an explicit class name answers as the computed one.
+  G3 (docs) `architecture/generation.adoc:592` says every call site passes `TOOLKIT_ROOTS`: say
+  `toolkit_roots()` is the one reader.
+  G4 (L3) `router.py:464-466` trailing comment after a wrapped `):`: move it above the `if`.
+  Under the floor: the feature scenario's steps do not check the target's name (as before the
+  split; the spec says they name it: for the behaviour-fixes follow-up, OPEN-1); a context object
+  instead of the three new `# noqa: PLR0913`; `config.py` importing `vocabulary` at load.
+  `boundary.py:360` is task 2.7's 189-p, as planned.

@@ -68,19 +68,22 @@ from linkml_runtime.linkml_model.meta import (
 from linkml_runtime.utils.formatutils import camelcase, underscore
 from linkml_runtime.utils.schemaview import SchemaView
 
-from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema, metamodel_importmap
+from rdf_persistence.schema.services.schema import load_schema, metamodel_importmap
 from rdf_persistence.schema.services.schema_structure import (
     FIELD_NAME_SLOT,
     TRUE_TEXT,
     annotation_text,
     apply_defaults,
     generated_schemas,
+    is_generated_with,
     is_internal,
     is_switched_on,
     is_toolkit_schema,
     own_schemas,
+    python_package_of,
 )
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence.schema.services.vocabulary import METAMODEL
+from rdf_persistence_generation.config import METAMODEL_ROOT, toolkit_roots
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions.pydantic_validators import with_validators
 from rdf_persistence_generation.generated.rp_generation import (
@@ -94,7 +97,7 @@ from rdf_persistence_generation.module_cycles import (
 )
 
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "pydantic"
-METAMODEL_DIR = PACKAGE_DIR / "model"
+METAMODEL_DIR = METAMODEL.parent
 INIT = "__init__.py"
 TYPING = "typing"
 INIT_DOC = "Completes the classes of the modules that import each other (rp-generate)."
@@ -186,7 +189,7 @@ class InternalAttribute(PydanticAttribute):
 @cache
 def public_package() -> str:
     """The package an application imports the metamodel's classes from: the ``public_package`` of ``rp.yaml`` (DEC-7)."""
-    root = load_schema(METAMODEL_DIR / "rp.yaml").schema
+    root = load_schema(METAMODEL_DIR / METAMODEL_ROOT).schema
     return _required_annotation(root, GenerationAnnotation.PUBLIC_PACKAGE)
 
 
@@ -216,7 +219,7 @@ def toolkit_base_module() -> str:
     ``generated`` leaf replaced by ``base`` (``rdf_persistence.core.domain.generated`` gives
     ``rdf_persistence.core.domain.base``).
     """
-    root = load_schema(METAMODEL_DIR / "rp.yaml").schema
+    root = load_schema(METAMODEL_DIR / METAMODEL_ROOT).schema
     package = _dotted_package(root)
     parent, _, leaf = package.rpartition(".")
     if leaf != GENERATED_LEAF or not parent:
@@ -292,8 +295,7 @@ class SplitPydanticGenerator(PydanticGenerator):
 
     def _generated_here(self, schema: SchemaDefinition) -> bool:
         """Whether a module beside the root is written into the root's package: it names that package, or the root names none."""
-        package = annotation_text(schema, GenerationAnnotation.PYTHON_PACKAGE)
-        return self.root_package is None or package in (None, self.root_package)
+        return is_generated_with(schema, self.root_package)
 
     @property
     def class_bases(self) -> dict[str, list[str]]:
@@ -564,13 +566,13 @@ def _generator(
         emit_metadata=False,
         split=True,
         split_mode=mode,
-        toolkit=is_toolkit_schema(folder, roots=TOOLKIT_ROOTS),
+        toolkit=is_toolkit_schema(folder, roots=toolkit_roots()),
         folder=folder.resolve(),
         root_package=root_package,
         deferred=deferred or {},
         in_cycle=deferred is not None,
     )
-    apply_defaults(generator.schemaview, folder, roots=TOOLKIT_ROOTS)
+    apply_defaults(generator.schemaview, folder, roots=toolkit_roots())
     return generator
 
 
@@ -586,9 +588,9 @@ def render(schema_path: Path) -> list[GeneratedFile]:
     """
     folder = schema_path.parent
     view = load_schema(schema_path)
-    root_package = annotation_text(view.schema, GenerationAnnotation.PYTHON_PACKAGE)
+    root_package = python_package_of(view.schema)
     generated = generated_schemas(view, folder)
-    shared = is_toolkit_schema(folder, roots=TOOLKIT_ROOTS) and len(generated) < len(
+    shared = is_toolkit_schema(folder, roots=toolkit_roots()) and len(generated) < len(
         own_schemas(view, folder)
     )
     wanted = [

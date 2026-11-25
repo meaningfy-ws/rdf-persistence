@@ -589,8 +589,8 @@ imported only when needed. The plugin path is `rdf_persistence_generation.testki
 
 *Toolkit schemas.* The library's `is_toolkit_schema`, `apply_defaults` and `generation_view` take a
 `roots` argument, the folders that count as the toolkit's. It defaults to the library's own folder.
-The generator passes `TOOLKIT_ROOTS` (its own folder and the library's) at every call site, so the
-library never has to name the generator. Manifests record a library file as
+The generator passes `toolkit_roots()` of `config.py` (its own folder and the library's) at every
+call site; it is the one reader of `TOOLKIT_ROOTS`, so the library never has to name the generator. Manifests record a library file as
 `rdf_persistence/...` and a generator file as `rdf_persistence_generation/...`.
 
 *Contracts.* Three import-linter contracts keep the two packages apart (`make check-architecture`):

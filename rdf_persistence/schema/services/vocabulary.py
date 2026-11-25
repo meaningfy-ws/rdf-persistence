@@ -2,7 +2,8 @@
 
 Nothing here restates the schema: each predicate is the URI of a metamodel slot and each enum
 meaning is the ``meaning`` of a permissible value, read once through ``SchemaView`` and cached. The
-meanings are keyed by the generated enums, so no caller handles the values as free strings. The
+meanings (``meanings``) are keyed by the generated enums, so no caller handles the values as free
+strings; ``media_types`` does the same for the media type of each member. The
 factories at the end build the term bundles of the query templates (``generated.templates``), so the
 vocabulary IRIs a template uses are set in this one module (technical-models PD-5).
 """
@@ -78,17 +79,6 @@ def meanings[E: Enum](members: type[E]) -> Mapping[E, URIRef]:
     return {
         member: URIRef(view.expand_curie(values[str(member.value)].meaning)) for member in members
     }
-
-
-def enum_meanings(name: str) -> Mapping[str, URIRef]:
-    """The meaning IRI of each permissible value of the metamodel's enum ``name``, by the value's text.
-
-    For an enum whose generated class lives above ``schema``: a generated enum is a ``str`` enum, so
-    a caller looks a member up in the result as it would by its value.
-    """
-    view = metamodel()
-    values = view.get_enum(name).permissible_values
-    return {text: URIRef(view.expand_curie(str(value.meaning))) for text, value in values.items()}
 
 
 def media_types[E: Enum](members: type[E], view: SchemaView | None = None) -> Mapping[E, str]:
@@ -179,8 +169,6 @@ LISTED_IN = predicate("listed_in")
 REGISTRY_KIND_IRIS = meanings(RegistryKind)
 
 STATE = predicate("state")
-# By the state's text: a TenantState member is its text, so it finds its IRI here too.
-TENANT_STATE_IRIS = enum_meanings("TenantState")
 
 # A collection names its members, and has a rule that says which others belong (PD-5, PD-7).
 HAS_PART = predicate("has_part")

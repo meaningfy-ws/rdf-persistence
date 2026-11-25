@@ -22,6 +22,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.problems import format_problem
+from tests.generator.theme_map import THEME_OF_ROOT
 
 from .checks import API_MODULE, add_api_module
 from .checks import boundary_problems as problems_of
@@ -747,11 +748,7 @@ def test_the_toolkit_targets_derive_domain_for_the_metamodel_and_technical_for_t
         root = REPO / target.schema_file
         derived[target.schema_file] = derived_kind(load_schema(root), root.parent)
     assert [f for f, k in derived.items() if k == TargetKind.DOMAIN] == [
-        "rdf_persistence/model/rp.yaml",
-        "rdf_persistence/model/rp_tenancy.yaml",
-        "rdf_persistence/model/rp_provenance.yaml",
-        "rdf_persistence/model/rp_files.yaml",
-        "rdf_persistence/model/rp_collaboration.yaml",
+        f"rdf_persistence/model/{root}.yaml" for root in THEME_OF_ROOT
     ], f"only the metamodel's five targets derive domain: {derived}"
     assert sum(k == TargetKind.TECHNICAL for k in derived.values()) == 20, f"{derived}"
 

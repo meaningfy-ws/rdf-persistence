@@ -30,9 +30,10 @@ from rdf_persistence_generation.checks.python_package import python_package_prob
 from rdf_persistence_generation.checks.rules import rules_problems
 from rdf_persistence_generation.config import (
     METAMODEL_ROOT,
-    TOOLKIT_ROOTS,
+    PYPROJECT,
     migrations_folder,
     read_targets,
+    toolkit_roots,
 )
 from rdf_persistence_generation.extensions import (
     jsonld_context,
@@ -45,7 +46,6 @@ from rdf_persistence_generation.generated.rp_generation import CheckProblem
 from rdf_persistence_generation.lock_step import lock_problems, write_lock
 from rdf_persistence_generation.pipeline import Run, Step, check_step, render_step
 
-PYPROJECT = "pyproject.toml"
 LINT_CONFIG = Path(__file__).with_name("lint.yaml")
 # The name Linter looks its SchemaView up by; a test pins it so a linkml upgrade cannot break the patch silently.
 LINTER_SCHEMA_VIEW = "linkml.linter.linter.SchemaView"
@@ -127,7 +127,10 @@ def _boundary_problems(run: Run) -> list[CheckProblem]:
 def _toolkit_packages(run: Run) -> tuple[str, ...]:
     """The packages of the toolkit's own targets, from its ``pyproject.toml``; none on an application's run (PD-3)."""
     project = run.base / PYPROJECT
-    if not is_toolkit_schema(run.schema_path.parent, roots=TOOLKIT_ROOTS) or not project.is_file():
+    if (
+        not is_toolkit_schema(run.schema_path.parent, roots=toolkit_roots())
+        or not project.is_file()
+    ):
         return ()
     return tuple(target.package for target in read_targets(project))
 
@@ -154,7 +157,10 @@ def _stores_its_roots_here(run: Run) -> bool:
     the rules.
     """
     folder = run.schema_path.parent
-    if not is_toolkit_schema(folder, roots=TOOLKIT_ROOTS) or run.schema_path.name == METAMODEL_ROOT:
+    if (
+        not is_toolkit_schema(folder, roots=toolkit_roots())
+        or run.schema_path.name == METAMODEL_ROOT
+    ):
         return True
     if migrations_folder(run.target):
         return True

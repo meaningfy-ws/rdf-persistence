@@ -58,7 +58,7 @@ from rdf_persistence_generation.checks.application import application_problems
 from rdf_persistence_generation.checks.boundary import technical_classes
 from rdf_persistence_generation.checks.default_instance import default_instance_problems
 from rdf_persistence_generation.checks.toolkit_filled import toolkit_filled_problems
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     GenerationAnnotation,
@@ -411,7 +411,7 @@ def stored_schema_problems(
 
 def _stored_classes(schemas: list[SchemaDefinition], folder: Path) -> list[ClassDefinition]:
     """The classes the root and owned-class rules apply to: none of the toolkit's own (PD-23), none of a technical module (D-49)."""
-    if is_toolkit_schema(folder, roots=TOOLKIT_ROOTS):
+    if is_toolkit_schema(folder, roots=toolkit_roots()):
         return []
     exempt = {id(cls) for cls in technical_classes(schemas)}
     return [cls for cls in own_classes(schemas) if id(cls) not in exempt]

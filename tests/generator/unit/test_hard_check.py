@@ -13,7 +13,7 @@ from rdf_persistence.schema.services.schema_structure import (
     annotation_text,
     keyed_slots,
 )
-from rdf_persistence_generation import steps
+from rdf_persistence_generation import config, steps
 from rdf_persistence_generation.checks.application import ROWS
 from rdf_persistence_generation.checks.hard import (
     ALLOWED_ANNOTATIONS,
@@ -30,12 +30,12 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.problems import format_problem
+from tests.generator.theme_map import THEME_OF_ROOT, theme_package
 
 from .checks import DEFAULT_INSTANCE_SCHEMA
 from .checks import hard_check_problems as problems_of
 from .conftest import (
     TOOLKIT_DOMAIN,
-    theme_package,
     toolkit_domain_targets,
 )
 from .golden import ROOT_SCHEMA, Breaker
@@ -1128,7 +1128,8 @@ def test_the_target_of_rp_yaml_still_needs_migrations_for_the_roots_of_every_the
 ) -> None:
     """PD-4: the combined target is the one that is checked, so dropping its folder is refused."""
     found = _hard_problems_of_all(toolkit_project)
-    assert len(found) == 1 and "TenantAccess" in found[0], found  # noqa: PT018
+    assert len(found) == 1, f"one problem, the combined target's: {found}"
+    assert "TenantAccess" in found[0], f"the tenant root is named: {found}"
     assert HardRule.MIGRATIONS_FOLDER.value in found[0], "the rule is named"
 
 
@@ -1232,7 +1233,6 @@ def test_default_instance_that_is_not_a_boolean_is_refused_naming_the_slot(
 
 # ---- where the metamodel's classes live (DEC-7, PD-6, TC-35 to TC-38) ------------------------------
 
-PACKAGE_CHECK = "rdf_persistence_generation.checks.python_package"
 MODEL_COPY = "model"
 PACKAGE_RULES = {HardRule.PYTHON_PACKAGE, HardRule.PYTHON_PACKAGE_MISMATCH}  # need a toolkit target
 
@@ -1243,10 +1243,7 @@ def toolkit_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     shutil.copytree(
         METAMODEL.parent, tmp_path / MODEL_COPY, ignore=shutil.ignore_patterns("migrations")
     )
-    monkeypatch.setattr(f"{PACKAGE_CHECK}.TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
-    monkeypatch.setattr(  # X1
-        "rdf_persistence_generation.steps.TOOLKIT_ROOTS", (tmp_path.resolve(),)
-    )
+    monkeypatch.setattr(config, "TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
     (tmp_path / "pyproject.toml").write_text(toolkit_domain_targets(), encoding="utf-8")
     return tmp_path
 
@@ -1277,7 +1274,10 @@ def test_the_metamodel_copy_passes_both_python_package_rules(toolkit_copy: Path)
 def test_a_toolkit_module_without_python_package_is_refused_naming_it(toolkit_copy: Path) -> None:
     """TC-35"""
     _rewrite(
-        toolkit_copy, "rp_files", f"python_package: {theme_package('files')}", "unrelated: note"
+        toolkit_copy,
+        "rp_files",
+        f"python_package: {_package_of_root('rp_files')}",
+        "unrelated: note",
     )
     [line] = _package_problems(toolkit_copy)
     assert f"[{HardRule.PYTHON_PACKAGE.value}]" in line, "rule (a) is named"
@@ -1306,16 +1306,21 @@ def test_an_application_run_never_checks_the_package_of_its_target(toy_copy: Pat
     )
 
 
+def _package_of_root(root: str) -> str:
+    """The domain package of the target whose root schema is ``root``, from the targets themselves."""
+    return theme_package(THEME_OF_ROOT[root])
+
+
 TOOLKIT_PACKAGES = [
     ("rdf_persistence/model/rp_core.yaml", TOOLKIT_DOMAIN),
-    ("rdf_persistence/model/rp_access.yaml", theme_package("access")),
-    ("rdf_persistence/model/rp_tenancy.yaml", theme_package("access")),
-    ("rdf_persistence/model/rp_provenance.yaml", theme_package("provenance")),
-    ("rdf_persistence/model/rp_files.yaml", theme_package("files")),
-    ("rdf_persistence/model/rp_collections.yaml", theme_package("collaboration")),
-    ("rdf_persistence/model/rp_discussion.yaml", theme_package("collaboration")),
-    ("rdf_persistence/model/rp_workflow.yaml", theme_package("collaboration")),
-    ("rdf_persistence/model/rp_collaboration.yaml", theme_package("collaboration")),
+    ("rdf_persistence/model/rp_access.yaml", _package_of_root("rp_tenancy")),
+    ("rdf_persistence/model/rp_tenancy.yaml", _package_of_root("rp_tenancy")),
+    ("rdf_persistence/model/rp_provenance.yaml", _package_of_root("rp_provenance")),
+    ("rdf_persistence/model/rp_files.yaml", _package_of_root("rp_files")),
+    ("rdf_persistence/model/rp_collections.yaml", _package_of_root("rp_collaboration")),
+    ("rdf_persistence/model/rp_discussion.yaml", _package_of_root("rp_collaboration")),
+    ("rdf_persistence/model/rp_workflow.yaml", _package_of_root("rp_collaboration")),
+    ("rdf_persistence/model/rp_collaboration.yaml", _package_of_root("rp_collaboration")),
     (
         "rdf_persistence/model/technical/access/rp_access_adapters.yaml",
         "rdf_persistence.access.adapters.generated",

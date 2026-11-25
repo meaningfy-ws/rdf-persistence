@@ -30,7 +30,7 @@ from rdf_persistence.schema.services.schema_structure import (
     is_internal,
     json_name,
 )
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.generated.rp_generation import GeneratedFile
 
@@ -43,7 +43,7 @@ def _generated(schema_path: Path) -> dict[str, JsonSchema]:
         str(schema_path), importmap=metamodel_importmap(), include_null=False
     )
     apply_defaults(
-        generator.schemaview, schema_path.parent, roots=TOOLKIT_ROOTS
+        generator.schemaview, schema_path.parent, roots=toolkit_roots()
     )  # PD-8: the same view as the Python
     definitions: dict[str, JsonSchema] = json.loads(generator.serialize())["$defs"]
     return definitions

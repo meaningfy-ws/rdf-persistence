@@ -39,7 +39,7 @@ from rdf_persistence.schema.services.schema_structure import (
     is_owned,
 )
 from rdf_persistence.schema.services.vocabulary import BOOKKEEPING_PREDICATES
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.extensions.shacl_constraints import constraints_graph, shape_uri
 from rdf_persistence_generation.generated.rp_generation import GeneratedFile
 
@@ -147,5 +147,5 @@ class RpShaclGenerator(ShaclGenerator):
 def render(schema_path: Path) -> list[GeneratedFile]:
     """The closed shapes of the schema and its closure, as Turtle in a canonical form."""
     generator = RpShaclGenerator(str(schema_path), importmap=metamodel_importmap())
-    apply_defaults(generator.schemaview, schema_path.parent, roots=TOOLKIT_ROOTS)
+    apply_defaults(generator.schemaview, schema_path.parent, roots=toolkit_roots())
     return [GeneratedFile(name=SHAPES_FILE, text=generator.serialize())]

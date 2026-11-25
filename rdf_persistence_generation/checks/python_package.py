@@ -18,7 +18,7 @@ from rdf_persistence.schema.services.schema_structure import (
     is_toolkit_schema,
     own_schemas,
 )
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     GenerationAnnotation,
@@ -36,7 +36,7 @@ def python_package_problems(
     (problems); a module another target generates names the package of one of the toolkit's targets,
     ``toolkit_packages`` (PD-3).
     """
-    if not is_toolkit_schema(folder, roots=TOOLKIT_ROOTS):
+    if not is_toolkit_schema(folder, roots=toolkit_roots()):
         return []
     generated = generated_schemas(view, folder)
     kept = {schema.name for schema in generated}

@@ -75,38 +75,38 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
 
 ## 2. Stage 2: the generator (#192, #189)
 
-- [ ] 2.0 Lead: re-check the #192 and #189 rows on the current `develop` (RISK-6); re-index.
-- [ ] 2.1 192-k, unit. Red: `tests/unit/package/test_theme_layout.py::test_each_theme_domain_generated_folder_holds_exactly_its_modules`
+- [x] 2.0 Lead: re-check the #192 and #189 rows on the current `develop` (RISK-6); re-index.
+- [x] 2.1 192-k, unit. Red: `tests/unit/package/test_theme_layout.py::test_each_theme_domain_generated_folder_holds_exactly_its_modules`
   asserts the set of `*.py` modules (bar `__init__.py`) of every `rdf_persistence/<theme>/domain/generated/`
   equals the stems of the schemas its target generates that declare at least one class
   (`generated_schemas` on the target's root schema, from `read_targets`, minus class-less
   modules such as `rp.yaml` and `rp_collaboration.yaml`, which write no `.py`), e.g.
   `{rp_access, rp_tenancy}` for `access`. Probed on 2026-11-22: the five theme folders match
   with that exclusion. Mutation: a stray empty module added to one folder.
-- [ ] 2.2 192-j2 (PD-10), unit. Red: `tests/unit/tooling/test_theme_map.py::test_the_theme_map_is_read_from_the_targets`
+- [x] 2.2 192-j2 (PD-10), unit. Red: `tests/unit/tooling/test_theme_map.py::test_the_theme_map_is_read_from_the_targets`
   imports `tests/theme_map.py` (absent today) and asserts its map equals the one `read_targets`
   gives on the repository's `pyproject.toml`. Then the six places use it; their tests pass
   unedited in what they assert.
-- [ ] 2.3 192-i (with PD-9) and 192-m (PD-11), unit and generator unit. Red: none (DEC-3, tests
+- [x] 2.3 192-i (with PD-9) and 192-m (PD-11), unit and generator unit. Red: none (DEC-3, tests
   only). The assertion sites are the 192-i row of `inputs/triage.md`. Guard: the same test ids
   pass (minus the three dropped: PD-9's duplicate and PD-11's two tests); for one split assertion per file, flipping its expected value
   makes that assertion fail with its own message (shown in the hand-off, then reverted);
   `noqa: PT018` gone from `test_hard_check.py:1131` and `test_python_package_rule.py:57`.
-- [ ] 2.4 189-r, 189-s (PD-12), 189-q, feature and generator unit. Red: none (DEC-3). Guard: the
+- [x] 2.4 189-r, 189-s (PD-12), 189-q, feature and generator unit. Red: none (DEC-3). Guard: the
   feature scenario "A technical layer refuses a domain module" passes with three `Then`/`And`
   steps; the six config tests pass unedited in what they assert; `openspec validate
   review-floors --strict` passes with the `rp-generation` delta.
-- [ ] 2.5 192-e (PD-7), generator unit. Red: `tests/generator/unit/test_toolkit_roots_readers.py::test_only_the_accessor_reads_toolkit_roots`
+- [x] 2.5 192-e (PD-7), generator unit. Red: `tests/generator/unit/test_toolkit_roots_readers.py::test_only_the_accessor_reads_toolkit_roots`
   asserts no module of `rdf_persistence_generation/` but `config.py` names `TOOLKIT_ROOTS` (it
   fails today: ten do), plus its own case on a planted alias import. Then the accessor, the
   ten readers, one `# X1` patch in `tests/generator/unit/conftest.py`, `ROOTS_USERS` gone.
   Guard: "Generator tests" lane green.
-- [ ] 2.6 192-f, g, h (PD-8), unit and generator unit. Red: none (DEC-3). Guard:
+- [x] 2.6 192-f, g, h (PD-8), unit and generator unit. Red: none (DEC-3). Guard:
   `test_ext_pydantic_split.py` (the whole file, with the two `METAMODEL_DIR` tests at `:147` and
   `:625`), `tests/unit/schema/test_vocabulary.py`,
   `tests/unit/access/test_access_loading.py`, `test_schema_imports_no_upper_module.py`,
   `make check-generated` (no diff), `make check-freshness`.
-- [ ] 2.7 192-b (PD-6) and 189-p, unit and generator unit. Red: none (DEC-3). Guard:
+- [x] 2.7 192-b (PD-6) and 189-p, unit and generator unit. Red: none (DEC-3). Guard:
   `tests/unit/schema/test_schema_structure.py`, `tests/unit/api/test_service_written.py`, the
   application rows of `test_hard_check.py`, `tests/generator/unit/test_boundary_check.py`.
 - [ ] 2.8 Lead: as 1.12 for stage 2.
@@ -178,7 +178,7 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
 ## Roadmap
 
 - [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12
-- [ ] 2.0 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
+- [x] 2.0 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [ ] 2.8
 - [ ] 3.0 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 3.6 · [ ] 3.7 · [ ] 3.8 · [ ] 3.9 · [ ] 3.10 · [ ] 3.11
 - [ ] 4.1 · [ ] 4.2
 

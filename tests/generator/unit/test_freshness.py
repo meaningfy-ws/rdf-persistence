@@ -343,7 +343,7 @@ def test_a_problem_shared_by_several_targets_is_reported_once_naming_them() -> N
 
 
 def test_a_problem_of_one_target_keeps_its_line_unchanged() -> None:
-    target = GenerationTarget(schema="a.yaml", package="app.a")
+    target = GenerationTarget(schema="a.yaml", package="app.a.domain.generated")
     report = manifest_module.freshness_report([(target, [_problem(SHARED)])])
     assert [problem.message for problem in report] == [SHARED], "a lone problem was annotated"
 
@@ -365,7 +365,7 @@ def test_a_schema_shared_by_two_targets_is_reported_once_through_the_check(
 
 def test_fix_hint_dedupes_commands_in_entry_order() -> None:
     targets = [
-        GenerationTarget(schema_file="a", package="a", regenerate_command=c)
+        GenerationTarget(schema_file="a", package="a.domain.generated", regenerate_command=c)
         for c in ("make b", None, "make b", "make a")
     ]
     assert (

@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from rdf_persistence.files.domain.generated.rp_files import StoredFile
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import generated_schemas, own_schemas
+from rdf_persistence_generation import config
 from rdf_persistence_generation.checks.python_package import python_package_problems
 from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.exceptions import SchemaGenerationError
@@ -25,10 +26,11 @@ from rdf_persistence_generation.extensions.pydantic_split import (
 from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
 from rdf_persistence_generation.manifest import current_inputs
 from rdf_persistence_generation.steps import PYTHON_STEP
+from tests.generator.theme_map import THEME_OF_ROOT, theme_package
 
 from .golden import assert_matches_toy, run_toy
 
-TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
+TOOLKIT_DOMAIN = theme_package(THEME_OF_ROOT["rp"])
 TOY_MODULES = [
     "__init__.py",
     "books.py",
@@ -654,7 +656,7 @@ def beside(tmp_path: Path) -> Path:
 @pytest.fixture
 def beside_as_toolkit(beside: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """``beside``, treated as the toolkit's own folder."""
-    monkeypatch.setattr(pydantic_split, "TOOLKIT_ROOTS", (beside.resolve(),))  # X1
+    monkeypatch.setattr(config, "TOOLKIT_ROOTS", (beside.resolve(),))  # X1
     return beside
 
 

@@ -77,7 +77,7 @@ def test_a_package_that_is_not_a_dotted_identifier_is_refused(package: str) -> N
 
 def test_a_folder_that_escapes_the_project_is_a_config_error_naming_the_key(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text(
-        '[tool.rp-generate]\nschema = "m.yaml"\npackage = "p"\npython = "../out"\n'
+        '[tool.rp-generate]\nschema = "m.yaml"\npackage = "p.domain.generated"\npython = "../out"\n'
     )
     with pytest.raises(ConfigError, match="python"):
         read_targets(tmp_path / "pyproject.toml", build_parser().parse_args([]))

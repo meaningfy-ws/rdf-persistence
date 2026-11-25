@@ -53,25 +53,32 @@ def _targets() -> list[dict]:
 
 @pytest.mark.parametrize(("name", "package"), ANNOTATIONS.items())
 def test_a_module_names_the_package_of_its_theme(name, package):
-    assert _schema(name)["annotations"]["python_package"] == package
+    found = _schema(name)["annotations"]["python_package"]
+
+    assert found == package, f"{name} names the package of its theme"
 
 
 def test_the_collaboration_root_imports_its_three_modules_and_nothing_else_of_the_model():
     """PD-6 (DEC-5): a root of its own, so that one target generates the three modules."""
     schema = _schema("rp_collaboration")
 
-    assert schema["id"] == "https://meaningfy.ws/ns/rdf-persistence/collaboration"
-    assert schema["name"] == "rp_collaboration"
-    assert schema["title"] == "RDF persistence collaboration module"
+    assert schema["id"] == "https://meaningfy.ws/ns/rdf-persistence/collaboration", "the root's id"
+    assert schema["name"] == "rp_collaboration", "the root's name"
+    assert schema["title"] == "RDF persistence collaboration module", "the root's title"
     assert schema["description"].strip(), "a one-line description"
-    assert schema["imports"] == ["linkml:types", "rp_collections", "rp_discussion", "rp_workflow"]
+    assert schema["imports"] == [
+        "linkml:types",
+        "rp_collections",
+        "rp_discussion",
+        "rp_workflow",
+    ], "its three modules and nothing else of the model"
     assert schema["prefixes"] == _schema("rp")["prefixes"], "the prefixes of rp.yaml"
     assert "classes" not in schema, "a root with no classes of its own"
-    assert "module_kind" not in schema["annotations"]
+    assert "module_kind" not in schema["annotations"], "the root carries no module kind"
 
 
 def test_the_combined_root_does_not_import_the_collaboration_root():
-    assert "rp_collaboration" not in _schema("rp")["imports"]
+    assert "rp_collaboration" not in _schema("rp")["imports"], "rp.yaml keeps its own closure"
 
 
 def test_the_four_theme_targets_follow_the_combined_one_with_only_the_keys_they_need():
@@ -79,7 +86,7 @@ def test_the_four_theme_targets_follow_the_combined_one_with_only_the_keys_they_
     combined = [i for i, t in enumerate(targets) if t["schema"] == "rdf_persistence/model/rp.yaml"]
 
     assert combined == [0], "rp.yaml is the first target"
-    assert targets[0]["package"] == CORE
+    assert targets[0]["package"] == CORE, "the combined target generates into core"
     for offset, (schema, package) in enumerate(THEME_TARGETS, start=1):
         assert targets[offset] == {
             "schema": schema,
