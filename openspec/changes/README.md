@@ -58,6 +58,7 @@ Work outside the table, all delivered and archived: `test-suite-grooming`, `alig
 |---|---|---|---|
 | `test-debt-paydown` | LARGE (three stages, one PR) | re-planned 2026-11-21, gate 8.9 accepted (DEC-5, R-0005) | ready for an epic session; scenario sign-off pending |
 | `ldes-view` | MEDIUM | no | a shaping session |
+| `consumer-friction` (#371, #372; MWB2 `v2-05`) | SMALL (1 stage) | 2026-11-25, attacked and gated by a fresh reviewer 8.7 → 9.3, pass (`evidence/clarity-gate.md`); scenarios signed off | ready for an epic session; **BREAKING** for generated TypeScript (DEC-6) |
 | `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
 
 ### The first consumer's needs (shaped 2026-11-20)
