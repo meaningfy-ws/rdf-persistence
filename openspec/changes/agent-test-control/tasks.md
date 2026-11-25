@@ -41,8 +41,9 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
   `tests/changed.py` equals the `--ignore` options of the Makefile's `UNIT_LANE` (PD-5), compared
   after replacing `$(TEST_PATH)` with `tests`.
 
-- [ ] 1.3 PD-9, unit (parallel with 1.1). `tests/memory.py`, the teardown hook in
-  `tests/conftest.py`, `tests/unit/tooling/test_memory.py`. Red: `release()` reports at least one
+- [ ] 1.3 PD-9, DEC-10, unit (parallel with 1.1). `rdf_persistence/testkit/memory.py`,
+  `rdf_persistence/testkit/memory_plugin.py`, the two names in `testkit.__all__` (the lead
+  refreshes the public-surface snapshot), the opt-in line in `tests/conftest.py`, `tests/unit/tooling/test_memory.py`. Red: `release()` reports at least one
   cache cleared for linkml-runtime and one for FastAPI (RISK-6); building three `ToyService()`
   apps, dropping them and calling `release()` leaves no `ServiceKit` alive (`gc.get_objects()`
   count back to its value before the three); a hook test with fake items: `clear_caches` is

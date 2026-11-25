@@ -15,7 +15,7 @@ it turns selection off when `-m` or `-k` is given unless `--testmon-forceselect`
 (`configure.py:65-77`); `--testmon-nocollect` selects without writing; it records nothing under
 coverage.py; it cannot see code run in a subprocess.
 
-Constraints: no hook in this repository (`AGENTS.md`); no library or generator code changes; the
+Constraints: no hook in this repository (`AGENTS.md`); no library or generator code changes outside the testkit (DEC-10); the
 full gates and CI keep what they run (proposal.md, No-gos); every Python run goes through `uv`.
 
 ## Goals / Non-Goals
@@ -133,7 +133,12 @@ DEC-8 inside this change (task 4.3, after the merge).
   mismatch prints `packages changed since the seed: the lead re-runs make test-seed`. The lead starts the seed with `run_in_background` at stage start, after
   `make reindex`; builders start at once and get the folder rules until the swap. A stage that
   changes `pyproject.toml` or `uv.lock` re-seeds after `uv sync`.
-- **PD-9 Release memory at each module boundary** (DEC-9). `tests/memory.py` holds `release()`:
+- **PD-9 Release memory at each module boundary** (DEC-9, DEC-10). `rdf_persistence/testkit/memory.py`
+  holds `clear_caches()` and `release_memory()` (exported in `testkit.__all__`; FastAPI imported
+  lazily, absent counts as 0 caches, so the testkit runs without the api extras); the hook wrapper
+  lives in `rdf_persistence/testkit/memory_plugin.py`, which a project enables with
+  `pytest_plugins = ["rdf_persistence.testkit.memory_plugin"]` (this repository: `tests/conftest.py`).
+  Below, `release()` means `release_memory()`. Its work:
   call `cache_clear()` on every attribute of `linkml_runtime.utils.schemaview.SchemaView` that has
   one, and on every module-level attribute of `fastapi.dependencies.models` that has one; then
   `gc.collect()`; then, on glibc only, `ctypes.CDLL("libc.so.6").malloc_trim(0)` (skipped quietly

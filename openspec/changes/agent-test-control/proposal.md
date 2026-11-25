@@ -88,6 +88,13 @@ Success is measured in Langfuse (DEC-8).
   kit loads and modifies its own view; it is the follow-up change, with a report to linkml-runtime,
   named in the stage report).
 
+- **DEC-10**: The memory release ships in the public testkit, `rdf_persistence.testkit`
+  (`clear_caches`, `release_memory`, and the opt-in pytest plugin
+  `rdf_persistence.testkit.memory_plugin`), so every project that builds services with the toolkit
+  in its tests can use it; this repository opts in from `tests/conftest.py` — the developer's
+  choice, 2026-11-25 ("put it in the testkit … then we will see what we do for other projects").
+  Rejected: a private `tests/memory.py`. Other projects adopting it is not part of this EPIC.
+
 ## Rabbit-holes
 
 - Tuning testmon for files it cannot see. The folder rules already map them; do not teach testmon
@@ -117,8 +124,9 @@ Success is measured in Langfuse (DEC-8).
   cannot see; the fallback to `make test-fast` kept only for a file no rule maps and testmon
   cannot see; no selection data means the folder rules, with a hint to the lead.
 - A development dependency, `pytest-testmon`; `.testmondata` ignored by git.
-- `tests/conftest.py` and `tests/memory.py`: the caches cleared after each test, and the memory
-  released at each module boundary.
+- The testkit, `rdf_persistence.testkit` (`clear_caches`, `release_memory`, the opt-in plugin
+  `memory_plugin`), enabled in `tests/conftest.py`: the caches cleared after each test, and the
+  memory released at each module boundary (DEC-10). A new public testkit API.
 - `AGENTS.md`, `develop/agents.adoc`, `develop/testing.adoc`, `questions.adoc`: the gates and
   guards of DEC-6 and the page of DEC-7.
 - A skillery issue (DEC-1).
@@ -133,7 +141,8 @@ Success is measured in Langfuse (DEC-8).
 
 ## Impact
 
-Makefile, `tests/changed.py`, `tests/conftest.py`, `tests/memory.py`, `tests/queue.py`,
+Makefile, `tests/changed.py`, `tests/conftest.py`, `rdf_persistence/testkit/memory.py`,
+`rdf_persistence/testkit/memory_plugin.py`, `rdf_persistence/testkit/__init__.py`, `tests/queue.py`,
 `tests/testmon_data.py`, `tests/unit/tooling/test_changed.py`,
 `tests/unit/tooling/test_lanes.py`, `pyproject.toml`, `uv.lock`, `.gitignore`, `AGENTS.md`,
 `docs/modules/ROOT/pages/develop/{agents,testing,index}.adoc`, `questions.adoc`. No library or

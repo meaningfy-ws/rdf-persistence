@@ -19,5 +19,6 @@
 
 | # | Question (recommendation) | Answer | Becomes |
 |---|---|---|---|
+| 13 | The consumer application has the same leak through the toolkit's `install_service`: ship the release in the public testkit with an opt-in pytest plugin (recommended), or keep it private? | "yes, put it in the testkit / rdf-persistence project; and then we will see what we do for other projects" | DEC-10 |
 | 12 | With the second measurement: clear the caches after every test (not only per module)? Reuse one schema load per process? | "finish shaping, plan and proceed with implementation immediately, with subagents": caches cleared after every test (PD-9); schema reuse needs a library change (the kit loads and modifies its own view), so it is a follow-up change, with the upstream report (DEC-9) | PD-9, DEC-9 |
 | 11 | Fold mechanisms 1 (release caches at module boundaries) and 2 (worker count bounded by free memory) into this change; lazy import-time objects and fewer SchemaViews as a separate change | "yes include 1 and 2; is enough": no further memory change for now | DEC-9 |
