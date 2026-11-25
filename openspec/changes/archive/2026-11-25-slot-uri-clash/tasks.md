@@ -34,12 +34,12 @@ lead does and ticks this file.
   for rule `SLOT_IRI` right after the item that names rule `TOOLKIT_SLOT_NAME`, in its style;
   `CHANGELOG.md` under `[Unreleased]` only, in the section design.md D-1 names (RISK-1): models
   with two slots on one IRI are now refused, and how to fix them. Accept: `make check-docs` green.
-- [ ] 1.3 **lead** — scenario-map rows for the three new rows; `make check-all`; one review pass
+- [x] 1.3 **lead** — scenario-map rows for the three new rows; `make check-all`; one review pass
   (TINY); PR into `develop`, merged on green CI; #206 closed; archive.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [ ] 1.3
+- [x] 1.1 · [x] 1.2 · [x] 1.3
 
 ## Verification
 
