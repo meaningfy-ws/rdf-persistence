@@ -3,7 +3,7 @@
 import re
 
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis import strategies as st
 from pydantic import BaseModel, ValidationError
 from rdflib import BNode, Dataset, Graph, Literal, URIRef
@@ -49,7 +49,9 @@ HOSTILE = [
     "'single' and \"double\"",
     "$name ${name} $$",
     "é中\U0001f600",
+    "\x1f0000",  # #270: a control character followed by hex digits
 ]
+CONTROL_CHARACTERS = [chr(c) for c in [*range(0x20), 0x7F]]
 
 
 def parsed_object(rendered: str) -> object:
@@ -96,6 +98,26 @@ def test_hostile_literals_with_a_language_or_datatype_parse_back(text):
 def test_any_string_literal_round_trips(text):
     assert parsed_object(term(Literal(text))) == Literal(text), (
         "any string literal parses back unchanged"
+    )
+
+
+@given(
+    st.sampled_from(CONTROL_CHARACTERS),
+    st.text(alphabet="0123456789abcdefABCDEF", min_size=1, max_size=9),
+)
+@example("\x1f", "0000")  # #270: read as the invalid code point 001f0000
+@example("\x01", "0000")  # read as the valid U+10000: a silent change, not an error
+def test_a_control_character_followed_by_hex_digits_round_trips(control, digits):
+    # #270: rdflib reads \u with 4 or 8 hex digits, so a 4-digit escape must not be extensible.
+    text = control + digits
+    assert parsed_object(term(Literal(text))) == Literal(text), (
+        "the hex digits after a control character stay text, not part of its escape"
+    )
+
+
+def test_a_control_character_goes_out_as_an_escape_nothing_can_extend():
+    assert term(Literal("\x1f0000")) == '"\\U0000001F0000"', (
+        "a control character is written with the 8-digit escape, its following digits as text"
     )
 
 
