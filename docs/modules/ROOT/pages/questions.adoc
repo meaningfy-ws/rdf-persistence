@@ -459,6 +459,11 @@ controlled].
 adapters or containers (about 3.5 minutes, needs Docker). See
 xref:develop/index.adoc#how-long-the-checks-take[How long the checks take].
 
+*How much code is there, and how many tests guard it?*::
+At 0.15.0, about 37,000 lines (18,700 statements) of production code and 107,000 lines of tests:
+about 5,200 test functions, run as about 10,300 tests. See
+xref:develop/index.adoc#size[How big the code and the test suite are].
+
 *How is a release cut?*::
 release-please proposes it as a PR into `develop` from the Conventional Commits; you merge it and
 fast-forward `main` to the tag by hand. See xref:develop/index.adoc#release[Cutting a release].

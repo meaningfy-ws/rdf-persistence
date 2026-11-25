@@ -172,6 +172,54 @@ f2531a1 |
 |`make check-generated` |– |≈ 10 s |2026-11-06, f2531a1 |It regenerates both projects first.
 |===
 
+[#size]
+== How big the code and the test suite are
+
+_How much code is there, and how many tests guard it?_
+
+Counted at version 0.15.0 (`develop` at 5b58b624, 2026-11-25). Lines are physical lines of the
+`.py` files; statements are the `ast.stmt` nodes Python's parser finds, which ignore blank lines,
+comments and line wrapping. The figures go stale with every stage: recount them at a release and
+say which version they belong to.
+
+[cols="3,1,1,1",options="header"]
+|===
+|Package |Files |Lines |Statements
+
+|`rdf_persistence/` |189 |26,112 |12,567
+|of which `generated/` |53 |3,397 |1,925
+|`rdf_persistence_generation/` |54 |11,102 |6,143
+|of which `generated/` |2 |880 |712
+|*Production code* |*243* |*37,214* |*18,710*
+|`tests/` |499 |107,225 |–
+|===
+
+The library's themes, by statements: `persistence` 1,944, `api` 1,824, `testkit` 1,761,
+`collaboration` 1,471, `tenancy` 1,144, `access` 1,079, `iris` 700, `core` 690, `schema` 609,
+`events` 373, `migrations` 320, `provenance` 203, `files` 196, `messaging` 163.
+
+[cols="2,1,1",options="header"]
+|===
+|Test tier |Files |`def test_` functions
+
+|`tests/unit/` |296 |4,156
+|`tests/generator/` |101 |847
+|`tests/integration/` |42 |198
+|`tests/e2e/` |5 |13
+|`tests/perf/` |7 |7
+|`tests/feature/` |13 (14 `.feature` files) |107 scenarios
+|===
+
+About 5,200 test functions become about 10,300 test runs (`make check-all` above, 2026-11-25),
+mostly through 968 `@pytest.mark.parametrize` decorators. That is about 280 test functions per
+1,000 statements, and 2.9 lines of test code per line of production code. Whether a test earns its
+place is answered by an audit of the suite (the `test-suite-care` skill), not by these ratios.
+
+To recount: `find <dir> -name '*.py' | wc -l` and `find <dir> -name '*.py' -exec cat {} + | wc -l`
+for files and lines, `grep -rE '^\s*(async )?def test_' tests/<tier> | wc -l` for test functions,
+and a few lines of Python summing `isinstance(node, ast.stmt)` over `ast.walk(ast.parse(...))` for
+statements.
+
 [#release]
 == Cutting a release
 
