@@ -15,7 +15,7 @@ from typing import Any
 
 from linkml_runtime.utils.schemaview import SchemaView
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 RELEASE_SWITCH = "TEST_RELEASE"
 OFF = "off"
@@ -102,4 +102,4 @@ def after_test(
         if nextitem is None or nextitem.module is not item.module:
             release()
     except Exception:  # noqa: BLE001 -- releasing memory must never fail a test: logged only
-        logger.warning("releasing memory after a test failed", exc_info=True)
+        log.warning("releasing memory after a test failed", exc_info=True)
