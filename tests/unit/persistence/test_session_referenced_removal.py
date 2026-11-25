@@ -16,7 +16,7 @@ import pytest
 from rdflib import RDF, Dataset, Graph, Literal, URIRef
 
 from rdf_persistence import InUse
-from rdf_persistence.core.domain.exceptions import Conflict, NotFound
+from rdf_persistence.core.domain.exceptions import Conflict, KeyConflict, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 from rdf_persistence.persistence.services.mapper import UnitOfWork
@@ -25,6 +25,7 @@ from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Author, Book
 from tests.toy import TENANT, book_iri, dune, toy_mapper_limited
+from tests.unit.activity_helpers import KEYS, isbn_book
 
 LIB = "https://example.org/ns/library#"
 AUTHOR_CLASS, SHELF_CLASS = URIRef(LIB + "Author"), URIRef(LIB + "Shelf")
@@ -500,6 +501,44 @@ async def test_matrix_13_referrer_first_in_a_later_batch_order_works(store):
         await work.commit(batches=True)
         assert not await stored(session, A1), "the author is removed"
         assert not await stored(session, B1), "the referrer is removed"
+
+
+# --- the order of the diagnosis and the reads of a commit (characterisation, review-floors 252-j) --
+
+
+async def test_a_key_held_elsewhere_wins_over_a_removed_root_still_referenced(store, refusal):
+    """PD-4 of delete-refuses-referenced: the store holds both claims, the key is reported first."""
+    async with open_session(
+        store,
+        database=FAKE_DATABASE,
+        tenant_iri=TENANT,
+        principal=Principal(id="https://example.org/people/ada"),
+        clock=lambda: NOW,
+        removals=refusal,
+        keys=KEYS,
+    ) as keyed:
+        version = await keyed.add_graph(A1, author(A1))
+        await keyed.add_graph(B1, book(B1, by=A1))  # A1 stays referenced
+        await keyed.add_graph(B2, isbn_book(B2, "1"))  # holds the key value
+        with pytest.raises(Conflict) as refused:
+            async with keyed.transaction() as t:
+                await t.remove(A1, version)
+                await t.add_graph(B3, isbn_book(B3, "1"))
+        assert type(refused.value) is KeyConflict, "the key held elsewhere is reported, not InUse"
+        assert refused.value.iris == (B3,), "the root whose key clashed"
+        assert await stored(keyed, A1), "nothing was removed"
+
+
+async def test_no_type_is_read_when_no_link_names_a_removed_root(session, store):
+    """A commit whose added book links an author it does not remove sends no heads read of A1."""
+    version = await session.add_graph(A1, author(A1))
+    await session.add_graph(A2, author(A2))
+    reads = len(store.sent("query"))
+    async with session.transaction() as t:
+        await t.remove(A1, version)
+        await t.add_graph(B3, book(B3, by=A2))
+    heads = [text for text in store.sent("query")[reads:] if "VALUES ?m" in text]
+    assert not any(A1 in text for text in heads), "no heads read names the removed author"
 
 
 # --- TC-5: G-3, no refusal configured, no guard -------------------------------------------------
