@@ -12,7 +12,10 @@ On 87aad87e + the fix pass in flight (rebased on develop 5b58b624), before the f
 | `make test-containers` | passed: 370 passed on Fuseki, among them 1.7a's IT-A1 to IT-A3 |
 | `make check-generated` | passed: generated output fresh and type-checked |
 
-After the fix pass (30ec5ddd): POST-FIX-PENDING
+After the fix pass, rebased on develop 9cda08da (b34593b6): `make check-all` passed (unit 8490
+passed, 4 xfailed, 96.48 %; feature 102 passed, 70.68 %; generator 1789 passed, 1 xfailed,
+96.96 %); `make check-generated` passed. `make test-containers` was not re-run: neither the fix
+pass nor develop changed an adapter.
 
 ## The issue's three acceptance items
 
