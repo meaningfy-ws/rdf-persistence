@@ -13,7 +13,7 @@ from rdf_persistence.schema.services.schema_structure import (
     annotation_text,
     keyed_slots,
 )
-from rdf_persistence_generation import steps
+from rdf_persistence_generation import config, steps
 from rdf_persistence_generation.checks.application import ROWS
 from rdf_persistence_generation.checks.hard import (
     ALLOWED_ANNOTATIONS,
@@ -1233,7 +1233,6 @@ def test_default_instance_that_is_not_a_boolean_is_refused_naming_the_slot(
 
 # ---- where the metamodel's classes live (DEC-7, PD-6, TC-35 to TC-38) ------------------------------
 
-PACKAGE_CHECK = "rdf_persistence_generation.checks.python_package"
 MODEL_COPY = "model"
 PACKAGE_RULES = {HardRule.PYTHON_PACKAGE, HardRule.PYTHON_PACKAGE_MISMATCH}  # need a toolkit target
 
@@ -1244,10 +1243,7 @@ def toolkit_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     shutil.copytree(
         METAMODEL.parent, tmp_path / MODEL_COPY, ignore=shutil.ignore_patterns("migrations")
     )
-    monkeypatch.setattr(f"{PACKAGE_CHECK}.TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
-    monkeypatch.setattr(  # X1
-        "rdf_persistence_generation.steps.TOOLKIT_ROOTS", (tmp_path.resolve(),)
-    )
+    monkeypatch.setattr(config, "TOOLKIT_ROOTS", (tmp_path.resolve(),))  # X1
     (tmp_path / "pyproject.toml").write_text(toolkit_domain_targets(), encoding="utf-8")
     return tmp_path
 

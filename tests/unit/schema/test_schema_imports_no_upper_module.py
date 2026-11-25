@@ -2,7 +2,8 @@
 
 from rdf_persistence.schema.services import schema_structure
 from rdf_persistence.schema.services.schema import load_schema
-from rdf_persistence.schema.services.vocabulary import METAMODEL, TENANT_STATE_IRIS
+from rdf_persistence.schema.services.vocabulary import METAMODEL
+from tests.schema_helpers import TENANT_STATE_IRIS
 
 
 def test_the_stored_file_class_is_the_class_whose_class_uri_is_rp_stored_file() -> None:

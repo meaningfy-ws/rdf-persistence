@@ -28,7 +28,7 @@ from rdf_persistence.schema.services.schema_structure import (
     is_owned,
     own_schemas,
 )
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.generated.rp_generation import (
     GeneratedFile,
@@ -180,7 +180,7 @@ def with_index(files: list[GeneratedFile]) -> list[GeneratedFile]:
 
 def _generator(schema_path: Path) -> ToolkitTypescriptGenerator:
     generator = ToolkitTypescriptGenerator(str(schema_path), importmap=metamodel_importmap())
-    apply_defaults(generator.schemaview, schema_path.parent, roots=TOOLKIT_ROOTS)
+    apply_defaults(generator.schemaview, schema_path.parent, roots=toolkit_roots())
     return generator
 
 

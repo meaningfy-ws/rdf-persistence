@@ -61,7 +61,7 @@ from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
 from rdf_persistence.persistence.services.listing import items_of, list_request, total_of
 from rdf_persistence.persistence.services.session import Stored
-from rdf_persistence.schema.services.schema_structure import is_service_written
+from rdf_persistence.schema.services.schema_structure import is_service_written, stored_file_class
 from rdf_persistence.tenancy.services.generated.rp_tenancy_services import TenantSummary
 
 CONTEXT_ROUTE = "context"
@@ -404,10 +404,19 @@ def add_tenant_routes(router: APIRouter, kit: ServiceKit, gate: Gate) -> None:
         doc.add_to(router, path, method, endpoint)
 
 
-def add_aggregate_routes(
-    router: APIRouter, kit: ServiceKit, gate: Gate, rp_path: str, cls: ClassDefinition
+def add_aggregate_routes(  # noqa: PLR0913 - the router, the kit, the gate, the aggregate's path and class, and its stored-file class
+    router: APIRouter,
+    kit: ServiceKit,
+    gate: Gate,
+    rp_path: str,
+    cls: ClassDefinition,
+    *,
+    stored_file: str | None,
 ) -> None:
-    """``/{tenant_segment}/{t}/{rp_path}`` and ``…/{aggregate_id}`` for one aggregate type (PD-13)."""
+    """``/{tenant_segment}/{t}/{rp_path}`` and ``…/{aggregate_id}`` for one aggregate type (PD-13).
+
+    ``stored_file`` is the schema's stored-file class, found once for all the aggregates (PD-6).
+    """
     api = DocumentApi(kit, cls)
     collection = f"/{kit.settings.tenant_segment}/{{t}}/{rp_path}"
     member = f"{collection}/{{aggregate_id}}"
@@ -452,7 +461,9 @@ def add_aggregate_routes(
     docs = AggregateOpenApi(kit.view, cls, rp_path)
     docs.listing().add_to(router, collection, HTTPMethod.GET, listing)
     docs.read().add_to(router, member, HTTPMethod.GET, read)
-    if is_service_written(kit.view, cls):  # the consumer writes it through a session (PD-3)
+    if is_service_written(
+        kit.view, cls, stored_file=stored_file
+    ):  # the consumer writes it through a session (PD-3)
         return
     docs.create().add_to(router, collection, HTTPMethod.POST, create)
     docs.replace().add_to(router, member, HTTPMethod.PUT, replace)
@@ -491,6 +502,7 @@ def build_router(kit: ServiceKit) -> APIRouter:
     add_tenant_routes(router, kit, gate)
     # before the aggregates; ``rp-events`` is under the reserved prefix (D-15)
     add_events_route(router, kit, sse=kit.toolkit.sse)
+    stored_file = stored_file_class(kit.view)
     for rp_path, cls in kit.documents.aggregates.items():
-        add_aggregate_routes(router, kit, gate, rp_path, cls)
+        add_aggregate_routes(router, kit, gate, rp_path, cls, stored_file=stored_file)
     return router

@@ -13,6 +13,7 @@ from rdf_persistence.schema.services.schema_structure import (
     is_stored_file,
     is_tenant_root,
     owned_classes,
+    stored_file_class,
 )
 from rdf_persistence_generation.generated.rp_generation import CheckProblem, HardRule
 from rdf_persistence_generation.problems import rule_problem
@@ -28,12 +29,14 @@ MIXIN_ROW = "the database annotation is not inherited through a mixin"
 ROWS = (TENANT_ROOT_ROW, OWNED_ROW, NOT_ROOT_ROW, STORED_FILE_ROW, SHARED_IRI_ROW, MIXIN_ROW)
 
 
-def _application_row(
+def _application_row(  # noqa: PLR0913 - the class, what the rows compare it with, and the stored-file class
     view: SchemaView,
     cls: ClassDefinition,
     roots: list[ClassDefinition],
     owned: set[str],
     others: dict[str, str],
+    *,
+    stored_file: str | None,
 ) -> str | None:
     """The message of the first PD-5 row that ``cls``, an application class, breaks; None when it breaks none."""
     clash = others.get(view.get_uri(cls, expand=True))
@@ -41,7 +44,7 @@ def _application_row(
         (is_tenant_root(cls), TENANT_ROOT_ROW),
         (cls.name in owned, OWNED_ROW),
         (cls not in roots, NOT_ROOT_ROW),
-        (is_stored_file(view, cls), STORED_FILE_ROW),
+        (is_stored_file(view, cls, stored_file=stored_file), STORED_FILE_ROW),
         (bool(clash), f"{SHARED_IRI_ROW} {clash}"),
     )
     return next((message for broken, message in rows if broken), None)
@@ -52,18 +55,22 @@ def _is_application(view: SchemaView, cls: ClassDefinition) -> bool:
     return not cls.abstract and database_of(view, cls) == DatabaseKind.APPLICATION
 
 
-def _row_of(
+def _row_of(  # noqa: PLR0913 - the class, what the rows compare it with, and the stored-file class
     view: SchemaView,
     cls: ClassDefinition,
     roots: list[ClassDefinition],
     owned: set[str],
     others: dict[str, str],
+    *,
+    stored_file: str | None,
 ) -> str | None:
     """The PD-5 message for ``cls``, or None: the mixin row for a mixin, the first broken row for an application class."""
     if cls.mixin:
         carries = annotation(cls, RpAnnotation.DATABASE) == DatabaseKind.APPLICATION.value
         return MIXIN_ROW if carries else None
-    return _application_row(view, cls, roots, owned, others) if _is_application(view, cls) else None
+    if not _is_application(view, cls):
+        return None
+    return _application_row(view, cls, roots, owned, others, stored_file=stored_file)
 
 
 def application_problems(
@@ -76,7 +83,8 @@ def application_problems(
         for root in database_roots(view, database)
     }
     owned = owned_classes(view, classes)
+    stored_file = stored_file_class(view)
     for cls in classes:
-        row = _row_of(view, cls, roots, owned, others)
+        row = _row_of(view, cls, roots, owned, others, stored_file=stored_file)
         if row:
             yield rule_problem(HardRule.ANNOTATION, cls.name, row)

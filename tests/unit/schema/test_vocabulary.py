@@ -14,6 +14,7 @@ from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.schema.services import vocabulary
 from rdf_persistence.schema.services.schema import API_ENTRYPOINTS_SCHEMA, load_schema
 from rdf_persistence.schema.services.schema_structure import is_bookkeeping
+from tests.schema_helpers import TENANT_STATE_IRIS
 
 METAMODEL = Path(__file__).parents[3] / "rdf_persistence" / "model" / "rp.yaml"
 
@@ -90,7 +91,7 @@ def test_every_registry_slot_has_a_constant():
 
 @pytest.mark.parametrize(
     ("enum", "mapping"),
-    [(RegistryKind, vocabulary.REGISTRY_KIND_IRIS), (TenantState, vocabulary.TENANT_STATE_IRIS)],
+    [(RegistryKind, vocabulary.REGISTRY_KIND_IRIS), (TenantState, TENANT_STATE_IRIS)],
 )
 def test_each_enum_member_maps_to_the_meaning_the_schema_declares(view, enum, mapping):
     values = view.get_enum(enum.__name__).permissible_values

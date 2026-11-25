@@ -10,14 +10,13 @@ from pathlib import Path
 
 import pytest
 
-from rdf_persistence_generation.config import read_targets
+from rdf_persistence_generation.config import PYPROJECT, read_targets
 from rdf_persistence_generation.exceptions import ConfigError
 from rdf_persistence_generation.generated.rp_generation import GenerationTarget
 from rdf_persistence_generation.manifest import fix_hint, freshness_report, stale_targets
 from rdf_persistence_generation.problems import format_problem
 
 PROJECTS_OPTION = "rp_generate_projects"
-DEFAULT_PROJECT = "pyproject.toml"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -43,7 +42,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     config = session.config
     if hasattr(config, "workerinput"):
         return  # an xdist worker: the controller checked before starting it (test-lanes PD-7)
-    projects = config.getini(PROJECTS_OPTION) or [DEFAULT_PROJECT]
+    projects = config.getini(PROJECTS_OPTION) or [PYPROJECT]
     lines: list[str] = []
     stale: list[GenerationTarget] = []
     for project in projects:

@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from rdf_persistence.schema.services.schema import PACKAGE_DIR, load_schema
 from rdf_persistence.schema.services.schema_structure import annotation_text
+from rdf_persistence.schema.services.vocabulary import METAMODEL
 from rdf_persistence_generation.exceptions import ConfigError
 from rdf_persistence_generation.generated.rp_generation import (
     CliFlag,
@@ -19,12 +20,25 @@ from rdf_persistence_generation.generated.rp_generation import (
 
 GENERATOR_PACKAGE = "rdf_persistence_generation"
 GENERATOR_DIR = Path(str(resources.files(GENERATOR_PACKAGE))).resolve()
-# The folders whose schemas are the toolkit's own (PD-5); passed as ``roots=`` at every call of
-# ``is_toolkit_schema``, ``apply_defaults`` and ``generation_view``, since the library knows only itself.
+# The folders whose schemas are the toolkit's own (PD-5); read only through ``toolkit_roots()``, so a test patches this one constant.
 TOOLKIT_ROOTS = (PACKAGE_DIR, GENERATOR_DIR)
+
+
+def toolkit_roots() -> tuple[Path, ...]:
+    """The folders whose schemas are the toolkit's own (PD-5, PD-7).
+
+    Passed as ``roots=`` at every call of ``is_toolkit_schema``, ``apply_defaults`` and
+    ``generation_view``, since the library knows only itself.
+    """
+    return TOOLKIT_ROOTS
+
+
 # The root of the combined metamodel: its closure holds every domain module, so on the toolkit's own
 # run it is the one target whose roots are checked against `migrations` and written to the lock (PD-4).
-METAMODEL_ROOT = "rp.yaml"
+METAMODEL_ROOT = METAMODEL.name
+# The project file every target is read from; the steps and the freshness plugin both name it here, since
+# the pipeline cannot import the plugin (it needs ``pytest``).
+PYPROJECT = "pyproject.toml"
 GENERATION_MODEL = GENERATOR_DIR / "model" / "rp_generation.yaml"
 TARGET_CLASS = "GenerationTarget"
 

@@ -21,7 +21,7 @@ from rdf_persistence.schema.services.schema_structure import (
     own_schemas,
     owned_classes,
 )
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.generated.rp_generation import (
     BoundaryRule,
     CheckProblem,
@@ -357,7 +357,7 @@ def kind_folder_problems(
         _kind_of(schema) == VALUE for schema in own_schemas(view, folder)
     )
     message = _folder_message(
-        package, TargetKind(kind), is_toolkit_schema(folder, roots=TOOLKIT_ROOTS), has_value
+        package, kind, is_toolkit_schema(folder, roots=toolkit_roots()), has_value
     )
     return [rule_problem(BoundaryRule.TARGET_KIND, package, message)] if message else []
 
@@ -369,7 +369,7 @@ def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     classes of a module annotated ``module_kind: technical``, which are never stored (D-49).
     """
     schemas = own_schemas(view, folder)
-    classes = [] if is_toolkit_schema(folder, roots=TOOLKIT_ROOTS) else own_classes(schemas)
+    classes = [] if is_toolkit_schema(folder, roots=toolkit_roots()) else own_classes(schemas)
     technical = technical_classes(schemas)
     exempt = {id(cls) for cls in technical}
     stored = [cls for cls in classes if id(cls) not in exempt]
