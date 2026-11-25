@@ -178,7 +178,9 @@ repository:
   (`library_access.yaml`), and the role definitions (`library_roles.yaml`).
 * *A technical module*: a module annotated `module_kind: technical` may hold the request and response shapes
   of your own routes. Its classes need no owning root; they are generated in Python and TypeScript
-  but never stored. A domain module may not import it; the root schema imports it. To generate
+  but never stored. A domain module may not import it. Put the technical module in its own target:
+  a target that generates technical modules beside domain ones is refused (`a target generates one
+  kind`), so the root schema that imports it is a second one, not the domain target's. To generate
   technical models into a package of their own, see
   xref:user-manual/generate.adoc#technical-target[Keep technical models in a target of their own].
 

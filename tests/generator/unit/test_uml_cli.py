@@ -83,7 +83,7 @@ def test_a_roles_file_the_loader_refuses_exits_one_with_its_message_and_writes_n
     def refuse(path):
         raise InvalidRoleDefinition("entry 1: refused")
 
-    monkeypatch.setattr(write_module, "load_role_definitions", refuse)
+    monkeypatch.setattr(write_module, "load_role_definitions", refuse)  # X3
     builder, ids = build_library(tmp_path)
     role_definition = builder.cls(ids["library"], "rp:RoleDefinition")
     builder.object_(

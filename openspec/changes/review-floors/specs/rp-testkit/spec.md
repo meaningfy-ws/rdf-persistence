@@ -45,4 +45,4 @@ SHALL raise `TimeoutError` naming the URL rather than hang.
 #### Scenario: a lifespan start-up longer than the timeout
 - **GIVEN** an app whose lifespan the helper enters, and whose start-up takes longer than `timeout`
 - **WHEN** the helper opens a stream on it with that `timeout`
-- **THEN** it returns the head without raising, because the lifespan's start-up and shutdown are outside `timeout`
+- **THEN** it returns the head without raising, because the lifespan's start-up is outside `timeout`

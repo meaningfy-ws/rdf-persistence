@@ -121,6 +121,15 @@ The call returns as soon as one of these holds:
 If none holds within `timeout`, it raises `TimeoutError` naming the URL. The one deadline bounds the
 head and the events together.
 
+The other outcomes:
+
+* The start-up of the app's lifespan is outside `timeout`: it counts the head and the events only.
+* An app that raises before it sends the head: the call raises that exception.
+* An app that raises after the head: the read ends with the events that came, and the call returns
+  them without the exception.
+* An app that ends without sending a response: the call raises `RuntimeError`.
+* A negative `events` or a `timeout` of 0 or less: the call raises `ValueError`.
+
 === Hear a commit
 
 A follower hears only the commits that come after it subscribes. To test that a commit reaches a
@@ -161,6 +170,10 @@ router lifespan and the toolkit's own lifespan has not started it already (it re
 `app.state.rp_lifespan_started`). If your test already entered the lifespan, as in
 <<whole-service,the whole service above>>, the helper does not enter it a second time. A raw ASGI
 callable has no lifespan and gets none.
+
+A test that holds several streams at once enters the app's lifespan itself, as the `service` fixture
+of `tests/unit/api/conftest.py` does (`async with app.router.lifespan_context(app)`), so that the
+helper does not enter and leave it once per call.
 
 [#aim-a-fault]
 == Aim a fault at the request

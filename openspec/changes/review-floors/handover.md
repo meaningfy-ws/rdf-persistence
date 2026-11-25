@@ -1,21 +1,39 @@
-# Hand-over: review-floors, after planning
+# Hand-over: review-floors, all three stages merged (2026-11-25)
 
 ## Done
-Planning: EPIC shaped, PLAN gated 9.4 (fresh reviewer), scenarios signed off by the owner on
-2026-11-25; plan PR #384 (merged after this note).
+- Plan PR #384 merged (EPIC, PLAN gated 9.4, scenarios signed off).
+- Stage 1 merged as #393, stage 2 as #400, stage 3 as #401 (the PR this note closes).
+- Both branches were rebased onto 0.15.0 (the test-control system) and onto #398/#399 with no
+  conflict (D-12).
+- Full test run on the stage 3 tip, which carries all three stages:
+  - `make check-quality`;
+  - unit and feature tests from the seed (10251 passed, D-13);
+  - `make test-generator` (1789 passed, 96.96 %);
+  - `make test-containers` (368 passed, the e2e tests included, D-14);
+  - `make check-generated`;
+  - `make refresh-map` (only other changes' tests unmapped).
+  The stage 2 tip ran `make check-quality` and `make test-generator`. Results are in #400 and #401.
+- D-9 settled by the owner: the tripwire became a pass-through spy, so `# X2` fits rule 3.
+- Stage 2 merged ahead of #391 and activity-iri-policy, by the owner's decision.
 
 ## Decided since the PLAN
-none (the owner's answers are in `inputs/qa.md` round 2, folded into DEC-6 and PD-17 to PD-22).
+D-1 to D-14 (`design.md`, Delivery decisions). New in this session:
+- D-12: the rebase onto 0.15.0;
+- D-13: the seed stands for the unit and feature tiers;
+- D-14: the s3 run covers s2, with no separate e2e run;
+- D-9: settled as a spy.
 
 ## Open
-- GitHub CI is suspended: stage PRs merge on a passing local `make check-all` recorded in the PR
-  (DEC-5, P-0013).
-- #371 and #372 belong to `consumer-friction`, planned in parallel; it may touch `tests/` helpers
-  or the generator's TypeScript. Re-check overlaps at task 1.0 (RISK-6).
+- GitNexus was not re-indexed in this session: another session held the index (D-1, D-12).
 
 ## Next
-Stage 1, task 1.0. Read first: `tasks.md` §1, `design.md` PD-1 to PD-5, PD-16 to PD-18, PD-22,
-RISK-1, RISK-7, and `inputs/triage.md` (*Re-triage of 2026-11-25*).
+1. Task 4.1: post `close-comments.md` (PRLIST = #393, #400, #401; PRS1 = #393; NEWISSUE = the
+   189-v issue, opened first); close #215, #272, #273 and #275; narrow the rest. Link the full
+   test result from #393.
+2. Task 4.2: archive per `spec-stewardship`; update `openspec/changes/README.md`.
+3. Remove `.worktrees/review-floors-s2` and `.worktrees/review-floors-s3`.
 
 ## Prompt
-Act as the team lead. Deliver stage 1 of openspec/changes/review-floors from handover.md.
+Act as the team lead. Close openspec/changes/review-floors from handover.md: post the issue
+comments (task 4.1), archive the change (task 4.2), update openspec/changes/README.md and remove
+its worktrees.

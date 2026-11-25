@@ -49,13 +49,12 @@ class ReferencedRemovals:
         referrers = {referrer for referrer, _, _ in items}
         allowed = referrers if readable is None else await readable(root, rows)
         readable_referrers = referrers & allowed
-        ordered = tuple(sorted(readable_referrers)[: self._cap])
-        shown = frozenset(ordered)
+        shown = frozenset(sorted(readable_referrers)[: self._cap])
         return InUse(
             f"{', '.join(refused)} is still referred to",
             iris=tuple(refused),
             referrers=tuple(item for item in items if item[0] in shown),
-            more_count=len(readable_referrers) - len(ordered),
+            more_count=len(readable_referrers) - len(shown),
             hidden_count=len(referrers - allowed),
             filtered=readable is not None,
         )

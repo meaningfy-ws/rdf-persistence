@@ -16,6 +16,16 @@ def test_testkit_root_does_not_import_testcontainers() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "module", ["rdf_persistence.testkit.streams", "rdf_persistence.api.entrypoints.service"]
+)
+def test_testkit_root_does_not_load_the_stream_or_service_module(module: str) -> None:
+    code = f"import sys, rdf_persistence.testkit; sys.exit({module!r} in sys.modules)"
+    assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (
+        f"importing the testkit root does not load {module}"
+    )
+
+
 def test_missing_extra_names_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(sys.modules, "testcontainers", None)  # X5
     for name in [m for m in sys.modules if m.startswith(CONTAINERS)]:

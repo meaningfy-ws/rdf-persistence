@@ -432,6 +432,48 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   load (one `make check-all` took 38 min, against 13 in the durations table), builders run only
   the narrow checks of the files they touch (`uv run pytest <files>`, `make lint`); the lead runs
   `make check-all` once per stage before the PR and once after the fix pass.
+- **D-6 (stage 3, 2026-11-25), the wake test fails earlier than planned:** the error-matrix row
+  "the relay's first look" assumed the first activity reaches the hub by the relay's first look.
+  In fact the relay looks once at start, before any commit, so without `relay.wake()` the first
+  activity already waits out the 60 s interval: task 3.4's planted mutation fails the test at its
+  first wait (`test_event_wiring.py:97`, after 60 s), not at the 2 s assertion. The mutation is
+  still caught; a failing run takes 60 s. Kept as built.
+- **D-7 (stage 3), the D-7 scenario names only the start-up:** task 3.1's test proves a start-up
+  longer than `timeout` does not raise; nothing in it delays shutdown, so the `rp-testkit` delta's
+  THEN line drops "and shutdown" (no second real sleep).
+- **D-9 (stage 3, 2026-11-25), one patch marked X2 at the edge of its wording:** task 3.10's guard
+  found four unmarked patches of toolkit code. Three inject a fault no port produces (X3: the UML
+  writer's role and workflow loaders). The fourth, `test_aggregate_validators.py:613`, replaces
+  `write_guards.root_types` with a function that raises, proving the read does not happen when no
+  rule exists: a hand-off no public result shows (X2), though by a tripwire, not a pass-through
+  spy. Marked X2; the owner may prefer rewording rule 3's X2 or a seam.
+  **Settled (the owner, 2026-11-25): a spy.** The tripwire became a pass-through spy that wraps
+  the real `root_types`, records each call and asserts none happened, so X2's wording holds as
+  written; no rule and no production code changed. Shown to bite: with the `has_rules` return
+  removed from `_run_aggregate_validators`, the test fails with its own message (lead-fixed, a
+  light chore).
+- **D-10 (full review, 2026-11-25: L1, L2, L3, L4+L5 over the three stages; no Critical, all
+  approve), accepted findings, fixed in one pass:**
+  H1 (L2) `user-manual/test.adoc:124-125` claims shutdown is outside `timeout`, which no test pins
+  (D-7): say start-up only. H2 (L2) the Redis `claim_idle` test's run and mutation are recorded in
+  `evidence/redis-claim-idle.md` (lead). H3 (L4) restore the blank line after the summary of
+  `in_use_problem`'s docstring. H4 (L3) the tests that read `TOOLKIT_ROOTS`
+  (`test_generated_artefacts*.py`, `test_generation_shape.py`) call `toolkit_roots()`; wrap
+  `config.py`'s long comment. H5 (L3) `test_aggregate_validators.py:696` and
+  `test_referenced_removals.py:20` use `tests/toy.py`'s `AUTHOR` and `WRITTEN_BY` where type and
+  value are the same. H6 (L4) `referenced_removals.in_use` keeps one name for the shown set
+  (`shown = frozenset(sorted(readable_referrers)[: self._cap])`). H7 (L2) the patch-marker guard's
+  docstring says it knows the patcher only by the name `monkeypatch`. H8 (L2) the wake test's map
+  row is a `capability` row (lead). H9 (L2) 3.10 ticked (lead).
+  Under the floor: `stored_file`'s `_UNSET` default is dead in the library (kept: PD-6, so other
+  callers stay unchanged; L1 notes `None` is trusted); the `stored_file` keyword threaded through
+  three signatures with `# noqa: PLR0913` (as D-8); `toolkit_roots()` and `PYPROJECT` public in
+  `config.py`; names (`_CollectionCheck`, `is_generated_with`); `_ref_of` in `openapi.py`;
+  `iri_policy_helpers.BOOK_CLASS`'s other meaning (PD-17 exception); `tests/schema_helpers.py`'s
+  place; `tests/e2e/test_library.py`'s path arithmetic. Left for the owner: D-9 (since settled).
+  Outcome of the pass: H1, H3, H4 (tests), H6, H7 fixed; H5 not applicable (both files' constants
+  are `str`, `tests/toy.py`'s are `URIRef`); H4's `config.py` comment wrap dropped (an edit to a
+  generation input forces a regeneration for a comment).
 - **D-4 (stage 1 review, L2+L3, 2026-11-25), accepted findings, fixed in one pass:**
   F1 (L2) task 1.3's test lacks the deep read of each parent the task names: add it.
   F2 (L2) task 1.2's test finds the heads read by the text `"VALUES ?m"`: match the `READ_HEADS`
@@ -469,3 +511,25 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   split; the spec says they name it: for the behaviour-fixes follow-up, OPEN-1); a context object
   instead of the three new `# noqa: PLR0913`; `config.py` importing `vocabulary` at load.
   `boundary.py:360` is task 2.7's 189-p, as planned.
+- **D-12 (close, 2026-11-25), rebase onto 0.15.0 without conflicts:** s2 rebased onto
+  `origin/develop` (0.15.0, the test-control system of `agent-test-control`) and s3 onto s2
+  with no conflict. Against `develop` the branch now adds, of the testing system, only rule 3's
+  freshness sentence (#273), its scenario-map rows and the generator conftest's `# X1` patch;
+  `tests/queue.py`, `tests/changed.py`, the memory plugin in `tests/conftest.py`, the queued
+  Makefile recipes and the rest of `testing.adoc` are `develop`'s. `make reindex` was skipped:
+  another session was running `gitnexus analyze`, so the existing index stands (as D-1).
+- **D-13 (close, 2026-11-25, the owner), the seed stands for the unit and feature tiers:** the
+  s3 seed (`make test-seed`, every unit and feature test once, slow included, no coverage)
+  passed 10,251 tests, 5 xfailed, in 7 min 13 s; the s2 seed 10,244, 5 xfailed, in 6 min 14 s.
+  The owner stopped the separate `make test-unit` and `make test-feature` runs as repeats of it,
+  and amended the seed rule on `develop` (#398: seed only where builders follow). Rebased onto
+  #398 without conflict; no seed after that rebase (no builders, no lock change). The coverage
+  floors are checked by `make check-all` before each PR.
+- **D-14 (close, 2026-11-25), the s3 run covers s2; no separate e2e run:** stage 3 is stage 2
+  plus its own commits, so the tiers run once, on the s3 tip; on the s2 tip only
+  `make check-quality` and `make test-generator` (stage 2 is the generator stage).
+  `make test-containers` selects `integration or e2e`, so `make test-e2e` would repeat its e2e
+  tests and is not run. `make refresh-map` lists 118 tests with no row, every one added by
+  another change (`agent-test-control`'s queue, lanes, testmon and memory tests; the UML
+  import's tests); none of this change's. It also dropped two rows of tests `agent-test-control`
+  deleted: put back, as that change's to settle.

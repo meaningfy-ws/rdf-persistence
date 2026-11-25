@@ -26,7 +26,18 @@ include::example$getting-started/pyproject.toml[tag=project]
 
 `rdf-persistence` is the library your code runs with. Its `generate` extra adds LinkML, which only
 generating needs, so it goes in the dev group. The source pins the release tag `v0.7.0`; to try the
-newest changes, use `branch = "develop"` instead. Run `uv sync`.
+newest changes, use `branch = "develop"` instead.
+
+Make an empty file `domain/__init__.py` in the same folder: it makes `domain` a package, and
+`library_app.py` imports the generated code from it. Then go into the folder and install:
+
+[source,shell]
+----
+cd library
+uv sync
+----
+
+Every command below runs in `library/`.
 
 == 2. Write the model
 
@@ -104,7 +115,7 @@ First, its imports and two constants: `ADA` is the principal, whoever acts, name
 include::example$getting-started/library_app.py[tag=setup]
 ----
 
-Next, the *service kit*. It holds everything the toolkit needs: the schema, the store, the file
+Next, the *service kit*, `ServiceKit` (exported by `rdf_persistence`, defined in its `api` entrypoints). It holds everything the toolkit needs: the schema, the store, the file
 store, the identity provider and the settings. Here each of them is an in-memory fake from the
 testkit; a real deployment passes the Fuseki, S3 and Zitadel adapters instead. The kit also
 requires a token verifier and access rules; only the HTTP routes use them, so the fakes here are
@@ -120,7 +131,10 @@ include::example$getting-started/library_app.py[tag=kit]
 Then the work itself. It creates a library in Ghent on behalf of Ada, mints an IRI for a new book,
 stores the book in one commit, and reads it back in a new session. The `Mapper` turns generated
 objects into triples and back: it reads the schema, which the kit holds as `kit.view`, and the
-classes of the generated module, which `generated_models` collects. In the IRI, `"book"` is the
+classes of the generated module, which `generated_models` collects (`generated_models(library)`
+returns the generated classes of the module `library`; it is exported by `rdf_persistence`). The
+`UnitOfWork` (also exported by `rdf_persistence`) is the object-level access to one session:
+`add` the objects, `commit` them in one transaction, `get` a root back. In the IRI, `"book"` is the
 word that stands for the class (its name in lower case) and `"books"` is its `rp_path`.
 
 [source,python]
@@ -143,7 +157,13 @@ uv run python library_app.py
 ----
 
 It prints the book read back. Besides what you set, it carries `creator` (Ada's IRI) and `created`:
-the session wrote them, because `Book` is `Tracked`.
+the session wrote them, because `Book` is `Tracked`. The output of one run (the UUIDs in the IRI
+and the `created` time differ on every run):
+
+[source,text]
+----
+id='https://example.org/library/libraries/2473fcc3-1b30-46f3-9c7f-25d817e922c4/books/bd25706d-645a-4699-8245-51b76899d38f' label='Dune' description='A planet.' created=datetime.datetime(2026, 11, 25, 18, 6, 37, 294523, tzinfo=datetime.timezone.utc) modified=None creator='https://example.org/people/ada' contributor=None authors=['Frank Herbert']
+----
 
 == What happened
 

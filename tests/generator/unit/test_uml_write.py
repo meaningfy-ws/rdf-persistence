@@ -241,7 +241,7 @@ def test_a_staged_file_the_loader_refuses_moves_nothing(
     def refuse(path: Path):
         raise InvalidRoleDefinition(f"{path.name}: entry 1: refused")
 
-    monkeypatch.setattr(write_module, "load_role_definitions", refuse)
+    monkeypatch.setattr(write_module, "load_role_definitions", refuse)  # X3
     out = tmp_path / "out"
     out.mkdir()
     (out / "lib_main.yaml").write_text("kept: yes\n", encoding="utf-8")
@@ -354,7 +354,7 @@ def test_a_staged_workflow_the_loader_refuses_moves_nothing(
     def refuse(path: Path):
         raise InvalidWorkflow(f"{path.name}: refused")
 
-    monkeypatch.setattr(write_module, "load_workflow", refuse)
+    monkeypatch.setattr(write_module, "load_workflow", refuse)  # X3
     out = tmp_path / "out"
     out.mkdir()
 
