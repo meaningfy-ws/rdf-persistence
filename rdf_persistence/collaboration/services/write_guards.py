@@ -10,6 +10,7 @@ by trying member classes, the class of a hidden aggregate whose IRI it holds, ne
 """
 
 from collections.abc import Collection, Iterable, Mapping, Sequence
+from dataclasses import dataclass
 
 from pydantic import BaseModel
 from rdflib import RDF, Graph, Literal, URIRef
@@ -67,6 +68,23 @@ def _walk_from(
     return frozenset(reached), None
 
 
+def _exact_heads(own: str, heads: Iterable[AggregateHead]) -> list[AggregateHead]:
+    """The ``heads`` stored with exactly the class whose IRI is ``own``."""
+    return [h for h in heads if own in (h.head_types or [])]
+
+
+@dataclass(frozen=True)
+class _CollectionCheck:
+    """What is known when the check of a collection starts (nested-collections PD-5)."""
+
+    session: Session
+    iri: str
+    name: str
+    collection: ReferenceCollection
+    context: GuardContext
+    adding: bool
+
+
 class WriteGuards:
     """The checks of the writes of one schema, built once and shared by every session."""
 
@@ -115,7 +133,7 @@ class WriteGuards:
         if name is not None:
             decoded = self._decoded(name, iri, graph)
             await self._check_collection(
-                session, iri, name, decoded, context, adding=stored is None
+                _CollectionCheck(session, iri, name, decoded, context, adding=stored is None)
             )
         if self._workflows is not None:
             triples = await self._workflows.keep_state(session, iri, triples, stored, allowed_state)
@@ -221,40 +239,25 @@ class WriteGuards:
             # the generated class refuses the triples; its text names internals
             raise InvalidBody(f"the triples of {iri} are not those of a {name}") from error
 
-    async def _check_collection(  # noqa: PLR0913 - the root, its class, its decoding and what the transaction holds
-        self,
-        session: Session,
-        iri: str,
-        name: str,
-        collection: ReferenceCollection,
-        context: GuardContext,
-        *,
-        adding: bool,
-    ) -> None:
-        if not adding:
-            await self._check_held_member_class(session, iri, name, collection, context)
+    async def _check_collection(self, check: _CollectionCheck) -> None:
+        collection = check.collection
+        if not check.adding:
+            await self._check_held_member_class(check)
         # the nested members already stored stay valid (the check above); only new ones are checked
         stored = (
-            await self._stored_members(session, iri, collection.member_class)
-            if collection.nests and not adding
+            await self._stored_members(check.session, check.iri, collection.member_class)
+            if collection.nests and not check.adding
             else set()
         )
-        heads = await self._check_members(session, name, collection, stored, context)
+        heads = await self._check_members(check, stored)
         try:
             rule_plan(self._listings, collection)
         except BadQuery as error:
             raise InvalidBody(str(error)) from error
         if collection.nests:
-            await self._check_no_cycle(session, iri, name, collection, heads, context, stored)
+            await self._check_no_cycle(check, heads, stored)
 
-    async def _check_held_member_class(
-        self,
-        session: Session,
-        iri: str,
-        name: str,
-        collection: ReferenceCollection,
-        context: GuardContext,
-    ) -> None:
+    async def _check_held_member_class(self, check: _CollectionCheck) -> None:
         """Refuse another member class for a collection that a nesting one of its class holds (C-1).
 
         The holder's member class is the stored one of ``iri``: a nested member is checked against it
@@ -262,8 +265,9 @@ class WriteGuards:
         collected ones of the transaction overlaying them (as in ``_skeleton``). The text names no
         holder: it may be hidden.
         """
-        for other in await self._holders(session, iri, name, context):
-            if other.member_class != collection.member_class:
+        iri = check.iri
+        for other in await self._holders(check.session, iri, check.name, check.context):
+            if other.member_class != check.collection.member_class:
                 raise InvalidBody(
                     f"the member class of {iri} cannot change while a nesting collection holds it"
                 )
@@ -304,17 +308,13 @@ class WriteGuards:
         return other if other is not None and other.nests else None
 
     async def _check_members(
-        self,
-        session: Session,
-        name: str,
-        collection: ReferenceCollection,
-        stored: set[str],
-        context: GuardContext,
+        self, check: _CollectionCheck, stored: set[str]
     ) -> Sequence[AggregateHead]:
         """The heads of the members, once the member class and the members are checked.
 
         ``stored`` are the nested members the stored collection already holds: not checked again.
         """
+        session, name, collection = check.session, check.name, check.collection
         view = self._mapper.view
         try:
             self._listings.served_root(collection.member_class)
@@ -328,27 +328,21 @@ class WriteGuards:
         heads = await session.heads(members)
         wrong = outside_member_class(accepted_members(view, name, collection), members, heads)
         if not wrong and collection.nests:
-            wrong = await self._unlike_nested(session, name, collection, heads, stored, context)
+            wrong = await self._unlike_nested(check, heads, stored)
         if wrong:
             raise InvalidBody(f"not stored aggregates of {collection.member_class}: {wrong}")
         return heads
 
-    async def _check_no_cycle(  # noqa: PLR0913 - what the walk reads and what it relies on
-        self,
-        session: Session,
-        iri: str,
-        name: str,
-        collection: ReferenceCollection,
-        heads: Sequence[AggregateHead],
-        context: GuardContext,
-        stored: set[str],
+    async def _check_no_cycle(
+        self, check: _CollectionCheck, heads: Sequence[AggregateHead], stored: set[str]
     ) -> None:
         """Refuse a nested member that leads back to the collection, and rely on what was walked (PD-4)."""
-        own = self._mapper.view.get_uri(name, expand=True)
-        nested = {str(h.head_iri) for h in self._exact_heads(own, heads)}
+        iri, context = check.iri, check.context
+        own = self._mapper.view.get_uri(check.name, expand=True)
+        nested = {str(h.head_iri) for h in _exact_heads(own, heads)}
         if not (new := sorted(nested - stored)):
             return  # nothing nested is added: no walk, no guard
-        skeleton = await self._skeleton(session, name, collection, context)
+        skeleton = await self._skeleton(check.session, check.name, check.collection, context)
         walked, cycle = _walk_from(
             iri, new, {each: members for each, (_, members) in skeleton.items()}
         )
@@ -358,7 +352,7 @@ class WriteGuards:
                 f"saving {iri} would make a cycle: {iri} → {closing} → ({between} more) → {iri}"
             )
         reached = sorted(walked - set(context.collected))  # a collected one has its own guard
-        await self._rely_on_walked(session, own, reached, skeleton, context)
+        await self._rely_on_walked(check.session, own, reached, skeleton, context)
 
     @staticmethod
     async def _rely_on_walked(
@@ -373,13 +367,8 @@ class WriteGuards:
             context.rely_on(each, str(skeleton[each][0]))
         leaves = [i for i in reached if i not in skeleton]
         # a leaf (nests false) may be turned into a nesting collection meanwhile: guard it too
-        for head in WriteGuards._exact_heads(own, await session.heads(leaves)):
+        for head in _exact_heads(own, await session.heads(leaves)):
             context.rely_on(str(head.head_iri), str(head.head_version))
-
-    @staticmethod
-    def _exact_heads(own: str, heads: Iterable[AggregateHead]) -> list[AggregateHead]:
-        """The ``heads`` stored with exactly the class whose IRI is ``own``."""
-        return [h for h in heads if own in (h.head_types or [])]
 
     @staticmethod
     async def _stored_members(session: Session, iri: str, member_class: str) -> set[str]:
@@ -427,14 +416,8 @@ class WriteGuards:
             return None
         return [str(m) for m in other.has_part or []]
 
-    async def _unlike_nested(  # noqa: PLR0913 - the root's class, its decoding, its heads, what is stored and collected
-        self,
-        session: Session,
-        name: str,
-        collection: ReferenceCollection,
-        heads: Sequence[AggregateHead],
-        stored: set[str],
-        context: GuardContext,
+    async def _unlike_nested(
+        self, check: _CollectionCheck, heads: Sequence[AggregateHead], stored: set[str]
     ) -> list[str]:
         """The new nested members (stored with exactly the collection's class) whose member class differs.
 
@@ -442,14 +425,14 @@ class WriteGuards:
         member class cannot have changed while it is held (``_check_held_member_class``). A member
         the transaction collected is read as collected, not as stored.
         """
-        own = self._mapper.view.get_uri(name, expand=True)
+        own = self._mapper.view.get_uri(check.name, expand=True)
         wrong = []
-        for head in self._exact_heads(own, heads):
+        for head in _exact_heads(own, heads):
             iri = str(head.head_iri)
             if iri in stored:
                 continue
-            graph = await self._collected_or_stored(session, iri, context)
-            if self._decoded(name, iri, graph).member_class != collection.member_class:
+            graph = await self._collected_or_stored(check.session, iri, check.context)
+            if self._decoded(check.name, iri, graph).member_class != check.collection.member_class:
                 wrong.append(iri)
         return wrong
 
