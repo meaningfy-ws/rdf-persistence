@@ -1,41 +1,53 @@
-# Hand-over: activity-iri-policy, stage 1 parked mid-build (2026-11-25)
+# Hand-over: activity-iri-policy, stage 1 delivered (2026-11-25)
 
 ## Done
-Stage 1 is parked before its PR; no PR is open. Branch `feat/activity-iri-policy` (pushed) holds
-tasks 1.1 to 1.5, 1.6 (all four tests), 1.7a and 1.8, one commit each. Task 1.7 is not started.
-The developer granted commit, push and merge on green CI for this epic.
+Stage 1, the only stage, is built and gated in PR #407 (`feat/activity-iri-policy` into
+`develop`). Tasks 1.1 to 1.9 are ticked. The developer granted commit, push and merge on green CI
+for this epic, and skipped the acceptance demo (`evidence/acceptance.md`).
 
-What is proven and what is not, per task (the commit bodies say the same):
-- 1.2, 1.3: narrow test folders and `check-quality` green; full `test-fast` never finished (D-1).
-- 1.4: tenancy, persistence, provenance, messaging, events green; `tests/unit/api` and
-  `tests/unit/collaboration` never finished a run.
-- 1.5: events, the route test and the session tests green (146 passed) with 1.4 in place.
-- 1.6: the three guard and dump-check tests and `check-quality` green; the restore test passed
-  alone and fails under a mutation, its gate never ran.
-- 1.7a: written, collects (3 tests); never run on Fuseki.
-- 1.8: `check-docs`, `lint`, `check-quality` green; no tests run.
+- 1.7: the three signed-off scenarios are appended verbatim to `tests/feature/iri_policy.feature`
+  with their steps; no production code changed.
+- 1.6: re-proved by the seed on the rebased branch (every unit and feature test once, green).
+- 1.7a: IT-A1 to IT-A3 pass on Fuseki in `make test-containers`.
+- 1.9: `make check-all` twice (before and after the fix pass), `make test-containers` once,
+  `make check-generated` twice, all green; results in the PR body and `evidence/acceptance.md`.
+  One L2+L3 review pass: 0 Critical; R-W1 to R-W3 fixed (30ec5ddd); the rest under the floor
+  (design.md D-5).
 
 ## Decided since the PLAN
-D-1, D-2, D-3 (design.md, Delivery decisions).
+D-1 to D-5 (design.md, Delivery decisions). D-4 retires D-1: with the test queue the runs finish.
 
 ## Open
-- Pytest runs on the shared machine were killed from outside (SIGTERM, exit 143) many times; one
-  cause was another session's `pkill -f pytest`. The developer stopped all tests and is changing
-  the testing setup on `develop`. D-1 is a workaround for that; drop it if the new setup makes
-  `make test-changed` / `make check-all` finish.
-- `make reindex` hung for 30 minutes at stage start and was stopped; impact was read from the
-  stale index (all LOW).
-- The branch is behind `develop`: rebase it first (P-0002). Generated files may conflict: per
-  P-0003 take develop's generated file, carry the source change, run `make generate`.
+- Under the floor (D-5), candidates for a later review-floors change: the dead `getattr` in the
+  feature test's `Run`; `_WORD` duplicated in `iris/domain/layout.py` and
+  `tenancy/services/tenant_move.py`; the "provisional or placed" check in three places; no test of
+  an activity committed through an application-scoped session; `is_aggregate_graph`'s
+  `is_activity` check that never matches a graph IRI.
+- Stage start: `make reindex` was skipped because another session was indexing; no impact run
+  was needed for task 1.7 (tests only).
+- Merge order: consumer-friction (#391) merged first, by the developer's order with `--admin`
+  while its "Generator tests" job was still running; #407 was rebased on it (its new TypeScript
+  modules regenerated with `activity_template`, 8d629101) and gated again with `make check-all`.
+  The developer ordered #407 merged with `--admin` on a passing local `make check-all` (P-0021).
+  **#407 is not merged yet**: the session closed while that `make check-all` on 8d629101 was
+  running (log `temp/check-all-3.log` in the worktree, if it finished). Watch develop's CI for
+  #391's generator job.
+- The consumer (MWBv2) names toolkit change `activity-iri-policy` in its URI-policy change (D-12);
+  the PR body says so.
 
 ## Next
-Stage 1, task 1.7, then 1.9. Read first: `tasks.md` 1.7 and 1.9, `features/iri_policy.feature`
-(signed off: copy verbatim), `design.md` D-1 to D-3. Then the full gates once (`make check-all`,
-`make test-containers` for 1.7a, `make check-generated`), one L2+L3 review pass (SMALL, P-0005),
-the PR, `evidence/acceptance.md`, this note re-written last, watch-and-merge, archive.
+1. Read `temp/check-all-3.log` in the worktree. If it ends in "Full verification suite passed"
+   and the branch head is still this note's commit with develop unmoved, that is the gate;
+   otherwise fetch, rebase on develop (P-0003 for generated files) and run `make check-all` once
+   (no seed: no builders follow, P-0022).
+2. Paste the result into #407's body (Results), then `gh pr merge 407 --merge --admin`
+   (developer's order, 2026-11-25).
+3. Archive the change (`spec-stewardship`, `openspec archive activity-iri-policy --yes`) in its
+   own PR, update `openspec/changes/README.md` (row 60), remove `.worktrees/activity-iri-policy`.
+   When a release ships, comment it on #197.
 
 ## Prompt
-Act as the team lead (epic-delivery). Resume stage 1 of openspec/changes/activity-iri-policy from
-handover.md: rebase feat/activity-iri-policy on develop in .worktrees/activity-iri-policy, build
-task 1.7, then run task 1.9 (full gates, review, PR, merge). The commit/push/merge grant for this
-epic stands.
+Act as the team lead (epic-delivery). Finish openspec/changes/activity-iri-policy from its
+handover.md in .worktrees/activity-iri-policy: confirm the last local make check-all on PR #407,
+merge #407 with --admin, archive the change, update openspec/changes/README.md, remove the
+worktree, and comment the release on #197 when it ships.
