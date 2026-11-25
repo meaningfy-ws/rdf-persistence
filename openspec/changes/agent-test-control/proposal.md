@@ -146,4 +146,4 @@ Makefile, `tests/changed.py`, `tests/conftest.py`, `rdf_persistence/testkit/memo
 `tests/testmon_data.py`, `tests/unit/tooling/test_changed.py`,
 `tests/unit/tooling/test_lanes.py`, `pyproject.toml`, `uv.lock`, `.gitignore`, `AGENTS.md`,
 `docs/modules/ROOT/pages/develop/{agents,testing,index}.adoc`, `questions.adoc`. No library or
-generator code changes.
+generator code changes outside the testkit, which gains a public API (DEC-10).
