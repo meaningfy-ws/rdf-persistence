@@ -194,6 +194,31 @@ def test_a_listing_takes_a_parameter_per_slot_of_the_type_and_the_paging_ones(
     )
 
 
+PATH_FILTER_DESCRIPTION = (
+    "A filter may go through up to three references: "
+    "`<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`."
+)
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "expected"),
+    [
+        (f"{TENANT}/books", "get", PATH_FILTER_DESCRIPTION),
+        (f"{TENANT}/scans", "get", PATH_FILTER_DESCRIPTION),
+        (f"{TENANT}/shelves", "get", PATH_FILTER_DESCRIPTION),
+        (f"{TENANT}/books", "post", None),
+        (f"{TENANT}/books/{{aggregate_id}}", "get", None),
+        (TENANT, "get", None),
+    ],
+)
+def test_an_aggregate_listing_describes_its_path_filters_and_no_other_operation_does(
+    document, path, method, expected
+) -> None:  # DEC-7, D-6
+    assert operation(document, path, method).get("description") == expected, (
+        "only an aggregate listing carries the description of the path filters"
+    )
+
+
 def test_a_listing_takes_a_repeatable_absent_parameter_naming_a_listable_slot(
     toy, document
 ) -> None:  # D-3

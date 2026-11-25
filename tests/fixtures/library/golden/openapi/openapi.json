@@ -1441,6 +1441,7 @@
           "books"
         ],
         "summary": "List the books",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__books_get",
         "parameters": [
           {
@@ -2567,6 +2568,7 @@
           "shelves"
         ],
         "summary": "List the shelves",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__shelves_get",
         "parameters": [
           {
@@ -3619,6 +3621,7 @@
           "book-collections"
         ],
         "summary": "List the book-collections",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__book_collections_get",
         "parameters": [
           {
@@ -4672,6 +4675,7 @@
           "displays"
         ],
         "summary": "List the displays",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__displays_get",
         "parameters": [
           {
@@ -5690,6 +5694,7 @@
           "authors"
         ],
         "summary": "List the authors",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__authors_get",
         "parameters": [
           {
@@ -6695,6 +6700,7 @@
           "magazines"
         ],
         "summary": "List the magazines",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__magazines_get",
         "parameters": [
           {
@@ -7700,6 +7706,7 @@
           "pamphlets"
         ],
         "summary": "List the pamphlets",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__pamphlets_get",
         "parameters": [
           {
@@ -8705,6 +8712,7 @@
           "loans"
         ],
         "summary": "List the loans",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__loans_get",
         "parameters": [
           {
@@ -9723,6 +9731,7 @@
           "reviews"
         ],
         "summary": "List the reviews",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__reviews_get",
         "parameters": [
           {
@@ -10767,6 +10776,7 @@
           "scans"
         ],
         "summary": "List the scans",
+        "description": "A filter may go through up to three references: `<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`.",
         "operationId": "listing_libraries__t__scans_get",
         "parameters": [
           {
