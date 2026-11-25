@@ -177,6 +177,7 @@ def in_use_problem(
     locate: Callable[[str, str], tuple[str, str] | None] | None = None,
 ) -> InUseProblem:
     """The problem of a refused removal (PD-11): no ``detail``, the members say who refers.
+
     ``error.referrers`` come from the guard's diagnosis read or from the same-commit check. A
     filtered error (a ``readable`` callable judged them) names the readable referrers, up to the
     cap, and counts the readable rest in ``more_count`` and the unreadable in ``hidden_count``; only

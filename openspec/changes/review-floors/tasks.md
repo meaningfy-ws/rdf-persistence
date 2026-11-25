@@ -156,7 +156,7 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
   `tests/unit/package/sparql_threads.py`'s users.
 - [x] 3.9 #273 (PD-21), docs. Red: none (DEC-3). The sentence in `develop/testing.adoc` after the
   `# X1`-`# X5` list. Guard: `make check-docs`.
-- [ ] 3.10 272-a (PD-20), last of stage 3, unit. Red:
+- [x] 3.10 272-a (PD-20), last of stage 3, unit. Red:
   `tests/unit/tooling/test_patch_markers.py::test_every_patch_of_toolkit_code_names_its_kind`
   fails today, listing the unmarked calls (e.g. `tests/unit/collaboration/test_aggregate_validators.py:613`);
   plus `test_the_marker_check_sees_an_aliased_import`, on a planted source string with
@@ -179,7 +179,7 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
 
 - [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12
 - [x] 2.0 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [ ] 2.8
-- [ ] 3.0 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 3.6 · [ ] 3.7 · [ ] 3.8 · [ ] 3.9 · [ ] 3.10 · [ ] 3.11
+- [x] 3.0 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5 · [x] 3.6 · [x] 3.7 · [x] 3.8 · [x] 3.9 · [x] 3.10 · [ ] 3.11
 - [ ] 4.1 · [ ] 4.2
 
 Within a stage: 1.1 then 1.2 (same file), beside 1.3; then 1.4-1.8 in order, 1.9 and 1.10

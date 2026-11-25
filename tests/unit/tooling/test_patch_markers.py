@@ -9,7 +9,8 @@ or its last line.
 The target is toolkit code when the first argument is a string starting ``rdf_persistence`` or a
 name (or an attribute chain on a name) bound in the file by an import from ``rdf_persistence`` or
 ``rdf_persistence_generation``, ``as`` names included. The guard reads names, not types: a patch
-of a toolkit instance (a fixture's object, such as ``toy.documents``) is beyond it.
+of a toolkit instance (a fixture's object, such as ``toy.documents``) is beyond it. It recognises the patcher only by the name ``monkeypatch`` (a fixture alias or
+``mock.patch`` is not seen).
 """
 
 import ast

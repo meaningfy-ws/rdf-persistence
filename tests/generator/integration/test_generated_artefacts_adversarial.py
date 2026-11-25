@@ -14,7 +14,7 @@ from rdflib import XSD, Graph, Literal, URIRef
 from rdf_persistence.api.services.documents import Documents
 from rdf_persistence.api.services.shacl import validate_locked
 from rdf_persistence.schema.services.schema_structure import generation_view, is_bookkeeping
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.config import toolkit_roots
 
 BOOK = Path(__file__).parents[2] / "fixtures" / "conformance" / "instances" / "book-minimal.yaml"
 
@@ -35,7 +35,7 @@ def _book_graph(view: SchemaView, documents: Documents) -> tuple[Graph, URIRef]:
 
 
 def test_the_fresh_shapes_accept_the_predicates_the_session_writes(fresh_toy: Path) -> None:
-    view = generation_view(fresh_toy / "library.yaml", roots=TOOLKIT_ROOTS)
+    view = generation_view(fresh_toy / "library.yaml", roots=toolkit_roots())
     documents = Documents(view, fresh_toy / "domain" / "generated")
     bookkeeping = [
         (URIRef(str(view.get_uri(slot, expand=True))), _value(view, slot))

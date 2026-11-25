@@ -21,7 +21,7 @@ from rdf_persistence.api.services.documents import Documents
 from rdf_persistence.api.services.shacl import validate_locked
 from rdf_persistence.core.domain.exceptions import InvalidBody
 from rdf_persistence.schema.services.schema_structure import generation_view, json_name
-from rdf_persistence_generation.config import TOOLKIT_ROOTS
+from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.testkit.conformance import Conformance, load_cases
 from rdf_persistence_generation.testkit.roundtrip import without_framing
 
@@ -57,7 +57,7 @@ class Fresh:
 
 @cache
 def _opened(schema: Path) -> Fresh:
-    view = generation_view(schema, roots=TOOLKIT_ROOTS)
+    view = generation_view(schema, roots=toolkit_roots())
     folder = schema.parent / "domain" / "generated"
     documents = Documents(view, folder)
     return Fresh(
@@ -73,7 +73,7 @@ def fresh(fresh_toy: Path) -> Fresh:
 def _rows(files: str) -> list:
     """One parameter per instance file of the cases of the toy library (rows of other schemas are theirs)."""
     toy = ROOT / "tests" / "fixtures" / "library" / "library.yaml"
-    classes = set(generation_view(toy, roots=TOOLKIT_ROOTS).all_classes())
+    classes = set(generation_view(toy, roots=toolkit_roots()).all_classes())
     return [
         pytest.param(case.kind, case.class_name, Path(file), id=f"{case.kind}-{Path(file).stem}")
         for case in load_cases(CASES)

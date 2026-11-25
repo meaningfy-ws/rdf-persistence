@@ -123,8 +123,7 @@ head and the events together.
 
 The other outcomes:
 
-* The start-up and shutdown of the app's lifespan are outside `timeout`: it counts the head and the
-  events only.
+* The start-up of the app's lifespan is outside `timeout`: it counts the head and the events only.
 * An app that raises before it sends the head: the call raises that exception.
 * An app that raises after the head: the read ends with the events that came, and the call returns
   them without the exception.

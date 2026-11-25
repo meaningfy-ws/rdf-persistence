@@ -447,6 +447,28 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   `write_guards.root_types` with a function that raises, proving the read does not happen when no
   rule exists: a hand-off no public result shows (X2), though by a tripwire, not a pass-through
   spy. Marked X2; the owner may prefer rewording rule 3's X2 or a seam.
+- **D-10 (full review, 2026-11-25: L1, L2, L3, L4+L5 over the three stages; no Critical, all
+  approve), accepted findings, fixed in one pass:**
+  H1 (L2) `user-manual/test.adoc:124-125` claims shutdown is outside `timeout`, which no test pins
+  (D-7): say start-up only. H2 (L2) the Redis `claim_idle` test's run and mutation are recorded in
+  `evidence/redis-claim-idle.md` (lead). H3 (L4) restore the blank line after the summary of
+  `in_use_problem`'s docstring. H4 (L3) the tests that read `TOOLKIT_ROOTS`
+  (`test_generated_artefacts*.py`, `test_generation_shape.py`) call `toolkit_roots()`; wrap
+  `config.py`'s long comment. H5 (L3) `test_aggregate_validators.py:696` and
+  `test_referenced_removals.py:20` use `tests/toy.py`'s `AUTHOR` and `WRITTEN_BY` where type and
+  value are the same. H6 (L4) `referenced_removals.in_use` keeps one name for the shown set
+  (`shown = frozenset(sorted(readable_referrers)[: self._cap])`). H7 (L2) the patch-marker guard's
+  docstring says it knows the patcher only by the name `monkeypatch`. H8 (L2) the wake test's map
+  row is a `capability` row (lead). H9 (L2) 3.10 ticked (lead).
+  Under the floor: `stored_file`'s `_UNSET` default is dead in the library (kept: PD-6, so other
+  callers stay unchanged; L1 notes `None` is trusted); the `stored_file` keyword threaded through
+  three signatures with `# noqa: PLR0913` (as D-8); `toolkit_roots()` and `PYPROJECT` public in
+  `config.py`; names (`_CollectionCheck`, `is_generated_with`); `_ref_of` in `openapi.py`;
+  `iri_policy_helpers.BOOK_CLASS`'s other meaning (PD-17 exception); `tests/schema_helpers.py`'s
+  place; `tests/e2e/test_library.py`'s path arithmetic. Open for the owner: D-9.
+  Outcome of the pass: H1, H3, H4 (tests), H6, H7 fixed; H5 not applicable (both files' constants
+  are `str`, `tests/toy.py`'s are `URIRef`); H4's `config.py` comment wrap dropped (an edit to a
+  generation input forces a regeneration for a comment).
 - **D-4 (stage 1 review, L2+L3, 2026-11-25), accepted findings, fixed in one pass:**
   F1 (L2) task 1.3's test lacks the deep read of each parent the task names: add it.
   F2 (L2) task 1.2's test finds the heads read by the text `"VALUES ?m"`: match the `READ_HEADS`
