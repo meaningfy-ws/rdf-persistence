@@ -72,10 +72,12 @@ default.
 
 ### Requirement: The activity template is checked
 
-Building `Iris` SHALL refuse with `InvalidIri`, naming `activity_template`, an activity template
-whose IRI is not absolute or holds the tenant id without starting with the base. An IRI the
-activity template mints for a tenant SHALL never be accepted as an aggregate or loaded graph of
-that tenant. Installing the service SHALL refuse a schema with an aggregate root whose IRIs the
+Building `Iris` SHALL refuse with `InvalidIri`, naming `activity_template`, a non-default
+activity template whose IRI is not absolute, does not start with the base, glues the tenant id to
+a letter, digit or variable, or equals what an aggregate template without `{type}` or `{rp_path}`
+mints under UUID object ids; the default template SHALL always be accepted. An IRI the
+activity template mints for a tenant or the application SHALL never be accepted as an aggregate,
+an aggregate's id or a loaded graph of it. Installing the service SHALL refuse a schema with an aggregate root whose IRIs the
 activity template would also mint. The default template's words SHALL NOT be reserved ids.
 
 #### Scenario: a tenant-less activity template
@@ -85,6 +87,10 @@ activity template would also mint. The default template's words SHALL NOT be res
 #### Scenario: an activity template that a restore cannot move
 - **WHEN** an `Iris` is built with activity template `urn:x:{tenant_id}:{id}`
 - **THEN** it fails with `InvalidIri` naming `activity_template`
+
+#### Scenario: a glued activity template
+- **WHEN** an `Iris` is built with activity template `{tenant}{id}`
+- **THEN** it fails with `InvalidIri` naming `activity_template`, before any data exists
 
 #### Scenario: an aggregate path inside the activity template
 - **GIVEN** activity template `{tenant}/activity/{id}`, UUID object ids and an aggregate root

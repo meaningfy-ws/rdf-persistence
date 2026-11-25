@@ -40,13 +40,13 @@ of a tenant or could not move with a restored tenant.
   re-draw the session cannot do inside one update request). The issue's example
   `{base}{tenant}/activity/{id}` is written `{tenant}/activity/{id}` here (`{tenant}` is already a
   full IRI); `{base}{tenant_id}/activity/{id}` is allowed too. A non-default template holds
-  `{tenant}` or `{tenant_id}`, so a restore moves its activities (owner check: OPEN-5).
+  `{tenant}` or `{tenant_id}`, so a restore moves its activities (owner decided OPEN-5, 2026-11-25).
 - **DEC-2**: placement at the commit. A command still gets a provisional `urn:uuid:<u>` id
   (`command()`, `new_activity_id()` and `Served` unchanged); the session's transaction records its
   activity as the policy's IRI for its tenant with the same `<u>`. `Session.activity_iri(id)` gives
   that IRI to a handler that must store it. — No public signature changes and a consumer opts in by
   settings alone. Rejected: tenant-aware minting in `command()` and every caller (breaks the public
-  `command(cls, **slots)` and every consumer handler). Owner check: OPEN-1.
+  `command(cls, **slots)` and every consumer handler). Owner decided OPEN-1, 2026-11-25.
 - **DEC-3**: the template is part of the recorded policy and of a dump's manifest; a record or a
   manifest without it reads as the default (as `application_template` does), and a changed one
   refuses start-up or restore naming `activity_template`.

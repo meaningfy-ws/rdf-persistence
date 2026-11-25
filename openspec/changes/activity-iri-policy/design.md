@@ -4,8 +4,8 @@
 
 > Derives from: EPIC `activity-iri-policy` (`proposal.md`, issue #197), DEC-1 to DEC-6.
 > Builds on the archived `2026-11-08-iri-policy` and `2026-11-15-message-bus` (PD-3, PD-8).
-> Codebase reading: `inputs/facts.md`. Owner questions: `inputs/qa.md` (OPEN-1, OPEN-5); this
-> PLAN is complete under their recommended answers.
+> Codebase reading: `inputs/facts.md`. Owner questions: `inputs/qa.md`; OPEN-1 and OPEN-5
+> answered by the owner on 2026-11-25, both as recommended.
 
 ## Context
 
@@ -47,30 +47,53 @@ the IRI there.
   parse the tenant IRI, so a session on a tenant IRI the policy cannot parse (the testkit's
   `FAKE_TENANT`, `…/tenants/fake`) commits as today under them; under a `{tenant_id}` template
   such a tenant raises `InvalidIri` at the commit, before anything is sent. `Iris.is_activity(tenant: str | None,
-  iri: str) -> bool` (`None`: of any tenant, as `is_loaded_graph` takes it) fullmatches a pattern compiled by `_pattern` with the `id` group set to
-  `_UUID_PATTERN` (not the object-id pattern) and checks `_belongs(parts, tenant)` minus the
-  reserved-id test of `id` (a UUID is never a reserved word). `Iris.activity_uuid(iri) -> str`
+  iri: str) -> bool` (`None`: of any tenant, as `is_loaded_graph` takes it) fullmatches a cached
+  `_activity_re`, compiled by `_pattern` with `application=True` (so `{tenant_id}` may be `app`, as
+  `_aggregate_re` does) and a new keyword `id_pattern: str | None = None` on `_pattern` that, when
+  given, replaces the `id` group (`_id_pattern(self._object_spec)`); `_activity_re` passes
+  `_UUID_PATTERN`. It then checks `_belongs(parts, tenant)` as it is (its reserved-id test never
+  fires on a UUID). `Iris.activity_uuid(iri) -> str`
   returns the canonical UUID of a `urn:uuid:` id or of an IRI `is_activity` accepts for some tenant;
-  `ValueError` otherwise.
+  `ValueError` otherwise. Under a `{tenant}/…` template the tenant group reads any text, so
+  `activity_uuid` of a foreign `…/activity/<uuid>` returns its UUID: callers that hold a tenant
+  check `is_activity(tenant, iri)` first (PD-6).
 - **PD-3** (DEC-4), three parts:
-  - a. `Iris.__init__` runs `_require_activity_apart()` beside `_require_distinct_graphs`, probing
-    with `_probe_tenant()` and the application IRI and the UUID
-    `00000000-0000-4000-8000-000000000000`: refuse when the probe IRI has no scheme
-    (`^[a-z][a-z0-9+.-]*:`), or contains the probe tenant id while not starting with
-    `settings.base`. The error names `activity_template` and the reason. No equality check with
+  - a. `Iris.__init__` runs `_require_activity_apart()` beside `_require_distinct_graphs`. It
+    skips the default `urn:uuid:{id}` (today's IRI, never moved). For any other template it is
+    syntactic, never a random probe (`_probe_tenant` draws at random, and a substring test on a
+    drawn id refuses at random): with `{tenant}` written as the effective `tenant_template` and
+    `{base}`/`{deployment}` filled (`Iris.effective_policy`), refuse when the result (i) has no
+    scheme (`^[a-z][a-z0-9+.-]*:`), (ii) does not start with `settings.base`, so a restore could not
+    move it, or (iii) glues the tenant id as `glued_templates` (`tenant_move.py:51`) reads it, so a
+    restore would refuse it later, after data exists. `iris` sits below `tenancy` in the
+    `themes-ordered` contract (`.importlinter:48-61`) and `tenant_move` imports `Iris`, so the two
+    regexes `_ID_GLUED_BEFORE` and `_ID_GLUED_AFTER` move to `iris/domain/layout.py` (pure `re`,
+    allowed in `domain`) as `ID_GLUED_BEFORE`/`ID_GLUED_AFTER`, with their own copy of `_WORD`
+    (`tenant_move.py:19` keeps its `_WORD` for `rewrite`); `tenant_move` imports them from
+    there and `glued_templates` keeps its behaviour (its test unchanged); `Iris` applies them to the
+    activity template alone. Then (iv), only when the aggregate template holds neither `{type}`
+    nor `{rp_path}` (e.g. `{tenant}/{id}`) and the object id spec is `uuid4`: fill the aggregate
+    template for the application IRI with the fixed UUID `00000000-0000-4000-8000-000000000000`
+    and refuse when `is_activity(None, filled)`. This case needs no schema, so every `Iris` catches
+    it, the `Tenancy`'s own included; the cases with `{type}` or `{rp_path}` are PD-3c's. The error names
+    `activity_template` and the reason. No equality check with
     the tenant, application, access, meta, registry or provenance IRI is written: once PD-1
     requires the tenant and a closing `{id}` (a UUID), an activity IRI always holds the tenant and
     one more UUID, which none of those IRIs can, so such a check could not be tested.
   - b. `is_aggregate(tenant, iri)` and `is_loaded_graph(tenant, iri)` answer false when
-    `is_activity(tenant, iri)` (tenant `None`: any tenant the activity pattern reads). Under the
-    default template no `http(s)` IRI is an activity, so their answers are today's.
+    `is_activity(tenant, iri)` (tenant `None`: any tenant the activity pattern reads), and so
+    `is_aggregate_graph`, which calls `is_aggregate`, answers false for `<activity>/graph`.
+    `aggregate_id_of(iri)` (added on develop by referrer naming; it takes no tenant) answers `None`
+    when `is_activity(None, iri)`, so a referrer at an activity IRI gets no `(rp_path, id)` address.
+    Under the default template no `http(s)` IRI is an activity, so all four answers are today's.
   - c. `Iris.require_roots_apart(roots: Iterable[tuple[str, str]])`, roots as (`{type}`,
     `rp_path`) of the concrete aggregate roots of both databases (a new
     `schema_structure.root_paths(view)` beside `iri_types`), mints for each a probe aggregate with
     the probe UUID when the object id spec is `uuid4` (random ids never read as a UUID: hyphens,
     length) and refuses with `InvalidIri` naming the class's type and `activity_template` when
-    `is_activity` accepts it. The kit calls it right after building its `Iris` (`kit.py`, where
-    `Iris(settings, *iri_types(view), …)` is built).
+    `is_activity` accepts it. The kit calls it right after building its `Iris` (`kit.py:184`, where
+    `Iris(settings, *iri_types(view), …)` is built). A consumer that builds `Tenancy` with its own
+    `Iris(settings)` (`tenancy.py:161`) and no kit skips this schema check: RISK-7.
 - **PD-4** (DEC-5): `_reserved` skips `activity_template` when its effective value equals the
   default `urn:uuid:{id}`; otherwise its literal words join, like every template's.
 - **PD-5** (DEC-2): the `Transaction` computes `self._activity_iri = iris.activity(tenant, uuid)`
@@ -89,7 +112,9 @@ the IRI there.
   `claim()` still spends it).
 - **PD-6** (DEC-2): `Session.activity_iri(command_id: str) -> str` returns
   `str(iris.activity(tenant, Iris.activity_uuid(command_id)))`: what the commit serving that command
-  will record. `ValueError` for an id that is neither `urn:uuid:` nor a placed IRI of the tenant.
+  will record. It first requires `is_activity_id(command_id) or iris.is_activity(tenant,
+  command_id)`, so a foreign `…/activity/<uuid>` or another tenant's placed IRI raises `ValueError`
+  rather than being re-placed under this tenant.
 - **PD-7** (DEC-6): `event_stream` gains a keyword `is_activity: Callable[[str], bool] =
   is_activity_id` that replaces the direct call in `_resumed` (the default keeps
   `tests/unit/events/test_event_stream.py`'s wiring as it is); `sse.py` passes `lambda text: kit.iris.is_activity(tenant, text)`
@@ -98,7 +123,8 @@ the IRI there.
   the absent slot from `ifabsent`, and `policy_differences` names it. Tests prove both, and the
   comment at `tenant_dump.py:384` names the activity template beside the application one.
 - **PD-9**: docs. `user-manual/iri-policy.adoc`: the template's row in the table, its variables,
-  the DEC-4 refusals, "Changed in <next version>: activity IRIs"; `howto/event-driven.adoc`:
+  the DEC-4 refusals, "Changed in 0.15.0: activity IRIs" (the minor after `VERSION` 0.14.0; the lead corrects it if
+  release-please cuts another number); `howto/event-driven.adoc`:
   `command()` gives a provisional `urn:uuid:` id that the commit places under the policy, and
   `Session.activity_iri`; `partials/reference/public-api.adoc`: the `Iris` methods and
   `Session.activity_iri`. The example template in every page is `{tenant}/activity/{id}`; the
@@ -112,7 +138,7 @@ the IRI there.
 - **PD-11** (was OPEN-4; DEC-6): under a non-default template, a `urn:uuid:` `Last-Event-ID` resets
   the stream without asking the store: a deployment with data cannot change its policy, so no such
   activity exists there.
-- **PD-12** (OPEN-5, recommended answer): a non-default activity template holds `{tenant}` or
+- **PD-12** (OPEN-5, owner's answer 2026-11-25): a non-default activity template holds `{tenant}` or
   `{tenant_id}` (PD-1), so a restore moves every activity with its tenant and the activity sits in
   the tenant's portable data, as #197 asks.
 
@@ -158,21 +184,27 @@ Idempotency: placement is a pure function of (policy, tenant, UUID); a retried c
 | Template uses `{deployment}` with no slug | `check_iri_policy` | `InvalidIri` (existing rule, now covering the new slot) |
 | Tenant-less non-default template (`{base}activity/{id}`) | schema pattern on `ServiceSettings` (PD-1, PD-12) | validation error naming `activity_template`; a restore could not move such activities |
 | Activity IRI read as an aggregate or loaded graph (a hand-made aggregate at `t/activity/U`) | `is_aggregate` / `is_loaded_graph` false (PD-3b) | the session's existing `InvalidIri`, nothing written |
+| Activity IRI read as an aggregate id by referrer naming (`located`) | `aggregate_id_of` gives `None` (PD-3b) | the referrer is named with no address, as a foreign IRI is today |
 | A schema root whose minted IRIs fall inside the activity template (`rp_path: activity` under `P`, UUID object ids) | `Iris.require_roots_apart` at kit build (PD-3c) | `InvalidIri` naming the class type and `activity_template`; the service does not start |
 | A flat part template whose `{type}` equals a literal of the activity template | not detected | RISK-6 |
-| Template names the tenant id outside the base (`urn:x:{tenant_id}:{id}`) | `Iris.__init__` probe (PD-3) | `InvalidIri`: a restore could not move it |
-| Relative template (`activity/{tenant_id}/{id}`) | `Iris.__init__` probe, no scheme (PD-3a) | `InvalidIri` naming `activity_template` |
+| Template names the tenant id outside the base (`urn:x:{tenant_id}:{id}`) | `Iris.__init__`, PD-3a (ii) | `InvalidIri`: a restore could not move it |
+| Relative template (`activity/{tenant_id}/{id}`) | `Iris.__init__`, no scheme (PD-3a (i)) | `InvalidIri` naming `activity_template` |
+| Glued template (`{tenant}{id}`, `{base}{tenant_id}{id}`, `{tenant}x{id}`) | `Iris.__init__`, the moved `ID_GLUED_BEFORE`/`ID_GLUED_AFTER` regexes (PD-3a (iii)) | `InvalidIri` naming `activity_template`, at start-up, not at the first restore |
+| Default template under any tenant alphabet (a drawn id `0000`, `uuid`) | PD-3a skips the default; no random probe | accepted, every time |
+| Aggregate template `{tenant}/{id}` with UUID object ids beside activity template `{tenant}/{id}` | `Iris.__init__`, PD-3a (iv) | `InvalidIri` naming `activity_template`, in the kit and in a bare `Tenancy` alike |
+| The application's activity under `{base}{tenant_id}/activity/{id}` | `is_activity` compiled with `application=True` (PD-2) | `…/app/activity/U` is an activity of the application; a hand-made application aggregate there is refused (PD-3b) |
+| `Session.activity_iri` given a foreign `…/activity/<uuid>` or another tenant's placed IRI | `is_activity(tenant, id)` false (PD-6) | `ValueError` |
 | A session that records no activity (system database) | `_completed` returns early | no activity IRI computed, nothing raised (PD-5) |
 | A recording session on a tenant IRI the policy cannot parse (testkit `FAKE_TENANT`) under the default or a `{tenant}/…` template | `_fill` does not resolve `{tenant_id}` (PD-2) | the commit records as today |
 | The same session under a `{tenant_id}` template | `_id_of` → `tenant_id_of` | `InvalidIri` before anything is sent |
 | Restart with a changed template | `guard_iri_policy` | `IriPolicyChanged` naming `activity_template`; nothing minted |
 | Older recorded policy or dump manifest without the slot | `effective_policy` fills the default | compares equal to the default; start or restore proceeds |
 | Restore of a dump made under another activity template | `_check_manifest` | `InvalidBody` naming `activity_template` |
-| A command whose id is neither `urn:uuid:` nor a placed IRI | `Served` (unchanged `ValueError`) | refused before anything is sent, as today |
+| A command whose id is not `urn:uuid:` and a UUID (a placed IRI included) | `Served` (unchanged `ValueError`) | refused before anything is sent, as today |
 | A command reused for a second commit | `Served.claim`, `ID_TAKEN` on the placed IRI | refused as today; same UUID gives the same placed IRI |
 | `Last-Event-ID` that is a `urn:uuid:` under a non-default policy, or another tenant's activity IRI | `is_activity` false | `RESET`, the store is not asked |
 | A handler stores `command.id` in an aggregate under a policy | not detected (consumer code) | RISK-2; `Session.activity_iri` documented |
-| `Session.activity_iri` given a foreign id | `Iris.activity_uuid` | `ValueError` |
+| `Session.activity_iri` given an id that is no activity IRI at all | `is_activity_id` and `is_activity` false (PD-6) | `ValueError` |
 
 ## Risks / Trade-offs
 
@@ -200,6 +232,16 @@ Idempotency: placement is a pure function of (policy, tenant, UUID); a retried c
   literal segment (`activity`) mints parts whose IRIs could equal an activity's. There is no
   `is_part` to guard; accepted, and the user manual says to keep the activity segment apart from
   class types. Parts nested under `{root}` (the default) cannot collide.
+- **RISK-7** (likelihood low, impact medium): a consumer that builds `Tenancy` with
+  `Iris(settings)` and no kit gets no `require_roots_apart` (PD-3c needs the schema's roots), so a
+  root whose `rp_path` equals the activity segment is not refused at start-up; its writes are then
+  refused by PD-3b's `InvalidIri`, nothing written. Accepted: the schema-free case (`{tenant}/{id}`)
+  is caught in every `Iris` (PD-3a (iv)); the user manual says to keep the activity segment apart
+  from every `rp_path`.
+- **RISK-8** (likelihood very low, impact low): `tenant_move.rewrite` replaces every delimited copy
+  of the old tenant id after the base (`tenant_move.py:33`); with short hex tenant ids a UUID group
+  of a placed activity equal to the old id is rewritten, and the activity no longer reads as one.
+  Aggregates with UUID object ids carry the same exposure today. Accepted; not this EPIC's to fix.
 
 ## Spec deltas
 
@@ -210,5 +252,5 @@ ADDED "Activities follow the activity template" and "The activity template is ch
 
 ## Open Questions
 
-OPEN-1 and OPEN-5 in `inputs/qa.md`; the PLAN assumes their recommendations. OPEN-2 to OPEN-4
+None. OPEN-1 and OPEN-5 were answered by the owner (`inputs/qa.md`, 2026-11-25). OPEN-2 to OPEN-4
 were decided by the planner: PD-10, PD-9, PD-11.

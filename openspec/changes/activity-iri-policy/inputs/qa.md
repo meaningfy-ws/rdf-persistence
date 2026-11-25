@@ -24,3 +24,9 @@ default template reserves no word), commit markers unchanged (no-go).
 
 The owner parked the question round: the OPEN items above are unanswered. The PLAN stands
 under the recommended answers; nothing is decided until the owner answers.
+
+## Round 1 answered (2026-11-25)
+
+- OPEN-1 → (a) placement at the commit, as recommended. DEC-2 holds.
+- OPEN-5 → refuse a tenant-less non-default template at settings validation, as recommended.
+  PD-1 and PD-12 hold.

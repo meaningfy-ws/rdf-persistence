@@ -2,6 +2,14 @@
 
 # Facts: where activity IRIs are minted, checked and read
 
+Re-checked 2026-11-25 against develop 12d84873 (after grant-roles, aggregate-guards, the migration
+changes): every symbol, file and test file below still exists; the living `rp-iri-policy` and
+`rp-messages` are unchanged. New on develop: `Iris.aggregate_id_of` (referrer naming,
+`collaboration/services/referrer_naming.py` `located`) reads any `{rp_path}` segment like
+`is_aggregate`, so it joins PD-3b. `WriteGuard.prepare_remove`, the transaction's read cache,
+`migrate_database(grants=)` and `grant_report` mint, check or read no activity. The comment PD-8
+names is still at `tenant_dump.py:384`.
+
 ## Minted
 
 | Where | How | Knows the tenant and `Iris`? |

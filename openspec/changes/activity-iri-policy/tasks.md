@@ -23,30 +23,43 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   `{base}{tenant_id}/activity/{id}` are accepted. And
   `tests/unit/iris/test_iri_policy_effective.py`
   `test_a_policy_recorded_before_the_activity_template_is_the_default`: a policy JSON without the
-  slot, made effective, equals `effective_policy(None, settings)`. Then the YAML and
-  `make generate`. Gate: `make test-fast check-quality`, `make check-generated`. Accept: both pass;
-  the regenerated files are in the same commit.
-- [ ] 1.3 Unit, `Iris` (PD-2 to PD-4), after 1.2. First, failing:
+  slot, made effective, has `activity_template == "urn:uuid:{id}"` (fails first: no such field)
+  and equals `effective_policy(None, settings)`. And in `tests/unit/iris/test_iris_policy.py`
+  `test_the_default_activity_template_reserves_no_word` (PD-4): under 4-character tenant ids,
+  `tenant("uuid")` is a tenant and `urn`, `uuid` are not in `_reserved`; it passes before the slot
+  exists and fails as soon as the YAML adds it, so it is written first and proves PD-4 lands in this
+  task, not later (the generated `IriPolicy` fills every default, `rp_iris_services.py:176`, so the
+  default's words would join `_reserved` the moment the slot exists). Then the YAML, `make
+  generate` and PD-4's skip in `_reserved`. Gate: `make test-fast check-quality`, `make
+  check-generated`. Accept: the three pass; the regenerated files are in the same commit.
+- [ ] 1.3 Unit, `Iris` (PD-2, PD-3), after 1.2. First, failing:
   `tests/unit/iris/test_iris_policy.py`
   `test_an_activity_iri_follows_the_activity_template`: under `P`, `activity(t, U)` is
   `t + "/activity/" + U`; `is_activity(t, it)` is true, false for another tenant, false for
   `urn:uuid:U`, false for a non-canonical UUID; `activity_uuid` of both forms is `U`; under the
-  default policy `activity(t, U)` is `urn:uuid:U` and `is_activity` agrees with `is_activity_id`
-  on the error-matrix inputs. Then a new `tests/unit/iris/test_iris_activity_adversarial.py`:
+  default policy `activity(t, U)` is `urn:uuid:U` and `is_activity(t, x)` equals
+  `is_activity_id(x)` for each `x` of: `urn:uuid:U`, `urn:uuid:` + `U` upper-cased, `urn:uuid:` +
+  `U` without hyphens, `t/activity/U`, `t/books/U`, and `""`. Then a new `tests/unit/iris/test_iris_activity_adversarial.py`:
   refused rows, one per PD-3a refusal, each `InvalidIri` naming `activity_template`:
-  `urn:x:{tenant_id}:{id}` (tenant id outside the base), `activity/{tenant_id}/{id}` (no scheme);
+  `activity/{tenant_id}/{id}` (i, no scheme), `urn:x:{tenant_id}:{id}` (ii, outside the base),
+  `{tenant}{id}` and `{base}{tenant_id}{id}` (iii, glued), and `{tenant}/{id}` beside aggregate
+  template `{tenant}/{id}` under `uuid4` object ids, built as a bare `Iris(settings)` (iv);
   accepted rows: `{base}{tenant_id}/activity/{id}` under application template `{base}app`
-  (`app/activity/U` is the application's activity), and `P`;
+  (`is_activity(app, app/activity/U)` is true and `is_aggregate(app, app/activity/U)` false), `P`,
+  and the default under a tenant-id spec of 4 characters from `048u` built 50 times with
+  `id_source` unset (never refused); before the glued rows, `_ID_GLUED_BEFORE`/`_AFTER` move from
+  `tenant_move.py` to `iris/domain/layout.py` (PD-3a (iii)) with
+  `tests/unit/tenancy/test_tenant_move.py` passing unchanged and `make check-architecture` green;
   `test_a_tenant_the_policy_cannot_parse_mints_an_activity_without_tenant_id` (PD-2:
   `activity(FAKE_TENANT, U)` is `urn:uuid:U` under the default and `FAKE_TENANT/activity/U` under
   `P`; under `{base}{tenant_id}/activity/{id}` it raises `InvalidIri`), and a commit through the
   testkit's `fake_session` under the default policy records `urn:uuid:` as today;
   `test_an_activity_iri_is_no_aggregate_or_loaded_graph` (PD-3b: under `P`, `is_aggregate(t,
-  t/activity/U)` is false, `t/books/U` still true); `test_a_root_minted_inside_the_activity_template_is_refused`
+  t/activity/U)` is false, `t/books/U` still true; `is_aggregate_graph(t, t/activity/U/graph)` is
+  false; `aggregate_id_of(t/activity/U)` is `None`, `aggregate_id_of(t/books/U)` is `U`; under the
+  default policy the three answer as today); `test_a_root_minted_inside_the_activity_template_is_refused`
   (PD-3c: roots `[("book", "activity")]` refused naming `book`, `[("book", "books")]` accepted,
-  and accepted under random object ids); and
-  `test_the_default_activity_template_reserves_no_word`: under 4-character tenant ids,
-  `tenant("uuid")` is a tenant (PD-4). Then `root_paths(view)` in
+  and accepted under random object ids). Then `root_paths(view)` in
   `tests/unit/schema/test_schema_structure.py` (the toy roots and their paths) and the kit call.
   Accept: all pass; each refusal row fails when its check is removed by hand.
 - [ ] 1.4 Unit, session (PD-5, PD-6), after 1.3. First, failing:
@@ -59,6 +72,9 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   placed IRI as its activity (PD-5); a commit with no command records `t/activity/<uuid>`; a second
   commit of the same `Served` is refused as today. Then
   `test_session_activity_iri_is_what_the_commit_records` and
+  `test_session_activity_iri_refuses_a_foreign_activity` (PD-6: under `P`, `Iris.activity_uuid`
+  alone accepts `https://foreign.example/x/activity/U`, while `session.activity_iri` of it, and of
+  another tenant's placed IRI, raises `ValueError`) and
   `test_without_a_template_the_activity_is_the_command_id` (G-2) and
   `test_a_hand_made_aggregate_at_an_activity_iri_is_refused` (`InvalidIri`, nothing written). Gate: `make test-fast
   check-quality` (`completed()` changes). Accept: all pass; every existing test in
@@ -74,7 +90,9 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   `test_a_changed_activity_template_refuses_start_up_naming_it`: started under the default, then
   under `P` → `IriPolicyChanged` naming `activity_template`. Then in
   `tests/unit/tenancy/test_iri_policy_guard_adversarial.py`
-  `test_an_older_record_without_the_activity_template_is_the_default`; in
+  `test_an_older_record_without_the_activity_template_is_the_default` (a policy recorded
+  without the slot lets the default start, and refuses a start under `P` naming
+  `activity_template`; the second half fails first, because today no field differs); in
   `tests/unit/tenancy/test_tenant_dump_adversarial.py`
   `test_a_dump_made_under_another_activity_template_is_refused`; in
   `tests/unit/tenancy/test_tenant_dump.py`
