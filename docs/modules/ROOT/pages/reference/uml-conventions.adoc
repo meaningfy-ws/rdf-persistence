@@ -622,9 +622,47 @@ Each package that holds a class or enumeration becomes one module `<root-name>_<
 `app_library__rare_books`), and the root schema `<root-name>.yaml` imports them all. Classes
 directly in the `--package` package go to `<root-name>_main`.
 
-Two packages whose classes refer to each other cannot be two modules, as the generated Python
-modules would import each other. The packages of each import cycle are written as one module named
-after the first package in path order, with a `merged-cycle` line in the report.
+Two packages whose classes refer to each other give two modules that import each other: a package is
+never merged into another. `rp-generate` writes the Python of such modules so that they load
+(xref:user-manual/generate.adoc#module-cycles[Schema modules that import each other]). A reference
+is a slot's range, a generalisation, or a slot shared between packages
+(<<shared-slots>>).
+
+[mermaid]
+....
+classDiagram
+  namespace catalogue {
+    class Book["lib:Book"]
+  }
+  namespace shelves {
+    class Shelf["lib:Shelf"]
+  }
+  Book --> Shelf : shelf
+  Shelf --> Book : holds
+....
+
+[source,yaml]
+----
+# library_catalogue.yaml
+imports:
+  - library_shelves
+classes:
+  Book:
+    slots: [shelf]
+----
+
+[source,yaml]
+----
+# library_shelves.yaml
+imports:
+  - library_catalogue
+classes:
+  Shelf:
+    slots: [holds]
+----
+
+`library_catalogue` and `library_shelves` are two modules, each importing the other. The root schema
+imports both, as for any other package.
 
 [#module-kind]
 A module is annotated `module_kind: domain` unless its package has a `module_kind` tagged value,
@@ -638,9 +676,10 @@ value fails the run
 (`[package_module] access: module_kind: 'planet' is not one of ('domain', 'technical', 'access', 'value')`). An
 application's access model is a package tagged `module_kind = access` whose classes generalise
 `rp:TenantAccess`. `rp-generate`'s boundary rule then keeps the domain modules from importing it, while
-the root schema imports it like any other module. Packages written as one module (an import cycle)
-with different kinds fail the run, naming the module
-(`[package_module] app_library: its packages are written as one module but have the kinds access and domain`).
+the root schema imports it like any other module. Each package is its own module, so a module has
+one kind and the converter never fails on kinds. Packages of different kinds that import each other
+are converted, each keeping its kind, and `rp-generate`'s boundary check then refuses the output,
+naming the domain module and the access one it imports: break the import between those packages.
 
 [mermaid]
 ....
@@ -672,7 +711,8 @@ qualify, the first in path order is the home. A class in another module states a
 for the limits (`required`, `multivalued` and the like), the range or the description in which it
 differs from the slot. Placing the slot adds imports: each using module imports the home, and the
 home imports the module of the slot's range. If these imports make two modules import each other,
-they are written as one module, with a `merged-cycle` line (above).
+they stay two modules that import each other (<<packages>>); nothing is merged. The home is chosen
+from the imports there are once the slots are placed.
 
 In the example, `lib:location` is used by `Book` (catalogue) and `Shelf` (shelves). The catalogue
 already refers to the shelves, so the slot is defined in `library_shelves`, and `Shelf`, where it is
@@ -991,10 +1031,18 @@ member class (`[toolkit_slot] Shelf: dct:hasPart role to Chapter does not narrow
 |Point the subclass's role at a descendant of the parent's member class, or generalise the member
 class to it.
 
-|A package `module_kind` tagged value the metamodel does not list, or packages of different kinds
-that import each other
-|Use `domain` or `access` (`technical` only when every package is); break the import cycle between
-packages of different kinds.
+|A package `module_kind` tagged value the metamodel does not list
+|Use `domain` or `access` (`technical` only when every package is).
+
+|Packages of different kinds that import each other: the conversion succeeds and `rp-generate`
+refuses the output, naming the domain module and the access one (<<module-kind>>)
+|Break the reference between the packages of different kinds.
+
+|Classes that inherit both ways between two packages (a class of package A with a parent in B, and a
+class of B with a parent in A): the conversion succeeds and `rp-generate` refuses the output at its
+`python` step, naming the modules and the classes
+(xref:user-manual/generate.adoc#module-cycles[Schema modules that import each other])
+|Move the classes that inherit from one another into one package.
 
 |A class that straddles a boundary's edge, or is inside two boundaries
 |Move it wholly inside one boundary, or wholly outside.

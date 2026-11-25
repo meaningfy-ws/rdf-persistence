@@ -76,8 +76,7 @@ schema `id` is `schema_base` plus the module name (the root schema's `id` is `sc
 other characters (a space, a hyphen) one `_`, and `__` between a package and its subpackage:
 with `--root-name library`, a package `Rare Books` directly below the `--package` package is
 `library_rare_books`, and its subpackage `Maps` is `library_rare_books__maps`. Classes directly in the `--package` package go to `<root-name>_main`.
-Packages that refer to each other are written as one module named after the first of them in path
-order (`merged-cycle`). The
+Packages that refer to each other are written as modules that import each other. The
 xref:reference/uml-conventions.adoc#packages[conventions page] gives the rest.
 
 [cols="2,5",options="header"]
@@ -185,10 +184,6 @@ asks a bound of it (`[1..1]`). The slot is not written and the bound is not carr
 in range; the toolkit's definition is kept and the difference is not carried over. A reference
 collection's `dct:hasPart` role to another converted class is not reported for its range, which
 becomes the collection's member class (xref:reference/uml-conventions.adoc#member-class[conventions page]).
-|`merged-cycle` |Packages that refer to each other were written as one module, because separate
-modules would import each other, whether the reference is a slot's range, a generalisation or a slot
-shared between packages (xref:reference/uml-conventions.adoc#shared-slots[conventions page]). The
-line names the packages.
 |`role` |A role definition drawn as an Object was written to the roles file:
 `<role> at <level>: <actions>` (<<roles-file>>). The level is where the role applies: `system`, `tenant`
 or `aggregate`.

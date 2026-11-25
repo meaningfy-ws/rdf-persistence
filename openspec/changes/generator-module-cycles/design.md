@@ -273,6 +273,15 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   sits between a failing test and its code. 2.4 and 2.5 run as two builders in parallel
   (disjoint files). The stage's mark carries `risk=recorded` (RISK-1, RISK-5 and RISK-6 name its
   files); the full review of task 2.6 names them as its focus.
+- **D-7 (stage 2) RISK-1 checked by the lead on the consumer's model, read-only.** The consumer's
+  committed tree (its `HEAD` `558cc82`, extracted with `git archive` into a scratch folder, its
+  repository untouched) was converted with its own `convert-model` arguments, once with this
+  branch's toolkit (`2c6936eb`) and once with `develop` before stage 2 (`f4ecc5e4`): the two
+  outputs are identical (its current report has no `merged-cycle` line: the model has no package
+  cycle), and `rp-generate` on the stage 2 output generates both targets with no problem. So no
+  `python:` refusal and no change for this consumer from stage 2; the 13 added lines against its
+  committed models (`required: false` flags) come from `develop`'s earlier converter work, not
+  from this change.
 
 ## Open Questions
 
