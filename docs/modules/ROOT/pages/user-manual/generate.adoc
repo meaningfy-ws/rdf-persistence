@@ -263,8 +263,11 @@ Two limits:
   stays in the domain target's folder.
 * `install_service` reads the components of one generated package, the `generated=` you give it,
   which is the target with your aggregate roots: that target needs `openapi` on, and the technical
-  target needs it only if you want its file. A request body that your routes use stays in the
-  domain target.
+  target needs it only if you want its file. A request body that your domain uses stays in the
+  domain target, without the `module_kind` annotation.
+* `openapi-components.json` holds the schemas the toolkit's own routes serve. The routes you write
+  yourself take their OpenAPI schemas from FastAPI, out of the Pydantic models you give them, not
+  from that file.
 
 [#options]
 == Command-line options

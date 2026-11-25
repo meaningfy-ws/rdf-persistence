@@ -52,6 +52,11 @@ runs the generator's integration tests, never in CI.
   `X3`, a fault or defect no port can produce, injected to prove a guard catches it;
   `X4`, a random draw pinned;
   `X5`, an absent optional dependency.
++
+A planted mutation in a generated file (to show a test bites) needs
+`-p no:rdf_persistence_generation.testkit.{empty}freshness` on the `uv run pytest` line, because the
+freshness plugin stops the run on a hand-edited generated file; revert the mutation before
+anything else runs.
 . Build model objects with small builder functions, through the generated models, never bare
   dicts. Shared read-only data is session-scoped; mutable state is function-scoped (`tmp_path`).
   Deviation from the checklist's rule 6 (a factory library): model objects come from the named
