@@ -79,13 +79,13 @@ named here run in CI's `test-generator` job (`make test-generator`).
 
 ## 2. Stage 2: the converter stops merging — branch `change/generator-module-cycles-2` off `develop` after stage 1 merged, one PR
 
-- [ ] 2.1 **feature** — spec `rp-uml-import` "packages that refer to each other". In
+- [x] 2.1 **feature** — spec `rp-uml-import` "packages that refer to each other". In
   `tests/generator/feature/uml_import.feature`, the scenario's Thens become: "Then the conversion
   succeeds", "And the packages are written as the modules "app_books" and "app_shelves" that import
   each other", "And the report has no line about a cycle". First failing test: that scenario
   (`test_uml_import.py`), failing on the one merged module; the old `merged-cycle` step goes.
   Accept: fails for that reason before 2.3, passes after.
-- [ ] 2.2 **unit** — PD-8, spec scenario "packages of different kinds that refer to each other".
+- [x] 2.2 **unit** — PD-8, spec scenario "packages of different kinds that refer to each other".
   In `tests/generator/unit/test_uml_rules.py`: row "two packages that refer to each other are
   written as one module (D-5)" becomes the first failing test
   `two packages that refer to each other are two modules that import each other` (asserts
@@ -97,7 +97,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   packages written as one module with different kinds ..." becomes "packages of different kinds
   that refer to each other keep their own kinds" (`_kinds(app_library="access",
   app_shelves="domain")`, no problem). Accept: as 2.1.
-- [ ] 2.3 **code** — PD-8, DEC-4, after 2.1 and 2.2. Remove the merge from `uml/convert.py`
+- [x] 2.3 **code** — PD-8, DEC-4, after 2.1 and 2.2. Remove the merge from `uml/convert.py`
   (`_merge`, `_module_graph`, `_note_merges`, `Layout.merged`, `_settle`'s new end condition,
   `_module_kinds`' merged-kinds problem) and the `merged` parameters in `uml/slots.py`; remove the
   converter's import of the Tarjan search; remove `merged_cycle` from `ReportKind` in
@@ -106,7 +106,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   (`git status` shows no change under `tests/generator/fixtures/uml/golden/`); `grep -rn
   "merged_cycle\|MERGED_CYCLE\|cycle_components" rdf_persistence_generation/uml` is empty;
   `make test-changed check-quality` green.
-- [ ] 2.4 **integration** — after 2.3. Rewrite `tests/generator/integration/test_uml_cycle.py`:
+- [x] 2.4 **integration** — after 2.3. Rewrite `tests/generator/integration/test_uml_cycle.py`:
   first failing test `test_the_packages_of_a_cycle_become_two_modules_that_import_each_other`
   (two modules, each import list naming the other, the report has no `merged-cycle` line), then
   `test_the_converted_cycle_generates_and_the_package_imports` (`rp-generate` exit 0; a `Book`
@@ -127,7 +127,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   once without the inheritance cycle, add it, run again, and assert exit 1, a `python:` problem
   line, and every generated file byte-identical to the first run's. Accept: `make test-generator`
   green.
-- [ ] 2.5 **docs** — after 2.3. `reference/uml-conventions.adoc`: `#packages` (one module per
+- [x] 2.5 **docs** — after 2.3. `reference/uml-conventions.adoc`: `#packages` (one module per
   package; packages that refer to each other give modules that import each other),
   `#module-kind` (the merged-kinds failure removed; a cycle between kinds is refused by
   `rp-generate`'s boundary check), `#shared-slots` (no merge), the problems table (the `module_kind`
@@ -138,7 +138,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   packages with different kinds, described in `[0.8.1]`, are removed; old and new layout; imports
   through the root module unchanged. Released sections are never edited. Accept: `make check-docs` green;
   `grep -rn "merged-cycle" docs` empty.
-- [ ] 2.6 **lead** — acceptance: the converter's cyclic library (2.4) shown converting, generating
+- [x] 2.6 **lead** — acceptance: the converter's cyclic library (2.4) shown converting, generating
   and importing; RISK-1: ask the consumer to convert and generate its current model on this branch
   and report any `python:` refusal to the owner before the merge (OPEN-2). Then `make check-all`,
   `make test-containers`, the full review once (MEDIUM, rule P-0005: L1, L2, L3 apart, L4+L5 as

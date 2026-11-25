@@ -268,6 +268,55 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   load also asserts the `python:` problem line and that generated files already written are left
   byte-identical (spec `rp-generation` scenario 3, in full); task 2.4. The owner answered OPEN-1,
   OPEN-2 and OPEN-4 as recommended (`inputs/qa.md`, *Owner's answers*).
+- **D-6 (stage 2) Tasks 2.1, 2.2 and 2.3 go to one builder.** 2.1 and 2.2 are the failing tests
+  2.3 turns green; one builder writes them, sees them fail, then removes the merge, so no hand-off
+  sits between a failing test and its code. 2.4 and 2.5 run as two builders in parallel
+  (disjoint files). The stage's mark carries `risk=recorded` (RISK-1, RISK-5 and RISK-6 name its
+  files); the full review of task 2.6 names them as its focus.
+- **D-7 (stage 2) RISK-1 checked by the lead on the consumer's model, read-only.** The consumer's
+  committed tree (its `HEAD` `558cc82`, extracted with `git archive` into a scratch folder, its
+  repository untouched) was converted with its own `convert-model` arguments, once with this
+  branch's toolkit (`2c6936eb`) and once with `develop` before stage 2 (`f4ecc5e4`): the two
+  outputs are identical (its current report has no `merged-cycle` line: the model has no package
+  cycle), and `rp-generate` on the stage 2 output generates both targets with no problem. So no
+  `python:` refusal and no change for this consumer from stage 2; the 13 added lines against its
+  committed models (`required: false` flags) come from `develop`'s earlier converter work, not
+  from this change.
+- **D-8 (stage 2) Stage-end impact from `detect_changes` on the stage-start index.** `make
+  reindex` failed in its embeddings step (a duplicated primary key in `CodeEmbedding`); the
+  stage-start index was fresh (`f4ecc5e4`). `detect_changes` against `origin/develop`: risk
+  MEDIUM, every changed symbol in `uml/` and its tests, the two `share` flows affected, both
+  covered by the UML rules and golden tests in `make check-all`.
+- **D-9 (stage 2, full review) F-L45-W2 accepted, re-labelled Critical.** Package paths are made
+  from names (`uml/modules.py` `package_paths`), so two sibling packages with one name share a
+  path and a module. Before stage 2 the merged-kinds problem also refused such siblings with
+  different `module_kind`s; stage 2 removed it, so `_module_kinds` now keeps the last kind
+  silently, and the kind decides `rp-generate`'s domain/access boundary. Re-label reason: a
+  regression this change introduces, a silent wrong output at an access boundary. Fix: when one
+  path collects two kinds, `_module_kinds` reports a `package_module` problem naming the module
+  and both kinds (a positive and a negative row in `test_uml_rules.py`). One fixer, one pass.
+- **D-10 (stage 2, checker) The D-9 refusal is documented.** The checker found
+  `reference/uml-conventions.adoc` still saying the converter never fails on kinds; the lead
+  (light chore, R-0007) states the refusal of same-named siblings with different kinds in
+  `#module-kind` and adds its row to the problems table. Docs only: `make check-docs` and
+  `make check-quality` re-run, not the full gates.
+- Full review, under the floor (no other Critical; not fixed in this change):
+  - L2-W1 the kinds-cycle test does not assert the direction of the boundary refusal (domain
+    importing access) in one line.
+  - L2-W2 the RISK-6 test covers only the start-up check's refusal path on a cyclic pair, not a
+    cyclic pair with no workflow that `write` accepts.
+  - L2-S1 the shared-slot example of `uml-conventions.adoc` reads against the new `#packages`
+    example that reuses its module names.
+  - L2-S2 the living `rp-uml-import` spec still names the merge until the change is archived
+    (the archive merges the delta).
+  - L3-S1..S5 `by_label` built twice; `Layout.names` doubling as the module set; docstrings still
+    citing uml-to-linkml "PD-14 as D-5 amends it"; the `Edges` alias defined after its first use;
+    `pydantic_split.py`'s size.
+  - L45-W1 `deferred=None` versus `{}` carries "in a cycle" in `pydantic_split.py`; L45-W3 decision
+    ids of two changes cited bare in one file; L45-S1 `class_names` recorded in a template hook;
+    L45-S2 `deferred_by_module` turns the model back into a nested dict; L45-S3 `"typing"` and the
+    empty-import filter repeated; L45-S4 three different "no merge reported" checks, one of them
+    (`MERGED_CYCLE` in `test_uml_cycle.py`) unable to fail.
 
 ## Open Questions
 

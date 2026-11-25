@@ -1,8 +1,8 @@
 """The conversion (PD-5, PD-14 as D-5 amends it, PD-22 order): a ``UmlModel`` to LinkML schemas.
 
 ``convert`` is pure: no file is read or written. Passes, in order: classify the classes (``classes``),
-read the slots (``slots``, ``links``), lay the packages out as modules and merge the ones that import
-each other (``modules``), then write each module as a ``SchemaDefinition``. When any problem was found
+read the slots (``slots``, ``links``), lay the packages out as modules, one each, that may import each
+other (``modules``), then write each module as a ``SchemaDefinition``. When any problem was found
 the schemas are not built: the caller prints the problems and writes nothing.
 """
 
@@ -19,14 +19,12 @@ from linkml_runtime.linkml_model import (
 from rdf_persistence.core.domain.generated.rp_core import ModuleKind, RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
-    ReportKind,
     ReportLine,
     UmlElement,
     UmlModel,
     UmlRule,
     UmlSettings,
 )
-from rdf_persistence_generation.module_cycles import cycle_components
 from rdf_persistence_generation.uml.classes import (
     annotation,
     build_class,
@@ -78,31 +76,24 @@ DEFAULT_RANGE: Final = "string"
 
 
 class Layout:
-    """The generated elements, the packages' references and the module each package is written in (D-5)."""
+    """The generated elements, the packages' references and the module of each package (PD-8)."""
 
     def __init__(
         self,
         elements: list[UmlElement],
         edges: Mapping[ModulePath, set[ModulePath]],
-        merged: Mapping[ModulePath, ModulePath],
         names: Mapping[ModulePath, str],
     ) -> None:
         self.elements = elements
         self.edges = edges
-        self.merged = merged
         self.names = names
 
     def members(self, path: ModulePath) -> list[UmlElement]:
-        return [each for each in self.elements if self.merged[path_of(each)] == path]
+        return [each for each in self.elements if path_of(each) == path]
 
     def refers_to(self, path: ModulePath) -> set[str]:
         """The modules the module at ``path`` imports."""
-        return {
-            self.names[self.merged[target]]
-            for source in self.edges
-            if self.merged[source] == path
-            for target in self.edges[source]
-        }
+        return {self.names[target] for target in self.edges.get(path, ())}
 
 
 def _generated(ctx: Context) -> list[UmlElement]:
@@ -146,30 +137,6 @@ def _references(
 Edges = dict[ModulePath, set[ModulePath]]
 
 
-def _merge(
-    edges: Mapping[ModulePath, set[ModulePath]],
-) -> tuple[dict[ModulePath, ModulePath], list[list[ModulePath]]]:
-    """The path each package is written under: its own, or the first of the cycle it is in (D-5)."""
-    merged = {path: path for path in edges}
-    components = cycle_components(list(edges), dict(edges))
-    for component in components:
-        for path in component:
-            merged[path] = component[0]
-    return merged, components
-
-
-def _module_graph(
-    edges: Mapping[ModulePath, set[ModulePath]], merged: Mapping[ModulePath, ModulePath]
-) -> Edges:
-    """The imports between the modules the packages are written as."""
-    graph: Edges = {path: set() for path in set(merged.values())}
-    for source, targets in edges.items():
-        graph[merged[source]] |= {merged[target] for target in targets}
-    for path, targets in graph.items():
-        targets.discard(path)
-    return graph
-
-
 def _grown(
     edges: Mapping[ModulePath, set[ModulePath]], added: Mapping[ModulePath, set[ModulePath]]
 ) -> Edges:
@@ -182,32 +149,18 @@ def _grown(
 
 def _settle(
     usages: list[Usage], edges: Edges, by_label: Mapping[str, UmlElement]
-) -> tuple[
-    Edges, dict[ModulePath, ModulePath], list[list[ModulePath]], dict[str, ModulePath | None]
-]:
-    """The imports once the shared slots are placed, and the modules and homes that agree with them (PD-16).
+) -> tuple[Edges, dict[str, ModulePath | None]]:
+    """The imports once the shared slots are placed, and the homes that agree with them (PD-16).
 
     A shared slot's home is chosen from the imports there are, and its placing adds imports, which can
-    make a cycle: so the choice is repeated, the imports only growing, until the modules stop changing.
+    change what a module reaches: so the choice is repeated, the imports only growing, until they stop.
     """
-    merged, _ = _merge(edges)
     while True:
-        homes = choose_homes(usages, merged, reachable(_module_graph(edges, merged)))
-        edges = _grown(edges, shared_edges(usages, merged, homes, by_label))
-        again, components = _merge(edges)
-        if again == merged:
-            return edges, merged, components, homes
-        merged = again
-
-
-def _note_merges(ctx: Context, components: list[list[ModulePath]]) -> None:
-    for component in components:
-        names = ", ".join("/".join(path) or "main" for path in component)
-        ctx.findings.note(
-            ReportKind.MERGED_CYCLE,
-            module_name(ctx.settings.root_name, component[0]),
-            f"the packages {names} are written as one module",
-        )
+        homes = choose_homes(usages, reachable(edges))
+        grown = _grown(edges, shared_edges(usages, homes, by_label))
+        if grown == edges:
+            return edges, homes
+        edges = grown
 
 
 def _module_names(ctx: Context, paths: set[ModulePath]) -> dict[ModulePath, str]:
@@ -292,26 +245,27 @@ def _slot_names(usages: list[Usage], ctx: Context) -> dict[int, list[str]]:
 def _module_kinds(ctx: Context, model: UmlModel, layout: Layout) -> dict[ModulePath, str]:
     """The ``module_kind`` of each module: its packages' tagged value, ``domain`` when none (#245).
 
-    A value the toolkit's metamodel does not list is a problem naming the package; packages written as
-    one module (a cycle) with different kinds are a problem naming the module.
+    A value the toolkit's metamodel does not list is a problem naming the package. A package is its
+    own module, but sibling packages of one name share a path (D-9): with different kinds that is a
+    problem naming the module.
     """
-    kinds: dict[ModulePath, set[str]] = {}
+    found: dict[ModulePath, set[str]] = {}
     for package in model.uml_packages or []:
         path = ctx.paths.get(package.package_id)
-        if path is None or below_of(path) not in layout.merged:
+        if path is None or below_of(path) not in layout.names:
             continue  # a package with no class has no module
         written = ctx.tags.get(package.object_id or 0, {}).get(MODULE_KIND, DOMAIN)
         kind = package_kind(ctx, package.name, written)
         if kind is not None:
-            kinds.setdefault(layout.merged[below_of(path)], set()).add(kind)
-    for module, found in kinds.items():
-        if len(found) > 1:
+            found.setdefault(below_of(path), set()).add(kind)
+    for module, kinds in found.items():
+        if len(kinds) > 1:
             ctx.findings.problem(
                 UmlRule.PACKAGE_MODULE,
                 layout.names[module],
-                f"its packages are written as one module but have the kinds {' and '.join(sorted(found))}",
+                f"its packages have the kinds {' and '.join(sorted(kinds))}",
             )
-    return {module: min(found) for module, found in kinds.items()}
+    return {module: min(kinds) for module, kinds in found.items()}
 
 
 def _write_module(
@@ -384,27 +338,20 @@ def _classes(
 def _lay_out(
     ctx: Context, elements: list[UmlElement], usages: list[Usage], parent_of: Mapping[int, str]
 ) -> tuple[Layout, SharedSlots]:
-    """The modules the packages are written as, and the slots each of them defines or shares (R-24, D-5)."""
+    """The modules the packages are written as, and the slots each of them defines or shares (R-24, PD-8)."""
     by_label = {element.label: element for element in elements}
-    edges, merged, components, homes = _settle(
-        usages, _references(elements, usages, parent_of), by_label
-    )
-    _note_merges(ctx, components)
-    names = _module_names(ctx, set(merged.values()))
-    module_of = {
-        element.uml_class.object_id: names[merged[path_of(element)]] for element in elements
-    }
+    edges, homes = _settle(usages, _references(elements, usages, parent_of), by_label)
+    names = _module_names(ctx, {path_of(element) for element in elements})
+    module_of = {element.uml_class.object_id: names[path_of(element)] for element in elements}
     named_homes = {name: names[path] if path else None for name, path in homes.items()}
     lineage = (parent_of, {element.label: element.uml_class.object_id for element in elements})
-    return Layout(elements, edges, merged, names), share(
-        ctx, usages, module_of, named_homes, lineage
-    )
+    return Layout(elements, edges, names), share(ctx, usages, module_of, named_homes, lineage)
 
 
 def convert(
     model: UmlModel, settings: UmlSettings, toolkit: Toolkit
 ) -> tuple[list[SchemaDefinition], list[ReportLine], list[CheckProblem], dict[str, str]]:
-    """Convert the subtree of ``model`` into a root schema and one module per package (or merged cycle).
+    """Convert the subtree of ``model`` into a root schema and one module per package.
 
     Returns the schemas (root first, then the modules by path), the report lines, the problems, each
     sorted, and the other files to write (PD-8): a path relative to ``--out`` to its text, empty when

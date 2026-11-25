@@ -1308,14 +1308,24 @@ def _shared(out: Converted) -> None:
     )
 
 
-def _merged(out: Converted) -> None:
+def _no_merge_reported(out: Converted) -> None:
+    merges = [line for line in out.report if "one module" in line.message]
+    assert merges == [], "a cycle between modules is not reported as a merge"
+
+
+def _two_modules_that_import_each_other(out: Converted) -> None:
     _no_problems(out)
-    assert sorted(out.schemas) == ["app", "app_library"], "the two packages are one module"
-    assert sorted(out.schemas["app_library"].classes) == ["Book", "Shelf"], "it holds both classes"
-    assert out.schemas["app"].imports == ["linkml:types", "app_library"], "the root imports it once"
-    assert out.report_lines("merged_cycle") == [
-        "app_library: the packages library, shelves are written as one module"
-    ], "the merge is reported"
+    assert sorted(out.schemas) == ["app", "app_library", "app_shelves"], (
+        "each package is its own module"
+    )
+    assert sorted(out.schemas["app_library"].classes) == ["Book"], "library holds the book"
+    assert sorted(out.schemas["app_shelves"].classes) == ["Shelf"], "shelves holds the shelf"
+    assert "app_shelves" in out.schemas["app_library"].imports, "library imports shelves"
+    assert "app_library" in out.schemas["app_shelves"].imports, "shelves imports library"
+    assert {"app_library", "app_shelves"} <= set(out.schemas["app"].imports), (
+        "the root imports both"
+    )
+    _no_merge_reported(out)
 
 
 _SHARED = (
@@ -1398,14 +1408,14 @@ ROWS_R12 = [
         ),
     ),
     Row(
-        "two packages that refer to each other are written as one module (D-5)",
+        "two packages that refer to each other are two modules that import each other",
         UmlRule.PACKAGE_MODULE,
         model(
             klass(BOOK, "lib:Book"),
             klass(SHELF, "lib:Shelf", SHELVES_PKG),
             links=(link(1, BOOK, SHELF, target_role="shelf", source_role="featured"),),
         ),
-        _merged,
+        _two_modules_that_import_each_other,
     ),
 ]
 
@@ -2797,16 +2807,17 @@ def _range_module_imported(out: Converted) -> None:
 
 def _cycle_by_sharing(out: Converted) -> None:
     _no_problems(out)
-    assert sorted(out.schemas) == ["app", "app_afirst", "app_bhome"], "bhome and zed are one module"
-    assert sorted(out.schemas["app_bhome"].classes) == ["Beta", "Zed"], (
-        "the merged module holds both"
+    assert sorted(out.schemas) == ["app", "app_afirst", "app_bhome", "app_zed"], (
+        "each package keeps its own module"
     )
-    assert out.report_lines("merged_cycle") == [
-        "app_bhome: the packages bhome, zed are written as one module"
-    ], "the merge from the final imports is reported once, naming the packages"
+    assert sorted(out.schemas["app_bhome"].classes) == ["Beta"], "bhome holds only its class"
+    assert sorted(out.schemas["app_zed"].classes) == ["Zed"], "zed holds only its class"
     assert "has_parent" in out.schemas["app_bhome"].slots, (
-        "the slot is defined in the merged module"
+        "the slot is defined in bhome, the module afirst reaches"
     )
+    assert "app_zed" in out.schemas["app_bhome"].imports, "bhome imports zed"
+    assert "app_bhome" in out.schemas["app_zed"].imports, "zed imports bhome"
+    _no_merge_reported(out)
 
 
 ROWS_R24 = [
@@ -2865,7 +2876,7 @@ ROWS_R24 = [
         _range_module_imported,
     ),
     Row(
-        "a cycle that sharing creates is merged into one module, from the final imports (D-5)",
+        "a cycle that sharing creates leaves each package its own module",
         UmlRule.SHARED_SLOT_ACROSS_PACKAGES,
         model(
             klass(CLASS_A, "lib:Alpha", AFIRST_PKG),
@@ -3204,6 +3215,28 @@ def _kinded(*tags: tuple[int, str], cycle: bool = False) -> object:
     )
 
 
+def _twins(first: str, second: str) -> object:
+    """Book and Shelf in two sibling packages that share the name ``library``, hence one module."""
+    packages = (
+        UmlPackage(package_id=MODEL_PKG, name="model"),
+        UmlPackage(
+            package_id=LIBRARY_PKG, name="library", parent_id=MODEL_PKG, object_id=_LIBRARY_ELEMENT
+        ),
+        UmlPackage(
+            package_id=SHELVES_PKG, name="library", parent_id=MODEL_PKG, object_id=_SHELVES_ELEMENT
+        ),
+    )
+    return model(
+        klass(BOOK, "lib:Book", stereotype="root"),
+        klass(SHELF, "lib:Shelf", SHELVES_PKG, stereotype="root"),
+        packages=packages,
+        tags=(
+            tag(_LIBRARY_ELEMENT, "module_kind", first),
+            tag(_SHELVES_ELEMENT, "module_kind", second),
+        ),
+    )
+
+
 def _kinds(**expected: str) -> Check:
     def check(out: Converted) -> None:
         _no_problems(out)
@@ -3239,10 +3272,22 @@ ROWS_MODULE_KIND = [
         _problem(UmlRule.PACKAGE_MODULE, "library", "planet"),
     ),
     Row(
-        "failure: packages written as one module with different kinds name the module",
+        "packages of different kinds that refer to each other keep their own kinds",
         UmlRule.PACKAGE_MODULE,
         _kinded((_LIBRARY_ELEMENT, "access"), cycle=True),
+        _kinds(app_library="access", app_shelves="domain"),
+    ),
+    Row(
+        "failure: sibling packages of one name with different kinds name the module and both kinds",
+        UmlRule.PACKAGE_MODULE,
+        _twins("access", "domain"),
         _problem(UmlRule.PACKAGE_MODULE, "app_library", "access", "domain"),
+    ),
+    Row(
+        "sibling packages of one name with the same kind make one module of that kind",
+        UmlRule.PACKAGE_MODULE,
+        _twins("domain", "domain"),
+        _kinds(app_library="domain"),
     ),
 ]
 

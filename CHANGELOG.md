@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠ BREAKING
+- **The UML converter writes one module per package and never merges a cycle**
+  (`generator-module-cycles`). The merge of packages that refer to each other, and the failure of
+  merged packages with different kinds, both described in `[0.8.1]`, are removed, and so is the
+  `merged-cycle` report line. Before, packages that referred to each other were written as one
+  module named after the first in path order, so their classes lived in that module; now each
+  package is its own module (`app_catalogue`, `app_shelves`) and the modules import each other.
+  A class of a later package moves to its package's module, and a slot shared between packages may
+  take another home module. Imports through the root module are unchanged. Regenerate converted
+  schemas and update imports of the moved classes that name their module. Packages of different
+  kinds that import each other are now converted and refused by `rp-generate`'s boundary check;
+  classes that inherit both ways between two packages are refused by `rp-generate`: move them into
+  one package. See "Packages and modules" in "UML conventions".
+
 ## [0.13.0] - 2026-11-25
 
 ### Added

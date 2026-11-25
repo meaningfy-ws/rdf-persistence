@@ -194,16 +194,6 @@ def importable(tmp_path: Path) -> Iterator[Path]:
     importlib.invalidate_caches()
 
 
-def _build_a_book_on_a_shelf() -> None:
-    books = importlib.import_module(f"{PACKAGE}.domain.generated.app_books")
-    book = books.Book(
-        id="https://example.org/ns/library#book-1",
-        label="Dune",
-        shelf="https://example.org/ns/library#shelf-1",
-    )
-    assert (book.label, str(book.shelf)) == ("Dune", "https://example.org/ns/library#shelf-1")
-
-
 @pytest.mark.parametrize("first", ["app_books", "app_shelves"])
 def test_two_domain_modules_that_import_each_other_generate_and_import(
     importable: Path, capsys: pytest.CaptureFixture[str], first: str
@@ -279,32 +269,34 @@ def test_two_modules_whose_classes_inherit_from_each_other_are_refused(
     importable: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """PD-3: each module needs a parent from the other while it loads, so no order loads it:
-    refused at the python step, naming both modules and both parents, nothing written."""
+    refused at the python step, naming both modules and both parents. D-5: files an earlier run
+    wrote are left byte-identical (spec ``rp-generation`` scenario 3)."""
     pyproject = _write_project(
         importable,
         {
             "app_a": _module("app_a", ("app_b",), _root("Child", "Base") + _root("Root"), ""),
-            "app_b": _module("app_b", ("app_a",), _root("Other", "Root") + _root("Base"), ""),
+            "app_b": _module("app_b", ("app_a",), _root("Other") + _root("Base"), ""),
         },
     )
+    first_code, first_error = main(["--project", str(pyproject)]), capsys.readouterr().err
+    generated = importable / PACKAGE / "domain" / "generated"
+    first = {file.name: file.read_bytes() for file in sorted(generated.iterdir()) if file.is_file()}
+    assert first_code == 0, first_error
+    assert first, "the first run wrote no file"
 
+    (importable / "app_b.yaml").write_text(
+        _module("app_b", ("app_a",), _root("Other", "Root") + _root("Base"), "")
+    )
     code = main(["--project", str(pyproject)])
     error = capsys.readouterr().err
 
     assert code == 1, "a cycle that cannot load was accepted"
+    assert any(" python: " in line for line in error.splitlines()), (
+        f"no python: problem line: {error}"
+    )
     for name in ("app_a", "app_b", "Root", "Base"):
         assert name in error, f"{name} is not named: {error}"
-    assert not (importable / PACKAGE / "domain" / "generated").exists(), "files were written"
-
-
-def test_the_same_two_classes_in_one_module_generate_and_import(
-    importable: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The PD-27 fallback: the packages of a cycle merged into one module."""
-    merged = _module("app_books", (), BOOK + SHELF, SHELF_SLOT + FEATURED_SLOT)
-    pyproject = _write_project(importable, {"app_books": merged})
-
-    code = main(["--project", str(pyproject)])
-
-    assert code == 0, capsys.readouterr().err
-    _build_a_book_on_a_shelf()
+    second = {
+        file.name: file.read_bytes() for file in sorted(generated.iterdir()) if file.is_file()
+    }
+    assert second == first, "a refused run changed the files the first run wrote"

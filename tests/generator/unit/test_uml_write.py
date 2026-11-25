@@ -493,6 +493,37 @@ def test_the_start_up_check_refuses_a_staged_workflow(tmp_path: Path) -> None:
     assert list(out.iterdir()) == [], "nothing was moved and no staging folder is left"
 
 
+def _module(name: str, other: str, klass_: ClassDefinition) -> SchemaDefinition:
+    """A module that imports ``other``, which imports it back (a cycle of two modules)."""
+    return SchemaDefinition(
+        id=f"{LIBRARY}{name}",
+        name=name,
+        prefixes={"lib": LIBRARY},
+        default_prefix="lib",
+        imports=[other],
+        classes={klass_.name: klass_},
+    )
+
+
+def test_the_start_up_check_loads_modules_that_import_each_other(tmp_path: Path) -> None:
+    """RISK-6: ``load_schema`` follows a cyclic import to the classes of both modules."""
+    out = tmp_path / "out"
+    books = _module(f"{ROOT}_books", f"{ROOT}_shelves", _class("First", "loan"))
+    shelves = _module(f"{ROOT}_shelves", f"{ROOT}_books", _class("Second", "return"))
+    root = _root_schema()
+    root.imports = [books.name, shelves.name]
+
+    with pytest.raises(StagedFileRefused) as raised:
+        write([root, books, shelves], [], out, ROOT, files=_staged_files("loan", "return"))
+
+    text = str(raised.value)
+    assert text.startswith("the written files would stop the service: "), text
+    assert "'loan'" in text, f"the workflow of the first module's class: {text}"
+    assert "'return'" in text, f"the workflow of the second module's class: {text}"
+    assert SHARED_IRI in text, f"the shared class IRI: {text}"
+    assert list(out.iterdir()) == [], "nothing was moved and no staging folder is left"
+
+
 def test_a_refusal_naming_a_file_names_it_under_out(tmp_path: Path) -> None:
     out = tmp_path / "out"
     schema = _root_schema(_class("Lonely", "missing"))

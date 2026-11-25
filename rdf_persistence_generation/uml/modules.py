@@ -1,7 +1,8 @@
 """Packages and modules (R-1, PD-5, PD-14 as D-5 amends it): where a package sits, what its module is
-called and which packages that import each other are written as one module.
+called and which modules each module reaches by imports.
 
 Pure functions over package paths; a path is the tuple of package names below the subtree package.
+A package is its own module, whether or not it imports one that imports it (PD-8).
 """
 
 import re

@@ -197,8 +197,6 @@ class ReportKind(str, _Enum):
     "A tagged value no rule uses."
     IGNORED_STEREOTYPE = "ignored_stereotype"
     "A stereotype no rule uses."
-    MERGED_CYCLE = "merged_cycle"
-    "Packages that import each other, merged into one module."
     STALE_FILE = "stale_file"
     "A file of an earlier run left in the output folder, which this run did not write."
     EXTERNAL_LIST = "external_list"
