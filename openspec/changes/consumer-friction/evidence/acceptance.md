@@ -12,6 +12,8 @@ Regenerate the toy library (`make generate`), then show:
 
 ## Result
 
-TODO(lead): what was shown, or the reason for a skip.
+Skipped by the developer (2026-11-25), on the lead's recommendation: CI's "Types" job compiles the
+toy's cross-folder import with `make typecheck-ts`, and TC-1/TC-2 pin the files the demo would show
+(no `loan_checks.ts` in the technical folder, the relative import in `loan_checks_response.ts`).
 
-Verdict: pending (developer)
+Verdict: accepted without a demo (developer)

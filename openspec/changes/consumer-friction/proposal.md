@@ -119,9 +119,10 @@ whose name holds "shapes" (#372): the escape, `exempt=`, exists but is documente
 ## Reconciliation (as delivered)
 
 Delivered in PR #391 (one stage, SMALL; #371 and #372 closed on merge). Decisions taken in delivery
-are `design.md` D-1 to D-4. Acceptance demo: `evidence/acceptance.md`; docs owed:
-`evidence/docs-owed.md` (none beyond stage 1). TODO(lead): confirm the merge, the PR number of the
-archive and the review and CI outcome before archiving.
+are `design.md` D-1 to D-8. Acceptance demo: skipped by the developer, accepted
+(`evidence/acceptance.md`); docs owed: `evidence/docs-owed.md` (none beyond stage 1). Reviews: three
+L2+L3 passes (D-5, D-6, D-8), one Critical (C1), fixed. CI green on every lane after the rebase on
+0.15.0, the generator lane included (D-7).
 
 | Item | Final state | PR |
 |---|---|---|
@@ -137,7 +138,7 @@ archive and the review and CI outcome before archiving.
 | Spec scenario 4, old copy removed | Proved: `tests/generator/integration/test_stale_typescript_copy.py` (TC-6) | #391 |
 | Docs: `generation.adoc`, `user-manual/generate.adoc`, `user-manual/generated-classes.adoc`, `assert_models_generated` docstring | Delivered | #391 |
 | `CHANGELOG.md` `[Unreleased]` *BREAKING* | Delivered | #391 |
-| Requirement merged into `rp-generation` | TODO(lead): done at archive | TODO(lead) |
+| Requirement merged into `rp-generation` | Done at archive (`openspec archive consumer-friction --yes`) | archive PR |
 
 What Changes, Capabilities and the spec delta are true of the code. Impact grew by two older tests
 updated for the toy's three TypeScript targets (`tests/generator/unit/test_placement.py` and
@@ -146,4 +147,4 @@ updated for the toy's three TypeScript targets (`tests/generator/unit/test_place
 The review's C1 (D-5) also grew it: `rdf_persistence_generation/pipeline.py` (`Run` carries the
 run's targets) and `tests/generator/unit/golden.py` (`run_toy` passes them).
 Not delivered as shaped: nothing. Left open under the floor (D-5): W1's third case (no test for a
-root without `python_package`), W2, S1, S2.
+root without `python_package`), W2, S1, S2; F-4, F-5, F-6 (D-6); L2-1, L2-2, L2-4, L3-1 (D-8).
