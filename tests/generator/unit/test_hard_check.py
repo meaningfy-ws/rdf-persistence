@@ -138,6 +138,29 @@ FAULTS = (
         "  identifier:\n",
         "graph",
     ),
+    # #206: two slots of different names on one IRI (the toolkit's, the application's own, a default IRI)
+    Fault(
+        HardRule.SLOT_IRI,
+        "books.yaml",
+        "slots:\n  isbn:\n",
+        "slots:\n  parts:\n    title: Parts\n    description: Its own.\n"
+        "    slot_uri: dcterms:hasPart\n  isbn:\n",
+        "parts",
+    ),
+    Fault(
+        HardRule.SLOT_IRI,
+        "books.yaml",
+        "slots:\n  isbn:\n",
+        "slots:\n  note:\n    title: Note\n    description: Its own.\n  isbn:\n",
+        "note",
+    ),
+    Fault(
+        HardRule.SLOT_IRI,
+        "books.yaml",
+        "        title: Shade\n",
+        "        title: Shade\n        slot_uri: lib:shelf\n",
+        "shade",
+    ),
     Fault(HardRule.RP_PATH, "books.yaml", "      rp_path: books\n", "", "Book"),
     Fault(HardRule.RP_PATH, "scans.yaml", "      rp_path: scans\n", "", "Scan"),
     Fault(
@@ -444,6 +467,26 @@ def test_a_run_with_a_default_instance_over_a_type_exits_1_naming_the_slot_and_w
     before = sorted(p.name for p in root.parent.iterdir())
     assert main(["--project", str(root.parent / "pyproject.toml")]) == 1, "wrong exit code"
     assert "shade" in capsys.readouterr().err, "the slot is not named"
+    assert sorted(p.name for p in root.parent.iterdir()) == before, "outputs were touched"
+
+
+def test_two_slots_on_one_iri_are_named_with_their_modules_and_the_iri_and_nothing_is_written(
+    break_toy: Breaker, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#206: `rp-generate` exits 1 and the message names both slots, both modules and the IRI."""
+    fault = FAULTS[[f.rule for f in FAULTS].index(HardRule.SLOT_IRI)]
+    root = break_toy(fault.module, fault.old, fault.new)
+    before = sorted(p.name for p in root.parent.iterdir())
+    assert main(["--project", str(root.parent / "pyproject.toml")]) == 1, "wrong exit code"
+    err = capsys.readouterr().err
+    for needed in (
+        "parts",
+        "books",
+        "has_part",
+        "rp_collections",
+        "http://purl.org/dc/terms/hasPart",
+    ):
+        assert needed in err, f"{needed} is not named in {err}"
     assert sorted(p.name for p in root.parent.iterdir()) == before, "outputs were touched"
 
 
