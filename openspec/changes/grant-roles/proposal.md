@@ -123,7 +123,8 @@ is now refused at load (D-13, the developer's decision; none is known).
 ## Reconciliation (as delivered)
 
 Delivered in PR #345 (stage 1, #307, released in 0.12.0) and PR #367 (stage 2, #310). Decisions
-taken in delivery are `design.md` D-8 to D-14.
+taken in delivery are `design.md` D-8 to D-15. Accepted by the developer on 2026-11-25
+(`evidence/acceptance.md`).
 
 | Item | Final state | PR |
 |---|---|---|
@@ -131,7 +132,7 @@ taken in delivery are `design.md` D-8 to D-14.
 | DEC-2 system database only, after the steps, before the rotation | Delivered; the `grants` keyword defaults to False for every other caller (D-8) | #345 |
 | DEC-3 a rename deletes the duplicate first, else renames in place | Delivered; each rename's op1 then op2, in file order, the drops last; proven on rdflib and Fuseki (D-11) | #345 |
 | DEC-4 load checks | Delivered, plus two: one name renamed twice (builder), and a rename target holding a comma (D-14) | #345, #367 |
-| DEC-5 start-up report | Delivered; levels judged under the tenancy's IRI policy (D-9); the pairs in a new log attribute `rp.grants.undefined_roles` (D-10) | #345 |
+| DEC-5 start-up report | Delivered; levels judged under the tenancy's IRI policy (D-9); the pairs in a new log attribute `rp.grants.undefined_roles` (D-10), each pair once (D-15, after the acceptance demo) | #345, close PR |
 | DEC-6 `Held-Roles` | Delivered on the aggregate and the tenant read (same route); declared with `Allowed-Actions` through `_with_caller_headers` (D-12, D-13); a role name may not hold a comma (D-13) | #367 |
 | DEC-7 two stages, two PRs | Delivered | #345, #367 |
 | #307 answered on the issue | Done, with the how-to link | — |

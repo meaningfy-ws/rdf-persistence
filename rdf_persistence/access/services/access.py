@@ -215,14 +215,17 @@ class AccessRules:
     def undefined_roles(self, grants: Iterable[Grant], tenant: str) -> list[tuple[RoleLevel, str]]:
         """The ``(level, role)`` pairs of ``grants`` that no role definition covers, in the grants' order.
 
-        The level of a grant is the tenant's when it targets ``tenant``, else an aggregate's.
+        The level of a grant is the tenant's when it targets ``tenant``, else an aggregate's. Each
+        pair is listed once, at its first occurrence.
         """
         pairs = ((_level(grant.target, tenant), grant.role) for grant in grants)
-        return [
-            (level, role)
-            for level, role in pairs
-            if role is not None and (level, role) not in self._permits
-        ]
+        return list(
+            dict.fromkeys(
+                (level, role)
+                for level, role in pairs
+                if role is not None and (level, role) not in self._permits
+            )
+        )
 
     def administered(self, grants: Iterable[Grant], tenant: str) -> bool:
         """True when a grant of ``grants`` gives ``administer`` on ``tenant``, by role or directly."""
