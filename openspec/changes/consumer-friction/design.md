@@ -224,3 +224,16 @@ integration lane, both in `make test-generator`; TC-7 in the library's unit lane
   toy golden covers the served modules indirectly); **L2-4** `test_a_toy_generation_writes_rp_service_ts`
   counts the files instead of naming their folders; **L3-1** the C1 tests import the private
   `_typescript_owners`. L2-1 and L2-2 are worth one follow-up test each.
+- **D-9 (lead, 2026-11-25; corrects D-7).** CI's generator lane failed again on `2567b9b7` (docs
+  and scenario map only since the green `2b89e7c1`): no kill, but two `test_lock_step` tests over
+  pytest-timeout's 120 s, the lane 20 min 13 s. So the branch does slow the lane; the green run had
+  headroom, this runner did not. CI junit results, summed test time: develop `f515e22a` 2119 s
+  (`test_lock_step` 514 s, slowest test 57 s); branch green 2479 s (+17 %; `test_lock_step` 726 s,
+  +41 %; slowest 101 s); branch failed 4660 s (a runner about twice as slow). One toy generation,
+  profiled locally: 14.2 s on develop, 20.9 s here (+47 %); `typescript._with_served` runs once per
+  TypeScript target, ≈ 1.3 s each, three times instead of once, rebuilding the same served types
+  from the toolkit's fixed schemas. `test_lock_step` and the generation features run the whole toy
+  many times, so they pay it on every run. Fix: build the served schemas' modules once per process
+  (they depend only on `SERVED_SCHEMAS`); a consumer with several TypeScript targets gains too.
+  The rest of the gap is the two extra modules the toy now renders, inherent to DEC-5. One fixer,
+  test-first; the lead re-measures the toy run and the lane.
