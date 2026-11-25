@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   takes no path either (422 `invalid-body`). Every aggregate listing in the OpenAPI
   document now carries a description of the syntax. See "Filters through references" in the HTTP API
   reference.
+- **Held writes in the testkit** (`consumer-test-gaps` stage 1, #323, #319). `FakeStore.hold(operation,
+  until, timeout=5.0)` is an async context manager: the first `until` calls of `operation` inside
+  it wait for each other, then run one by one in arrival order, so a test can make two writers
+  meet at one version without patching the store. Hold `update` inside `kit.relay.paused()`. The
+  testing page now shows how to aim a fault at the request with `kit.relay.paused()` (#319). See
+  "Test the service".
 
 ## [0.12.0] - 2026-11-24
 
