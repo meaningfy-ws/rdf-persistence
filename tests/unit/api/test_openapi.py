@@ -7,9 +7,9 @@ from typing import Any
 import pytest
 from openapi_spec_validator import validate
 
+from rdf_persistence.api.entrypoints.openapi import PATH_FILTER_DESCRIPTION
 from rdf_persistence.api.entrypoints.problems import CONFLICT as VERSION_CONFLICT
 from rdf_persistence.api.entrypoints.problems import KEY_CONFLICT, KINDS
-from rdf_persistence.api.entrypoints.openapi import PATH_FILTER_DESCRIPTION
 from rdf_persistence.core.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS, TURTLE
 from rdf_persistence.persistence.services.listing import listable_slots
 from rdf_persistence.schema.services.schema_structure import holds_text, is_internal
