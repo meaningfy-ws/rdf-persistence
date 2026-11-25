@@ -30,6 +30,17 @@ D-1 to D-5 (design.md, Delivery decisions).
 - #371 and #372 close with the merge.
 - Consumer: MWB2 `v2-05` regenerates and moves its imports (RISK-1).
 
+## Parked (2026-11-25, evening)
+PR #391 is **not merged**. Every CI lane is green except "Generator tests", which failed three
+runs in a row: the pytest process is killed (SIGTERM, once "runner received a shutdown signal")
+about 20 minutes in; progress is normal to 76 %, then 4–5 min per 4 %. On `develop` the lane takes
+11–17 min. Hypothesis, not proven: memory exhaustion on the 4-core/16 GB runner from something this
+branch adds (three TypeScript targets in the toy, each building the served-type generators; or
+`run_toy` reading the toy's targets on every call). `test_freshness.py` alone is unchanged
+(98 s vs 103 s). The diagnosis was stopped by the developer before it reported.
+`develop` has moved since (review-floors stage 1, #393, changes to the testing system): rebase
+first, then diagnose.
+
 ## Next
 Close: offer the acceptance demo, record the verdict, then archive per `spec-stewardship`
 (`openspec archive consumer-friction --yes`; syncs the new requirement into
@@ -37,5 +48,8 @@ Close: offer the acceptance demo, record the verdict, then archive per `spec-ste
 proposal.md Reconciliation.
 
 ## Prompt
-Act as the team lead. Close openspec/changes/consumer-friction from handover.md: acceptance demo,
-reconciliation, archive.
+Act as the team lead for consumer-friction, stage 1, PR #391 (branch change/consumer-friction,
+worktree .worktrees/consumer-friction). Read handover.md, then design.md D-1 to D-6. Rebase on
+develop (P-0002), diagnose why CI's generator lane is killed (compare the lane with -n 4 on develop
+and on the branch: wall time, peak RSS, slowest tests), record the fix as D-7, one fixer, the gates,
+then merge on green CI (D-1 grant). Then the acceptance demo offer, the archive.
