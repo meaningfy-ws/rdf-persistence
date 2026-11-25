@@ -295,6 +295,11 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   regression this change introduces, a silent wrong output at an access boundary. Fix: when one
   path collects two kinds, `_module_kinds` reports a `package_module` problem naming the module
   and both kinds (a positive and a negative row in `test_uml_rules.py`). One fixer, one pass.
+- **D-10 (stage 2, checker) The D-9 refusal is documented.** The checker found
+  `reference/uml-conventions.adoc` still saying the converter never fails on kinds; the lead
+  (light chore, R-0007) states the refusal of same-named siblings with different kinds in
+  `#module-kind` and adds its row to the problems table. Docs only: `make check-docs` and
+  `make check-quality` re-run, not the full gates.
 - Full review, under the floor (no other Critical; not fixed in this change):
   - L2-W1 the kinds-cycle test does not assert the direction of the boundary refusal (domain
     importing access) in one line.

@@ -138,7 +138,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   packages with different kinds, described in `[0.8.1]`, are removed; old and new layout; imports
   through the root module unchanged. Released sections are never edited. Accept: `make check-docs` green;
   `grep -rn "merged-cycle" docs` empty.
-- [ ] 2.6 **lead** — acceptance: the converter's cyclic library (2.4) shown converting, generating
+- [x] 2.6 **lead** — acceptance: the converter's cyclic library (2.4) shown converting, generating
   and importing; RISK-1: ask the consumer to convert and generate its current model on this branch
   and report any `python:` refusal to the owner before the merge (OPEN-2). Then `make check-all`,
   `make test-containers`, the full review once (MEDIUM, rule P-0005: L1, L2, L3 apart, L4+L5 as

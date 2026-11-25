@@ -677,7 +677,9 @@ value fails the run
 application's access model is a package tagged `module_kind = access` whose classes generalise
 `rp:TenantAccess`. `rp-generate`'s boundary rule then keeps the domain modules from importing it, while
 the root schema imports it like any other module. Each package is its own module, so a module has
-one kind and the converter never fails on kinds. Packages of different kinds that import each other
+one kind; two sibling packages with one name share a module, and when their kinds differ the run
+fails naming the module and both kinds (`its packages have the kinds access and domain`): rename
+one of them. Packages of different kinds that import each other
 are converted, each keeping its kind, and `rp-generate`'s boundary check then refuses the output,
 naming the domain module and the access one it imports: break the import between those packages.
 
@@ -1033,6 +1035,9 @@ class to it.
 
 |A package `module_kind` tagged value the metamodel does not list
 |Use `domain` or `access` (`technical` only when every package is).
+
+|Two sibling packages with one name and different `module_kind` values (<<module-kind>>)
+|Rename one of the packages, or give both the same kind.
 
 |Packages of different kinds that import each other: the conversion succeeds and `rp-generate`
 refuses the output, naming the domain module and the access one (<<module-kind>>)
