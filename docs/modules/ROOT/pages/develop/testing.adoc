@@ -116,7 +116,7 @@ _What does the runner do to my test, and what do I do about a test that breaks o
   nothing; nobody quarantines a test to hide a real failure. A skip that stands for a parameter
   combination that cannot happen is not a quarantine: remove the combination.
 * *Timeout.* `pytest.ini` sets `timeout = 120` (seconds, `signal` method, fixture set-up not
-  counted, so a container start is free). In every run, parallel (`pytest -n auto`) or serial
+  counted, so a container start is free). In every run, parallel (`pytest -n <workers>`) or serial
   (`-n 0`, or plain `pytest`), a hung test fails by name in its own process, the worker survives
   and the next test runs. (The `thread` method killed the worker, and under `--dist loadgroup`
   xdist never rescheduled its queued tests.) A test that legitimately takes longer carries
@@ -133,6 +133,75 @@ _What does the runner do to my test, and what do I do about a test that breaks o
   (`@pytest.mark.xdist_group("listing_read")` in `test_listing_routes_read.py` is the model). A
   group serialises its tests: use it only for class-shared state, never to hide an order
   dependency.
+
+[#test-control]
+== How test runs are controlled
+
+_Several agent sessions share one machine: how do their test runs avoid slowing each other down?_
+
+Four mechanisms, from `agent-test-control`:
+
+* *One heavy run at a time.* Every parallel lane (`make test-unit`, `test-unit-ci`,
+  `test-feature`, `test-generator`, `test-fast`, `test-durations`, `profile-tests`), plus
+  `make test-containers` and `make test-seed`, runs pytest through `tests/queue.py`. That module
+  holds one lock for every repository on the machine (`~/.cache/meaningfy/pytest.lock`). A run
+  that finds the lock taken prints `waiting for the test queue: <folder> <target> <pid> <time>`
+  once. When it starts it prints `test queue: waited <N>s`. The kernel frees the lock when the run
+  ends, however it ends, so a killed run leaves nothing to clean up. A stuck run is the one named
+  in the waiting line: the lead kills that pid. `TEST_QUEUE=<path>` moves the lock and
+  `TEST_QUEUE=off` skips it. CI (`CI` set) does not queue. `make check-all` queues lane by lane.
+* *Workers from cores and memory.* A queued lane passes `-n @workers`, and the queue replaces it
+  when the run leaves the queue: the cores minus 3 (on more than 6 cores), capped by the available
+  memory divided by `PYTEST_WORKER_MB` (default 1536), at least 1. It prints
+  `test queue: <N> workers (<cores> cores, <MB> MB available)`. `PYTEST_N=<n>` fixes the count for
+  the queued lanes; it does not apply to `make test-changed`.
+* *Only the tests a change reaches.* `make test-changed` runs without the queue, on at most
+  `PYTEST_CHANGED_N` workers (default 4).
+  ** With selection data, a changed Python file selects the tests that executed it. It uses
+     pytest-testmon in read-only mode (`--testmon-nocollect --testmon-forceselect`), so the same
+     changes select the same tests on every run.
+  ** Every other file selects by folder, as does a file of the generator, whose tests run it in
+     subprocesses testmon cannot see.
+  ** It falls back to `make test-fast` (exit 75) only for shared files: `pytest.ini`, `Makefile`,
+     `.coveragerc`, `pyproject.toml`, `uv.lock`, schemas under `rdf_persistence/model/`, anything
+     under `tests/fixtures/`, or a file no rule maps.
+  ** Without selection data it uses the folder rules for everything and prints
+     `no test selection data in this worktree: the lead runs make test-seed`. It does the same,
+     with its own message, when the data is damaged or the installed packages changed since the
+     seed.
+* *Memory released between tests.* `tests/conftest.py` enables the testkit's plugin,
+  `rdf_persistence.testkit.memory_plugin`. After every test it clears the caches of
+  linkml-runtime's `SchemaView`, FastAPI's dependency models and `typing`, which otherwise keep
+  every service a test built alive. At each module boundary it also collects garbage and returns
+  freed memory to the system. `TEST_RELEASE=off` turns it off. A project that builds services with
+  the toolkit in its tests enables it with one line in its root `conftest.py`:
+  `pytest_plugins = ["rdf_persistence.testkit.memory_plugin"]`.
+
+*The seed.* The lead runs `make test-seed` at stage start, after `make reindex`, in the background,
+and again after `uv sync`. Builders start at once and use the folder rules until the seed lands.
+The seed runs every unit and feature test once, slow tests included and without coverage, and
+records what each one executed. Its data replaces the old data in one step, and only when the run
+completed, so nobody reads partial data. The data stays in the worktree (`.testmondata`, ignored by
+git) and is never copied to another one.
+
+*What each role runs.* A builder runs the tests its edit touches (`uv run pytest <file>`) and,
+once per task, `make test-changed check-quality`. A builder never runs, by hand, `make test-fast`,
+`make test`, `make check-all`, `make test-seed` or `pytest --testmon`. It waits for a long command
+through its completion notice, never `tail --pid`, `tail -f … | grep -m1` or a `timeout` around a
+wait, and leaves `make generate` and `uv sync` to the lead. The lead runs the seed and the full
+gates (xref:develop/agents.adoc#gates[The gates]).
+
+*Copying it to another repository.* The pieces are:
+
+* `tests/queue.py`, `tests/testmon_data.py`, and `plan()` and `main()` of `tests/changed.py`;
+* the Makefile's `PYTEST`, `PYTEST_N` and `PARALLEL` lines, the queued recipes, `test-changed` and
+  `test-seed`;
+* the `.testmondata*` line in `.gitignore`;
+* the `pytest-testmon` pin;
+* the testkit plugin line in the root `conftest.py`.
+
+Their tests are `tests/unit/tooling/test_queue.py`, `test_lanes.py`, `test_changed.py`,
+`test_testmon_data.py` and `tests/unit/testkit/test_memory.py`.
 
 == The report
 

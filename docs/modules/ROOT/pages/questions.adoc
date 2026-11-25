@@ -444,9 +444,15 @@ in `checks/`. See xref:develop/generator.adoc#add-or-change-a-generator-extensio
 generator extension] and xref:develop/generator.adoc#add-a-check-rule[Add a check rule].
 
 *Which tests do I run while developing?*::
-`make test-changed`, which runs the tests of the files you changed against `develop`; `make
-test-fast` when you are unsure what a change reaches, and `make check-all` once, before the PR. See
-xref:develop/index.adoc#make-targets[Make targets] and xref:develop/testing.adoc#slow[Slow tests].
+`make test-changed`, which runs the tests the files you changed against `develop` reach, and
+`make check-all` once, before the PR. See xref:develop/index.adoc#make-targets[Make targets] and
+xref:develop/testing.adoc#test-control[How test runs are controlled].
+
+*How are test runs controlled when several agent sessions share a machine?*::
+The heavy lanes wait in one queue for the whole machine, their worker count follows the cores and
+the free memory, builders run only the tests their change reaches, and each test process releases
+library caches between tests. See xref:develop/testing.adoc#test-control[How test runs are
+controlled].
 
 *How do I run the checks, and how long do they take?*::
 `make check-all` before every PR (about 6 minutes), and `make test-containers` when you touch

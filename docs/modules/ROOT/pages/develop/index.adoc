@@ -60,9 +60,10 @@ xref:develop/testing.adoc#slow[the testing checklist].
 |`make refresh-surface` |Rewrite `tests/fixtures/public-surface.json`; this resets the baseline that guards the public surface of the thematic move (TC-03), so run it only when a stage deliberately moves a public name, and review the diff
 |`make refresh-golden` |Rewrite the golden folders of the extensions' schemas that are not the toy; it leaves the served goldens alone
 |`make refresh-served-golden` |Rewrite the served OpenAPI and TypeScript goldens (`tests/fixtures/library/golden/openapi`, `served_typescript`); this resets the baseline that guards the thematic move, so review the diff
-|`make test` |Run the unit, feature and generator lanes (`make test-unit`, `make test-feature`, `make test-generator`), each in parallel (`pytest -n auto`) with its coverage floor
-|`make test-changed` |Run only the tests of the files you changed against `develop` (`BASE=` and `PYTEST_N=` override the base and the worker count); the lane for every task
-|`make test-fast` |Run every unit and feature test not marked `slow`, without coverage; the fallback of `make test-changed`
+|`make test` |Run the unit, feature and generator lanes (`make test-unit`, `make test-feature`, `make test-generator`), each in parallel (`PYTEST_N` workers, queued) with its coverage floor
+|`make test-changed` |Run only the tests the files you changed against `develop` reach (`BASE=` and `PYTEST_CHANGED_N=` override the base and the worker count); the lane for every task
+|`make test-fast` |Run every unit and feature test not marked `slow`, without coverage, queued; the fallback of `make test-changed`
+|`make test-seed` |Record which code each unit and feature test executes, for `make test-changed`; the lead's, at stage start, queued
 |`make profile-tests` |Print the 15 slowest unit and feature tests, set-up and call apart; `PROFILE_MARK` narrows the selection
 |`make test-unit`, `make test-feature` |Two of the three lanes of `make test` (the third is `make test-generator`), each in parallel over the library; coverage floors 80 % (unit) and 50 % (feature)
 |`make test-generator` |Run the generator's unit, feature and integration tests of `tests/generator/` in parallel, without containers; fails under 80 % coverage of `rdf_persistence_generation`; needs Node 20 for the `tsc` test, which the CI job `test-generator` sets up
