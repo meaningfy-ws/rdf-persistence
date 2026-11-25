@@ -44,7 +44,14 @@ from rdf_persistence_generation.extensions import (
 )
 from rdf_persistence_generation.generated.rp_generation import CheckProblem
 from rdf_persistence_generation.lock_step import lock_problems, write_lock
-from rdf_persistence_generation.pipeline import Run, Step, check_step, render_step
+from rdf_persistence_generation.pipeline import (
+    Run,
+    Step,
+    check_step,
+    render_step,
+    schema_faults,
+    stage,
+)
 
 LINT_CONFIG = Path(__file__).with_name("lint.yaml")
 # The name Linter looks its SchemaView up by; a test pins it so a linkml upgrade cannot break the patch silently.
@@ -194,6 +201,31 @@ def _typescript_folder(run: Run) -> Path | None:
     return Path(run.target.typescript) if run.target.typescript else None
 
 
+def _typescript_owners(run: Run) -> dict[str, Path]:
+    """The folder of each other target of the project that writes TypeScript, by its package (PD-1).
+
+    A flags-only run has no ``pyproject.toml`` and so no owner: every module is copied.
+    """
+    project = run.base / PYPROJECT
+    if not project.is_file():
+        return {}
+    return {
+        target.package: Path(target.typescript)
+        for target in read_targets(project)
+        if target.typescript and target.package != run.target.package
+    }
+
+
+def _write_typescript(run: Run) -> None:
+    """Stage the TypeScript types, importing the modules another target of the project writes (PD-2)."""
+    folder = _typescript_folder(run)
+    if folder is None:
+        return
+    with schema_faults():
+        files = typescript.render(run.schema_path, folder=folder, owners=_typescript_owners(run))
+    stage(run, folder, files)
+
+
 def _diagrams_folder(run: Run) -> Path | None:
     return Path(run.target.diagrams) if run.target.diagrams else None
 
@@ -207,7 +239,7 @@ PYTHON_STEP = render_step("python", pydantic_split.render, _python_folder)
 SHAPES_STEP = render_step("shapes", shacl.render, _python_folder)
 CONTEXT_STEP = render_step("context", jsonld_context.render, _python_folder)
 COMPONENTS_STEP = render_step("openapi components", components.render, _components_folder)
-TYPESCRIPT_STEP = render_step("typescript", typescript.render, _typescript_folder)
+TYPESCRIPT_STEP = Step("typescript", _write_typescript, writes=True)
 DIAGRAMS_STEP = render_step("diagrams", mermaid.render, _diagrams_folder)
 # Last, so a draft is never written by a run whose earlier steps of the target failed.
 LOCK_STEP = Step("lock", write_lock, writes=True)

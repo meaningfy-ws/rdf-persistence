@@ -724,6 +724,9 @@ classes:
     slot_usage:
       module:
         required: true
+        description: >-
+          The name of the module to import, or, for a module another target writes as TypeScript,
+          its path relative to the importing file's folder (it starts with a dot).
       names:
         required: true
   TsModule:
