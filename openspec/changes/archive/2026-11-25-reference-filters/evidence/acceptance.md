@@ -1,6 +1,7 @@
 # Acceptance: reference-filters
 
-**Status:** offered, awaiting the developer's verdict (MEDIUM: the developer may skip it).
+**Status:** skipped by the developer, 2026-11-25 (MEDIUM: the demo may be skipped). The tests below
+stand as the verification.
 
 **Success measure (EPIC):** a consumer lists the aggregates whose referenced aggregate has a value,
 paged and counted correctly, for example `GET /books?written_by.label=Frank Herbert`.
@@ -17,4 +18,4 @@ paged and counted correctly, for example `GET /books?written_by.label=Frank Herb
 `GET /books?written_by.label=<label>` and `GET /books?written_by.label~=<part>`, and the same with a
 read Prohibition on the author's graph.
 
-**Verdict:** _the developer's: accepted / rejected (what is wrong) / skipped (who, why, date)._
+**Verdict:** skipped, by the developer, 2026-11-25.
