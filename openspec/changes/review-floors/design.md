@@ -506,3 +506,17 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   split; the spec says they name it: for the behaviour-fixes follow-up, OPEN-1); a context object
   instead of the three new `# noqa: PLR0913`; `config.py` importing `vocabulary` at load.
   `boundary.py:360` is task 2.7's 189-p, as planned.
+- **D-12 (close, 2026-11-25), rebase onto 0.15.0 without conflicts:** s2 rebased onto
+  `origin/develop` (0.15.0, the test-control system of `agent-test-control`) and s3 onto s2
+  with no conflict. Against `develop` the branch now adds, of the testing system, only rule 3's
+  freshness sentence (#273), its scenario-map rows and the generator conftest's `# X1` patch;
+  `tests/queue.py`, `tests/changed.py`, the memory plugin in `tests/conftest.py`, the queued
+  Makefile recipes and the rest of `testing.adoc` are `develop`'s. `make reindex` was skipped:
+  another session was running `gitnexus analyze`, so the existing index stands (as D-1).
+- **D-13 (close, 2026-11-25, the owner), the seed stands for the unit and feature tiers:** the
+  s3 seed (`make test-seed`, every unit and feature test once, slow included, no coverage)
+  passed 10,251 tests, 5 xfailed, in 7 min 13 s; the s2 seed 10,244, 5 xfailed, in 6 min 14 s.
+  The owner stopped the separate `make test-unit` and `make test-feature` runs as repeats of it,
+  and amended the seed rule on `develop` (#398: seed only where builders follow). Rebased onto
+  #398 without conflict; no seed after that rebase (no builders, no lock change). The coverage
+  floors are checked by `make check-all` before each PR.
