@@ -34,3 +34,29 @@ Code facts read while shaping:
   (`apply_defaults`, `view.set_modified()`), and the generator calls `load_schema` in
   `pipeline.py`, `config.py`, `jsonld_context.py`: a cache inside `load_schema` would share a view
   the generator modifies.
+
+## Added 2026-11-25, after the PLAN was gated
+
+Source: the developer, in a close-out session of `review-floors` (stages 2 and 3), after the lead
+had run `make test-seed` on both worktrees and started `make test-unit` on s3: "is there anything
+I could adjust in the whole repo instructions about this? or this inefficiency is a local
+fluke?", then "add the spike to the parked epic change in tests followup ... and also record there
+the wisdom on no overrunning tests if not needed from this session".
+
+5. **The spike.** Let the full run also refresh the seed: record the selection data during
+   `make check-all`'s unit and feature lanes, so the pre-PR run doubles as the next stage's seed.
+   Open: testmon and pytest-cov each attach a coverage.py tracer, and it is not known whether they
+   combine in one run.
+6. **The wisdom: no test run whose result nobody reads.** What the session showed:
+   - Not a fluke: the instructions seeded at every stage start, unconditionally, and `make
+     check-all` (`check-quality test`, `test` = `test-unit test-feature test-generator`) ran the
+     same unit and feature tests again before the PR: about 7 extra minutes a stage on this machine,
+     more when the queue is held.
+   - The seed exists only for builders' `make test-changed`; a session without builders (rebase,
+     gates, a lead-only fix pass) got nothing from it. The s2 seed bought nothing: its session ran
+     only `make check-quality` and `make test-generator`.
+   - A seed that passed on a commit is that commit's pass/fail for the unit and feature tests
+     (10,251 passed, 5 xfailed on s3). A later `make test-unit` / `make test-feature` on the same
+     commit adds only the coverage floors (80 % unit, 50 % feature).
+   - Already fixed outside this EPIC, ad hoc: #398 (the docs: the lead seeds only when builders
+     follow) and #399 (rule P-0022).

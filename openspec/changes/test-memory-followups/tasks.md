@@ -1,10 +1,11 @@
-EPIC: test-memory-followups (proposal.md). Decisions: proposal.md DEC-1 to DEC-4; design.md PD-1 to PD-5.
+EPIC: test-memory-followups (proposal.md). Decisions: proposal.md DEC-1 to DEC-6; design.md PD-1 to PD-7.
 
 > Derives from: the EPIC `test-memory-followups`.
 
 Every task: its **Red** test is written first and seen failing. Task gate
-`make test-changed check-quality`; the lead seeds at stage start (`make test-seed`) and runs
-`make check-all` once before the PR. One stage, branch `change/test-memory-followups` off
+`make test-changed check-quality`; the lead seeds at stage start (`make test-seed`), because
+stage 1 has builders, and runs `make check-all` once before the PR and once after the fix pass,
+never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One stage, branch `change/test-memory-followups` off
 `develop`, one PR. Commit body `Refs: test-memory-followups <task> <PD>`.
 
 ## 1. The fixes
@@ -40,23 +41,38 @@ Every task: its **Red** test is written first and seen failing. Task gate
   check: with the autouse removed, running the parser-depth test after
   `sys.setrecursionlimit(20000)` makes it fail (seen once, then reverted).
 
-## 2. Close
+## 2. The seed spike
 
-- [ ] 2.1 The lead's `make check-all`, the PR, the merge (review set per
-  `develop/agents.adoc#challenge`, SMALL: one pass).
-- [ ] 2.2 **Lead.** PD-5, once the sessions that were paused on 2026-11-25 (the rdf-persistence
+- [ ] 2.1 **Lead**, PD-6 (parallel with 1.1 to 1.3; it touches no file they touch). In a
+  throwaway worktree, the three runs on `tests/unit/schema/` and one feature folder, through the
+  queue; `evidence/seed-spike.md` records commands, times, coverage totals, the selected test ids
+  for the three sample changes, and the verdict against PD-6's three pass criteria. Timebox: half
+  a day.
+- [ ] 2.2 PD-6, after 2.1. **Pass:** a builder makes the `Makefile` change (Red first: a test in
+  `tests/unit/tooling/` that `make -n test-unit` under `test` carries `--testmon` and a lone
+  `make -n test-unit` does not), the lead writes the `rp-developer-checks` delta and the docs
+  (`develop/testing.adoc#test-control`, `develop/agents.adoc` tools table, `AGENTS.md` test
+  control: no seed after a passed `check-all` on the same commit). **Fail:** the lead writes the
+  one paragraph in `develop/testing.adoc#test-control`. Either way `make check-docs`.
+
+## 3. Close
+
+- [ ] 3.1 The lead's `make check-all`, the PR, the merge (review set per
+  `develop/agents.adoc#challenge`, SMALL: one pass). The stage report lists every full test run
+  with who read its result (PD-7).
+- [ ] 3.2 **Lead.** PD-5, once the sessions that were paused on 2026-11-25 (the rdf-persistence
   sessions waiting for #394) run on `develop` after #394's merge: the DEC-8 measurement in
   `evidence/measure.md`, with PD-5's filters and formulas; a missed target goes to the developer.
-- [ ] 2.3 Archive the change (`spec-stewardship`).
+- [ ] 3.3 Archive the change (`spec-stewardship`).
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3
+- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3
 
-1.1, 1.2 and 1.3 run in parallel; only 1.2's edit to `rdf_persistence/testkit/memory.py` waits
-for 1.1's commit on the branch.
+1.1, 1.2, 1.3 and 2.1 run in parallel; only 1.2's edit to `rdf_persistence/testkit/memory.py` waits
+for 1.1's commit on the branch, and 2.2 waits for 2.1's verdict.
 
 ## Verification
 
 `make check-all`; `openspec validate test-memory-followups --strict`; `evidence/timing.md`,
-`evidence/measure.md`.
+`evidence/measure.md`, `evidence/seed-spike.md`.

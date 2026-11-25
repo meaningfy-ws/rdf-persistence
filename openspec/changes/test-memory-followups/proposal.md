@@ -10,7 +10,8 @@ the same answer on every run); upstream linkml/linkml#4284.
 ## Appetite
 
 **SMALL.** Three local fixes in code that exists, reused as is, plus one measurement: no new
-concept, no new capability.
+concept, no new capability. The spike added on 2026-11-25 (DEC-5) is timeboxed to half a day
+and keeps the appetite SMALL: if it passes, its change is a Makefile flag and a docs paragraph.
 
 ## Why
 
@@ -19,7 +20,9 @@ test, but two causes remain in our own code: a kit's dependency types keep the k
 `typing`'s cache (cleared today only through a private CPython list), and every service built in a
 test parses its schema YAML again, which is most of the remaining time and memory of the API
 tests. One test also fails depending on what ran before it on its worker. And the change's own
-success measure (DEC-8) is still to be taken.
+success measure (DEC-8) is still to be taken. Finally, a stage that has builders still runs the unit and
+feature tests twice: once for the seed at the start, and again in `make check-all` before the PR
+(`inputs/seed.md` items 5 and 6).
 
 ## Solution outline
 
@@ -30,6 +33,8 @@ success measure (DEC-8) is still to be taken.
    from it behave exactly as before, and nothing else (the generator above all) shares the view.
 3. The parser-depth test gives the same answer whatever ran before it.
 4. DEC-8 of `agent-test-control` is measured on sessions running the merged code, and recorded.
+5. A spike settles whether the pre-PR full run can also be the next stage's seed, and the answer
+   lands in the Makefile or in the docs.
 
 ## Key decisions
 
@@ -53,6 +58,17 @@ success measure (DEC-8) is still to be taken.
 - **DEC-4**: DEC-8's measurement is this EPIC's last task, taken from Langfuse after the paused
   sessions run on the merged code; a missed target goes to the developer, it does not block the
   merge of 1 to 3.
+- **DEC-5** (added 2026-11-25, `inputs/qa.md` Q6): a timeboxed spike decides whether
+  `make check-all`'s unit and feature lanes can also record the test selection data, so the
+  pre-PR run doubles as the next stage's seed. It passes only if coverage and selection both come
+  out as from separate runs (PD-6); then the Makefile and docs change in this EPIC. It fails on
+  any doubt, and the finding is recorded in `develop/testing.adoc#test-control`. Rejected: letting
+  `check-all` skip what a seed on the same commit passed (a "same commit" check that goes stale).
+- **DEC-6** (added 2026-11-25, Q7): **no test run whose result nobody reads.** A run is started
+  only when someone reads what it gives: a seed only where builders will run `make test-changed`
+  (#398, P-0022); one `make check-all` per stage, never also its lanes by hand; on a commit whose
+  seed passed, a separate unit or feature lane only for its coverage floor. This EPIC's own
+  delivery follows it (PD-7).
 
 ## Rabbit-holes
 
@@ -79,6 +95,9 @@ success measure (DEC-8) is still to be taken.
   service views and reports `service_views` (DEC-1, DEC-2).
 - `tests/unit/migrations/test_migration_files_adversarial.py`: the recursion limit pinned (DEC-3).
 - The DEC-8 record in `evidence/measure.md` (DEC-4).
+- The spike's record in `evidence/seed-spike.md`; if it passes, `Makefile` (`test-unit`,
+  `test-feature`) and `develop/testing.adoc#test-control`, `develop/agents.adoc`, `AGENTS.md`; if
+  it fails, one paragraph in `develop/testing.adoc#test-control` (DEC-5).
 
 ## Capabilities
 
@@ -86,9 +105,13 @@ success measure (DEC-8) is still to be taken.
 
 ### Modified Capabilities
 - `rp-service-api`: a dropped service is freed; services from one schema file share one parse.
+- `rp-developer-checks`, only if the spike passes (DEC-5): the full run also refreshes the test
+  selection data; task 2.2 writes its delta.
 
 ## Impact
 
 `rdf_persistence/api/entrypoints/{auth,sse,kit}.py`, `rdf_persistence/schema/services/schema.py`,
 `rdf_persistence/testkit/memory.py`, their tests, one migrations test, docs only if a docstring names the behaviour. Consumers building
 one service per process see no change; consumers building many (tests) get faster and lighter.
+The spike touches only the developer tooling (`Makefile`, `tests/testmon_data.py` if the swap
+needs it, the develop docs); consumers see nothing of it.

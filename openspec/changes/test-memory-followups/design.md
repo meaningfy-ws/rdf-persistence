@@ -1,4 +1,4 @@
-> Derives from: the EPIC `test-memory-followups` (proposal.md, DEC-1 to DEC-4)
+> Derives from: the EPIC `test-memory-followups` (proposal.md, DEC-1 to DEC-6)
 
 ## Context
 
@@ -10,7 +10,8 @@ test; this EPIC removes the two causes in our own code and the test's order depe
 
 **Goals:** a dropped kit is freed without clearing `typing`'s caches (DEC-1); one parse per schema
 file per process for service kits (DEC-2); an order-independent parser-depth test (DEC-3); DEC-8
-measured (DEC-4).
+measured (DEC-4); the seed spike decided and its outcome landed (DEC-5); no test run nobody
+reads, in this EPIC's own delivery (DEC-6).
 
 **Non-Goals:** the No-gos of the proposal.
 
@@ -89,6 +90,37 @@ measured (DEC-4).
 
   `evidence/measure.md` holds one table: target, measured value, sessions and observation ids,
   met or missed.
+- **PD-6 The seed spike** (DEC-5). Timebox: half a day; past it the spike counts as failed.
+  - **Where:** a throwaway worktree off the stage branch; one small unit folder
+    (`tests/unit/schema/`) and one small feature folder, never the full suite.
+  - **Three runs**, each through the queue with `-p no:randomly` and the same worker count:
+    (a) coverage only, as `make test-unit` runs it; (b) selection only, as `make test-seed` runs it,
+    into `.testmondata.a`; (c) both together (`--testmon --testmon-forceselect` and `--cov`), into
+    `.testmondata.b`. Then the same for the feature folder appended to (b) and (c), the way
+    `check-all` runs its lanes one after another into one data file.
+  - **Pass**, all three: (1) the coverage report of (c) equals (a)'s line for line
+    (`coverage report` totals and missed lines); (2) for three sample changes (one line in a
+    `domain` module, one in a `services` module, one in a test file), `make test-changed` with
+    (b)'s data and with (c)'s data selects the same test ids; (3) (c)'s wall time is at most 15 %
+    above (a)'s. Anything else, or a warning from either plugin about the tracer, is a fail.
+  - **Pass → change:** `test-unit` and `test-feature` record the selection data (an env flag the
+    lanes set when run under `test` / `check-all`, so a lone lane stays as it is) and swap it in as
+    `test-seed` does; the docs say that a worktree where `make check-all` passed needs no seed for
+    the next stage on that commit. Coverage floors and lane commands are otherwise unchanged.
+  - **Fail → record:** one paragraph in `develop/testing.adoc#test-control`: why the full run
+    cannot double as the seed, with the run that showed it; nothing else changes.
+  - `evidence/seed-spike.md` holds the three runs' commands, times, coverage totals, the selected
+    test ids per sample change, and the verdict.
+- **PD-7 No test run nobody reads** (DEC-6). How this EPIC's lead runs tests, and the check the
+  stage report carries:
+  - Seed (`make test-seed`) at stage start only because stage 1 has builders (tasks 1.1 to 1.3);
+    the close (section 3) has none and seeds nothing.
+  - One `make check-all` before the PR and one after the fix pass; never `make test-unit`,
+    `test-feature` or `test-generator` by hand on top of it.
+  - On a commit whose seed passed, the seed's result is the unit and feature pass/fail; a separate
+    lane runs only when its coverage floor is the open question, and the report says so.
+  - The stage report lists each full run with its reason (who reads its result); a run without one
+    is a finding for the validation review.
 
 ## Algorithm / approach
 
@@ -116,6 +148,10 @@ Worked examples (each a case of task 1.2's table):
 | Quarantine the parser-depth test | pin the recursion limit for the module | the behaviour is right; only the environment varied |
 | Key the store on the modification time | key on size and content hash | a rewrite within one clock step keeps its mtime |
 | Modify `kit.view` in a test or a consumer | copy it (`deepcopy`) or load your own | the view is shared by every kit built from the file |
+| Seed a worktree no builder will work in | skip the seed (P-0022) | only `make test-changed` reads it |
+| Run `make test-unit` / `test-feature` beside `make check-all` | run `check-all` once | it already holds both lanes |
+| Re-run a lane on a commit whose seed passed, for pass/fail | read the seed's result | the seed ran those tests; only the coverage floor is new |
+| Adopt the combined run on a partial match | fail the spike (PD-6) | a wrong selection silently skips tests a change reaches |
 
 ## Error matrix
 
@@ -130,6 +166,10 @@ Worked examples (each a case of task 1.2's table):
 | The OpenAPI document changes with PD-1 | `test_openapi.py`, the served golden | stop; the default form must be identical |
 | The pin leaks to later tests | the fixture restores the limit in `finally` | none |
 | Langfuse lacks three concurrent sessions yet | PD-5's query finds fewer | measure later; the task stays open, the fixes merge |
+| testmon and pytest-cov fight over the tracer | PD-6's pass criteria (coverage or selection differs, or a warning) | the spike fails; record it; no Makefile change |
+| The combined run is much slower | PD-6 criterion 3 (> 15 %) | the spike fails |
+| The spike overruns its half day | the lead's clock | counts as failed; record what was learned |
+| A full run is started that nobody reads | PD-7's run list in the stage report | a finding for the validation review |
 
 ## Risks / Trade-offs
 
@@ -147,4 +187,5 @@ Worked examples (each a case of task 1.2's table):
 
 ## Open Questions
 
-Q1 to Q5 of `inputs/qa.md`, shaped on the recommended defaults.
+Q1 to Q5 of `inputs/qa.md`, shaped on the recommended defaults. Q6 and Q7 are answered
+(DEC-5, DEC-6).

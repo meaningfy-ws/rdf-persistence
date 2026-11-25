@@ -9,3 +9,10 @@
 | Q3 | DEC-8's measurement waits for the paused sessions to run on the merged code: keep it in this EPIC as its last task, not blocking the PR of the fixes? (Recommended: yes) | open | DEC-4 |
 | Q4 | Risks (R-0002): what outside could change (a FastAPI or linkml release, #4284 fixed upstream), who is hurt if a shared view is modified (every test sharing it), what we accept | derived from context, open for review | RISK-1 to RISK-3 |
 | Q5 | Appetite SMALL | open | Appetite |
+
+## Round 2, 2026-11-25 — answered by the developer in a `review-floors` close-out session
+
+| # | Question (recommendation) | Answer | Becomes |
+|---|---|---|---|
+| Q6 | Does the spike "let the full run also refresh the seed" belong here? (Recommended: yes, as a timeboxed spike, its outcome decided by measured pass criteria) | yes: "add the spike to the parked epic change in tests followup ... it would have to be integrated there" | DEC-5, PD-6, tasks 2.1, 2.2 |
+| Q7 | Record the session's lesson on test runs nobody reads? (Recommended: as a decision the lead follows in this EPIC, the docs fix already merged in #398, P-0022) | yes: "record there the wisdom on no overrunning tests if not needed" | DEC-6, PD-7 |
