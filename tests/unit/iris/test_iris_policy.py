@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterator
 import pytest
 from rdflib import URIRef
 
+from rdf_persistence import UnitOfWork
 from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.iris.services.generated.rp_iris_services import (
     IdKind,
@@ -14,6 +15,11 @@ from rdf_persistence.iris.services.generated.rp_iris_services import (
     ServiceSettings,
 )
 from rdf_persistence.iris.services.iris import Iris
+from rdf_persistence.provenance.services.provenance import is_activity_id
+from rdf_persistence.testkit import fake_session
+from rdf_persistence.testkit.fakes import FAKE_TENANT
+from tests.toy import TENANT as TOY_TENANT
+from tests.toy import book_iri, dune, toy_mapper
 
 BASE = "https://example.org/"
 TENANT = f"{BASE}library/p4x8k2m"
@@ -491,3 +497,151 @@ def test_an_access_record_of_a_reserved_tenant_id_names_itself_in_the_refusal():
 def test_a_template_without_a_root_variable_still_mints_a_loaded_graph_for_the_root(consumer):
     loaded = consumer.mint_loaded_graph(TENANT, TENANT)
     assert consumer.is_loaded_graph(TENANT, loaded), "still a loaded graph"
+
+
+# --- the activity template (activity-iri-policy PD-2, PD-3) -------------------------------------
+
+UUID = "7a1e1d6e-2f0b-4c57-9a52-2f2f5d1f6a10"
+OTHER_TENANT = f"{BASE}projects/87654321-4321-4321-8321-cba987654321"
+PLACED = "{tenant}/activity/{id}"
+
+
+def _placing(template: str = PLACED, **policy: object) -> Iris:
+    return Iris(
+        _settings(IriPolicy(activity_template=template, **policy)), frozenset({"book"}), OWNED_TYPES
+    )
+
+
+def test_an_activity_iri_follows_the_activity_template():
+    iris, placed = _placing(), f"{DEFAULT_TENANT}/activity/{UUID}"
+    assert iris.activity(DEFAULT_TENANT, UUID) == URIRef(placed), "the template's IRI"
+    assert iris.is_activity(DEFAULT_TENANT, placed), "the placed IRI is the tenant's activity"
+    assert not iris.is_activity(OTHER_TENANT, placed), "not another tenant's"
+    assert iris.is_activity(None, placed), "no tenant given: any tenant's"
+    assert not iris.is_activity(DEFAULT_TENANT, f"urn:uuid:{UUID}"), (
+        "the provisional id is not placed"
+    )
+    assert not iris.is_activity(DEFAULT_TENANT, f"{DEFAULT_TENANT}/activity/{UUID.upper()}"), (
+        "a non-canonical UUID is no activity"
+    )
+    assert iris.activity_uuid(placed) == UUID, "the UUID of the placed form"
+    assert iris.activity_uuid(f"urn:uuid:{UUID}") == UUID, "the UUID of the provisional form"
+    assert iris.activity_uuid(f"{OTHER_TENANT}/activity/{UUID}") == UUID, (
+        "a {tenant} template reads any tenant: callers check is_activity(tenant, iri) first"
+    )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(f"urn:uuid:{UUID}", id="provisional"),
+        pytest.param(f"urn:uuid:{UUID.upper()}", id="upper-case"),
+        pytest.param(f"urn:uuid:{UUID.replace('-', '')}", id="no-hyphens"),
+        pytest.param(f"{DEFAULT_TENANT}/activity/{UUID}", id="placed-shape"),
+        pytest.param(f"{DEFAULT_TENANT}/books/{UUID}", id="an-aggregate"),
+        pytest.param("", id="empty"),
+    ],
+)
+def test_under_the_default_policy_an_activity_is_what_is_activity_id_accepts(default, text):
+    assert default.is_activity(DEFAULT_TENANT, text) == is_activity_id(text), (
+        "the default accepts what is_activity_id accepts"
+    )
+
+
+def test_under_the_default_policy_an_activity_is_the_urn_uuid(default):
+    assert default.activity(DEFAULT_TENANT, UUID) == URIRef(f"urn:uuid:{UUID}"), "as today"
+    assert default.activity_uuid(f"urn:uuid:{UUID}") == UUID, "its UUID"
+
+
+@pytest.mark.parametrize(
+    "text", [f"urn:uuid:{UUID.upper()}", f"{DEFAULT_TENANT}/activity/{UUID}", "x"]
+)
+def test_an_id_that_is_no_activity_iri_has_no_uuid(text, default):
+    with pytest.raises(ValueError, match="activity"):
+        default.activity_uuid(text)
+
+
+def test_an_activity_is_minted_from_a_canonical_uuid_only(default):
+    with pytest.raises(ValueError, match="UUID"):
+        default.activity(DEFAULT_TENANT, UUID.upper())
+
+
+def test_the_application_has_activities_under_a_tenant_id_template():
+    iris = _placing("{base}{tenant_id}/activity/{id}")
+    app = str(iris.application)
+    assert iris.activity(app, UUID) == URIRef(f"{BASE}app/activity/{UUID}"), "app stands for the id"
+    assert iris.is_activity(app, f"{BASE}app/activity/{UUID}"), "read back as the application's"
+
+
+def test_a_tenant_the_policy_cannot_parse_mints_an_activity_without_tenant_id():
+    default, placed = _placing("urn:uuid:{id}"), _placing()
+    assert default.activity(FAKE_TENANT, UUID) == URIRef(f"urn:uuid:{UUID}"), "as today"
+    assert placed.activity(FAKE_TENANT, UUID) == URIRef(f"{FAKE_TENANT}/activity/{UUID}"), (
+        "a {tenant} template never parses the tenant"
+    )
+    with pytest.raises(InvalidIri, match="tenant"):
+        _placing("{base}{tenant_id}/activity/{id}").activity(FAKE_TENANT, UUID)
+
+
+async def test_a_commit_through_the_fake_session_under_the_default_policy_records_urn_uuid():
+    seen: list[str] = []
+
+    async def on_commit(activity, session) -> None:
+        seen.append(str(activity.id))
+
+    async with fake_session(tenant_iri=TOY_TENANT, on_commit=on_commit) as session:
+        work = UnitOfWork(session, toy_mapper())
+        work.add(dune(book_iri(1)))
+        await work.commit()
+    assert len(seen) == 1, f"one activity: {seen}"
+    assert is_activity_id(seen[0]), f"a urn:uuid: activity, as today: {seen}"
+
+
+def test_an_activity_iri_is_no_aggregate_or_loaded_graph():
+    iris, default = _placing(), Iris(_settings(), frozenset({"book"}), OWNED_TYPES)
+    activity, aggregate = f"{DEFAULT_TENANT}/activity/{UUID}", f"{DEFAULT_TENANT}/books/{UUID}"
+    assert not iris.is_aggregate(DEFAULT_TENANT, activity), "an activity is no aggregate"
+    assert iris.is_aggregate(DEFAULT_TENANT, aggregate), "an aggregate still is"
+    assert not iris.is_aggregate_graph(DEFAULT_TENANT, f"{activity}/graph"), "nor has a graph"
+    assert iris.is_aggregate_graph(DEFAULT_TENANT, f"{aggregate}/graph"), "an aggregate's graph is"
+    assert iris.aggregate_id_of(activity) is None, "no aggregate address"
+    assert iris.aggregate_id_of(aggregate) == UUID, "an aggregate's id"
+    assert default.is_aggregate(DEFAULT_TENANT, activity), "under the default, as today"
+    assert default.is_aggregate_graph(DEFAULT_TENANT, f"{activity}/graph"), "as today"
+    assert default.aggregate_id_of(activity) == UUID, "as today"
+
+
+def test_an_activity_iri_is_no_loaded_graph():
+    loaded = f"{DEFAULT_TENANT}/content/{UUID}"
+    policy = {"loaded_graph_template": "{tenant}/{type}/{id}"}
+    placed = _placing("{tenant}/content/{id}", **policy)
+    plain = Iris(_settings(IriPolicy(**policy)), frozenset({"book"}), OWNED_TYPES)
+    assert plain.is_loaded_graph(DEFAULT_TENANT, loaded), "a loaded graph under the default"
+    assert not placed.is_loaded_graph(DEFAULT_TENANT, loaded), "an activity there is none"
+
+
+@pytest.mark.parametrize(
+    ("roots", "policy", "refused"),
+    [
+        pytest.param([("book", "activity")], {}, True, id="inside-the-activity-segment"),
+        pytest.param([("book", "books")], {}, False, id="another-segment"),
+        pytest.param(
+            [("book", "activity")],
+            {"object_id": IdSpec(kind=IdKind.RANDOM, length=13)},
+            False,
+            id="random-ids-never-read-as-a-uuid",
+        ),
+    ],
+)
+def test_a_root_minted_inside_the_activity_template_is_refused(roots, policy, refused):
+    iris = _placing(**policy)
+    if refused:
+        with pytest.raises(InvalidIri, match="book") as caught:
+            iris.require_roots_apart(roots)
+        assert "activity_template" in str(caught.value), "names the slot"
+    else:
+        iris.require_roots_apart(roots)
+
+
+def test_the_default_activity_template_checks_no_root():
+    Iris(_settings()).require_roots_apart([("book", "activity")])

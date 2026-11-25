@@ -40,6 +40,7 @@ from rdf_persistence.schema.services.schema_structure import (
     keyed_slots,
     presence_alternatives,
     refusing_classes,
+    root_paths,
     served_roots,
     stored_file_class,
     workflow_name_of,
@@ -525,6 +526,41 @@ def test_a_root_the_toolkit_writes_is_no_served_root_but_keeps_its_iri_type() ->
     view = SchemaView(TOOLKIT_WRITTEN)
     assert [root.name for root in served_roots(view)] == ["Book"], "the note is not served"
     assert iri_types(view)[0] == {"note", "book"}, "but its IRIs are minted and recognised"
+
+
+ROOT_PATHS = (
+    HEAD
+    + """
+classes:
+  AggregateRoot:
+    mixin: true
+  Book:
+    mixins: [AggregateRoot]
+    annotations: {rp_path: books}
+  Ledger:
+    mixins: [AggregateRoot]
+    annotations: {rp_path: ledgers, rp_iri_type: ledger-entry, database: application}
+  Pathless:
+    mixins: [AggregateRoot]
+  SystemRecord:
+    mixins: [AggregateRoot]
+    annotations: {rp_path: records, database: system}
+"""
+)
+
+
+def test_the_root_paths_of_a_schema_are_the_type_and_path_of_each_tenant_and_application_root() -> (
+    None
+):
+    assert root_paths(SchemaView(ROOT_PATHS)) == [("book", "books"), ("ledger-entry", "ledgers")], (
+        "a root of the tenant or the application with a path; none of the system or without one"
+    )
+
+
+def test_the_root_paths_of_the_toy_library_hold_its_books_and_shelves() -> None:
+    assert {("book", "books"), ("shelf", "shelves")} <= set(root_paths(load_schema(TOY))), (
+        "the toy's served roots with their paths"
+    )
 
 
 WORKFLOWS = (

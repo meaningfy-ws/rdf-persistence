@@ -29,6 +29,12 @@ GRAPH_SUFFIX = "/graph"
 LOADED_GRAPH_TYPE = "content"
 # The words the IRI layout owns; they are never an id (PD-5) and no class may take one as its type (PD-8).
 LAYOUT_WORDS = (LOADED_GRAPH_TYPE, "graph", "parts", "access", "meta", "registry", "provenance")
+# A character that would make a tenant id part of a longer word; the ids of a policy are drawn from [a-z0-9].
+_WORD = "[a-z0-9]"
+# A template that puts ``{tenant_id}`` after such a character or ``}``, or ``{tenant}`` / ``{tenant_id}`` before
+# one or before a ``{``: its IRIs cannot be moved to a new tenant id (tenant-dump-restore PD-5).
+ID_GLUED_BEFORE = re.compile(rf"(?:{_WORD}|\}})\{{tenant_id\}}")
+ID_GLUED_AFTER = re.compile(rf"\{{tenant(?:_id)?\}}(?:{_WORD}|\{{)")
 
 
 def _segment(value: str) -> str:
