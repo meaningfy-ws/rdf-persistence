@@ -250,6 +250,15 @@ Idempotency: placement is a pure function of (policy, tenant, UUID); a retried c
   `make test-fast` / `make test-changed` is killed twice reports its narrow checks instead (the
   test folders its change reaches, plus `make check-quality`). The full suite is proved once, by
   the lead's `make check-all` before the PR, which is not skipped. Task 1.2 is the first case.
+- **D-2** (2026-11-25, lead): `partials/reference/public-api.adoc` is generated from docstring
+  first lines (`make docs-reference`) and lists top-level names only, so PD-9's "the `Iris`
+  methods and `Session.activity_iri`" cannot go there. They are named in
+  `user-manual/iri-policy.adoc` instead; the partial was regenerated after the `command`
+  docstring changed.
+- **D-3** (2026-11-25, lead; under the floor): PD-3a (iii) checks glue on the activity template
+  with `{tenant}` already written as the tenant template, so a glued `tenant_template` is also
+  reported under `activity_template`. It fires only for a non-default activity template; the
+  message still names the glued text. Accepted as is.
 
 ## Spec deltas
 

@@ -81,7 +81,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   `tests/unit/tenancy/` and `tests/unit/persistence/` passes unchanged; `ast-grep` for
   `$X.activity.id` in `rdf_persistence/persistence/` finds no read of the served id after
   `Transaction.__init__` other than the placement (RISK-1).
-- [ ] 1.5 Unit, events (PD-7), after 1.3. First, failing: `tests/unit/api/test_events_route.py`
+- [x] 1.5 Unit, events (PD-7), after 1.3. First, failing: `tests/unit/api/test_events_route.py`
   `test_a_follower_resumes_after_an_activity_iri_of_the_policy`: on the toy service under `P`, a
   follower with `Last-Event-ID` the placed IRI of an earlier commit receives the two later events
   once; with `urn:uuid:<that U>` it is reset. Accept: passes; `tests/unit/events/` passes unchanged.
@@ -113,7 +113,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   and writes nothing; IT-A3 `relayed_since(<placed IRI of the first>)` returns the later activity.
   Written by the builder, run by the lead in `make test-containers`. Accept: the three pass on
   Fuseki.
-- [ ] 1.8 Docs (PD-9): `user-manual/iri-policy.adoc`, `howto/event-driven.adoc`,
+- [x] 1.8 Docs (PD-9): `user-manual/iri-policy.adoc`, `howto/event-driven.adoc`,
   `partials/reference/public-api.adoc`, and the docstrings of `Served` (its stale `urn:uuid:`
   restore rationale), `Mapper.served` and `messagebus.command`. No new page. Accept: `make check-docs` passes; no page
   says an activity IRI is always `urn:uuid:`.
