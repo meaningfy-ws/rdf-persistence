@@ -32,7 +32,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   default's words would join `_reserved` the moment the slot exists). Then the YAML, `make
   generate` and PD-4's skip in `_reserved`. Gate: `make test-fast check-quality`, `make
   check-generated`. Accept: the three pass; the regenerated files are in the same commit.
-- [ ] 1.3 Unit, `Iris` (PD-2, PD-3), after 1.2. First, failing:
+- [x] 1.3 Unit, `Iris` (PD-2, PD-3), after 1.2. First, failing:
   `tests/unit/iris/test_iris_policy.py`
   `test_an_activity_iri_follows_the_activity_template`: under `P`, `activity(t, U)` is
   `t + "/activity/" + U`; `is_activity(t, it)` is true, false for another tenant, false for
@@ -123,7 +123,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [ ] 1.3 · [ ] 1.6 · [ ] 1.4 · [ ] 1.5 · [ ] 1.7a · [ ] 1.7 · [ ] 1.8 · [ ] 1.9
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 1.6 · [ ] 1.4 · [ ] 1.5 · [ ] 1.7a · [ ] 1.7 · [ ] 1.8 · [ ] 1.9
   (1.6's first three tests need only 1.2; its restore test needs 1.4; 1.4 and 1.5 may run in
   parallel after 1.3.)
 
