@@ -520,3 +520,11 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   and amended the seed rule on `develop` (#398: seed only where builders follow). Rebased onto
   #398 without conflict; no seed after that rebase (no builders, no lock change). The coverage
   floors are checked by `make check-all` before each PR.
+- **D-14 (close, 2026-11-25), the s3 run covers s2; no separate e2e run:** stage 3 is stage 2
+  plus its own commits, so the tiers run once, on the s3 tip; on the s2 tip only
+  `make check-quality` and `make test-generator` (stage 2 is the generator stage).
+  `make test-containers` selects `integration or e2e`, so `make test-e2e` would repeat its e2e
+  tests and is not run. `make refresh-map` lists 118 tests with no row, every one added by
+  another change (`agent-test-control`'s queue, lanes, testmon and memory tests; the UML
+  import's tests); none of this change's. It also dropped two rows of tests `agent-test-control`
+  deleted: put back, as that change's to settle.
