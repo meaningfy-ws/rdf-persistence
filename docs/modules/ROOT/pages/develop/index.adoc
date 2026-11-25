@@ -118,6 +118,9 @@ comes later.
 |`make test-generator` |951 (1 xfailed) |58 s (pytest 55.9 s), coverage 95.41 % |2026-11-18, generator-package stage 4
 |906 unit, 5 feature and 40 integration tests of `tests/generator/`, in parallel, slow tests and the `tsc` run included, no container started.
 
+|`make test-changed` (selection data) |3720 |6 min 38 s to 7 min 32 s on 4 workers, unqueued |2026-11-25, agent-test-control stage 1
+|A change to one function of `core` (`_string` of `core/domain/sparql.py`, which every SPARQL write uses) selected 36 % of the 10,235 seeded tests, the same on two runs; a leaf module selects far fewer. Without selection data the same change runs the whole fast lane.
+
 |`make test-changed` |– |One test file ≈ 4 s; the `domain` folder (641 tests) ≈ 6.5 s; the `services` folder (1013 tests) ≈ 33 s to 62 s depending on load |2026-11-09, test-lanes stage 1
 |Slow tests included. A file runs in one process; `domain` runs in one process too; other folders run in parallel.
 
@@ -126,6 +129,12 @@ comes later.
 
 |`tests/unit/entrypoints` |559 (18 skipped) |≈ 2.5 to 3 min before stage 2 of test-lanes (load ≈ 5) |2026-11-09, test-lanes stage 2
 |`uv run pytest tests/unit/entrypoints -n auto -q`. Each test builds a fresh `ToyService`; one build took 1.15 s with its own RSA key and 0.53 s with the per-worker key (`toy_key()`), measured back to back at load ≈ 33. Folder wall times after the change were not comparable: the machine stayed at load 20 to 33 from unrelated work.
+
+|`make test-seed` |10,235 |7 min 39 s (pytest 6 min 5 s, 17 workers) |2026-11-25, agent-test-control stage 1
+|Every unit and feature test, slow ones included, without coverage, recording what each executes; 1 min 33 s of the total was queued behind another run. The lead's, at stage start, in the background.
+
+|`make check-all` |10,294 (5 xfailed) |17 min 0 s, of which ≈ 10 min queued; the three lanes ran 3 min 48 s, 45 s and 1 min 46 s on 17 workers |2026-11-25, agent-test-control stage 1
+|Unit 8415 (96.50 %), feature 99 (69.73 %), generator 1780 (96.95 %), with the memory release on; each lane waited in the queue behind the lead's seed and measurements, the machine at load ≈ 20.
 
 |`make check-all` |7355 (18 skipped) |13 min 0 s |2026-11-16, aggregate-events stage 3
 |7355 tests passed (18 skipped), 13 min 0 s on the head of aggregate-events stage 3 after the review's fixes. The quality checks (`make check-quality`) take ≈ 40 to 90 s and come before it.
