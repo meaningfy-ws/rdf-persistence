@@ -133,10 +133,10 @@ def check(root: Path, packages: str) -> Outcome:
 
 
 def current_packages() -> str:
-    """The package string testmon records, by testmon's own function."""
-    from testmon.common import get_system_packages
+    """The package string testmon records, by testmon's own functions (it drops patch versions)."""
+    from testmon.common import drop_patch_version, get_system_packages
 
-    return get_system_packages()
+    return drop_patch_version(get_system_packages())
 
 
 def main(argv: Sequence[str], root: Path | None = None) -> int:
