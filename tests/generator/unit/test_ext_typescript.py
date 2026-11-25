@@ -243,3 +243,13 @@ def test_a_module_that_names_a_served_type_imports_the_merged_file(
 )
 def test_an_inlined_class_range_names_its_interface(staged: Path, line: str) -> None:
     assert line in text(staged, "rp_service"), f"{line!r} is missing: an inlined class is a string"
+
+
+def test_the_served_schemas_are_built_once_per_process() -> None:
+    served = tuple(typescript.SERVED_SCHEMAS)
+    first = typescript._served_modules(served)
+    second = typescript._served_modules(served)
+    assert first is second, (
+        "a second call rebuilt the served schemas' modules instead of reusing them"
+    )
+    assert isinstance(first[0], tuple), "the cached names are mutable; a caller could change them"

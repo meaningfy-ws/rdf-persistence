@@ -13,7 +13,8 @@ service types; its module and type names are reserved.
 
 import json
 import posixpath
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from functools import cache
 from pathlib import Path
 
 from linkml.generators.typescriptgen import TypescriptGenerator
@@ -282,6 +283,20 @@ def render(
     return with_index(_with_served(modules))
 
 
+@cache
+def _served_modules(
+    served: tuple[Path, ...],
+) -> tuple[tuple[str, ...], tuple[tuple[TsModule, ...], ...]]:
+    """The names of the ``served`` schemas and, for each, its TypeScript modules, built once per process.
+
+    They depend only on ``SERVED_SCHEMAS`` (the argument, so the cache follows it), never on the
+    target, so every render of a generation reuses them (D-9); tuples keep a caller from changing
+    the cached value.
+    """
+    names = tuple(load_schema(path).schema.name for path in served)
+    return names, tuple(tuple(_generator(path).modules()) for path in served)
+
+
 def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
     """``modules`` and the served schemas' modules; the served schemas' own types share one file.
 
@@ -289,11 +304,11 @@ def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
     the types of every served schema in ``SERVED_SCHEMAS`` order, so splitting the service schema
     changes neither its name nor the order of its types (TC-07).
     """
-    served_names = [load_schema(path).schema.name for path in SERVED_SCHEMAS]
+    served_names, served_modules = _served_modules(tuple(SERVED_SCHEMAS))
     by_name = {m.name: m for m in modules if m.name not in served_names}
     own: list[TsModule] = []
-    for served, name in zip(SERVED_SCHEMAS, served_names, strict=True):
-        for module in _generator(served).modules():
+    for name, built in zip(served_names, served_modules, strict=True):
+        for module in built:
             if module.name == name:
                 own.append(module)
             elif module.name not in served_names:
@@ -303,7 +318,7 @@ def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
     return [_file(_pointing_at_merged(by_name[name], served_names)) for name in sorted(by_name)]
 
 
-def _pointing_at_merged(module: TsModule, served_names: list[str]) -> TsModule:
+def _pointing_at_merged(module: TsModule, served_names: Sequence[str]) -> TsModule:
     """``module`` with each import of a served schema's module pointed at ``SERVICE_MODULE``.
 
     A served schema has no file of its own (its types are in the merged one), so an import of
@@ -323,7 +338,7 @@ def _pointing_at_merged(module: TsModule, served_names: list[str]) -> TsModule:
     )
 
 
-def _merged(modules: list[TsModule], served_names: list[str]) -> TsModule:
+def _merged(modules: list[TsModule], served_names: Sequence[str]) -> TsModule:
     """One module named ``SERVICE_MODULE``, with the enums and interfaces of all in order."""
     imports: dict[str, set[str]] = {}
     for module in modules:
