@@ -250,6 +250,20 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   (`gitnexus clean --force`) would remove the index under that session. The stage's symbols did
   not move from the stage-start impact (LOW: `cycle_components` one caller, `render` one caller in
   `steps.py`), and `make check-all` covers the callers.
+- **D-4 (stage 1) The stage review is one L2+L3 pass** (owner's rule P-0005, `develop/agents.adoc`
+  *Keeping the challenge cheap*), not the MEDIUM default of two grouped runs; the full review
+  (L1, L2, L3 apart, L4+L5 as one) runs once at the end of stage 2 (task 2.6).
+- Stage 1 review, under the floor (no Critical finding; not fixed in this stage):
+  - W1 (L2) the refusal test does not assert the `python` step nor that existing generated files
+    are left as they were (spec scenario 3).
+  - S1 (L2) the `first` parameter of the two load-order tests cannot change the load order (the
+    package `__init__.py` always loads the cycle first).
+  - S2 (L3) `module_cycles` relies on `from __future__ import annotations` in the stock output and
+    does not check for it; the integration tests that import a generated cycle would fail if a
+    LinkML upgrade dropped it (RISK-2).
+  - S3 (L2) the docs say only annotation names are deferred and write `TYPE_CHECKING` unaliased;
+    the code also defers unused names and names read only in function bodies, under
+    `_TYPE_CHECKING`.
 
 ## Open Questions
 
