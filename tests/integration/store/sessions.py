@@ -10,13 +10,11 @@ from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import aggregate_keys
-from tests.toy import TOY_SCHEMA
+from tests.toy import BIBO, TITLE, TOY_SCHEMA
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
-TITLE = URIRef("http://purl.org/dc/terms/title")
 START = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
 ADA, BEN, CY = (Principal(id=f"https://example.org/people/{n}") for n in ("ada", "ben", "cy"))
-BIBO = "http://purl.org/ontology/bibo/"
 BOOK, ISBN = URIRef(BIBO + "Book"), URIRef(BIBO + "isbn")
 KEYS = aggregate_keys(load_schema(TOY_SCHEMA))
 

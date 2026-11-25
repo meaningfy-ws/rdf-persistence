@@ -23,7 +23,7 @@ export type ProblemSlug =
   | "key_conflict"
   /** A delete rule of the application refuses the removal; the answer carries the rule's message. */
   | "refused"
-  /** The delete would leave other aggregates pointing at a class that refuses it; the answer names them. */
+  /** The delete would leave other aggregates pointing at a class that refuses it; the answer names the referrers the caller may read, up to a limit, and counts the rest. */
   | "in_use"
   /** An update or a delete came without the version it expects. */
   | "precondition_required"

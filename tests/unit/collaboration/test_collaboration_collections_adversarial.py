@@ -49,6 +49,7 @@ from tests.fixtures.library.domain.generated.books import Genre, Shelf
 from tests.toy import (
     ADA,
     BOB,
+    BOOK_CLASS,
     MODULES,
     TENANT,
     TOY_SCHEMA,
@@ -88,7 +89,6 @@ S1, S2, A, B, C = (
 OTHER_TENANT = "https://example.org/libraries/00000000"
 LIB = "https://example.org/ns/library#"
 SCAN_CLASS = URIRef(f"{LIB}Scan")
-BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
 SHELF_CLASS = URIRef(f"{LIB}Shelf")
 EVIL = 'x" } . ?s ?p ?o } ; DROP ALL ; # \n\r\t\\ \u0000 <a> {'
 

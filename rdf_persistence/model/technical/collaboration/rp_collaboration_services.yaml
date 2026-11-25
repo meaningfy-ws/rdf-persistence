@@ -113,6 +113,12 @@ slots:
     slot_uri: rp:hiddenCount
     range: integer
     minimum_value: 0
+  more_count:
+    title: More count
+    description: The number of referrers the caller may read but the answer does not name, past the limit.
+    slot_uri: rp:moreCount
+    range: integer
+    minimum_value: 0
   member_iris:
     title: Member IRIs
     description: The IRIs of the members of a collection.

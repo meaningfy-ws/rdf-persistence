@@ -5,7 +5,6 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
-from uuid import UUID
 
 import pytest
 from linkml_runtime.utils.schemaview import SchemaView
@@ -42,6 +41,7 @@ from tests.toy import (
     ROLES,
     TENANT,
     TOY_SCHEMA,
+    author_iri,
     book_iri,
     dune,
     shelf,
@@ -906,7 +906,7 @@ async def test_what_a_rule_does_to_the_aggregate_it_read_is_not_seen_by_the_next
 
 
 async def test_collected_triples_that_do_not_decode_are_a_runtime_error():  # T7b, E4
-    author = f"{TENANT}/authors/{UUID(int=1)}"
+    author = author_iri(1)
     async with (
         guarded_session({"Book": [reading_the_shelf([])]}) as session,
         session.transaction() as t,

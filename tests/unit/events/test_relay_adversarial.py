@@ -37,7 +37,7 @@ from tests.relay_helpers import (
     sent,
     triples,
 )
-from tests.toy import ApproveBook, library_slots, toy_mapper
+from tests.toy import FAST_POLL, ApproveBook, library_slots, toy_mapper
 
 APPROVE = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c1a1"
 
@@ -127,7 +127,7 @@ async def test_wake_from_inside_a_publish_makes_exactly_one_more_round(world):
     try:
         relay.wake()
         await wait_until_async(
-            lambda: _truth(len(rounds) == 2), "the second round", poll_seconds=0.01
+            lambda: _truth(len(rounds) == 2), "the second round", poll_seconds=FAST_POLL
         )
         for _ in range(10):
             await asyncio.sleep(0)

@@ -11,9 +11,9 @@ from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.toy import TITLE
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
-TITLE = URIRef("http://purl.org/dc/terms/title")
 ROOT_TRIPLES = [(URIRef(TENANT), TITLE, Literal("Ghent"))]
 HAS_AGGREGATE_ENTRY = "ASK { GRAPH $r { ?g $kind $aggregate } }"
 

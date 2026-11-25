@@ -20,9 +20,8 @@ from rdf_persistence.testkit import (  # noqa: F401  (no_network is a fixture)
     no_network,
 )
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import BOOK_JSON, TENANT, book_iri, encoded
+from tests.toy import TENANT, TITLE, book_iri, book_json, encoded
 
-TITLE = "http://purl.org/dc/terms/title"
 BOOK = f"{TENANT}/books/{UUID(int=1)}"
 CONTEXT_UNREACHABLE = "http://context.invalid/context.jsonld"
 ABSOLUTE = "a JSON-LD document must use absolute IRIs"
@@ -31,18 +30,18 @@ ABSOLUTE = "a JSON-LD document must use absolute IRIs"
 # code before the swap: the same single triple whatever the inline context (TC-43).
 RDFLIB_GOLDEN = '<https://example.org/b> <http://purl.org/dc/terms/title> "Dune" .\n'
 GOOD_SAMPLES = {
-    "no context": {"@id": "https://example.org/b", TITLE: "Dune"},
+    "no context": {"@id": "https://example.org/b", str(TITLE): "Dune"},
     "object context": {
-        "@context": {"title": TITLE},
+        "@context": {"title": str(TITLE)},
         "@id": "https://example.org/b",
         "title": "Dune",
     },
     "array context": {
-        "@context": [{"title": TITLE}],
+        "@context": [{"title": str(TITLE)}],
         "@id": "https://example.org/b",
         "title": "Dune",
     },
-    "null context": {"@context": None, "@id": "https://example.org/b", TITLE: "Dune"},
+    "null context": {"@context": None, "@id": "https://example.org/b", str(TITLE): "Dune"},
 }
 
 
@@ -58,19 +57,19 @@ async def test_a_good_file_loads_to_the_triples_rdflib_gave(document):
 
 
 def test_a_document_without_a_graph_keyword_gives_its_triples_as_the_default_graph():
-    graph = triples_of({"@graph": [{"@id": "https://example.org/b", TITLE: "Dune"}]})
-    assert (URIRef("https://example.org/b"), URIRef(TITLE), None) in graph, (
+    graph = triples_of({"@graph": [{"@id": "https://example.org/b", str(TITLE): "Dune"}]})
+    assert (URIRef("https://example.org/b"), TITLE, None) in graph, (
         "TC-42: a top-level @graph with no @id is the default graph"
     )
 
 
 async def test_a_loaded_file_with_a_top_level_graph_and_no_id_loads():
-    document = {"@graph": [{"@id": "https://example.org/b", TITLE: "Dune"}]}
+    document = {"@graph": [{"@id": "https://example.org/b", str(TITLE): "Dune"}]}
     graph = await parse_graph(encoded_file(document), RdfFormat.JSONLD)
     assert len(graph) == 1, "TC-42: the triples of the default graph"
 
 
-NAMED_GRAPH = {"@id": "urn:g", "@graph": [{"@id": "https://example.org/b", TITLE: "Dune"}]}
+NAMED_GRAPH = {"@id": "urn:g", "@graph": [{"@id": "https://example.org/b", str(TITLE): "Dune"}]}
 
 
 def test_a_named_graph_is_refused_by_triples_of():
@@ -92,7 +91,7 @@ async def test_a_body_naming_a_graph_is_refused(documents, book_class):
     body = {
         "@context": documents.context,
         "@id": "urn:g",
-        "@graph": [{"type": "Book", **BOOK_JSON}],
+        "@graph": [{"type": "Book", **book_json()}],
     }
     with pytest.raises(InvalidBody, match="a body describes one graph"):
         await documents.parse(
@@ -100,7 +99,7 @@ async def test_a_body_naming_a_graph_is_refused(documents, book_class):
         )
 
 
-RELATIVE = {"@id": "book1", TITLE: "Dune"}
+RELATIVE = {"@id": "book1", str(TITLE): "Dune"}
 
 
 def test_a_relative_iri_without_a_base_is_refused_by_triples_of():
@@ -117,7 +116,7 @@ async def test_a_loaded_file_with_a_relative_iri_and_no_base_is_refused():
 async def test_a_loaded_file_with_a_base_of_its_own_resolves_against_it():
     document = {"@context": {"@base": "https://ex.org/"}, **RELATIVE}
     graph = await parse_graph(encoded_file(document), RdfFormat.JSONLD)
-    assert (URIRef("https://ex.org/book1"), URIRef(TITLE), None) in graph, (
+    assert (URIRef("https://ex.org/book1"), TITLE, None) in graph, (
         "TC-42b: a document's own @base applies"
     )
     assert NO_BASE not in graph.serialize(format="nt"), "the placeholder base never leaks"
@@ -126,7 +125,7 @@ async def test_a_loaded_file_with_a_base_of_its_own_resolves_against_it():
 @pytest.mark.parametrize("media_type", [JSON, JSON_LD], ids=["json", "json-ld"])
 async def test_a_body_with_a_relative_reference_is_refused(documents, book_class, media_type):
     # TC-42c
-    body = {**BOOK_JSON, "shelf": "shelves/1"}
+    body = book_json() | {"shelf": "shelves/1"}
     if media_type == JSON_LD:
         body = {"@context": documents.context, "type": "Book", **body}
     with pytest.raises(InvalidBody, match=ABSOLUTE):
@@ -138,11 +137,11 @@ async def test_a_body_with_a_relative_reference_is_refused(documents, book_class
 NOT_VALID = "a JSON-LD document holds an IRI that is not valid"
 OBJECT_OR_ARRAY = "a JSON-LD document is an object or an array"
 UNREADABLE = {
-    "relative under a null base": {"@context": {"@base": None}, "@id": "a", TITLE: "Dune"},
+    "relative under a null base": {"@context": {"@base": None}, "@id": "a", str(TITLE): "Dune"},
     "relative type": {"@id": "https://example.org/b", "@type": "rel"},
-    "space in a subject": {"@id": "https://ex.org/a b", TITLE: "Dune"},
-    "control character": {"@id": "https://ex.org/a\nb", TITLE: "Dune"},
-    "space in an object": {"@id": "https://ex.org/a", TITLE: {"@id": "https://ex.org/a b"}},
+    "space in a subject": {"@id": "https://ex.org/a b", str(TITLE): "Dune"},
+    "control character": {"@id": "https://ex.org/a\nb", str(TITLE): "Dune"},
+    "space in an object": {"@id": "https://ex.org/a", str(TITLE): {"@id": "https://ex.org/a b"}},
     "space in a predicate": {"@id": "https://ex.org/a", "https://ex.org/p q": "x"},
 }
 
@@ -187,7 +186,7 @@ async def test_a_body_with_an_iri_that_is_not_valid_is_refused(documents, book_c
     body = {
         "@context": documents.context,
         "type": "Book",
-        **BOOK_JSON,
+        **book_json(),
         "shelf": "https://ex.org/a b",
     }
     with pytest.raises(InvalidBody, match=NOT_VALID):

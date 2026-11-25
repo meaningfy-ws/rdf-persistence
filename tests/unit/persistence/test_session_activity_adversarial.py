@@ -45,6 +45,7 @@ from tests.tenancy_world import make_world
 from tests.toy import (
     ADA,
     BOB,
+    BOOK_CLASS,
     SETTINGS,
     TENANT,
     TOY_SCHEMA,
@@ -57,7 +58,6 @@ from tests.unit.activity_helpers import (
     B1,
     B2,
     B3,
-    BOOK_CLASS,
     ISBN,
     KEYS,
     PROVENANCE,
@@ -454,11 +454,11 @@ async def test_the_start_of_an_activity_is_not_after_its_end_when_the_clock_goes
 
 
 async def test_a_replace_of_a_root_with_several_types_invalidates_the_first_sorted(store, session):
-    triples = [(URIRef(B1), RDF.type, URIRef(c)) for c in (SHELF_CLASS, BOOK_CLASS)]
+    triples = [(URIRef(B1), RDF.type, URIRef(c)) for c in (SHELF_CLASS, str(BOOK_CLASS))]
     v1 = await session.add_graph(B1, triples)
     await session.replace_graph(B1, [(URIRef(B1), RDF.type, URIRef(SHELF_CLASS))], v1)
     replace = (await activities(store))[-1]
-    assert events(replace.invalidations) == [(B1, BOOK_CLASS, v1)], "the old first type"
+    assert events(replace.invalidations) == [(B1, str(BOOK_CLASS), v1)], "the old first type"
     assert [e[1] for e in events(replace.generations)] == [SHELF_CLASS], "the new type"
 
 

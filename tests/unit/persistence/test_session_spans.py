@@ -12,10 +12,9 @@ from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.persistence.services.store import ToolkitStore, TracedStore
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import ADA, TENANT, book_iri
+from tests.toy import ADA, TENANT, TITLE, book_iri
 
 BOOK = book_iri(1)
-TITLE = URIRef("http://purl.org/dc/terms/title")
 COMMIT = "rp.session.commit"
 
 

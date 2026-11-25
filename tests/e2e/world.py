@@ -16,8 +16,8 @@ from rdf_persistence import (
     zitadel_roles_claim,
 )
 from rdf_persistence.testkit import access_token
-from tests.e2e.library_app import build_library_app, library_settings
 from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre, Note
+from tests.library_app import build_library_app, library_settings
 from tests.toy_service import drop_buckets, drop_databases, unique_prefix
 
 LIBRARIAN = "librarian"

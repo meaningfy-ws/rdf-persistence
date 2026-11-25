@@ -8,9 +8,8 @@ from rdflib import Graph, Literal, URIRef
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import TENANT
+from tests.toy import TENANT, TITLE
 
-TITLE = URIRef("http://purl.org/dc/terms/title")
 BUDGET_SECONDS = 2.0  # the cartesian form took 51 s for the first case
 SIZES = [pytest.param(50, 2000, id="50 aggregate, 2000 loaded")]
 

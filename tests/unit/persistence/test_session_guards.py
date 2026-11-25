@@ -6,9 +6,7 @@ from rdflib import RDF, Literal, URIRef
 from rdf_persistence.core.domain.exceptions import Conflict, NotFound
 from rdf_persistence.persistence.services.generated.rp_persistence_services import Condition
 from rdf_persistence.testkit import FakeStore, fake_session
-from tests.toy import TENANT, book_iri
-
-TITLE = URIRef("http://purl.org/dc/terms/title")
+from tests.toy import TENANT, TITLE, book_iri
 
 
 def title(iri: str, text: str) -> list:

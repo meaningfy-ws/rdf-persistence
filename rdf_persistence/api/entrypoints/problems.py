@@ -177,11 +177,11 @@ def in_use_problem(
     locate: Callable[[str, str], tuple[str, str] | None] | None = None,
 ) -> InUseProblem:
     """The problem of a refused removal (PD-11): no ``detail``, the members say who refers.
-
-    ``error.referrers`` are the readable referrers the guard found, and the counts say how many more
-    exist, named or not; only structured members carry them, as the text of a 409 is never sent.
-    An unfiltered error (no ``readable`` callable judged its referrers) names nobody: every
-    referrer aggregate is counted in ``hidden_count`` (D-10, fail closed).
+    ``error.referrers`` come from the guard's diagnosis read or from the same-commit check. A
+    filtered error (a ``readable`` callable judged them) names the readable referrers, up to the
+    cap, and counts the readable rest in ``more_count`` and the unreadable in ``hidden_count``; only
+    structured members carry them, as the text of a 409 is never sent. An unfiltered error names
+    nobody: every referrer aggregate is counted in ``hidden_count`` (D-10, fail closed).
 
     ``locate(class name, IRI)`` gives the ``(rp_path, id)`` a named referrer is served at, which sets
     both location fields of its item; without it, or when it gives ``None``, neither is set.

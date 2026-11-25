@@ -38,7 +38,7 @@ from fastapi.openapi.models import (
 from fastapi.sse import EventSourceResponse
 from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from rdf_persistence.access.services.access import ACTIONS
 from rdf_persistence.access.services.generated.rp_access_services import GrantSet
@@ -174,14 +174,14 @@ def _document_media(schema: Schema, *, rdf: bool = True) -> dict[str, MediaType]
     return {**media, **_media(Schema(type="string"), *REPRESENTATIONS[2:])} if rdf else media
 
 
-def _problem(kind: ProblemKind, description: str, schema: str = Problem.__name__) -> Response:
+def _problem(kind: ProblemKind, description: str, schema: type[BaseModel] = Problem) -> Response:
     """The answer for ``kind``; ``description`` names every title of the route that shares its status."""
     headers: dict[str, Header | Reference] = {
         WWW_AUTHENTICATE: Header(schema=Schema(type="string"))
     }
     return Response(
         description=description,
-        content=_media(_ref(schema), PROBLEM_JSON),
+        content=_media(_ref(schema.__name__), PROBLEM_JSON),
         headers=headers if kind == problems.INVALID_TOKEN else None,
     )
 
@@ -278,9 +278,7 @@ def route_options(
         sharing = [k for k in kinds if k.status == kind.status]
         # a status shared with the in-use kind is answered by its problem: the extras are optional
         schema = InUseProblem if problems.IN_USE in sharing else Problem
-        responses[str(kind.status)] = _problem(
-            kind, " or ".join(k.title for k in sharing), schema.__name__
-        )
+        responses[str(kind.status)] = _problem(kind, " or ".join(k.title for k in sharing), schema)
     # Any other failure is a problem as well; declaring it keeps FastAPI from adding its own 422.
     responses[DEFAULT] = Response(
         description="Any other problem", content=_media(_ref(Problem.__name__), PROBLEM_JSON)

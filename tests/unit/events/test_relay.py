@@ -42,7 +42,7 @@ from tests.relay_helpers import (
     sent,
     triples,
 )
-from tests.toy import template, toy_mapper
+from tests.toy import FAST_POLL, template, toy_mapper
 
 
 class FlakyBus(InMemoryEventBus):
@@ -349,13 +349,13 @@ async def test_tc16_the_loop_survives_a_failed_round_and_publishes_after_a_wake(
         with caplog.at_level(logging.ERROR, logger=LOGGER):
             relay.wake()
             await wait_until_async(
-                lambda: _truth(len(caplog.records) == 1), "the failed round", poll_seconds=0.01
+                lambda: _truth(len(caplog.records) == 1), "the failed round", poll_seconds=FAST_POLL
             )
         assert caplog.records[0].exc_info, "the failure carries its exception"
         assert attributes(caplog.records[0])["rp.step"] == "relay-round-failed", "the step"
         relay.wake()
         await wait_until_async(
-            lambda: _truth(len(world.broker.messages) == 1), "a publication", poll_seconds=0.01
+            lambda: _truth(len(world.broker.messages) == 1), "a publication", poll_seconds=FAST_POLL
         )
     finally:
         task.cancel()
@@ -446,7 +446,7 @@ async def test_tc18a_wakes_during_a_round_cause_exactly_one_more_round(world, mo
             relay.wake()
         release.set()
         await wait_until_async(
-            lambda: _truth(len(rounds) == 2), "the second round", poll_seconds=0.01
+            lambda: _truth(len(rounds) == 2), "the second round", poll_seconds=FAST_POLL
         )
         for _ in range(10):
             await asyncio.sleep(0)  # let a third round happen, if one would
@@ -579,7 +579,7 @@ async def test_the_relay_runs_the_round_that_fell_due_while_it_was_paused(world)
         await wait_until_async(
             lambda: _truth(len(sent(world, world.tenant)) == 1),
             "the publication",
-            poll_seconds=0.01,
+            poll_seconds=FAST_POLL,
         )
         assert [activity for _, _, activity in sent(world, world.tenant)] == due, "that commit"
     finally:

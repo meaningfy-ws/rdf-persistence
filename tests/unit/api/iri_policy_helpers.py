@@ -1,8 +1,10 @@
 """What the flat-IRI-policy tests share: the policy, the tenant, a session over the fake store, the body builders."""
 
 import json
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from typing import Any
 
 from rdflib import RDF, URIRef
 
@@ -78,15 +80,19 @@ def session_on(store: FakeStore) -> Session:
     )
 
 
-class StoreTenancy:
-    """What ``Aggregates`` needs of a tenancy: a real session over the fake store."""
+class TenancyDouble:
+    """What ``Aggregates`` needs of a tenancy: ``tenant_session`` yields what ``open_session`` returns.
 
-    def __init__(self, store: FakeStore) -> None:
-        self.store = store
+    ``open_session`` is ``Any``-typed because a ``RecordingSession`` is not a ``Session``. The parameters
+    of ``tenant_session`` are kept equal to ``Tenancy.tenant_session``'s by ``test_tenancy_double.py``.
+    """
+
+    def __init__(self, open_session: Callable[[], Any]) -> None:
+        self.open_session = open_session
 
     @asynccontextmanager
     async def tenant_session(self, tenant, principal, *, may_read=None):
-        yield session_on(self.store)
+        yield self.open_session()
 
 
 def body(*parts: dict) -> bytes:

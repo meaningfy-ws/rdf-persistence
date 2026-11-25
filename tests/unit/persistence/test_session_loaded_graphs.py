@@ -23,7 +23,7 @@ from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Book
-from tests.toy import TOY_SCHEMA
+from tests.toy import TITLE, TOY_SCHEMA
 
 BOOK = URIRef("http://purl.org/ontology/bibo/Book")
 FLAT = "{base}{tenant_id}/{type}/{id}"
@@ -33,7 +33,6 @@ ADA, BEN = "https://example.org/people/ada", "https://example.org/people/ben"
 ROOT = f"{TENANT}/books/{UUID(int=1)}"
 OTHER = f"{TENANT}/books/{UUID(int=2)}"
 OTHER_LOADED = URIRef(f"{OTHER}/content/{UUID(int=12)}")
-TITLE = URIRef("http://purl.org/dc/terms/title")
 LOADED = [URIRef(f"{ROOT}/content/{UUID(int=10)}"), URIRef(f"{ROOT}/content/{UUID(int=11)}")]
 LOADED_TTL = '<https://example.org/b> <http://purl.org/dc/terms/title> "Dune" .'
 ENTRIES = "SELECT ?g WHERE { GRAPH $r { ?g $kind $loaded } }"

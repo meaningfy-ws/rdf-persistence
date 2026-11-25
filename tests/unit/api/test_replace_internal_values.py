@@ -1,7 +1,6 @@
 """A replace keeps the internal values the service stored (PD-3, R1-1): no body can set them, none may be erased."""
 
 import json
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import pytest
@@ -17,6 +16,7 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from rdf_persistence_generation.cli import main as generate
+from tests.unit.api.iri_policy_helpers import TenancyDouble
 
 TENANT = "https://example.org/tenants/t1"
 ADA = Principal(id="https://example.org/people/ada")
@@ -82,12 +82,7 @@ async def test_a_replace_keeps_the_internal_value_the_service_stored(documents: 
         iris=DEFAULT_IRIS,
     )
 
-    class Tenancy:
-        @asynccontextmanager
-        async def tenant_session(self, tenant, principal, *, may_read=None):
-            yield session
-
-    aggregates = Aggregates(documents, Tenancy())  # type: ignore[arg-type]
+    aggregates = Aggregates(documents, TenancyDouble(lambda: session))  # type: ignore[arg-type]
     crate, body = documents.aggregates["crates"], json.dumps({"label": "A"}).encode()
     iri, (triples, _, version) = await aggregates.create(TENANT, ADA, crate, "crates", body, JSON)
     await session.replace_graph(iri, [*triples, (URIRef(iri), SERIAL, Literal("S-1"))], version)

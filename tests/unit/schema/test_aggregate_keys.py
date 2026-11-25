@@ -7,9 +7,8 @@ import pytest
 from rdf_persistence.core.domain.generated.rp_core import AggregateKey
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import aggregate_keys
-from tests.toy import TOY_SCHEMA
+from tests.toy import BIBO, TOY_SCHEMA
 
-BIBO = "http://purl.org/ontology/bibo/"
 R = "https://example.org/ns/r#"
 
 HEAD = """

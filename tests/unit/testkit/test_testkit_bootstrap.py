@@ -14,6 +14,7 @@ from rdf_persistence.testkit.bootstrap import (
     wait_until,
     wait_until_async,
 )
+from tests.toy import FAST_POLL
 
 
 class FakeClock:
@@ -65,7 +66,7 @@ async def test_a_fast_poll_returns_before_one_default_poll_interval_has_passed()
     async def probe():
         return next(answers)
 
-    result = await _wait_async(probe, clock, poll_seconds=0.01)
+    result = await _wait_async(probe, clock, poll_seconds=FAST_POLL)
 
     assert result == ["a.csv"], "the wait returns the value of the third poll"
     assert clock.sleeps == [0.01, 0.01], f"each wait between polls is the fast one: {clock.sleeps}"
@@ -81,7 +82,7 @@ def test_a_fast_sync_poll_sleeps_the_given_interval_between_polls() -> None:
             lambda: next(answers),
             "thing",
             timeout=10,
-            poll_seconds=0.01,
+            poll_seconds=FAST_POLL,
             sleep=clock.sleep,
             monotonic=clock.monotonic,
         )

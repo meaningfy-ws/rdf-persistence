@@ -8,70 +8,30 @@ class that is not refusing. The fake store applies a request atomically, as Fuse
 
 import re
 from collections.abc import AsyncIterator, Sequence
-from contextlib import AbstractAsyncContextManager
-from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
 from rdflib import RDF, Dataset, Graph, Literal, URIRef
 
 from rdf_persistence import InUse
-from rdf_persistence.core.domain.exceptions import Conflict, NotFound
+from rdf_persistence.core.domain.exceptions import Conflict, KeyConflict, NotFound
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 from rdf_persistence.persistence.services.mapper import UnitOfWork
-from rdf_persistence.persistence.services.session import Session, open_session
+from rdf_persistence.persistence.services.session import READ_HEADS, Session, open_session
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Author, Book
-from tests.toy import TENANT, book_iri, dune, toy_mapper_limited
+from tests.toy import BOOK_CLASS, TENANT, WRITTEN_BY, author_iri, book_iri, dune, toy_mapper_limited
+from tests.unit.activity_helpers import KEYS, isbn_book
+from tests.unit.persistence.referrer_helpers import NOW, StubRefusal, author, opened, stored
 
 LIB = "https://example.org/ns/library#"
-AUTHOR_CLASS, SHELF_CLASS = URIRef(LIB + "Author"), URIRef(LIB + "Shelf")
-BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
-WRITTEN_BY, SEQUEL_OF = URIRef(LIB + "writtenBy"), URIRef(LIB + "sequelOf")
-A1, A2 = (f"{TENANT}/authors/{UUID(int=n)}" for n in (1, 2))
+SHELF_CLASS = URIRef(LIB + "Shelf")
+SEQUEL_OF = URIRef(LIB + "sequelOf")
+A1, A2 = (author_iri(n) for n in (1, 2))
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 NOTE = URIRef(LIB + "note")
-NOW = datetime(2026, 11, 20, tzinfo=UTC)
-
-
-class StubRefusal:
-    """The schema side of a removal refusal: what the session asks, kept for the tests to read."""
-
-    def __init__(
-        self, refusing: frozenset[URIRef] = frozenset({AUTHOR_CLASS}), call_readable: bool = False
-    ) -> None:
-        self.refusing = refusing
-        self.call_readable = call_readable
-        # (roots, rows, readable, the root the rows refer to), per call
-        self.asked: list[tuple[tuple[str, ...], list[ReferrerRow], object, str]] = []
-
-    async def in_use(
-        self, roots: Sequence[str], root: str, rows: Sequence[ReferrerRow], readable
-    ) -> InUse:
-        self.asked.append((tuple(roots), list(rows), readable, root))
-        if self.call_readable and readable is not None:
-            await readable(root, rows)
-        named = tuple((row.referrer, "Book", "written_by") for row in rows)
-        return InUse("in use", iris=tuple(roots), referrers=named)
-
-
-def opened(
-    store: FakeStore, removals: StubRefusal | None, who: str = "ada"
-) -> AbstractAsyncContextManager[Session]:
-    return open_session(
-        store,
-        database=FAKE_DATABASE,
-        tenant_iri=TENANT,
-        principal=Principal(id=f"https://example.org/people/{who}"),
-        clock=lambda: NOW,
-        removals=removals,
-    )
-
-
-def author(iri: str, *more: URIRef) -> list:
-    return [(URIRef(iri), RDF.type, c) for c in (AUTHOR_CLASS, *more)]
 
 
 def book(iri: str, **links: str) -> list:
@@ -79,13 +39,6 @@ def book(iri: str, **links: str) -> list:
     return [(URIRef(iri), RDF.type, BOOK_CLASS)] + [
         (URIRef(iri), names[name], URIRef(target)) for name, target in links.items()
     ]
-
-
-@pytest.fixture
-async def store() -> FakeStore:
-    fake = FakeStore()
-    await fake.create_dataset(FAKE_DATABASE)
-    return fake
 
 
 @pytest.fixture
@@ -103,14 +56,6 @@ async def session(store, refusal) -> AsyncIterator[Session]:
 async def other(store, refusal) -> AsyncIterator[Session]:
     async with opened(store, refusal, "ben") as s:
         yield s
-
-
-async def stored(session: Session, iri: str) -> bool:
-    try:
-        await session.get_graph(iri)
-    except NotFound:
-        return False
-    return True
 
 
 async def quads(store: FakeStore) -> set:
@@ -500,6 +445,45 @@ async def test_matrix_13_referrer_first_in_a_later_batch_order_works(store):
         await work.commit(batches=True)
         assert not await stored(session, A1), "the author is removed"
         assert not await stored(session, B1), "the referrer is removed"
+
+
+# --- the order of the diagnosis and the reads of a commit (characterisation, review-floors 252-j) --
+
+
+async def test_a_key_held_elsewhere_wins_over_a_removed_root_still_referenced(store, refusal):
+    """PD-4 of delete-refuses-referenced: the store holds both claims, the key is reported first."""
+    async with open_session(
+        store,
+        database=FAKE_DATABASE,
+        tenant_iri=TENANT,
+        principal=Principal(id="https://example.org/people/ada"),
+        clock=lambda: NOW,
+        removals=refusal,
+        keys=KEYS,
+    ) as keyed:
+        version = await keyed.add_graph(A1, author(A1))
+        await keyed.add_graph(B1, book(B1, by=A1))  # A1 stays referenced
+        await keyed.add_graph(B2, isbn_book(B2, "1"))  # holds the key value
+        with pytest.raises(Conflict) as refused:
+            async with keyed.transaction() as t:
+                await t.remove(A1, version)
+                await t.add_graph(B3, isbn_book(B3, "1"))
+        assert type(refused.value) is KeyConflict, "the key held elsewhere is reported, not InUse"
+        assert refused.value.iris == (B3,), "the root whose key clashed"
+        assert await stored(keyed, A1), "nothing was removed"
+
+
+async def test_no_type_is_read_when_no_link_names_a_removed_root(session, store):
+    """A commit whose added book links an author it does not remove sends no heads read of A1."""
+    version = await session.add_graph(A1, author(A1))
+    await session.add_graph(A2, author(A2))
+    reads = len(store.sent("query"))
+    async with session.transaction() as t:
+        await t.remove(A1, version)
+        await t.add_graph(B3, book(B3, by=A2))
+    heads_select = READ_HEADS.strip().splitlines()[0]  # the heads query's own SELECT line
+    heads = [text for text in store.sent("query")[reads:] if heads_select in text]
+    assert not any(A1 in text for text in heads), "no heads read names the removed author"
 
 
 # --- TC-5: G-3, no refusal configured, no guard -------------------------------------------------

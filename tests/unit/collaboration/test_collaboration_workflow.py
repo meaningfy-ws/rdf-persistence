@@ -29,6 +29,7 @@ from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import (
     ADA,
     BOB,
+    BOOK_CLASS,
     ROLES,
     TOY_SCHEMA,
     ban,
@@ -59,7 +60,6 @@ from tests.unit.collaboration.collaboration_data import (
     version,
 )
 
-BOOK_CLASS = "http://purl.org/ontology/bibo/Book"
 COMMENT_CLASS = str(v.ANNOTATION)
 
 
@@ -232,7 +232,7 @@ async def test_a_transition_is_one_activity_that_used_the_book(store, session, a
     assert (record, v.TO_STATE, URIRef(IN_REVIEW)) in graph, "to in review"
     assert (record, v.TRANSITION_COMMENT, URIRef(ready)) in graph, "with the comment it posted"
     assert (record, RDF.type, v.ACTIVITY) in graph, "and it is an activity"
-    new_book = {(B1, BOOK_CLASS)}
+    new_book = {(B1, str(BOOK_CLASS))}
     assert parts_of(graph, str(record), v.HAS_GENERATION) == new_book | {(ready, COMMENT_CLASS)}, (
         "it generated a version of b1 and the comment"
     )

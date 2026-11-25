@@ -28,14 +28,12 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import TENANT, TOY_SCHEMA, book_iri
+from tests.toy import BIBO, TENANT, TITLE, TOY_SCHEMA, book_iri
 
 A, B, C, D, E = (book_iri(n) for n in (1, 2, 3, 4, 5))
 OTHER_TENANT = "https://example.org/libraries/other"
-BIBO = "http://purl.org/ontology/bibo/"
 BOOK, MAGAZINE = URIRef(BIBO + "Book"), URIRef(BIBO + "Magazine")
 ISBN = URIRef(BIBO + "isbn")
-TITLE = URIRef("http://purl.org/dc/terms/title")
 SUBJECT = URIRef("http://purl.org/dc/terms/subject")
 ISBN_KEY = aggregate_keys(load_schema(TOY_SCHEMA))
 COUNT_QUADS = "SELECT (COUNT(*) AS ?n) WHERE { GRAPH ?g { ?s ?p ?o } }"

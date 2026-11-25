@@ -23,6 +23,7 @@ from tests.fixtures.library.domain.generated.books import Book
 from tests.toy import (
     ADA,
     BOB,
+    BOOK_CLASS,
     TENANT,
     ban,
     book_iri,
@@ -42,7 +43,6 @@ B1, B2, B3, B4 = (book_iri(n) for n in (1, 2, 3, 4))
 S1, S2 = shelf_iri(1), shelf_iri(2)
 LIB = "https://example.org/ns/library#"
 SHELF_P, SEQUEL_P, ABOUT_P = (URIRef(f"{LIB}{n}") for n in ("shelf", "sequelOf", "about"))
-BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
 OTHER_TENANT = "https://example.org/libraries/00000000"
 HIDDEN_CLASS_SLOT = re.compile(r"Book|shelf|sequel_of|about")
 

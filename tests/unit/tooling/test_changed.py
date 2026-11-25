@@ -55,7 +55,7 @@ FALLS_BACK = [
     (3, "tests/fixtures/library/pyproject.toml"),
     (3, "tests/unit/__init__.py"),
     (3, "rdf_persistence/model/library.yaml"),
-    (5, "tests/e2e/library_app.py"),
+    (5, "tests/e2e/world.py"),
     (5, "tests/integration/conftest.py"),
     (12, ".github/workflows/ci.yml"),
     (12, ".importlinter"),

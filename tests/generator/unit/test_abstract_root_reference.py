@@ -14,6 +14,7 @@ from rdflib.namespace import SH
 from rdf_persistence_generation.testkit.conformance import Conformance
 from rdf_persistence_generation.testkit.roundtrip import round_trip
 from rdf_persistence_generation.testkit.strategies import IRI_BASE, aggregate
+from tests.toy import BIBO as BIBO_IRI
 
 ROOT = Path(__file__).parents[3]
 TOY = ROOT / "tests" / "fixtures" / "library"
@@ -21,7 +22,7 @@ TOY_SCHEMA = TOY / "library.yaml"
 # committed output: `make check-freshness` covers it, the manifest of the toy's domain folder lists it
 TOY_TYPESCRIPT = TOY / "web" / "src" / "domain" / "generated" / "books.ts"
 LIB = Namespace("https://example.org/ns/library#")
-BIBO = Namespace("http://purl.org/ontology/bibo/")
+BIBO = Namespace(BIBO_IRI)
 
 # (class, slot, the class an embedded value is, or None for a reference)
 SLOTS = [

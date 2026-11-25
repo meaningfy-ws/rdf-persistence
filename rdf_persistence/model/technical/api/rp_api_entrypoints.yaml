@@ -161,12 +161,6 @@ slots:
     slot_uri: rp:problemDetail
     alias: detail
     range: string
-  more_count:
-    title: More count
-    description: The number of referrers the caller may read but the answer does not name, past the limit.
-    slot_uri: rp:moreCount
-    range: integer
-    minimum_value: 0
   problem_instance:
     title: Problem instance
     description: The IRI that identifies this occurrence of the problem.
@@ -207,7 +201,7 @@ enums:
       in_use:
         title: In use
         meaning: rp:inUse
-        description: The delete would leave other aggregates pointing at a class that refuses it; the answer names them.
+        description: The delete would leave other aggregates pointing at a class that refuses it; the answer names the referrers the caller may read, up to a limit, and counts the rest.
       precondition_required:
         title: Precondition required
         meaning: rp:preconditionRequired

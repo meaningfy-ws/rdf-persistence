@@ -66,6 +66,9 @@
          "@container": "@set",
          "@id": "memberIri"
       },
+      "more_count": {
+         "@id": "moreCount"
+      },
       "owned_by": {
          "@type": "@id",
          "@id": "ownedBy"

@@ -26,7 +26,7 @@ from tests.unit.api.iri_policy_helpers import (
     IRIS,
     TENANT,
     TTL,
-    StoreTenancy,
+    TenancyDouble,
     body,
     book,
     chapter_ids,
@@ -50,7 +50,7 @@ async def store():
 
 @pytest.fixture
 def aggregates(store) -> Aggregates:
-    return Aggregates(DOCUMENTS, StoreTenancy(store), iris=IRIS)  # type: ignore[arg-type]
+    return Aggregates(DOCUMENTS, TenancyDouble(lambda: session_on(store)), iris=IRIS)  # type: ignore[arg-type]
 
 
 async def nothing_reached(store: FakeStore) -> None:

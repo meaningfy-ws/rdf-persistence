@@ -45,15 +45,17 @@ class ReferencedRemovals:
         ``hidden_count``, each aggregate once.
         """
         refused = sorted(roots)
-        items = sorted(named(self._view, list(rows)))
+        items = sorted(named(self._view, rows))
         referrers = {referrer for referrer, _, _ in items}
         allowed = referrers if readable is None else await readable(root, rows)
-        shown = sorted(referrers & allowed)[: self._cap]
+        readable_referrers = referrers & allowed
+        ordered = tuple(sorted(readable_referrers)[: self._cap])
+        shown = frozenset(ordered)
         return InUse(
             f"{', '.join(refused)} is still referred to",
             iris=tuple(refused),
             referrers=tuple(item for item in items if item[0] in shown),
-            more_count=len(referrers & allowed) - len(shown),
+            more_count=len(readable_referrers) - len(ordered),
             hidden_count=len(referrers - allowed),
             filtered=readable is not None,
         )

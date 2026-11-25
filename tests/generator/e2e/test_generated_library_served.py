@@ -2,7 +2,7 @@
 
 The toy is copied to ``tmp_path/toy_e2e``, generated as ``toy_e2e.generated``, imported with
 ``tmp_path`` on ``sys.path`` and served with ``install_service`` over Fuseki, Garage and Zitadel,
-wired as ``tests/e2e/library_app.py`` does minus the scan routes. The helpers of the library's own
+wired as ``tests/library_app.py`` does minus the scan routes. The helpers of the library's own
 e2e (callers, settings) and of the toy service (problems, bodies) are imported, not copied.
 """
 
@@ -32,9 +32,9 @@ from rdf_persistence import (
     zitadel_roles_claim,
 )
 from rdf_persistence.testkit import access_token
-from tests.e2e.library_app import library_settings
 from tests.e2e.world import Callers
 from tests.generator.e2e.generated_toy import PACKAGE, generated_toy
+from tests.library_app import library_settings
 from tests.toy import REVIEW_WORKFLOW, ROLES
 from tests.toy_service import assert_problem, body_of, drop_buckets, drop_databases, unique_prefix
 

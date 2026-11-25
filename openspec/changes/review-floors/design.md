@@ -414,3 +414,35 @@ test here is slow except where the task says so.
 None. The owner answered OPEN-1 to OPEN-9 on 2026-11-25 by accepting every recommendation, and
 round 2 folded in #272 (all six items), #273 and #275 (`inputs/qa.md`). #371 and #372 are planned
 in `consumer-friction`, not here.
+
+## Delivery decisions
+
+The lead's decisions during delivery (R-0007), shown to the owner for validation at the end.
+
+- **D-1 (stage 1, 2026-11-25), blast radius without GitNexus:** `make reindex` hung for five
+  minutes because another session's GitNexus process holds the graph database. Its documented
+  recovery (`gitnexus clean --force`) would break that session, so stage 1 takes its blast radius
+  from Serena's `find_referencing_symbols` on the symbols each task changes (all private, or
+  tests). Stage 2 tries `make reindex` again at its start.
+- **D-2 (2026-11-25), the owner chose to continue in the planning session** instead of a fresh
+  epic session (guardrails, *Session hygiene*); the session still ends at the stage-1 merge
+  (P-0016).
+- **D-3 (2026-11-25), one session as far as it gets:** the owner asked to finish what this session
+  can and then park, overriding P-0016's session end at each stage merge. Because of the host
+  load (one `make check-all` took 38 min, against 13 in the durations table), builders run only
+  the narrow checks of the files they touch (`uv run pytest <files>`, `make lint`); the lead runs
+  `make check-all` once per stage before the PR and once after the fix pass.
+- **D-4 (stage 1 review, L2+L3, 2026-11-25), accepted findings, fixed in one pass:**
+  F1 (L2) task 1.3's test lacks the deep read of each parent the task names: add it.
+  F2 (L2) task 1.2's test finds the heads read by the text `"VALUES ?m"`: match the `READ_HEADS`
+  query itself, so another query cannot make it pass vacuously.
+  F3 (L3) `_CollectionCheck`'s docstring cites "nested-collections PD-5": cite review-floors PD-5.
+  F4 (L3) rewrap the `Aggregates.remove` docstring after the h2 text.
+  F5 (L2) the 1.2 scenario-map row cites "the PD-5 skip": cite task 1.2 only.
+  Under the floor (not fixed): the redundant `missing` assert of the tenancy double test; the
+  place of `test_toy_vocabulary.py` in `tooling`; `author_iri` without a docstring.
+- **D-11 (stage 1 gate, 2026-11-25), `_CollectionCheck` joins the model guard's allow list:**
+  `make test` failed `test_model_guard.py`: PD-5's dataclass is a hand-written model to the guard
+  (P-0007), which PD-5 did not foresee. It holds a `Session`, a `GuardContext` and a
+  `ReferenceCollection`, runtime objects LinkML cannot express, as `GuardContext` (allowed for the
+  same write guard) does; so it joins `HAND_WRITTEN` with that reason (lead-fixed, light chore).

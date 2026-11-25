@@ -4,11 +4,10 @@ from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence.schema.services import vocabulary as v
 from tests.fixtures.library.domain.generated.books import Genre
-from tests.toy import book_iri, dune, poetry, shelf, shelf_iri, toy_mapper
+from tests.toy import BOOK_CLASS, book_iri, dune, poetry, shelf, shelf_iri, toy_mapper
 
 LIB = "https://example.org/ns/library#"
 SHELF_CLASS = URIRef(f"{LIB}Shelf")
-BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
 B1, S1, S2 = book_iri(1), shelf_iri(1), shelf_iri(2)
 
 

@@ -150,9 +150,11 @@ class Aggregates:
     ) -> None:
         """Delete the aggregate ``iri`` if it is still at ``if_version``.
 
-        ``readable`` says which referrers the caller may read; it shapes the ``InUse`` of a refusal
-        (``None``: every referrer is named). ``may_read`` tells which aggregates the caller may read,
-        so a delete rule's reader hides the others (``None``: the session's full reach).
+        ``readable`` says which referrers the caller may read; it shapes the ``InUse`` of a refusal.
+        ``None`` gives an unfiltered ``InUse`` that names every referrer: fit for an in-process
+        caller, never to be shown by name to a caller who may not read them (see ``InUse``).
+        ``may_read`` tells which aggregates the caller may read, so a delete rule's reader hides
+        the others (``None``: the session's full reach).
 
         Raises:
             NotFound: The aggregate has no graph, or is not of ``cls`` (a class derived from it will do).

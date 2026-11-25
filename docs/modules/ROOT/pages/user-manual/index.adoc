@@ -12,7 +12,7 @@ New to the toolkit? Walk through xref:tutorials/getting-started.adoc[Getting sta
 class, stored and read back. This manual then covers each part in full.
 
 Every example is modelled on the toy library of the toolkit's repository:
-`tests/fixtures/library/` (the model), `tests/e2e/library_app.py` (the composition root) and
+`tests/fixtures/library/` (the model), `tests/library_app.py` (the composition root) and
 `tests/toy_service.py` (the same service over the fakes). Short answers to the usual questions,
 with links back here, are on xref:questions.adoc[Common questions].
 

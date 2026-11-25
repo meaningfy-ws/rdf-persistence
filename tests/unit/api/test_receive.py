@@ -32,7 +32,7 @@ from rdf_persistence.testkit import (
 )
 from tests.fixtures.library.domain.generated.templates import Template
 from tests.logs import attributes
-from tests.toy import toy_mapper
+from tests.toy import FAST_POLL, toy_mapper
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, made, principal_of
 
 LOGGER = "rdf_persistence.api.entrypoints.kit"
@@ -82,10 +82,10 @@ async def world():
         replaced = await http.put(book, json=DUNE_BODY, headers={**headers, "If-Match": etag})
         assert replaced.status_code == 200, replaced.text
         sent = await wait_until_async(
-            lambda: _replace_sent(broker), "lib's Replace on the broker", poll_seconds=0.01
+            lambda: _replace_sent(broker), "lib's Replace on the broker", poll_seconds=FAST_POLL
         )
         await wait_until_async(
-            lambda: _async(there.activities), "cat's observer to run", poll_seconds=0.01
+            lambda: _async(there.activities), "cat's observer to run", poll_seconds=FAST_POLL
         )
         yield SimpleNamespace(
             store=store, broker=broker, lib=lib, cat=cat, lib_bus=lib_bus, cat_bus=cat_bus,
@@ -271,7 +271,7 @@ async def test_an_application_activity_reaches_the_observer_with_an_application_
         work.add(Template(id=iri, label="a template"))
         await work.commit()
     await wait_until_async(
-        lambda: _async(seen.activities), "cat's observer of Add", poll_seconds=0.01
+        lambda: _async(seen.activities), "cat's observer of Add", poll_seconds=FAST_POLL
     )
     assert len(seen.activities) == 1, "the application's Add; the tenant's were relayed before"
     assert seen.principals == [world.cat.kit.tenancy.toolkit.id], (
@@ -316,7 +316,7 @@ async def test_a_looping_observer_over_the_limit_leaves_one_error_record_in_the_
     await wait_until_async(
         lambda: _async([r for r in caplog.records if r.levelno >= logging.ERROR]),
         "the message limit to be logged",
-        poll_seconds=0.01,
+        poll_seconds=FAST_POLL,
     )
     errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
     assert [r.name for r in errors] == [LOGGER], (
