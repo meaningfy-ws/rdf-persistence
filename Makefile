@@ -169,7 +169,7 @@ pre-commit: ## Run pre-commit hooks on all files
 #-----------------------------------------------------------------------------
 # Validation — non-mutating targets
 #-----------------------------------------------------------------------------
-.PHONY: format-check lint typecheck typecheck-generated typecheck-ts typecheck-openapi-ts check-architecture test test-unit test-feature test-generator test-containers fuseki-image test-e2e test-perf test-fast test-changed profile-tests test-unit-ci coverage-combine test-durations
+.PHONY: format-check lint typecheck typecheck-generated typecheck-ts typecheck-openapi-ts check-architecture test test-unit test-feature test-generator test-containers fuseki-image test-e2e test-perf test-fast test-changed test-seed profile-tests test-unit-ci coverage-combine test-durations
 
 format-check: ## Check formatting with Ruff, without changing files
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Checking formatting$(END_BUILD_PRINT)"
@@ -276,14 +276,20 @@ test-fast: ## Run the unit and feature tests not marked slow, in parallel, witho
 	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "(unit or feature) and not slow $(NOT_QUARANTINE)"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast tests passed$(END_BUILD_PRINT)"
 
-test-changed: ## Run the tests of the files changed against BASE (default develop), slow ones included, without coverage; PYTEST_N overrides the worker count
+test-changed: ## Run the tests of the files changed against BASE (default develop), slow ones included, without coverage; PYTEST_CHANGED_N sets the worker count (default 4)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the tests of the changed files$(END_BUILD_PRINT)"
-	@ args=$$(uv run python -m tests.changed); status=$$?; \
-	  if [ $$status -eq 3 ]; then $(MAKE) --no-print-directory test-fast; \
+	@ uv run python -m tests.changed; status=$$?; \
+	  if [ $$status -eq 75 ]; then $(MAKE) --no-print-directory test-fast; \
 	  elif [ $$status -ne 0 ]; then exit $$status; \
-	  elif [ -n "$$args" ]; then set -f; IFS=$$'\n'; \
-	    uv run pytest $$args $(UNIT_LANE) -m "(unit or feature) $(NOT_QUARANTINE)" \
-	    && echo -e "$(BUILD_PRINT)$(ICON_DONE) Changed-file tests passed$(END_BUILD_PRINT)"; fi
+	  else echo -e "$(BUILD_PRINT)$(ICON_DONE) Changed-file tests passed$(END_BUILD_PRINT)"; fi
+
+test-seed: ## The lead's: record the test selection data of this worktree (slow tests included, queued), then swap it in
+	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Seeding the test selection data$(END_BUILD_PRINT)"
+	@ rm -f .testmondata.seed*
+	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(UNIT_LANE) -m "(unit or feature) $(NOT_QUARANTINE)" --testmon --testmon-forceselect $(PARALLEL) -p no:randomly; uv run --no-sync python -m tests.testmon_data swap $$?
+
+# The seed run records into its own file; the swap moves it over .testmondata (agent-test-control PD-7).
+test-seed: export TESTMON_DATAFILE = .testmondata.seed
 
 profile-tests: ## Print the 15 slowest unit and feature tests, set-up and call apart, without coverage (PROFILE_MARK narrows)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Profiling the unit and feature tests$(END_BUILD_PRINT)"

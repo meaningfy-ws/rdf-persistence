@@ -6,6 +6,7 @@ import subprocess
 
 import pytest
 
+from tests.changed import IGNORES
 from tests.conftest import TESTS_ROOT_DIR
 from tests.queue import workers
 
@@ -22,13 +23,15 @@ LANES = [
     "test-feature",
     "test-generator",
     "test-fast",
-    "test-changed",
+    "test-seed",
     "coverage-report",
     "profile-tests",
     "test-containers",
     "test-e2e",
     "test-perf",
 ]
+# `test-changed` is no lane of this list: tests/changed.py plans and runs its pytest (PD-4), the
+# marker filter and ignores are its constants, pinned below and in test_changed.py.
 PARALLEL_LANES = [
     "test-unit",
     "test-unit-ci",
@@ -36,6 +39,7 @@ PARALLEL_LANES = [
     "test-feature",
     "test-generator",
     "test-fast",
+    "test-seed",
     "profile-tests",
 ]
 WORKERS = re.compile(r"-n \S+")
@@ -83,7 +87,7 @@ def test_lane_selection_excludes_quarantine(lane: str) -> None:
             assert selection.startswith("("), f"{lane} needs parentheses: {selection!r}"
 
 
-@pytest.mark.parametrize("target", [*LANES, "mutation"])
+@pytest.mark.parametrize("target", [*LANES, "test-changed", "mutation"])
 def test_recipe_stays_within_the_line_budget(target: str) -> None:
     assert len(recipe_of(target)) <= MAX_RECIPE_LINES, f"{target} recipe is too long"
 
@@ -104,11 +108,7 @@ def test_every_parallel_lane_distributes_by_group(lane: str) -> None:
 
 
 def test_a_lane_that_names_workers_is_in_the_parallel_list() -> None:
-    named = [
-        lane
-        for lane in LANES
-        if lane != "test-changed" and WORKERS.search(expanded("\n".join(recipe_of(lane))))
-    ]
+    named = [lane for lane in LANES if WORKERS.search(expanded("\n".join(recipe_of(lane))))]
 
     assert sorted(named) == sorted(PARALLEL_LANES), "a lane runs in parallel but is not checked"
 
@@ -169,7 +169,7 @@ LANES_WITHOUT_CONTAINERS = [
     "test-feature",
     "test-generator",
     "test-fast",
-    "test-changed",
+    "test-seed",
     "coverage-report",
     "profile-tests",
 ]
@@ -221,7 +221,7 @@ def test_only_the_ci_unit_lane_leaves_the_slow_tests_out() -> None:
         return " ".join(SELECTION.findall(expanded("\n".join(recipe_of(lane)))))
 
     assert "and not slow" in selection("test-unit-ci"), "CI must not run the slow tests"
-    for lane in ("test-unit", "test-changed"):
+    for lane in ("test-unit", "test-seed"):
         assert "slow" not in selection(lane), f"{lane} must keep running the slow tests"
 
 
@@ -284,6 +284,85 @@ def test_test_changed_neither_queues_nor_reads_the_worker_count() -> None:
 
     assert "$(PYTEST)" not in recipe, "test-changed queues"
     assert "PYTEST_N" not in recipe, "test-changed reads PYTEST_N"
+
+
+def test_test_changed_runs_the_module_and_falls_back_on_75_only() -> None:
+    """agent-test-control PD-4: 75 means make test-fast; every other status is the module's own."""
+    recipe = "\n".join(recipe_of("test-changed"))
+
+    assert "uv run python -m tests.changed" in recipe, "test-changed runs the module"
+    assert re.search(r"-eq 75\b.*\$\(MAKE\) --no-print-directory test-fast", recipe), (
+        "75 runs make test-fast"
+    )
+    assert "-eq 3" not in recipe, "3 is no fallback status any more"
+    assert "exit $$status" in recipe, "any other non-zero status is the target's"
+
+
+def test_test_changed_leaves_the_pytest_arguments_to_the_module() -> None:
+    recipe = expanded("\n".join(recipe_of("test-changed")))
+
+    for forbidden in ("pytest", "--ignore", '-m "', "-n "):
+        assert forbidden not in recipe.replace("tests.changed", ""), (
+            f"test-changed spells {forbidden!r}: tests/changed.py plans it"
+        )
+
+
+def test_test_changed_help_names_the_worker_variable_it_reads() -> None:
+    line = next(x for x in MAKEFILE.splitlines() if x.startswith("test-changed:"))
+
+    assert "PYTEST_CHANGED_N" in line, "the help names PYTEST_CHANGED_N"
+    assert "PYTEST_N" not in line.replace("PYTEST_CHANGED_N", ""), "the help names PYTEST_N"
+
+
+def test_the_ignores_of_the_changed_module_are_those_of_the_unit_lane() -> None:
+    """agent-test-control PD-5: the Makefile is the source of truth, the module repeats it."""
+    unit_lane = dict(VARIABLE.findall(MAKEFILE))["UNIT_LANE"]
+    generator_e2e = dict(VARIABLE.findall(MAKEFILE))["GENERATOR_E2E"]
+    text = unit_lane.replace("$(GENERATOR_E2E)", generator_e2e).replace("$(TEST_PATH)", "tests")
+
+    assert tuple(re.findall(r"--ignore=\S+", text)) == IGNORES, "IGNORES drifted from UNIT_LANE"
+
+
+def _seed_recipe() -> str:
+    return "\n".join(recipe_of("test-seed"))
+
+
+def test_the_seed_removes_the_seed_files_of_an_earlier_run_before_it_starts() -> None:
+    """PD-7: a seed killed before its swap leaves files that would make the next one incremental."""
+    recipe = _seed_recipe()
+
+    assert "rm -f .testmondata.seed*" in recipe, "the seed files are deleted"
+    assert recipe.index("rm -f .testmondata.seed*") < recipe.index("--testmon"), "before the run"
+
+
+def test_the_seed_writes_its_own_data_file() -> None:
+    assert "test-seed: export TESTMON_DATAFILE = .testmondata.seed\n" in MAKEFILE, (
+        "the seed run records into .testmondata.seed, which the swap then moves"
+    )
+
+
+def test_the_seed_run_is_queued_selects_slow_tests_and_follows_the_test_order() -> None:
+    line = next(x for x in recipe_of("test-seed") if "--testmon" in x)
+
+    for part in (
+        "--testmon --testmon-forceselect",
+        "$(UNIT_LANE)",
+        "$(PARALLEL)",
+        "-p no:randomly",
+        '-m "(unit or feature) $(NOT_QUARANTINE)"',
+    ):
+        assert part in line, f"the seed run lacks {part!r}"
+    assert "--testmon-nocollect" not in line, "the seed collects"
+    assert "--cov" not in line, "the seed measures no coverage"
+
+
+def test_the_seed_exits_as_the_swap_says() -> None:
+    last = recipe_of("test-seed")[-1]
+
+    assert last.rstrip().endswith("uv run --no-sync python -m tests.testmon_data swap $$?"), (
+        "the last command passes pytest's status to the swap and its answer is the target's"
+    )
+    assert "-p no:randomly; uv run" in last, "the swap follows the pytest run on its own line"
 
 
 def test_without_ci_the_queue_runs_pytest_and_the_workers_are_left_to_it() -> None:

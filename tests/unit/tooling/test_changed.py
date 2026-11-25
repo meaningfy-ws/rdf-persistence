@@ -1,7 +1,10 @@
 """The changed-files mapper picks the test folders of a change (test-lanes PD-1 to PD-5)."""
 
 import subprocess
+import sys
+import threading
 from collections.abc import Callable
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -15,9 +18,9 @@ from tests.changed import (
     Selection,
     changed_files,
     plan,
-    pytest_arguments,
     select,
 )
+from tests.testmon_data import DAMAGED_MESSAGE, PACKAGES_MESSAGE, Outcome, worktree_lock
 
 REPO = Path(__file__).resolve().parents[3]
 CONTAINER_TEST = "tests/integration/api/test_routes.py"
@@ -218,11 +221,11 @@ def test_a_changed_core_file_falls_back_to_the_fast_suite(changed):
 
 
 def test_main_exits_with_the_fallback_status_when_core_changed(monkeypatch, capsys):
-    """TC-23 through ``main``: exit 3, which the Makefile turns into ``make test-fast``."""
+    """TC-23 through ``main``: exit 75, which the Makefile turns into ``make test-fast``."""
     got, out = _run_main(monkeypatch, capsys, ["rdf_persistence/core/domain/sparql.py"])
 
-    assert got == FALLBACK_EXIT, "exit status for a change in core"
-    assert out.out == "", "no pytest arguments are printed"
+    assert got == 75, "exit status for a change in core"
+    assert out.out == "", "nothing is printed on stdout"
     assert "rdf_persistence/core/domain/sparql.py" in out.err, "stderr names the file"
 
 
@@ -361,32 +364,6 @@ def test_fallback_wins_over_selected_paths():
     selection = _select(["rdf_persistence/api/services/a.py", "Makefile", "tests/conftest.py"])
 
     assert len(selection.fallback_reasons) == 2, "one reason per fallback path"
-
-
-@pytest.mark.parametrize(
-    ("paths", "expected_n"),
-    [
-        ((ROOT_FILE,), "0"),
-        ((OTHER_ROOT_FILE, ROOT_FILE), "0"),
-        (("tests/unit/api/",), "auto"),
-        (("tests/feature/",), "auto"),
-        (("tests/unit/api/", "tests/unit/persistence/"), "auto"),
-        (("tests/unit/api/", ROOT_FILE), "auto"),
-    ],
-)
-def test_one_process_is_chosen_for_files_only(paths, expected_n):
-    assert pytest_arguments(paths, None) == [*paths, "-n", expected_n, *LOADGROUP], (
-        f"workers for {paths}"
-    )
-
-
-def test_pytest_n_overrides_the_choice_of_workers():
-    assert pytest_arguments(("tests/unit/api/",), "4") == [
-        "tests/unit/api/",
-        "-n",
-        "4",
-        *LOADGROUP,
-    ], "PYTEST_N wins"
 
 
 def _missing_library_app(path: str) -> bool:
@@ -576,10 +553,31 @@ def test_an_unknown_base_is_a_git_error_that_names_it(feature_repo):
         changed_files("nosuchbase")
 
 
-def _run_main(monkeypatch, capsys, listing):
+class Runner:
+    """The injected pytest runner: records each argument list, answers the codes it was given."""
+
+    def __init__(self, *codes: int):
+        self.codes = list(codes)
+        self.calls: list[tuple[str, ...]] = []
+
+    def __call__(self, arguments):
+        self.calls.append(tuple(arguments))
+        return self.codes.pop(0) if self.codes else 0
+
+
+def _no_lock(root):
+    return nullcontext()
+
+
+def _run_main(
+    monkeypatch, capsys, listing, runner=None, outcome=Outcome.NO_DATA, lock=_no_lock, env=None
+):
     monkeypatch.chdir(REPO)
     monkeypatch.delenv("PYTEST_N", raising=False)
+    monkeypatch.delenv("PYTEST_CHANGED_N", raising=False)
     monkeypatch.delenv("BASE", raising=False)  # make test-changed BASE=<branch> exports it
+    for name, value in (env or {}).items():
+        monkeypatch.setenv(name, value)
     monkeypatch.setattr(changed, "_git", lambda *args: f"{REPO}\n")
 
     def listed(base):
@@ -588,7 +586,7 @@ def _run_main(monkeypatch, capsys, listing):
         return listing
 
     monkeypatch.setattr(changed, "changed_files", listed)
-    code = changed.main()
+    code = changed.main(runner or Runner(), lambda root: outcome, lock)
     return code, capsys.readouterr()
 
 
@@ -596,9 +594,9 @@ def _run_main(monkeypatch, capsys, listing):
     ("listing", "code", "stdout_empty", "stderr_part"),
     [
         (["openspec/changes/x/design.md"], 0, True, "nothing to run against develop"),
-        (["Makefile"], 3, True, "Makefile"),
-        (GitError("the base is missing"), 3, True, "the base is missing"),
-        (["tests/unit/tooling/test_markers.py"], 0, False, ""),
+        (["Makefile"], 75, True, "Makefile"),
+        (GitError("the base is missing"), 75, True, "the base is missing"),
+        (["tests/unit/tooling/test_markers.py"], 0, True, ""),
     ],
 )
 def test_main_exits_with_the_status_its_listing_calls_for(
@@ -609,3 +607,187 @@ def test_main_exits_with_the_status_its_listing_calls_for(
     assert got == code, f"exit status for {listing!r}"
     assert (out.out == "") is stdout_empty, f"stdout for {listing!r}: {out.out!r}"
     assert stderr_part in out.err, f"stderr for {listing!r}: {out.err!r}"
+
+
+VISIBLE = "rdf_persistence/iris/domain/layout.py"  # testmon-visible: T with data
+FOLDER_ONLY = "docs/modules/ROOT/pages/index.adoc"  # a folder rule: F only
+TWO_RUNS = [VISIBLE, FOLDER_ONLY]
+
+
+def test_the_fallback_exit_is_75():
+    assert FALLBACK_EXIT == 75, "75 is the Makefile's signal to run make test-fast"
+
+
+@pytest.mark.parametrize(
+    ("pytest_exit", "expected"),
+    [(0, 0), (1, 1), (2, 2), (3, 2), (4, 4), (5, 0), (70, 1), (-9, 1)],
+)
+def test_main_maps_the_exit_status_of_pytest(monkeypatch, capsys, pytest_exit, expected):
+    """PD-4: 5 (nothing collected) is a pass, 3 (internal error) becomes 2, 75 stays the fallback's."""
+    runner = Runner(pytest_exit)
+
+    got, _ = _run_main(monkeypatch, capsys, [FOLDER_ONLY], runner)
+
+    assert got == expected, f"pytest exit {pytest_exit}"
+    assert len(runner.calls) == 1, "the one planned run was made"
+
+
+def test_main_says_so_when_testmon_selects_no_test(monkeypatch, capsys):
+    got, out = _run_main(monkeypatch, capsys, [VISIBLE], Runner(5), Outcome.SOUND)
+
+    assert got == 0, "no test selected is a pass"
+    assert "testmon selected no test" in out.err, "and it is said"
+
+
+def test_main_stops_at_the_first_failing_invocation(monkeypatch, capsys):
+    runner = Runner(1, 0)
+
+    got, _ = _run_main(monkeypatch, capsys, TWO_RUNS, runner, Outcome.SOUND)
+
+    assert got == 1, "the failure of the first run is the status"
+    assert len(runner.calls) == 1, "the second run is not made"
+
+
+def test_main_runs_every_invocation_in_order_when_all_pass(monkeypatch, capsys):
+    runner = Runner(0, 0)
+
+    got, _ = _run_main(monkeypatch, capsys, TWO_RUNS, runner, Outcome.SOUND)
+
+    assert got == 0, "all passed"
+    assert [("--testmon" in call) for call in runner.calls] == [True, False], "T then F"
+
+
+def test_main_passes_the_plans_argument_lists_to_the_runner(monkeypatch, capsys):
+    runner = Runner()
+
+    _run_main(monkeypatch, capsys, [VISIBLE], runner, Outcome.SOUND)
+
+    assert runner.calls == [_testmon_run()], "T of PD-5 with the default workers"
+
+
+def test_pytest_changed_n_sets_the_workers_and_pytest_n_is_ignored(monkeypatch, capsys):
+    runner = Runner()
+
+    _run_main(
+        monkeypatch,
+        capsys,
+        [VISIBLE],
+        runner,
+        Outcome.SOUND,
+        env={"PYTEST_CHANGED_N": "6", "PYTEST_N": "2"},
+    )
+
+    assert runner.calls == [_testmon_run(workers=6)], "PYTEST_CHANGED_N wins, PYTEST_N is ignored"
+
+
+@pytest.mark.parametrize(
+    ("outcome", "message", "seed_hint"),
+    [
+        (Outcome.SOUND, "", False),
+        (Outcome.NO_DATA, "", True),
+        (Outcome.DAMAGED, DAMAGED_MESSAGE, True),
+        (Outcome.PACKAGES_CHANGED, PACKAGES_MESSAGE, True),
+    ],
+)
+def test_the_selection_data_outcome_decides_the_plan_and_its_message(
+    monkeypatch, capsys, outcome, message, seed_hint
+):
+    runner = Runner()
+
+    _, out = _run_main(monkeypatch, capsys, [VISIBLE], runner, outcome)
+
+    with_data = "--testmon" in runner.calls[0]
+    assert with_data is (outcome is Outcome.SOUND), f"testmon is used only on sound data: {outcome}"
+    assert message in out.err, f"the message of {outcome} is printed"
+    assert (SEED_HINT in out.err) is seed_hint, f"the seed hint for {outcome}"
+
+
+def test_a_hint_goes_to_stderr_and_is_not_a_fallback(monkeypatch, capsys):
+    runner = Runner()
+
+    got, out = _run_main(monkeypatch, capsys, [CONTAINER_TEST], runner, Outcome.SOUND)
+
+    assert got == 0, "a container test only hints"
+    assert "make test-containers" in out.err, "the hint is on stderr"
+    assert runner.calls == [], "nothing is run"
+
+
+def test_a_fallback_reason_runs_nothing(monkeypatch, capsys):
+    runner = Runner()
+
+    got, _ = _run_main(monkeypatch, capsys, ["Makefile", VISIBLE], runner, Outcome.SOUND)
+
+    assert got == 75, "run make test-fast"
+    assert runner.calls == [], "the runner is not called"
+
+
+HOLD_EXCLUSIVE = """
+import fcntl, os, sys
+fd = os.open(sys.argv[1], os.O_RDWR | os.O_CREAT)
+fcntl.flock(fd, fcntl.LOCK_EX)
+print("ready", flush=True)
+sys.stdin.read()
+"""
+
+
+def test_main_waits_for_an_exclusive_holder_before_the_testmon_run(monkeypatch, capsys, tmp_path):
+    """PD-6: the swap holds the lock exclusive; T runs only once it is gone."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(changed, "_git", lambda *args: f"{tmp_path}\n")
+    monkeypatch.setattr(changed, "changed_files", lambda base: [VISIBLE])
+    waiting = threading.Event()
+    runner = Runner()
+    results: list[int] = []
+
+    def shared_and_signalling(root):
+        return worktree_lock(root, exclusive=False, on_wait=waiting.set)
+
+    holder = subprocess.Popen(
+        [sys.executable, "-c", HOLD_EXCLUSIVE, str(tmp_path / ".testmondata.lock")],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    builder = threading.Thread(
+        target=lambda: results.append(
+            changed.main(runner, lambda root: Outcome.SOUND, shared_and_signalling)
+        )
+    )
+    try:
+        assert holder.stdout.readline().strip() == "ready", "the holder has the lock exclusive"
+        builder.start()
+        assert waiting.wait(timeout=30), "main reports that it waits for the lock"
+        assert runner.calls == [], "T is not run while the lock is held exclusive"
+        holder.kill()
+        holder.wait()
+        builder.join(timeout=30)
+        assert not builder.is_alive(), "main goes on once the holder is gone"
+    finally:
+        holder.kill()
+        holder.wait()
+    assert results == [0], "main finished with its pass"
+    assert runner.calls == [_testmon_run()], "T ran after the wait"
+
+
+def test_the_folder_run_does_not_take_the_lock(monkeypatch, capsys):
+    taken: list[Path] = []
+
+    def recording_lock(root):
+        taken.append(root)
+        return nullcontext()
+
+    _run_main(monkeypatch, capsys, [FOLDER_ONLY], Runner(), Outcome.SOUND, recording_lock)
+
+    assert taken == [], "F reads no selection data"
+
+
+def test_the_testmon_run_takes_the_lock_of_the_repository_root(monkeypatch, capsys):
+    taken: list[Path] = []
+
+    def recording_lock(root):
+        taken.append(root)
+        return nullcontext()
+
+    _run_main(monkeypatch, capsys, [VISIBLE], Runner(), Outcome.SOUND, recording_lock)
+
+    assert taken == [REPO], "T holds the shared lock of the root"
