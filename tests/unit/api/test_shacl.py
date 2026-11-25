@@ -131,3 +131,30 @@ def test_each_documents_has_its_own_shapes_even_for_same_size_rewrites_of_the_fi
     assert (EX.extra, RDF.type, EX.Thing) not in again.shapes, (
         "adding to one graph leaves the others"
     )
+
+
+def test_load_warm_shapes_warms_once_per_content(monkeypatch, tmp_path):
+    marker = EX[f"marker-{uuid.uuid4()}"]  # a digest no other test in this process has warmed
+    same = f"{SHAPES}\n<{marker}> a <urn:example:Marker> .\n"
+    other_marker = EX[f"marker-{uuid.uuid4()}"]
+    other = f"{SHAPES}\n<{other_marker}> a <urn:example:Marker> .\n"
+    paths = []
+    for name, text in (("one", same), ("two", same), ("three", other)):
+        path = tmp_path / f"{name}.ttl"
+        path.write_text(text, encoding="utf-8")
+        paths.append(path)
+    warmed: list[Graph] = []
+    original = shacl.warm_up
+
+    def spying(shapes: Graph) -> None:
+        warmed.append(shapes)
+        original(shapes)
+
+    monkeypatch.setattr(shacl, "warm_up", spying)  # X2
+    one, two, three = (shacl.load_warm_shapes(path) for path in paths)
+    assert len(warmed) == 2, "same bytes warm once, other bytes warm again"
+    assert (marker, RDF.type, EX.Marker) in one, "the graph holds the file's triples"
+    assert (marker, RDF.type, EX.Marker) not in three, "other bytes, other shapes"
+    one.add((EX.extra, RDF.type, EX.Thing))
+    assert (EX.extra, RDF.type, EX.Thing) not in two, "adding to one leaves the other unchanged"
+    assert one is not two, "each caller gets a graph of its own"

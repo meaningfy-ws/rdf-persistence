@@ -18,18 +18,24 @@ action for the first time. What this does not cover is a shape that targets noth
 (``sh:targetNode``, ``sh:targetSubjectsOf``, a SPARQL target): warm those with ``validate_locked``.
 """
 
+import hashlib
+from functools import lru_cache
+from pathlib import Path
+
 from pyshacl import validate
 from rdflib import RDF, SH, Graph, URIRef
 from rdflib.namespace import Namespace
+from rdflib.term import Node
 
 from rdf_persistence.core.domain import sparql_parsing
+from rdf_persistence.core.domain.media import TURTLE
 
 _WARM = Namespace("urn:rdf-persistence:warm-up:")
 _INSTANCES = 2  # one focus node and several take different paths through the generated queries
 
 Validation = tuple[bool, Graph, str]
 
-# The digests of the shapes warmed in this process (``warm_up_once``).
+# The digests of the shapes warmed in this process (``_warm_up_once``).
 _WARMED_SHAPES: set[str] = set()
 
 
@@ -60,12 +66,41 @@ def warm_up(shapes: Graph) -> None:
     validate_locked(data, scratch)
 
 
-def warm_up_once(shapes: Graph, digest: str) -> None:
+@lru_cache(maxsize=8)
+def _shape_triples(digest: str, data: bytes) -> tuple[tuple[Node, Node, Node], ...]:
+    """The triples of the Turtle ``data``, parsed once per ``digest`` and ``data`` (the cache is keyed by both).
+
+    The digest is carried for ``_warm_up_once``, which keys its process-wide warm-up by it.
+    """
+    return tuple(Graph().parse(data=data, format=TURTLE))
+
+
+def _read_shapes(path: Path) -> tuple[Graph, str]:
+    """A graph of its own holding the shapes in ``path``, and the digest of their bytes."""
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    graph = Graph()
+    graph.addN((s, p, o, graph) for s, p, o in _shape_triples(digest, data))
+    return graph, digest
+
+
+def load_warm_shapes(path: Path) -> Graph:
+    """The shapes in the Turtle file ``path``, warmed up once per content in this process.
+
+    Returns a graph of the caller's own. The digest is that of the bytes read, so the same content
+    at two paths warms once and different content warms again.
+    """
+    shapes, digest = _read_shapes(path)
+    _warm_up_once(shapes, digest)
+    return shapes
+
+
+def _warm_up_once(shapes: Graph, digest: str) -> None:
     """Warm ``shapes`` up unless this process has warmed shapes of the same digest: the warm-up's effect
     is process-wide. Read without the lock (a set lookup); decided again under it.
 
-    The digest must be that of the bytes the shapes were parsed from (the caller's contract): a wrong
-    digest that was already warmed skips the warm-up ``validate_warm`` relies on.
+    The digest must be that of the bytes the shapes were parsed from (``load_warm_shapes`` sees to it):
+    a wrong digest that was already warmed skips the warm-up ``validate_warm`` relies on.
     """
     if digest in _WARMED_SHAPES:
         return
