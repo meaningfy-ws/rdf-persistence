@@ -90,3 +90,24 @@ in the repository and the consumer's current model pass unchanged (probe, `input
 - Tests: `tests/generator/unit/test_hard_check.py`; one row in `tests/audit/scenario-map.csv`.
 - Consumers: a model with two slots on one IRI stops generating until it reuses the slot or gives
   its own one another IRI (RISK-1); the consumer's current model has none.
+
+## Reconciliation (as delivered)
+
+Delivered in PR #376 (one stage, #206 closed), archived in PR #377. Decisions taken in delivery
+are `design.md` D-3. Acceptance demo skipped by the developer on 2026-11-25
+(`evidence/acceptance.md`); no docs owed beyond stage 1 (`evidence/docs-owed.md`).
+
+| Item | Final state | PR |
+|---|---|---|
+| DEC-1 a hard problem, exit 1 | Delivered: `HardRule.SLOT_IRI`, generation stops and writes nothing (end-to-end test) | #376 |
+| DEC-2 identifier slots left out | Delivered: `identifier: true` skipped for slots and attributes; the library fixture's `id` beside `identifier` passes unchanged | #376 |
+| DEC-3 whole import closure, module by module, by `slot_iri` | Delivered: `schema_map` walked after `imports_closure()`, IRI from the existing `slot_iri` (P-0008) | #376 |
+| DEC-4 every target, reported by the target that owns a slot | Delivered: reported only when one slot is in the target's own modules (PD-3) | #376 |
+| PD-4 message and order | Delivered as specified; `_slot_iri_problems` split into two helpers to keep `hard.py` at xenon grade A | #376 |
+| Spec scenarios 1–3 | Proved: scenario 1 by the end-to-end test and fault (a), scenario 2 by `test_the_toy_library_passes`, scenario 3 by faults (b) and (c) (rule and element only, D-3 W1) | #376 |
+| Docs: `generation.adoc`, `CHANGELOG.md` BREAKING (D-1) | Delivered | #376 |
+| Requirement merged into `rp-generation` | Done at archive | #377 |
+
+What Changes, Capabilities and the spec delta are true of the code. Impact grew by the regenerated
+`rp-manifest.json` files (`hard.py` is a generator input) and one scenario-map row. Not delivered
+as shaped: nothing. Left under the floor: W1, S1, S2 (D-3).
