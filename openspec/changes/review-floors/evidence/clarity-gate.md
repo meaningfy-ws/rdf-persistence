@@ -48,6 +48,7 @@ Two nits folded in after the run: `test_changed.py:58`'s rule-5 example (`tests/
 the `BOOK_JSON` use count (33).
 
 The owner signs off the two spec-delta scenarios (`rp-generation`, `rp-testkit`) at the PR.
+Signed off by the owner on 2026-11-25.
 
 EPIC readiness check (lightweight), 2026-11-25, after the fold-in: pass. Every template
 section is present. The Why and the solution outline now name the ten issues and their stages.
