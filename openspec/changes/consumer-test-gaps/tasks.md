@@ -30,7 +30,7 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
   Accept: E9 to E14; `make test-fast check-quality`.
 - [x] 2.4 Docs: the `in-use` problem and the referrers listing in `reference/http-api.adoc` name
   both fields and when they are absent. CHANGELOG "Added". Accept: `make check-docs`.
-- [ ] 2.5 Lead: `make check-all`, one review pass, PR.
+- [x] 2.5 Lead: `make check-all`, one review pass, PR.
 
 ## 3. Generator: a redrawn role keeps its own cardinality (#332), PR 3, branch `fix/narrowed-cardinality`
 
@@ -55,7 +55,7 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [ ] 2.5 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 ·
   [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 4.1 · [ ] 4.2
 
 ## Verification
