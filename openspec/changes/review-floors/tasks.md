@@ -113,39 +113,39 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
 
 ## 3. Stage 3: events, testkit and docs (#215, #214, #125, #189, #272 a/c, #273)
 
-- [ ] 3.0 Lead: re-check the #215, #214, #125, #189 t, u, 272-a, 272-c and #273 rows (RISK-6); re-index.
-- [ ] 3.1 215-W2b, unit. Red: `tests/unit/testkit/test_streams.py::test_a_lifespan_start_up_longer_than_the_timeout_does_not_raise`
+- [x] 3.0 Lead: re-check the #215, #214, #125, #189 t, u, 272-a, 272-c and #273 rows (RISK-6); re-index.
+- [x] 3.1 215-W2b, unit. Red: `tests/unit/testkit/test_streams.py::test_a_lifespan_start_up_longer_than_the_timeout_does_not_raise`
   asserts the helper returns the head when the app's start-up takes 0.2 s and `timeout=0.05`
   (the `Lifespan` helper of that file with a start-up delay). Mutation: enter the lifespan inside
   the `asyncio.timeout` block of `testkit/streams.py`. The real 0.2 s delay is PD-13's recorded
   exception to `testing.adoc` rule 11, cited in the test's docstring. The `rp-testkit` delta's
   scenario names it; the lead adds its row.
-- [ ] 3.2 215-W5, unit. Red: `tests/unit/testkit/test_testkit_lazy_import.py::test_testkit_root_does_not_load_the_stream_or_service_module`,
+- [x] 3.2 215-W5, unit. Red: `tests/unit/testkit/test_testkit_lazy_import.py::test_testkit_root_does_not_load_the_stream_or_service_module`,
   parametrized on `rdf_persistence.testkit.streams` and `rdf_persistence.api.entrypoints.service`,
   asserts a fresh `-I` interpreter that imports `rdf_persistence.testkit` has neither in
   `sys.modules`. Mutation: an eager `from . import streams` in `testkit/__init__.py`.
-- [ ] 3.3 215-S5, unit. Red: none (DEC-3). `re.escape` in `test_open_event_stream.py:102` and
+- [x] 3.3 215-S5, unit. Red: none (DEC-3). `re.escape` in `test_open_event_stream.py:102` and
   `test_streams.py:154, 165`; the three tests pass.
-- [ ] 3.4 125-i1 (PD-13), unit. Red: `tests/unit/api/test_event_wiring.py::test_a_commit_wakes_the_relay_before_its_interval`
+- [x] 3.4 125-i1 (PD-13), unit. Red: `tests/unit/api/test_event_wiring.py::test_a_commit_wakes_the_relay_before_its_interval`
   asserts, with `relay_interval_seconds=60`, that a second commit's activity reaches the hub
   within 2 s once the first one has (design.md, error matrix: the relay is then in its wait).
   Mutation: delete `self.relay.wake()` in `kit.py:_publish`.
-- [ ] 3.5 125-i2 (PD-14), integration (`make test-containers`, local only). Red:
+- [x] 3.5 125-i2 (PD-14), integration (`make test-containers`, local only). Red:
   `tests/integration/adapters/test_redis_events.py::test_a_receiver_that_raised_gets_the_message_again_without_a_restart`
   asserts a receiver that raised once receives the same message again within 5 s, with no
   close or restart of the bus. Mutation: `claim_idle_seconds=600`. The lead records the run in
   `evidence/`.
-- [ ] 3.6 214-g and 215-S4a, docs. Red: none (DEC-3). `user-manual/test.adoc#event-stream` states
+- [x] 3.6 214-g and 215-S4a, docs. Red: none (DEC-3). `user-manual/test.adoc#event-stream` states
   the five outcomes and the several-streams note (design.md, *Worked examples*); each sentence
   cites its docstring line or test in the hand-off. Guard: `make check-docs`.
-- [ ] 3.7 189-t and 189-u (PD-15), docs. Red: none (DEC-3). `tutorials/getting-started.adoc`:
+- [x] 3.7 189-t and 189-u (PD-15), docs. Red: none (DEC-3). `tutorials/getting-started.adoc`:
   `domain/__init__.py`, `cd library`, the terms `ServiceKit`, `UnitOfWork`, `generated_models`
   defined where first used (one sentence each, naming the module that exports it), and the
   printed read-back of the book at line 145, copied from a run of
   `docs/modules/ROOT/examples/getting-started/` (no invented output); `user-manual/model.adoc:179-183` and
   `user-manual/generate.adoc:264-267` state the route-shapes rule and the OpenAPI source. Guard:
   `make check-docs`; `tests/generator/integration/test_getting_started_example.py`.
-- [ ] 3.8 272-c (PD-19), unit. Red: `tests/unit/api/test_shacl.py::test_load_warm_shapes_warms_once_per_content`
+- [x] 3.8 272-c (PD-19), unit. Red: `tests/unit/api/test_shacl.py::test_load_warm_shapes_warms_once_per_content`
   writes the same Turtle to two paths and other Turtle to a third (each Turtle carries a triple
   with a fresh `uuid4` IRI, so no other test in the process has warmed its digest:
   `_WARMED_SHAPES` lives as long as the process), loads all three, and asserts
@@ -154,7 +154,7 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
   another unchanged). Mutation: digest `str(path).encode()` instead of the bytes (warms three
   times). Guard: the rest of `test_shacl.py`, `tests/unit/api/test_documents.py`,
   `tests/unit/package/sparql_threads.py`'s users.
-- [ ] 3.9 #273 (PD-21), docs. Red: none (DEC-3). The sentence in `develop/testing.adoc` after the
+- [x] 3.9 #273 (PD-21), docs. Red: none (DEC-3). The sentence in `develop/testing.adoc` after the
   `# X1`-`# X5` list. Guard: `make check-docs`.
 - [ ] 3.10 272-a (PD-20), last of stage 3, unit. Red:
   `tests/unit/tooling/test_patch_markers.py::test_every_patch_of_toolkit_code_names_its_kind`

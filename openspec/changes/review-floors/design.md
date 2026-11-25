@@ -432,6 +432,15 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   load (one `make check-all` took 38 min, against 13 in the durations table), builders run only
   the narrow checks of the files they touch (`uv run pytest <files>`, `make lint`); the lead runs
   `make check-all` once per stage before the PR and once after the fix pass.
+- **D-6 (stage 3, 2026-11-25), the wake test fails earlier than planned:** the error-matrix row
+  "the relay's first look" assumed the first activity reaches the hub by the relay's first look.
+  In fact the relay looks once at start, before any commit, so without `relay.wake()` the first
+  activity already waits out the 60 s interval: task 3.4's planted mutation fails the test at its
+  first wait (`test_event_wiring.py:97`, after 60 s), not at the 2 s assertion. The mutation is
+  still caught; a failing run takes 60 s. Kept as built.
+- **D-7 (stage 3), the D-7 scenario names only the start-up:** task 3.1's test proves a start-up
+  longer than `timeout` does not raise; nothing in it delays shutdown, so the `rp-testkit` delta's
+  THEN line drops "and shutdown" (no second real sleep).
 - **D-4 (stage 1 review, L2+L3, 2026-11-25), accepted findings, fixed in one pass:**
   F1 (L2) task 1.3's test lacks the deep read of each parent the task names: add it.
   F2 (L2) task 1.2's test finds the heads read by the text `"VALUES ?m"`: match the `READ_HEADS`
