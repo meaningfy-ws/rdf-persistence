@@ -65,7 +65,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   both modules and both parents, no generated module written). Leave
   `test_the_same_two_classes_in_one_module_generate_and_import` for 2.4. Accept: the file passes;
   `make test-generator` green.
-- [ ] 1.5 **docs** — after 1.4. `architecture/generation.adoc` (the `pydantic_split.py` row of the
+- [x] 1.5 **docs** — after 1.4. `architecture/generation.adoc` (the `pydantic_split.py` row of the
   artefacts table, and *Correctness of the generated code*: what a cycle generates, what is
   refused), `user-manual/generate.adoc` (the Python output row: a cycle's `__init__.py`; import the
   package, never a file by path; import a class from its own module or from the root module, never

@@ -101,7 +101,7 @@ xref:architecture/generation.adoc#hard-check[The hard check].
 
 |`python` (by default the `package` path, here `library/domain/generated/`)
 |one module per schema module (`books.py`, `library.py`), `__init__.py`
-|the generated classes
+|the generated classes. `__init__.py` is empty, unless schema modules import each other: then it completes their classes (<<module-cycles>>)
 |`python`
 |`shapes.ttl`, `context.jsonld`, one `<Class>.frame.jsonld` per aggregate root and per activity class
 |the SHACL shapes, the JSON-LD context and the frames
@@ -136,6 +136,26 @@ xref:architecture/generation.adoc#extensions[Generated artefacts, extensions and
 
 Commit the generated files together with the schema. Never edit them: to change the code, change
 the schema and generate again.
+
+[#module-cycles]
+*Schema modules that import each other.* Two modules may refer to each other's classes, for
+example `Book` in `app_books` with a slot whose range is `Shelf`, and `Shelf` in `app_shelves` with
+a slot whose range is `Book`. `rp-generate` writes Python that loads whichever module is imported
+first. The package's `__init__.py` is then not empty: it imports the modules, binds the classes they
+only name in annotations, and completes the classes. Three rules follow:
+
+* Import the package, never a module by its file path (`importlib` on the `.py` file, or running it):
+  `__init__.py` must run first.
+* Import a class from the module that declares it, or from the root module. `from .app_books import Shelf`
+  runs when `Shelf` is declared in `app_shelves`, but `mypy --strict` refuses it, because
+  `app_books` only names `Shelf` and does not export it.
+* A class that needs a class of the other module while the module loads (a parent class, a default
+  instance, a union alias) cannot be deferred. If each module needs one from the other this way,
+  `rp-generate` exits 1 at the `python` step and writes nothing, with a message such as
+  `app_a, app_b import each other and need app_a.Root, app_b.Base while they load (a parent class,
+  a default instance or a union): put these classes in one module, or break the cycle`.
+  Do one of the two: move the classes into one module, or break the cycle, for example by moving
+  the parent class so that only one module needs a class of the other while it loads.
 
 A file an earlier run wrote and this one does not, such as the module of a schema file you removed
 or renamed, is deleted by the next run, unless it was edited since: then the run keeps it, says

@@ -65,6 +65,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   value silently won.
 
 ### Fixed
+- **Schema modules that import each other now generate Python that loads** (#208). `rp-generate`
+  used to refuse them: the `[0.8.1]` entry on the Python import check describes the run that
+  failed on two modules that import each other. Now the names a module only annotates are imported
+  under `if TYPE_CHECKING:`, and the package's `__init__.py` binds them and rebuilds the classes, so
+  either module can be imported first. A target with no such modules is written as before. A cycle
+  that needs a class of the other module while it loads (a parent class, a default instance, a
+  union alias) is still refused, naming the modules and classes: put those classes in one module, or
+  break the cycle. Import the package, not a module by path, and a class from its own module or the
+  root module.
 - **Role definitions are read as UTF-8 whatever the locale** (#258); a byte that is not UTF-8
   is an `InvalidRoleDefinition`, not a `UnicodeDecodeError`.
 - **`rp-uml2linkml` refuses workflows the service would refuse at start** (#259): it runs the
