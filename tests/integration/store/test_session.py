@@ -113,9 +113,11 @@ async def test_a_graph_read_can_be_written_back_as_it_is(store, database):
     )
 
 
-async def test_hostile_literals_are_stored_and_read_back_unchanged(store, database):
+@pytest.mark.parametrize(
+    "hostile", ['"} ; DROP ALL ; #\n\\', "\x1f0000"], ids=["injection", "control-then-hex"]
+)
+async def test_hostile_literals_are_stored_and_read_back_unchanged(store, database, hostile):
     session = session_for(store, database)
-    hostile = '"} ; DROP ALL ; #\n\\'
     await session.add_graph(book(1), title(book(1), hostile))
     graph, _, _ = await session.get_graph(book(1))
     assert (URIRef(book(1)), TITLE, Literal(hostile)) in graph, "stored as a plain value"

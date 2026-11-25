@@ -46,12 +46,18 @@ def _iri(value: str) -> str:
     return f"<{value}>"
 
 
+def _codepoint_escape(match: re.Match[str]) -> str:
+    # The 8-digit form (#270): rdflib reads \u with 4 or 8 digits, so "\u001f" + "0000" would
+    # extend to one code point; nothing can extend an escape that already has 8.
+    return f"\\U{ord(match.group()):08X}"
+
+
 def _string(value: str) -> str:
     escaped = "".join(_STRING_ESCAPES.get(c, c) for c in value)
     # SPARQL expands \u and \U over the whole request first (#108); the u after an escaped
     # backslash goes out as a codepoint escape, so both readings give the text back.
-    escaped = _AFTER_BACKSLASH.sub(lambda m: f"\\U{ord(m.group()):08X}", escaped)
-    return '"' + _CONTROL.sub(lambda m: f"\\u{ord(m.group()):04x}", escaped) + '"'
+    escaped = _AFTER_BACKSLASH.sub(_codepoint_escape, escaped)
+    return '"' + _CONTROL.sub(_codepoint_escape, escaped) + '"'
 
 
 def _literal(value: Literal) -> str:
