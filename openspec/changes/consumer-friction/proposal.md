@@ -129,7 +129,7 @@ archive and the review and CI outcome before archiving.
 | DEC-2 owner outside the project or without `typescript`: copy | Delivered: such a package is not in `owners`, so the module is written as before; the docs say so | #391 |
 | DEC-3 importer's `index.ts` does not export it | Delivered: no code needed (PD-5), pinned by a test | #391 |
 | DEC-4 #372 by documentation, `exempt=` | Delivered: docstring of `assert_models_generated`, user manual example, `generation.adoc`; a test pins the `*shapes*.ttl` case; `guards.py` code unchanged | #391 |
-| DEC-5 toy targets set `typescript` | Delivered: `pyproject.toml`, `TOY_TS`, two committed TypeScript trees; `make typecheck-ts` compiles the cross-folder import (TC-3: TODO(lead) CI "types" job result) | #391 |
+| DEC-5 toy targets set `typescript` | Delivered: `pyproject.toml`, `TOY_TS`, two committed TypeScript trees; `make typecheck-ts` compiles the cross-folder import (TC-3: CI "Types" job green on PR #391) | #391 |
 | DEC-6 BREAKING, flagged | Delivered: commit and `CHANGELOG.md` *BREAKING* line with the migration; PR names MWB2 `v2-05` | #391 |
 | Spec scenario 1, owner writes TypeScript | Proved: `test_typescript_imports.py` (TC-1), toy runs matching committed trees (TC-2), `make typecheck-ts` (TC-3) | #391 |
 | Spec scenario 2, owner's folder under importer's | Proved: `typescript.render` on a nested layout gives `./values/loan_checks` (TC-4) | #391 |
@@ -143,4 +143,7 @@ What Changes, Capabilities and the spec delta are true of the code. Impact grew 
 updated for the toy's three TypeScript targets (`tests/generator/unit/test_placement.py` and
 `test_typescript_service_types_adversarial.py`), the regenerated `rp-manifest.json` files and the
 `rp_generation` artefacts (generator inputs, RISK-3), and seven `tests/audit/scenario-map.csv` rows.
-Not delivered as shaped: nothing. Left open: TODO(lead) review findings under the floor, if any.
+The review's C1 (D-5) also grew it: `rdf_persistence_generation/pipeline.py` (`Run` carries the
+run's targets) and `tests/generator/unit/golden.py` (`run_toy` passes them).
+Not delivered as shaped: nothing. Left open under the floor (D-5): W1's third case (no test for a
+root without `python_package`), W2, S1, S2.

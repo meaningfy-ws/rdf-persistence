@@ -176,7 +176,9 @@ integration lane, both in `make test-generator`; TC-7 in the library's unit lane
   lanes (unit 1/8–8/8, feature, generator, coverage floor) plus a local `make test-generator`,
   the lane that holds every test this change adds or edits apart from TC-7. A failure CI shows in
   the unit lanes is decided in Decide and fix; R-0001 is met for the quality half only.
-- **D-5 (lead, Decide and fix; review L2+L3, 6 findings).** Accepted, Critical: **F-1**
+- **D-6 (a second lead session, after a restart; its own review pass L2+L3, 6 findings).** It
+  overlapped this session's delivery and stepped back; its findings agree with D-5 and are kept
+  as a record. Accepted, Critical: **F-1** (= D-5's C1)
   `_typescript_owners` re-reads `pyproject.toml` without the CLI flags, so a flags-only run in a
   project whose `pyproject.toml` has no `[tool.rp-generate]` table raises an uncaught
   `ConfigError` (it used to copy), and a one-row table whose `package` a flag overrides reads its
