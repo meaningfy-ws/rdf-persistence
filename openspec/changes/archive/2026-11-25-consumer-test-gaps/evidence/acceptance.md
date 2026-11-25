@@ -1,6 +1,6 @@
 # Acceptance: consumer-test-gaps
 
-**Status:** offered, awaiting the developer's verdict (SMALL: the developer may skip it).
+**Status:** skipped by the developer, 2026-11-25 (SMALL: the demo may be skipped).
 
 **Success measure (EPIC):** the consumer's three workarounds become unnecessary: its `times=2`
 fault (#319), its `store.update` wrapper (#323) and its label-less referrer display (#320); and a
@@ -21,4 +21,5 @@ redrawn role keeps its own cardinality (#332).
 the label-less display, pin this release, and run its concurrent-write, fault and referrer
 scenarios.
 
-**Verdict:** _the developer's: accepted / rejected (what is wrong) / skipped (who, why, date)._
+**Verdict:** skipped. The developer, 2026-11-25: "skip the demo"; the consumer validates by
+dropping its three workarounds on 0.13.0.
