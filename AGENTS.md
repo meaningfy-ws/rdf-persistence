@@ -72,11 +72,30 @@ instructions are missing, route by the skills' descriptions and say so once.
   | Gate | When and who | Command |
   |---|---|---|
   | Narrow checks | the builder, each edit | the tests the edit touches (`uv run pytest <file>`), `make lint` |
-  | Task gate | the builder, once per task | `make test-changed check-quality` (`make test-fast check-quality` after changing `domain` or a port) |
+  | Task gate | the builder, once per task | `make test-changed check-quality` |
+  | Test seed | the lead, at stage start, in the background | `make test-seed` (selection data for `make test-changed`) |
   | Full gates | the lead, once per stage before the PR and once after the fix pass | `make check-all`; `make test-containers` when adapters changed |
   | Docs gate | the checker, when the docs change | `make check-docs` |
   | GitNexus | the lead, at stage start and before the stage's last commit; builders and reviewers run none | `make reindex`, then the GitNexus impact tool |
 
+- **Guards for builders** (the machine is shared; the heavy lanes queue behind one lock,
+  [`develop/testing.adoc#test-control`](docs/modules/ROOT/pages/develop/testing.adoc)): never run
+  by hand `make test-fast` (it runs only as `make test-changed`'s fallback), `make test`,
+  `make check-all`, `make test-seed` or `pytest --testmon`; wait for a long command through its
+  completion notice, never `tail --pid`, `tail -f … | grep -m1` or a `timeout` around a wait; only
+  the lead runs `make generate` or `uv sync` in a shared worktree.
+- **Test control until skillery carries it** (meaningfy-ws/skillery#360; the mechanism here works
+  without it, these steps stand in for what skillery does not yet say or enforce):
+  - The lead's stage start is `make reindex`, then `make test-seed` as a background run, then the
+    first briefs; builders do not wait for the seed. After `uv sync`, the lead seeds again.
+  - Every builder brief pastes the guards above word for word (the brief checklist of
+    [`develop/agents.adoc#brief`](docs/modules/ROOT/pages/develop/agents.adoc) carries them).
+  - No hook enforces them yet: the lead reads each builder report for a full lane run by hand, a
+    `tail --pid` / `tail -f | grep -m1` wait or a `uv sync`, and treats one as trigger T1
+    (`epic-delivery`): re-brief, never accept the report as it stands.
+  - Other repositories' sessions do not queue until they carry the queue: when a lane runs far
+    slower than the durations table without having waited in the queue, the load comes from them,
+    and fewer workers (the memory cap, or `PYTEST_N`) is the only lever here.
 - Code tools: Serena for reading and editing symbols (a worktree is activated as its own Serena
   project), `ast-grep` for one code shape in many files, Grep for docs, YAML and the Makefile,
   GitNexus for blast radius. A HIGH or CRITICAL impact goes to the developer. Limits per role:

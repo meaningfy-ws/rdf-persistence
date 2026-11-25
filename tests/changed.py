@@ -1,18 +1,26 @@
-"""Map the files changed against a base branch to the test folders that cover them.
+"""Run the tests that cover the files changed against a base branch.
 
-Run as ``uv run python -m tests.changed``. Prints the pytest arguments, one per line (paths, then
-``-n`` and its value, then ``--dist loadgroup``); nothing when no test is to run. Reasons and hints go to stderr. Exit 3 means
-"run make test-fast"; see openspec/changes/archive/2026-11-09-test-lanes/design.md (PD-1 to PD-5).
+Run as ``uv run python -m tests.changed`` (``BASE`` names the base, ``PYTEST_CHANGED_N`` the
+workers). It plans the pytest runs, makes them and exits with their status: 0 passed or nothing to
+run, pytest's 1, 2 and 4 as they are, pytest's 3 as 2, and 75 for "run make test-fast"; reasons,
+hints and messages go to stderr. See openspec/changes/agent-test-control/design.md (PD-4 to PD-7)
+and, for the folder rules, openspec/changes/archive/2026-11-09-test-lanes/design.md.
 """
 
 import os
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-FALLBACK_EXIT = 3
+from tests.testmon_data import Outcome, check, current_packages, worktree_lock
+
+FALLBACK_EXIT = 75
+NO_TESTS_EXIT = 5  # pytest: no test collected
+# pytest's exit status to ours (PD-4); a status not listed (a crash, a signal) is 1.
+PYTEST_STATUS = {0: 0, 1: 1, 2: 2, 3: 2, 4: 4, NO_TESTS_EXIT: 0}
 OUTSIDE_THEMES = frozenset(
     {"testkit"}
 )  # package folders that are no theme but have tests of their own (PD-11)
@@ -43,6 +51,20 @@ GENERATOR_PACKAGE = "rdf_persistence_generation"
 GENERATOR_TESTS = "tests/generator/"
 # The same distribution as the Makefile's PARALLEL: tests in one xdist_group share a worker.
 DIST = ("--dist", "loadgroup")
+# The Makefile's UNIT_LANE ignores as relative paths, and the marker filter of every lane
+# (agent-test-control PD-5); a test in test_lanes.py pins the first to the Makefile.
+IGNORES = (
+    "--ignore=tests/integration",
+    "--ignore=tests/e2e",
+    "--ignore=tests/perf",
+    "--ignore=tests/generator/e2e",
+)
+MARKERS = ("-m", "(unit or feature) and not quarantine")
+TESTMON = ("--testmon", "--testmon-nocollect", "--testmon-forceselect")
+NO_DATA_HINT = "no test selection data in this worktree: the lead runs make test-seed"
+DEFAULT_WORKERS = 4
+# Files whose tests testmon cannot see: the generator's tests run it in subprocesses.
+GENERATOR_ROOTS = (GENERATOR_PACKAGE, "tests/generator")
 
 
 @dataclass(frozen=True)
@@ -143,12 +165,79 @@ def select(paths: Sequence[str], existing: Callable[[str], bool]) -> Selection:
     return Selection(tuple(kept), tuple(hints), tuple(reasons))
 
 
-def pytest_arguments(paths: Sequence[str], pytest_n: str | None) -> list[str]:
-    """The pytest arguments for a selection: nothing when it is empty, else paths then -n."""
-    if not paths:
-        return []
+@dataclass(frozen=True)
+class Invocation:
+    """One pytest run: its argument list, without the interpreter."""
+
+    arguments: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Plan:
+    invocations: tuple[Invocation, ...]
+    hints: tuple[str, ...]
+    fallback_reasons: tuple[str, ...]
+
+
+def _is_testmon_visible(path: str) -> bool:
+    """A Python file testmon tracks: package, generator or tests code that is no golden text."""
+    parts = PurePosixPath(path).parts
+    if not path.endswith(".py") or parts[0] not in {"rdf_persistence", GENERATOR_PACKAGE, "tests"}:
+        return False
+    if parts[0] != "tests":
+        return True
+    if len(parts) > 1 and parts[1] == "fixtures":
+        return False
+    is_test = parts[-1].startswith("test_")
+    return not (len(parts) > 2 and parts[1] in {"integration", "e2e", "perf"} and is_test)
+
+
+def _is_generator_file(path: str) -> bool:
+    return any(path == root or path.startswith(f"{root}/") for root in GENERATOR_ROOTS)
+
+
+def _folder_invocation(paths: Sequence[str], workers: int) -> Invocation:
     one_process = all(not p.endswith("/") for p in paths)
-    return [*paths, "-n", pytest_n or ("0" if one_process else "auto"), *DIST]
+    return Invocation(
+        (*paths, *IGNORES, *MARKERS, "-n", "0" if one_process else str(workers), *DIST)
+    )
+
+
+def _testmon_invocation(workers: int, with_generator: bool) -> Invocation:
+    folders = ("tests/unit", "tests/feature", *(("tests/generator",) if with_generator else ()))
+    return Invocation((*folders, *IGNORES, *MARKERS, *TESTMON, "-n", str(workers), *DIST))
+
+
+def plan(
+    changed: Sequence[str],
+    has_data: bool,
+    existing: Callable[[str], bool],
+    workers: int = DEFAULT_WORKERS,
+) -> Plan:
+    """The pytest runs for the changed files (agent-test-control PD-4, PD-5).
+
+    With selection data, testmon selects for the files it can see (one run) and the folder rules
+    cover the rest and the generator's files; without it, the folder rules cover every file.
+    A fallback reason or nothing selected means no run.
+    """
+    if has_data:
+        visible = any(_is_testmon_visible(p) for p in changed)
+        rest = [p for p in changed if not _is_testmon_visible(p) or _is_generator_file(p)]
+    else:
+        visible, rest = False, list(changed)
+    selection = select(rest, existing)
+    hints = selection.hints
+    if not has_data and changed:
+        hints = (*hints, NO_DATA_HINT)
+    if selection.fallback_reasons:
+        return Plan((), hints, selection.fallback_reasons)
+    runs: list[Invocation] = []
+    if visible:
+        with_generator = GENERATOR_TESTS not in selection.paths
+        runs.append(_testmon_invocation(workers, with_generator))
+    if selection.paths:
+        runs.append(_folder_invocation(selection.paths, workers))
+    return Plan(tuple(runs), hints, ())
 
 
 def _git(*args: str) -> str:
@@ -171,28 +260,75 @@ def changed_files(base: str) -> list[str]:
     return sorted({*tracked, *untracked})
 
 
-def main() -> int:
+Runner = Callable[[Sequence[str]], int]
+DataState = Callable[[Path], Outcome]
+Lock = Callable[[Path], AbstractContextManager[None]]
+
+
+def _run_pytest(arguments: Sequence[str]) -> int:
+    return subprocess.run(["pytest", *arguments], check=False).returncode
+
+
+def _data_state(root: Path) -> Outcome:
+    return check(root, current_packages())
+
+
+def _say_waiting() -> None:
+    print("waiting for the worktree lock: a seed swap holds it", file=sys.stderr, flush=True)
+
+
+def _shared_lock(root: Path) -> AbstractContextManager[None]:
+    return worktree_lock(root, exclusive=False, on_wait=_say_waiting)
+
+
+def exit_status(pytest_exit: int) -> int:
+    """Our exit status for one pytest run: 5 passes, 3 becomes 2, 1, 2 and 4 stay, the rest is 1."""
+    return PYTEST_STATUS.get(pytest_exit, 1)
+
+
+def _workers() -> int:
+    return int(os.environ.get("PYTEST_CHANGED_N") or DEFAULT_WORKERS)
+
+
+def _run_plan(invocations: Sequence[Invocation], root: Path, run: Runner, lock: Lock) -> int:
+    for invocation in invocations:
+        uses_data = "--testmon" in invocation.arguments
+        with lock(root) if uses_data else nullcontext():
+            pytest_exit = run(invocation.arguments)
+        if pytest_exit == NO_TESTS_EXIT:
+            what = "testmon selected no test" if uses_data else "no test collected"
+            print(what, file=sys.stderr)
+        status = exit_status(pytest_exit)
+        if status != 0:
+            return status
+    return 0
+
+
+def main(
+    run: Runner = _run_pytest, data_state: DataState = _data_state, lock: Lock = _shared_lock
+) -> int:
+    """Run the tests of the files changed against BASE; the exit codes are PD-4's."""
     base = os.environ.get("BASE", "develop")
     try:
-        os.chdir(_git("rev-parse", "--show-toplevel").strip())
+        root = Path(_git("rev-parse", "--show-toplevel").strip())
+        os.chdir(root)
         changed = changed_files(base)
     except GitError as error:
         print(f"{error}; running make test-fast", file=sys.stderr)
         return FALLBACK_EXIT
-    selection = select(changed, lambda path: Path(path).exists())
-    if selection.fallback_reasons:
-        print(*selection.fallback_reasons, sep="\n", file=sys.stderr)
+    outcome = data_state(root)
+    if outcome.message:
+        print(outcome.message, file=sys.stderr)
+    tests_plan = plan(changed, outcome is Outcome.SOUND, lambda p: Path(p).exists(), _workers())
+    if tests_plan.fallback_reasons:
+        print(*tests_plan.fallback_reasons, sep="\n", file=sys.stderr)
         return FALLBACK_EXIT
-    for hint in selection.hints:
+    for hint in tests_plan.hints:
         print(hint, file=sys.stderr)
-    arguments = pytest_arguments(selection.paths, os.environ.get("PYTEST_N"))
-    if not arguments:
+    if not tests_plan.invocations:
         print(f"nothing to run against {base}", file=sys.stderr)
         return 0
-    # shortcut: the Makefile splits these lines on whitespace, so a path with a space breaks it;
-    # switch to NUL-separated output if such a path ever appears.
-    print(*arguments, sep="\n")
-    return 0
+    return _run_plan(tests_plan.invocations, root, run, lock)
 
 
 if __name__ == "__main__":

@@ -92,6 +92,8 @@ test = [
     "hypothesis==6.170.14",
     "opentelemetry-sdk==1.45.2",
     "pytest-split==0.11.0",
+    # Selection by recorded execution for make test-changed (agent-test-control PD-5, PD-8).
+    "pytest-testmon==2.4.0",
     # The contract test: the service against its own /openapi.json (PD-15).
     "schemathesis==4.33.4",
 ]

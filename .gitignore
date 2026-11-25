@@ -42,6 +42,8 @@ htmlcov/
 .nox/
 .coverage
 .coverage.*
+# test selection data of make test-seed (agent-test-control PD-8)
+.testmondata*
 .cache
 nosetests.xml
 coverage.xml

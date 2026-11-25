@@ -60,6 +60,9 @@ On top of the brief the `epic-delivery` skill sets, every brief carries this che
 . One assert per idea, each with a message.
 . Mark a test `slow` on the test itself, never a module `pytestmark`.
 . Report the files changed, the tests added, and each make target run with its time and test count.
+. Never run by hand `make test-fast`, `make test`, `make check-all`, `make test-seed` or
+  `pytest --testmon`; wait for a long command through its completion notice; never run
+  `make generate` or `uv sync` in a shared worktree (the lead's).
 . Tools: Serena for symbols, `ast-grep` for a shape, Grep for text; no impact run, no re-index (the
   lead's), no `s.shell`, no `s.mem`.
 
@@ -90,9 +93,9 @@ queries; never `s.edit`, `rename_symbol`, `safe_delete_symbol` or GitNexus `rena
 [#gates]
 == The gates
 
-The builder's task gate is one command, `make test-changed check-quality`, or
-`make test-fast check-quality` after changing `domain` or a port in `services`, or when unsure what
-the change reaches. The full gates, `make check-all` and `make test-containers`, are the lead's and
+The builder's task gate is one command, `make test-changed check-quality`: with the selection data
+the lead seeds at stage start, it runs the tests the change reaches, and it falls back to
+`make test-fast` by itself only when it cannot map a change. The full gates, `make check-all` and `make test-containers`, are the lead's and
 never run in a task; after the lead commits a schema change, `make check-generated`. A builder gets
 a separate worktree only for overlapping parallel work, or when another session holds the checkout.
 
@@ -112,14 +115,16 @@ The table is the reference for what each gate runs.
 [cols="2,1,3",options="header"]
 |===
 |Gate |Who |When
-|`make test-changed` |builder |After every task. It runs the tests of the files the task changed
-against `develop` (set `BASE=<branch>` to compare with another; `PYTEST_N=<workers>` sets the
-worker count), slow tests included. It falls back to `make test-fast` by itself when it cannot map
-a change to tests
-|`make test-fast` |builder |Instead of `make test-changed` when you are unsure what a change
-reaches, or after changing `domain` or a port in `services`. It runs every unit and feature test
-not marked `slow` (time: see the
+|`make test-changed` |builder |After every task. It runs the tests the files changed against
+`develop` reach (set `BASE=<branch>` to compare with another; `PYTEST_CHANGED_N=<workers>` sets its
+worker count, default 4): Python files by the execution the seed recorded, other files by folder,
+slow tests included (xref:develop/testing.adoc#test-control[how test runs are controlled]). It falls
+back to `make test-fast` by itself when it cannot map a change to tests
+|`make test-fast` |nobody by hand |Only as the fallback of `make test-changed`; never by hand in a
+task. It runs every unit and feature test not marked `slow`, queued (time: see the
 xref:develop/index.adoc#how-long-the-checks-take[durations table])
+|`make test-seed` |lead |At stage start, after `make reindex`, in the background; again after
+`uv sync`. It records which code each test executes, for `make test-changed`
 |`make check-quality` |builder |After every task (≈ 1 min); it holds `make check-architecture`,
 `make clean-code` and `make check-docs`
 |`make check-all` |lead |Once per stage before the PR, and again after the fix pass: it already
@@ -165,7 +170,9 @@ merges it; the steps are in xref:develop/index.adoc#release[Cutting a release].
 
 [#never-poll]
 * *Never poll:* run a long command once in the background and wait for its notice, or use the
-  Monitor tool. The `no-poll-loops` and `quiet-tools` hooks of `meaningfy-core` enforce it; this
+  Monitor tool. Waiting on a log or a process is polling too: never `tail --pid=<pid> -f`,
+  `tail -f <log> | grep -m1 …` or a `timeout` around either (two builders lost about 2.5 hours to
+  them in one session, `agent-test-control` `inputs/seed.md`). The `no-poll-loops` and `quiet-tools` hooks of `meaningfy-core` enforce it; this
   repository ships no hook of its own.
 
 [#reindex]
