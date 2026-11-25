@@ -216,6 +216,10 @@ A path filter answers 400 `bad-query` for:
 * more than three references, or an empty segment (`author.`, `.name`, `a..b`);
 * `absent=` or `sort=` with a path: only the listed type's own slots are absent or sorted on.
 
+A reference collection's membership rule takes no path either: a rule equality on
+`author.name` makes the collection's write answer 422 `invalid-body`, so no path reaches the commit
+guard.
+
 [#problems]
 == Problem responses
 
