@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.15.0] - 2026-11-25
 
+### Added
+- **The testkit releases library caches between tests** (`agent-test-control`,
+  `rdf_persistence.testkit.memory_plugin`). After every test it clears the caches of
+  linkml-runtime's `SchemaView`, FastAPI's dependency models and `typing`, which otherwise keep
+  every service a test built alive; at each module boundary it also collects garbage and returns
+  freed memory to the system. A project that builds services with the toolkit in its tests enables
+  it with one line in its root `conftest.py`:
+  `pytest_plugins = ["rdf_persistence.testkit.memory_plugin"]`. `TEST_RELEASE=off` turns it off.
+
 ### Fixed
 - **A string literal holding a control character followed by hex digits round-trips through SPARQL**
   (`sparql-control-escape`, #270). `term()` wrote a control character as `\uXXXX`, and rdflib reads
