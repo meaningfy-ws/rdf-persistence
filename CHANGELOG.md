@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-25
+
 ### ⚠ BREAKING
 - **`rp-generate` refuses two differently named slots or attributes on one expanded IRI**
   (`slot-uri-clash`, rule `slot_iri`). A model that declares, for example, `parts` on
@@ -26,6 +28,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   kinds that import each other are now converted and refused by `rp-generate`'s boundary check;
   classes that inherit both ways between two packages are refused by `rp-generate`: move them into
   one package. See "Packages and modules" in "UML conventions".
+
+### Added
+- **Ask which roles the caller holds** (`grant-roles` stage 2, #310, #367). `Collaboration.roles_held(iri)`
+  returns the role names the caller holds on an aggregate: its role grants in scope plus the token
+  roles defined at system level, by the same rule as a comment's audience and the transitions. It
+  needs read access and refuses as `thread` does; the discussion module is not required. Every
+  aggregate and tenant read now sends `Held-Roles` beside `Allowed-Actions`: the names sorted and
+  comma separated, empty when none is held. The OpenAPI document declares both headers. See "Ask
+  which roles the caller holds" in the access user manual.
+
+### Changed
+- **A role name holds no comma** (#367). A roles file that names a role with a comma (`a,b`) is
+  refused when it loads, and so is a migration whose `grant_roles.rename` targets such a name, so
+  `Held-Roles` always reads back as the names held.
+
+### Fixed
+- **The start-up report names each undefined role once** (`grant-roles`, #375). The stale-grants
+  warning repeated a `level:role` pair for every grant naming it; it now lists each pair once, in
+  the grants' order.
+- **The UML converter refuses sibling packages of one name with different kinds**
+  (`generator-module-cycles`). Two such packages share a module; without the removed merge the last
+  kind won silently. The converter again reports the module and both kinds.
 
 ## [0.13.0] - 2026-11-25
 
@@ -844,7 +868,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.10.0...v0.11.0
