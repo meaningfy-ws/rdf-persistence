@@ -89,7 +89,11 @@ class Work:
 
 
 def command[A: Activity](cls: type[A], **slots: Any) -> A:
-    """A command of ``cls`` with a fresh ``urn:uuid:`` id."""
+    """A command of ``cls`` with a provisional ``urn:uuid:`` id.
+
+    The commit that serves it places the id under the IRI policy's ``activity_template`` (the same
+    UUID); a handler that stores the id reads it from ``Session.activity_iri``.
+    """
     return cls(id=new_activity_id(), **slots)
 
 

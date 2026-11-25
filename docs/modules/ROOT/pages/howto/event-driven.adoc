@@ -24,7 +24,15 @@ is the toy library: a librarian approves a book and shelves books.
 A *command* is a request, written as a class of your model: a subclass of the toolkit's `Activity`.
 Its slots are the request's data (`used_resource`, the book it is about; `shelf_note`, a note). You
 build one with `command(ShelveBooks, used_resource=book, shelf_note="top shelf")`, which gives it
-a fresh id of the form `urn:uuid:…`.
+a provisional id of the form `urn:uuid:…`.
+
+The id is provisional because the commit that serves the command places it under the
+xref:user-manual/iri-policy.adoc#activity-iris[IRI policy]. Under the default policy the activity
+keeps the id as it is. Under an `activity_template` such as `{tenant}/activity/{id}` the record, the
+observers and the event stream get `<tenant>/activity/<uuid>`, with the same UUID. A handler that
+stores the id (in an aggregate, or in a slot of a later command) asks the session for the placed
+one, `work.session.activity_iri(cmd.id)`, which raises `ValueError` for an id that is no activity
+id of this tenant. The logs of the bus show the provisional id; the record holds the placed one.
 
 A *handler* is an async function that carries a command out. It gets the command and a `Work`
 (the session, the caller's collaboration, a unit of work). One command goes to one handler: the

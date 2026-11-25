@@ -49,8 +49,10 @@ class Served:
     """A command the session records as its commit's activity (PD-8): the model with its id and no
     payload, its own statements, and its class IRIs (own and every ancestor). It serves one commit.
 
-    Raises ``ValueError`` naming the id when it is not ``urn:uuid:`` and a UUID: an aggregate IRI as an
-    activity id would be rewritten on restore, and no unchecked text may reach an IRI (D-3). It also
+    Raises ``ValueError`` naming the id when it is not ``urn:uuid:`` and a UUID. That id is the
+    command's provisional one: the session places its UUID under the IRI policy when it commits
+    (``Session.activity_iri``), and the session is what keeps a restore able to move the activity.
+    No unchecked text may reach an IRI (D-3). It also
     refuses a triple about another subject than the activity or a blank node, and a triple of the
     activity that gives ``rdf:type`` or a slot the session fills (D-5 b).
     A plain class: it holds the state of one use, which a generated model does not.
