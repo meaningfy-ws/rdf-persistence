@@ -117,6 +117,7 @@ from rdf_persistence.provenance.services.provenance import (
     class_in,
     completed,
     first_class,
+    is_activity_id,
 )
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.generated.templates.rp_schema_templates import OwnerTerms
@@ -994,6 +995,21 @@ class Session:
         )
         await self._store.update(self._database, text)
 
+    def activity_iri(self, command_id: str) -> str:
+        """The IRI the commit serving the command ``command_id`` records as its activity under the
+        IRI policy (activity-iri-policy PD-6): the activity template filled with the command's UUID.
+
+        Args:
+            command_id: A command's ``urn:uuid:`` id, or an activity IRI this tenant's policy minted.
+
+        Raises:
+            ValueError: ``command_id`` is neither, for example a foreign activity IRI or another
+                tenant's.
+        """
+        if not (is_activity_id(command_id) or self._iris.is_activity(self._tenant, command_id)):
+            raise ValueError(f"{command_id!r} is no activity id of the tenant {self._tenant!r}")
+        return str(self._iris.activity(self._tenant, self._iris.activity_uuid(command_id)))
+
     async def is_recorded(self, activity_iri: str) -> bool:
         """Whether the provenance graph holds a statement about ``activity_iri``: one cheap ``ASK``
         that also shows the tenant database is there and the store answers. No access is checked.
@@ -1288,6 +1304,7 @@ class Transaction:
                 "a served command needs a session that records activities or has a hook"
             )
         self._served = served
+        self._activity_iri: str | None = None  # placed on first use (activity-iri-policy PD-5)
         self._readable = readable
         # (target, row) of each link an add or replace makes to another aggregate, kept only while
         # the session refuses some removals (PD-5)
@@ -1671,12 +1688,37 @@ class Transaction:
             principal=session._principal,
             started=self._marker.started_at,
             ended=session._clock(),
+            activity_id=self._placed_activity(),
         )
+
+    def _placed_activity(self) -> str:
+        """The IRI this commit's activity has under the IRI policy: computed on first use, kept for
+        the transaction, one UUID (activity-iri-policy PD-5). A served command gives its UUID, else
+        a fresh one."""
+        if self._activity_iri is None:
+            session = self._session
+            found = (
+                session._iris.activity_uuid(self._served.activity.id)
+                if self._served is not None
+                else str(uuid.uuid4())
+            )
+            self._activity_iri = str(session._iris.activity(session._tenant, found))
+        return self._activity_iri
+
+    def _own_triples(self) -> list[Triple]:
+        """The served command's own statements, about the placed IRI instead of the command's id."""
+        if self._served is None:
+            return []
+        provisional, placed = URIRef(self._served.activity.id), URIRef(self._placed_activity())
+        return [
+            (placed if s == provisional else s, p, placed if o == provisional else o)
+            for s, p, o in self._served.triples
+        ]
 
     def _record(self, activity: Activity, types: list[URIRef]) -> str:
         """The marked operation that stores ``activity``, its parts skolemised under the provenance graph (PD-6)."""
         session = self._session
-        own = self._served.triples if self._served is not None else []
+        own = self._own_triples()
         marked = fragment(
             _MARKED,
             registry=term(session._registry),
@@ -1819,10 +1861,11 @@ class Transaction:
         session, served = self._session, self._served
         if served is None or not session._record_activities:
             return None
+        placed = self._placed_activity()
         taken = await session._ask(
-            ID_TAKEN, provenance=term(session._provenance), id=term(URIRef(served.activity.id))
+            ID_TAKEN, provenance=term(session._provenance), id=term(URIRef(placed))
         )
-        return served.activity.id if taken else None
+        return placed if taken else None
 
     async def _refused_by_store(self) -> Conflict | None:
         """The refusal no version explains, in the order of PD-4: a key another aggregate holds, a

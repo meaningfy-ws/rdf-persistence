@@ -62,7 +62,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   and accepted under random object ids). Then `root_paths(view)` in
   `tests/unit/schema/test_schema_structure.py` (the toy roots and their paths) and the kit call.
   Accept: all pass; each refusal row fails when its check is removed by hand.
-- [ ] 1.4 Unit, session (PD-5, PD-6), after 1.3. First, failing:
+- [x] 1.4 Unit, session (PD-5, PD-6), after 1.3. First, failing:
   `tests/unit/tenancy/test_session_activity.py`
   `test_a_commit_under_an_activity_template_records_its_activity_under_the_tenant`: on the fake
   store with `Iris` under `P`, a book committed serving `command(ShelveBooks, …)` (the toy command)
