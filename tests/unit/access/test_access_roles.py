@@ -269,6 +269,17 @@ UNDEFINED_ROLES = [
         [role("curator", BOOK_GRAPH), role("archivist")],
         [(RoleLevel.AGGREGATE, "curator"), (RoleLevel.TENANT, "archivist")],
     ),
+    (
+        "repeated-pair-once-in-first-seen-order",
+        [
+            role("archivist", BOOK_GRAPH),
+            role("archivist", BOOK_GRAPH),
+            direct(Action.READ),
+            role("archivist", BOOK_GRAPH),
+            role("scribe"),
+        ],
+        [(RoleLevel.AGGREGATE, "archivist"), (RoleLevel.TENANT, "scribe")],
+    ),
 ]
 
 

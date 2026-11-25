@@ -364,3 +364,10 @@ Under the floor:
   and T13 covers its OpenAPI declaration.
 - R2-S2: T11's "answers without the discussion module" assert sits in a test named for the
   lookup error.
+
+### D-15
+
+The acceptance demo (2026-11-25, accepted by the developer) showed the start-up warning listing
+`tenant:member` once per stale grant. Developer's decision: `undefined_roles` keeps the first
+occurrence of each `(level, role)` pair, in the grants' order, so the warning names each role
+once, as the requirement reads. `validate_grants` raises on the first pair and is unchanged.

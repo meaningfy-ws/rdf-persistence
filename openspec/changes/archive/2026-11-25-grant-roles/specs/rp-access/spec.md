@@ -23,7 +23,13 @@ start-up, also when the report cannot read the store or a record does not decode
 `iri` by the same rule the comment audience and the workflow transitions use: its role grants in
 scope and its token roles defined at system level. A caller who may not read `iri` SHALL be
 refused as reading the thread is. Every generic read that sends `Allowed-Actions` SHALL send
-`Held-Roles`, the same names sorted and comma-separated, empty when none is held.
+`Held-Roles`, the same names sorted and comma-separated, empty when none is held. A role
+definition whose name holds a comma SHALL be refused when the roles file is loaded, so the
+header is never ambiguous.
+
+#### Scenario: a role name with a comma
+- **WHEN** a roles file defines a role named `a,b`
+- **THEN** loading it is refused, naming the entry and the role
 
 #### Scenario: roles held decide the audience
 - **GIVEN** a caller and a comment on an aggregate with audience `R`

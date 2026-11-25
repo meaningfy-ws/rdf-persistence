@@ -10,8 +10,8 @@ request as the migration's steps, rotating the version tokens. Other databases S
 changes. Renames SHALL apply in file order, each completing before the next, and the drops
 after them, so that two names renamed to one leave no duplicate grant. A rename SHALL apply to
 grants at every level. A file that drops a name it also renames from or to, renames a name to
-a renamed name or to itself, or holds an empty name SHALL be refused when it is loaded, naming
-the file.
+a renamed name or to itself, renames one name twice, renames a name to one that holds a comma,
+or holds an empty name SHALL be refused when it is loaded, naming the file.
 
 #### Scenario: two roles merged into one
 - **GIVEN** an assignee holding both `reader` and `viewer` on the same target
