@@ -162,7 +162,7 @@ in-flight epic's own order (`consumer-gap-fixes/inputs/qa.md`).
 | 14 | `consumer-gap-fixes` | SMALL (4 stages) | #304, #306, #311, #312 | row 13 merged | `v2-06`: one ontology collection per version (#304), roles, discussion, coverage | delivered 2026-11-24 in #330, #335, #336, #337; archived `2026-11-24-consumer-gap-fixes`; released as 0.11.0 (#333) |
 | 15 | `aggregate-guards` | SMALL (2 stages) | #305, #309 | none | `v2-07` package range; `v2-06` CM delete while under review | delivered 2026-11-24 in #334, #346; planned: 8.2 → 9.3, pass (#324) |
 | 16 | `grant-roles` | SMALL (2 stages) | #307, #310 | row 14 stage 2 (#306) | `v2-06` role rounds (RISK-2), audience warning | planned: 8.4 → 9.2, pass (#325); #307 answered by a `grant_roles` migration section |
-| 17 | `reference-filters` | MEDIUM (1 stage) | #308 | row 14 stage 4 (`absent` filter, same listing code) | `v2-06` CM list by source version | delivered 2026-11-25 in #356; archived `2026-11-25-reference-filters`; not yet released |
+| 17 | `reference-filters` | MEDIUM (1 stage) | #308 | row 14 stage 4 (`absent` filter, same listing code) | `v2-06` CM list by source version | delivered 2026-11-25 in #356; archived `2026-11-25-reference-filters`; released as 0.13.0 (#357) |
 | 18 | `consumer-test-gaps` | SMALL (3 stages: testkit, API, generator) | #319, #323, #320, #332 | none | `v2-03`: its `times=2` fault (#319), its `store.update` wrapper (#323), its label-less referrers (#320); #332 from #330's review (P-0020) | delivered 2026-11-25 in #355, #360, #361; archived `2026-11-25-consumer-test-gaps`; demo skipped; released in 0.13.0 |
 
 Rows 14 to 16 were shaped on 2026-11-24 in one session, and each PLAN was attacked and gated by a
