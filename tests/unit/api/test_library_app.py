@@ -13,7 +13,7 @@ from rdf_persistence.core.domain.media import JSON
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.testkit import FakeFileStore, FakeIdentity, FakeStore, TokenSigner
 from rdf_persistence.testkit.tokens import ISSUER
-from tests.e2e.library_app import build_library_app
+from tests.library_app import build_library_app
 from tests.toy import SETTINGS
 from tests.toy_service import TENANT_BODY, principal_of, store_scan, toy_key
 

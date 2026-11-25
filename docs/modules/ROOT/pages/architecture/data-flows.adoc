@@ -837,7 +837,7 @@ observers cannot send.
 == Files and loaded graphs
 
 The toolkit has no generic upload route: the consumer writes it, as the toy library's
-`POST /libraries/{t}/scan-files` does (`tests/e2e/library_app.py`). The bytes go to the bucket
+`POST /libraries/{t}/scan-files` does (`tests/library_app.py`). The bytes go to the bucket
 first and the record second; removal goes the other way:
 
 [mermaid]

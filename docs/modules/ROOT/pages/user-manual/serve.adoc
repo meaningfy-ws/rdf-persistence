@@ -13,7 +13,7 @@ your own routes, and the routes it serves.
 
 The *composition root* is the one place that builds the adapters and hands them to
 `install_service`. The toy library's is `build_library_app` (in full in
-`tests/e2e/library_app.py`; shortened here to two of its file routes):
+`tests/library_app.py`; shortened here to two of its file routes):
 
 [source,python]
 ----

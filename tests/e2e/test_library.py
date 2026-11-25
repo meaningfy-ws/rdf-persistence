@@ -98,7 +98,7 @@ async def triples(world: World, shelf: Shelf, who: str, media_type: str) -> Grap
 
 def test_this_file_and_the_composition_root_use_only_public_names() -> None:
     assert_public_imports(__file__)
-    assert_public_imports(Path(__file__).with_name("library_app.py"))
+    assert_public_imports(Path(__file__).parent.parent / "library_app.py")
 
 
 async def test_the_book_is_the_same_three_ways(world, shelf) -> None:
