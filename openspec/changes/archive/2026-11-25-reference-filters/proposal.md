@@ -126,15 +126,15 @@ The consumer gets them after a release and its lock refresh, then offers its sou
 
 | Shaped | Delivered | PR |
 |---|---|---|
-| DEC-1 `via` on `Condition`, one renderer | as shaped | this PR |
-| DEC-2 1 to 3 hops, aggregate roots of one database, range's own slots | as shaped | this PR |
-| DEC-3 equality and contains only; `absent`/`sort` refuse a path | as shaped | this PR |
-| DEC-4 independent path filters | as shaped, documented | this PR |
-| DEC-5 hidden graphs at every hop in a listing; `find` ignores them | as shaped | this PR |
-| DEC-6 dotted keyword in `find` | as shaped, no code | this PR |
-| DEC-7 one OpenAPI description, no parameters | as shaped; the cap is read from `MAX_HOPS` ("up to 3 references") | this PR |
-| DEC-8 one stage, one PR | as shaped | this PR |
-| No-go: no path fed to guards or `matches` | held by refusing a path in a membership rule (D-13), which the shape had not seen reaching them | this PR |
+| DEC-1 `via` on `Condition`, one renderer | as shaped | #356 |
+| DEC-2 1 to 3 hops, aggregate roots of one database, range's own slots | as shaped | #356 |
+| DEC-3 equality and contains only; `absent`/`sort` refuse a path | as shaped | #356 |
+| DEC-4 independent path filters | as shaped, documented | #356 |
+| DEC-5 hidden graphs at every hop in a listing; `find` ignores them | as shaped | #356 |
+| DEC-6 dotted keyword in `find` | as shaped, no code | #356 |
+| DEC-7 one OpenAPI description, no parameters | as shaped; the cap is read from `MAX_HOPS` ("up to 3 references") | #356 |
+| DEC-8 one stage, one PR | as shaped | #356 |
+| No-go: no path fed to guards or `matches` | held by refusing a path in a membership rule (D-13), which the shape had not seen reaching them | #356 |
 
 Nothing shaped was left out. The delivery decisions D-7 to D-13 and the review findings are in
 `design.md`.
