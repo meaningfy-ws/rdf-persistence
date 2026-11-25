@@ -107,7 +107,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   Signed off 2026-11-25 as `features/iri_policy.feature` in this change: append those three
   scenarios verbatim (no wording change without a new sign-off), with their steps, in one commit. Lane: `make test-feature`.
   Accept: the three pass.
-- [ ] 1.7a Integration (RISK-1), after 1.4: a new `tests/integration/store/test_activity_iri_policy.py`
+- [x] 1.7a Integration (RISK-1), after 1.4: a new `tests/integration/store/test_activity_iri_policy.py`
   on Fuseki under `P`: IT-A1 a served commit records `t/activity/U` and `is_recorded` finds it;
   IT-A2 a second commit of a command with the same UUID is refused by the store's taken-IRI guard
   and writes nothing; IT-A3 `relayed_since(<placed IRI of the first>)` returns the later activity.
@@ -123,7 +123,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.6 · [x] 1.4 · [x] 1.5 · [ ] 1.7a · [x] 1.7 · [x] 1.8 · [ ] 1.9
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.6 · [x] 1.4 · [x] 1.5 · [x] 1.7a · [x] 1.7 · [x] 1.8 · [ ] 1.9
   (1.6's first three tests need only 1.2; its restore test needs 1.4; 1.4 and 1.5 may run in
   parallel after 1.3.)
 
