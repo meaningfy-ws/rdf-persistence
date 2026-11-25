@@ -112,3 +112,15 @@ of a migration file and one response header.
 the migration section is optional, and the header is new. Once the consumer refreshes its lock, it
 ships a migration with `grant_roles` beside its renamed roles file, and its web app reads
 `Held-Roles`.
+
+## Reconciliation
+
+| Shaped | Delivered | PR |
+|---|---|---|
+| DEC-1 `grant_roles` (rename, drop) on `Migration`, generated | as shaped | #345 |
+| DEC-2 grant operations on the system database only | as shaped | #345 |
+| DEC-3 rename in place, merge a duplicate, drop the part | as shaped | #345 |
+| DEC-4 load-time checks, no role definitions consulted | as shaped; a rename target also holds no comma (D-14) | #345, #367 |
+| DEC-5 start-up `WARNING` report, never stops | as shaped; the pairs in a new `LogContext` slot (D-10) | #345 |
+| DEC-6 `Held-Roles`, sorted, comma separated, declared in the OpenAPI | as shaped; a role name holds no comma (D-13), the tenant read sends it too | #367 |
+| DEC-7 two stages, two PRs | as shaped | #345, #367 |

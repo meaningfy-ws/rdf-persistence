@@ -36,12 +36,12 @@ EPIC: grant-roles (proposal.md, #307, #310). Decisions: DEC-1 to DEC-7; design.m
 ## 3. Close
 
 - [x] 3.1 Scenario-map rows for the new tests (each stage adds its own).
-- [ ] 3.2 After the last merge: reconcile the proposal, archive, and comment on #307 and #310.
+- [x] 3.2 After the last merge: reconcile the proposal, archive, and comment on #307 and #310.
 
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 ·
-  [x] 3.1 · [ ] 3.2
+  [x] 3.1 · [x] 3.2
 
 ## Verification
 
