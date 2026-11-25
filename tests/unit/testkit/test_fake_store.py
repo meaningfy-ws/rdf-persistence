@@ -140,6 +140,15 @@ async def test_e4_a_hold_that_never_fills_releases_its_waiter_and_fails_on_exit(
             )
 
 
+async def test_e4_a_call_after_the_timeout_does_not_fill_the_hold():
+    store = await _store()
+    with pytest.raises(AssertionError, match=r"hold\('update', until=2\) saw 1 call\(s\)"):
+        async with store.hold("update", until=2, timeout=0.1):
+            await store.update("d", _insert("a"))  # released by the timeout
+            await store.update("d", _insert("b"))  # arrives late: runs at once, does not fill
+            assert store.sent("update") == [_insert("a"), _insert("b")], "the late call ran at once"
+
+
 @pytest.mark.parametrize("leave", ["raises", "cancelled"])
 async def test_e4b_a_hold_left_by_an_exception_releases_its_waiter_and_keeps_the_exception(leave):
     store = await _store()

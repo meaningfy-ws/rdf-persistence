@@ -130,6 +130,9 @@ class _Hold:
         self.until = until
         self.timeout = timeout
         self.seen = 0
+        self.seen_at_release = (
+            0  # the calls that came before the hold was spent: the only ones that fill it
+        )
         self.spent = False
         self._waiters: list[asyncio.Future[None]] = []
         self._timer: asyncio.Task[None] | None = None
@@ -149,6 +152,8 @@ class _Hold:
 
     async def release(self) -> None:
         """Resolve the waiters one at a time, in arrival order, each one running before the next."""
+        if not self.spent:
+            self.seen_at_release = self.seen
         self.spent = True
         if self._timer is not None and self._timer is not asyncio.current_task():
             self._timer.cancel()
@@ -178,8 +183,9 @@ class FakeStore(_Instrumented):
     each other, then releases them one by one in arrival order: the first arrival applies first, so
     a test can make two writers meet at one version. A call waits before it is recorded in ``sent``
     and before it takes an armed fault. Calls after the ``until``-th do not wait. A hold that has
-    not filled ``timeout`` seconds after its first waiter arrived releases its waiters; leaving the
-    block releases any that remain, and raises ``AssertionError`` if fewer than ``until`` calls came
+    not filled ``timeout`` seconds after its first waiter arrived releases its waiters; a call that
+    arrives after that release runs at once and does not fill the hold. Leaving the block releases
+    any that remain, and raises ``AssertionError`` unless ``until`` calls came before the release
     (an exception that leaves the block is never masked by it). Hold ``update`` only inside
     ``kit.relay.paused()``: the relay's own mark is an ``update``, and it would fill the hold
     (RISK-3 of ``consumer-test-gaps``), so the test would be flaky.
@@ -218,7 +224,8 @@ class FakeStore(_Instrumented):
         Raises:
             ValueError: ``operation`` is unknown, or ``until`` is below 1.
             RuntimeError: ``operation`` already has an open hold.
-            AssertionError: On a clean exit, fewer than ``until`` calls came.
+            AssertionError: On a clean exit, fewer than ``until`` calls came before the release
+                (a call after the timeout does not count).
         """
         self._known(operation)
         if until < 1:
@@ -231,8 +238,10 @@ class FakeStore(_Instrumented):
         finally:
             del self._holds[operation]
             await held.close()
-        if held.seen < until:
-            raise AssertionError(f"hold({operation!r}, until={until}) saw {held.seen} call(s)")
+        if held.seen_at_release < until:
+            raise AssertionError(
+                f"hold({operation!r}, until={until}) saw {held.seen_at_release} call(s)"
+            )
 
     async def _gate(self, operation: str) -> None:
         """The waiting point of a held operation; every async operation awaits it first."""

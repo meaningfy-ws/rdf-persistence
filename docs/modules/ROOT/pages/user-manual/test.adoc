@@ -182,11 +182,14 @@ async with service.app.router.lifespan_context(service.app):  # the relay runs o
             service.store.on("update", StoreUnavailable("down"))
             answer = await client.post(f"{tenant}/books", json=body, headers=headers)
         assert answer.status_code == 503  # the request took the fault, on every run
-        await service.kit.relay.run_once()  # the round the block kept out: the activity is relayed
+        await testkit.wait_until_async(  # the relay runs its round on its own once the block closes
+            lambda: activity_is_relayed(activity), "the activity is relayed"
+        )
 ----
 
 A wake-up during the block (every commit wakes the relay) makes one round after it, so the pending
-activities are relayed once the block closes. Do not call `run_once()` inside the block: it hangs.
+activities are relayed once the block closes: wait for that, with a bounded wait, as above. Do not
+call `run_once()` inside the block: it hangs.
 The example is the feature test `tests/feature/test_testkit_faults.py`.
 
 [#hold-writes]
@@ -195,7 +198,9 @@ The example is the feature test `tests/feature/test_testkit_faults.py`.
 To test two writers that meet at one version, make their store calls meet with
 `FakeStore.hold(operation, until, timeout=5.0)`. The first `until` calls of `operation` made inside
 the block wait for each other; when the `until`-th arrives, they are released one by one in arrival
-order, so the first arrival writes first and the second is refused by the version guard:
+order, so the first arrival writes first and the second is refused by the version guard. The block
+fails with `AssertionError` unless `until` calls arrived before the timeout released the waiters: a
+call that comes after the timeout runs at once and does not count:
 
 [source,python]
 ----

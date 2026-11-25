@@ -266,3 +266,12 @@ None. Both rounds answered every concern (`inputs/qa.md`).
   no row, none of this change's. Each stage adds rows for its own tests only; the 84 are left to a
   follow-up. The refresh also drops four rows whose tests no longer exist and moves others; those
   hunks are left out, so a stage's map diff holds only its own rows and the stages rebase cleanly.
+- **D-11 (stage-1 review W1, re-labelled Critical: it breaks a SHALL of `rp-testkit`):** a hold
+  fails on a clean exit unless it **filled**, that is, its `until`-th call arrived before the
+  timeout released it. A call that arrives after the timeout still runs at once, but no longer
+  counts towards filling. The message names the calls seen before the release. E4 gains a case
+  where the second call arrives after the timeout.
+- **D-12 (stage-1 review W2, re-labelled Critical: E1's THEN could not fail):** E1 no longer calls
+  `relay.run_once()` after the block; it waits with `testkit.wait_until_async` until the live,
+  woken relay has set `relayed_at`. The "Aim a fault" example on `user-manual/test.adoc` does the
+  same, and its text and example agree.

@@ -6,7 +6,9 @@ runs, and only then is there something for ``kit.relay.paused()`` to keep out. N
 """
 
 import asyncio
+import contextlib
 from contextlib import AsyncExitStack
+from functools import partial
 
 import httpx
 import pytest
@@ -14,12 +16,14 @@ from pytest_bdd import given, scenarios, then, when
 
 from rdf_persistence.core.domain.exceptions import StoreUnavailable
 from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.testkit import wait_until_async
 from tests.scene import Scene
 from tests.toy_service import ADA, DUNE_BODY, ToyService, assert_problem
 
 scenarios("testkit_faults.feature")
 
 RUNS = 20  # RISK-5: one pass could be right by luck
+RELAY_TIMEOUT = 5.0  # seconds the woken relay has to mark the activities after the block
 
 
 class Faults:
@@ -65,6 +69,9 @@ class Faults:
         )
         return bool(answer.askAnswer)
 
+    async def all_relayed(self, activities: set[str]) -> bool:
+        return all([await self.relayed(a) for a in activities])
+
     async def post_book(self, label: str) -> httpx.Response:
         scene = self.scene
         return await scene.http.post(
@@ -82,7 +89,13 @@ class Faults:
                 assert activities, f"run {run}: the commit's activity is still pending"
                 store.on("update", StoreUnavailable("down"))
                 self.answers.append(await self.post_book(f"Fault {run}"))
-            await self.kit.relay.run_once()  # the round the block kept out, now
+            # the woken relay runs the round the block kept out; wait for it, never run it by hand
+            with contextlib.suppress(TimeoutError):  # a relay that never runs shows in `unrelayed`
+                await wait_until_async(
+                    partial(self.all_relayed, activities),
+                    f"run {run}: the relay marks every activity",
+                    timeout=RELAY_TIMEOUT,
+                )
             self.unrelayed += [a for a in activities if not await self.relayed(a)]
 
     async def replace_twice(self) -> None:
