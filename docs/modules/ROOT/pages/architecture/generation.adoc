@@ -840,7 +840,8 @@ Both guards are `testkit.assert_models_generated(package, *, roots, allow=(), ex
 * *File guard*: fails on `*.shacl.ttl`, `*shapes*.ttl`, `context.jsonld`, `*.context.jsonld`, `*.frame.jsonld`,
   `*.schema.json`, `openapi*.json`, `openapi*.yaml` and `*.ts` (except `*.test.ts` and `*.spec.ts`)
   outside a folder named `generated`. This repository scans `rdf_persistence/` and `tests/`, with
-  `tests/fixtures/` exempt (`exempt=`).
+  `tests/fixtures/` exempt (`exempt=`). `exempt=` is the place for hand-written fixtures named like a
+  generated artefact (a SHACL shapes file or a context); the guard keeps its patterns and defaults.
 
 === Versions and commits
 

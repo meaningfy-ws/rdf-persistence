@@ -124,7 +124,11 @@ SCHEMA = ROOT / "models" / "library.yaml"
 
 
 def test_no_hand_written_models():
-    assert_models_generated(ROOT / "library", roots=[ROOT / "library", ROOT / "tests"])
+    assert_models_generated(
+        ROOT / "library",
+        roots=[ROOT / "library", ROOT / "tests"],
+        exempt=[ROOT / "tests" / "fixtures"],
+    )
 
 
 def test_classes_and_shapes_agree():
@@ -145,7 +149,9 @@ folder (xref:user-manual/install.adoc[Install and lay out the application]), fou
 folders: shapes, contexts, frames, JSON schemas, OpenAPI files
 and `.ts` files other than `*.test.ts` and `*.spec.ts`. `web/` is not in `roots` because a web
 application holds hand-written `.ts` files; you may add any folder that holds no
-hand-written `.ts` files. If you really need a type
+hand-written `.ts` files. A hand-written test fixture named like a generated artefact, such as
+`book_shapes.ttl` or a small context, goes in a folder you pass as `exempt=` (`tests/fixtures` above);
+the file guard skips that folder. If you really need a type
 that holds a foreign run-time object, pass it with `allow=["library/domain/<file>.py:<ClassName>"]`,
 a path relative to the folder that holds the package (`ROOT` above).
 

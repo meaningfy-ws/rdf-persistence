@@ -414,6 +414,21 @@ def test_exempt_folder_passes(tmp_path):
     )
 
 
+@pytest.mark.parametrize(
+    ("exempt_fixtures", "passes"),
+    [(True, True), (False, False)],
+    ids=["fixtures-exempt", "fixtures-not-exempt"],
+)
+def test_exempt_holds_hand_written_fixtures_named_like_artefacts(tmp_path, exempt_fixtures, passes):
+    plant(tmp_path, "area/fixtures/book_shapes.ttl", "")
+    exempt = [tmp_path / "area" / "fixtures"] if exempt_fixtures else []
+    if passes:
+        assert run_files(tmp_path, exempt=exempt) is None, "a hand-written fixture is exempt"
+    else:
+        with pytest.raises(AssertionError, match=r"book_shapes\.ttl"):
+            run_files(tmp_path, exempt=exempt)
+
+
 def test_exempt_does_not_cover_siblings(tmp_path):
     plant(tmp_path, "area/fixtures/bad.shacl.ttl", "")
     plant(tmp_path, "area/other/bad.shacl.ttl", "")
