@@ -64,8 +64,8 @@ def test_a_flag_overrides_the_only_entry(tmp_path: Path) -> None:
 
 
 def test_flags_alone_make_a_target_when_there_is_no_table(tmp_path: Path) -> None:
-    (target,) = read(tmp_path, None, "--schema", "m.yaml", "--package", "p")
-    assert target == GenerationTarget(schema_file="m.yaml", package="p"), (
+    (target,) = read(tmp_path, None, "--schema", "m.yaml", "--package", "p.domain.generated")
+    assert target == GenerationTarget(schema_file="m.yaml", package="p.domain.generated"), (
         "flags did not make a target"
     )
 
@@ -84,9 +84,13 @@ def test_a_flag_with_several_entries_is_an_error_naming_it(tmp_path: Path, flag:
     [
         (None, (), "no \\[tool.rp-generate\\]"),
         ("[tool.other]\nx = 1\n", (), "no \\[tool.rp-generate\\]"),
-        ('[tool.rp-generate]\npackage = "p"\n', (), "schema"),
+        ('[tool.rp-generate]\npackage = "p.domain.generated"\n', (), "schema"),
         ('[tool.rp-generate]\nschema = "m.yaml"\n', (), "package"),
-        ('[tool.rp-generate]\nschema = "m.yaml"\npackage = "p"\ncolour = "red"\n', (), "colour"),
+        (
+            '[tool.rp-generate]\nschema = "m.yaml"\npackage = "p.domain.generated"\ncolour = "red"\n',
+            (),
+            "colour",
+        ),
     ],
     ids=["no-file", "no-table", "no-schema", "no-package", "unknown-key"],
 )

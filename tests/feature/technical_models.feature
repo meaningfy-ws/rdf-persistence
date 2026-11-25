@@ -29,7 +29,9 @@ Feature: Technical models are kept apart from the domain
   Scenario: A technical layer refuses a domain module
     Given a copy of the toy library whose package is "tests.fixtures.library.services.generated"
     When the models are generated
-    Then generation fails naming the package and the derived kind "domain"
+    Then generation fails
+    And it names the package
+    And it names the derived kind "domain"
     And no output file has changed
 
   # spec: rp-generation / a target without a kind

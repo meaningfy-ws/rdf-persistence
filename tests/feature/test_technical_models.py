@@ -242,10 +242,18 @@ def _generate(run: Run, capsys: pytest.CaptureFixture[str]) -> None:
     run.output = captured.out + captured.err
 
 
-@then(parsers.parse('generation fails naming the package and the derived kind "{kind}"'))
-def _fails_naming_package_and_kind(run: Run, kind: str) -> None:
+@then("generation fails")
+def _generation_fails(run: Run) -> None:
     assert run.exit_code not in (0, None), "generation fails"
+
+
+@then("it names the package")
+def _names_the_package(run: Run) -> None:
     assert run.package in run.output, f"the package is not named: {run.output}"
+
+
+@then(parsers.parse('it names the derived kind "{kind}"'))
+def _names_the_kind(run: Run, kind: str) -> None:
     assert f"a {kind} target" in run.output, f"the derived kind is not named: {run.output}"
 
 
