@@ -226,6 +226,22 @@ def test_a_schema_that_never_imports_the_stored_file_has_no_stored_file_class(
     assert not is_stored_file(view, view.get_class("Plain")), "so none is a stored file"
 
 
+def test_a_stored_file_of_none_is_trusted_as_no_stored_file_class() -> None:
+    """PD-6: ``None`` is "the schema has none", not "compute it"."""
+    view = load_schema(TOY)
+    named = stored_file_class(view)
+    assert named is not None, "the toy imports the stored file"
+    assert is_stored_file(view, view.get_class(named), stored_file=None) is False, "None is trusted"
+
+
+def test_a_given_stored_file_class_agrees_with_the_computed_one_for_every_class() -> None:
+    view = load_schema(TOY)
+    given = stored_file_class(view)
+    for name in view.all_classes():
+        cls = view.get_class(name)
+        assert is_stored_file(view, cls, stored_file=given) == is_stored_file(view, cls), name
+
+
 def test_a_class_named_stored_file_without_the_class_uri_is_not_the_stored_file(
     tmp_path: Path,
 ) -> None:

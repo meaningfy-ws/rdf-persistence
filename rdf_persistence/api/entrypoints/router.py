@@ -461,9 +461,8 @@ def add_aggregate_routes(  # noqa: PLR0913 - the router, the kit, the gate, the 
     docs = AggregateOpenApi(kit.view, cls, rp_path)
     docs.listing().add_to(router, collection, HTTPMethod.GET, listing)
     docs.read().add_to(router, member, HTTPMethod.GET, read)
-    if is_service_written(
-        kit.view, cls, stored_file=stored_file
-    ):  # the consumer writes it through a session (PD-3)
+    # the consumer writes it through a session (PD-3)
+    if is_service_written(kit.view, cls, stored_file=stored_file):
         return
     docs.create().add_to(router, collection, HTTPMethod.POST, create)
     docs.replace().add_to(router, member, HTTPMethod.PUT, replace)
