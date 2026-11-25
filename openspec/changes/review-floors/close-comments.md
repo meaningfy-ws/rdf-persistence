@@ -67,7 +67,7 @@ h6 and j were already done.
 
 ## 272
 Closed by `review-floors` (PRs PRLIST):
-- a: `tests/unit/tooling/test_patch_markers.py`, with the four unmarked patches marked (D-9 notes one X2 at the edge of its wording).
+- a: `tests/unit/tooling/test_patch_markers.py`, with the four unmarked patches marked; one tripwire became a pass-through spy, so its `# X2` fits rule 3 as written (D-9).
 - b: `tests/library_app.py`.
 - c: `load_warm_shapes`.
 - d: `book_json()`.

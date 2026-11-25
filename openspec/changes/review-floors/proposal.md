@@ -188,8 +188,8 @@ done, with these differences from the shape:
   pytest, so the pipeline cannot import it from there), and 28 manifests carry new input hashes
   only.
 - **Two recorded exceptions to `testing.adoc` rule 11** (PD-13): the wake test and the slow
-  lifespan test use real time; one patch is marked `# X2` at the edge of its wording (D-9, open
-  for the owner).
+  lifespan test use real time. One tripwire patch became a pass-through spy, so its `# X2` fits
+  rule 3 as written (D-9, the owner's choice).
 - **Not done:** nothing the shape promised. The under-the-floor review findings are listed in
   D-4, D-8 and D-10.
 

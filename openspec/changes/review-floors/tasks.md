@@ -109,7 +109,7 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
 - [x] 2.7 192-b (PD-6) and 189-p, unit and generator unit. Red: none (DEC-3). Guard:
   `tests/unit/schema/test_schema_structure.py`, `tests/unit/api/test_service_written.py`, the
   application rows of `test_hard_check.py`, `tests/generator/unit/test_boundary_check.py`.
-- [ ] 2.8 Lead: as 1.12 for stage 2.
+- [x] 2.8 Lead: as 1.12 for stage 2.
 
 ## 3. Stage 3: events, testkit and docs (#215, #214, #125, #189, #272 a/c, #273)
 
@@ -163,7 +163,7 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
   `import rdf_persistence.x as m` and an unmarked `monkeypatch.setattr(m, ...)`. Then each listed
   call gets its kind's marker (the hand-off lists call, kind and why). Guard: the new test green;
   no test other than those calls' lines edited.
-- [ ] 3.11 Lead: as 1.12 for stage 3, then the full review once (L1, L2, L3 apart; L4+L5 as one;
+- [x] 3.11 Lead: as 1.12 for stage 3, then the full review once (L1, L2, L3 apart; L4+L5 as one;
   P-0005) over the three stages' diff; accepted findings recorded in `design.md` before the fix.
 
 ## 4. Close
@@ -178,8 +178,8 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
 ## Roadmap
 
 - [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12
-- [x] 2.0 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [ ] 2.8
-- [x] 3.0 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5 · [x] 3.6 · [x] 3.7 · [x] 3.8 · [x] 3.9 · [x] 3.10 · [ ] 3.11
+- [x] 2.0 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8
+- [x] 3.0 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5 · [x] 3.6 · [x] 3.7 · [x] 3.8 · [x] 3.9 · [x] 3.10 · [x] 3.11
 - [ ] 4.1 · [ ] 4.2
 
 Within a stage: 1.1 then 1.2 (same file), beside 1.3; then 1.4-1.8 in order, 1.9 and 1.10

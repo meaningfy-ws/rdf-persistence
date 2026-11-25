@@ -21,6 +21,7 @@ from rdf_persistence import (
     generated_models,
     load_role_definitions,
 )
+from rdf_persistence.collaboration.services import write_guards
 from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateReader,
     AggregateValidator,
@@ -607,14 +608,17 @@ async def test_a_root_added_earlier_in_the_same_unit_of_work_has_its_class_for_t
 async def test_an_empty_mapping_does_not_even_read_the_root_types(
     monkeypatch: pytest.MonkeyPatch,
 ):  # G-4
-    def never(*_: Any) -> list[str]:
-        raise AssertionError("the root types were computed with no rule at all")
+    real = write_guards.root_types
+    calls: list[str] = []
 
-    monkeypatch.setattr(
-        "rdf_persistence.collaboration.services.write_guards.root_types", never
-    )  # X2
+    def spy(iri: str, *rest: Any) -> Any:
+        calls.append(iri)
+        return real(iri, *rest)
+
+    monkeypatch.setattr(write_guards, "root_types", spy)  # X2
     async with fake_session(tenant_iri=TENANT, guards=guarded({})) as session:
         await stored_shelf(session)
+    assert calls == [], "the root types were computed with no rule at all"
 
 
 async def test_a_class_without_a_rule_is_not_decoded_or_read():  # T-8

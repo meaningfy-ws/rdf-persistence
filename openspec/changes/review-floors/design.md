@@ -447,6 +447,11 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   `write_guards.root_types` with a function that raises, proving the read does not happen when no
   rule exists: a hand-off no public result shows (X2), though by a tripwire, not a pass-through
   spy. Marked X2; the owner may prefer rewording rule 3's X2 or a seam.
+  **Settled (the owner, 2026-11-25): a spy.** The tripwire became a pass-through spy that wraps
+  the real `root_types`, records each call and asserts none happened, so X2's wording holds as
+  written; no rule and no production code changed. Shown to bite: with the `has_rules` return
+  removed from `_run_aggregate_validators`, the test fails with its own message (lead-fixed, a
+  light chore).
 - **D-10 (full review, 2026-11-25: L1, L2, L3, L4+L5 over the three stages; no Critical, all
   approve), accepted findings, fixed in one pass:**
   H1 (L2) `user-manual/test.adoc:124-125` claims shutdown is outside `timeout`, which no test pins
@@ -465,7 +470,7 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   three signatures with `# noqa: PLR0913` (as D-8); `toolkit_roots()` and `PYPROJECT` public in
   `config.py`; names (`_CollectionCheck`, `is_generated_with`); `_ref_of` in `openapi.py`;
   `iri_policy_helpers.BOOK_CLASS`'s other meaning (PD-17 exception); `tests/schema_helpers.py`'s
-  place; `tests/e2e/test_library.py`'s path arithmetic. Open for the owner: D-9.
+  place; `tests/e2e/test_library.py`'s path arithmetic. Left for the owner: D-9 (since settled).
   Outcome of the pass: H1, H3, H4 (tests), H6, H7 fixed; H5 not applicable (both files' constants
   are `str`, `tests/toy.py`'s are `URIRef`); H4's `config.py` comment wrap dropped (an edit to a
   generation input forces a regeneration for a comment).
