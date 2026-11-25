@@ -282,6 +282,8 @@ None.
 
 ## Delivery decisions
 
+D-8 to D-15 validated by the developer, 2026-11-25: all accepted.
+
 ### D-8
 
 Stage 1 impact (lead, at stage start on `71aa56d2`): `migration_request` is HIGH, because the
