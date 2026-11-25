@@ -392,3 +392,53 @@ async def test_a_corrupt_stored_shelf_does_not_block_a_save_nor_name_itself_in_t
             await replace(checked, nesting(X, Z))
         except InvalidBody as refused:
             assert Y not in str(refused), "another shelf's corruption is not for this saver"
+
+
+# --- the collection check reads its own root, in a fixed order (after the refactor to one value) ---
+
+
+async def test_an_add_is_not_held_to_the_member_class_a_stored_holder_names_for_its_iri():
+    """The held-member-class check is for a replace: an add has no stored class to drift from."""
+    async with raw_and_guarded() as (raw, checked):
+        await collections_put(raw, nesting(Y, X))  # Y names X, which is not stored yet (corrupt)
+        await save(checked, a_shelf(X, member_class="Author"))
+        assert await version_of(checked, X), "the add was accepted, not refused as a changed class"
+
+
+async def test_the_member_class_of_a_shelf_nobody_holds_changes_while_another_shelf_is_held():
+    """The holders are those of the saved shelf's own IRI, not of any shelf in the store."""
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, a_shelf(X), a_shelf(Y))
+        await save(session, nesting(Z, Y))  # Y is held, X is not
+        await replace(session, a_shelf(X, member_class="Author"))
+        assert await version_of(session, X), "X was replaced: only Y is held"
+
+
+async def test_a_held_member_class_is_refused_before_the_members_are_read():
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, a_shelf(Y))
+        await save(session, nesting(X, Y))
+        with pytest.raises(InvalidBody, match="cannot change while a nesting collection holds it"):
+            await replace(
+                session, a_shelf(Y, member_class="Author", has_part=[B1])
+            )  # B1 not stored
+
+
+async def test_a_replace_keeping_one_nested_shelf_and_adding_one_that_leads_back_is_refused():
+    """Only the saved shelf's own stored members are skipped: Z, stored under another, is new."""
+    async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
+        await save(session, nesting(Y))
+        await save(session, nesting(X, Y))
+        await save(session, nesting(Z, X))
+        before = await version_of(session, X)
+        with pytest.raises(InvalidBody, match=f"saving {X} would make a cycle: {X} → {Z} →"):
+            await replace(session, nesting(X, Y, Z))
+        assert await version_of(session, X) == before, "the shelf is as stored"
+
+
+async def test_a_new_nested_shelf_of_another_member_class_is_refused_for_its_member_class():
+    async with raw_and_guarded() as (raw, checked):
+        await save(checked, nesting(X))
+        await collections_put(raw, nesting(Y).model_copy(update={"member_class": "Author"}))
+        with pytest.raises(InvalidBody, match=f"not stored aggregates of Book: .*{Y}"):
+            await replace(checked, nesting(X, Y))
