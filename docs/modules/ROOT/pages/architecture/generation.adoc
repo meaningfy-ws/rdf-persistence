@@ -231,6 +231,12 @@ are the generated enum `HardRule`. It fails generation when:
   application slot is renamed. A toolkit slot that no toolkit class carries (the session's
   `version`) is no clash: the application's slot of that name wins in every view
   (`load_schema`), whatever the import order;
+. two slots or attributes of different names resolve to one expanded IRI (rule `SLOT_IRI`), in the
+  schemas of the target or against a toolkit slot: the two would read as one property in the graph.
+  Slots and attributes with `identifier: true` are exempt, and one name declared twice is no clash.
+  A toolkit pair is reported by the toolkit's own targets only, not again by a consumer's. The
+  problem names every slot on the IRI with its module and the IRI; reuse one slot, or give the
+  other its own `slot_uri`;
 . a slot annotated `default_instance` (a `GenerationAnnotation`) cannot default to a new instance of
   its range (rule `DEFAULT_INSTANCE`): it is multivalued, its range is not a class, a required slot
   of the range class has no `ifabsent`, or the range class is declared after the class that holds the

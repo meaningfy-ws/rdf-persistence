@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### ⚠ BREAKING
+- **`rp-generate` refuses two differently named slots or attributes on one expanded IRI**
+  (`slot-uri-clash`, rule `slot_iri`). A model that declares, for example, `parts` on
+  `dcterms:hasPart` while the toolkit's `has_part` already sits there generated before; now the
+  hard check fails, exit 1, nothing is written, and the problem names every slot on the IRI with
+  its module. Slots and attributes with `identifier: true` are exempt. To fix it, reuse the existing
+  slot, or give yours its own `slot_uri`. See the hard checks in "Model to code: the generation workflow".
 - **The UML converter writes one module per package and never merges a cycle**
   (`generator-module-cycles`). The merge of packages that refer to each other, and the failure of
   merged packages with different kinds, both described in `[0.8.1]`, are removed, and so is the
