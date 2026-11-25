@@ -79,7 +79,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/migrations/rp_migrations_services.yaml",
-      "sha256": "c35978ff77d13f68796ba4b24cfc079f1c658b88e6906aa96be339c0432c6569"
+      "sha256": "309a16b26c5d1f351a8b0980a5536a415551915d6ef37f6a7ae26f420f7466c5"
     },
     {
       "path": "rdf_persistence/model/technical/persistence/rp_persistence_services.yaml",

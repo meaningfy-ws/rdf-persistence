@@ -384,6 +384,7 @@
         },
         "to_role": {
           "description": "The role name a grant names after the migration.",
+          "pattern": "^[^,]*$",
           "type": "string"
         },
         "type": {
