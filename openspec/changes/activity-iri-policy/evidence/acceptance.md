@@ -61,4 +61,5 @@ Demo offered: run the toy service under `{tenant}/activity/{id}`, commit a move 
 and read the tenant's provenance graph (every activity under the tenant, no `urn:uuid:`); then
 restart under the default template and see start-up refused naming `activity_template`.
 
-Verdict: DEMO-PENDING
+Verdict (2026-11-25): the developer skipped the demo; acceptance rests on the verification
+above.
