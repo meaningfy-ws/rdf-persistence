@@ -6,7 +6,6 @@ Under the flat policy a root, its parts and its loaded graphs sit beside each ot
 
 import json
 import re
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import pytest
@@ -33,6 +32,7 @@ from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Chapter
 from tests.toy import GENERATED, TENANT, TOY_SCHEMA, book_iri
+from tests.unit.api.iri_policy_helpers import TenancyDouble
 
 BASE = "https://example.org/"
 FLAT = "{base}{tenant_id}/{type}/{id}"
@@ -91,15 +91,6 @@ class RecordingSession:
         return self.added[iri], URIRef(f"{iri}/graph"), "v1"
 
 
-class RecordingTenancy:
-    def __init__(self) -> None:
-        self.session = RecordingSession()
-
-    @asynccontextmanager
-    async def tenant_session(self, tenant, principal, *, may_read=None):
-        yield self.session
-
-
 def encoded(body: object) -> bytes:
     return json.dumps(body).encode()
 
@@ -111,13 +102,13 @@ async def created(
     rp_path: str = "books",
     body: dict | None = None,
 ):
-    tenancy = RecordingTenancy()
-    aggregates = Aggregates(documents, tenancy, iris=iris)  # type: ignore[arg-type]
+    session = RecordingSession()
+    aggregates = Aggregates(documents, TenancyDouble(lambda: session), iris=iris)  # type: ignore[arg-type]
     given = body if body is not None else {"label": "Dune", "description": "A planet."}
     iri, _ = await aggregates.create(
         tenant, ADA, documents.aggregates["books"], rp_path, encoded(given), JSON
     )
-    return iri, tenancy.session.added[iri]
+    return iri, session.added[iri]
 
 
 # -- "a flat object": root, part and loaded graph, none nested under another ------------------------
@@ -150,13 +141,8 @@ async def test_a_flat_object_is_stored_beside_its_part_and_its_loaded_graph():
         iris=FLAT_IRIS,
     )
 
-    class Tenancy:
-        @asynccontextmanager
-        async def tenant_session(self, tenant, principal, *, may_read=None):
-            yield session
-
     body = {"label": "Dune", "description": "A planet.", "chapters": [{"number": 1}]}
-    aggregates = Aggregates(FLAT_DOCUMENTS, Tenancy(), iris=FLAT_IRIS)  # type: ignore[arg-type]
+    aggregates = Aggregates(FLAT_DOCUMENTS, TenancyDouble(lambda: session), iris=FLAT_IRIS)  # type: ignore[arg-type]
     iri, (triples, _, version) = await aggregates.create(
         FLAT_TENANT, ADA, FLAT_DOCUMENTS.aggregates["books"], "books", encoded(body), JSON
     )

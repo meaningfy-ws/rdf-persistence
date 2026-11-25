@@ -30,7 +30,7 @@ from tests.unit.api.iri_policy_helpers import (
     TENANT,
     TTL,
     VIEW,
-    StoreTenancy,
+    TenancyDouble,
     body,
     book,
     chapter_ids,
@@ -132,7 +132,7 @@ async def test_a_loaded_graph_is_minted_flat_and_registered_by_the_next_commit(s
 
 @pytest.fixture
 def aggregates(store) -> Aggregates:
-    return Aggregates(DOCUMENTS, StoreTenancy(store), iris=IRIS)  # type: ignore[arg-type]
+    return Aggregates(DOCUMENTS, TenancyDouble(lambda: session_on(store)), iris=IRIS)  # type: ignore[arg-type]
 
 
 async def test_a_create_naming_a_part_is_refused_and_nothing_is_written(aggregates, store):
