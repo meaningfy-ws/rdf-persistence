@@ -5,6 +5,7 @@ errors and the leaving are proven without the toolkit's route.
 """
 
 import asyncio
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -151,7 +152,7 @@ async def test_a_refusal_is_returned_at_once_with_no_events() -> None:
 
 
 async def test_fewer_events_than_asked_within_the_timeout_name_the_url_and_the_count() -> None:
-    with pytest.raises(TimeoutError, match=rf"{URL}: 1 of 2 events within {SHORT} s"):
+    with pytest.raises(TimeoutError, match=rf"{re.escape(URL)}: 1 of 2 events within {SHORT} s"):
         await open_event_stream(serving(b"id: 1\n\n"), URL, events=2, timeout=SHORT)
 
 
@@ -162,7 +163,7 @@ async def test_no_head_within_the_timeout_names_the_url_and_leaves_no_app_task()
         running.append(asyncio.current_task())
         await until_disconnect(receive)
 
-    with pytest.raises(TimeoutError, match=rf"{URL}: no response head"):
+    with pytest.raises(TimeoutError, match=rf"{re.escape(URL)}: no response head"):
         await open_event_stream(silent, URL, timeout=SHORT)
     assert running[0].done(), "the app was told to leave"
 
@@ -248,12 +249,13 @@ async def test_a_bad_argument_is_a_value_error_naming_it(arguments: dict, name: 
 class Lifespan:
     """A plain FastAPI app that counts how often its lifespan is entered and left, and serves a stream."""
 
-    def __init__(self, *, state: dict | None = None) -> None:
+    def __init__(self, *, state: dict | None = None, start_up: float = 0.0) -> None:
         self.entered = self.left = 0
 
         @asynccontextmanager
         async def lifespan(app: FastAPI) -> AsyncIterator[dict | None]:
             self.entered += 1
+            await asyncio.sleep(start_up)
             try:
                 yield state
             finally:
@@ -288,3 +290,15 @@ async def test_the_state_the_lifespan_yields_reaches_the_request() -> None:
     plain = Lifespan(state={"k": "v"})
     opened = await open_event_stream(plain.app, URL, events=1, timeout=3.0)
     assert opened.events == [StreamEvent(data="1:v")]
+
+
+async def test_a_lifespan_start_up_longer_than_the_timeout_does_not_raise() -> None:
+    """215-W2b: the lifespan is entered outside ``timeout``, so a slow start-up is not a timeout.
+
+    The real 0.2 s start-up is PD-13's recorded exception to ``testing.adoc`` rule 11 (no real sleeps):
+    the claim is about elapsed time against ``timeout``.
+    """
+    slow = Lifespan(start_up=0.2)
+    opened = await open_event_stream(slow.app, URL, timeout=0.05)
+    assert opened.status == 200, "the head came, no TimeoutError"
+    assert (slow.entered, slow.left) == (1, 1), "the lifespan was entered and left once"

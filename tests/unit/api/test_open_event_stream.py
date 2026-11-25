@@ -6,6 +6,7 @@ The four scenarios run against the toy service's own events route, through the p
 
 import asyncio
 import json
+import re
 
 import pytest
 
@@ -99,7 +100,7 @@ async def test_a_caller_with_no_right_on_the_tenant_gets_404_without_waiting(
 
 async def test_a_silent_stream_raises_a_timeout_naming_the_url(settled: Scene) -> None:
     url = events_of(settled)
-    with pytest.raises(TimeoutError, match=url):
+    with pytest.raises(TimeoutError, match=re.escape(url)):
         await open_event_stream(
             settled.service.app, url, headers=settled.headers("rita"), events=1, timeout=SHORT
         )
