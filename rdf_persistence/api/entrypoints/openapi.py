@@ -72,9 +72,12 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
 )
 from rdf_persistence.persistence.services.listing import (
     ABSENT,
+    CONTAINS,
     DESCENDING,
     LIMIT,
+    MAX_HOPS,
     OFFSET,
+    PATH,
     SORT,
     listable_slots,
     sort_keys,
@@ -96,6 +99,12 @@ TOOLKIT_BODIES = tuple(
 DEFAULT = "default"
 # What FastAPI is given beside the answers and the status of a route: the rest of its operation.
 _OPERATION_PARTS = ("parameters", "requestBody", "security")
+
+# What an aggregate listing says of its filters beyond the one parameter per slot (no parameter is added).
+PATH_FILTER_DESCRIPTION = (
+    f"A filter may go through up to {MAX_HOPS} references: "
+    f"`<reference>{PATH}<slot>=<value>` or `<reference>{PATH}<slot>{CONTAINS}=<text>`."
+)
 
 # The problems of each kind of route, in the order of the status codes (the error matrix).
 _AUTHENTICATED = (problems.INVALID_TOKEN, problems.UNAVAILABLE)
@@ -132,6 +141,7 @@ class RouteDocs(Operation):
             response_model=None,
             status_code=self.status_code,
             summary=self.summary,
+            description=self.description,
             tags=list[str | Enum](self.tags or []),
             responses=documented["responses"],
             openapi_extra={k: v for k, v in documented.items() if k in _OPERATION_PARTS},
@@ -249,11 +259,13 @@ def route_options(
     *,
     parameters: Iterable[Parameter] = (),
     request: RequestBody | None = None,
+    description: str | None = None,
 ) -> RouteDocs:
     """The documentation of one operation, to register its route with.
 
     ``success`` is the status of the answer and what it says; ``kinds`` are the problems the route
-    can answer with (the error matrix), each with its fixed title and status.
+    can answer with (the error matrix), each with its fixed title and status; ``description`` is
+    the operation's longer text, left out when ``None``.
     """
     status, response = success
     responses: dict[str, Response | object] = {str(status.value): response}
@@ -271,6 +283,7 @@ def route_options(
     return RouteDocs(
         status_code=status,
         summary=summary,
+        description=description,
         tags=[tag],
         responses=responses,
         parameters=list(parameters) or None,
@@ -469,6 +482,7 @@ class AggregateOpenApi:
             (HTTPStatus.OK, page),
             (*_READS, problems.BAD_QUERY),
             parameters=self._query_parameters(),
+            description=PATH_FILTER_DESCRIPTION,
         )
 
     def create(self) -> RouteDocs:

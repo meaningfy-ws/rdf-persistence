@@ -24,6 +24,8 @@ TOOLKIT_SEGMENT = "toolkit"
 POLICY_SEGMENT = f"{TOOLKIT_SEGMENT}/iri-policy"
 STAMPS_SEGMENT = f"{TOOLKIT_SEGMENT}/schema-stamps"
 GENID = "/.well-known/genid/"
+# What follows an aggregate's root IRI in its named graph's IRI (PD-4); a query computes the graph with it.
+GRAPH_SUFFIX = "/graph"
 LOADED_GRAPH_TYPE = "content"
 # The words the IRI layout owns; they are never an id (PD-5) and no class may take one as its type (PD-8).
 LAYOUT_WORDS = (LOADED_GRAPH_TYPE, "graph", "parts", "access", "meta", "registry", "provenance")
@@ -45,12 +47,12 @@ def _prefix(value: str) -> str:
 
 def graph_iri(root_iri: str) -> URIRef:
     """The named graph of an aggregate (PD-4); never the root's own IRI."""
-    return URIRef(f"{root_iri}/graph")
+    return URIRef(f"{root_iri}{GRAPH_SUFFIX}")
 
 
 def root_of_graph(graph: str) -> URIRef:
     """The root an aggregate's named graph belongs to; the inverse of ``graph_iri``."""
-    root = str(graph).removesuffix("/graph")
+    root = str(graph).removesuffix(GRAPH_SUFFIX)
     if root == str(graph) or not root:
         raise InvalidIri(f"not the graph of an aggregate: {graph!r}")
     return URIRef(root)

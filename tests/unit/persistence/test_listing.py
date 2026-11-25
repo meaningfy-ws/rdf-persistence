@@ -1,6 +1,7 @@
 """What a listing asks for and how it is read: the query string, the slots it may name, the typed values (PD-15)."""
 
 import pytest
+from linkml_runtime.linkml_model.meta import SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
 from rdflib import XSD, Literal, URIRef
 
@@ -318,3 +319,119 @@ def test_a_filter_that_is_both_contains_and_absent_is_a_bad_query(listings, view
     request = ListRequest(filters=[Filter(slot="label", value="", contains=True, absent=True)])
     with pytest.raises(BadQuery):
         listings.plan(view.get_class("Book"), request)
+
+
+# reference-filters D-4: a dotted filter resolves hop by hop; the Condition carries the hops as `via`
+LIB = "https://example.org/ns/library#"
+SKOS_LABEL = "http://www.w3.org/2004/02/skos/core#prefLabel"
+
+
+def conditions_of(listings, view, *params, cls="Book"):
+    plan = listings.plan(view.get_class(cls), list_request(list(params)))
+    assert plan.conditions is not None, "the filters became conditions"
+    assert len(plan.conditions) == len(params), "one condition per filter"
+    return plan.conditions
+
+
+def test_a_path_filter_resolves_to_a_condition_on_its_last_slot_with_the_hops_as_via(
+    listings, view
+):
+    [one] = conditions_of(listings, view, ("written_by.label", "Frank Herbert"))  # S1
+    assert (one.predicate, one.value, one.contains, one.reference, one.via) == (
+        SKOS_LABEL,
+        "Frank Herbert",
+        False,
+        False,
+        [f"{LIB}writtenBy"],
+    ), "S1: the last segment's predicate and value, the hop's predicate in via"
+    [sequel] = conditions_of(listings, view, ("sequel_of.written_by", "https://example.org/a/1"))
+    assert (sequel.predicate, sequel.reference, sequel.via) == (
+        f"{LIB}writtenBy",
+        True,
+        [f"{LIB}sequelOf"],
+    ), "S3: the last segment is a reference equality, one hop"
+    [contains] = conditions_of(listings, view, ("written_by.label~", "herb"))
+    assert (contains.contains, contains.value, contains.via) == (
+        True,
+        "herb",
+        [f"{LIB}writtenBy"],
+    ), "S6: contains on the last hop"
+    [two] = conditions_of(listings, view, ("sequel_of.written_by.label", "x"))
+    assert two.via == [f"{LIB}sequelOf", f"{LIB}writtenBy"], "S3b: two hops, in order"
+    [three] = conditions_of(listings, view, ("sequel_of.sequel_of.written_by.label", "x"))
+    assert len(three.via or []) == 3, "S3b: three hops is the cap and is accepted"
+    [plain] = conditions_of(listings, view, ("label", "Dune"))
+    assert not plain.via, "a filter without a dot has no via"
+
+
+def test_a_filter_through_an_abstract_range_sees_only_the_slots_the_range_declares(listings, view):
+    with pytest.raises(BadQuery, match="LendingItem has no slot 'label'"):  # S2b
+        listings.plan(view.get_class("Loan"), list_request([("lends.label", "X")]))
+
+
+def test_two_filters_on_the_same_path_are_two_independent_path_conditions(listings, view):
+    conditions = conditions_of(listings, view, ("written_by.label", "x"), ("written_by.label", "y"))
+    assert [(c.value, c.via) for c in conditions] == [
+        ("x", [f"{LIB}writtenBy"]),
+        ("y", [f"{LIB}writtenBy"]),
+    ], "E13: two path conditions; each is rendered with its own variables (DEC-4)"
+
+
+def _path_params(params):
+    return "&".join(f"{k}={x}" for k, x in params)
+
+
+@pytest.mark.parametrize(
+    ("params", "message"),
+    [
+        ([("nosuch.label", "x")], "Book has no slot 'nosuch'"),  # E2
+        ([("isbn.x", "1")], "Book slot 'isbn' is not a reference to an aggregate"),  # E3
+        ([("chapters.number", "1")], "Book has no slot 'chapters'"),  # E4
+        (
+            [("sequel_of.sequel_of.sequel_of.sequel_of.isbn", "1")],
+            "a filter crosses at most 3 references",
+        ),  # E5
+        ([("written_by..label", "x")], "has an empty segment"),  # E6
+        ([("written_by.", "x")], "has an empty segment"),  # E6
+        ([(".label", "x")], "has an empty segment"),  # E6
+        ([("written_by.id", "https://example.org/a/1")], "Author has no slot 'id'"),  # E7
+        ([("written_by.label~", "")], "needs at least one character"),  # E8
+        ([("absent", "written_by.label")], "absent takes a slot of Book, not a path"),  # E9
+        ([("absent", "nosuch.label")], "absent takes a slot of Book, not a path"),  # E9: first
+        ([("sort", "written_by.label")], "has no slot 'written_by.label'"),  # E10
+        ([("written_by.published", "2020-01-01")], "Author has no slot 'published'"),  # E12
+    ],
+    ids=lambda v: _path_params(v) if isinstance(v, list) else None,
+)
+def test_a_path_filter_that_cannot_be_resolved_is_a_bad_query_that_says_why(
+    listings, view, params, message
+):
+    with pytest.raises(BadQuery, match=message):
+        plan_of(listings, view, *params)
+
+
+def _book_with_slot(name: str, range_: str) -> tuple[SchemaView, Listings]:
+    view = load_schema(TOY_SCHEMA)
+    view.add_slot(SlotDefinition(name, range=range_))
+    view.get_class("Book").slots.append(name)
+    view.set_modified()
+    return view, Listings(view)
+
+
+def test_a_filter_through_a_reference_in_another_database_is_a_bad_query():  # E11
+    view, listings = _book_with_slot("template", "Template")
+    with pytest.raises(BadQuery, match="Book slot 'template' refers to the application database"):
+        plan_of(listings, view, ("template.label", "x"))
+
+
+@pytest.mark.parametrize(
+    ("range_", "slot_name"),
+    [("Library", "home_library"), ("Chapter", "chapter_ref")],
+    ids=["tenant-root", "not-an-aggregate-root"],
+)
+def test_a_hop_whose_range_is_the_tenant_root_or_no_aggregate_is_a_bad_query(range_, slot_name):
+    view, listings = _book_with_slot(slot_name, range_)  # E16
+    with pytest.raises(
+        BadQuery, match=f"Book slot '{slot_name}' is not a reference to an aggregate"
+    ):
+        plan_of(listings, view, (f"{slot_name}.label", "x"))

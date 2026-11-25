@@ -423,3 +423,54 @@ async def test_find_by_none_returns_the_aggregates_with_no_value_on_a_real_store
     assert await session.find(Scan, media_type=None, label="scan") == [iris[0]], "and a filter"
     with pytest.raises(ValueError, match="None cannot be combined"):
         await session.find(Scan, media_type=[None, "text/plain"])
+
+
+async def test_find_with_a_dotted_keyword_goes_through_the_reference_on_a_real_store(
+    store, database
+):  # S8
+    from rdf_persistence.persistence.services.listing import Listings
+    from rdf_persistence.schema.services.schema import load_schema
+    from tests.fixtures.library.domain.generated.books import Author, Book
+    from tests.toy import TOY_SCHEMA, toy_mapper
+
+    session = Session(
+        store,
+        database=database,
+        tenant_iri=TENANT,
+        principal=ADA,
+        clock=Ticker(),
+        listings=Listings(load_schema(TOY_SCHEMA)),
+    )
+    authors = [
+        str(DEFAULT_IRIS.aggregate(TENANT, "author", "authors", str(uuid.UUID(int=n))))
+        for n in (1, 2)
+    ]
+    books = [
+        str(DEFAULT_IRIS.aggregate(TENANT, "book", "books", str(uuid.UUID(int=n)))) for n in (1, 2)
+    ]
+    for iri, name in zip(authors, ("Frank Herbert", "Jane Austen"), strict=True):
+        await session.add_graph(
+            iri, toy_mapper().to_triples(Author(id=iri, label=name, description=name))
+        )
+    for iri, label, author in zip(books, ("Dune", "Emma"), authors, strict=True):
+        await session.add_graph(
+            iri,
+            toy_mapper().to_triples(
+                Book(id=iri, label=label, description=label, written_by=author)
+            ),
+        )
+    assert await session.find(Book, **{"written_by.label": "Frank Herbert"}) == [books[0]], (
+        "find goes through the reference and returns the IRIs of the books"
+    )
+    hiding = Session(
+        store,
+        database=database,
+        tenant_iri=TENANT,
+        principal=ADA,
+        clock=Ticker(),
+        listings=Listings(load_schema(TOY_SCHEMA)),
+        may_read=lambda iri: iri not in authors,  # PD-6: the author's graph is prohibited
+    )
+    assert await hiding.find(Book, **{"written_by.label": "Frank Herbert"}) == [books[0]], (
+        "find ignores prohibitions (PD-6): the hidden author still matches"
+    )

@@ -102,6 +102,7 @@ classes:
       - condition_value
       - condition_datatype
       - condition_reference
+      - condition_via
       - filter_contains
       - filter_absent
     slot_usage:
@@ -233,6 +234,16 @@ slots:
     slot_uri: rp:conditionReference
     alias: reference
     range: boolean
+  condition_via:
+    title: Condition via
+    description: >-
+      The IRIs of the predicates of the references the condition crosses, in order, from the listed
+      aggregate to the one whose statement is tested; empty when the condition is on the listed
+      aggregate itself. The predicate and value are those of the last aggregate.
+    slot_uri: rp:conditionVia
+    alias: via
+    range: uri
+    multivalued: true
   plan_class:
     title: Plan class
     description: The IRI of the class of the aggregates listed.

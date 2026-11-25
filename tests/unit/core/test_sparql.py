@@ -22,6 +22,7 @@ from rdf_persistence.core.domain.sparql import (
     fill_terms,
     fragment,
     fragment_terms,
+    hop_patterns,
     join,
     match_patterns,
     no_value_patterns,
@@ -305,6 +306,75 @@ def test_empty_contains_patterns_are_empty():
 def test_contains_patterns_refuse_a_variable_that_is_not_a_plain_name(variable):
     with pytest.raises(SparqlError):
         contains_patterns(variable, [])
+
+
+def _inner() -> SparqlTerm:
+    return match_patterns("t", [(URIRef(f"{EX}q"), Literal("x"))])
+
+
+def test_hop_patterns_render_the_hop_its_bound_graph_and_the_inner_patterns():
+    patterns = hop_patterns("root", URIRef(f"{EX}p"), "t", "/graph", [], _inner())
+    assert patterns == (
+        f"?root <{EX}p> ?t . "
+        'BIND (IRI(CONCAT(STR(?t), "/graph")) AS ?t_g) '
+        f'GRAPH ?t_g {{ ?t <{EX}q> "x" . }}'
+    ), "no hidden graph, no NOT IN filter"
+    prepareQuery(fill("ASK { $patterns }", patterns=patterns))
+
+
+def test_hop_patterns_leave_hidden_graphs_out_with_one_not_in_filter():
+    hidden = [URIRef(f"{EX}h1/graph"), URIRef(f"{EX}h2/graph")]
+    patterns = hop_patterns("root", URIRef(f"{EX}p"), "t", "/graph", hidden, _inner())
+    assert patterns == (
+        f"?root <{EX}p> ?t . "
+        'BIND (IRI(CONCAT(STR(?t), "/graph")) AS ?t_g) '
+        f"FILTER (?t_g NOT IN (<{EX}h1/graph>, <{EX}h2/graph>)) "
+        f'GRAPH ?t_g {{ ?t <{EX}q> "x" . }}'
+    ), "the filter sits between the BIND and the GRAPH, with every hidden graph"
+    prepareQuery(fill("ASK { $patterns }", patterns=patterns))
+
+
+def test_hop_patterns_match_only_in_the_graph_of_the_target():
+    p, q, kind = URIRef(f"{EX}p"), URIRef(f"{EX}q"), URIRef(f"{EX}type")
+    root, hit, miss = URIRef(f"{EX}r"), URIRef(f"{EX}hit"), URIRef(f"{EX}miss")
+    data = Dataset()
+    data.graph(URIRef(f"{EX}r/graph")).add((root, kind, URIRef(f"{EX}Thing")))
+    for target in (hit, miss):
+        data.graph(URIRef(f"{EX}r/graph")).add((root, p, target))
+    data.graph(URIRef(f"{hit}/graph")).add((hit, q, Literal("x")))
+    data.graph(URIRef(f"{EX}other/graph")).add((miss, q, Literal("x")))
+    patterns = hop_patterns("root", p, "t", "/graph", [], _inner())
+    query = fill(
+        f"SELECT ?t WHERE {{ GRAPH ?g {{ ?root <{EX}type> <{EX}Thing> . $patterns }} }}",
+        patterns=patterns,
+    )
+    assert {row[0] for row in data.query(query)} == {hit}, (
+        "a statement about the target in another aggregate's graph does not match"
+    )
+
+
+@pytest.mark.parametrize("variable", ["r o", "", "?x"])
+def test_hop_patterns_refuse_a_subject_or_target_that_is_not_a_plain_name(variable):
+    with pytest.raises(SparqlError):
+        hop_patterns(variable, URIRef(f"{EX}p"), "t", "/graph", [], _inner())
+    with pytest.raises(SparqlError):
+        hop_patterns("root", URIRef(f"{EX}p"), variable, "/graph", [], _inner())
+
+
+@pytest.mark.parametrize("suffix", CONTAINS_INJECTIONS)
+def test_hop_patterns_keep_a_hostile_suffix_inside_one_literal(suffix):
+    patterns = hop_patterns("root", URIRef(f"{EX}p"), "t", suffix, [], _inner())
+    assert patterns.count("BIND (") == 1, "one BIND, whatever the suffix holds"
+    assert term(Literal(suffix)) in patterns, "the suffix is the rendered literal"
+    prepareQuery(fill("ASK { $patterns }", patterns=patterns))
+
+
+@pytest.mark.parametrize("iri", ["http://x/> ) } ; DROP ALL ; {", "a b", ""])
+def test_hop_patterns_refuse_a_hidden_or_predicate_iri_that_could_break_out(iri):
+    with pytest.raises(SparqlError):
+        hop_patterns("root", URIRef(f"{EX}p"), "t", "/graph", [URIRef(iri)], _inner())
+    with pytest.raises(SparqlError):
+        hop_patterns("root", URIRef(iri), "t", "/graph", [], _inner())
 
 
 def test_no_value_patterns_render_one_not_exists_per_predicate_counting_blank_nodes_as_values():

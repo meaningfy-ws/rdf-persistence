@@ -101,6 +101,11 @@ BAD_BODY = [
     pytest.param({"member_class": "Comment"}, "Comment", id="D-7-a-comment-is-no-member-class"),
     pytest.param({"membership_rule": rule("colour", "red")}, "colour", id="TC-20-unknown-slot"),
     pytest.param({"membership_rule": rule("genre", "haiku")}, "haiku", id="TC-20-bad-value"),
+    pytest.param(
+        {"membership_rule": rule("written_by.label", "Frank Herbert")},
+        "not a path",
+        id="D-13-a-path-is-no-rule-slot",
+    ),
 ]
 
 

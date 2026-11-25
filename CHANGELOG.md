@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A listing filters through references** (`reference-filters`). `<reference>.<slot>=<value>` and
+  `<reference>.<slot>~=<text>` read the slot in the aggregate the reference points to, up to three
+  references deep (`author.name~=le`). Each hop is a listable reference to an aggregate root in the
+  same database; an aggregate the caller may not read does not match; `absent=` and `sort=` take no
+  path. A path that breaks these answers 400 `bad-query`. A reference collection's membership rule
+  takes no path either (422 `invalid-body`). Every aggregate listing in the OpenAPI
+  document now carries a description of the syntax. See "Filters through references" in the HTTP API
+  reference.
+
 ## [0.12.0] - 2026-11-24
 
 ### Added

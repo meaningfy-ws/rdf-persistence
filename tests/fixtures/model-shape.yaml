@@ -454,6 +454,11 @@
     multivalued: false
     range: string
     alias: value
+  - name: condition_via
+    required: false
+    multivalued: true
+    range: uri
+    alias: via
   - name: filter_absent
     required: false
     multivalued: false

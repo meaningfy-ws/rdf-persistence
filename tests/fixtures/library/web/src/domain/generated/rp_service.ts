@@ -160,6 +160,8 @@ export interface Condition {
   datatype?: string;
   /** Whether the value is an IRI rather than a literal. */
   reference?: boolean;
+  /** The IRIs of the predicates of the references the condition crosses, in order, from the listed aggregate to the one whose statement is tested; empty when the condition is on the listed aggregate itself. The predicate and value are those of the last aggregate. */
+  via?: string[];
   /** Whether the filter matches a substring of the slot's text, ignoring case, rather than the value. */
   contains?: boolean;
   /** Whether the filter matches the aggregates that hold no value for the slot, rather than a value; the filter's value is then empty and unread. */

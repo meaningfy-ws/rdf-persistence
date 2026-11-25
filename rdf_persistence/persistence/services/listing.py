@@ -26,13 +26,14 @@ from rdf_persistence.core.domain.sparql import (
     contains_patterns,
     count,
     fill_terms,
+    hop_patterns,
     join,
     match_patterns,
     no_value_patterns,
     order_by,
     term_list,
 )
-from rdf_persistence.iris.domain.layout import root_of_graph
+from rdf_persistence.iris.domain.layout import GRAPH_SUFFIX, root_of_graph
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     Condition,
     Filter,
@@ -41,11 +42,14 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
 )
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema_structure import (
+    AGGREGATE_ROOT,
+    database_of,
     holds_iri,
     holds_owned_part,
     holds_text,
     is_bookkeeping,
     is_internal,
+    is_tenant_root,
     rdf_term,
     served_roots,
 )
@@ -59,6 +63,10 @@ RESERVED = frozenset({LIMIT, OFFSET, SORT, ABSENT})
 # A parameter name ending in it asks for a contains filter on the name without it.
 CONTAINS = "~"
 DESCENDING = "-"
+# A slot name with it crosses references: ``written_by.label`` is the label of the book's author.
+PATH = "."
+# The most references a filter crosses.
+MAX_HOPS = 3
 _DIGITS = re.compile(r"[0-9]+")
 _SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:\S+")
 
@@ -195,12 +203,14 @@ def typed_value(view: SchemaView, slot: SlotDefinition, text: str) -> URIRef | L
     return term
 
 
-def _condition(predicate: URIRef, value: URIRef | Literal) -> Condition:
-    """The condition that the aggregate has ``predicate`` with ``value``, as the plan keeps it."""
+def _condition(
+    predicate: URIRef, value: URIRef | Literal, via: list[str] | None = None
+) -> Condition:
+    """The condition that the aggregate has ``predicate`` with ``value`` (through ``via``), as the plan keeps it."""
     if isinstance(value, URIRef):
-        return Condition(predicate=str(predicate), value=str(value), reference=True)
+        return Condition(predicate=str(predicate), value=str(value), reference=True, via=via)
     datatype = str(value.datatype) if value.datatype else None
-    return Condition(predicate=str(predicate), value=str(value), datatype=datatype)
+    return Condition(predicate=str(predicate), value=str(value), datatype=datatype, via=via)
 
 
 def _term(condition: Condition) -> URIRef | Literal:
@@ -216,15 +226,51 @@ def condition_pairs(conditions: Iterable[Condition]) -> list[tuple[URIRef, URIRe
     return [(URIRef(c.predicate), _term(c)) for c in conditions]
 
 
-def condition_patterns(variable: str, conditions: Iterable[Condition]) -> SparqlTerm:
+def _path_patterns(variable: str, n: int, condition: Condition, hidden: list[URIRef]) -> SparqlTerm:
+    """One path condition, the ``n``-th of its plan: its hops nested in one ``FILTER EXISTS`` (D-2).
+
+    Hop ``j`` (from 1) binds ``?{variable}_p{n}_{j}``; the condition's own statement is tested on the last.
+    """
+    via = [URIRef(predicate) for predicate in condition.via or []]
+    last = f"{variable}_p{n}_{len(via)}"
+    if condition.contains:
+        patterns = contains_patterns(
+            last, [(URIRef(condition.predicate), Literal(condition.value))]
+        )
+    else:
+        patterns = match_patterns(last, condition_pairs([condition]))
+    for j in range(len(via), 0, -1):
+        subject = variable if j == 1 else f"{variable}_p{n}_{j - 1}"
+        patterns = hop_patterns(
+            subject, via[j - 1], f"{variable}_p{n}_{j}", GRAPH_SUFFIX, hidden, patterns
+        )
+    return SparqlTerm(f"FILTER EXISTS {{ {patterns} }}")
+
+
+def condition_patterns(
+    variable: str, conditions: Iterable[Condition], hidden: Iterable[str] = ()
+) -> SparqlTerm:
     """The patterns that hold every condition of a plan on ``?variable``: the one renderer of conditions.
 
     An equality condition is a ``?variable <predicate> <value> .`` triple pattern; a contains condition
     is a ``FILTER EXISTS`` on a value of the predicate holding its text, ignoring case; an absent
-    condition is a ``FILTER NOT EXISTS`` on a value of the predicate (``no_value_patterns``). The listing,
-    ``Session.matches`` and the commit guard all render through it, so they agree.
+    condition is a ``FILTER NOT EXISTS`` on a value of the predicate (``no_value_patterns``). A condition
+    with a ``via`` crosses references: its hops nest in one ``FILTER EXISTS``, one row per root, and each
+    hop leaves out the ``hidden`` graphs; a condition set with no path never reads ``hidden``. The
+    listing, ``Session.matches`` and the commit guard all render through it, so they agree.
     """
     conditions = list(conditions)
+    hidden_graphs = [URIRef(graph) for graph in hidden]
+    paths = [c for c in conditions if c.via]
+    parts = [
+        _root_patterns(variable, [c for c in conditions if not c.via]),
+        *(_path_patterns(variable, n, c, hidden_graphs) for n, c in enumerate(paths)),
+    ]
+    return join(part for part in parts if part)
+
+
+def _root_patterns(variable: str, conditions: list[Condition]) -> SparqlTerm:
+    """The conditions on the listed aggregate itself: equal, then contains, then absent."""
     equal = [c for c in conditions if not c.contains and not c.absent]
     containing = [(URIRef(c.predicate), Literal(c.value)) for c in conditions if c.contains]
     absent = [URIRef(c.predicate) for c in conditions if c.absent]
@@ -274,21 +320,85 @@ class Listings:
     def _filtered(self, cls: ClassDefinition, filter_: Filter) -> Condition:
         """The condition of one filter: its slot resolved, its value typed (equality), kept (contains) or unread (absent).
 
+        A slot name with dots is a path through references (D-4): every name but the last is a
+        reference to an aggregate of the listing's database (``_hop``), the last is resolved on the
+        class it reaches, and the condition's ``via`` holds the predicates of the hops, in order.
+
         Raises:
-            BadQuery: The slot is not listable, the filter is both contains and absent, or it fails
-                as ``_contains`` or ``typed_value`` say.
+            BadQuery: The slot is not listable, the filter is both contains and absent, an absence
+                filter names a path, a path has an empty segment, crosses more than ``MAX_HOPS``
+                references or crosses a slot that is no reference to an aggregate of the database,
+                or it fails as ``_contains`` or ``typed_value`` say.
         """
-        slot = self._slot(cls, filter_.slot)
+        if filter_.absent and PATH in filter_.slot:
+            raise BadQuery(f"absent takes a slot of {cls.name}, not a path")
+        current, slot, hops = self._resolved(cls, filter_.slot)
+        via = hops or None
         if filter_.absent:
             if filter_.contains:
                 raise BadQuery(f"a filter on {filter_.slot!r} cannot be both contains and absent")
             return Condition(predicate=str(self._predicate(slot)), value="", absent=True)
         if filter_.contains:
-            return self._contains(cls, slot, filter_.value)
-        return _condition(self._predicate(slot), typed_value(self._view, slot, filter_.value))
+            return self._contains(current, slot, filter_.value, via=via)
+        return _condition(
+            self._predicate(slot), typed_value(self._view, slot, filter_.value), via=via
+        )
 
-    def _contains(self, cls: ClassDefinition, slot: SlotDefinition, text: str) -> Condition:
-        """The condition that a value of ``slot`` contains ``text``, ignoring case.
+    def _resolved(
+        self, cls: ClassDefinition, name: str
+    ) -> tuple[ClassDefinition, SlotDefinition, list[str]]:
+        """The class a filter's slot name reaches, its last slot, and the predicates of the hops (``via``), in order.
+
+        Raises:
+            BadQuery: The path has an empty segment, crosses more than ``MAX_HOPS`` references, or
+                crosses a slot that is no reference to an aggregate of the database (``_hop``), or
+                a segment is not a listable slot.
+        """
+        names = name.split(PATH)
+        if len(names) > 1 and not all(names):
+            raise BadQuery(f"{name!r} has an empty segment")
+        if len(names) - 1 > MAX_HOPS:
+            raise BadQuery(f"a filter crosses at most {MAX_HOPS} references")
+        via: list[str] = []
+        current = cls
+        for segment in names[:-1]:
+            reference = self._slot(current, segment)
+            current = self._hop(current, reference)
+            via.append(str(self._predicate(reference)))
+        return current, self._slot(current, names[-1]), via
+
+    def _hop(self, cls: ClassDefinition, reference: SlotDefinition) -> ClassDefinition:
+        """The class ``reference`` of ``cls`` points at, when a filter may cross it: an aggregate root of the listing's database.
+
+        An abstract range is allowed; the tenant root is not (its graph is the meta graph, not
+        ``<root>/graph``).
+
+        Raises:
+            BadQuery: The range is no aggregate root or is the tenant root, or it lives in another database.
+        """
+        name = underscore(reference.name)
+        target = self._view.all_classes().get(str(reference.range))
+        if (
+            target is None
+            or AGGREGATE_ROOT not in self._view.class_ancestors(target.name)
+            or is_tenant_root(target)
+        ):
+            raise BadQuery(
+                f"{cls.name} slot {name!r} is not a reference to an aggregate; "
+                "a filter crosses references only"
+            )
+        database = database_of(self._view, target)
+        if database != self._database:
+            raise BadQuery(
+                f"{cls.name} slot {name!r} refers to the {database.value} database; "
+                "a filter stays in one database"
+            )
+        return target
+
+    def _contains(
+        self, cls: ClassDefinition, slot: SlotDefinition, text: str, via: list[str] | None = None
+    ) -> Condition:
+        """The condition that a value of ``slot`` contains ``text``, ignoring case, through ``via``.
 
         Raises:
             BadQuery: The slot is not a string slot, or the text is empty.
@@ -298,7 +408,7 @@ class Listings:
             raise BadQuery(f"{cls.name} slot {name!r} is not a string; ~= takes a string slot")
         if not text:
             raise BadQuery(f"~= on {name!r} needs at least one character")
-        return Condition(predicate=str(self._predicate(slot)), value=text, contains=True)
+        return Condition(predicate=str(self._predicate(slot)), value=text, contains=True, via=via)
 
     def _sort(self, cls: ClassDefinition, key: str | None) -> tuple[URIRef | None, bool]:
         if key is None:
@@ -347,7 +457,7 @@ def listing_query(registry: URIRef, plan: ListPlan) -> str:
     terms = v.listing_terms(
         registry,
         target=URIRef(plan.target),
-        patterns=condition_patterns("root", plan.conditions or []),
+        patterns=condition_patterns("root", plan.conditions or [], plan.hidden_graphs or []),
         hidden=term_list(URIRef(graph) for graph in plan.hidden_graphs or []),
         order=order_by(*keys),
         limit=count(plan.limit),

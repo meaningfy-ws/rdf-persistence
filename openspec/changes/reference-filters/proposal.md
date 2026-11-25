@@ -91,13 +91,19 @@ source-version filter until the toolkit can do this (#308).
 
 ## What Changes
 
+As delivered (one PR, see Reconciliation):
+
 - Services model: `Condition.condition_via` (multivalued, ordered predicate IRIs), regenerated.
-- Listing: a dotted filter name resolves hop by hop (`Listings._filtered`), and `condition_patterns`
-  renders a path condition through a new `path_patterns` in `core/domain/sparql.py`. The listing
-  passes its hidden graphs to it.
-- `Session.find`: a dotted keyword is a path.
-- OpenAPI: the listing's description names the path syntax. Docs: `reference/http-api.adoc`, the
-  `find` docstring, and the CHANGELOG ("Added").
+- Listing: a dotted filter name resolves hop by hop (`Listings._filtered` through `_resolved` and
+  `_hop`), and `condition_patterns` renders a path condition through a new `hop_patterns` in
+  `core/domain/sparql.py` (the PLAN's D-2 name; this outline said `path_patterns`). The listing
+  passes its hidden graphs to it. `iris/domain/layout.py` gains `GRAPH_SUFFIX`.
+- `Session.find`: a dotted keyword is a path (docstring only; no code).
+- Reference collections: a membership rule refuses a path (design D-13), so the No-go "no path fed
+  to guards or `matches`" holds.
+- OpenAPI: every aggregate listing operation carries one description of the path syntax. Docs:
+  `reference/http-api.adoc` ("Filters through references"), the `find` docstring, and the
+  CHANGELOG ("Added").
 
 ## Capabilities
 
@@ -108,8 +114,27 @@ source-version filter until the toolkit can do this (#308).
 
 ## Impact
 
-`rdf_persistence/model/technical/persistence/rp_persistence_services.yaml` (regenerated),
-`persistence/services/listing.py`, `persistence/services/session.py` (docstring only, unless the
-builder finds `_filter` needs more), `core/domain/sparql.py`, `api/entrypoints/openapi.py`,
-`docs/.../reference/http-api.adoc`, and the CHANGELOG. The consumer gets them after a release
-and its lock refresh, then offers its source-version filter.
+`rdf_persistence/model/technical/persistence/rp_persistence_services.yaml` (regenerated, with the
+shape snapshot and the served TypeScript golden gaining `via`), `persistence/services/listing.py`,
+`persistence/services/session.py` (docstring only), `core/domain/sparql.py`,
+`iris/domain/layout.py`, `iris/services/iris.py` (`GRAPH_SUFFIX`),
+`collaboration/services/reference_collections.py` (D-13), `api/entrypoints/openapi.py` (and the
+served OpenAPI golden), `docs/.../reference/http-api.adoc`, the CHANGELOG and the scenario map.
+The consumer gets them after a release and its lock refresh, then offers its source-version filter.
+
+## Reconciliation
+
+| Shaped | Delivered | PR |
+|---|---|---|
+| DEC-1 `via` on `Condition`, one renderer | as shaped | this PR |
+| DEC-2 1 to 3 hops, aggregate roots of one database, range's own slots | as shaped | this PR |
+| DEC-3 equality and contains only; `absent`/`sort` refuse a path | as shaped | this PR |
+| DEC-4 independent path filters | as shaped, documented | this PR |
+| DEC-5 hidden graphs at every hop in a listing; `find` ignores them | as shaped | this PR |
+| DEC-6 dotted keyword in `find` | as shaped, no code | this PR |
+| DEC-7 one OpenAPI description, no parameters | as shaped; the cap is read from `MAX_HOPS` ("up to 3 references") | this PR |
+| DEC-8 one stage, one PR | as shaped | this PR |
+| No-go: no path fed to guards or `matches` | held by refusing a path in a membership rule (D-13), which the shape had not seen reaching them | this PR |
+
+Nothing shaped was left out. The delivery decisions D-7 to D-13 and the review findings are in
+`design.md`.

@@ -20,6 +20,11 @@
       "value": {
          "@id": "filterValue"
       },
+      "via": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "conditionVia"
+      },
       "conditions": {
          "@type": "@id",
          "@container": "@set",

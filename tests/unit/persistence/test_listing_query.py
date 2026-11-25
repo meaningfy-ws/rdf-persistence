@@ -36,7 +36,7 @@ from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit.fakes import FAKE_DATABASE, FAKE_PRINCIPAL, FAKE_TENANT, FakeStore
-from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre
+from tests.fixtures.library.domain.generated.books import Author, Book, Chapter, Display, Genre
 from tests.fixtures.library.domain.generated.scans import Scan
 from tests.toy import TOY_SCHEMA, dune, toy_mapper
 
@@ -126,7 +126,7 @@ def view() -> SchemaView:
     return load_schema(TOY_SCHEMA)
 
 
-async def session_of(policy: Policy) -> Session:
+async def session_of(policy: Policy, **options) -> Session:
     store = FakeStore()
     await store.create_dataset(FAKE_DATABASE)
     return Session(
@@ -136,6 +136,7 @@ async def session_of(policy: Policy) -> Session:
         principal=FAKE_PRINCIPAL,
         clock=lambda: datetime(2026, 11, 8, tzinfo=UTC),
         iris=policy.iris,
+        **options,
     )
 
 
@@ -364,6 +365,308 @@ def test_conditions_without_absence_render_as_before_and_an_absent_one_renders_a
     assert patterns(("label", "Dune"), ("label~", "du"), ("absent", "published")) == (
         f"{equal} {contains} {published}"
     ), "equal, then contains, then absent, each as it renders alone"
+
+
+SKOS_LABEL = "http://www.w3.org/2004/02/skos/core#prefLabel"
+PUBLISHED = "http://purl.org/dc/terms/issued"
+# What condition_patterns and listing_query returned for path-less conditions before `via` (E14).
+BEFORE_EQUAL = f'?root <{SKOS_LABEL}> "Dune" .'
+BEFORE_CONTAINS = (
+    f"FILTER EXISTS {{ ?root <{SKOS_LABEL}> ?root_c0 . "
+    'FILTER (CONTAINS(LCASE(STR(?root_c0)), LCASE("du"))) }'
+)
+BEFORE_ABSENT = f"FILTER NOT EXISTS {{ ?root <{PUBLISHED}> ?root_a0 . }}"
+_BEFORE_MATCHING = (
+    "\n  GRAPH <https://example.org/t/registry> { ?graph "
+    "<https://meaningfy.ws/ns/rdf-persistence#kind> "
+    "<https://meaningfy.ws/ns/rdf-persistence#Aggregate> ; "
+    "<https://meaningfy.ws/ns/rdf-persistence#ownedBy> ?root }\n"
+    "  GRAPH ?graph { ?root a <http://purl.org/ontology/bibo/Book> . "
+    f"{BEFORE_EQUAL} {BEFORE_CONTAINS} {BEFORE_ABSENT} }}\n"
+    "  FILTER (?graph NOT IN (<https://example.org/t/a/graph>, <https://example.org/t/b/graph>))\n"
+)
+BEFORE_QUERY_WITH_HIDDEN = (
+    "\nCONSTRUCT { ?s ?p ?o . ?s <https://meaningfy.ws/ns/rdf-persistence#listedIn> ?graph . "
+    "<http://purl.org/ontology/bibo/Book> <https://meaningfy.ws/ns/rdf-persistence#total> ?total } "
+    "WHERE {\n  { SELECT (COUNT(DISTINCT ?root) AS ?total) WHERE { "
+    + _BEFORE_MATCHING
+    + " } }\n  UNION\n  { { SELECT ?root ?graph WHERE { "
+    + _BEFORE_MATCHING
+    + " } ORDER BY ASC(?root) LIMIT 50 OFFSET 0 } GRAPH ?graph { ?s ?p ?o } }\n}\n"
+)
+
+
+def test_a_path_less_condition_set_renders_exactly_as_before_whatever_is_hidden(view):
+    """E14: the strings captured before `via` existed; hidden graphs change nothing without a path."""
+    listings = Listings(view)
+    book_class = view.get_class("Book")
+    hidden = ["https://example.org/t/a/graph", "https://example.org/t/b/graph"]
+
+    def patterns(*params: tuple[str, str]) -> str:
+        plan = listings.plan(book_class, list_request(list(params)))
+        return condition_patterns("root", plan.conditions or [], hidden)
+
+    assert patterns(("label", "Dune")) == BEFORE_EQUAL, "equal renders as before"
+    assert patterns(("label~", "du")) == BEFORE_CONTAINS, "contains renders as before"
+    assert patterns(("absent", "published")) == BEFORE_ABSENT, "absent renders as before"
+    plan = listings.plan(
+        book_class,
+        list_request([("label", "Dune"), ("label~", "du"), ("absent", "published")]),
+        hidden,
+    )
+    text = listing_query(URIRef("https://example.org/t/registry"), plan)
+    assert text == BEFORE_QUERY_WITH_HIDDEN, "the whole query with hidden graphs is unchanged"
+
+
+def _hop(subject: str, predicate: str, variable: str, hidden: str, inner: str) -> str:
+    return (
+        f"?{subject} <{predicate}> ?{variable} . "
+        f'BIND (IRI(CONCAT(STR(?{variable}), "/graph")) AS ?{variable}_g) '
+        f"FILTER (?{variable}_g NOT IN (<{hidden}>)) "
+        f"GRAPH ?{variable}_g {{ {inner} }}"
+    )
+
+
+def test_a_path_condition_renders_nested_hops_in_a_filter_exists_with_hidden_on_every_hop():
+    """D-2: FILTER EXISTS around the hops, `{variable}_p{n}_{j}` variables, NOT IN on each hop."""
+    first, second, hidden = "http://x/first", "http://x/second", "http://x/h/graph"
+    condition = Condition(predicate=SKOS_LABEL, value="herbert", contains=True, via=[first, second])
+    inner = (
+        f"FILTER EXISTS {{ ?root_p0_2 <{SKOS_LABEL}> ?root_p0_2_c0 . "
+        'FILTER (CONTAINS(LCASE(STR(?root_p0_2_c0)), LCASE("herbert"))) }'
+    )
+    second_hop = _hop("root_p0_1", second, "root_p0_2", hidden, inner)
+    first_hop = _hop("root", first, "root_p0_1", hidden, second_hop)
+    assert condition_patterns("root", [condition], [hidden]) == (
+        f"FILTER EXISTS {{ {first_hop} }}"
+    ), "two nested hops, the last segment a contains on the last target"
+    assert hidden not in condition_patterns("root", [condition]), "no hidden, no NOT IN"
+
+
+def test_path_conditions_number_their_variables_apart_after_the_path_less_ones():
+    one = Condition(predicate=SKOS_LABEL, value="a", via=["http://x/ref"])
+    two = Condition(predicate=SKOS_LABEL, value="b", via=["http://x/ref"])
+    plain = Condition(predicate=SKOS_LABEL, value="Dune")
+
+    def exists(n: int, value: str) -> str:
+        return (
+            f"FILTER EXISTS {{ ?root <http://x/ref> ?root_p{n}_1 . "
+            f'BIND (IRI(CONCAT(STR(?root_p{n}_1), "/graph")) AS ?root_p{n}_1_g) '
+            f'GRAPH ?root_p{n}_1_g {{ ?root_p{n}_1 <{SKOS_LABEL}> "{value}" . }} }}'
+        )
+
+    assert condition_patterns("root", [one, plain, two]) == (
+        f"{BEFORE_EQUAL} {exists(0, 'a')} {exists(1, 'b')}"
+    ), "the path-less condition renders first; each path condition has its own p{n}"
+
+
+def test_the_listing_query_passes_the_hidden_graphs_to_every_hop(view):
+    hidden = "https://example.org/t/h/graph"
+    plan = Listings(view).plan(view.get_class("Book"), list_request([("label", "Dune")]), [hidden])
+    plan.conditions = [
+        Condition(predicate=SKOS_LABEL, value="x", via=["http://x/ref"]),
+    ]
+    text = listing_query(URIRef("https://example.org/t/registry"), plan)
+    prepareQuery(text)
+    assert text.count(f"?root_p0_1_g NOT IN (<{hidden}>)") == 2, (
+        "the page and the count both filter the hop"
+    )
+
+
+AUTHOR_LABEL = URIRef(SKOS_LABEL)
+HERBERT, AUSTEN = "Frank Herbert", "Jane Austen"
+
+
+def _linked_book(policy: Policy, n: int, label: str, **links: str) -> tuple[str, list[Triple]]:
+    iri = policy.book_iri(n)
+    model = Book(id=iri, label=label, description=f"{label}, a book.", **links)
+    return iri, list(toy_mapper().to_triples(model))
+
+
+@pytest.fixture
+async def linked(policy) -> Session:
+    """Two authors (1: Herbert, 2: Austen); books 1 to 4 (1 and 3 and 4 by Herbert, 3 follows 1, 4 follows 3); two displays."""
+    return await linked_session(await session_of(policy), policy)
+
+
+async def linked_session(session: Session, policy: Policy) -> Session:
+    """``session`` holding the linked books: see ``linked``."""
+    for n, name in [(1, HERBERT), (2, AUSTEN)]:
+        iri = policy.aggregate_iri("author", "authors", n)
+        model = Author(id=iri, label=name, description=f"{name}.")
+        await session.add_graph(iri, toy_mapper().to_triples(model))
+    herbert, austen = (policy.aggregate_iri("author", "authors", n) for n in (1, 2))
+    for n, label, links in [
+        (1, "Dune", {"written_by": herbert}),
+        (2, "Emma", {"written_by": austen}),
+        (3, "Children of Dune", {"written_by": herbert, "sequel_of": policy.book_iri(1)}),
+        (4, "God Emperor", {"written_by": herbert, "sequel_of": policy.book_iri(3)}),
+    ]:
+        iri, triples = _linked_book(policy, n, label, **links)
+        await session.add_graph(iri, triples)
+    for n, features in [(1, [1, 3]), (2, [1, 2])]:
+        iri = policy.aggregate_iri("display", "displays", n)
+        model = Display(
+            id=iri,
+            label=f"Display {n}",
+            description="d",
+            features=[policy.book_iri(m) for m in features],
+        )
+        await session.add_graph(iri, toy_mapper().to_triples(model))
+    return session
+
+
+async def listed_of(
+    session: Session,
+    view: SchemaView,
+    policy: Policy,
+    cls: str,
+    *params: tuple[str, str],
+    hidden: Iterable[str] = (),
+) -> tuple[list[int], int]:
+    plan = Listings(view).plan(view.get_class(cls), list_request(list(params)), hidden)
+    answer = await session.page(plan)
+    return [policy.number(root) for root, _ in items_of(answer, plan)], total_of(answer, plan)
+
+
+@pytest.mark.parametrize(
+    ("cls", "params", "numbers", "total"),
+    [
+        ("Book", [("written_by.label", HERBERT)], [1, 3, 4], 3),  # S1
+        ("Book", [("written_by.label", AUSTEN)], [2], 1),
+        ("Book", [("written_by.label", "Nobody")], [], 0),
+        ("Book", [("written_by.label~", "HERB")], [1, 3, 4], 3),  # S6
+        (
+            "Book",
+            [("written_by.label~", "e")],
+            [1, 2, 3, 4],
+            4,
+        ),  # S6: Herbert and Austen both hold an e
+        ("Book", [("written_by.label~", "e"), ("limit", "2"), ("offset", "3")], [4], 4),
+        (
+            "Book",
+            [("written_by.label", HERBERT), ("label~", "dune")],
+            [1, 3],
+            2,
+        ),  # with a root filter
+        ("Book", [("written_by.label", HERBERT), ("sort", "-label")], [4, 1, 3], 3),
+        ("Book", [("sequel_of.written_by.label", HERBERT)], [3, 4], 2),  # S3b: two hops
+        ("Book", [("sequel_of.sequel_of.written_by.label", HERBERT)], [4], 1),  # S3b: three hops
+        ("Book", [("sequel_of.label", "Dune")], [3], 1),
+        ("Book", [("sequel_of.label~", "dune")], [3, 4], 2),
+        ("Display", [("features.written_by.label", HERBERT)], [1, 2], 2),  # S2: listed once
+        ("Display", [("features.written_by.label", AUSTEN)], [2], 1),
+        # E13, DEC-4: the two conditions need not hold of the same book
+        (
+            "Display",
+            [("features.written_by.label", HERBERT), ("features.written_by.label", AUSTEN)],
+            [2],
+            1,
+        ),
+        ("Display", [("features.label~", "dune"), ("limit", "1")], [1], 2),
+    ],
+    ids=lambda v: (
+        "&".join(f"{a}={b}" for a, b in v)
+        if isinstance(v, list) and v and isinstance(v[0], tuple)
+        else str(v)
+    ),
+)
+async def test_a_path_filter_lists_the_aggregates_whose_referenced_aggregates_match(
+    linked, view, policy, cls, params, numbers, total
+):
+    assert await listed_of(linked, view, policy, cls, *params) == (numbers, total), (
+        "the page and the total hold the aggregates that reach a matching aggregate, once each"
+    )
+
+
+async def test_a_path_filter_on_a_reference_equality_matches_the_iri(linked, view, policy):  # S3
+    herbert = policy.aggregate_iri("author", "authors", 1)
+    assert await listed_of(linked, view, policy, "Book", ("sequel_of.written_by", herbert)) == (
+        [3, 4],
+        2,
+    ), "the sequels of the books by that author"
+    assert await listed_of(linked, view, policy, "Display", ("features.written_by", herbert)) == (
+        [1, 2],
+        2,
+    ), "a display featuring two books by the author is listed once"
+
+
+async def test_a_reference_to_an_aggregate_that_is_gone_matches_nothing(linked, view, policy):
+    iri, triples = _linked_book(
+        policy, 6, "Orphan", written_by=policy.aggregate_iri("author", "authors", 99)
+    )
+    await linked.add_graph(iri, triples)  # S9: a dangling IRI, no <author>/graph
+    numbers, total = await listed_of(linked, view, policy, "Book", ("written_by.label~", "a"))
+    assert 6 not in numbers, "the orphan has no author graph to match"
+    assert (numbers, total) == ([1, 2, 3, 4], 4), "the others are unchanged"
+
+
+async def test_a_statement_about_the_target_in_another_graph_does_not_match(linked, view, policy):
+    austen = policy.aggregate_iri("author", "authors", 2)
+    iri, triples = _linked_book(policy, 7, "Forger", written_by=austen)
+    forged = (URIRef(austen), AUTHOR_LABEL, Literal(HERBERT))
+    await linked.add_graph(
+        iri, [*triples, forged]
+    )  # S10: Austen is called Herbert in the book's graph
+    assert await listed_of(linked, view, policy, "Book", ("written_by.label", HERBERT)) == (
+        [1, 3, 4],
+        3,
+    ), "only the author's own graph speaks for the author"
+
+
+async def test_a_graph_hidden_from_the_caller_hides_the_hop_it_would_reach(linked, view, policy):
+    herbert = policy.aggregate_iri("author", "authors", 1)
+    hidden = [str(graph_iri(herbert))]
+    assert await listed_of(
+        linked, view, policy, "Book", ("written_by.label", HERBERT), hidden=hidden
+    ) == ([], 0), "S4: the author's graph is hidden, so no book matches through it"
+    assert await listed_of(
+        linked, view, policy, "Book", ("written_by.label", AUSTEN), hidden=hidden
+    ) == (
+        [2],
+        1,
+    ), "the other authors still match"
+
+
+async def test_find_through_a_reference_ignores_prohibitions_on_the_referenced_graph(
+    view, policy
+):  # S8, PD-6
+    refuses_authors = "/authors/"
+    session = await linked_session(
+        await session_of(
+            policy,
+            listings=Listings(view),
+            may_read=lambda iri: refuses_authors not in iri,
+        ),
+        policy,
+    )
+    assert [
+        policy.number(iri) for iri in await session.find(Book, **{"written_by.label": HERBERT})
+    ] == [
+        1,
+        3,
+        4,
+    ], "a hidden author graph is still read by find: no hidden graph reaches its plan"
+
+
+# E15: the texts that would break out of a literal, through a path equality and a path contains
+@pytest.mark.parametrize("policy", [POLICIES[0]], indirect=True, ids=["default"])
+@pytest.mark.parametrize("name", ["written_by.label", "written_by.label~"])
+@pytest.mark.parametrize(
+    "text",
+    [HOSTILE, '"', "\\", "}", "a\nb", "\\u0022"],
+    ids=["break-out", "quote", "backslash", "brace", "newline", "unicode-escape"],
+)
+async def test_a_hostile_path_filter_value_matches_nothing_and_leaves_the_store_unchanged(
+    linked, view, policy, name, text
+):
+    before = await listed_of(linked, view, policy, "Book")
+    assert await listed_of(linked, view, policy, "Book", (name, text)) == ([], 0), (
+        "the value stays one literal and matches nothing"
+    )
+    plan = Listings(view).plan(view.get_class("Book"), list_request([(name, text)]), [])
+    prepareQuery(listing_query(URIRef(f"{FAKE_TENANT}/registry"), plan))
+    assert await listed_of(linked, view, policy, "Book") == before, "and the store is unchanged"
 
 
 def test_the_query_is_one_construct_with_the_total_and_no_value_pasted_in(view):

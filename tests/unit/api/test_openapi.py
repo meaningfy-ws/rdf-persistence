@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 from openapi_spec_validator import validate
 
+from rdf_persistence.api.entrypoints.openapi import PATH_FILTER_DESCRIPTION
 from rdf_persistence.api.entrypoints.problems import CONFLICT as VERSION_CONFLICT
 from rdf_persistence.api.entrypoints.problems import KEY_CONFLICT, KINDS
 from rdf_persistence.core.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS, TURTLE
@@ -191,6 +192,25 @@ def test_a_listing_takes_a_parameter_per_slot_of_the_type_and_the_paging_ones(
     contains = {f"{name}~" for name, slot in slots.items() if holds_text(toy.kit.view, slot)}
     assert queries == {*slots, *contains, "limit", "offset", "sort", "absent"}, (
         "a listing takes a parameter per slot, a contains one per text slot, the paging ones and absent"
+    )
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "expected"),
+    [
+        (f"{TENANT}/books", "get", PATH_FILTER_DESCRIPTION),
+        (f"{TENANT}/scans", "get", PATH_FILTER_DESCRIPTION),
+        (f"{TENANT}/shelves", "get", PATH_FILTER_DESCRIPTION),
+        (f"{TENANT}/books", "post", None),
+        (f"{TENANT}/books/{{aggregate_id}}", "get", None),
+        (TENANT, "get", None),
+    ],
+)
+def test_an_aggregate_listing_describes_its_path_filters_and_no_other_operation_does(
+    document, path, method, expected
+) -> None:  # DEC-7, D-6
+    assert operation(document, path, method).get("description") == expected, (
+        "only an aggregate listing carries the description of the path filters"
     )
 
 

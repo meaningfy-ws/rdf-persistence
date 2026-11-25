@@ -73,6 +73,7 @@ class Condition(ConfiguredBaseModel):
     value: str = _Field(default=..., title="Condition value", description="The value of the statement, an IRI or the lexical form of a literal.")
     datatype: _Optional[str] = _Field(default=None, title="Condition datatype", description="The IRI of the datatype of a literal value; absent for a plain string.")
     reference: _Optional[bool] = _Field(default=False, title="Condition reference", description="Whether the value is an IRI rather than a literal.")
+    via: _Optional[list[str]] = _Field(default=None, title="Condition via", description="The IRIs of the predicates of the references the condition crosses, in order, from the listed aggregate to the one whose statement is tested; empty when the condition is on the listed aggregate itself. The predicate and value are those of the last aggregate.")
     contains: _Optional[bool] = _Field(default=False, title="Filter contains", description="Whether the filter matches a substring of the slot\u0027s text, ignoring case, rather than the value.")
     absent: _Optional[bool] = _Field(default=False, title="Filter absent", description="Whether the filter matches the aggregates that hold no value for the slot, rather than a value; the filter\u0027s value is then empty and unread.")
 

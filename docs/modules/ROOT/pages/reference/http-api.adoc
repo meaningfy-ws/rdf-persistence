@@ -189,6 +189,37 @@ parameter, a value not of the slot's range, or a filter on the `id`, a bookkeepi
 or an owned-part slot answers 400 `bad-query`.
 The rules are in xref:architecture/api.adoc#serving[Listings].
 
+[#path-filters]
+=== Filters through references
+
+A filter may go through references, to the slots of the aggregates they point to:
+`<reference>.<slot>=<value>` is an equality filter and `<reference>.<slot>~=<text>` a contains
+filter, as in `author.name~=le` on a listing of books. A path holds up to three references and ends
+in a slot: `a.b.c.slot`. The OpenAPI document gives one sentence about it on each aggregate listing
+and no parameter, because the paths are as many as the model allows.
+
+* Each reference of the path is a listable reference to an aggregate root in the same database.
+* The segment after a reference is a listable slot of the reference's range class. A slot that only
+  a subclass of the range declares is refused.
+* The value is read in the graph of the aggregate the reference points to, by the range of the last
+  slot, as for a filter on the listed type.
+* The filters are independent: two path filters through a multivalued reference may be satisfied by
+  different targets, as in `author.name=A&author.born=1950` on a book with two authors.
+* An aggregate the caller is prohibited from reading, by a read Prohibition, does not match: a book
+  is not found through an author the caller cannot read.
+
+A path filter answers 400 `bad-query` for:
+
+* an unknown slot, or a segment that is not a reference where a reference is needed;
+* a reference to an owned part, which is no aggregate root;
+* a reference to an aggregate of another database;
+* more than three references, or an empty segment (`author.`, `.name`, `a..b`);
+* `absent=` or `sort=` with a path: only the listed type's own slots are absent or sorted on.
+
+A reference collection's membership rule takes no path either: a rule equality on
+`author.name` makes the collection's write answer 422 `invalid-body`, so no path reaches the commit
+guard.
+
 [#problems]
 == Problem responses
 

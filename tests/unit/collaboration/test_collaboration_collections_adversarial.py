@@ -1100,7 +1100,7 @@ async def test_a_rule_value_that_is_not_a_value_of_its_slot_is_stored_data_inval
 
 
 # Class: a rule slot the listing does not accept; hostile text, a real slot that is not listable.
-@pytest.mark.parametrize("slot", [EVIL, "chapters"])
+@pytest.mark.parametrize("slot", [EVIL, "chapters", "written_by.label"])  # D-13: no path
 async def test_a_rule_slot_the_listing_does_not_accept_is_stored_data_invalid(
     toy_session, collaboration, slot
 ):

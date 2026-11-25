@@ -40,7 +40,7 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
     ListPlan,
     ListRequest,
 )
-from rdf_persistence.persistence.services.listing import Listings
+from rdf_persistence.persistence.services.listing import PATH, Listings
 from rdf_persistence.persistence.services.mapper import GeneratedModels, Mapper
 from rdf_persistence.persistence.services.referrers import Readable
 from rdf_persistence.persistence.services.session import Session
@@ -113,8 +113,17 @@ def decode_collection(
 
 
 def rule_filters(collection: ReferenceCollection) -> list[Filter]:
-    """The listing filters of the collection's rule: one per equality, none for no rule."""
+    """The listing filters of the collection's rule: one per equality, none for no rule.
+
+    Raises:
+        BadQuery: An equality names a path through references (D-13): no path reaches a guard.
+    """
     rule = collection.membership_rule
+    for e in rule.rule_equalities or [] if rule else []:
+        if PATH in e.equals_slot:
+            raise BadQuery(
+                f"a membership rule takes a slot of {collection.member_class}, not a path"
+            )
     return [
         Filter(slot=e.equals_slot, value=e.equals_value)
         for e in (rule.rule_equalities or [] if rule else [])
@@ -418,10 +427,10 @@ class ReferenceCollections:
         matched: set[str] = set()
         if collection.membership_rule is not None:
             equals: dict[str, list[str]] = {}
-            for f in rule_filters(collection):
-                equals.setdefault(f.slot, []).append(f.value)
             # the generated class of the name: LookupError; ``find``: ValueError (not a root), BadQuery
             with self._stored_valid(iri, BadQuery, ValueError, LookupError):
+                for f in rule_filters(collection):  # BadQuery: a stored rule with a path (D-13)
+                    equals.setdefault(f.slot, []).append(f.value)
                 member_class = self._models.named(collection.member_class)
                 matched = set(await self._session.find(member_class, **equals))
         return named, matched - named
