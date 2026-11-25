@@ -204,3 +204,15 @@ integration lane, both in `make test-generator`; TC-7 in the library's unit lane
   with the `make test-generator` count in its body); S1 (the guard test's `if` between two cases);
   S2 (PD-3 says `owners = {}` where the code defaults to `None`; `None` and `{}` mean the same, and
   the docstring calls both folders relative to `folder` where they are relative to the project).
+- **D-7 (lead, 2026-11-25, after the rebase on 0.15.0).** The generator lane CI killed three runs
+  in a row (handover, Parked) needs no fix in this change. Cause: memory growth between tests in
+  the toolkit's test process, which develop's `rdf_persistence.testkit.memory_plugin` (0.15.0,
+  #393) now releases; nothing this branch adds. Numbers: rebased head `2b89e7c1`, local
+  `PYTEST_N=4 make test-generator` 1788 passed, 1 xfailed in 244 s, peak RSS of the largest
+  process 0.90 GB (≈ 3.6 GB for four workers, the runner has 16 GB); its slowest tests are
+  `test_lock_step` (19–26 s each), the generation adversarial and twice-run features (20–24 s),
+  then this branch's `test_stale_typescript_copy` (18 s). CI "Generator tests" on the same head:
+  green in 11 min 27 s (killed at ≈ 20 min before). The handover's suspects (the toy's three
+  TypeScript targets, `run_toy` re-reading the targets) are therefore not the cause and stay as
+  they are; no fixer was briefed, so no seed ran. `make reindex` was stopped at its 10-minute
+  limit at stage start (a forced full rebuild); this stage uses the existing index.
