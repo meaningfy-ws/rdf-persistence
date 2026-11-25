@@ -162,6 +162,62 @@ router lifespan and the toolkit's own lifespan has not started it already (it re
 <<whole-service,the whole service above>>, the helper does not enter it a second time. A raw ASGI
 callable has no lifespan and gets none.
 
+[#aim-a-fault]
+== Aim a fault at the request
+
+`FakeStore.on("update", error)` makes the next `update` raise, and the next `update` may not be
+the request's: with the app's lifespan entered, the relay runs in the background and marks every
+relayed activity with an `update` of its own. A relay round that starts first takes your fault, and
+the request then succeeds, on some runs only. Run the request inside `kit.relay.paused()`: no round
+starts while the block is open, so the request's own store call takes the fault. Commit inside the
+block too, so that the pending activity is certain to be there:
+
+[source,python]
+----
+service = ToyService()
+async with service.app.router.lifespan_context(service.app):  # the relay runs only with the lifespan
+    async with service.client() as client:
+        async with service.kit.relay.paused():
+            await client.post(f"{tenant}/books", json=body, headers=headers)  # a commit: an activity is pending
+            service.store.on("update", StoreUnavailable("down"))
+            answer = await client.post(f"{tenant}/books", json=body, headers=headers)
+        assert answer.status_code == 503  # the request took the fault, on every run
+        await service.kit.relay.run_once()  # the round the block kept out: the activity is relayed
+----
+
+A wake-up during the block (every commit wakes the relay) makes one round after it, so the pending
+activities are relayed once the block closes. Do not call `run_once()` inside the block: it hangs.
+The example is the feature test `tests/feature/test_testkit_faults.py`.
+
+[#hold-writes]
+== Hold concurrent writes
+
+To test two writers that meet at one version, make their store calls meet with
+`FakeStore.hold(operation, until, timeout=5.0)`. The first `until` calls of `operation` made inside
+the block wait for each other; when the `until`-th arrives, they are released one by one in arrival
+order, so the first arrival writes first and the second is refused by the version guard:
+
+[source,python]
+----
+async with service.kit.relay.paused(), service.store.hold("update", until=2):
+    a, b = await asyncio.gather(
+        client.put(book, json=first, headers=headers),  # both carry the same If-Match
+        client.put(book, json=second, headers=headers),
+    )
+assert sorted([a.status_code, b.status_code]) == [200, 409]
+----
+
+Hold `update` only inside `kit.relay.paused()`. The relay's own mark is an `update`: with the relay
+running, it can be one of the calls that fill the hold, and the test becomes flaky. A waiting call
+records nothing in `sent` and takes no armed fault until it is released, so `on` and `sent` see
+the calls in release order. Calls after the `until`-th do not wait.
+
+A hold that has not filled `timeout` seconds after its first call arrived releases its waiters, and
+leaving the block then raises `AssertionError("hold('update', until=2) saw 1 call(s)")`: the test
+learns that the second writer never came. An unknown operation or an `until` below 1 raises
+`ValueError`, and a second hold on an operation that is already held raises `RuntimeError`. If the
+block is left by an exception, the waiting calls are released and the exception propagates.
+
 == Check an adapter of your own
 
 Before you rely on an adapter of your own, run the testkit's conformance suites against it:

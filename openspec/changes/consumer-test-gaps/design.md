@@ -252,3 +252,17 @@ minimum is 2. After, it is `{range: W, required: true, multivalued: false, minim
 ## Open questions
 
 None. Both rounds answered every concern (`inputs/qa.md`).
+
+## Delivery decisions
+
+- **D-9 (DEC-6, lead, 2026-11-24):** the three stages are built in parallel, one builder and one
+  worktree each (`.worktrees/ctg-1` to `ctg-3`), because they share no code. Their PRs still open,
+  are reviewed and merge in DEC-6's order (testkit, API, generator), each rebased on `develop`
+  before it opens (P-0002); the shared `CHANGELOG.md` and `scenario-map.csv` conflicts are
+  resolved at that rebase. Three full suites at once on a machine other sessions also loaded
+  (load ≈ 50) never finished a builder's task gate, so the lead ran the gates one stage at a time
+  instead (T1 for each stage).
+- **D-10 (lead):** `make refresh-map` exits non-zero on `develop` already: 84 collected tests have
+  no row, none of this change's. Each stage adds rows for its own tests only; the 84 are left to a
+  follow-up. The refresh also drops four rows whose tests no longer exist and moves others; those
+  hunks are left out, so a stage's map diff holds only its own rows and the stages rebase cleanly.

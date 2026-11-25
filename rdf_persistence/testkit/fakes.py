@@ -1,5 +1,6 @@
 """In-memory fakes of the toolkit's ports, for unit tests that must not touch the network."""
 
+import asyncio
 import re
 from collections import defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
@@ -122,11 +123,66 @@ def _plain_strings(data: Dataset) -> None:
         graph.add((s, p, Literal(str(o))))
 
 
+class _Hold:
+    """The state of one open ``FakeStore.hold``: who waits, how many calls came, whether it is spent."""
+
+    def __init__(self, until: int, timeout: float) -> None:
+        self.until = until
+        self.timeout = timeout
+        self.seen = 0
+        self.spent = False
+        self._waiters: list[asyncio.Future[None]] = []
+        self._timer: asyncio.Task[None] | None = None
+
+    async def arrive(self) -> None:
+        """Count a call; make it wait for its turn unless the hold is spent."""
+        self.seen += 1
+        if self.spent:
+            return
+        mine: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        self._waiters.append(mine)
+        if self.seen >= self.until:
+            await self.release()
+        elif self._timer is None:
+            self._timer = asyncio.create_task(self._expire())
+        await mine
+
+    async def release(self) -> None:
+        """Resolve the waiters one at a time, in arrival order, each one running before the next."""
+        self.spent = True
+        if self._timer is not None and self._timer is not asyncio.current_task():
+            self._timer.cancel()
+        while self._waiters:
+            waiter = self._waiters.pop(0)
+            if not waiter.done():
+                waiter.set_result(None)
+            await asyncio.sleep(0)
+
+    async def close(self) -> None:
+        await self.release()
+        if self._timer is not None:
+            await asyncio.wait([self._timer])
+
+    async def _expire(self) -> None:
+        await asyncio.sleep(self.timeout)
+        await self.release()
+
+
 class FakeStore(_Instrumented):
     """A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection.
 
     Data that enters the store reads an ``xsd:string`` literal as the plain literal of the same
     text, so a query compares them as Fuseki does (one term).
+
+    ``hold(operation, until, timeout)`` makes the first ``until`` calls of ``operation`` wait for
+    each other, then releases them one by one in arrival order: the first arrival applies first, so
+    a test can make two writers meet at one version. A call waits before it is recorded in ``sent``
+    and before it takes an armed fault. Calls after the ``until``-th do not wait. A hold that has
+    not filled ``timeout`` seconds after its first waiter arrived releases its waiters; leaving the
+    block releases any that remain, and raises ``AssertionError`` if fewer than ``until`` calls came
+    (an exception that leaves the block is never masked by it). Hold ``update`` only inside
+    ``kit.relay.paused()``: the relay's own mark is an ``update``, and it would fill the hold
+    (RISK-3 of ``consumer-test-gaps``), so the test would be flaky.
 
     ``update`` applies a request to a copy of the dataset and keeps the copy only if every operation
     succeeds, so a request is atomic as on Fuseki; any failure is a ``BadQuery``. ``after_update``,
@@ -153,6 +209,36 @@ class FakeStore(_Instrumented):
         super().__init__()
         self._datasets: dict[str, Dataset] = {}
         self.after_update: Callable[[], Awaitable[None]] | None = None
+        self._holds: dict[str, _Hold] = {}
+
+    @asynccontextmanager
+    async def hold(self, operation: str, until: int, timeout: float = 5.0) -> AsyncIterator[None]:
+        """Make the first ``until`` calls of ``operation`` in the block meet before any applies.
+
+        Raises:
+            ValueError: ``operation`` is unknown, or ``until`` is below 1.
+            RuntimeError: ``operation`` already has an open hold.
+            AssertionError: On a clean exit, fewer than ``until`` calls came.
+        """
+        self._known(operation)
+        if until < 1:
+            raise ValueError(f"until must be at least 1, not {until}")
+        if operation in self._holds:
+            raise RuntimeError(f"{operation!r} is already held")
+        held = self._holds[operation] = _Hold(until, timeout)
+        try:
+            yield
+        finally:
+            del self._holds[operation]
+            await held.close()
+        if held.seen < until:
+            raise AssertionError(f"hold({operation!r}, until={until}) saw {held.seen} call(s)")
+
+    async def _gate(self, operation: str) -> None:
+        """The waiting point of a held operation; every async operation awaits it first."""
+        held = self._holds.get(operation)
+        if held is not None:
+            await held.arrive()
 
     def _dataset(self, name: str) -> Dataset:
         if name not in self._datasets:
@@ -160,6 +246,7 @@ class FakeStore(_Instrumented):
         return self._datasets[name]
 
     async def query(self, dataset: str, sparql: str) -> Result:
+        await self._gate("query")
         self._enter("query", sparql)
         data = self._dataset(dataset)
         try:
@@ -168,6 +255,7 @@ class FakeStore(_Instrumented):
             raise BadQuery(str(error)) from error
 
     async def update(self, dataset: str, sparql: str) -> None:
+        await self._gate("update")
         self._enter("update", sparql)
         data = self._dataset(dataset)
         copy = Dataset()
@@ -190,6 +278,7 @@ class FakeStore(_Instrumented):
             await self.after_update()
 
     async def put_graph(self, dataset: str, graph_iri: URIRef, graph: Graph) -> None:
+        await self._gate("put_graph")
         self._enter("put_graph", str(graph_iri))
         target = self._dataset(dataset).graph(graph_iri)
         target.remove((None, None, None))
@@ -198,27 +287,32 @@ class FakeStore(_Instrumented):
         _plain_strings(self._dataset(dataset))
 
     async def export_quads(self, dataset: str) -> bytes:
+        await self._gate("export_quads")
         self._enter("export_quads", dataset)
         return self._dataset(dataset).serialize(format=N_QUADS).encode()
 
     async def import_quads(self, dataset: str, nquads: bytes) -> None:
+        await self._gate("import_quads")
         self._enter("import_quads", dataset)
         self._dataset(dataset).parse(data=nquads, format=N_QUADS)
         _plain_strings(self._dataset(dataset))
 
     async def create_dataset(self, name: str) -> None:
+        await self._gate("create_dataset")
         self._enter("create_dataset", name)
         if name in self._datasets:
             raise Conflict(f"dataset {name} exists")
         self._datasets[name] = Dataset()
 
     async def drop_dataset(self, name: str) -> None:
+        await self._gate("drop_dataset")
         self._enter("drop_dataset", name)
         if name not in self._datasets:
             raise NotFound(f"no dataset {name}")
         del self._datasets[name]
 
     async def list_datasets(self) -> list[str]:
+        await self._gate("list_datasets")
         self._enter("list_datasets", "")
         return list(self._datasets)
 

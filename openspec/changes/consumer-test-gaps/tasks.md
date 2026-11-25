@@ -5,14 +5,14 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
 
 ## 1. Testkit: aimed faults and held writes (#319, #323), PR 1, branch `feat/testkit-hold`
 
-- [ ] 1.1 Tests first: E3 to E8 and E4b in `tests/unit/testkit/test_fake_store.py`; E1 and E2 in
+- [x] 1.1 Tests first: E3 to E8 and E4b in `tests/unit/testkit/test_fake_store.py`; E1 and E2 in
   `tests/feature/testkit_faults.feature` with `test_testkit_faults.py`, over the toy service with
   the lifespan entered explicitly so the relay is live (`design.md#stage-1-testkit-319-323`).
   RED: `FakeStore` has no `hold`.
-- [ ] 1.2 `FakeStore.hold`: one future per waiter, release in order, release on every exit
+- [x] 1.2 `FakeStore.hold`: one future per waiter, release in order, release on every exit
   (DEC-2, `design.md#decisions` D-2, D-3), with a docstring that names RISK-3. Accept: E1 to E8,
   E4b; `make test-changed check-quality`.
-- [ ] 1.3 `user-manual/test.adoc`: "Aim a fault at the request" (`relay.paused()`,
+- [x] 1.3 `user-manual/test.adoc`: "Aim a fault at the request" (`relay.paused()`,
   `design.md#decisions` D-1) and "Hold concurrent writes" (`hold`, `design.md#risks` RISK-3). The examples are the feature test's code. Public-surface
   snapshot (`make refresh-surface`) if `hold` shows there. Accept: `make check-docs`.
 - [ ] 1.4 Lead: `make check-all`, one review pass, PR. This EPIC lands with it.
@@ -55,7 +55,7 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 1.4 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 ·
   [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 4.1 · [ ] 4.2
 
 ## Verification
