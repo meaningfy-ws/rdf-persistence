@@ -99,7 +99,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   `test_a_restored_tenant_under_an_activity_template_owns_its_activities` (after 1.4: dump under
   `P`, restore to a new id, every activity is `<new tenant>/activity/<same U>`). Accept: all pass;
   the comment in `tenant_dump.py` names both templates.
-- [ ] 1.7 Feature (issue acceptance), after 1.4 and 1.5: three scenarios in
+- [x] 1.7 Feature (issue acceptance), after 1.4 and 1.5: three scenarios in
   `tests/feature/iri_policy.feature`, steps in `tests/feature/test_iri_policy.py`: the default
   policy's activity is `urn:uuid:` and a UUID; under `P` a transition with a comment, a comment and a
   replace each record an activity under the tenant, and the transition list, the comment's thread
@@ -123,7 +123,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.6 · [x] 1.4 · [x] 1.5 · [ ] 1.7a · [ ] 1.7 · [x] 1.8 · [ ] 1.9
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.6 · [x] 1.4 · [x] 1.5 · [ ] 1.7a · [x] 1.7 · [x] 1.8 · [ ] 1.9
   (1.6's first three tests need only 1.2; its restore test needs 1.4; 1.4 and 1.5 may run in
   parallel after 1.3.)
 
