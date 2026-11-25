@@ -286,7 +286,8 @@ Taken by the lead during delivery (R-0007), for the developer to validate at the
   `equals_slot` reaches `Listings._filtered` through `rule_plan`, so a dotted slot would feed a path
   condition to `Session.matches` and the commit guard, which render no hidden graphs (D-3). The
   toolkit refuses a path in a membership rule with `BadQuery`, keeping the No-go. Lifting it is a
-  new EPIC.
+  new EPIC. Before this EPIC a dotted rule slot was already refused ("has no slot"), so D-13 keeps
+  the old behaviour with a clearer message; GitNexus rates `rule_filters` HIGH by fan-out only.
 
 ### Review findings (one round, D-12)
 
