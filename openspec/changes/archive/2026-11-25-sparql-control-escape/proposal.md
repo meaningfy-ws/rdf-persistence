@@ -71,4 +71,4 @@ None.
 
 | Item | State | PR |
 |---|---|---|
-| DEC-1, tasks 1.1 and 1.2 | delivered as shaped | see the PR closing #270 |
+| DEC-1, tasks 1.1 and 1.2 | delivered as shaped, with review fixes RF-1 to RF-4 | #388 |
