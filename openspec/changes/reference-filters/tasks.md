@@ -7,7 +7,7 @@ EPIC: reference-filters (proposal.md, #308). Decisions: DEC-1 to DEC-8; design.m
 
 ## 1. Filters through references, PR 1
 
-- [ ] 1.1 Lead, at stage start: `make reindex` and GitNexus impact on `condition_patterns`,
+- [x] 1.1 Lead, at stage start: `make reindex` and GitNexus impact on `condition_patterns`,
   `Listings._filtered` and `graph_iri`. Re-read the merged stage 4 code (`condition_patterns`,
   `_filtered`, the `Condition` model). Revise D-2 and D-4 in `design.md` before any code if it
   diverged (RISK-1). A HIGH or CRITICAL impact goes to the developer.
@@ -22,7 +22,7 @@ EPIC: reference-filters (proposal.md, #308). Decisions: DEC-1 to DEC-8; design.m
 - [x] 1.4 `GRAPH_SUFFIX` in `iris/domain/layout.py`. `hop_patterns` in `core/domain/sparql.py`. The
   `condition_patterns` dispatch with `hidden`, and `listing_query` passing `plan.hidden_graphs`
   (D-2, D-3). Accept: 1.3 green; `make test-fast check-quality`.
-- [ ] 1.5 Tests first for resolution and behaviour:
+- [x] 1.5 Tests first for resolution and behaviour:
   - S2b, E2 to E13 and E16 in `tests/unit/persistence/test_listing.py`.
   - S1, S2, S3, S3b, S6, S9 and S10 in `tests/unit/persistence/test_listing_query.py`.
   - S4 in `tests/unit/api/test_listing_routes.py`.
@@ -30,9 +30,9 @@ EPIC: reference-filters (proposal.md, #308). Decisions: DEC-1 to DEC-8; design.m
   - S8 in `tests/integration/store/test_session.py`.
 
   RED: `BadQuery` "has no slot 'written_by.label'".
-- [ ] 1.6 Path resolution in `Listings._filtered` with `_hop` and `MAX_HOPS = 3`; the absence
+- [x] 1.6 Path resolution in `Listings._filtered` with `_hop` and `MAX_HOPS = 3`; the absence
   refusal (D-4). The `find` docstring (D-5). Accept: 1.5 green; `make test-fast check-quality`.
-- [ ] 1.7 Docs:
+- [x] 1.7 Docs:
   - The OpenAPI listing description (D-6): a `description` keyword on `route_options`, carried by
     `RouteDocs` into `add_api_route`, and set only by `AggregateOpenApi.listing`. Then
     `make refresh-served-golden`. The diff may hold only that description, once per aggregate
@@ -53,7 +53,7 @@ EPIC: reference-filters (proposal.md, #308). Decisions: DEC-1 to DEC-8; design.m
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 2.1 · [ ] 2.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [ ] 1.8 · [ ] 2.1 · [ ] 2.2
 
 ## Verification
 

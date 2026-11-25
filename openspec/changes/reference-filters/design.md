@@ -261,3 +261,21 @@ Idempotency: a read only. Nothing is written.
 ## Open Questions
 
 None.
+
+## Delivery decisions
+
+Taken by the lead during delivery (R-0007), for the developer to validate at the end.
+
+- **D-7 (task 1.1, RISK-1):** the merged stage 4 code (`condition_patterns`, `_filtered`,
+  `Filter.absent`, `Condition.absent`) matches D-2 and D-4; no revision was needed.
+- **D-8 (task 1.1, impact):** GitNexus rated `graph_iri` CRITICAL and `Listings._filtered` HIGH,
+  both by fan-out (12 and 8 callers). The change keeps `graph_iri`'s output byte for byte (only
+  `GRAPH_SUFFIX` is extracted) and leaves a filter without a dot on the old path, so the lead went on
+  without stopping; the full gates are the check.
+- **D-9 (D-6 correction):** the served TypeScript golden does change, once, by the new optional
+  `via` field of `Condition` (task 1.2), not by D-6. The shape snapshot gains the same field.
+- **D-10 (task 1.4):** `condition_patterns` was split into `_root_patterns` and `_path_patterns` to
+  keep its Xenon rank at B; `hop_patterns` carries `# noqa: PLR0913`, its six parameters being the
+  ones D-2 fixes.
+- **D-11 (task 1.6):** the empty-segment check applies only to a name holding a dot, so `absent=`
+  and a bare `~` keep their existing "has no slot" message.
