@@ -12,6 +12,7 @@ from linkml_runtime.linkml_model.meta import (
     Element,
     PermissibleValue,
     SchemaDefinition,
+    SlotDefinition,
     UniqueKey,
 )
 from linkml_runtime.utils.schemaview import SchemaView
@@ -424,13 +425,42 @@ def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     """
     schemas = own_schemas(view, folder)
     classes = _stored_classes(schemas, folder)
+    own = {schema.name for schema in schemas}
     return [
         *(p for schema in schemas for p in _schema_problems(schema)),
         *(p for schema in schemas for p in _annotation_problems(schema, segment_pattern())),
         *default_instance_problems(view, schemas),
         *_class_problems(view, classes),
-        *_slot_name_problems(view, {schema.name for schema in schemas}),
+        *_slot_name_problems(view, own),
+        *_slot_iri_problems(view, own),
     ]
+
+
+def _slots_by_iri(view: SchemaView) -> dict[str, set[tuple[str, str]]]:
+    """An index: IRI -> (slot name, module name), module by module, the identifiers left out (DEC-2)."""
+    view.imports_closure()
+    by_iri: dict[str, set[tuple[str, str]]] = {}
+    for schema in view.schema_map.values():
+        for slot in _declared_slots(schema):
+            iri = slot_iri(view, schema, slot)
+            by_iri.setdefault(iri, set()).add((str(slot.name), schema.name))
+    return by_iri
+
+
+def _declared_slots(schema: SchemaDefinition) -> Iterator[SlotDefinition]:
+    """The slots and the class attributes ``schema`` declares, but not those marked ``identifier``."""
+    attributes = (attr for cls in schema.classes.values() for attr in cls.attributes.values())
+    return (slot for slot in (*schema.slots.values(), *attributes) if not slot.identifier)
+
+
+def _slot_iri_problems(view: SchemaView, own: set[str]) -> Iterator[CheckProblem]:
+    """Two slots of different names on one IRI, when one of them is declared in ``own`` (#206)."""
+    for iri, declarations in sorted(_slots_by_iri(view).items()):
+        mine = sorted(name for name, module in declarations if module in own)
+        if mine and len({name for name, _ in declarations}) > 1:
+            listed = ", ".join(f"{name} of {module}" for name, module in sorted(declarations))
+            message = f"the slots {listed} resolve to {iri}: reuse one slot, or give the other its own slot_uri"
+            yield rule_problem(HardRule.SLOT_IRI, mine[0], message)
 
 
 def _slot_name_problems(view: SchemaView, own: set[str]) -> Iterator[CheckProblem]:
