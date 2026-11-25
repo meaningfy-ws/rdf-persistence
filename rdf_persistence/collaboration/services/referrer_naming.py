@@ -4,6 +4,8 @@ The session returns referrers as IRIs; the schema names their class and slot. Th
 the schema view they read from, so ``Collaboration`` and the removal guard name rows alike.
 """
 
+from collections.abc import Iterable
+
 from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.collaboration.services.generated.rp_collaboration_services import Referrer
@@ -51,7 +53,7 @@ def referrer_item(
     )
 
 
-def named(view: SchemaView, rows: list[ReferrerRow]) -> set[tuple[str, str, str]]:
+def named(view: SchemaView, rows: Iterable[ReferrerRow]) -> set[tuple[str, str, str]]:
     """``(referrer, class name, slot name)`` of each row; an IRI the schema does not know stays as it is.
 
     A referrer with a type the schema knows is not also listed under the types it does not.
