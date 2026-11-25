@@ -51,7 +51,19 @@ LIBRARY_LANE = $(UNIT_LANE) --ignore=$(TEST_PATH)/generator
 
 # Every parallel lane distributes by xdist_group, and every lane leaves the quarantined tests out
 # (tests/unit/tooling/test_lanes.py checks both).
-PARALLEL       = -n auto --dist loadgroup
+#
+# The heavy lanes queue on the machine and size their workers there (agent-test-control PD-2, PD-3):
+# `-n @workers` is replaced by tests/queue.py once it holds the lock; PYTEST_N=<n> fixes the count.
+# CI runners have no contention: they run plain pytest and count the workers at parse time.
+ifdef CI
+PYTEST = uv run pytest
+ifndef PYTEST_N
+PYTEST_N := $(shell uv run --no-sync python -m tests.queue --workers)
+endif
+else
+PYTEST = uv run python -m tests.queue -- pytest
+endif
+PARALLEL       = -n $(or $(PYTEST_N),@workers) --dist loadgroup
 NOT_QUARANTINE = and not quarantine
 
 # CI runs the fast unit lane in SPLITS shards balanced by the durations in .test_durations
@@ -212,7 +224,7 @@ test: ## Run the library's unit and feature tests and the generator's, each with
 
 test-containers: ## Run the integration and e2e tests against Docker containers (no coverage floor)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running container tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) -m "(integration or e2e) $(NOT_QUARANTINE)" $(COV_FLAGS) --cov=$(GENERATOR_NAME) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
+	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) -m "(integration or e2e) $(NOT_QUARANTINE)" $(COV_FLAGS) --cov=$(GENERATOR_NAME) --cov-report=xml:$(REPO_ROOT)/coverage-containers.xml --cov-fail-under=0 --junitxml=$(REPO_ROOT)/test-results-containers.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Container tests passed$(END_BUILD_PRINT)"
 
 $(FUSEKI_IMAGE_TAR): $(FUSEKI_COMPOSE) $(shell find $(dir $(FUSEKI_COMPOSE))fuseki -type f)
@@ -227,12 +239,12 @@ fuseki-image: $(FUSEKI_IMAGE_TAR) ## Load the Fuseki test image from its tar, bu
 
 test-unit: ## Run the library's unit tests in parallel, slow ones included, with the 80 % coverage floor over rdf_persistence
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running unit tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit $(NOT_QUARANTINE)" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
+	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit $(NOT_QUARANTINE)" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
 
 test-unit-ci: ## Run the unit tests not marked slow in parallel, with the 80 % floor; GROUP=i runs CI shard i of SPLITS, without it
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the fast unit tests $(GROUP)$(END_BUILD_PRINT)"
-	@ COVERAGE_FILE=.coverage$(if $(GROUP),.$(GROUP)) uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" $(COV_FLAGS) $(if $(GROUP),$(SHARD_FLAGS)) --junitxml=$(REPO_ROOT)/test-results$(if $(GROUP),-$(GROUP)).xml
+	@ COVERAGE_FILE=.coverage$(if $(GROUP),.$(GROUP)) TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" $(COV_FLAGS) $(if $(GROUP),$(SHARD_FLAGS)) --junitxml=$(REPO_ROOT)/test-results$(if $(GROUP),-$(GROUP)).xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast unit tests passed$(END_BUILD_PRINT)"
 
 coverage-combine: ## Combine the coverage data of the CI unit shards and check the 80 % floor
@@ -241,16 +253,16 @@ coverage-combine: ## Combine the coverage data of the CI unit shards and check t
 	@ uv run coverage report --include='$(PACKAGE_NAME)/*' --fail-under=80
 
 test-durations: ## Record the fast unit tests' durations in .test_durations, which balance the CI shards
-	@ uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" --store-durations --clean-durations
+	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" --store-durations --clean-durations
 
 test-feature: ## Run the library's BDD feature tests in parallel, with a 50 % coverage floor over rdf_persistence (CI job "feature")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "feature $(NOT_QUARANTINE)" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
+	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "feature $(NOT_QUARANTINE)" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Feature tests passed$(END_BUILD_PRINT)"
 
 test-generator: ## Run the generator's own tests (tests/generator, unit, feature and integration) in parallel, with the 80 % floor over rdf_persistence_generation (CI job "test-generator")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the generator tests$(END_BUILD_PRINT)"
-	@ COVERAGE_FILE=.coverage.generator uv run pytest $(TEST_PATH)/generator $(GENERATOR_E2E) $(PARALLEL) -m "(unit or feature or integration) $(NOT_QUARANTINE)" $(GENERATOR_COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results-generator.xml
+	@ COVERAGE_FILE=.coverage.generator TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH)/generator $(GENERATOR_E2E) $(PARALLEL) -m "(unit or feature or integration) $(NOT_QUARANTINE)" $(GENERATOR_COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results-generator.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generator tests passed$(END_BUILD_PRINT)"
 
 test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not part of check-all
@@ -261,7 +273,7 @@ test-perf: ## Run the wall-clock budget tests alone (no coverage, no xdist); not
 # Developer lanes (test-lanes): no coverage; the floors are checked by test, test-unit, test-feature.
 test-fast: ## Run the unit and feature tests not marked slow, in parallel, without coverage (developer lane)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the fast unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "(unit or feature) and not slow $(NOT_QUARANTINE)"
+	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -m "(unit or feature) and not slow $(NOT_QUARANTINE)"
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast tests passed$(END_BUILD_PRINT)"
 
 test-changed: ## Run the tests of the files changed against BASE (default develop), slow ones included, without coverage; PYTEST_N overrides the worker count
@@ -275,7 +287,7 @@ test-changed: ## Run the tests of the files changed against BASE (default develo
 
 profile-tests: ## Print the 15 slowest unit and feature tests, set-up and call apart, without coverage (PROFILE_MARK narrows)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Profiling the unit and feature tests$(END_BUILD_PRINT)"
-	@ uv run pytest $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -q -p no:randomly -m "($(PROFILE_MARK)) $(NOT_QUARANTINE)" --durations=15
+	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(UNIT_LANE) $(PARALLEL) -q -p no:randomly -m "($(PROFILE_MARK)) $(NOT_QUARANTINE)" --durations=15
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Profile complete$(END_BUILD_PRINT)"
 
 test-e2e: ## Run end-to-end tests only

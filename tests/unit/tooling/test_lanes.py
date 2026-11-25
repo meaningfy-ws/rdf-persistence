@@ -1,10 +1,13 @@
 """Every developer and CI lane leaves the quarantined tests out (rule 14, PD-9)."""
 
+import os
 import re
+import subprocess
 
 import pytest
 
 from tests.conftest import TESTS_ROOT_DIR
+from tests.queue import workers
 
 MAKEFILE = (TESTS_ROOT_DIR.parent / "Makefile").read_text(encoding="utf-8")
 SELECTION = re.compile(r'-m "([^"]+)"')
@@ -227,6 +230,82 @@ def test_the_ci_unit_jobs_run_the_ci_unit_lane_in_shards_and_combine_their_cover
 
     assert "run: make test-unit-ci GROUP=${{ matrix.group }}" in ci, "a CI shard runs one group"
     assert "run: make coverage-combine" in ci, "a CI job must combine the shards' coverage"
+
+
+QUEUED_LANES = [*PARALLEL_LANES, "test-containers"]
+QUEUE_PREFIX = "TEST_QUEUE_LABEL=$@ $(PYTEST) "
+PYTEST_FROM_ENVIRONMENT = ("CI", "PYTEST_N", "PYTEST_WORKER_MB")
+QUEUED_PYTEST = "uv run python -m tests.queue -- pytest"
+PLAIN_PYTEST = "uv run pytest"
+
+
+def make_prints(text: str, **added: str) -> str:
+    """What ``make`` echoes for ``text`` in a child environment holding only ``added`` of the three knobs."""
+    environment = {k: v for k, v in os.environ.items() if k not in PYTEST_FROM_ENVIRONMENT}
+    environment.update(added)
+    result = subprocess.run(
+        ["make", "--no-print-directory", "--eval", f'pn:;@echo "{text}"', "pn"],
+        cwd=TESTS_ROOT_DIR.parent,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+@pytest.mark.parametrize("lane", QUEUED_LANES)
+def test_every_queued_recipe_line_runs_pytest_through_the_queue(lane: str) -> None:
+    """agent-test-control PD-2: the lanes that run workers, and the container lane, wait their turn."""
+    lines = [line for line in recipe_of(lane) if "pytest" in expanded(line) and "echo" not in line]
+
+    assert lines, f"{lane} has no pytest line"
+    for line in lines:
+        assert QUEUE_PREFIX in line, f"{lane} does not run through the queue: {line.strip()}"
+        assert "uv run pytest" not in line, f"{lane} still spells uv run pytest: {line.strip()}"
+
+
+def test_a_lane_that_runs_workers_is_one_that_queues() -> None:
+    holders = [lane for lane in LANES if "$(PARALLEL)" in "\n".join(recipe_of(lane))]
+
+    assert sorted(holders) == sorted(PARALLEL_LANES), "a lane holds $(PARALLEL) but is not queued"
+
+
+def test_no_recipe_wraps_make_in_the_queue() -> None:
+    wrapping = [
+        line.strip() for line in MAKEFILE.splitlines() if "$(MAKE)" in line and "$(PYTEST)" in line
+    ]
+
+    assert not wrapping, f"a recipe queues a make: {wrapping}"
+
+
+def test_test_changed_neither_queues_nor_reads_the_worker_count() -> None:
+    recipe = "\n".join(recipe_of("test-changed"))
+
+    assert "$(PYTEST)" not in recipe, "test-changed queues"
+    assert "PYTEST_N" not in recipe, "test-changed reads PYTEST_N"
+
+
+def test_without_ci_the_queue_runs_pytest_and_the_workers_are_left_to_it() -> None:
+    printed = make_prints("[$(PYTEST_N)] [$(PYTEST)] [$(PARALLEL)]")
+
+    assert printed == f"[] [{QUEUED_PYTEST}] [-n @workers --dist loadgroup]", printed
+
+
+def test_on_ci_pytest_runs_unqueued_with_the_workers_counted_at_parse_time() -> None:
+    printed = make_prints("$(PYTEST_N)|$(PYTEST)|$(PARALLEL)", CI="1")
+    count, pytest_command, parallel = printed.split("|")
+
+    assert pytest_command == PLAIN_PYTEST, f"CI queues: {pytest_command!r}"
+    assert 1 <= int(count) <= workers(os.cpu_count(), None, 1), "the count is not workers()"
+    assert parallel == f"-n {count} --dist loadgroup", parallel
+
+
+@pytest.mark.parametrize("added", [{}, {"CI": "1"}])
+def test_a_given_worker_count_replaces_the_token(added: dict[str, str]) -> None:
+    printed = make_prints("$(PARALLEL)", PYTEST_N="3", **added)
+
+    assert printed == "-n 3 --dist loadgroup", printed
 
 
 def _ci_job(name: str) -> str:
