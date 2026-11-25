@@ -10,7 +10,7 @@ rp:AggregateKey a sh:NodeShape ;
 	rdfs:comment "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates." ;
 	rdfs:label "Aggregate key" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n4 ;
+	sh:ignoredProperties _:c14n3 ;
 	sh:property _:c14n15 , _:c14n20 , _:c14n41 , _:c14n47 ;
 	sh:targetClass rp:AggregateKey .
 rp:AggregateRoot a sh:NodeShape ;
@@ -46,15 +46,15 @@ rp:KeyDuplicate a sh:NodeShape ;
 	rdfs:comment "A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant's database by the duplicates report." ;
 	rdfs:label "Key duplicate" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n10 ;
-	sh:property _:c14n11 , _:c14n19 , _:c14n35 , _:c14n8 ;
+	sh:ignoredProperties _:c14n9 ;
+	sh:property _:c14n10 , _:c14n19 , _:c14n35 , _:c14n7 ;
 	sh:targetClass rp:KeyDuplicate .
 rp:Migration a sh:NodeShape ;
 	rdfs:comment "The reviewed file that moves the data of a database from one version of a schema to the next: the schema's id, the two versions and the steps, in order; and, optionally, the renames and drops of the role names in the stored grants." ;
 	rdfs:label "Migration" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n9 ;
-	sh:property _:c14n2 , _:c14n27 , _:c14n28 , _:c14n31 , _:c14n34 , _:c14n42 ;
+	sh:ignoredProperties _:c14n8 ;
+	sh:property _:c14n1 , _:c14n27 , _:c14n28 , _:c14n31 , _:c14n34 , _:c14n42 ;
 	sh:targetClass rp:Migration .
 rp:MigrationStep a sh:NodeShape ;
 	rdfs:comment "One step of a migration: three group graph patterns, as text, that the toolkit wraps into one update request over the graphs of a database. A step with `unresolved` is a draft and does not load." ;
@@ -82,21 +82,21 @@ rp:RegistryEntry a sh:NodeShape ;
 	rdfs:comment "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application." ;
 	rdfs:label "Registry entry" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n12 ;
-	sh:property _:c14n18 , _:c14n44 , _:c14n5 ;
+	sh:ignoredProperties _:c14n11 ;
+	sh:property _:c14n18 , _:c14n4 , _:c14n44 ;
 	sh:targetClass rp:RegistryEntry .
 rp:RoleRename a sh:NodeShape ;
 	rdfs:comment "One role name a migration changes to another in the stored grants." ;
 	rdfs:label "Role rename" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n6 ;
-	sh:property _:c14n1 , _:c14n43 ;
+	sh:ignoredProperties _:c14n5 ;
+	sh:property _:c14n12 , _:c14n43 ;
 	sh:targetClass rp:RoleRename .
 rp:Tracked a sh:NodeShape ;
 	rdfs:comment "A mixin for the tracking statements of a commit. The session writes them about the aggregate's graph IRI, never about the root entity." ;
 	rdfs:label "Tracked" ;
 	sh:closed false ;
-	sh:ignoredProperties _:c14n7 ;
+	sh:ignoredProperties _:c14n6 ;
 	sh:property _:c14n17 , _:c14n36 , _:c14n39 , _:c14n40 ;
 	sh:targetClass rp:Tracked .
 _:c14n0 sh:datatype xsd:string ;
@@ -106,16 +106,20 @@ _:c14n0 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path dcterms:description .
-_:c14n1 sh:datatype xsd:string ;
-	sh:description "The role name a grant names after the migration." ;
+_:c14n1 sh:description "The id of the schema whose data the migration moves." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
-	sh:name "To role" ;
-	sh:nodeKind sh:Literal ;
+	sh:name "Schema id" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path rp:schemaId .
+_:c14n10 sh:description "The IRI of the class of the roots." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Root class" ;
+	sh:nodeKind sh:IRI ;
 	sh:order 1 ;
-	sh:path rp:toRole .
-_:c14n10 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n54 .
+	sh:path rp:rootClass .
 _:c14n100 rdf:first rp:dataSchemaVersion ;
 	rdf:rest _:c14n101 .
 _:c14n101 rdf:first rp:version ;
@@ -134,15 +138,17 @@ _:c14n107 rdf:first rp:version ;
 	rdf:rest rdf:nil .
 _:c14n108 rdf:first dcterms:created ;
 	rdf:rest _:c14n103 .
-_:c14n11 sh:description "The IRI of the class of the roots." ;
+_:c14n11 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n96 .
+_:c14n12 sh:datatype xsd:string ;
+	sh:description "The role name a grant names after the migration." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
-	sh:name "Root class" ;
-	sh:nodeKind sh:IRI ;
+	sh:name "To role" ;
+	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
-	sh:path rp:rootClass .
-_:c14n12 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n96 .
+	sh:path rp:toRole ;
+	sh:pattern "^(?:^[^,]*$)(?![\\s\\S])" .
 _:c14n13 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
 _:c14n14 sh:datatype xsd:string ;
@@ -186,13 +192,8 @@ _:c14n19 sh:description "The IRIs of the roots that hold the values, sorted." ;
 	sh:nodeKind sh:IRI ;
 	sh:order 3 ;
 	sh:path rp:keyRoots .
-_:c14n2 sh:description "The id of the schema whose data the migration moves." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Schema id" ;
-	sh:nodeKind sh:IRI ;
-	sh:order 0 ;
-	sh:path rp:schemaId .
+_:c14n2 rdf:first rp:Aggregate ;
+	rdf:rest _:c14n24 .
 _:c14n20 sh:description "The predicates of the key's slots, in the order of the key." ;
 	sh:minCount 1 ;
 	sh:name "Key predicates" ;
@@ -215,13 +216,13 @@ _:c14n22 sh:datatype xsd:string ;
 	sh:order 3 ;
 	sh:path rp:insertPattern .
 _:c14n23 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n84 .
+	rdf:rest _:c14n72 .
 _:c14n24 rdf:first rp:LoadedGraph ;
 	rdf:rest rdf:nil .
 _:c14n25 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n72 .
+	rdf:rest _:c14n60 .
 _:c14n26 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n90 .
+	rdf:rest _:c14n84 .
 _:c14n27 sh:description "The steps of a migration, in the order they run." ;
 	sh:name "Steps" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
@@ -235,9 +236,9 @@ _:c14n28 sh:datatype xsd:string ;
 	sh:order 3 ;
 	sh:path dcterms:description .
 _:c14n29 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n78 .
-_:c14n3 rdf:first rp:Aggregate ;
-	rdf:rest _:c14n24 .
+	rdf:rest _:c14n66 .
+_:c14n3 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n108 .
 _:c14n30 sh:datatype xsd:dateTime ;
 	sh:description "The time a graph was put to the store by a load." ;
 	sh:maxCount 1 ;
@@ -302,8 +303,13 @@ _:c14n39 sh:datatype xsd:dateTime ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path dcterms:modified .
-_:c14n4 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n102 .
+_:c14n4 sh:description "The IRI of a named graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Graph" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path rp:graph .
 _:c14n40 sh:datatype xsd:dateTime ;
 	sh:description "The time the graph was first committed." ;
 	sh:maxCount 1 ;
@@ -335,7 +341,7 @@ _:c14n43 sh:datatype xsd:string ;
 	sh:order 0 ;
 	sh:path rp:fromRole .
 _:c14n44 sh:description "The kind of graph a registry entry names." ;
-	sh:in _:c14n3 ;
+	sh:in _:c14n2 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Kind" ;
@@ -363,16 +369,11 @@ _:c14n47 sh:datatype xsd:string ;
 	sh:order 0 ;
 	sh:path rp:keyName .
 _:c14n48 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n66 .
+	rdf:rest _:c14n54 .
 _:c14n49 rdf:first dcterms:creator ;
 	rdf:rest _:c14n50 .
-_:c14n5 sh:description "The IRI of a named graph." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Graph" ;
-	sh:nodeKind sh:IRI ;
-	sh:order 0 ;
-	sh:path rp:graph .
+_:c14n5 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n90 .
 _:c14n50 rdf:first dcterms:modified ;
 	rdf:rest _:c14n51 .
 _:c14n51 rdf:first rdf:type ;
@@ -393,8 +394,8 @@ _:c14n58 rdf:first rp:dataSchemaVersion ;
 	rdf:rest _:c14n59 .
 _:c14n59 rdf:first rp:version ;
 	rdf:rest rdf:nil .
-_:c14n6 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n60 .
+_:c14n6 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
 _:c14n60 rdf:first dcterms:created ;
 	rdf:rest _:c14n55 .
 _:c14n61 rdf:first dcterms:creator ;
@@ -415,8 +416,13 @@ _:c14n68 rdf:first dcterms:modified ;
 	rdf:rest _:c14n69 .
 _:c14n69 rdf:first rdf:type ;
 	rdf:rest _:c14n70 .
-_:c14n7 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
+_:c14n7 sh:datatype xsd:string ;
+	sh:description "The lexical forms of the shared values, in the order of the key." ;
+	sh:minCount 1 ;
+	sh:name "Key values" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path rp:keyValues .
 _:c14n70 rdf:first rp:dataSchemaVersion ;
 	rdf:rest _:c14n71 .
 _:c14n71 rdf:first rp:version ;
@@ -437,13 +443,8 @@ _:c14n78 rdf:first dcterms:created ;
 	rdf:rest _:c14n73 .
 _:c14n79 rdf:first dcterms:creator ;
 	rdf:rest _:c14n80 .
-_:c14n8 sh:datatype xsd:string ;
-	sh:description "The lexical forms of the shared values, in the order of the key." ;
-	sh:minCount 1 ;
-	sh:name "Key values" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 2 ;
-	sh:path rp:keyValues .
+_:c14n8 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n78 .
 _:c14n80 rdf:first dcterms:modified ;
 	rdf:rest _:c14n81 .
 _:c14n81 rdf:first rdf:type ;
@@ -465,7 +466,7 @@ _:c14n88 rdf:first rp:dataSchemaVersion ;
 _:c14n89 rdf:first rp:version ;
 	rdf:rest rdf:nil .
 _:c14n9 rdf:first dcterms:contributor ;
-	rdf:rest _:c14n108 .
+	rdf:rest _:c14n102 .
 _:c14n90 rdf:first dcterms:created ;
 	rdf:rest _:c14n85 .
 _:c14n91 rdf:first dcterms:creator ;

@@ -115,6 +115,8 @@ def test_a_file_with_only_grant_roles_loads_and_its_request_parses(tmp_path, bod
             "reader",
         ),
         ("grant_roles:\n  rename: {a\\u00e9: b}\n", "codepoint"),
+        ("grant_roles:\n  rename: {reader: 'a,b'}\n", "to_role"),  # E12
+        ("grant_roles:\n  rename: [{from_role: reader, to_role: 'a,b'}]\n", "to_role"),  # E12
     ],
     ids=[
         "dropped and renamed from",
@@ -127,6 +129,8 @@ def test_a_file_with_only_grant_roles_loads_and_its_request_parses(tmp_path, bod
         "an empty drop",
         "one source renamed twice",
         "a codepoint escape",
+        "a comma in the target, as a map",
+        "a comma in the target, as a list",
     ],
 )
 def test_a_file_that_contradicts_itself_is_refused_naming_the_file(tmp_path, body, named):

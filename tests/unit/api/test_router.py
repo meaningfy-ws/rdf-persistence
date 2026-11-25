@@ -13,8 +13,15 @@ from pyld import jsonld
 from rdflib import Dataset, Graph
 
 from rdf_persistence import Forbidden, GrantSet, InvalidBody, Page, TenantSummary
-from rdf_persistence.access.domain.generated.rp_access import Action, Grant, Prohibition
-from rdf_persistence.api.entrypoints.negotiation import ALLOWED_ACTIONS, RECORD_ETAG
+from rdf_persistence.access.domain.generated.rp_access import (
+    Action,
+    Grant,
+    Prohibition,
+    RoleDefinition,
+    RoleLevel,
+)
+from rdf_persistence.access.services.access import load_role_definitions
+from rdf_persistence.api.entrypoints.negotiation import ALLOWED_ACTIONS, HELD_ROLES, RECORD_ETAG
 from rdf_persistence.core.domain.media import (
     DATASET_REPRESENTATIONS,
     JSON,
@@ -36,8 +43,9 @@ from tests.scene import (
     ada_and_mia_are_members,
     everyone_has_a_role,
     problem_of,
+    use_roles,
 )
-from tests.toy import SETTINGS, keep_a_librarian
+from tests.toy import ROLES, SETTINGS, keep_a_librarian
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
 from tests.unit.activity_helpers import activities
 from tests.unit.api.tenant_requests import put_root, rename
@@ -1032,6 +1040,76 @@ async def test_the_aggregate_read_lists_what_the_caller_may_do(scene) -> None:  
     response = await scene.http.get(scene.book, headers=scene.headers("mia"))
     assert response.status_code == 200, response.text
     assert response.headers.get(ALLOWED_ACTIONS) == "read, modify, delete", "the member on a book"
+
+
+async def hold_roles_on_the_book(scene) -> None:
+    """mia an ``editor`` on the tenant and a ``reader`` on the book; nina holds no role, only a read grant."""
+    scene.access_etag = await ada_and_mia_are_members(scene)
+    use_roles(
+        scene,
+        [
+            *load_role_definitions(ROLES),
+            RoleDefinition(
+                role="editor", level=RoleLevel.TENANT, actions=[Action.READ, Action.MODIFY]
+            ),
+            RoleDefinition(role="reader", level=RoleLevel.AGGREGATE, actions=[Action.READ]),
+        ],
+    )
+    book_graph = str(graph_iri(scene.book_iri))
+    await scene.set_grants(
+        GrantSet(
+            grants=[
+                Grant(assignee=principal_of("ada"), target=scene.tenant_iri, role="librarian"),
+                Grant(assignee=principal_of("mia"), target=scene.tenant_iri, role="editor"),
+                Grant(assignee=principal_of("mia"), target=book_graph, role="reader"),
+                Grant(assignee=principal_of("nina"), target=scene.tenant_iri, action=Action.READ),
+            ]
+        )
+    )
+
+
+async def test_the_aggregate_read_lists_the_roles_the_caller_holds(scene) -> None:  # T12
+    await hold_roles_on_the_book(scene)
+    response = await scene.http.get(scene.book, headers=scene.headers("mia"))
+    assert response.status_code == 200, response.text
+    assert response.headers.get(HELD_ROLES) == "editor,reader", (
+        "sorted: the tenant's and the book's"
+    )
+
+
+async def test_a_token_role_the_roles_file_defines_is_among_the_roles_held(scene) -> None:  # T12
+    await hold_roles_on_the_book(scene)
+    response = await scene.http.get(scene.book, headers=scene.headers("mia", "admin"))
+    assert response.headers.get(HELD_ROLES) == "admin,editor,reader", "RISK-4: its own token roles"
+
+
+async def test_a_caller_holding_no_role_gets_an_empty_value(scene) -> None:  # T12, E11
+    await hold_roles_on_the_book(scene)
+    response = await scene.http.get(scene.book, headers=scene.headers("nina"))
+    assert response.status_code == 200, response.text
+    assert response.headers.get(HELD_ROLES) == "", "the header is there, and empty"
+
+
+async def test_a_refused_read_carries_no_held_roles(scene) -> None:  # T12
+    refused = await scene.http.get(scene.book, headers=scene.headers("omar"))
+    assert refused.status_code in {403, 404}, "the outsider is refused as before"
+    assert HELD_ROLES not in refused.headers, "a refusal says nothing of the roles held"
+
+
+def test_held_roles_are_documented_wherever_allowed_actions_are(service) -> None:  # T13
+    document = service.app.openapi()
+    declared = {
+        (path, method, status): set(response.get("headers") or {})
+        for path, item in document["paths"].items()
+        for method, operation in item.items()
+        for status, response in operation["responses"].items()
+    }
+    allowed = {key for key, names in declared.items() if ALLOWED_ACTIONS in names}
+    held = {key for key, names in declared.items() if HELD_ROLES in names}
+    assert allowed, "the reads declare Allowed-Actions"
+    assert held == allowed, (
+        "Held-Roles is declared on exactly the responses that declare Allowed-Actions"
+    )
 
 
 async def test_a_refused_read_carries_no_allowed_actions(scene) -> None:  # T-30

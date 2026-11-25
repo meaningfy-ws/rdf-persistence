@@ -50,6 +50,7 @@ classes:
         required: true
       to_role:
         required: true
+        pattern: "^[^,]*$"  # a role name has no comma (Held-Roles lists the names, comma separated); empty stays the loader's own refusal
 
   GrantRoles:
     title: Grant roles

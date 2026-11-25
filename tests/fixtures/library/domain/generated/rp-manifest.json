@@ -23,7 +23,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_access.yaml",
-      "sha256": "84054ea9cd7910a847325c00eea8366f1203f41ecd2ad03c7c6e2ec8d40cedc5"
+      "sha256": "e3f5b0003e844f45a62af2b1e0871e0b104718ae36c181dc9ea737c6a9304167"
     },
     {
       "path": "rdf_persistence/model/rp_annotations.yaml",
@@ -79,7 +79,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/migrations/rp_migrations_services.yaml",
-      "sha256": "c35978ff77d13f68796ba4b24cfc079f1c658b88e6906aa96be339c0432c6569"
+      "sha256": "309a16b26c5d1f351a8b0980a5536a415551915d6ef37f6a7ae26f420f7466c5"
     },
     {
       "path": "rdf_persistence/model/technical/persistence/rp_persistence_services.yaml",
@@ -485,7 +485,7 @@
     },
     {
       "path": "domain/generated/openapi-components.json",
-      "sha256": "2e1cb5816804c83043f2942651b2d49a5611e046e5c9ac522b8fbb3e15f0b696"
+      "sha256": "2a11096a01fc24f943b070e5e35493a34f669649c0ef92f76215a7fa440eba91"
     },
     {
       "path": "domain/generated/scans.py",
@@ -493,7 +493,7 @@
     },
     {
       "path": "domain/generated/shapes.ttl",
-      "sha256": "50b64731cfef7c173794e2326dc54b835e11c604ba74c72646462a8daeb0d806"
+      "sha256": "44550f2996e2ceeda74410e4b77dba7e7ac524be889609351e24ddaabbc8029e"
     },
     {
       "path": "domain/generated/templates.py",

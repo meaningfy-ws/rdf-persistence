@@ -73,6 +73,19 @@ class RoleRename(ConfiguredBaseModel):
     from_role: str = _Field(default=..., title="From role", description="The role name a grant names before the migration.")
     to_role: str = _Field(default=..., title="To role", description="The role name a grant names after the migration.")
 
+    @field_validator("to_role")
+    def pattern_to_role(cls, v):
+        pattern=re.compile("^[^,]*$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid to_role format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid to_role format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
 
 class GrantRoles(ConfiguredBaseModel):
     "What a migration does to the role names in the stored grants of the system database: the renames, in the order they apply, then the names whose grants are deleted. In the file, `rename` is a map from the old name to the new one; loading turns it into the list."

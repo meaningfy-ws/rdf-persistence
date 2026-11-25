@@ -221,6 +221,19 @@ class Collaboration:
         """
         return await self._transitions.transitions(iri)
 
+    async def roles_held(self, iri: str) -> frozenset[str]:
+        """The names of the roles the caller holds on ``iri``: the roles that decide who sees a
+        comment (its audience) and who may make a move.
+
+        The schema needs no discussion module.
+
+        Raises:
+            NotFound: The caller can see nothing of ``iri``.
+            Forbidden: The caller may see ``iri`` but not read it.
+        """
+        self._rules.require(self._caller, self._access, iri, Action.READ)
+        return frozenset(self._rules.roles(self._caller, self._access, iri))
+
     async def delete_cascade(self, collection: str, if_version: str) -> None:
         """Delete the collection and each of its members, in one request, all or nothing.
 

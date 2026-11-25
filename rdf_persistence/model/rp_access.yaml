@@ -84,6 +84,7 @@ classes:
     slot_usage:
       role:
         required: true
+        pattern: "^[^,]+$"  # a name has no comma: Held-Roles lists the names, comma separated
 
 slots:
   assignee:
