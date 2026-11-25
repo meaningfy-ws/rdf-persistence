@@ -31,7 +31,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   `rdf_persistence_generation.module_cycles` to `source_modules` of the `.importlinter` contract
   `works-without-the-generate-extra`. Accept: the file passes; `make check-architecture` green
   (part of `make test-changed check-quality`, green).
-- [ ] 1.2 **unit** — PD-5 to PD-7, after 1.1. `pydantic_split.render` two passes; `RpModule`
+- [x] 1.2 **unit** — PD-5 to PD-7, after 1.1. `pydantic_split.render` two passes; `RpModule`
   (fields `deferred: Imports | None`, `in_cycle: bool`) and the generator field `deferred`; the
   override `templates/pydantic/module.py.jinja` (the stock template plus the guarded
   `if _TYPE_CHECKING:` block and the footer include under `{% if not in_cycle %}`); the
