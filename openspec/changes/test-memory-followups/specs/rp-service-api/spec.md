@@ -15,7 +15,8 @@ models are cleared; no cache of the Python `typing` module SHALL hold its kit.
 
 A service kit (built by `install_service` or by constructing `ServiceKit`) SHALL take its schema
 view from a process-wide cache keyed by the schema file's resolved path and content, so services
-built from one unchanged file in one process share one parsed view. The cache SHALL hold at most
+built from one unchanged file in one process share one parsed view until the cache is next
+emptied. The cache SHALL hold at most
 eight views and SHALL be emptied by the testkit's `release_memory`. A file with other content
 SHALL give a new view; a missing or unreadable file SHALL raise as `load_schema` does. Building
 and using a service SHALL NOT modify the view or any module it imports. The views the generator
@@ -36,7 +37,8 @@ loads SHALL NOT come from this cache.
 
 #### Scenario: a service in use
 - **GIVEN** a service built from a cached view
-- **WHEN** it creates, reads, lists, replaces and deletes an aggregate, runs a workflow transition,
+- **WHEN** it runs its start-up migrations, creates, reads, lists, replaces and deletes an
+  aggregate, runs a workflow transition,
   archives and restores a tenant, and serves one event
 - **THEN** the view's modification count, every module it holds and its induced slots are
   unchanged

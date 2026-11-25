@@ -26,4 +26,19 @@ cached `vocabulary.metamodel()` view at `kit.py:172` is a precedent). Gaps, not 
 9. References: `tests/unit/api/test_openapi_served.py`, anchors for PD-n, "the paused sessions".
 10. PD-5: name the Langfuse filter fields and the formulas; the three DEC-8 targets as a table.
 
-**Parked** by the developer on 2026-11-25, before the gaps were folded in.
+The developer asked to fix the gaps the same day; all ten folded in (`ee023bcf`).
+
+run 2, 2026-11-25, 8.9/10, fail (same reviewer, gaps only; actionability 9.5, specificity 8.5,
+consistency 8.5, structure 9.0, disambiguation 8.5, reference clarity 9.5). All ten run-1 gaps
+closed. Eight slips found and folded in after the run: the induced-slot comparison now digests
+the dumped slots at each point (cached objects compared equal to themselves); a failed read
+defers to `load_schema` so the error is identical; the pin is a context manager wrapped by the
+autouse fixture (pytest forbids calling a fixture); the overlap on `memory.py` stated and the
+roadmap corrected; "once" qualified as until the next `release_memory`; DEC-3 and What Changes
+current; the `load=` seam named; the start-up migrations in the spec scenario.
+Accepted at 8.9 under R-0005 (≥ 8.8: fold the small gaps in, no further run).
+
+Side effect of run 2: the reviewer's `uv run python` installed packages into this worktree's
+`.venv`; no tracked file changed. Re-seed before relying on selection data in it.
+
+**Parked** by the developer on 2026-11-25 with the PLAN gated; Q1 to Q5 still open.

@@ -39,9 +39,13 @@ measured (DEC-4).
     module-boundary step, not the per-test `clear_caches()`) calls it, so a test process holds at
     most the views of one module's schemas; its count joins the returned index as
     `service_views`.
-  - **Errors:** the file is read before the lookup; a missing or unreadable file raises the same
-    exception `load_schema` raises today for it (the read is done through the same path), tested
-    against `load_schema`'s own error.
+  - **Errors:** the file is read before the lookup; on an `OSError` from that read,
+    `service_view` calls `load_schema(path)` and lets it raise, so a missing or unreadable file
+    raises exactly what `load_schema` raises today (type and message), tested against
+    `load_schema`'s own error.
+  - **Seam:** `service_view(path, *, load=load_schema)`; tests inject a counting loader.
+  - **Scope of "once":** one parse per schema file until the next `release_memory()`, which in
+    tests means once per module per worker; in a service, once per process.
   - **Use:** `ServiceKit.__init__` (`kit.py:165`) calls `service_view(schema)` instead of
     `load_schema(schema)`, so every kit built from a file shares its view, whether built by
     `install_service` or by constructing `ServiceKit` directly. `load_schema` and
@@ -57,10 +61,13 @@ measured (DEC-4).
   a kit from the cached view, drives it through the toy service's scene covering create, read,
   list, replace, delete, a workflow transition, archive and restore of a tenant, the events route
   (one event decoded), and the start-up migrations, then asserts the fingerprint is unchanged.
-  The same test also runs `SchemaView.class_induced_slots` for every class before and after, and
-  compares the results, which catches an edited cached induced slot.
-- **PD-4 The recursion pin** (DEC-3). `default_recursion_limit`, an `autouse` function-scoped
-  fixture in `tests/unit/migrations/test_migration_files_adversarial.py`, sets
+  The same test also takes, before and after, a sha256 over `yaml_dumper.dumps(slot)` of every
+  `class_induced_slots(c)` result for every class, without clearing the caches in between: the
+  strings are computed at each point, so an edit made to a cached induced slot object changes the
+  "after" digest even though the cache returns the same objects.
+- **PD-4 The recursion pin** (DEC-3). A plain context manager `default_recursion_limit_pinned()`
+  and an `autouse` function-scoped fixture `default_recursion_limit` that wraps it, both in
+  `tests/unit/migrations/test_migration_files_adversarial.py`; the context manager sets
   `sys.setrecursionlimit(DEFAULT_RECURSION_LIMIT)` (`1000`, CPython's default, a module constant)
   before each test of the module and restores the previous limit in `finally`. Every test of the
   module depends on the parser's depth the same way: the 120-pattern step and the deeply nested

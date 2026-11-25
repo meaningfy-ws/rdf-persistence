@@ -25,7 +25,8 @@ success measure (DEC-8) is still to be taken.
 
 1. A service no longer referenced is freed by ordinary garbage collection: no type cache keeps a
    kit alive.
-2. A process that builds many services from one schema file parses that file once; services built
+2. A process that builds many services from one schema file parses that file once (in tests: once
+   until the testkit's next `release_memory`, at each module boundary); services built
    from it behave exactly as before, and nothing else (the generator above all) shares the view.
 3. The parser-depth test gives the same answer whatever ran before it.
 4. DEC-8 of `agent-test-control` is measured on sessions running the merged code, and recorded.
@@ -44,9 +45,10 @@ success measure (DEC-8) is still to be taken.
   views it loads. A guard test proves building and using a kit leaves its view unchanged.
   Rejected: caching inside `load_schema` (the generator would share and modify the view);
   `install_service` accepting a `SchemaView` (every caller would have to manage the cache).
-- **DEC-3**: The parser-depth test pins the recursion limit to Python's default for its own
-  duration (a fixture that restores it), because the behaviour it guards is "past the default
-  depth, the step is refused with its own message". Rejected: quarantine (the test is right; only
+- **DEC-3**: Every test of the parser-depth test's module runs at Python's default recursion limit
+  (an autouse fixture that restores the previous limit), because the behaviour they guard is "past
+  the default depth, the input is refused with its own message", and the deeply nested cases could
+  exhaust the C stack under a raised limit. Rejected: quarantine (the test is right; only
   its environment varies).
 - **DEC-4**: DEC-8's measurement is this EPIC's last task, taken from Langfuse after the paused
   sessions run on the merged code; a missed target goes to the developer, it does not block the
@@ -73,6 +75,8 @@ success measure (DEC-8) is still to be taken.
   argument form (DEC-1).
 - `rdf_persistence/schema/services/schema.py` (or beside it): the cached view for the service kit;
   `kit.py` uses it (DEC-2).
+- `rdf_persistence/testkit/memory.py`: `clear_caches(typing=...)`, `release_memory` also empties the
+  service views and reports `service_views` (DEC-1, DEC-2).
 - `tests/unit/migrations/test_migration_files_adversarial.py`: the recursion limit pinned (DEC-3).
 - The DEC-8 record in `evidence/measure.md` (DEC-4).
 
@@ -86,5 +90,5 @@ success measure (DEC-8) is still to be taken.
 ## Impact
 
 `rdf_persistence/api/entrypoints/{auth,sse,kit}.py`, `rdf_persistence/schema/services/schema.py`,
-their tests, one migrations test, docs only if a docstring names the behaviour. Consumers building
+`rdf_persistence/testkit/memory.py`, their tests, one migrations test, docs only if a docstring names the behaviour. Consumers building
 one service per process see no change; consumers building many (tests) get faster and lighter.

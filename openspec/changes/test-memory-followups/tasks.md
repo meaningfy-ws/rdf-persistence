@@ -17,12 +17,12 @@ Every task: its **Red** test is written first and seen failing. Task gate
   `tests/unit/testkit/test_memory.py`, `clear_caches(typing=False)` reports 0 for `typing` and at
   least 1 for the other two. Guard: `tests/unit/api/test_openapi.py`,
   `tests/unit/api/test_openapi_served.py`, `tests/unit/api/` whole.
-- [ ] 1.2 PD-2, PD-3, unit (parallel with 1.1; 1.1 and 1.2 both touch `memory.py`: 1.2 adds the
-  `service_views` count to `release_memory` after 1.1 merges, or the lead merges them in order).
+- [ ] 1.2 PD-2, PD-3, unit (parallel with 1.1, except its edit to `memory.py`: the
+  `service_views` count in `release_memory` is made after 1.1's commit is on the branch).
   `service_view`, `clear_service_views`, `kit.py`, `ServiceKit.view`'s docstring,
   `release_memory`. Red, in `tests/unit/schema/test_service_view.py`: the eight worked examples of
   design.md's *Algorithm / approach* as one parametrized table, plus the concurrent case (two
-  threads started together on one file; `load_schema` counted by an injected loader, called once);
+  threads started together on one file; a counting loader passed as `service_view(path, load=...)`, called once);
   in `tests/unit/api/test_service_view_guard.py`: PD-3's guard over the named scene. Before the
   change, scan the tests for a modification of a kit's view (`ast-grep` for `$K.view.$M(...)`
   with `add_slot`, `add_class`, `set_modified`, and `.slots.append` on a view taken from a kit);
@@ -34,8 +34,9 @@ Every task: its **Red** test is written first and seen failing. Task gate
   (RISK-3).
 - [ ] 1.3 PD-4, unit (parallel with 1.1 and 1.2). Red, in the module itself:
   `test_the_module_runs_at_the_default_recursion_limit` sets `sys.setrecursionlimit(20000)`,
-  drives the `default_recursion_limit` fixture's generator by hand (`next`), asserts the limit is
-  `DEFAULT_RECURSION_LIMIT`, finishes the generator, and asserts 20000 is restored. The planted
+  enters `with default_recursion_limit_pinned():`, asserts the limit is `DEFAULT_RECURSION_LIMIT`
+  inside, and asserts 20000 is restored after the block (the context manager, not the fixture,
+  which pytest forbids calling directly). The planted
   check: with the autouse removed, running the parser-depth test after
   `sys.setrecursionlimit(20000)` makes it fail (seen once, then reverted).
 
@@ -52,7 +53,8 @@ Every task: its **Red** test is written first and seen failing. Task gate
 
 - [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3
 
-1.1, 1.2 and 1.3 touch different files and run in parallel.
+1.1, 1.2 and 1.3 run in parallel; only 1.2's edit to `rdf_persistence/testkit/memory.py` waits
+for 1.1's commit on the branch.
 
 ## Verification
 
