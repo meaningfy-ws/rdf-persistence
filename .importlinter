@@ -139,6 +139,7 @@ source_modules =
     rdf_persistence_generation.manifest
     rdf_persistence_generation.pipeline
     rdf_persistence_generation.exceptions
+    rdf_persistence_generation.module_cycles
     rdf_persistence_generation.problems
     rdf_persistence_generation.generated
     rdf_persistence_generation.testkit

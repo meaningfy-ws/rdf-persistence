@@ -45,6 +45,11 @@
       "curie": {
          "@id": "nameCurie"
       },
+      "cycles": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "moduleCycles"
+      },
       "declared_type": {
          "@id": "umlDeclaredType"
       },
@@ -54,6 +59,11 @@
       },
       "default_prefix": {
          "@id": "umlDefaultPrefix"
+      },
+      "deferrals": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "moduleDeferrals"
       },
       "description": {
          "@id": "descriptionText"
@@ -246,6 +256,10 @@
       "module_path": {
          "@container": "@set",
          "@id": "umlModulePath"
+      },
+      "modules": {
+         "@container": "@set",
+         "@id": "moduleNames"
       },
       "multiple_stereotypes": {
          "@id": "umlMultipleStereotypes"
@@ -451,6 +465,9 @@
       "source_id": {
          "@id": "umlSourceId"
       },
+      "source_module": {
+         "@id": "sourceModuleName"
+      },
       "source_role": {
          "@id": "umlSourceRole"
       },
@@ -596,6 +613,9 @@
       "ConstraintCase": {
          "@id": "ConstraintCase"
       },
+      "CycleAnalysis": {
+         "@id": "CycleAnalysis"
+      },
       "Frame": {
          "@id": "Frame"
       },
@@ -634,6 +654,12 @@
       },
       "MmdModule": {
          "@id": "MmdModule"
+      },
+      "ModuleCycle": {
+         "@id": "ModuleCycle"
+      },
+      "ModuleDeferral": {
+         "@id": "ModuleDeferral"
       },
       "PresenceRule": {
          "@id": "PresenceRule"

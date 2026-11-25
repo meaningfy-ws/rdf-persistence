@@ -412,6 +412,7 @@ WITHOUT_GENERATE_EXTRA_SOURCES = {
         "manifest",
         "pipeline",
         "exceptions",
+        "module_cycles",
         "problems",
         "generated",
         "testkit",

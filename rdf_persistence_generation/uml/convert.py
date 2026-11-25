@@ -26,6 +26,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlRule,
     UmlSettings,
 )
+from rdf_persistence_generation.module_cycles import cycle_components
 from rdf_persistence_generation.uml.classes import (
     annotation,
     build_class,
@@ -46,7 +47,6 @@ from rdf_persistence_generation.uml.mixins import check_default_mixins
 from rdf_persistence_generation.uml.modules import (
     PATH_SEPARATOR,
     ModulePath,
-    cycle_components,
     module_name,
     package_paths,
     reachable,

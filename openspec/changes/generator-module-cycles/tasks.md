@@ -11,7 +11,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
 
 ## 1. Stage 1: the generator loads module cycles (#208) — branch `change/generator-module-cycles-1`, one PR
 
-- [ ] 1.1 **unit** — PD-1 to PD-4. New pure module `rdf_persistence_generation/module_cycles.py`:
+- [x] 1.1 **unit** — PD-1 to PD-4. New pure module `rdf_persistence_generation/module_cycles.py`:
   the Tarjan search moved from `uml/modules.py` (generic over sortable nodes; `uml/convert.py`
   imports it from here), and the analysis of `{module name: rendered text}` returning the cycles,
   the deferred names per module, and raising `SchemaGenerationError` (PD-3's message) on a load

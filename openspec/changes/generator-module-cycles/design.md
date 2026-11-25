@@ -233,6 +233,16 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   task 2.4 re-runs the check on a cyclic pair.
 - **Trade-off:** pass 2 re-renders the modules of a cycle (PD-7): time for cyclic targets only.
 
+## Delivery decisions
+
+- **D-1 (stage 1, task 1.1) The cycle analysis result is a LinkML class.** The model guard
+  (`tests/unit/testkit/test_model_guard.py`) refuses a hand-written `NamedTuple` or dataclass;
+  `CycleAnalysis` is a generator-technical record (P-0011), so it is declared in
+  `rdf_persistence_generation/model/rp_generation.yaml` and generated into `rp_generation.py`;
+  the analysis' private helper record goes the same way or becomes plain local data. Rejected:
+  listing it in the guard's `HAND_WRITTEN` (kept for types that hold foreign runtime objects).
+  Task 1.3's byte identity covers the targets' generated output, not `rp_generation.py`.
+
 ## Open Questions
 
 None blocking; owner questions with defaults are `inputs/qa.md` OPEN-1 to OPEN-4.

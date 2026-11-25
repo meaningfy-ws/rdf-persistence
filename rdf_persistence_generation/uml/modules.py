@@ -101,47 +101,6 @@ def module_name(root_name: str, path: ModulePath) -> str:
     return f"{root_name}_{tail}"
 
 
-def _visit(
-    node: ModulePath,
-    edges: Mapping[ModulePath, set[ModulePath]],
-    state: "_Tarjan",
-) -> None:
-    state.index[node] = state.low[node] = state.counter
-    state.counter += 1
-    state.stack.append(node)
-    state.on_stack.add(node)
-    for successor in sorted(edges.get(node, ())):
-        if successor not in state.index:
-            _visit(successor, edges, state)
-            state.low[node] = min(state.low[node], state.low[successor])
-        elif successor in state.on_stack:
-            state.low[node] = min(state.low[node], state.index[successor])
-    if state.low[node] == state.index[node]:
-        state.components.append(_pop_component(node, state))
-
-
-def _pop_component(node: ModulePath, state: "_Tarjan") -> list[ModulePath]:
-    component: list[ModulePath] = []
-    while True:
-        member = state.stack.pop()
-        state.on_stack.discard(member)
-        component.append(member)
-        if member == node:
-            return sorted(component)
-
-
-class _Tarjan:
-    """The bookkeeping of one strongly-connected-components search."""
-
-    def __init__(self) -> None:
-        self.index: dict[ModulePath, int] = {}
-        self.low: dict[ModulePath, int] = {}
-        self.stack: list[ModulePath] = []
-        self.on_stack: set[ModulePath] = set()
-        self.components: list[list[ModulePath]] = []
-        self.counter = 0
-
-
 def reachable(edges: Mapping[ModulePath, set[ModulePath]]) -> dict[ModulePath, set[ModulePath]]:
     """The modules each module reaches by imports, directly or through others (LinkML imports are transitive)."""
     reached: dict[ModulePath, set[ModulePath]] = {}
@@ -156,14 +115,3 @@ def reachable(edges: Mapping[ModulePath, set[ModulePath]]) -> dict[ModulePath, s
         seen.discard(start)
         reached[start] = seen
     return reached
-
-
-def cycle_components(
-    nodes: list[ModulePath], edges: Mapping[ModulePath, set[ModulePath]]
-) -> list[list[ModulePath]]:
-    """The groups of two or more modules that import each other, each in path order, groups in path order."""
-    state = _Tarjan()
-    for node in sorted(nodes):
-        if node not in state.index:
-            _visit(node, edges, state)
-    return sorted(component for component in state.components if len(component) > 1)
