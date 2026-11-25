@@ -8,13 +8,15 @@
 `2026-11-21-delete-refuses-referenced` (#252), `2026-11-21-nested-collections` (#235, D-3 to
 D-5), `2026-11-20-testkit-event-stream` (#215, #214), `2026-11-19-domain-model-per-theme` (#192),
 `2026-11-19-target-kind-from-the-model` (#189) and `2026-11-16-aggregate-events` (#125); the
+follow-ups that `2026-11-21-test-debt-paydown` deferred (#272, #273) and that
+`2026-11-21-aggregate-validators` found (#275), folded in by the owner on 2026-11-25 (DEC-6); the
 capabilities `rp-generation` and `rp-testkit` (spec deltas of wording and of today's behaviour
 only).
 
 ## Appetite
 
-**MEDIUM.** About forty small items across three areas, each one reused as is: no new concept,
-no new capability. Three stages, one pull request each (`develop/agents.adoc`, *Merge and
+**MEDIUM.** About fifty small items across three areas, each one reused as is: no new concept,
+no new capability. The re-triage of 2026-11-25 found none of them fixed since 2026-11-22. Three stages, one pull request each (`develop/agents.adoc`, *Merge and
 release*).
 
 ## Why
@@ -37,7 +39,10 @@ EPIC either closed or holding only behaviour-changing items.
    helpers; the referrer-naming code computes once and takes the types it needs; the import
    contract lists its two missing modules; `more_count` moves beside `hidden_count`; three
    docstrings and one slug description say what the code does; the write guard's collection check
-   stops threading six arguments through three methods.
+   stops threading six arguments through three methods. The test helpers get one home: the toy's
+   vocabulary, a `book_json()` builder and a fast-poll constant in `tests/toy.py` (#272 d, e, f),
+   the toy composition root in `tests/` (#272 b), one tenancy double checked against the real
+   signature (#275).
 3. **Stage 2, the generator (#192, #189):** tests first (each theme's `domain/generated/` holds
    exactly its modules); one accessor for `TOOLKIT_ROOTS`, one predicate for "generated here",
    one home per repeated constant; the stored-file class found once per caller; the test-only
@@ -47,7 +52,9 @@ EPIC either closed or holding only behaviour-changing items.
    scenario, the import check for the testkit root, `re.escape` on the URLs, a test that fails
    without `relay.wake()`, a Redis test of redelivery by `claim_idle` within one run; the event
    stream how-to states its outcomes; the getting-started tutorial and the route-shapes rule of
-   `model.adoc` and `generate.adoc` match the code.
+   `model.adoc` and `generate.adoc` match the code. The shapes are read, hashed and warmed by one
+   function (#272 c); `testing.adoc` says how to plant a mutation in a generated file (#273); a
+   tooling test fails on a patch of toolkit code with no `# X` marker (#272 a).
 
 Success is measured by two facts: every existing test stays green with no edit to its assertions
 (except the tests this EPIC moves or rewrites, each listed in `design.md` with the lane that runs
@@ -74,6 +81,12 @@ it), and `make check-generated` shows no change of meaning in a generated artefa
   closed with an item silently dropped.
 - **DEC-5:** three stages, one PR each, merged on green CI (P-0013); one L2+L3 pass per stage and
   the full review once at the end (P-0005).
+- **DEC-6:** the owner folded in #272 (all six items), #273 and #275 on 2026-11-25
+  (`inputs/qa.md`, round 2). Five of #272's items, #273 and #275 are preserving under DEC-1;
+  272-c adds an internal function, `load_warm_shapes` in `api.services.shacl`, and the owner took
+  it knowing so: it is the one exception to DEC-1, bounded by keeping it out of the public surface
+  and every outcome unchanged (design.md PD-19). Rejected: leaving 272-c in #272 (the planner's
+  recommendation).
 
 ## Rabbit-holes
 
@@ -112,21 +125,25 @@ left for the home named; each is an OPEN question in `inputs/qa.md`.
 - A new conformance-kit case (consumers' adapters would newly fail): the `claim_idle` test is the
   toolkit's own Redis test.
 - No change to a public name, signature or outcome; no new test library; no drop of a test except
-  the one duplicate #192 names.
+  the one duplicate #192 names and PD-11's two.
+- #371 and #372 (the generator's TypeScript copy of an imported module; the testkit refusing
+  hand-written shapes fixtures): planned in `consumer-friction`, not here.
 
 ---
 
 ## What Changes
 
 - Tests: characterisation tests (#252, #235, #192, #215, #125); shared test helpers; assertions
-  brought to `testing.adoc`; one duplicate test dropped; six config tests use layered packages.
-- Code (internal only): `referenced_removals.py`, `referrer_naming.py`, `openapi.py`,
+  brought to `testing.adoc`; one duplicate test dropped; six config tests use layered packages;
+  the toy's vocabulary, `book_json()`, `FAST_POLL` and the composition root shared from `tests/`;
+  one tenancy double; a guard on patch markers.
+- Code (internal only): `shacl.py` and `documents.py` (`load_warm_shapes`), `referenced_removals.py`, `referrer_naming.py`, `openapi.py`,
   `write_guards.py`, `schema_structure.py` and its two callers, `vocabulary.py`, the generator's
   `TOOLKIT_ROOTS` readers, `pydantic_split.py`, `steps.py`, `config.py`, `boundary.py`.
 - Model: `more_count` declared in `rp_collaboration_services.yaml`; the `in-use` slug description;
   regenerated with `make generate`.
 - `.importlinter`: two modules added to `collaboration-layers`.
-- Docs: `user-manual/test.adoc`, `tutorials/getting-started.adoc`, `user-manual/model.adoc`,
+- Docs: `develop/testing.adoc`, `user-manual/test.adoc`, `tutorials/getting-started.adoc`, `user-manual/model.adoc`,
   `user-manual/generate.adoc`.
 - Specs: `rp-generation` (one scenario's wording), `rp-testkit` (one scenario of today's
   behaviour).
@@ -148,4 +165,4 @@ None.
 
 No public API, outcome or generated meaning changes. Generated artefacts change only in the
 module that declares `more_count` and in one description text. Consumers: none affected; the
-recommended follow-ups (OPEN-1 to OPEN-8) carry every behaviour change.
+follow-ups the owner accepted (OPEN-1 to OPEN-8) carry every behaviour change.

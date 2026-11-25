@@ -56,8 +56,9 @@ Work outside the table, all delivered and archived: `test-suite-grooming`, `alig
 
 | Id | Appetite | PLAN | Next |
 |---|---|---|---|
-| `test-debt-paydown` | LARGE (three stages, one PR) | re-planned 2026-11-21, gate 8.9 accepted (DEC-5, R-0005) | ready for an epic session; scenario sign-off pending |
+| `test-debt-paydown` | LARGE (three stages, one PR) | re-planned 2026-11-21, gate 8.9 accepted (DEC-5, R-0005) | delivered 2026-11-21 (#265), archived `2026-11-21-test-debt-paydown`; follow-ups #272, #273 |
 | `activity-iri-policy` | SMALL (one stage) | #197; re-planned on develop 2026-11-25, attacked, gated 8.9 → 9.2, pass; OPEN-1, OPEN-5 answered | ready for an epic session; scenarios signed off 2026-11-25 |
+| `review-floors` | MEDIUM (3 stages, one PR each) | planned 2026-11-22, re-planned 2026-11-25 on `develop` 12d84873: 8.6 → 9.4, pass (fresh reviewer) | in delivery from 2026-11-25; scenarios signed off 2026-11-25. Pays the behaviour-preserving review floors of #252, #235, #215, #214, #192, #189, #125 and all of #272, #273, #275 (folded in 2026-11-25); the behaviour changes stay in their issues (OPEN-1 to OPEN-8, accepted). #371, #372 are `consumer-friction`'s |
 | `ldes-view` | MEDIUM | no | a shaping session |
 | `consumer-friction` (#371, #372; MWB2 `v2-05`) | SMALL (1 stage) | 2026-11-25, attacked and gated by a fresh reviewer 8.7 → 9.3, pass (`evidence/clarity-gate.md`); scenarios signed off | ready for an epic session; **BREAKING** for generated TypeScript (DEC-6) |
 | `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |

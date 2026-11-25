@@ -79,3 +79,21 @@ Default: as planned; on a "no" to (a), 252-e and 252-h3 move to OPEN-1's EPIC; o
 
 The owner parked the question round: the OPEN items above are unanswered. The PLAN stands
 under the recommended answers; nothing is decided until the owner answers.
+
+## Round 2 (2026-11-25, the owner, asked by the planner in the lead session)
+
+Context: the re-triage of 2026-11-25 (`triage.md`, last section) found no item fixed since
+2026-11-22. #371 and #372 are planned in parallel in `consumer-friction` and left out.
+
+**Q1, #272 (six test-debt follow-ups, all still open): fold which in?** Recommended: a, b, d,
+e, f; c stays in #272, as it adds a library function (DEC-1).
+**Answer: all six.** → proposal.md DEC-6; design.md PD-17 to PD-20.
+
+**Q2, #273 (one line in `testing.adoc` on planting a mutation in a generated file): fold in?**
+Recommended: yes, stage 3 docs. **Answer: fold in, stage 3.** → PD-21, task 3.9.
+
+**Q3, #275 (four hand-written doubles of `Tenancy.tenant_session`): fold in?** Recommended:
+yes, stage 1. **Answer: fold in, stage 1.** → PD-22, task 1.9.
+
+**Q4, OPEN-1 to OPEN-9 (parked since 2026-11-22): accept the recommendations?** **Answer:
+accept all.** Every Default line above is now the owner's decision.

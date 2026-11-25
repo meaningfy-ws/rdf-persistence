@@ -112,3 +112,56 @@ Paths are relative to the repository root.
 | 125-i3 | Redis `failing` hook closes the bus instead of stopping the broker | yes | `tests/integration/adapters/test_redis_events.py:41-44` | **R**: a restarted testcontainers broker gets a new mapped port, so the bus under test cannot reconnect; a proxy or fixed port is a harness project |
 | 125-j | comment items: `sse.py:1`, `router.py` comment, `test_events.py:3-5`, durations row | **done** | `sse.py:1`, `router.py:489`, `tests/feature/test_events.py:3-5`, `develop/index.adoc:129` | **D** |
 | 125-won't | the "won't fix" list | — | the owner's triage of 2026-11-16 | not taken |
+
+## Re-triage of 2026-11-25
+
+Every row above re-checked on `develop` 12d84873 (three read-only subagents, one per group of
+issues; each cited file diffed from 25e23156 to HEAD, changed files re-read). Since 2026-11-22
+`develop` merged, among others, `consumer-test-gaps` (#355, #360, #361), `converter-hardening`
+(#349), `generator-module-cycles` (#358, #368), `aggregate-guards` (#334, #346, #354),
+`reference-filters` (#356), `slot-uri-clash` (#376) and `grant-roles` (#345, #367).
+
+**Result: no item was fixed.** No issue is closed and no item leaves the change. The D rows
+(215-W2a, 215-S1..S3, 192-j1, 192-l, 125-h6, 125-j) are still done. Only line numbers moved;
+the PLAN cites the new ones. The moves that matter:
+
+| Id | New evidence | Note |
+|---|---|---|
+| 252-b | `router.py:239`; `schema_structure.py:104-110` | |
+| 252-c | `session.py:1754-1771` | |
+| 252-e | `rdf_persistence/model/technical/collaboration/rp_collaboration_services.yaml:110-115` (`hidden_count`) | the YAML lives under `rdf_persistence/model/` |
+| 252-g2 | `referrer_naming.py:54` | |
+| 252-g4 | `openapi.py:177`, caller `:281` | |
+| 252-h1 | `problems.py:174-190` | #360 added a paragraph on `locate`; the requested point is still missing |
+| 252-h2 | `aggregates.py:151-162` | |
+| 252-h3 | `rp_api_entrypoints.yaml:209` | |
+| 252-j1, j2 | `session.py:1830-1833`, `:1720-1722` | |
+| 235-k | `session.py:529-545` | |
+| 235-m1, m2 | `write_guards.py:224 → 242/248 → 331`, `noqa` at `:224, 336, 430`; `_exact_heads` `:376-380` | |
+| 235-o2 | `test_collaboration_nesting_adversarial.py:325-334` shows the case on a deep read; nothing asserts the write is allowed | still P |
+| 192-b | `schema_structure.py:233-249`; `router.py:455` | |
+| 192-c | `pydantic_split.py:591-602` | |
+| 192-e | `test_hard_check.py:1246-1248`; one more patch `test_ext_pydantic_split.py:657` | |
+| 192-f | `pydantic_split.py:293-296`; `schema_structure.py:283-294` | |
+| 192-g | `pydantic_split.py:189, 219`; `cli.py:25` | |
+| 192-i | `test_hard_check.py:1131` | |
+| 192-j2 | `tests/generator/unit/conftest.py:25-50`; `test_hard_check.py:1309+`; `layout_table.py:174-182` | |
+| 192-k | `tests/unit/layout_table.py:430-445` | |
+| 189-n, o, p | `boundary.py:335-339`, `:283`, `:360` | |
+| 189-u | `user-manual/generate.adoc:264-267` | |
+| 215-S4b | `service.py:196-214` | |
+| 125-h1..h5 | `relay.py:179-236`; `service.py:211-219` | |
+| 125-i1 | `kit.py:258-261` | |
+
+### Folded in by the owner (round 2 of `qa.md`)
+
+| Id | Item | Present? | Evidence | Class |
+|---|---|---|---|---|
+| 272-a | a guard that every `monkeypatch` of toolkit code carries `# X1`-`# X5` | missing | 73 `setattr`/`delattr` calls in `tests/unit` and `tests/generator/unit`, 40 marked; e.g. `tests/unit/collaboration/test_aggregate_validators.py:613` unmarked | **P** (test) |
+| 272-b | `test_library_app.py` imports `tests/e2e/library_app.py` | yes | `tests/unit/api/test_library_app.py:16`; users `tests/e2e/world.py:19`, `tests/e2e/test_library.py:101`, `tests/generator/e2e/test_generated_library_served.py:35` | **P** (tests) |
+| 272-c | one `load_warm_shapes(path) -> Graph` so the digest is not the caller's | yes | `api/services/shacl.py:63`; digest at `api/services/documents.py:99-105, 131-133` | adds an internal function: taken under DEC-6 |
+| 272-d | `BOOK_JSON` as a builder | yes | `tests/toy.py:112-118`; 37 uses | **P** (tests) |
+| 272-e | one fast-poll constant | yes | 16 `poll_seconds=0.01` in 6 files | **P** (tests) |
+| 272-f | `BIBO`, `TITLE`, `BOOK_CLASS`, `TIMEOUT` declared once in `tests/toy.py` | yes | about thirty declaring files, mixed `str`/`URIRef` | **P** (tests) |
+| 273 | `testing.adoc`: a mutation in a generated file needs the freshness plugin off | missing | no passage on it in `develop/testing.adoc` | **P** (docs) |
+| 275 | one double of `Tenancy.tenant_session` | yes | `tests/unit/api/iri_policy_helpers.py:81-88`, `test_iri_policy_minting.py:94-99, 153-155`, `test_replace_internal_values.py:85-87` | **P** (tests) |
