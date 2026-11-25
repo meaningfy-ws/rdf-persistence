@@ -100,6 +100,16 @@ Exempt example: `rp_core.id` (`identifier: true`) is skipped; `templates.identif
 - **D-2 (owner, 2026-11-25) The PLAN is accepted at 8.85/10 with the gate's five gaps fixed**
   (`evidence/clarity-gate.md` run 2): fault anchors pinned, a full-message and writes-nothing test
   added, the `Fault` field names, deep links, and the CHANGELOG section (D-1).
+- **D-3 (lead, 2026-11-25) Review findings under the floor** (stage 1, one L2+L3 pass, no
+  Critical):
+  - W1 `test_hard_check.py:141-163`: fault rows (b) and (c) assert the rule and element, not the
+    other slot's name in the message. Under the floor: the message is built by one code path,
+    proved in full for row (a).
+  - S1 `hard.py:455-464`: no direct test that a toolkit pair stays silent in a consumer target
+    (PD-3) or that #278's same-name case gives no `slot_iri` problem (PD-2). Under the floor:
+    covered indirectly by `test_the_toolkits_own_schemas_pass` and the full generator suite.
+  - S2 RISK-3 list absent from the PR body. Under the floor: the builder reported "none"; added to
+    the PR body.
 
 ## Open Questions
 
