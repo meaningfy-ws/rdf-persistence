@@ -9,8 +9,8 @@ D-7 to D-13, the review findings F1 to F7 and the list under the floor (design.m
 decisions).
 
 ## Open
-- The acceptance verdict (`evidence/acceptance.md`): offered, the developer's to give or skip.
-- D-13 (a membership rule refuses a path) is the lead's decision; the developer may overrule it.
+- The acceptance verdict (`evidence/acceptance.md`): skipped by the developer, 2026-11-25.
+- D-13 (a membership rule refuses a path): confirmed by the developer, 2026-11-25.
 - After the merge: archive, ask for a release, and comment on #308 with the version (task 2.2).
 - 84 test ids of other changes have no scenario-map row (`make refresh-map`); not this change's.
 

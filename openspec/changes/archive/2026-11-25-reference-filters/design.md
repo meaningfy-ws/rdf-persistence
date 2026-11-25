@@ -288,6 +288,7 @@ Taken by the lead during delivery (R-0007), for the developer to validate at the
   toolkit refuses a path in a membership rule with `BadQuery`, keeping the No-go. Lifting it is a
   new EPIC. Before this EPIC a dotted rule slot was already refused ("has no slot"), so D-13 keeps
   the old behaviour with a clearer message; GitNexus rates `rule_filters` HIGH by fan-out only.
+  Confirmed by the developer, 2026-11-25.
 
 ### Review findings (one round, D-12)
 
