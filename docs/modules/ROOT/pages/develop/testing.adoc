@@ -179,6 +179,8 @@ Four mechanisms, from `agent-test-control`:
      installed packages changed since the seed
      (`packages changed since the seed: the lead re-runs make test-seed`); report either to the
      lead.
+  ** The lead seeds only a worktree where builders will work: the seed serves
+     `make test-changed` alone and repeats the unit and feature tests `make check-all` runs anyway.
 * *Memory released between tests.* `tests/conftest.py` enables the testkit's plugin,
   `rdf_persistence.testkit.memory_plugin`. After every test it clears the caches of
   linkml-runtime's `SchemaView`, FastAPI's dependency models and `typing`, which otherwise keep

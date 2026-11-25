@@ -73,7 +73,7 @@ instructions are missing, route by the skills' descriptions and say so once.
   |---|---|---|
   | Narrow checks | the builder, each edit | the tests the edit touches (`uv run pytest <file>`), `make lint` |
   | Task gate | the builder, once per task | `make test-changed check-quality` |
-  | Test seed | the lead, at stage start, in the background | `make test-seed` (selection data for `make test-changed`) |
+  | Test seed | the lead, at stage start when builders will follow, in the background | `make test-seed` (selection data for `make test-changed`) |
   | Full gates | the lead, once per stage before the PR and once after the fix pass | `make check-all`; `make test-containers` when adapters changed |
   | Docs gate | the checker, when the docs change | `make check-docs` |
   | GitNexus | the lead, at stage start and before the stage's last commit; builders and reviewers run none | `make reindex`, then the GitNexus impact tool |
@@ -87,7 +87,10 @@ instructions are missing, route by the skills' descriptions and say so once.
 - **Test control until skillery carries it** (meaningfy-ws/skillery#360; the mechanism here works
   without it, these steps stand in for what skillery does not yet say or enforce):
   - The lead's stage start is `make reindex`, then `make test-seed` as a background run, then the
-    first briefs; builders do not wait for the seed. After `uv sync`, the lead seeds again.
+    first briefs; builders do not wait for the seed. After `uv sync`, the lead seeds again. The
+    seed only feeds builders' `make test-changed`: a session with no builders in that worktree
+    (a rebase, the gates, a fix pass the lead does alone) skips it, since `make check-all` already
+    runs every test.
   - Every builder brief pastes the guards above word for word (the brief checklist of
     [`develop/agents.adoc#brief`](docs/modules/ROOT/pages/develop/agents.adoc) carries them).
   - No hook enforces them yet: the lead reads each builder report for a full lane run by hand, a

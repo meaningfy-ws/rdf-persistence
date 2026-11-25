@@ -124,7 +124,9 @@ back to `make test-fast` by itself when it cannot map a change to tests
 task. It runs every unit and feature test not marked `slow`, queued (time: see the
 xref:develop/index.adoc#how-long-the-checks-take[durations table])
 |`make test-seed` |lead |At stage start, after `make reindex`, in the background; again after
-`uv sync`. It records which code each test executes, for `make test-changed`
+`uv sync`. It records which code each test executes, for `make test-changed`. Only when builders
+will work in that worktree: a session without them (a rebase, the gates, a fix pass the lead does
+alone) skips it, since `make check-all` already runs every test
 |`make check-quality` |builder |After every task (≈ 1 min); it holds `make check-architecture`,
 `make clean-code` and `make check-docs`
 |`make check-all` |lead |Once per stage before the PR, and again after the fix pass: it already
