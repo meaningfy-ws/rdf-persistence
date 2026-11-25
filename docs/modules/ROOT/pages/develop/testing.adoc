@@ -146,10 +146,14 @@ Four mechanisms, from `agent-test-control`:
   `make test-containers` and `make test-seed`, runs pytest through `tests/queue.py`. That module
   holds one lock for every repository on the machine (`~/.cache/meaningfy/pytest.lock`). A run
   that finds the lock taken prints `waiting for the test queue: <folder> <target> <pid> <time>`
-  once. When it starts it prints `test queue: waited <N>s`. The kernel frees the lock when the run
-  ends, however it ends, so a killed run leaves nothing to clean up. A stuck run is the one named
-  in the waiting line: the lead kills that pid. `TEST_QUEUE=<path>` moves the lock and
-  `TEST_QUEUE=off` skips it. CI (`CI` set) does not queue. `make check-all` queues lane by lane.
+  once, where the time is when the holder started. When it starts it prints
+  `test queue: waited <N>s`. The kernel frees the lock when the run ends, however it ends, so a
+  killed run leaves nothing to clean up. There is no maximum wait. A run held far longer than its
+  line in the xref:develop/index.adoc#how-long-the-checks-take[durations table] is stuck: a builder
+  reports the waiting line to the lead, and the lead kills that pid. `TEST_QUEUE=<path>` moves the
+  lock and `TEST_QUEUE=off` skips it. CI (`CI` set) does not queue. `make check-all` queues lane by
+  lane, so another session's lane may run between two of its lanes. A builder meets the queue only
+  when `make test-changed` falls back to `make test-fast`.
 * *Workers from cores and memory.* A queued lane passes `-n @workers`, and the queue replaces it
   when the run leaves the queue: the cores minus 3 (on more than 6 cores), capped by the available
   memory divided by `PYTEST_WORKER_MB` (default 1536), at least 1. It prints
@@ -160,15 +164,21 @@ Four mechanisms, from `agent-test-control`:
   ** With selection data, a changed Python file selects the tests that executed it. It uses
      pytest-testmon in read-only mode (`--testmon-nocollect --testmon-forceselect`), so the same
      changes select the same tests on every run.
-  ** Every other file selects by folder, as does a file of the generator, whose tests run it in
-     subprocesses testmon cannot see.
-  ** It falls back to `make test-fast` (exit 75) only for shared files: `pytest.ini`, `Makefile`,
+  ** Every other file selects by folder: a file of `rdf_persistence/<theme>/` selects
+     `tests/unit/<theme>/`, a test under a folder of `tests/unit/` that folder, a file under `docs/`
+     the docs check. A file of the generator selects `tests/generator/` as well, because its tests
+     run the generator in subprocesses testmon cannot see.
+  ** It runs `make test-fast` itself (queued; its module exits 75 to ask for it) only for shared
+     files: `pytest.ini`, `Makefile`,
      `.coveragerc`, `pyproject.toml`, `uv.lock`, schemas under `rdf_persistence/model/`, anything
      under `tests/fixtures/`, or a file no rule maps.
   ** Without selection data it uses the folder rules for everything and prints
-     `no test selection data in this worktree: the lead runs make test-seed`. It does the same,
-     with its own message, when the data is damaged or the installed packages changed since the
-     seed.
+     `no test selection data in this worktree: the lead runs make test-seed`, which tells you
+     the seed has not landed yet; carry on. It does the same when the data is damaged
+     (`selection data is damaged: delete .testmondata and ask the lead for make test-seed`) or the
+     installed packages changed since the seed
+     (`packages changed since the seed: the lead re-runs make test-seed`); report either to the
+     lead.
 * *Memory released between tests.* `tests/conftest.py` enables the testkit's plugin,
   `rdf_persistence.testkit.memory_plugin`. After every test it clears the caches of
   linkml-runtime's `SchemaView`, FastAPI's dependency models and `typing`, which otherwise keep
@@ -186,8 +196,9 @@ git) and is never copied to another one.
 
 *What each role runs.* A builder runs the tests its edit touches (`uv run pytest <file>`) and,
 once per task, `make test-changed check-quality`. A builder never runs, by hand, `make test-fast`,
-`make test`, `make check-all`, `make test-seed` or `pytest --testmon`. It waits for a long command
-through its completion notice, never `tail --pid`, `tail -f … | grep -m1` or a `timeout` around a
+`make test`, `make check-all`, `make test-seed` or `pytest --testmon`. It starts a long command as
+a background run (the Bash tool's `run_in_background`) and waits for the completion notice the
+harness sends when it ends, never `tail --pid`, `tail -f … | grep -m1` or a `timeout` around a
 wait, and leaves `make generate` and `uv sync` to the lead. The lead runs the seed and the full
 gates (xref:develop/agents.adoc#gates[The gates]).
 
