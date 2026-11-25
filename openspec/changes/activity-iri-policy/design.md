@@ -243,6 +243,14 @@ Idempotency: placement is a pure function of (policy, tenant, UUID); a retried c
   of a placed activity equal to the old id is rewritten, and the activity no longer reads as one.
   Aggregates with UUID object ids carry the same exposure today. Accepted; not this EPIC's to fix.
 
+## Delivery decisions
+
+- **D-1** (2026-11-25, lead): the machine is shared with other sessions' suites (load 20–30), and
+  `make test-fast` runs were killed from outside by SIGTERM (exit 143) three times. A task whose
+  `make test-fast` / `make test-changed` is killed twice reports its narrow checks instead (the
+  test folders its change reaches, plus `make check-quality`). The full suite is proved once, by
+  the lead's `make check-all` before the PR, which is not skipped. Task 1.2 is the first case.
+
 ## Spec deltas
 
 `specs/rp-iri-policy/spec.md`: MODIFIED "Without a policy, IRIs are today's" (adds the activity);

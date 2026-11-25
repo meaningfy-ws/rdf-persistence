@@ -11,11 +11,11 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
 
 ## 1. Stage 1: activities under the IRI policy
 
-- [ ] 1.1 Lead: check the deltas against the living specs on `develop`: the two MODIFIED
+- [x] 1.1 Lead: check the deltas against the living specs on `develop`: the two MODIFIED
   requirements copy the living text and scenarios and change only the activity sentences.
   Accept: `openspec validate activity-iri-policy --strict` passes; a diff of each MODIFIED
   requirement against `openspec/specs/` shows only those changes.
-- [ ] 1.2 Unit, schema (PD-1). First, failing: `tests/unit/iris/test_iri_policy_model.py`
+- [x] 1.2 Unit, schema (PD-1). First, failing: `tests/unit/iris/test_iri_policy_model.py`
   `test_the_activity_template_defaults_to_a_urn_uuid_and_ends_in_its_id`: `IriPolicy()`'s
   `activity_template` is `urn:uuid:{id}`; `ServiceSettings` with activity templates
   `{tenant}/activity`, `{tenant}/{type}/{id}` and the tenant-less `{base}activity/{id}` (PD-12)
@@ -123,7 +123,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.6 · [ ] 1.4 · [ ] 1.5 · [ ] 1.7a · [ ] 1.7 · [ ] 1.8 · [ ] 1.9
+- [x] 1.1 · [x] 1.2 · [ ] 1.3 · [ ] 1.6 · [ ] 1.4 · [ ] 1.5 · [ ] 1.7a · [ ] 1.7 · [ ] 1.8 · [ ] 1.9
   (1.6's first three tests need only 1.2; its restore test needs 1.4; 1.4 and 1.5 may run in
   parallel after 1.3.)
 
