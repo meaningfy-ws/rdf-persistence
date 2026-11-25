@@ -42,11 +42,11 @@ named here run in CI's `test-generator` job (`make test-generator`).
   lines and one `model_rebuild()` per class, in PD-6's order),
   `test_a_target_with_no_cycle_writes_an_empty_init_and_the_stock_footer`,
   `test_two_renders_of_a_cycle_are_identical` (reproducibility). Accept: as 1.1.
-- [ ] 1.3 **byte identity (no new test)** — DEC-2, PD-10. After 1.2, `make generate`, then
+- [x] 1.3 **byte identity (no new test)** — DEC-2, PD-10. After 1.2, `make generate`, then
   `git status --porcelain` lists no generated file of the toolkit or of `tests/fixtures/`; the lead
   runs `make check-generated` after committing 1.2. Accept: both empty / green; any diff stops the
   stage and goes to the lead.
-- [ ] 1.4 **integration** — G-1, G-3, spec `rp-generation` scenarios 1 and 3, after 1.2. In
+- [x] 1.4 **integration** — G-1, G-3, spec `rp-generation` scenarios 1 and 3, after 1.2. In
   `tests/generator/integration/test_module_import_cycle.py`: replace
   `test_two_domain_modules_that_import_each_other_are_refused_by_the_import_check` by the first
   failing test `test_two_domain_modules_that_import_each_other_generate_and_import`, parametrised
