@@ -1627,7 +1627,7 @@ tests/unit/access/test_access_roles.py::test_a_missing_role_file_is_refused_with
 tests/unit/access/test_access_roles.py::test_a_prohibition_is_held_to_the_same_targets_and_assignee,capability,rp-access,,,medium,covered code
 tests/unit/access/test_access_roles.py::test_a_role_may_be_defined_at_two_different_levels,capability,rp-access,,,medium,covered code
 tests/unit/access/test_access_roles.py::test_a_well_formed_grant_is_accepted,capability,rp-access,,,medium,covered code
-tests/unit/access/test_access_roles.py::test_a_role_name_with_a_comma_is_refused_at_load,capability,rp-access,,,medium,name; covered code (services/access)
+tests/unit/access/test_access_roles.py::test_a_role_name_with_a_comma_is_refused_at_load,scenario,rp-access,A caller learns the roles it holds on an aggregate,a role name with a comma,high,name; covered code (services/access)
 tests/unit/access/test_access_roles.py::test_administered_is_true_when_a_grant_gives_administer_on_the_tenant,requirement,rp-access,Start-up reports grants that name undefined roles,,medium,name; covered code (services/access)
 tests/unit/access/test_access_roles.py::test_an_aggregate_role_is_granted_on_an_aggregate_graph_and_not_on_the_tenant,requirement,rp-access,Access is decided per tenant and per aggregate,,medium,covered code
 tests/unit/access/test_access_roles.py::test_an_invalid_role_file_is_refused_and_the_error_names_the_entry,capability,rp-access,,,medium,covered code; spec id PD-9

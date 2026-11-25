@@ -91,7 +91,8 @@ of a migration file and one response header.
   system database.
 - Start-up: a warning report of stale or empty grants.
 - Collaboration: `roles_held(iri)`.
-- API: the `Held-Roles` header on aggregate reads, and its OpenAPI entry.
+- API: the `Held-Roles` header on aggregate (and tenant) reads, and its OpenAPI entry.
+- Access: a role definition's name holds no comma (D-13).
 - Docs: `howto/migrate.adoc` ("A model round renames or drops a role": the order of the roles file
   and the migration, RISK-3), `user-manual/access.adoc` (roles held, the header), and the answer
   to #307 on the issue.
@@ -112,3 +113,28 @@ of a migration file and one response header.
 the migration section is optional, and the header is new. Once the consumer refreshes its lock, it
 ships a migration with `grant_roles` beside its renamed roles file, and its web app reads
 `Held-Roles`.
+
+As delivered, also: `tenancy/services/grant_report.py` (new), `access/services/access.py`
+(`undefined_roles`, `administered`), `schema/services/vocabulary.py` (`TARGET`, `ROLE`),
+`rp_core_services.yaml` (the report's log attribute, D-10) and `rp_access.yaml` (the comma-free role
+name, D-13), all regenerated. One thing does break: a roles file that names a role with a comma
+is now refused at load (D-13, the developer's decision; none is known).
+
+## Reconciliation (as delivered)
+
+Delivered in PR #345 (stage 1, #307, released in 0.12.0) and PR #367 (stage 2, #310). Decisions
+taken in delivery are `design.md` D-8 to D-14.
+
+| Item | Final state | PR |
+|---|---|---|
+| DEC-1 `grant_roles` (rename map, drop list) | Delivered as planned; the map is turned into `RoleRename` pairs before validation | #345 |
+| DEC-2 system database only, after the steps, before the rotation | Delivered; the `grants` keyword defaults to False for every other caller (D-8) | #345 |
+| DEC-3 a rename deletes the duplicate first, else renames in place | Delivered; each rename's op1 then op2, in file order, the drops last; proven on rdflib and Fuseki (D-11) | #345 |
+| DEC-4 load checks | Delivered, plus two: one name renamed twice (builder), and a rename target holding a comma (D-14) | #345, #367 |
+| DEC-5 start-up report | Delivered; levels judged under the tenancy's IRI policy (D-9); the pairs in a new log attribute `rp.grants.undefined_roles` (D-10) | #345 |
+| DEC-6 `Held-Roles` | Delivered on the aggregate and the tenant read (same route); declared with `Allowed-Actions` through `_with_caller_headers` (D-12, D-13); a role name may not hold a comma (D-13) | #367 |
+| DEC-7 two stages, two PRs | Delivered | #345, #367 |
+| #307 answered on the issue | Done, with the how-to link | — |
+
+Not delivered as shaped: nothing. Left under the floor: R1-W3, R1-S4, R1-S5 (D-11) and R2-S1,
+R2-S2 (D-14).
