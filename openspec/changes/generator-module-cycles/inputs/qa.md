@@ -63,3 +63,15 @@ is settled by events: `converter-hardening` landed first and did not move the im
 so stage 2 starts on it, as the PLAN's default says. OPEN-1, OPEN-2 and OPEN-4 proceed under their
 recommended answers (R-0007), shown to the owner at the end. Added: RISK-6 in design.md, the
 owner's request to re-run converter-hardening's RISK-4 check on a cyclic pair (task 2.4).
+
+## Owner's answers (2026-11-25, after stage 1)
+
+- OPEN-1: #206 gets its own TINY EPIC in the generator's checks, after this change, with
+  identifier slots exempt. It stays a no-go here.
+- OPEN-2: inheritance both ways between two packages is refused by `rp-generate` after stage 2,
+  and the UML conventions page says how to fix the model. Task 2.6's consumer run stays; a
+  refusal there goes back to the owner before the merge.
+- OPEN-4: the BREAKING converter output is accepted, with the `CHANGELOG.md` **BREAKING** entry,
+  and released in the next minor version.
+- Stage 1's W1 (a review finding left under the floor) is fixed in stage 2 (design.md D-5, task
+  2.4).
