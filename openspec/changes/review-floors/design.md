@@ -441,3 +441,8 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   F5 (L2) the 1.2 scenario-map row cites "the PD-5 skip": cite task 1.2 only.
   Under the floor (not fixed): the redundant `missing` assert of the tenancy double test; the
   place of `test_toy_vocabulary.py` in `tooling`; `author_iri` without a docstring.
+- **D-11 (stage 1 gate, 2026-11-25), `_CollectionCheck` joins the model guard's allow list:**
+  `make test` failed `test_model_guard.py`: PD-5's dataclass is a hand-written model to the guard
+  (P-0007), which PD-5 did not foresee. It holds a `Session`, a `GuardContext` and a
+  `ReferenceCollection`, runtime objects LinkML cannot express, as `GuardContext` (allowed for the
+  same write guard) does; so it joins `HAND_WRITTEN` with that reason (lead-fixed, light chore).

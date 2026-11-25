@@ -74,6 +74,9 @@ HAND_WRITTEN = (
     "rdf_persistence_generation/testkit/conformance.py:Conformance",
     # holds a callable, the rely_on of the transaction a write guard is handed (nested-collections PD-5)
     "rdf_persistence/persistence/services/session.py:GuardContext",
+    # holds a Session and a GuardContext, what one collection check of the write guard reads
+    # (review-floors PD-5, D-11)
+    "rdf_persistence/collaboration/services/write_guards.py:_CollectionCheck",
 )
 
 
