@@ -8,7 +8,7 @@ Builders never commit; the lead does and ticks this file.
 
 ## 1. One stage — branch `change/consumer-friction`, one PR
 
-- [ ] 1.1 **unit + code (#371)** — design.md PD-1 to PD-6, spec scenarios 1, 2, 3.
+- [x] 1.1 **unit + code (#371)** — design.md PD-1 to PD-6, spec scenarios 1, 2, 3.
   First failing tests, in `tests/generator/unit/test_typescript_imports.py` (new, beside
   `test_ext_typescript.py`): TC-1 (run `TYPESCRIPT_STEP` with `run_toy(..., target=<the technical
   target from read_targets(TOY / "pyproject.toml")>)` after PD-6's `pyproject.toml` edit), TC-4
@@ -23,19 +23,19 @@ Builders never commit; the lead does and ticks this file.
   unchanged; `make typecheck-ts` green (TC-3); `make generate` changes nothing in the toolkit's
   trees beyond the `rp-manifest.json` input hashes and `rp_generation`'s artefacts (RISK-3; any
   other diff is reported, not fixed); task gate green.
-- [ ] 1.2 **integration (#371 stale copy)** — after 1.1; spec scenario 4, TC-6, in
+- [x] 1.2 **integration (#371 stale copy)** — after 1.1; spec scenario 4, TC-6, in
   `tests/generator/integration/`. On a `toy_copy`: run
   `rp-generate` with the value target's `typescript` removed (the technical target writes
   `loan_checks.ts`), restore it, run again; assert `web/src/services/generated/loan_checks.ts`
   is gone. Expected green at once (the manifest's stale removal); if red, fix in `pipeline.py`
   and report it. Accept: test passes, task gate green.
-- [ ] 1.3 **unit + docs (#372)** — independent of 1.1; PD-7, TC-7. One test in
+- [x] 1.3 **unit + docs (#372)** — independent of 1.1; PD-7, TC-7. One test in
   `tests/unit/testkit/test_guards.py`, beside `test_exempt_folder_passes`:
   `fragment_shapes.ttl` under `area/fixtures` passes with that folder exempt, and fails naming the
   file without it. Expected green at once (it pins the documented use). Then the docstring of
   `assert_models_generated` in `rdf_persistence/testkit/guards.py` and the two docs of PD-7.
   Accept: test passes; `make check-docs` green.
-- [ ] 1.4 **docs (#371)** — after 1.1; PD-8: `architecture/generation.adoc` *Imports between
+- [x] 1.4 **docs (#371)** — after 1.1; PD-8: `architecture/generation.adoc` *Imports between
   targets*, `user-manual/generate.adoc` output table, `CHANGELOG.md` `[Unreleased]` *BREAKING*.
   Accept: `make check-docs` green.
 - [ ] 1.5 **lead** — scenario-map rows for the new tests; `make check-all`; one review pass
@@ -44,7 +44,7 @@ Builders never commit; the lead does and ticks this file.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 (1.3 may run beside 1.1)
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 1.5 (1.3 may run beside 1.1)
 
 ## Verification
 

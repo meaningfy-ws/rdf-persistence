@@ -167,3 +167,11 @@ integration lane, both in `make test-generator`; TC-7 in the library's unit lane
   tests that failed under load in 1.1's gate (`test_transaction_attack.py` twice,
   `test_sparql.py::test_a_pattern_too_long_for_the_parser_is_refused_with_the_advice_to_split`)
   pass alone; the stage's `make check-all` decides whether they are flakes.
+- **D-4 (lead, Challenge).** The stage's `make check-all` passed every quality check (format,
+  ruff, xenon, mypy, mypy on generated code, `tsc` on the toy's three TypeScript folders and on
+  the OpenAPI types, architecture, bindings, spec and docs, generated code fresh), then its unit
+  lane was stopped at the two-hour limit at 23 %, with five failures, while two other sessions ran
+  their full suites on the same 20 cores (load average ≈ 45). The test evidence is therefore CI's
+  lanes (unit 1/8–8/8, feature, generator, coverage floor) plus a local `make test-generator`,
+  the lane that holds every test this change adds or edits apart from TC-7. A failure CI shows in
+  the unit lanes is decided in Decide and fix; R-0001 is met for the quality half only.
