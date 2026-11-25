@@ -136,7 +136,7 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
 
 ## 4. Close
 
-- [ ] 4.1 DEC-1. The skillery issue, opened with this PLAN; after the merge, a comment with the
+- [ ] 4.1 DEC-1. The skillery issue, opened as meaningfy-ws/skillery#360 (2026-11-25); after the merge, a comment with the
   merged file list and 2.5's times.
 - [ ] 4.2 The lead's full gates, the review set of `develop/agents.adoc#challenge` for one stage
   (L2+L3 and the full review on the same PR), the fix pass, the PR, the merge.

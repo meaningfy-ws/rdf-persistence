@@ -84,6 +84,18 @@ instructions are missing, route by the skills' descriptions and say so once.
   `make check-all`, `make test-seed` or `pytest --testmon`; wait for a long command through its
   completion notice, never `tail --pid`, `tail -f … | grep -m1` or a `timeout` around a wait; only
   the lead runs `make generate` or `uv sync` in a shared worktree.
+- **Test control until skillery carries it** (meaningfy-ws/skillery#360; the mechanism here works
+  without it, these steps stand in for what skillery does not yet say or enforce):
+  - The lead's stage start is `make reindex`, then `make test-seed` as a background run, then the
+    first briefs; builders do not wait for the seed. After `uv sync`, the lead seeds again.
+  - Every builder brief pastes the guards above word for word (the brief checklist of
+    [`develop/agents.adoc#brief`](docs/modules/ROOT/pages/develop/agents.adoc) carries them).
+  - No hook enforces them yet: the lead reads each builder report for a full lane run by hand, a
+    `tail --pid` / `tail -f | grep -m1` wait or a `uv sync`, and treats one as trigger T1
+    (`epic-delivery`): re-brief, never accept the report as it stands.
+  - Other repositories' sessions do not queue until they carry the queue: when a lane runs far
+    slower than the durations table without having waited in the queue, the load comes from them,
+    and fewer workers (the memory cap, or `PYTEST_N`) is the only lever here.
 - Code tools: Serena for reading and editing symbols (a worktree is activated as its own Serena
   project), `ast-grep` for one code shape in many files, Grep for docs, YAML and the Makefile,
   GitNexus for blast radius. A HIGH or CRITICAL impact goes to the developer. Limits per role:
