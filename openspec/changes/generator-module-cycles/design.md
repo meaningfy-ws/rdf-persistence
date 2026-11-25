@@ -282,6 +282,11 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   `python:` refusal and no change for this consumer from stage 2; the 13 added lines against its
   committed models (`required: false` flags) come from `develop`'s earlier converter work, not
   from this change.
+- **D-8 (stage 2) Stage-end impact from `detect_changes` on the stage-start index.** `make
+  reindex` failed in its embeddings step (a duplicated primary key in `CodeEmbedding`); the
+  stage-start index was fresh (`f4ecc5e4`). `detect_changes` against `origin/develop`: risk
+  MEDIUM, every changed symbol in `uml/` and its tests, the two `share` flows affected, both
+  covered by the UML rules and golden tests in `make check-all`.
 
 ## Open Questions
 
