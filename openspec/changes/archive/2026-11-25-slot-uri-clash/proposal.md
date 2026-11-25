@@ -85,7 +85,8 @@ in the repository and the consumer's current model pass unchanged (probe, `input
 ## Impact
 
 - Code: `rdf_persistence_generation/checks/hard.py`, `rdf_persistence_generation/model/rp_generation.yaml`
-  (`HardRule.slot_iri`) and its generated files.
-- Tests: `tests/generator/unit/test_hard_check.py`.
+  (`HardRule.slot_iri`) and its generated files; the `rp-manifest.json` files, only because
+  `hard.py` is a generator input. Delivered in PR #376.
+- Tests: `tests/generator/unit/test_hard_check.py`; one row in `tests/audit/scenario-map.csv`.
 - Consumers: a model with two slots on one IRI stops generating until it reuses the slot or gives
   its own one another IRI (RISK-1); the consumer's current model has none.
