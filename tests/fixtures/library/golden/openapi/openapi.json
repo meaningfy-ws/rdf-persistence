@@ -361,6 +361,12 @@
                   "type": "string"
                 }
               },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
+                "schema": {
+                  "type": "string"
+                }
+              },
               "Record-ETag": {
                 "description": "the access record's version; send it as `If-Match` to rename the tenant",
                 "schema": {
@@ -2107,6 +2113,12 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -3157,6 +3169,12 @@
               },
               "Allowed-Actions": {
                 "description": "what the caller may do here, comma separated, in the order read, modify, delete, administer, annotate",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
                 "schema": {
                   "type": "string"
                 }
@@ -4214,6 +4232,12 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -5233,6 +5257,12 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -6236,6 +6266,12 @@
               },
               "Allowed-Actions": {
                 "description": "what the caller may do here, comma separated, in the order read, modify, delete, administer, annotate",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
                 "schema": {
                   "type": "string"
                 }
@@ -7245,6 +7281,12 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -8248,6 +8290,12 @@
               },
               "Allowed-Actions": {
                 "description": "what the caller may do here, comma separated, in the order read, modify, delete, administer, annotate",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
                 "schema": {
                   "type": "string"
                 }
@@ -9267,6 +9315,12 @@
               },
               "Allowed-Actions": {
                 "description": "what the caller may do here, comma separated, in the order read, modify, delete, administer, annotate",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
                 "schema": {
                   "type": "string"
                 }
@@ -10315,6 +10369,12 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -11220,6 +11280,12 @@
               },
               "Allowed-Actions": {
                 "description": "what the caller may do here, comma separated, in the order read, modify, delete, administer, annotate",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Held-Roles": {
+                "description": "the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
                 "schema": {
                   "type": "string"
                 }

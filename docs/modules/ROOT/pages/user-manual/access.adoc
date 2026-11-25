@@ -93,6 +93,32 @@ The scope is the tenant, plus the aggregate's graph for an action on one aggrega
 needs `read` on the tenant and leaves out the aggregates a `read` prohibition hides from the
 caller. Creating an aggregate needs `modify` on the tenant.
 
+[#roles-held]
+== Ask which roles the caller holds
+
+_How does my application show or decide on the roles the caller holds on an aggregate?_
+
+The roles held on an aggregate are the caller's role grants on the tenant and on that aggregate,
+and those of its token's roles that the roles file defines at system level. A token role of
+another name counts for nothing. They are the roles that decide who sees a comment (its audience)
+and who may make a move.
+
+* In code, `Collaboration.roles_held(iri)` answers them as a set of names. The caller must be able
+  to read `iri`: one who may not gets the refusal `Collaboration.thread` gives, `Forbidden` or
+  `NotFound`. The schema needs no discussion module.
+* Over HTTP, the read of an aggregate (and of the tenant) answers them in the `Held-Roles` header,
+  beside `Allowed-Actions`: the names sorted and separated by commas, as in
+  `Held-Roles: editor,reader`. A caller that holds no role, one that acts through direct grants,
+  gets the header with an empty value. A refused read carries neither header. The OpenAPI document
+  declares `Held-Roles` on every response that declares `Allowed-Actions`.
+
+A role name holds no comma, so the header is unambiguous: the roles file is refused at load for a
+name that has one.
+
+The header shows the caller its own role names, those of its token included. They are the caller's
+own and its token already carries them, so nothing new leaves the service; an application that
+treats a role name as confidential keeps it out of the roles file and out of the token.
+
 [#validators]
 == Enforce your own rules on tenant writes
 

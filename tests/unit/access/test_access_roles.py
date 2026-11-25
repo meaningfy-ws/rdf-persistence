@@ -69,6 +69,21 @@ def test_an_invalid_role_file_is_refused_and_the_error_names_the_entry(
         assert fragment in str(raised.value), f"the error should name {fragment!r}"
 
 
+@pytest.mark.parametrize(
+    ("name", "refused"),
+    [("reader", False), ("app-editor", False), ("a,b", True), (",", True), ("a, b", True)],
+    ids=["plain", "hyphenated", "comma inside", "only a comma", "comma and space"],
+)
+def test_a_role_name_with_a_comma_is_refused_at_load(tmp_path, name: str, refused: bool):  # E12
+    path = tmp_path / "roles.yaml"
+    path.write_text(f'- {{role: "{name}", level: tenant, actions: [read]}}\n')
+    if refused:
+        with pytest.raises(InvalidRoleDefinition, match=r"entry 1.*role\b"):
+            load_role_definitions(path)
+    else:
+        assert [d.role for d in load_role_definitions(path)] == [name], "a plain name loads"
+
+
 def test_a_missing_role_file_is_refused_with_its_path(tmp_path):
     path = tmp_path / "absent.yaml"
     with pytest.raises(InvalidRoleDefinition, match="absent.yaml"):

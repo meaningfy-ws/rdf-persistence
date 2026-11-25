@@ -23,6 +23,7 @@ IF_MATCH = "If-Match"
 ETAG = "ETag"
 RECORD_ETAG = "Record-ETag"  # the access record's version, on the root read (PD-6)
 ALLOWED_ACTIONS = "Allowed-Actions"  # what the caller may do, on the reads (PD-10)
+HELD_ROLES = "Held-Roles"  # the roles the caller holds on the aggregate, on the reads (DEC-6)
 LOCATION = "Location"
 LINK = "Link"
 LAST_EVENT_ID = "Last-Event-ID"  # where a follower of the events resumes (aggregate-events PD-12)
@@ -37,6 +38,11 @@ _QUOTES_ONLY = 2  # the length of ``""``, an entity tag without its version
 def allowed_actions_value(actions: Iterable[Action]) -> str:
     """The ``Allowed-Actions`` value: ``actions`` by name, comma separated."""
     return ", ".join(action.value for action in actions)
+
+
+def held_roles_value(roles: Iterable[str]) -> str:
+    """The ``Held-Roles`` value: ``roles`` sorted, comma separated; empty when none is held."""
+    return ",".join(sorted(roles))
 
 
 def _quality(raw: str | None) -> str:

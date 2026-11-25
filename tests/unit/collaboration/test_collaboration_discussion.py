@@ -6,12 +6,16 @@ annotate). Ada is a librarian and a reviewer, bob a reader and a reviewer, unles
 wrapping one operation of the store (``before``).
 """
 
+import asyncio
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from rdflib import RDF, Literal, URIRef
 
 from rdf_persistence import Action, generated_models
@@ -81,7 +85,9 @@ NEW_ACTIVITY = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c0aa"
 def rules(tmp_path_factory: pytest.TempPathFactory) -> AccessRules:
     path = tmp_path_factory.mktemp("roles") / "roles.yaml"
     path.write_text(
-        ROLES.read_text() + "- {role: reviewer, level: tenant, actions: [read, annotate]}\n"
+        ROLES.read_text()
+        + "- {role: reviewer, level: tenant, actions: [read, annotate]}\n"
+        + "- {role: proofreader, level: aggregate, actions: [read]}\n"
     )
     return AccessRules(load_role_definitions(path))
 
@@ -99,8 +105,8 @@ async def store() -> FakeStore:
     return fake
 
 
-@pytest.fixture
-async def session(store: FakeStore, now: dict[str, datetime]) -> AsyncIterator[Session]:
+@asynccontextmanager
+async def opened_session(store: FakeStore, now: dict[str, datetime]) -> AsyncIterator[Session]:
     """A session the way the kit opens one: write guards, and a remove that drops the comments."""
     listings = Listings(VIEW)
     async with fake_session(
@@ -115,6 +121,12 @@ async def session(store: FakeStore, now: dict[str, datetime]) -> AsyncIterator[S
         yield opened
 
 
+@pytest.fixture
+async def session(store: FakeStore, now: dict[str, datetime]) -> AsyncIterator[Session]:
+    async with opened_session(store, now) as opened:
+        yield opened
+
+
 def collab(rules: AccessRules, session: Session, who: str, **access) -> Collaboration:
     return Collaboration(
         session,
@@ -124,7 +136,7 @@ def collab(rules: AccessRules, session: Session, who: str, **access) -> Collabor
         mapper=toy_mapper(),
         models=generated_models(*MODULES),
         listings=Listings(VIEW),
-        caller=caller(principal=who),
+        caller=caller(*access.get("roles", ()), principal=who),
         access=held(*access.get("grants", ()), bans=access.get("bans")),
     )
 
@@ -604,3 +616,72 @@ async def test_comments_on_a_schema_without_the_module_are_a_lookup_error(
         await build.comment(B1, "x")
     with pytest.raises(LookupError, match="rp_discussion"):
         await build.thread(B1)
+    assert await build.roles_held(B1) == {"librarian", "reviewer"}, (
+        "the roles need no discussion"
+    )  # T11
+
+
+@pytest.mark.parametrize(
+    ("grants", "bans", "refusal"),
+    [
+        ([], None, NotFound),
+        ([role("reader", who=BOB)], [ban(Action.READ, graph_of(B1), BOB)], Forbidden),
+    ],
+    ids=["nothing visible", "visible but not readable"],
+)
+async def test_roles_held_refuses_a_caller_who_may_not_read_as_the_thread_does(
+    rules, session, books, grants, bans, refusal
+):  # T11, E10
+    who = collab(rules, session, BOB, grants=grants, bans=bans)
+    with pytest.raises(refusal):
+        await who.thread(B1)
+    with pytest.raises(refusal):
+        await who.roles_held(B1)
+
+
+async def test_roles_held_answers_the_roles_in_scope_only(rules, session, books):  # T11
+    grants = [
+        role("reader", who=BOB),
+        role("reviewer", graph_of(B2), BOB),  # on another aggregate: not held on B1
+    ]
+    who = collab(rules, session, BOB, grants=grants, roles=("admin", "ghost"))
+    assert await who.roles_held(B1) == {"reader", "admin"}, (
+        "grants in scope and defined token roles"
+    )
+
+
+DEFINED = ["librarian", "reader", "reviewer", "proofreader", "admin", "app-editor"]
+
+
+@settings(max_examples=25, deadline=None)
+@given(
+    tenant_roles=st.sets(st.sampled_from(["librarian", "reviewer"])),
+    book_roles=st.sets(st.sampled_from(["proofreader"])),
+    token_roles=st.sets(st.sampled_from(["admin", "app-editor", "librarian", "ghost"])),
+    audiences=st.lists(st.sets(st.sampled_from(DEFINED), min_size=1), min_size=1, max_size=3),
+)
+def test_a_comment_is_in_the_thread_if_and_only_if_its_audience_meets_the_roles_held(
+    rules, tenant_roles, book_roles, token_roles, audiences
+):  # T10
+    async def scenario() -> list[tuple[set[str], bool, frozenset[str]]]:
+        store = FakeStore()
+        await store.create_dataset(FAKE_DATABASE)
+        async with opened_session(store, {"t": T0}) as session:
+            await put(session, dune(B1, chapters=1))
+            author = collab(rules, session, ADA, grants=[role("librarian"), role("reviewer")])
+            posted = {
+                await author.comment(B1, "for some", audience=sorted(audience)): audience
+                for audience in audiences
+            }
+            grants = [role("reader", who=BOB)]
+            grants += [role(name, who=BOB) for name in tenant_roles]
+            grants += [role(name, graph_of(B1), BOB) for name in book_roles]
+            viewer = collab(rules, session, BOB, grants=grants, roles=sorted(token_roles))
+            seen = {c.id for c in await viewer.thread(B1)}
+            held_now = await viewer.roles_held(B1)
+            return [(posted[iri], iri in seen, held_now) for iri in posted]
+
+    for audience, was_seen, held_now in asyncio.run(scenario()):
+        assert was_seen is bool(audience & held_now), (
+            f"audience {audience} for roles held {held_now}"
+        )

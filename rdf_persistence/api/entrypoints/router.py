@@ -35,12 +35,14 @@ from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import (
 from rdf_persistence.api.entrypoints.kit import ServiceKit
 from rdf_persistence.api.entrypoints.negotiation import (
     ALLOWED_ACTIONS,
+    HELD_ROLES,
     IF_MATCH,
     RECORD_ETAG,
     accepted_listing_type,
     accepted_media_type,
     allowed_actions_value,
     etag_of,
+    held_roles_value,
     matched_version,
     request_media_type,
 )
@@ -140,6 +142,7 @@ class DocumentApi:
         response = await self._response(read, media_type)
         actions = self._kit.rules.allowed_actions(caller, access, iri)
         response.headers[ALLOWED_ACTIONS] = allowed_actions_value(actions)
+        response.headers[HELD_ROLES] = held_roles_value(self._kit.rules.roles(caller, access, iri))
         return response
 
     async def listing(

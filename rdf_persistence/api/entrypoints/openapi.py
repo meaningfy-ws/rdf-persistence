@@ -55,6 +55,7 @@ from rdf_persistence.api.entrypoints.kit import ServiceKit
 from rdf_persistence.api.entrypoints.negotiation import (
     ALLOWED_ACTIONS,
     ETAG,
+    HELD_ROLES,
     IF_MATCH,
     LAST_EVENT_ID,
     LINK,
@@ -199,12 +200,16 @@ def _success(
     return Response(description=description, headers=headers or None, content=content)
 
 
-def _with_allowed_actions(read: Response) -> Response:
-    """``read`` with the ``Allowed-Actions`` header documented (PD-10)."""
+def _with_caller_headers(read: Response) -> Response:
+    """``read`` with the ``Allowed-Actions`` (PD-10) and ``Held-Roles`` (DEC-6) headers documented."""
     read.headers = {
         **(read.headers or {}),
         ALLOWED_ACTIONS: Header(
             description=f"what the caller may do here, comma separated, in the order {allowed_actions_value(ACTIONS)}",
+            schema=Schema(type="string"),
+        ),
+        HELD_ROLES: Header(
+            description="the names of the roles the caller holds here, sorted and comma separated; empty when it holds none",
             schema=Schema(type="string"),
         ),
     }
@@ -335,7 +340,7 @@ class TenantOpenApi:
         )
 
     def read_root(self) -> RouteDocs:
-        read = _with_allowed_actions(_success(_document_media(self._root), versioned=True))
+        read = _with_caller_headers(_success(_document_media(self._root), versioned=True))
         read.headers = {
             **(read.headers or {}),
             RECORD_ETAG: Header(
@@ -502,7 +507,7 @@ class AggregateOpenApi:
         )
 
     def read(self) -> RouteDocs:
-        read = _with_allowed_actions(_success(_document_media(self._schema), versioned=True))
+        read = _with_caller_headers(_success(_document_media(self._schema), versioned=True))
         return route_options(f"Read a {self._cls.name}", self._tag, (HTTPStatus.OK, read), _READS)
 
     def replace(self) -> RouteDocs:

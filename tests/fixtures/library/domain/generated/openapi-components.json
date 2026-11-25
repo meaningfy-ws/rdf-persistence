@@ -1764,6 +1764,7 @@
         },
         "role": {
           "description": "The name of a role, matched against the application's role definitions.",
+          "pattern": "^[^,]+$",
           "type": "string"
         },
         "type": {

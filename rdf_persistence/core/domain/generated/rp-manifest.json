@@ -7,7 +7,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_access.yaml",
-      "sha256": "84054ea9cd7910a847325c00eea8366f1203f41ecd2ad03c7c6e2ec8d40cedc5"
+      "sha256": "e3f5b0003e844f45a62af2b1e0871e0b104718ae36c181dc9ea737c6a9304167"
     },
     {
       "path": "rdf_persistence/model/rp_annotations.yaml",
@@ -373,7 +373,7 @@
     },
     {
       "path": "rdf_persistence/core/domain/generated/shapes.ttl",
-      "sha256": "372f36d2e677e02cae6704be133f4009bda5dcfe5345f0f0c5258d023d2c8c15"
+      "sha256": "a3295fb69e5fbae4aa74d313cb1c4230c53d9db23bfbf57bb662866163cfbdd5"
     },
     {
       "path": "rdf_persistence/model/migrations/schema.lock.json",

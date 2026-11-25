@@ -115,6 +115,19 @@ class RoleDefinition(ConfiguredBaseModel):
     level: RoleLevel = _Field(default=..., title="Level", description="Where the role applies.")
     actions: list[Action] = _Field(default=..., title="Actions", description="The actions the role permits.")
 
+    @field_validator("role")
+    def pattern_role(cls, v):
+        pattern=re.compile("^[^,]+$")
+        if isinstance(v, list):
+            for element in v:
+                if isinstance(element, str) and not pattern.fullmatch(element):
+                    err_msg = "Invalid role format: " + str(element)
+                    raise ValueError(err_msg)
+        elif isinstance(v, str) and not pattern.fullmatch(v):
+            err_msg = "Invalid role format: " + str(v)
+            raise ValueError(err_msg)
+        return v
+
 
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model

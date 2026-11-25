@@ -24,12 +24,12 @@ EPIC: grant-roles (proposal.md, #307, #310). Decisions: DEC-1 to DEC-7; design.m
 
 ## 2. Roles held (#310), PR 2, branch `feat/held-roles`
 
-- [ ] 2.1 Tests first: T10 to T13 (`design.md#stage-2-310-roles-held`). RED: no `roles_held`, no
+- [x] 2.1 Tests first: T10 to T13 (`design.md#stage-2-310-roles-held`). RED: no `roles_held`, no
   header.
-- [ ] 2.2 `Collaboration.roles_held` ([D-6](design.md#d-6)); `HELD_ROLES`, `held_roles_value`, the
+- [x] 2.2 `Collaboration.roles_held` ([D-6](design.md#d-6)); `HELD_ROLES`, `held_roles_value`, the
   read route and the OpenAPI helper ([D-7](design.md#d-7), DEC-6). Accept: T10 to T13, E10 to E12;
   `make test-changed check-quality`.
-- [ ] 2.3 `user-manual/access.adoc`: roles held, the header and RISK-4. Run `make refresh-surface`.
+- [x] 2.3 `user-manual/access.adoc`: roles held, the header and RISK-4. Run `make refresh-surface`.
   Accept: `make check-docs`.
 - [ ] 2.4 Lead: `make check-all`, one review pass, PR.
 
@@ -40,7 +40,7 @@ EPIC: grant-roles (proposal.md, #307, #310). Decisions: DEC-1 to DEC-7; design.m
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [ ] 1.6 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [ ] 1.6 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [ ] 2.4 ·
   [ ] 3.1 · [ ] 3.2
 
 ## Verification

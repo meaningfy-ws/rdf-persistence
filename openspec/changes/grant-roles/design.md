@@ -334,3 +334,16 @@ Stage 2 impact (lead, at stage start on `16030e17`): `_with_allowed_actions` is 
 no existing response loses a header; T13 checks both sites. Taken by the lead, not escalated;
 shown for validation at the end (R-0007). `AccessRules.roles` (callers `Discussion.thread`,
 `Transitions._edge`) and `Collaboration` are LOW.
+
+### D-13
+
+E12 assumed a role name could not hold a comma because names are checked at load. They were
+not: `load_role_definitions` accepted `"a,b"`, as the generated `RoleDefinition.role` had no
+pattern, so `Held-Roles` could be ambiguous. Developer's decision (2026-11-25, one question
+round, P-0019): a comma-free `pattern` on the role name in the `rp_access` LinkML schema, then
+`make generate`; the E12 test asserts that a roles file naming `a,b` is refused at load. Role
+names come from UML class names, so no known roles file is affected.
+
+Builder decisions in stage 2, kept: `_with_allowed_actions` renamed `_with_caller_headers`, as it
+now declares both headers; `Held-Roles` joins with `,` (the spec), `Allowed-Actions` keeps `, `;
+the tenant read carries `Held-Roles` too, since it is the same route.
