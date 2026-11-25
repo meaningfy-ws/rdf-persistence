@@ -2562,6 +2562,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-testmon"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "coverage" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/12/7b5800cdfa1397ef9c3101542d46ac1f61819decbad9d9d1e556835330e3/pytest_testmon-2.4.0.tar.gz", hash = "sha256:26eda5ad567b1f961c46f1479db8128fe1a0dacf11ffda3ae9c5782329694558", size = 27519, upload-time = "2026-11-25T13:41:51.846Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/8a/8efde7a2497631e2a43c0891e1d2a3a962cd052c45c68f823705413da406/pytest_testmon-2.4.0-py3-none-any.whl", hash = "sha256:a7ff9a89d6472edb8af4f062623f13c256e3e6e24194cf403e6f45790c456637", size = 29656, upload-time = "2026-11-25T13:41:50.706Z" },
+]
+
+[[package]]
 name = "pytest-timeout"
 version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2788,6 +2801,7 @@ test = [
     { name = "pytest-cov" },
     { name = "pytest-randomly" },
     { name = "pytest-split" },
+    { name = "pytest-testmon" },
     { name = "pytest-timeout" },
     { name = "schemathesis" },
 ]
@@ -2838,6 +2852,7 @@ test = [
     { name = "pytest-cov", specifier = "==7.1.0" },
     { name = "pytest-randomly", specifier = "==5.1.0" },
     { name = "pytest-split", specifier = "==0.11.0" },
+    { name = "pytest-testmon", specifier = "==2.4.0" },
     { name = "pytest-timeout", specifier = "==2.4.0" },
     { name = "schemathesis", specifier = "==4.33.4" },
 ]

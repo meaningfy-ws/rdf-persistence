@@ -235,6 +235,17 @@ writing only its own reports.
   task 1.3 fails when either library yields no cache, and the pins make it visible on the upgrade
   PR. Accept: until fixed, memory grows as it does today.
 
+## Delivery decisions
+
+- **D-1** (lead, 2026-11-25): during this stage the builders' task gate is their own test files
+  (`uv run pytest <files> -p no:randomly`), `make lint` and `make check-quality`, not
+  `make test-changed check-quality`: today's `make test-changed` falls back to the full fast lane at
+  `-n auto` for a change under `tests/`, which is the contention this change removes. The lead runs
+  `make check-all` once before the PR and after the fix pass.
+- **D-2** (lead): the builders work in their own worktrees (`.worktrees/atc-<task>`, branches
+  `atc/task-<task>`) off `change/agent-test-control`; the lead merges each finished task into
+  `change/agent-test-control` and commits; the plan commit and the implementation go in one PR.
+
 ## Open Questions
 
 None. The DEC-8 targets are checked after the merge (task 4.3); a missed target is a new change.
