@@ -216,3 +216,11 @@ integration lane, both in `make test-generator`; TC-7 in the library's unit lane
   TypeScript targets, `run_toy` re-reading the targets) are therefore not the cause and stay as
   they are; no fixer was briefed, so no seed ran. `make reindex` was stopped at its 10-minute
   limit at stage start (a forced full rebuild); this stage uses the existing index.
+- **D-8 (lead, Decide and fix; review pass L2+L3 on the rebased head 0703a997, 5 findings, no
+  Critical).** No fix pass. Lead-fixed: **L2-3** the flags-only test's scenario-map row is typed
+  `requirement` (it tests an error-matrix row, not scenario 3). Under the floor: **L2-1** no test
+  feeds `_typescript_owners` a target without `typescript` (scenario 3 is pinned only at
+  `typescript.render(owners={})`); **L2-2** no direct test for an owner outside the project (the
+  toy golden covers the served modules indirectly); **L2-4** `test_a_toy_generation_writes_rp_service_ts`
+  counts the files instead of naming their folders; **L3-1** the C1 tests import the private
+  `_typescript_owners`. L2-1 and L2-2 are worth one follow-up test each.
