@@ -30,6 +30,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `in_use_problem` take an optional `locate`, which `install_service` wires. Neither field is set
   for an unserved class, a foreign IRI or an unfiltered refusal, and the other members are unchanged.
 
+### Fixed
+- **The UML converter keeps a redrawn role's own cardinality** (`consumer-test-gaps` stage 3,
+  #332). When the usages of a slot differ on a cardinality, each class's `slot_usage` now writes
+  its own `minimum_cardinality` (0 included) and finite `maximum_cardinality`; before, a subclass
+  that redrew a `2..*` role as `1`, or a `0..5` role as `0..1`, inherited the ancestor's bound.
+  Regenerate your model: slots whose usages differ gain explicit cardinalities. An unbounded role
+  under a bounded `is_a` ancestor's (`0..5` redrawn `0..*`; or `0..1` redrawn `0..*` when another
+  class bounds the same role at another maximum) now fails conversion with `cardinality_unbounded`
+  (R-30); bound the role or unbind the ancestor's.
+
 ## [0.12.0] - 2026-11-24
 
 ### Added

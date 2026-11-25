@@ -5190,3 +5190,10 @@ tests/unit/collaboration/test_referrer_location.py::test_a_root_of_two_classes_l
 tests/unit/collaboration/test_referrer_location.py::test_a_row_of_an_unlocated_class_keeps_its_three_names,scenario,rp-service-api,A referrer says where to read it,a referrer that cannot be located,high,name; E10
 tests/unit/collaboration/test_referrer_location.py::test_located_is_the_path_and_id_of_a_served_aggregate_or_none,scenario,rp-service-api,A referrer says where to read it,a referrer that cannot be located,high,name; E10 E11
 tests/unit/iris/test_iris_aggregate_id.py::test_aggregate_id_of_is_the_minted_id_or_none,requirement,rp-service-api,A referrer says where to read it,,high,name; E12
+tests/generator/unit/test_uml_rules.py::test_a_rule_row,scenario,rp-uml-import,A redrawn role keeps its own cardinality bounds,an unbounded role under a single-valued ancestor,high,name; E21
+tests/generator/unit/test_uml_rules.py::test_a_rule_row,scenario,rp-uml-import,A redrawn role keeps its own cardinality bounds,an inherited 2..* role redrawn as 1,high,name; E15
+tests/generator/unit/test_uml_rules.py::test_a_rule_row,scenario,rp-uml-import,A redrawn role keeps its own cardinality bounds,an inherited 0..5 role redrawn as 0..1,high,name; E16
+tests/generator/unit/test_uml_rules.py::test_a_rule_row,scenario,rp-uml-import,A redrawn role keeps its own cardinality bounds,an unbounded role under a bounded ancestor,high,name; E17
+tests/generator/unit/test_uml_rules.py::test_a_rule_row,scenario,rp-uml-import,A redrawn role keeps its own cardinality bounds,an unrelated class may be unbounded,high,name; E20
+tests/generator/unit/test_uml_rules.py::test_a_rule_row,requirement,rp-uml-import,A redrawn role keeps its own cardinality bounds,,high,name; E18 E19 E22 E23 (rows ROWS_CARDINALITY)
+tests/generator/unit/test_uml_rules.py::test_a_zero_minimum_cardinality_is_accepted_by_the_generators_and_constrains_nothing,requirement,rp-uml-import,A redrawn role keeps its own cardinality bounds,,high,name; E18

@@ -395,7 +395,10 @@ def _lay_out(
         element.uml_class.object_id: names[merged[path_of(element)]] for element in elements
     }
     named_homes = {name: names[path] if path else None for name, path in homes.items()}
-    return Layout(elements, edges, merged, names), share(ctx, usages, module_of, named_homes)
+    lineage = (parent_of, {element.label: element.uml_class.object_id for element in elements})
+    return Layout(elements, edges, merged, names), share(
+        ctx, usages, module_of, named_homes, lineage
+    )
 
 
 def convert(

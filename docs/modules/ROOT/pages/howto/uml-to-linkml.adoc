@@ -110,7 +110,9 @@ The run ends in one of three ways:
 |1 |The model has problems. The converter prints every one, sorted, to standard error as
 `[<rule>] <element>: <reason>`, and writes nothing. `<rule>` is the name of the rule that was
 broken, or `no_rule` for an element no convention maps; an undeclared prefix is
-`[class_iri] lib2:Chapter: prefix lib2 is not in the prefixes file`. Fix them in EA (the table in
+`[class_iri] lib2:Chapter: prefix lib2 is not in the prefixes file`, or
+`[cardinality_unbounded] Derived.part: ...` for an unbounded role under a bounded ancestor's (bound
+the role, or unbind the ancestor's). Fix them in EA (the table in
 xref:reference/uml-conventions.adoc#fails[What fails] names the fix for each) and run again. When
 the model draws workflows, the converter also runs the check the service runs at start (<<whole-model>>);
 a workflow it refuses is exit 1 as well, on one line,

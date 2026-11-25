@@ -2099,6 +2099,10 @@ enums:
         title: Left-out link
         description: R-29, a link to a class that is not generated, or to an excluded package, is left out and reported.
         meaning: rp:UmlRuleLeftOutLink
+      cardinality_unbounded:
+        title: Cardinality unbounded
+        description: R-30, an unbounded role under an `is_a` ancestor whose role of the same name is bounded; a subclass cannot redraw a bounded role as unbounded.
+        meaning: rp:UmlRuleCardinalityUnbounded
       activity_root:
         title: Activity root
         description: A root class that is an activity, which the toolkit's rules do not allow.

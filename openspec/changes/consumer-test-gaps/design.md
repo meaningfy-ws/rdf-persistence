@@ -285,3 +285,16 @@ None. Both rounds answered every concern (`inputs/qa.md`).
   contract than `rp-service-api`):** `user-manual/store-and-read.adoc` names both reasons a
   referrer carries no address (an unserved class, or an IRI that is not an aggregate IRI of the
   policy) and the same URL template as the other pages. Lead-fixed.
+- **D-15 (stage 3, lead, from the gates):** `cardinality_unbounded` is rule **R-30**, the next
+  free number: its `UmlRule` description cites it, E17, E21 and E23 carry `cites="R-30"`, and
+  PD-2's list in `test_uml_records.py` gains the value (the first `make check-all` failed on that
+  list). `share` reached Xenon rank C with the new branch, so the "maximum differs" test moved into
+  `_check_unbounded`. `share` takes one more argument than D-8 names, `lineage` = (`parent_of`, the
+  label → object id of every converted element), so the walk can pass through classes that hold no
+  usage (E23).
+- **D-16 (stage 3, correcting the Context):** shaclgen writes `sh:minCount 0` for
+  `minimum_cardinality: 0`, and Pydantic and JSON Schema write `min_length=0` and `minItems: 0`;
+  none of them constrains anything, so E18 asserts "no bound above 0". A `0..1` redrawn `0..*` is
+  the R-30 problem only when another usage differs on the maximum (D-8's condition, E21); alone,
+  no maximum is written and LinkML's `multivalued: true` override holds. The reference page and
+  the CHANGELOG say so.

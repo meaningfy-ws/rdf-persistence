@@ -693,6 +693,29 @@ classes:
         required: true
 ----
 
+When the usages of a slot differ on a cardinality, each class states its own bound in its
+`slot_usage`: the minimum always (`0` too, so an ancestor's `2` is not inherited), and the maximum
+when it is finite. A class that redraws an ancestor's `2..*` role as `1` writes
+`minimum_cardinality: 1`; one that redraws `0..5` as `0..1` writes `maximum_cardinality: 1`:
+
+[source,yaml]
+----
+classes:
+  Derived:
+    is_a: Base
+    slot_usage:
+      part:
+        required: true
+        multivalued: false
+        minimum_cardinality: 1
+----
+
+A role cannot be redrawn from a bounded ancestor's to an unbounded one (`0..5` to `0..*`; or `0..1`
+to `0..*` when another class bounds the same role at another maximum, so the ancestor's 1 is
+written), because LinkML would inherit the ancestor's maximum (R-30): the run fails with
+`[cardinality_unbounded] Derived.part: ...`. A class that is not an `is_a` descendant is not
+affected.
+
 When no using module is reached by all the others, the run fails with
 `[shared_slot_across_packages] location: used in library_catalogue, library_shelves and no one of them is imported by the others`.
 
@@ -1022,6 +1045,10 @@ that is not generated or outside the package is a `range: uri` slot and does not
 others (`[shared_slot_across_packages] location: used in ... and no one of them is imported by the
 others`)
 |Move the classes into one package, or make one package refer to the rest (<<shared-slots>>).
+
+|A role redrawn as unbounded (`0..*`) on a class whose `is_a` ancestor draws the same role bounded
+(`[cardinality_unbounded] Derived.part: Base.part is bounded at 5, ...`)
+|Bound the role on the subclass (`0..5` or less), or unbind the ancestor's role (`0..*`).
 
 |A tagged value with a bad value (`[class_annotation]`), a tag named like a metamodel annotation
 that is not a class annotation, or a `unique_key` with a bad grammar, an unknown attribute or a

@@ -34,15 +34,15 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
 
 ## 3. Generator: a redrawn role keeps its own cardinality (#332), PR 3, branch `fix/narrowed-cardinality`
 
-- [ ] 3.1 Tests first: E15 to E23 in `tests/generator/unit/test_uml_rules.py`, each through
+- [x] 3.1 Tests first: E15 to E23 in `tests/generator/unit/test_uml_rules.py`, each through
   `SchemaView.induced_slot` too (`design.md#stage-3-generator-332`). RED: E15's induced minimum is 2.
-- [ ] 3.2 `cardinality_unbounded` in the `UmlRule` enum of `rp_generation.yaml`; `make generate`.
-- [ ] 3.3 `own_minimum`, `own_maximum` and `usage_of` (`design.md#decisions` D-7); `share(…,
+- [x] 3.2 `cardinality_unbounded` in the `UmlRule` enum of `rp_generation.yaml`; `make generate`.
+- [x] 3.3 `own_minimum`, `own_maximum` and `usage_of` (`design.md#decisions` D-7); `share(…,
   parent_of)` and the problem on the derived ancestor bound (D-8), with `parent_of` passed from
   `convert.py`'s `_lay_out`. Regenerate the toy. The golden diff may hold only explicit
   cardinalities on slots whose usages differ (RISK-1). Accept: E15 to E23; `make test-changed
   check-quality`.
-- [ ] 3.4 `howto/uml-to-linkml.adoc`: the rule row and the fix advice (RISK-4). CHANGELOG
+- [x] 3.4 `howto/uml-to-linkml.adoc`: the rule row and the fix advice (RISK-4). CHANGELOG
   "Fixed" (RISK-1, RISK-4). Accept: `make check-docs`.
 - [ ] 3.5 Lead: `make check-all`, `make test-containers` (the generator e2e), one review pass, PR.
 
@@ -56,7 +56,7 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 ·
-  [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 4.1 · [ ] 4.2
+  [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [ ] 3.5 · [ ] 4.1 · [ ] 4.2
 
 ## Verification
 
