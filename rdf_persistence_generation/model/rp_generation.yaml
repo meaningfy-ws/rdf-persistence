@@ -1955,10 +1955,6 @@ enums:
         title: Ignored stereotype
         description: A stereotype no rule uses.
         meaning: rp:ReportKindIgnoredStereotype
-      merged_cycle:
-        title: Merged cycle
-        description: Packages that import each other, merged into one module.
-        meaning: rp:ReportKindMergedCycle
       stale_file:
         title: Stale file
         description: A file of an earlier run left in the output folder, which this run did not write.

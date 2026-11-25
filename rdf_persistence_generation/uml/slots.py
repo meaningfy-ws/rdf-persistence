@@ -405,20 +405,16 @@ def _check_one_iri(ctx: Context, name: str, usages: list[Usage]) -> None:
         ctx.findings.problem(UmlRule.CLASS_IRI, name, f"{iris[0]} and {iris[1]} both map to {name}")
 
 
-def _used_in(
-    usages: list[Usage], merged: Mapping[ModulePath, ModulePath]
-) -> dict[str, set[ModulePath]]:
-    """The modules each slot name is used in."""
+def _used_in(usages: list[Usage]) -> dict[str, set[ModulePath]]:
+    """The modules each slot name is used in: a package is its own module."""
     found: dict[str, set[ModulePath]] = {}
     for usage in usages:
-        found.setdefault(usage.name, set()).add(merged[path_of(usage.holder)])
+        found.setdefault(usage.name, set()).add(path_of(usage.holder))
     return found
 
 
 def choose_homes(
-    usages: list[Usage],
-    merged: Mapping[ModulePath, ModulePath],
-    reach: Mapping[ModulePath, set[ModulePath]],
+    usages: list[Usage], reach: Mapping[ModulePath, set[ModulePath]]
 ) -> dict[str, ModulePath | None]:
     """The home module of each slot used in several modules (R-24, PD-16).
 
@@ -426,7 +422,7 @@ def choose_homes(
     order; None when none does.
     """
     homes: dict[str, ModulePath | None] = {}
-    for name, modules in _used_in(usages, merged).items():
+    for name, modules in _used_in(usages).items():
         if len(modules) > 1:
             fits = sorted(m for m in modules if all(m in reach[other] for other in modules - {m}))
             homes[name] = fits[0] if fits else None
@@ -435,13 +431,12 @@ def choose_homes(
 
 def shared_edges(
     usages: list[Usage],
-    merged: Mapping[ModulePath, ModulePath],
     homes: Mapping[str, ModulePath | None],
     by_label: Mapping[str, UmlElement],
 ) -> dict[ModulePath, set[ModulePath]]:
     """The imports a shared slot adds: each using module imports the home, which imports its range's module."""
     added: dict[ModulePath, set[ModulePath]] = {}
-    for name, modules in _used_in(usages, merged).items():
+    for name, modules in _used_in(usages).items():
         home = homes.get(name)
         if home is None:
             continue
@@ -449,11 +444,11 @@ def shared_edges(
             added.setdefault(other, set()).add(home)
         first = min(
             (each for each in usages if each.name == name),
-            key=lambda each: (merged[path_of(each.holder)], each.holder.label, each.order),
+            key=lambda each: (path_of(each.holder), each.holder.label, each.order),
         )
         target = by_label.get(first.shape.range)
         if target is not None:
-            added.setdefault(home, set()).add(merged[path_of(target)])
+            added.setdefault(home, set()).add(path_of(target))
     return added
 
 

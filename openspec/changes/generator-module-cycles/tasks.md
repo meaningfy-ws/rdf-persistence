@@ -79,13 +79,13 @@ named here run in CI's `test-generator` job (`make test-generator`).
 
 ## 2. Stage 2: the converter stops merging — branch `change/generator-module-cycles-2` off `develop` after stage 1 merged, one PR
 
-- [ ] 2.1 **feature** — spec `rp-uml-import` "packages that refer to each other". In
+- [x] 2.1 **feature** — spec `rp-uml-import` "packages that refer to each other". In
   `tests/generator/feature/uml_import.feature`, the scenario's Thens become: "Then the conversion
   succeeds", "And the packages are written as the modules "app_books" and "app_shelves" that import
   each other", "And the report has no line about a cycle". First failing test: that scenario
   (`test_uml_import.py`), failing on the one merged module; the old `merged-cycle` step goes.
   Accept: fails for that reason before 2.3, passes after.
-- [ ] 2.2 **unit** — PD-8, spec scenario "packages of different kinds that refer to each other".
+- [x] 2.2 **unit** — PD-8, spec scenario "packages of different kinds that refer to each other".
   In `tests/generator/unit/test_uml_rules.py`: row "two packages that refer to each other are
   written as one module (D-5)" becomes the first failing test
   `two packages that refer to each other are two modules that import each other` (asserts
@@ -97,7 +97,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   packages written as one module with different kinds ..." becomes "packages of different kinds
   that refer to each other keep their own kinds" (`_kinds(app_library="access",
   app_shelves="domain")`, no problem). Accept: as 2.1.
-- [ ] 2.3 **code** — PD-8, DEC-4, after 2.1 and 2.2. Remove the merge from `uml/convert.py`
+- [x] 2.3 **code** — PD-8, DEC-4, after 2.1 and 2.2. Remove the merge from `uml/convert.py`
   (`_merge`, `_module_graph`, `_note_merges`, `Layout.merged`, `_settle`'s new end condition,
   `_module_kinds`' merged-kinds problem) and the `merged` parameters in `uml/slots.py`; remove the
   converter's import of the Tarjan search; remove `merged_cycle` from `ReportKind` in

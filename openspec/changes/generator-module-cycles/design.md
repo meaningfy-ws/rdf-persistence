@@ -268,6 +268,11 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   load also asserts the `python:` problem line and that generated files already written are left
   byte-identical (spec `rp-generation` scenario 3, in full); task 2.4. The owner answered OPEN-1,
   OPEN-2 and OPEN-4 as recommended (`inputs/qa.md`, *Owner's answers*).
+- **D-6 (stage 2) Tasks 2.1, 2.2 and 2.3 go to one builder.** 2.1 and 2.2 are the failing tests
+  2.3 turns green; one builder writes them, sees them fail, then removes the merge, so no hand-off
+  sits between a failing test and its code. 2.4 and 2.5 run as two builders in parallel
+  (disjoint files). The stage's mark carries `risk=recorded` (RISK-1, RISK-5 and RISK-6 name its
+  files); the full review of task 2.6 names them as its focus.
 
 ## Open Questions
 

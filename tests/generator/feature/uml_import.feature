@@ -25,9 +25,8 @@ Feature: A UML class model becomes LinkML that the toolkit accepts
     Given two packages whose classes refer to each other
     When the model is converted
     Then the conversion succeeds
-    And both packages are written as the one module "app_books"
-    And the module "app_books" holds the classes "Book" and "Shelf"
-    And the report has a "merged-cycle" line that names the packages "books" and "shelves"
+    And the packages are written as the modules "app_books" and "app_shelves" that import each other
+    And the report has no line about a cycle
 
   # spec: rp-uml-import / an element without a note
   Scenario: An element without a note

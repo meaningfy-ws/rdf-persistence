@@ -459,15 +459,22 @@ def _accepted(world: World) -> None:
     assert problems == [], "lint and the boundary check must accept the converted model"
 
 
-@then(parsers.parse('both packages are written as the one module "{module}"'))
-def _one_module(world: World, module: str) -> None:
+@then(
+    parsers.parse(
+        'the packages are written as the modules "{first}" and "{second}" that import each other'
+    )
+)
+def _two_modules(world: World, first: str, second: str) -> None:
     written = sorted(file.name for file in world.out.glob(f"{ROOT_NAME}_*.yaml"))
-    assert written == [f"{module}.yaml"], "one module holds both packages"
+    assert written == [f"{first}.yaml", f"{second}.yaml"], "each package is its own module"
+    assert second in world.module(first)["imports"], f"{first} imports {second}"
+    assert first in world.module(second)["imports"], f"{second} imports {first}"
 
 
-@then(parsers.parse('the module "{module}" holds the classes "Book" and "Shelf"'))
-def _module_classes(world: World, module: str) -> None:
-    assert sorted(world.module(module)["classes"]) == ["Book", "Shelf"], "it holds both classes"
+@then("the report has no line about a cycle")
+def _no_cycle_line(world: World) -> None:
+    lines = [line for line in world.report() if "cycle" in line[0]]
+    assert lines == [], f"a cycle between modules is not reported: {lines}"
 
 
 @then("the book has no description")
@@ -662,18 +669,6 @@ def _member_class(world: World, expected: str) -> None:
 def _report_names(world: World, kind: str, name: str) -> None:
     lines = [line for line in world.report() if line[0] == kind and name in line[1]]
     assert lines, f"the report must have a {kind} line naming {name}: {world.report()}"
-
-
-@then(
-    parsers.parse('the report has a "{kind}" line that names the packages "{first}" and "{second}"')
-)
-def _report_packages(world: World, kind: str, first: str, second: str) -> None:
-    lines = [
-        line
-        for line in world.report()
-        if line[0] == kind and first in line[2] and second in line[2]
-    ]
-    assert len(lines) == 1, f"one {kind} line names both packages: {world.report()}"
 
 
 @then(parsers.parse('the report has "{count}" "{kind}" lines'))
