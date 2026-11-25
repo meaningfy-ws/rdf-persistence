@@ -49,6 +49,47 @@ async def test_the_redis_bus_conforms(redis, toolkit, case):
     await run_case(case, RedisPair(redis, toolkit, claim_idle_seconds=0.5), poll_seconds=0.05)
 
 
+async def test_a_receiver_that_raised_gets_the_message_again_without_a_restart(redis, toolkit):
+    """125-i2, PD-14: the claim after ``claim_idle_seconds`` redelivers, the bus never closed or restarted."""
+    pair = RedisPair(redis, toolkit, claim_idle_seconds=0.5)
+
+    class CountingInbox(Inbox):
+        raised = 0
+
+        async def __call__(self, envelope, body) -> None:
+            try:
+                await super().__call__(envelope, body)
+            except RuntimeError:
+                self.raised += 1
+                raise
+
+    inbox = CountingInbox()
+    inbox.fail = True
+    await pair.a.start(inbox)
+    try:
+        await pair.a.publish(ENVELOPE, BODY)
+
+        async def raised_once() -> bool:
+            return inbox.raised > 0
+
+        await wait_until_async(raised_once, "the receiver to raise", timeout=5, poll_seconds=0.05)
+        inbox.fail = False
+        await wait_until_async(
+            lambda: _has(inbox, 1),
+            "the message to come again after the claim idle time",
+            timeout=5,
+            poll_seconds=0.05,
+        )
+    finally:
+        await pair.a.close()
+    assert Replace.model_validate_json(inbox.got[0][1]) == BODY, "the same message came again"
+    assert len(inbox.got) == 1, "and once"
+
+
+async def _has(inbox: Inbox, count: int) -> bool:
+    return len(inbox.got) >= count
+
+
 def test_the_redis_bus_takes_no_per_value_keyword_beside_its_events_group():  # TC-39, DEC-5
     with pytest.raises(TypeError, match="stream"):
         RedisEventBus("redis://localhost", deployment="d", stream="x")  # type: ignore[call-arg]

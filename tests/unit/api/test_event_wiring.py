@@ -5,7 +5,9 @@ import asyncio
 import pytest
 from fastapi import FastAPI
 
+from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import ToolkitSettings
 from rdf_persistence.api.entrypoints.service import LIFESPAN_STARTED
+from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.provenance.domain.generated.rp_provenance import Add
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
@@ -73,6 +75,40 @@ async def test_with_no_event_bus_the_activity_is_still_relayed_to_the_hub() -> N
         "and everything it generated is the tenant's"
     )
     assert activity.was_associated_with == [principal_of("ada")], "carried out by the caller"
+
+
+async def test_a_commit_wakes_the_relay_before_its_interval() -> None:  # 125-i1, PD-13
+    """A commit reaches the hub within 2 s though the relay's interval is 60 s: only ``relay.wake()`` does that.
+
+    An exception to ``testing.adoc`` rule 11 (no timing-based asserts), recorded in PD-13: the
+    property is itself a timing ("before the interval") and the relay has no injectable clock.
+    The wait is ``wait_until_async``, no sleep, and the margin is 30x. The first activity is awaited
+    (up to 60 s, by whatever delivers it) so the relay has looked once and is in its 60 s wait;
+    only then is the second committed and awaited for 2 s.
+    """
+    toy = ToyService(toolkit=ToolkitSettings(events=EventSettings(relay_interval_seconds=60)))
+    async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
+        headers = toy.bearer("ada")
+        tenant = await http.post("/libraries", json=TENANT_BODY, headers=headers)
+        books = f"{tenant.headers['location']}/books"
+        tenant_iri = toy.kit.tenant_iri(tenant.headers["location"].rsplit("/", 1)[1])
+        async with toy.kit.hub.subscribe(tenant_iri) as queue:
+            await http.post(books, json=DUNE_BODY, headers=headers)
+            await wait_until_async(
+                lambda: _async(not queue.empty()),
+                "the first activity to reach the hub",
+                timeout=60,
+                poll_seconds=FAST_POLL,
+            )
+            queue.get_nowait()
+            await http.post(books, json=DUNE_BODY, headers=headers)
+            await wait_until_async(
+                lambda: _async(not queue.empty()),
+                "the second activity to reach the hub before the 60 s interval",
+                timeout=2,
+                poll_seconds=FAST_POLL,
+            )
+    assert isinstance(queue.get_nowait(), Add), "the commit's activity reached the hub, woken"
 
 
 def test_an_event_bus_without_a_deployment_is_refused() -> None:  # TC-21a
