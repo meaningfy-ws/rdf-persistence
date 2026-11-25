@@ -347,3 +347,20 @@ names come from UML class names, so no known roles file is affected.
 Builder decisions in stage 2, kept: `_with_allowed_actions` renamed `_with_caller_headers`, as it
 now declares both headers; `Held-Roles` joins with `,` (the spec), `Allowed-Actions` keeps `, `;
 the tenant read carries `Held-Roles` too, since it is the same route.
+
+### D-14
+
+Stage 2 review (one pass, L2+L3; `result: stage=2 role=reviewer lens=L2+L3 findings=3 accepted=1`).
+
+- **R2-W1, re-labelled Critical and fixed:** a migration's `grant_roles.rename` could name a
+  comma in its target (`{reader: "a,b"}`), rewriting stored grants to a name `Held-Roles` cannot
+  carry; start-up only warns (DEC-5). It defeats D-13 through stage 1's path, and the user manual
+  says the opposite. Fix: the same comma-free `pattern` on `RoleRename.to_role` (`slot_usage`),
+  `make generate`, and an E12 row in `test_grant_roles.py` refusing such a file at load.
+
+Under the floor:
+
+- R2-S1: T12 checks `Held-Roles` on the book read only; the tenant read shares `DocumentApi.read`
+  and T13 covers its OpenAPI declaration.
+- R2-S2: T11's "answers without the discussion module" assert sits in a test named for the
+  lookup error.
