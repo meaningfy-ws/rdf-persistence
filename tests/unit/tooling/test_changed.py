@@ -14,6 +14,7 @@ from tests.changed import (
     GitError,
     Selection,
     changed_files,
+    plan,
     pytest_arguments,
     select,
 )
@@ -24,6 +25,44 @@ PACKAGE_TESTS = ("tests/unit/package/",)
 ROOT_FILE = "tests/unit/test_root_level.py"  # none is left in tests/unit/; a future one
 OTHER_ROOT_FILE = "tests/unit/test_other_root_level.py"
 LOADGROUP = ("--dist", "loadgroup")
+# The shared arguments of design PD-5, spelled out here so a drift in the module shows.
+IGNORES = (
+    "--ignore=tests/integration",
+    "--ignore=tests/e2e",
+    "--ignore=tests/perf",
+    "--ignore=tests/generator/e2e",
+)
+MARKERS = ("-m", "(unit or feature) and not quarantine")
+SEED_HINT = "no test selection data in this worktree: the lead runs make test-seed"
+CORE_FILE = "rdf_persistence/core/domain/sparql.py"
+SHARED = "shared test infrastructure or schema"
+
+
+def _folder_run(paths, workers):
+    """F of PD-5: the selected paths, the shared arguments, the workers."""
+    return (*paths, *IGNORES, *MARKERS, "-n", str(workers), *LOADGROUP)
+
+
+def _testmon_run(workers=4, generator=True):
+    """T of PD-5."""
+    folders = ("tests/unit", "tests/feature", *(("tests/generator",) if generator else ()))
+    return (
+        *folders,
+        *IGNORES,
+        *MARKERS,
+        "--testmon",
+        "--testmon-nocollect",
+        "--testmon-forceselect",
+        "-n",
+        str(workers),
+        *LOADGROUP,
+    )
+
+
+def _arguments(paths, workers=4):
+    """The argument lists of the invocations planned for `paths` without selection data."""
+    return [i.arguments for i in plan(paths, False, lambda _: True, workers).invocations]
+
 
 SELECTS = [
     (1, "openspec/changes/x/design.md", ()),
@@ -209,12 +248,7 @@ def test_a_change_outside_a_theme_and_the_testkit_selects_the_package_tests_only
     selection = _select([changed])
 
     assert selection.paths == PACKAGE_TESTS, changed
-    assert pytest_arguments(selection.paths, None) == [
-        *PACKAGE_TESTS,
-        "-n",
-        "auto",
-        *LOADGROUP,
-    ], "a folder runs in parallel"
+    assert _arguments([changed]) == [_folder_run(PACKAGE_TESTS, 4)], "a folder runs in parallel"
     assert not selection.fallback_reasons, f"{changed} must not fall back"
 
 
@@ -222,11 +256,8 @@ def test_a_changed_tooling_test_file_selects_the_tooling_folder_in_parallel():
     selection = _select(["tests/unit/tooling/test_markers.py"])
 
     assert selection.paths == ("tests/unit/tooling/",), "the folder, not the file"
-    assert pytest_arguments(selection.paths, None) == [
-        "tests/unit/tooling/",
-        "-n",
-        "auto",
-        *LOADGROUP,
+    assert _arguments(["tests/unit/tooling/test_markers.py"]) == [
+        _folder_run(("tests/unit/tooling/",), 4)
     ], "a folder runs in parallel"
 
 
@@ -234,9 +265,7 @@ def test_a_changed_root_level_test_file_selects_that_file_on_one_process():
     selection = _select([ROOT_FILE])
 
     assert selection.paths == (ROOT_FILE,), "that file only"
-    assert pytest_arguments(selection.paths, None) == [ROOT_FILE, "-n", "0", *LOADGROUP], (
-        "one process"
-    )
+    assert _arguments([ROOT_FILE]) == [_folder_run((ROOT_FILE,), 0)], "one process"
 
 
 @pytest.mark.parametrize(("rule", "changed", "expected"), SELECTS)
@@ -275,18 +304,13 @@ def test_the_worked_example_selects_one_folder_and_hints_at_the_container_test()
 
     assert selection.paths == ("tests/unit/api/",), "one folder, not two"
     assert selection.hints == (f"{CONTAINER_TEST}: run make test-containers",), "the container hint"
-    assert pytest_arguments(selection.paths, None) == [
-        "tests/unit/api/",
-        "-n",
-        "auto",
-        *LOADGROUP,
-    ], "the arguments"
+    assert _arguments(changed) == [_folder_run(("tests/unit/api/",), 4)], "the arguments"
 
 
 def test_a_changed_container_test_alone_gives_no_arguments():
     selection = _select([CONTAINER_TEST])
 
-    assert pytest_arguments(selection.paths, None) == [], "no paths, so no arguments"
+    assert _arguments([CONTAINER_TEST]) == [], "no paths, so no invocation"
     assert selection.hints, "the container test is still named"
 
 
@@ -294,7 +318,7 @@ def test_a_lone_deleted_test_file_gives_no_arguments():
     selection = _select([ROOT_FILE], existing=lambda _: False)
 
     assert selection.paths == (), "a deleted file selects nothing"
-    assert pytest_arguments(selection.paths, None) == [], "no paths, so no arguments"
+    assert plan([ROOT_FILE], False, lambda _: False).invocations == (), "no invocation"
 
 
 def test_nothing_changed_selects_nothing():
@@ -363,6 +387,133 @@ def test_pytest_n_overrides_the_choice_of_workers():
         "4",
         *LOADGROUP,
     ], "PYTEST_N wins"
+
+
+def _missing_library_app(path: str) -> bool:
+    return path != "tests/library_app.py"  # absent on this branch, as on review-floors-s1
+
+
+# (changed, has_data, existing, invocations, hints, fallback reasons): the worked examples of PD-5.
+WORKED_EXAMPLES = [
+    pytest.param([CORE_FILE], True, None, [_testmon_run()], (), (), id="1-core-with-data"),
+    pytest.param(
+        [CORE_FILE],
+        False,
+        None,
+        [],
+        (SEED_HINT,),
+        (f"{CORE_FILE}: core is imported by every theme; run make test-fast",),
+        id="2-core-without-data",
+    ),
+    pytest.param(
+        ["tests/library_app.py", "tests/e2e/world.py"],
+        True,
+        _missing_library_app,
+        [_testmon_run()],
+        (),
+        (),
+        id="3-helpers-with-data",
+    ),
+    pytest.param(
+        ["tests/library_app.py", "tests/e2e/world.py"],
+        False,
+        _missing_library_app,
+        [],
+        (SEED_HINT,),
+        (
+            f"tests/library_app.py: {SHARED}",
+            "tests/e2e/world.py: helper imported by unit tests",
+        ),
+        id="4-helpers-without-data",
+    ),
+    pytest.param(
+        ["rdf_persistence/persistence/services/session.py", "docs/x.adoc"],
+        True,
+        None,
+        [
+            _testmon_run(),
+            _folder_run(("tests/unit/tooling/test_check_docs.py",), 0),
+        ],
+        (),
+        (),
+        id="5-code-and-docs-with-data",
+    ),
+    pytest.param(
+        ["rdf_persistence_generation/lock_step.py"],
+        True,
+        None,
+        [_testmon_run(generator=False), _folder_run(("tests/generator/",), 4)],
+        (),
+        (),
+        id="6-generator-with-data",
+    ),
+    pytest.param(
+        ["tests/fixtures/library/domain/generated/core.py"],
+        True,
+        None,
+        [],
+        (),
+        (f"tests/fixtures/library/domain/generated/core.py: {SHARED}",),
+        id="7-fixture-with-data",
+    ),
+    pytest.param(
+        ["rdf_persistence/model/core.yaml"],
+        True,
+        None,
+        [],
+        (),
+        (f"rdf_persistence/model/core.yaml: {SHARED}",),
+        id="8-model-yaml-with-data",
+    ),
+    pytest.param(["uv.lock"], True, None, [], (), (f"uv.lock: {SHARED}",), id="9-lock-with-data"),
+    pytest.param(
+        ["tests/integration/store/test_fuseki_store.py"],
+        True,
+        None,
+        [],
+        ("tests/integration/store/test_fuseki_store.py: run make test-containers",),
+        (),
+        id="10-container-test-with-data",
+    ),
+    pytest.param([], True, None, [], (), (), id="11-nothing-with-data"),
+    pytest.param([], False, None, [], (), (), id="11-nothing-without-data"),
+]
+
+
+@pytest.mark.parametrize(
+    ("changed_paths", "has_data", "existing", "invocations", "hints", "reasons"), WORKED_EXAMPLES
+)
+def test_the_plan_of_a_worked_example(
+    changed_paths, has_data, existing, invocations, hints, reasons
+):
+    got = plan(changed_paths, has_data, existing or (lambda _: True))
+
+    assert [i.arguments for i in got.invocations] == invocations, "the invocations, in order"
+    assert got.hints == hints, "the hints"
+    assert got.fallback_reasons == reasons, "the fallback reasons"
+
+
+@pytest.mark.parametrize("has_data", [True, False])
+def test_a_plan_called_twice_is_the_same(has_data):
+    paths = ["rdf_persistence/api/services/a.py", "docs/x.adoc", "rdf_persistence_generation/m.py"]
+
+    assert plan(paths, has_data, lambda _: True) == plan(paths, has_data, lambda _: True), (
+        "no state between calls"
+    )
+
+
+def test_the_workers_of_the_plan_are_a_parameter():
+    got = plan(["rdf_persistence/api/services/a.py"], True, lambda _: True, 7)
+
+    assert got.invocations[0].arguments == _testmon_run(workers=7), "T takes the count"
+
+
+def test_without_data_a_folder_runs_on_the_workers_and_a_file_on_none():
+    folder = _arguments(["rdf_persistence/api/services/a.py"], 6)
+    file = _arguments([ROOT_FILE], 6)
+
+    assert folder == [_folder_run(("tests/unit/api/",), 6)], "a folder takes the count"
+    assert file == [_folder_run((ROOT_FILE,), 0)], "files only run on one process"
 
 
 def _git(repo: Path, *args: str) -> None:

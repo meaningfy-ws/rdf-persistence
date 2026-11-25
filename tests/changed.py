@@ -43,6 +43,20 @@ GENERATOR_PACKAGE = "rdf_persistence_generation"
 GENERATOR_TESTS = "tests/generator/"
 # The same distribution as the Makefile's PARALLEL: tests in one xdist_group share a worker.
 DIST = ("--dist", "loadgroup")
+# The Makefile's UNIT_LANE ignores as relative paths, and the marker filter of every lane
+# (agent-test-control PD-5); a test in test_lanes.py pins the first to the Makefile.
+IGNORES = (
+    "--ignore=tests/integration",
+    "--ignore=tests/e2e",
+    "--ignore=tests/perf",
+    "--ignore=tests/generator/e2e",
+)
+MARKERS = ("-m", "(unit or feature) and not quarantine")
+TESTMON = ("--testmon", "--testmon-nocollect", "--testmon-forceselect")
+NO_DATA_HINT = "no test selection data in this worktree: the lead runs make test-seed"
+DEFAULT_WORKERS = 4
+# Files whose tests testmon cannot see: the generator's tests run it in subprocesses.
+GENERATOR_ROOTS = (GENERATOR_PACKAGE, "tests/generator")
 
 
 @dataclass(frozen=True)
@@ -149,6 +163,81 @@ def pytest_arguments(paths: Sequence[str], pytest_n: str | None) -> list[str]:
         return []
     one_process = all(not p.endswith("/") for p in paths)
     return [*paths, "-n", pytest_n or ("0" if one_process else "auto"), *DIST]
+
+
+@dataclass(frozen=True)
+class Invocation:
+    """One pytest run: its argument list, without the interpreter."""
+
+    arguments: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Plan:
+    invocations: tuple[Invocation, ...]
+    hints: tuple[str, ...]
+    fallback_reasons: tuple[str, ...]
+
+
+def _is_testmon_visible(path: str) -> bool:
+    """A Python file testmon tracks: package, generator or tests code that is no golden text."""
+    parts = PurePosixPath(path).parts
+    if not path.endswith(".py") or parts[0] not in {"rdf_persistence", GENERATOR_PACKAGE, "tests"}:
+        return False
+    if parts[0] != "tests":
+        return True
+    if len(parts) > 1 and parts[1] == "fixtures":
+        return False
+    is_test = parts[-1].startswith("test_")
+    return not (len(parts) > 2 and parts[1] in {"integration", "e2e", "perf"} and is_test)
+
+
+def _is_generator_file(path: str) -> bool:
+    return any(path == root or path.startswith(f"{root}/") for root in GENERATOR_ROOTS)
+
+
+def _folder_invocation(paths: Sequence[str], workers: int) -> Invocation:
+    one_process = all(not p.endswith("/") for p in paths)
+    return Invocation(
+        (*paths, *IGNORES, *MARKERS, "-n", "0" if one_process else str(workers), *DIST)
+    )
+
+
+def _testmon_invocation(workers: int, with_generator: bool) -> Invocation:
+    folders = ("tests/unit", "tests/feature", *(("tests/generator",) if with_generator else ()))
+    return Invocation((*folders, *IGNORES, *MARKERS, *TESTMON, "-n", str(workers), *DIST))
+
+
+def plan(
+    changed: Sequence[str],
+    has_data: bool,
+    existing: Callable[[str], bool],
+    workers: int = DEFAULT_WORKERS,
+) -> Plan:
+    """The pytest runs for the changed files (agent-test-control PD-4, PD-5).
+
+    With selection data, testmon selects for the files it can see (one run) and the folder rules
+    cover the rest and the generator's files; without it, the folder rules cover every file.
+    A fallback reason or nothing selected means no run.
+    """
+    if has_data:
+        visible = any(_is_testmon_visible(p) for p in changed)
+        rest = [p for p in changed if not _is_testmon_visible(p) or _is_generator_file(p)]
+    else:
+        visible, rest = False, list(changed)
+    selection = select(rest, existing)
+    hints = selection.hints
+    if not has_data and changed:
+        hints = (*hints, NO_DATA_HINT)
+    if selection.fallback_reasons:
+        return Plan((), hints, selection.fallback_reasons)
+    runs: list[Invocation] = []
+    if visible:
+        with_generator = GENERATOR_TESTS not in selection.paths
+        runs.append(_testmon_invocation(workers, with_generator))
+    if selection.paths:
+        runs.append(_folder_invocation(selection.paths, workers))
+    return Plan(tuple(runs), hints, ())
 
 
 def _git(*args: str) -> str:
