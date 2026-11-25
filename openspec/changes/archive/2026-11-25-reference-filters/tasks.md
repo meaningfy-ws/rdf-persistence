@@ -48,12 +48,12 @@ EPIC: reference-filters (proposal.md, #308). Decisions: DEC-1 to DEC-8; design.m
 ## 2. Close
 
 - [x] 2.1 Scenario-map rows for the new tests (`make refresh-map`).
-- [ ] 2.2 After the merge: reconcile the proposal, archive, ask for a release, and comment on #308
+- [x] 2.2 After the merge: reconcile the proposal, archive, ask for a release, and comment on #308
   with the version (RISK-4).
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 2.1 · [ ] 2.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 2.1 · [x] 2.2
 
 ## Verification
 
