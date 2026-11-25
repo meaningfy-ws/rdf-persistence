@@ -25,10 +25,11 @@ from rdf_persistence_generation.extensions.pydantic_split import (
 from rdf_persistence_generation.extensions.pydantic_split import render as render_modules
 from rdf_persistence_generation.manifest import current_inputs
 from rdf_persistence_generation.steps import PYTHON_STEP
+from tests.generator.theme_map import THEME_OF_ROOT, theme_package
 
 from .golden import assert_matches_toy, run_toy
 
-TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
+TOOLKIT_DOMAIN = theme_package(THEME_OF_ROOT["rp"])
 TOY_MODULES = [
     "__init__.py",
     "books.py",

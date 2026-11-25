@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence_generation.cli import main
+from tests.generator.theme_map import THEME_OF_ROOT, theme_package
 
 from .golden import ROOT_SCHEMA, TOY, Breaker
 
@@ -21,19 +22,7 @@ def toy_copy(tmp_path: Path) -> Path:
 
 
 METAMODEL_DIR = Path(__file__).parents[3] / "rdf_persistence" / "model"
-TOOLKIT_DOMAIN = "rdf_persistence.core.domain.generated"
-# The toolkit's four theme targets beside the combined `rp.yaml` one (domain-model-per-theme PD-6): the
-# root schema of each and the theme whose `domain.generated` package it generates.
-THEME_ROOTS = {
-    "rp_tenancy": "access",
-    "rp_provenance": "provenance",
-    "rp_files": "files",
-    "rp_collaboration": "collaboration",
-}
-
-
-def theme_package(theme: str) -> str:
-    return f"rdf_persistence.{theme}.domain.generated"
+TOOLKIT_DOMAIN = theme_package(THEME_OF_ROOT["rp"])
 
 
 def _entry(schema: str, package: str) -> str:
@@ -45,8 +34,7 @@ def _entry(schema: str, package: str) -> str:
 
 def toolkit_domain_targets() -> str:
     """The ``pyproject.toml`` text of the toolkit's five domain targets over a copy of the metamodel's folder."""
-    entries = [_entry("rp", TOOLKIT_DOMAIN)]
-    entries += [_entry(root, theme_package(theme)) for root, theme in THEME_ROOTS.items()]
+    entries = [_entry(root, theme_package(theme)) for root, theme in THEME_OF_ROOT.items()]
     return "\n".join(entries)
 
 
