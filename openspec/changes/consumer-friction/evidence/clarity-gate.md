@@ -27,4 +27,4 @@ Nits from run 2: the anti-pattern's wording about `generated_schemas` was fixed.
 confirm the CI "types" job (TC-3, needs Node) is green before the merge, because the local task gate
 may skip it.
 
-Scenarios: pending the owner's sign-off (spec scenarios 1 to 4, design.md TC-1 to TC-8).
+Scenarios: signed off by the owner, 2026-11-25 (spec scenarios 1 to 4, design.md TC-1 to TC-8).
