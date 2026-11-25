@@ -74,7 +74,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   (#208) under `[Unreleased]` only, saying it replaces the refusal of two modules that import each
   other described in `[0.8.1]`; released sections are never edited. The `rp-generation` delta of this change is already written. Accept: `make check-docs`
   green.
-- [ ] 1.6 **lead** — `make check-all`, `make test-containers`; the stage pass (L2+L3, one pass);
+- [x] 1.6 **lead** — `make check-all`, `make test-containers`; the stage pass (L2+L3, one pass);
   accepted findings into design.md; PR into `develop`, merged on green CI; #208 closed by it.
 
 ## 2. Stage 2: the converter stops merging — branch `change/generator-module-cycles-2` off `develop` after stage 1 merged, one PR
