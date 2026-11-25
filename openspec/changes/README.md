@@ -60,7 +60,7 @@ Work outside the table, all delivered and archived: `test-suite-grooming`, `alig
 | `activity-iri-policy` | SMALL (one stage) | #197; re-planned on develop 2026-11-25, attacked, gated 8.9 → 9.2, pass; OPEN-1, OPEN-5 answered | ready for an epic session; scenarios signed off 2026-11-25 |
 | `review-floors` | MEDIUM (3 stages, one PR each) | planned 2026-11-22, re-planned 2026-11-25 on `develop` 12d84873: 8.6 → 9.4, pass (fresh reviewer) | delivered 2026-11-25 (#393, #400, #401), archived `2026-11-25-review-floors`; #215, #272, #273, #275 closed, the rest narrowed, 189-v split into #402. Pays the behaviour-preserving review floors of #252, #235, #215, #214, #192, #189, #125 and all of #272, #273, #275 (folded in 2026-11-25); the behaviour changes stay in their issues (OPEN-1 to OPEN-8, accepted). #371, #372 are `consumer-friction`'s |
 | `ldes-view` | MEDIUM | no | a shaping session |
-| `consumer-friction` (#371, #372; MWB2 `v2-05`) | SMALL (1 stage) | 2026-11-25, attacked and gated by a fresh reviewer 8.7 → 9.3, pass (`evidence/clarity-gate.md`); scenarios signed off | ready for an epic session; **BREAKING** for generated TypeScript (DEC-6) |
+| `consumer-friction` (#371, #372; MWB2 `v2-05`) | SMALL (1 stage) | 2026-11-25, attacked and gated by a fresh reviewer 8.7 → 9.3, pass (`evidence/clarity-gate.md`); scenarios signed off | delivered 2026-11-25 (#391), demo skipped, accepted; archived `2026-11-25-consumer-friction`; #371, #372 closed; follow-up tests L2-1, L2-2 under the floor (D-8). **BREAKING** for generated TypeScript (DEC-6) |
 | `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
 
 ### The first consumer's needs (shaped 2026-11-20)
