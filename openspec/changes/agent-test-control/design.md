@@ -250,6 +250,14 @@ writing only its own reports.
 - **D-2** (lead): the builders work in their own worktrees (`.worktrees/atc-<task>`, branches
   `atc/task-<task>`) off `change/agent-test-control`; the lead merges each finished task into
   `change/agent-test-control` and commits; the plan commit and the implementation go in one PR.
+- **D-3** (lead, from task 1.3's report): PD-9's caches are three, not two. Each `ServiceKit`
+  builds `Annotated[VerifiedCaller, Depends(kit.gate.caller)]`, which `typing` caches by value, so
+  one entry kept the last kit alive; `clear_caches()` also runs `typing`'s registered cache
+  clears (`typing._cleanups`, a private CPython list, reached behind `getattr`, absent counts 0).
+  `release_memory()` returns a plain index `dict[str, int]` per library (the model guard rejects a
+  dataclass in the testkit outside `generated`). Follow-ups, outside this EPIC: build that
+  annotation once per class, not per kit (ours, `rdf_persistence/api`); load each schema once per
+  process (ours, DEC-9); the per-instance `lru_cache` of `SchemaView` (external, linkml-runtime).
 
 ## Open Questions
 
