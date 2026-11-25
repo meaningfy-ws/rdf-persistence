@@ -246,9 +246,10 @@ def _module_kinds(ctx: Context, model: UmlModel, layout: Layout) -> dict[ModuleP
     """The ``module_kind`` of each module: its packages' tagged value, ``domain`` when none (#245).
 
     A value the toolkit's metamodel does not list is a problem naming the package. A package is its
-    own module, so a module has one kind.
+    own module, but sibling packages of one name share a path (D-9): with different kinds that is a
+    problem naming the module.
     """
-    kinds: dict[ModulePath, str] = {}
+    found: dict[ModulePath, set[str]] = {}
     for package in model.uml_packages or []:
         path = ctx.paths.get(package.package_id)
         if path is None or below_of(path) not in layout.names:
@@ -256,8 +257,15 @@ def _module_kinds(ctx: Context, model: UmlModel, layout: Layout) -> dict[ModuleP
         written = ctx.tags.get(package.object_id or 0, {}).get(MODULE_KIND, DOMAIN)
         kind = package_kind(ctx, package.name, written)
         if kind is not None:
-            kinds[below_of(path)] = kind
-    return kinds
+            found.setdefault(below_of(path), set()).add(kind)
+    for module, kinds in found.items():
+        if len(kinds) > 1:
+            ctx.findings.problem(
+                UmlRule.PACKAGE_MODULE,
+                layout.names[module],
+                f"its packages have the kinds {' and '.join(sorted(kinds))}",
+            )
+    return {module: min(kinds) for module, kinds in found.items()}
 
 
 def _write_module(

@@ -113,9 +113,27 @@ not change.
 - `rp-generate` refuses a cycle whose classes need each other at import time, naming them.
 - **BREAKING** `rp-uml2linkml` writes the packages of an import cycle as separate modules that
   import each other; the `merged-cycle` report line and the `ReportKind.merged_cycle` value are
-  gone; packages of different kinds in a cycle are no longer a converter problem.
+  gone; packages of different kinds in a cycle are no longer a converter problem (rp-generate's
+  boundary check refuses a domain module importing an access one). Two same-named sibling
+  packages with different kinds stay a converter problem (D-9).
 - Docs: the UML conventions page (packages, module kind, shared slots, problems table), the UML
-  how-to's report table, the generator's user-manual page on generated Python, `CHANGELOG.md`.
+  how-to's report table, the generator's architecture page and user-manual page on generated
+  Python, `CHANGELOG.md`.
+
+## As delivered (P-0004)
+
+| Item | State | PR |
+|---|---|---|
+| Stage 1: the generator loads module cycles, refuses load-time cycles (#208 closed) | delivered | #358 |
+| Stage 2: the converter writes one module per package, no merge | delivered | #368 |
+| RISK-6: the converter's start-up check re-run on a cyclic pair (owner, 2026-11-24) | delivered, task 2.4 | #368 |
+| Stage 1's W1: the refusal test asserts the `python` step and untouched earlier output (D-5) | delivered | #368 |
+| RISK-1: the consumer's model converted and generated on the stage 2 branch | checked by the lead, no change, no refusal (D-7) | #368 |
+| #206: two slots on one `slot_uri` | not delivered: its own TINY EPIC (owner's answer OPEN-1) | — |
+
+Delivery decisions D-1 to D-9 and what was left under the floor: design.md, *Delivery
+decisions*. The cycle analysis result became a LinkML class in `rp_generation.yaml` (D-1),
+not a hand-written record.
 
 ## Capabilities
 
@@ -131,8 +149,9 @@ not change.
 
 ## Impact
 
-- Code: `rdf_persistence_generation/extensions/pydantic_split.py` (and a new pure module for the
-  cycle analysis), `rdf_persistence_generation/templates/pydantic/`, `uml/convert.py`,
-  `uml/modules.py`, `model/rp_generation.yaml` and its generated `rp_generation.py`.
+- Code: `rdf_persistence_generation/extensions/pydantic_split.py`, the new pure module
+  `rdf_persistence_generation/module_cycles.py`, the override
+  `rdf_persistence_generation/templates/pydantic/module.py.jinja`, `uml/convert.py`,
+  `uml/slots.py`, `uml/modules.py`, `model/rp_generation.yaml` and its generated files.
 - Tests: `tests/generator/{unit,integration,feature}` (design.md *Tests*).
 - Consumers: a converted model with a cycle gets more modules on its next conversion (DEC-4).

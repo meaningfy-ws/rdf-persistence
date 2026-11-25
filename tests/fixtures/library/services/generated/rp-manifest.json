@@ -191,7 +191,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/convert.py",
-      "sha256": "88e02f0c926a8e1a5bf433c966efee84f6419542129ac30bba665f0bb812d814"
+      "sha256": "84bdb1a3810826008152edaa56e74c38677270d38a75e578a3f9588e26655da8"
     },
     {
       "path": "rdf_persistence_generation/uml/dump.py",

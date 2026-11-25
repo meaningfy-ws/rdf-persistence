@@ -3215,6 +3215,28 @@ def _kinded(*tags: tuple[int, str], cycle: bool = False) -> object:
     )
 
 
+def _twins(first: str, second: str) -> object:
+    """Book and Shelf in two sibling packages that share the name ``library``, hence one module."""
+    packages = (
+        UmlPackage(package_id=MODEL_PKG, name="model"),
+        UmlPackage(
+            package_id=LIBRARY_PKG, name="library", parent_id=MODEL_PKG, object_id=_LIBRARY_ELEMENT
+        ),
+        UmlPackage(
+            package_id=SHELVES_PKG, name="library", parent_id=MODEL_PKG, object_id=_SHELVES_ELEMENT
+        ),
+    )
+    return model(
+        klass(BOOK, "lib:Book", stereotype="root"),
+        klass(SHELF, "lib:Shelf", SHELVES_PKG, stereotype="root"),
+        packages=packages,
+        tags=(
+            tag(_LIBRARY_ELEMENT, "module_kind", first),
+            tag(_SHELVES_ELEMENT, "module_kind", second),
+        ),
+    )
+
+
 def _kinds(**expected: str) -> Check:
     def check(out: Converted) -> None:
         _no_problems(out)
@@ -3254,6 +3276,18 @@ ROWS_MODULE_KIND = [
         UmlRule.PACKAGE_MODULE,
         _kinded((_LIBRARY_ELEMENT, "access"), cycle=True),
         _kinds(app_library="access", app_shelves="domain"),
+    ),
+    Row(
+        "failure: sibling packages of one name with different kinds name the module and both kinds",
+        UmlRule.PACKAGE_MODULE,
+        _twins("access", "domain"),
+        _problem(UmlRule.PACKAGE_MODULE, "app_library", "access", "domain"),
+    ),
+    Row(
+        "sibling packages of one name with the same kind make one module of that kind",
+        UmlRule.PACKAGE_MODULE,
+        _twins("domain", "domain"),
+        _kinds(app_library="domain"),
     ),
 ]
 
