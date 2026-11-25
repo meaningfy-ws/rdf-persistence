@@ -58,6 +58,7 @@ Work outside the table, all delivered and archived: `test-suite-grooming`, `alig
 |---|---|---|---|
 | `test-debt-paydown` | LARGE (three stages, one PR) | re-planned 2026-11-21, gate 8.9 accepted (DEC-5, R-0005) | ready for an epic session; scenario sign-off pending |
 | `ldes-view` | MEDIUM | no | a shaping session |
+| `slot-uri-clash` (#206) | TINY | 2026-11-25, gate 8.85 accepted with its gaps fixed (D-2), scenarios signed off | ready for an epic session |
 | `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
 
 ### The first consumer's needs (shaped 2026-11-20)
