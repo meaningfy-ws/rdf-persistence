@@ -12,9 +12,10 @@ naming every element no rule maps, rather than guess.
 ### Requirement: A UML class model converts to toolkit-conformant LinkML
 
 `rp-uml2linkml` SHALL read an Enterprise Architect `.qea` file read-only and write one LinkML
-module per UML package, the packages of an import cycle together as one module, and a root schema
-importing them. A module is `module_kind: domain` unless its package's `module_kind` tagged value
-names another kind of the metamodel's `ModuleKind`; any other value fails the run. When every class, slot and enumeration of the model
+module per UML package, packages whose classes refer to each other included (their modules import
+each other), and a root schema importing them. A module is `module_kind: domain` unless its
+package's `module_kind` tagged value names another kind of the metamodel's `ModuleKind`; any other
+value fails the run. When every class, slot and enumeration of the model
 carries a note, `rp-generate`'s lint and boundary check pass on the output unchanged; an element
 without a note gets no placeholder description, and the report lists it. A slot used in several
 packages is defined once, in the module the others reach by imports, and fails the run when there is
@@ -42,10 +43,10 @@ stated on the UML conventions page.
   fails the run naming the package
 
 #### Scenario: packages that refer to each other
-- **GIVEN** two packages whose classes refer to each other
-- **WHEN** they are converted
-- **THEN** both are written as one module, named after the first package in path order, and the
-  report has a `merged-cycle` line naming both packages
+- **GIVEN** two packages `books` and `shelves` whose classes refer to each other
+- **WHEN** they are converted, and `rp-generate` runs on the output
+- **THEN** each package is its own module (`app_books`, `app_shelves`), each importing the other,
+  the report has no line about the cycle, and the generated package imports
 
 #### Scenario: an element without a note
 - **GIVEN** a class with no note
@@ -91,6 +92,12 @@ stated on the UML conventions page.
 - **GIVEN** a converted schema and an unchanged model
 - **WHEN** it is converted again
 - **THEN** the output is byte-identical
+
+#### Scenario: packages of different kinds that refer to each other
+- **GIVEN** an access package and a domain package whose classes refer to each other
+- **WHEN** they are converted, and `rp-generate` runs on the output
+- **THEN** the conversion succeeds with one module per package, each with its own `module_kind`,
+  and `rp-generate`'s boundary check refuses the domain module because it imports the access one
 
 ### Requirement: The toolkit is reused, not redefined
 
