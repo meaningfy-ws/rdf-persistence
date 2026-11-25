@@ -18,5 +18,8 @@ merged at `579f283a`):
    administers the tenant" (RISK-2).
 7. A migration file renaming to `a,b` was refused at load (E12, D-14).
 
+**Delivery decisions validated:** D-8 to D-15 (`design.md`, Delivery decisions), all accepted by
+the developer, 2026-11-25 (R-0007).
+
 **Found in the demo:** step 6 listed `tenant:member` once per stale grant. The developer chose to
 de-duplicate it in the close (design.md D-15).
