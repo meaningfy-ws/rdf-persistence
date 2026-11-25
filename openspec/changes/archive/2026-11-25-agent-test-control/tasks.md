@@ -136,15 +136,17 @@ this repository's convention: `DEC-n` is in proposal.md, `PD-n` in design.md, pl
 
 ## 4. Close
 
-- [ ] 4.1 DEC-1. The skillery issue, opened as meaningfy-ws/skillery#360 (2026-11-25); after the merge, a comment with the
+- [x] 4.1 DEC-1. The skillery issue, opened as meaningfy-ws/skillery#360 (2026-11-25); after the merge, a comment with the
   merged file list and 2.5's times.
-- [ ] 4.2 The lead's full gates, the review set of `develop/agents.adoc#challenge` for one stage
+- [x] 4.2 The lead's full gates, the review set of `develop/agents.adoc#challenge` for one stage
   (L2+L3 and the full review on the same PR), the fix pass, the PR, the merge.
-- [ ] 4.3 DEC-8, after the merge. From Langfuse, over the first epic session with at least three
+- [x] 4.3 *Carried forward at the archive (developer, 2026-11-25): measured in the follow-up EPIC
+  once sessions run on the merged code; recorded in handover.md and the follow-up's inputs.*
+  DEC-8, after the merge. From Langfuse, over the first epic session with at least three
   sessions running: builders' task-gate wall time (median); `make check-all` wall time minus the
   `test queue: waited` seconds; each builder's share of wall time waiting on gates. Recorded in
   `evidence/measure.md` against the targets; a missed target goes to the developer.
-- [ ] 4.4 Archive the change (`spec-stewardship`).
+- [x] 4.4 Archive the change (`spec-stewardship`).
 
 ## Roadmap
 
