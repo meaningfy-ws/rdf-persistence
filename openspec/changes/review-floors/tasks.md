@@ -16,52 +16,52 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
 
 ## 1. Stage 1: persistence, collaboration and the test helpers (#252, #235, #272 b/d/e/f, #275)
 
-- [ ] 1.0 Lead: re-check the #252, #235, #272 and #275 rows of `inputs/triage.md` on the current `develop`
+- [x] 1.0 Lead: re-check the #252, #235, #272 and #275 rows of `inputs/triage.md` on the current `develop`
   (RISK-6); re-index GitNexus; a row no longer present is struck with a note.
-- [ ] 1.1 252-j1, unit. Red: `tests/unit/persistence/test_session_referenced_removal.py::test_a_key_held_elsewhere_wins_over_a_removed_root_still_referenced`
+- [x] 1.1 252-j1, unit. Red: `tests/unit/persistence/test_session_referenced_removal.py::test_a_key_held_elsewhere_wins_over_a_removed_root_still_referenced`
   asserts the commit raises `KeyConflict` (not `InUse`) when the store reports both a held key and
   a referenced removed root (PD-4 of `delete-refuses-referenced`). Mutation: swap the two `if`
   blocks of `Transaction._refused_by_store`.
-- [ ] 1.2 252-j2, unit. Red: `tests/unit/persistence/test_session_referenced_removal.py::test_no_type_is_read_when_no_link_names_a_removed_root`
+- [x] 1.2 252-j2, unit. Red: `tests/unit/persistence/test_session_referenced_removal.py::test_no_type_is_read_when_no_link_names_a_removed_root`
   asserts `FakeStore.sent(...)` holds no heads read naming the removed author for a commit that
   removes one author and adds a book linking another (design.md, *Worked examples*). Mutation:
   `named = sorted(removed)` in `_refuse_links_to_removed`.
-- [ ] 1.3 235-o2, unit. Red: `tests/unit/collaboration/test_collaboration_nesting.py::test_a_shelf_held_by_two_nesting_shelves_is_allowed`
+- [x] 1.3 235-o2, unit. Red: `tests/unit/collaboration/test_collaboration_nesting.py::test_a_shelf_held_by_two_nesting_shelves_is_allowed`
   saves nesting shelves P1 and P2 that both hold shelf S, then a replace of S with its member
   class unchanged; asserts the three commits succeed and a deep read of each parent holds S.
   Mutation: make `_check_held_member_class` refuse when `_holders` returns more than one holder
   (it runs on the replace of S, whose holders are P1 and P2).
-- [ ] 1.4 252-i (PD-4), after 1.1-1.2, unit. Red: none (DEC-3, a move). Guard: the three files'
+- [x] 1.4 252-i (PD-4), after 1.1-1.2, unit. Red: none (DEC-3, a move). Guard: the three files'
   tests pass, and `make refresh-map` (run by the lead) exits 0 and removes no row: every test id
   is unchanged.
-- [ ] 1.5 252-g1, g2, g4 (PD-3) and 252-h1, h2 (the docstring texts of PD-16), unit. Red: none (DEC-3). Guard:
+- [x] 1.5 252-g1, g2, g4 (PD-3) and 252-h1, h2 (the docstring texts of PD-16), unit. Red: none (DEC-3). Guard:
   `tests/unit/collaboration/test_referenced_removals.py` (whole file),
   `tests/unit/api/test_openapi.py`, `tests/unit/api/test_contract.py`,
   `tests/unit/api/test_delete_in_use.py`. The `InUse` text is unchanged byte for byte.
-- [ ] 1.6 235-m1, m2 (PD-5), unit. Red: none (DEC-3). Guard: `test_collaboration_nesting.py`
+- [x] 1.6 235-m1, m2 (PD-5), unit. Red: none (DEC-3). Guard: `test_collaboration_nesting.py`
   (with 1.3's test), `test_collaboration_nesting_cycles.py`,
   `test_collaboration_nesting_adversarial.py` (its three `xfail(strict=True)` stay xfail),
   `test_collaboration_nested_reads.py`; the three `# noqa: PLR0913` are gone. Then the
   adversarial tester on the write guard (RISK-1).
-- [ ] 1.7 252-f (PD-2). Red: `make check-architecture` with the two modules added to
+- [x] 1.7 252-f (PD-2). Red: `make check-architecture` with the two modules added to
   `collaboration-layers` in `.importlinter`; it must pass on today's imports (a refusal is
   reported, PD-2). Mutation: an import of `collaboration.services.collaboration` planted in
   `referrer_naming.py` makes it fail.
-- [ ] 1.8 252-e (PD-1) and 252-h3 (PD-16), unit. Red: none (DEC-3). Edit the two YAML files and
+- [x] 1.8 252-e (PD-1) and 252-h3 (PD-16), unit. Red: none (DEC-3). Edit the two YAML files and
   the slug text, then `make generate`, `make refresh-golden`, `make refresh-served-golden`.
   Guard: `tests/unit/testkit/test_shape_snapshot.py`,
   `tests/unit/package/test_public_surface.py`, `tests/unit/api/test_problems.py`,
   `make check-generated`; `git diff --stat` lists only the files PD-1 and PD-16 name.
-- [ ] 1.9 #275 (PD-22), unit. Red: `tests/unit/api/test_tenancy_double.py::test_the_tenancy_double_takes_what_tenant_session_takes`
+- [x] 1.9 #275 (PD-22), unit. Red: `tests/unit/api/test_tenancy_double.py::test_the_tenancy_double_takes_what_tenant_session_takes`
   fails while `TenancyDouble` does not exist. Mutation once it passes: a new keyword on
   `Tenancy.tenant_session` (reverted). Then the four doubles go. Guard:
   `test_iri_policy_minting.py`, `test_replace_internal_values.py` and the users of
   `iri_policy_helpers.py` pass unedited in what they assert.
-- [ ] 1.10 272-b (PD-18), unit. Red: none (DEC-3, a move). Guard: `test_library_app.py` and
+- [x] 1.10 272-b (PD-18), unit. Red: none (DEC-3, a move). Guard: `test_library_app.py` and
   `tests/unit/tooling/test_no_cross_test_imports.py` and `tests/unit/tooling/test_changed.py`
   pass; `make check-docs` (the `user-manual/index.adoc` path); the lead runs `make test-e2e` once
   in 1.12 (`test_library.py`'s public-imports check reads the moved file).
-- [ ] 1.11 272-d, 272-e, 272-f (PD-17), last of stage 1 (after 1.4, 1.9 and 1.10), unit and generator unit. Red:
+- [x] 1.11 272-d, 272-e, 272-f (PD-17), last of stage 1 (after 1.4, 1.9 and 1.10), unit and generator unit. Red:
   `tests/unit/tooling/test_toy_vocabulary.py::test_book_json_is_new_on_each_call` asserts
   `book_json()["chapters"] is not book_json()["chapters"]` and that appending to one leaves the
   next call's list empty of it (fails today: `book_json` absent). Then PD-17's constants and
@@ -177,7 +177,7 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
 
 ## Roadmap
 
-- [ ] 1.0 · [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 · [ ] 1.10 · [ ] 1.11 · [ ] 1.12
+- [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12
 - [ ] 2.0 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6 · [ ] 2.7 · [ ] 2.8
 - [ ] 3.0 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 3.6 · [ ] 3.7 · [ ] 3.8 · [ ] 3.9 · [ ] 3.10 · [ ] 3.11
 - [ ] 4.1 · [ ] 4.2
