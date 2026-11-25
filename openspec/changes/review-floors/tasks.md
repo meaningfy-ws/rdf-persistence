@@ -12,7 +12,7 @@ check-quality` after a change to a port or a `domain` module). Commit body
 `Refs: review-floors <task> <PD>` plus `Refs: #<issue>`. Builders never commit, never edit
 `tests/audit/scenario-map.csv` (the lead adds rows, then `make refresh-map`), and stop and report
 instead of editing an assertion (P-0019). One branch per stage off `develop`
-(`change/review-floors-s1`, `-s2`, `-s3`), one PR each, merged on green CI (DEC-5).
+(`change/review-floors-s1`, `-s2`, `-s3`), one PR each, merged per DEC-5.
 
 ## 1. Stage 1: persistence, collaboration and the test helpers (#252, #235, #272 b/d/e/f, #275)
 
@@ -71,7 +71,7 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
   lists `tests/toy.py`, `tests/events_follow.py` and exactly PD-17's four exceptions;
   `rg -n "poll_seconds=0\.01" tests` is empty.
 - [ ] 1.12 Lead: `make check-all`, `make check-generated`, `make refresh-map`; one L2+L3 pass
-  (P-0005) that also checks the diff against the **P** rows; the PR; merge on green CI.
+  (P-0005) that also checks the diff against the **P** rows; the PR; merge per DEC-5.
 
 ## 2. Stage 2: the generator (#192, #189)
 

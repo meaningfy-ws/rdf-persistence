@@ -48,3 +48,9 @@ Two nits folded in after the run: `test_changed.py:58`'s rule-5 example (`tests/
 the `BOOK_JSON` use count (33).
 
 The owner signs off the two spec-delta scenarios (`rp-generation`, `rp-testkit`) at the PR.
+
+EPIC readiness check (lightweight), 2026-11-25, after the fold-in: pass. Every template
+section is present. The Why and the solution outline now name the ten issues and their stages.
+Every key decision has a `DEC-` id (DEC-6 added); DEC-5 now follows the merge rules in force
+(P-0013, P-0021). The no-gos name #371 and #372 as `consumer-friction`'s. The only item whose
+DEC-1 status was unsettled, 272-c, is decided by DEC-6.

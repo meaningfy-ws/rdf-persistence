@@ -26,14 +26,17 @@ issues. They mix three kinds of work: tidy-ups that keep behaviour (structure, t
 that change what a caller sees, and load work that waits for a consumer. While they sit together,
 none closes, and the next change that touches the same code meets the same findings again. This
 EPIC takes the first kind, all of it, and sends the rest to named homes, so each issue ends this
-EPIC either closed or holding only behaviour-changing items.
+EPIC either closed or holding only behaviour-changing items. Three more issues hold test debt of
+the same kind, deferred by `test-debt-paydown` (#272, #273) and found in `aggregate-validators`
+(#275). They touch the same test helpers (`tests/toy.py`, the API test doubles), so the owner
+folded them in (DEC-6), and all three close with this EPIC.
 
 ## Solution outline
 
-1. **Triage, recorded:** every item of the seven issues has one class in `inputs/triage.md`:
+1. **Triage, recorded:** every item of the ten issues has one class in `inputs/triage.md`:
    preserving (in scope), behaviour-changing (out, with a follow-up home), query-changing (out),
-   rabbit-hole (out) or already done.
-2. **Stage 1, persistence and collaboration (#252, #235):** characterisation tests first (a
+   rabbit-hole (out) or already done. It was re-checked on 2026-11-25: no item was fixed since.
+2. **Stage 1, persistence, collaboration and the test helpers (#252, #235, #272 b/d/e/f, #275):** characterisation tests first (a
    `KeyConflict` wins over an `InUse`; the type read is skipped when no link names a removed root;
    a sub-collection held by two nesting parents is allowed); the referrer tests share their
    helpers; the referrer-naming code computes once and takes the types it needs; the import
@@ -48,7 +51,7 @@ EPIC either closed or holding only behaviour-changing items.
    one home per repeated constant; the stored-file class found once per caller; the test-only
    vocabulary constants moved out of the library; the test assertions, the theme map and the
    config tests brought to `testing.adoc`; one spec scenario worded as its test runs it.
-4. **Stage 3, events, testkit and docs (#215, #214, #125, #189):** the D-7 test and its
+4. **Stage 3, events, testkit and docs (#215, #214, #125, #189, #272 a/c, #273):** the D-7 test and its
    scenario, the import check for the testkit root, `re.escape` on the URLs, a test that fails
    without `relay.wake()`, a Redis test of redelivery by `claim_idle` within one run; the event
    stream how-to states its outcomes; the getting-started tutorial and the route-shapes rule of
@@ -79,8 +82,10 @@ it), and `make check-generated` shows no change of meaning in a generated artefa
 - **DEC-4:** each seed issue ends this EPIC either closed (nothing left but done items) or
   narrowed by a comment to its behaviour-changing items and their recommended home. No issue is
   closed with an item silently dropped.
-- **DEC-5:** three stages, one PR each, merged on green CI (P-0013); one L2+L3 pass per stage and
-  the full review once at the end (P-0005).
+- **DEC-5:** three stages, one PR each, merged by the merge rules in force at the time (P-0013,
+  P-0021: on green CI, or, while the owner has GitHub CI suspended, on a passing local `make
+  check-all` recorded in the PR); one L2+L3 pass per stage and the full review once at the end
+  (P-0005).
 - **DEC-6:** the owner folded in #272 (all six items), #273 and #275 on 2026-11-25
   (`inputs/qa.md`, round 2). Five of #272's items, #273 and #275 are preserving under DEC-1;
   272-c adds an internal function, `load_warm_shapes` in `api.services.shacl`, and the owner took
