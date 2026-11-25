@@ -15,7 +15,7 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
 - [x] 1.3 `user-manual/test.adoc`: "Aim a fault at the request" (`relay.paused()`,
   `design.md#decisions` D-1) and "Hold concurrent writes" (`hold`, `design.md#risks` RISK-3). The examples are the feature test's code. Public-surface
   snapshot (`make refresh-surface`) if `hold` shows there. Accept: `make check-docs`.
-- [ ] 1.4 Lead: `make check-all`, one review pass, PR. This EPIC lands with it.
+- [x] 1.4 Lead: `make check-all`, one review pass, PR. This EPIC lands with it.
 
 ## 2. API: a referrer says where to read it (#320), PR 2, branch `feat/referrer-location`
 
@@ -55,7 +55,7 @@ EPIC: consumer-test-gaps (proposal.md, #319, #320, #323, #332). Decisions: DEC-1
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 1.4 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 ·
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 ·
   [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 4.1 · [ ] 4.2
 
 ## Verification

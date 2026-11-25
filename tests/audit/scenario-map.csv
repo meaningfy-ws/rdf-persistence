@@ -5163,3 +5163,4 @@ tests/unit/testkit/test_fake_store.py::test_e7_calls_after_the_until_th_do_not_w
 tests/unit/testkit/test_fake_store.py::test_e8_an_armed_fault_goes_to_the_first_call_released,requirement,rp-testkit,A test can hold concurrent writes,,high,name; E8
 tests/feature/test_testkit_faults.py::test_the_request_takes_the_armed_fault,scenario,rp-testkit,A fault test can keep the relay out,the request takes the armed fault,high,"feature,name; E1"
 tests/feature/test_testkit_faults.py::test_two_writers_at_one_version,scenario,rp-testkit,A test can hold concurrent writes,two writers at one version,high,"feature,name; E2"
+tests/unit/testkit/test_fake_store.py::test_e4_a_call_after_the_timeout_does_not_fill_the_hold,scenario,rp-testkit,A test can hold concurrent writes,a hold that never fills,high,name; E4 (D-11)
