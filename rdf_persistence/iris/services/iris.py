@@ -19,6 +19,7 @@ from rdf_persistence.core.domain.exceptions import InvalidIri, NotFound
 from rdf_persistence.iris.domain.layout import (
     _SEGMENT,
     APPLICATION_ID,
+    GRAPH_SUFFIX,
     LAYOUT_WORDS,
     LOADED_GRAPH_TYPE,
     _segment,
@@ -600,7 +601,7 @@ class Iris:
     def is_aggregate_graph(self, tenant: str, iri: str) -> bool:
         """True when ``iri`` is the ``graph_iri`` of an aggregate of ``tenant`` (never of the tenant root)."""
         tenant, iri = str(tenant), str(iri)
-        root = iri.removesuffix("/graph")
+        root = iri.removesuffix(GRAPH_SUFFIX)
         not_a_graph_root = (iri, tenant, str(self.access(tenant)))
         return root not in not_a_graph_root and self.is_aggregate(tenant, root)
 

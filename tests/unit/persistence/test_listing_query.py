@@ -126,7 +126,7 @@ def view() -> SchemaView:
     return load_schema(TOY_SCHEMA)
 
 
-async def session_of(policy: Policy) -> Session:
+async def session_of(policy: Policy, **options) -> Session:
     store = FakeStore()
     await store.create_dataset(FAKE_DATABASE)
     return Session(
@@ -136,6 +136,7 @@ async def session_of(policy: Policy) -> Session:
         principal=FAKE_PRINCIPAL,
         clock=lambda: datetime(2026, 11, 8, tzinfo=UTC),
         iris=policy.iris,
+        **options,
     )
 
 
@@ -485,7 +486,11 @@ def _linked_book(policy: Policy, n: int, label: str, **links: str) -> tuple[str,
 @pytest.fixture
 async def linked(policy) -> Session:
     """Two authors (1: Herbert, 2: Austen); books 1 to 4 (1 and 3 and 4 by Herbert, 3 follows 1, 4 follows 3); two displays."""
-    session = await session_of(policy)
+    return await linked_session(await session_of(policy), policy)
+
+
+async def linked_session(session: Session, policy: Policy) -> Session:
+    """``session`` holding the linked books: see ``linked``."""
     for n, name in [(1, HERBERT), (2, AUSTEN)]:
         iri = policy.aggregate_iri("author", "authors", n)
         model = Author(id=iri, label=name, description=f"{name}.")
@@ -621,6 +626,47 @@ async def test_a_graph_hidden_from_the_caller_hides_the_hop_it_would_reach(linke
         [2],
         1,
     ), "the other authors still match"
+
+
+async def test_find_through_a_reference_ignores_prohibitions_on_the_referenced_graph(
+    view, policy
+):  # S8, PD-6
+    refuses_authors = "/authors/"
+    session = await linked_session(
+        await session_of(
+            policy,
+            listings=Listings(view),
+            may_read=lambda iri: refuses_authors not in iri,
+        ),
+        policy,
+    )
+    assert [
+        policy.number(iri) for iri in await session.find(Book, **{"written_by.label": HERBERT})
+    ] == [
+        1,
+        3,
+        4,
+    ], "a hidden author graph is still read by find: no hidden graph reaches its plan"
+
+
+# E15: the texts that would break out of a literal, through a path equality and a path contains
+@pytest.mark.parametrize("policy", [POLICIES[0]], indirect=True, ids=["default"])
+@pytest.mark.parametrize("name", ["written_by.label", "written_by.label~"])
+@pytest.mark.parametrize(
+    "text",
+    [HOSTILE, '"', "\\", "}", "a\nb", "\\u0022"],
+    ids=["break-out", "quote", "backslash", "brace", "newline", "unicode-escape"],
+)
+async def test_a_hostile_path_filter_value_matches_nothing_and_leaves_the_store_unchanged(
+    linked, view, policy, name, text
+):
+    before = await listed_of(linked, view, policy, "Book")
+    assert await listed_of(linked, view, policy, "Book", (name, text)) == ([], 0), (
+        "the value stays one literal and matches nothing"
+    )
+    plan = Listings(view).plan(view.get_class("Book"), list_request([(name, text)]), [])
+    prepareQuery(listing_query(URIRef(f"{FAKE_TENANT}/registry"), plan))
+    assert await listed_of(linked, view, policy, "Book") == before, "and the store is unchanged"
 
 
 def test_the_query_is_one_construct_with_the_total_and_no_value_pasted_in(view):

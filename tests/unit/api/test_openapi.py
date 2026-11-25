@@ -9,6 +9,7 @@ from openapi_spec_validator import validate
 
 from rdf_persistence.api.entrypoints.problems import CONFLICT as VERSION_CONFLICT
 from rdf_persistence.api.entrypoints.problems import KEY_CONFLICT, KINDS
+from rdf_persistence.api.entrypoints.openapi import PATH_FILTER_DESCRIPTION
 from rdf_persistence.core.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS, TURTLE
 from rdf_persistence.persistence.services.listing import listable_slots
 from rdf_persistence.schema.services.schema_structure import holds_text, is_internal
@@ -192,12 +193,6 @@ def test_a_listing_takes_a_parameter_per_slot_of_the_type_and_the_paging_ones(
     assert queries == {*slots, *contains, "limit", "offset", "sort", "absent"}, (
         "a listing takes a parameter per slot, a contains one per text slot, the paging ones and absent"
     )
-
-
-PATH_FILTER_DESCRIPTION = (
-    "A filter may go through up to three references: "
-    "`<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`."
-)
 
 
 @pytest.mark.parametrize(

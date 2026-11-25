@@ -462,3 +462,15 @@ async def test_find_with_a_dotted_keyword_goes_through_the_reference_on_a_real_s
     assert await session.find(Book, **{"written_by.label": "Frank Herbert"}) == [books[0]], (
         "find goes through the reference and returns the IRIs of the books"
     )
+    hiding = Session(
+        store,
+        database=database,
+        tenant_iri=TENANT,
+        principal=ADA,
+        clock=Ticker(),
+        listings=Listings(load_schema(TOY_SCHEMA)),
+        may_read=lambda iri: iri not in authors,  # PD-6: the author's graph is prohibited
+    )
+    assert await hiding.find(Book, **{"written_by.label": "Frank Herbert"}) == [books[0]], (
+        "find ignores prohibitions (PD-6): the hidden author still matches"
+    )

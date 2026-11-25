@@ -279,3 +279,39 @@ Taken by the lead during delivery (R-0007), for the developer to validate at the
   ones D-2 fixes.
 - **D-11 (task 1.6):** the empty-segment check applies only to a name holding a dot, so `absent=`
   and a bare `~` keep their existing "has no slot" message.
+- **D-12 (review set, P-0005):** the one stage is the end of the EPIC, so it takes the full review
+  once: L1, L2 and L3 as three single-lens runs, and L4 and L5 together as one run, as
+  `tasks.md` and `develop/agents.adoc#challenge` set; one round, no second pass.
+- **D-13 (review L1-W1, the No-go "no path fed to guards or `matches`"):** a membership rule's
+  `equals_slot` reaches `Listings._filtered` through `rule_plan`, so a dotted slot would feed a path
+  condition to `Session.matches` and the commit guard, which render no hidden graphs (D-3). The
+  toolkit refuses a path in a membership rule with `BadQuery`, keeping the No-go. Lifting it is a
+  new EPIC.
+
+### Review findings (one round, D-12)
+
+Accepted, fixed by one fixer:
+
+- **F1 (L2-W1, E15):** a hostile value through a path equality and a path contains stays one literal.
+- **F2 (L2-W2, S8 / PD-6):** `find` with a dotted keyword still returns an aggregate the principal
+  is prohibited from reading.
+- **F3 (L1-W1):** D-13, with its test.
+- **F4 (L4-W4):** `via` passed to the `Condition` constructors, not by `model_copy(update=…)`.
+- **F5 (L5-W1):** the OpenAPI description and the `find` docstring take the cap and the syntax from
+  `MAX_HOPS`, `PATH` and `CONTAINS`.
+- **F6 (L5-W2, L3-S1):** `is_aggregate_graph` (`iris/services/iris.py`) uses `GRAPH_SUFFIX`.
+- **F7 (L4-W3, and `make check-all`):** Xenon ranks `_filtered` C and `listing.py` B, failing
+  `clean-code`. The path validation and the hop walk move out of `_filtered` into their own method.
+
+Under the floor (recorded, not fixed):
+
+- L1-W2: a stored reference value pointing at another class's aggregate makes the hop read that
+  aggregate's graph. Only aggregate graphs end in `/graph` (`graph` is a layout word, PD-5), and a
+  hidden graph is still left out, so nothing the caller may not read is reached.
+- L1-S1: no cap on the number of filters per request (RISK-2 accepted).
+- L5-S5: `_path_patterns` could reuse `_root_patterns` for the last segment.
+- L5-S6: the hop's graph from the registry instead of `GRAPH_SUFFIX`, only if RISK-2 shows; it
+  changes D-2.
+- L5-S7: a shared `is_aggregate_root` helper (third copy of the ancestry check).
+- L2-S3: covered by D-13 (no path reaches `matches` or the guard).
+- L2-S4: tasks 1.8 and 2.x close at the PR and after the merge.

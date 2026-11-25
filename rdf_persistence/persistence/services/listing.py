@@ -203,12 +203,14 @@ def typed_value(view: SchemaView, slot: SlotDefinition, text: str) -> URIRef | L
     return term
 
 
-def _condition(predicate: URIRef, value: URIRef | Literal) -> Condition:
-    """The condition that the aggregate has ``predicate`` with ``value``, as the plan keeps it."""
+def _condition(
+    predicate: URIRef, value: URIRef | Literal, via: list[str] | None = None
+) -> Condition:
+    """The condition that the aggregate has ``predicate`` with ``value`` (through ``via``), as the plan keeps it."""
     if isinstance(value, URIRef):
-        return Condition(predicate=str(predicate), value=str(value), reference=True)
+        return Condition(predicate=str(predicate), value=str(value), reference=True, via=via)
     datatype = str(value.datatype) if value.datatype else None
-    return Condition(predicate=str(predicate), value=str(value), datatype=datatype)
+    return Condition(predicate=str(predicate), value=str(value), datatype=datatype, via=via)
 
 
 def _term(condition: Condition) -> URIRef | Literal:
@@ -330,29 +332,40 @@ class Listings:
         """
         if filter_.absent and PATH in filter_.slot:
             raise BadQuery(f"absent takes a slot of {cls.name}, not a path")
-        names = filter_.slot.split(PATH)
-        if len(names) > 1 and not all(names):
-            raise BadQuery(f"{filter_.slot!r} has an empty segment")
-        if len(names) - 1 > MAX_HOPS:
-            raise BadQuery(f"a filter crosses at most {MAX_HOPS} references")
-        via: list[str] = []
-        current = cls
-        for name in names[:-1]:
-            reference = self._slot(current, name)
-            current = self._hop(current, reference)
-            via.append(str(self._predicate(reference)))
-        slot = self._slot(current, names[-1])
+        current, slot, hops = self._resolved(cls, filter_.slot)
+        via = hops or None
         if filter_.absent:
             if filter_.contains:
                 raise BadQuery(f"a filter on {filter_.slot!r} cannot be both contains and absent")
             return Condition(predicate=str(self._predicate(slot)), value="", absent=True)
         if filter_.contains:
-            condition = self._contains(current, slot, filter_.value)
-        else:
-            condition = _condition(
-                self._predicate(slot), typed_value(self._view, slot, filter_.value)
-            )
-        return condition.model_copy(update={"via": via}) if via else condition
+            return self._contains(current, slot, filter_.value, via=via)
+        return _condition(
+            self._predicate(slot), typed_value(self._view, slot, filter_.value), via=via
+        )
+
+    def _resolved(
+        self, cls: ClassDefinition, name: str
+    ) -> tuple[ClassDefinition, SlotDefinition, list[str]]:
+        """The class a filter's slot name reaches, its last slot, and the predicates of the hops (``via``), in order.
+
+        Raises:
+            BadQuery: The path has an empty segment, crosses more than ``MAX_HOPS`` references, or
+                crosses a slot that is no reference to an aggregate of the database (``_hop``), or
+                a segment is not a listable slot.
+        """
+        names = name.split(PATH)
+        if len(names) > 1 and not all(names):
+            raise BadQuery(f"{name!r} has an empty segment")
+        if len(names) - 1 > MAX_HOPS:
+            raise BadQuery(f"a filter crosses at most {MAX_HOPS} references")
+        via: list[str] = []
+        current = cls
+        for segment in names[:-1]:
+            reference = self._slot(current, segment)
+            current = self._hop(current, reference)
+            via.append(str(self._predicate(reference)))
+        return current, self._slot(current, names[-1]), via
 
     def _hop(self, cls: ClassDefinition, reference: SlotDefinition) -> ClassDefinition:
         """The class ``reference`` of ``cls`` points at, when a filter may cross it: an aggregate root of the listing's database.
@@ -382,8 +395,10 @@ class Listings:
             )
         return target
 
-    def _contains(self, cls: ClassDefinition, slot: SlotDefinition, text: str) -> Condition:
-        """The condition that a value of ``slot`` contains ``text``, ignoring case.
+    def _contains(
+        self, cls: ClassDefinition, slot: SlotDefinition, text: str, via: list[str] | None = None
+    ) -> Condition:
+        """The condition that a value of ``slot`` contains ``text``, ignoring case, through ``via``.
 
         Raises:
             BadQuery: The slot is not a string slot, or the text is empty.
@@ -393,7 +408,7 @@ class Listings:
             raise BadQuery(f"{cls.name} slot {name!r} is not a string; ~= takes a string slot")
         if not text:
             raise BadQuery(f"~= on {name!r} needs at least one character")
-        return Condition(predicate=str(self._predicate(slot)), value=text, contains=True)
+        return Condition(predicate=str(self._predicate(slot)), value=text, contains=True, via=via)
 
     def _sort(self, cls: ClassDefinition, key: str | None) -> tuple[URIRef | None, bool]:
         if key is None:

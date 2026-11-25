@@ -72,9 +72,12 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
 )
 from rdf_persistence.persistence.services.listing import (
     ABSENT,
+    CONTAINS,
     DESCENDING,
     LIMIT,
+    MAX_HOPS,
     OFFSET,
+    PATH,
     SORT,
     listable_slots,
     sort_keys,
@@ -99,8 +102,8 @@ _OPERATION_PARTS = ("parameters", "requestBody", "security")
 
 # What an aggregate listing says of its filters beyond the one parameter per slot (no parameter is added).
 PATH_FILTER_DESCRIPTION = (
-    "A filter may go through up to three references: "
-    "`<reference>.<slot>=<value>` or `<reference>.<slot>~=<text>`."
+    f"A filter may go through up to {MAX_HOPS} references: "
+    f"`<reference>{PATH}<slot>=<value>` or `<reference>{PATH}<slot>{CONTAINS}=<text>`."
 )
 
 # The problems of each kind of route, in the order of the status codes (the error matrix).
