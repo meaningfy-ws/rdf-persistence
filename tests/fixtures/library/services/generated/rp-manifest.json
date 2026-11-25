@@ -35,7 +35,7 @@
     },
     {
       "path": "rdf_persistence/model/technical/iris/rp_iris_services.yaml",
-      "sha256": "c826e00b6507bfac33c84bc583ceb92f9eb26be5aaff87f1544d493f74cc0dd9"
+      "sha256": "9f45a54a4571be3099f0806bf7b43ccb7238f732872b21df549ae6359db72265"
     },
     {
       "path": "rdf_persistence/model/technical/migrations/rp_migrations_services.yaml",
@@ -333,7 +333,7 @@
     },
     {
       "path": "web/src/services/generated/rp_service.ts",
-      "sha256": "fad93d91830431dbbcbad973fcce1f03add0d1b23ba6ae50bf5f3d51a9edb392"
+      "sha256": "21e8880b6e56e3772000162d8fd3d18c54ea6b758d6855aa29b9bee308dd0b33"
     },
     {
       "path": "web/src/services/generated/rp_tenancy.ts",
