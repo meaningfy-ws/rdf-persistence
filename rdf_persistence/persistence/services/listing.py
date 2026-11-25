@@ -42,11 +42,14 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
 )
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema_structure import (
+    AGGREGATE_ROOT,
+    database_of,
     holds_iri,
     holds_owned_part,
     holds_text,
     is_bookkeeping,
     is_internal,
+    is_tenant_root,
     rdf_term,
     served_roots,
 )
@@ -60,6 +63,10 @@ RESERVED = frozenset({LIMIT, OFFSET, SORT, ABSENT})
 # A parameter name ending in it asks for a contains filter on the name without it.
 CONTAINS = "~"
 DESCENDING = "-"
+# A slot name with it crosses references: ``written_by.label`` is the label of the book's author.
+PATH = "."
+# The most references a filter crosses.
+MAX_HOPS = 3
 _DIGITS = re.compile(r"[0-9]+")
 _SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:\S+")
 
@@ -311,18 +318,69 @@ class Listings:
     def _filtered(self, cls: ClassDefinition, filter_: Filter) -> Condition:
         """The condition of one filter: its slot resolved, its value typed (equality), kept (contains) or unread (absent).
 
+        A slot name with dots is a path through references (D-4): every name but the last is a
+        reference to an aggregate of the listing's database (``_hop``), the last is resolved on the
+        class it reaches, and the condition's ``via`` holds the predicates of the hops, in order.
+
         Raises:
-            BadQuery: The slot is not listable, the filter is both contains and absent, or it fails
-                as ``_contains`` or ``typed_value`` say.
+            BadQuery: The slot is not listable, the filter is both contains and absent, an absence
+                filter names a path, a path has an empty segment, crosses more than ``MAX_HOPS``
+                references or crosses a slot that is no reference to an aggregate of the database,
+                or it fails as ``_contains`` or ``typed_value`` say.
         """
-        slot = self._slot(cls, filter_.slot)
+        if filter_.absent and PATH in filter_.slot:
+            raise BadQuery(f"absent takes a slot of {cls.name}, not a path")
+        names = filter_.slot.split(PATH)
+        if len(names) > 1 and not all(names):
+            raise BadQuery(f"{filter_.slot!r} has an empty segment")
+        if len(names) - 1 > MAX_HOPS:
+            raise BadQuery(f"a filter crosses at most {MAX_HOPS} references")
+        via: list[str] = []
+        current = cls
+        for name in names[:-1]:
+            reference = self._slot(current, name)
+            current = self._hop(current, reference)
+            via.append(str(self._predicate(reference)))
+        slot = self._slot(current, names[-1])
         if filter_.absent:
             if filter_.contains:
                 raise BadQuery(f"a filter on {filter_.slot!r} cannot be both contains and absent")
             return Condition(predicate=str(self._predicate(slot)), value="", absent=True)
         if filter_.contains:
-            return self._contains(cls, slot, filter_.value)
-        return _condition(self._predicate(slot), typed_value(self._view, slot, filter_.value))
+            condition = self._contains(current, slot, filter_.value)
+        else:
+            condition = _condition(
+                self._predicate(slot), typed_value(self._view, slot, filter_.value)
+            )
+        return condition.model_copy(update={"via": via}) if via else condition
+
+    def _hop(self, cls: ClassDefinition, reference: SlotDefinition) -> ClassDefinition:
+        """The class ``reference`` of ``cls`` points at, when a filter may cross it: an aggregate root of the listing's database.
+
+        An abstract range is allowed; the tenant root is not (its graph is the meta graph, not
+        ``<root>/graph``).
+
+        Raises:
+            BadQuery: The range is no aggregate root or is the tenant root, or it lives in another database.
+        """
+        name = underscore(reference.name)
+        target = self._view.all_classes().get(str(reference.range))
+        if (
+            target is None
+            or AGGREGATE_ROOT not in self._view.class_ancestors(target.name)
+            or is_tenant_root(target)
+        ):
+            raise BadQuery(
+                f"{cls.name} slot {name!r} is not a reference to an aggregate; "
+                "a filter crosses references only"
+            )
+        database = database_of(self._view, target)
+        if database != self._database:
+            raise BadQuery(
+                f"{cls.name} slot {name!r} refers to the {database.value} database; "
+                "a filter stays in one database"
+            )
+        return target
 
     def _contains(self, cls: ClassDefinition, slot: SlotDefinition, text: str) -> Condition:
         """The condition that a value of ``slot`` contains ``text``, ignoring case.

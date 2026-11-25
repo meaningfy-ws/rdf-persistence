@@ -58,6 +58,52 @@ async def test_a_book_the_caller_is_prohibited_from_reading_is_not_listed_or_cou
     assert len(await shelf.labels(who="ada")) == 5, "the librarian is not prohibited"
 
 
+async def written_by(shelf: Shelf, name: str, *books: str) -> str:
+    """POST an author called ``name`` and a book per label in ``books`` written by them; the author's IRI."""
+    made = await shelf.http.post(
+        f"{shelf.tenant}/authors",
+        json={"label": name, "description": f"{name}."},
+        headers=shelf.headers(),
+    )
+    assert made.status_code == 201, made.text
+    author = made.json()["id"]
+    for label in books:
+        body = {**DUNE_BODY, "label": label, "written_by": author}
+        created = await shelf.http.post(shelf.path, json=body, headers=shelf.headers())
+        assert created.status_code == 201, created.text
+    return author
+
+
+async def test_a_filter_through_a_reference_lists_and_counts_the_books_of_that_author(
+    shelf,
+) -> None:
+    await written_by(shelf, "Frank Herbert", "Arrakis", "Heretics")
+    page = Page.model_validate((await shelf.page_of("written_by.label=Frank Herbert")).json())
+    assert sorted(i["label"] for i in page.items) == ["Arrakis", "Heretics"], (
+        "S1: the books by that author are listed"
+    )
+    assert page.total == 2, "and counted"
+
+
+async def test_a_book_whose_author_the_caller_is_prohibited_from_reading_is_not_listed_or_counted(
+    shelf,
+) -> None:  # S4
+    author = await written_by(shelf, "Frank Herbert", "Arrakis", "Heretics")
+    await shelf.grant(
+        prohibitions=[
+            Prohibition(assignee=principal_of("rita"), target=f"{author}/graph", action=Action.READ)
+        ]
+    )
+    hidden = Page.model_validate(
+        (await shelf.page_of("written_by.label=Frank Herbert", who="rita")).json()
+    )
+    assert hidden.items == [], "the books are not listed through the author the caller may not read"
+    assert hidden.total == 0, "and not counted"
+    visible = Page.model_validate((await shelf.page_of("written_by.label=Frank Herbert")).json())
+    assert visible.total == 2, "the librarian is not prohibited"
+    assert len(await shelf.labels(who="rita")) == 7, "rita still reads the books themselves"
+
+
 async def test_a_prohibition_of_modify_leaves_the_book_in_the_listing(shelf) -> None:
     book = shelf.books["Emma"]
     await shelf.grant(

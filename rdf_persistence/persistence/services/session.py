@@ -1032,7 +1032,12 @@ class Session:
         asks for a case-insensitive substring of a string slot instead of its value:
         ``find(Book, label=Contains(text="dune"))``. A ``None`` asks for the aggregates with no
         value for the slot (``find(Book, published=None)``); it stands alone, not in a list, and a
-        slot with a default is never absent. Prohibitions are ignored (PD-6): a hidden
+        slot with a default is never absent. A dotted keyword goes through up to three references
+        to other aggregates, passed as ``**{"written_by.label": "Frank Herbert"}``: the last segment
+        is a slot of the referenced class, and the value is an equality, a ``Contains`` or a
+        list as for any slot (``None`` is refused: absence takes a slot of the class, not a path).
+        Each dotted keyword is its own condition (DEC-4): two of them need not hold of the same
+        referenced aggregate. Prohibitions are ignored (PD-6): a hidden
         duplicate is still a duplicate; check each IRI with ``require_aggregate`` before showing it.
 
         Not a snapshot: the pages are separate queries, so a concurrent write can slip past a

@@ -36,7 +36,7 @@ from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit.fakes import FAKE_DATABASE, FAKE_PRINCIPAL, FAKE_TENANT, FakeStore
-from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre
+from tests.fixtures.library.domain.generated.books import Author, Book, Chapter, Display, Genre
 from tests.fixtures.library.domain.generated.scans import Scan
 from tests.toy import TOY_SCHEMA, dune, toy_mapper
 
@@ -470,6 +470,157 @@ def test_the_listing_query_passes_the_hidden_graphs_to_every_hop(view):
     assert text.count(f"?root_p0_1_g NOT IN (<{hidden}>)") == 2, (
         "the page and the count both filter the hop"
     )
+
+
+AUTHOR_LABEL = URIRef(SKOS_LABEL)
+HERBERT, AUSTEN = "Frank Herbert", "Jane Austen"
+
+
+def _linked_book(policy: Policy, n: int, label: str, **links: str) -> tuple[str, list[Triple]]:
+    iri = policy.book_iri(n)
+    model = Book(id=iri, label=label, description=f"{label}, a book.", **links)
+    return iri, list(toy_mapper().to_triples(model))
+
+
+@pytest.fixture
+async def linked(policy) -> Session:
+    """Two authors (1: Herbert, 2: Austen); books 1 to 4 (1 and 3 and 4 by Herbert, 3 follows 1, 4 follows 3); two displays."""
+    session = await session_of(policy)
+    for n, name in [(1, HERBERT), (2, AUSTEN)]:
+        iri = policy.aggregate_iri("author", "authors", n)
+        model = Author(id=iri, label=name, description=f"{name}.")
+        await session.add_graph(iri, toy_mapper().to_triples(model))
+    herbert, austen = (policy.aggregate_iri("author", "authors", n) for n in (1, 2))
+    for n, label, links in [
+        (1, "Dune", {"written_by": herbert}),
+        (2, "Emma", {"written_by": austen}),
+        (3, "Children of Dune", {"written_by": herbert, "sequel_of": policy.book_iri(1)}),
+        (4, "God Emperor", {"written_by": herbert, "sequel_of": policy.book_iri(3)}),
+    ]:
+        iri, triples = _linked_book(policy, n, label, **links)
+        await session.add_graph(iri, triples)
+    for n, features in [(1, [1, 3]), (2, [1, 2])]:
+        iri = policy.aggregate_iri("display", "displays", n)
+        model = Display(
+            id=iri,
+            label=f"Display {n}",
+            description="d",
+            features=[policy.book_iri(m) for m in features],
+        )
+        await session.add_graph(iri, toy_mapper().to_triples(model))
+    return session
+
+
+async def listed_of(
+    session: Session,
+    view: SchemaView,
+    policy: Policy,
+    cls: str,
+    *params: tuple[str, str],
+    hidden: Iterable[str] = (),
+) -> tuple[list[int], int]:
+    plan = Listings(view).plan(view.get_class(cls), list_request(list(params)), hidden)
+    answer = await session.page(plan)
+    return [policy.number(root) for root, _ in items_of(answer, plan)], total_of(answer, plan)
+
+
+@pytest.mark.parametrize(
+    ("cls", "params", "numbers", "total"),
+    [
+        ("Book", [("written_by.label", HERBERT)], [1, 3, 4], 3),  # S1
+        ("Book", [("written_by.label", AUSTEN)], [2], 1),
+        ("Book", [("written_by.label", "Nobody")], [], 0),
+        ("Book", [("written_by.label~", "HERB")], [1, 3, 4], 3),  # S6
+        (
+            "Book",
+            [("written_by.label~", "e")],
+            [1, 2, 3, 4],
+            4,
+        ),  # S6: Herbert and Austen both hold an e
+        ("Book", [("written_by.label~", "e"), ("limit", "2"), ("offset", "3")], [4], 4),
+        (
+            "Book",
+            [("written_by.label", HERBERT), ("label~", "dune")],
+            [1, 3],
+            2,
+        ),  # with a root filter
+        ("Book", [("written_by.label", HERBERT), ("sort", "-label")], [4, 1, 3], 3),
+        ("Book", [("sequel_of.written_by.label", HERBERT)], [3, 4], 2),  # S3b: two hops
+        ("Book", [("sequel_of.sequel_of.written_by.label", HERBERT)], [4], 1),  # S3b: three hops
+        ("Book", [("sequel_of.label", "Dune")], [3], 1),
+        ("Book", [("sequel_of.label~", "dune")], [3, 4], 2),
+        ("Display", [("features.written_by.label", HERBERT)], [1, 2], 2),  # S2: listed once
+        ("Display", [("features.written_by.label", AUSTEN)], [2], 1),
+        # E13, DEC-4: the two conditions need not hold of the same book
+        (
+            "Display",
+            [("features.written_by.label", HERBERT), ("features.written_by.label", AUSTEN)],
+            [2],
+            1,
+        ),
+        ("Display", [("features.label~", "dune"), ("limit", "1")], [1], 2),
+    ],
+    ids=lambda v: (
+        "&".join(f"{a}={b}" for a, b in v)
+        if isinstance(v, list) and v and isinstance(v[0], tuple)
+        else str(v)
+    ),
+)
+async def test_a_path_filter_lists_the_aggregates_whose_referenced_aggregates_match(
+    linked, view, policy, cls, params, numbers, total
+):
+    assert await listed_of(linked, view, policy, cls, *params) == (numbers, total), (
+        "the page and the total hold the aggregates that reach a matching aggregate, once each"
+    )
+
+
+async def test_a_path_filter_on_a_reference_equality_matches_the_iri(linked, view, policy):  # S3
+    herbert = policy.aggregate_iri("author", "authors", 1)
+    assert await listed_of(linked, view, policy, "Book", ("sequel_of.written_by", herbert)) == (
+        [3, 4],
+        2,
+    ), "the sequels of the books by that author"
+    assert await listed_of(linked, view, policy, "Display", ("features.written_by", herbert)) == (
+        [1, 2],
+        2,
+    ), "a display featuring two books by the author is listed once"
+
+
+async def test_a_reference_to_an_aggregate_that_is_gone_matches_nothing(linked, view, policy):
+    iri, triples = _linked_book(
+        policy, 6, "Orphan", written_by=policy.aggregate_iri("author", "authors", 99)
+    )
+    await linked.add_graph(iri, triples)  # S9: a dangling IRI, no <author>/graph
+    numbers, total = await listed_of(linked, view, policy, "Book", ("written_by.label~", "a"))
+    assert 6 not in numbers, "the orphan has no author graph to match"
+    assert (numbers, total) == ([1, 2, 3, 4], 4), "the others are unchanged"
+
+
+async def test_a_statement_about_the_target_in_another_graph_does_not_match(linked, view, policy):
+    austen = policy.aggregate_iri("author", "authors", 2)
+    iri, triples = _linked_book(policy, 7, "Forger", written_by=austen)
+    forged = (URIRef(austen), AUTHOR_LABEL, Literal(HERBERT))
+    await linked.add_graph(
+        iri, [*triples, forged]
+    )  # S10: Austen is called Herbert in the book's graph
+    assert await listed_of(linked, view, policy, "Book", ("written_by.label", HERBERT)) == (
+        [1, 3, 4],
+        3,
+    ), "only the author's own graph speaks for the author"
+
+
+async def test_a_graph_hidden_from_the_caller_hides_the_hop_it_would_reach(linked, view, policy):
+    herbert = policy.aggregate_iri("author", "authors", 1)
+    hidden = [str(graph_iri(herbert))]
+    assert await listed_of(
+        linked, view, policy, "Book", ("written_by.label", HERBERT), hidden=hidden
+    ) == ([], 0), "S4: the author's graph is hidden, so no book matches through it"
+    assert await listed_of(
+        linked, view, policy, "Book", ("written_by.label", AUSTEN), hidden=hidden
+    ) == (
+        [2],
+        1,
+    ), "the other authors still match"
 
 
 def test_the_query_is_one_construct_with_the_total_and_no_value_pasted_in(view):

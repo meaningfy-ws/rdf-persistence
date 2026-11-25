@@ -116,6 +116,53 @@ async def test_an_absent_filter_against_fuseki_lists_the_books_with_no_value_and
     assert (len(one["items"]), one["total"]) == (1, 2), "the total counts the whole listing"
 
 
+async def test_a_filter_through_references_lists_and_counts_against_fuseki(toy, client) -> None:
+    made = await client.post("/libraries", json=TENANT_BODY, headers=toy.bearer("ada"))
+    tenant, headers = made.headers["location"], toy.bearer("ada")
+    author = (
+        await client.post(
+            f"{tenant}/authors",
+            json={"label": "Frank Herbert", "description": "d"},
+            headers=headers,
+        )
+    ).json()["id"]
+    previous = None
+    for label in ("Dune", "Messiah", "Children"):  # each follows the one before
+        body = {**DUNE_BODY, "label": label, "written_by": author}
+        if previous:
+            body["sequel_of"] = previous
+        created = await client.post(f"{tenant}/books", json=body, headers=headers)
+        assert created.status_code == 201, created.text
+        previous = created.json()["id"]
+    other = await client.post(
+        f"{tenant}/books", json={**DUNE_BODY, "label": "Emma"}, headers=headers
+    )
+    assert other.status_code == 201, other.text
+
+    async def listed(query: str) -> tuple[list[str], int]:
+        page = (await client.get(f"{tenant}/books?{query}&sort=label", headers=headers)).json()
+        return [book["label"] for book in page["items"]], page["total"]
+
+    assert await listed("written_by.label=Frank Herbert") == (  # S1
+        ["Children", "Dune", "Messiah"],
+        3,
+    ), "the books by the author, and the total agrees"
+    assert await listed("written_by.label=Frank Herbert&limit=1") == (["Children"], 3), (
+        "the total counts the whole listing"
+    )
+    assert await listed("sequel_of.written_by.label=Frank Herbert") == (  # S3b: two hops
+        ["Children", "Messiah"],
+        2,
+    ), "the sequels of the author's books"
+    assert await listed("sequel_of.sequel_of.written_by.label=Frank Herbert") == (  # S3b: three
+        ["Children"],
+        1,
+    ), "three hops, the cap"
+    assert await listed("written_by.label~=HERB") == (["Children", "Dune", "Messiah"], 3), (
+        "a contains on the last hop"
+    )
+
+
 @pytest.mark.parametrize("query", ["absent=nosuch", "absent="])  # E11, E13
 async def test_an_absent_filter_on_no_slot_is_a_bad_query_against_fuseki(
     toy, client, query
