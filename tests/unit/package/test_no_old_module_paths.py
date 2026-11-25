@@ -144,7 +144,8 @@ def test_the_old_path_of_every_moved_generated_module_is_scanned_for():
     """The ``MovedModule`` rows have no on switch: their old paths are always among the pairs."""
     pairs = dict(turned_on_pairs())
 
-    assert all(row.old in pairs and pairs[row.old] == row.new for row in MOVED_MODULES)
+    assert all(row.old in pairs for row in MOVED_MODULES), "each moved module's old path is a pair"
+    assert all(pairs.get(row.old) == row.new for row in MOVED_MODULES), "each pairs it with its new"
 
 
 def test_no_file_names_the_old_path_of_a_row_that_is_on():
@@ -247,7 +248,9 @@ def test_a_moved_generated_module_path_is_found(tmp_path):
 
     hits = old_path_hits(tmp_path, moved_generated_pairs())
 
-    assert hits == [f"rdf_persistence/testkit/x.py:1: {OLD_WIRE}"]
+    assert hits == [f"rdf_persistence/testkit/x.py:1: {OLD_WIRE}"], (
+        "the docstring naming it is the one hit"
+    )
 
 
 def test_a_generated_module_with_a_group_still_off_is_not_scanned(monkeypatch):
@@ -301,4 +304,4 @@ def test_every_test_path_a_doc_or_a_test_docstring_names_exists():
         }
     )
 
-    assert missing == []
+    assert missing == [], "a doc, feature file or docstring names a test path that is gone"

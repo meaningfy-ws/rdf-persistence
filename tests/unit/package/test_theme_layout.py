@@ -28,7 +28,6 @@ from tests.unit.layout_table import (
     moved_module_problems,
     placed_problems,
     turned_on_classes,
-    turned_on_pairs,
 )
 
 TURNED_ON_TARGET = "tests.unit.layout_table.TURNED_ON"
@@ -81,12 +80,6 @@ def test_a_theme_that_gains_a_domain_has_its_generated_package_as_a_created_row(
 
     assert [r.created for r in rows] == [True], f"{theme} needs one created domain/generated row"
     assert (ROOT / PACKAGE / theme / "domain" / "__init__.py").is_file(), "the hand-written package"
-
-
-def test_the_pairs_of_the_guards_include_each_moved_module():
-    pairs = dict(turned_on_pairs())
-
-    assert all(pairs[row.old] == row.new for row in MOVED_MODULES)
 
 
 def test_a_moved_module_left_in_core_or_missing_from_its_theme_is_named(tmp_path):

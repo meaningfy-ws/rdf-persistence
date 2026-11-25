@@ -1128,7 +1128,8 @@ def test_the_target_of_rp_yaml_still_needs_migrations_for_the_roots_of_every_the
 ) -> None:
     """PD-4: the combined target is the one that is checked, so dropping its folder is refused."""
     found = _hard_problems_of_all(toolkit_project)
-    assert len(found) == 1 and "TenantAccess" in found[0], found  # noqa: PT018
+    assert len(found) == 1, f"one problem, the combined target's: {found}"
+    assert "TenantAccess" in found[0], f"the tenant root is named: {found}"
     assert HardRule.MIGRATIONS_FOLDER.value in found[0], "the rule is named"
 
 

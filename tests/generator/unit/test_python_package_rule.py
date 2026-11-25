@@ -54,7 +54,8 @@ def test_rp_generate_refuses_a_module_without_python_package_and_writes_nothing(
     code = main(["--project", str(toolkit_project / "pyproject.toml")])
     err = capsys.readouterr().err
     assert code == 1, f"exit code; stderr was {err}"
-    assert "rp_files" in err and "python_package" in err, "the module and the annotation are named"  # noqa: PT018
+    assert "rp_files" in err, "the module is named"
+    assert "python_package" in err, "the annotation is named"
     assert sorted(p.name for p in toolkit_project.iterdir()) == ["model", "pyproject.toml"], (
         "nothing written, no staging folder left"
     )
