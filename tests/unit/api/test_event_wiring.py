@@ -9,6 +9,7 @@ from rdf_persistence.api.entrypoints.service import LIFESPAN_STARTED
 from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSettings
 from rdf_persistence.provenance.domain.generated.rp_provenance import Add
 from rdf_persistence.testkit import InMemoryBroker, InMemoryEventBus, wait_until_async
+from tests.toy import FAST_POLL
 from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, installed, made, principal_of
 
 
@@ -23,7 +24,7 @@ async def test_a_post_reaches_the_broker_within_the_wait() -> None:  # TC-19
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         await made(http, toy.bearer("ada"))
         sent = await wait_until_async(
-            lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=0.01
+            lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=FAST_POLL
         )
     envelope, _ = sent[0]
     assert envelope.origin == "here", "the envelope carries this deployment as its origin"
@@ -62,7 +63,7 @@ async def test_with_no_event_bus_the_activity_is_still_relayed_to_the_hub() -> N
             await wait_until_async(
                 lambda: _async(not queue.empty()),
                 "the relay to offer the activity",
-                poll_seconds=0.01,
+                poll_seconds=FAST_POLL,
             )
             activity = queue.get_nowait()
     assert isinstance(activity, Add), "the relay offered the hub an Add"
@@ -89,7 +90,7 @@ async def test_a_public_url_makes_the_context_of_the_envelope_absolute() -> None
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         await made(http, toy.bearer("ada"))
         sent = await wait_until_async(
-            lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=0.01
+            lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=FAST_POLL
         )
     assert sent[0][0].context == "https://lib.example.org/context.jsonld", (
         "a public URL makes the envelope's context absolute"
@@ -102,7 +103,7 @@ async def test_without_a_public_url_the_context_is_relative() -> None:
     async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
         await made(http, toy.bearer("ada"))
         sent = await wait_until_async(
-            lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=0.01
+            lambda: _async(relayed_book(broker)), "the book's Add", poll_seconds=FAST_POLL
         )
     assert sent[0][0].context == "/context.jsonld", (
         "without a public URL the context stays relative"

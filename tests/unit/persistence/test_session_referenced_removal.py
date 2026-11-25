@@ -22,13 +22,12 @@ from rdf_persistence.persistence.services.session import Session, open_session
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Author, Book
-from tests.toy import TENANT, WRITTEN_BY, author_iri, book_iri, dune, toy_mapper_limited
+from tests.toy import BOOK_CLASS, TENANT, WRITTEN_BY, author_iri, book_iri, dune, toy_mapper_limited
 from tests.unit.activity_helpers import KEYS, isbn_book
 from tests.unit.persistence.referrer_helpers import NOW, StubRefusal, author, opened, stored
 
 LIB = "https://example.org/ns/library#"
 SHELF_CLASS = URIRef(LIB + "Shelf")
-BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
 SEQUEL_OF = URIRef(LIB + "sequelOf")
 A1, A2 = (author_iri(n) for n in (1, 2))
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))

@@ -19,6 +19,7 @@ from rdf_persistence.testkit import (
     RecordingObserver,
     wait_until_async,
 )
+from tests.toy import FAST_POLL
 from tests.toy_service import DUNE_BODY, ToyService, made
 
 scenarios("incoming_events.feature")
@@ -55,7 +56,7 @@ class Run:
             _, book, etag = await made(http, headers)
             await http.put(book, json=DUNE_BODY, headers={**headers, "If-Match": etag})
         await wait_until_async(
-            self._second_heard, "the second deployment's observer", poll_seconds=0.01
+            self._second_heard, "the second deployment's observer", poll_seconds=FAST_POLL
         )
 
     async def _second_heard(self) -> list:

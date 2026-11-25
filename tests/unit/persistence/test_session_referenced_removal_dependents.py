@@ -17,11 +17,10 @@ from rdf_persistence.core.domain.exceptions import Conflict
 from rdf_persistence.persistence.services.referrers import Dependents
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
-from tests.toy import TENANT, WRITTEN_BY, author_iri, book_iri
+from tests.toy import BOOK_CLASS, TENANT, WRITTEN_BY, author_iri, book_iri
 from tests.unit.persistence.referrer_helpers import StubRefusal, author, opened, stored
 
 LIB = "https://example.org/ns/library#"
-BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
 NOTE_CLASS = URIRef(LIB + "Note")
 COMMENT_PAIR: Dependents = ((v.ANNOTATION, v.HAS_TARGET),)
 A1 = author_iri(1)

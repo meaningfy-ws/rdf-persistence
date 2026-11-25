@@ -23,12 +23,11 @@ from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.dump_helpers import BASE_STAMPS, RESTORER, TOY_CHAINS, VIEW
 from tests.logs import attributes
 from tests.tenancy_world import CREATOR, make_world
-from tests.toy import ADA, BOB, SETTINGS, TENANT, template, toy_mapper
+from tests.toy import ADA, BOB, BOOK_CLASS, SETTINGS, TENANT, template, toy_mapper
 from tests.unit.activity_helpers import (
     B1,
     B2,
     B3,
-    BOOK_CLASS,
     PROVENANCE,
     SHELF_CLASS,
     Hook,
@@ -78,7 +77,7 @@ async def test_tc22_an_add_records_one_add_for_the_principal_with_one_generation
     )
     assert activity.was_associated_with == [ADA], "the session's principal"
     assert activity.started_at_time < activity.ended_at_time, "start before end"
-    assert events(activity.generations) == [(B1, BOOK_CLASS, version)], (
+    assert events(activity.generations) == [(B1, str(BOOK_CLASS), version)], (
         "the book at its new version"
     )
     assert activity.invalidations is None, "no invalidation"
@@ -96,8 +95,10 @@ async def test_tc23_a_replace_records_one_replace_with_a_generation_and_an_inval
     v2 = await session.replace_graph(B1, book(B1), v1)
     replace = (await activities(store))[-1]
     assert type(replace) is Replace, "typed rp:Replace"
-    assert events(replace.generations) == [(B1, BOOK_CLASS, v2)], "the new version generated"
-    assert events(replace.invalidations) == [(B1, BOOK_CLASS, v1)], "the old version invalidated"
+    assert events(replace.generations) == [(B1, str(BOOK_CLASS), v2)], "the new version generated"
+    assert events(replace.invalidations) == [(B1, str(BOOK_CLASS), v1)], (
+        "the old version invalidated"
+    )
 
 
 async def test_tc24_a_remove_records_one_remove_with_the_version_it_removed(store, session):
@@ -106,7 +107,7 @@ async def test_tc24_a_remove_records_one_remove_with_the_version_it_removed(stor
     remove = (await activities(store))[-1]
     assert type(remove) is Remove, "typed rp:Remove"
     assert remove.generations is None, "nothing generated"
-    assert events(remove.invalidations) == [(B1, BOOK_CLASS, v1)], "the removed version"
+    assert events(remove.invalidations) == [(B1, str(BOOK_CLASS), v1)], "the removed version"
     assert [type(a) for a in await activities(store)] == [Add, Remove], "the Add is still there"
 
 
@@ -116,9 +117,9 @@ async def test_tc25_a_transaction_of_two_adds_records_one_add_with_two_generatio
         two = await transaction.add_graph(B2, book(B2))
     activity = await only_activity(store)
     assert type(activity) is Add, "every change is an add"
-    assert events(activity.generations) == sorted([(B1, BOOK_CLASS, one), (B2, BOOK_CLASS, two)]), (
-        "one generation each"
-    )
+    assert events(activity.generations) == sorted(
+        [(B1, str(BOOK_CLASS), one), (B2, str(BOOK_CLASS), two)]
+    ), "one generation each"
 
 
 async def test_tc26_a_mixed_transaction_records_one_plain_activity(store, session):
@@ -127,8 +128,10 @@ async def test_tc26_a_mixed_transaction_records_one_plain_activity(store, sessio
         v3 = await transaction.add_graph(B3, book(B3))
         await transaction.remove(B1, v1)
     mixed = (await activities(store))[-1]
-    assert events(mixed.generations) == [(B3, BOOK_CLASS, v3)], "the added book is generated"
-    assert events(mixed.invalidations) == [(B1, BOOK_CLASS, v1)], "the removed book is invalidated"
+    assert events(mixed.generations) == [(B3, str(BOOK_CLASS), v3)], "the added book is generated"
+    assert events(mixed.invalidations) == [(B1, str(BOOK_CLASS), v1)], (
+        "the removed book is invalidated"
+    )
     stored = await stored_graph(store, PROVENANCE)
     assert {*stored.objects(URIRef(mixed.id), RDF.type)} == {v.ACTIVITY}, "prov:Activity only"
     assert type(mixed) is Activity, "read as the plain class"
@@ -317,7 +320,7 @@ async def test_tc37_a_remove_with_dependents_records_the_target_only(store):
         await session.remove(B1, v1)
     remove = (await activities(store))[-1]
     assert type(remove) is Remove, "one rp:Remove"
-    assert events(remove.invalidations) == [(B1, BOOK_CLASS, v1)], "one invalidation: the book"
+    assert events(remove.invalidations) == [(B1, str(BOOK_CLASS), v1)], "one invalidation: the book"
     for comment in comments:
         assert len(await stored_graph(store, URIRef(comment))) == 0, "the comment is gone"
 
@@ -392,18 +395,20 @@ async def test_tc40b_a_replace_that_changes_the_class_invalidates_the_old_and_ge
     store, session
 ):
     typed = lambda cls: [(URIRef(B1), RDF.type, URIRef(cls))]  # noqa: E731
-    v1 = await session.add_graph(B1, typed(BOOK_CLASS))
+    v1 = await session.add_graph(B1, typed(str(BOOK_CLASS)))
     v2 = await session.replace_graph(B1, typed(SHELF_CLASS), v1)
     replace = (await activities(store))[-1]
-    assert events(replace.invalidations) == [(B1, BOOK_CLASS, v1)], "the old class"
+    assert events(replace.invalidations) == [(B1, str(BOOK_CLASS), v1)], "the old class"
     assert events(replace.generations) == [(B1, SHELF_CLASS, v2)], "the new class"
 
 
 async def test_a_root_of_several_classes_names_the_first_in_sorted_order(store, session):
-    triples = [(URIRef(B1), RDF.type, URIRef(c)) for c in (SHELF_CLASS, BOOK_CLASS)]
+    triples = [(URIRef(B1), RDF.type, URIRef(c)) for c in (SHELF_CLASS, str(BOOK_CLASS))]
     await session.add_graph(B1, triples)
     activity = await only_activity(store)
-    assert [p.entity_class for p in activity.generations] == [BOOK_CLASS], "Book sorts before Shelf"
+    assert [p.entity_class for p in activity.generations] == [str(BOOK_CLASS)], (
+        "Book sorts before Shelf"
+    )
 
 
 async def test_tc40d_an_application_aggregate_is_recorded_in_the_application_provenance_graph():

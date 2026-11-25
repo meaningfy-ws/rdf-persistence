@@ -22,10 +22,9 @@ from rdf_persistence.persistence.services.session import Session, remove_parts
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.toy import TENANT, book_iri, graph_of
+from tests.toy import TENANT, TITLE, book_iri, graph_of
 
 A, B, C, D = (book_iri(n) for n in (1, 2, 3, 4))
-TITLE = URIRef("http://purl.org/dc/terms/title")
 LOADED_TTL = '<https://example.org/b> <http://purl.org/dc/terms/title> "Dune" .'
 ENTRY = "ASK { GRAPH $registry { $graph ?p ?o } }"
 ANY_MARKER = "ASK { GRAPH $registry { ?m a $marker } }"

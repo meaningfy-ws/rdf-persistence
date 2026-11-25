@@ -29,12 +29,11 @@ from rdf_persistence.testkit import FakeFileStore, FakeStore, assert_isomorphic
 from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.domain.generated.templates import Template
 from tests.tenancy_world import CREATOR, make_world
-from tests.toy import ADA, SETTINGS, access, dune, library, template, toy_mapper, toy_rules
+from tests.toy import ADA, SETTINGS, TITLE, access, dune, library, template, toy_mapper, toy_rules
 
 APP_DATABASE = application_database_name(SETTINGS.prefix)
 EXPECTED_REFUSAL_TENANT = "is an application aggregate and does not belong in a tenant database"
 EXPECTED_REFUSAL_APPLICATION = "is not an application aggregate"
-TITLE = URIRef("http://purl.org/dc/terms/title")
 
 
 @pytest.fixture

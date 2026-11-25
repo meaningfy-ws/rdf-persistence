@@ -57,6 +57,7 @@ from rdf_persistence_generation.problems import format_problem
 from tests.toy import (
     ADA,
     BOB,
+    BOOK_CLASS,
     MODULES,
     REVIEW_WORKFLOW,
     ROLES,
@@ -103,7 +104,6 @@ from tests.unit.collaboration.collaboration_data import (
 
 LIB = "https://example.org/ns/library#"
 SHELF_CLASS = URIRef(f"{LIB}Shelf")
-BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
 OTHER_FLOW = "https://example.org/ns/library/workflows/other/accepted"
 EVIL = 'x" } . ?s ?p ?o } ; DROP ALL ; # \n\r\t\\ <a> {'
 COUNT = "SELECT (COUNT(DISTINCT ?g) AS ?n) WHERE { GRAPH $registry { ?g $p_kind ?k } }"

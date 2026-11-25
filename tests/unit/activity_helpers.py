@@ -23,19 +23,16 @@ from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from rdf_persistence_generation.testkit.conformance import Conformance
 from rdf_persistence_generation.testkit.roundtrip import without_framing
-from tests.toy import ADA, TENANT, TOY_SCHEMA, book_iri, dune, toy_mapper
+from tests.toy import ADA, BIBO, TENANT, TITLE, TOY_SCHEMA, book_iri, dune, toy_mapper
 
 B1, B2, B3 = (book_iri(n) for n in (1, 2, 3))
 PROVENANCE = DEFAULT_IRIS.provenance(TENANT)
-BOOK_CLASS = "http://purl.org/ontology/bibo/Book"
 SHELF_CLASS = "https://example.org/ns/library#Shelf"
 ADA_PRINCIPAL = Principal(id=ADA)
 ACTIVITY_CLASSES = {v.ADD: Add, v.REPLACE: Replace, v.REMOVE: Remove}
 X = "urn:uuid:5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c001"
 KEYS = aggregate_keys(load_schema(TOY_SCHEMA))
-BIBO = "http://purl.org/ontology/bibo/"
 BOOK, ISBN = URIRef(BIBO + "Book"), URIRef(BIBO + "isbn")
-TITLE = URIRef("http://purl.org/dc/terms/title")
 
 
 def ticking() -> Callable[[], datetime]:

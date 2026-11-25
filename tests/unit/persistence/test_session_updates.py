@@ -19,12 +19,12 @@ from rdf_persistence.persistence.services.session import (
 )
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import assert_isomorphic
+from tests.toy import TITLE
 
 EX = "http://example.org/t/"
 ROOT, OTHER_ROOT = URIRef(f"{EX}books/1"), URIRef(f"{EX}books/2")
 GRAPH, OTHER = URIRef(f"{ROOT}/graph"), URIRef(f"{OTHER_ROOT}/graph")
 REGISTRY = URIRef(f"{EX}registry")
-TITLE = URIRef("http://purl.org/dc/terms/title")
 NOW = datetime(2026, 11, 5, 12, 0, tzinfo=UTC)
 ME = "http://example.org/people/me"
 

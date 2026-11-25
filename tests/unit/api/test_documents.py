@@ -34,19 +34,19 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import assert_isomorphic
 from tests.toy import (
+    BIBO,
     BOOK,
-    BOOK_JSON,
     GENERATED,
     TENANT,
     TOY_SCHEMA,
     book_iri,
+    book_json,
     dune,
     encoded,
     toy_mapper,
 )
 
 GRAPH = graph_iri(BOOK)
-BIBO = "http://purl.org/ontology/bibo/"
 BOOK_TYPE = URIRef(f"{BIBO}Book")
 
 
@@ -143,7 +143,7 @@ async def test_a_json_body_becomes_the_typed_triples_of_a_node_rooted_at_the_giv
     default_documents, book_class
 ) -> None:
     graph, _ = await parse(
-        default_documents, encoded(BOOK_JSON), JSON, book_class, BOOK, creating=True
+        default_documents, encoded(book_json()), JSON, book_class, BOOK, creating=True
     )
     assert (URIRef(BOOK), RDF.type, BOOK_TYPE) in graph, "the root is typed by the route's class"
     chapters = list(graph.subjects(RDF.type, URIRef(f"{BIBO}Chapter")))
@@ -152,7 +152,7 @@ async def test_a_json_body_becomes_the_typed_triples_of_a_node_rooted_at_the_giv
 
 async def minted_parts(default_documents: Documents, book_class) -> set[URIRef]:
     graph, _ = await parse(
-        default_documents, encoded(BOOK_JSON), JSON, book_class, BOOK, creating=True
+        default_documents, encoded(book_json()), JSON, book_class, BOOK, creating=True
     )
     assert not any(isinstance(s, BNode) for s in graph.subjects()), "no blank node is left"
     return {s for s in graph.subjects() if s != URIRef(BOOK)}
@@ -186,8 +186,8 @@ async def test_a_json_ld_body_and_the_same_json_body_give_the_same_triples(
 ) -> None:
     given = {
         "id": BOOK,
-        **BOOK_JSON,
-        "chapters": [deepcopy(BOOK_JSON["chapters"][0]) | {"id": f"{BOOK}/parts/c1"}],
+        **book_json(),
+        "chapters": [book_json()["chapters"][0] | {"id": f"{BOOK}/parts/c1"}],
     }
     given["chapters"][0]["notes"][0]["id"] = f"{BOOK}/parts/n1"
     as_json, _ = await parse(
@@ -205,7 +205,7 @@ async def test_a_json_ld_body_and_the_same_json_body_give_the_same_triples(
 
 async def test_a_body_may_leave_out_the_id_on_a_replace(default_documents, book_class) -> None:
     graph, _ = await parse(
-        default_documents, encoded(BOOK_JSON), JSON, book_class, BOOK, creating=False
+        default_documents, encoded(book_json()), JSON, book_class, BOOK, creating=False
     )
     assert (URIRef(BOOK), RDF.type, BOOK_TYPE) in graph, "the path names the root"
 
@@ -215,7 +215,7 @@ async def test_a_body_may_repeat_the_id_of_the_path_on_a_replace(
 ) -> None:
     graph, _ = await parse(
         default_documents,
-        encoded({"id": BOOK, **BOOK_JSON}),
+        encoded({"id": BOOK, **book_json()}),
         JSON,
         book_class,
         BOOK,
@@ -228,7 +228,7 @@ async def test_a_replace_with_another_id_is_refused(default_documents, book_clas
     with pytest.raises(InvalidBody, match="differs from the path"):
         await parse(
             default_documents,
-            encoded({"id": book_iri(2), **BOOK_JSON}),
+            encoded({"id": book_iri(2), **book_json()}),
             JSON,
             book_class,
             BOOK,
@@ -240,7 +240,7 @@ async def test_a_create_with_an_id_is_refused(default_documents, book_class) -> 
     with pytest.raises(InvalidBody, match="assigns the IRI"):
         await parse(
             default_documents,
-            encoded({"id": book_iri(2), **BOOK_JSON}),
+            encoded({"id": book_iri(2), **book_json()}),
             JSON,
             book_class,
             BOOK,
@@ -249,7 +249,7 @@ async def test_a_create_with_an_id_is_refused(default_documents, book_class) -> 
 
 
 async def test_a_body_typed_as_another_class_is_refused(default_documents, book_class) -> None:
-    body = {"@context": default_documents.context, "type": "Scan", **BOOK_JSON}
+    body = {"@context": default_documents.context, "type": "Scan", **book_json()}
     with pytest.raises(InvalidBody, match="must be a"):
         await parse(default_documents, encoded(body), JSON_LD, book_class, BOOK, creating=True)
 
@@ -260,14 +260,14 @@ async def test_a_body_that_describes_a_node_outside_the_aggregate_is_refused(
     other = {"id": book_iri(9), "label": "Other", "description": "d", "type": "Book"}
     body = {
         "@context": each_policy_documents.context,
-        "@graph": [{"type": "Book", **BOOK_JSON}, other],
+        "@graph": [{"type": "Book", **book_json()}, other],
     }
     with pytest.raises(InvalidBody):
         await parse(each_policy_documents, encoded(body), JSON_LD, book_class, BOOK, creating=True)
 
 
 OUTSIDE = f"{TENANT}/books/elsewhere"
-OUTSIDE_BODY = {**BOOK_JSON, "chapters": [{"id": OUTSIDE, "number": 1}]}
+OUTSIDE_BODY = book_json() | {"chapters": [{"id": OUTSIDE, "number": 1}]}
 
 
 async def test_a_part_outside_the_aggregate_is_refused_when_parts_are_nested(
@@ -291,7 +291,7 @@ async def test_a_part_cannot_take_the_iri_of_its_aggregates_graph(
     default_documents, book_class
 ) -> None:
     """The graph IRI carries the version and the creator, so a part there would be bookkeeping (PD-12d)."""
-    body = {**BOOK_JSON, "chapters": [{"id": str(GRAPH), "number": 1}]}
+    body = book_json() | {"chapters": [{"id": str(GRAPH), "number": 1}]}
     with pytest.raises(InvalidBody, match="graph"):
         await parse(default_documents, encoded(body), JSON, book_class, BOOK, creating=False)
 
@@ -312,7 +312,7 @@ async def test_a_body_that_is_not_a_json_object_is_refused(
 
 
 async def test_the_bookkeeping_a_client_sends_is_dropped(default_documents, book_class) -> None:
-    body = {**BOOK_JSON, "created": "2001-01-01T00:00:00Z", "creator": "https://evil.example/u"}
+    body = book_json() | {"created": "2001-01-01T00:00:00Z", "creator": "https://evil.example/u"}
     graph, _ = await parse(default_documents, encoded(body), JSON, book_class, BOOK, creating=True)
     forged = set(graph.predicates()) & v.BOOKKEEPING_PREDICATES
     assert not forged, f"only the session writes who created a graph and when: {sorted(forged)}"
@@ -323,13 +323,13 @@ async def test_the_bookkeeping_a_client_sends_is_dropped(default_documents, book
 
 async def test_a_valid_body_passes_the_shapes(default_documents, book_class) -> None:
     graph, _ = await parse(
-        default_documents, encoded(BOOK_JSON), JSON, book_class, BOOK, creating=True
+        default_documents, encoded(book_json()), JSON, book_class, BOOK, creating=True
     )
     await default_documents.validate(graph)
 
 
 async def test_a_body_without_a_description_is_accepted(default_documents, book_class) -> None:
-    body = {k: v for k, v in BOOK_JSON.items() if k != "description"}
+    body = {k: v for k, v in book_json().items() if k != "description"}
     graph, _ = await parse(default_documents, encoded(body), JSON, book_class, BOOK, creating=True)
     await default_documents.validate(graph)  # PD-1: a root's description is optional
 
@@ -338,7 +338,7 @@ async def test_an_unknown_field_is_refused(default_documents, book_class) -> Non
     with pytest.raises(InvalidBody, match="colour"):
         await parse(
             default_documents,
-            encoded({**BOOK_JSON, "colour": "red"}),
+            encoded(book_json() | {"colour": "red"}),
             JSON,
             book_class,
             BOOK,
@@ -349,7 +349,7 @@ async def test_an_unknown_field_is_refused(default_documents, book_class) -> Non
 async def test_validating_leaves_the_cached_shapes_unchanged(default_documents, book_class) -> None:
     before = len(default_documents.shapes)
     graph, _ = await parse(
-        default_documents, encoded(BOOK_JSON), JSON, book_class, BOOK, creating=True
+        default_documents, encoded(book_json()), JSON, book_class, BOOK, creating=True
     )
     await default_documents.validate(graph)
     assert len(default_documents.shapes) == before, "the shapes graph is shared by every request"
@@ -608,18 +608,18 @@ async def test_a_tagged_label_is_plain_in_json_and_tagged_in_json_ld(
 def test_expanding_a_json_body_gives_the_triples_of_the_typed_node(
     default_documents, book_class
 ) -> None:
-    graph = default_documents.expand({"id": BOOK, **BOOK_JSON}, book_class)
+    graph = default_documents.expand({"id": BOOK, **book_json()}, book_class)
     assert (URIRef(BOOK), RDF.type, BOOK_TYPE) in graph, "the class gives the type"
     assert len(set(graph.subjects(RDF.type, None))) == 3, "the book, its chapter and the note"
 
 
 def test_expanding_refuses_a_key_the_class_has_no_slot_for(default_documents, book_class) -> None:
     with pytest.raises(InvalidBody, match="colour"):
-        default_documents.expand({**BOOK_JSON, "colour": "red"}, book_class)
+        default_documents.expand(book_json() | {"colour": "red"}, book_class)
 
 
 def test_framing_gives_back_the_body_that_was_expanded(default_documents, book_class) -> None:
-    graph = default_documents.expand({"id": BOOK, **BOOK_JSON}, book_class)
+    graph = default_documents.expand({"id": BOOK, **book_json()}, book_class)
     framed = default_documents.frame(graph, book_class)
     assert framed["label"] == "Dune", "the framed body gives back the label that was expanded"
     assert framed["chapters"][0]["notes"][0]["text"] == "t", (

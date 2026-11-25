@@ -20,10 +20,10 @@ from rdf_persistence.persistence.adapters.fuseki import FusekiStore
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import assert_isomorphic
+from tests.toy import TITLE
 
 TENANT = "https://example.org/libraries/6f1c0c1e"
 BOOK = f"{TENANT}/books/{UUID(int=1)}"
-TITLE = URIRef("http://purl.org/dc/terms/title")
 ADA = Principal(id="https://example.org/people/ada")
 SELECT_GRAPHS = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }"
 CONSTRUCT = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH $g { ?s ?p ?o } }"

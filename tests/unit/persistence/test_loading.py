@@ -31,9 +31,9 @@ from rdf_persistence.testkit import (  # noqa: F401  (no_network is a fixture)
     no_network,
 )
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.toy import TITLE
 from tests.unit.persistence.loading_helpers import AGGREGATE, TENANT
 
-TITLE = URIRef("http://purl.org/dc/terms/title")
 BOOK = URIRef("https://example.org/b")
 EXPECTED = Graph()
 EXPECTED.add((BOOK, TITLE, Literal("Dune")))

@@ -12,7 +12,7 @@ from rdf_persistence.persistence.services.generated.settings.rp_persistence_sett
     LimitSettings,
 )
 from rdf_persistence.schema.services.schema import load_schema
-from tests.toy import BOOK, BOOK_JSON, GENERATED, TENANT, TOY_SCHEMA, book_iri, encoded
+from tests.toy import BOOK, GENERATED, TENANT, TOY_SCHEMA, book_iri, book_json, encoded
 
 MAX_NODES = LimitSettings().max_document_nodes  # the default limit of a ``Documents``
 
@@ -97,7 +97,7 @@ async def test_a_nested_context_that_renames_a_term_to_an_internal_slot_is_refus
 async def test_an_internal_slot_is_refused_in_an_owned_part(documents, book_class) -> None:
     chapter = {"number": 1, "rp:fileKey": SECRET}
     with pytest.raises(InvalidBody):
-        await parsed(documents, book_class, {**BOOK_JSON, "chapters": [chapter]}, iri=BOOK)
+        await parsed(documents, book_class, book_json() | {"chapters": [chapter]}, iri=BOOK)
 
 
 async def test_an_internal_slot_is_refused_in_an_owned_part_of_a_json_ld_body(
@@ -107,7 +107,7 @@ async def test_an_internal_slot_is_refused_in_an_owned_part_of_a_json_ld_body(
     body = {
         "@context": [documents.context, {"rp": RP}],
         "type": "Book",
-        **BOOK_JSON,
+        **book_json(),
         "chapters": [chapter],
     }
     with pytest.raises(InvalidBody, match="file_key"):
@@ -134,7 +134,7 @@ async def test_a_plain_json_key_that_is_not_a_slot_of_the_class_is_refused_in_a_
 ) -> None:
     chapter = {"number": 1, key: {"@id": "http://x.example/o"}}
     with pytest.raises(InvalidBody, match="chapters|Chapter"):
-        await parsed(documents, book_class, {**BOOK_JSON, "chapters": [chapter]}, iri=BOOK)
+        await parsed(documents, book_class, book_json() | {"chapters": [chapter]}, iri=BOOK)
 
 
 @pytest.mark.parametrize("key", ["colour", "@reverse", "@included", "@graph", "@vocab"])
@@ -142,7 +142,7 @@ async def test_a_plain_json_key_that_is_not_a_slot_of_the_class_is_refused_at_th
     documents, book_class, key
 ) -> None:
     with pytest.raises(InvalidBody, match="Book"):
-        await parsed(documents, book_class, {**BOOK_JSON, key: "x"}, iri=BOOK)
+        await parsed(documents, book_class, book_json() | {key: "x"}, iri=BOOK)
 
 
 async def test_a_plain_json_reference_is_a_bare_iri_or_an_object_with_only_an_id(
@@ -211,7 +211,7 @@ async def test_an_untyped_part_is_refused(documents, book_class) -> None:
     body = {
         "@context": documents.context,
         "type": "Book",
-        **BOOK_JSON,
+        **book_json(),
         "chapters": [{"id": f"{BOOK}/parts/c1", "number": 1}],
     }
     with pytest.raises(InvalidBody, match="not part of"):
@@ -224,7 +224,7 @@ async def test_a_part_of_another_class_than_the_slot_ranges_over_is_refused(
     body = {
         "@context": documents.context,
         "type": "Book",
-        **BOOK_JSON,
+        **book_json(),
         "chapters": [{"id": f"{BOOK}/parts/c1", "type": "Scan", "number": 1}],
     }
     with pytest.raises(InvalidBody, match="not part of"):
@@ -236,7 +236,7 @@ async def test_a_detached_cycle_of_nodes_is_refused(documents, book_class) -> No
         {"@id": f"{BOOK}/parts/a", "@type": "Chapter", "chapters": {"@id": f"{BOOK}/parts/b"}},
         {"@id": f"{BOOK}/parts/b", "@type": "Chapter", "chapters": {"@id": f"{BOOK}/parts/a"}},
     ]
-    body = {"@context": documents.context, "@graph": [{"type": "Book", **BOOK_JSON}, *cycle]}
+    body = {"@context": documents.context, "@graph": [{"type": "Book", **book_json()}, *cycle]}
     with pytest.raises(InvalidBody):
         await parsed(documents, book_class, body, JSON_LD, iri=BOOK)
 
@@ -270,7 +270,7 @@ async def test_a_body_of_too_many_nodes_is_refused_before_it_is_expanded(
     chapters = [{"number": n} for n in range(MAX_NODES + 1)]
     async with asyncio.timeout(5):  # a body that is expanded first takes minutes
         with pytest.raises(PayloadTooLarge):
-            await parsed(documents, book_class, {**BOOK_JSON, "chapters": chapters}, iri=BOOK)
+            await parsed(documents, book_class, book_json() | {"chapters": chapters}, iri=BOOK)
 
 
 async def test_a_documents_takes_its_node_limit_from_its_limits_group(book_class) -> None:  # TC-37
@@ -279,14 +279,14 @@ async def test_a_documents_takes_its_node_limit_from_its_limits_group(book_class
     )
     chapters = [{"number": n} for n in range(3)]  # the body, its authors list and three chapters
     with pytest.raises(PayloadTooLarge, match="at most 3 objects"):
-        await parsed(small, book_class, {**BOOK_JSON, "chapters": chapters}, iri=BOOK)
+        await parsed(small, book_class, book_json() | {"chapters": chapters}, iri=BOOK)
 
 
 async def test_a_body_of_too_many_list_items_is_refused(documents, book_class) -> None:
     authors = ["Herbert"] * (MAX_NODES + 1)
     async with asyncio.timeout(5):
         with pytest.raises(PayloadTooLarge):
-            await parsed(documents, book_class, {**BOOK_JSON, "authors": authors}, iri=BOOK)
+            await parsed(documents, book_class, book_json() | {"authors": authors}, iri=BOOK)
 
 
 async def test_a_json_ld_body_of_too_many_nodes_is_refused(documents, book_class) -> None:

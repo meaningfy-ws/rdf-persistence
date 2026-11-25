@@ -10,9 +10,9 @@ import json
 import pytest
 
 from rdf_persistence.testkit import assert_public_imports, open_event_stream
+from tests.events_follow import TIMEOUT
 from tests.scene import Scene
 
-TIMEOUT = 3.0
 # The deadline runs from the call, so it also covers the commits made after starting the task.
 FOLLOW_TIMEOUT = 30.0
 SHORT = 0.5

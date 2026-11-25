@@ -117,13 +117,21 @@ def author_iri(n: object) -> str:
 AUTHOR = URIRef("https://example.org/ns/library#Author")  # the toy's refusing class
 WRITTEN_BY = URIRef("https://example.org/ns/library#writtenBy")  # a book's link to its author
 BOOK = book_iri(1)
-BOOK_JSON = {
-    "label": "Dune",
-    "description": "A planet.",
-    "genre": "fiction",
-    "authors": ["Herbert"],
-    "chapters": [{"number": 1, "notes": [{"label": "n", "description": "d", "text": "t"}]}],
-}
+BIBO = "http://purl.org/ontology/bibo/"
+TITLE = URIRef("http://purl.org/dc/terms/title")
+BOOK_CLASS = URIRef("http://purl.org/ontology/bibo/Book")
+FAST_POLL = 0.01  # the poll interval of a wait that a fake clock or an in-memory broker settles
+
+
+def book_json() -> dict[str, Any]:
+    """A new request body of the toy's book on each call, its nested lists new too."""
+    return {
+        "label": "Dune",
+        "description": "A planet.",
+        "genre": "fiction",
+        "authors": ["Herbert"],
+        "chapters": [{"number": 1, "notes": [{"label": "n", "description": "d", "text": "t"}]}],
+    }
 
 
 def encoded(body: object) -> bytes:
