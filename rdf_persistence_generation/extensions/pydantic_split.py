@@ -38,7 +38,7 @@ import copy
 import keyword
 import re
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cache, cached_property
 from pathlib import Path
 
@@ -87,10 +87,17 @@ from rdf_persistence_generation.generated.rp_generation import (
     GeneratedFile,
     GenerationAnnotation,
 )
+from rdf_persistence_generation.module_cycles import (
+    analyse,
+    deferred_by_module,
+    modules_in_cycles,
+)
 
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "pydantic"
 METAMODEL_DIR = PACKAGE_DIR / "model"
 INIT = "__init__.py"
+TYPING = "typing"
+INIT_DOC = "Completes the classes of the modules that import each other (rp-generate)."
 BASE_MODEL = "RpModel"
 BASE_MODULE = "base"
 GENERATED_LEAF = "generated"
@@ -232,6 +239,13 @@ class RpBaseModel(PydanticBaseModel):
     module: str = ""
 
 
+class RpModule(PydanticModule):
+    """The module template's data, plus the imports a module of a cycle makes for the type checker only (PD-5)."""
+
+    deferred: Imports | None = None
+    in_cycle: bool = False
+
+
 def target_module(schema: SchemaDefinition) -> str:
     """The module a class of ``schema`` is imported from: its ``python_package``, then its name (PD-3)."""
     return f"{_dotted_package(schema)}.{schema.name}"
@@ -255,6 +269,12 @@ class SplitPydanticGenerator(PydanticGenerator):
     toolkit: bool = False
     folder: Path | None = None
     root_package: str | None = None
+    # PD-5: per source module (its name, no dot), the names this module imports for the type checker only
+    deferred: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    in_cycle: bool = False
+    class_names: list[str] = field(
+        default_factory=list, init=False
+    )  # the classes the module defines, in order
 
     def generate_module_import(self, schema: SchemaDefinition, context: dict | None = None) -> str:
         module: str = super().generate_module_import(schema, context)
@@ -294,13 +314,50 @@ class SplitPydanticGenerator(PydanticGenerator):
         return bases
 
     def before_render_template(self, module: PydanticModule, sv: SchemaView) -> PydanticModule:
-        """Name the module ``RpModel`` is imported from (PD-8); import the library names as aliases (#243)."""
+        """Name the module ``RpModel`` is imported from (PD-8); import the library names as aliases (#243).
+
+        A module of a cycle imports its deferred names under ``if _TYPE_CHECKING:`` (PD-5).
+        """
         module.base_model = RpBaseModel(
             **module.base_model.model_dump(), module=base_model_module(toolkit=self.toolkit)
         )
         alias_imports(module.python_imports)
         drop_imports(module.python_imports, self._any_classes)
-        return module
+        self.class_names = list(module.class_names)
+        if not self.in_cycle:
+            return module
+        # the field values themselves, not model_dump(): the classes keep their InternalAttribute
+        fields = {name: getattr(module, name) for name in PydanticModule.model_fields}
+        imports = module.python_imports.model_copy(
+            deep=True
+        )  # its objects are shared between modules
+        fields["python_imports"] = imports
+        return RpModule(**fields, deferred=self._defer(imports), in_cycle=True)
+
+    def _defer(self, imports: Imports) -> Imports | None:
+        """Move the deferred names out of ``imports``; the moved ones, or None when nothing moves."""
+        moved = [
+            leaving
+            for each in imports.imports
+            if (leaving := self._take_deferred(each)) is not None
+        ]
+        if not moved:
+            return None
+        imports.imports = [each for each in imports.imports if each.objects != []]
+        _import_type_checking(imports)
+        return Imports(imports=sorted(moved, key=lambda each: str(each.module)))
+
+    def _take_deferred(self, each: Import) -> Import | None:
+        """Remove the deferred names from a relative import and return them as an import of their own."""
+        module = str(each.module)
+        if not module.startswith(".") or not each.objects:
+            return None
+        names = self.deferred.get(module.lstrip("."), ())
+        leaving = sorted((o for o in each.objects if o.name in names), key=lambda o: o.name)
+        if not leaving:
+            return None
+        each.objects = [o for o in each.objects if o.name not in names]
+        return Import(module=module, objects=leaving)
 
     @cached_property
     def _any_classes(self) -> set[str]:
@@ -419,6 +476,16 @@ class SplitPydanticGenerator(PydanticGenerator):
         return slot
 
 
+def _import_type_checking(imports: Imports) -> None:
+    """Add ``TYPE_CHECKING as _TYPE_CHECKING`` (the alias rule of #243) to the ``typing`` import."""
+    guard = ObjectImport(name="TYPE_CHECKING", alias="_TYPE_CHECKING")
+    for each in imports.imports:
+        if each.module == TYPING and each.objects is not None:
+            each.objects = sorted([*each.objects, guard], key=lambda o: o.name)
+            return
+    imports.imports.append(Import(module=TYPING, objects=[guard]))
+
+
 def _named_after_slot(slot: SlotResult) -> bool:
     """Whether the field is the slot's own name: the alias is no Python name, or the slot opts in (``field_name: slot``)."""
     opted_in = annotation_text(slot.source, GenerationAnnotation.FIELD_NAME) == FIELD_NAME_SLOT
@@ -482,8 +549,13 @@ def _loosens_a_base_slot(slot: SlotDefinition, sv: SchemaView) -> bool:
 
 
 def _generator(
-    path: Path, folder: Path, mode: SplitMode, root_package: str | None
+    path: Path,
+    folder: Path,
+    mode: SplitMode,
+    root_package: str | None,
+    deferred: dict[str, tuple[str, ...]] | None = None,
 ) -> SplitPydanticGenerator:
+    """The generator of one module; ``deferred`` is None outside a cycle, else the names it defers per source module (PD-5)."""
     generator = SplitPydanticGenerator(
         str(path),
         importmap=metamodel_importmap(),
@@ -495,6 +567,8 @@ def _generator(
         toolkit=is_toolkit_schema(folder, roots=TOOLKIT_ROOTS),
         folder=folder.resolve(),
         root_package=root_package,
+        deferred=deferred or {},
+        in_cycle=deferred is not None,
     )
     apply_defaults(generator.schemaview, folder, roots=TOOLKIT_ROOTS)
     return generator
@@ -517,14 +591,65 @@ def render(schema_path: Path) -> list[GeneratedFile]:
     shared = is_toolkit_schema(folder, roots=TOOLKIT_ROOTS) and len(generated) < len(
         own_schemas(view, folder)
     )
-    modules = [GeneratedFile(name=INIT, text="")]
-    for schema in generated:
-        path = Path(str(schema.source_file))
+    wanted = [
+        (Path(str(schema.source_file)), schema)
+        for schema in generated
+        if not (
+            shared
+            and Path(str(schema.source_file)).resolve() == schema_path.resolve()
+            and not schema.classes
+        )
+    ]
+    first: dict[str, tuple[Path, SplitMode, str]] = {}  # pass 1: name -> (schema, mode, text)
+    for path, _ in wanted:
         is_root = path.resolve() == schema_path.resolve()
-        if shared and is_root and not schema.classes:
-            continue
         mode = SplitMode.FULL if is_root and not shared else SplitMode.AUTO
         generator = _generator(path, folder, mode, root_package)
         name = generator.generate_module_import(generator.schema).lstrip(".")
-        modules.append(GeneratedFile(name=f"{name}.py", text=generator.serialize()))
+        first[name] = (path, mode, generator.serialize())
+    analysis = analyse({name: text for name, (_, _, text) in first.items()})  # PD-1 to PD-3
+    deferred = deferred_by_module(analysis)
+    modules, classes = _second_pass(
+        first, modules_in_cycles(analysis), deferred, folder, root_package
+    )
+    modules.append(GeneratedFile(name=INIT, text=_package_init(deferred, classes)))
     return sorted(modules, key=lambda module: module.name)
+
+
+def _second_pass(
+    first: dict[str, tuple[Path, SplitMode, str]],
+    in_cycles: frozenset[str],
+    deferred: dict[str, dict[str, tuple[str, ...]]],
+    folder: Path,
+    root_package: str | None,
+) -> tuple[list[GeneratedFile], dict[str, list[str]]]:
+    """The files of pass 1, the modules of a cycle re-rendered with their deferred names (PD-7), and their classes."""
+    modules: list[GeneratedFile] = []
+    classes: dict[str, list[str]] = {}
+    for name, (path, mode, text) in first.items():
+        if name in in_cycles:
+            generator = _generator(path, folder, mode, root_package, deferred.get(name, {}))
+            text = generator.serialize()
+            classes[name] = generator.class_names
+        modules.append(GeneratedFile(name=f"{name}.py", text=text))
+    return modules, classes
+
+
+def _package_init(
+    deferred: dict[str, dict[str, tuple[str, ...]]], classes: dict[str, list[str]]
+) -> str:
+    """The ``__init__.py`` of a target: empty, or with a cycle the text that binds the deferred names and rebuilds (PD-6)."""
+    if not classes:
+        return ""
+    names = sorted(classes)
+    lines = [f'"""{INIT_DOC}"""', ""]
+    lines += [f"from . import {name} as _{name}" for name in names]
+    lines.append("")
+    for name in names:
+        bound = sorted(
+            (n, source) for source, found in deferred.get(name, {}).items() for n in found
+        )
+        lines += [f'setattr(_{name}, "{n}", _{source}.{n})' for n, source in bound]
+    lines.append("")
+    lines += [f"_{name}.{each}.model_rebuild()" for name in names for each in classes[name]]
+    return "\n".join(lines) + "\n"

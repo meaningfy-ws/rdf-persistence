@@ -11,7 +11,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
 
 ## 1. Stage 1: the generator loads module cycles (#208) — branch `change/generator-module-cycles-1`, one PR
 
-- [ ] 1.1 **unit** — PD-1 to PD-4. New pure module `rdf_persistence_generation/module_cycles.py`:
+- [x] 1.1 **unit** — PD-1 to PD-4. New pure module `rdf_persistence_generation/module_cycles.py`:
   the Tarjan search moved from `uml/modules.py` (generic over sortable nodes; `uml/convert.py`
   imports it from here), and the analysis of `{module name: rendered text}` returning the cycles,
   the deferred names per module, and raising `SchemaGenerationError` (PD-3's message) on a load
@@ -31,7 +31,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   `rdf_persistence_generation.module_cycles` to `source_modules` of the `.importlinter` contract
   `works-without-the-generate-extra`. Accept: the file passes; `make check-architecture` green
   (part of `make test-changed check-quality`, green).
-- [ ] 1.2 **unit** — PD-5 to PD-7, after 1.1. `pydantic_split.render` two passes; `RpModule`
+- [x] 1.2 **unit** — PD-5 to PD-7, after 1.1. `pydantic_split.render` two passes; `RpModule`
   (fields `deferred: Imports | None`, `in_cycle: bool`) and the generator field `deferred`; the
   override `templates/pydantic/module.py.jinja` (the stock template plus the guarded
   `if _TYPE_CHECKING:` block and the footer include under `{% if not in_cycle %}`); the
@@ -42,11 +42,11 @@ named here run in CI's `test-generator` job (`make test-generator`).
   lines and one `model_rebuild()` per class, in PD-6's order),
   `test_a_target_with_no_cycle_writes_an_empty_init_and_the_stock_footer`,
   `test_two_renders_of_a_cycle_are_identical` (reproducibility). Accept: as 1.1.
-- [ ] 1.3 **byte identity (no new test)** — DEC-2, PD-10. After 1.2, `make generate`, then
+- [x] 1.3 **byte identity (no new test)** — DEC-2, PD-10. After 1.2, `make generate`, then
   `git status --porcelain` lists no generated file of the toolkit or of `tests/fixtures/`; the lead
   runs `make check-generated` after committing 1.2. Accept: both empty / green; any diff stops the
   stage and goes to the lead.
-- [ ] 1.4 **integration** — G-1, G-3, spec `rp-generation` scenarios 1 and 3, after 1.2. In
+- [x] 1.4 **integration** — G-1, G-3, spec `rp-generation` scenarios 1 and 3, after 1.2. In
   `tests/generator/integration/test_module_import_cycle.py`: replace
   `test_two_domain_modules_that_import_each_other_are_refused_by_the_import_check` by the first
   failing test `test_two_domain_modules_that_import_each_other_generate_and_import`, parametrised
@@ -65,7 +65,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   both modules and both parents, no generated module written). Leave
   `test_the_same_two_classes_in_one_module_generate_and_import` for 2.4. Accept: the file passes;
   `make test-generator` green.
-- [ ] 1.5 **docs** — after 1.4. `architecture/generation.adoc` (the `pydantic_split.py` row of the
+- [x] 1.5 **docs** — after 1.4. `architecture/generation.adoc` (the `pydantic_split.py` row of the
   artefacts table, and *Correctness of the generated code*: what a cycle generates, what is
   refused), `user-manual/generate.adoc` (the Python output row: a cycle's `__init__.py`; import the
   package, never a file by path; import a class from its own module or from the root module, never
@@ -74,7 +74,7 @@ named here run in CI's `test-generator` job (`make test-generator`).
   (#208) under `[Unreleased]` only, saying it replaces the refusal of two modules that import each
   other described in `[0.8.1]`; released sections are never edited. The `rp-generation` delta of this change is already written. Accept: `make check-docs`
   green.
-- [ ] 1.6 **lead** — `make check-all`, `make test-containers`; the stage pass (L2+L3, one pass);
+- [x] 1.6 **lead** — `make check-all`, `make test-containers`; the stage pass (L2+L3, one pass);
   accepted findings into design.md; PR into `develop`, merged on green CI; #208 closed by it.
 
 ## 2. Stage 2: the converter stops merging — branch `change/generator-module-cycles-2` off `develop` after stage 1 merged, one PR

@@ -544,6 +544,41 @@ classes:
         required: true
       message:
         required: true
+  ModuleCycle:
+    title: Module cycle
+    description: A group of two or more generated modules that import each other.
+    class_uri: rp:ModuleCycle
+    slots:
+      - modules
+    slot_usage:
+      modules:
+        required: true
+  ModuleDeferral:
+    title: Module deferral
+    description: >-
+      The names a module of a cycle imports from another module of its cycle without needing them
+      while it loads, so the import can wait for the type checker.
+    class_uri: rp:ModuleDeferral
+    slots:
+      - module
+      - source_module
+      - names
+    slot_usage:
+      module:
+        required: true
+      source_module:
+        required: true
+      names:
+        required: true
+  CycleAnalysis:
+    title: Cycle analysis
+    description: >-
+      What the modules of a target need in order to load: the groups that import each other, and per
+      module of a group the names it defers.
+    class_uri: rp:CycleAnalysis
+    slots:
+      - cycles
+      - deferrals
   PresenceRule:
     title: Presence rule
     description: A class-level rule over alternatives, and when its validator refuses.
@@ -1084,6 +1119,29 @@ slots:
     description: The names imported from a module.
     slot_uri: rp:importedNames
     multivalued: true
+  source_module:
+    title: Source module
+    description: The name of the schema module a name is imported from.
+    slot_uri: rp:sourceModuleName
+  modules:
+    title: Modules
+    description: The names of schema modules.
+    slot_uri: rp:moduleNames
+    multivalued: true
+  cycles:
+    title: Cycles
+    description: The groups of modules that import each other, each sorted, the groups sorted.
+    slot_uri: rp:moduleCycles
+    range: ModuleCycle
+    multivalued: true
+    inlined_as_list: true
+  deferrals:
+    title: Deferrals
+    description: The names each module of a cycle imports from another module of its cycle without needing them at load.
+    slot_uri: rp:moduleDeferrals
+    range: ModuleDeferral
+    multivalued: true
+    inlined_as_list: true
   enums:
     title: Enums
     description: The enums a TypeScript module declares.

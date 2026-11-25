@@ -69,6 +69,80 @@ FEATURED_SLOT = """\
     slot_uri: lib:featured
     range: Book
 """
+PLAQUE = """\
+  Plaque:
+    title: Plaque
+    description: A plaque; a part owned by a shelf, declared beside the books.
+    class_uri: lib:Plaque
+    mixins: [Described]
+"""
+SHELF_WITH_PLAQUE = SHELF.replace("slots: [featured]", "slots: [featured, plaque]")
+PLAQUE_SLOT = """\
+  plaque:
+    title: Plaque
+    description: The plaque of the shelf; it lives in the shelf's graph.
+    slot_uri: lib:plaque
+    range: Plaque
+    inlined: true
+    annotations:
+      owned: true
+"""
+ROOT_A = """\
+  Root:
+    title: Root
+    description: A root in the first module, referred to from the second.
+    class_uri: lib:Root
+    mixins: [AggregateRoot, Described]
+    annotations:
+      rp_path: roots
+      database: tenant
+  Child:
+    title: Child
+    description: A root in the first module whose parent is in the second.
+    class_uri: lib:Child
+    is_a: Base
+    annotations:
+      rp_path: children
+      database: tenant
+"""
+BASE_B = """\
+  Base:
+    title: Base
+    description: A root in the second module, the parent of a class of the first.
+    class_uri: lib:Base
+    mixins: [AggregateRoot, Described]
+    annotations:
+      rp_path: bases
+      database: tenant
+  Holder:
+    title: Holder
+    description: A root in the second module that refers to a root of the first.
+    class_uri: lib:Holder
+    mixins: [AggregateRoot, Described]
+    slots: [held]
+    annotations:
+      rp_path: holders
+      database: tenant
+"""
+HELD_SLOT = """\
+  held:
+    title: Held
+    description: The root the holder holds, another aggregate, stored as its IRI.
+    slot_uri: lib:held
+    range: Root
+"""
+
+
+def _root(name: str, parent: str | None = None) -> str:
+    """A root class, optionally the child of ``parent`` (a class of another module)."""
+    own = "    is_a: " + parent + "\n" if parent else "    mixins: [AggregateRoot, Described]\n"
+    return (
+        f"  {name}:\n    title: {name}\n    description: The root {name}.\n"
+        f"    class_uri: lib:{name}\n{own}"
+        f"    annotations:\n      rp_path: {name.lower()}s\n      database: tenant\n"
+    )
+
+
 PYPROJECT = f"""\
 [tool.rp-generate]
 schema = "app.yaml"
@@ -130,17 +204,22 @@ def _build_a_book_on_a_shelf() -> None:
     assert (book.label, str(book.shelf)) == ("Dune", "https://example.org/ns/library#shelf-1")
 
 
-def test_two_domain_modules_that_import_each_other_are_refused_by_the_import_check(
-    importable: Path, capsys: pytest.CaptureFixture[str]
+@pytest.mark.parametrize("first", ["app_books", "app_shelves"])
+def test_two_domain_modules_that_import_each_other_generate_and_import(
+    importable: Path, capsys: pytest.CaptureFixture[str], first: str
 ) -> None:
-    """SPIKE-2 (PD-14): the split modules import each other at module level, so the package fails
-    with a circular ImportError (#208; the converter merges a cycle into one module, PD-27). The
-    run and the check import what was written and say so, naming the module (#242)."""
+    """G-1 (#208): modules that import each other write Python that loads in any order, and a
+    class names a part of the other module (``Shelf.plaque``, a ``Plaque`` of ``app_books``)."""
     pyproject = _write_project(
         importable,
         {
-            "app_books": _module("app_books", ("app_shelves",), BOOK, SHELF_SLOT),
-            "app_shelves": _module("app_shelves", ("app_books",), SHELF, FEATURED_SLOT),
+            "app_books": _module("app_books", ("app_shelves",), BOOK + PLAQUE, SHELF_SLOT),
+            "app_shelves": _module(
+                "app_shelves",
+                ("app_books",),
+                SHELF_WITH_PLAQUE,
+                FEATURED_SLOT + PLAQUE_SLOT,
+            ),
         },
     )
 
@@ -150,11 +229,72 @@ def test_two_domain_modules_that_import_each_other_are_refused_by_the_import_che
         capsys.readouterr().err,
     )
 
-    for code, error in ((run_code, run_error), (check_code, check_error)):
-        assert code == 1, "a package that cannot be imported passed"
-        assert "import check" in error, error
-        assert f"{PACKAGE}.domain.generated.app_books" in error, "the module is not named"
-        assert "ImportError" in error, "the exception is not named"
+    assert "hard check" not in run_error, run_error
+    assert run_code == 0, run_error
+    assert check_code == 0, check_error
+    modules = {
+        name: importlib.import_module(f"{PACKAGE}.domain.generated.{name}")
+        for name in (first, "app_books" if first == "app_shelves" else "app_shelves")
+    }
+    shelf = modules["app_shelves"].Shelf(
+        id="https://example.org/ns/library#shelf-1",
+        label="Front",
+        plaque={"id": "https://example.org/ns/library#plaque-1", "label": "Gold"},
+    )
+    assert isinstance(shelf.plaque, modules["app_books"].Plaque), "the part was not built"
+    assert shelf.plaque.label == "Gold", "the part lost its data"
+
+
+@pytest.mark.parametrize("first", ["app_a", "app_b"])
+def test_a_parent_in_one_module_and_a_reference_back_load_in_any_order(
+    importable: Path, capsys: pytest.CaptureFixture[str], first: str
+) -> None:
+    """The half-load cycle (PD-3): ``app_a.Child`` has its parent in ``app_b`` (needed at load) and
+    ``app_b.Holder`` refers back to ``app_a.Root`` (annotation only, deferred): it loads."""
+    pyproject = _write_project(
+        importable,
+        {
+            "app_a": _module("app_a", ("app_b",), ROOT_A, ""),
+            "app_b": _module("app_b", ("app_a",), BASE_B, HELD_SLOT),
+        },
+    )
+
+    code = main(["--project", str(pyproject)])
+
+    assert code == 0, capsys.readouterr().err
+    a = importlib.import_module(f"{PACKAGE}.domain.generated.{first}")
+    other = "app_b" if first == "app_a" else "app_a"
+    b = importlib.import_module(f"{PACKAGE}.domain.generated.{other}")
+    modules = {first: a, other: b}
+    holder = modules["app_b"].Holder(
+        id="https://example.org/ns/library#holder-1",
+        label="Holder",
+        held="https://example.org/ns/library#root-1",
+    )
+    assert str(holder.held) == "https://example.org/ns/library#root-1", "the reference is lost"
+    assert issubclass(modules["app_a"].Child, modules["app_b"].Base), "the parent is not applied"
+
+
+def test_two_modules_whose_classes_inherit_from_each_other_are_refused(
+    importable: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PD-3: each module needs a parent from the other while it loads, so no order loads it:
+    refused at the python step, naming both modules and both parents, nothing written."""
+    pyproject = _write_project(
+        importable,
+        {
+            "app_a": _module("app_a", ("app_b",), _root("Child", "Base") + _root("Root"), ""),
+            "app_b": _module("app_b", ("app_a",), _root("Other", "Root") + _root("Base"), ""),
+        },
+    )
+
+    code = main(["--project", str(pyproject)])
+    error = capsys.readouterr().err
+
+    assert code == 1, "a cycle that cannot load was accepted"
+    for name in ("app_a", "app_b", "Root", "Base"):
+        assert name in error, f"{name} is not named: {error}"
+    assert not (importable / PACKAGE / "domain" / "generated").exists(), "files were written"
 
 
 def test_the_same_two_classes_in_one_module_generate_and_import(

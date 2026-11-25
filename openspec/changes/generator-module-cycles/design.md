@@ -233,6 +233,38 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   task 2.4 re-runs the check on a cyclic pair.
 - **Trade-off:** pass 2 re-renders the modules of a cycle (PD-7): time for cyclic targets only.
 
+## Delivery decisions
+
+- **D-1 (stage 1, task 1.1) The cycle analysis result is a LinkML class.** The model guard
+  (`tests/unit/testkit/test_model_guard.py`) refuses a hand-written `NamedTuple` or dataclass;
+  `CycleAnalysis` is a generator-technical record (P-0011), so it is declared in
+  `rdf_persistence_generation/model/rp_generation.yaml` and generated into `rp_generation.py`;
+  the analysis' private helper record goes the same way or becomes plain local data. Rejected:
+  listing it in the guard's `HAND_WRITTEN` (kept for types that hold foreign runtime objects).
+  Task 1.3's byte identity covers the targets' generated output, not `rp_generation.py`.
+- **D-2 (stage 1) No `make test-containers` for stage 1.** Stage 1 changes no adapter (only the
+  generator, its templates and tests); `AGENTS.md` runs the container suite when adapters change.
+  Task 1.6's line naming it is read under that rule; stage 2 changes no adapter either.
+- **D-3 (stage 1) The pre-commit GitNexus re-index was skipped.** `make reindex` failed while
+  another session's GitNexus process held the graph DB; the documented recovery
+  (`gitnexus clean --force`) would remove the index under that session. The stage's symbols did
+  not move from the stage-start impact (LOW: `cycle_components` one caller, `render` one caller in
+  `steps.py`), and `make check-all` covers the callers.
+- **D-4 (stage 1) The stage review is one L2+L3 pass** (owner's rule P-0005, `develop/agents.adoc`
+  *Keeping the challenge cheap*), not the MEDIUM default of two grouped runs; the full review
+  (L1, L2, L3 apart, L4+L5 as one) runs once at the end of stage 2 (task 2.6).
+- Stage 1 review, under the floor (no Critical finding; not fixed in this stage):
+  - W1 (L2) the refusal test does not assert the `python` step nor that existing generated files
+    are left as they were (spec scenario 3).
+  - S1 (L2) the `first` parameter of the two load-order tests cannot change the load order (the
+    package `__init__.py` always loads the cycle first).
+  - S2 (L3) `module_cycles` relies on `from __future__ import annotations` in the stock output and
+    does not check for it; the integration tests that import a generated cycle would fail if a
+    LinkML upgrade dropped it (RISK-2).
+  - S3 (L2) the docs say only annotation names are deferred and write `TYPE_CHECKING` unaliased;
+    the code also defers unused names and names read only in function bodies, under
+    `_TYPE_CHECKING`.
+
 ## Open Questions
 
 None blocking; owner questions with defaults are `inputs/qa.md` OPEN-1 to OPEN-4.

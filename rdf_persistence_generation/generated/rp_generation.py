@@ -711,6 +711,24 @@ class ReportLine(ConfiguredBaseModel):
     message: str = _Field(default=..., title="Message", description="What is wrong, in a line.")
 
 
+class ModuleCycle(ConfiguredBaseModel):
+    "A group of two or more generated modules that import each other."
+    modules: list[str] = _Field(default=..., title="Modules", description="The names of schema modules.")
+
+
+class ModuleDeferral(ConfiguredBaseModel):
+    "The names a module of a cycle imports from another module of its cycle without needing them while it loads, so the import can wait for the type checker."
+    module: str = _Field(default=..., title="Module", description="The name of a schema module.")
+    source_module: str = _Field(default=..., title="Source module", description="The name of the schema module a name is imported from.")
+    names: list[str] = _Field(default=..., title="Names", description="The names imported from a module.")
+
+
+class CycleAnalysis(ConfiguredBaseModel):
+    "What the modules of a target need in order to load: the groups that import each other, and per module of a group the names it defers."
+    cycles: _Optional[list[ModuleCycle]] = _Field(default=None, title="Cycles", description="The groups of modules that import each other, each sorted, the groups sorted.")
+    deferrals: _Optional[list[ModuleDeferral]] = _Field(default=None, title="Deferrals", description="The names each module of a cycle imports from another module of its cycle without needing them at load.")
+
+
 class PresenceRule(ConfiguredBaseModel):
     "A class-level rule over alternatives, and when its validator refuses."
     name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
@@ -841,6 +859,9 @@ UmlElement.model_rebuild()
 UmlPackagePath.model_rebuild()
 UmlLinkEnd.model_rebuild()
 ReportLine.model_rebuild()
+ModuleCycle.model_rebuild()
+ModuleDeferral.model_rebuild()
+CycleAnalysis.model_rebuild()
 PresenceRule.model_rebuild()
 RuleAlternative.model_rebuild()
 UniqueKeyOn.model_rebuild()

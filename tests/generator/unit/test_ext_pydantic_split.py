@@ -823,3 +823,137 @@ def test_with_no_root_package_every_own_schema_is_generated(beside: Path) -> Non
     root.write_text(text.replace(f"python_package: {ROOT_PACKAGE}", "note: none"), encoding="utf-8")
     view = load_schema(root)
     assert {s.name for s in generated_schemas(view, beside)} == {"root", "theme"}
+
+
+CYCLE_HEADER = """
+id: https://example.org/ns/{name}
+name: {name}
+title: {name}
+description: A module of two that import each other.
+prefixes: {{x: "https://example.org/ns/x#", linkml: "https://w3id.org/linkml/"}}
+default_prefix: x
+default_range: string
+imports: [linkml:types, {other}]
+"""
+CYCLE_BOOKS = """
+classes:
+  Book:
+    title: Book
+    description: A book on a shelf.
+    attributes:
+      id: {identifier: true, title: Id, description: Its id.}
+      shelf: {range: Shelf, title: Shelf, description: Its shelf.}
+  Plaque:
+    title: Plaque
+    description: A plaque, a part of a shelf.
+    attributes:
+      text: {title: Text, description: Its text.}
+"""
+CYCLE_SHELVES = """
+classes:
+  Shelf:
+    title: Shelf
+    description: A shelf that features a book and holds a plaque.
+    attributes:
+      id: {identifier: true, title: Id, description: Its id.}
+      featured: {range: Book, title: Featured, description: Its book.}
+      plaque: {range: Plaque, inlined: true, title: Plaque, description: Its plaque.}
+"""
+
+
+def _cycle_target(folder: Path) -> Path:
+    """Two modules that import each other, ``cyc_books`` (the root) and ``cyc_shelves``; no class is needed at load."""
+    folder.mkdir()
+    books = CYCLE_HEADER.format(name="cyc_books", other="cyc_shelves") + CYCLE_BOOKS
+    shelves = CYCLE_HEADER.format(name="cyc_shelves", other="cyc_books") + CYCLE_SHELVES
+    (folder / "cyc_books.yaml").write_text(books, encoding="utf-8")
+    (folder / "cyc_shelves.yaml").write_text(shelves, encoding="utf-8")
+    return folder / "cyc_books.yaml"
+
+
+def _guarded(tree: ast.Module) -> list[ast.ImportFrom]:
+    """The relative imports under ``if _TYPE_CHECKING:``."""
+    return [
+        node
+        for stmt in tree.body
+        if isinstance(stmt, ast.If)
+        and isinstance(stmt.test, ast.Name)
+        and stmt.test.id == "_TYPE_CHECKING"
+        for node in stmt.body
+        if isinstance(node, ast.ImportFrom)
+    ]
+
+
+def _top_imports(tree: ast.Module, module: str) -> set[str]:
+    return {
+        alias.name
+        for node in tree.body
+        if isinstance(node, ast.ImportFrom) and "." * node.level + (node.module or "") == module
+        for alias in node.names
+    }
+
+
+def test_a_module_in_a_cycle_imports_the_other_modules_class_for_the_type_checker_only(
+    tmp_path: Path,
+) -> None:
+    files = {f.name: f.text for f in render_modules(_cycle_target(tmp_path / "t"))}
+    tree = ast.parse(files["cyc_books.py"])
+    assert {(n.module, a.name) for n in _guarded(tree) for a in n.names} == {
+        ("cyc_shelves", "Shelf")
+    }, "the class is imported under `if _TYPE_CHECKING:`"
+    assert "Shelf" not in _top_imports(tree, ".cyc_shelves"), "and not at the top"
+    assert "model_rebuild" not in files["cyc_books.py"], "the package rebuilds, not the module"
+    assert "TYPE_CHECKING as _TYPE_CHECKING" in files["cyc_books.py"], "the alias rule of #243"
+    shelves = ast.parse(files["cyc_shelves.py"])
+    assert [a.name for n in _guarded(shelves) for a in n.names] == ["Book", "Plaque"], "sorted"
+
+
+def test_the_package_init_of_a_target_with_a_cycle_binds_and_rebuilds(tmp_path: Path) -> None:
+    files = {f.name: f.text for f in render_modules(_cycle_target(tmp_path / "t"))}
+    assert files["__init__.py"] == (
+        '"""Completes the classes of the modules that import each other (rp-generate)."""\n'
+        "\n"
+        "from . import cyc_books as _cyc_books\n"
+        "from . import cyc_shelves as _cyc_shelves\n"
+        "\n"
+        'setattr(_cyc_books, "Shelf", _cyc_shelves.Shelf)\n'
+        'setattr(_cyc_shelves, "Book", _cyc_books.Book)\n'
+        'setattr(_cyc_shelves, "Plaque", _cyc_books.Plaque)\n'
+        "\n"
+        "_cyc_books.Book.model_rebuild()\n"
+        "_cyc_books.Plaque.model_rebuild()\n"
+        "_cyc_shelves.Shelf.model_rebuild()\n"
+    ), "the text of PD-6"
+
+
+def test_a_target_with_no_cycle_writes_an_empty_init_and_the_stock_footer(tmp_path: Path) -> None:
+    (tmp_path / "colours.yaml").write_text(ENUM_MODULE, encoding="utf-8")
+    (tmp_path / "paint.yaml").write_text(USER_MODULE, encoding="utf-8")
+    files = {f.name: f.text for f in render_modules(tmp_path / "paint.yaml")}
+    assert files["__init__.py"] == "", "an empty package marker"
+    assert "_TYPE_CHECKING" not in files["paint.py"], "no guarded import outside a cycle"
+    assert files["paint.py"].rstrip().endswith("Paint.model_rebuild()"), "the stock footer stays"
+
+
+def test_two_renders_of_a_cycle_are_identical(tmp_path: Path) -> None:
+    root = _cycle_target(tmp_path / "t")
+    first = [(f.name, f.text) for f in render_modules(root)]
+    assert first == [(f.name, f.text) for f in render_modules(root)], "reproducible"
+
+
+def test_a_target_with_a_cycle_imports_and_builds_models(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _cycle_target(tmp_path / "t")
+    package = tmp_path / "cyc_pkg"
+    package.mkdir()
+    for file in render_modules(root):
+        (package / file.name).write_text(file.text, encoding="utf-8")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    try:
+        shelves = importlib.import_module("cyc_pkg.cyc_shelves")
+        shelf = shelves.Shelf(id="s1", featured="b1", plaque={"text": "hi"})
+        assert shelf.plaque.text == "hi", "the inlined plaque is validated into its class"
+    finally:
+        for name in [m for m in sys.modules if m.split(".")[0] == "cyc_pkg"]:
+            del sys.modules[name]
