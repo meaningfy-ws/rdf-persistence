@@ -480,7 +480,9 @@ async def test_a_restored_tenant_under_an_activity_template_owns_its_activities(
 
     after, with_parts = await activity_iris(new)
     uuids = {a.rsplit("/", 1)[1] for a in before}
-    assert after == {f"{new}/activity/{u}" for u in uuids}, "each activity is the new tenant's, same UUID"
+    assert after == {f"{new}/activity/{u}" for u in uuids}, (
+        "each activity is the new tenant's, same UUID"
+    )
     assert not [a for a in after if a.startswith(world.tenant)], "none stays under the old tenant"
     assert with_parts == after, "every generation names the moved activity"
 
