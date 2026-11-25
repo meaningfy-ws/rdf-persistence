@@ -281,3 +281,7 @@ None. Both rounds answered every concern (`inputs/qa.md`).
   `howto/reverse-references.adoc` (the `Referrer` item) and `user-manual/store-and-read.adoc` (the
   example 409 body). The item is built by one helper, `referrer_item`, beside `located` in
   `referrer_naming.py`, so the problem and the listing cannot drift (D-6).
+- **D-14 (stage-2 review W2, re-labelled Critical: the page the consumer reads stated a narrower
+  contract than `rp-service-api`):** `user-manual/store-and-read.adoc` names both reasons a
+  referrer carries no address (an unserved class, or an IRI that is not an aggregate IRI of the
+  policy) and the same URL template as the other pages. Lead-fixed.
