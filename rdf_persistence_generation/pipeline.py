@@ -45,6 +45,8 @@ class Run:
     base: Path
     staging: Path
     view: SchemaView
+    targets: tuple[GenerationTarget, ...] = ()
+    """The project's targets as the command line gave them, flags applied; ``target`` is one of them."""
 
     @property
     def schema_path(self) -> Path:
@@ -127,14 +129,18 @@ def render_step(
 
 
 def _run_target(
-    target: GenerationTarget, base: Path, staging: Path, steps: Sequence[Step]
+    target: GenerationTarget,
+    base: Path,
+    staging: Path,
+    steps: Sequence[Step],
+    targets: Sequence[GenerationTarget] = (),
 ) -> list[CheckProblem]:
     try:
         view = load_schema(base / target.schema_file)
         view.imports_closure()
     except LOAD_ERRORS as error:
         return [CheckProblem(schema_file=target.schema_file, step="load", message=str(error))]
-    run = Run(target, base, staging, view)
+    run = Run(target, base, staging, view, tuple(targets))
     for step in steps:
         try:
             step.run(run)
@@ -195,7 +201,7 @@ def _run_targets(
     targets: Sequence[GenerationTarget], base: Path, stagings: Sequence[Path], steps: Sequence[Step]
 ) -> list[CheckProblem]:
     results = (
-        _run_target(target, base, staging, steps)
+        _run_target(target, base, staging, steps, targets)
         for target, staging in zip(targets, stagings, strict=True)
     )
     return [problem for result in results for problem in result]

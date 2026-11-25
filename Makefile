@@ -189,7 +189,7 @@ typecheck: ## Run mypy type checks
 # The Python folders of every [[tool.rp-generate]] entry, so a new entry is checked without an edit here.
 # A folder inside another listed folder (the service module's) is checked with its parent.
 GENERATED_PY = $(shell { uv run rp-generate --list-python-folders; uv run rp-generate --list-python-folders --project $(TOY_PROJECT); } | sort | awk '{ for (i in kept) if (index($$0, kept[i] "/") == 1) next; kept[NR] = $$0; print }')
-TOY_TS = $(wildcard tests/fixtures/library/web/src/domain/generated/*.ts)
+TOY_TS = $(wildcard tests/fixtures/library/web/src/domain/generated/*.ts) $(wildcard tests/fixtures/library/web/src/domain/generated/values/*.ts) $(wildcard tests/fixtures/library/web/src/services/generated/*.ts)
 
 typecheck-generated: ## Run mypy on the generated Python only, with mypy-generated.ini (PD-27)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running mypy on generated code$(END_BUILD_PRINT)"

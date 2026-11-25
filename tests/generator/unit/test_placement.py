@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from rdf_persistence_generation.cli import main
+from rdf_persistence_generation.config import read_targets
 
 from .golden import TOY
 
@@ -21,9 +22,12 @@ def test_typescript_goes_to_the_declared_folder_and_nowhere_else(tmp_path: Path)
 
     assert main(["--project", str(project / "pyproject.toml")]) == 0, "the run failed"
 
+    declared = {
+        f"{t.typescript}/" for t in read_targets(project / "pyproject.toml") if t.typescript
+    }
     typescript = {f for f in _files(project) if f.endswith(".ts")}
     assert typescript, "no TypeScript was written"
-    assert all(f.startswith("web/src/domain/generated/") for f in typescript), (
+    assert all(f.rpartition("/")[0] + "/" in declared for f in typescript), (
         f"TypeScript outside the declared folder: {sorted(typescript)}"
     )
     assert any(f.startswith("domain/generated/diagrams/") for f in _files(project)), (

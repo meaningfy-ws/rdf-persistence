@@ -12,6 +12,9 @@ service types; its module and type names are reserved.
 """
 
 import json
+import posixpath
+from collections.abc import Mapping, Sequence
+from functools import cache
 from pathlib import Path
 
 from linkml.generators.typescriptgen import TypescriptGenerator
@@ -27,6 +30,7 @@ from rdf_persistence.schema.services.schema_structure import (
     is_internal,
     is_owned,
     own_schemas,
+    python_package_of,
 )
 from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.exceptions import SchemaGenerationError
@@ -209,12 +213,58 @@ def _is_served(schema_path: Path) -> bool:
     return schema_path.resolve() in {path.resolve() for path in SERVED_SCHEMAS}
 
 
-def render(schema_path: Path) -> list[GeneratedFile]:
+def _specifier(owner: Path, module: str, folder: Path) -> str:
+    """The path of ``module`` in ``owner``'s folder as ``folder``'s files import it (PD-4)."""
+    spec = posixpath.relpath((owner / module).as_posix(), folder.as_posix())
+    return spec if spec.startswith(".") else f"./{spec}"
+
+
+def _imported_from_owners(
+    generator: ToolkitTypescriptGenerator, owners: Mapping[str, Path], folder: Path
+) -> dict[str, str]:
+    """The specifier of each module another target writes as TypeScript, by module name (PD-3).
+
+    A module is another target's when its ``python_package`` is a key of ``owners`` and is not the
+    root schema's own.
+    """
+    own_package = python_package_of(generator.schemaview.schema)
+    specifiers = {}
+    for schema in generator.schemaview.schema_map.values():
+        package = python_package_of(schema)
+        if package is not None and package in owners and package != own_package:
+            specifiers[schema.name] = _specifier(owners[package], schema.name, folder)
+    return specifiers
+
+
+def _importing(modules: list[TsModule], specifiers: Mapping[str, str]) -> list[TsModule]:
+    """``modules`` without the imported ones, and the others' imports of them pointed at their owners."""
+    kept = [module for module in modules if module.name not in specifiers]
+    return [
+        module.replaced(
+            imports=sorted(
+                (
+                    TsImport(module=specifiers.get(item.module, item.module), names=item.names)
+                    for item in module.imports
+                ),
+                key=lambda item: item.module,
+            )
+        )
+        for module in kept
+    ]
+
+
+def render(
+    schema_path: Path, *, folder: Path | None = None, owners: Mapping[str, Path] | None = None
+) -> list[GeneratedFile]:
     """The TypeScript files of the schema at ``schema_path`` plus the types of every served schema.
 
     A consumer's API carries the service types (``rp_service`` and the other served schemas, PD-10),
     so they are written beside the modules the schema imports, in the order of ``SERVED_SCHEMAS``;
     the index exports every module once.
+
+    A module whose ``python_package`` is a key of ``owners`` (the packages of the project's other
+    targets that write TypeScript, to their folders) gets no file here: the modules that use it
+    import it from the owner's folder, relative to ``folder``, this target's own.
 
     Raises:
         SchemaGenerationError: When the schema defines a module or type named like one of the served
@@ -227,7 +277,24 @@ def render(schema_path: Path) -> list[GeneratedFile]:
         raise SchemaGenerationError(
             f"{', '.join(clashes)}: reserved by the served types ({SERVICE_MODULE}.ts and its kin); rename"
         )
-    return with_index(_with_served(generator.modules()))
+    modules = generator.modules()
+    if folder is not None and owners:  # no folder or no owner: every module is copied
+        modules = _importing(modules, _imported_from_owners(generator, owners, folder))
+    return with_index(_with_served(modules))
+
+
+@cache
+def _served_modules(
+    served: tuple[Path, ...],
+) -> tuple[tuple[str, ...], tuple[tuple[TsModule, ...], ...]]:
+    """The names of the ``served`` schemas and, for each, its TypeScript modules, built once per process.
+
+    They depend only on ``SERVED_SCHEMAS`` (the argument, so the cache follows it), never on the
+    target, so every render of a generation reuses them (D-9); tuples keep a caller from changing
+    the cached value.
+    """
+    names = tuple(load_schema(path).schema.name for path in served)
+    return names, tuple(tuple(_generator(path).modules()) for path in served)
 
 
 def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
@@ -237,11 +304,11 @@ def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
     the types of every served schema in ``SERVED_SCHEMAS`` order, so splitting the service schema
     changes neither its name nor the order of its types (TC-07).
     """
-    served_names = [load_schema(path).schema.name for path in SERVED_SCHEMAS]
+    served_names, served_modules = _served_modules(tuple(SERVED_SCHEMAS))
     by_name = {m.name: m for m in modules if m.name not in served_names}
     own: list[TsModule] = []
-    for served, name in zip(SERVED_SCHEMAS, served_names, strict=True):
-        for module in _generator(served).modules():
+    for name, built in zip(served_names, served_modules, strict=True):
+        for module in built:
             if module.name == name:
                 own.append(module)
             elif module.name not in served_names:
@@ -251,7 +318,7 @@ def _with_served(modules: list[TsModule]) -> list[GeneratedFile]:
     return [_file(_pointing_at_merged(by_name[name], served_names)) for name in sorted(by_name)]
 
 
-def _pointing_at_merged(module: TsModule, served_names: list[str]) -> TsModule:
+def _pointing_at_merged(module: TsModule, served_names: Sequence[str]) -> TsModule:
     """``module`` with each import of a served schema's module pointed at ``SERVICE_MODULE``.
 
     A served schema has no file of its own (its types are in the merged one), so an import of
@@ -271,7 +338,7 @@ def _pointing_at_merged(module: TsModule, served_names: list[str]) -> TsModule:
     )
 
 
-def _merged(modules: list[TsModule], served_names: list[str]) -> TsModule:
+def _merged(modules: list[TsModule], served_names: Sequence[str]) -> TsModule:
     """One module named ``SERVICE_MODULE``, with the enums and interfaces of all in order."""
     imports: dict[str, set[str]] = {}
     for module in modules:

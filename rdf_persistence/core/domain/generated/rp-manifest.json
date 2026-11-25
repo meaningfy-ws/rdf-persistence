@@ -135,7 +135,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/typescript.py",
-      "sha256": "172ae7787172ba52c91afc9032c199f1e1abc8b7197d1458066ad5d487d745d6"
+      "sha256": "62d296f0e4b56c6a3ed7a6844947842aa29808eaa0fa9b197b9233e09b8378bd"
     },
     {
       "path": "rdf_persistence_generation/lock.py",
@@ -155,7 +155,7 @@
     },
     {
       "path": "rdf_persistence_generation/pipeline.py",
-      "sha256": "3319ff8a51c144d0dbf0ea7a6c35381cdf78c46d2c87d6491c5f350b59ef82a3"
+      "sha256": "e4b0aa72d71aea4f199624b742c176b9d8814013705d0e6db4174a3ccc323f1d"
     },
     {
       "path": "rdf_persistence_generation/problems.py",
@@ -163,7 +163,7 @@
     },
     {
       "path": "rdf_persistence_generation/steps.py",
-      "sha256": "d3c30d83886db6b27a39b5b9e2ca14feac827b83fd00e3f752ccc31318bc13da"
+      "sha256": "9b7edead27e0ec111cb4f0af2ac5d9b047c3c5610f700c2cfbc06c5e4463db56"
     },
     {
       "path": "rdf_persistence_generation/templates/mermaid/module.mmd.jinja",
@@ -207,7 +207,7 @@
     },
     {
       "path": "rdf_persistence_generation/templates/typescript/module.ts.jinja",
-      "sha256": "e126744f2b90dc9e3f35aebbb1d78fafec7193166adbb409697125a804d83ef6"
+      "sha256": "ffefe09958f3d49b23a3f7c8cd233f800864dd319c8dcab24419b7e8643e8dc1"
     },
     {
       "path": "rdf_persistence_generation/templating.py",

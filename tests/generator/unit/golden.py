@@ -108,7 +108,8 @@ def check(pyproject: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str
 
 def run_toy(step: Step, staging: Path, target: GenerationTarget = TOY_TARGET) -> Path:
     """Run ``step`` over the toy library, writing into ``staging`` the way a real run would; returns ``staging``."""
-    step.run(Run(target, TOY, staging, load_schema(TOY / ROOT_SCHEMA)))
+    toy_targets = tuple(read_targets(TOY / "pyproject.toml"))
+    step.run(Run(target, TOY, staging, load_schema(TOY / ROOT_SCHEMA), targets=toy_targets))
     return staging
 
 

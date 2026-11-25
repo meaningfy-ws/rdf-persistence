@@ -796,7 +796,7 @@ class TsEnum(ConfiguredBaseModel):
 
 class TsImport(ConfiguredBaseModel):
     "The names a TypeScript module imports from another module."
-    module: str = _Field(default=..., title="Module", description="The name of a schema module.")
+    module: str = _Field(default=..., title="Module", description="The name of the module to import, or, for a module another target writes as TypeScript, its path relative to the importing file\u0027s folder (it starts with a dot).")
     names: list[str] = _Field(default=..., title="Names", description="The names imported from a module.")
 
 

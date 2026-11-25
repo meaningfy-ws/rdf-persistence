@@ -15,10 +15,11 @@ in the same file already reads the project's targets with `read_targets(run.base
 ## Decisions
 
 - **PD-1 Who owns a module's TypeScript.** `steps._typescript_owners(run) -> dict[str, Path]`:
-  when `run.base / PYPROJECT` is a file, `{t.package: Path(t.typescript) for t in
-  read_targets(run.base / PYPROJECT) if t.typescript and t.package != run.target.package}`;
-  otherwise `{}` (a flags-only run copies, as today). Folders are relative to `run.base`, as
-  `_typescript_folder` treats them.
+  `{t.package: Path(t.typescript) for t in run.targets if t.typescript and t.package !=
+  run.target.package}`. Revised by D-5: the owners come from `run.targets` (the run's targets as
+  `generate` received them, flags applied; default `()`), never from the file, so a flags-only run
+  has none and copies, and the run's own package is never an owner. Folders are relative to
+  `run.base`, as `_typescript_folder` treats them.
 - **PD-2 The step.** `TYPESCRIPT_STEP` becomes a `Step("typescript", _write_typescript,
   writes=True)` in `steps.py`, whose `_write_typescript(run)` returns when `_typescript_folder(run)`
   is `None`, otherwise does what `render_step`'s `write` does (inside `schema_faults()`, then
@@ -151,3 +152,94 @@ unchanged: they are the regression guard that a target with no imported module w
 None moved or rewritten. TC-1, TC-2, TC-4, TC-5 run in the generator's unit lane and TC-6 in its
 integration lane, both in `make test-generator`; TC-7 in the library's unit lane; TC-3 in the CI
 "types" job.
+
+## Delivery decisions
+
+- **D-1 (2026-11-25, developer).** Authority grant for this EPIC: the lead commits, pushes, opens
+  the stage PR and merges it on green CI without asking at each step; nothing destructive; the
+  grant ends with the EPIC.
+- **D-2 (lead, Prepare).** Tasks 1.1 and 1.3 touch disjoint files and run as parallel builders, 1.3
+  in its own worktree (`.worktrees/consumer-friction-372`, branch `change/consumer-friction-372`),
+  its commit cherry-picked onto `change/consumer-friction`. Tester: no, SMALL. Review set: one pass
+  (L2 with L3, `develop/agents.adoc#challenge`).
+- **D-3 (lead, Build).** Against `develop`, `make test-changed` cannot map the generator's
+  changes and falls back to the whole suite (32 min in task 1.1). Tasks 1.2 and 1.4 run their gate
+  with `BASE=<the stage head before the task>`, so it maps only the task's own files. The three
+  tests that failed under load in 1.1's gate (`test_transaction_attack.py` twice,
+  `test_sparql.py::test_a_pattern_too_long_for_the_parser_is_refused_with_the_advice_to_split`)
+  pass alone; the stage's `make check-all` decides whether they are flakes.
+- **D-4 (lead, Challenge).** The stage's `make check-all` passed every quality check (format,
+  ruff, xenon, mypy, mypy on generated code, `tsc` on the toy's three TypeScript folders and on
+  the OpenAPI types, architecture, bindings, spec and docs, generated code fresh), then its unit
+  lane was stopped at the two-hour limit at 23 %, with five failures, while two other sessions ran
+  their full suites on the same 20 cores (load average ≈ 45). The test evidence is therefore CI's
+  lanes (unit 1/8–8/8, feature, generator, coverage floor) plus a local `make test-generator`,
+  the lane that holds every test this change adds or edits apart from TC-7. A failure CI shows in
+  the unit lanes is decided in Decide and fix; R-0001 is met for the quality half only.
+- **D-6 (a second lead session, after a restart; its own review pass L2+L3, 6 findings).** It
+  overlapped this session's delivery and stepped back; its findings agree with D-5 and are kept
+  as a record. Accepted, Critical: **F-1** (= D-5's C1)
+  `_typescript_owners` re-reads `pyproject.toml` without the CLI flags, so a flags-only run in a
+  project whose `pyproject.toml` has no `[tool.rp-generate]` table raises an uncaught
+  `ConfigError` (it used to copy), and a one-row table whose `package` a flag overrides reads its
+  own original package as an owner. Fix: `Run` carries the project's targets as the CLI parsed
+  them (flags applied); `_typescript_owners` filters `run.targets` and never reads the file
+  (this also settles Warning **F-3**, the double read). New error-matrix row: flags-only run with
+  no table → copied, no error. Warning **F-2** (gate evidence) is the lead's: `make
+  test-generator` and every CI lane green, the 5 local failures named, before merge.
+  Under the floor: **F-4** `TsImport.module` holds a name or a relative path, told apart by a
+  leading `.` (PD-4 chose this in the gated PLAN; a separate slot would be a re-plan); **F-5**
+  `_write_typescript` repeats `render_step`'s body (one step; a `Run`-taking `render_step` can come
+  when a second step needs one); **F-6** a redundant `is not None` and one docs sentence on the
+  flags-only and no-package cases (the docs sentence is folded into F-1's fix).
+- **D-5 (lead, Decide and fix; review pass L2+L3 on PR #391).** Accepted: **C1**: a flags-only run
+  over a `pyproject.toml` with no `[tool.rp-generate]` row crashed (`_typescript_owners` re-read
+  the file without the flags, and `ConfigError` escaped `schema_faults`), and with one row plus a
+  `--package` flag the owners came from the row before the flag replaced it. Fix: `Run` carries the
+  run's targets as `generate` received them (flags applied, default `()`), and
+  `_typescript_owners(run)` reads `run.targets` instead of the file; PD-1 changes accordingly. Its
+  tests are W1's first two cases: a flags-only run over a table-less `pyproject.toml` copies, and the
+  run's own package is never an owner. Under the floor: W1's third case (a root with no
+  `python_package` still drops an owned module); W2 (procedural: the PR is merged only on green CI
+  with the `make test-generator` count in its body); S1 (the guard test's `if` between two cases);
+  S2 (PD-3 says `owners = {}` where the code defaults to `None`; `None` and `{}` mean the same, and
+  the docstring calls both folders relative to `folder` where they are relative to the project).
+- **D-7 (lead, 2026-11-25, after the rebase on 0.15.0).** The generator lane CI killed three runs
+  in a row (handover, Parked) needs no fix in this change. Cause: memory growth between tests in
+  the toolkit's test process, which develop's `rdf_persistence.testkit.memory_plugin` (0.15.0,
+  #393) now releases; nothing this branch adds. Numbers: rebased head `2b89e7c1`, local
+  `PYTEST_N=4 make test-generator` 1788 passed, 1 xfailed in 244 s, peak RSS of the largest
+  process 0.90 GB (≈ 3.6 GB for four workers, the runner has 16 GB); its slowest tests are
+  `test_lock_step` (19–26 s each), the generation adversarial and twice-run features (20–24 s),
+  then this branch's `test_stale_typescript_copy` (18 s). CI "Generator tests" on the same head:
+  green in 11 min 27 s (killed at ≈ 20 min before). The handover's suspects (the toy's three
+  TypeScript targets, `run_toy` re-reading the targets) are therefore not the cause and stay as
+  they are; no fixer was briefed, so no seed ran. `make reindex` was stopped at its 10-minute
+  limit at stage start (a forced full rebuild); this stage uses the existing index.
+- **D-8 (lead, Decide and fix; review pass L2+L3 on the rebased head 0703a997, 5 findings, no
+  Critical).** No fix pass. Lead-fixed: **L2-3** the flags-only test's scenario-map row is typed
+  `requirement` (it tests an error-matrix row, not scenario 3). Under the floor: **L2-1** no test
+  feeds `_typescript_owners` a target without `typescript` (scenario 3 is pinned only at
+  `typescript.render(owners={})`); **L2-2** no direct test for an owner outside the project (the
+  toy golden covers the served modules indirectly); **L2-4** `test_a_toy_generation_writes_rp_service_ts`
+  counts the files instead of naming their folders; **L3-1** the C1 tests import the private
+  `_typescript_owners`. L2-1 and L2-2 are worth one follow-up test each.
+- **D-9 (lead, 2026-11-25; corrects D-7).** CI's generator lane failed again on `2567b9b7` (docs
+  and scenario map only since the green `2b89e7c1`): no kill, but two `test_lock_step` tests over
+  pytest-timeout's 120 s, the lane 20 min 13 s. So the branch does slow the lane; the green run had
+  headroom, this runner did not. CI junit results, summed test time: develop `f515e22a` 2119 s
+  (`test_lock_step` 514 s, slowest test 57 s); branch green 2479 s (+17 %; `test_lock_step` 726 s,
+  +41 %; slowest 101 s); branch failed 4660 s (a runner about twice as slow). One toy generation,
+  profiled locally: 14.2 s on develop, 20.9 s here (+47 %); `typescript._with_served` runs once per
+  TypeScript target, ≈ 1.3 s each, three times instead of once, rebuilding the same served types
+  from the toolkit's fixed schemas. `test_lock_step` and the generation features run the whole toy
+  many times, so they pay it on every run. Fix: build the served schemas' modules once per process
+  (they depend only on `SERVED_SCHEMAS`); a consumer with several TypeScript targets gains too.
+  The rest of the gap is the two extra modules the toy now renders, inherent to DEC-5. One fixer,
+  test-first; the lead re-measures the toy run and the lane.
+  Result (`perf(generator): build the served TypeScript types once per process`): the cache is
+  keyed on the served schemas' paths, so the two tests that patch `SERVED_SCHEMAS` (X1) keep
+  working; generated code unchanged, only the manifests' input hashes. One toy generation,
+  unprofiled: 6.45 s, develop 5.39 s (+20 %). The fix-pass `make check-all`: unit 8427 passed,
+  feature 99, generator 1789 passed in 93 s (110 s before the fix, 17 workers). CI on the rebased
+  head decides the merge.

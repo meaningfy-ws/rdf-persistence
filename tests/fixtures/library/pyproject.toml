@@ -6,16 +6,20 @@ typescript = "web/src/domain/generated"
 diagrams = "domain/generated/diagrams"
 migrations = "migrations"
 
-# A value module: domain values the library computes and never stores. No typescript (design D-3).
+# A value module: domain values the library computes and never stores. It writes TypeScript
+# (consumer-friction), so a target that imports it imports the types instead of copying them.
 [[tool.rp-generate]]
 schema = "values/loan_checks.yaml"
 package = "tests.fixtures.library.domain.generated.values"
 python = "domain/generated/values"
+typescript = "web/src/domain/generated/values"
 openapi = false
 
-# A technical module that holds the value classes; it imports them from the value target.
+# A technical module that holds the value classes; it imports them from the value target, in
+# Python and in TypeScript.
 [[tool.rp-generate]]
 schema = "services/loan_checks_response.yaml"
 package = "tests.fixtures.library.services.generated"
 python = "services/generated"
+typescript = "web/src/services/generated"
 openapi = false
