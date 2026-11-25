@@ -264,6 +264,10 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   - S3 (L2) the docs say only annotation names are deferred and write `TYPE_CHECKING` unaliased;
     the code also defers unused names and names read only in function bodies, under
     `_TYPE_CHECKING`.
+- **D-5 (owner, 2026-11-25) W1 is fixed in stage 2.** The refusal test of a cycle Python cannot
+  load also asserts the `python:` problem line and that generated files already written are left
+  byte-identical (spec `rp-generation` scenario 3, in full); task 2.4. The owner answered OPEN-1,
+  OPEN-2 and OPEN-4 as recommended (`inputs/qa.md`, *Owner's answers*).
 
 ## Open Questions
 

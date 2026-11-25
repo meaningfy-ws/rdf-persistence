@@ -121,7 +121,12 @@ named here run in CI's `test-generator` job (`make test-generator`).
   of `test_the_start_up_check_refuses_a_staged_workflow` re-run with the root schema importing two
   modules that import each other (one class of each naming a workflow, the two sharing a class
   IRI): `write` raises `StagedFileRefused` naming both workflows, so `load_schema` followed the
-  cyclic imports to the classes. Accept: `make test-generator` green.
+  cyclic imports to the classes. Then (D-5, stage 1's W1) in
+  `tests/generator/integration/test_module_import_cycle.py`, strengthen
+  `test_two_modules_whose_classes_inherit_from_each_other_are_refused`: generate the two modules
+  once without the inheritance cycle, add it, run again, and assert exit 1, a `python:` problem
+  line, and every generated file byte-identical to the first run's. Accept: `make test-generator`
+  green.
 - [ ] 2.5 **docs** — after 2.3. `reference/uml-conventions.adoc`: `#packages` (one module per
   package; packages that refer to each other give modules that import each other),
   `#module-kind` (the merged-kinds failure removed; a cycle between kinds is refused by
