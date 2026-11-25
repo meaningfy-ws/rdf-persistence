@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-25
+
+### Fixed
+- **A string literal holding a control character followed by hex digits round-trips through SPARQL**
+  (`sparql-control-escape`, #270). `term()` wrote a control character as `\uXXXX`, and rdflib reads
+  `\u` with four or eight hex digits, so `"\x1f0000"` failed to parse as the code point `001f0000`,
+  and `"\x010000"` was silently stored as U+10000. Control characters now go out as `\UXXXXXXXX`,
+  which no reading extends. The SPARQL text sent for such literals changes; what the store holds is
+  what the caller gave.
+
 ## [0.14.0] - 2026-11-25
 
 ### ⚠ BREAKING
@@ -868,7 +878,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.11.0...v0.12.0
