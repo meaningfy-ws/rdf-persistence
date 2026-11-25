@@ -432,3 +432,12 @@ The lead's decisions during delivery (R-0007), shown to the owner for validation
   load (one `make check-all` took 38 min, against 13 in the durations table), builders run only
   the narrow checks of the files they touch (`uv run pytest <files>`, `make lint`); the lead runs
   `make check-all` once per stage before the PR and once after the fix pass.
+- **D-4 (stage 1 review, L2+L3, 2026-11-25), accepted findings, fixed in one pass:**
+  F1 (L2) task 1.3's test lacks the deep read of each parent the task names: add it.
+  F2 (L2) task 1.2's test finds the heads read by the text `"VALUES ?m"`: match the `READ_HEADS`
+  query itself, so another query cannot make it pass vacuously.
+  F3 (L3) `_CollectionCheck`'s docstring cites "nested-collections PD-5": cite review-floors PD-5.
+  F4 (L3) rewrap the `Aggregates.remove` docstring after the h2 text.
+  F5 (L2) the 1.2 scenario-map row cites "the PD-5 skip": cite task 1.2 only.
+  Under the floor (not fixed): the redundant `missing` assert of the tenancy double test; the
+  place of `test_toy_vocabulary.py` in `tooling`; `author_iri` without a docstring.

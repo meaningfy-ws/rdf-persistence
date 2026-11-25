@@ -18,7 +18,7 @@ from rdf_persistence.core.domain.exceptions import Conflict, KeyConflict, NotFou
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 from rdf_persistence.persistence.services.mapper import UnitOfWork
-from rdf_persistence.persistence.services.session import Session, open_session
+from rdf_persistence.persistence.services.session import READ_HEADS, Session, open_session
 from rdf_persistence.testkit import FakeStore
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Author, Book
@@ -481,7 +481,8 @@ async def test_no_type_is_read_when_no_link_names_a_removed_root(session, store)
     async with session.transaction() as t:
         await t.remove(A1, version)
         await t.add_graph(B3, book(B3, by=A2))
-    heads = [text for text in store.sent("query")[reads:] if "VALUES ?m" in text]
+    heads_select = READ_HEADS.strip().splitlines()[0]  # the heads query's own SELECT line
+    heads = [text for text in store.sent("query")[reads:] if heads_select in text]
     assert not any(A1 in text for text in heads), "no heads read names the removed author"
 
 

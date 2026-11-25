@@ -8,6 +8,7 @@ from rdf_persistence.testkit import fake_session
 from tests.fixtures.library.domain.generated.books import Shelf
 from tests.toy import TENANT, book_iri, dune, shelf, shelf_iri, toy_mapper
 from tests.unit.collaboration.collaboration_data import (
+    as_ada,
     guards,
     nesting,
     replace,
@@ -81,7 +82,7 @@ async def test_a_collection_nests_only_collections_of_its_own_class_and_member_c
 S3 = shelf_iri(3)
 
 
-async def test_a_shelf_held_by_two_nesting_shelves_is_allowed():
+async def test_a_shelf_held_by_two_nesting_shelves_is_allowed(collaboration):
     """The nesting how-to allows a sub-collection under two parents (review 235-o2, DEC-3)."""
     async with fake_session(tenant_iri=TENANT, guards=guards()) as session:
         await save(session, shelf(S3))
@@ -89,5 +90,9 @@ async def test_a_shelf_held_by_two_nesting_shelves_is_allowed():
         before = await version_of(session, S3)
         await replace(session, shelf(S3))  # the same member class: both holders agree with it
         assert await version_of(session, S3) != before, "the replace was accepted, not refused"
+        reader = as_ada(collaboration, session)
+        for parent in (S1, S2):
+            held = await reader.members(parent)
+            assert held.member_iris == [S3], f"{parent} still holds {S3} after the replace"
         await save(session, nesting(shelf_iri(4), S3))
         assert await version_of(session, shelf_iri(4)), "a third holder is accepted as well"

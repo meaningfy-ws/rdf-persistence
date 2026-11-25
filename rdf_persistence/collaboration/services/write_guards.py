@@ -75,7 +75,7 @@ def _exact_heads(own: str, heads: Iterable[AggregateHead]) -> list[AggregateHead
 
 @dataclass(frozen=True)
 class _CollectionCheck:
-    """What is known when the check of a collection starts (nested-collections PD-5)."""
+    """What is known when the check of a collection starts (review-floors PD-5)."""
 
     session: Session
     iri: str
