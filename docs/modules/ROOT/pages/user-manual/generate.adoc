@@ -115,7 +115,7 @@ xref:architecture/generation.adoc#hard-check[The hard check].
 |`schema.lock.json` and a drafted migration when the `version:` changes
 |see xref:howto/migrate.adoc[Change a schema that has stored data]
 |`typescript`
-|one file per module, `index.ts`, `rp_service.ts`
+|one file per module the target owns, `index.ts`, `rp_service.ts`; a module another target writes as TypeScript is imported from that target's folder
 |the TypeScript types
 |`diagrams`
 |one `.mmd` file per module

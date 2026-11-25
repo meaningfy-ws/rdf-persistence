@@ -415,6 +415,13 @@ On the toolkit's run the package check also reads the packages of all the toolki
 module of the closure that another target generates must name one of them; otherwise the run fails
 with `PYTHON_PACKAGE_MISMATCH`, "names python_package ..., which no toolkit target generates".
 
+The TypeScript step follows the same rule. When the target that owns an imported module sets
+`typescript`, the importing target's TypeScript files import that module's types from the owner's
+folder by a relative path (for example `../../domain/generated/values/loan_checks`); the module is
+not copied into the importing target's folder, and the importing target's `index.ts` does not list
+it. When the owner does not set `typescript`, the module is copied into the importing target's
+folder as before, and so are the toolkit's own types (`rp_core.ts`, `rp_service.ts` and the rest).
+
 The stored-schema check and the lock stay with `rp.yaml`, whose closure holds every domain module
 and so every aggregate root: only that target declares `migrations` and writes the one lock. A
 theme target is skipped by the check only when `rp.yaml` already checks all its roots. A theme's

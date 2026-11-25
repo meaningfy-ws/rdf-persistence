@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠ BREAKING
+- **A module another target writes as TypeScript is no longer copied into the importing target's
+  folder** (`consumer-friction`, #371). The importing target's TypeScript files import its types
+  from the owner's folder by a relative path, and its `index.ts` no longer lists the module. Before,
+  the module was copied, so its types existed twice. To fix it, import the types from the owner's
+  folder. A module whose owner does not set `typescript` is copied as before.
+
 ## [0.15.0] - 2026-11-25
 
 ### Added
