@@ -287,6 +287,31 @@ Idempotency: rendering is a pure function of the schemas; two runs give the same
   stage-start index was fresh (`f4ecc5e4`). `detect_changes` against `origin/develop`: risk
   MEDIUM, every changed symbol in `uml/` and its tests, the two `share` flows affected, both
   covered by the UML rules and golden tests in `make check-all`.
+- **D-9 (stage 2, full review) F-L45-W2 accepted, re-labelled Critical.** Package paths are made
+  from names (`uml/modules.py` `package_paths`), so two sibling packages with one name share a
+  path and a module. Before stage 2 the merged-kinds problem also refused such siblings with
+  different `module_kind`s; stage 2 removed it, so `_module_kinds` now keeps the last kind
+  silently, and the kind decides `rp-generate`'s domain/access boundary. Re-label reason: a
+  regression this change introduces, a silent wrong output at an access boundary. Fix: when one
+  path collects two kinds, `_module_kinds` reports a `package_module` problem naming the module
+  and both kinds (a positive and a negative row in `test_uml_rules.py`). One fixer, one pass.
+- Full review, under the floor (no other Critical; not fixed in this change):
+  - L2-W1 the kinds-cycle test does not assert the direction of the boundary refusal (domain
+    importing access) in one line.
+  - L2-W2 the RISK-6 test covers only the start-up check's refusal path on a cyclic pair, not a
+    cyclic pair with no workflow that `write` accepts.
+  - L2-S1 the shared-slot example of `uml-conventions.adoc` reads against the new `#packages`
+    example that reuses its module names.
+  - L2-S2 the living `rp-uml-import` spec still names the merge until the change is archived
+    (the archive merges the delta).
+  - L3-S1..S5 `by_label` built twice; `Layout.names` doubling as the module set; docstrings still
+    citing uml-to-linkml "PD-14 as D-5 amends it"; the `Edges` alias defined after its first use;
+    `pydantic_split.py`'s size.
+  - L45-W1 `deferred=None` versus `{}` carries "in a cycle" in `pydantic_split.py`; L45-W3 decision
+    ids of two changes cited bare in one file; L45-S1 `class_names` recorded in a template hook;
+    L45-S2 `deferred_by_module` turns the model back into a nested dict; L45-S3 `"typing"` and the
+    empty-import filter repeated; L45-S4 three different "no merge reported" checks, one of them
+    (`MERGED_CYCLE` in `test_uml_cycle.py`) unable to fail.
 
 ## Open Questions
 
