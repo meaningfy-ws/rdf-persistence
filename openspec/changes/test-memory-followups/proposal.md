@@ -37,9 +37,10 @@ success measure (DEC-8) is still to be taken.
   `Annotated[…, Depends(<per-kit callable>)]`, which `typing` caches by value — no type is built per
   kit, so nothing holds the kit. Rejected: a module-level dependency reading the kit from
   `request.app.state` (a larger refactor of every route).
-- **DEC-2** (recommended to the developer, `inputs/qa.md` Q1): `install_service` takes its view from
-  a process-wide cache keyed by the schema's resolved path and modification time, a new function
-  beside `load_schema`; `load_schema` itself stays uncached, because `generation_view` modifies the
+- **DEC-2** (recommended to the developer, `inputs/qa.md` Q1): a service kit (`install_service`, or
+  `ServiceKit` constructed directly) takes its view from a bounded process-wide cache keyed by the
+  schema's resolved path and content, a new function beside `load_schema`, emptied by the
+  testkit's `release_memory`; `load_schema` itself stays uncached, because `generation_view` modifies the
   views it loads. A guard test proves building and using a kit leaves its view unchanged.
   Rejected: caching inside `load_schema` (the generator would share and modify the view);
   `install_service` accepting a `SchemaView` (every caller would have to manage the cache).

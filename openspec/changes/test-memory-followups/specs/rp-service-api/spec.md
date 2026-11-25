@@ -13,10 +13,13 @@ models are cleared; no cache of the Python `typing` module SHALL hold its kit.
 
 ### Requirement: Services built from one schema file share one parse
 
-`install_service` SHALL take its schema view from a process-wide cache keyed by the schema file's
-resolved path and modification time, so services built from one unchanged file in one process
-share one parsed view. A changed file SHALL give a new view. Building and using a service SHALL
-NOT modify the view. The views the generator loads SHALL NOT come from this cache.
+A service kit (built by `install_service` or by constructing `ServiceKit`) SHALL take its schema
+view from a process-wide cache keyed by the schema file's resolved path and content, so services
+built from one unchanged file in one process share one parsed view. The cache SHALL hold at most
+eight views and SHALL be emptied by the testkit's `release_memory`. A file with other content
+SHALL give a new view; a missing or unreadable file SHALL raise as `load_schema` does. Building
+and using a service SHALL NOT modify the view or any module it imports. The views the generator
+loads SHALL NOT come from this cache.
 
 #### Scenario: two services from one file
 - **WHEN** two services are built from the toy schema in one process
@@ -24,13 +27,19 @@ NOT modify the view. The views the generator loads SHALL NOT come from this cach
 
 #### Scenario: the file changes
 - **GIVEN** a service built from a schema file
-- **WHEN** the file is rewritten and another service is built from it
+- **WHEN** the file is rewritten with other content at once and another service is built from it
 - **THEN** the second kit holds a new view
+
+#### Scenario: many schema files
+- **WHEN** services are built from nine different schema files in one process
+- **THEN** the cache holds eight views, and a service from the first file loads it again
 
 #### Scenario: a service in use
 - **GIVEN** a service built from a cached view
-- **WHEN** it creates, reads, lists and deletes an aggregate
-- **THEN** the view's modification count and its schema are unchanged
+- **WHEN** it creates, reads, lists, replaces and deletes an aggregate, runs a workflow transition,
+  archives and restores a tenant, and serves one event
+- **THEN** the view's modification count, every module it holds and its induced slots are
+  unchanged
 
 #### Scenario: the generator's view
 - **WHEN** the generator loads the toy schema
