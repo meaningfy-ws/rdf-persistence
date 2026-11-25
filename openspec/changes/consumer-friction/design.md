@@ -151,3 +151,13 @@ unchanged: they are the regression guard that a target with no imported module w
 None moved or rewritten. TC-1, TC-2, TC-4, TC-5 run in the generator's unit lane and TC-6 in its
 integration lane, both in `make test-generator`; TC-7 in the library's unit lane; TC-3 in the CI
 "types" job.
+
+## Delivery decisions
+
+- **D-1 (2026-11-25, developer).** Authority grant for this EPIC: the lead commits, pushes, opens
+  the stage PR and merges it on green CI without asking at each step; nothing destructive; the
+  grant ends with the EPIC.
+- **D-2 (lead, Prepare).** Tasks 1.1 and 1.3 touch disjoint files and run as parallel builders, 1.3
+  in its own worktree (`.worktrees/consumer-friction-372`, branch `change/consumer-friction-372`),
+  its commit cherry-picked onto `change/consumer-friction`. Tester: no, SMALL. Review set: one pass
+  (L2 with L3, `develop/agents.adoc#challenge`).
