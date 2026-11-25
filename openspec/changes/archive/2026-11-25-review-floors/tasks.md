@@ -70,7 +70,7 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
   stage gate runs `make test-containers`); `rg -n "^(BIBO|TITLE|BOOK_CLASS|TIMEOUT)\b.*=" tests`
   lists `tests/toy.py`, `tests/events_follow.py` and exactly PD-17's four exceptions;
   `rg -n "poll_seconds=0\.01" tests` is empty.
-- [ ] 1.12 Lead: `make check-all`, `make check-generated`, `make refresh-map`; one L2+L3 pass
+- [x] 1.12 Lead: `make check-all`, `make check-generated`, `make refresh-map`; one L2+L3 pass
   (P-0005) that also checks the diff against the **P** rows; the PR; merge per DEC-5.
 
 ## 2. Stage 2: the generator (#192, #189)
@@ -168,19 +168,19 @@ instead of editing an assertion (P-0019). One branch per stage off `develop`
 
 ## 4. Close
 
-- [ ] 4.1 Lead, after stage 3 merges: one comment per issue listing each item with its class and
+- [x] 4.1 Lead, after stage 3 merges: one comment per issue listing each item with its class and
   where it went (DEC-4): close #215 (OPEN-7), #272, #273 and #275 (each item delivered, the
   commit or PR named); narrow #252, #235, #214, #192, #189 to their **B**/**Q**/**R** items;
   split 189-v into a new issue (OPEN-5); #125 stays as triaged, with 125-i3 added (OPEN-8).
-- [ ] 4.2 Lead: reconcile `proposal.md` with what was delivered (P-0004); archiving follows
+- [x] 4.2 Lead: reconcile `proposal.md` with what was delivered (P-0004); archiving follows
   `spec-stewardship`.
 
 ## Roadmap
 
-- [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12
+- [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12
 - [x] 2.0 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6 · [x] 2.7 · [x] 2.8
 - [x] 3.0 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5 · [x] 3.6 · [x] 3.7 · [x] 3.8 · [x] 3.9 · [x] 3.10 · [x] 3.11
-- [ ] 4.1 · [ ] 4.2
+- [x] 4.1 · [x] 4.2
 
 Within a stage: 1.1 then 1.2 (same file), beside 1.3; then 1.4-1.8 in order, 1.9 and 1.10
 beside them; 1.11 last (it edits the files of 1.1-1.4 and 1.9, RISK-7). 2.1, 2.2, 2.3 in order

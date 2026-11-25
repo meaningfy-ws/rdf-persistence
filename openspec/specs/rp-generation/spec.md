@@ -326,7 +326,7 @@ kind is `domain` and the layer is a technical one, the message SHALL name the `m
 annotation as a fix.
 
 #### Scenario: a domain module in a technical target
-- **GIVEN** a toolkit target whose package ends in `.services.generated` and whose root schema generates a module annotated `module_kind: domain`
+- **GIVEN** a target, the toolkit's or a consumer's, whose package ends in `.services.generated` and whose root schema generates a module annotated `module_kind: domain`
 - **WHEN** `rp-generate` runs
 - **THEN** it fails naming the target, its package and the derived kind `domain`, and no output file changes
 
