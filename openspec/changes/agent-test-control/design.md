@@ -258,6 +258,10 @@ writing only its own reports.
   dataclass in the testkit outside `generated`). Follow-ups, outside this EPIC: build that
   annotation once per class, not per kit (ours, `rdf_persistence/api`); load each schema once per
   process (ours, DEC-9); the per-instance `lru_cache` of `SchemaView` (external, linkml-runtime).
+- **D-4** (developer, 2026-11-25): "you can skip the L2+L3 in this epic": no review pass runs on
+  this stage; the full gates, the builders' Red tests, the cold reader and the measured evidence
+  (`evidence/memory.md`, `evidence/selection.md`) are the check. The developer also lifted the CPU
+  and memory restraint for the lead's own runs.
 
 ## Open Questions
 
