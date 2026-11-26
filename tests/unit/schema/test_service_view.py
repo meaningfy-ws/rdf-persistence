@@ -16,6 +16,7 @@ from rdf_persistence.schema.services.schema import (
     service_view,
 )
 from rdf_persistence.schema.services.schema_structure import generation_view
+from rdf_persistence.testkit import release_memory
 from tests.toy import TOY_SCHEMA
 from tests.toy_service import ToyService
 
@@ -92,8 +93,8 @@ def ninth_file_evicts_the_first(directory: Path) -> Outcome:
 def cleared_store_loads_again(directory: Path) -> Outcome:
     path = written(directory, "s.yaml")
     before = service_view(path)
-    clear_service_views()
-    return Outcome(before, service_view(path), False, "a cleared store loads again")
+    assert release_memory()["service_views"] >= 1, "the release counts the view it dropped"
+    return Outcome(before, service_view(path), False, "a released store loads again")
 
 
 def missing_file_raises_as_load_schema(directory: Path) -> Outcome:

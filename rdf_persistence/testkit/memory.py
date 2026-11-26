@@ -17,6 +17,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import error_type, log_extra
+from rdf_persistence.schema.services.schema import clear_service_views
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ OFF = "off"
 
 
 CacheCounts = dict[str, int]
-"""How many caches were cleared, by library name: an index, keys ``linkml_runtime``, ``fastapi``, ``typing``."""
+"""How many caches were cleared, by library name: an index, keys ``linkml_runtime``, ``fastapi``, ``typing``, and ``service_views`` from ``release_memory``."""
 
 
 def _clear_typing() -> int:
@@ -84,8 +85,12 @@ def _trim() -> None:
 
 
 def release_memory() -> CacheCounts:
-    """Clear the caches, collect garbage and trim the heap; return the caches cleared."""
-    counts = clear_caches()
+    """Clear the caches, collect garbage and trim the heap; return the caches cleared.
+
+    The shared service views (``service_view``) go too, and their count is ``service_views``: a test
+    process then holds the views of one module's schemas at most.
+    """
+    counts = {**clear_caches(), "service_views": clear_service_views()}
     gc.collect()
     _trim()
     return counts

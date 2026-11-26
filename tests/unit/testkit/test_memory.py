@@ -1,13 +1,17 @@
 """A test worker releases memory between test modules (PD-9): the caches, the hook's decision, the effect."""
 
 import gc
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.api.entrypoints.kit import ServiceKit
+from rdf_persistence.schema.services.schema import load_schema, service_view
 from rdf_persistence.testkit import clear_caches, release_memory
 from rdf_persistence.testkit.memory import CacheCounts, after_test
+from tests.toy import TOY_SCHEMA
 from tests.toy_service import ToyService
 
 
@@ -38,6 +42,22 @@ def test_release_reports_the_caches_it_cleared() -> None:
     counts: CacheCounts = release_memory()
     assert counts["linkml_runtime"] >= 1, "release clears linkml-runtime"
     assert counts["fastapi"] >= 1, "release clears FastAPI"
+
+
+def test_release_empties_the_store_of_service_views_and_reports_their_count() -> None:
+    loads: list[object] = []
+
+    def counting(path: str | Path) -> SchemaView:
+        loads.append(path)
+        return load_schema(path)
+
+    ToyService()  # a kit puts its schema's view in the store
+    counts = release_memory()
+    assert counts["service_views"] >= 1, "the kit's view was in the store and is counted"
+
+    service_view(TOY_SCHEMA, load=counting)
+    assert len(loads) == 1, "after the release the next call loads again"
+    assert release_memory()["service_views"] == 1, "only the view loaded since is counted"
 
 
 def test_release_leaves_no_service_kit_of_dropped_services() -> None:

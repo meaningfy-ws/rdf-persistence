@@ -201,7 +201,8 @@ Four mechanisms, from `agent-test-control`:
   `rdf_persistence.testkit.memory_plugin`. After every test it clears the caches of
   linkml-runtime's `SchemaView`, FastAPI's dependency models and `typing`, which otherwise keep
   every service a test built alive. At each module boundary it also collects garbage and returns
-  freed memory to the system. `TEST_RELEASE=off` turns it off. A project that builds services with
+  freed memory to the system, and drops the shared service views of the schemas the module's kits
+  were built from. `TEST_RELEASE=off` turns it off. A project that builds services with
   the toolkit in its tests enables it with one line in its root `conftest.py`:
   `pytest_plugins = ["rdf_persistence.testkit.memory_plugin"]`.
 

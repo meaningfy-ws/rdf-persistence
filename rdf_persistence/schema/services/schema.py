@@ -5,7 +5,6 @@ import threading
 from collections import OrderedDict
 from collections.abc import Callable, Iterator
 from copy import deepcopy
-from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
@@ -87,21 +86,11 @@ def load_schema(path: str | Path) -> SchemaView:
     return view
 
 
-@dataclass(frozen=True)
-class ServiceViewKey:
-    """What identifies a parse of a schema file: the file's size and the hash of its bytes (PD-2).
-
-    The content decides, not the modification time: a rewrite within the clock's step is a new key.
-    Imported modules are not hashed; only the root file is.
-    """
-
-    size: int
-    digest: str
-
-
 SERVICE_VIEWS = 8  # the most views the store keeps; the oldest used leaves first
-# one entry per resolved path, the least recently used first; an index, guarded by the lock
-_SERVICE_STORE: OrderedDict[Path, tuple[ServiceViewKey, SchemaView]] = OrderedDict()
+# One entry per resolved path, the least recently used first; an index, guarded by the lock. An entry
+# is ``((size, sha256 of the bytes), view)``: the content decides, not the modification time, so a
+# rewrite within the clock's step is a new key. Imported modules are not hashed, only the root file.
+_SERVICE_STORE: OrderedDict[Path, tuple[tuple[int, str], SchemaView]] = OrderedDict()
 _SERVICE_LOCK = threading.Lock()
 
 
@@ -122,7 +111,7 @@ def service_view(
         content = resolved.read_bytes()
     except OSError:
         return load(path)  # raises what load_schema raises; the error is the same
-    key = ServiceViewKey(len(content), hashlib.sha256(content).hexdigest())
+    key = (len(content), hashlib.sha256(content).hexdigest())
     with _SERVICE_LOCK:
         entry = _SERVICE_STORE.get(resolved)
         if entry is not None and entry[0] == key:
