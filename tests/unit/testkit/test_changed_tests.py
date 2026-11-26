@@ -17,8 +17,10 @@ from rdf_persistence.testkit.changed_tests import (
     NO_TESTS_EXIT,
     GitError,
     changed_files,
+    changed_since,
     exit_status,
     plan,
+    seed_commit,
     select,
 )
 from rdf_persistence.testkit.generated.rp_testkit import (
@@ -408,6 +410,8 @@ PUBLIC_NAMES = {
         "select",
         "plan",
         "changed_files",
+        "changed_since",
+        "seed_commit",
         "main",
         "GitError",
         "UsageError",
@@ -729,21 +733,269 @@ def test_main_waits_for_an_exclusive_holder_before_the_testmon_run(feature_repo)
     assert runner.calls == [_testmon_run()], "the testmon run came after the wait"
 
 
-def test_the_folder_run_does_not_take_the_lock(feature_repo):
+def test_the_folder_run_takes_the_lock_only_for_the_data_check(feature_repo):
+    """PD-8: the check and the seed's commit are read under one shared lock; the run takes none."""
     _changed(feature_repo, DOC_FILE)
     lock = RecordingLock()
 
     _main(Runner(), Outcome.SOUND, lock)
 
-    assert lock.taken == [], "a folder run reads no selection data"
+    assert lock.taken == [feature_repo.resolve()], "one lock, for the check; no run takes it"
 
 
-def test_the_testmon_run_takes_the_lock_of_the_repository_root(feature_repo):
+def test_the_testmon_run_takes_the_lock_of_the_repository_root_after_the_check(feature_repo):
     _changed(feature_repo, APP_FILE)
     lock = RecordingLock()
 
     _main(Runner(), Outcome.SOUND, lock)
 
-    assert lock.taken == [feature_repo.resolve()], (
-        "the testmon run holds the shared lock of the root"
+    root = feature_repo.resolve()
+    assert lock.taken == [root, root], "the check and the commit, then the testmon run"
+
+
+# seed_commit and the main test of PD-8 (task 4.2)
+SHA = "a" * 40
+SHA256 = "b" * 64
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        (None, None),
+        ("", None),
+        ("\n", None),
+        ("not a sha\n", None),
+        (f"{SHA.upper()}\n", None),
+        (SHA[:-1], None),
+        (f"{SHA}\n{SHA}\n", None),
+        (f"{SHA}\n", SHA),
+        (f"  {SHA}  ", SHA),
+        (f"{SHA256}\n", SHA256),
+    ],
+    ids=[
+        "missing",
+        "empty",
+        "blank",
+        "garbage",
+        "upper-case",
+        "short",
+        "two-lines",
+        "valid",
+        "padded",
+        "sha256",
+    ],
+)
+def test_seed_commit_reads_only_a_full_lower_case_hex_sha(tmp_path, content, expected):
+    if content is not None:
+        (tmp_path / ".testmondata.commit").write_text(content)
+
+    assert seed_commit(tmp_path) == expected, f"{content!r}"
+
+
+def test_an_unreadable_commit_file_is_no_commit(tmp_path):
+    (tmp_path / ".testmondata.commit").mkdir()  # reading a directory raises OSError
+
+    assert seed_commit(tmp_path) is None, "an unreadable file gives None"
+
+
+MAKE_HINT = "Makefile: unchanged since the seed; its selection data covers it"
+LIB_FILE = "src/lib/y.py"  # visible to testmon, classified as a fallback by the fake
+
+
+@pytest.mark.parametrize(
+    ("changed", "has_data", "since_seed", "invocations", "hints", "reasons"),
+    [
+        (["Makefile", APP_FILE], True, [APP_FILE], [_testmon_run()], [MAKE_HINT], []),
+        (
+            ["Makefile", APP_FILE],
+            True,
+            ["Makefile", APP_FILE],
+            [],
+            [],
+            ["Makefile: shared test infrastructure"],
+        ),
+        (
+            ["pyproject.toml", APP_FILE],
+            True,
+            ["pyproject.toml", APP_FILE],
+            [],
+            [],
+            ["pyproject.toml: shared test infrastructure"],
+        ),
+        (
+            ["Makefile", APP_FILE],
+            True,
+            None,
+            [],
+            [],
+            ["Makefile: shared test infrastructure"],
+        ),
+        (
+            ["Makefile", APP_FILE],
+            False,
+            [APP_FILE],
+            [],
+            [SEED_HINT],
+            ["Makefile: shared test infrastructure"],
+        ),
+        ([DOC_FILE], True, [], [_folder_run(["tests/unit/test_docs.py"], 0)], [], []),
+        (
+            [APP_FILE],
+            True,
+            ["Makefile", APP_FILE],
+            [],
+            [],
+            ["Makefile: shared test infrastructure"],
+        ),
+        ([APP_FILE], True, [LIB_FILE, APP_FILE], [_testmon_run()], [], []),
+    ],
+    ids=[
+        "shared-file-before-the-seed",
+        "shared-file-after-the-seed",
+        "uncommitted-shared-file",
+        "no-since-seed",
+        "no-data",
+        "docs-still-select",
+        "reverted-shared-file",
+        "rebase-upstream-python",
+    ],
+)
+def test_the_plan_with_since_seed_of_a_worked_example(
+    changed, has_data, since_seed, invocations, hints, reasons
+):
+    got = plan(changed, has_data, lambda _: True, 4, CLASSIFIER, LAYOUT, since_seed=since_seed)
+
+    assert [i.arguments for i in got.invocations] == invocations, "the invocations"
+    assert got.hints == hints, "the hints"
+    assert got.fallback_reasons == reasons, "the fallback reasons"
+
+
+def test_select_sets_aside_a_reason_of_a_path_unchanged_since_the_seed_and_keeps_the_rest():
+    got = select(
+        ["Makefile", "docs/page.adoc"], lambda _: True, CLASSIFIER, since_seed=["docs/page.adoc"]
     )
+
+    assert got.fallback_reasons == [], "Makefile's reason became a hint"
+    assert got.hints == [MAKE_HINT], "the hint"
+    assert got.paths == ["tests/unit/test_docs.py"], "the paths of the classifier stay"
+
+
+def test_select_still_reports_a_folder_that_does_not_exist_under_since_seed():
+    got = select([APP_FILE], lambda p: p != APP_FOLDER, CLASSIFIER, since_seed=[])
+
+    assert got.fallback_reasons == [f"{APP_FILE}: {APP_FOLDER} does not exist; run make test-fast"]
+
+
+def _repo_with_a_seeded_makefile_change(repo: Path) -> str:
+    """develop holds a Makefile and src/x.py; the branch changed the Makefile; returns its sha."""
+    _git(repo, "init", "-b", "develop")
+    _write(repo, ".gitignore", ".testmondata*\n")
+    _write(repo, "Makefile", "base\n")
+    _write(repo, "src/x.py", "base\n")
+    _commit_all(repo, "base")
+    _git(repo, "checkout", "-b", "feature/y")
+    _write(repo, "Makefile", "branch\n")
+    _commit_all(repo, "makefile")
+    sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    (repo / ".testmondata.commit").write_text(f"{sha}\n")
+    return sha
+
+
+class MakefileFallback:
+    """The classifier of the main test: the Makefile is the only fallback path."""
+
+    def classify(self, path: str) -> ChangedSelection:
+        if path == "Makefile":
+            return _selection(reasons=["Makefile: shared test infrastructure"])
+        return _selection()
+
+    def is_testmon_visible(self, path: str) -> bool:
+        return path.endswith(".py")
+
+
+@pytest.mark.parametrize(
+    ("later_makefile_edit", "code", "runs"),
+    [(False, 0, 1), (True, FALLBACK_EXIT, 0)],
+    ids=["makefile-unchanged-since-the-seed", "makefile-changed-after-the-seed"],
+)
+def test_main_sets_aside_a_fallback_of_a_file_unchanged_since_the_seed(
+    tmp_path, monkeypatch, capsys, later_makefile_edit, code, runs
+):
+    _repo_with_a_seeded_makefile_change(tmp_path)
+    _write(tmp_path, "src/x.py", "edited\n")
+    if later_makefile_edit:
+        _write(tmp_path, "Makefile", "after the seed\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("BASE", "develop")
+    monkeypatch.delenv("PYTEST_CHANGED_N", raising=False)
+    runner = Runner()
+
+    got = changed_tests.main(
+        MakefileFallback(),
+        LAYOUT,
+        run=runner,
+        data_state=lambda root: Outcome.SOUND,
+        lock=_no_lock,
+    )
+
+    err = capsys.readouterr().err
+    assert got == code, f"exit status: {err!r}"
+    assert len(runner.calls) == runs, "testmon runs"
+    assert ("Makefile: unchanged since the seed" in err) is not later_makefile_edit, "the hint"
+
+
+def test_main_ignores_the_commit_when_the_data_is_not_sound(tmp_path, monkeypatch, capsys):
+    _repo_with_a_seeded_makefile_change(tmp_path)
+    _write(tmp_path, "src/x.py", "edited\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("BASE", "develop")
+
+    got = changed_tests.main(
+        MakefileFallback(),
+        LAYOUT,
+        run=Runner(),
+        data_state=lambda root: Outcome.NO_DATA,
+        lock=_no_lock,
+    )
+
+    assert got == FALLBACK_EXIT, "unsound data vouches for nothing"
+    assert "unchanged since the seed" not in capsys.readouterr().err, "no hint"
+
+
+def test_main_hints_when_the_seeds_commit_cannot_be_read(tmp_path, monkeypatch, capsys):
+    _repo_with_a_seeded_makefile_change(tmp_path)
+    (tmp_path / ".testmondata.commit").write_text(f"{SHA}\n")  # not in this repository
+    _write(tmp_path, "src/x.py", "edited\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("BASE", "develop")
+
+    got = changed_tests.main(
+        MakefileFallback(),
+        LAYOUT,
+        run=Runner(),
+        data_state=lambda root: Outcome.SOUND,
+        lock=_no_lock,
+    )
+
+    err = capsys.readouterr().err
+    assert got == FALLBACK_EXIT, "today's plan: the Makefile falls back"
+    assert f"cannot read the seed's commit {SHA}: " in err, "the hint names the commit"
+
+
+def test_changed_since_lists_against_the_commit_itself(feature_repo):
+    sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=feature_repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    _write(feature_repo, "edited.py", "changed")
+    _write(feature_repo, "untracked.py", "u")
+
+    listed = changed_since(sha)
+
+    assert listed == ["edited.py", "untracked.py"], "the branch's own commit is not in the list"
+
+
+def test_changed_since_an_unknown_commit_is_a_git_error(feature_repo):
+    with pytest.raises(GitError):
+        changed_since(SHA)
