@@ -24,7 +24,7 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 - [x] 1.4 **#403-6** (PD-10), docs + spec wording. `develop/testing.adoc#test-control`: per user;
   the seed cycle under the queue; no sync; the hints on fallback; the `PYTEST_CHANGED_N` rule.
   Accept: `make check-docs` green.
-- [ ] 1.5 **Lead**: `make check-all`; `make test-seed` then `make test-changed` on the branch
+- [x] 1.5 **Lead**: `make check-all`; `make test-seed` then `make test-changed` on the branch
   (TC-13); review (one L1+L2 / L3+L4+L5 pair, P-0006); fix pass; PR; after the merge, post the
   stage-1 diff on MWB2 #129 (RISK-1).
 
@@ -70,7 +70,7 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5
 - [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5
 - [ ] 4.1
