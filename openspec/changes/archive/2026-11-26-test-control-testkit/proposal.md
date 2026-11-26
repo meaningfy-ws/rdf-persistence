@@ -125,3 +125,27 @@ Code: the Makefile, `tests/changed.py`, `tests/queue.py`, `tests/testmon_data.py
 and its generated code, `.importlinter`, `tests/unit/tooling/` and `tests/unit/testkit/`. Docs:
 `develop/testing.adoc`, the testkit's user-manual page. Release: MINOR, a new public API with
 nothing broken. Consumer: MWB2 drops its copies in its own change (RISK-1, DEC-10).
+
+## Delivered (reconciled 2026-11-26, P-0004)
+
+Three stages, three PRs, as DEC-9 shaped them:
+
+| Outline item | Delivered | Evidence |
+|---|---|---|
+| 1. The six fixes | #411: hints before reasons; no sync (`UV_NO_SYNC` reaches the fallback); the seed's clean, run and swap are one queued process, and the pytest child keeps the lock; a quiet, lazy CI worker count with `-n auto`; a bad `PYTEST_CHANGED_N` exits 2; the lock is per user | `make check-all` green before and after the fix pass; CI green; `evidence/seed-race.md`: the old recipe lost a seed to the race during the stage |
+| 2. Queue and selection data in the testkit | #412: `rdf_persistence.testkit.run_queue` and `.selection_data`; `SelectionDataOutcome` and the planner's types generated from `rp_testkit.yaml`; the root does not load them; an `ast` guard on direct imports | `make check-all` green; the wheel lists both modules (PD-12 b) |
+| 3. The planner in the testkit | stage-3 PR: `rdf_persistence.testkit.changed_tests` with a `Classifier` protocol and a `ChangedTestsLayout`; `tests/changed.py` is this repository's classifier; `__all__` per module; the user manual's *Test control for your project* | `make check-all` green after the full review's fix pass |
+
+Differences from the shape, with their reasons:
+- PD-7 was re-planned at the gate: `--before` on the queue became a `seed` subcommand run inside
+  the queue, because `--before` left the swap outside it (gate run 1).
+- The layout is a third input beside DEC-4's two callbacks (PD-3), passed as data rather than as
+  a member of the protocol.
+- Moving the code into the package put it under the package's lint, complexity, mypy and
+  patch-marker guards. Three functions were split to keep rank B, and the moved tests gained one
+  `# X3` marker each where they patch toolkit code (D-3).
+- The full review (D-4) also added validation of `PYTEST_WORKER_MB`, exit 127 for a command the
+  queue cannot start, NUL-separated git paths, `sys.executable -m pytest`, `__all__`, and neutral
+  messages.
+- Not done here: the adoption comment on MWB2 #129 waits for the release that carries stage 3
+  (DEC-10). The stage-1 fixes were posted there on 2026-11-26 (RISK-1).

@@ -1,13 +1,13 @@
-"""Swap and check the test-selection data (agent-test-control PD-6, PD-7).
+"""Swap and check the test-selection data; see the user manual, ``user-manual/test.adoc``,
+section *Test control for your project*.
 
-Run from the repository root as ``uv run python -m rdf_persistence.testkit.selection_data swap <pytest-exit-code>`` or
-``... check``. ``swap`` moves ``.testmondata.seed`` over ``.testmondata`` after a seed run that
+Run from the repository root as
+``uv run python -m rdf_persistence.testkit.selection_data swap <pytest-exit-code>`` or ``... check``. ``swap`` moves ``.testmondata.seed`` over ``.testmondata`` after a seed run that
 ended with pytest's exit 0 or 1, under the exclusive worktree lock; any other exit deletes the seed
 files. ``check`` exits 0 for sound data and a distinct code, with a message, for each other
-outcome. ``seed -- <command...>`` is the seed's whole cycle in one process (test-control-testkit
-PD-7): it deletes the seed files, runs the command, then swaps; the queue holds its lock
-throughout. ``worktree_lock`` is the shared/exclusive ``.testmondata.lock`` of PD-6, also used by
-``tests/changed.py``.
+outcome. ``seed -- <command...>`` is the seed's whole cycle in one process: it deletes the seed
+files, runs the command, then swaps; the queue holds its lock throughout. ``worktree_lock`` is the
+shared/exclusive ``.testmondata.lock``, also used by ``changed_tests``.
 """
 
 import fcntl
@@ -21,6 +21,17 @@ from pathlib import Path
 
 from rdf_persistence.testkit.generated.rp_testkit import SelectionDataOutcome
 
+__all__ = [
+    "CHECK_EXIT",
+    "MESSAGES",
+    "check",
+    "current_packages",
+    "main",
+    "seed",
+    "swap",
+    "worktree_lock",
+]
+
 DATA = ".testmondata"
 SEED = ".testmondata.seed"
 LOCK = ".testmondata.lock"
@@ -29,10 +40,8 @@ FINISHED_RUN_EXITS = (0, 1)  # pytest: all passed, some failed; the data is comp
 NO_SEED_EXIT = 70
 USAGE_EXIT = 64
 
-DAMAGED_MESSAGE = (
-    "selection data is damaged: delete .testmondata and ask the lead for make test-seed"
-)
-PACKAGES_MESSAGE = "packages changed since the seed: the lead re-runs make test-seed"
+DAMAGED_MESSAGE = "selection data is damaged: delete .testmondata and run make test-seed"
+PACKAGES_MESSAGE = "packages changed since the seed: run make test-seed"
 
 
 CHECK_EXIT: dict[SelectionDataOutcome, int] = {  # an index: the exit code of ``check`` per outcome
@@ -173,7 +182,7 @@ def current_packages() -> str:
 def main(argv: Sequence[str], root: Path | None = None) -> int:
     root = root or Path.cwd()
     match list(argv):
-        case ["swap", code] if code.isdigit():
+        case ["swap", code] if code.isascii() and code.isdigit():
             return swap(root, int(code))
         case ["seed", "--", first, *rest]:
             return seed(root, [first, *rest])

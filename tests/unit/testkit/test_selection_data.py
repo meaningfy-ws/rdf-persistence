@@ -189,11 +189,11 @@ def test_check_of_a_missing_file_is_no_data(tmp_path: Path) -> None:
     [
         (
             SelectionDataOutcome.DAMAGED,
-            "selection data is damaged: delete .testmondata and ask the lead for make test-seed",
+            "selection data is damaged: delete .testmondata and run make test-seed",
         ),
         (
             SelectionDataOutcome.PACKAGES_CHANGED,
-            "packages changed since the seed: the lead re-runs make test-seed",
+            "packages changed since the seed: run make test-seed",
         ),
     ],
 )
@@ -366,3 +366,13 @@ def test_seed_without_a_command_is_a_usage_error(
 
     assert code == testmon_data.USAGE_EXIT, f"usage error for {argv!r}"
     assert "seed -- <command" in capsys.readouterr().err, "the usage line names seed"
+
+
+@pytest.mark.parametrize("code", ["²", "٣", "x", "-1", ""])
+def test_a_swap_code_that_is_not_ascii_digits_is_a_usage_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], code: str
+) -> None:
+    got = testmon_data.main(["swap", code], tmp_path)
+
+    assert got == testmon_data.USAGE_EXIT, f"usage error for {code!r}"
+    assert "usage:" in capsys.readouterr().err, "the usage line is printed"

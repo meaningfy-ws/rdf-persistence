@@ -23,9 +23,10 @@ def test_testkit_root_does_not_import_testcontainers() -> None:
         "rdf_persistence.api.entrypoints.service",
         "rdf_persistence.testkit.run_queue",
         "rdf_persistence.testkit.selection_data",
+        "rdf_persistence.testkit.changed_tests",
     ],
 )
-def test_testkit_root_does_not_load_the_stream_or_service_module(module: str) -> None:
+def test_testkit_root_does_not_load_the_module(module: str) -> None:
     code = f"import sys, rdf_persistence.testkit; sys.exit({module!r} in sys.modules)"
     assert subprocess.run([sys.executable, "-I", "-c", code], check=False).returncode == 0, (
         f"importing the testkit root does not load {module}"

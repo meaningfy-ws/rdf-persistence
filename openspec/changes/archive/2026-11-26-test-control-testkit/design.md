@@ -155,9 +155,12 @@ Constraints found:
 - **PD-14 Public surface.** The public-surface baseline (`tests/fixtures/public-surface.json`)
   does not cover the testkit, so it is unchanged (stage-2 review W1; `make refresh-surface` and
   `make refresh-snapshot` gave no diff). The modules are public by path, with these public names: `run_queue.workers`, `run_queue.main`;
-  `selection_data.check`, `.swap`, `.seed`, `.worktree_lock`, `.current_packages`, `.main`;
+  `selection_data.check`, `.swap`, `.seed`, `.worktree_lock`, `.current_packages`, `.main`,
+  `.CHECK_EXIT`, `.MESSAGES`;
   `changed_tests.Classifier`, `.select`, `.plan`, `.changed_files`, `.main`, `.GitError`,
-  `.UsageError`. Everything else is `_`-prefixed.
+  `.UsageError`, `.FALLBACK_EXIT`. Each module's `__all__` lists exactly these (D-4 F6).
+  `ChangedSelection` and `ChangedTestsLayout` (`rdf_persistence.testkit.generated.rp_testkit`) are
+  public too. Everything else is `_`-prefixed.
 - **PD-15 Docs.** `user-manual/test.adoc` gains a section, *Test control for your project*: the
   Makefile lines and a minimal classifier. `develop/testing.adoc#test-control` names the
   modules. `questions.adoc` gains "How do I queue and select my project's tests with the
@@ -319,6 +322,37 @@ Scenarios: the spec deltas in `specs/`.
   - Stage 2 also put the moved code under the package's lint, xenon, mypy and patch-marker
     guards. The builder split `run_queue.main` (`_take_the_queue`) to keep its rank at B, with
     unchanged behaviour (the reviewer confirmed).
+
+- **D-4** (lead, R-0007; the full review at the end of the epic: L1 5, L2 3, L3 7, L4+L5 12
+  findings, 0 Critical). One fix pass, with these findings accepted:
+  - **F1** (L1-W2): git lists paths with `-z`, so a path git would quote still selects its
+    tests.
+  - **F2** (L1-S2, L4-W1): `changed_tests` runs `sys.executable -m pytest`, not a bare `pytest`
+    from PATH.
+  - **F3** (L1-W1, L4-W2): a `PYTEST_WORKER_MB` that is not an integer of at least 1 is a usage
+    error (one line, exit 2), as DEC-3 does for `PYTEST_CHANGED_N`.
+  - **F4** (L4-W3): `run_queue` catches an `OSError` from exec'ing the command and exits 127
+    with a message.
+  - **F5** (L2-W1): a `main()` test through our real classifier and `LAYOUT` (core changed →
+    75, the file named).
+  - **F6** (L4-W4, L4-W5, L4-S10): each module declares `__all__` with the PD-14 names. The
+    generated `ChangedSelection` and `ChangedTestsLayout` are public through
+    `rdf_persistence.testkit.generated.rp_testkit`, as the user manual shows. The seams of
+    `main` (`run`, `data_state`, `lock`) are documented as test-only.
+  - **F7** (L4-W6): the user manual's Makefile example shows the CI branch (no queue,
+    `-n auto`), that `tests/` must be a package run from the repository root, and a `test-fast`
+    target.
+  - **F8** (L4-S7, L4-S8, L1-S1, L4-S9): neutral messages ("run make test-seed", without "the
+    lead"); module docstrings cite the user manual instead of this repository's openspec paths;
+    the `swap` argument uses `isascii()`; the dead initial value of `available` goes.
+
+  Under the floor:
+  - **L3-W1, L3-W2, L3-S3 to S7:** the design is as PD-3 decided; a future third seam would
+    bundle the classifier and the layout.
+  - **L1-S3:** PD-8 is decided.
+  - **L2-S2, L2-S3:** F5 covers the wiring.
+  - **L4-S11:** the CHANGELOG order is release-please's.
+  - **L4-S12:** the queue makes the race near-impossible.
 
 ## Open Questions
 

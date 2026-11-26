@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **The testkit carries the test queue and the selection-data tools** (`test-control-testkit`).
-  `rdf_persistence.testkit.run_queue` (the machine-wide queue and the worker count) and
-  `rdf_persistence.testkit.selection_data` (the seed, swap and check of the selection data) replace
-  the repository's own `tests/queue.py` and `tests/testmon_data.py`; a project runs them by module
-  name and needs only `pytest-testmon` and `pytest-xdist`. The testkit's model gains
-  `SelectionDataOutcome` and the changed-tests records.
+- **The testkit carries the test queue, the selection-data tools and the changed-tests planner**
+  (`test-control-testkit`). `rdf_persistence.testkit.run_queue` (the machine-wide queue and the
+  worker count), `rdf_persistence.testkit.selection_data` (the seed, swap and check of the
+  selection data) and `rdf_persistence.testkit.changed_tests` (the tests a change reaches, from a
+  project's own `Classifier` and `ChangedTestsLayout`) replace the repository's own
+  `tests/queue.py`, `tests/testmon_data.py` and the generic part of `tests/changed.py`; a project
+  runs them by module name or from its own file and needs only `pytest-testmon` and `pytest-xdist`.
+  The testkit's model gains `SelectionDataOutcome` and the changed-tests records.
 
 ### ⚠ BREAKING
 - **A module another target writes as TypeScript is no longer copied into the importing target's

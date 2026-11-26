@@ -49,31 +49,31 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 
 ## 3. Stage 3: the changed-tests planner moves to the testkit
 
-- [ ] 3.1 **Generic planner** (PD-3, PD-9), `rdf_persistence/testkit/changed_tests.py`. Red:
+- [x] 3.1 **Generic planner** (PD-3, PD-9), `rdf_persistence/testkit/changed_tests.py`. Red:
   TC-11, with the generic cases of `test_changed.py` re-pointed at a fake classifier and layout
   (git, plan, exit codes, lock, fallback, hints). Then the module, from `tests/changed.py`'s
   generic functions, with the generated types. Accept: green; RISK-3's equal-output test is
   green.
-- [ ] 3.2 **Our classifier** (PD-4). Reduce `tests/changed.py` to the classifier and `LAYOUT`;
+- [x] 3.2 **Our classifier** (PD-4). Reduce `tests/changed.py` to the classifier and `LAYOUT`;
   `tests/unit/tooling/test_changed.py` keeps only the layout cases (TC-12), unchanged in what they
   assert. Accept: TC-12 green; the `THEMES` and `IGNORES` importers unchanged and green.
-- [ ] 3.3 **Module-name proof** for `changed_tests` (TC-8, PD-12), and the `ast` import test
+- [x] 3.3 **Module-name proof** for `changed_tests` (TC-8, PD-12), and the `ast` import test
   covers it (TC-9).
-- [ ] 3.4 **Docs** (PD-15): the user manual's minimal classifier example; `testing.adoc` names the
+- [x] 3.4 **Docs** (PD-15): the user manual's minimal classifier example; `testing.adoc` names the
   module; `make refresh-snapshot` (lead). Accept: `make check-docs` green.
-- [ ] 3.5 **Lead**: as 1.5; after the release that carries it, the adoption comment on MWB2 #129
+- [x] 3.5 **Lead**: as 1.5 (done); the adoption comment on MWB2 #129 follows the release that carries it (left to the release session; see proposal *Delivered*)
   (DEC-10).
 
 ## 4. Close
 
-- [ ] 4.1 Lead: reconcile `proposal.md` with what was delivered; tick the roadmap; archive.
+- [x] 4.1 Lead: reconcile `proposal.md` with what was delivered; tick the roadmap; archive.
 
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5
 - [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6
-- [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5
-- [ ] 4.1
+- [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5
+- [x] 4.1
 
 ## Verification
 

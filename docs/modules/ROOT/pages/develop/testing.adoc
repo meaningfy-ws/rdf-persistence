@@ -182,11 +182,11 @@ Four mechanisms, from `agent-test-control`:
      `.coveragerc`, `pyproject.toml`, `uv.lock`, schemas under `rdf_persistence/model/`, anything
      under `tests/fixtures/`, or a file no rule maps.
   ** Without selection data it uses the folder rules for everything and prints
-     `no test selection data in this worktree: the lead runs make test-seed`, which tells you
+     `no test selection data in this worktree: run make test-seed`, which tells you
      the seed has not landed yet; carry on. It does the same when the data is damaged
-     (`selection data is damaged: delete .testmondata and ask the lead for make test-seed`) or the
+     (`selection data is damaged: delete .testmondata and run make test-seed`) or the
      installed packages changed since the seed
-     (`packages changed since the seed: the lead re-runs make test-seed`); report either to the
+     (`packages changed since the seed: run make test-seed`); report either to the
      lead.
   ** The lead seeds only a worktree where builders will work: the seed serves
      `make test-changed` alone and repeats the unit and feature tests `make check-all` runs anyway.
@@ -215,9 +215,10 @@ gates (xref:develop/agents.adoc#gates[The gates]).
 
 *Copying it to another repository.* The pieces are:
 
-* the testkit's `run_queue` and `selection_data` modules (a project uses them from the installed
-  package, see xref:user-manual/test.adoc#test-control[Test control for your project]), and `plan()`
-  and `main()` of `tests/changed.py`;
+* the testkit's `run_queue`, `selection_data` and `changed_tests` modules (a project uses them from
+  the installed package, see xref:user-manual/test.adoc#test-control[Test control for your
+  project]); of `tests/changed.py` only the classifier and the layout are ours, `changed_tests`
+  holds the planner and `main()`;
 * the Makefile's `PYTEST`, `PYTEST_N` and `PARALLEL` lines, the queued recipes, `test-changed` and
   `test-seed`;
 * the `.testmondata*` line in `.gitignore`;
