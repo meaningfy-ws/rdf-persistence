@@ -4,13 +4,16 @@ Run from the repository root as ``uv run python -m tests.testmon_data swap <pyte
 ``... check``. ``swap`` moves ``.testmondata.seed`` over ``.testmondata`` after a seed run that
 ended with pytest's exit 0 or 1, under the exclusive worktree lock; any other exit deletes the seed
 files. ``check`` exits 0 for sound data and a distinct code, with a message, for each other
-outcome. ``worktree_lock`` is the shared/exclusive ``.testmondata.lock`` of PD-6, also used by
+outcome. ``seed -- <command...>`` is the seed's whole cycle in one process (test-control-testkit
+PD-7): it deletes the seed files, runs the command, then swaps; the queue holds its lock
+throughout. ``worktree_lock`` is the shared/exclusive ``.testmondata.lock`` of PD-6, also used by
 ``tests/changed.py``.
 """
 
 import fcntl
 import os
 import sqlite3
+import subprocess
 import sys
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
@@ -107,6 +110,21 @@ def swap(root: Path, pytest_exit: int) -> int:
     return pytest_exit
 
 
+def seed(root: Path, command: Sequence[str]) -> int:
+    """Clean the seed files, run ``command`` (it writes the seed), swap; the swap's code (PD-7).
+
+    The child inherits the environment, so ``TESTMON_DATAFILE`` reaches pytest. The caller holds
+    any queue lock; none is taken here.
+    """
+    try:
+        _delete_seed_files(root)
+    except OSError as error:
+        print(f"cannot clean the seed files: {error}", file=sys.stderr)
+        return 1
+    exit_code = subprocess.run(list(command), check=False).returncode
+    return swap(root, exit_code)
+
+
 def _seed_packages(con: sqlite3.Connection) -> list[str]:
     rows = con.execute("SELECT system_packages FROM environment").fetchall()
     return [row[0] for row in rows]
@@ -144,6 +162,8 @@ def main(argv: Sequence[str], root: Path | None = None) -> int:
     match list(argv):
         case ["swap", code] if code.isdigit():
             return swap(root, int(code))
+        case ["seed", "--", first, *rest]:
+            return seed(root, [first, *rest])
         case ["check"]:
             outcome = check(root, current_packages())
             if outcome.message:
@@ -151,7 +171,8 @@ def main(argv: Sequence[str], root: Path | None = None) -> int:
             return int(outcome)
         case _:
             print(
-                "usage: python -m tests.testmon_data swap <pytest-exit-code> | check",
+                "usage: python -m tests.testmon_data swap <pytest-exit-code> | check"
+                " | seed -- <command...>",
                 file=sys.stderr,
             )
             return USAGE_EXIT

@@ -10,11 +10,11 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 
 ## 1. Stage 1: the six fixes, in place (#403)
 
-- [ ] 1.1 **#403-1, #403-5** (PD-5, PD-9), unit, `tests/changed.py`. Red: TC-1, TC-5 in
+- [x] 1.1 **#403-1, #403-5** (PD-5, PD-9), unit, `tests/changed.py`. Red: TC-1, TC-5 in
   `tests/unit/tooling/test_changed.py`. Then: hints before reasons in `main()`; `UsageError` from
   `_workers()`, caught first in `main()`, exit 2. Accept: both green, the rest of the file
   unchanged.
-- [ ] 1.2 **#403-3** (design.md PD-7, TC-3), unit, `tests/testmon_data.py`. Red: TC-3's
+- [x] 1.2 **#403-3** (design.md PD-7, TC-3), unit, `tests/testmon_data.py`. Red: TC-3's
   three `seed` tests. Then the `seed -- <command…>` subcommand (clean, child pytest, `swap`).
   Accept: green; `swap` and `check` behave as before; `tests/queue.py` unchanged.
 - [ ] 1.3 **#403-2, #403-3, #403-4** (PD-6, PD-7, PD-8), Makefile + `test_lanes.py`. Red: TC-2,

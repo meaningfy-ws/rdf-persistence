@@ -217,3 +217,71 @@ def test_check_command_prints_the_message_and_exits_with_the_outcome(tmp_path: P
 
     assert done.returncode == Outcome.DAMAGED.value, "the exit code names the outcome"
     assert DAMAGED_MESSAGE in done.stdout, "the message is printed"
+
+
+FAKE_SEED_RUN = """
+import sqlite3, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+assert not (root / ".testmondata.seed").exists(), "the old seed was not cleaned"
+assert not (root / ".testmondata.seed-wal").exists(), "the old seed's side file was not cleaned"
+con = sqlite3.connect(root / ".testmondata.seed")
+con.execute("CREATE TABLE marker (value TEXT)")
+con.execute("INSERT INTO marker VALUES ('new')")
+con.commit()
+con.close()
+sys.exit(int(sys.argv[2]))
+"""
+
+
+def seed_argv(root: Path, exit_code: int) -> list[str]:
+    return ["seed", "--", PYTHON, "-c", FAKE_SEED_RUN, str(root), str(exit_code)]
+
+
+def test_seed_cleans_runs_then_swaps(tmp_path: Path) -> None:
+    make_data(tmp_path / ".testmondata", marker="old")
+    make_data(tmp_path / ".testmondata.seed", marker="stale")
+    (tmp_path / ".testmondata.seed-wal").write_bytes(b"stale")
+
+    code = testmon_data.main(seed_argv(tmp_path, 0), tmp_path)
+
+    assert code == 0, "the child's exit code is passed through the swap"
+    assert read_marker(tmp_path / ".testmondata") == "new", "the new seed is the data"
+    assert names(tmp_path) == {".testmondata", ".testmondata.lock"}, "no seed file remains"
+
+
+def test_seed_swaps_nothing_when_pytest_is_interrupted(tmp_path: Path) -> None:
+    make_data(tmp_path / ".testmondata", marker="old")
+
+    code = testmon_data.main(seed_argv(tmp_path, 2), tmp_path)
+
+    assert code == 2, "pytest's code is passed through"
+    assert read_marker(tmp_path / ".testmondata") == "old", "the earlier data is untouched"
+    assert not [n for n in names(tmp_path) if n.startswith(".testmondata.seed")], "no seed file"
+
+
+def test_seed_stops_before_running_when_the_clean_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def refuse(root: Path) -> None:
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(testmon_data, "_delete_seed_files", refuse)
+    marker = tmp_path / "ran"
+    command = [PYTHON, "-c", f"open({str(marker)!r}, 'w')"]
+
+    code = testmon_data.main(["seed", "--", *command], tmp_path)
+
+    assert code == 1, "a failed clean is exit 1"
+    assert "denied" in capsys.readouterr().err, "the error is printed"
+    assert not marker.exists(), "the command was not run"
+
+
+@pytest.mark.parametrize("argv", [["seed"], ["seed", "--"], ["seed", "pytest"]])
+def test_seed_without_a_command_is_a_usage_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], argv: list[str]
+) -> None:
+    code = testmon_data.main(argv, tmp_path)
+
+    assert code == testmon_data.USAGE_EXIT, f"usage error for {argv!r}"
+    assert "seed -- <command" in capsys.readouterr().err, "the usage line names seed"

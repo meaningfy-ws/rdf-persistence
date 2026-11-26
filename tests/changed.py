@@ -78,6 +78,10 @@ class GitError(Exception):
     """Git is missing, this is not a checkout, or the base does not exist."""
 
 
+class UsageError(Exception):
+    """An input of the run is wrong (PYTEST_CHANGED_N); the exit status is 2."""
+
+
 def _is_shared_infrastructure(parts: tuple[str, ...]) -> bool:
     if len(parts) == 1:
         return parts[0] in SHARED_FILES
@@ -287,7 +291,13 @@ def exit_status(pytest_exit: int) -> int:
 
 
 def _workers() -> int:
-    return int(os.environ.get("PYTEST_CHANGED_N") or DEFAULT_WORKERS)
+    """The workers of PYTEST_CHANGED_N: a decimal integer of 1 or more, or the default if unset."""
+    value = os.environ.get("PYTEST_CHANGED_N")
+    if not value:
+        return DEFAULT_WORKERS
+    if not (value.isascii() and value.isdigit() and int(value) >= 1):
+        raise UsageError(f"PYTEST_CHANGED_N must be a positive integer, got '{value}'")
+    return int(value)
 
 
 def _run_plan(invocations: Sequence[Invocation], root: Path, run: Runner, lock: Lock) -> int:
@@ -308,6 +318,11 @@ def main(
     run: Runner = _run_pytest, data_state: DataState = _data_state, lock: Lock = _shared_lock
 ) -> int:
     """Run the tests of the files changed against BASE; the exit codes are PD-4's."""
+    try:
+        workers = _workers()
+    except UsageError as error:
+        print(error, file=sys.stderr)
+        return 2
     base = os.environ.get("BASE", "develop")
     try:
         root = Path(_git("rev-parse", "--show-toplevel").strip())
@@ -319,12 +334,12 @@ def main(
     outcome = data_state(root)
     if outcome.message:
         print(outcome.message, file=sys.stderr)
-    tests_plan = plan(changed, outcome is Outcome.SOUND, lambda p: Path(p).exists(), _workers())
+    tests_plan = plan(changed, outcome is Outcome.SOUND, lambda p: Path(p).exists(), workers)
+    for hint in tests_plan.hints:
+        print(hint, file=sys.stderr)
     if tests_plan.fallback_reasons:
         print(*tests_plan.fallback_reasons, sep="\n", file=sys.stderr)
         return FALLBACK_EXIT
-    for hint in tests_plan.hints:
-        print(hint, file=sys.stderr)
     if not tests_plan.invocations:
         print(f"nothing to run against {base}", file=sys.stderr)
         return 0
