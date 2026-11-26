@@ -17,11 +17,11 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 - [x] 1.2 **#403-3** (design.md PD-7, TC-3), unit, `tests/testmon_data.py`. Red: TC-3's
   three `seed` tests. Then the `seed -- <command…>` subcommand (clean, child pytest, `swap`).
   Accept: green; `swap` and `check` behave as before; `tests/queue.py` unchanged.
-- [ ] 1.3 **#403-2, #403-3, #403-4** (PD-6, PD-7, PD-8), Makefile + `test_lanes.py`. Red: TC-2,
+- [x] 1.3 **#403-2, #403-3, #403-4** (PD-6, PD-7, PD-8), Makefile + `test_lanes.py`. Red: TC-2,
   TC-3's lane test, TC-4. Then the recipes. Accept: `test_lanes.py` green;
   `make -n test-seed` shows the queued `seed --` line (worked example 1); `test-changed` exports
   `UV_NO_SYNC`; `CI=1 make -n lint 2>&1` prints no `uv`.
-- [ ] 1.4 **#403-6** (PD-10), docs + spec wording. `develop/testing.adoc#test-control`: per user;
+- [x] 1.4 **#403-6** (PD-10), docs + spec wording. `develop/testing.adoc#test-control`: per user;
   the seed cycle under the queue; no sync; the hints on fallback; the `PYTEST_CHANGED_N` rule.
   Accept: `make check-docs` green.
 - [ ] 1.5 **Lead**: `make check-all`; `make test-seed` then `make test-changed` on the branch

@@ -261,7 +261,8 @@ def test_every_queued_recipe_line_runs_pytest_through_the_queue(lane: str) -> No
 
     assert lines, f"{lane} has no pytest line"
     for line in lines:
-        assert QUEUE_PREFIX in line, f"{lane} does not run through the queue: {line.strip()}"
+        queued = QUEUE_PREFIX in line or QUEUE_PREFIX.replace("$(PYTEST)", "$(SEED_RUN)") in line
+        assert queued, f"{lane} does not run through the queue: {line.strip()}"
         assert "uv run pytest" not in line, f"{lane} still spells uv run pytest: {line.strip()}"
 
 
@@ -290,12 +291,20 @@ def test_test_changed_runs_the_module_and_falls_back_on_75_only() -> None:
     """agent-test-control PD-4: 75 means make test-fast; every other status is the module's own."""
     recipe = "\n".join(recipe_of("test-changed"))
 
-    assert "uv run python -m tests.changed" in recipe, "test-changed runs the module"
+    assert "uv run --no-sync python -m tests.changed" in recipe, "test-changed runs the module"
     assert re.search(r"-eq 75\b.*\$\(MAKE\) --no-print-directory test-fast", recipe), (
         "75 runs make test-fast"
     )
     assert "-eq 3" not in recipe, "3 is no fallback status any more"
     assert "exit $$status" in recipe, "any other non-zero status is the target's"
+
+
+def test_test_changed_runs_the_module_without_syncing() -> None:
+    """PD-6: the fallback ``$(MAKE) test-fast`` inherits UV_NO_SYNC, so no step of the target syncs."""
+    recipe = "\n".join(recipe_of("test-changed"))
+
+    assert "uv run --no-sync python -m tests.changed" in recipe, "the module runs with --no-sync"
+    assert "test-changed: export UV_NO_SYNC = 1\n" in MAKEFILE, "the fallback must not sync either"
 
 
 def test_test_changed_leaves_the_pytest_arguments_to_the_module() -> None:
@@ -327,12 +336,19 @@ def _seed_recipe() -> str:
     return "\n".join(recipe_of("test-seed"))
 
 
-def test_the_seed_removes_the_seed_files_of_an_earlier_run_before_it_starts() -> None:
-    """PD-7: a seed killed before its swap leaves files that would make the next one incremental."""
+def test_the_whole_seed_cycle_runs_inside_the_queue() -> None:
+    """PD-7: clean, run and swap are one queued command (tests.testmon_data seed), not recipe shell."""
     recipe = _seed_recipe()
+    line = next(x for x in recipe_of("test-seed") if "--testmon" in x)
 
-    assert "rm -f .testmondata.seed*" in recipe, "the seed files are deleted"
-    assert recipe.index("rm -f .testmondata.seed*") < recipe.index("--testmon"), "before the run"
+    assert "$(SEED_RUN) python -m tests.testmon_data seed -- pytest " in line, (
+        "the seed cycle is the queued testmon_data seed command"
+    )
+    assert "TEST_QUEUE_LABEL=$@ $(SEED_RUN)" in line, "the queue label is set"
+    assert "rm -f" not in recipe, "the clean runs inside the queue, not before it"
+    assert "swap" not in recipe, "the swap runs inside the queue, not after it"
+    assert "SEED_RUN = uv run python -m tests.queue --\n" in MAKEFILE, "locally the seed queues"
+    assert "SEED_RUN = uv run\n" in MAKEFILE, "on CI the seed runs unqueued"
 
 
 def test_the_seed_writes_its_own_data_file() -> None:
@@ -356,28 +372,45 @@ def test_the_seed_run_is_queued_selects_slow_tests_and_follows_the_test_order() 
     assert "--cov" not in line, "the seed measures no coverage"
 
 
-def test_the_seed_exits_as_the_swap_says() -> None:
-    last = recipe_of("test-seed")[-1]
-
-    assert last.rstrip().endswith("uv run --no-sync python -m tests.testmon_data swap $$?"), (
-        "the last command passes pytest's status to the swap and its answer is the target's"
-    )
-    assert "-p no:randomly; uv run" in last, "the swap follows the pytest run on its own line"
-
-
 def test_without_ci_the_queue_runs_pytest_and_the_workers_are_left_to_it() -> None:
     printed = make_prints("[$(PYTEST_N)] [$(PYTEST)] [$(PARALLEL)]")
 
     assert printed == f"[] [{QUEUED_PYTEST}] [-n @workers --dist loadgroup]", printed
 
 
-def test_on_ci_pytest_runs_unqueued_with_the_workers_counted_at_parse_time() -> None:
+def test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make() -> None:
     printed = make_prints("$(PYTEST_N)|$(PYTEST)|$(PARALLEL)", CI="1")
     count, pytest_command, parallel = printed.split("|")
 
     assert pytest_command == PLAIN_PYTEST, f"CI queues: {pytest_command!r}"
     assert 1 <= int(count) <= workers(os.cpu_count(), None, 1), "the count is not workers()"
     assert parallel == f"-n {count} --dist loadgroup", parallel
+
+
+def test_on_ci_the_worker_count_is_quiet_and_lazy() -> None:
+    """PD-8: a recursive variable, so a target that never runs pytest never counts; errors go away."""
+    assert re.search(
+        r"^PYTEST_N \?= \$\(shell uv run --no-sync python -m tests\.queue --workers 2>/dev/null\)$",
+        MAKEFILE,
+        re.MULTILINE,
+    ), "PYTEST_N is lazy and quiet"
+    assert "PYTEST_N :=" not in MAKEFILE, "the count is taken at parse time"
+
+
+def test_on_ci_without_a_count_pytest_gets_auto() -> None:
+    """PD-8: when the count is empty (no uv, as in lint-only jobs), xdist decides."""
+    environment = {k: v for k, v in os.environ.items() if k not in PYTEST_FROM_ENVIRONMENT}
+    environment.update(CI="1", PYTEST_N="")
+    result = subprocess.run(
+        ["make", "-n", "test-unit", "CI=1", "PYTEST_N="],
+        cwd=TESTS_ROOT_DIR.parent,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert "-n auto --dist loadgroup" in result.stdout, "an empty count means -n auto"
 
 
 @pytest.mark.parametrize("added", [{}, {"CI": "1"}])
