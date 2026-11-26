@@ -422,6 +422,7 @@ PUBLIC_NAMES = {
         "main",
         "CHECK_EXIT",
         "MESSAGES",
+        "SEED_COMMIT",
     },
     "run_queue": {"workers", "main"},
 }

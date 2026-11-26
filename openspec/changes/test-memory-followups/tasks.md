@@ -66,7 +66,7 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
 
 ## 4. The seed's commit (DEC-7)
 
-- [ ] 4.1 PD-8 recording, unit (parallel with 1.1 to 1.3). `selection_data.py`: `SEED_COMMIT`,
+- [x] 4.1 PD-8 recording, unit (parallel with 1.1 to 1.3). `selection_data.py`: `SEED_COMMIT`,
   `seed()` reads the sha before the run, `swap(..., commit=...)` writes or deletes the file under
   its lock. Red, in `tests/unit/testkit/test_selection_data.py`: design.md's five cases of *The
   seed's commit* as one parametrized table over a temporary git repository (`git init`, one

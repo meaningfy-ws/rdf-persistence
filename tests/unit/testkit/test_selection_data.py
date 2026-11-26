@@ -9,6 +9,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -376,3 +377,97 @@ def test_a_swap_code_that_is_not_ascii_digits_is_a_usage_error(
 
     assert got == testmon_data.USAGE_EXIT, f"usage error for {code!r}"
     assert "usage:" in capsys.readouterr().err, "the usage line is printed"
+
+
+def git(root: Path, *args: str) -> str:
+    done = subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.org", *args],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return done.stdout.strip()
+
+
+def make_repository(root: Path) -> str:
+    """A git repository with one commit; returns that commit's sha."""
+    git(root, "init", "-q")
+    git(root, "commit", "-q", "--allow-empty", "-m", "first")
+    return git(root, "rev-parse", "HEAD")
+
+
+def fake_run(
+    root: Path, exit_code: int, *, commit_during: bool = False
+) -> Callable[..., subprocess.CompletedProcess[str]]:
+    """A ``run`` seam that writes the seed as pytest would, then exits as told."""
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        make_data(root / ".testmondata.seed", marker="new")
+        if commit_during:
+            git(root, "commit", "-q", "--allow-empty", "-m", "during the run")
+        return subprocess.CompletedProcess(command, exit_code)
+
+    return run
+
+
+# (is a git repository, exit code, stale commit file, commit made during the run,
+#  data after, commit file after: "head" is the sha read before the run)
+SEED_COMMIT_CASES = [
+    pytest.param(True, 0, None, False, "new", "head", id="finished-run-records-the-commit"),
+    pytest.param(True, 1, None, False, "new", "head", id="failing-tests-still-record-it"),
+    pytest.param(True, 0, None, True, "new", "head", id="a-commit-made-during-the-run-is-later"),
+    pytest.param(True, 2, "old\n", False, "old", "old\n", id="exit-2-keeps-data-and-file"),
+    pytest.param(True, 130, "old\n", False, "old", "old\n", id="exit-130-keeps-data-and-file"),
+    pytest.param(False, 0, None, False, "new", None, id="not-a-repository-writes-no-file"),
+    pytest.param(False, 0, "old\n", False, "new", None, id="unknown-sha-removes-a-stale-file"),
+]
+
+
+@pytest.mark.parametrize(
+    ("is_repo", "exit_code", "stale", "commit_during", "data_after", "commit_after"),
+    SEED_COMMIT_CASES,
+)
+def test_seed_records_the_commit_it_ran_on(
+    tmp_path: Path,
+    is_repo: bool,
+    exit_code: int,
+    stale: str | None,
+    commit_during: bool,
+    data_after: str,
+    commit_after: str | None,
+) -> None:
+    head = make_repository(tmp_path) if is_repo else None
+    make_data(tmp_path / ".testmondata", marker="old")
+    commit_file = tmp_path / testmon_data.SEED_COMMIT
+    if stale is not None:
+        commit_file.write_text(stale)
+
+    code = testmon_data.seed(
+        tmp_path, ["pytest"], run=fake_run(tmp_path, exit_code, commit_during=commit_during)
+    )
+
+    assert code == exit_code, "the run's exit code is passed through"
+    assert read_marker(tmp_path / ".testmondata") == data_after, "the data is swapped or kept"
+    expected = f"{head}\n" if commit_after == "head" else commit_after
+    actual = commit_file.read_text() if commit_file.exists() else None
+    assert actual == expected, "the commit file describes the data beside it"
+    assert not [n for n in names(tmp_path) if n.endswith(".tmp")], "no temporary file is left"
+
+
+def test_swap_without_a_commit_deletes_the_commit_file(tmp_path: Path) -> None:
+    make_data(tmp_path / ".testmondata.seed", marker="new")
+    (tmp_path / testmon_data.SEED_COMMIT).write_text("old\n")
+
+    swap(tmp_path, 0)
+
+    assert not (tmp_path / testmon_data.SEED_COMMIT).exists(), "the CLI form records nothing"
+
+
+def test_swap_with_a_commit_writes_it_after_the_rename(tmp_path: Path) -> None:
+    make_data(tmp_path / ".testmondata.seed", marker="new")
+
+    swap(tmp_path, 0, commit="abc")
+
+    assert (tmp_path / testmon_data.SEED_COMMIT).read_text() == "abc\n", "sha and a newline"
+    assert "SEED_COMMIT" in testmon_data.__all__, "the constant is public"
