@@ -71,10 +71,11 @@ the fallback (DEC-7).
   and an `autouse` function-scoped fixture `default_recursion_limit` that wraps it, both in
   `tests/unit/migrations/test_migration_files_adversarial.py`; the context manager sets
   `sys.setrecursionlimit(DEFAULT_RECURSION_LIMIT)` (`1000`, CPython's default, a module constant)
-  before each test of the module and restores the previous limit in `finally`. Every test of the
-  module depends on the parser's depth the same way: the 120-pattern step and the deeply nested
-  YAML cases (`"{" * 5000`, `"[" * 100000`, `"[" * 50000`), which under a raised limit could
-  exhaust the C stack instead of raising. Nothing else in the module changes.
+  before each test of the module and restores the previous limit in `finally`. The test that
+  measurably depends on the limit is the 120-pattern step (under a raised limit it is not refused:
+  task 1.3's planted check, D-3); the deeply nested YAML cases (`"{" * 5000`, `"[" * 100000`,
+  `"[" * 50000`) passed under 20000 too, and the pin keeps them at the default as well. Nothing
+  else in the module changes.
 - **PD-5 The measurement** (DEC-4). From Langfuse, observations with
   `startTime` after #394's merge (2026-11-25 21:00 UTC), sessions whose root span's metadata
   `cwd` contains `rdf-persistence`, excluding this EPIC's own sessions. The window is the first
@@ -300,6 +301,14 @@ The seed's commit (task 4.1's table, `seed()` with a fake `run` in a temporary g
 - **D-1** (developer, 2026-11-26): the re-gate of the additions ended at 8.5 after two runs, with
   every gap of both runs folded in (`evidence/clarity-gate.md`); accepted, no third run. Named
   D-1, not DEC-8, because DEC-8 in this change means `agent-test-control`'s target.
+- **D-2** (lead, 2026-11-26): each parallel builder and the spike work in their own worktree
+  (`.worktrees/tmf-<task>` off the stage commit), not in the stage worktree, so one builder's
+  half-done edit never reaches another's task gate; the lead commits each task onto the stage
+  branch. No seed in those worktrees: `make test-changed` plans by folder rules there (P-0022's
+  purpose, a cheap task gate, holds without seeding five worktrees serially in the queue).
+  First sync was without `--all-extras` (lead's error, one builder gate lost); re-synced.
+- **D-3** (lead, 2026-11-26, from task 1.3's planted check): PD-4's rationale corrected: only
+  the 120-pattern step fails under a raised limit; the nested-YAML cases do not. The pin stands.
 
 ## Open Questions
 
