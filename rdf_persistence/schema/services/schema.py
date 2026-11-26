@@ -1,7 +1,11 @@
 """Open a schema whose metamodel imports resolve to the installed package (PD-22)."""
 
-from collections.abc import Iterator
+import hashlib
+import threading
+from collections import OrderedDict
+from collections.abc import Callable, Iterator
 from copy import deepcopy
+from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
@@ -81,6 +85,63 @@ def load_schema(path: str | Path) -> SchemaView:
     prefer_application_slots(view)
     give_identifier_to_abstract_roots(view)
     return view
+
+
+@dataclass(frozen=True)
+class ServiceViewKey:
+    """What identifies a parse of a schema file: the file's size and the hash of its bytes (PD-2).
+
+    The content decides, not the modification time: a rewrite within the clock's step is a new key.
+    Imported modules are not hashed; only the root file is.
+    """
+
+    size: int
+    digest: str
+
+
+SERVICE_VIEWS = 8  # the most views the store keeps; the oldest used leaves first
+# one entry per resolved path, the least recently used first; an index, guarded by the lock
+_SERVICE_STORE: OrderedDict[Path, tuple[ServiceViewKey, SchemaView]] = OrderedDict()
+_SERVICE_LOCK = threading.Lock()
+
+
+def service_view(
+    path: str | Path, *, load: Callable[[str | Path], SchemaView] = load_schema
+) -> SchemaView:
+    """The view of the schema at ``path``, shared by every caller until the file's content changes.
+
+    The view is shared: never modify it (copy it or ``load_schema`` your own). ``generation_view``
+    modifies the views it loads, so it never comes here. Up to ``SERVICE_VIEWS`` views are kept.
+
+    Raises:
+        Exception: Whatever ``load_schema`` raises for a missing or unreadable file, a file that is not
+            a schema, or an import that is missing; nothing is stored then.
+    """
+    resolved = Path(path).resolve()
+    try:
+        content = resolved.read_bytes()
+    except OSError:
+        return load(path)  # raises what load_schema raises; the error is the same
+    key = ServiceViewKey(len(content), hashlib.sha256(content).hexdigest())
+    with _SERVICE_LOCK:
+        entry = _SERVICE_STORE.get(resolved)
+        if entry is not None and entry[0] == key:
+            _SERVICE_STORE.move_to_end(resolved)
+            return entry[1]
+        view = load(path)
+        _SERVICE_STORE[resolved] = (key, view)
+        _SERVICE_STORE.move_to_end(resolved)
+        while len(_SERVICE_STORE) > SERVICE_VIEWS:
+            _SERVICE_STORE.popitem(last=False)
+        return view
+
+
+def clear_service_views() -> int:
+    """Empty the store of shared views; the number of views it held."""
+    with _SERVICE_LOCK:
+        held = len(_SERVICE_STORE)
+        _SERVICE_STORE.clear()
+        return held
 
 
 def give_identifier_to_abstract_roots(view: SchemaView) -> None:
