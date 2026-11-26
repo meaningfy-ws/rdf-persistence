@@ -24,7 +24,8 @@ the fallback (DEC-7).
   `= Depends(gate.tenant(Action.READ))` and `= Depends(link_to_context)`. FastAPI resolves the
   default-argument form exactly as the `Annotated` form; the OpenAPI document does not change
   (guarded by `tests/unit/api/test_openapi.py` and `tests/unit/api/test_openapi_served.py`).
-  The testkit's `clear_caches()` gains a keyword `typing: bool = True` (default unchanged, so
+  The testkit's `clear_caches()` gains a keyword-only `include_typing: bool = True` (named so
+  after D-5; it shadowed the module as `typing`) (default unchanged, so
   callers see no difference) so a test can clear only the `SchemaView` and FastAPI caches; the
   docstring of `memory.py:_clear_typing` drops the claim that a kit's own dependency is the
   reason, and keeps clearing `typing` for other projects' code.
@@ -141,7 +142,9 @@ the fallback (DEC-7).
     is a finding for the validation review.
 - **PD-8 The seed's commit** (DEC-7). Two parts, both in the testkit:
   - **Recording**, in `rdf_persistence/testkit/selection_data.py`: `seed()` reads
-    `git rev-parse --verify HEAD` before it runs the command (a commit made during the run then
+    `git rev-parse --verify HEAD` before it runs the command, and records nothing when the tracked
+    tree is dirty (`git status --porcelain --untracked-files=no` not empty; D-5, L5-W1: a dirty
+    shared file later reverted to `HEAD` would otherwise be vouched for) (a commit made during the run then
     counts as a change since the seed: safe), calling git directly with
     `subprocess.run(..., cwd=root, capture_output=True, text=True, check=False)`, never through its
     `run` seam, which stays the pytest command's. Inside `swap`'s exclusive lock it deletes
@@ -313,6 +316,27 @@ The seed's commit (task 4.1's table, `seed()` with a fake `run` in a temporary g
   seed; its selection data covers it`, without PD-8's `(<sha8>)`: `select` and `plan` see only
   `since_seed`, and widening the public API for a label is not worth it. The two lock tests that
   pinned "the data check runs outside the lock" now pin PD-8's shared lock around it.
+- **D-5** (lead, 2026-11-26, the full review of the one stage; P-0005: an epic of one stage gets
+  the full review, L1, L2, L3 apart and L4+L5 together, which also covers the stage's L2+L3 pass,
+  so that pass is not run twice). No Critical. Accepted, one fix pass:
+  - *Fixer (code):* L5-W1, a seed taken on a dirty tree records no commit (`git status
+    --porcelain --untracked-files=no` not empty), so a dirty shared file reverted later can never
+    be vouched for (PD-8 amended); L4-W2 and L3-S3, `clear_caches(*, include_typing=True)`
+    instead of a `typing` flag that shadows the module (PD-1 amended); L4-W3, `set(changed)` built
+    once; L4-W4 and L3-S5, `_since_seed` returns the paths only, `main` builds the hint; L2-W4, a
+    test that fails if the autouse pin is dropped; L1-S1, `service_view` stores a view only if the
+    file's bytes still hash to the key after the load; L2-S6, `service_view`'s docstring names
+    RISK-2; L1-S3 and L5-S2, `changed_tests`' docstring names the window between the plan and the
+    run (today's race, PD-8); L5-S3, the docstring rewrap.
+  - *Lead (docs):* L2-W1, the memory bullet of `develop/testing.adoc`; L2-W2, the CHANGELOG
+    entries for DEC-1 and DEC-2; L2-W3, the spike link to the change's current path (the archive
+    moves it); L2-S5, the scan's result recorded in `evidence/timing.md`.
+  - *Under the floor:* L3-W1, a store class instead of the module store (PD-2 decided a module
+    function with one reset; no second consumer exists); L3-W2 and L1-S2, a read-only facade over
+    the shared view (DEC-2 decided documentation plus PD-3's guard; `SchemaView` has no read-only
+    form, a facade would re-wrap its whole API); L3-S4, `CacheCounts`' per-function keys; L2-S7,
+    a test of the order inside `swap` (the end state is tested, the order is a two-line read);
+    L5-S1, a per-path lock (loads are rare, PD-2 accepted the serialisation).
 
 ## Open Questions
 

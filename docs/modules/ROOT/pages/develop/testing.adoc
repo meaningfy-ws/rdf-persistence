@@ -199,8 +199,9 @@ Four mechanisms, from `agent-test-control`:
      `make test-changed` alone and repeats the unit and feature tests `make check-all` runs anyway.
 * *Memory released between tests.* `tests/conftest.py` enables the testkit's plugin,
   `rdf_persistence.testkit.memory_plugin`. After every test it clears the caches of
-  linkml-runtime's `SchemaView`, FastAPI's dependency models and `typing`, which otherwise keep
-  every service a test built alive. At each module boundary it also collects garbage and returns
+  linkml-runtime's `SchemaView` and FastAPI's dependency models, which otherwise keep every
+  service a test built alive, and of `typing`, for code outside the toolkit that puts objects in
+  `Annotated` metadata (the kit's own dependencies no longer do). At each module boundary it also collects garbage and returns
   freed memory to the system, and drops the shared service views of the schemas the module's kits
   were built from. `TEST_RELEASE=off` turns it off. A project that builds services with
   the toolkit in its tests enables it with one line in its root `conftest.py`:
@@ -218,7 +219,7 @@ recording the selection data in the same run would save the seed's minutes. It c
 pytest-testmon 2.4 refuses to run beside pytest-cov while branch coverage is on (`TestmonException`
 in every worker), and `.coveragerc` turns branch coverage on for the floors. Turning it off would
 change what the floors measure. The spike that showed it is
-`openspec/changes/archive/*-test-memory-followups/evidence/seed-spike.md`.
+`openspec/changes/test-memory-followups/evidence/seed-spike.md`.
 
 *What each role runs.* A builder runs the tests its edit touches (`uv run pytest <file>`) and,
 once per task, `make test-changed check-quality`. A builder never runs, by hand, `make test-fast`,

@@ -3,7 +3,8 @@
 ### Requirement: A fallback path counts only if it changed since the seed
 
 The testkit's seed SHALL record, beside the selection data it swaps in, the commit it ran on, and
-SHALL remove that record when it swaps in data whose commit it cannot read. When the selection
+SHALL remove that record when it swaps in data whose commit it cannot read or whose tracked files
+differed from that commit when the seed started. When the selection
 data is sound and a seed commit is recorded and readable, the changed-tests planner SHALL keep a
 changed path's fallback reasons only if that path differs between the seed's commit and the
 working tree, and SHALL name every path it set aside in a hint; a path that differs from the
@@ -33,6 +34,12 @@ as it did without the record.
 - **GIVEN** selection data with no recorded commit, or a commit git cannot read
 - **WHEN** the planner runs
 - **THEN** it plans exactly as it does without the record
+
+#### Scenario: a seed on a dirty tree
+- **GIVEN** a tracked file with uncommitted changes
+- **WHEN** a seed runs and finishes
+- **THEN** its data is swapped in with no recorded commit, so the planner plans as it does without
+  the record
 
 #### Scenario: a seed that did not finish
 - **GIVEN** a recorded seed commit C
