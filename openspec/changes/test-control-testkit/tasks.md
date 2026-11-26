@@ -45,7 +45,7 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 - [x] 2.5 **Public surface + docs** (PD-14, PD-15 for the two modules): `make refresh-snapshot`
   (lead), the user-manual section (queue and seed part), `questions.adoc`, CHANGELOG.
   Accept: `make check-docs` green.
-- [ ] 2.6 **Lead**: as 1.5 (no MWB2 post).
+- [x] 2.6 **Lead**: as 1.5 (no MWB2 post).
 
 ## 3. Stage 3: the changed-tests planner moves to the testkit
 
@@ -71,7 +71,7 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5
-- [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6
+- [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5
 - [ ] 4.1
 
