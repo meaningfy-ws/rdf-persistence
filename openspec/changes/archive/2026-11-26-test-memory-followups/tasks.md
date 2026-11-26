@@ -95,18 +95,18 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
 
 ## 3. Close
 
-- [ ] 3.1 The lead's `make check-all`, the PR, the merge (review set per
+- [x] 3.1 The lead's `make check-all`, the PR, the merge (review set per
   `develop/agents.adoc#challenge`, MEDIUM in one stage: one L2+L3 pass and the full review, both
   on the same PR, P-0005; the fixes in one pass). The stage report lists every full test run
   with who read its result (PD-7).
-- [ ] 3.2 **Lead.** PD-5, once the sessions that were paused on 2026-11-25 (the rdf-persistence
+- [x] 3.2 **Lead.** PD-5, once the sessions that were paused on 2026-11-25 (the rdf-persistence
   sessions waiting for #394) run on `develop` after #394's merge: the DEC-8 measurement in
   `evidence/measure.md`, with PD-5's filters and formulas; a missed target goes to the developer.
-- [ ] 3.3 Archive the change (`spec-stewardship`).
+- [x] 3.3 Archive the change (`spec-stewardship`).
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · [x] 4.1 · [x] 4.2 · [x] 2.2 · [x] 4.3 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · [x] 4.1 · [x] 4.2 · [x] 2.2 · [x] 4.3 · [x] 3.1 · [x] 3.2 · [x] 3.3
 
 1.1, 1.2, 1.3, 2.1 and 4.1 run in parallel; only 1.2's edit to `rdf_persistence/testkit/memory.py`
 waits for 1.1's commit on the branch, 4.2 waits for 4.1, 2.2 waits for 2.1's verdict (on a pass,
