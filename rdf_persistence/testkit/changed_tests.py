@@ -18,7 +18,8 @@ by the seed) and lists the files that differ from it: a file that falls back to 
 (a ``Makefile``, a lock file) but is unchanged since the seed gives a hint instead, since the data was
 recorded with that file as it is. A file changed after the seed still falls back, as does a shared
 file reverted to the base's content after the seed. The data check and the commit are read under
-one shared lock.
+one shared lock. A seed that swaps between the plan and a testmon run gives that run newer data than
+the plan read (the race of before, not a new one).
 """
 
 import os
@@ -183,8 +184,9 @@ def _reverted_reasons(
     configuration the worktree no longer has. Testmon-visible files are left out: testmon judges
     them by fingerprint.
     """
+    in_base_diff = set(changed)
     reverted = [
-        p for p in since_seed if p not in set(changed) and not classifier.is_testmon_visible(p)
+        p for p in since_seed if p not in in_base_diff and not classifier.is_testmon_visible(p)
     ]
     return [r for p in sorted(reverted) for r in classifier.classify(p).fallback_reasons]
 
@@ -314,14 +316,12 @@ def _run_plan(
     return 0
 
 
-def _since_seed(commit: str | None) -> tuple[list[str] | None, list[str]]:
-    """The paths that differ from the seed's commit, and the hint when git cannot say."""
-    if commit is None:
-        return None, []
-    try:
-        return changed_since(commit), []
-    except GitError as error:
-        return None, [f"cannot read the seed's commit {commit}: {error}"]
+def _since_seed(commit: str | None) -> list[str] | None:
+    """The paths that differ from the seed's commit; ``None`` without a commit.
+
+    Raises ``GitError`` when git cannot say; ``main`` turns that into a hint.
+    """
+    return None if commit is None else changed_since(commit)
 
 
 def main(
@@ -356,7 +356,12 @@ def main(
     if outcome in MESSAGES:
         print(MESSAGES[outcome], file=sys.stderr)
     with_data = outcome is SelectionDataOutcome.SOUND
-    since_seed, seed_hints = _since_seed(commit if with_data else None)
+    seed_hints: list[str] = []
+    try:
+        since_seed = _since_seed(commit if with_data else None)
+    except GitError as error:
+        since_seed = None
+        seed_hints.append(f"cannot read the seed's commit {commit}: {error}")
     tests_plan = plan(
         changed,
         with_data,

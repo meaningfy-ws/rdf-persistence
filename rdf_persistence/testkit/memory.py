@@ -61,16 +61,16 @@ def _clear_fastapi() -> int:
     return _clear_each(vars(models))
 
 
-def clear_caches(typing: bool = True) -> CacheCounts:
+def clear_caches(*, include_typing: bool = True) -> CacheCounts:
     """Call ``cache_clear()`` on every cached ``SchemaView`` method and FastAPI dependency function.
 
-    ``typing=False`` leaves the caches of ``typing`` alone (its count is then 0), so a test can
+    ``include_typing=False`` leaves the caches of ``typing`` alone (its count is then 0), so a test can
     check that something is freed without them.
     """
     return {
         "linkml_runtime": _clear_each(vars(SchemaView)),
         "fastapi": _clear_fastapi(),
-        "typing": _clear_typing() if typing else 0,
+        "typing": _clear_typing() if include_typing else 0,
     }
 
 

@@ -108,6 +108,21 @@ def missing_file_raises_as_load_schema(directory: Path) -> Outcome:
     return Outcome(1, 1, True, "the same error")
 
 
+def rewritten_while_loading(directory: Path) -> Outcome:
+    path = written(directory, "s.yaml", "one")
+    rewrites = iter(["two"])  # only the first load finds the file changed under it
+
+    def rewriting(file: str | Path) -> SchemaView:
+        view = load_schema(file)
+        for comment in rewrites:
+            written(directory, "s.yaml", comment)
+        return view
+
+    first = service_view(path, load=rewriting)
+    assert not schema_module._SERVICE_STORE, "a view loaded from bytes that changed is not stored"
+    return Outcome(first, service_view(path, load=rewriting), False, "the next call loads again")
+
+
 def generation_view_is_apart(_: Path) -> Outcome:
     return Outcome(
         generation_view(TOY_SCHEMA),
@@ -125,6 +140,7 @@ CASES: dict[str, Callable[[Path], Outcome]] = {
     "nine files": ninth_file_evicts_the_first,
     "cleared store": cleared_store_loads_again,
     "missing file": missing_file_raises_as_load_schema,
+    "rewritten while loading": rewritten_while_loading,
     "generation view": generation_view_is_apart,
 }
 

@@ -412,20 +412,31 @@ def fake_run(
 
 
 # (is a git repository, exit code, stale commit file, commit made during the run,
-#  data after, commit file after: "head" is the sha read before the run)
+#  a tracked file modified at seed time, data after,
+#  commit file after: "head" is the sha read before the run)
 SEED_COMMIT_CASES = [
-    pytest.param(True, 0, None, False, "new", "head", id="finished-run-records-the-commit"),
-    pytest.param(True, 1, None, False, "new", "head", id="failing-tests-still-record-it"),
-    pytest.param(True, 0, None, True, "new", "head", id="a-commit-made-during-the-run-is-later"),
-    pytest.param(True, 2, "old\n", False, "old", "old\n", id="exit-2-keeps-data-and-file"),
-    pytest.param(True, 130, "old\n", False, "old", "old\n", id="exit-130-keeps-data-and-file"),
-    pytest.param(False, 0, None, False, "new", None, id="not-a-repository-writes-no-file"),
-    pytest.param(False, 0, "old\n", False, "new", None, id="unknown-sha-removes-a-stale-file"),
+    pytest.param(True, 0, None, False, False, "new", "head", id="finished-run-records-the-commit"),
+    pytest.param(True, 1, None, False, False, "new", "head", id="failing-tests-still-record-it"),
+    pytest.param(
+        True, 0, None, True, False, "new", "head", id="a-commit-made-during-the-run-is-later"
+    ),
+    pytest.param(True, 2, "old\n", False, False, "old", "old\n", id="exit-2-keeps-data-and-file"),
+    pytest.param(
+        True, 130, "old\n", False, False, "old", "old\n", id="exit-130-keeps-data-and-file"
+    ),
+    pytest.param(False, 0, None, False, False, "new", None, id="not-a-repository-writes-no-file"),
+    pytest.param(
+        False, 0, "old\n", False, False, "new", None, id="unknown-sha-removes-a-stale-file"
+    ),
+    pytest.param(True, 0, None, False, True, "new", None, id="a-dirty-tracked-tree-records-none"),
+    pytest.param(
+        True, 0, "old\n", False, True, "new", None, id="a-dirty-tracked-tree-removes-a-stale-file"
+    ),
 ]
 
 
 @pytest.mark.parametrize(
-    ("is_repo", "exit_code", "stale", "commit_during", "data_after", "commit_after"),
+    ("is_repo", "exit_code", "stale", "commit_during", "dirty", "data_after", "commit_after"),
     SEED_COMMIT_CASES,
 )
 def test_seed_records_the_commit_it_ran_on(
@@ -434,10 +445,17 @@ def test_seed_records_the_commit_it_ran_on(
     exit_code: int,
     stale: str | None,
     commit_during: bool,
+    dirty: bool,
     data_after: str,
     commit_after: str | None,
 ) -> None:
     head = make_repository(tmp_path) if is_repo else None
+    if dirty:
+        (tmp_path / "tracked.txt").write_text("one\n")
+        git(tmp_path, "add", "tracked.txt")
+        git(tmp_path, "commit", "-q", "-m", "track a file")
+        head = git(tmp_path, "rev-parse", "HEAD")
+        (tmp_path / "tracked.txt").write_text("two\n")
     make_data(tmp_path / ".testmondata", marker="old")
     commit_file = tmp_path / testmon_data.SEED_COMMIT
     if stale is not None:

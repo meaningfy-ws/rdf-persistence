@@ -94,6 +94,15 @@ _SERVICE_STORE: OrderedDict[Path, tuple[tuple[int, str], SchemaView]] = OrderedD
 _SERVICE_LOCK = threading.Lock()
 
 
+def _content_key(resolved: Path) -> tuple[int, str] | None:
+    """The size and sha256 of the file's bytes; ``None`` when it cannot be read."""
+    try:
+        content = resolved.read_bytes()
+    except OSError:
+        return None
+    return len(content), hashlib.sha256(content).hexdigest()
+
+
 def service_view(
     path: str | Path, *, load: Callable[[str | Path], SchemaView] = load_schema
 ) -> SchemaView:
@@ -101,23 +110,25 @@ def service_view(
 
     The view is shared: never modify it (copy it or ``load_schema`` your own). ``generation_view``
     modifies the views it loads, so it never comes here. Up to ``SERVICE_VIEWS`` views are kept.
+    Only the root file is hashed, so an edit to a schema it imports is not seen until the store is
+    cleared (RISK-2). A view is stored only if the file's key is the same after loading as before.
 
     Raises:
         Exception: Whatever ``load_schema`` raises for a missing or unreadable file, a file that is not
             a schema, or an import that is missing; nothing is stored then.
     """
     resolved = Path(path).resolve()
-    try:
-        content = resolved.read_bytes()
-    except OSError:
+    key = _content_key(resolved)
+    if key is None:
         return load(path)  # raises what load_schema raises; the error is the same
-    key = (len(content), hashlib.sha256(content).hexdigest())
     with _SERVICE_LOCK:
         entry = _SERVICE_STORE.get(resolved)
         if entry is not None and entry[0] == key:
             _SERVICE_STORE.move_to_end(resolved)
             return entry[1]
         view = load(path)
+        if _content_key(resolved) != key:
+            return view  # the file changed while it loaded: the view may not match the key
         _SERVICE_STORE[resolved] = (key, view)
         _SERVICE_STORE.move_to_end(resolved)
         while len(_SERVICE_STORE) > SERVICE_VIEWS:

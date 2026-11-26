@@ -18,5 +18,5 @@ def test_a_dropped_service_is_freed_without_clearing_typing() -> None:
     services = [ToyService() for _ in range(3)]
     assert live_kits() >= before + 3, "the three services are alive"
     del services
-    clear_caches(typing=False)
+    clear_caches(include_typing=False)
     assert live_kits() == before, "no ServiceKit outlives its dropped service, typing caches kept"

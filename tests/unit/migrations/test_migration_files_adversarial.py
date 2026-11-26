@@ -71,6 +71,24 @@ def test_the_module_runs_at_the_default_recursion_limit():
         sys.setrecursionlimit(original)
 
 
+@pytest.fixture(scope="module")
+def raised_limit() -> Iterator[None]:
+    """Raise the limit before the function-scoped autouse pin runs (a wider scope is set up first)."""
+    original = sys.getrecursionlimit()
+    sys.setrecursionlimit(20000)
+    try:
+        yield
+    finally:
+        sys.setrecursionlimit(original)
+
+
+@pytest.mark.usefixtures("raised_limit")
+def test_the_autouse_pin_lowers_a_limit_raised_before_it():
+    assert sys.getrecursionlimit() == DEFAULT_RECURSION_LIMIT, (
+        "the autouse fixture pins the default limit even when an earlier fixture raised it"
+    )
+
+
 def esc(word: str) -> str:
     """``word`` written with SPARQL ``u`` escapes, which a SPARQL parser reads back as the word."""
     return "".join(f"{BS}u{ord(c):04x}" for c in word)
