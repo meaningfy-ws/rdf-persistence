@@ -42,3 +42,25 @@ Side effect of run 2: the reviewer's `uv run python` installed packages into thi
 `.venv`; no tracked file changed. Re-seed before relying on selection data in it.
 
 **Parked** by the developer on 2026-11-25 with the PLAN gated; Q1 to Q5 still open.
+
+## Re-gate of the additions (DEC-5 to DEC-7, PD-6 to PD-8, sections 2 and 4, the deltas)
+
+Resumed 2026-11-26: Q1 to Q5 answered, DEC-7 (#416) folded in, appetite MEDIUM.
+
+run 1, 2026-11-26, 7.4/10, fail (fresh reviewer, attack and gate in one; actionability 8,
+specificity 8, consistency 6, structure 8, disambiguation 7, reference clarity 8). Thirteen gaps,
+six from the attack: one `seed` per lane would keep only the last lane's data; the lanes differ
+from the seed (`LIBRARY_LANE`, random order); the spike's data files impossible through `seed`;
+the `main` test would pass without the feature; the lock claim overstated; a reverted shared file
+unnoticed; the `uv.lock` reasoning wrong; a stale commit file on a crash; the git seam unclear;
+the hex check, `__all__`, the tooling case, the 2.2 Red test and the `rp-developer-checks` delta
+unspecified. All folded in.
+
+run 2, 2026-11-26, 8.5/10, fail (same reviewer, gaps only; actionability 9, specificity 9,
+consistency 8, structure 9, disambiguation 8, reference clarity 9). All thirteen closed; three
+new, all folded in after the run: N1, 2.2's Red test would have run a real seed through
+`make -n test` (now a variable probe, `--eval='print-%: …'`, checked to work); N2, the revert
+rule would fall back after every rebase (now only non-testmon-visible paths, with a worked
+example); N3, the fifth recording case listed in design.md.
+
+Two runs spent; below 9, so the developer decided: accepted at 8.5, no third run (design.md D-1).

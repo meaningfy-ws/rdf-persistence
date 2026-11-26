@@ -60,3 +60,12 @@ the wisdom on no overrunning tests if not needed from this session".
      commit adds only the coverage floors (80 % unit, 50 % feature).
    - Already fixed outside this EPIC, ad hoc: #398 (the docs: the lead seeds only when builders
      follow) and #399 (rule P-0022).
+7. **#416's design gap (added 2026-11-26, round 3).** `make test-changed` diffs against the
+   merge base with `develop`; on a branch that changed `Makefile`, `pyproject.toml`, `uv.lock` (any
+   of `tests/changed.py`'s `SHARED_FILES`, or another fallback path), every later task gate falls
+   back to the queued `make test-fast`, whatever the task touched. MWB2's builders waited 57 % and
+   76 % of their gate time on it (DEC-8 of `agent-test-control` targets 10 %). #416 suggests
+   judging shared configuration against the last seed's commit, not the base: a seed taken after
+   the configuration changed already covers it. The planner now lives in
+   `rdf_persistence.testkit.changed_tests` (`test-control-testkit`, archived 2026-11-26), so the
+   fix reaches MWB2 with its adoption.

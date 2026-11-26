@@ -1,4 +1,4 @@
-> Derives from: the EPIC `test-memory-followups` (proposal.md, DEC-1 to DEC-6)
+> Derives from: the EPIC `test-memory-followups` (proposal.md, DEC-1 to DEC-7)
 
 ## Context
 
@@ -11,7 +11,8 @@ test; this EPIC removes the two causes in our own code and the test's order depe
 **Goals:** a dropped kit is freed without clearing `typing`'s caches (DEC-1); one parse per schema
 file per process for service kits (DEC-2); an order-independent parser-depth test (DEC-3); DEC-8
 measured (DEC-4); the seed spike decided and its outcome landed (DEC-5); no test run nobody
-reads, in this EPIC's own delivery (DEC-6).
+reads, in this EPIC's own delivery (DEC-6); a shared file unchanged since the seed no longer forces
+the fallback (DEC-7).
 
 **Non-Goals:** the No-gos of the proposal.
 
@@ -47,7 +48,7 @@ reads, in this EPIC's own delivery (DEC-6).
   - **Seam:** `service_view(path, *, load=load_schema)`; tests inject a counting loader.
   - **Scope of "once":** one parse per schema file until the next `release_memory()`, which in
     tests means once per module per worker; in a service, once per process.
-  - **Use:** `ServiceKit.__init__` (`kit.py:165`) calls `service_view(schema)` instead of
+  - **Use:** `ServiceKit.__init__` (`kit.py:166`) calls `service_view(schema)` instead of
     `load_schema(schema)`, so every kit built from a file shares its view, whether built by
     `install_service` or by constructing `ServiceKit` directly. `load_schema` and
     `generation_view` are untouched. `ServiceKit.view`'s docstring says the view is shared and
@@ -93,20 +94,36 @@ reads, in this EPIC's own delivery (DEC-6).
 - **PD-6 The seed spike** (DEC-5). Timebox: half a day; past it the spike counts as failed.
   - **Where:** a throwaway worktree off the stage branch; one small unit folder
     (`tests/unit/schema/`) and one small feature folder, never the full suite.
-  - **Three runs**, each through the queue with `-p no:randomly` and the same worker count:
-    (a) coverage only, as `make test-unit` runs it; (b) selection only, as `make test-seed` runs it,
-    into `.testmondata.a`; (c) both together (`--testmon --testmon-forceselect` and `--cov`), into
-    `.testmondata.b`. Then the same for the feature folder appended to (b) and (c), the way
-    `check-all` runs its lanes one after another into one data file.
+  - **The mechanism under test** (the one 2.2 would ship, so the spike runs it, not an
+    approximation). Today the lanes differ from the seed: `test-unit` and `test-feature` use
+    `LIBRARY_LANE` (no `tests/generator`) and random order; the seed uses `UNIT_LANE` and
+    `-p no:randomly`; and `seed()` deletes the seed files before its command, so one `seed` call
+    per lane would leave only the last lane's data. Hence: `test` runs its three lanes inside **one**
+    `selection_data seed` call, under one queue hold:
+    `TEST_QUEUE_LABEL=test $(SEED_RUN) python -m rdf_persistence.testkit.selection_data seed --
+    env TEST_QUEUE=off RECORD_SELECTION=1 TESTMON_DATAFILE=.testmondata.seed $(MAKE) test-unit
+    test-feature test-generator`. The inner lanes skip the queue (`TEST_QUEUE=off`; the outer call
+    holds it) and, with `RECORD_SELECTION=1`, add `--testmon --testmon-forceselect -p no:randomly`
+    to their pytest command; all three append to one `.testmondata.seed`, swapped once after the
+    last lane, so the commit is recorded (PD-8). A failing lane makes `make` exit 2, which is no
+    finished run: no swap, the earlier data stays. Under `CI` `test` is unchanged.
+  - **Three runs**, on the two folders, each through the queue and the same worker count, each
+    into its own data file named by `TESTMON_DATAFILE` with no swap: (a) coverage only, the lane
+    commands as today (`make -n test-unit` / `test-feature` show them), into nothing; (b) selection
+    only, the seed's pytest command, `TESTMON_DATAFILE=.testmondata.a`; (c) the mechanism above
+    restricted to the two folders (`TEST_PATH` narrowed), `TESTMON_DATAFILE=.testmondata.b`, the
+    two lanes appending in order.
   - **Pass**, all three: (1) the coverage report of (c) equals (a)'s line for line
     (`coverage report` totals and missed lines); (2) for three sample changes (one line in a
-    `domain` module, one in a `services` module, one in a test file), `make test-changed` with
-    (b)'s data and with (c)'s data selects the same test ids; (3) (c)'s wall time is at most 15 %
-    above (a)'s. Anything else, or a warning from either plugin about the tracer, is a fail.
-  - **Pass → change:** `test-unit` and `test-feature` record the selection data (an env flag the
-    lanes set when run under `test` / `check-all`, so a lone lane stays as it is) and swap it in as
-    `test-seed` does; the docs say that a worktree where `make check-all` passed needs no seed for
-    the next stage on that commit. Coverage floors and lane commands are otherwise unchanged.
+    `domain` module, one in a `services` module, one in a test file), `make test-changed` selects
+    the same test ids with (b)'s data and with (c)'s data, each copied over `.testmondata` before
+    its run (the copy is the swap, done by hand in the throwaway worktree); (3) (c)'s wall time is
+    at most 15 % above (a)'s. Anything else, or a warning from either plugin about the tracer, is a
+    fail. (c) runs in fixed order where (a) is random: criterion 1 compares coverage totals and
+    missed lines, which order does not change.
+  - **Pass → change:** the mechanism above, in `Makefile`'s `test` (local branch only); the
+    lanes alone stay as they are. The docs say that a worktree where `make check-all` passed needs
+    no seed for the next stage on that commit. Coverage floors are unchanged.
   - **Fail → record:** one paragraph in `develop/testing.adoc#test-control`: why the full run
     cannot double as the seed, with the run that showed it; nothing else changes.
   - `evidence/seed-spike.md` holds the three runs' commands, times, coverage totals, the selected
@@ -121,6 +138,56 @@ reads, in this EPIC's own delivery (DEC-6).
     lane runs only when its coverage floor is the open question, and the report says so.
   - The stage report lists each full run with its reason (who reads its result); a run without one
     is a finding for the validation review.
+- **PD-8 The seed's commit** (DEC-7). Two parts, both in the testkit:
+  - **Recording**, in `rdf_persistence/testkit/selection_data.py`: `seed()` reads
+    `git rev-parse --verify HEAD` before it runs the command (a commit made during the run then
+    counts as a change since the seed: safe), calling git directly with
+    `subprocess.run(..., cwd=root, capture_output=True, text=True, check=False)`, never through its
+    `run` seam, which stays the pytest command's. Inside `swap`'s exclusive lock it deletes
+    `.testmondata.commit` (constant `SEED_COMMIT`) **before** the rename, then, after it, writes the
+    sha and a newline through a temporary file and `os.replace`; a crash between the two leaves new
+    data with no commit file, which plans as today. When the sha could not be read (no git, no
+    commit), nothing is written after the rename, so a commit file always describes the data
+    beside it. A run that is not swapped (failed, interrupted) leaves both data and commit file as
+    they were. `swap` gains a keyword `commit: str | None = None`; its CLI form (`swap <exit>`)
+    passes none and therefore deletes the file (the `seed` subcommand is the path that records).
+    `.gitignore`'s `.testmondata*` already covers the file.
+  - **Reading**, in `rdf_persistence/testkit/changed_tests.py`: `seed_commit(root) -> str | None`
+    reads the file and strips surrounding whitespace; anything but 40 or 64 lowercase hex
+    characters (missing, unreadable, empty, garbage) gives `None`;
+    `changed_since(commit) -> list[str]` is `changed_files`' listing against `commit` itself, not a
+    merge base (committed and uncommitted differences, untracked files; `-z`, `--no-renames`), so
+    a rebase that keeps the file's content keeps it unchanged. `main` takes the data check and
+    `seed_commit` together under one shared `lock(root)` (today the check runs outside it), so the
+    plan never pairs one seed's data with another's commit. The testmon run takes the shared lock
+    again, as today; a seed swapping in between gives that run newer data than the plan read,
+    which is the race of today, not one PD-8 adds. It computes `changed_since` only when the
+    data check says `SOUND` and a commit is recorded; a `GitError` (the commit pruned) makes it
+    `None` and adds the hint `cannot read the seed's commit <sha>: <git message>`.
+  - **Use:** `plan(..., *, since_seed: Collection[str] | None = None)` and `select(..., *,
+    since_seed=None)` (keyword-only, default the behaviour of today). With `since_seed` given, a
+    path's own `fallback_reasons` from the classifier count only if the path is in `since_seed`;
+    otherwise each becomes the hint `<path>: unchanged since the seed (<sha8>); its selection data
+    covers it`. The classifier's `paths` and `hints` for that path, and the "folder does not
+    exist" reasons, apply as today. `plan` passes `since_seed` only when `has_data`. One more
+    rule: a path in `since_seed`, not in `changed` and **not testmon-visible**
+    (`classifier.is_testmon_visible` is false, mirroring `_split`) is classified too, and only its
+    `fallback_reasons` count, never its `paths` or `hints` (a shared file the branch changed,
+    seeded, then reverted to the base's content: the data was recorded under a configuration the
+    worktree no longer has). Testmon-visible files are left out, so a rebase that brings upstream
+    Python changes (a `core` module) does not fall back: testmon judges those by fingerprint. A
+    rebase that brings an upstream non-Python fallback path (a `Makefile` change) falls back until
+    the next seed, correctly: the data predates that file. Today such a revert goes
+    unnoticed; PD-8 closes it at no cost, since `since_seed` is computed anyway.
+  - **Why it is sound:** the seed ran every unit and feature test with the file at the content it
+    has now, so testmon's fingerprints describe a run under that configuration; what changed since
+    is selected as usual. A `uv.lock` changed after the seed is in `since_seed`, so it falls back;
+    the package check does not catch it on its own, since `test-changed` runs with `UV_NO_SYNC=1`
+    and an unsynced lock leaves the installed packages as they were.
+  - **API:** additive, semver minor: `SEED_COMMIT` joins `selection_data.__all__`;
+    `swap(..., commit=None)` is a new keyword; `seed_commit` and `changed_since` join
+    `changed_tests.__all__`; `select` and `plan` gain the keyword `since_seed`. The generated types
+    do not change.
 
 ## Algorithm / approach
 
@@ -140,6 +207,33 @@ Worked examples (each a case of task 1.2's table):
 - A missing file: the same exception type and message as `load_schema(path)`.
 - `generation_view(TOY_SCHEMA) is not service_view(TOY_SCHEMA)`.
 
+`plan` with `since_seed` (PD-8; each a case of task 4.2's table, with this repository's
+classifier and sound data unless stated):
+- Branch changed `Makefile` before the seed; the task changes `rdf_persistence/api/x.py`:
+  `since_seed = ["rdf_persistence/api/x.py"]` → one testmon run, no fallback, the hint
+  `Makefile: unchanged since the seed (…)`.
+- `Makefile` changed after the seed (`"Makefile"` in `since_seed`) → fallback, as today.
+- An uncommitted edit to `pyproject.toml` → it is in `since_seed` (worktree diff) → fallback.
+- `since_seed=None` (no commit file, a pruned commit, or data not sound) → today's plan exactly.
+- `has_data=False` with `since_seed` given → `since_seed` ignored → today's plan.
+- `docs/x.adoc` unchanged since the seed → still selects `tests/unit/tooling/test_check_docs.py`
+  (only fallback reasons are set aside).
+- `Makefile` changed on the branch, seeded, then reverted to the base's content:
+  `changed = ["rdf_persistence/api/x.py"]`, `since_seed = ["Makefile", "rdf_persistence/api/x.py"]`
+  → fallback (`Makefile`'s reason, from `since_seed`).
+- After a rebase onto a newer base, `rdf_persistence/core/y.py` changed only upstream:
+  `changed = ["rdf_persistence/api/x.py"]`, `since_seed = ["rdf_persistence/core/y.py",
+  "rdf_persistence/api/x.py"]` → no fallback (`core/y.py` is testmon-visible, so it is left out).
+
+The seed's commit (task 4.1's table, `seed()` with a fake `run` in a temporary git repository):
+- A finished run on commit C → `.testmondata.commit` holds C.
+- A run with failing tests (exit 1, a finished run as `FINISHED_RUN_EXITS` says) → swapped, the
+  commit file holds C.
+- A run that did not finish (exit 2, or 130) → not swapped: the old data and the old commit file
+  stay.
+- `root` not a git repository → the data is swapped, no `.testmondata.commit` is written.
+- A stale `.testmondata.commit` beside a swap whose sha is unknown → gone afterwards.
+
 ### Anti-patterns
 | Don't | Do instead | Why |
 |---|---|---|
@@ -152,6 +246,9 @@ Worked examples (each a case of task 1.2's table):
 | Run `make test-unit` / `test-feature` beside `make check-all` | run `check-all` once | it already holds both lanes |
 | Re-run a lane on a commit whose seed passed, for pass/fail | read the seed's result | the seed ran those tests; only the coverage floor is new |
 | Adopt the combined run on a partial match | fail the spike (PD-6) | a wrong selection silently skips tests a change reaches |
+| Diff every path against the seed's commit | set aside only fallback reasons (PD-8) | folder rules and testmon already judge the rest correctly against the base |
+| Keep a commit file the swap did not write | delete it when the sha is unknown | a stale commit would vouch for data it does not describe |
+| Read the seed's commit when the data is not sound | ignore it | the commit describes the data; unsound data cannot vouch for anything |
 
 ## Error matrix
 
@@ -170,6 +267,12 @@ Worked examples (each a case of task 1.2's table):
 | The combined run is much slower | PD-6 criterion 3 (> 15 %) | the spike fails |
 | The spike overruns its half day | the lead's clock | counts as failed; record what was learned |
 | A full run is started that nobody reads | PD-7's run list in the stage report | a finding for the validation review |
+| The seed's commit was pruned (a rebase, then `git gc`) | `changed_since` raises `GitError` | a hint naming the sha; today's plan (the fallback applies) |
+| The commit file is garbage or empty | `seed_commit` validates the hex | `None`; today's plan |
+| A commit lands while the seed runs | the sha is read before the run | the commit's files count as changed since the seed: the safe side |
+| The worktree was dirty when the seed ran | the sha is HEAD, not the dirty tree | the dirty files count as changed since the seed: the safe side |
+| The seed swaps while a builder reads the commit file | the shared/exclusive worktree lock covers the read in `main` | the builder reads old data with the old commit, or new with new |
+| A shared file changed back to its seed content | the diff against the commit is empty for it | set aside, correctly: the seed ran with that content |
 
 ## Risks / Trade-offs
 
@@ -185,7 +288,20 @@ Worked examples (each a case of task 1.2's table):
   uncleared cache would. Check: task 1.2's timing (command and threshold there); more than 10 %
   slower than before goes to the developer.
 
+- **RISK-4** (who is hurt: a builder whose change needs a test the selection misses; likely low,
+  impact medium). A shared file that alters which tests exist (a new `testpaths`, a new marker
+  filter) unchanged since the seed is set aside, correctly, but a later code change is selected by
+  testmon only among the tests the seed saw. Mitigate: the hint names every file set aside, and
+  `make check-all` before the PR runs every test; a new test file is still selected by its folder
+  rule.
+
+## Delivery decisions
+
+- **D-1** (developer, 2026-11-26): the re-gate of the additions ended at 8.5 after two runs, with
+  every gap of both runs folded in (`evidence/clarity-gate.md`); accepted, no third run. Named
+  D-1, not DEC-8, because DEC-8 in this change means `agent-test-control`'s target.
+
 ## Open Questions
 
-Q1 to Q5 of `inputs/qa.md`, shaped on the recommended defaults. Q6 and Q7 are answered
-(DEC-5, DEC-6).
+None. Q1 to Q5 answered 2026-11-26 as recommended, plus DEC-7 (`inputs/qa.md` round 3); Q6 and
+Q7 answered (DEC-5, DEC-6).

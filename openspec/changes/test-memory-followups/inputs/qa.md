@@ -16,3 +16,12 @@
 |---|---|---|---|
 | Q6 | Does the spike "let the full run also refresh the seed" belong here? (Recommended: yes, as a timeboxed spike, its outcome decided by measured pass criteria) | yes: "add the spike to the parked epic change in tests followup ... it would have to be integrated there" | DEC-5, PD-6, tasks 2.1, 2.2 |
 | Q7 | Record the session's lesson on test runs nobody reads? (Recommended: as a decision the lead follows in this EPIC, the docs fix already merged in #398, P-0022) | yes: "record there the wisdom on no overrunning tests if not needed" | DEC-6, PD-7 |
+
+## Round 3, 2026-11-26 — the developer answers Q1 to Q5 at resume, and one new question
+
+| # | Question (recommendation) | Answer | Becomes |
+|---|---|---|---|
+| Q1 | (as round 1) | the recommended: a cache beside `load_schema` | DEC-2 |
+| Q2 | (as round 1) | yes | DEC-1 |
+| Q3 | (as round 1) | yes, the last task, not blocking | DEC-4 |
+| Q4, Q5 | Appetite SMALL and RISK-1 to RISK-3 as accepted; also: fold in #416's design gap (a branch that changed a shared file falls back on every task gate)? (Recommended: SMALL, #416's gap in its own change) | **fold in the #416 fallback**; the risks stand | DEC-7, PD-8, appetite MEDIUM (a logged re-shape), RISK-4 |
