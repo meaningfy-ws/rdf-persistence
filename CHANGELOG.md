@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/queue.py`, `tests/testmon_data.py` and the generic part of `tests/changed.py`; a project
   runs them by module name or from its own file and needs only `pytest-testmon` and `pytest-xdist`.
   The testkit's model gains `SelectionDataOutcome` and the changed-tests records.
+- **A shared file unchanged since the seed no longer forces the full suite** (`test-memory-followups`,
+  #416). The seed records its commit in `.testmondata.commit`; with sound data, `changed_tests`
+  keeps a path's fallback reasons only if it differs from that commit, and says which it set aside.
+  `select` and `plan` gain the keyword `since_seed`; `seed_commit`, `changed_since` and
+  `selection_data.SEED_COMMIT` are new.
 
 ### ⚠ BREAKING
 - **A module another target writes as TypeScript is no longer copied into the importing target's
