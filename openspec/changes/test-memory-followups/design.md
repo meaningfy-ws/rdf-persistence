@@ -309,6 +309,10 @@ The seed's commit (task 4.1's table, `seed()` with a fake `run` in a temporary g
   First sync was without `--all-extras` (lead's error, one builder gate lost); re-synced.
 - **D-3** (lead, 2026-11-26, from task 1.3's planted check): PD-4's rationale corrected: only
   the 120-pattern step fails under a raised limit; the nested-YAML cases do not. The pin stands.
+- **D-4** (lead, 2026-11-26, from task 4.2): the set-aside hint reads `<path>: unchanged since the
+  seed; its selection data covers it`, without PD-8's `(<sha8>)`: `select` and `plan` see only
+  `since_seed`, and widening the public API for a label is not worth it. The two lock tests that
+  pinned "the data check runs outside the lock" now pin PD-8's shared lock around it.
 
 ## Open Questions
 
