@@ -31,8 +31,9 @@ CacheCounts = dict[str, int]
 def _clear_typing() -> int:
     """Clear the caches of ``typing`` (its own ``_cleanups`` list, what CPython's tests use).
 
-    ``typing.Annotated[X, Depends(kit.gate.caller)]`` is cached by value, so one entry keeps the
-    last built ``ServiceKit`` alive (found in task 1.3; it is not in PD-9's list).
+    ``typing`` caches subscripted generics such as ``Annotated[X, metadata]`` by value, so code
+    outside this library that puts an object in that metadata keeps the object alive until the
+    caches are cleared. The kit's own dependencies no longer do (they use default arguments).
     """
     cleanups = getattr(typing, "_cleanups", ())
     for cleanup in cleanups:
@@ -59,12 +60,16 @@ def _clear_fastapi() -> int:
     return _clear_each(vars(models))
 
 
-def clear_caches() -> CacheCounts:
-    """Call ``cache_clear()`` on every cached ``SchemaView`` method and FastAPI dependency function."""
+def clear_caches(typing: bool = True) -> CacheCounts:
+    """Call ``cache_clear()`` on every cached ``SchemaView`` method and FastAPI dependency function.
+
+    ``typing=False`` leaves the caches of ``typing`` alone (its count is then 0), so a test can
+    check that something is freed without them.
+    """
     return {
         "linkml_runtime": _clear_each(vars(SchemaView)),
         "fastapi": _clear_fastapi(),
-        "typing": _clear_typing(),
+        "typing": _clear_typing() if typing else 0,
     }
 
 

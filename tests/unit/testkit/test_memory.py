@@ -27,6 +27,13 @@ def test_clear_caches_finds_a_cache_in_each_library() -> None:
     assert counts["typing"] >= 1, "no cache cleanup found in typing: CPython renamed _cleanups"
 
 
+def test_clear_caches_can_leave_typing_alone() -> None:
+    counts = clear_caches(typing=False)
+    assert counts["typing"] == 0, "typing=False clears no typing cache"
+    assert counts["linkml_runtime"] >= 1, "SchemaView caches are still cleared"
+    assert counts["fastapi"] >= 1, "FastAPI caches are still cleared"
+
+
 def test_release_reports_the_caches_it_cleared() -> None:
     counts: CacheCounts = release_memory()
     assert counts["linkml_runtime"] >= 1, "release clears linkml-runtime"

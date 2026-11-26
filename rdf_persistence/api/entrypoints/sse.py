@@ -8,7 +8,6 @@ only names the times it runs by.
 from collections.abc import AsyncIterator, Callable
 from datetime import datetime, timedelta
 from http import HTTPMethod
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.sse import EventSourceResponse, ServerSentEvent
@@ -74,11 +73,15 @@ def add_events_route(
         """A dependency: the generator body runs after the headers are taken, so the header is set before it."""
         response.headers[LINK] = f'<{kit.context_url}>; rel="{CONTEXT_REL}"'
 
+    as_caller = Depends(gate.caller)
+    may_read = Depends(gate.tenant(Action.READ))
+    linked = Depends(link_to_context)
+
     async def events(
         request: Request,
-        caller: Annotated[VerifiedCaller, Depends(gate.caller)],
-        access: Annotated[CallerAccess, Depends(gate.tenant(Action.READ))],
-        _: Annotated[None, Depends(link_to_context)],
+        caller: VerifiedCaller = as_caller,
+        access: CallerAccess = may_read,
+        _: None = linked,
     ) -> AsyncIterator[ServerSentEvent]:
         tenant = access.tenant
         last_event_id = request.headers.get(LAST_EVENT_ID)

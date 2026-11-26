@@ -10,7 +10,7 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
 
 ## 1. The fixes
 
-- [ ] 1.1 PD-1, unit. `auth.py`, `sse.py`, `rdf_persistence/testkit/memory.py` (the `typing`
+- [x] 1.1 PD-1, unit. `auth.py`, `sse.py`, `rdf_persistence/testkit/memory.py` (the `typing`
   keyword and `_clear_typing`'s docstring). Red, in `tests/unit/api/test_service_release.py`:
   `test_a_dropped_service_is_freed_without_clearing_typing` builds three `ToyService()`, drops
   them, calls `clear_caches(typing=False)`, runs `gc.collect()`, and asserts the number of live

@@ -83,9 +83,9 @@ class Gate:
     def tenant(self, action: Action):
         """A dependency: ``action`` on the tenant of the path."""
 
-        async def permitted(
-            t: str, caller: Annotated[VerifiedCaller, Depends(self.caller)]
-        ) -> CallerAccess:
+        as_caller = Depends(self.caller)
+
+        async def permitted(t: str, caller: VerifiedCaller = as_caller) -> CallerAccess:
             return await self.tenant_access(caller, t, action)
 
         return permitted
@@ -93,8 +93,10 @@ class Gate:
     def aggregate(self, rp_path: str, action: Action):
         """A dependency: ``action`` on the aggregate of the path, below ``rp_path``."""
 
+        as_caller = Depends(self.caller)
+
         async def permitted(
-            t: str, aggregate_id: str, caller: Annotated[VerifiedCaller, Depends(self.caller)]
+            t: str, aggregate_id: str, caller: VerifiedCaller = as_caller
         ) -> Authorised:
             return await self.aggregate_access(caller, t, rp_path, aggregate_id, action)
 
