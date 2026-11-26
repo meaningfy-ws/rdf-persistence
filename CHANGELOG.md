@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-27
+
 ### Added
+- **Provenance activities follow the IRI policy** (`activity-iri-policy`, #197). `IriPolicy` gains
+  `activity_template` (default `urn:uuid:{id}`, so nothing changes for an application that sets
+  nothing); under, for example, `{tenant}/activity/{id}` every commit records its activity under
+  its tenant. `Iris.activity`, `is_activity` and `activity_uuid` are new; the session places each
+  commit's activity (`Session.activity_iri`) and every PROV event names it; the event stream
+  resumes after a placed activity IRI. A template a restore cannot move is refused when `Iris` or
+  the kit is built, and the start-up guard and a tenant dump refuse a changed `activity_template`.
 - **The testkit carries the test queue, the selection-data tools and the changed-tests planner**
   (`test-control-testkit`). `rdf_persistence.testkit.run_queue` (the machine-wide queue and the
   worker count), `rdf_persistence.testkit.selection_data` (the seed, swap and check of the
@@ -30,6 +39,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keeps a path's fallback reasons only if it differs from that commit, and says which it set aside.
   `select` and `plan` gain the keyword `since_seed`; `seed_commit`, `changed_since` and
   `selection_data.SEED_COMMIT` are new.
+
+### Changed
+- **The generator builds the served TypeScript types once per process** (`consumer-friction`):
+  with several TypeScript targets a generation no longer rebuilds the same modules per target;
+  the output is unchanged, only the manifests' input hashes move.
+
+### Fixed
+- **Test control** (#403, `test-control-testkit`): `make test-changed` no longer syncs the shared
+  environment, even in its `make test-fast` fallback, and prints its hints before falling back; a
+  bad `PYTEST_CHANGED_N` is a usage error (exit 2); the seed's clean, run and swap are one queued
+  process, so a second seed cannot delete the first one's data; on CI the worker count is computed
+  quietly and only for a lane that needs it.
 
 ### ⚠ BREAKING
 - **A module another target writes as TypeScript is no longer copied into the importing target's
@@ -918,7 +939,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.12.0...v0.13.0
