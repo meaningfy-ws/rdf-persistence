@@ -17,6 +17,7 @@ from linkml_runtime.utils.schemaview import SchemaView
 
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
 from rdf_persistence.core.services.telemetry import error_type, log_extra
+from rdf_persistence.schema.services.schema import clear_service_views
 
 log = logging.getLogger(__name__)
 
@@ -25,14 +26,15 @@ OFF = "off"
 
 
 CacheCounts = dict[str, int]
-"""How many caches were cleared, by library name: an index, keys ``linkml_runtime``, ``fastapi``, ``typing``."""
+"""How many caches were cleared, by library name: an index, keys ``linkml_runtime``, ``fastapi``, ``typing``, and ``service_views`` from ``release_memory``."""
 
 
 def _clear_typing() -> int:
     """Clear the caches of ``typing`` (its own ``_cleanups`` list, what CPython's tests use).
 
-    ``typing.Annotated[X, Depends(kit.gate.caller)]`` is cached by value, so one entry keeps the
-    last built ``ServiceKit`` alive (found in task 1.3; it is not in PD-9's list).
+    ``typing`` caches subscripted generics such as ``Annotated[X, metadata]`` by value, so code
+    outside this library that puts an object in that metadata keeps the object alive until the
+    caches are cleared. The kit's own dependencies no longer do (they use default arguments).
     """
     cleanups = getattr(typing, "_cleanups", ())
     for cleanup in cleanups:
@@ -59,12 +61,16 @@ def _clear_fastapi() -> int:
     return _clear_each(vars(models))
 
 
-def clear_caches() -> CacheCounts:
-    """Call ``cache_clear()`` on every cached ``SchemaView`` method and FastAPI dependency function."""
+def clear_caches(*, include_typing: bool = True) -> CacheCounts:
+    """Call ``cache_clear()`` on every cached ``SchemaView`` method and FastAPI dependency function.
+
+    ``include_typing=False`` leaves the caches of ``typing`` alone (its count is then 0), so a test can
+    check that something is freed without them.
+    """
     return {
         "linkml_runtime": _clear_each(vars(SchemaView)),
         "fastapi": _clear_fastapi(),
-        "typing": _clear_typing(),
+        "typing": _clear_typing() if include_typing else 0,
     }
 
 
@@ -79,8 +85,12 @@ def _trim() -> None:
 
 
 def release_memory() -> CacheCounts:
-    """Clear the caches, collect garbage and trim the heap; return the caches cleared."""
-    counts = clear_caches()
+    """Clear the caches, collect garbage and trim the heap; return the caches cleared.
+
+    The shared service views (``service_view``) go too, and their count is ``service_views``: a test
+    process then holds the views of one module's schemas at most.
+    """
+    counts = {**clear_caches(), "service_views": clear_service_views()}
     gc.collect()
     _trim()
     return counts

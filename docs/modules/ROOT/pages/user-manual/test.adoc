@@ -306,6 +306,13 @@ Add `.testmondata*` to `.gitignore`.
 folder is missing, git does not answer); the recipe then runs your full fast suite, `test-fast`. A
 bad `PYTEST_CHANGED_N` is exit 2 with a message. `BASE` names the base branch (default `develop`).
 
+The seed records the commit it ran on in `.testmondata.commit`. When the selection data is sound,
+a file your classifier falls back on (a `Makefile`, a lock file) counts only if it differs from that
+commit; one that does not becomes a hint, because the seed already ran with it. So after a branch
+changes its `Makefile`, one seed is enough for later task gates to select tests again. A file
+changed after the seed, or a non-Python one reverted since it, still falls back. `plan` and `select`
+take this set as the keyword `since_seed`; without it they plan as before.
+
 Your `tests/changed.py` supplies the two functions of the `Classifier` protocol and a
 `ChangedTestsLayout`; a module that defines both functions is a classifier:
 

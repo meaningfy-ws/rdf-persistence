@@ -16,6 +16,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/queue.py`, `tests/testmon_data.py` and the generic part of `tests/changed.py`; a project
   runs them by module name or from its own file and needs only `pytest-testmon` and `pytest-xdist`.
   The testkit's model gains `SelectionDataOutcome` and the changed-tests records.
+- **Service kits built from one schema file share one parse** (`test-memory-followups`, DEC-2).
+  `rdf_persistence.schema.services.schema.service_view` keeps up to `SERVICE_VIEWS` (8) views,
+  keyed by the file's path and content; `clear_service_views` empties it, and the testkit's
+  `release_memory` does so at each module boundary and reports `service_views`. `ServiceKit.view`
+  is now shared by every kit built from the same file: never modify it, copy it or `load_schema`
+  your own.
+- **A dropped service is freed without clearing `typing`'s caches** (DEC-1): the kit's
+  dependencies are default arguments, not `Annotated` metadata. `clear_caches(include_typing=False)`
+  leaves `typing` alone.
+- **A shared file unchanged since the seed no longer forces the full suite** (`test-memory-followups`,
+  #416). The seed records its commit in `.testmondata.commit`; with sound data, `changed_tests`
+  keeps a path's fallback reasons only if it differs from that commit, and says which it set aside.
+  `select` and `plan` gain the keyword `since_seed`; `seed_commit`, `changed_since` and
+  `selection_data.SEED_COMMIT` are new.
 
 ### ⚠ BREAKING
 - **A module another target writes as TypeScript is no longer copied into the importing target's

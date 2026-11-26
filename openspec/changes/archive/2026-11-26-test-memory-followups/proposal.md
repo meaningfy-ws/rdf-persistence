@@ -144,3 +144,19 @@ one service per process see no change; consumers building many (tests) get faste
 The spike touches only the developer tooling (`Makefile`, `rdf_persistence/testkit/selection_data.py`
 if the swap needs it, the develop docs). DEC-7 changes the testkit's planner and seed: a project
 using them gets fewer fallbacks after its next seed; one that never seeds sees no change.
+
+## Delivered (P-0004, 2026-11-26, PR #421)
+
+| Decision | State | Where |
+|---|---|---|
+| DEC-1 | delivered: default-argument dependencies; `clear_caches(*, include_typing=True)` (renamed in the fix pass, D-5) | `auth.py`, `sse.py`, `testkit/memory.py` |
+| DEC-2 | delivered: `service_view` (store of 8, content key, re-hash after load, D-5), `clear_service_views`, `release_memory` reports `service_views`; guard test | `schema/services/schema.py`, `kit.py` |
+| DEC-3 | delivered; rationale corrected (D-3): only the 120-pattern step depends on the limit | `test_migration_files_adversarial.py` |
+| DEC-4 | measured (`evidence/measure.md`): `check-all` net time **met** (≤ 8.9 min); builder gate median **missed** (6.0 min) and waiting share **missed** (34–89 %), both from gates that fell back on shared-file changes, the gap DEC-7 closes; sent to the developer | evidence only |
+| DEC-5 | spike **failed** (`evidence/seed-spike.md`): pytest-testmon 2.4 refuses pytest-cov with branch coverage. The fail path: one paragraph in `develop/testing.adoc`; the conditional `rp-developer-checks` delta dropped; no Makefile change | docs only |
+| DEC-6 | followed: one seed was skipped by D-2 (builders in their own unseeded worktrees), two `check-all` runs (before the PR, after the fix pass), every full run listed in the PR | PR #421 |
+| DEC-7 | delivered, plus D-5's dirty-tree rule (a seed on a dirty tracked tree records no commit); the hint carries no sha (D-4) | `testkit/selection_data.py`, `testkit/changed_tests.py`, user manual, `develop/testing.adoc` |
+
+What Changes, as delivered: the list above holds, except that the spike changed no Makefile and
+`selection_data.py` changed for DEC-7, not for the spike. Capabilities: `rp-service-api` and
+`rp-testkit` modified; `rp-developer-checks` not (the spike failed).

@@ -10,7 +10,7 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
 
 ## 1. The fixes
 
-- [ ] 1.1 PD-1, unit. `auth.py`, `sse.py`, `rdf_persistence/testkit/memory.py` (the `typing`
+- [x] 1.1 PD-1, unit. `auth.py`, `sse.py`, `rdf_persistence/testkit/memory.py` (the `typing`
   keyword and `_clear_typing`'s docstring). Red, in `tests/unit/api/test_service_release.py`:
   `test_a_dropped_service_is_freed_without_clearing_typing` builds three `ToyService()`, drops
   them, calls `clear_caches(typing=False)`, runs `gc.collect()`, and asserts the number of live
@@ -18,7 +18,7 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
   `tests/unit/testkit/test_memory.py`, `clear_caches(typing=False)` reports 0 for `typing` and at
   least 1 for the other two. Guard: `tests/unit/api/test_openapi.py`,
   `tests/unit/api/test_openapi_served.py`, `tests/unit/api/` whole.
-- [ ] 1.2 PD-2, PD-3, unit (parallel with 1.1, except its edit to `memory.py`: the
+- [x] 1.2 PD-2, PD-3, unit (parallel with 1.1, except its edit to `memory.py`: the
   `service_views` count in `release_memory` is made after 1.1's commit is on the branch).
   `service_view`, `clear_service_views`, `kit.py`, `ServiceKit.view`'s docstring,
   `release_memory`. Red, in `tests/unit/schema/test_service_view.py`: the eight worked examples of
@@ -33,7 +33,7 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
   tests/unit/api/test_allowed_actions_adversarial.py -n 0 --no-cov -p no:randomly`, and records
   wall time and maximum RSS in `evidence/timing.md`; more than 10 % slower goes to the developer
   (RISK-3).
-- [ ] 1.3 PD-4, unit (parallel with 1.1 and 1.2). Red, in the module itself:
+- [x] 1.3 PD-4, unit (parallel with 1.1 and 1.2). Red, in the module itself:
   `test_the_module_runs_at_the_default_recursion_limit` sets `sys.setrecursionlimit(20000)`,
   enters `with default_recursion_limit_pinned():`, asserts the limit is `DEFAULT_RECURSION_LIMIT`
   inside, and asserts 20000 is restored after the block (the context manager, not the fixture,
@@ -43,12 +43,12 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
 
 ## 2. The seed spike
 
-- [ ] 2.1 **Lead**, PD-6 (parallel with 1.1 to 1.3; it touches no file they touch). In a
+- [x] 2.1 **Lead**, PD-6 (parallel with 1.1 to 1.3; it touches no file they touch). In a
   throwaway worktree, the three runs on `tests/unit/schema/` and one feature folder, through the
   queue; `evidence/seed-spike.md` records commands, times, coverage totals, the selected test ids
   for the three sample changes, and the verdict against PD-6's three pass criteria. Timebox: half
   a day.
-- [ ] 2.2 PD-6, after 2.1. **Pass:** a builder makes PD-6's *mechanism under test* the
+- [x] 2.2 PD-6, after 2.1 (**fail**, `evidence/seed-spike.md`: testmon refuses pytest-cov with branch coverage; the fail path taken). **Pass:** a builder makes PD-6's *mechanism under test* the
   `Makefile`'s local `test` recipe, its command held in a variable `RECORD_SEED` (empty under
   `CI`). Red first, in `tests/unit/tooling/test_lanes.py`. Never `make -n test`: its recipe holds
   `$(MAKE)`, which GNU make runs even under `-n`, so it would start a real seed. Instead, print
@@ -66,13 +66,13 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
 
 ## 4. The seed's commit (DEC-7)
 
-- [ ] 4.1 PD-8 recording, unit (parallel with 1.1 to 1.3). `selection_data.py`: `SEED_COMMIT`,
+- [x] 4.1 PD-8 recording, unit (parallel with 1.1 to 1.3). `selection_data.py`: `SEED_COMMIT`,
   `seed()` reads the sha before the run, `swap(..., commit=...)` writes or deletes the file under
   its lock. Red, in `tests/unit/testkit/test_selection_data.py`: design.md's five cases of *The
   seed's commit* as one parametrized table over a temporary git repository (`git init`, one
   commit; the non-git case uses a plain `tmp_path`) with a fake `run` that writes
   `.testmondata.seed` and exits as the case says; git itself runs for real, outside the seam.
-- [ ] 4.2 PD-8 reading and use, unit (after 4.1's commit, since it imports `SEED_COMMIT`).
+- [x] 4.2 PD-8 reading and use, unit (after 4.1's commit, since it imports `SEED_COMMIT`).
   `changed_tests.py`: `seed_commit`, `changed_since`, `select`/`plan`'s `since_seed`, `main`
   taking the check and the commit under one shared lock, `__all__`. Red, in
   `tests/unit/testkit/test_changed_tests.py`: design.md's eight `plan` cases as one table with a
@@ -88,25 +88,25 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
   `changed = ["Makefile", "rdf_persistence/model/x.yaml"]` and
   `since_seed = ["rdf_persistence/model/x.yaml"]`: falls back for the schema only, hints for
   `Makefile`. Guard: `tests/unit/testkit/` and `tests/unit/tooling/` whole.
-- [ ] 4.3 **Lead**, after 4.2: the docs. User manual *Test control for your project* (what the seed
+- [x] 4.3 **Lead**, after 4.2: the docs. User manual *Test control for your project* (what the seed
   records and when a shared file no longer falls back), `develop/testing.adoc#test-control` (the
   same, one paragraph, and the hint text), CHANGELOG `Added`; the `rp-testkit` delta is already in
   this change. `make check-docs`.
 
 ## 3. Close
 
-- [ ] 3.1 The lead's `make check-all`, the PR, the merge (review set per
+- [x] 3.1 The lead's `make check-all`, the PR, the merge (review set per
   `develop/agents.adoc#challenge`, MEDIUM in one stage: one L2+L3 pass and the full review, both
   on the same PR, P-0005; the fixes in one pass). The stage report lists every full test run
   with who read its result (PD-7).
-- [ ] 3.2 **Lead.** PD-5, once the sessions that were paused on 2026-11-25 (the rdf-persistence
+- [x] 3.2 **Lead.** PD-5, once the sessions that were paused on 2026-11-25 (the rdf-persistence
   sessions waiting for #394) run on `develop` after #394's merge: the DEC-8 measurement in
   `evidence/measure.md`, with PD-5's filters and formulas; a missed target goes to the developer.
-- [ ] 3.3 Archive the change (`spec-stewardship`).
+- [x] 3.3 Archive the change (`spec-stewardship`).
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 2.1 · [ ] 4.1 · [ ] 4.2 · [ ] 2.2 · [ ] 4.3 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · [x] 4.1 · [x] 4.2 · [x] 2.2 · [x] 4.3 · [x] 3.1 · [x] 3.2 · [x] 3.3
 
 1.1, 1.2, 1.3, 2.1 and 4.1 run in parallel; only 1.2's edit to `rdf_persistence/testkit/memory.py`
 waits for 1.1's commit on the branch, 4.2 waits for 4.1, 2.2 waits for 2.1's verdict (on a pass,

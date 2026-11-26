@@ -12,12 +12,21 @@ The planner makes the pytest runs and exits with their status: 0 passed or nothi
 pytest's 1, 2 and 4 as they are, pytest's 3 as 2, 2 for a bad ``PYTEST_CHANGED_N``, and 75 for "run
 the project's full fast suite"; reasons, hints and messages go to stderr. Run on its own, with no
 classifier, the module prints its usage and exits 2.
+
+With sound selection data the planner also reads the seed's commit (``.testmondata.commit``, written
+by the seed) and lists the files that differ from it: a file that falls back to the full suite
+(a ``Makefile``, a lock file) but is unchanged since the seed gives a hint instead, since the data was
+recorded with that file as it is. A file changed after the seed still falls back, as does a shared
+file reverted to the base's content after the seed. The data check and the commit are read under
+one shared lock. A seed that swaps between the plan and a testmon run gives that run newer data than
+the plan read (the race of before, not a new one).
 """
 
 import os
+import re
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import Protocol
@@ -29,7 +38,13 @@ from rdf_persistence.testkit.generated.rp_testkit import (
     ChangedTestsPlan,
     SelectionDataOutcome,
 )
-from rdf_persistence.testkit.selection_data import MESSAGES, check, current_packages, worktree_lock
+from rdf_persistence.testkit.selection_data import (
+    MESSAGES,
+    SEED_COMMIT,
+    check,
+    current_packages,
+    worktree_lock,
+)
 
 __all__ = [
     "FALLBACK_EXIT",
@@ -37,10 +52,14 @@ __all__ = [
     "GitError",
     "UsageError",
     "changed_files",
+    "changed_since",
     "main",
     "plan",
+    "seed_commit",
     "select",
 ]
+
+SHA_FORM = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})")
 
 FALLBACK_EXIT = 75
 NO_TESTS_EXIT = 5  # pytest: no test collected
@@ -73,10 +92,22 @@ class UsageError(Exception):
     """An input of the run is wrong (PYTEST_CHANGED_N); the exit status is 2."""
 
 
+def _covered_hint(path: str) -> str:
+    return f"{path}: unchanged since the seed; its selection data covers it"
+
+
 def select(
-    paths: Sequence[str], existing: Callable[[str], bool], classifier: Classifier
+    paths: Sequence[str],
+    existing: Callable[[str], bool],
+    classifier: Classifier,
+    *,
+    since_seed: Collection[str] | None = None,
 ) -> ChangedSelection:
-    """The selection for changed paths; `existing` says whether a selected path is still there."""
+    """The selection for changed paths; `existing` says whether a selected path is still there.
+
+    With `since_seed` (the paths that differ from the seed's commit), the fallback reasons of a path
+    not in it become hints: the seed ran with that file as it is (PD-8).
+    """
     chosen: set[str] = set()  # strings, never models: a model is not hashable (RISK-3)
     hints: list[str] = []
     reasons: list[str] = []
@@ -84,7 +115,10 @@ def select(
         one = classifier.classify(path)
         chosen.update(one.paths)
         hints += one.hints
-        reasons += one.fallback_reasons
+        if since_seed is None or path in since_seed:
+            reasons += one.fallback_reasons
+        else:
+            hints += [_covered_hint(path) for _ in one.fallback_reasons]
         reasons += [
             f"{path}: {folder} does not exist; run make test-fast"
             for folder in one.paths
@@ -141,6 +175,22 @@ def _extra_selected(selection: ChangedSelection, layout: ChangedTestsLayout) -> 
     return extra is not None and f"{extra.rstrip('/')}/" in selection.paths
 
 
+def _reverted_reasons(
+    changed: Sequence[str], since_seed: Collection[str], classifier: Classifier
+) -> list[str]:
+    """Reasons of paths that differ from the seed's commit but not from the base (PD-8).
+
+    A shared file the branch changed, seeded, then reverted: the data was recorded under a
+    configuration the worktree no longer has. Testmon-visible files are left out: testmon judges
+    them by fingerprint.
+    """
+    in_base_diff = set(changed)
+    reverted = [
+        p for p in since_seed if p not in in_base_diff and not classifier.is_testmon_visible(p)
+    ]
+    return [r for p in sorted(reverted) for r in classifier.classify(p).fallback_reasons]
+
+
 def plan(  # noqa: PLR0913 - the signature PD-3 fixes: today's three arguments, the classifier and the layout
     changed: Sequence[str],
     has_data: bool,
@@ -148,22 +198,28 @@ def plan(  # noqa: PLR0913 - the signature PD-3 fixes: today's three arguments, 
     workers: int,
     classifier: Classifier,
     layout: ChangedTestsLayout,
+    *,
+    since_seed: Collection[str] | None = None,
 ) -> ChangedTestsPlan:
     """The pytest runs for the changed files (agent-test-control PD-4, PD-5).
 
     With selection data, testmon selects for the files it can see (one run) and the folder rules
     cover the rest and the files under the layout's extra roots; without it, the folder rules cover
-    every file. A fallback reason or nothing selected means no run.
+    every file. A fallback reason or nothing selected means no run. `since_seed`, the paths that
+    differ from the seed's commit, matters only with data: a path outside it keeps its selection
+    but not its fallback reasons (PD-8).
     """
+    use_seed = since_seed if has_data else None
     visible, rest = _split(changed, has_data, classifier, layout)
-    selection = select(rest, existing, classifier)
+    selection = select(rest, existing, classifier, since_seed=use_seed)
     hints = list(selection.hints)
     if not has_data and changed:
         hints.append(NO_DATA_HINT)
-    if selection.fallback_reasons:
-        return ChangedTestsPlan(
-            invocations=[], hints=hints, fallback_reasons=selection.fallback_reasons
-        )
+    reasons = list(selection.fallback_reasons)
+    if use_seed is not None:
+        reasons += _reverted_reasons(changed, use_seed, classifier)
+    if reasons:
+        return ChangedTestsPlan(invocations=[], hints=hints, fallback_reasons=reasons)
     runs: list[ChangedTestsInvocation] = []
     if visible:
         runs.append(_testmon_invocation(workers, not _extra_selected(selection, layout), layout))
@@ -190,6 +246,22 @@ def changed_files(base: str) -> list[str]:
     tracked = _git("diff", "--name-only", "-z", "--no-renames", merge_base).split("\0")
     untracked = _git("ls-files", "-z", "--others", "--exclude-standard").split("\0")
     return sorted({*tracked, *untracked} - {""})
+
+
+def changed_since(commit: str) -> list[str]:
+    """Files that differ from `commit` itself: committed, uncommitted, untracked (PD-8)."""
+    tracked = _git("diff", "--name-only", "-z", "--no-renames", commit).split("\0")
+    untracked = _git("ls-files", "-z", "--others", "--exclude-standard").split("\0")
+    return sorted({*tracked, *untracked} - {""})
+
+
+def seed_commit(root: Path) -> str | None:
+    """The sha the seed ran on, or None: missing, unreadable, or not 40 or 64 lower-case hex."""
+    try:
+        text = (root / SEED_COMMIT).read_text().strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+    return text if SHA_FORM.fullmatch(text) else None
 
 
 Runner = Callable[[Sequence[str]], int]
@@ -244,6 +316,14 @@ def _run_plan(
     return 0
 
 
+def _since_seed(commit: str | None) -> list[str] | None:
+    """The paths that differ from the seed's commit; ``None`` without a commit.
+
+    Raises ``GitError`` when git cannot say; ``main`` turns that into a hint.
+    """
+    return None if commit is None else changed_since(commit)
+
+
 def main(
     classifier: Classifier,
     layout: ChangedTestsLayout,
@@ -270,12 +350,28 @@ def main(
     except GitError as error:
         print(f"{error}; running make test-fast", file=sys.stderr)
         return FALLBACK_EXIT
-    outcome = data_state(root)
+    with lock(root):  # one seed's data with its own commit (PD-8)
+        outcome = data_state(root)
+        commit = seed_commit(root)
     if outcome in MESSAGES:
         print(MESSAGES[outcome], file=sys.stderr)
     with_data = outcome is SelectionDataOutcome.SOUND
-    tests_plan = plan(changed, with_data, lambda p: Path(p).exists(), workers, classifier, layout)
-    for hint in tests_plan.hints:
+    seed_hints: list[str] = []
+    try:
+        since_seed = _since_seed(commit if with_data else None)
+    except GitError as error:
+        since_seed = None
+        seed_hints.append(f"cannot read the seed's commit {commit}: {error}")
+    tests_plan = plan(
+        changed,
+        with_data,
+        lambda p: Path(p).exists(),
+        workers,
+        classifier,
+        layout,
+        since_seed=since_seed,
+    )
+    for hint in [*seed_hints, *tests_plan.hints]:
         print(hint, file=sys.stderr)
     if tests_plan.fallback_reasons:
         print(*tests_plan.fallback_reasons, sep="\n", file=sys.stderr)

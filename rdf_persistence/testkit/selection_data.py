@@ -2,12 +2,18 @@
 section *Test control for your project*.
 
 Run from the repository root as
-``uv run python -m rdf_persistence.testkit.selection_data swap <pytest-exit-code>`` or ``... check``. ``swap`` moves ``.testmondata.seed`` over ``.testmondata`` after a seed run that
+``uv run python -m rdf_persistence.testkit.selection_data swap <pytest-exit-code>`` or
+``... check``. ``swap`` moves ``.testmondata.seed`` over ``.testmondata`` after a seed run that
 ended with pytest's exit 0 or 1, under the exclusive worktree lock; any other exit deletes the seed
 files. ``check`` exits 0 for sound data and a distinct code, with a message, for each other
 outcome. ``seed -- <command...>`` is the seed's whole cycle in one process: it deletes the seed
-files, runs the command, then swaps; the queue holds its lock throughout. ``worktree_lock`` is the
-shared/exclusive ``.testmondata.lock``, also used by ``changed_tests``.
+files, reads the commit ``HEAD`` is on, runs the command, then swaps and records that commit in
+``.testmondata.commit`` (``SEED_COMMIT``), beside the data it describes: a swap deletes the file
+first and writes it back only when it was given a commit, so a ``swap <exit>`` from the command
+line, a worktree with no readable commit, or one whose tracked files differ from ``HEAD`` when the
+seed starts (``git status --porcelain --untracked-files=no``), leaves none: ``HEAD`` would not
+describe the data. The queue holds its lock throughout. ``worktree_lock`` is the shared/exclusive
+``.testmondata.lock``, also used by ``changed_tests``.
 """
 
 import fcntl
@@ -24,6 +30,7 @@ from rdf_persistence.testkit.generated.rp_testkit import SelectionDataOutcome
 __all__ = [
     "CHECK_EXIT",
     "MESSAGES",
+    "SEED_COMMIT",
     "check",
     "current_packages",
     "main",
@@ -35,6 +42,7 @@ __all__ = [
 DATA = ".testmondata"
 SEED = ".testmondata.seed"
 LOCK = ".testmondata.lock"
+SEED_COMMIT = ".testmondata.commit"  # the sha of HEAD the seed ran on, beside the data it describes
 SIDE_FILES = (".testmondata-wal", ".testmondata-shm")
 FINISHED_RUN_EXITS = (0, 1)  # pytest: all passed, some failed; the data is complete either way
 NO_SEED_EXIT = 70
@@ -100,8 +108,54 @@ def _say_waiting() -> None:
     print("waiting for the worktree lock: a builder's run holds it", file=sys.stderr, flush=True)
 
 
-def swap(root: Path, pytest_exit: int) -> int:
-    """Make the seed the selection data; returns the code ``main`` exits with."""
+def _write_commit(root: Path, commit: str) -> None:
+    temporary = root / f"{SEED_COMMIT}.tmp"
+    temporary.write_text(commit + "\n")
+    os.replace(temporary, root / SEED_COMMIT)
+
+
+def _head_commit(root: Path) -> str | None:
+    """The sha of ``HEAD`` under ``root``; ``None`` without git, a repository or a commit."""
+    try:
+        done = subprocess.run(
+            ["git", "rev-parse", "--verify", "HEAD"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    sha = done.stdout.strip()
+    return sha if done.returncode == 0 and sha else None
+
+
+def _tracked_tree_is_clean(root: Path) -> bool:
+    """No tracked file differs from ``HEAD``; ``False`` when git cannot say."""
+    try:
+        done = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    return done.returncode == 0 and not done.stdout.strip()
+
+
+def _seed_commit(root: Path) -> str | None:
+    """The sha the seed can vouch for: ``HEAD``, when no tracked file differs from it."""
+    return _head_commit(root) if _tracked_tree_is_clean(root) else None
+
+
+def swap(root: Path, pytest_exit: int, *, commit: str | None = None) -> int:
+    """Make the seed the selection data; returns the code ``main`` exits with.
+
+    The commit file goes before the rename and, when ``commit`` is given, comes back after it, so
+    it always describes the data beside it.
+    """
     seed = root / SEED
     if pytest_exit not in FINISHED_RUN_EXITS:
         _delete_seed_files(root)
@@ -112,7 +166,10 @@ def swap(root: Path, pytest_exit: int) -> int:
     _fold_into_one_file(seed)
     with worktree_lock(root, exclusive=True, on_wait=_say_waiting):
         _delete(*(root / name for name in SIDE_FILES))
+        _delete(root / SEED_COMMIT)
         seed.rename(root / DATA)
+        if commit is not None:
+            _write_commit(root, commit)
     return pytest_exit
 
 
@@ -133,15 +190,16 @@ def seed(
     except OSError as error:
         print(f"cannot clean the seed files: {error}", file=sys.stderr)
         return 1
+    commit = _seed_commit(root)  # before the run: a commit made during it counts as later
     try:
         returncode = run(list(command), check=False, close_fds=False).returncode
     except KeyboardInterrupt:
-        return swap(root, 130)
+        return swap(root, 130, commit=commit)
     except OSError as error:
         print(f"cannot run {command[0]}: {error}", file=sys.stderr)
         return 127
     exit_code = 128 - returncode if returncode < 0 else returncode
-    return swap(root, exit_code)
+    return swap(root, exit_code, commit=commit)
 
 
 def _seed_packages(con: sqlite3.Connection) -> list[str]:

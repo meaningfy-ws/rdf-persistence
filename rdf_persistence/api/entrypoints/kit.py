@@ -82,7 +82,7 @@ from rdf_persistence.persistence.services.store import (
 from rdf_persistence.provenance.domain.generated import rp_provenance
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.provenance.services.provenance import activity_class_named
-from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema import service_view
 from rdf_persistence.schema.services.schema_structure import (
     iri_types,
     root_paths,
@@ -114,6 +114,10 @@ class ServiceKit:
 
     A consumer's own route uses ``require`` and ``require_aggregate`` to get the same token check and
     access check the toolkit's routes have.
+
+    Attributes:
+        view: The schema view of the service. It is shared by every kit built from the same schema
+            file (``service_view``): never modify it; copy it (``deepcopy``) or ``load_schema`` your own.
     """
 
     def __init__(
@@ -163,7 +167,7 @@ class ServiceKit:
                 The same for a key of ``delete_validators``.
             TypeError: A rule of ``aggregate_validators`` or ``delete_validators`` is not callable.
         """
-        view = load_schema(schema)
+        view = service_view(schema)
         self.view = view
         self.toolkit = toolkit or ToolkitSettings()
         # None at first, assignable: a handler's dependencies are often parts of this kit, so the bus

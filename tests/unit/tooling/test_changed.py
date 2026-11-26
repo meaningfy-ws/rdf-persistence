@@ -505,6 +505,23 @@ def test_a_plan_called_twice_is_the_same(has_data):
     )
 
 
+def test_a_shared_file_unchanged_since_the_seed_hints_and_one_changed_after_it_falls_back():
+    """PD-8: the Makefile the seed covers is a hint; the schema changed after the seed is not."""
+    got = changed_tests.plan(
+        ["Makefile", "rdf_persistence/model/x.yaml"],
+        True,
+        lambda _: True,
+        4,
+        changed,
+        LAYOUT,
+        since_seed=["rdf_persistence/model/x.yaml"],
+    )
+
+    assert got.fallback_reasons == [f"rdf_persistence/model/x.yaml: {SHARED}"], "the schema only"
+    assert len(got.hints) == 1, "one hint"
+    assert got.hints[0].startswith("Makefile: unchanged since the seed"), "for the Makefile"
+
+
 def test_the_workers_of_the_plan_are_a_parameter():
     got = plan(["rdf_persistence/api/services/a.py"], True, lambda _: True, 7)
 
