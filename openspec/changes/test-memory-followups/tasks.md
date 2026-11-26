@@ -18,7 +18,7 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
   `tests/unit/testkit/test_memory.py`, `clear_caches(typing=False)` reports 0 for `typing` and at
   least 1 for the other two. Guard: `tests/unit/api/test_openapi.py`,
   `tests/unit/api/test_openapi_served.py`, `tests/unit/api/` whole.
-- [ ] 1.2 PD-2, PD-3, unit (parallel with 1.1, except its edit to `memory.py`: the
+- [x] 1.2 PD-2, PD-3, unit (parallel with 1.1, except its edit to `memory.py`: the
   `service_views` count in `release_memory` is made after 1.1's commit is on the branch).
   `service_view`, `clear_service_views`, `kit.py`, `ServiceKit.view`'s docstring,
   `release_memory`. Red, in `tests/unit/schema/test_service_view.py`: the eight worked examples of
@@ -106,7 +106,7 @@ never its lanes by hand beside it (PD-7, P-0022). The close seeds nothing. One s
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [x] 1.3 · [x] 2.1 · [x] 4.1 · [x] 4.2 · [x] 2.2 · [x] 4.3 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 2.1 · [x] 4.1 · [x] 4.2 · [x] 2.2 · [x] 4.3 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3
 
 1.1, 1.2, 1.3, 2.1 and 4.1 run in parallel; only 1.2's edit to `rdf_persistence/testkit/memory.py`
 waits for 1.1's commit on the branch, 4.2 waits for 4.1, 2.2 waits for 2.1's verdict (on a pass,
