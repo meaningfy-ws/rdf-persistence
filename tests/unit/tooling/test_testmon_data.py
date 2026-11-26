@@ -277,6 +277,79 @@ def test_seed_stops_before_running_when_the_clean_fails(
     assert not marker.exists(), "the command was not run"
 
 
+REPORT_INHERITED_FD = """
+import os, sys
+try:
+    os.fstat(int(sys.argv[1]))
+    outcome = "inherited"
+except OSError:
+    outcome = "closed"
+open(sys.argv[2], "w").write(outcome)
+"""
+
+KILL_SELF = """
+import os, signal
+open(os.path.join(os.environ["SEED_ROOT"], ".testmondata.seed"), "w").write("partial")
+os.kill(os.getpid(), signal.SIGTERM)
+"""
+
+
+def test_seed_passes_inheritable_fds_to_the_child_so_it_keeps_the_queue_lock(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    report = tmp_path / "report"
+    fd = os.open(tmp_path / "queue.lock", os.O_RDWR | os.O_CREAT)
+    os.set_inheritable(fd, True)
+    try:
+        testmon_data.seed(root, [PYTHON, "-c", REPORT_INHERITED_FD, str(fd), str(report)])
+    finally:
+        os.close(fd)
+
+    assert report.read_text() == "inherited", "the child holds the queue's lock descriptor"
+
+
+def test_seed_treats_a_child_killed_by_a_signal_as_128_plus_n(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    make_data(tmp_path / ".testmondata", marker="old")
+    monkeypatch.setenv("SEED_ROOT", str(tmp_path))
+
+    code = testmon_data.seed(tmp_path, [PYTHON, "-c", KILL_SELF])
+
+    assert code == 143, "SIGTERM is 128 + 15"
+    assert read_marker(tmp_path / ".testmondata") == "old", "the earlier data is kept"
+    assert not [n for n in names(tmp_path) if n.startswith(".testmondata.seed")], "no seed file"
+
+
+def test_seed_treats_a_keyboard_interrupt_as_130(tmp_path: Path) -> None:
+    make_data(tmp_path / ".testmondata", marker="old")
+
+    def interrupted(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        (tmp_path / ".testmondata.seed").write_text("partial")
+        raise KeyboardInterrupt
+
+    code = testmon_data.seed(tmp_path, ["pytest"], run=interrupted)
+
+    assert code == 130, "an interrupt is 128 + SIGINT"
+    assert read_marker(tmp_path / ".testmondata") == "old", "the earlier data is kept"
+    assert not [n for n in names(tmp_path) if n.startswith(".testmondata.seed")], "no seed file"
+
+
+def test_seed_with_a_command_that_cannot_start_exits_127_without_swapping(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    make_data(tmp_path / ".testmondata", marker="old")
+    make_data(tmp_path / ".testmondata.seed", marker="stale")
+
+    code = testmon_data.seed(tmp_path, ["no-such-executable-for-seed", "--flag"])
+
+    assert code == 127, "a command that cannot start is 127"
+    assert "cannot run no-such-executable-for-seed:" in capsys.readouterr().err, "named on stderr"
+    assert read_marker(tmp_path / ".testmondata") == "old", "nothing was swapped"
+
+
 @pytest.mark.parametrize("argv", [["seed"], ["seed", "--"], ["seed", "pytest"]])
 def test_seed_without_a_command_is_a_usage_error(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], argv: list[str]

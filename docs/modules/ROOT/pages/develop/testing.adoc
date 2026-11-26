@@ -152,8 +152,7 @@ Four mechanisms, from `agent-test-control`:
   holds one lock per user, shared by every repository that user runs on the machine
   (`~/.cache/meaningfy/pytest.lock`). The seed's clean, run and swap are one queued run
   (`python -m tests.testmon_data seed -- pytest ...`), so another session never sees a half-seeded
-  worktree. A run
-  that finds the lock taken prints `waiting for the test queue: <folder> <target> <pid> <time>`
+  worktree. A run that finds the lock taken prints `waiting for the test queue: <folder> <target> <pid> <time>`
   once, where the time is when the holder started. When it starts it prints
   `test queue: waited <N>s`. The kernel frees the lock when the run ends, however it ends, so a
   killed run leaves nothing to clean up. There is no maximum wait. A run held far longer than its

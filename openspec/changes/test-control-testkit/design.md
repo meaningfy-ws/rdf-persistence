@@ -281,6 +281,32 @@ Scenarios: the spec deltas in `specs/`.
 (`make test-unit-ci`), and the same assertions still hold. `test_lanes.py` stays in
 `tests/unit/tooling/` and changes only its pinned strings.
 
+## Delivery decisions
+
+- **D-1** (lead, stage 1). The builders worked in two worktrees, `.worktrees/tct-s1` (tasks 1.1
+  and 1.2) and `.worktrees/tct-s1-make` (tasks 1.3 and 1.4). The lead cherry-picked the second
+  onto `change/test-control-testkit-s1`. TC-13's `make test-changed` on the branch falls back by
+  design (the Makefile is shared infrastructure), so the proof is the new `make test-seed` run
+  end to end, plus `make check-all`.
+- **D-2** (lead, R-0007; stage-1 review L2+L3, 0 Critical, 4 Warnings, 5 Suggestions). One fix
+  pass covers three findings:
+  - **W1:** the seed's pytest child keeps the queue lock (`close_fds=False`, so the inherited
+    lock descriptor stays open in the child), so killing the wrapper does not free the queue
+    while pytest runs.
+  - **W2:** a child killed by signal `n` exits `128 + n`. `KeyboardInterrupt` in the wrapper
+    swaps with 130, which deletes the partial seed, and exits 130.
+  - **W3:** a command that cannot start (`OSError`) prints the error and exits 127.
+
+  Under the floor:
+  - **W4:** `2>/dev/null` hides a broken queue module on CI. Accepted: CI's lanes fail loudly on
+    their own, and `-n auto` is a safe default.
+  - **S5, S6:** the Makefile-text tests. Accepted: `make -n` already covers `-n auto`, and
+    target-specific export is Make semantics.
+  - **S7:** the report wording.
+  - **S8:** exit 1 when the clean fails.
+  - **S9:** a docs line wrap, which the lead fixes; the main spec's wording changes at the
+    archive.
+
 ## Open Questions
 
 None.

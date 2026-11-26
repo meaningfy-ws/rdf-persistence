@@ -110,18 +110,31 @@ def swap(root: Path, pytest_exit: int) -> int:
     return pytest_exit
 
 
-def seed(root: Path, command: Sequence[str]) -> int:
+def seed(
+    root: Path,
+    command: Sequence[str],
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> int:
     """Clean the seed files, run ``command`` (it writes the seed), swap; the swap's code (PD-7).
 
-    The child inherits the environment, so ``TESTMON_DATAFILE`` reaches pytest. The caller holds
-    any queue lock; none is taken here.
+    The child inherits the environment, so ``TESTMON_DATAFILE`` reaches pytest, and the inheritable
+    descriptors, so the queue's lock stays held (``close_fds=False``). A child killed by signal n
+    counts as ``128 + n``, an interrupt of this process as 130; both leave the earlier data. A
+    command that cannot start exits 127 with no swap.
     """
     try:
         _delete_seed_files(root)
     except OSError as error:
         print(f"cannot clean the seed files: {error}", file=sys.stderr)
         return 1
-    exit_code = subprocess.run(list(command), check=False).returncode
+    try:
+        returncode = run(list(command), check=False, close_fds=False).returncode
+    except KeyboardInterrupt:
+        return swap(root, 130)
+    except OSError as error:
+        print(f"cannot run {command[0]}: {error}", file=sys.stderr)
+        return 127
+    exit_code = 128 - returncode if returncode < 0 else returncode
     return swap(root, exit_code)
 
 
