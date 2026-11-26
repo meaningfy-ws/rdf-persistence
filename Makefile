@@ -54,16 +54,18 @@ LIBRARY_LANE = $(UNIT_LANE) --ignore=$(TEST_PATH)/generator
 #
 # The heavy lanes queue on the machine and size their workers there (agent-test-control PD-2, PD-3):
 # `-n @workers` is replaced by tests/queue.py once it holds the lock; PYTEST_N=<n> fixes the count.
-# CI runners have no contention: they run plain pytest and count the workers at parse time.
+# CI runners have no contention: they run plain pytest and count the workers when a lane needs them.
 ifdef CI
 PYTEST = uv run pytest
-ifndef PYTEST_N
-PYTEST_N := $(shell uv run --no-sync python -m tests.queue --workers)
-endif
+SEED_RUN = uv run
+# Recursive, so only a target that runs workers counts them; no uv (a lint-only job) leaves it empty
+# and xdist decides (test-control-testkit PD-8).
+PYTEST_N ?= $(shell uv run --no-sync python -m tests.queue --workers 2>/dev/null)
 else
 PYTEST = uv run python -m tests.queue -- pytest
+SEED_RUN = uv run python -m tests.queue --
 endif
-PARALLEL       = -n $(or $(PYTEST_N),@workers) --dist loadgroup
+PARALLEL       = -n $(or $(PYTEST_N),$(if $(CI),auto,@workers)) --dist loadgroup
 NOT_QUARANTINE = and not quarantine
 
 # CI runs the fast unit lane in SPLITS shards balanced by the durations in .test_durations
@@ -278,18 +280,22 @@ test-fast: ## Run the unit and feature tests not marked slow, in parallel, witho
 
 test-changed: ## Run the tests of the files changed against BASE (default develop), slow ones included, without coverage; PYTEST_CHANGED_N sets the worker count (default 4)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the tests of the changed files$(END_BUILD_PRINT)"
-	@ uv run python -m tests.changed; status=$$?; \
+	@ uv run --no-sync python -m tests.changed; status=$$?; \
 	  if [ $$status -eq 75 ]; then $(MAKE) --no-print-directory test-fast; \
 	  elif [ $$status -ne 0 ]; then exit $$status; \
 	  else echo -e "$(BUILD_PRINT)$(ICON_DONE) Changed-file tests passed$(END_BUILD_PRINT)"; fi
 
 test-seed: ## The lead's: record the test selection data of this worktree (slow tests included, queued), then swap it in
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Seeding the test selection data$(END_BUILD_PRINT)"
-	@ rm -f .testmondata.seed*
-	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(UNIT_LANE) -m "(unit or feature) $(NOT_QUARANTINE)" --testmon --testmon-forceselect $(PARALLEL) -p no:randomly; uv run --no-sync python -m tests.testmon_data swap $$?
+	@ TEST_QUEUE_LABEL=$@ $(SEED_RUN) python -m tests.testmon_data seed -- pytest $(TEST_PATH) $(UNIT_LANE) -m "(unit or feature) $(NOT_QUARANTINE)" --testmon --testmon-forceselect $(PARALLEL) -p no:randomly
 
-# The seed run records into its own file; the swap moves it over .testmondata (agent-test-control PD-7).
+# The seed run records into its own file; `tests.testmon_data seed` cleans the earlier files, runs
+# pytest and swaps the file over .testmondata, all inside the queue (PD-7 of agent-test-control
+# and test-control-testkit).
 test-seed: export TESTMON_DATAFILE = .testmondata.seed
+
+# test-changed never syncs, and neither does its test-fast fallback (test-control-testkit PD-6).
+test-changed: export UV_NO_SYNC = 1
 
 profile-tests: ## Print the 15 slowest unit and feature tests, set-up and call apart, without coverage (PROFILE_MARK narrows)
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Profiling the unit and feature tests$(END_BUILD_PRINT)"

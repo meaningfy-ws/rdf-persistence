@@ -721,6 +721,47 @@ def test_a_fallback_reason_runs_nothing(monkeypatch, capsys):
     assert runner.calls == [], "the runner is not called"
 
 
+def test_a_fallback_still_prints_the_hints_first(monkeypatch, capsys):
+    """PD-5: the seed hint comes before the reasons, and the exit stays 75."""
+    runner = Runner()
+
+    got, out = _run_main(monkeypatch, capsys, ["Makefile", VISIBLE], runner, Outcome.NO_DATA)
+
+    assert got == 75, "run make test-fast"
+    assert SEED_HINT in out.err, "the hint is printed with a fallback"
+    assert "Makefile" in out.err, "the reason is printed"
+    assert out.err.index(SEED_HINT) < out.err.index("Makefile"), "hints before reasons"
+    assert runner.calls == [], "nothing is run"
+
+
+@pytest.mark.parametrize("value", ["abc", "0", "-1", "2.5", " ", "1e2"])
+def test_a_bad_worker_count_is_a_usage_error(monkeypatch, capsys, value):
+    """PD-9: before any git call, the message on stderr, exit 2."""
+    runner = Runner()
+    git_calls: list[tuple[str, ...]] = []
+    monkeypatch.setenv("PYTEST_CHANGED_N", value)
+    monkeypatch.setattr(changed, "_git", lambda *args: git_calls.append(args) or f"{REPO}\n")
+
+    got = changed.main(runner, lambda root: Outcome.SOUND, _no_lock)
+
+    err = capsys.readouterr().err
+    assert got == 2, f"exit status for {value!r}"
+    assert f"PYTEST_CHANGED_N must be a positive integer, got '{value}'" in err, "the message"
+    assert git_calls == [], "git is not called"
+    assert runner.calls == [], "nothing is run"
+
+
+@pytest.mark.parametrize("value", ["1", "6", "16"])
+def test_a_good_worker_count_is_taken(monkeypatch, capsys, value):
+    runner = Runner()
+
+    _run_main(
+        monkeypatch, capsys, [VISIBLE], runner, Outcome.SOUND, env={"PYTEST_CHANGED_N": value}
+    )
+
+    assert runner.calls == [_testmon_run(workers=int(value))], f"{value} workers"
+
+
 HOLD_EXCLUSIVE = """
 import fcntl, os, sys
 fd = os.open(sys.argv[1], os.O_RDWR | os.O_CREAT)

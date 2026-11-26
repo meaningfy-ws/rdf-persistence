@@ -149,8 +149,10 @@ Four mechanisms, from `agent-test-control`:
 * *One heavy run at a time.* Every parallel lane (`make test-unit`, `test-unit-ci`,
   `test-feature`, `test-generator`, `test-fast`, `test-durations`, `profile-tests`), plus
   `make test-containers` and `make test-seed`, runs pytest through `tests/queue.py`. That module
-  holds one lock for every repository on the machine (`~/.cache/meaningfy/pytest.lock`). A run
-  that finds the lock taken prints `waiting for the test queue: <folder> <target> <pid> <time>`
+  holds one lock per user, shared by every repository that user runs on the machine
+  (`~/.cache/meaningfy/pytest.lock`). The seed's clean, run and swap are one queued run
+  (`python -m tests.testmon_data seed -- pytest ...`), so another session never sees a half-seeded
+  worktree. A run that finds the lock taken prints `waiting for the test queue: <folder> <target> <pid> <time>`
   once, where the time is when the holder started. When it starts it prints
   `test queue: waited <N>s`. The kernel frees the lock when the run ends, however it ends, so a
   killed run leaves nothing to clean up. There is no maximum wait. A run held far longer than its
@@ -165,7 +167,9 @@ Four mechanisms, from `agent-test-control`:
   `test queue: <N> workers (<cores> cores, <MB> MB available)`. `PYTEST_N=<n>` fixes the count for
   the queued lanes; it does not apply to `make test-changed`.
 * *Only the tests a change reaches.* `make test-changed` runs without the queue, on at most
-  `PYTEST_CHANGED_N` workers (default 4).
+  `PYTEST_CHANGED_N` workers (default 4); a value that is not a positive integer exits 2. It never
+  syncs the environment (`UV_NO_SYNC`, which its `make test-fast` fallback inherits), and it prints
+  its hints before it falls back.
   ** With selection data, a changed Python file selects the tests that executed it. It uses
      pytest-testmon in read-only mode (`--testmon-nocollect --testmon-forceselect`), so the same
      changes select the same tests on every run.
