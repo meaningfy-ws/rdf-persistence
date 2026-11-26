@@ -61,19 +61,19 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
   covers it (TC-9).
 - [x] 3.4 **Docs** (PD-15): the user manual's minimal classifier example; `testing.adoc` names the
   module; `make refresh-snapshot` (lead). Accept: `make check-docs` green.
-- [ ] 3.5 **Lead**: as 1.5; after the release that carries it, the adoption comment on MWB2 #129
+- [x] 3.5 **Lead**: as 1.5 (done); the adoption comment on MWB2 #129 follows the release that carries it (left to the release session; see proposal *Delivered*)
   (DEC-10).
 
 ## 4. Close
 
-- [ ] 4.1 Lead: reconcile `proposal.md` with what was delivered; tick the roadmap; archive.
+- [x] 4.1 Lead: reconcile `proposal.md` with what was delivered; tick the roadmap; archive.
 
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5
 - [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6
-- [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5
-- [ ] 4.1
+- [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5
+- [x] 4.1
 
 ## Verification
 
