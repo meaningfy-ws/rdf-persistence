@@ -5,6 +5,9 @@ blank node, never run more operations than the template has, and do nothing once
 Each test below plants one hostile file or database and asserts what the design promises.
 """
 
+import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -32,6 +35,40 @@ from tests.unit.migrations.migration_steps import (
 )
 
 BS = chr(92)
+
+DEFAULT_RECURSION_LIMIT = 1000
+
+
+@contextmanager
+def default_recursion_limit_pinned() -> Iterator[None]:
+    """Run with CPython's default recursion limit, the previous limit restored on exit (PD-4)."""
+    previous = sys.getrecursionlimit()
+    sys.setrecursionlimit(DEFAULT_RECURSION_LIMIT)
+    try:
+        yield
+    finally:
+        sys.setrecursionlimit(previous)
+
+
+@pytest.fixture(autouse=True)
+def default_recursion_limit() -> Iterator[None]:
+    """Every test of the module depends on the parser's depth, so each runs at the default limit."""
+    with default_recursion_limit_pinned():
+        yield
+
+
+def test_the_module_runs_at_the_default_recursion_limit():
+    raised = 20000
+    original = sys.getrecursionlimit()
+    sys.setrecursionlimit(raised)
+    try:
+        with default_recursion_limit_pinned():
+            assert sys.getrecursionlimit() == DEFAULT_RECURSION_LIMIT, (
+                "the limit is the default inside"
+            )
+        assert sys.getrecursionlimit() == raised, "the raised limit is restored after the block"
+    finally:
+        sys.setrecursionlimit(original)
 
 
 def esc(word: str) -> str:
