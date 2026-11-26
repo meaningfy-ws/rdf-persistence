@@ -182,11 +182,11 @@ Four mechanisms, from `agent-test-control`:
      `.coveragerc`, `pyproject.toml`, `uv.lock`, schemas under `rdf_persistence/model/`, anything
      under `tests/fixtures/`, or a file no rule maps.
   ** Without selection data it uses the folder rules for everything and prints
-     `no test selection data in this worktree: the lead runs make test-seed`, which tells you
+     `no test selection data in this worktree: run make test-seed`, which tells you
      the seed has not landed yet; carry on. It does the same when the data is damaged
-     (`selection data is damaged: delete .testmondata and ask the lead for make test-seed`) or the
+     (`selection data is damaged: delete .testmondata and run make test-seed`) or the
      installed packages changed since the seed
-     (`packages changed since the seed: the lead re-runs make test-seed`); report either to the
+     (`packages changed since the seed: run make test-seed`); report either to the
      lead.
   ** The lead seeds only a worktree where builders will work: the seed serves
      `make test-changed` alone and repeats the unit and feature tests `make check-all` runs anyway.

@@ -1,4 +1,6 @@
-"""Run the tests that cover the files changed against a base branch (test-control-testkit PD-3).
+"""Run the tests that cover the files changed against a base branch.
+
+See the user manual, ``user-manual/test.adoc``, section *Test control for your project*.
 
 A project supplies a classifier, a module or object with ``classify(path)`` and
 ``is_testmon_visible(path)`` (the ``Classifier`` protocol), and a ``ChangedTestsLayout``; then
@@ -29,6 +31,17 @@ from rdf_persistence.testkit.generated.rp_testkit import (
 )
 from rdf_persistence.testkit.selection_data import MESSAGES, check, current_packages, worktree_lock
 
+__all__ = [
+    "FALLBACK_EXIT",
+    "Classifier",
+    "GitError",
+    "UsageError",
+    "changed_files",
+    "main",
+    "plan",
+    "select",
+]
+
 FALLBACK_EXIT = 75
 NO_TESTS_EXIT = 5  # pytest: no test collected
 USAGE_EXIT = 2
@@ -37,7 +50,7 @@ PYTEST_STATUS = {0: 0, 1: 1, 2: 2, 3: 2, 4: 4, NO_TESTS_EXIT: 0}
 # The same distribution as the Makefile's PARALLEL: tests in one xdist_group share a worker.
 DIST = ("--dist", "loadgroup")
 TESTMON = ("--testmon", "--testmon-nocollect", "--testmon-forceselect")
-NO_DATA_HINT = "no test selection data in this worktree: the lead runs make test-seed"
+NO_DATA_HINT = "no test selection data in this worktree: run make test-seed"
 
 
 class Classifier(Protocol):
@@ -174,9 +187,9 @@ def changed_files(base: str) -> list[str]:
         merge_base = _git("merge-base", "--end-of-options", "HEAD", base).strip()
     except GitError as error:
         raise GitError(f"{error} (is `{base}` a local branch? try BASE=origin/{base})") from error
-    tracked = _git("diff", "--name-only", "--no-renames", merge_base).splitlines()
-    untracked = _git("ls-files", "--others", "--exclude-standard").splitlines()
-    return sorted({*tracked, *untracked})
+    tracked = _git("diff", "--name-only", "-z", "--no-renames", merge_base).split("\0")
+    untracked = _git("ls-files", "-z", "--others", "--exclude-standard").split("\0")
+    return sorted({*tracked, *untracked} - {""})
 
 
 Runner = Callable[[Sequence[str]], int]
@@ -185,7 +198,7 @@ Lock = Callable[[Path], AbstractContextManager[None]]
 
 
 def _run_pytest(arguments: Sequence[str]) -> int:
-    return subprocess.run(["pytest", *arguments], check=False).returncode
+    return subprocess.run([sys.executable, "-m", "pytest", *arguments], check=False).returncode
 
 
 def _data_state(root: Path) -> SelectionDataOutcome:
@@ -239,7 +252,11 @@ def main(
     data_state: DataState = _data_state,
     lock: Lock = _shared_lock,
 ) -> int:
-    """Run the tests of the files changed against BASE; the exit codes are PD-4's."""
+    """Run the tests of the files changed against BASE; the exit codes are in the module docstring.
+
+    ``run``, ``data_state`` and ``lock`` are test seams, not stable API: a project passes only the
+    classifier and the layout.
+    """
     try:
         workers = _workers(layout.default_workers)
     except UsageError as error:

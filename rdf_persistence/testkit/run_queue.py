@@ -4,8 +4,8 @@ Run as ``uv run python -m rdf_persistence.testkit.run_queue -- <command...>``: t
 (``$XDG_CACHE_HOME/meaningfy/pytest.lock``, or ``TEST_QUEUE=<path>``; ``TEST_QUEUE=off`` for none),
 replaces the argument ``@workers`` by the worker count, and execs the command with the lock
 descriptor inherited, so the lock lives exactly as long as the command's process.
-``python -m rdf_persistence.testkit.run_queue --workers`` prints the count. See
-openspec/changes/agent-test-control/design.md (PD-1, PD-3).
+``python -m rdf_persistence.testkit.run_queue --workers`` prints the count. See the user manual,
+``user-manual/test.adoc``, section *Test control for your project*.
 """
 
 import fcntl
@@ -14,6 +14,8 @@ import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+
+__all__ = ["main", "workers"]
 
 WORKERS_TOKEN = "@workers"
 QUEUE_OFF = "off"  # TEST_QUEUE=off: no lock
@@ -100,6 +102,16 @@ def _take_the_queue(environ: Mapping[str, str], command: Sequence[str]) -> bool:
     return True
 
 
+def _worker_mb(environ: Mapping[str, str]) -> int:
+    """PYTEST_WORKER_MB: an ASCII decimal integer of 1 or more, or the default when unset or empty."""
+    value = environ.get("PYTEST_WORKER_MB")
+    if not value:
+        return DEFAULT_WORKER_MB
+    if not (value.isascii() and value.isdigit() and int(value) >= 1):
+        raise ValueError(f"PYTEST_WORKER_MB must be a positive integer, got '{value}'")
+    return int(value)
+
+
 def main(
     argv: Sequence[str],
     environ: Mapping[str, str],
@@ -108,8 +120,12 @@ def main(
     read_meminfo: Callable[[], str | None] = read_meminfo,
     execute: Callable[[str, list[str]], object] = os.execvp,
 ) -> int:
-    per_worker_mb = int(environ.get("PYTEST_WORKER_MB") or DEFAULT_WORKER_MB)
-    cpus, available = cpu_count(), None
+    try:
+        per_worker_mb = _worker_mb(environ)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return USAGE_EXIT
+    cpus = cpu_count()
     if list(argv) == ["--workers"]:
         print(workers(cpus, mem_available_mb(read_meminfo()), per_worker_mb))
         return 0
@@ -124,11 +140,26 @@ def main(
         return USAGE_EXIT
     if WORKERS_TOKEN in command:
         available = mem_available_mb(read_meminfo())  # after the lock: memory freed counts
-        count = workers(cpus, available, per_worker_mb)
-        memory = f"{available} MB available" if available is not None else "memory unknown"
-        print(f"test queue: {count} workers ({cpus} cores, {memory})", file=sys.stderr, flush=True)
-        command = [str(count) if word == WORKERS_TOKEN else word for word in command]
-    execute(command[0], command)
+        command = _with_workers(command, cpus, available, per_worker_mb)
+    return _hand_over(command, execute)
+
+
+def _with_workers(
+    command: list[str], cpus: int | None, available: int | None, per_worker_mb: int
+) -> list[str]:
+    """The command with the worker count in place of the token; the count line goes to stderr."""
+    count = workers(cpus, available, per_worker_mb)
+    memory = f"{available} MB available" if available is not None else "memory unknown"
+    print(f"test queue: {count} workers ({cpus} cores, {memory})", file=sys.stderr, flush=True)
+    return [str(count) if word == WORKERS_TOKEN else word for word in command]
+
+
+def _hand_over(command: list[str], execute: Callable[[str, list[str]], object]) -> int:
+    try:
+        execute(command[0], command)
+    except OSError as error:
+        print(f"cannot run {command[0]}: {error}", file=sys.stderr)
+        return 127
     return 0
 
 

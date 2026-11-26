@@ -1,12 +1,14 @@
 """The changed-files mapper picks the test folders of a change (test-lanes PD-1 to PD-5)."""
 
+import subprocess
 from collections.abc import Callable
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
 
 from rdf_persistence.testkit import changed_tests
-from rdf_persistence.testkit.generated.rp_testkit import ChangedSelection
+from rdf_persistence.testkit.generated.rp_testkit import ChangedSelection, SelectionDataOutcome
 from tests import changed
 from tests.changed import LAYOUT, OUTSIDE_THEMES, THEMES
 
@@ -24,7 +26,7 @@ IGNORES = [
     "--ignore=tests/generator/e2e",
 ]
 MARKERS = ["-m", "(unit or feature) and not quarantine"]
-SEED_HINT = "no test selection data in this worktree: the lead runs make test-seed"
+SEED_HINT = "no test selection data in this worktree: run make test-seed"
 CORE_FILE = "rdf_persistence/core/domain/sparql.py"
 SHARED = "shared test infrastructure or schema"
 
@@ -353,6 +355,41 @@ def test_fallback_wins_over_selected_paths():
     selection = _select(["rdf_persistence/api/services/a.py", "Makefile", "tests/conftest.py"])
 
     assert len(selection.fallback_reasons) == 2, "one reason per fallback path"
+
+
+def _git(repo: Path, *args: str) -> None:
+    command = ["git", "-c", "user.name=t", "-c", "user.email=t@example.org", *args]
+    subprocess.run(command, cwd=repo, check=True, capture_output=True)
+
+
+def test_main_through_our_classifier_falls_back_when_core_changed(tmp_path, monkeypatch, capsys):
+    """F5: the real classifier and LAYOUT wired to ``main``: core changed gives 75 and names it."""
+    _git(tmp_path, "init", "-b", "develop")
+    (tmp_path / "README.md").write_text("x")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-m", "base")
+    core = tmp_path / CORE_FILE
+    core.parent.mkdir(parents=True)
+    core.write_text("x")  # untracked
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("BASE", raising=False)
+    monkeypatch.delenv("PYTEST_CHANGED_N", raising=False)
+    calls: list[object] = []
+
+    # NO_DATA: with sound data testmon covers core, so there would be no fallback
+    got = changed_tests.main(
+        changed,
+        LAYOUT,
+        run=lambda arguments: calls.append(arguments) or 0,
+        data_state=lambda root: SelectionDataOutcome.NO_DATA,
+        lock=lambda root: nullcontext(),
+    )
+
+    out = capsys.readouterr()
+    assert got == 75, "core changed: run make test-fast"
+    assert out.out == "", "nothing on stdout"
+    assert CORE_FILE in out.err, "stderr names the file"
+    assert calls == [], "no pytest run"
 
 
 def _missing_library_app(path: str) -> bool:

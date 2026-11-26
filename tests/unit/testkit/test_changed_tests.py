@@ -1,6 +1,8 @@
 """The generic changed-tests planner, against a small fake classifier (test-control-testkit TC-11)."""
 
+import importlib
 import subprocess
+import sys
 import threading
 from collections.abc import Callable
 from contextlib import nullcontext
@@ -28,7 +30,7 @@ from rdf_persistence.testkit.generated.rp_testkit import (
 )
 from rdf_persistence.testkit.selection_data import DAMAGED_MESSAGE, PACKAGES_MESSAGE, worktree_lock
 
-SEED_HINT = "no test selection data in this worktree: the lead runs make test-seed"
+SEED_HINT = "no test selection data in this worktree: run make test-seed"
 APP_FOLDER = "tests/unit/app/"
 EXTRA_FOLDER = "tests/extra/"
 ROOT_FILE = "tests/unit/test_root_level.py"
@@ -193,7 +195,7 @@ def test_a_project_classifier_runs_its_folder_with_the_layout_and_hints_at_the_s
     got = _plan([APP_FILE])
 
     assert [i.arguments for i in got.invocations] == [_folder_run([APP_FOLDER], 4)], "layout's args"
-    assert got.hints == [SEED_HINT], "the lead runs make test-seed"
+    assert got.hints == [SEED_HINT], "the hint says to run make test-seed"
     assert got.fallback_reasons == [], "no fallback"
 
 
@@ -359,6 +361,21 @@ def test_the_listing_holds_committed_uncommitted_untracked_deleted_and_both_side
     ], "committed, uncommitted, untracked, deleted and both sides of the rename"
 
 
+@pytest.mark.parametrize(
+    "name",
+    ["src/app/café.py", "src/app/two words.py", "src/app/tab\there.py"],
+    ids=["non-ascii", "space", "tab"],
+)
+def test_a_path_git_would_quote_is_listed_as_it_is(feature_repo, name):
+    _write(feature_repo, name, "x")  # untracked
+    _write(feature_repo, "edited.py", "changed")  # tracked
+
+    listed = changed_files("develop")
+
+    assert name in listed, f"{name!r} is listed unquoted"
+    assert "edited.py" in listed, "a tracked change is still listed"
+
+
 def test_the_listing_is_empty_on_the_base_branch_with_a_clean_tree(feature_repo):
     _git(feature_repo, "checkout", "develop")
 
@@ -368,6 +385,54 @@ def test_the_listing_is_empty_on_the_base_branch_with_a_clean_tree(feature_repo)
 def test_an_unknown_base_is_a_git_error_that_names_it(feature_repo):
     with pytest.raises(GitError, match="nosuchbase"):
         changed_files("nosuchbase")
+
+
+def test_pytest_runs_as_a_module_of_the_running_interpreter(monkeypatch):
+    seen: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        seen.append(list(argv))
+        return subprocess.CompletedProcess(argv, 7)
+
+    monkeypatch.setattr(changed_tests.subprocess, "run", fake_run)  # X3
+
+    got = changed_tests._run_pytest(["tests/unit", "-n", "0"])
+
+    assert seen == [[sys.executable, "-m", "pytest", "tests/unit", "-n", "0"]], "the argv"
+    assert got == 7, "pytest's code is returned"
+
+
+PUBLIC_NAMES = {
+    "changed_tests": {
+        "Classifier",
+        "select",
+        "plan",
+        "changed_files",
+        "main",
+        "GitError",
+        "UsageError",
+        "FALLBACK_EXIT",
+    },
+    "selection_data": {
+        "check",
+        "swap",
+        "seed",
+        "worktree_lock",
+        "current_packages",
+        "main",
+        "CHECK_EXIT",
+        "MESSAGES",
+    },
+    "run_queue": {"workers", "main"},
+}
+
+
+@pytest.mark.parametrize("module", sorted(PUBLIC_NAMES))
+def test_each_module_declares_the_public_names_of_pd_14(module):
+    imported = importlib.import_module(f"rdf_persistence.testkit.{module}")
+
+    assert set(imported.__all__) == PUBLIC_NAMES[module], f"{module}.__all__ is PD-14's list"
+    assert len(imported.__all__) == len(PUBLIC_NAMES[module]), "no name twice"
 
 
 class Runner:

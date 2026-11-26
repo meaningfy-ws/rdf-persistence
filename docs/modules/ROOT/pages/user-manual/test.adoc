@@ -274,7 +274,30 @@ test-changed:
 	@ uv run python -m tests.changed; status=$$?; \
 	  if [ $$status -eq 75 ]; then $(MAKE) test-fast; \
 	  elif [ $$status -ne 0 ]; then exit $$status; fi
+
+test-fast:
+	$(QUEUE) pytest tests -n @workers -m "not slow"
 ----
+
+In CI there is no queue and no machine to share, so the same file branches on `CI`:
+
+[source,make]
+----
+ifdef CI
+QUEUE = uv run
+WORKERS = auto
+else
+QUEUE = uv run python -m rdf_persistence.testkit.run_queue --
+WORKERS = @workers
+endif
+----
+
+Put this block before the targets and write `-n $(WORKERS)` where the example above has
+`-n @workers`; with `CI` set, the commands become plain `uv run pytest` with `-n auto`, and the
+queue is not used.
+
+`tests/` must be a package (`tests/__init__.py`), because the recipe runs `python -m tests.changed`,
+and every command runs from the repository root.
 
 The seed's clean, run and swap are one queued command, so no other session sees half-seeded data.
 Add `.testmondata*` to `.gitignore`.

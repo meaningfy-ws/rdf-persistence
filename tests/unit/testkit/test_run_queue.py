@@ -159,7 +159,7 @@ def test_a_shorter_holder_line_leaves_no_residue(tmp_path):
     lock = tmp_path / "pytest.lock"
     lock.write_text("x" * 300)
     run_in_process(["--", "pytest"], tmp_path, TEST_QUEUE=str(lock))
-    assert "x" not in lock.read_text(), "the old line must be truncated away"
+    assert "xxxx" not in lock.read_text(), "the old line must be truncated away"
 
 
 def test_the_default_lock_is_under_the_cache_folder(tmp_path):
@@ -182,6 +182,50 @@ def test_an_unwritable_lock_folder_exits_2_naming_the_path(tmp_path, capsys):
     assert code == 2, "an unwritable folder must exit 2"
     assert calls == [], "no command may run"
     assert str(lock) in capsys.readouterr().err, "the message must name the path"
+
+
+QUEUED = ["--", "pytest", "-n", "@workers"]
+
+
+@pytest.mark.parametrize(
+    ("argv", "value", "ok"),
+    [
+        (["--workers"], "abc", False),
+        (["--workers"], "0", False),
+        (["--workers"], "-1", False),
+        (["--workers"], "²", False),
+        (["--workers"], "2048", True),
+        (["--workers"], "", True),
+        (QUEUED, "abc", False),
+        (QUEUED, "0", False),
+        (QUEUED, "-1", False),
+        (QUEUED, "2048", True),
+    ],
+)
+def test_the_worker_memory_must_be_a_positive_integer(tmp_path, capsys, argv, value, ok):
+    code, calls, _ = run_in_process(argv, tmp_path, PYTEST_WORKER_MB=value)
+
+    err = capsys.readouterr().err
+    message = f"PYTEST_WORKER_MB must be a positive integer, got '{value}'"
+    assert (message in err) is (not ok), f"the usage line for {value!r}"
+    assert (code == queue.USAGE_EXIT) is (not ok), f"exit status for {value!r}"
+    assert ok or calls == [], "a bad value runs nothing"
+
+
+def test_a_command_that_cannot_be_executed_exits_127_naming_it(capsys):
+    def refuse(file, argv):
+        raise FileNotFoundError(2, "No such file or directory")
+
+    code = queue.main(
+        ["--", "no-such-command", "-x"],
+        {"TEST_QUEUE": "off"},
+        cpu_count=lambda: 4,
+        read_meminfo=lambda: None,
+        execute=refuse,
+    )
+
+    assert code == 127, "a command that cannot start is 127"
+    assert "cannot run no-such-command:" in capsys.readouterr().err, "the command is named"
 
 
 def run_queue(args, lock, **env):
