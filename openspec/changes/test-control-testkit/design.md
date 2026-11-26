@@ -35,7 +35,7 @@ Constraints found:
   its CLI.
 - **PD-2 Generated types** (DEC-8), in `rp_testkit.yaml`. No class name starts with `Test`,
   because pytest would try to collect it (counterexample 8):
-  - an enum `SelectionDataOutcome` with the values `sound`, `damaged`, `packages_changed` and
+  - an enum `SelectionDataOutcome` (generated members `SOUND`, `DAMAGED`, …) with the values `sound`, `damaged`, `packages_changed` and
     `no_data`;
   - the class `ChangedSelection`, with the multivalued strings `paths`, `hints` and
     `fallback_reasons`;
@@ -50,11 +50,13 @@ Constraints found:
   so no model goes into a set or a dict key: `select()` collects path strings (RISK-3).
   Exit codes stay a module constant, `CHECK_EXIT: dict[SelectionDataOutcome, int]`, with the same
   values as today (0, 3, 4, 5), and so do the messages (`MESSAGES`). Callers that compared
-  `Outcome.SOUND` compare `SelectionDataOutcome.sound`. A consumer reads the multivalued fields as
+  `Outcome.SOUND` compare `SelectionDataOutcome.SOUND`. A consumer reads the multivalued fields as
   lists, where `changed.py` used tuples. The moved tests may change their bodies, but only in the
   ways listed here (counterexample 7):
-  - `Outcome.X` becomes `SelectionDataOutcome.x`;
-  - `Outcome.X.value`, or `int(Outcome.X)`, becomes `CHECK_EXIT[SelectionDataOutcome.x]`;
+  - `Outcome.X` becomes `SelectionDataOutcome.X`, and `outcome.message` becomes `MESSAGES[outcome]`;
+  - `Outcome.X.value`, or `int(Outcome.X)`, becomes `CHECK_EXIT[SelectionDataOutcome.X]`;
+  - a patch-marker comment (`# X1` to `# X5`) where the moved code makes a monkeypatch one of
+    toolkit code;
   - a tuple literal compared with a model field becomes a list literal;
   - imports and `-m` module names follow the new paths.
 
@@ -150,8 +152,9 @@ Constraints found:
   `rdf_persistence.testkit.selection_data`. The rationale is "no direct coupling to the library",
   not "light at runtime": importing the generated module loads the library anyway (RISK-2).
   `runtime-without-extras` already keeps the runtime layers off the testkit.
-- **PD-14 Public surface.** The public-surface snapshot (`make refresh-snapshot`) gains the
-  three modules. Their public names: `run_queue.workers`, `run_queue.main`;
+- **PD-14 Public surface.** The public-surface baseline (`tests/fixtures/public-surface.json`)
+  does not cover the testkit, so it is unchanged (stage-2 review W1; `make refresh-surface` and
+  `make refresh-snapshot` gave no diff). The modules are public by path, with these public names: `run_queue.workers`, `run_queue.main`;
   `selection_data.check`, `.swap`, `.seed`, `.worktree_lock`, `.current_packages`, `.main`;
   `changed_tests.Classifier`, `.select`, `.plan`, `.changed_files`, `.main`, `.GitError`,
   `.UsageError`. Everything else is `_`-prefixed.
@@ -306,6 +309,16 @@ Scenarios: the spec deltas in `specs/`.
   - **S8:** exit 1 when the clean fails.
   - **S9:** a docs line wrap, which the lead fixes; the main spec's wording changes at the
     archive.
+
+- **D-3** (lead, R-0007; stage-2 review L2+L3, 0 Critical, 2 Warnings, 4 Suggestions).
+  - **W1, S3, S4:** spine wording, fixed here: PD-14 (the baseline does not cover the testkit),
+    PD-2 (the generated member names, `MESSAGES`, the patch marker).
+  - **W2** (the import guard skips relative imports) and **S5** (a stale test name): moved to
+    stage 3, which extends those same files.
+  - **S6:** the `noqa` follows `memory_plugin.py`'s precedent.
+  - Stage 2 also put the moved code under the package's lint, xenon, mypy and patch-marker
+    guards. The builder split `run_queue.main` (`_take_the_queue`) to keep its rank at B, with
+    unchanged behaviour (the reviewer confirmed).
 
 ## Open Questions
 
