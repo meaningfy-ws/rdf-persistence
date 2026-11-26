@@ -10,10 +10,10 @@ TESTKIT = Path(__file__).resolve().parents[3] / "rdf_persistence" / "testkit"
 GENERATED = "rdf_persistence.testkit.generated.rp_testkit"
 
 # Per module: the non-stdlib modules it may import, and whether each is allowed only inside a function.
-# Stage 3 adds `changed_tests` with one row here.
 ALLOWED: dict[str, dict[str, bool]] = {
     "run_queue": {},
     "selection_data": {"testmon": True, GENERATED: False},
+    "changed_tests": {GENERATED: False, "rdf_persistence.testkit.selection_data": False},
 }
 
 
@@ -27,8 +27,9 @@ def _imports(source: str) -> list[tuple[int, str, bool]]:
             inside = in_function or isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef)
             if isinstance(child, ast.Import):
                 found.extend((child.lineno, alias.name, inside) for alias in child.names)
-            elif isinstance(child, ast.ImportFrom) and child.level == 0 and child.module:
-                found.append((child.lineno, child.module, inside))
+            elif isinstance(child, ast.ImportFrom):
+                # a relative import keeps its dots, so it never matches the allow table
+                found.append((child.lineno, "." * child.level + (child.module or ""), inside))
             walk(child, inside)
 
     walk(tree, False)
@@ -76,8 +77,30 @@ def test_the_module_imports_only_stdlib_and_the_allowed(module: str) -> None:
             "import testmon\n",
             "selection_data.py:{n}: testmon may be imported only inside",
         ),
+        (
+            "run_queue",
+            "from . import selection_data\n",
+            "run_queue.py:{n}: . is not stdlib nor allowed",
+        ),
+        (
+            "selection_data",
+            "from ..persistence import y\n",
+            "selection_data.py:{n}: ..persistence is not stdlib nor allowed",
+        ),
+        (
+            "changed_tests",
+            "import rdf_persistence.persistence\n",
+            "changed_tests.py:{n}: rdf_persistence.persistence",
+        ),
     ],
-    ids=["queue-plants-persistence", "selection-plants-core", "testmon-at-top"],
+    ids=[
+        "queue-plants-persistence",
+        "selection-plants-core",
+        "testmon-at-top",
+        "queue-plants-relative-import",
+        "selection-plants-relative-parent-import",
+        "changed-plants-persistence",
+    ],
 )
 def test_a_planted_import_fails_and_names_the_line(module: str, extra: str, expected: str) -> None:
     source = (TESTKIT / f"{module}.py").read_text(encoding="utf-8") + "\n" + extra

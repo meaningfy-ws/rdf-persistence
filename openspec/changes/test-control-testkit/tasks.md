@@ -49,17 +49,17 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 
 ## 3. Stage 3: the changed-tests planner moves to the testkit
 
-- [ ] 3.1 **Generic planner** (PD-3, PD-9), `rdf_persistence/testkit/changed_tests.py`. Red:
+- [x] 3.1 **Generic planner** (PD-3, PD-9), `rdf_persistence/testkit/changed_tests.py`. Red:
   TC-11, with the generic cases of `test_changed.py` re-pointed at a fake classifier and layout
   (git, plan, exit codes, lock, fallback, hints). Then the module, from `tests/changed.py`'s
   generic functions, with the generated types. Accept: green; RISK-3's equal-output test is
   green.
-- [ ] 3.2 **Our classifier** (PD-4). Reduce `tests/changed.py` to the classifier and `LAYOUT`;
+- [x] 3.2 **Our classifier** (PD-4). Reduce `tests/changed.py` to the classifier and `LAYOUT`;
   `tests/unit/tooling/test_changed.py` keeps only the layout cases (TC-12), unchanged in what they
   assert. Accept: TC-12 green; the `THEMES` and `IGNORES` importers unchanged and green.
-- [ ] 3.3 **Module-name proof** for `changed_tests` (TC-8, PD-12), and the `ast` import test
+- [x] 3.3 **Module-name proof** for `changed_tests` (TC-8, PD-12), and the `ast` import test
   covers it (TC-9).
-- [ ] 3.4 **Docs** (PD-15): the user manual's minimal classifier example; `testing.adoc` names the
+- [x] 3.4 **Docs** (PD-15): the user manual's minimal classifier example; `testing.adoc` names the
   module; `make refresh-snapshot` (lead). Accept: `make check-docs` green.
 - [ ] 3.5 **Lead**: as 1.5; after the release that carries it, the adoption comment on MWB2 #129
   (DEC-10).

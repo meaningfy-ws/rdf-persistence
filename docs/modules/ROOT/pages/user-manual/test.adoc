@@ -239,9 +239,9 @@ block is left by an exception, the waiting calls are released and the exception 
 [#test-control]
 == Test control for your project
 
-The testkit carries the two tools the toolkit runs its own tests with, so your project does not copy
-them. Both are plain modules run by name; they need the `pytest-testmon` and `pytest-xdist`
-packages in your environment, and nothing else of the toolkit.
+The testkit carries the three tools the toolkit runs its own tests with, so your project does not
+copy them. They are plain modules, run by name or called from your own file; they need the
+`pytest-testmon` and `pytest-xdist` packages in your environment, and nothing else of the toolkit.
 
 * `rdf_persistence.testkit.run_queue` takes one lock per user, so heavy runs of several
   repositories on one machine wait for each other, and replaces the argument `@workers` by a worker
@@ -250,6 +250,10 @@ packages in your environment, and nothing else of the toolkit.
 * `rdf_persistence.testkit.selection_data` records which tests each source file reaches (the
   selection data of `pytest-testmon`) and swaps it in only when the recording run finished;
   `check` exits 0 for sound data and 3, 4 or 5 for damaged data, changed packages or no data.
+* `rdf_persistence.testkit.changed_tests` runs the tests that the files changed against a base
+  branch reach: testmon selects for the Python files it can see, and your own folder rules cover
+  the rest. It knows nothing of your layout; you give it a classifier and a layout in a file of
+  your own.
 
 In your Makefile:
 
@@ -264,11 +268,62 @@ test-seed: export TESTMON_DATAFILE = .testmondata.seed
 test-seed:
 	$(QUEUE) python -m rdf_persistence.testkit.selection_data seed -- \
 	  pytest tests --testmon --testmon-forceselect -n @workers -p no:randomly
+
+test-changed: export UV_NO_SYNC = 1
+test-changed:
+	@ uv run python -m tests.changed; status=$$?; \
+	  if [ $$status -eq 75 ]; then $(MAKE) test-fast; \
+	  elif [ $$status -ne 0 ]; then exit $$status; fi
 ----
 
 The seed's clean, run and swap are one queued command, so no other session sees half-seeded data.
-Add `.testmondata*` to `.gitignore`. Running the tests that a change reaches (`changed_tests`)
-comes in a later release of the testkit; this section grows then.
+Add `.testmondata*` to `.gitignore`.
+
+`test-changed` exits 75 when it cannot choose tests with confidence (a shared file changed, a
+folder is missing, git does not answer); the recipe then runs your full fast suite, `test-fast`. A
+bad `PYTEST_CHANGED_N` is exit 2 with a message. `BASE` names the base branch (default `develop`).
+
+Your `tests/changed.py` supplies the two functions of the `Classifier` protocol and a
+`ChangedTestsLayout`; a module that defines both functions is a classifier:
+
+[source,python]
+----
+"""Which tests cover a changed path in this project."""
+
+import sys
+
+from rdf_persistence.testkit import changed_tests
+from rdf_persistence.testkit.generated.rp_testkit import ChangedSelection, ChangedTestsLayout
+
+LAYOUT = ChangedTestsLayout(
+    testmon_folders=["tests/unit"],
+    extra_selected_by=[],
+    ignores=["--ignore=tests/e2e"],
+    markers=["-m", "unit"],
+    default_workers=4,
+)
+
+
+def classify(path: str) -> ChangedSelection:
+    if path.startswith("src/app/"):
+        return ChangedSelection(paths=["tests/unit/app/"], hints=[], fallback_reasons=[])
+    return ChangedSelection(paths=[], hints=[], fallback_reasons=[f"{path}: no rule maps it"])
+
+
+def is_testmon_visible(path: str) -> bool:
+    return path.endswith(".py")
+
+
+if __name__ == "__main__":
+    sys.exit(changed_tests.main(sys.modules[__name__], LAYOUT))
+----
+
+`classify` names the test folders or files a path selects, hints to print (such as "run the
+container tests"), and the reasons it falls back to the full suite; every list is passed, empty
+when there is nothing. `is_testmon_visible` says whether testmon tracks the file. The layout names
+the folders testmon selects within, an optional `extra_testmon_folder` (added to that run unless a
+folder rule already selects it) and the roots in `extra_selected_by` whose files also go through
+your folder rules, the arguments to ignore, the marker expression and the default worker count.
 
 == Check an adapter of your own
 
