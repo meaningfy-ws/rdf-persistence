@@ -88,7 +88,7 @@ from tests.fixtures.library.domain.generated.library_access import LibraryAccess
 from tests.logs import attributes, records_of
 from tests.migration_helpers import chain_of, migration
 from tests.tenancy_world import BOOK_TYPE, FLAT
-from tests.toy import ADA, BOB, SETTINGS, dune, role, template, toy_mapper, toy_rules
+from tests.toy import ADA, BOB, SETTINGS, ShelveBooks, dune, role, template, toy_mapper, toy_rules
 
 FLAT_SETTINGS = ServiceSettings(
     base="https://example.org/",
@@ -443,6 +443,48 @@ async def test_tc14_a_literal_holding_the_source_tenants_iri_is_kept():
     new = (await restored(world, await dumped(world))).id
     book = await read_book(world, new, moved(world, world.book, new))
     assert book.label == world.tenant, "the literal is the source tenant's IRI, not the new one"
+
+
+ACTIVITY_SETTINGS = SETTINGS.model_copy(
+    update={"iri_policy": IriPolicy(activity_template="{tenant}/activity/{id}")}
+)
+SERVED_UUID = "5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c003"
+ACTIVITIES_OF = (
+    "SELECT ?a ?part WHERE {{ GRAPH <{graph}> {{ ?a a <{activity}> . "
+    "OPTIONAL {{ ?a ?link ?part . ?part <{part_activity}> ?a }} }} }}"
+)
+
+
+async def test_a_restored_tenant_under_an_activity_template_owns_its_activities():
+    world = await populated(await make_world(iris_of(ACTIVITY_SETTINGS), ACTIVITY_SETTINGS))
+    served = toy_mapper().served(ShelveBooks(id=f"urn:uuid:{SERVED_UUID}", shelf_note="top"))
+    second = str(world.iris.mint_aggregate(world.tenant, BOOK_TYPE, "books"))
+    async with world.session() as opened, opened.transaction(served=served) as transaction:
+        await transaction.add_graph(second, toy_mapper().to_triples(dune(second)))
+
+    async def activity_iris(tenant: str) -> tuple[set[str], set[str]]:
+        record, _ = await world.tenancy.get(tenant)
+        text = ACTIVITIES_OF.format(
+            graph=world.iris.provenance(tenant),
+            activity=v.ACTIVITY,
+            part_activity=v.PART_ACTIVITY,
+        )
+        rows = list(await world.store.query(record.database_name, text))  # type: ignore[arg-type]
+        return {str(r.a) for r in rows}, {str(r.a) for r in rows if r.part is not None}
+
+    before, _ = await activity_iris(world.tenant)
+    assert len(before) >= 2, "a served command's activity and one without a command"
+    assert f"{world.tenant}/activity/{SERVED_UUID}" in before, "the served one is placed"
+
+    new = (await restored(world, await dumped(world))).id
+
+    after, with_parts = await activity_iris(new)
+    uuids = {a.rsplit("/", 1)[1] for a in before}
+    assert after == {f"{new}/activity/{u}" for u in uuids}, (
+        "each activity is the new tenant's, same UUID"
+    )
+    assert not [a for a in after if a.startswith(world.tenant)], "none stays under the old tenant"
+    assert with_parts == after, "every generation names the moved activity"
 
 
 # -- TC-15, TC-16: what a dump needs ----------------------------------------------------------------

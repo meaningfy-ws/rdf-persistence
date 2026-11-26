@@ -54,6 +54,7 @@ async def event_stream(
     keep_alive: float,
     max_lifetime: timedelta,
     clock: Callable[[], datetime],
+    is_activity: Callable[[str], bool] = is_activity_id,
 ) -> AsyncIterator[Activity | Signal]:
     """What the follower of ``tenant`` is sent, until the hub closes its queue or its access is gone.
 
@@ -61,7 +62,8 @@ async def event_stream(
     caller may still read the tenant) and answers the new predicate. It is called before an event or
     a keep-alive when the last read is ``access_ttl`` old or older; if it raises ``Forbidden`` or
     ``NotFound`` the stream ends. ``last_event_id`` is the activity IRI to resume after, if any; one
-    that is not an activity id is unknown (``RESET``). The stream ends at the first wake (an activity or
+    that ``is_activity`` does not accept (by default, a ``urn:uuid:`` id; the route passes the
+    tenant's IRI policy, PD-7) is unknown (``RESET``) and the store is not asked. The stream ends at the first wake (an activity or
     a keep-alive) after ``max_lifetime``, so a token that expired or was revoked is not outlived (D-20);
     the follower resumes with its last id.
     """
@@ -71,7 +73,9 @@ async def event_stream(
     try:
         async with hub.subscribe(tenant) as queue:
             if last_event_id is not None:
-                resumed = _resumed(open_session, decode, access, sent, last_event_id, window, clock)
+                resumed = _resumed(
+                    open_session, decode, access, sent, last_event_id, window, clock, is_activity
+                )
                 async for item in resumed:
                     yield item
             async for current in _live(
@@ -90,12 +94,11 @@ async def _resumed(
     last_event_id: str,
     window: timedelta,
     clock: Callable[[], datetime],
+    is_activity: Callable[[str], bool],
 ) -> AsyncIterator[Activity | Signal]:
     """What was relayed since ``last_event_id``, filtered, or ``RESET``; every id read goes in ``sent``."""
     found = None
-    if is_activity_id(
-        last_event_id
-    ):  # a client-sent header: anything else is simply unknown (D-21)
+    if is_activity(last_event_id):  # a client-sent header: anything else is simply unknown (D-21)
         async with open_session() as session:
             found = await session.relayed_since(last_event_id, window, clock())
     if found is None:

@@ -78,6 +78,10 @@ The fields of `IriPolicy`, with their defaults and the variables each template m
 |`access_template`, `meta_template`, `registry_template`, `provenance_template`
 |`{tenant}/access`, `{tenant}/meta`, `{tenant}/registry`, `{tenant}/provenance`
 |`{base}`, `{deployment}`, `{tenant}`, `{tenant_id}`; names `{tenant}` or `{tenant_id}`
+|`activity_template`
+|`urn:uuid:{id}`
+|`{base}`, `{deployment}`, `{tenant}`, `{tenant_id}`, `{id}`; names `{tenant}` or `{tenant_id}`;
+ends in `{id}`, always the activity's UUID (<<activity-iris>>); or the default as it is
 |`principal_template`
 |`{issuer}/users/{sub}`
 |`{base}`, `{deployment}`, `{issuer}`, `{sub}`; ends in `{sub}`
@@ -120,6 +124,51 @@ record, `{tenant}/meta`, `{tenant}/registry` |configurable
 |Guard against a service started under another policy than its tenants were made under |`install_service` start-up
 |enforced
 |===
+
+[#activity-iris]
+== Activity IRIs
+
+Every commit stores one activity record. By default its IRI is `urn:uuid:` and a UUID, which names
+no tenant. Set `activity_template` to place it in the tenant, so a restore moves it with the
+tenant's other data:
+
+[source,python]
+----
+iri_policy=IriPolicy(activity_template="{tenant}/activity/{id}")
+----
+
+A commit in the tenant `https://example.org/library/p4x8k2m` then records
+`https://example.org/library/p4x8k2m/activity/{UUID}`; transitions, comments, observers, the event
+stream and `Last-Event-ID` use that IRI. `{id}` is always the activity's UUID: `object_id` does not
+apply. `{tenant}` is already a full IRI, so write `{tenant}/activity/{id}` and not
+`{base}{tenant}/activity/{id}`; `{base}{tenant_id}/activity/{id}` is allowed too. A command made with
+`command()` carries a provisional `urn:uuid:` id; the commit places its UUID under the template
+(xref:howto/event-driven.adoc[Build event-driven features]).
+
+A template other than the default is refused, naming `activity_template`, when:
+
+* it names neither `{tenant}` nor `{tenant_id}`, or does not end in `{id}`, or uses another variable;
+* it has no scheme, or starts outside `{base}`, so a restore could not move it;
+* it glues the tenant id to a neighbouring character (`{tenant}{id}`, `{tenant}x{id}`), as the
+  restore reads templates;
+* with an aggregate template that names no `{type}` or `{rp_path}` and UUID object ids
+  (`{tenant}/{id}`), it would read an aggregate as an activity;
+* a root class of the model, minted with a UUID, falls inside it (the service refuses to start).
+
+Keep the activity segment apart from every `rp_path` and every class type. A root whose `rp_path`
+equals the segment (`activity`) is refused at start-up when the kit builds the policy; a
+consumer that builds its own `Iris` without the kit gets no such check, and the writes to that root
+are refused instead. Under a flat part template such as `{base}{tenant_id}/{type}/{id}`, an owned
+class whose `{type}` equals the segment is not detected at all.
+
+*Choose it before the first start.* The template is part of the policy, so a deployment with data
+cannot change it: the start refuses with `IriPolicyChanged` naming `activity_template`, and a
+restore of a dump made under another template is refused the same way. Set it before the first
+tenant is created.
+
+In your own code, `Iris.activity(tenant, uuid)` mints the IRI, `Iris.is_activity(tenant, iri)` checks
+it, `Iris.activity_uuid(iri)` reads the UUID back, and `Session.activity_iri(command_id)` answers the
+IRI a command's commit will record.
 
 [#policy-cannot-change]
 == The policy cannot change
@@ -187,3 +236,11 @@ own), so run your regenerate target once and commit the result. A recorded polic
 as the default `{tenant}/provenance`, and that is not a change; but a deployment whose recorded
 policy already uses `{tenant}/provenance` for another graph cannot start, and the only way out is a
 new policy record.
+
+=== Changed in 0.15.0: activity IRIs
+
+The policy gains `activity_template`, default `urn:uuid:{id}`. A recorded policy or a dump from
+before 0.15.0 reads as that default, so nothing changes until you set it, and a deployment that
+already has data cannot set it (<<policy-cannot-change>>). `command()` now gives a provisional id:
+a handler that stored `command.id` should store `Session.activity_iri(command.id)`, which is the
+same text under the default policy.

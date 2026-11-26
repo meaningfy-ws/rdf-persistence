@@ -49,8 +49,10 @@ class Served:
     """A command the session records as its commit's activity (PD-8): the model with its id and no
     payload, its own statements, and its class IRIs (own and every ancestor). It serves one commit.
 
-    Raises ``ValueError`` naming the id when it is not ``urn:uuid:`` and a UUID: an aggregate IRI as an
-    activity id would be rewritten on restore, and no unchecked text may reach an IRI (D-3). It also
+    Raises ``ValueError`` naming the id when it is not ``urn:uuid:`` and a UUID. That id is the
+    command's provisional one: the session places its UUID under the IRI policy when it commits
+    (``Session.activity_iri``), and the session is what keeps a restore able to move the activity.
+    No unchecked text may reach an IRI (D-3). It also
     refuses a triple about another subject than the activity or a blank node, and a triple of the
     activity that gives ``rdf:type`` or a slot the session fills (D-5 b).
     A plain class: it holds the state of one use, which a generated model does not.
@@ -134,24 +136,27 @@ def _standard(changes: Sequence[Change]) -> type[Activity]:
     return found.get(next(iter(kinds)), Activity) if len(kinds) == 1 else Activity
 
 
-def completed(
+def completed(  # noqa: PLR0913 - one keyword per slot the session fills, and the placed id (PD-5)
     changes: Sequence[Change],
     *,
     served: Served | None,
     principal: Principal,
     started: datetime,
     ended: datetime,
+    activity_id: str,
 ) -> tuple[Activity, list[URIRef]]:
     """The activity of a commit, with what the session fills, and its types (PD-7, PD-8).
 
     A served command keeps its own slots; the principal, times and parts are the session's, so a
-    ``was_associated_with`` the command carried is overwritten.
+    ``was_associated_with`` the command carried is overwritten. The activity's id is
+    ``activity_id``, the IRI the session placed under the IRI policy (activity-iri-policy PD-5); the
+    served command is not changed.
     """
     if served is None:
-        base = _standard(changes)(id=new_activity_id())
+        base = _standard(changes)(id=activity_id)
         types = v.activity_types(type(base).__name__)
     else:
-        base, types = served.activity, served.types
+        base, types = served.activity.replaced(id=activity_id), served.types
 
     def parts[P: (Generation, Invalidation)](kind: type[P], events: list[Event]) -> list[P] | None:
         return [

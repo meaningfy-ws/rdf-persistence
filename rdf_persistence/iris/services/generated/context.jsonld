@@ -10,6 +10,9 @@
       "access_template": {
          "@id": "accessTemplate"
       },
+      "activity_template": {
+         "@id": "activityTemplate"
+      },
       "aggregate_template": {
          "@id": "aggregateTemplate"
       },

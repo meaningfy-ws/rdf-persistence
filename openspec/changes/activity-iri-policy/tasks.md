@@ -11,11 +11,11 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
 
 ## 1. Stage 1: activities under the IRI policy
 
-- [ ] 1.1 Lead: check the deltas against the living specs on `develop`: the two MODIFIED
+- [x] 1.1 Lead: check the deltas against the living specs on `develop`: the two MODIFIED
   requirements copy the living text and scenarios and change only the activity sentences.
   Accept: `openspec validate activity-iri-policy --strict` passes; a diff of each MODIFIED
   requirement against `openspec/specs/` shows only those changes.
-- [ ] 1.2 Unit, schema (PD-1). First, failing: `tests/unit/iris/test_iri_policy_model.py`
+- [x] 1.2 Unit, schema (PD-1). First, failing: `tests/unit/iris/test_iri_policy_model.py`
   `test_the_activity_template_defaults_to_a_urn_uuid_and_ends_in_its_id`: `IriPolicy()`'s
   `activity_template` is `urn:uuid:{id}`; `ServiceSettings` with activity templates
   `{tenant}/activity`, `{tenant}/{type}/{id}` and the tenant-less `{base}activity/{id}` (PD-12)
@@ -32,7 +32,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   default's words would join `_reserved` the moment the slot exists). Then the YAML, `make
   generate` and PD-4's skip in `_reserved`. Gate: `make test-fast check-quality`, `make
   check-generated`. Accept: the three pass; the regenerated files are in the same commit.
-- [ ] 1.3 Unit, `Iris` (PD-2, PD-3), after 1.2. First, failing:
+- [x] 1.3 Unit, `Iris` (PD-2, PD-3), after 1.2. First, failing:
   `tests/unit/iris/test_iris_policy.py`
   `test_an_activity_iri_follows_the_activity_template`: under `P`, `activity(t, U)` is
   `t + "/activity/" + U`; `is_activity(t, it)` is true, false for another tenant, false for
@@ -62,7 +62,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   and accepted under random object ids). Then `root_paths(view)` in
   `tests/unit/schema/test_schema_structure.py` (the toy roots and their paths) and the kit call.
   Accept: all pass; each refusal row fails when its check is removed by hand.
-- [ ] 1.4 Unit, session (PD-5, PD-6), after 1.3. First, failing:
+- [x] 1.4 Unit, session (PD-5, PD-6), after 1.3. First, failing:
   `tests/unit/tenancy/test_session_activity.py`
   `test_a_commit_under_an_activity_template_records_its_activity_under_the_tenant`: on the fake
   store with `Iris` under `P`, a book committed serving `command(ShelveBooks, …)` (the toy command)
@@ -81,11 +81,11 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   `tests/unit/tenancy/` and `tests/unit/persistence/` passes unchanged; `ast-grep` for
   `$X.activity.id` in `rdf_persistence/persistence/` finds no read of the served id after
   `Transaction.__init__` other than the placement (RISK-1).
-- [ ] 1.5 Unit, events (PD-7), after 1.3. First, failing: `tests/unit/api/test_events_route.py`
+- [x] 1.5 Unit, events (PD-7), after 1.3. First, failing: `tests/unit/api/test_events_route.py`
   `test_a_follower_resumes_after_an_activity_iri_of_the_policy`: on the toy service under `P`, a
   follower with `Last-Event-ID` the placed IRI of an earlier commit receives the two later events
   once; with `urn:uuid:<that U>` it is reset. Accept: passes; `tests/unit/events/` passes unchanged.
-- [ ] 1.6 Unit, tenancy (PD-8, DEC-3), after 1.2; parallel to 1.4. First, failing:
+- [x] 1.6 Unit, tenancy (PD-8, DEC-3), after 1.2; parallel to 1.4. First, failing:
   `tests/unit/tenancy/test_iri_policy_guard.py`
   `test_a_changed_activity_template_refuses_start_up_naming_it`: started under the default, then
   under `P` → `IriPolicyChanged` naming `activity_template`. Then in
@@ -99,7 +99,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   `test_a_restored_tenant_under_an_activity_template_owns_its_activities` (after 1.4: dump under
   `P`, restore to a new id, every activity is `<new tenant>/activity/<same U>`). Accept: all pass;
   the comment in `tenant_dump.py` names both templates.
-- [ ] 1.7 Feature (issue acceptance), after 1.4 and 1.5: three scenarios in
+- [x] 1.7 Feature (issue acceptance), after 1.4 and 1.5: three scenarios in
   `tests/feature/iri_policy.feature`, steps in `tests/feature/test_iri_policy.py`: the default
   policy's activity is `urn:uuid:` and a UUID; under `P` a transition with a comment, a comment and a
   replace each record an activity under the tenant, and the transition list, the comment's thread
@@ -107,13 +107,13 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   Signed off 2026-11-25 as `features/iri_policy.feature` in this change: append those three
   scenarios verbatim (no wording change without a new sign-off), with their steps, in one commit. Lane: `make test-feature`.
   Accept: the three pass.
-- [ ] 1.7a Integration (RISK-1), after 1.4: a new `tests/integration/store/test_activity_iri_policy.py`
+- [x] 1.7a Integration (RISK-1), after 1.4: a new `tests/integration/store/test_activity_iri_policy.py`
   on Fuseki under `P`: IT-A1 a served commit records `t/activity/U` and `is_recorded` finds it;
   IT-A2 a second commit of a command with the same UUID is refused by the store's taken-IRI guard
   and writes nothing; IT-A3 `relayed_since(<placed IRI of the first>)` returns the later activity.
   Written by the builder, run by the lead in `make test-containers`. Accept: the three pass on
   Fuseki.
-- [ ] 1.8 Docs (PD-9): `user-manual/iri-policy.adoc`, `howto/event-driven.adoc`,
+- [x] 1.8 Docs (PD-9): `user-manual/iri-policy.adoc`, `howto/event-driven.adoc`,
   `partials/reference/public-api.adoc`, and the docstrings of `Served` (its stale `urn:uuid:`
   restore rationale), `Mapper.served` and `messagebus.command`. No new page. Accept: `make check-docs` passes; no page
   says an activity IRI is always `urn:uuid:`.
@@ -123,7 +123,7 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.6 · [ ] 1.4 · [ ] 1.5 · [ ] 1.7a · [ ] 1.7 · [ ] 1.8 · [ ] 1.9
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.6 · [x] 1.4 · [x] 1.5 · [x] 1.7a · [x] 1.7 · [x] 1.8 · [ ] 1.9
   (1.6's first three tests need only 1.2; its restore test needs 1.4; 1.4 and 1.5 may run in
   parallel after 1.3.)
 

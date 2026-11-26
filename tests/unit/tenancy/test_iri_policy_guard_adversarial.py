@@ -112,6 +112,20 @@ async def test_an_older_record_is_still_refused_for_a_policy_that_really_differs
         await guard_iri_policy(store, tenancy, settings_of(THIRTEEN))
 
 
+async def test_an_older_record_without_the_activity_template_is_the_default(store, tenancy):
+    older = Iris(settings_of(None)).effective_policy.model_dump_json(exclude={"activity_template"})
+    assert "activity_template" not in older, "the record is the old shape"
+    await plant(store, older)
+    await guard_iri_policy(store, tenancy, settings_of(None))
+    assert store.sent("update") == [], "the older record is read as it is, not rewritten"
+    with pytest.raises(IriPolicyChanged, match="activity_template"):
+        await guard_iri_policy(
+            store,
+            tenancy,
+            settings_of(IriPolicy(activity_template="{tenant}/activity/{id}")),
+        )
+
+
 @pytest.mark.parametrize("slot", ["tenant_template", "access_template", "principal_template"])
 async def test_a_template_set_to_none_is_the_default_template(store, tenancy, slot):
     await guard_iri_policy(store, tenancy, settings_of(None))

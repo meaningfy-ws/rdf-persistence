@@ -75,6 +75,15 @@ def test_a_part_set_in_one_policy_and_unset_in_the_other_is_one_difference():
     )
 
 
+def test_a_policy_recorded_before_the_activity_template_is_the_default():
+    recorded = IriPolicy.model_validate_json('{"meta_template": "{tenant}/meta"}')
+    made_effective = effective(recorded)
+    assert made_effective.activity_template == "urn:uuid:{id}", (
+        "a policy recorded without the slot has the default activity template"
+    )
+    assert made_effective == effective(None), "and equals the effective default policy"
+
+
 # Class: every base (the IRI is the base plus a fixed segment).
 BASE = "https://a.example/"
 

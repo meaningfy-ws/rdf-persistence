@@ -9,13 +9,15 @@ import logging
 from collections.abc import AsyncIterator
 
 import pytest
-from rdflib import RDF, URIRef
+from rdflib import RDF, Graph, Literal, URIRef
 
-from rdf_persistence.core.domain.exceptions import Conflict
+from rdf_persistence.core.domain.exceptions import Conflict, InvalidIri
 from rdf_persistence.iris.domain.layout import application_database_name
+from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Add, Remove, Replace
+from rdf_persistence.provenance.services.provenance import Served
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.tenancy.services.tenant_dump import dump, restore
 from rdf_persistence.testkit import FakeStore, assert_isomorphic
@@ -23,7 +25,8 @@ from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.dump_helpers import BASE_STAMPS, RESTORER, TOY_CHAINS, VIEW
 from tests.logs import attributes
 from tests.tenancy_world import CREATOR, make_world
-from tests.toy import ADA, BOB, BOOK_CLASS, SETTINGS, TENANT, template, toy_mapper
+from tests.toy import ADA, BOB, BOOK_CLASS, SETTINGS, TENANT, ShelveBooks, template, toy_mapper
+from tests.toy_service import ToyService
 from tests.unit.activity_helpers import (
     B1,
     B2,
@@ -424,3 +427,137 @@ async def test_tc40d_an_application_aggregate_is_recorded_in_the_application_pro
     )
     assert [type(a) for a in found] == [Add], "one add"
     assert events(found[0].generations)[0][0] == iri, "of the template"
+
+
+# -- activity-iri-policy PD-5, PD-6: the commit places its activity under the policy ----------------
+
+PLACED = "{tenant}/activity/{id}"
+UUID_OF_COMMAND = "5c0f5f4a-8d0a-4c1e-9d55-0e5bb1b6c002"
+COMMAND_ID = f"urn:uuid:{UUID_OF_COMMAND}"
+FOREIGN = f"https://foreign.example/x/activity/{UUID_OF_COMMAND}"
+OTHER_TENANT = "https://example.org/libraries/0a0a0a0a"
+
+
+def placing() -> Iris:
+    """The kit's ``Iris`` of the toy service under the activity template ``{tenant}/activity/{id}``."""
+    return ToyService(iri_policy=IriPolicy(activity_template=PLACED)).kit.iris
+
+
+async def all_iris(store: FakeStore) -> set[str]:
+    """Every IRI in any graph of the tenant database, as subject, predicate or object."""
+    text = "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH ?g { ?s ?p ?o } }"
+    graph = (await store.query(FAKE_DATABASE, text)).graph or Graph()
+    return {str(t) for triple in graph for t in triple if isinstance(t, URIRef)}
+
+
+def shelving(note: str = "top shelf") -> Served:
+    return toy_mapper().served(ShelveBooks(id=COMMAND_ID, shelf_note=note))
+
+
+async def test_a_commit_under_an_activity_template_records_its_activity_under_the_tenant(store):
+    placed = f"{TENANT}/activity/{UUID_OF_COMMAND}"
+    hook = Hook()
+    seen: list[bool] = []
+
+    async def on_commit(activity, session) -> None:
+        seen.append(await session.is_recorded(placed))
+        await hook(activity, session)
+
+    async with (
+        opened(store, iris=placing(), on_commit=on_commit) as session,
+        session.transaction(served=shelving()) as transaction,
+    ):
+        await transaction.add_graph(B1, book(B1))
+    stored = await stored_graph(store, PROVENANCE)
+    assert (await only_activity(store)).id == placed, "the activity is at the tenant's template"
+    assert not [i for i in await all_iris(store) if i.startswith("urn:uuid:")], (
+        "no provisional IRI in any graph of the tenant database"
+    )
+    assert [a.id for a, _ in hook.calls] == [placed], "on_commit sees the placed IRI"
+    assert seen == [True], "is_recorded sees the placed IRI when on_commit runs"
+    assert {*stored.subjects(None, Literal("top shelf"))} == {URIRef(placed)}, (
+        "the command's own triples are about the placed IRI"
+    )
+    named = {str(o) for _, _, o in stored.triples((None, v.PART_ACTIVITY, None))}
+    assert named == {placed}, "every generation names the placed IRI as its activity"
+
+
+async def test_every_invalidation_of_a_placed_activity_names_it(store):
+    placed = f"{TENANT}/activity/{UUID_OF_COMMAND}"
+    async with opened(store, iris=placing()) as session:
+        v1 = await session.add_graph(B1, book(B1))
+        async with session.transaction(served=shelving()) as transaction:
+            await transaction.replace_graph(B1, book(B1), v1)
+    activity = (await activities(store))[-1]
+    assert activity.id == placed, "the replace is the placed activity"
+    parts = [*(activity.generations or []), *(activity.invalidations or [])]
+    assert len(parts) == 2, "one generation and one invalidation"
+    assert {p.activity for p in parts} == {placed}, "each part names the placed IRI"
+
+
+async def test_a_commit_without_a_command_records_an_activity_under_the_template(store):
+    async with opened(store, iris=placing()) as session:
+        await session.add_graph(B1, book(B1))
+    activity = await only_activity(store)
+    assert activity.id.startswith(f"{TENANT}/activity/"), "placed under the tenant"
+    assert placing().activity_uuid(activity.id), "with a UUID"
+    assert {p.activity for p in activity.generations} == {activity.id}, "the parts name it"
+
+
+async def test_a_second_commit_of_the_same_served_command_is_refused_as_today(store):
+    served = shelving()
+    async with opened(store, iris=placing()) as session:
+        v1 = await session.add_graph(B1, book(B1))
+        async with session.transaction(served=served) as transaction:
+            v2 = await transaction.replace_graph(B1, book(B1), v1)
+        with pytest.raises(RuntimeError, match=COMMAND_ID):
+            async with session.transaction(served=served) as transaction:
+                await transaction.replace_graph(B1, book(B1), v2)
+        with pytest.raises(Conflict, match=f"{TENANT}/activity/{UUID_OF_COMMAND}"):
+            async with session.transaction(served=shelving("again")) as transaction:
+                await transaction.replace_graph(B1, book(B1), v2)
+    assert served.activity.id == COMMAND_ID, "the served command is never changed"
+
+
+async def test_session_activity_iri_is_what_the_commit_records(store):
+    async with opened(store, iris=placing()) as session:
+        expected = session.activity_iri(COMMAND_ID)
+        async with session.transaction(served=shelving()) as transaction:
+            await transaction.add_graph(B1, book(B1))
+        assert expected == f"{TENANT}/activity/{UUID_OF_COMMAND}", "the template's IRI"
+        assert (await only_activity(store)).id == expected, "what the commit recorded"
+        assert session.activity_iri(expected) == expected, "a placed IRI stays itself"
+
+
+@pytest.mark.parametrize(
+    "given",
+    [
+        FOREIGN,
+        f"{OTHER_TENANT}/activity/{UUID_OF_COMMAND}",
+        "https://example.org/not-an-activity",
+    ],
+    ids=["foreign", "another-tenants-placed-iri", "no-activity-iri"],
+)
+async def test_session_activity_iri_refuses_a_foreign_activity(store, given):
+    iris = placing()
+    assert iris.activity_uuid(FOREIGN) == UUID_OF_COMMAND, "activity_uuid alone accepts it"
+    async with opened(store, iris=iris) as session:
+        with pytest.raises(ValueError, match="activity"):
+            session.activity_iri(given)
+
+
+async def test_without_a_template_the_activity_is_the_command_id(store):
+    async with opened(store) as session:
+        assert session.activity_iri(COMMAND_ID) == COMMAND_ID, "the default policy changes nothing"
+        async with session.transaction(served=shelving()) as transaction:
+            await transaction.add_graph(B1, book(B1))
+    assert (await only_activity(store)).id == COMMAND_ID, "recorded as the command's id"
+
+
+async def test_a_hand_made_aggregate_at_an_activity_iri_is_refused(store):
+    iri = f"{TENANT}/activity/{UUID_OF_COMMAND}"
+    async with opened(store, iris=placing()) as session:
+        sent = len(store.sent("update"))
+        with pytest.raises(InvalidIri):
+            await session.add_graph(iri, book(iri))
+    assert len(store.sent("update")) == sent, "nothing written"

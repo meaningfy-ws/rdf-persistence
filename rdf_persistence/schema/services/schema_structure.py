@@ -468,6 +468,24 @@ def iri_types(view: SchemaView) -> tuple[frozenset[str], frozenset[str]]:
     return frozenset(map(iri_type_of, roots)), frozenset(map(iri_type_of, parts))
 
 
+def root_paths(view: SchemaView) -> list[tuple[str, str]]:
+    """``(type, rp_path)`` of each concrete aggregate root with a path in the tenant and application databases, sorted.
+
+    These are the roots whose IRIs the policy mints (``Iris.require_roots_apart`` checks them); a root of
+    the system database is minted by the access template, and one with no path has no segment to place.
+    """
+    roots = [
+        root
+        for kind in (DatabaseKind.TENANT, DatabaseKind.APPLICATION)
+        for root in database_roots(view, kind)
+    ]
+    return sorted(
+        (iri_type_of(root), path)
+        for root in roots
+        if (path := annotation_text(root, RpAnnotation.RP_PATH))
+    )
+
+
 def inherits_from_metamodel(view: SchemaView, cls: ClassDefinition, own: set[str]) -> bool:
     """True when an ``is_a`` ancestor of ``cls`` is not the application's own (PD-23 exempts it)."""
     return any(name not in own for name in view.class_ancestors(cls.name, mixins=False)[1:])

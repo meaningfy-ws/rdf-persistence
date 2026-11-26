@@ -206,6 +206,16 @@ async def record_without_application_template(store: FakeStore, tenancy: Tenancy
     await store.put_graph(tenancy.system_database, RECORD_GRAPH, record)
 
 
+ACTIVITY_UNDER_TENANT = IriPolicy(activity_template="{tenant}/activity/{id}")
+
+
+async def test_a_changed_activity_template_refuses_start_up_naming_it(store, tenancy):
+    await guard_iri_policy(store, tenancy, settings_of(None))
+    with pytest.raises(IriPolicyChanged, match="activity_template"):
+        await guard_iri_policy(store, tenancy, settings_of(ACTIVITY_UNDER_TENANT))
+    assert len(store.sent("update")) == 1, "the recorded default is not overwritten"
+
+
 async def test_tc48_a_record_without_the_application_template_is_the_default_policy(store, tenancy):
     await record_without_application_template(store, tenancy)
     await guard_iri_policy(store, tenancy, settings_of(None))

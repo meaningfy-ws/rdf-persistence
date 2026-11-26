@@ -243,6 +243,40 @@ Idempotency: placement is a pure function of (policy, tenant, UUID); a retried c
   of a placed activity equal to the old id is rewritten, and the activity no longer reads as one.
   Aggregates with UUID object ids carry the same exposure today. Accepted; not this EPIC's to fix.
 
+## Delivery decisions
+
+- **D-1** (2026-11-25, lead): the machine is shared with other sessions' suites (load 20–30), and
+  `make test-fast` runs were killed from outside by SIGTERM (exit 143) three times. A task whose
+  `make test-fast` / `make test-changed` is killed twice reports its narrow checks instead (the
+  test folders its change reaches, plus `make check-quality`). The full suite is proved once, by
+  the lead's `make check-all` before the PR, which is not skipped. Task 1.2 is the first case.
+- **D-2** (2026-11-25, lead): `partials/reference/public-api.adoc` is generated from docstring
+  first lines (`make docs-reference`) and lists top-level names only, so PD-9's "the `Iris`
+  methods and `Session.activity_iri`" cannot go there. They are named in
+  `user-manual/iri-policy.adoc` instead; the partial was regenerated after the `command`
+  docstring changed.
+- **D-3** (2026-11-25, lead; under the floor): PD-3a (iii) checks glue on the activity template
+  with `{tenant}` already written as the tenant template, so a glued `tenant_template` is also
+  reported under `activity_template`. It fires only for a non-default activity template; the
+  message still names the glued text. Accepted as is.
+- **D-4** (2026-11-25, lead): D-1 is retired. With the test queue of `agent-test-control`, the
+  seed on the rebased branch (10306 passed, 354 s), the builder's `make test-changed` of 1.7
+  (fallback `make test-fast`, 10060 passed, 243 s) and the stage's `make check-all`
+  (unit 8488, feature 102, generator 1780 passed; 37.5 min wall, of which about 29 min queued
+  behind other sessions) and `make test-containers` (370 passed, 8.6 min) all finished; none was
+  killed from outside. Tasks prove themselves with their normal gate again.
+- **D-5** (2026-11-25, lead): the stage review (L2+L3, one pass) found no Critical. Three Warnings
+  are fixed in one fix pass, because each leaves a scenario or an acceptance unproven:
+  R-W1 the feature step "the comment's thread names the comment's activity" accepts an activity
+  outside the tenant (`.*` prefix); R-W2 `test_kit_activity_template.py` asserts `"book" in` a
+  message that always holds it, so the class name is not proven; R-W3
+  `howto/event-driven.adoc` and `architecture/data-flows.adoc` still describe an activity id as
+  `urn:uuid:` only (task 1.8's acceptance). Under the floor, not fixed: the dead `getattr` and
+  rebinding in the feature test's `Run`; `_WORD` duplicated in `layout.py` and `tenant_move.py`;
+  the "provisional or placed" check written in `Session.activity_iri`, `_placed_activity` and
+  `event_stream`; no test of an activity committed through an application-scoped session;
+  `is_aggregate_graph`'s `is_activity` check that never matches a graph IRI.
+
 ## Spec deltas
 
 `specs/rp-iri-policy/spec.md`: MODIFIED "Without a policy, IRIs are today's" (adds the activity);

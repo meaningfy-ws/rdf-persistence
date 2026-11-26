@@ -36,6 +36,9 @@
             "annotate": "http://www.w3.org/ns/odrl/2/annotate"
          }
       },
+      "activity_template": {
+         "@id": "activityTemplate"
+      },
       "aggregate_template": {
          "@id": "aggregateTemplate"
       },

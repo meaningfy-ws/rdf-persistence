@@ -85,6 +85,7 @@ from rdf_persistence.provenance.services.provenance import activity_class_named
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import (
     iri_types,
+    root_paths,
     tenant_access_class,
 )
 from rdf_persistence.schema.services.vocabulary import TOOLKIT_MIGRATIONS, metamodel
@@ -182,6 +183,7 @@ class ServiceKit:
         self.identity = identity
         self.verifier = verifier
         self.iris = Iris(settings, *iri_types(view), id_source=id_source)
+        self.iris.require_roots_apart(root_paths(view))
         self.rules = rules.with_iris(self.iris)
         self.settings = settings
         mounted = prefix.strip("/")

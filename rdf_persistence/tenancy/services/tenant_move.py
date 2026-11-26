@@ -11,14 +11,12 @@ from rdflib.graph import DATASET_DEFAULT_GRAPH_ID
 from rdflib.term import Node
 
 from rdf_persistence.core.domain.exceptions import InvalidBody
-from rdf_persistence.iris.domain.layout import stamps_graph_iri
+from rdf_persistence.iris.domain.layout import ID_GLUED_AFTER, ID_GLUED_BEFORE, stamps_graph_iri
 from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy
 from rdf_persistence.iris.services.iris import Iris
 
 # A character that would make the id part of a longer word; the ids of a policy are drawn from [a-z0-9].
 _WORD = "[a-z0-9]"
-_ID_GLUED_BEFORE = re.compile(rf"(?:{_WORD}|\}})\{{tenant_id\}}")
-_ID_GLUED_AFTER = re.compile(rf"\{{tenant(?:_id)?\}}(?:{_WORD}|\{{)")
 
 
 def rewrite(dataset: Dataset, base: str, old_id: str, new_id: str) -> Dataset:
@@ -60,7 +58,7 @@ def glued_templates(policy: IriPolicy) -> list[str]:
         for name, template in policy
         if name.endswith("_template")
         and template
-        and (_ID_GLUED_BEFORE.search(template) or _ID_GLUED_AFTER.search(template))
+        and (ID_GLUED_BEFORE.search(template) or ID_GLUED_AFTER.search(template))
     ]
 
 

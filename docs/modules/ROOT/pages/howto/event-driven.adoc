@@ -24,7 +24,15 @@ is the toy library: a librarian approves a book and shelves books.
 A *command* is a request, written as a class of your model: a subclass of the toolkit's `Activity`.
 Its slots are the request's data (`used_resource`, the book it is about; `shelf_note`, a note). You
 build one with `command(ShelveBooks, used_resource=book, shelf_note="top shelf")`, which gives it
-a fresh id of the form `urn:uuid:…`.
+a provisional id of the form `urn:uuid:…`.
+
+The id is provisional because the commit that serves the command places it under the
+xref:user-manual/iri-policy.adoc#activity-iris[IRI policy]. Under the default policy the activity
+keeps the id as it is. Under an `activity_template` such as `{tenant}/activity/{id}` the record, the
+observers and the event stream get `<tenant>/activity/<uuid>`, with the same UUID. A handler that
+stores the id (in an aggregate, or in a slot of a later command) asks the session for the placed
+one, `work.session.activity_iri(cmd.id)`, which raises `ValueError` for an id that is no activity
+id of this tenant. The logs of the bus show the provisional id; the record holds the placed one.
 
 A *handler* is an async function that carries a command out. It gets the command and a `Work`
 (the session, the caller's collaboration, a unit of work). One command goes to one handler: the
@@ -657,8 +665,10 @@ data: {"id":"urn:uuid:3f2c0b6e-5a1d-4c7e-9b8a-1d2e3f4a5b6c",
   broker's retention. An id the server does not know, one from before 0.4.0, or one older
   than the window gets one `event: reset` with an empty `data:` line (an `EventSource`-style client
   does dispatch it). The client reloads what it shows, then keeps reading. A `Last-Event-ID` that
-  is not an activity id (not `urn:uuid:` and a UUID) is treated as unknown: one `reset`, then live
-  events; it is not an error.
+  is not an activity id is treated as unknown: one `reset`, then live events; it is not an error.
+  An activity id is the activity IRI the policy's `activity_template` writes (see
+  xref:user-manual/iri-policy.adoc#activity-iris[IRI policy]), `urn:uuid:` and a UUID by default; under another template
+  only that form resumes.
 * *A stream lasts 5 minutes.* The server ends it then (`sse.max_lifetime_seconds` of
   the toolkit settings, the `sse` argument of `add_events_route`), so a token that expired or was revoked is not outlived. The client
   reconnects with a fresh token and its last `Last-Event-ID`, and misses nothing. The stream ends

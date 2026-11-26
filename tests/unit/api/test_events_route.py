@@ -16,6 +16,7 @@ from rdf_persistence.api.entrypoints.responses import CONTEXT_REL
 from rdf_persistence.core.domain.media import PROBLEM_JSON
 from rdf_persistence.events.services.event_hub import EventHub
 from rdf_persistence.events.services.generated.settings.rp_events_settings import EventSettings
+from rdf_persistence.iris.services.generated.rp_iris_services import IriPolicy
 from rdf_persistence.provenance.domain.generated.rp_provenance import Activity, Generation, Replace
 from rdf_persistence.testkit import open_event_stream
 from tests.events_follow import (
@@ -292,6 +293,39 @@ async def test_a_resume_does_not_send_what_the_caller_may_not_read(
     assert [g.entity for g in Replace.model_validate_json(resumed.data).generations] == [
         emma_iri
     ], "the sentinel replaced the visible book"
+
+
+@pytest.fixture
+async def under_policy() -> AsyncIterator[Scene]:
+    """A scene on a service whose activities are placed under the tenant (activity-iri-policy PD-7)."""
+    toy = ToyService(iri_policy=IriPolicy(activity_template="{tenant}/activity/{id}"))
+    async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
+        scene = await Scene.set_up(toy, http)
+        await toy.kit.relay.run_once()
+        mount(toy, "/fast")
+        yield scene
+
+
+async def test_a_follower_resumes_after_an_activity_iri_of_the_policy(
+    under_policy: Scene, streams: set[asyncio.Task]
+) -> None:  # PD-7, PD-11
+    scene = under_policy
+    listener = opening(streams, scene, events=3)
+    await listening(scene.service.kit.hub)
+    etag = scene.book_etag
+    for label in ("One", "Two", "Three"):
+        etag = await replace(scene, scene.book, etag, label)
+    a1, a2, a3 = [e.id for e in (await listener).events]
+    assert a1.startswith(f"{scene.tenant_iri}/activity/"), "the activity sits under the tenant"
+    resumed = opening(streams, scene, events=2, **{"Last-Event-ID": a1})
+    assert [e.id for e in (await resumed).events] == [a2, a3], (
+        "the two later events, once each, in order"
+    )
+    stale = opening(
+        streams, scene, events=1, **{"Last-Event-ID": "urn:uuid:" + a1.rsplit("/", 1)[1]}
+    )
+    [reset] = (await stale).events
+    assert reset.event == "reset", "a urn:uuid id under the policy is reset"
 
 
 async def test_an_id_that_cannot_anchor_a_resume_sends_one_reset_then_the_live_events(

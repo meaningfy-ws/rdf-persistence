@@ -7,7 +7,7 @@ of this can be in the domain layer.
 
 import re
 import secrets
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from functools import cached_property
 from typing import Any
 from urllib.parse import quote
@@ -20,9 +20,12 @@ from rdf_persistence.iris.domain.layout import (
     _SEGMENT,
     APPLICATION_ID,
     GRAPH_SUFFIX,
+    ID_GLUED_AFTER,
+    ID_GLUED_BEFORE,
     LAYOUT_WORDS,
     LOADED_GRAPH_TYPE,
     _segment,
+    is_canonical_uuid,
     tenant_name_prefix,
     toolkit_principal_iri,
 )
@@ -40,6 +43,7 @@ from rdf_persistence.iris.services.generated.templates.rp_iris_templates import 
 # The template placeholders and regex group names the matching code tests for.
 _OPEN_BRACE = "{"
 _TYPE_PLACEHOLDER = "{type}"
+_RP_PATH_PLACEHOLDER = "{rp_path}"
 _TENANT_ID_PLACEHOLDER = "{tenant_id}"
 _DEPLOYMENT_PLACEHOLDER = "{deployment}"
 _TENANT_GROUP = "tenant"
@@ -96,6 +100,11 @@ _UUID4 = IdSpec(kind=IdKind.UUID4)
 _TEMPLATE_SLOTS = tuple(name for name in IriPolicy.model_fields if name.endswith("_template"))
 _DEFAULT_POLICY = IriPolicy()
 _ID_SPECS = ("tenant_id", "object_id")
+_ACTIVITY_SLOT = "activity_template"
+_SCHEME = re.compile(r"[a-z][a-z0-9+.-]*:")
+_PROVISIONAL_PREFIX = "urn:uuid:"
+# The UUID a probe aggregate or activity is minted with: a UUID that no random draw gives.
+_PROBE_UUID = "00000000-0000-4000-8000-000000000000"
 
 
 def _canonical_spec(spec: IdSpec | None) -> IdSpec:
@@ -228,6 +237,7 @@ class Iris:
         self._require_application_iri()
         self._require_distinct_graphs()
         self._require_application_apart()
+        self._require_activity_apart()
 
     def __setattr__(self, name: str, value: object) -> None:
         raise AttributeError(f"Iris is frozen: cannot set {name!r}")
@@ -287,22 +297,31 @@ class Iris:
             self._fixed.deployment,
             APPLICATION_ID,
         }
-        for template in _templates(self._policy).values():
+        for name, template in _templates(self._policy).items():
+            if name == _ACTIVITY_SLOT and template == getattr(_DEFAULT_POLICY, name):
+                continue  # the default's words (urn, uuid) are no reason to hide a tenant or object id (PD-4)
             literals = (piece for piece in _VARIABLE.split(template) if piece[:1] != _OPEN_BRACE)
             words.update(word for literal in literals for word in _WORD.findall(literal))
         return frozenset(words - {""})
 
     def _pattern(
-        self, template: str, types: frozenset[str] | str = frozenset(), application: bool = False
+        self,
+        template: str,
+        types: frozenset[str] | str = frozenset(),
+        application: bool = False,
+        id_pattern: str | None = None,
     ) -> re.Pattern[str]:
-        """``template`` as a regex; with ``application`` the ``{tenant_id}`` may also be ``app`` (only the application's aggregates)."""
+        """``template`` as a regex; with ``application`` the ``{tenant_id}`` may also be ``app`` (only the application's aggregates).
+
+        ``id_pattern`` replaces the pattern of ``{id}`` (the object id spec's) when given.
+        """
         alternation = types if isinstance(types, str) else _alternation(types)
         tenant_id = _id_pattern(self._tenant_spec)
         groups = {
             "tenant": _ANY,
             "root": _ANY,
             "tenant_id": f"(?:{tenant_id}|{APPLICATION_ID})" if application else tenant_id,
-            "id": _id_pattern(self._object_spec),
+            "id": id_pattern or _id_pattern(self._object_spec),
             "rp_path": _SEGMENT.pattern,
             "type": alternation,
         }
@@ -326,6 +345,12 @@ class Iris:
     def _loaded_re(self) -> re.Pattern[str]:
         return self._pattern(
             self._template("loaded_graph_template"), re.escape(LOADED_GRAPH_TYPE), application=True
+        )
+
+    @cached_property
+    def _activity_re(self) -> re.Pattern[str]:
+        return self._pattern(
+            self._template(_ACTIVITY_SLOT), application=True, id_pattern=_UUID_PATTERN
         )
 
     @cached_property
@@ -401,6 +426,71 @@ class Iris:
             self.is_aggregate(application, tenant) or self.is_loaded_graph(application, tenant)
         ):
             raise InvalidIri(f"{refusal}: the tenant {str(tenant)!r} is one of its aggregates")
+
+    def _require_activity_apart(self) -> None:
+        """Refuse an activity template a restore could not move, or that reads as an aggregate (activity-iri-policy PD-3a).
+
+        The default ``urn:uuid:{id}`` is today's IRI and is never checked. Any other template is checked on
+        its text, never on a drawn id: with ``{tenant}`` written as the tenant template and the settings'
+        variables filled, it must have a scheme, start with the base and not glue the tenant id to a
+        neighbour; and it may not be the aggregate template itself when that names no type or path and the
+        object ids are UUIDs.
+
+        Raises:
+            InvalidIri: the ``activity_template`` is refused; the message names it and the reason.
+        """
+        template = self._template(_ACTIVITY_SLOT)
+        if template == getattr(_DEFAULT_POLICY, _ACTIVITY_SLOT):
+            return
+        effective = self.effective_policy
+        written = str(effective.activity_template).replace(
+            "{tenant}", str(effective.tenant_template)
+        )
+        refusal = f"activity_template {template!r}"
+        if not _SCHEME.match(written):
+            raise InvalidIri(f"{refusal} has no scheme: {written!r}")
+        if not written.startswith(self.settings.base):
+            raise InvalidIri(f"{refusal} is outside the base, so a restore could not move it")
+        if ID_GLUED_BEFORE.search(written) or ID_GLUED_AFTER.search(written):
+            raise InvalidIri(f"{refusal} glues the tenant id to its neighbour: {written!r}")
+        aggregate = self._template("aggregate_template")
+        if (
+            _TYPE_PLACEHOLDER not in aggregate
+            and _RP_PATH_PLACEHOLDER not in aggregate
+            and self._object_spec.kind == IdKind.UUID4
+        ):
+            probe = self._fill(aggregate, tenant=str(self.application), id=_PROBE_UUID)
+            if self.is_activity(None, str(probe)):
+                raise InvalidIri(f"{refusal} reads an aggregate as an activity: {str(probe)!r}")
+
+    def require_roots_apart(self, roots: Iterable[tuple[str, str]]) -> None:
+        """Refuse an activity template that the IRI of a schema root falls inside (activity-iri-policy PD-3c).
+
+        ``roots`` are the (``{type}``, ``rp_path``) of the concrete aggregate roots (``schema_structure.root_paths``).
+        Each is minted for the application with a UUID, as a UUID object id would be; random ids never read as
+        one, so they are never refused. The default activity template checks nothing.
+
+        Raises:
+            InvalidIri: the IRI of a root reads as an activity; the message names the type and ``activity_template``.
+        """
+        if (
+            self._template(_ACTIVITY_SLOT) == getattr(_DEFAULT_POLICY, _ACTIVITY_SLOT)
+            or self._object_spec.kind != IdKind.UUID4
+        ):
+            return
+        template = self._template("aggregate_template")
+        for cls_type, rp_path in roots:
+            probe = self._fill(
+                template,
+                tenant=str(self.application),
+                type=cls_type,
+                rp_path=_segment(rp_path),
+                id=_PROBE_UUID,
+            )
+            if self.is_activity(None, str(probe)):
+                raise InvalidIri(
+                    f"the IRIs of {cls_type!r} fall inside the activity_template: {str(probe)!r}"
+                )
 
     def _application_probes(self) -> list[str]:
         """One aggregate, part and loaded graph of the application per type the templates write (ids from ``draw_id``, like ``_probe_tenant``)."""
@@ -541,6 +631,20 @@ class Iris:
             id=self._new_id(self._object_spec),
         )
 
+    def activity(self, tenant: str, activity_uuid: str) -> URIRef:
+        """The IRI of the activity whose UUID is ``activity_uuid``, in ``tenant`` (activity-iri-policy PD-2).
+
+        ``{tenant_id}`` is read from the tenant only when the template holds it: the default and the
+        ``{tenant}`` templates never parse the tenant IRI.
+
+        Raises:
+            ValueError: ``activity_uuid`` is not a canonical UUID.
+            InvalidIri: the template holds ``{tenant_id}`` and ``tenant`` is no tenant of the policy.
+        """
+        if not is_canonical_uuid(activity_uuid):
+            raise ValueError(f"an activity id is a canonical UUID: {activity_uuid!r}")
+        return self._fill(self._template(_ACTIVITY_SLOT), tenant=str(tenant), id=activity_uuid)
+
     def principal(self, issuer: str, sub: str) -> URIRef:
         """The IRI of the person or service account a token's ``sub`` names; ``sub`` stays in one segment."""
         return URIRef(
@@ -571,13 +675,42 @@ class Iris:
             return False
         return parts.tenant_id is None or parts.tenant_id == self._id_of(tenant)
 
+    def is_activity(self, tenant: str | None, iri: str) -> bool:
+        """True when ``iri`` is what the activity template mints for ``tenant`` (``None``: for any tenant).
+
+        The default template reads ``urn:uuid:`` and a canonical UUID, whatever the tenant.
+        """
+        tenant = None if tenant is None else str(tenant)
+        found = self._activity_re.fullmatch(str(iri))
+        return found is not None and self._belongs(_parts(found), tenant)
+
+    def activity_uuid(self, iri: str) -> str:
+        """The UUID of a ``urn:uuid:`` activity id, or of an IRI ``is_activity`` accepts for some tenant.
+
+        Under a ``{tenant}`` template the tenant reads any text: a caller that holds a tenant checks
+        ``is_activity(tenant, iri)`` first.
+
+        Raises:
+            ValueError: ``iri`` is neither.
+        """
+        text = str(iri)
+        provisional = text.removeprefix(_PROVISIONAL_PREFIX)
+        if provisional != text and is_canonical_uuid(provisional):
+            return provisional
+        found = self._activity_re.fullmatch(text)
+        if found is not None and self._belongs(_parts(found), None):
+            return str(_parts(found).id)
+        raise ValueError(f"not an activity id of this policy: {text!r}")
+
     def is_aggregate(self, tenant: str, iri: str) -> bool:
         """True for what the toolkit mints as an aggregate of ``tenant``, or its root or access record.
 
         The application has no root object and no access record: for it, only an aggregate.
-        Anything else could alias another graph.
+        Anything else could alias another graph, and an activity IRI is never an aggregate.
         """
         tenant, iri = str(tenant), str(iri)  # a URIRef never equals the str of the same text
+        if self.is_activity(tenant, iri):
+            return False
         if tenant != str(self.application) and iri in (tenant, str(self.access(tenant))):
             return True
         found = self._aggregate_re.fullmatch(iri)
@@ -588,6 +721,8 @@ class Iris:
 
         It does not check the tenant: the IRI comes from the tenant's own read of its referrers.
         """
+        if self.is_activity(None, iri):
+            return None
         found = self._aggregate_re.fullmatch(str(iri))
         return None if found is None else _parts(found).id
 
@@ -596,7 +731,7 @@ class Iris:
         tenant = None if tenant is None else str(tenant)
         root = None if root is None else str(root)
         found = self._loaded_re.fullmatch(str(iri))
-        if found is None:
+        if found is None or self.is_activity(tenant, iri):
             return False
         parts = _parts(found)
         if not self._belongs(parts, tenant):

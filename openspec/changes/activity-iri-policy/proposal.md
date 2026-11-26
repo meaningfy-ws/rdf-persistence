@@ -88,12 +88,19 @@ of a tenant or could not move with a restored tenant.
 
 - `IriPolicy` gains `activity_template` (LinkML schema, regenerated models, OpenAPI component,
   TypeScript type).
-- `Iris` gains `activity(tenant, uuid)` and `is_activity(tenant, iri)`, and refuses the policies of
-  DEC-4 when built.
+- `Iris` gains `activity(tenant, uuid)`, `is_activity(tenant, iri)` and `activity_uuid(iri)`, and
+  refuses the policies of DEC-4 when built; an activity IRI is no aggregate or loaded graph
+  (PD-3b), and a schema root minted inside the activity template is refused (PD-3c, also when the
+  kit starts).
 - The session records each activity under the policy (DEC-2); `Session.activity_iri(id)` is new.
 - The event stream checks `Last-Event-ID` with the policy (DEC-6).
 - The start-up guard and the dump manifest check name `activity_template` when it changed (DEC-3).
-- Docs: `user-manual/iri-policy.adoc`, `howto/event-driven.adoc`, the public API partial.
+- Docs: `user-manual/iri-policy.adoc`, `howto/event-driven.adoc`, the docstrings of `Served`,
+  `Mapper.served` and `messagebus.command`. The public API partial lists top-level names only, so
+  the `Iris` methods and `Session.activity_iri` are named in the user manual instead (D-2); the
+  partial was only regenerated.
+
+Delivered in one PR (stage 1), as shaped; nothing the shape promised was dropped.
 
 ## Capabilities
 
@@ -112,5 +119,9 @@ None.
 `rdf_persistence/model/technical/iris/rp_iris_services.yaml` and its generated packages;
 `iris/services/iris.py`; `persistence/services/session.py` (`Transaction`);
 `provenance/services/provenance.py` (`completed` takes the activity IRI);
-`events/services/event_stream.py` and `api/entrypoints/sse.py`; docs. No consumer code changes
-under the default policy. Serves: issue #197.
+`events/services/event_stream.py` and `api/entrypoints/sse.py`; as built, also
+`iris/domain/layout.py` (the glue patterns moved from `tenancy/services/tenant_move.py`, PD-3a),
+`schema/services/schema_structure.py` and `api/entrypoints/kit.py` (PD-3c),
+`persistence/services/mapper.py`, `messaging/services/messagebus.py` and
+`tenancy/services/tenant_dump.py` (docstrings and comments); docs. No consumer code changes under
+the default policy. Serves: issue #197.

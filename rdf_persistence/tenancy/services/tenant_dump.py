@@ -381,7 +381,7 @@ def _check_manifest(
             f"the dump has format version {manifest.format_version}, this service reads {FORMAT_VERSION}"
         )
     _check_schema(manifest, view, chains)
-    # an older dump has no application_template: it reads as the default, as a recorded policy does (PD-11)
+    # an older dump has no application_template or activity_template: each reads as the default, as a recorded policy does (PD-11, PD-8)
     dumped_policy = effective_policy(manifest.iri_policy, iris.settings)
     if differing := policy_differences(dumped_policy, iris.effective_policy):
         raise InvalidBody(

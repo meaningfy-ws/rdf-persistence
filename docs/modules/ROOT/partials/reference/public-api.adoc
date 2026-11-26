@@ -21,7 +21,7 @@
 |`bootstrap` |function |A bus with the toolkit's ``Transition``, ``PostComment`` and ``PostReply`` handlers (each unless ``commands`` names its class; there is none for ``DeleteFile``) and the handlers and observers given, each with the ``dependencies`` its parameters name bound (PD-14).
 |`CallerAccess` |class |What the access check needs to know about one caller in one tenant: the tenant's state, and the grants and prohibitions of the access record that name the caller.
 |`Collaboration` |class |What a caller may ask of a tenant beyond one aggregate at a time.
-|`command` |function |A command of ``cls`` with a fresh ``urn:uuid:`` id.
+|`command` |function |A command of ``cls`` with a provisional ``urn:uuid:`` id.
 |`Comment` |class |A remark on an aggregate, or a reply to another remark.
 |`CommitMarker` |class |The registry marker of one transaction's commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written.
 |`CommitTooLarge` |class |A unit of work holds more roots than its ``max_roots``; commit fewer, or in batches.

@@ -173,7 +173,8 @@ class Mapper:
         ``prov:Activity``.
 
         Raises:
-            ValueError: ``command`` is no activity, or its id is not a ``urn:uuid:`` IRI.
+            ValueError: ``command`` is no activity, or its id is not the provisional ``urn:uuid:``
+                IRI that ``command()`` gives (an id already placed under a policy is refused).
         """
         if (name := self._schema_names.get(type(command).__name__)) is None:
             raise ValueError(f"{type(command).__name__} is not a class of the schema")

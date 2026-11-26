@@ -756,7 +756,8 @@ its class named a workflow).
   (`<workflow id>/accepted`). `Transaction._allow_state` was called first, so the write guards
   accept this one state (<<commit>>, _Write guards_ and
   <<private-pieces,the four private pieces>>).
-. *Record the activity `R`*, a `Transition` with an id of the form `urn:uuid:…`, as the served
+. *Record the activity `R`*, a `Transition` with a provisional id of the form `urn:uuid:…` (the recorded activity's IRI
+  follows the policy's activity template, see xref:user-manual/iri-policy.adoc#activity-iris[IRI policy]), as the served
   activity of the same transaction: the aggregate (`used_resource`), the state left and the state
   entered, the comment's IRI if any, and, filled by the session as for every commit, the start,
   the end and the principal. Its parts are one invalidation and one generation of `B` (the old
