@@ -53,17 +53,17 @@ LIBRARY_LANE = $(UNIT_LANE) --ignore=$(TEST_PATH)/generator
 # (tests/unit/tooling/test_lanes.py checks both).
 #
 # The heavy lanes queue on the machine and size their workers there (agent-test-control PD-2, PD-3):
-# `-n @workers` is replaced by tests/queue.py once it holds the lock; PYTEST_N=<n> fixes the count.
+# `-n @workers` is replaced by the testkit's run_queue once it holds the lock; PYTEST_N=<n> fixes the count.
 # CI runners have no contention: they run plain pytest and count the workers when a lane needs them.
 ifdef CI
 PYTEST = uv run pytest
 SEED_RUN = uv run
 # Recursive, so only a target that runs workers counts them; no uv (a lint-only job) leaves it empty
 # and xdist decides (test-control-testkit PD-8).
-PYTEST_N ?= $(shell uv run --no-sync python -m tests.queue --workers 2>/dev/null)
+PYTEST_N ?= $(shell uv run --no-sync python -m rdf_persistence.testkit.run_queue --workers 2>/dev/null)
 else
-PYTEST = uv run python -m tests.queue -- pytest
-SEED_RUN = uv run python -m tests.queue --
+PYTEST = uv run python -m rdf_persistence.testkit.run_queue -- pytest
+SEED_RUN = uv run python -m rdf_persistence.testkit.run_queue --
 endif
 PARALLEL       = -n $(or $(PYTEST_N),$(if $(CI),auto,@workers)) --dist loadgroup
 NOT_QUARANTINE = and not quarantine
@@ -287,9 +287,9 @@ test-changed: ## Run the tests of the files changed against BASE (default develo
 
 test-seed: ## The lead's: record the test selection data of this worktree (slow tests included, queued), then swap it in
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Seeding the test selection data$(END_BUILD_PRINT)"
-	@ TEST_QUEUE_LABEL=$@ $(SEED_RUN) python -m tests.testmon_data seed -- pytest $(TEST_PATH) $(UNIT_LANE) -m "(unit or feature) $(NOT_QUARANTINE)" --testmon --testmon-forceselect $(PARALLEL) -p no:randomly
+	@ TEST_QUEUE_LABEL=$@ $(SEED_RUN) python -m rdf_persistence.testkit.selection_data seed -- pytest $(TEST_PATH) $(UNIT_LANE) -m "(unit or feature) $(NOT_QUARANTINE)" --testmon --testmon-forceselect $(PARALLEL) -p no:randomly
 
-# The seed run records into its own file; `tests.testmon_data seed` cleans the earlier files, runs
+# The seed run records into its own file; `selection_data seed` cleans the earlier files, runs
 # pytest and swaps the file over .testmondata, all inside the queue (PD-7 of agent-test-control
 # and test-control-testkit).
 test-seed: export TESTMON_DATAFILE = .testmondata.seed

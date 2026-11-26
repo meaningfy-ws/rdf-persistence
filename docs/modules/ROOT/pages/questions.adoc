@@ -181,6 +181,11 @@ test suite. See xref:user-manual/generated-classes.adoc#guard[step 6] and
 xref:user-manual/test.adoc[step 13]. To follow a tenant's event stream in a test, use
 `open_event_stream`; see xref:user-manual/test.adoc#event-stream[Follow a tenant's event stream].
 
+*How do I queue and select my project's tests with the testkit?*::
+Run your tests through `rdf_persistence.testkit.run_queue`, which queues heavy runs and sizes the
+workers, and record the selection data with `rdf_persistence.testkit.selection_data seed`. See
+xref:user-manual/test.adoc#test-control[Test control for your project].
+
 == Using a feature
 
 The guides are listed by capability in xref:howto/index.adoc[How-to guides].

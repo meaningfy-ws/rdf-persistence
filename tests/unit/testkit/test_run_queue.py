@@ -1,4 +1,4 @@
-"""The machine-wide test queue (agent-test-control PD-1, PD-3): `tests/queue.py`.
+"""The machine-wide test queue (agent-test-control PD-1, PD-3): `rdf_persistence/testkit/run_queue.py`.
 
 Pure rules and the argument handling run in-process with injected seams (cpu count, meminfo text,
 the exec call). The lock itself is proved with real child processes: no sleeps, a child signals
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests import queue
+from rdf_persistence.testkit import run_queue as queue
 
 REPO = Path(__file__).resolve().parents[3]
 PYTHON = sys.executable
@@ -188,7 +188,7 @@ def run_queue(args, lock, **env):
     inherited = {k: v for k, v in os.environ.items() if k != "TEST_QUEUE_LABEL"}
     full = {**inherited, "TEST_QUEUE": str(lock), **env}
     return subprocess.Popen(
-        [PYTHON, "-m", "tests.queue", "--", *args],
+        [PYTHON, "-m", "rdf_persistence.testkit.run_queue", "--", *args],
         cwd=REPO,
         env=full,
         stdin=subprocess.PIPE,

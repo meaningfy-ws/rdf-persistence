@@ -1,4 +1,4 @@
-"""The selection data's swap and check (agent-test-control PD-6, PD-7): `tests/testmon_data.py`.
+"""The selection data's swap and check (agent-test-control PD-6, PD-7): `rdf_persistence/testkit/selection_data.py`.
 
 Real SQLite files in `tmp_path`, in WAL mode like testmon's. The worktree lock is proved with a real
 child process: no sleeps, the child signals readiness on its stdout pipe and the swap prints a
@@ -13,11 +13,13 @@ from pathlib import Path
 
 import pytest
 
-from tests import testmon_data
-from tests.testmon_data import (
+from rdf_persistence.testkit import selection_data as testmon_data
+from rdf_persistence.testkit.generated.rp_testkit import SelectionDataOutcome
+from rdf_persistence.testkit.selection_data import (
+    CHECK_EXIT,
     DAMAGED_MESSAGE,
+    MESSAGES,
     PACKAGES_MESSAGE,
-    Outcome,
     check,
     swap,
 )
@@ -131,7 +133,7 @@ def test_swap_waits_for_a_shared_holder_and_swaps_once_it_is_gone(tmp_path: Path
     try:
         assert holder.stdout.readline().strip() == "ready", "the holder has the shared lock"
         swapper = subprocess.Popen(
-            [PYTHON, "-m", "tests.testmon_data", "swap", "0"],
+            [PYTHON, "-m", "rdf_persistence.testkit.selection_data", "swap", "0"],
             cwd=tmp_path,
             env=cli_env(),
             stderr=subprocess.PIPE,
@@ -158,23 +160,27 @@ def test_swap_waits_for_a_shared_holder_and_swaps_once_it_is_gone(tmp_path: Path
 def test_check_passes_a_sound_file(tmp_path: Path) -> None:
     make_data(tmp_path / ".testmondata")
 
-    assert check(tmp_path, PACKAGES) is Outcome.SOUND, "same packages, intact file"
+    assert check(tmp_path, PACKAGES) is SelectionDataOutcome.SOUND, "same packages, intact file"
 
 
 def test_check_names_a_damaged_file(tmp_path: Path) -> None:
     (tmp_path / ".testmondata").write_bytes(os.urandom(4096))
 
-    assert check(tmp_path, PACKAGES) is Outcome.DAMAGED, "garbage bytes are damaged data"
+    assert check(tmp_path, PACKAGES) is SelectionDataOutcome.DAMAGED, (
+        "garbage bytes are damaged data"
+    )
 
 
 def test_check_names_changed_packages(tmp_path: Path) -> None:
     make_data(tmp_path / ".testmondata", packages="alpha 0.9, beta 2.0")
 
-    assert check(tmp_path, PACKAGES) is Outcome.PACKAGES_CHANGED, "the seed saw other packages"
+    assert check(tmp_path, PACKAGES) is SelectionDataOutcome.PACKAGES_CHANGED, (
+        "the seed saw other packages"
+    )
 
 
 def test_check_of_a_missing_file_is_no_data(tmp_path: Path) -> None:
-    assert check(tmp_path, PACKAGES) is Outcome.NO_DATA, "nothing to check"
+    assert check(tmp_path, PACKAGES) is SelectionDataOutcome.NO_DATA, "nothing to check"
     assert names(tmp_path) == set(), "checking creates no file"
 
 
@@ -182,32 +188,32 @@ def test_check_of_a_missing_file_is_no_data(tmp_path: Path) -> None:
     ("outcome", "message"),
     [
         (
-            Outcome.DAMAGED,
+            SelectionDataOutcome.DAMAGED,
             "selection data is damaged: delete .testmondata and ask the lead for make test-seed",
         ),
         (
-            Outcome.PACKAGES_CHANGED,
+            SelectionDataOutcome.PACKAGES_CHANGED,
             "packages changed since the seed: the lead re-runs make test-seed",
         ),
     ],
 )
-def test_the_messages_are_the_decided_ones(outcome: Outcome, message: str) -> None:
-    assert outcome.message == message, "the PD-7 wording, verbatim"
+def test_the_messages_are_the_decided_ones(outcome: SelectionDataOutcome, message: str) -> None:
+    assert MESSAGES[outcome] == message, "the PD-7 wording, verbatim"
     assert message in {DAMAGED_MESSAGE, PACKAGES_MESSAGE}, "exported under a name"
 
 
 def test_outcomes_have_distinct_exit_codes() -> None:
-    codes = [o.value for o in Outcome]
+    codes = [CHECK_EXIT[o] for o in SelectionDataOutcome]
 
     assert len(set(codes)) == len(codes), "one exit code per outcome"
-    assert Outcome.SOUND.value == 0, "sound exits 0"
+    assert CHECK_EXIT[SelectionDataOutcome.SOUND] == 0, "sound exits 0"
 
 
 def test_check_command_prints_the_message_and_exits_with_the_outcome(tmp_path: Path) -> None:
     (tmp_path / ".testmondata").write_bytes(os.urandom(4096))
 
     done = subprocess.run(
-        [PYTHON, "-m", "tests.testmon_data", "check"],
+        [PYTHON, "-m", "rdf_persistence.testkit.selection_data", "check"],
         cwd=tmp_path,
         env=cli_env(),
         capture_output=True,
@@ -215,7 +221,9 @@ def test_check_command_prints_the_message_and_exits_with_the_outcome(tmp_path: P
         check=False,
     )
 
-    assert done.returncode == Outcome.DAMAGED.value, "the exit code names the outcome"
+    assert done.returncode == CHECK_EXIT[SelectionDataOutcome.DAMAGED], (
+        "the exit code names the outcome"
+    )
     assert DAMAGED_MESSAGE in done.stdout, "the message is printed"
 
 
@@ -266,7 +274,7 @@ def test_seed_stops_before_running_when_the_clean_fails(
     def refuse(root: Path) -> None:
         raise PermissionError("denied")
 
-    monkeypatch.setattr(testmon_data, "_delete_seed_files", refuse)
+    monkeypatch.setattr(testmon_data, "_delete_seed_files", refuse)  # X3
     marker = tmp_path / "ran"
     command = [PYTHON, "-c", f"open({str(marker)!r}, 'w')"]
 

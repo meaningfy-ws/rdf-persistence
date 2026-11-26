@@ -30,22 +30,22 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 
 ## 2. Stage 2: the queue and the selection data move to the testkit
 
-- [ ] 2.1 **Model** (PD-2, DEC-8). `rp_testkit.yaml`: the enum `SelectionDataOutcome`, and,
+- [x] 2.1 **Model** (PD-2, DEC-8). `rp_testkit.yaml`: the enum `SelectionDataOutcome`, and,
   for stage 3, `ChangedSelection`, `ChangedTestsInvocation`, `ChangedTestsPlan` and
   `ChangedTestsLayout`, every multivalued slot `required: true`. The lead runs `make generate`.
   Accept: `make check-generated` green; model guard tests green.
-- [ ] 2.2 **Move** (PD-1, PD-11, PD-2's list of permitted body edits). `git mv` the two modules
+- [x] 2.2 **Move** (PD-1, PD-11, PD-2's list of permitted body edits). `git mv` the two modules
   and their tests; change only what PD-2's list permits; point the Makefile, `tests/changed.py`
   and `test_lanes.py` at the new paths. Red: none (DEC-7: moved tests are the proof); the lead
   checks `git diff -M` against PD-2's list. Accept: moved tests green; `make test-changed` runs.
-- [ ] 2.3 **Module-name proof** (PD-12 a), TC-8 for `run_queue` and `selection_data`; the lead's
+- [x] 2.3 **Module-name proof** (PD-12 a), TC-8 for `run_queue` and `selection_data`; the lead's
   wheel listing (PD-12 b).
-- [ ] 2.4 **Guard** (PD-13), TC-9: the `ast` import test. Accept: green;
+- [x] 2.4 **Guard** (PD-13), TC-9: the `ast` import test. Accept: green;
   `make check-architecture` green.
-- [ ] 2.5 **Public surface + docs** (PD-14, PD-15 for the two modules): `make refresh-snapshot`
+- [x] 2.5 **Public surface + docs** (PD-14, PD-15 for the two modules): `make refresh-snapshot`
   (lead), the user-manual section (queue and seed part), `questions.adoc`, CHANGELOG.
   Accept: `make check-docs` green.
-- [ ] 2.6 **Lead**: as 1.5 (no MWB2 post).
+- [x] 2.6 **Lead**: as 1.5 (no MWB2 post).
 
 ## 3. Stage 3: the changed-tests planner moves to the testkit
 
@@ -71,7 +71,7 @@ commit; the lead does and ticks this file. Branch per stage off `develop`:
 ## Roadmap
 
 - [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5
-- [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 2.6
+- [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 2.6
 - [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5
 - [ ] 4.1
 

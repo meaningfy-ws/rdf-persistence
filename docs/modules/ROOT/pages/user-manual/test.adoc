@@ -236,6 +236,40 @@ learns that the second writer never came. An unknown operation or an `until` bel
 `ValueError`, and a second hold on an operation that is already held raises `RuntimeError`. If the
 block is left by an exception, the waiting calls are released and the exception propagates.
 
+[#test-control]
+== Test control for your project
+
+The testkit carries the two tools the toolkit runs its own tests with, so your project does not copy
+them. Both are plain modules run by name; they need the `pytest-testmon` and `pytest-xdist`
+packages in your environment, and nothing else of the toolkit.
+
+* `rdf_persistence.testkit.run_queue` takes one lock per user, so heavy runs of several
+  repositories on one machine wait for each other, and replaces the argument `@workers` by a worker
+  count taken from the cores and the free memory. `python -m rdf_persistence.testkit.run_queue
+  --workers` prints that count.
+* `rdf_persistence.testkit.selection_data` records which tests each source file reaches (the
+  selection data of `pytest-testmon`) and swaps it in only when the recording run finished;
+  `check` exits 0 for sound data and 3, 4 or 5 for damaged data, changed packages or no data.
+
+In your Makefile:
+
+[source,make]
+----
+QUEUE = uv run python -m rdf_persistence.testkit.run_queue --
+
+test:
+	$(QUEUE) pytest tests -n @workers
+
+test-seed: export TESTMON_DATAFILE = .testmondata.seed
+test-seed:
+	$(QUEUE) python -m rdf_persistence.testkit.selection_data seed -- \
+	  pytest tests --testmon --testmon-forceselect -n @workers -p no:randomly
+----
+
+The seed's clean, run and swap are one queued command, so no other session sees half-seeded data.
+Add `.testmondata*` to `.gitignore`. Running the tests that a change reaches (`changed_tests`)
+comes in a later release of the testkit; this section grows then.
+
 == Check an adapter of your own
 
 Before you rely on an adapter of your own, run the testkit's conformance suites against it:

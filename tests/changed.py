@@ -15,7 +15,8 @@ from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from tests.testmon_data import Outcome, check, current_packages, worktree_lock
+from rdf_persistence.testkit.generated.rp_testkit import SelectionDataOutcome
+from rdf_persistence.testkit.selection_data import MESSAGES, check, current_packages, worktree_lock
 
 FALLBACK_EXIT = 75
 NO_TESTS_EXIT = 5  # pytest: no test collected
@@ -265,7 +266,7 @@ def changed_files(base: str) -> list[str]:
 
 
 Runner = Callable[[Sequence[str]], int]
-DataState = Callable[[Path], Outcome]
+DataState = Callable[[Path], SelectionDataOutcome]
 Lock = Callable[[Path], AbstractContextManager[None]]
 
 
@@ -273,7 +274,7 @@ def _run_pytest(arguments: Sequence[str]) -> int:
     return subprocess.run(["pytest", *arguments], check=False).returncode
 
 
-def _data_state(root: Path) -> Outcome:
+def _data_state(root: Path) -> SelectionDataOutcome:
     return check(root, current_packages())
 
 
@@ -332,9 +333,10 @@ def main(
         print(f"{error}; running make test-fast", file=sys.stderr)
         return FALLBACK_EXIT
     outcome = data_state(root)
-    if outcome.message:
-        print(outcome.message, file=sys.stderr)
-    tests_plan = plan(changed, outcome is Outcome.SOUND, lambda p: Path(p).exists(), workers)
+    if outcome in MESSAGES:
+        print(MESSAGES[outcome], file=sys.stderr)
+    with_data = outcome is SelectionDataOutcome.SOUND
+    tests_plan = plan(changed, with_data, lambda p: Path(p).exists(), workers)
     for hint in tests_plan.hints:
         print(hint, file=sys.stderr)
     if tests_plan.fallback_reasons:

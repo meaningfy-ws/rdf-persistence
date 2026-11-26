@@ -17,6 +17,28 @@ annotations:
   module_kind: technical
   python_package: rdf_persistence.testkit.generated
 
+enums:
+  SelectionDataOutcome:
+    title: Selection data outcome
+    description: What checking the test-selection data of a worktree found.
+    permissible_values:
+      sound:
+        title: Sound
+        meaning: rp:SelectionDataSound
+        description: The data is intact and was recorded under the current packages.
+      damaged:
+        title: Damaged
+        meaning: rp:SelectionDataDamaged
+        description: The data file is not a readable, intact database.
+      packages_changed:
+        title: Packages changed
+        meaning: rp:SelectionDataPackagesChanged
+        description: The data was recorded under other installed packages.
+      no_data:
+        title: No data
+        meaning: rp:SelectionDataNoData
+        description: There is no selection data in the worktree.
+
 classes:
   Any:
     title: Any
@@ -219,6 +241,74 @@ classes:
         required: true
       project_id:
         required: true
+  ChangedSelection:
+    title: Changed selection
+    description: >-
+      What the changed paths of a worktree select: the test paths, the hints that explain a
+      choice, and the reasons the selection fell back to a wider run.
+    class_uri: rp:ChangedSelection
+    slots:
+      - paths
+      - hints
+      - fallback_reasons
+    slot_usage:
+      paths:
+        required: true
+      hints:
+        required: true
+      fallback_reasons:
+        required: true
+  ChangedTestsInvocation:
+    title: Changed tests invocation
+    description: The arguments of one pytest run of a changed-tests plan.
+    class_uri: rp:ChangedTestsInvocation
+    slots:
+      - arguments
+    slot_usage:
+      arguments:
+        required: true
+  ChangedTestsPlan:
+    title: Changed tests plan
+    description: >-
+      The pytest runs to make for the changed paths, the hints to print and the reasons for a
+      fallback.
+    class_uri: rp:ChangedTestsPlan
+    slots:
+      - invocations
+      - hints
+      - fallback_reasons
+    slot_usage:
+      invocations:
+        required: true
+      hints:
+        required: true
+      fallback_reasons:
+        required: true
+  ChangedTestsLayout:
+    title: Changed tests layout
+    description: >-
+      How a project's tests are laid out, as the changed-tests planner needs it: the folders that
+      testmon selects within, the extra folder, the roots that select it, the paths to ignore,
+      the marker expression parts and the default worker count.
+    class_uri: rp:ChangedTestsLayout
+    slots:
+      - testmon_folders
+      - extra_testmon_folder
+      - extra_selected_by
+      - ignores
+      - markers
+      - default_workers
+    slot_usage:
+      testmon_folders:
+        required: true
+      extra_selected_by:
+        required: true
+      ignores:
+        required: true
+      markers:
+        required: true
+      default_workers:
+        required: true
 
 slots:
   class_name:
@@ -387,3 +477,59 @@ slots:
     range: MachineUser
     multivalued: true
     inlined_as_list: true
+  paths:
+    title: Paths
+    description: The test paths a selection names.
+    slot_uri: rp:selectedPaths
+    multivalued: true
+  hints:
+    title: Hints
+    description: The lines that explain a choice to the person who ran the command.
+    slot_uri: rp:hints
+    multivalued: true
+  fallback_reasons:
+    title: Fallback reasons
+    description: Why the selection fell back to a wider run; empty when it did not.
+    slot_uri: rp:fallbackReasons
+    multivalued: true
+  arguments:
+    title: Arguments
+    description: The command-line arguments of one pytest run.
+    slot_uri: rp:arguments
+    multivalued: true
+  invocations:
+    title: Invocations
+    description: The pytest runs of a plan, in the order to make them.
+    slot_uri: rp:invocations
+    range: ChangedTestsInvocation
+    multivalued: true
+    inlined_as_list: true
+  testmon_folders:
+    title: Testmon folders
+    description: The test folders within which testmon selects.
+    slot_uri: rp:testmonFolders
+    multivalued: true
+  extra_testmon_folder:
+    title: Extra testmon folder
+    description: A further folder testmon selects within, added when not already selected; absent when there is none.
+    slot_uri: rp:extraTestmonFolder
+  extra_selected_by:
+    title: Extra selected by
+    description: The source roots whose changed files also select the extra folder.
+    slot_uri: rp:extraSelectedBy
+    multivalued: true
+  ignores:
+    title: Ignores
+    description: The paths a run ignores.
+    slot_uri: rp:ignores
+    multivalued: true
+  markers:
+    title: Markers
+    description: The parts of the marker expression a run selects by.
+    slot_uri: rp:markerParts
+    multivalued: true
+  default_workers:
+    title: Default workers
+    description: The worker count a run uses when none is fixed.
+    slot_uri: rp:defaultWorkers
+    range: integer

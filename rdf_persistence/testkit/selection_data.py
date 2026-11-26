@@ -1,6 +1,6 @@
 """Swap and check the test-selection data (agent-test-control PD-6, PD-7).
 
-Run from the repository root as ``uv run python -m tests.testmon_data swap <pytest-exit-code>`` or
+Run from the repository root as ``uv run python -m rdf_persistence.testkit.selection_data swap <pytest-exit-code>`` or
 ``... check``. ``swap`` moves ``.testmondata.seed`` over ``.testmondata`` after a seed run that
 ended with pytest's exit 0 or 1, under the exclusive worktree lock; any other exit deletes the seed
 files. ``check`` exits 0 for sound data and a distinct code, with a message, for each other
@@ -17,8 +17,9 @@ import subprocess
 import sys
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from enum import IntEnum
 from pathlib import Path
+
+from rdf_persistence.testkit.generated.rp_testkit import SelectionDataOutcome
 
 DATA = ".testmondata"
 SEED = ".testmondata.seed"
@@ -34,20 +35,16 @@ DAMAGED_MESSAGE = (
 PACKAGES_MESSAGE = "packages changed since the seed: the lead re-runs make test-seed"
 
 
-class Outcome(IntEnum):
-    """What `check` found; the value is the exit code of ``check``."""
-
-    SOUND = 0
-    DAMAGED = 3
-    PACKAGES_CHANGED = 4
-    NO_DATA = 5
-
-    @property
-    def message(self) -> str:
-        return _MESSAGES.get(self, "")
-
-
-_MESSAGES = {Outcome.DAMAGED: DAMAGED_MESSAGE, Outcome.PACKAGES_CHANGED: PACKAGES_MESSAGE}
+CHECK_EXIT: dict[SelectionDataOutcome, int] = {  # an index: the exit code of ``check`` per outcome
+    SelectionDataOutcome.SOUND: 0,
+    SelectionDataOutcome.DAMAGED: 3,
+    SelectionDataOutcome.PACKAGES_CHANGED: 4,
+    SelectionDataOutcome.NO_DATA: 5,
+}
+MESSAGES: dict[SelectionDataOutcome, str] = {  # an index: what ``check`` prints per outcome
+    SelectionDataOutcome.DAMAGED: DAMAGED_MESSAGE,
+    SelectionDataOutcome.PACKAGES_CHANGED: PACKAGES_MESSAGE,
+}
 
 
 @contextmanager
@@ -143,31 +140,34 @@ def _seed_packages(con: sqlite3.Connection) -> list[str]:
     return [row[0] for row in rows]
 
 
-def check(root: Path, packages: str) -> Outcome:
+def check(root: Path, packages: str) -> SelectionDataOutcome:
     """Is ``.testmondata`` intact and recorded under the current ``packages``?"""
     data = root / DATA
     if not data.exists():
-        return Outcome.NO_DATA
+        return SelectionDataOutcome.NO_DATA
     try:
         con = sqlite3.connect(f"{data.as_uri()}?mode=ro", uri=True)
         try:
             if con.execute("PRAGMA quick_check").fetchone() != ("ok",):
-                return Outcome.DAMAGED
+                return SelectionDataOutcome.DAMAGED
             seen = _seed_packages(con)
         finally:
             con.close()
     except sqlite3.DatabaseError:
-        return Outcome.DAMAGED
+        return SelectionDataOutcome.DAMAGED
     if seen and packages not in seen:
-        return Outcome.PACKAGES_CHANGED
-    return Outcome.SOUND
+        return SelectionDataOutcome.PACKAGES_CHANGED
+    return SelectionDataOutcome.SOUND
 
 
 def current_packages() -> str:
     """The package string testmon records, by testmon's own functions (it drops patch versions)."""
-    from testmon.common import drop_patch_version, get_system_packages
+    from testmon.common import (  # type: ignore[import-untyped]  # testmon ships no types
+        drop_patch_version,
+        get_system_packages,
+    )
 
-    return drop_patch_version(get_system_packages())
+    return str(drop_patch_version(get_system_packages()))
 
 
 def main(argv: Sequence[str], root: Path | None = None) -> int:
@@ -179,12 +179,12 @@ def main(argv: Sequence[str], root: Path | None = None) -> int:
             return seed(root, [first, *rest])
         case ["check"]:
             outcome = check(root, current_packages())
-            if outcome.message:
-                print(outcome.message)
-            return int(outcome)
+            if outcome in MESSAGES:
+                print(MESSAGES[outcome])
+            return CHECK_EXIT[outcome]
         case _:
             print(
-                "usage: python -m tests.testmon_data swap <pytest-exit-code> | check"
+                "usage: python -m rdf_persistence.testkit.selection_data swap <pytest-exit-code> | check"
                 " | seed -- <command...>",
                 file=sys.stderr,
             )

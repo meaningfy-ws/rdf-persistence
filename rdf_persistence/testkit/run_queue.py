@@ -1,10 +1,10 @@
 """Queue heavy test runs on the machine and size their workers.
 
-Run as ``uv run python -m tests.queue -- <command...>``: takes the machine-wide lock
+Run as ``uv run python -m rdf_persistence.testkit.run_queue -- <command...>``: takes the machine-wide lock
 (``$XDG_CACHE_HOME/meaningfy/pytest.lock``, or ``TEST_QUEUE=<path>``; ``TEST_QUEUE=off`` for none),
 replaces the argument ``@workers`` by the worker count, and execs the command with the lock
 descriptor inherited, so the lock lives exactly as long as the command's process.
-``python -m tests.queue --workers`` prints the count. See
+``python -m rdf_persistence.testkit.run_queue --workers`` prints the count. See
 openspec/changes/agent-test-control/design.md (PD-1, PD-3).
 """
 
@@ -16,6 +16,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 WORKERS_TOKEN = "@workers"
+QUEUE_OFF = "off"  # TEST_QUEUE=off: no lock
 DEFAULT_WORKER_MB = 1536
 CORE_RESERVE = 3  # cores left to the machine when there are more than CORE_THRESHOLD
 CORE_THRESHOLD = 6
@@ -81,6 +82,24 @@ def _announce(holder_fd: int, line: str) -> None:
     os.ftruncate(holder_fd, len(data))
 
 
+def _take_the_queue(environ: Mapping[str, str], command: Sequence[str]) -> bool:
+    """Take the lock (unless ``TEST_QUEUE=off``) and keep it for the exec; False: it cannot be opened."""
+    setting = environ.get("TEST_QUEUE")
+    if setting == QUEUE_OFF:
+        return True
+    path = Path(setting) if setting else lock_path(environ)
+    try:
+        fd, waited = _acquire(path)
+    except OSError as error:
+        print(f"cannot open the test queue lock {path}: {error}", file=sys.stderr)
+        return False
+    _announce(fd, _holder_line(environ, command))
+    os.set_inheritable(fd, True)
+    if waited is not None:
+        print(f"test queue: waited {waited}s", file=sys.stderr, flush=True)
+    return True
+
+
 def main(
     argv: Sequence[str],
     environ: Mapping[str, str],
@@ -96,20 +115,13 @@ def main(
         return 0
     command = list(argv[1:] if argv[:1] == ["--"] else argv)
     if not command:
-        print("usage: python -m tests.queue [--workers | -- <command...>]", file=sys.stderr)
+        print(
+            "usage: python -m rdf_persistence.testkit.run_queue [--workers | -- <command...>]",
+            file=sys.stderr,
+        )
         return USAGE_EXIT
-    setting = environ.get("TEST_QUEUE")
-    if setting != "off":
-        path = Path(setting) if setting else lock_path(environ)
-        try:
-            fd, waited = _acquire(path)
-        except OSError as error:
-            print(f"cannot open the test queue lock {path}: {error}", file=sys.stderr)
-            return USAGE_EXIT
-        _announce(fd, _holder_line(environ, command))
-        os.set_inheritable(fd, True)
-        if waited is not None:
-            print(f"test queue: waited {waited}s", file=sys.stderr, flush=True)
+    if not _take_the_queue(environ, command):
+        return USAGE_EXIT
     if WORKERS_TOKEN in command:
         available = mem_available_mb(read_meminfo())  # after the lock: memory freed counts
         count = workers(cpus, available, per_worker_mb)
@@ -121,4 +133,4 @@ def main(
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], os.environ))  # noqa: TID251 - the command line is this module's config boundary

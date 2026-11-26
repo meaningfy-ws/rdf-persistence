@@ -6,9 +6,9 @@ import subprocess
 
 import pytest
 
+from rdf_persistence.testkit.run_queue import workers
 from tests.changed import IGNORES
 from tests.conftest import TESTS_ROOT_DIR
-from tests.queue import workers
 
 MAKEFILE = (TESTS_ROOT_DIR.parent / "Makefile").read_text(encoding="utf-8")
 SELECTION = re.compile(r'-m "([^"]+)"')
@@ -235,7 +235,7 @@ def test_the_ci_unit_jobs_run_the_ci_unit_lane_in_shards_and_combine_their_cover
 QUEUED_LANES = [*PARALLEL_LANES, "test-containers"]
 QUEUE_PREFIX = "TEST_QUEUE_LABEL=$@ $(PYTEST) "
 PYTEST_FROM_ENVIRONMENT = ("CI", "PYTEST_N", "PYTEST_WORKER_MB")
-QUEUED_PYTEST = "uv run python -m tests.queue -- pytest"
+QUEUED_PYTEST = "uv run python -m rdf_persistence.testkit.run_queue -- pytest"
 PLAIN_PYTEST = "uv run pytest"
 
 
@@ -337,17 +337,19 @@ def _seed_recipe() -> str:
 
 
 def test_the_whole_seed_cycle_runs_inside_the_queue() -> None:
-    """PD-7: clean, run and swap are one queued command (tests.testmon_data seed), not recipe shell."""
+    """PD-7: clean, run and swap are one queued command (selection_data seed), not recipe shell."""
     recipe = _seed_recipe()
     line = next(x for x in recipe_of("test-seed") if "--testmon" in x)
 
-    assert "$(SEED_RUN) python -m tests.testmon_data seed -- pytest " in line, (
+    assert "$(SEED_RUN) python -m rdf_persistence.testkit.selection_data seed -- pytest " in line, (
         "the seed cycle is the queued testmon_data seed command"
     )
     assert "TEST_QUEUE_LABEL=$@ $(SEED_RUN)" in line, "the queue label is set"
     assert "rm -f" not in recipe, "the clean runs inside the queue, not before it"
     assert "swap" not in recipe, "the swap runs inside the queue, not after it"
-    assert "SEED_RUN = uv run python -m tests.queue --\n" in MAKEFILE, "locally the seed queues"
+    assert "SEED_RUN = uv run python -m rdf_persistence.testkit.run_queue --\n" in MAKEFILE, (
+        "locally the seed queues"
+    )
     assert "SEED_RUN = uv run\n" in MAKEFILE, "on CI the seed runs unqueued"
 
 
@@ -390,7 +392,7 @@ def test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make() -> None:
 def test_on_ci_the_worker_count_is_quiet_and_lazy() -> None:
     """PD-8: a recursive variable, so a target that never runs pytest never counts; errors go away."""
     assert re.search(
-        r"^PYTEST_N \?= \$\(shell uv run --no-sync python -m tests\.queue --workers 2>/dev/null\)$",
+        r"^PYTEST_N \?= \$\(shell uv run --no-sync python -m rdf_persistence\.testkit\.run_queue --workers 2>/dev/null\)$",
         MAKEFILE,
         re.MULTILINE,
     ), "PYTEST_N is lazy and quiet"
