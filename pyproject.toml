@@ -10,7 +10,7 @@
 
 [project]
 name = "rdf-persistence"
-version = "0.15.0"
+version = "0.16.0"
 description = "Serialisation and triple store persistence (incl. transactions)"
 authors = [
     { name = "Meaningfy", email = "hi@meaningfy.ws" }
