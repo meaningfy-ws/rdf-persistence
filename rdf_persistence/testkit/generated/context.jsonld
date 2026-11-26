@@ -12,11 +12,18 @@
       "alias": {
          "@id": "alias"
       },
+      "arguments": {
+         "@container": "@set",
+         "@id": "arguments"
+      },
       "class_name": {
          "@id": "className"
       },
       "container": {
          "@id": "container"
+      },
+      "default_workers": {
+         "@id": "defaultWorkers"
       },
       "endpoint": {
          "@id": "endpoint"
@@ -29,12 +36,36 @@
       "exit_code": {
          "@id": "exitCode"
       },
+      "extra_selected_by": {
+         "@container": "@set",
+         "@id": "extraSelectedBy"
+      },
+      "extra_testmon_folder": {
+         "@id": "extraTestmonFolder"
+      },
+      "fallback_reasons": {
+         "@container": "@set",
+         "@id": "fallbackReasons"
+      },
       "headers": {
          "@type": "@id",
          "@id": "headers"
       },
       "help": {
          "@id": "help"
+      },
+      "hints": {
+         "@container": "@set",
+         "@id": "hints"
+      },
+      "ignores": {
+         "@container": "@set",
+         "@id": "ignores"
+      },
+      "invocations": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "invocations"
       },
       "key_id": {
          "@id": "keyId"
@@ -47,6 +78,10 @@
       "marker": {
          "@id": "marker"
       },
+      "markers": {
+         "@container": "@set",
+         "@id": "markerParts"
+      },
       "multivalued": {
          "@id": "multivalued"
       },
@@ -58,6 +93,10 @@
       },
       "password": {
          "@id": "password"
+      },
+      "paths": {
+         "@container": "@set",
+         "@id": "selectedPaths"
       },
       "private_key": {
          "@id": "privateKey"
@@ -104,6 +143,10 @@
       "stdout": {
          "@id": "stdout"
       },
+      "testmon_folders": {
+         "@container": "@set",
+         "@id": "testmonFolders"
+      },
       "url": {
          "@id": "url"
       },
@@ -123,6 +166,18 @@
       "type": "@type",
       "Any": {
          "@id": "linkml:Any"
+      },
+      "ChangedSelection": {
+         "@id": "ChangedSelection"
+      },
+      "ChangedTestsInvocation": {
+         "@id": "ChangedTestsInvocation"
+      },
+      "ChangedTestsLayout": {
+         "@id": "ChangedTestsLayout"
+      },
+      "ChangedTestsPlan": {
+         "@id": "ChangedTestsPlan"
       },
       "ClassShape": {
          "@id": "ClassShape"

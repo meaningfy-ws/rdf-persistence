@@ -1,0 +1,29 @@
+"""The test-control modules run by name from outside the repository (test-control-testkit PD-12 a, TC-8)."""
+
+import subprocess
+import sys
+from pathlib import Path
+
+
+def _run_module(module: str, args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-I", "-m", module, *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60,
+    )
+
+
+def test_run_queue_prints_a_worker_count_by_module_name(tmp_path: Path) -> None:
+    done = _run_module("rdf_persistence.testkit.run_queue", ["--workers"], tmp_path)
+
+    assert done.returncode == 0, f"the module runs by name: {done.stderr}"
+    assert int(done.stdout.strip()) > 0, f"a positive worker count: {done.stdout!r}"
+
+
+def test_selection_data_check_reports_no_data_by_module_name(tmp_path: Path) -> None:
+    done = _run_module("rdf_persistence.testkit.selection_data", ["check"], tmp_path)
+
+    assert done.returncode == 5, f"an empty folder has no data (exit 5): {done.stderr}"

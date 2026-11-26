@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "rdf_persistence/model/technical/testkit/rp_testkit.yaml",
-      "sha256": "7a381055cfd1179798ecbf1aa9324b030dfe0f666af4bf70b2177667da8d7976"
+      "sha256": "b82bd378fe972e9d5d80886145522d29987dbeafff9d89fa84bec25e31485940"
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
@@ -253,15 +253,15 @@
     },
     {
       "path": "rdf_persistence/testkit/generated/context.jsonld",
-      "sha256": "c26e8132fe498cd5a92727833761a62498623f36f2c90aa72e3ed669a5a502b9"
+      "sha256": "e43645a7360cf465ead0b87833e5fb46b9eb8d41f3bfce19ff80d88253a14e25"
     },
     {
       "path": "rdf_persistence/testkit/generated/rp_testkit.py",
-      "sha256": "a83b39ffa2b7844f887e7ba29c29b662af8b94aa4d6b982cc61d55fe4eef11de"
+      "sha256": "a8bd9569f86bc58de51f5c92828e6a19d8619dd96bb4dbaf1b312df06fe22347"
     },
     {
       "path": "rdf_persistence/testkit/generated/shapes.ttl",
-      "sha256": "ca3ff725efd080e1d3402bcac03c4ecae7b86a4a143ff5e413328a99978ebd4c"
+      "sha256": "aba1a6c92f3ee463f6f871bf483cd2297dd1b750db9ddfc812a630d66f0e6dd7"
     }
   ]
 }

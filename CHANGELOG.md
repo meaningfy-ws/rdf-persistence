@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The testkit carries the test queue and the selection-data tools** (`test-control-testkit`).
+  `rdf_persistence.testkit.run_queue` (the machine-wide queue and the worker count) and
+  `rdf_persistence.testkit.selection_data` (the seed, swap and check of the selection data) replace
+  the repository's own `tests/queue.py` and `tests/testmon_data.py`; a project runs them by module
+  name and needs only `pytest-testmon` and `pytest-xdist`. The testkit's model gains
+  `SelectionDataOutcome` and the changed-tests records.
+
 ### ⚠ BREAKING
 - **A module another target writes as TypeScript is no longer copied into the importing target's
   folder** (`consumer-friction`, #371). The importing target's TypeScript files import its types

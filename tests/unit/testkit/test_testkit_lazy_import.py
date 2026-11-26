@@ -17,7 +17,13 @@ def test_testkit_root_does_not_import_testcontainers() -> None:
 
 
 @pytest.mark.parametrize(
-    "module", ["rdf_persistence.testkit.streams", "rdf_persistence.api.entrypoints.service"]
+    "module",
+    [
+        "rdf_persistence.testkit.streams",
+        "rdf_persistence.api.entrypoints.service",
+        "rdf_persistence.testkit.run_queue",
+        "rdf_persistence.testkit.selection_data",
+    ],
 )
 def test_testkit_root_does_not_load_the_stream_or_service_module(module: str) -> None:
     code = f"import sys, rdf_persistence.testkit; sys.exit({module!r} in sys.modules)"

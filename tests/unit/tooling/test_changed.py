@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from rdf_persistence.testkit.generated.rp_testkit import SelectionDataOutcome as Outcome
+from rdf_persistence.testkit.selection_data import DAMAGED_MESSAGE, PACKAGES_MESSAGE, worktree_lock
 from tests import changed
 from tests.changed import (
     FALLBACK_EXIT,
@@ -20,7 +22,6 @@ from tests.changed import (
     plan,
     select,
 )
-from tests.testmon_data import DAMAGED_MESSAGE, PACKAGES_MESSAGE, Outcome, worktree_lock
 
 REPO = Path(__file__).resolve().parents[3]
 CONTAINER_TEST = "tests/integration/api/test_routes.py"

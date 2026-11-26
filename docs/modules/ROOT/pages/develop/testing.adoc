@@ -148,10 +148,10 @@ Four mechanisms, from `agent-test-control`:
 
 * *One heavy run at a time.* Every parallel lane (`make test-unit`, `test-unit-ci`,
   `test-feature`, `test-generator`, `test-fast`, `test-durations`, `profile-tests`), plus
-  `make test-containers` and `make test-seed`, runs pytest through `tests/queue.py`. That module
+  `make test-containers` and `make test-seed`, runs pytest through `rdf_persistence/testkit/run_queue.py`. That module
   holds one lock per user, shared by every repository that user runs on the machine
   (`~/.cache/meaningfy/pytest.lock`). The seed's clean, run and swap are one queued run
-  (`python -m tests.testmon_data seed -- pytest ...`), so another session never sees a half-seeded
+  (`python -m rdf_persistence.testkit.selection_data seed -- pytest ...`), so another session never sees a half-seeded
   worktree. A run that finds the lock taken prints `waiting for the test queue: <folder> <target> <pid> <time>`
   once, where the time is when the holder started. When it starts it prints
   `test queue: waited <N>s`. The kernel frees the lock when the run ends, however it ends, so a
@@ -215,15 +215,17 @@ gates (xref:develop/agents.adoc#gates[The gates]).
 
 *Copying it to another repository.* The pieces are:
 
-* `tests/queue.py`, `tests/testmon_data.py`, and `plan()` and `main()` of `tests/changed.py`;
+* the testkit's `run_queue` and `selection_data` modules (a project uses them from the installed
+  package, see xref:user-manual/test.adoc#test-control[Test control for your project]), and `plan()`
+  and `main()` of `tests/changed.py`;
 * the Makefile's `PYTEST`, `PYTEST_N` and `PARALLEL` lines, the queued recipes, `test-changed` and
   `test-seed`;
 * the `.testmondata*` line in `.gitignore`;
 * the `pytest-testmon` pin;
 * the testkit plugin line in the root `conftest.py`.
 
-Their tests are `tests/unit/tooling/test_queue.py`, `test_lanes.py`, `test_changed.py`,
-`test_testmon_data.py` and `tests/unit/testkit/test_memory.py`.
+Their tests are `tests/unit/testkit/test_run_queue.py`, `test_selection_data.py` and
+`test_memory.py`, and `tests/unit/tooling/test_lanes.py` and `test_changed.py`.
 
 == The report
 

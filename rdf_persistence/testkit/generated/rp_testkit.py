@@ -37,6 +37,18 @@ from rdf_persistence.core.domain.base import RpModel as ConfiguredBaseModel
 
 linkml_meta = None
 
+class SelectionDataOutcome(str, _Enum):
+    "What checking the test-selection data of a worktree found."
+    SOUND = "sound"
+    "The data is intact and was recorded under the current packages."
+    DAMAGED = "damaged"
+    "The data file is not a readable, intact database."
+    PACKAGES_CHANGED = "packages_changed"
+    "The data was recorded under other installed packages."
+    NO_DATA = "no_data"
+    "There is no selection data in the worktree."
+
+
 
 class SlotShape(ConfiguredBaseModel):
     "The shape of one slot of a class, as the schema induces it."
@@ -130,6 +142,35 @@ class ZitadelProject(ConfiguredBaseModel):
     machine_users: _Optional[list[MachineUser]] = _Field(default=None, title="Machine users", description="The service accounts of the test principals.")
 
 
+class ChangedSelection(ConfiguredBaseModel):
+    "What the changed paths of a worktree select: the test paths, the hints that explain a choice, and the reasons the selection fell back to a wider run."
+    paths: list[str] = _Field(default=..., title="Paths", description="The test paths a selection names.")
+    hints: list[str] = _Field(default=..., title="Hints", description="The lines that explain a choice to the person who ran the command.")
+    fallback_reasons: list[str] = _Field(default=..., title="Fallback reasons", description="Why the selection fell back to a wider run; empty when it did not.")
+
+
+class ChangedTestsInvocation(ConfiguredBaseModel):
+    "The arguments of one pytest run of a changed-tests plan."
+    arguments: list[str] = _Field(default=..., title="Arguments", description="The command-line arguments of one pytest run.")
+
+
+class ChangedTestsPlan(ConfiguredBaseModel):
+    "The pytest runs to make for the changed paths, the hints to print and the reasons for a fallback."
+    invocations: list[ChangedTestsInvocation] = _Field(default=..., title="Invocations", description="The pytest runs of a plan, in the order to make them.")
+    hints: list[str] = _Field(default=..., title="Hints", description="The lines that explain a choice to the person who ran the command.")
+    fallback_reasons: list[str] = _Field(default=..., title="Fallback reasons", description="Why the selection fell back to a wider run; empty when it did not.")
+
+
+class ChangedTestsLayout(ConfiguredBaseModel):
+    "How a project\u0027s tests are laid out, as the changed-tests planner needs it: the folders that testmon selects within, the extra folder, the roots that select it, the paths to ignore, the marker expression parts and the default worker count."
+    testmon_folders: list[str] = _Field(default=..., title="Testmon folders", description="The test folders within which testmon selects.")
+    extra_testmon_folder: _Optional[str] = _Field(default=None, title="Extra testmon folder", description="A further folder testmon selects within, added when not already selected; absent when there is none.")
+    extra_selected_by: list[str] = _Field(default=..., title="Extra selected by", description="The source roots whose changed files also select the extra folder.")
+    ignores: list[str] = _Field(default=..., title="Ignores", description="The paths a run ignores.")
+    markers: list[str] = _Field(default=..., title="Markers", description="The parts of the marker expression a run selects by.")
+    default_workers: int = _Field(default=..., title="Default workers", description="The worker count a run uses when none is fixed.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 SlotShape.model_rebuild()
@@ -145,3 +186,7 @@ GarageServer.model_rebuild()
 ZitadelServer.model_rebuild()
 MachineUser.model_rebuild()
 ZitadelProject.model_rebuild()
+ChangedSelection.model_rebuild()
+ChangedTestsInvocation.model_rebuild()
+ChangedTestsPlan.model_rebuild()
+ChangedTestsLayout.model_rebuild()
