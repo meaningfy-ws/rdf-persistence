@@ -387,6 +387,10 @@ The lead's, per R-0007; the developer may overrule any of them.
   names from the `rdf_persistence` import only (`drop_imports(..., only=public_package())`). Safe
   because PD-2's check refuses any consumer class that names one. Rejected: exporting them (widens
   the promise beyond `Problem`, DEC-2).
+- **D-9 Docs in parallel with 1.3 (the developer asked for parallel work, 2026-11-27).** Task 1.5
+  runs beside 1.3 on disjoint files (`docs/`, `CHANGELOG.md`), writing 1.3's half from PD-5 to
+  PD-7; the lead checks it against the built code when 1.3 lands and sends the differences back.
+  The tester (D-3) runs after 1.3's commit; the docs reconcile runs beside it.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.

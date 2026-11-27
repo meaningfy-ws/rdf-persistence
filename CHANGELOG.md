@@ -18,6 +18,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stopped copying a module another entry owns (#371) also moves those imports to the owning
   entry's folder. A project with one TypeScript entry is unchanged.
 
+### Added
+- **A rule refuses a write with a problem of the application's own** (`consumer-write-rules`, #397,
+  #415). `RuleRefusal(problem)` is a new error: raised from a write rule with an instance of a
+  subclass of `Problem`, it is answered as that problem, extra fields included, at 409 or 422.
+  `install_service` and `ServiceKit` gain `refusal_problems`, the classes allowed (a class that is
+  not a `Problem` raises `TypeError` at start-up); any other class, a subclass of a registered one,
+  a non-`Problem` object or another status is a 500 `internal-error`, logged once with the class or
+  the status. A delete rule raising it is a 500. The OpenAPI document does not yet list the classes.
+- **A consumer's technical module may import the toolkit's technical modules** (`consumer-write-rules`,
+  #415): by `rdf_persistence/model/technical/<theme>/<module>` (`model/migrations/` stays out of the
+  importmap). The one supported extension is `Problem`: generation refuses a class that uses a
+  toolkit technical class `rdf_persistence` does not export, and a slot that shadows a field of the
+  class it extends.
+
 ### Fixed
 - **A narrowed or re-ranged slot generates a field mypy accepts** (`narrowed-slot-override`, #417).
   A subclass that narrows an inherited list slot to one value (or changes its range to one not
