@@ -426,6 +426,13 @@ The lead's, per R-0007; the developer may overrule any of them.
     that runs the rules answers the same way.
   - *R-S5, lead-fixed:* `tasks.md` 1.5 and 1.6 still named 1.4 and the old review set.
   One fixer takes R-W1 to R-W3 after the rebase on `develop` with #425 in.
+- **D-13 The whole epic in this session (the developer, 2026-11-27).** "The whole epic, continue
+  into stage 2 after the merge; work in parallel as possible": stage 2 runs in this session, not a
+  fresh one (P-0016 waived for this epic), and the developer's words are the go to merge stage 1
+  on green CI and a passing checker. Stage 2's waves: 2.1 ∥ 2.2 in two worktrees (both edit
+  `aggregate_validators.py` and the exports); the tester right after 2.1 (riskiest: `find` is the
+  tenant and readability boundary, RISK-4) ∥ 2.3; 2.4 ∥ 2.5; then the full review (P-0005) over
+  both stages, four reviewers in parallel.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.
