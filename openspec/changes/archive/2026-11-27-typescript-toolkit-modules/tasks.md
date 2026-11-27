@@ -54,13 +54,13 @@ RISK-3 and to commit (RISK-5).
 - [x] 1.6 **docs** — after 1.4; PD-9: `architecture/generation.adoc` *Imports between targets*,
   `user-manual/generate.adoc` (keys table, output row, example), `CHANGELOG.md` `[Unreleased]`
   *BREAKING* with the migration note. Accept: `make check-docs` green.
-- [ ] 1.7 **lead** (done up to the merge; see `handover.md`) — scenario-map rows for the new tests; `make check-all`; one review pass (SMALL);
+- [x] 1.7 **lead** (merged as #425, e8d9544e; #402 closed; #189 (v) marked done) — scenario-map rows for the new tests; `make check-all`; one review pass (SMALL);
   PR into `develop` naming #402 and the migration line, and the consumer (D-12); merged on green CI;
   #402 closed; #189 item (v) ticked; archive.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [ ] 1.7 (1.2 and 1.3 may run side by
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 (1.2 and 1.3 may run side by
   side after 1.1)
 
 ## Verification
