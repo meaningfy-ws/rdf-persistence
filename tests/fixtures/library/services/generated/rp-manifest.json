@@ -127,7 +127,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_split.py",
-      "sha256": "399d213d9716273bf821ed4e6cd07c1e36e63f71f96ade8c2c8e40edbcc273b5"
+      "sha256": "16a2da1727412e9ec05959f5b0d0dabf2ae10ea875f8f62172652701d0dc3875"
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_validators.py",
@@ -143,7 +143,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/typescript.py",
-      "sha256": "d1aba6a8c2059e93985eafc1d72ce9b046aaa54de885f7d627c0da618bd9fe2c"
+      "sha256": "0cb54b5cfe5d7002752c91b7f11b74bd5eb5e652b7ee8ae59575ef365a921f4e"
     },
     {
       "path": "rdf_persistence_generation/lock.py",
@@ -290,8 +290,12 @@
       "sha256": "2ccf1c688f0efbe1c66d5ab8963ecc0e9410ea8243c535295013080223fbdee8"
     },
     {
+      "path": "services/library_problems.yaml",
+      "sha256": "9c971fa90d37e024303d9eccf056d5c4f8b8f9a9e7c9c62ee24a8503aa7b7594"
+    },
+    {
       "path": "services/loan_checks_response.yaml",
-      "sha256": "781e0f2038f7afec280bb1c603630573f364ca6d78c7376683f0f52b0f3f1791"
+      "sha256": "1eec83c9d58918c18de97919f9f9c5e5b211b65107ffa0f07ba1689e4a74d109"
     },
     {
       "path": "values/loan_checks.yaml",
@@ -305,19 +309,27 @@
     },
     {
       "path": "services/generated/context.jsonld",
-      "sha256": "5556d900261a2cca19baa65df3a7e24473c175ef9e207ef888d7b6703b88c460"
+      "sha256": "4e3d4af735976576a3c570ec53376bc5a38a6be03ad2fdc01fb16b68b0b982ba"
+    },
+    {
+      "path": "services/generated/library_problems.py",
+      "sha256": "6712ca79566f5223bb218ab3e6feff95b780833a42c5e28f6b04e1f0690915e9"
     },
     {
       "path": "services/generated/loan_checks_response.py",
-      "sha256": "da6be0e4545f61221d8d105ce94578cd40ac7c387d79ae383de49bff09c03943"
+      "sha256": "9704bb86d3a4236a31ab6ad4813dfb1201222a8397dee129db89dfe04008730f"
     },
     {
       "path": "services/generated/shapes.ttl",
-      "sha256": "dbabc11e828e886d05244b3f27f394622f6e2e245f6940a00136c2d2dc8453a3"
+      "sha256": "f722bdf7fc53cf38d694230fea60775256d3757d84fca91be1729c19c0f5f235"
     },
     {
       "path": "web/src/services/generated/index.ts",
-      "sha256": "b0de6e543bb36cd52aba099eacb7ba3f8fbe4d10b67f846afd14957c39643142"
+      "sha256": "87c85676c9b28401e3c33c9522aa93be7ee3cb95d40cf85df0cbe446e341ffd9"
+    },
+    {
+      "path": "web/src/services/generated/library_problems.ts",
+      "sha256": "bc754bc3b253d199b711dcd5d755ebe770c91843ec0430103a1c69229ecbb5c0"
     },
     {
       "path": "web/src/services/generated/loan_checks_response.ts",

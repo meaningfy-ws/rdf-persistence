@@ -11,7 +11,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
 - [x] 1.1 **unit + code (#415 import)** — PD-1, TC-1. Failing test first in `tests/unit/schema/`:
   the technical key exists; every `model/*.yaml` key and value is unchanged. Then
   `metamodel_importmap`. Accept: TC-1 passes; existing importmap and schema tests pass unchanged.
-- [ ] 1.2 **generator (#415 extend)** — after 1.1; PD-1a, PD-2, PD-2a, PD-4, PD-9, TC-1b, TC-2 to
+- [x] 1.2 **generator (#415 extend)** — after 1.1; PD-1a, PD-2, PD-2a, PD-4, PD-9, TC-1b, TC-2 to
   TC-4, TC-3b. Failing tests first in `tests/generator/unit/test_consumer_problem.py`. Then the toy
   module `services/library_problems.yaml` and its import from `loan_checks_response.yaml`;
   `generate_module_import`'s technical branch, the export and shadow checks in `pydantic_split.py`,

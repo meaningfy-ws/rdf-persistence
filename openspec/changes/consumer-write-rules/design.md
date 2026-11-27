@@ -380,6 +380,16 @@ The lead's, per R-0007; the developer may overrule any of them.
 - **D-7 A load flake, not this change.** `tests/unit/tooling/test_lanes.py::test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make`
   failed once in 1.1's gate (`-n 16` against `-n 17`): it reads the free memory twice on a machine
   shared with sibling sessions. It passes alone; left as is, named in the PR.
+- **D-8 The toy root's import of unexported classes (task 1.2, builder deviation, accepted).** A
+  consumer root generated in full mode imports every class of its closure, so with a technical
+  module imported from `public_package()` (PD-2) it imported classes the package does not export
+  (`AggregateHead`), and the generated module failed to import. `_unexported_technical` drops those
+  names from the `rdf_persistence` import only (`drop_imports(..., only=public_package())`). Safe
+  because PD-2's check refuses any consumer class that names one. Rejected: exporting them (widens
+  the promise beyond `Problem`, DEC-2).
+- **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
+  loaded by two sibling sessions: no slowdown that can be told apart from the load; the
+  generator lane is compared again in `make check-all`'s timings.
 
 ## Lanes for moved or rewritten tests
 
