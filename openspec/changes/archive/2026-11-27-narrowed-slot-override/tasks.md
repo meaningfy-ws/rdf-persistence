@@ -26,13 +26,13 @@ Builders never commit; the lead does and ticks this file.
   diff is reported, not fixed); `make typecheck-generated` green.
 - [x] 1.4 **docs** — after 1.2; PD-4: `CHANGELOG.md` `[Unreleased]` *Fixed*. Accept:
   `make check-docs` green.
-- [ ] 1.5 **lead** — scenario-map rows for TC-1, TC-2, TC-4, TC-5; `make check-all`; one review
+- [x] 1.5 **lead** — scenario-map rows for TC-1, TC-2, TC-4, TC-5; `make check-all`; one review
   pass; PR into `develop` naming MWB2 EA round 26 (D-12) and asking MWB2 to run
   `rp-generate --check` on it against the branch (RISK-3); merged on green CI; #417 closed; archive.
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 1.5 (1.4 may run beside 1.3)
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 (1.4 may run beside 1.3)
 
 ## Verification
 
