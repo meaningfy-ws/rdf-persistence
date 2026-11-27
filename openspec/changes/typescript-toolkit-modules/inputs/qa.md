@@ -21,3 +21,9 @@ Planner's choices (not asked; recorded so the owner can overrule):
 | P3 | A toolkit module outside the shared set (a technical module a consumer imports itself) is still copied | It is not in the owner's fixed set; copying keeps `tsc` green | DEC-5 |
 | P5 | The migration note covers a consumer that skipped #371 too | Evidence (2026-11-27): a consumer still on an older release imports service types such as `TenantSummary` and `InUseProblem` from importer folders; upgrading past this change and #371 together needs both migrations (toolkit types to the owner's folder, a co-owned module to its owning entry's folder) | design.md PD-9 |
 | P4 | No `.feature` files | The precedent of a generator-only SMALL change (`consumer-friction`) proves its scenarios with generator unit and integration tests and the CI "types" job | design.md Test plan |
+
+## Sign-off (2026-11-27)
+
+The owner signed off the spec scenarios of `specs/rp-generation/spec.md` and confirmed the
+planner's choices P1 to P5 above (answer: "accept recommendations"); none is overruled. Recorded in
+`evidence/signoff.md`.
