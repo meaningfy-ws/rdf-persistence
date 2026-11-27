@@ -130,10 +130,11 @@ command or a record of the provenance graph and SHALL be exempt.
 When a target sets `typescript`, `rp-generate` SHALL also write the classes of the schemas the HTTP
 API serves, among them the service's wire types, which are in
 `rdf_persistence/model/technical/api/rp_api_entrypoints.yaml`, as one module `rp_service.ts`,
-exported from `index.ts`. For such a target, the module name `rp_service`, the names of the served
-schemas' modules and the names of their classes and enums SHALL be reserved, and every served schema
-SHALL be an input of the target's manifest. A technical class that is not served SHALL add nothing
-to `rp_service.ts`.
+exported from `index.ts`; in a project with several TypeScript targets, only the owner of the
+toolkit's TypeScript writes it, and the others import its types from the owner's folder. For such a
+target, the module name `rp_service`, the names of the served schemas' modules and the names of
+their classes and enums SHALL be reserved, and every served schema SHALL be an input of the
+target's manifest. A technical class that is not served SHALL add nothing to `rp_service.ts`.
 
 #### Scenario: a consumer with a web app
 - **GIVEN** a consumer with `typescript` set in `[tool.rp-generate]`
@@ -711,7 +712,8 @@ When a target writes TypeScript and its schema's import closure holds a module w
 importing target's modules SHALL import its types from the owner's folder by a relative path, and
 the importing target's `index.ts` SHALL NOT export it. When the owner is not a target of the
 project, or sets no `typescript`, the module SHALL be written into the importing target's folder,
-as before.
+as before, unless it is one of the toolkit's shared modules and the project names an owner of the
+toolkit's TypeScript.
 
 #### Scenario: the owner writes TypeScript
 - **GIVEN** a technical target with `typescript = "web/src/services/generated"` whose schema imports a value module of a target with `typescript = "web/src/domain/generated/values"`
@@ -758,3 +760,53 @@ it checks holding a list, one value or none. The generated package SHALL pass my
 - **GIVEN** a subclass that narrows an inherited single-valued slot to a range under the inherited range, keeping its multiplicity and requiredness
 - **WHEN** the developer generates
 - **THEN** the subclass's field line carries no `# type: ignore`, and mypy reports no error
+
+### Requirement: The toolkit's TypeScript has one owner in a project
+
+When two or more entries of a project's `[tool.rp-generate]` set `typescript`, exactly one of them
+SHALL set `toolkit-typescript = true`. That entry, the owner, SHALL write the TypeScript of the
+toolkit's shared modules: every module of the metamodel's closure that has classes or enums, and
+the served types as `rp_service.ts` with the modules it imports. Every other entry that sets
+`typescript` SHALL write none of those modules: its modules SHALL import their types from the
+owner's folder by a relative path, and its `index.ts` SHALL NOT export them. A toolkit module
+outside the shared set SHALL be written by each entry whose schema imports it, as before. When one
+entry sets `typescript`, the key SHALL change nothing. `rp-generate` SHALL refuse the configuration
+before any step runs, naming the entries and the key, when several entries set `typescript` and
+none or more than one sets `toolkit-typescript = true`, or when an entry sets
+`toolkit-typescript = true` without `typescript`, or when two entries set the same `typescript`
+folder.
+
+#### Scenario: two TypeScript targets and an owner
+- **GIVEN** a project whose entry with `typescript = "web/src/domain/generated"` sets `toolkit-typescript = true` and whose entry with `typescript = "web/src/services/generated"` does not
+- **WHEN** the developer regenerates
+- **THEN** `web/src/domain/generated/` holds `rp_core.ts` and `rp_service.ts`, `web/src/services/generated/` holds neither, its modules import the toolkit types `from "../../domain/generated/<module>"`, its `index.ts` exports no toolkit module, and `tsc --strict` compiles both folders
+
+#### Scenario: the old copies are removed
+- **GIVEN** a project whose second TypeScript target wrote copies of the toolkit modules on an earlier run
+- **WHEN** an owner is named and the developer regenerates
+- **THEN** the copies are removed from the second target's folder as stale outputs
+
+#### Scenario: one TypeScript target
+- **GIVEN** a project with one entry that sets `typescript`, with or without `toolkit-typescript`
+- **WHEN** the developer regenerates
+- **THEN** its TypeScript folder holds the same files as before this change
+
+#### Scenario: several TypeScript targets and no owner
+- **GIVEN** a project with two entries that set `typescript` and none that sets `toolkit-typescript = true`
+- **WHEN** the developer runs `rp-generate`
+- **THEN** it fails before writing anything, naming both entries and telling the developer to set `toolkit-typescript = true` on the one whose folder holds the toolkit's types
+
+#### Scenario: the key on an entry without TypeScript
+- **GIVEN** a project with an entry that sets `toolkit-typescript = true` and no `typescript`
+- **WHEN** the developer runs `rp-generate`
+- **THEN** it fails before writing anything, naming that entry and saying the key needs `typescript` on the same entry
+
+#### Scenario: two entries share a TypeScript folder
+- **GIVEN** a project with two entries that set the same `typescript` folder
+- **WHEN** the developer runs `rp-generate`
+- **THEN** it fails before writing anything, naming both entries and the folder
+
+#### Scenario: two owners
+- **GIVEN** a project with two entries that set `typescript` and `toolkit-typescript = true`
+- **WHEN** the developer runs `rp-generate`
+- **THEN** it fails before writing anything, naming both entries and saying only one may set the key
