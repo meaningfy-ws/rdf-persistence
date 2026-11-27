@@ -106,3 +106,31 @@ Every other field stays unmarked. A generated project reproducing #417 type-chec
   code unchanged apart from PD-5's validator lines, unless one of their classes narrows a slot
   (the lead's regeneration, task 1.3, reports any diff).
 - Consumers: MWB2 regenerates; `mwb2_resources.py:67` gains the mark; EA round 26 merges.
+
+## Reconciliation (as delivered)
+
+Delivered in PR #427 (one stage, TINY; closes #417 on merge). Decisions taken in delivery are
+`design.md` D-1 to D-9. Review: one L2+L3 pass, no Critical; four findings under the floor (D-8),
+follow-up #428. Acceptance: `evidence/acceptance.md`; docs owed: `evidence/docs-owed.md` (none
+beyond the CHANGELOG).
+
+| Item | Final state | PR |
+|---|---|---|
+| DEC-1 the narrowed field keeps its type, marked | Delivered: `_overrides_incompatibly` and its rule predicates in `extensions/pydantic_split.py`, flag `incompatible` (PD-1, PD-2) | #427 |
+| DEC-2 LinkML facts, no type strings | Delivered: induced slots, `class_descendants`, `type_ancestors`; no string comparison | #427 |
+| DEC-3 the proof is a type check | Delivered: TC-1 (generated project mypy-clean), TC-2 unit pins; `make typecheck-generated` green | #427 |
+| DEC-4 not breaking | Delivered: generated code gains the mark where it applies (none in the toolkit or toy) and PD-5's loop in three toolkit validators; no type, field or behaviour change for a list | #427 |
+| PD-5 inherited unique-key check takes one value | Delivered: `unique_keys_validator.py.jinja`; the validator golden file follows (RISK-2) | #427 |
+| PD-6 one-line `equals_number` | Delivered: `attribute.py.jinja`; TC-5 | #427 |
+| Spec scenario 1, list narrowed to one | Proved: TC-1 (multiplicity and requiredness; a narrower range in the same test is #428 W2) | #427 |
+| Spec scenario 2, compatible override unmarked | Proved for the mark (TC-2 unmarked cases); a mypy run over it is #428 W2 | #427 |
+| Spec scenario 3, inherited unique key | Proved: TC-4 | #427 |
+| `CHANGELOG.md` `[Unreleased]` *Fixed* | Delivered | #427 |
+| Scenario-map rows | Delivered (five rows) | #427 |
+| Requirement merged into `rp-generation` | At archive | archive commit |
+
+What Changes, Capabilities and the spec delta are true of the code. Impact as delivered: the
+generated `.py` change is PD-5's lines in `rp_tenancy.py` and `rp_access_services.py` (two
+validators), plus every `rp-manifest.json`; `tests/fixtures/library/golden/pydantic_validators/validators.py.golden`
+joined the Impact list (RISK-2). Not delivered from the shape: the error-matrix rows of #428
+(W1, S2) have no test yet; the code covers them.

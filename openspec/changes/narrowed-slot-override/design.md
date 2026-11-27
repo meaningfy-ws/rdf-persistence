@@ -181,3 +181,21 @@ The lead's, taken in the epic session (R-0007), for the developer to validate at
   builder (D-3). For 1.2 the builder is alone in the worktree, which is therefore not shared, so
   the lead lets it run `make generate` after its template edit; it runs `make check-quality`
   before regenerating, so a quality fix does not cost a second run.
+- **D-7 Review beside the full gates** (developer, 2026-11-27: "parallelise where dependencies
+  allow"). The PR opened and the L2+L3 pass started while `make check-all` ran on the same head:
+  the reviewer reads code and the gate result is added to the PR body when it lands; a red gate
+  is fixed before any finding.
+- **D-8 Review findings, all under the floor.** The L2+L3 pass found no Critical (4 findings).
+  Rejected under the floor, collected in follow-up issue #428:
+  - W1: rule 5's marked side has no class or type case (`uri` against `string`, class not under,
+    class against type or enum).
+  - W2: no mypy run over a compatible covariant override (scenario 2), and TC-1 keeps the range.
+  - S1: a keyed slot LinkML renders as a `dict` (identifier, `inlined`, no `inlined_as_list`)
+    raises on an explicitly empty `{}` under PD-5's loop; it raised before on any non-empty dict,
+    and `None` passes, so no working model regresses.
+  - S2: the "identifier never marked" and "absent narrowed keyed slot" matrix rows have no test.
+- **D-9 Impact before the stage commit.** `detect_changes` against `develop` rated it "high"
+  only through `public_package`, which the diff does not touch (the index was mid-rebuild, and
+  the new `InternalAttribute` docstring line shifted its ranges). The real changes are the
+  extension's private predicates and the three generated unique-key validators (RISK-2):
+  low, nothing for the developer.
