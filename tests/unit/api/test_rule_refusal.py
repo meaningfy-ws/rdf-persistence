@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from rdf_persistence import Problem, RuleRefusal
 from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
 from tests.scene import PROBLEMS, Scene, problem_of
-from tests.toy_service import DUNE_BODY, ToyService, fixed_refusal
+from tests.toy_service import DUNE_BODY, FIXED_HOLDER, HELD, ToyService, fixed_refusal
 
 PROBLEM_LOG = "rdf_persistence.api.entrypoints.problems"
 MESSAGE = "rule refusal answered as internal error"
@@ -103,9 +103,11 @@ async def test_a_registered_refusal_is_answered_as_the_rule_built_it(  # TC-5
         body = response.json()
         assert response.status_code == status, response.text
         assert response.headers["content-type"].startswith("application/problem+json")
-        assert body["type"].endswith("key-held"), "the rule's own type"
+        assert body["type"] == HELD, "the rule's own type"
+        assert body["title"] == "Key held", "the rule's own title"
+        assert body["status"] == status, "the rule's own status"
         assert body["detail"] == detail, "the rule's own text"
-        assert body["holder"], "the extra field is kept"
+        assert body["holder"] == FIXED_HOLDER, "the extra field is kept"
         assert await listed(scene) == before, "nothing was written"
         assert internal_error_records(caplog) == [], "a registered refusal is no internal error"
 
@@ -123,8 +125,13 @@ async def test_a_replace_refused_is_answered_as_the_rule_built_it():  # TC-5
             json={**DUNE_BODY, "isbn": "held"},
             headers=scene.headers("ada", **{"If-Match": made.headers["etag"]}),
         )
+        body = response.json()
         assert response.status_code == 409, response.text
-        assert response.json()["holder"], "the extra field is kept"
+        assert body["type"] == HELD, "the rule's own type"
+        assert body["title"] == "Key held", "the rule's own title"
+        assert body["status"] == 409, "the rule's own status"
+        assert body["detail"] == "isbn held is held", "the rule's own text"
+        assert body["holder"] == FIXED_HOLDER, "the extra field is kept"
 
 
 @pytest.mark.parametrize(
@@ -149,6 +156,7 @@ async def test_a_replace_refused_is_answered_as_the_rule_built_it():  # TC-5
         ("a string, not a problem", (HeldKeyProblem,), "unregistered"),
         (Shape(), (HeldKeyProblem,), "unregistered"),  # probe of PD-6: an object shaped like one
         (held(status=400), (HeldKeyProblem,), "status 400"),
+        (held(status=403), (HeldKeyProblem,), "status 403"),
         (held(status=500), (HeldKeyProblem,), "status 500"),
         (built("409"), (HeldKeyProblem,), "status"),  # probe of PD-6: a status that is no int
     ],
@@ -160,6 +168,7 @@ async def test_a_replace_refused_is_answered_as_the_rule_built_it():  # TC-5
         "not-a-problem",
         "problem-shaped-object",
         "status-400",
+        "status-403",
         "status-500",
         "status-not-an-int",
     ],
