@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A narrowed or re-ranged slot generates a field mypy accepts** (`narrowed-slot-override`, #417).
+  A subclass that narrows an inherited list slot to one value (or changes its range to one not
+  under the parent's) generates a field mypy accepts, and an inherited unique-key check accepts
+  the single value.
+
 ## [0.16.0] - 2026-11-27
 
 ### Added
