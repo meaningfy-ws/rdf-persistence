@@ -14,7 +14,7 @@ from rdf_persistence_generation.extensions import typescript
 from rdf_persistence_generation.generated.rp_generation import GenerationTarget
 from rdf_persistence_generation.manifest import current_inputs
 from rdf_persistence_generation.pipeline import Run
-from rdf_persistence_generation.steps import _toolkit_folder, _typescript_owners
+from rdf_persistence_generation.steps import TYPESCRIPT_STEP, _toolkit_folder, _typescript_owners
 
 from .golden import ROOT_SCHEMA, TOY
 
@@ -174,10 +174,66 @@ def test_the_shared_names_hold_the_modules_the_served_schemas_and_the_service_mo
 
 def test_without_a_toolkit_the_domain_render_is_today_s() -> None:  # TC-5
     today = _files(DOMAIN_SCHEMA, OWNER_FOLDER)
-    explicit = _files(DOMAIN_SCHEMA, OWNER_FOLDER, toolkit=None)
     owner = _files(DOMAIN_SCHEMA, OWNER_FOLDER, toolkit=OWNER_FOLDER, owns_toolkit=True)
-    assert explicit == today, "toolkit=None is today's path"
     assert owner == today, "the domain schema's closure already holds the shared set"
+
+
+def test_without_a_toolkit_the_domain_render_is_the_committed_domain_tree() -> None:  # TC-3, R-6
+    rendered = _files(
+        DOMAIN_SCHEMA, OWNER_FOLDER, owners={VALUE_PACKAGE: VALUE_FOLDER}, toolkit=None
+    )
+    committed = {f.name: f.read_text(encoding="utf-8") for f in COMMITTED.glob("*.ts")}
+    assert sorted(rendered) == sorted(committed), "the same files, none of the values folder's"
+    for name, text in committed.items():
+        assert rendered[name] == text, f"{name} differs from the committed domain file"
+
+
+def _staged(staging: Path, run: Run) -> dict[str, str]:
+    run.staging = staging
+    TYPESCRIPT_STEP.run(run)
+    return {
+        f.relative_to(staging).as_posix(): f.read_text(encoding="utf-8")
+        for f in sorted(staging.rglob("*"))
+        if f.is_file()
+    }
+
+
+def test_one_typescript_target_with_the_key_writes_the_same_files_as_without(
+    tmp_path: Path,
+) -> None:  # TC-3, R-6
+    with_key = _staged(tmp_path / "with", _run(_ts("a", owner=True)))
+    without = _staged(tmp_path / "without", _run(_ts("a")))
+    assert with_key, "the target wrote files"
+    assert with_key == without, (
+        "one TypeScript target writes the same files with or without the key"
+    )
+
+
+def test_a_toolkit_module_outside_the_shared_set_is_written_and_exported(
+    tmp_path: Path,
+) -> None:  # TC-2, R-2
+    schema = tmp_path / "holder.yaml"
+    schema.write_text(
+        IMPORTER_SCHEMA.format(
+            core=(MODEL / "technical/testkit/rp_testkit").as_posix(),
+            served=(MODEL / "rp_core").as_posix(),
+        ).replace("range: RegistryKind", "range: SelectionDataOutcome"),
+        encoding="utf-8",
+    )
+    files = _files(schema, Path("web/src/services/generated"), toolkit=OWNER_FOLDER)
+    assert "rp_testkit" not in typescript._shared_names(), "outside the shared set"
+    assert "rp_testkit.ts" in files, "the importer writes the module the owner does not"
+    assert 'export * from "./rp_testkit";' in files["index.ts"], "and exports it"
+    assert 'from "./rp_testkit"' in files["holder.ts"], "its own import stays local"
+
+
+def test_a_toolkit_specifier_from_a_nested_owner_folder_starts_with_a_dot_slash() -> (
+    None
+):  # TC-4, R-7
+    module = _module(typescript.TsImport(module="rp_core", names=["A"]))
+    nested = Path("web/src/generated/toolkit")
+    (written,) = typescript._importing_toolkit([module], nested, Path("web/src/generated"))
+    assert 'from "./toolkit/rp_core"' in written.text, "a nested owner folder is imported with ./"
 
 
 def _target(**update: object) -> GenerationTarget:

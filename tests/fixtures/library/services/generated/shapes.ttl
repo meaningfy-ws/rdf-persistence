@@ -3,27 +3,79 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix lib: <https://example.org/ns/library#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
 lib:LoanCheck a sh:NodeShape ;
 	rdfs:comment "The outcome of checking a loan, its status and what was found." ;
 	rdfs:label "Loan check" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n5 ;
-	sh:property _:c14n2 , _:c14n9 ;
+	sh:ignoredProperties _:c14n17 ;
+	sh:property _:c14n29 , _:c14n4 ;
 	sh:targetClass lib:LoanCheck .
 lib:LoanChecksResponse a sh:NodeShape ;
 	rdfs:comment "The answer of a loan check, the outcomes of every check run." ;
 	rdfs:label "Loan checks response" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n7 ;
-	sh:property _:c14n6 ;
+	sh:ignoredProperties _:c14n22 ;
+	sh:property _:c14n1 , _:c14n24 ;
 	sh:targetClass lib:LoanChecksResponse .
 lib:LoanFinding a sh:NodeShape ;
 	rdfs:comment "One thing a check found about a loan." ;
 	rdfs:label "Loan finding" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n1 ;
-	sh:property _:c14n0 , _:c14n8 ;
+	sh:ignoredProperties _:c14n20 ;
+	sh:property _:c14n0 , _:c14n27 ;
 	sh:targetClass lib:LoanFinding .
+<https://meaningfy.ws/ns/rdf-persistence#AggregateKey> a sh:NodeShape ;
+	rdfs:comment "A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates." ;
+	rdfs:label "Aggregate key" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n2 ;
+	sh:property _:c14n10 , _:c14n14 , _:c14n25 , _:c14n28 ;
+	sh:targetClass <https://meaningfy.ws/ns/rdf-persistence#AggregateKey> .
+<https://meaningfy.ws/ns/rdf-persistence#AggregateRoot> a sh:NodeShape ;
+	rdfs:comment "A mixin for classes whose instances are aggregate roots. Each instance is one named graph, whose IRI is derived from the root's IRI; it is versioned, loaded and saved as a whole." ;
+	rdfs:label "Aggregate root" ;
+	sh:closed false ;
+	sh:ignoredProperties _:c14n23 ;
+	sh:targetClass <https://meaningfy.ws/ns/rdf-persistence#AggregateRoot> .
+<https://meaningfy.ws/ns/rdf-persistence#CommitMarker> a sh:NodeShape ;
+	rdfs:comment "The registry marker of one transaction's commit: a fresh IRI per transaction, written first in the single request, so the writes that follow apply only if it was written." ;
+	rdfs:label "Commit marker" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n16 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n11 ;
+	sh:targetClass <https://meaningfy.ws/ns/rdf-persistence#CommitMarker> .
+<https://meaningfy.ws/ns/rdf-persistence#KeyDuplicate> a sh:NodeShape ;
+	rdfs:comment "A set of aggregate roots of one class that hold the same values for a key across aggregates, found in a tenant's database by the duplicates report." ;
+	rdfs:label "Key duplicate" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n7 ;
+	sh:property _:c14n13 , _:c14n21 , _:c14n6 , _:c14n8 ;
+	sh:targetClass <https://meaningfy.ws/ns/rdf-persistence#KeyDuplicate> .
+<https://meaningfy.ws/ns/rdf-persistence#PendingLoad> a sh:NodeShape ;
+	rdfs:comment "The registry marker of a load not yet committed: one triple saying when the graph was put. It names no registry entry, so deleting it never deletes an entry." ;
+	rdfs:label "Pending load" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n15 ;
+	sh:nodeKind sh:IRI ;
+	sh:property _:c14n18 ;
+	sh:targetClass <https://meaningfy.ws/ns/rdf-persistence#PendingLoad> .
+<https://meaningfy.ws/ns/rdf-persistence#Principal> a sh:NodeShape ;
+	rdfs:comment "A reference to a user account in the identity provider, by IRI only." ;
+	rdfs:label "Principal" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n30 ;
+	sh:nodeKind sh:IRI ;
+	sh:targetClass prov:Agent .
+<https://meaningfy.ws/ns/rdf-persistence#RegistryEntry> a sh:NodeShape ;
+	rdfs:comment "An entry of a tenant's registry graph, naming a graph that belongs to an aggregate. It is written by the session, never by the application." ;
+	rdfs:label "Registry entry" ;
+	sh:closed true ;
+	sh:ignoredProperties _:c14n9 ;
+	sh:property _:c14n12 , _:c14n26 , _:c14n3 ;
+	sh:targetClass <https://meaningfy.ws/ns/rdf-persistence#RegistryEntry> .
 _:c14n0 sh:datatype xsd:string ;
 	sh:description "What the finding says." ;
 	sh:maxCount 1 ;
@@ -31,29 +83,98 @@ _:c14n0 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path lib:findingMessage .
-_:c14n1 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n2 sh:description "Whether the loan passed." ;
-	sh:in _:c14n3 ;
+_:c14n1 sh:description "The kind of graph the answer was read from, when it names one." ;
+	sh:in _:c14n87 ;
+	sh:maxCount 1 ;
+	sh:name "Registry kind" ;
+	sh:order 1 ;
+	sh:path lib:registryKind .
+_:c14n10 sh:datatype xsd:boolean ;
+	sh:description "Whether an absent value of a slot of the key counts as a value: two roots that both lack a value then hold the same values, and the key refuses them. False when the key declares nulls as unequal or does not say." ;
+	sh:maxCount 1 ;
+	sh:name "Key counts absent" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 3 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#keyCountsAbsent> .
+_:c14n11 sh:datatype xsd:dateTime ;
+	sh:description "The time a transaction started." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
-	sh:name "Check status" ;
+	sh:name "Started at" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#startedAt> .
+_:c14n12 sh:description "The IRI of the aggregate root that owns the graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Owned by" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#ownedBy> .
+_:c14n13 sh:description "The IRIs of the roots that hold the values, sorted." ;
+	sh:minCount 1 ;
+	sh:name "Key roots" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 3 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#keyRoots> .
+_:c14n14 sh:description "The predicates of the key's slots, in the order of the key." ;
+	sh:minCount 1 ;
+	sh:name "Key predicates" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 2 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#keyPredicates> .
+_:c14n15 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n36 .
+_:c14n16 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n72 .
+_:c14n17 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n84 .
+_:c14n18 sh:datatype xsd:dateTime ;
+	sh:description "The time a graph was put to the store by a load." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Loaded at" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#loadedAt> .
+_:c14n19 rdf:first lib:LoanStatusOverdue ;
+	rdf:rest rdf:nil .
+_:c14n2 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n48 .
+_:c14n20 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n66 .
+_:c14n21 sh:datatype xsd:string ;
+	sh:description "The name of a key across aggregates, as declared in `unique_keys`." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Key name" ;
+	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
-	sh:path lib:checkStatus .
-_:c14n3 rdf:first lib:LoanStatusOk ;
-	rdf:rest _:c14n4 .
-_:c14n4 rdf:first lib:LoanStatusOverdue ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#keyName> .
+_:c14n22 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n42 .
+_:c14n23 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n5 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n6 sh:description "The outcomes of the checks." ;
+_:c14n24 sh:description "The outcomes of the checks." ;
 	sh:name "Checks" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 0 ;
 	sh:path lib:checks .
-_:c14n7 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n8 sh:datatype xsd:string ;
+_:c14n25 sh:description "The IRI of the class of the aggregate roots the key governs; a root of a subclass is its own scope." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Root class" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#rootClass> .
+_:c14n26 sh:description "The kind of graph a registry entry names." ;
+	sh:in _:c14n85 ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Kind" ;
+	sh:order 1 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#kind> .
+_:c14n27 sh:datatype xsd:string ;
 	sh:description "The code of the finding." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -61,8 +182,168 @@ _:c14n8 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path lib:findingCode .
-_:c14n9 sh:description "What the check found." ;
+_:c14n28 sh:datatype xsd:string ;
+	sh:description "The name of a key across aggregates, as declared in `unique_keys`." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Key name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 0 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#keyName> .
+_:c14n29 sh:description "What the check found." ;
 	sh:name "Check findings" ;
 	sh:nodeKind sh:BlankNodeOrIRI ;
 	sh:order 1 ;
 	sh:path lib:checkFindings .
+_:c14n3 sh:description "The IRI of a named graph." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Graph" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 0 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#graph> .
+_:c14n30 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n60 .
+_:c14n31 rdf:first dcterms:creator ;
+	rdf:rest _:c14n32 .
+_:c14n32 rdf:first dcterms:modified ;
+	rdf:rest _:c14n33 .
+_:c14n33 rdf:first rdf:type ;
+	rdf:rest _:c14n34 .
+_:c14n34 rdf:first <https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion> ;
+	rdf:rest _:c14n35 .
+_:c14n35 rdf:first <https://meaningfy.ws/ns/rdf-persistence#version> ;
+	rdf:rest rdf:nil .
+_:c14n36 rdf:first dcterms:created ;
+	rdf:rest _:c14n31 .
+_:c14n37 rdf:first dcterms:creator ;
+	rdf:rest _:c14n38 .
+_:c14n38 rdf:first dcterms:modified ;
+	rdf:rest _:c14n39 .
+_:c14n39 rdf:first rdf:type ;
+	rdf:rest _:c14n40 .
+_:c14n4 sh:description "Whether the loan passed." ;
+	sh:in _:c14n5 ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Check status" ;
+	sh:order 0 ;
+	sh:path lib:checkStatus .
+_:c14n40 rdf:first <https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion> ;
+	rdf:rest _:c14n41 .
+_:c14n41 rdf:first <https://meaningfy.ws/ns/rdf-persistence#version> ;
+	rdf:rest rdf:nil .
+_:c14n42 rdf:first dcterms:created ;
+	rdf:rest _:c14n37 .
+_:c14n43 rdf:first dcterms:creator ;
+	rdf:rest _:c14n44 .
+_:c14n44 rdf:first dcterms:modified ;
+	rdf:rest _:c14n45 .
+_:c14n45 rdf:first rdf:type ;
+	rdf:rest _:c14n46 .
+_:c14n46 rdf:first <https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion> ;
+	rdf:rest _:c14n47 .
+_:c14n47 rdf:first <https://meaningfy.ws/ns/rdf-persistence#version> ;
+	rdf:rest rdf:nil .
+_:c14n48 rdf:first dcterms:created ;
+	rdf:rest _:c14n43 .
+_:c14n49 rdf:first dcterms:creator ;
+	rdf:rest _:c14n50 .
+_:c14n5 rdf:first lib:LoanStatusOk ;
+	rdf:rest _:c14n19 .
+_:c14n50 rdf:first dcterms:modified ;
+	rdf:rest _:c14n51 .
+_:c14n51 rdf:first rdf:type ;
+	rdf:rest _:c14n52 .
+_:c14n52 rdf:first <https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion> ;
+	rdf:rest _:c14n53 .
+_:c14n53 rdf:first <https://meaningfy.ws/ns/rdf-persistence#version> ;
+	rdf:rest rdf:nil .
+_:c14n54 rdf:first dcterms:created ;
+	rdf:rest _:c14n49 .
+_:c14n55 rdf:first dcterms:creator ;
+	rdf:rest _:c14n56 .
+_:c14n56 rdf:first dcterms:modified ;
+	rdf:rest _:c14n57 .
+_:c14n57 rdf:first rdf:type ;
+	rdf:rest _:c14n58 .
+_:c14n58 rdf:first <https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion> ;
+	rdf:rest _:c14n59 .
+_:c14n59 rdf:first <https://meaningfy.ws/ns/rdf-persistence#version> ;
+	rdf:rest rdf:nil .
+_:c14n6 sh:datatype xsd:string ;
+	sh:description "The lexical forms of the shared values, in the order of the key." ;
+	sh:minCount 1 ;
+	sh:name "Key values" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 2 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#keyValues> .
+_:c14n60 rdf:first dcterms:created ;
+	rdf:rest _:c14n55 .
+_:c14n61 rdf:first dcterms:creator ;
+	rdf:rest _:c14n62 .
+_:c14n62 rdf:first dcterms:modified ;
+	rdf:rest _:c14n63 .
+_:c14n63 rdf:first rdf:type ;
+	rdf:rest _:c14n64 .
+_:c14n64 rdf:first <https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion> ;
+	rdf:rest _:c14n65 .
+_:c14n65 rdf:first <https://meaningfy.ws/ns/rdf-persistence#version> ;
+	rdf:rest rdf:nil .
+_:c14n66 rdf:first dcterms:created ;
+	rdf:rest _:c14n61 .
+_:c14n67 rdf:first dcterms:creator ;
+	rdf:rest _:c14n68 .
+_:c14n68 rdf:first dcterms:modified ;
+	rdf:rest _:c14n69 .
+_:c14n69 rdf:first rdf:type ;
+	rdf:rest _:c14n70 .
+_:c14n7 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n54 .
+_:c14n70 rdf:first <https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion> ;
+	rdf:rest _:c14n71 .
+_:c14n71 rdf:first <https://meaningfy.ws/ns/rdf-persistence#version> ;
+	rdf:rest rdf:nil .
+_:c14n72 rdf:first dcterms:created ;
+	rdf:rest _:c14n67 .
+_:c14n73 rdf:first dcterms:creator ;
+	rdf:rest _:c14n74 .
+_:c14n74 rdf:first dcterms:modified ;
+	rdf:rest _:c14n75 .
+_:c14n75 rdf:first rdf:type ;
+	rdf:rest _:c14n76 .
+_:c14n76 rdf:first <https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion> ;
+	rdf:rest _:c14n77 .
+_:c14n77 rdf:first <https://meaningfy.ws/ns/rdf-persistence#version> ;
+	rdf:rest rdf:nil .
+_:c14n78 rdf:first dcterms:created ;
+	rdf:rest _:c14n73 .
+_:c14n79 rdf:first dcterms:creator ;
+	rdf:rest _:c14n80 .
+_:c14n8 sh:description "The IRI of the class of the roots." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Root class" ;
+	sh:nodeKind sh:IRI ;
+	sh:order 1 ;
+	sh:path <https://meaningfy.ws/ns/rdf-persistence#rootClass> .
+_:c14n80 rdf:first dcterms:modified ;
+	rdf:rest _:c14n81 .
+_:c14n81 rdf:first rdf:type ;
+	rdf:rest _:c14n82 .
+_:c14n82 rdf:first <https://meaningfy.ws/ns/rdf-persistence#dataSchemaVersion> ;
+	rdf:rest _:c14n83 .
+_:c14n83 rdf:first <https://meaningfy.ws/ns/rdf-persistence#version> ;
+	rdf:rest rdf:nil .
+_:c14n84 rdf:first dcterms:created ;
+	rdf:rest _:c14n79 .
+_:c14n85 rdf:first <https://meaningfy.ws/ns/rdf-persistence#Aggregate> ;
+	rdf:rest _:c14n86 .
+_:c14n86 rdf:first <https://meaningfy.ws/ns/rdf-persistence#LoadedGraph> ;
+	rdf:rest rdf:nil .
+_:c14n87 rdf:first <https://meaningfy.ws/ns/rdf-persistence#Aggregate> ;
+	rdf:rest _:c14n88 .
+_:c14n88 rdf:first <https://meaningfy.ws/ns/rdf-persistence#LoadedGraph> ;
+	rdf:rest rdf:nil .
+_:c14n9 rdf:first dcterms:contributor ;
+	rdf:rest _:c14n78 .
