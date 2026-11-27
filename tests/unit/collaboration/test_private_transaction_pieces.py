@@ -15,6 +15,7 @@ PACKAGE = Path(__file__).parents[3] / "rdf_persistence"
 DEFINED_IN = "persistence/services/session.py"
 CALLERS = {
     "_allow_state": {"collaboration/services/transitions.py"},
+    "_allow_assignees": {"collaboration/services/assignments.py"},
     "_require_match": {"collaboration/services/reference_collections.py"},
     "_require_present": {"collaboration/services/discussion.py"},
     # ``_rely_on`` is handed out as ``GuardContext.rely_on``, built only in ``Transaction._context``

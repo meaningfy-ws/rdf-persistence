@@ -5,22 +5,22 @@ EPIC: workflow-assignees (proposal.md, #426). Decisions: DEC-1 to DEC-10; design
 
 ## 1. Assign, guard, clear, record, PR 1, branch `feat/workflow-assignees`
 
-- [ ] 1.1 Lead: the model of [D-1](design.md#d-1) in `rp_workflow.yaml` and the vocabulary
+- [x] 1.1 Lead: the model of [D-1](design.md#d-1) in `rp_workflow.yaml` and the vocabulary
   constants, then `make generate`, `make refresh-snapshot` (`model-shape.yaml`). Accept:
   `make check-quality`; the generated classes carry the new slots.
-- [ ] 1.2 The test fixtures of [D-8](design.md#d-8), in the new test file; the shared fixtures
+- [x] 1.2 The test fixtures of [D-8](design.md#d-8), in the new test file; the shared fixtures
   unchanged. Accept: the existing workflow tests stay green unchanged.
 - [ ] 1.3 Tests first: T1 to T13 (`design.md#tests`). RED: no `assign`, no `assignable`, no
   guard on `rp:assignedTo`.
-- [ ] 1.4 `load_workflow`: refuse a clearing edge on a workflow that is not assignable
+- [x] 1.4 `load_workflow`: refuse a clearing edge on a workflow that is not assignable
   ([D-5](design.md#d-5), DEC-3, DEC-5). Accept: T1.
-- [ ] 1.5 The guard: `keep_state` keeps the assignees in its one query; `_allow_assignees` and
+- [x] 1.5 The guard: `keep_state` keeps the assignees in its one query; `_allow_assignees` and
   the keyword-only `allowed_assignees` on the `WriteGuard.prepare` port and its test double
   ([D-2](design.md#d-2), DEC-2). Accept: T2, T3; `make test-changed check-quality`.
-- [ ] 1.6 `Assignments.assign`, `Collaboration.assign`, the `access_of` wiring in the kit, the
+- [x] 1.6 `Assignments.assign`, `Collaboration.assign`, the `access_of` wiring in the kit, the
   `.importlinter` line ([D-3](design.md#d-3), [D-4](design.md#d-4), DEC-3, DEC-4, DEC-6, DEC-10).
   Accept: T4 to T11; `make check-architecture`.
-- [ ] 1.7 `assignments` and the shared provenance helper ([D-3](design.md#d-3), DEC-8). Accept:
+- [x] 1.7 `assignments` and the shared provenance helper ([D-3](design.md#d-3), DEC-8). Accept:
   T13, and the existing transition-history tests unchanged.
 - [ ] 1.8 The clearing edge in `Transitions._store` ([D-5](design.md#d-5), DEC-5). Accept: T12.
 - [ ] 1.9 Lead: `make refresh-surface` (the new public names), then the stage gate of

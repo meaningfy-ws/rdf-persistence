@@ -11,12 +11,12 @@ from pathlib import Path
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import ValidationError
-from rdflib import RDF, BNode, Literal, URIRef
+from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.access.services.access import AccessRules
 from rdf_persistence.collaboration.domain.generated.rp_workflow import Workflow
-from rdf_persistence.core.domain.exceptions import Forbidden, InvalidWorkflow
+from rdf_persistence.core.domain.exceptions import Forbidden, InvalidWorkflow, StoredDataInvalid
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
 from rdf_persistence.core.services.yaml_files import SHOWN, problems_of, read_mapping, shown
@@ -89,6 +89,14 @@ def _transition_problem(workflow: Workflow) -> str | None:
 def state_iri(workflow: Workflow, state: str) -> str:
     """The IRI of the state named ``state``: the workflow's identifier, a slash and the name."""
     return f"{workflow.id}/{state}"
+
+
+def current_state(workflow: Workflow, iri: str, graph: Graph) -> str:
+    """The state IRI stored on ``iri``, or the initial state's when it has none (PD-22)."""
+    stored = set(graph.objects(URIRef(iri), v.WORKFLOW_STATUS))
+    if len(stored) > 1:
+        raise StoredDataInvalid(f"{iri} has more than one stored state")
+    return str(next(iter(stored))) if stored else state_iri(workflow, workflow.initial_state)
 
 
 class Workflows:

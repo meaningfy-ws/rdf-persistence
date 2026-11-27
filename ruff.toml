@@ -73,6 +73,7 @@ allow-magic-value-types = ["bytes"]
 "rdf_persistence/tenancy/services/tenancy.py" = ["PLR0913"]
 "rdf_persistence/tenancy/services/tenant_dump.py" = ["PLR0913"]
 "rdf_persistence/tenancy/services/tenant_sweep.py" = ["PLR0913"]
+"rdf_persistence/collaboration/services/assignments.py" = ["PLR0913"]
 "rdf_persistence/collaboration/services/transitions.py" = ["PLR0913"]
 "rdf_persistence/collaboration/services/workflows.py" = ["PLR0913"]
 # bootstrap.py also holds the one library function that touches the environment: `environment()`

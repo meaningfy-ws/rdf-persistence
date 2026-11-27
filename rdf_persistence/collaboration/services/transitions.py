@@ -25,7 +25,7 @@ from rdf_persistence.collaboration.domain.generated.rp_workflow import (
 )
 from rdf_persistence.collaboration.services.aggregate_activities import activities_about
 from rdf_persistence.collaboration.services.discussion import mint_iri
-from rdf_persistence.collaboration.services.workflows import Workflows, state_iri
+from rdf_persistence.collaboration.services.workflows import Workflows, current_state, state_iri
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
     Forbidden,
@@ -115,7 +115,7 @@ class Transitions:
         if held != if_version:  # the caller read an older state: say so before anything about it
             raise Conflict(changed_text(iri, held), iris=(iri,))
         workflow = self._workflow_of(iri, graph)
-        current = _current(workflow, iri, graph)
+        current = current_state(workflow, iri, graph)
         edge = self._edge(workflow, iri, current, to)
         if edge.comment_required and comment is None:
             raise InvalidBody(f"the move to {to} needs a comment")
@@ -224,14 +224,6 @@ class Transitions:
 
     def _mint(self, class_name: str) -> str:
         return mint_iri(self._view.get_class(class_name), self._iris, self._access.tenant)
-
-
-def _current(workflow: Workflow, iri: str, graph: Graph) -> str:
-    """The state IRI stored on ``iri``, or the initial state's when it has none (PD-22)."""
-    stored = set(graph.objects(URIRef(iri), v.WORKFLOW_STATUS))
-    if len(stored) > 1:
-        raise StoredDataInvalid(f"{iri} has more than one stored state")
-    return str(next(iter(stored))) if stored else state_iri(workflow, workflow.initial_state)
 
 
 def _moved(iri: str, graph: Graph, entered: str) -> list[Triple]:
