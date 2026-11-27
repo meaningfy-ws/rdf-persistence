@@ -41,6 +41,25 @@
 | TC-4 | nested owner folder (R-7) | PD-2 third bullet | generator unit |
 | TC-5 | the owner's freshness inputs (R-11) | the existing `test_a_target_with_the_key_lists_the_metamodel_files_as_inputs`, mapped to the new scenario | generator unit |
 
+## Delivery decisions
+
+- **D-1 Review (one pass L2+L3, PR #438): no Critical as labelled; four re-labelled Critical.**
+  Reason for each re-label: this change exists to make the shape's proofs and texts true, and each
+  of these leaves one untrue.
+  - **F1 (W1)** — no test pins the toy's toolkit import, so dropping the slot would silently lose
+    R-1's proof. Fix: assert the import in the toy technical-tree test; map it to TC-1.
+  - **F2 (W2)** — the R-2 test's schema keeps a range (`Authorised`) it no longer imports. Fix: its
+    own small schema importing only the non-shared toolkit module.
+  - **F3 (W3)** — `user-manual/generate.adoc`'s `typescript` output row implies every target writes
+    `rp_service.ts`. Fix: name `rp_service.ts` with the metamodel modules as the owner's.
+  - **F4 (S5)** — `test_without_a_toolkit_the_domain_render_is_today_s` now checks owner render ==
+    plain render, but its name and map row say `toolkit=None`. Fix: rename and remap it to "two
+    TypeScript targets and an owner".
+
+  Under the floor: S4 (the inputs scenario's map row says `--check` reports stale; the test checks
+  `current_inputs`: confidence kept), S6 (the hand-edited copy's test is not named here: it is
+  `tests/generator/unit/test_generation_inputs.py::test_a_listed_file_that_changed_since_it_was_generated_is_kept_and_reported`).
+
 ## Risks
 
 - **RISK-1 the toy slot changes goldens.** Mitigation: only `make generate` writes them; the lead
