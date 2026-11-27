@@ -329,3 +329,29 @@ lane that ran them still runs them and they prove what they proved.
   then 1.2 + 1.4 + 1.5 (one builder: `workflows.py`, `session.py`) beside 1.7 (one builder:
   `transitions.py`, the new helper module), which touch no file in common; then 1.6; then 1.8,
   which needs `assign` to set up its assignees.
+- **D-11** (lead, 2026-11-27): task 1.7 is cut in two. The extraction of the shared helper runs in
+  the first wave; `assignments(iri)` and T13 move to task 1.6, since they need `assign` to have
+  something to list.
+- **D-12** (lead, 2026-11-27): task 1.1 was made and committed in the main checkout, against
+  P-0017. Its commits were on the change's branch, so nothing moved: the main checkout went back
+  to `develop` and the work continues in `.worktrees/workflow-assignees`. The re-index failed at
+  stage start; the clean rebuild runs in the background and the first briefs carry impact read
+  from the code, as the stage loop allows.
+- **D-13** (lead, 2026-11-27, amends D-3): `aggregate_activities` gets its own layer line in the
+  `collaboration-layers` contract, between `transitions | …` and `discussion | …`, not a place on
+  the `discussion` line: it imports `moment_of` from `discussion`, and modules joined by `|` may
+  not import each other. Moving `moment_of` was the alternative; it touches a file no task needs.
+- **D-14** (developer, 2026-11-27): stage 1 merges with `gh pr merge --admin` once the local
+  full gates (`make check-all`, `make test-containers`) pass, their result pasted in the PR body
+  (R-0001).
+- **D-15** (lead, 2026-11-27): two slips against the test conventions, recorded. The lead ran a
+  whole test folder by hand (`uv run pytest tests/unit/persistence`) as a "narrow" check, outside
+  the queue; and briefed the first builders before the worktree's seed had finished, so one
+  task gate fell back to the full `test-fast` and hit the background limit. From here the lead
+  runs only queued make lanes, and briefs builders only after the seed's notice.
+- **D-16** (lead, 2026-11-27): the worktree was installed with a bare `uv sync`, without the
+  extras `make install` adds (`--all-extras`); the API tests failed for a missing module and both
+  first task gates fell back to the full lane and timed out. Reinstalled with `make install` and
+  re-seeded; the lead re-runs the task gate once over 1.2, 1.4, 1.5 and 1.7 (T1). Builder A also
+  ran two whole folders unqueued with `-n 4`, against the guards: T1, noted, its work kept since
+  the lead's gate run decides.

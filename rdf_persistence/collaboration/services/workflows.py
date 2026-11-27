@@ -28,6 +28,8 @@ Object = URIRef | Literal | BNode  # what a triple's object can be
 CHANGED_BY_TRANSITION = "the state is changed only by a transition"
 KEEPS_A_CLASS = "an aggregate under a workflow keeps a class under it"
 TAKES_A_CLASS = "an aggregate that takes a class under a workflow holds no state"
+CHANGED_ASSIGNEES = "the assignees are changed only by an assignment or a clearing transition"
+TAKES_A_CLASS_ASSIGNED = "an aggregate that takes a class under a workflow holds no assignees"
 SEVERAL = "the classes of an aggregate name more than one workflow"
 
 
@@ -68,9 +70,19 @@ def _file_problem(workflow: Workflow) -> str | None:
     states = workflow.workflow_states
     if twice := sorted({s for s in states if states.count(s) > 1}):
         return f"workflow_states lists {shown(twice)} more than once"
+    return _transition_problem(workflow)
+
+
+def _transition_problem(workflow: Workflow) -> str | None:
+    """The first transition of ``workflow`` that its file gets wrong, or None."""
     for move in workflow.workflow_transitions or []:
         if not move.transition_roles:
             return f"transition {move.from_state} -> {move.to_state} has no transition_roles"
+        if move.clears_assignees and not workflow.assignable:
+            return (
+                f"transition {move.from_state} -> {move.to_state} sets clears_assignees, "
+                "but the workflow is not assignable (set assignable: true)"
+            )
     return None
 
 
@@ -137,8 +149,10 @@ class Workflows:
         triples: list[Triple],
         stored: Tracked | None,
         allowed_state: str | None,
+        *,
+        allowed_assignees: frozenset[str] | None = None,
     ) -> list[Triple]:
-        """The triples to write for the root ``iri`` so that a plain write never changes its state (PD-19, PD-32 item 1).
+        """The triples to write for the root ``iri`` so that a plain write never changes its state or its assignees (PD-19, PD-32 item 1, workflow-assignees D-2).
 
         S is the workflow of the stored root's types, N that of the written ones. A service with no
         class under a workflow writes as it is, with no query, as does any write with neither S nor N.
@@ -148,23 +162,39 @@ class Workflows:
         written, the stored state (none stays none, PD-22); with no S but an N the aggregate holds
         and writes no state. ``allowed_state`` is the one state this write may set (a transition's).
 
+        The assignees are kept in the same query. An add under a workflow writes none. A replace under
+        one: when ``allowed_assignees`` is given it is the exact set to write (empty included, RDF
+        cannot tell omitted from empty); else none written puts the stored set back and any set but
+        the stored one is refused.
+
         Raises:
             Forbidden: A set of types names two workflows; the state is not the initial one (add) or
                 the stored one (replace) and ``allowed_state`` is not it; an aggregate under a workflow
                 loses its class or takes one under another; an aggregate takes a class under a
-                workflow and holds or writes a state.
+                workflow and holds or writes a state or assignees; an add names an assignee; a
+                replace writes assignees other than the allowed or the stored ones.
         """
         if not self._by_iri:
             return triples
         root = URIRef(iri)
         named = _values(triples, root, v.WORKFLOW_STATUS)
         written = self._single(_values(triples, root, RDF.type))
+        assigned = _values(triples, root, v.WORKFLOW_ASSIGNEES)
         if stored is None:
-            return _added(written, root, triples, named)
-        read = await session.root_values(iri, [RDF.type, v.WORKFLOW_STATUS])
+            return _added(written, root, triples, named, assigned)
+        read = await session.root_values(iri, [RDF.type, v.WORKFLOW_STATUS, v.WORKFLOW_ASSIGNEES])
         held = self._single(read[RDF.type])
         return _replaced(
-            held, written, root, triples, named, read[v.WORKFLOW_STATUS], allowed_state
+            held,
+            written,
+            root,
+            triples,
+            named,
+            read[v.WORKFLOW_STATUS],
+            allowed_state,
+            assigned,
+            read[v.WORKFLOW_ASSIGNEES],
+            allowed_assignees,
         )
 
     def of_types(self, types: Iterable[Node]) -> list[Workflow]:
@@ -186,10 +216,16 @@ def _values(triples: list[Triple], root: URIRef, predicate: URIRef) -> set[Objec
 
 
 def _added(
-    workflow: Workflow | None, root: URIRef, triples: list[Triple], named: set[Object]
+    workflow: Workflow | None,
+    root: URIRef,
+    triples: list[Triple],
+    named: set[Object],
+    assigned: set[Object],
 ) -> list[Triple]:
     if workflow is None:
-        return triples  # the application's own adms:status is its own
+        return triples  # the application's own adms:status and assigned_to are its own
+    if assigned:
+        raise Forbidden(CHANGED_ASSIGNEES)
     initial = URIRef(state_iri(workflow, workflow.initial_state))
     if not named:
         return [*triples, (root, v.WORKFLOW_STATUS, initial)]
@@ -199,12 +235,18 @@ def _added(
 
 
 def _taking_a_class(
-    written_flow: Workflow | None, triples: list[Triple], named: set[Object], held: set[Object]
+    written_flow: Workflow | None,
+    triples: list[Triple],
+    state: tuple[set[Object], set[Object]],
+    assignees: tuple[set[Object], set[Object]],
 ) -> list[Triple]:
-    """A replace of a root whose stored classes follow no workflow: its state stays the application's own,
-    unless it takes a class under a workflow, which it may do only holding and writing no state."""
-    if written_flow is not None and (held or named):
+    """A replace of a root whose stored classes follow no workflow: its state and assignees stay the
+    application's own, unless it takes a class under a workflow, which it may do only holding and
+    writing no state and no assignee. Each slot is its (written, stored) values."""
+    if written_flow is not None and any(state):
         raise Forbidden(TAKES_A_CLASS)
+    if written_flow is not None and any(assignees):
+        raise Forbidden(TAKES_A_CLASS_ASSIGNED)
     return triples
 
 
@@ -213,19 +255,57 @@ def _replaced(
     written_flow: Workflow | None,
     root: URIRef,
     triples: list[Triple],
+    named_state: set[Object],
+    held_state: set[Object],
+    allowed_state: str | None,
+    named_assignees: set[Object],
+    held_assignees: set[Object],
+    allowed_assignees: frozenset[str] | None,
+) -> list[Triple]:
+    if stored_flow is None:
+        return _taking_a_class(
+            written_flow,
+            triples,
+            (named_state, held_state),
+            (named_assignees, held_assignees),
+        )
+    if written_flow is None or written_flow.workflow_name != stored_flow.workflow_name:
+        raise Forbidden(KEEPS_A_CLASS)
+    kept = _kept_state(root, triples, named_state, held_state, allowed_state)
+    return _kept_assignees(root, kept, named_assignees, held_assignees, allowed_assignees)
+
+
+def _kept_state(
+    root: URIRef,
+    triples: list[Triple],
     named: set[Object],
     held: set[Object],
     allowed: str | None,
 ) -> list[Triple]:
-    if stored_flow is None:
-        return _taking_a_class(written_flow, triples, named, held)
-    if written_flow is None or written_flow.workflow_name != stored_flow.workflow_name:
-        raise Forbidden(KEEPS_A_CLASS)
     if not named:
-        return [*triples, *((root, v.WORKFLOW_STATUS, state) for state in sorted(held))]
-    permitted = [held] if allowed is None else [held, {URIRef(allowed)}]
+        return [*triples, *((root, v.WORKFLOW_STATUS, s) for s in sorted(held))]
+    permitted = [held] if allowed is None else [held, {URIRef(str(allowed))}]
     if named not in permitted:
         raise Forbidden(CHANGED_BY_TRANSITION)
+    return triples
+
+
+def _kept_assignees(
+    root: URIRef,
+    triples: list[Triple],
+    named: set[Object],
+    held: set[Object],
+    allowed: frozenset[str] | None,
+) -> list[Triple]:
+    """D-2: an allowed set is exact and checked first, since RDF cannot tell omitted from empty."""
+    if allowed is not None:
+        if named != {URIRef(str(a)) for a in allowed}:
+            raise Forbidden(CHANGED_ASSIGNEES)
+        return triples
+    if not named:
+        return [*triples, *((root, v.WORKFLOW_ASSIGNEES, a) for a in sorted(held))]
+    if named != held:
+        raise Forbidden(CHANGED_ASSIGNEES)
     return triples
 
 
