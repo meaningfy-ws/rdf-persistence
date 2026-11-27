@@ -8,8 +8,7 @@ green CI and the developer's go).
 D-1 to D-9 (design.md, Delivery decisions).
 
 ## Open
-- The developer's verdict on the acceptance demo (`evidence/acceptance.md`; the lead recommends
-  the skip).
+- Acceptance: demo skipped by the developer, accepted (`evidence/acceptance.md`).
 - MWB2's `rp-generate --check` on EA round 26 against the branch (RISK-3), asked in PR #427.
 - Follow-up #428: four findings under the floor (D-8).
 - After the merge: archive (`openspec archive narrowed-slot-override --yes`), #417 closed by the
