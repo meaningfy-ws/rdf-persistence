@@ -156,3 +156,24 @@ finds no repeat, returns.
 None moved. TC-3's assertion message is reworded; it stays in the generator unit lane. TC-1, TC-4
 and TC-5's integration half run in the generator integration lane, TC-2 and TC-5's unit half in the
 generator unit lane, all in `make test-generator`.
+
+## Delivery decisions
+
+The lead's, taken in the epic session (R-0007), for the developer to validate at the end.
+
+- **D-1 Own seed and index.** The shaping session's `make test-seed` was cut off mid-run and is
+  invalid; the lead ran its own `make reindex` and `make test-seed` at stage start.
+- **D-2 `uv sync --all-extras` in the worktree.** The worktree's `.venv` lacked the `linkml` extra,
+  so no generator test could be collected (builder 1.1's report). The lead synced it (only the
+  lead runs `uv sync`) and seeded again.
+- **D-3 Regenerate before the generator tests run.** The freshness guard
+  (`rdf_persistence_generation/testkit/freshness.py`, loaded by `tests/conftest.py`) stops every
+  test session once a generator input differs from `rp-manifest.json`, so task 1.3's
+  `make generate` cannot wait until after 1.2: the lead runs it after each task that edits the
+  extension or a template (1.1, 1.2), before the builder's green run. 1.3's acceptance (RISK-1)
+  is checked on the final regeneration.
+- **D-4 Task 1.4 beside 1.1.** Disjoint files (`CHANGELOG.md` only), so it ran in parallel.
+- **D-5 One seed failure, not this change's.** The seed ran 10 499 passed, 1 failed:
+  `tests/unit/tooling/test_lanes.py::test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make`,
+  which passes alone and touches nothing this change edits. The seed data stands; the test is
+  watched in `make check-all`.

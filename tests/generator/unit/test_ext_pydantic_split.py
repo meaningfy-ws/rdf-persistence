@@ -311,8 +311,129 @@ def test_a_field_an_unlabelled_class_relaxes_carries_a_type_ignore(
     chapter = lines[lines.index("class Chapter(Described):") :]
     line = next(line for line in chapter if line.startswith(f"    {slot}:"))
     assert line.endswith("# type: ignore[assignment]") is ignored, (
-        f"Chapter.{slot}: the ignore belongs on a field that loosens its base class's, and only there"
+        f"Chapter.{slot}: the ignore belongs on a field that overrides its base class's incompatibly, and only there"
     )
+
+
+NARROWING_MODULE = """
+id: https://example.org/ns/narrow
+name: narrow
+title: Narrow
+description: A module whose subclass overrides a slot of its parent.
+prefixes: {{n: "https://example.org/ns/n#", linkml: "https://w3id.org/linkml/"}}
+default_prefix: n
+default_range: string
+imports: [linkml:types]
+types:
+  Label:
+    typeof: string
+    description: A custom string type.
+    uri: n:Label
+enums:
+  Colour:
+    description: A colour.
+    permissible_values: {{red: {{description: Red.}}}}
+  Shade:
+    description: A shade.
+    permissible_values: {{dark: {{description: Dark.}}}}
+classes:
+  A: {{description: A.}}
+  B: {{description: B., is_a: A}}
+  Mixin:
+    description: A mixin.
+    mixin: true
+    attributes:
+      s: {mixin_slot}
+  Parent:
+    description: The parent.
+    attributes:
+      s: {parent_slot}
+  Child:
+    description: The child.
+    is_a: Parent
+    mixins: [{mixins}]
+    slot_usage:
+      s: {usage}
+"""
+
+
+def child_field_s(tmp_path: Path, parent_slot: str, usage: str, *, mixin_slot: str = "{}") -> str:
+    """The generated line of ``Child.s``: ``Parent`` declares ``s`` as ``parent_slot``, ``Child`` narrows it by ``usage``."""
+    mixins = "Mixin" if mixin_slot != "{}" else ""
+    text = NARROWING_MODULE.format(
+        parent_slot=parent_slot, usage=usage, mixin_slot=mixin_slot, mixins=mixins
+    )
+    (tmp_path / "narrow.yaml").write_text(text, encoding="utf-8")
+    lines = next(
+        f.text for f in render_modules(tmp_path / "narrow.yaml") if f.name == "narrow.py"
+    ).splitlines()
+    child = lines[next(i for i, line in enumerate(lines) if line.startswith("class Child(")) :]
+    return next(line for line in child if line.startswith("    s:"))
+
+
+MARK = "# type: ignore[assignment]"
+
+
+@pytest.mark.parametrize(
+    ("parent_slot", "usage", "marked"),
+    [
+        ("{range: A, multivalued: true}", "{range: A, required: true, multivalued: false}", True),
+        ("{range: A}", "{range: A, multivalued: true}", True),
+        ("{range: A, multivalued: true}", "{range: B}", True),
+        ("{range: A, inlined: true}", "{inlined: false}", True),
+        (
+            "{range: A, multivalued: true, inlined: true, inlined_as_list: true}",
+            "{inlined_as_list: false}",
+            True,
+        ),
+        ("{range: Colour}", "{range: Shade}", True),
+        ("{range: string}", "{range: Colour}", True),
+        ("{range: A, inlined: true}", "{range: B}", False),
+        ("{range: string}", "{range: Label}", False),
+        ("{range: string}", "{description: again.}", False),
+    ],
+    ids=[
+        "list-to-single",
+        "single-to-list",
+        "list-range-narrowed",
+        "inlined-against-reference",
+        "list-against-dict",
+        "enum-changed",
+        "type-against-enum",
+        "single-class-narrowed",
+        "custom-string-type",
+        "unchanged-redeclaration",
+    ],
+)
+def test_a_field_overriding_a_slot_incompatibly_carries_a_type_ignore_and_only_then(
+    tmp_path: Path, parent_slot: str, usage: str, marked: bool
+) -> None:
+    line = child_field_s(tmp_path, parent_slot, usage)
+    assert line.endswith(MARK) is marked, (
+        f"Child.s, {parent_slot} narrowed by {usage}: marked exactly when not a subtype: {line}"
+    )
+
+
+def test_a_mixin_declaring_the_slot_as_a_list_marks_the_class_that_narrows_it(
+    tmp_path: Path,
+) -> None:
+    line = child_field_s(
+        tmp_path,
+        "{range: A}",
+        "{range: A, multivalued: false}",
+        mixin_slot="{range: A, multivalued: true}",
+    )
+    assert line.endswith(MARK), f"a mixin's list narrowed to one is not marked: {line}"
+
+
+def test_a_narrowed_field_with_equals_number_is_one_line_and_marked(tmp_path: Path) -> None:
+    line = child_field_s(
+        tmp_path,
+        "{range: integer, multivalued: true}",
+        "{range: integer, multivalued: false, equals_number: 1}",
+    )
+    assert "le=1" in line, f"the bounds are not on the field's own line: {line}"
+    assert line.endswith(MARK), f"the mark is not on the first line: {line}"
 
 
 TERM_MODULE = """

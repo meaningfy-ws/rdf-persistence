@@ -8,7 +8,7 @@ Builders never commit; the lead does and ticks this file.
 
 ## 1. One stage — branch `change/narrowed-slot-override`, one PR
 
-- [ ] 1.1 **unit + integration + code (the mark)** — design.md PD-1, PD-2, PD-6; spec scenarios 1
+- [x] 1.1 **unit + integration + code (the mark)** — design.md PD-1, PD-2, PD-6; spec scenarios 1
   and 2. First the failing tests: TC-1 and TC-5's integration half in
   `tests/generator/integration/test_generated_code_imports.py` (TC-1 must fail with the
   `[assignment]` error before the fix), TC-2 and TC-5's unit half in
@@ -24,7 +24,7 @@ Builders never commit; the lead does and ticks this file.
   files (`rp-manifest.json`, the unique-key validators' new lines). Accept: no generated `.py`
   line changes outside PD-5's validator lines and a real incompatible override (RISK-1; any other
   diff is reported, not fixed); `make typecheck-generated` green.
-- [ ] 1.4 **docs** — after 1.2; PD-4: `CHANGELOG.md` `[Unreleased]` *Fixed*. Accept:
+- [x] 1.4 **docs** — after 1.2; PD-4: `CHANGELOG.md` `[Unreleased]` *Fixed*. Accept:
   `make check-docs` green.
 - [ ] 1.5 **lead** — scenario-map rows for TC-1, TC-2, TC-4, TC-5; `make check-all`; one review
   pass; PR into `develop` naming MWB2 EA round 26 (D-12) and asking MWB2 to run
@@ -32,7 +32,7 @@ Builders never commit; the lead does and ticks this file.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 (1.4 may run beside 1.3)
+- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · [x] 1.4 · [ ] 1.5 (1.4 may run beside 1.3)
 
 ## Verification
 

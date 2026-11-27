@@ -148,3 +148,49 @@ def test_classes_named_after_the_names_a_generated_module_imports_import_validat
         assert shadowing.label == name, f"{name} validates"
         assert (str(after.amount), after.colour) == ("1.5", "red"), f"After{name} validates"
     assert mypy_output(project) == "", "the generated module is mypy-clean"
+
+
+NARROWING_SLOTS = """\
+slots:
+  has_part:
+    title: Has part
+    description: The parts, a list.
+    slot_uri: lib:hasPart
+    range: Part
+    multivalued: true
+  counts:
+    title: Counts
+    description: The counts, a list.
+    slot_uri: lib:counts
+    range: integer
+    multivalued: true
+"""
+NARROWED_USAGE = """\
+    slot_usage:
+      has_part:
+        required: true
+        multivalued: false
+      counts:
+        multivalued: false
+        equals_number: 1
+"""
+
+
+def test_a_subclass_narrowing_a_list_slot_to_one_value_generates_a_package_mypy_accepts(
+    project: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#417: an optional list in the parent, a required single value in the subclass (TC-1, TC-5)."""
+    classes = (
+        root_class("Part")
+        + root_class("Holder", abstract=True)
+        + "    slots: [has_part, counts]\n"
+        + root_class("OnePartHolder", parent="Holder")
+        + NARROWED_USAGE
+    )
+    pyproject = write_project(
+        project, {"app_narrow": module("app_narrow", classes, slots=NARROWING_SLOTS)}
+    )
+
+    assert main(["--project", str(pyproject)]) == 0, capsys.readouterr().err
+
+    assert mypy_output(project) == "", "the narrowed field is not marked for mypy"
