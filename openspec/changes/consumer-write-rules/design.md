@@ -411,6 +411,21 @@ The lead's, per R-0007; the developer may overrule any of them.
   resolves it to the whole `exceptions.py` file, whose importers are those of the existing errors; a
   new class that three modules use breaks none of them. Brought to the developer with the merge
   question, not acted on.
+- **D-12 The stage review (L2+L3, one pass): five findings, three accepted as Critical by re-label.**
+  - *R-W1, accepted (re-labelled Critical):* `architecture/index.adoc:511` says a technical schema
+    cannot be imported, the opposite of the shipped behaviour (D-6); a reader is misled and no
+    gate catches it. Fix: say how technical modules import, `migrations/` unmapped.
+  - *R-W2, accepted (re-labelled Critical):* the signed rp-service-api scenarios "a 422 refusal"
+    and "a status outside 409 and 422" (status 403) have no map row, and 403 no test: a signed
+    scenario without a test fails the traceability check (`technical-models` D-13, the same case).
+    Fix: a 403 row in the 500 table, and the two scenario rows.
+  - *R-W3, accepted (re-labelled Critical):* TC-5 checks `holder` for truthiness and `type` by
+    suffix and never `title`, so #397's acceptance ("extra fields included", the rule's `T`, `d`,
+    `h`) is not proven. Fix: compare each field to the toy's constants.
+  - *R-S4, under the floor:* `service.py:130`'s docstring names only create and replace; any write
+    that runs the rules answers the same way.
+  - *R-S5, lead-fixed:* `tasks.md` 1.5 and 1.6 still named 1.4 and the old review set.
+  One fixer takes R-W1 to R-W3 after the rebase on `develop` with #425 in.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.

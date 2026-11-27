@@ -31,11 +31,11 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
   router passing `kit.refusal_problems`, and the components and `default` loop in
   `install_openapi`. Accept: TC-7 passes; the document golden without
   `refusal_problems` unchanged; `make typecheck-openapi-ts` green; task gate green.
-- [x] 1.5 **docs** — after 1.4; PD-15's stage-1 half (generation page, how-to's problem section,
+- [x] 1.5 **docs** — beside 1.3 (D-9; 1.4 stopped, D-5); PD-15's stage-1 half (generation page, how-to's problem section,
   `api.adoc` row, CHANGELOG added names). Accept: `make check-docs` green.
 - [ ] 1.6 **lead** — scenario-map rows (done); `make check-all`, `make test-containers` not needed (no
-  adapter); one review pass (L1+L2, L3+L4+L5: MEDIUM); PR into `develop` naming the consumer need
-  (D-12); merged on green CI.
+  adapter); one review pass of L2+L3 (design D-2, P-0005); PR into `develop` naming the consumer
+  need (AGENTS.md D-12); merged on green CI.
 
 ## 2. Stage 2: find, typed rules, the fake reader, state names (#397 part 2, #387, #386) — branch `change/consumer-write-rules-2`, one PR
 
