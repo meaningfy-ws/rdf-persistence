@@ -210,6 +210,11 @@ Taken by the epic-session lead (R-0007), 2026-11-27; the owner may overrule any 
 - **D-3 `make install` in this worktree.** Its environment lacked the `generate` extra
   (`rp-generate needs LinkML's generators`), so the lead ran `make install` (`uv sync --all-extras`)
   before task 1.1's `make generate`.
+- **D-4 PD-2's "normalised paths" is kept as a guard.** The builder of 1.2 found that the
+  `relative_path` pattern already refuses `.` and `..` segments, so two accepted spellings of one
+  folder cannot reach the check; `web/./a` is refused earlier, as an invalid `typescript` value. The
+  check keeps `posixpath.normpath` (harmless) and the test table pins both behaviours. PD-2 and the
+  spec scenario stay as written: they hold, the example is merely refused one step earlier.
 
 ## Lanes for moved or rewritten tests
 

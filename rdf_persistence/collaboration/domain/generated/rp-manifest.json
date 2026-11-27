@@ -87,7 +87,7 @@
     },
     {
       "path": "rdf_persistence_generation/config.py",
-      "sha256": "710259a68468e08e3eb45699a680e6979431dedf9b3962c8dfd9377c19cb0b1c"
+      "sha256": "1a256c45bfaf36cd1ce26f9f5ee9845a2cec317c3636fe3912a7b127ac74e94a"
     },
     {
       "path": "rdf_persistence_generation/exceptions.py",
