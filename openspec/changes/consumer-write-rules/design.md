@@ -433,6 +433,13 @@ The lead's, per R-0007; the developer may overrule any of them.
   `aggregate_validators.py` and the exports); the tester right after 2.1 (riskiest: `find` is the
   tenant and readability boundary, RISK-4) ∥ 2.3; 2.4 ∥ 2.5; then the full review (P-0005) over
   both stages, four reviewers in parallel.
+- **D-14 The stage-1 checker: pass, two Warnings, both carried forward.**
+  - *C-1:* the rp-service-api scenario "the document lists the problem" (task 1.4's) is signed in
+    the delta but has no test: it goes back to shaping with 1.4 (D-5), and the lead drops it from
+    this change's delta at the close (P-0004 reconcile), naming it in the hand-over and the archive.
+  - *C-2:* the cold reader of `access.adoc#refuse-with-own-problem` could not tell which target
+    generates the problem module or where its class is imported from: task 2.5 rewrites that
+    section and takes it.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.
