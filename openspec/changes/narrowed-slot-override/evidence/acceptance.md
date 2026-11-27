@@ -15,5 +15,8 @@ In the worktree, show:
 
 ## Result
 
-Pending the developer's verdict. The lead recommends skipping the demo: TC-1 and TC-4 are the demo
-itself, run by CI's "Generator tests" job, and the real proof is MWB2's check of item 3.
+Skipped by the developer (2026-11-27), on the lead's recommendation: TC-1 and TC-4 are the demo
+itself, run by CI's "Generator tests" job (green on PR #427), and the real proof is MWB2's check
+of item 3.
+
+Verdict: accepted without a demo (developer)
