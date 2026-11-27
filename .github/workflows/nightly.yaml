@@ -1,0 +1,129 @@
+# Nightly workflow for RDF Persistence: the full test suite on develop
+# ============================================================================
+# The PR gate (ci.yaml) runs the static checks and the feature tests only
+# (ci-minimal-gate DEC-2); the unit lane, the generator's tests and the
+# SonarCloud scan run here, once a day on develop and by hand
+# (`gh workflow run nightly.yaml --ref develop`). Locally, `make check-all`
+# runs them before every PR, slow tests included. Thin workflow (D12): every
+# step calls a `make` target. No container, e2e or Fuseki work runs here.
+#
+# SonarCloud on the free plan (developer, 2026-11-05) analyses only its main
+# branch, which must be named `develop`. The scan runs only when the repo
+# variable SONAR_ENABLED is 'true' and SONAR_TOKEN is set.
+
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"  # 02:00 UTC; a scheduled run checks out the default branch, develop
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # The fast unit lane in SPLITS duration-balanced shards (Makefile); slow tests run locally only
+  # (make test-unit, check-all). One shard is ~1/8 of the ~14 min the lane takes on one runner.
+  unit-shard:
+    name: Unit tests ${{ matrix.group }}/8
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: make test-unit-ci GROUP=${{ matrix.group }}
+
+      - name: Upload the shard's coverage data and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-shard-${{ matrix.group }}
+          retention-days: 1
+          include-hidden-files: true
+          path: |
+            .coverage.${{ matrix.group }}
+            test-results-${{ matrix.group }}.xml
+
+  # The floor reads the shards' union, so it runs once, after every shard. It needs the shards
+  # alone: a generator failure leaves it green (generator-package D-19).
+  unit:
+    name: Unit tests (coverage floor)
+    needs: [unit-shard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: unit-shard-*
+          merge-multiple: true
+      - run: make coverage-combine
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          retention-days: 14
+          path: |
+            coverage.xml
+            test-results-*.xml
+
+  # SonarCloud reads the library's combined report and the generator's, so it runs after both
+  # lanes, whatever their result. Neither lane waits for it.
+  sonar:
+    name: SonarCloud scan
+    needs: [unit, test-generator]
+    if: always() && vars.SONAR_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # SonarCloud reads the history
+      - uses: actions/download-artifact@v4
+        continue-on-error: true  # a failed lane may have uploaded nothing
+        with:
+          name: coverage-report
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: generator-coverage
+      - uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # The generator's own pyramid (tests/generator), measured against rdf_persistence_generation
+  # alone. Node is for the tests that run tsc on the generated TypeScript.
+  test-generator:
+    name: Generator tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: make test-generator
+
+      # The scan job downloads it by this name. It is not named like the unit shards: the unit job
+      # merges their artifacts and must not depend on this lane.
+      - name: Upload the generator's coverage report and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-coverage
+          retention-days: 1
+          path: |
+            coverage-generator.xml
+            test-results-generator.xml

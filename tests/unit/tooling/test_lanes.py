@@ -225,8 +225,8 @@ def test_only_the_ci_unit_lane_leaves_the_slow_tests_out() -> None:
         assert "slow" not in selection(lane), f"{lane} must keep running the slow tests"
 
 
-def test_the_ci_unit_jobs_run_the_ci_unit_lane_in_shards_and_combine_their_coverage() -> None:
-    ci = (TESTS_ROOT_DIR.parent / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
+def test_the_nightly_unit_jobs_run_the_ci_unit_lane_in_shards_and_combine_their_coverage() -> None:
+    ci = _workflow("nightly.yaml")
 
     assert "run: make test-unit-ci GROUP=${{ matrix.group }}" in ci, "a CI shard runs one group"
     assert "run: make coverage-combine" in ci, "a CI job must combine the shards' coverage"
@@ -423,10 +423,47 @@ def test_a_given_worker_count_replaces_the_token(added: dict[str, str]) -> None:
     assert printed == "-n 3 --dist loadgroup", printed
 
 
+def _workflow(file: str) -> str:
+    return (TESTS_ROOT_DIR.parent / ".github" / "workflows" / file).read_text(encoding="utf-8")
+
+
+def _jobs(workflow: str) -> list[str]:
+    body = workflow.split("\njobs:\n", 1)[1]
+    return re.findall(r"^  ([\w-]+):$", body, re.MULTILINE)
+
+
+def _triggers(workflow: str) -> list[str]:
+    on = re.search(r"^on:\n(.*?)(?=^\S)", workflow, re.DOTALL | re.MULTILINE)
+    assert on, "the workflow has no on: block"
+    return re.findall(r"^  ([\w-]+):", on.group(1), re.MULTILINE)
+
+
+def test_the_pr_gate_runs_the_static_checks_and_the_feature_tests_only() -> None:
+    """ci-minimal-gate DEC-2: no unit or generator tests on a PR."""
+    ci = _workflow("ci.yaml")
+
+    assert _jobs(ci) == ["style", "types", "architecture", "spec-docs-generation", "feature"]
+    assert "make test-unit" not in ci, "the PR gate runs no unit lane"
+    assert "make test-generator" not in ci, "the PR gate runs no generator tests"
+
+
+def test_the_pr_gate_runs_on_pull_requests_only() -> None:
+    """ci-minimal-gate DEC-1: the merge into develop does not run the gate again."""
+    assert _triggers(_workflow("ci.yaml")) == ["pull_request"]
+
+
+def test_the_full_suite_runs_nightly_and_by_hand() -> None:
+    """ci-minimal-gate DEC-3: the unit shards, the generator and Sonar run on a schedule."""
+    nightly = _workflow("nightly.yaml")
+
+    assert sorted(_triggers(nightly)) == ["schedule", "workflow_dispatch"]
+    assert sorted(_jobs(nightly)) == ["sonar", "test-generator", "unit", "unit-shard"]
+
+
 def _ci_job(name: str) -> str:
-    ci = (TESTS_ROOT_DIR.parent / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
+    ci = _workflow("nightly.yaml")
     match = re.search(rf"^  {re.escape(name)}:\n(.*?)(?=^  \S|\Z)", ci, re.DOTALL | re.MULTILINE)
-    assert match, f"ci.yaml has no job {name}"
+    assert match, f"nightly.yaml has no job {name}"
     return match.group(1)
 
 
@@ -482,7 +519,7 @@ def test_a_shard_runs_one_balanced_group_without_the_floor() -> None:
 
 
 def test_the_ci_matrix_has_one_job_per_split() -> None:
-    ci = (TESTS_ROOT_DIR.parent / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
+    ci = _workflow("nightly.yaml")
     splits = int(dict(VARIABLE.findall(MAKEFILE))["SPLITS"])
 
     assert f"group: {list(range(1, splits + 1))}" in ci, "the matrix must list every split"
