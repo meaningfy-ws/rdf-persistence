@@ -420,9 +420,25 @@ The TypeScript step follows the same rule. When the target that owns an imported
 folder by a relative path (for example `../../domain/generated/values/loan_checks`); the module is
 not copied into the importing target's folder, and the importing target's `index.ts` does not list
 it. When the owner does not set `typescript`, the module is copied into the importing target's
-folder as before, and so are the toolkit's own types (`rp_core.ts`, `rp_service.ts` and the rest).
-The owners are the other targets of the same run, so a run made from flags alone has none and
-copies every module.
+folder as before. The owners are the other targets of the same run, so a run made from flags alone
+has none and copies every module.
+
+The toolkit's own TypeScript has one owner too. When two or more entries of a project set
+`typescript`, exactly one of them sets `toolkit-typescript = true`. That entry's folder holds the
+shared set: every module of the metamodel (`rp_core.ts`, `rp_access.ts`, `rp_tenancy.ts` and the
+rest) and `rp_service.ts`, the served types. The other entries do not write these files; their
+imports of them point at the owner's folder by a relative path, and their `index.ts` does not list
+them. A toolkit module outside the shared set, for example a technical module that a consumer's
+schema imports, is still copied into each entry that imports it. A project with one TypeScript
+entry, or a run made from flags alone, is unchanged: that entry writes everything. The
+configuration reader refuses four tables before any step runs, and so does the freshness plugin,
+which reads the same table:
+
+* an entry sets `toolkit-typescript` but not `typescript`;
+* two or more entries set `typescript` and none sets `toolkit-typescript`;
+* more than one entry sets `toolkit-typescript`;
+* two entries set the same `typescript` folder, because each entry's manifest owns the files it
+  wrote, and one entry's removal of stale files would delete a file the other just wrote.
 
 The stored-schema check and the lock stay with `rp.yaml`, whose closure holds every domain module
 and so every aggregate root: only that target declares `migrations` and writes the one lock. A
