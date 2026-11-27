@@ -19,7 +19,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
   lead runs `make generate` and commits the toy trees and manifests. Accept: TC-2 to TC-4 pass;
   `make generate` changes nothing in the toolkit's trees beyond the manifests' input hashes (RISK-1:
   any other diff is reported, not fixed); `make typecheck-ts` green; task gate green. Closes #415.
-- [ ] 1.3 **unit + code (refusal)** — after 1.2 (the toy class); PD-5 to PD-7, PD-9a, TC-5, TC-6,
+- [x] 1.3 **unit + code (refusal)** — after 1.2 (the toy class); PD-5 to PD-7, PD-9a, TC-5, TC-6,
   TC-8. Failing tests first in `tests/unit/api/test_rule_refusal.py` and
   `tests/unit/collaboration/test_aggregate_validators.py`, over the toy rule `fixed_refusal`
   (PD-9a, no reader call). Then `RuleRefusal`, the pass-through in `run_aggregate_validators`, the

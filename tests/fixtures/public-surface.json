@@ -100,6 +100,7 @@
   "RootValidator": "rdf_persistence.services.tenancy",
   "RpAnnotation": "rdf_persistence.domain.generated.rp_core",
   "RpModel": "rdf_persistence.domain.base",
+  "RuleRefusal": "rdf_persistence.domain.exceptions",
   "Rule": "rdf_persistence.core.domain.generated.rp_access",
   "S3FileStore": "rdf_persistence.adapters.s3",
   "ServiceKit": "rdf_persistence.entrypoints.kit",
