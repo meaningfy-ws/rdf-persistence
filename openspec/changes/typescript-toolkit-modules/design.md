@@ -215,6 +215,15 @@ Taken by the epic-session lead (R-0007), 2026-11-27; the owner may overrule any 
   folder cannot reach the check; `web/./a` is refused earlier, as an invalid `typescript` value. The
   check keeps `posixpath.normpath` (harmless) and the test table pins both behaviours. PD-2 and the
   spec scenario stay as written: they hold, the example is merely refused one step earlier.
+- **D-5 Tasks 1.3 and 1.4 share one commit.** The regenerated toy trees are what 1.3's tests
+  assert, so a 1.3 commit without them would be red. The lead applied 1.3's source and test diff,
+  ran `make generate` in this worktree and got the builder's toy diff exactly; the domain tree is
+  byte-identical (RISK-2) and `make typecheck-ts` passes locally (TC-4).
+- **D-6 Narrower task gates for 1.5 and 1.6.** `make test-changed` never runs the integration lane,
+  so 1.5's gate is its own file (`uv run pytest`) and `make check-quality`; 1.6's is
+  `make check-docs` (its Accept). With no seed, `make test-changed` would rerun the whole fast lane
+  (about 20 minutes) for a test-only and a docs-only task; `make check-all` runs every lane before
+  the PR.
 
 ## Lanes for moved or rewritten tests
 

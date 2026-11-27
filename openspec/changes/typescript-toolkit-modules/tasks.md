@@ -24,12 +24,12 @@ RISK-3 and to commit (RISK-5).
   `False`; no TypeScript file changes (nothing reads the key yet); the only other diffs are
   `rp_generation`'s own artefacts and `rp-manifest.json` input hashes (RISK-3; any other diff is
   reported, not fixed).
-- [ ] 1.2 **unit + code: the check** — after 1.1; PD-2, TC-6. First failing tests in
+- [x] 1.2 **unit + code: the check** — after 1.1; PD-2, TC-6. First failing tests in
   `tests/generator/unit/test_generate_config.py`: the four refusals (no owner, two owners, key
   without `typescript`, a shared folder) with their messages,
   and acceptance of one TypeScript entry with or without the key. Then `_refuse_toolkit_owner` in
   `config.py`, called from `_toml_entries`. Accept: tests pass; task gate green.
-- [ ] 1.3 **unit + code: render and step** — after 1.1; PD-3, PD-4, PD-5, PD-6; TC-1, TC-2, TC-5,
+- [x] 1.3 **unit + code: render and step** — after 1.1; PD-3, PD-4, PD-5, PD-6; TC-1, TC-2, TC-5,
   TC-8. First failing tests in `tests/generator/unit/test_typescript_toolkit_owner.py` (new):
   `typescript.render(..., toolkit=...)` on the toy's technical and value schemas as importers
   (TC-1), an owner whose schema lacks a metamodel module (TC-2), `toolkit=None` unchanged and
@@ -42,7 +42,7 @@ RISK-3 and to commit (RISK-5).
   one `rp_service.ts`, in the owner's folder (design.md, Lanes). Accept: new tests pass;
   `test_ext_typescript.py`, `test_typescript_imports.py` and the rest of
   `test_typescript_service_types_adversarial.py` pass unchanged; task gate green.
-- [ ] 1.4 **lead: the toy** — after 1.2 and 1.3; second half of PD-8, TC-3, TC-4. Review and commit
+- [x] 1.4 **lead: the toy** — after 1.2 and 1.3; second half of PD-8, TC-3, TC-4. Review and commit
   the regenerated value and technical trees and their `rp-manifest.json`. Accept: the domain tree is
   byte-identical to `develop` (RISK-2: a difference is reported to the developer, not patched); the
   toolkit's own trees differ only as RISK-3 allows; TC-3 green; `make typecheck-ts` green where Node
@@ -60,7 +60,7 @@ RISK-3 and to commit (RISK-5).
 
 ## Roadmap
 
-- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 (1.2 and 1.3 may run side by
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 (1.2 and 1.3 may run side by
   side after 1.1)
 
 ## Verification
