@@ -341,6 +341,22 @@ business language; it is appended to `tests/feature/` with its steps in stage 2.
 - **RISK-7 the generator lane slows** (consumer-friction D-9). Mitigation: no new toy target (PD-9);
   the lead compares the toy generation time with develop's at stage 1.
 
+## Delivery decisions
+
+The lead's, per R-0007; the developer may overrule any of them.
+
+- **D-1 Branch.** Stage 1 is built on `change/consumer-write-rules` (the worktree the shaping session
+  made), not `change/consumer-write-rules-1` as `tasks.md` names it; stage 2 opens its own branch.
+- **D-2 Stage review.** One pass of L2 and L3 together (P-0005, the developer's brief of
+  2026-11-27), not the two grouped runs `tasks.md` 1.6 names; the full review (L1, L2, L3 apart,
+  L4+L5 as one) runs once at the end of stage 2.
+- **D-3 Tester.** The PLAN has no `## Invariants` section; the lead asks for the adversarial tester
+  (`develop/agents.adoc#challenge`) right after the riskiest task. **Riskiest: 1.3**, because it adds
+  the boundary that decides which rule refusals reach the client (only registered classes at
+  409/422, RISK-3, RISK-5) and moves a branch ahead of the internal-error log.
+- **D-4 Merge order.** Built now, rebased on `develop` after `narrowed-slot-override` (#417) and
+  `typescript-toolkit-modules` (#402) merge (P-0002); generated-file conflicts by P-0003.
+
 ## Lanes for moved or rewritten tests
 
 None moved or rewritten. New tests: generator unit (TC-2 to TC-4) in `make test-generator`; library

@@ -28,9 +28,20 @@ choice the developer may overrule (R-0002).
 - `metamodel_importmap` is a CRITICAL blast radius in GitNexus: the change only adds keys (PD-1,
   RISK-1), and it goes to the developer with the PLAN.
 
-## Put to the developer (2026-11-27), answers pending
+## Put to the developer (2026-11-27), answered 2026-11-27
 
-The lead put three points to the developer, each with the recommendation to accept:
+The lead put three points to the developer, each with the recommendation to accept. The developer
+accepted all three on 2026-11-27, as recommended:
+
+1. **Accepted.** The importmap change goes ahead despite the CRITICAL rating: keys are only added,
+   the old ones are pinned by a test (TC-1). The epic session re-runs impact on a fresh index at
+   stage start and brings any *new* HIGH or CRITICAL finding to the developer.
+2. **Accepted.** "Extends `Problem`" is met in TypeScript by assignability, not the `extends`
+   keyword (PD-4).
+3. **Accepted.** The consumer registers its problem classes at install (`refusal_problems`), and the
+   generic create, replace and `default` answers list them in the OpenAPI document (PD-7, PD-8).
+
+The points as put:
 
 1. The CRITICAL GitNexus blast radius of `metamodel_importmap` (81 dependants, index 280 commits
    behind): keys added only, old keys pinned by TC-1, the toolkit's trees checked unchanged at
