@@ -201,7 +201,10 @@ Taken by the epic-session lead (R-0007), 2026-11-27; the owner may overrule any 
   rates `config._toml_entries` HIGH: every reader of `read_targets` (the CLI, the freshness plugin,
   the `steps` helpers, the conformance testkit) is reached. That is PD-2's intended effect ("every
   reader refuses the same way") and RISK-1's accepted mitigation, signed off with the scenarios
-  (`evidence/signoff.md`); no new risk, so the stage proceeds and the PR names it.
+  (`evidence/signoff.md`); no new risk, so the stage proceeds and the PR names it. Before the PR,
+  `detect_changes` against `origin/develop` rates the stage critical: 14 symbols, 27 flows, every
+  one through `read_targets`/`_toml_entries` (the conformance testkit's `run` and `used_kinds`)
+  or `current_inputs` (`build_manifest`), the same designed reach; nothing outside it.
 - **D-2 No test seed in the lead's worktree.** Per P-0022 the seed feeds only `make test-changed` in
   the worktree it runs in. Tasks 1.2 and 1.3 run in worktrees of their own (RISK-5), where a seed
   would go stale at the builder's first generator edit; their task gate falls back to its own lane.
