@@ -47,11 +47,11 @@ RISK-3 and to commit (RISK-5).
   byte-identical to `develop` (RISK-2: a difference is reported to the developer, not patched); the
   toolkit's own trees differ only as RISK-3 allows; TC-3 green; `make typecheck-ts` green where Node
   exists, else the CI "types" job before merge (TC-4).
-- [ ] 1.5 **integration: stale copies** — after 1.4; PD-7, TC-7, in
+- [x] 1.5 **integration: stale copies** — after 1.4; PD-7, TC-7, in
   `tests/generator/integration/test_stale_toolkit_typescript.py` (new, beside
   `test_stale_typescript_copy.py`). Expected green at once; if red, fix in `pipeline.py` and report
   it. Accept: test passes; task gate green.
-- [ ] 1.6 **docs** — after 1.4; PD-9: `architecture/generation.adoc` *Imports between targets*,
+- [x] 1.6 **docs** — after 1.4; PD-9: `architecture/generation.adoc` *Imports between targets*,
   `user-manual/generate.adoc` (keys table, output row, example), `CHANGELOG.md` `[Unreleased]`
   *BREAKING* with the migration note. Accept: `make check-docs` green.
 - [ ] 1.7 **lead** — scenario-map rows for the new tests; `make check-all`; one review pass (SMALL);
@@ -60,7 +60,7 @@ RISK-3 and to commit (RISK-5).
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 (1.2 and 1.3 may run side by
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [ ] 1.7 (1.2 and 1.3 may run side by
   side after 1.1)
 
 ## Verification
