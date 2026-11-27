@@ -23,8 +23,12 @@ def test_the_combined_set_holds_the_four_artefact_kinds_in_core():
     assert LOCK.is_file(), "the toolkit's migration lock stays beside the metamodel"
 
 
+# The Assignment activity class, added on purpose (workflow-assignees D-1).
+ADDED_ON_PURPOSE = {"Assignment.frame.jsonld"}
+
+
 def test_no_frame_is_added_or_lost():
-    fixtures = {f.name for f in FIXTURES.glob("*.frame.jsonld")}
+    fixtures = {f.name for f in FIXTURES.glob("*.frame.jsonld")} | ADDED_ON_PURPOSE
     generated = {f.name for f in GENERATED.glob("*.frame.jsonld")}
 
     assert generated == fixtures, f"frames differ: {sorted(generated ^ fixtures)}"

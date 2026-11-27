@@ -106,7 +106,7 @@ def test_an_activity_has_the_four_optional_slots_and_owns_its_parts() -> None:
         assert is_owned(slot), f"Activity.{name} is an owned list"
 
 
-def test_the_session_writes_five_of_the_eight_toolkit_filled_slots() -> None:
+def test_the_session_writes_five_of_the_ten_toolkit_filled_slots() -> None:
     five = {
         "started_at_time",
         "ended_at_time",
@@ -115,7 +115,8 @@ def test_the_session_writes_five_of_the_eight_toolkit_filled_slots() -> None:
         "invalidations",
     }
     computed = {"from_state_iri", "to_state_iri", "transition_comment"}  # a transition's (PD-11)
-    assert set(vocabulary.TOOLKIT_FILLED) == five | computed, "annotated toolkit_filled"
+    assigned = {"assigned_principals", "released_principals"}  # an assignment's (D-1)
+    assert set(vocabulary.TOOLKIT_FILLED) == five | computed | assigned, "annotated toolkit_filled"
     assert set(vocabulary.SESSION_FILLED) == five, "the literal tuple, a subset of those"
 
 

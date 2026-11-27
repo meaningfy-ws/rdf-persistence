@@ -8,6 +8,7 @@
   "AggregateReader": "rdf_persistence.services.aggregate_validators",
   "AggregateRoot": "rdf_persistence.domain.generated.rp_core",
   "AggregateValidator": "rdf_persistence.services.aggregate_validators",
+  "Assignment": "rdf_persistence.core.domain.generated.rp_workflow",
   "Authorised": "rdf_persistence.services.generated.service.rp_service",
   "BadQuery": "rdf_persistence.domain.exceptions",
   "BlobEntry": "rdf_persistence.core.domain.generated.rp_files",

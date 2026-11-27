@@ -11,6 +11,8 @@ export interface ApproveBook {
   to_state_iri?: string;
   /** The IRI of the comment the transition posted, when it had one. */
   transition_comment?: string;
+  /** The principals an assignment or a clearing transition removed from the aggregate's assignees. */
+  released_principals?: string[];
   /** The name of the state a transition enters. A stored record gives an IRI in to_state_iri. */
   to_state?: string;
   /** The version of the aggregate the caller read; the move is made only if it still holds. */
