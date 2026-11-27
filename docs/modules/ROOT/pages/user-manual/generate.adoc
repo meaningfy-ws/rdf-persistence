@@ -35,8 +35,9 @@ package = "library.services.generated"
 typescript = "web/src/services/generated"  # imports the toolkit's modules from the entry above
 ----
 
-A project with one entry may write it as a single `[tool.rp-generate]` table; the second entry is
-only needed when a second folder receives TypeScript.
+Each schema a project generates from is one `[[tool.rp-generate]]` entry; a project with one entry
+may write it as a single `[tool.rp-generate]` table. The example has two entries to show
+`toolkit-typescript`.
 
 [cols="2,2,5",options="header"]
 |===

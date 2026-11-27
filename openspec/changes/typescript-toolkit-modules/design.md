@@ -227,6 +227,26 @@ Taken by the epic-session lead (R-0007), 2026-11-27; the owner may overrule any 
   `make check-docs` (its Accept). With no seed, `make test-changed` would rerun the whole fast lane
   (about 20 minutes) for a test-only and a docs-only task; `make check-all` runs every lane before
   the PR.
+- **D-7 Review findings (one pass L2+L3, PR #425).** Accepted, re-labelled Critical:
+  - **F1 (W1)** — the spec scenario "two TypeScript targets and an owner" is not proved through
+    `render`: no toy importer imports a toolkit type, so TC-1 as written (`loan_checks_response.ts`
+    imports `../../domain/generated/rp_service`) cannot hold on the toy, and the re-pointing is
+    tested only on a hand-built module through a private helper. Reason for the re-label: it is
+    the EPIC's core behaviour, unverified. Fix: a `render(..., toolkit=...)` test on a temporary
+    schema whose class uses a metamodel type and a served type, asserting the relative specifiers,
+    no shared file and an `index.ts` without them. TC-1 is proved that way, not on the toy.
+  - **F6 (S6)** — `user-manual/generate.adoc` said a second entry is "only needed when a second
+    folder receives TypeScript", which is untrue (every schema target needs its own entry). Reason:
+    a false statement in a user-facing page. Light chore, lead-fixed.
+
+  Under the floor (not fixed):
+  - W2 — DEC-5 (a toolkit module outside the shared set is still copied) has no test of its own;
+    it is the default path (a name not in `_shared_names()` is not dropped).
+  - S3 — `_importing_toolkit` repeats the drop, re-point and sort of `_importing` (L5, not in the
+    SMALL set).
+  - S4 — `render` with `toolkit` and no `folder` quietly copies; the step always passes a folder.
+  - S5 — `assert _typescript_owners(run) is not None` in `test_typescript_toolkit_owner.py` cannot
+    fail.
 
 ## Lanes for moved or rewritten tests
 
