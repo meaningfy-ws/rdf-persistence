@@ -109,7 +109,8 @@ class Ledger(ConfiguredBaseModel):
     def unique_keys_entries_entry_key(self) -> "Ledger":
         seen: set[str] = set()
         repeated: list[tuple] = []
-        for item in self.entries or []:
+        value = self.entries
+        for item in value if isinstance(value, list) else ([] if value is None else [value]):
             key = (item.name, item.tag,)
             if repr(key) in seen:
                 repeated.append(key)

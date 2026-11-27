@@ -177,10 +177,11 @@ def alias_heads(expression: str) -> str:
 
 
 class InternalAttribute(PydanticAttribute):
-    """A pydantic attribute that also knows whether its slot is ``internal`` or ``loosens`` its base class's (see the template)."""
+    """A pydantic attribute that also knows whether its slot is ``internal`` and whether it is ``incompatible`` (see the template)."""
 
     internal: bool = False
-    loosens: bool = False
+    incompatible: bool = False
+    """The field's type is not a subtype of an ancestor's; the template marks the line."""
     secret: bool = False
     strict: bool = False
     default_factory: str | None = None
@@ -470,7 +471,7 @@ class SplitPydanticGenerator(PydanticGenerator):
         slot.attribute = InternalAttribute(
             **fields,
             internal=internal,
-            loosens=_loosens_a_base_slot(slot.source, sv),
+            incompatible=_overrides_incompatibly(slot.source, sv),
             secret=secret,
             strict=annotation_text(slot.source, GenerationAnnotation.STRICT) == TRUE_TEXT,
             default_factory=factory,
@@ -535,19 +536,80 @@ def _python_import(definition: TypeDefinition) -> Import:
     )
 
 
-def _loosens_a_base_slot(slot: SlotDefinition, sv: SchemaView) -> bool:
-    """Whether the slot, as its class declares it, is optional where an ancestor's is required (PD-11).
+def _overrides_incompatibly(slot: SlotDefinition, sv: SchemaView) -> bool:
+    """Whether the slot, as its class declares it, has a type that is not a subtype of an ancestor's (PD-2).
 
-    The generated subclass then redeclares the field with a wider type, which mypy reports as an
-    incompatible override; the template marks that line.
+    The generated subclass then redeclares the field with a type mypy reports as an incompatible
+    override; the template marks that line. No Python type string is compared (DEC-2).
     """
-    if slot.required or slot.identifier or slot.key or slot.owner is None:
+    if slot.identifier or slot.key or slot.owner is None:
         return False
     return any(
-        sv.induced_slot(slot.name, ancestor).required
+        _incompatible_with(slot, sv.induced_slot(slot.name, ancestor), sv)
         for ancestor in sv.class_ancestors(slot.owner, reflexive=False)
         if slot.name in sv.class_slots(ancestor)
     )
+
+
+def _incompatible_with(slot: SlotDefinition, base: SlotDefinition, sv: SchemaView) -> bool:
+    """Whether ``slot`` overrides ``base`` with a type that is not a subtype of its (PD-2, rules 1 to 5)."""
+    if _loosens_requiredness(slot, base) or _changes_multiplicity(slot, base):
+        return True
+    if slot.multivalued:
+        return _changes_list_range(slot, base) or _changes_list_inlining(slot, base, sv)
+    return _changes_inlining(slot, base, sv) or _leaves_the_range(slot, base, sv)
+
+
+def _loosens_requiredness(slot: SlotDefinition, base: SlotDefinition) -> bool:
+    """PD-2 rule 1: optional where the ancestor's is required."""
+    return bool(base.required) and not slot.required
+
+
+def _changes_multiplicity(slot: SlotDefinition, base: SlotDefinition) -> bool:
+    """PD-2 rule 2: a list against one value, either way."""
+    return bool(base.multivalued) != bool(slot.multivalued)
+
+
+def _changes_list_range(slot: SlotDefinition, base: SlotDefinition) -> bool:
+    """PD-2 rule 3: two lists of different ranges (a list is invariant)."""
+    return bool(slot.range != base.range)
+
+
+def _changes_list_inlining(slot: SlotDefinition, base: SlotDefinition, sv: SchemaView) -> bool:
+    """PD-2 rule 4, lists: the same class range inlined differently, or as a list against a dict."""
+    return _is_class(sv, slot.range) and (
+        bool(base.inlined) != bool(slot.inlined)
+        or bool(base.inlined_as_list) != bool(slot.inlined_as_list)
+    )
+
+
+def _changes_inlining(slot: SlotDefinition, base: SlotDefinition, sv: SchemaView) -> bool:
+    """PD-2 rule 4, single values: two class ranges, an object against a reference."""
+    return (
+        _is_class(sv, slot.range)
+        and _is_class(sv, base.range)
+        and bool(base.inlined) != bool(slot.inlined)
+    )
+
+
+def _leaves_the_range(slot: SlotDefinition, base: SlotDefinition, sv: SchemaView) -> bool:
+    """PD-2 rule 5: a single-valued range that is not under the ancestor's."""
+    return slot.range != base.range and not _is_under(slot.range, base.range, sv)
+
+
+def _is_class(sv: SchemaView, name: str | None) -> bool:
+    return name in sv.all_classes()
+
+
+def _is_under(narrow: str | None, wide: str | None, sv: SchemaView) -> bool:
+    """Whether the single-valued range ``narrow`` is the same as or under ``wide``, both of the same kind."""
+    if narrow is None or wide is None:
+        return False
+    if _is_class(sv, narrow) and _is_class(sv, wide):
+        return narrow in sv.class_descendants(wide)
+    if narrow in sv.all_types() and wide in sv.all_types():
+        return wide in sv.type_ancestors(narrow)
+    return False  # two enums that differ, or two kinds that differ
 
 
 def _generator(
