@@ -4,6 +4,10 @@
   "@embed": "@always",
   "@omitDefault": true,
   "@type": "Transition",
+  "released_principals": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
   "was_associated_with": {
     "@embed": "@never",
     "@omitDefault": true

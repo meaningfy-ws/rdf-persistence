@@ -4,6 +4,7 @@ classDiagram
         +string workflow_name
         +List~string~ workflow_states
         +string initial_state
+        +boolean assignable
     }
     class WorkflowTransition {
         <<owned>>
@@ -11,6 +12,7 @@ classDiagram
         +string to_state
         +List~string~ transition_roles
         +boolean comment_required
+        +boolean clears_assignees
     }
     class Transition {
         +uri used_resource
@@ -21,6 +23,16 @@ classDiagram
         +string expected_version
         +string body_value
     }
+    class Assignment {
+        +uri used_resource
+        +string expected_version
+    }
     class Activity
+    class Principal
     Workflow "1" *-- "*" WorkflowTransition : workflow_transitions
+    Transition "1" --> "*" Principal : released_principals
     Activity <|-- Transition
+    Assignment "1" --> "*" Principal : assigned_principals
+    Assignment "1" --> "*" Principal : released_principals
+    Assignment "1" --> "*" Principal : assigned_to
+    Activity <|-- Assignment

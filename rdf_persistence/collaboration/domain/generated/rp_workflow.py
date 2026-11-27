@@ -51,6 +51,7 @@ class Workflow(ConfiguredBaseModel):
     workflow_states: list[str] = _Field(default=..., title="Workflow states", description="The names of the states, lower case, starting with a letter, with digits, hyphens and underscores. The IRI of a state is the workflow\u0027s identifier, a slash and its name.")
     initial_state: str = _Field(default=..., title="Initial state", description="The name of the state a new aggregate starts in, one of the states.")
     workflow_transitions: _Optional[list[WorkflowTransition]] = _Field(default=None, title="Workflow transitions", description="The transitions of the workflow; they are part of its definition.")
+    assignable: _Optional[bool] = _Field(default=False, title="Assignable", description="Whether the aggregates under the workflow may have assignees; no by default.")
 
     @field_validator("workflow_name")
     def pattern_workflow_name(cls, v):
@@ -85,11 +86,13 @@ class WorkflowTransition(ConfiguredBaseModel):
     to_state: str = _Field(default=..., title="To state", description="The name of the state a transition enters. A stored record gives an IRI in to_state_iri.")
     transition_roles: list[str] = _Field(default=..., title="Transition roles", description="The names of the roles of which one is needed to make the transition.")
     comment_required: _Optional[bool] = _Field(default=False, title="Comment required", description="Whether the transition needs a comment; no by default.")
+    clears_assignees: _Optional[bool] = _Field(default=False, title="Clears assignees", description="Whether the transition removes every assignee of the aggregate as it moves it; no by default. Only an edge of an assignable workflow may say yes.")
 
 
 class UnderWorkflow(ConfiguredBaseModel):
-    "A mixin for an aggregate root that follows a workflow, which its class names with the workflow annotation. It gives the root its current state; only a transition changes it."
+    "A mixin for an aggregate root that follows a workflow, which its class names with the workflow annotation. It gives the root its current state, which only a transition changes, and, under an assignable workflow, its assignees, which only an assignment or a clearing transition changes."
     workflow_status: _Optional[str] = _Field(default=None, title="Workflow status", description="The current state of the aggregate, the IRI of a state of its workflow.")
+    assigned_to: _Optional[list[str]] = _Field(default=None, title="Assigned to", description="The principals the aggregate is assigned to, each one who may read it. The toolkit owns the slot: only an assignment or a clearing transition changes it.")
 
 
 class Transition(Activity):
@@ -98,9 +101,25 @@ class Transition(Activity):
     from_state_iri: _Optional[str] = _Field(default=None, title="From state IRI", description="The IRI of the state an aggregate left, on the comment a transition posted and on the transition\u0027s record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.")
     to_state_iri: _Optional[str] = _Field(default=None, title="To state IRI", description="The IRI of the state an aggregate entered, on the comment a transition posted and on the transition\u0027s record. Defined here beside from_state_iri.")
     transition_comment: _Optional[str] = _Field(default=None, title="Transition comment", description="The IRI of the comment the transition posted, when it had one.")
+    released_principals: _Optional[list[str]] = _Field(default=None, title="Released principals", description="The principals an assignment or a clearing transition removed from the aggregate\u0027s assignees.")
     to_state: _Optional[str] = _Field(default=None, title="To state", description="The name of the state a transition enters. A stored record gives an IRI in to_state_iri.")
     expected_version: _Optional[str] = _Field(default=None, title="Expected version", description="The version of the aggregate the caller read; the move is made only if it still holds.")
     body_value: _Optional[str] = _Field(default=None, title="Body value", description="The text of the comment.")
+    id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
+    was_associated_with: _Optional[list[str]] = _Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
+    started_at_time: _Optional[datetime ] = _Field(default=None, title="Started at time", description="The time the activity started.")
+    ended_at_time: _Optional[datetime ] = _Field(default=None, title="Ended at time", description="The time the activity ended.")
+    generations: _Optional[list[Generation]] = _Field(default=None, title="Generations", description="The versions of entities the activity generated.")
+    invalidations: _Optional[list[Invalidation]] = _Field(default=None, title="Invalidations", description="The versions of entities the activity invalidated.")
+
+
+class Assignment(Activity):
+    "One change of the assignees of an aggregate, as an activity: which aggregate it used, which principals it added and which it removed, when and by whom. The toolkit stores it as the activity of the commit that changes the assignees, in the provenance graph, and keeps it when the aggregate is deleted. The payload slots belong to the command only: the stored record has none of them."
+    used_resource: str = _Field(default=..., title="Used resource", description="The IRI of the aggregate the activity used.")
+    assigned_principals: _Optional[list[str]] = _Field(default=None, title="Assigned principals", description="The principals an assignment added to the aggregate\u0027s assignees.")
+    released_principals: _Optional[list[str]] = _Field(default=None, title="Released principals", description="The principals an assignment or a clearing transition removed from the aggregate\u0027s assignees.")
+    assigned_to: _Optional[list[str]] = _Field(default=None, title="Assigned to", description="The principals the aggregate is assigned to, each one who may read it. The toolkit owns the slot: only an assignment or a clearing transition changes it.")
+    expected_version: _Optional[str] = _Field(default=None, title="Expected version", description="The version of the aggregate the caller read; the move is made only if it still holds.")
     id: str = _Field(default=..., title="Identifier", description="The IRI that identifies the object.")
     was_associated_with: _Optional[list[str]] = _Field(default=None, title="Was associated with", description="A principal that carried out the activity.")
     started_at_time: _Optional[datetime ] = _Field(default=None, title="Started at time", description="The time the activity started.")
@@ -115,3 +134,4 @@ Workflow.model_rebuild()
 WorkflowTransition.model_rebuild()
 UnderWorkflow.model_rebuild()
 Transition.model_rebuild()
+Assignment.model_rebuild()

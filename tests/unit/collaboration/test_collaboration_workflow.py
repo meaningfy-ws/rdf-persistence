@@ -380,9 +380,15 @@ async def test_a_command_naming_another_aggregate_is_stored_against_the_moved_on
     assert list(graph.objects(URIRef(forged.id), v.USED)) == [URIRef(B1)], "the moved aggregate"
 
 
-def test_the_toolkit_fills_eight_slots_and_the_session_five_of_them():  # TC-49b
-    computed = {"from_state_iri", "to_state_iri", "transition_comment"}
-    assert {*v.SESSION_FILLED, *computed} == v.TOOLKIT_FILLED, "the five and the three, no more"
+def test_the_toolkit_fills_ten_slots_and_the_session_five_of_them():  # TC-49b
+    computed = {
+        "from_state_iri",
+        "to_state_iri",
+        "transition_comment",
+        "assigned_principals",  # workflow-assignees DEC-8
+        "released_principals",
+    }
+    assert {*v.SESSION_FILLED, *computed} == v.TOOLKIT_FILLED, "the five and the five, no more"
     assert set(v.SESSION_FILLED) < v.TOOLKIT_FILLED, "the session's five are a subset"
 
 

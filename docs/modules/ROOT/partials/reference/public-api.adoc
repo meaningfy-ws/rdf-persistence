@@ -15,6 +15,7 @@
 |`AggregateReader` |class |What a rule may ask about the aggregates a root names: their classes, and the aggregate itself.
 |`AggregateRoot` |class |A mixin for classes whose instances are aggregate roots.
 |`AggregateValidator` |function |
+|`Assignment` |class |One change of the assignees of an aggregate, as an activity: which aggregate it used, which principals it added and which it removed, when and by whom.
 |`Authorised` |class |What a route's access check settled: the caller's principal, its access to the tenant, and the IRI of the tenant or aggregate it was checked on, which the route then acts on, and the global roles the token granted the caller.
 |`BadQuery` |class |The store refused the SPARQL text as malformed.
 |`BlobEntry` |class |One object in a tenant's bucket, as a listing of the bucket reports it.

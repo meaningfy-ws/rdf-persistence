@@ -13,6 +13,8 @@ export interface Workflow {
   initial_state: string;
   /** The transitions of the workflow; they are part of its definition. */
   workflow_transitions?: WorkflowTransition[];
+  /** Whether the aggregates under the workflow may have assignees; no by default. */
+  assignable?: boolean;
 }
 
 /** One transition of a workflow, from one state to another, with the roles that may make it. The states are named, not given as IRIs. */
@@ -25,6 +27,8 @@ export interface WorkflowTransition {
   transition_roles: string[];
   /** Whether the transition needs a comment; no by default. */
   comment_required?: boolean;
+  /** Whether the transition removes every assignee of the aggregate as it moves it; no by default. Only an edge of an assignable workflow may say yes. */
+  clears_assignees?: boolean;
 }
 
 /** One transition of an aggregate, as an activity: which aggregate it used, from which state to which, when, by whom and with which comment. The toolkit stores it as the activity of the commit that moves the aggregate, in the provenance graph, and keeps it when the aggregate is deleted. The payload slots belong to the command only: the stored record has none of them. */
@@ -37,12 +41,40 @@ export interface Transition {
   to_state_iri?: string;
   /** The IRI of the comment the transition posted, when it had one. */
   transition_comment?: string;
+  /** The principals an assignment or a clearing transition removed from the aggregate's assignees. */
+  released_principals?: string[];
   /** The name of the state a transition enters. A stored record gives an IRI in to_state_iri. */
   to_state?: string;
   /** The version of the aggregate the caller read; the move is made only if it still holds. */
   expected_version?: string;
   /** The text of the comment. */
   body_value?: string;
+  /** The IRI that identifies the object. */
+  id: string;
+  /** A principal that carried out the activity. */
+  was_associated_with?: string[];
+  /** The time the activity started. */
+  started_at_time?: string;
+  /** The time the activity ended. */
+  ended_at_time?: string;
+  /** The versions of entities the activity generated. */
+  generations?: Generation[];
+  /** The versions of entities the activity invalidated. */
+  invalidations?: Invalidation[];
+}
+
+/** One change of the assignees of an aggregate, as an activity: which aggregate it used, which principals it added and which it removed, when and by whom. The toolkit stores it as the activity of the commit that changes the assignees, in the provenance graph, and keeps it when the aggregate is deleted. The payload slots belong to the command only: the stored record has none of them. */
+export interface Assignment {
+  /** The IRI of the aggregate the activity used. */
+  used_resource: string;
+  /** The principals an assignment added to the aggregate's assignees. */
+  assigned_principals?: string[];
+  /** The principals an assignment or a clearing transition removed from the aggregate's assignees. */
+  released_principals?: string[];
+  /** The principals the aggregate is assigned to, each one who may read it. The toolkit owns the slot: only an assignment or a clearing transition changes it. */
+  assigned_to?: string[];
+  /** The version of the aggregate the caller read; the move is made only if it still holds. */
+  expected_version?: string;
   /** The IRI that identifies the object. */
   id: string;
   /** A principal that carried out the activity. */

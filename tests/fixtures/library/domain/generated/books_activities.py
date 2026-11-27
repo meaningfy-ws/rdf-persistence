@@ -54,6 +54,7 @@ class ApproveBook(Transition):
     from_state_iri: _Optional[str] = _Field(default=None, title="From state IRI", description="The IRI of the state an aggregate left, on the comment a transition posted and on the transition\u0027s record. Defined here, so that the workflow module, which imports this one, uses it too. A state name in a workflow file is another thing: it has no IRI.")
     to_state_iri: _Optional[str] = _Field(default=None, title="To state IRI", description="The IRI of the state an aggregate entered, on the comment a transition posted and on the transition\u0027s record. Defined here beside from_state_iri.")
     transition_comment: _Optional[str] = _Field(default=None, title="Transition comment", description="The IRI of the comment the transition posted, when it had one.")
+    released_principals: _Optional[list[str]] = _Field(default=None, title="Released principals", description="The principals an assignment or a clearing transition removed from the aggregate\u0027s assignees.")
     to_state: _Optional[str] = _Field(default=None, title="To state", description="The name of the state a transition enters. A stored record gives an IRI in to_state_iri.")
     expected_version: _Optional[str] = _Field(default=None, title="Expected version", description="The version of the aggregate the caller read; the move is made only if it still holds.")
     body_value: _Optional[str] = _Field(default=None, title="Body value", description="The text of the comment.")

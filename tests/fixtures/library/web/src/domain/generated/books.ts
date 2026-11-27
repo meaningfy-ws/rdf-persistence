@@ -44,6 +44,8 @@ export interface Book {
   contributor?: string[];
   /** The current state of the aggregate, the IRI of a state of its workflow. */
   workflow_status?: string;
+  /** The principals the aggregate is assigned to, each one who may read it. The toolkit owns the slot: only an assignment or a clearing transition changes it. */
+  assigned_to?: string[];
 }
 
 /** A shelf of the library; an aggregate root that books are placed on, and a collection of the books it names. */

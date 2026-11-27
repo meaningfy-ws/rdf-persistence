@@ -17,12 +17,28 @@
          "@type": "@id",
          "@id": "prov:activity"
       },
+      "assignable": {
+         "@id": "assignable"
+      },
+      "assigned_principals": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "assignedPrincipal"
+      },
+      "assigned_to": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "assignedTo"
+      },
       "at_time": {
          "@type": "xsd:dateTime",
          "@id": "prov:atTime"
       },
       "body_value": {
          "@id": "oa:bodyValue"
+      },
+      "clears_assignees": {
+         "@id": "clearsAssignees"
       },
       "comment_audience": {
          "@container": "@set",
@@ -186,6 +202,11 @@
          "@type": "@id",
          "@id": "ownedBy"
       },
+      "released_principals": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "releasedPrincipal"
+      },
       "replies_to": {
          "@type": "@id",
          "@id": "repliesTo"
@@ -279,6 +300,9 @@
       },
       "AggregateRoot": {
          "@id": "AggregateRoot"
+      },
+      "Assignment": {
+         "@id": "Assignment"
       },
       "Comment": {
          "@id": "oa:Annotation"

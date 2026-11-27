@@ -48,6 +48,19 @@
          "@type": "@id",
          "@id": "prov:activity"
       },
+      "assignable": {
+         "@id": "rp:assignable"
+      },
+      "assigned_principals": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:assignedPrincipal"
+      },
+      "assigned_to": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:assignedTo"
+      },
       "assignee": {
          "@type": "@id",
          "@id": "ODRL:assignee"
@@ -81,6 +94,9 @@
       },
       "city": {
          "@id": "schema:addressLocality"
+      },
+      "clears_assignees": {
+         "@id": "rp:clearsAssignees"
       },
       "comment_audience": {
          "@container": "@set",
@@ -315,6 +331,11 @@
          "@type": "xsd:date",
          "@id": "dcterms:issued"
       },
+      "released_principals": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:releasedPrincipal"
+      },
       "removed_blobs": {
          "@id": "rp:removedBlobs"
       },
@@ -473,6 +494,9 @@
       },
       "ApproveBook": {
          "@id": "ApproveBook"
+      },
+      "Assignment": {
+         "@id": "rp:Assignment"
       },
       "Author": {
          "@id": "Author"

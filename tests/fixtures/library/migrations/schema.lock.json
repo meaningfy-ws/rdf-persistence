@@ -119,6 +119,13 @@
           "required": false,
           "multivalued": false,
           "inlined": false
+        },
+        {
+          "slot_uri": "https://meaningfy.ws/ns/rdf-persistence#assignedTo",
+          "range": "http://www.w3.org/ns/prov#Agent",
+          "required": false,
+          "multivalued": true,
+          "inlined": false
         }
       ]
     },

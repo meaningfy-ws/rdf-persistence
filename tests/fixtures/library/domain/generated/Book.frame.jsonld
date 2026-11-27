@@ -24,6 +24,10 @@
     "@embed": "@never",
     "@omitDefault": true
   },
+  "assigned_to": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
   "chapters": {
     "@embed": "@always",
     "@omitDefault": true,
