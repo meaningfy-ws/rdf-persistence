@@ -47,6 +47,9 @@ def test_an_importer_writes_no_shared_module_and_imports_them_from_the_owner() -
     assert 'from "../../domain/generated/values/loan_checks"' in files["loan_checks_response.ts"], (
         "#371 imports still point at their owner"
     )
+    assert 'from "../../domain/generated/rp_core"' in files["loan_checks_response.ts"], (
+        "the toy's toolkit type is imported from the owner's rp_core"
+    )
 
 
 def test_a_value_importer_writes_no_shared_module() -> None:  # TC-1
@@ -172,7 +175,7 @@ def test_the_shared_names_hold_the_modules_the_served_schemas_and_the_service_mo
     assert "rp_collections" in names, "a metamodel module the toy's value schema lacks"
 
 
-def test_without_a_toolkit_the_domain_render_is_today_s() -> None:  # TC-5
+def test_the_owners_render_of_the_domain_schema_equals_the_plain_render() -> None:  # RISK-2, TC-2
     today = _files(DOMAIN_SCHEMA, OWNER_FOLDER)
     owner = _files(DOMAIN_SCHEMA, OWNER_FOLDER, toolkit=OWNER_FOLDER, owns_toolkit=True)
     assert owner == today, "the domain schema's closure already holds the shared set"
@@ -209,15 +212,41 @@ def test_one_typescript_target_with_the_key_writes_the_same_files_as_without(
     )
 
 
+TESTKIT_SCHEMA = """id: https://example.org/ns/library/holder
+name: holder
+title: Holder
+description: A technical module whose class holds one type of a non-shared toolkit module.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - {testkit}
+annotations:
+  module_kind: technical
+
+classes:
+  Holder:
+    title: Holder
+    description: Holds a selection data outcome.
+    attributes:
+      holder_id:
+        description: Identifier.
+        identifier: true
+      outcome:
+        description: A type of the testkit module.
+        range: SelectionDataOutcome
+"""
+
+
 def test_a_toolkit_module_outside_the_shared_set_is_written_and_exported(
     tmp_path: Path,
 ) -> None:  # TC-2, R-2
     schema = tmp_path / "holder.yaml"
     schema.write_text(
-        IMPORTER_SCHEMA.format(
-            core=(MODEL / "technical/testkit/rp_testkit").as_posix(),
-            served=(MODEL / "rp_core").as_posix(),
-        ).replace("range: RegistryKind", "range: SelectionDataOutcome"),
+        TESTKIT_SCHEMA.format(testkit=(MODEL / "technical/testkit/rp_testkit").as_posix()),
         encoding="utf-8",
     )
     files = _files(schema, Path("web/src/services/generated"), toolkit=OWNER_FOLDER)
