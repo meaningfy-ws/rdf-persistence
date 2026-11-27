@@ -391,6 +391,19 @@ The lead's, per R-0007; the developer may overrule any of them.
   runs beside 1.3 on disjoint files (`docs/`, `CHANGELOG.md`), writing 1.3's half from PD-5 to
   PD-7; the lead checks it against the built code when 1.3 lands and sends the differences back.
   The tester (D-3) runs after 1.3's commit; the docs reconcile runs beside it.
+- **D-10 The tester after 1.3 (D-3): two findings, both under the floor; its tests sorted before the
+  full gates.** 58 tests, 56 hold. Both findings are Warnings, not Critical (the floor):
+  - *T-F1, under the floor:* `_checked_refusal_problems` (`kit.py`) iterates `classes` and then
+    calls `tuple(classes)`, so a generator is spent and the kit registers nothing: every refusal
+    is a 500, logged per request. Not Critical: the parameter is typed `Sequence`, so mypy refuses
+    a generator at the caller, and the failure is a logged 500, not a wrong answer. Follow-up
+    candidate (one line: `tuple()` first).
+  - *T-F2, under the floor:* a `status` of `409.0` is in `{409, 422}` (equal, same hash), so the
+    problem is sent with `409.0`. Reachable only through `model_construct` or an unvalidated
+    assignment on the generated model. Follow-up candidate (compare the type too).
+  The tester's sort runs now, not after the review, because the two failing tests would turn the
+  full gates red: their two tests are deleted (under the floor), and the 56 kept or deleted per
+  the stage loop's sort.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.

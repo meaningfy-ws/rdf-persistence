@@ -49,6 +49,22 @@ def held(**changes: Any) -> HeldKeyProblem:
     return HeldKeyProblem(**{**fields, **changes})
 
 
+def built(status: Any) -> HeldKeyProblem:
+    """A registered problem whose ``status`` skips validation, as a rule that assigns it later would."""
+    return HeldKeyProblem.model_construct(
+        type=f"{PROBLEMS}key-held", title="Key held", detail="d", holder="urn:h", status=status
+    )
+
+
+class Shape:
+    """An object that is no problem, carrying a registered-looking status."""
+
+    status = 409
+    title = "Key held"
+    detail = "d"
+    holder = "urn:h"
+
+
 @asynccontextmanager
 async def scene_with(
     rule: Any, refusal_problems: Sequence[type[BaseModel]] = (HeldKeyProblem,)
@@ -125,11 +141,28 @@ async def test_a_replace_refused_is_answered_as_the_rule_built_it():  # TC-5
             (HeldKeyProblem,),
             "unregistered",
         ),
+        (
+            Problem(type="t", title="x", status=409),
+            (HeldKeyProblem,),
+            "unregistered",
+        ),  # probe of PD-6: the base class of a registered one is not registered
         ("a string, not a problem", (HeldKeyProblem,), "unregistered"),
+        (Shape(), (HeldKeyProblem,), "unregistered"),  # probe of PD-6: an object shaped like one
         (held(status=400), (HeldKeyProblem,), "status 400"),
         (held(status=500), (HeldKeyProblem,), "status 500"),
+        (built("409"), (HeldKeyProblem,), "status"),  # probe of PD-6: a status that is no int
     ],
-    ids=["other-class", "none-registered", "subclass", "not-a-problem", "status-400", "status-500"],
+    ids=[
+        "other-class",
+        "none-registered",
+        "subclass",
+        "base-class",
+        "not-a-problem",
+        "problem-shaped-object",
+        "status-400",
+        "status-500",
+        "status-not-an-int",
+    ],
 )
 async def test_any_other_refusal_is_a_500_internal_error_logged_once_without_a_traceback(  # TC-6
     problem: object,
@@ -160,6 +193,91 @@ async def test_a_rule_that_does_not_refuse_leaves_no_error_record(
         with caplog.at_level(logging.DEBUG):
             assert (await create(scene, isbn="free")).status_code == 201
         assert internal_error_records(caplog) == [], "nothing logged"
+
+
+@pytest.mark.parametrize(
+    ("problem", "registered", "answered"),
+    [
+        (held(), (HeldKeyProblem, HeldKeyProblem), 409),
+        (Sibling(type="t", title="x", status=409, holder="urn:h"), (Sibling,), 409),
+        (Sibling(type="t", title="x", status=409, holder="urn:h"), (HeldKeyProblem, Sibling), 409),
+        (Problem(type="t", title="x", status=409), (Problem,), 409),
+    ],
+    ids=["registered-twice", "the-subclass-itself", "base-and-subclass", "the-base-itself"],
+)
+async def test_a_class_registered_by_exact_match_is_answered_as_built(
+    problem: Problem, registered: tuple[type[BaseModel], ...], answered: int
+):  # probe of PD-6 exact class and PD-7, the positive side of the table above
+    async with scene_with(refusing(problem), registered) as scene:
+        response = await create(scene, isbn="x")
+        assert response.status_code == answered, response.text
+
+
+async def test_a_refusal_answer_leaves_out_none_fields_and_keeps_the_extra_one():
+    # probe of PD-6 "problem_response"
+    async with scene_with(refusing(held(detail=None, instance=None))) as scene:
+        response = await create(scene, isbn="x")
+        assert response.status_code == 409, response.text
+        assert "detail" not in response.json(), "None detail left out"
+        assert "instance" not in response.json(), "None instance left out"
+        assert response.json()["holder"] == "urn:holder", "extra field kept"
+
+
+async def test_a_refused_replace_keeps_the_stored_aggregate():
+    # probe of the error matrix "nothing written", on a replace
+    async with scene_with(fixed_refusal) as scene:
+        made = await create(scene, isbn="free")
+        before = await scene.http.get(made.headers["location"], headers=scene.headers("ada"))
+        refused = await scene.http.put(
+            made.headers["location"],
+            json={**before.json(), "isbn": "malformed"},
+            headers=scene.headers("ada", **{"If-Match": made.headers["etag"]}),
+        )
+        assert refused.status_code == 422, refused.text
+        after = await scene.http.get(made.headers["location"], headers=scene.headers("ada"))
+        assert after.json() == before.json(), "the stored aggregate is as it was"
+        assert after.headers["etag"] == made.headers["etag"], "no new version"
+
+
+async def test_a_delete_rule_raising_rule_refusal_is_a_500_naming_no_problem():
+    # probe of the error matrix "a delete rule raises RuleRefusal"
+    def deleting(old: Any, who: Any, reader: Any) -> None:
+        raise RuleRefusal(held())
+
+    toy = ToyService(delete_validators={"Book": [deleting]}, refusal_problems=[HeldKeyProblem])
+    async with toy.app.router.lifespan_context(toy.app), toy.client() as http:
+        scene = await Scene.set_up(toy, http)
+        made = await http.post(
+            f"{scene.tenant}/books", json=DUNE_BODY, headers=scene.headers("ada")
+        )
+        response = await http.delete(
+            made.headers["location"],
+            headers=scene.headers("ada", **{"If-Match": made.headers["etag"]}),
+        )
+        assert response.status_code == 500, response.text
+        assert "holder" not in response.json(), "the rule's problem is not sent"
+        assert problem_of(response).type == f"{PROBLEMS}internal-error", "the fallback problem"
+
+
+@pytest.mark.parametrize(
+    ("problem", "text"),
+    [
+        (HeldKeyProblem.model_construct(detail="d", title="t"), "d"),
+        (HeldKeyProblem.model_construct(detail=None, title="t"), "t"),
+        (HeldKeyProblem.model_construct(detail=None, title=None), "HeldKeyProblem"),
+    ],
+    ids=["detail", "title", "class-name"],
+)
+def test_the_text_of_a_refusal_is_detail_then_title_then_the_class_name(problem: object, text: str):
+    # probe of PD-5
+    assert str(RuleRefusal(problem)) == text, "the text follows PD-5"
+
+
+def test_the_kit_keeps_a_tuple_of_the_classes_given_in_order():
+    # probe of PD-7
+    toy = ToyService(refusal_problems=[Sibling, HeldKeyProblem])
+    assert toy.kit.refusal_problems == (Sibling, HeldKeyProblem), "a tuple in the given order"
+    assert ToyService().kit.refusal_problems == (), "none by default"
 
 
 class NotAProblem(BaseModel):
