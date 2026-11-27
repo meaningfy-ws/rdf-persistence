@@ -7,7 +7,7 @@ count the workers". `make check-all` green at 98e1670a (1090 s; unit 8653 passed
 generator 1837).
 
 ## Decided since the PLAN
-none.
+D-1 (design.md, Delivery decisions).
 
 ## Open
 none.
