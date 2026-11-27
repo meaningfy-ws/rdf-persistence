@@ -232,3 +232,65 @@ def test_a_bad_regenerate_command_names_the_alias_not_the_field(tmp_path: Path) 
     problem = str(refused.value).split("invalid entry:")[1]
     assert "regenerate-command:" in problem, "the alias is not named"
     assert "regenerate_command" not in problem, "the field name leaked into the message"
+
+
+def _entries(*entries: tuple[str, str | None, bool]) -> str:
+    """A table of entries: (schema, typescript folder or None, owns the toolkit's TypeScript)."""
+    return "".join(
+        f'\n[[tool.rp-generate]]\nschema = "{schema}"\npackage = "app.{schema[0]}.generated"\n'
+        + (f'typescript = "{folder}"\n' if folder else "")
+        + ("toolkit-typescript = true\n" if owns else "")
+        for schema, folder, owns in entries
+    )
+
+
+# PD-2: the cross-entry check; (table, the words the refusal holds, or None when the table is valid).
+TOOLKIT_OWNER_CASES = [
+    pytest.param(
+        _entries(("a.yaml", None, True)),
+        ["a.yaml: toolkit-typescript needs typescript on the same [[tool.rp-generate]] entry"],
+        id="key-without-typescript",
+    ),
+    pytest.param(
+        _entries(("a.yaml", "web/a", False), ("b.yaml", "web/b", False)),
+        ["a.yaml, b.yaml write TypeScript in", "set toolkit-typescript = true on the one"],
+        id="two-typescript-entries-no-owner",
+    ),
+    pytest.param(
+        _entries(("a.yaml", "web/a", True), ("b.yaml", "web/b", True)),
+        ["toolkit-typescript is set on a.yaml, b.yaml in", "set it on one"],
+        id="two-owners",
+    ),
+    pytest.param(
+        _entries(("a.yaml", "web/a", True), ("b.yaml", "web/a", False)),
+        ["a.yaml, b.yaml write TypeScript into the same folder web/a in", "give each its own"],
+        id="same-folder",
+    ),
+    pytest.param(
+        _entries(("a.yaml", "web/a", True), ("b.yaml", "web/./a", False)),
+        ["invalid entry: typescript:", "web/./a"],
+        id="dotted-spelling-of-a-folder-is-refused-by-the-model-first",
+    ),
+    pytest.param(_entries(("a.yaml", "web/a", False)), None, id="one-typescript-entry-no-key"),
+    pytest.param(_entries(("a.yaml", "web/a", True)), None, id="one-typescript-entry-with-key"),
+    pytest.param(
+        _entries(("a.yaml", "web/a", True), ("b.yaml", "web/b", False), ("c.yaml", None, False)),
+        None,
+        id="one-owner-among-several",
+    ),
+]
+
+
+@pytest.mark.parametrize(("toml", "words"), TOOLKIT_OWNER_CASES)
+def test_the_toolkit_owner_of_the_typescript_entries_is_checked_across_entries(
+    tmp_path: Path, toml: str, words: list[str] | None
+) -> None:
+    if words is None:
+        assert read(tmp_path, toml), "a valid table was not read"
+        return
+    with pytest.raises(ConfigError) as refused:
+        read(tmp_path, toml)
+    message = str(refused.value)
+    for word in words:
+        assert word in message, f"the refusal lacks {word!r}: {message}"
+    assert str(tmp_path / "pyproject.toml") in message, "the refusal does not name the project file"

@@ -20,14 +20,24 @@ Declare where each artefact goes, in a `[tool.rp-generate]` table of `pyproject.
 [source,toml]
 ----
 # pyproject.toml
-[tool.rp-generate]
+[[tool.rp-generate]]
 schema = "models/library.yaml"
 package = "library.domain.generated"
 migrations = "migrations"
 typescript = "web/src/domain/generated"
+toolkit-typescript = true  # this folder holds the toolkit's modules
 diagrams = "docs/model"
 regenerate-command = "make generate"  # optional
+
+[[tool.rp-generate]]
+schema = "services/loan_checks_response.yaml"
+package = "library.services.generated"
+typescript = "web/src/services/generated"  # imports the toolkit's modules from the entry above
 ----
+
+Each schema a project generates from is one `[[tool.rp-generate]]` entry; a project with one entry
+may write it as a single `[tool.rp-generate]` table. The example has two entries to show
+`toolkit-typescript`.
 
 [cols="2,2,5",options="header"]
 |===
@@ -38,6 +48,7 @@ regenerate-command = "make generate"  # optional
 |`migrations` |when the schema defines aggregate roots of its own |the folder of the schema lock and the migration files
 |`python` |no |the folder that receives every Python-side file (see <<outputs>>); the `package` path when absent
 |`typescript` |no |the folder of the TypeScript types; none are written when absent
+|`toolkit-typescript` |no (default `false`; required on exactly one entry when two or more set `typescript`) |`true` makes this entry's `typescript` folder the one that holds the toolkit's shared modules (`rp_core.ts`, `rp_service.ts` and the rest); the other TypeScript entries import them from it. It needs `typescript` on the same entry
 |`diagrams` |no |the folder of the Mermaid diagrams; none are written when absent
 |`openapi` |no (default `true`) |`false` leaves out `openapi-components.json`
 |`regenerate-command` |no |the command named when the freshness check fails; `rp-generate` when absent
@@ -115,7 +126,7 @@ xref:architecture/generation.adoc#hard-check[The hard check].
 |`schema.lock.json` and a drafted migration when the `version:` changes
 |see xref:howto/migrate.adoc[Change a schema that has stored data]
 |`typescript`
-|one file per module the target owns, `index.ts`, `rp_service.ts`; a module another target writes as TypeScript is imported from that target's folder
+|one file per module the target owns, `index.ts`, `rp_service.ts`; a module another target writes as TypeScript is imported from that target's folder; in a project with several TypeScript entries, the toolkit's modules only in the entry with `toolkit-typescript`
 |the TypeScript types
 |`diagrams`
 |one `.mmd` file per module

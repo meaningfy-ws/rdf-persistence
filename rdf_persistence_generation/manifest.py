@@ -15,6 +15,7 @@ from rdf_persistence.schema.services.schema import (
     SERVED_SCHEMAS,
     load_schema,
 )
+from rdf_persistence.schema.services.vocabulary import METAMODEL
 from rdf_persistence_generation.config import GENERATOR_DIR, GENERATOR_PACKAGE, python_folder
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
@@ -89,9 +90,12 @@ def _entries(files: Iterable[Path], base: Path) -> list[ManifestEntry]:
 def current_inputs(target: GenerationTarget, base: Path) -> list[ManifestEntry]:
     """The inputs of ``target`` as they are now, sorted by path.
 
-    A target that renders TypeScript also writes the types of the served schemas, so they are inputs.
+    A target that renders TypeScript also writes the types of the served schemas, so they are inputs;
+    the owner of the toolkit's TypeScript also writes every metamodel module, so those are inputs too.
     """
     schemas = [base / target.schema_file, *(SERVED_SCHEMAS if target.typescript else ())]
+    if target.typescript and target.toolkit_typescript:
+        schemas.append(METAMODEL)
     files = [f for schema in schemas for f in _schema_files(schema)]
     return _entries([*files, *_toolkit_files()], base)
 

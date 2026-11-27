@@ -1,6 +1,7 @@
 """Read the ``[tool.rp-generate]`` table or array of tables (PD-18) into GenerationTarget models."""
 
 import functools
+import posixpath
 import tomllib
 from argparse import Namespace
 from importlib import resources
@@ -106,6 +107,50 @@ def _refuse_field_names(row: dict[str, object]) -> None:
             raise ConfigError(f"invalid entry: {key}: Extra inputs are not permitted")
 
 
+def _refuse_toolkit_owner(targets: list[GenerationTarget], project: Path) -> None:
+    """PD-2: the toolkit's TypeScript has one owner among the entries that write TypeScript, and
+    no two entries write into the same folder."""
+    for target in targets:
+        if target.toolkit_typescript and not target.typescript:
+            raise ConfigError(
+                f"{target.schema_file}: toolkit-typescript needs typescript on the same "
+                f"[[tool.rp-generate]] entry in {project}"
+            )
+    writers = [t for t in targets if t.typescript]
+    _refuse_owner_count(writers, project)
+    _refuse_shared_folder(writers, project)
+
+
+def _refuse_owner_count(writers: list[GenerationTarget], project: Path) -> None:
+    """Of the entries that write TypeScript, exactly one owns the toolkit's when there are several."""
+    owners = [t.schema_file for t in writers if t.toolkit_typescript]
+    if len(writers) > 1 and not owners:
+        names = ", ".join(t.schema_file for t in writers)
+        raise ConfigError(
+            f"{names} write TypeScript in {project}: set toolkit-typescript = true on the one "
+            "whose folder holds the toolkit's types (rp_core.ts, rp_service.ts, ...); the others "
+            "import them from it"
+        )
+    if len(owners) > 1:
+        raise ConfigError(
+            f"toolkit-typescript is set on {', '.join(owners)} in {project}: set it on one"
+        )
+
+
+def _refuse_shared_folder(writers: list[GenerationTarget], project: Path) -> None:
+    """No two entries write TypeScript into the same folder (compared as normalised paths)."""
+    by_folder: dict[str, list[str]] = {}
+    for target in writers:
+        folder = posixpath.normpath(str(target.typescript))
+        by_folder.setdefault(folder, []).append(target.schema_file)
+    for folder, names in by_folder.items():
+        if len(names) > 1:
+            raise ConfigError(
+                f"{', '.join(names)} write TypeScript into the same folder {folder} in {project}: "
+                "give each its own"
+            )
+
+
 def _toml_entries(project: Path, given: dict[str, str]) -> list[GenerationTarget]:
     """The targets of ``project``'s table, each row validated with the flags laid over it."""
     table = (
@@ -118,12 +163,14 @@ def _toml_entries(project: Path, given: dict[str, str]) -> list[GenerationTarget
     for row in rows:
         _refuse_field_names(row)
     try:
-        return [
+        targets = [
             GenerationTarget.model_validate({**row, **{toml_key(k): v for k, v in given.items()}})
             for row in rows or [{}]
         ]
     except ValidationError as error:
         raise ConfigError(f"{project}: invalid entry: {_problems(error)}") from error
+    _refuse_toolkit_owner(targets, project)
+    return targets
 
 
 def read_targets(project: Path, flags: Namespace | None = None) -> list[GenerationTarget]:

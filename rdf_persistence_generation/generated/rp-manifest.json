@@ -59,7 +59,7 @@
     },
     {
       "path": "rdf_persistence_generation/config.py",
-      "sha256": "710259a68468e08e3eb45699a680e6979431dedf9b3962c8dfd9377c19cb0b1c"
+      "sha256": "1a256c45bfaf36cd1ce26f9f5ee9845a2cec317c3636fe3912a7b127ac74e94a"
     },
     {
       "path": "rdf_persistence_generation/exceptions.py",
@@ -95,7 +95,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/typescript.py",
-      "sha256": "62d296f0e4b56c6a3ed7a6844947842aa29808eaa0fa9b197b9233e09b8378bd"
+      "sha256": "d1aba6a8c2059e93985eafc1d72ce9b046aaa54de885f7d627c0da618bd9fe2c"
     },
     {
       "path": "rdf_persistence_generation/lock.py",
@@ -107,11 +107,11 @@
     },
     {
       "path": "rdf_persistence_generation/manifest.py",
-      "sha256": "ff728bfd3532205c25ec8baa6ee0d2ada1f3476c3882b245d14adc340090f3b8"
+      "sha256": "8fcdae7347c39cdd8d3a8ca8fcfefca4e10dd8df7224cbaff68bef7add8d4386"
     },
     {
       "path": "rdf_persistence_generation/model/rp_generation.yaml",
-      "sha256": "ed781a8e533b2081a69242dd3abfd94b201d9d5db861a182a244fa8d67bd1df4"
+      "sha256": "91ba7eaabaac91e796ff06c263935263848c4b04376b9ae9245d0081cc3059f4"
     },
     {
       "path": "rdf_persistence_generation/module_cycles.py",
@@ -127,7 +127,7 @@
     },
     {
       "path": "rdf_persistence_generation/steps.py",
-      "sha256": "9b7edead27e0ec111cb4f0af2ac5d9b047c3c5610f700c2cfbc06c5e4463db56"
+      "sha256": "ad97d9616a20d27eed5b79f8483edf4a5182c7c65f0baeb4a457b1373170f181"
     },
     {
       "path": "rdf_persistence_generation/templates/mermaid/module.mmd.jinja",
@@ -253,15 +253,15 @@
     },
     {
       "path": "rdf_persistence_generation/generated/context.jsonld",
-      "sha256": "4d6d0fba1a9154697e2738beface2557d0b7fd19dd0e97e567c6ce3cd46b49f0"
+      "sha256": "7f6b361c6f94cc58c6b72400e5b732293da5d9d675a540fdfba305172fa4fe90"
     },
     {
       "path": "rdf_persistence_generation/generated/rp_generation.py",
-      "sha256": "0974b94b81aae07c231e618203cd81ed2ff9de925a7e9d566077b7ec43c6797b"
+      "sha256": "c700a4bbc65a6068fbf4ff65d3df54cdc976f2ce1104a7dcd125950e5aef0652"
     },
     {
       "path": "rdf_persistence_generation/generated/shapes.ttl",
-      "sha256": "1d6a2badca603ecb15dd70c7b25265c3f8615096ef4231095b8f112e01ff54ce"
+      "sha256": "2fa5a294ac45640628c96a6b21c366e7002a80e08a73a965c91da79880a34709"
     }
   ]
 }

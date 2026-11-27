@@ -28,6 +28,7 @@ classes:
       - package
       - python
       - typescript
+      - toolkit_typescript
       - diagrams
       - openapi
       - regenerate_command
@@ -831,6 +832,16 @@ slots:
     slot_uri: rp:typescriptFolder
     annotations:
       cli_flag: --typescript-out
+  toolkit_typescript:
+    title: Toolkit TypeScript owner
+    description: >-
+      Whether this entry's TypeScript folder holds the toolkit's shared TypeScript modules, which
+      the project's other TypeScript entries import (TOML key `toolkit-typescript`). Required on
+      exactly one entry when two or more set `typescript`; changes nothing when one does.
+    slot_uri: rp:toolkitTypescript
+    alias: toolkit-typescript
+    range: boolean
+    ifabsent: "false"
   diagrams:
     is_a: relative_path
     title: Diagrams folder

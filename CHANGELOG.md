@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠ BREAKING
+- **The toolkit's TypeScript modules are written once, in the entry that owns them**
+  (`typescript-toolkit-modules`). A project with two or more TypeScript entries sets
+  `toolkit-typescript = true` on one; until it does, `rp-generate` refuses the table, and so does
+  every test session that loads the freshness plugin (it reads the same table), so set the key
+  before running the tests. The other entries no longer hold `rp_core.ts`, `rp_service.ts` and the
+  other toolkit modules: import those types (`TenantSummary`, `Problem`, `InUseProblem`, a
+  metamodel type) from that entry's folder. A project upgrading from before the release that
+  stopped copying a module another entry owns (#371) also moves those imports to the owning
+  entry's folder. A project with one TypeScript entry is unchanged.
+
 ### Fixed
 - **A narrowed or re-ranged slot generates a field mypy accepts** (`narrowed-slot-override`, #417).
   A subclass that narrows an inherited list slot to one value (or changes its range to one not
