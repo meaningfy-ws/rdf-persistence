@@ -177,3 +177,7 @@ The lead's, taken in the epic session (R-0007), for the developer to validate at
   `tests/unit/tooling/test_lanes.py::test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make`,
   which passes alone and touches nothing this change edits. The seed data stands; the test is
   watched in `make check-all`.
+- **D-6 Builder 1.2 regenerates.** Task 1.1 cost three regenerate round trips between lead and
+  builder (D-3). For 1.2 the builder is alone in the worktree, which is therefore not shared, so
+  the lead lets it run `make generate` after its template edit; it runs `make check-quality`
+  before regenerating, so a quality fix does not cost a second run.

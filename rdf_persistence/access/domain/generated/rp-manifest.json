@@ -171,7 +171,7 @@
     },
     {
       "path": "rdf_persistence_generation/templates/pydantic/unique_keys_validator.py.jinja",
-      "sha256": "6fc04f41cfad181b939a7eb2a409711b4ca72b04e76bb1452c795de402128a35"
+      "sha256": "ec9a89704984d61bb2995bf60b321c4514ddf997339c8af7adc4baec96ecf0c1"
     },
     {
       "path": "rdf_persistence_generation/templates/pydantic/validator.py.jinja",
@@ -277,7 +277,7 @@
     },
     {
       "path": "rdf_persistence/access/domain/generated/rp_tenancy.py",
-      "sha256": "4ec927766f23f74aab588a82ae1886492de36af098df1eba92ec30cdb9e7d73b"
+      "sha256": "2b3aa9d5db5f839c6aa3d79c522f0cb50d7907d2ae517121394bbc9c6ac89108"
     },
     {
       "path": "rdf_persistence/access/domain/generated/shapes.ttl",

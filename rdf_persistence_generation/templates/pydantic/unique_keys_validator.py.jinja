@@ -2,7 +2,8 @@
     def {{ method }}(self) -> "{{ class_name }}":
         seen: set[str] = set()
         repeated: list[tuple] = []
-        for item in self.{{ slot }} or []:
+        value = self.{{ slot }}
+        for item in value if isinstance(value, list) else ([] if value is None else [value]):
             key = ({% for key_slot in key_slots %}item.{{ key_slot }},{{ " " if not loop.last }}{% endfor %})
             if repr(key) in seen:
                 repeated.append(key)

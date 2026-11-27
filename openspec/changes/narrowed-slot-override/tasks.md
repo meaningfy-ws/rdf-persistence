@@ -16,11 +16,11 @@ Builders never commit; the lead does and ticks this file.
   `rdf_persistence_generation/extensions/pydantic_split.py`, and in
   `templates/pydantic/attribute.py.jinja` the condition (PD-1) and the one-line `equals_number`
   branch (PD-6); reword TC-3's message. Accept: TC-1, TC-2, TC-3, TC-5 pass; task gate green.
-- [ ] 1.2 **integration + code (the unique-key check)** — after 1.1 (same test file); PD-5, spec
+- [x] 1.2 **integration + code (the unique-key check)** — after 1.1 (same test file); PD-5, spec
   scenario 3. First TC-4 (fails today with `AttributeError`), then the two lines of
   `templates/pydantic/unique_keys_validator.py.jinja`. Accept: TC-4 passes; the existing unique-key
   tests pass unchanged (RISK-2); task gate green.
-- [ ] 1.3 **lead: regenerate** — after 1.2: `make generate`; commit the regenerated toolkit and toy
+- [x] 1.3 **lead: regenerate** — after 1.2: `make generate`; commit the regenerated toolkit and toy
   files (`rp-manifest.json`, the unique-key validators' new lines). Accept: no generated `.py`
   line changes outside PD-5's validator lines and a real incompatible override (RISK-1; any other
   diff is reported, not fixed); `make typecheck-generated` green.
@@ -32,7 +32,7 @@ Builders never commit; the lead does and ticks this file.
 
 ## Roadmap
 
-- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · [x] 1.4 · [ ] 1.5 (1.4 may run beside 1.3)
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [ ] 1.5 (1.4 may run beside 1.3)
 
 ## Verification
 

@@ -194,3 +194,65 @@ def test_a_subclass_narrowing_a_list_slot_to_one_value_generates_a_package_mypy_
     assert main(["--project", str(pyproject)]) == 0, capsys.readouterr().err
 
     assert mypy_output(project) == "", "the narrowed field is not marked for mypy"
+
+
+KEYED_SLOTS = """\
+slots:
+  code:
+    title: Code
+    description: The code of a part.
+    slot_uri: lib:code
+    range: string
+  parts:
+    title: Parts
+    description: The parts, a list.
+    slot_uri: lib:parts
+    range: Part
+    multivalued: true
+    inlined: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+"""
+PART_ID = "https://example.org/ns/library#p-1"
+PART_CLASS = """\
+  Part:
+    title: Part
+    description: A part, inlined in its holder, one per code.
+    class_uri: lib:Part
+    mixins: [Described]
+    slots: [code]
+    unique_keys:
+      by_code:
+        unique_key_slots: [code]
+"""
+KEYED_CLASSES = (
+    PART_CLASS
+    + root_class("KeyedHolder")
+    + "    slots: [parts]\n"
+    + root_class("OneKeyedHolder", parent="KeyedHolder")
+    + "    slot_usage:\n      parts:\n        required: true\n        multivalued: false\n"
+)
+
+
+def test_a_narrowed_keyed_slot_validates_one_value_and_a_list_still_refuses_a_repeated_key(
+    project: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#417 (TC-4): the unique-key validator the subclass inherits reads a single value as a one-item list."""
+    pyproject = write_project(
+        project, {"app_keyed": module("app_keyed", KEYED_CLASSES, slots=KEYED_SLOTS)}
+    )
+
+    assert main(["--project", str(pyproject)]) == 0, capsys.readouterr().err
+
+    keyed = generated("app_keyed")
+    one = keyed.OneKeyedHolder(
+        id="https://example.org/ns/library#k-1",
+        label="K",
+        parts=keyed.Part(id=PART_ID, label="P", code="a"),
+    )
+    assert one.parts.code == "a", "the narrowed holder validates one part"
+    parts = [keyed.Part(id=PART_ID, label="P", code="a") for _ in range(2)]
+    with pytest.raises(ValueError, match="unique_keys by_code"):
+        keyed.KeyedHolder(id="https://example.org/ns/library#k-2", label="K", parts=parts)
+    assert mypy_output(project) == "", "the generated package is mypy-clean"

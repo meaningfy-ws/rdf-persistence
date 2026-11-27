@@ -127,7 +127,8 @@ class TenantAccess(Policy, TenantLabelled, Described, AggregateRoot):
     def unique_keys_grants_grant_key(self) -> "TenantAccess":
         seen: set[str] = set()
         repeated: list[tuple] = []
-        for item in self.grants or []:
+        value = self.grants
+        for item in value if isinstance(value, list) else ([] if value is None else [value]):
             key = (item.assignee, item.target, item.role, item.action,)
             if repr(key) in seen:
                 repeated.append(key)
