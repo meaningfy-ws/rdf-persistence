@@ -107,7 +107,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/typescript.py",
-      "sha256": "62d296f0e4b56c6a3ed7a6844947842aa29808eaa0fa9b197b9233e09b8378bd"
+      "sha256": "d1aba6a8c2059e93985eafc1d72ce9b046aaa54de885f7d627c0da618bd9fe2c"
     },
     {
       "path": "rdf_persistence_generation/lock.py",
@@ -119,7 +119,7 @@
     },
     {
       "path": "rdf_persistence_generation/manifest.py",
-      "sha256": "ff728bfd3532205c25ec8baa6ee0d2ada1f3476c3882b245d14adc340090f3b8"
+      "sha256": "8fcdae7347c39cdd8d3a8ca8fcfefca4e10dd8df7224cbaff68bef7add8d4386"
     },
     {
       "path": "rdf_persistence_generation/module_cycles.py",
@@ -135,7 +135,7 @@
     },
     {
       "path": "rdf_persistence_generation/steps.py",
-      "sha256": "9b7edead27e0ec111cb4f0af2ac5d9b047c3c5610f700c2cfbc06c5e4463db56"
+      "sha256": "ad97d9616a20d27eed5b79f8483edf4a5182c7c65f0baeb4a457b1373170f181"
     },
     {
       "path": "rdf_persistence_generation/templates/mermaid/module.mmd.jinja",

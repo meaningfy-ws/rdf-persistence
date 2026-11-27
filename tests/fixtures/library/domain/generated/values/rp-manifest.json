@@ -143,7 +143,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/typescript.py",
-      "sha256": "62d296f0e4b56c6a3ed7a6844947842aa29808eaa0fa9b197b9233e09b8378bd"
+      "sha256": "d1aba6a8c2059e93985eafc1d72ce9b046aaa54de885f7d627c0da618bd9fe2c"
     },
     {
       "path": "rdf_persistence_generation/lock.py",
@@ -155,7 +155,7 @@
     },
     {
       "path": "rdf_persistence_generation/manifest.py",
-      "sha256": "ff728bfd3532205c25ec8baa6ee0d2ada1f3476c3882b245d14adc340090f3b8"
+      "sha256": "8fcdae7347c39cdd8d3a8ca8fcfefca4e10dd8df7224cbaff68bef7add8d4386"
     },
     {
       "path": "rdf_persistence_generation/module_cycles.py",
@@ -171,7 +171,7 @@
     },
     {
       "path": "rdf_persistence_generation/steps.py",
-      "sha256": "9b7edead27e0ec111cb4f0af2ac5d9b047c3c5610f700c2cfbc06c5e4463db56"
+      "sha256": "ad97d9616a20d27eed5b79f8483edf4a5182c7c65f0baeb4a457b1373170f181"
     },
     {
       "path": "rdf_persistence_generation/templates/mermaid/module.mmd.jinja",
@@ -313,27 +313,11 @@
     },
     {
       "path": "web/src/domain/generated/values/index.ts",
-      "sha256": "9927f02bb06a37053006c498f41abf76f911455bbb35636cedc872b5bf367605"
+      "sha256": "9ffd5b5e5dcd20c8043c00862e57ce9a751c88ac23c4c6a6bc933a8da9fc47ee"
     },
     {
       "path": "web/src/domain/generated/values/loan_checks.ts",
       "sha256": "86ff64b4e985d22d43edf1ac5556444c2d09b572700876fa7552c1e2c2642858"
-    },
-    {
-      "path": "web/src/domain/generated/values/rp_access.ts",
-      "sha256": "b61ccec91ece112d78c724e84fc99f9964c0fd0a726eb6429508ab940faf85e5"
-    },
-    {
-      "path": "web/src/domain/generated/values/rp_core.ts",
-      "sha256": "11ca8e3bcbe5f3b171860f81f42025656158c226f0690b4c404a8ccf688f5c53"
-    },
-    {
-      "path": "web/src/domain/generated/values/rp_service.ts",
-      "sha256": "21e8880b6e56e3772000162d8fd3d18c54ea6b758d6855aa29b9bee308dd0b33"
-    },
-    {
-      "path": "web/src/domain/generated/values/rp_tenancy.ts",
-      "sha256": "c3245bd5e2cf9cccdb98356fb2749eab6859f9a8f25f857d71cd627cf79833dc"
     }
   ]
 }

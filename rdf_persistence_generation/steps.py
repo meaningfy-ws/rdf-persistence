@@ -214,13 +214,33 @@ def _typescript_owners(run: Run) -> dict[str, Path]:
     }
 
 
+def _toolkit_folder(run: Run) -> Path | None:
+    """The folder of the project's one owner of the toolkit's TypeScript modules (PD-4).
+
+    ``None`` when fewer than two targets write TypeScript, and when a ``Run`` built by hand holds
+    no owner or several: then every target copies the modules. The configuration reader refuses
+    such a table before any step runs, so a step never raises here.
+    """
+    writers = [target for target in run.targets if target.typescript]
+    owners = [target for target in writers if target.toolkit_typescript]
+    if len(writers) == 1 or len(owners) != 1:  # no writer: no owner either
+        return None
+    return Path(str(owners[0].typescript))
+
+
 def _write_typescript(run: Run) -> None:
     """Stage the TypeScript types, importing the modules another target of the project writes (PD-2)."""
     folder = _typescript_folder(run)
     if folder is None:
         return
     with schema_faults():
-        files = typescript.render(run.schema_path, folder=folder, owners=_typescript_owners(run))
+        files = typescript.render(
+            run.schema_path,
+            folder=folder,
+            owners=_typescript_owners(run),
+            toolkit=_toolkit_folder(run),
+            owns_toolkit=bool(run.target.toolkit_typescript),
+        )
     stage(run, folder, files)
 
 

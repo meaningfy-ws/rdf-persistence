@@ -32,6 +32,7 @@ from rdf_persistence.schema.services.schema_structure import (
     own_schemas,
     python_package_of,
 )
+from rdf_persistence.schema.services.vocabulary import METAMODEL
 from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.generated.rp_generation import (
@@ -253,8 +254,66 @@ def _importing(modules: list[TsModule], specifiers: Mapping[str, str]) -> list[T
     ]
 
 
+@cache
+def _shared(
+    metamodel: Path, served: tuple[Path, ...]
+) -> tuple[tuple[TsModule, ...], tuple[str, ...]]:
+    """The shared modules and the names that stand for the toolkit's shared files (PD-3), built once."""
+    served_names, served_modules = _served_modules(served)
+    by_name = {m.name: m for m in _generator(metamodel).modules() if m.name not in served_names}
+    for built in served_modules:
+        for module in built:
+            if module.name not in served_names:
+                by_name.setdefault(module.name, module)
+    modules = tuple(by_name[name] for name in sorted(by_name))
+    return modules, tuple(sorted({*by_name, *served_names, SERVICE_MODULE}))
+
+
+def _shared_modules() -> tuple[TsModule, ...]:
+    """The toolkit's shared modules: the metamodel's and the served schemas' other modules (PD-3).
+
+    The metamodel's render wins when both yield a module of the same name.
+    """
+    return _shared(METAMODEL, tuple(SERVED_SCHEMAS))[0]
+
+
+def _shared_names() -> tuple[str, ...]:
+    """The names of the shared modules, of the served schemas and ``SERVICE_MODULE`` (PD-3)."""
+    return _shared(METAMODEL, tuple(SERVED_SCHEMAS))[1]
+
+
+def _importing_toolkit(modules: list[TsModule], toolkit: Path, folder: Path) -> list[GeneratedFile]:
+    """The files of ``modules`` without the shared ones, their imports of those pointed at ``toolkit`` (PD-5)."""
+    served_names, _ = _served_modules(tuple(SERVED_SCHEMAS))
+    shared = set(_shared_names())
+    files = []
+    for module in modules:
+        if module.name in shared:
+            continue
+        module = _pointing_at_merged(module, served_names)
+        imports = sorted(
+            (
+                TsImport(
+                    module=_specifier(toolkit, item.module, folder)
+                    if item.module in shared
+                    else item.module,
+                    names=item.names,
+                )
+                for item in module.imports
+            ),
+            key=lambda item: item.module,
+        )
+        files.append(_file(module.replaced(imports=imports)))
+    return files
+
+
 def render(
-    schema_path: Path, *, folder: Path | None = None, owners: Mapping[str, Path] | None = None
+    schema_path: Path,
+    *,
+    folder: Path | None = None,
+    owners: Mapping[str, Path] | None = None,
+    toolkit: Path | None = None,
+    owns_toolkit: bool = False,
 ) -> list[GeneratedFile]:
     """The TypeScript files of the schema at ``schema_path`` plus the types of every served schema.
 
@@ -265,6 +324,10 @@ def render(
     A module whose ``python_package`` is a key of ``owners`` (the packages of the project's other
     targets that write TypeScript, to their folders) gets no file here: the modules that use it
     import it from the owner's folder, relative to ``folder``, this target's own.
+
+    With ``toolkit`` (the folder of the project's one owner of the toolkit's shared modules), the
+    owner (``owns_toolkit``) also writes every shared module its schema does not import, and any
+    other target writes none of them and imports them from ``toolkit``, relative to ``folder``.
 
     Raises:
         SchemaGenerationError: When the schema defines a module or type named like one of the served
@@ -280,7 +343,16 @@ def render(
     modules = generator.modules()
     if folder is not None and owners:  # no folder or no owner: every module is copied
         modules = _importing(modules, _imported_from_owners(generator, owners, folder))
-    return with_index(_with_served(modules))
+    if toolkit is None:
+        return with_index(_with_served(modules))
+    if owns_toolkit:
+        by_name = {module.name: module for module in modules}
+        for module in _shared_modules():
+            by_name.setdefault(module.name, module)
+        return with_index(_with_served(sorted(by_name.values(), key=lambda m: m.name)))
+    if folder is None:  # no folder to be relative to: nothing to import from
+        return with_index(_with_served(modules))
+    return with_index(_importing_toolkit(modules, toolkit, folder))
 
 
 @cache
