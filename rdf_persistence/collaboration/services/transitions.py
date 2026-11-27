@@ -119,7 +119,7 @@ class Transitions:
         edge = self._edge(workflow, iri, current, to)
         if edge.comment_required and comment is None:
             raise InvalidBody(f"the move to {to} needs a comment")
-        return await self._store(iri, graph, workflow, current, to, comment, if_version, command)
+        return await self._store(iri, graph, workflow, current, edge, comment, if_version, command)
 
     async def transitions(self, iri: str) -> list[Transition]:
         """The moves of the aggregate ``iri``, oldest first, ties by IRI.
@@ -181,28 +181,31 @@ class Transitions:
         graph: Graph,
         workflow: Workflow,
         current: str,
-        to: str,
+        edge: WorkflowTransition,
         comment: str | None,
         if_version: str,
         command: Transition | None,
     ) -> str:
-        entered = state_iri(workflow, to)
+        entered = state_iri(workflow, edge.to_state)
         posted = self._mint(COMMENT) if comment else None
-        if command is None:
-            record = Transition(
-                id=new_activity_id(),
-                used_resource=iri,
-                from_state_iri=current,
-                to_state_iri=entered,
-                transition_comment=posted,
-            )
-        else:
-            record = command.replaced(
-                used_resource=iri,
-                from_state_iri=current,
-                to_state_iri=entered,
-                transition_comment=posted,
-            )
+        root = URIRef(iri)
+        released = (
+            sorted(str(p) for p in graph.objects(root, v.WORKFLOW_ASSIGNEES))
+            if edge.clears_assignees
+            else []
+        )
+        computed = {  # the slots the toolkit fills, over any a command carries (D-3)
+            "used_resource": iri,
+            "from_state_iri": current,
+            "to_state_iri": entered,
+            "transition_comment": posted,
+            "released_principals": released or None,
+        }
+        record = (
+            Transition(id=new_activity_id(), **computed)
+            if command is None
+            else command.replaced(**computed)
+        )
         models: list[Comment] = []
         if comment:
             models.append(
@@ -217,7 +220,11 @@ class Transitions:
             )
         async with self._session.transaction(served=self._mapper.served(record)) as transaction:
             transaction._allow_state(iri, entered)
-            version = await transaction.replace_graph(iri, _moved(iri, graph, entered), if_version)
+            if released:
+                transaction._allow_assignees(iri, frozenset())
+            version = await transaction.replace_graph(
+                iri, _moved(iri, graph, entered, clear=bool(released)), if_version
+            )
             for model in models:
                 await transaction.add_graph(model.id, self._mapper.to_triples(model))
         return version
@@ -226,10 +233,9 @@ class Transitions:
         return mint_iri(self._view.get_class(class_name), self._iris, self._access.tenant)
 
 
-def _moved(iri: str, graph: Graph, entered: str) -> list[Triple]:
-    """The stored triples with the state ``entered`` in place of the one held."""
+def _moved(iri: str, graph: Graph, entered: str, *, clear: bool = False) -> list[Triple]:
+    """The stored triples with the state ``entered`` in place of the one held, and, with ``clear``, no assignee."""
     root = URIRef(iri)
-    kept = cast(
-        list[Triple], [t for t in graph if not (t[0] == root and t[1] == v.WORKFLOW_STATUS)]
-    )
+    dropped = {v.WORKFLOW_STATUS, v.WORKFLOW_ASSIGNEES} if clear else {v.WORKFLOW_STATUS}
+    kept = cast(list[Triple], [t for t in graph if not (t[0] == root and t[1] in dropped)])
     return [*kept, (root, v.WORKFLOW_STATUS, URIRef(entered))]

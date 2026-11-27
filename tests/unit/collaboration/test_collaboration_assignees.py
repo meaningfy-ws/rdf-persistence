@@ -9,6 +9,7 @@ import pytest
 from rdflib import RDF, RDFS, Literal, URIRef
 
 from rdf_persistence import Action, generated_models
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
 from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.workflows import Workflows
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
@@ -16,6 +17,7 @@ from rdf_persistence.core.domain.exceptions import Conflict, Forbidden, InvalidB
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
+from rdf_persistence.provenance.services.provenance import new_activity_id
 from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
@@ -353,6 +355,48 @@ async def test_an_assignee_drops_itself_where_no_edge_leaves(world, open_session
     reader = assigner(world, session, READER)  # no modify, no edge leaves accepted
     await reader.assign(B, [], if_version=await version_of(session, B))
     assert await assignees_of(session) == NONE, "the assignee dropped itself"
+
+
+# (id, to, comment, stored, kept, released): the edge taken from in_review, and what it leaves (T5, T12)
+EDGES = [
+    ("clearing-edge-with-assignees", "accepted", None, TWO, NONE, sorted(TWO)),
+    ("clearing-edge-without-assignees", "accepted", None, NONE, NONE, None),
+    ("non-clearing-edge-with-assignees", "draft", "needs work", TWO, TWO, None),
+]
+
+
+@pytest.mark.parametrize(
+    ("to", "comment", "stored", "kept", "released"),
+    [e[1:] for e in EDGES],
+    ids=[e[0] for e in EDGES],
+)
+async def test_a_clearing_edge_releases_the_assignees_and_any_other_keeps_them(
+    world, open_session, to, comment, stored, kept, released
+):  # T5, T12
+    session = open_session
+    held_version = await in_review(world, session, stored)
+    lib = assigner(world, session, LIBRARIAN)
+    await lib.transition(B, to, if_version=held_version, comment=comment)
+    assert await assignees_of(session) == kept, "the book holds the assignees the edge leaves"
+    [record] = [r for r in await lib.transitions(B) if r.to_state_iri.endswith(to)]
+    assert record.released_principals == released, "the record names who was released"
+
+
+async def test_a_clearing_edge_overwrites_the_released_principals_of_a_given_command(
+    world, open_session
+):  # D-5
+    session = open_session
+    held_version = await in_review(world, session, ONE)
+    command = Transition(id=new_activity_id(), used_resource=B, released_principals=[P2])
+    await assigner(world, session, LIBRARIAN).transition(
+        B, "accepted", if_version=held_version, command=command
+    )
+    [record] = [
+        r
+        for r in await assigner(world, session, LIBRARIAN).transitions(B)
+        if r.to_state_iri.endswith("accepted")
+    ]
+    assert record.released_principals == [P1], "the computed principals replace the given ones"
 
 
 # (id, caller, stored, wanted, error): refusals of D-3 steps 5 to 9 (T6, T8, T9)

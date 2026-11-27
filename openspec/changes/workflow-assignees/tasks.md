@@ -10,7 +10,7 @@ EPIC: workflow-assignees (proposal.md, #426). Decisions: DEC-1 to DEC-10; design
   `make check-quality`; the generated classes carry the new slots.
 - [x] 1.2 The test fixtures of [D-8](design.md#d-8), in the new test file; the shared fixtures
   unchanged. Accept: the existing workflow tests stay green unchanged.
-- [ ] 1.3 Tests first: T1 to T13 (`design.md#tests`). RED: no `assign`, no `assignable`, no
+- [x] 1.3 Tests first: T1 to T13 (`design.md#tests`). RED: no `assign`, no `assignable`, no
   guard on `rp:assignedTo`.
 - [x] 1.4 `load_workflow`: refuse a clearing edge on a workflow that is not assignable
   ([D-5](design.md#d-5), DEC-3, DEC-5). Accept: T1.
@@ -22,7 +22,7 @@ EPIC: workflow-assignees (proposal.md, #426). Decisions: DEC-1 to DEC-10; design
   Accept: T4 to T11; `make check-architecture`.
 - [x] 1.7 `assignments` and the shared provenance helper ([D-3](design.md#d-3), DEC-8). Accept:
   T13, and the existing transition-history tests unchanged.
-- [ ] 1.8 The clearing edge in `Transitions._store` ([D-5](design.md#d-5), DEC-5). Accept: T12.
+- [x] 1.8 The clearing edge in `Transitions._store` ([D-5](design.md#d-5), DEC-5). Accept: T12.
 - [ ] 1.9 Lead: `make refresh-surface` (the new public names), then the stage gate of
   `docs/modules/ROOT/pages/develop/agents.adoc#_the_gates` (`make check-all`,
   `make test-containers`), the review set, PR.
