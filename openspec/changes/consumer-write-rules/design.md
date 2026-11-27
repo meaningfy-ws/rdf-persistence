@@ -356,6 +356,30 @@ The lead's, per R-0007; the developer may overrule any of them.
   409/422, RISK-3, RISK-5) and moves a branch ahead of the internal-error log.
 - **D-4 Merge order.** Built now, rebased on `develop` after `narrowed-slot-override` (#417) and
   `typescript-toolkit-modules` (#402) merge (P-0002); generated-file conflicts by P-0003.
+- **D-5 Task 1.4 stopped (the developer, 2026-11-27).** The stage-start impact on a fresh index
+  rated `route_options` (`openapi.py`) CRITICAL: 14 direct callers, one per route kind, a risk the
+  PLAN did not name. Asked whether to proceed, narrow, or stop, the developer chose to stop 1.4: the
+  document half of PD-8 (`refusals` on `AggregateOpenApi` and `route_options`, the components and
+  the `default` loop in `install_openapi`, TC-7) goes back to a shaping session. Tasks 1.1 to 1.3 go
+  ahead. Consequences the lead draws, for the developer to overrule:
+  - 1.3 keeps PD-7's registration (`refusal_problems` on `install_service` and `ServiceKit`, the
+    `TypeError` check) and passes it to `install_problem_handlers` only, not to `install_openapi`.
+  - RISK-3 stays open in stage 1: a registered refusal is answered with its extra fields, while
+    `Problem`'s closed component in the published document does not list them. The PR and the
+    hand-over note say so; the contract test is not run with a refusal in stage 1.
+  - 1.5 drops the document's `anyOf` from the `api.adoc` row and the how-to.
+- **D-6 A living scenario contradicted DEC-1 (the developer, 2026-11-27).** rp-generation "the
+  schemas a consumer imports" said no technical schema can be imported; 1.1's gate failed on its
+  feature scenario. The PLAN's delta only added requirements. That wording had no design reason:
+  `technical-models` left the importmap globbing `model/*.yaml` (its PD-1, "unchanged") and its
+  review pinned the side effect with a test (its D-13). The developer re-signed the scenario as
+  MODIFIED in this change's delta: technical modules resolve by their path under `model/`,
+  `model/migrations/` does not. The layer rule (a domain or value module never imports a technical
+  one, PD-3) is unchanged. The feature scenario in `tests/feature/technical_models.feature` is
+  reworded in task 1.1.
+- **D-7 A load flake, not this change.** `tests/unit/tooling/test_lanes.py::test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make`
+  failed once in 1.1's gate (`-n 16` against `-n 17`): it reads the free memory twice on a machine
+  shared with sibling sessions. It passes alone; left as is, named in the PR.
 
 ## Lanes for moved or rewritten tests
 
