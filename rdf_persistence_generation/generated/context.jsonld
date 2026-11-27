@@ -500,6 +500,9 @@
       "text": {
          "@id": "text"
       },
+      "toolkit_typescript": {
+         "@id": "toolkitTypescript"
+      },
       "type": "@type",
       "type_terms": {
          "@container": "@set",

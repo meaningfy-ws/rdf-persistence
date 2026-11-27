@@ -3,6 +3,9 @@ schema = "library.yaml"
 package = "tests.fixtures.library.domain.generated"
 python = "domain/generated"
 typescript = "web/src/domain/generated"
+# The entry whose TypeScript folder holds the toolkit's shared modules (rp_core.ts,
+# rp_service.ts, ...); the other TypeScript entries import them (typescript-toolkit-modules).
+toolkit-typescript = true
 diagrams = "domain/generated/diagrams"
 migrations = "migrations"
 
