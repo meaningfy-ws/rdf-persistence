@@ -248,6 +248,13 @@ Taken by the epic-session lead (R-0007), 2026-11-27; the owner may overrule any 
   - S5 — `assert _typescript_owners(run) is not None` in `test_typescript_toolkit_owner.py` cannot
     fail.
 
+- **D-8 A flaky tooling test after the rebase.** `make check-all` on the rebased head (a19e700c,
+  864 s) failed once, in `tests/unit/tooling/test_lanes.py::test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make`
+  (`-n 15` against `-n 16`). This change touches no Makefile or tooling; `PYTEST_N` recomputes the
+  worker count from free memory at each expansion, so two expansions differ under load. The test
+  passes alone; filed as #432, not fixed here. The other lanes of that run passed (unit coverage
+  96.28 %); CI is the merge check.
+
 ## Lanes for moved or rewritten tests
 
 Rewritten: none. The toy's committed value and technical TypeScript trees change (PD-8); the tests that
