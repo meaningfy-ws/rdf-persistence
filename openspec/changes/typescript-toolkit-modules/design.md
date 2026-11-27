@@ -193,6 +193,24 @@ owner), value (`web/src/domain/generated/values`), technical (`web/src/services/
   1.2 and 1.3 each in a worktree of its own, where `make generate` is not shared (tasks.md header);
   the lead checks the generated diffs against RISK-3.
 
+## Delivery decisions
+
+Taken by the epic-session lead (R-0007), 2026-11-27; the owner may overrule any of them.
+
+- **D-1 Impact of `_toml_entries` is HIGH, by design.** GitNexus (index behind HEAD, so a floor)
+  rates `config._toml_entries` HIGH: every reader of `read_targets` (the CLI, the freshness plugin,
+  the `steps` helpers, the conformance testkit) is reached. That is PD-2's intended effect ("every
+  reader refuses the same way") and RISK-1's accepted mitigation, signed off with the scenarios
+  (`evidence/signoff.md`); no new risk, so the stage proceeds and the PR names it.
+- **D-2 No test seed in the lead's worktree.** Per P-0022 the seed feeds only `make test-changed` in
+  the worktree it runs in. Tasks 1.2 and 1.3 run in worktrees of their own (RISK-5), where a seed
+  would go stale at the builder's first generator edit; their task gate falls back to its own lane.
+  The shaping session's seed of this worktree was stopped and is void. Later tasks here (1.5, 1.6)
+  are small; `make check-all` runs every test before the PR.
+- **D-3 `make install` in this worktree.** Its environment lacked the `generate` extra
+  (`rp-generate needs LinkML's generators`), so the lead ran `make install` (`uv sync --all-extras`)
+  before task 1.1's `make generate`.
+
 ## Lanes for moved or rewritten tests
 
 Rewritten: none. The toy's committed value and technical TypeScript trees change (PD-8); the tests that

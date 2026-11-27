@@ -14,7 +14,7 @@ RISK-3 and to commit (RISK-5).
 
 ## 1. One stage — branch `change/typescript-toolkit-modules`, one PR
 
-- [ ] 1.1 **lead: the key** — PD-1, first half of PD-8. Add the slot `toolkit_typescript` to
+- [x] 1.1 **lead: the key** — PD-1, first half of PD-8. Add the slot `toolkit_typescript` to
   `GenerationTarget` in `rdf_persistence_generation/model/rp_generation.yaml`, and the line
   `toolkit-typescript = true` (with its comment) to the toy's domain entry in
   `tests/fixtures/library/pyproject.toml`, so the toy is valid once 1.2's check lands and every
@@ -60,7 +60,7 @@ RISK-3 and to commit (RISK-5).
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 (1.2 and 1.3 may run side by
+- [x] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 (1.2 and 1.3 may run side by
   side after 1.1)
 
 ## Verification
