@@ -33,7 +33,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
   `refusal_problems` unchanged; `make typecheck-openapi-ts` green; task gate green.
 - [x] 1.5 **docs** — after 1.4; PD-15's stage-1 half (generation page, how-to's problem section,
   `api.adoc` row, CHANGELOG added names). Accept: `make check-docs` green.
-- [ ] 1.6 **lead** — scenario-map rows; `make check-all`, `make test-containers` not needed (no
+- [ ] 1.6 **lead** — scenario-map rows (done); `make check-all`, `make test-containers` not needed (no
   adapter); one review pass (L1+L2, L3+L4+L5: MEDIUM); PR into `develop` naming the consumer need
   (D-12); merged on green CI.
 
