@@ -23,7 +23,8 @@ from rdf_persistence.collaboration.domain.generated.rp_workflow import (
     Workflow,
     WorkflowTransition,
 )
-from rdf_persistence.collaboration.services.discussion import mint_iri, moment_of
+from rdf_persistence.collaboration.services.aggregate_activities import activities_about
+from rdf_persistence.collaboration.services.discussion import mint_iri
 from rdf_persistence.collaboration.services.workflows import Workflows, state_iri
 from rdf_persistence.core.domain.exceptions import (
     Conflict,
@@ -136,14 +137,7 @@ class Transitions:
         self._rules.require(self._caller, self._access, iri, Action.READ)
         if not await self._session.heads([iri]):  # an aggregate that is not stored has no moves
             raise NotFound(f"no graph for {iri}")
-        found = await self._session.activities(
-            v.TRANSITION, v.USED, URIRef(iri), entity=URIRef(iri)
-        )
-        decoded = [self._decode(root, graph) for root, graph in found.items()]
-        return sorted(
-            (_about(r, iri) for r in decoded if r is not None),
-            key=lambda r: (moment_of(r.started_at_time), r.id),
-        )
+        return await activities_about(self._session, self._mapper, Transition, v.TRANSITION, iri)
 
     def _require_module(self) -> None:
         if self._view.get_class(TRANSITION_CLASS) is None:
@@ -230,24 +224,6 @@ class Transitions:
 
     def _mint(self, class_name: str) -> str:
         return mint_iri(self._view.get_class(class_name), self._iris, self._access.tenant)
-
-    def _decode(self, iri: str, graph: Graph) -> Transition | None:
-        """The activity at ``iri``, or None for a root that is not one (not typed so, or one the class refuses)."""
-        if (URIRef(iri), RDF.type, v.TRANSITION) not in graph:
-            return None
-        try:
-            return self._mapper.from_graph(Transition, iri, graph, None)
-        except ValueError:  # pydantic's refusal of the triples
-            return None
-
-
-def _about(move: Transition, iri: str) -> Transition:
-    """``move`` with only the generations and invalidations of the entity ``iri``: what else the
-    commit changed is no business of a reader of ``iri`` (D-6 b)."""
-    return move.replaced(
-        generations=[g for g in move.generations or [] if g.entity == iri] or None,
-        invalidations=[i for i in move.invalidations or [] if i.entity == iri] or None,
-    )
 
 
 def _current(workflow: Workflow, iri: str, graph: Graph) -> str:
