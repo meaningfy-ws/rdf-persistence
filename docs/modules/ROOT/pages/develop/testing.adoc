@@ -33,7 +33,7 @@ entry.
 
 The generator lane runs the generator's unit, feature and integration tiers, the `slow` tests
 included, and starts no container. The integration tier generates a library and runs `tsc` on the
-generated TypeScript, so the lane needs Node 20 on the path; the CI job `test-generator` sets it
+generated TypeScript, so the lane needs Node 20 on the path; the nightly job `test-generator` sets it
 up with `actions/setup-node` before it runs `make test-generator`. The generator's end-to-end tier
 serves a freshly generated library on Fuseki, so it runs in `make test-containers`, which also
 runs the generator's integration tests, never in CI.
@@ -98,9 +98,14 @@ _When is a test slow, and what do I do about it?_
 A test is slow when its set-up and its call add up to 2 s or more, run alone
 (`uv run pytest <node id> -p no:randomly --durations=0 -n 0`). Session start-up does not count.
 `make test-fast` leaves slow tests out; `make test-changed` and `make check-all` run them.
-CI does not run slow tests: it runs `make test-unit-ci` in 8 shards, balanced by the durations
-in `.test_durations` (`make test-durations` refreshes them when the shards drift apart), and
-`make coverage-combine` checks the floor on their union; so run the slow tests locally before a PR.
+The PR gate (`ci.yaml`) runs no unit or generator tests: only the static checks, the generated
+code and `make test-feature`, a few minutes in all. Your local `make check-all` is the gate that
+runs every unit, feature and generator test, slow ones included, so run it before every PR. The
+nightly workflow (`nightly.yaml`, on `develop`, or by hand with
+`gh workflow run nightly.yaml --ref develop`) runs `make test-unit-ci` in 8 shards, balanced by
+the durations in `.test_durations` (`make test-durations` refreshes them when the shards drift
+apart), `make coverage-combine` on their union, `make test-generator` and the SonarCloud scan. It
+leaves the slow tests out too.
 
 * Mark the test itself: `@pytest.mark.slow` on the function or the class. Never a module
   `pytestmark`: it would hide the fast tests of the file, and `tests/conftest.py` stamps the other

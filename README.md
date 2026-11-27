@@ -3,7 +3,7 @@
 > Serialisation and triple store persistence for RDF data (incl. transactions).
 
 <!-- Badges: replace the placeholders once CI and coverage are wired. -->
-[![CI](https://img.shields.io/github/actions/workflow/status/meaningfy-ws/rdf-persistence/ci.yaml?branch=develop)](https://github.com/meaningfy-ws/rdf-persistence/actions)
+[![Nightly](https://img.shields.io/github/actions/workflow/status/meaningfy-ws/rdf-persistence/nightly.yaml?branch=develop)](https://github.com/meaningfy-ws/rdf-persistence/actions)
 [![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey)](docs/modules/ROOT/pages/develop/testing.adoc)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 

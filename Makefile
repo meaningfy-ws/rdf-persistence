@@ -68,9 +68,9 @@ endif
 PARALLEL       = -n $(or $(PYTEST_N),$(if $(CI),auto,@workers)) --dist loadgroup
 NOT_QUARANTINE = and not quarantine
 
-# CI runs the fast unit lane in SPLITS shards balanced by the durations in .test_durations
+# The nightly workflow runs the fast unit lane in SPLITS shards balanced by the durations in .test_durations
 # (pytest-split; `make test-durations` refreshes them). A shard keeps its coverage data and has no
-# floor; `make coverage-combine` checks the floor on the union. The CI matrix lists 1..SPLITS.
+# floor; `make coverage-combine` checks the floor on the union. The nightly matrix lists 1..SPLITS.
 SPLITS      = 8
 SHARD_FLAGS = --splits $(SPLITS) --group $(GROUP) --splitting-algorithm least_duration --cov-fail-under=0
 
@@ -244,7 +244,7 @@ test-unit: ## Run the library's unit tests in parallel, slow ones included, with
 	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit $(NOT_QUARANTINE)" $(COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Unit tests passed$(END_BUILD_PRINT)"
 
-test-unit-ci: ## Run the unit tests not marked slow in parallel, with the 80 % floor; GROUP=i runs CI shard i of SPLITS, without it
+test-unit-ci: ## Run the unit tests not marked slow in parallel, with the 80 % floor; GROUP=i runs nightly shard i of SPLITS, without it
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the fast unit tests $(GROUP)$(END_BUILD_PRINT)"
 	@ COVERAGE_FILE=.coverage$(if $(GROUP),.$(GROUP)) TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "unit and not slow $(NOT_QUARANTINE)" $(COV_FLAGS) $(if $(GROUP),$(SHARD_FLAGS)) --junitxml=$(REPO_ROOT)/test-results$(if $(GROUP),-$(GROUP)).xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Fast unit tests passed$(END_BUILD_PRINT)"
@@ -262,7 +262,7 @@ test-feature: ## Run the library's BDD feature tests in parallel, with a 50 % co
 	@ TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH) $(LIBRARY_LANE) $(PARALLEL) -m "feature $(NOT_QUARANTINE)" $(COV_FLAGS) --cov-report=xml:$(REPO_ROOT)/coverage-feature.xml --cov-fail-under=50
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Feature tests passed$(END_BUILD_PRINT)"
 
-test-generator: ## Run the generator's own tests (tests/generator, unit, feature and integration) in parallel, with the 80 % floor over rdf_persistence_generation (CI job "test-generator")
+test-generator: ## Run the generator's own tests (tests/generator, unit, feature and integration) in parallel, with the 80 % floor over rdf_persistence_generation (nightly job "test-generator")
 	@ echo -e "$(BUILD_PRINT)$(ICON_PROGRESS) Running the generator tests$(END_BUILD_PRINT)"
 	@ COVERAGE_FILE=.coverage.generator TEST_QUEUE_LABEL=$@ $(PYTEST) $(TEST_PATH)/generator $(GENERATOR_E2E) $(PARALLEL) -m "(unit or feature or integration) $(NOT_QUARANTINE)" $(GENERATOR_COV_FLAGS) --junitxml=$(REPO_ROOT)/test-results-generator.xml
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) Generator tests passed$(END_BUILD_PRINT)"
@@ -308,7 +308,7 @@ test-e2e: ## Run end-to-end tests only
 	@ echo -e "$(BUILD_PRINT)$(ICON_DONE) E2e tests passed$(END_BUILD_PRINT)"
 
 #-----------------------------------------------------------------------------
-# Groups — one per CI job (.github/workflows/ci.yaml), each runnable alone
+# Groups — one per job of the PR gate (.github/workflows/ci.yaml), each runnable alone
 #-----------------------------------------------------------------------------
 .PHONY: check-spec check-style check-types check-spec-docs check-generation check-version check-quality check-all
 
