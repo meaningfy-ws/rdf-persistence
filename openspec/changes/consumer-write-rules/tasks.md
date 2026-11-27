@@ -8,7 +8,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
 
 ## 1. Stage 1: a consumer problem, raised by a rule (#415, #397 part 1) — branch `change/consumer-write-rules-1`, one PR
 
-- [ ] 1.1 **unit + code (#415 import)** — PD-1, TC-1. Failing test first in `tests/unit/schema/`:
+- [x] 1.1 **unit + code (#415 import)** — PD-1, TC-1. Failing test first in `tests/unit/schema/`:
   the technical key exists; every `model/*.yaml` key and value is unchanged. Then
   `metamodel_importmap`. Accept: TC-1 passes; existing importmap and schema tests pass unchanged.
 - [ ] 1.2 **generator (#415 extend)** — after 1.1; PD-1a, PD-2, PD-2a, PD-4, PD-9, TC-1b, TC-2 to
@@ -26,7 +26,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
   refusal branch first in `toolkit_error`, and `refusal_problems` on `install_service`,
   `ServiceKit`, `ToyService`; `fixed_refusal` in `tests/toy_service.py`; the public export. Accept:
   TC-5, TC-6 (log records included), TC-8 pass; the error-matrix gap test passes; task gate green.
-- [ ] 1.4 **unit + code (document)** — after 1.3; PD-8, TC-7. Failing tests first in
+- [ ] 1.4 **stopped (D-5, the developer, 2026-11-27): back to shaping.** **unit + code (document)** — after 1.3; PD-8, TC-7. Failing tests first in
   `tests/unit/api/test_openapi.py`. Then `refusals` on `AggregateOpenApi` and `route_options`, the
   router passing `kit.refusal_problems`, and the components and `default` loop in
   `install_openapi`. Accept: TC-7 passes; the document golden without
