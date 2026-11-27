@@ -9,20 +9,16 @@ proposal.md reconciled; scenario-map rows added; `evidence/docs-owed.md`: none o
 D-1 to D-7 (design.md, Delivery decisions).
 
 ## Open
-- Merge order: after `narrowed-slot-override` (#417) lands in `develop`. Its PR was not open on
-  2026-11-27.
-- The merge needs the developer's go, and the acceptance demo needs their verdict or skip
-  (`evidence/acceptance.md`, not yet written).
+- `narrowed-slot-override` (#427) landed; PR #425 is rebased on it (one conflict each in
+  `CHANGELOG.md` and `tests/audit/scenario-map.csv`, both entries kept; `make generate` changed
+  nothing). The developer gave the go to merge and skipped the demo (`evidence/acceptance.md`).
 - Under the floor, possible follow-ups: W2 (no test of its own for DEC-5), S3 (duplication of
   `_importing`), S4 (`render` with `toolkit` and no `folder`), S5 (an assert that cannot fail).
 - GitNexus via MCP reads the main checkout's index (280 commits behind at stage start); impact
   results here are floors.
 
 ## Next
-1.7, the close. Once #417 is merged: rebase on `develop` (P-0002; on a generated-file conflict
-P-0003: carry the sources, take develop's generated file, `make generate`), `make check-all`,
-push. Then, on CI green and the developer's go, watch-and-merge; close #402, tick #189 item (v);
-write `evidence/acceptance.md`; archive (`openspec archive typescript-toolkit-modules --yes`), the
+1.7, the close: watch-and-merge #425 on green CI; close #402, tick #189 item (v); archive (`openspec archive typescript-toolkit-modules --yes`), the
 README row to "delivered, archived".
 
 ## Prompt
