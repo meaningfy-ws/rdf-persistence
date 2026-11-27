@@ -404,6 +404,13 @@ The lead's, per R-0007; the developer may overrule any of them.
   The tester's sort runs now, not after the review, because the two failing tests would turn the
   full gates red: their two tests are deleted (under the floor), and the 56 kept or deleted per
   the stage loop's sort.
+- **D-11 Impact before the stage's last commit (fresh index after the rebase).** `detect_changes`
+  against `develop`: 126 symbols, 75 files, risk critical, from `metamodel_importmap` (accepted,
+  RISK-1) and the generated manifests. New symbols: `refusal_response`, `refuse_unsupported_extensions`
+  and `drop_imports` are LOW. `RuleRefusal` reads CRITICAL (55 direct, 107 in all), but the index
+  resolves it to the whole `exceptions.py` file, whose importers are those of the existing errors; a
+  new class that three modules use breaks none of them. Brought to the developer with the merge
+  question, not acted on.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.
