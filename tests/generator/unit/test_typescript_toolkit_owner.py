@@ -55,6 +55,73 @@ def test_a_value_importer_writes_no_shared_module() -> None:  # TC-1
     assert "rp_" not in files["index.ts"], "the index exports none of them"
 
 
+MODEL = Path(__file__).parents[3] / "rdf_persistence/model"
+IMPORTER_SCHEMA = """id: https://example.org/ns/library/holder
+name: holder
+title: Holder
+description: A technical module whose class holds a metamodel type and a served type.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - {core}
+  - {served}
+annotations:
+  module_kind: technical
+
+classes:
+  Holder:
+    title: Holder
+    description: Holds a registry kind and an authorisation.
+    attributes:
+      holder_id:
+        description: Identifier.
+        identifier: true
+      who:
+        description: A metamodel type.
+        range: RegistryKind
+      checked:
+        description: A served type.
+        range: Authorised
+"""
+
+
+@pytest.mark.parametrize(
+    ("type_name", "module"),
+    [
+        pytest.param("RegistryKind", "rp_core", id="a-metamodel-enum"),
+        pytest.param("Authorised", typescript.SERVICE_MODULE, id="a-served-type"),
+    ],
+)
+def test_an_importer_of_the_toolkit_imports_a_type_it_uses_from_the_owner(
+    tmp_path: Path, type_name: str, module: str
+) -> None:  # TC-1, F1
+    schema = tmp_path / "holder.yaml"
+    schema.write_text(
+        IMPORTER_SCHEMA.format(
+            core=(MODEL / "rp_core").as_posix(),
+            served=(MODEL / "technical/api/rp_api_entrypoints").as_posix(),
+        ),
+        encoding="utf-8",
+    )
+    files = _files(
+        schema,
+        Path("web/src/services/generated"),
+        toolkit=Path("web/src/domain/generated"),
+    )
+    for name in (*TOOLKIT_NAMES, "rp_api_entrypoints"):
+        assert f"{name}.ts" not in files, f"{name} is the owner's file"
+    assert sorted(files) == ["holder.ts", "index.ts"], "only the target's own files"
+    assert "rp_" not in files["index.ts"], "the index exports none of the shared modules"
+    assert f'from "../../domain/generated/{module}"' in files["holder.ts"], (
+        f"{type_name} is imported from the owner's {module}"
+    )
+    assert type_name in files["holder.ts"], f"the module uses {type_name}"
+
+
 def _module(*imports: typescript.TsImport) -> typescript.TsModule:
     return typescript.TsModule(name="mine", enums=[], interfaces=[], imports=list(imports))
 

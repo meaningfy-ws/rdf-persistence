@@ -119,11 +119,30 @@ the next run, the copies an importer wrote before are removed as stale outputs.
 ## Impact
 
 - Code: `rdf_persistence_generation/extensions/typescript.py`, `rdf_persistence_generation/steps.py`,
-  `rdf_persistence_generation/config.py`, `rdf_persistence_generation/model/rp_generation.yaml` and its
-  generated artefacts (`make generate`).
+  `rdf_persistence_generation/config.py`, `rdf_persistence_generation/manifest.py` (PD-6),
+  `rdf_persistence_generation/model/rp_generation.yaml` and its generated artefacts (`make generate`);
+  every `rp-manifest.json` (the generator's source hash).
 - Toy: `tests/fixtures/library/pyproject.toml`; the trees `web/src/domain/generated/values/` and
   `web/src/services/generated/` and their `rp-manifest.json` files.
 - Tests: generator unit and integration tests beside `test_typescript_imports.py` and
   `test_stale_typescript_copy.py`; config tests; scenario-map rows.
 - Consumers: a project with several TypeScript targets sets the key once and moves its imports of
   toolkit types to the owner's folder (RISK-1). MWB2's change names this one (D-12).
+
+## Reconciliation (as delivered, PR #425)
+
+| Shaped | Delivered | State |
+|---|---|---|
+| DEC-1 one owner writes the shared modules, importers import them | `render(..., toolkit, owns_toolkit)`, `steps._toolkit_folder` | delivered, PR #425 |
+| DEC-2 per-entry key `toolkit-typescript` | `GenerationTarget.toolkit_typescript`, toy's domain entry | delivered, PR #425 |
+| DEC-3 refusals before any step | `config._refuse_toolkit_owner`, called by `_toml_entries`; four refusals, the fourth (two entries share a folder) added by PD-2 | delivered, PR #425 |
+| DEC-4 fixed shared set | `typescript._shared_modules`/`_shared_names` (metamodel first, served by `setdefault`) | delivered, PR #425 |
+| DEC-5 a module outside the set is still copied | default path of the importer (a name not in the set is kept) | delivered, PR #425; no test of its own (D-7, W2 under the floor) |
+| DEC-6 BREAKING with a migration note | `CHANGELOG.md` `[Unreleased]`, PR body, including a consumer before #371 (P5) | delivered, PR #425 |
+| RISK-2 the owner's render equals the copies | TC-2b on every shared module; the toy's domain tree byte-identical | delivered, PR #425 |
+| TC-1 on the toy's technical tree | the toy imports no toolkit type, so TC-1 is proved through `render` on a temporary schema (D-7, F1) | delivered differently, PR #425 |
+| TC-4 `tsc` over the toy | `make typecheck-ts` green locally; the toy carries no toolkit import, so it checks the removals, not a toolkit specifier | delivered, PR #425 |
+
+Not delivered: nothing the shape promised. Also changed: `manifest.py` (PD-6, missing from the
+first Impact list), seven stale rows of `tests/audit/scenario-map.csv` dropped by `make
+refresh-map`.
