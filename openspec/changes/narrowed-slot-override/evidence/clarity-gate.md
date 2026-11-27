@@ -21,3 +21,8 @@ run 2, 2026-11-27, 9.0/10, pass (fresh reviewer; actionability 9.5, specificity 
 - TC-2 rows: closed (reverse multivalued, mixin, enum, type against enum, custom typeof present).
 - NEW, open: RISK-1 says "task 1.1 runs `make generate`" and proposal Impact's last bullet says "task 1.1 reports any diff" and "toolkit and toy code unchanged", while tasks.md gives regeneration to the lead in 1.3 (AGENTS.md: only the lead runs `make generate`) and PD-5 changes every unique-key validator. Fix: point both to task 1.3 and say "unchanged apart from PD-5's validator lines".
 - NEW, open: proposal DEC-4 says generated code only "gains a comment"; PD-5 changes each unique-key validator's loop. Fix: add "and each unique-key validator's loop accepts one value" to DEC-4.
+- Both NEW items folded in before the commit of the PLAN (RISK-1 and proposal Impact name task
+  1.3; DEC-4 names PD-5's loop).
+
+Scenarios: signed off by the owner, 2026-11-27 (spec scenarios 1 to 3, design.md TC-1 to TC-6);
+every recommendation accepted.
