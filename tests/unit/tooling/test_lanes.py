@@ -381,12 +381,13 @@ def test_without_ci_the_queue_runs_pytest_and_the_workers_are_left_to_it() -> No
 
 
 def test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make() -> None:
-    printed = make_prints("$(PYTEST_N)|$(PYTEST)|$(PARALLEL)", CI="1")
-    count, pytest_command, parallel = printed.split("|")
+    printed = make_prints("$(PYTEST)|$(PARALLEL)", CI="1")
+    pytest_command, parallel = printed.split("|")
+    counted = re.fullmatch(r"-n (\d+) --dist loadgroup", parallel)
 
     assert pytest_command == PLAIN_PYTEST, f"CI queues: {pytest_command!r}"
-    assert 1 <= int(count) <= workers(os.cpu_count(), None, 1), "the count is not workers()"
-    assert parallel == f"-n {count} --dist loadgroup", parallel
+    assert counted, f"make did not count the workers: PARALLEL printed {parallel!r}"
+    assert 1 <= int(counted[1]) <= workers(os.cpu_count(), None, 1), "the count is not workers()"
 
 
 def test_on_ci_the_worker_count_is_quiet_and_lazy() -> None:
