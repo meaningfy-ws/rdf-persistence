@@ -1,0 +1,376 @@
+"""Check the MWB2 EA model against the conventions the UML converter needs (v2-02 design.md, C-1..C-13).
+
+Usage: python3 tools/ea/qea_conventions.py docs/mwb2_ea_model_v1.qea models/mwb2_prefixes.yaml > evidence.md
+Read-only. Prints one Markdown row per convention with the elements at fault; exits 1 when any fails.
+"""
+
+import re
+import sqlite3
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+db = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True)
+PREFIXES = set(re.findall(r"^  ([a-z][a-z0-9]*):", Path(sys.argv[2]).read_text(), re.M))
+CONVERTED = [
+    "project",
+    "resources",
+    "resources/sparql-queries",
+    "business",
+    "source",
+    "target",
+    "conceptual-mapping",
+    "packaging",
+    "validation",
+]
+NOT_GENERATED = {"loaded graph"}
+ROOT, TENANT = "root", "tenant root"
+BANNED = {
+    "dct:title": "rp:Described label",
+    "skos:prefLabel": "rp:Described label",
+    "dct:description": "rp:Described description",
+    "dct:format": "rp:StoredFile media_type",
+    "mwb:memberRule": "rp:ReferenceCollection membership_rule",
+}
+# the toolkit is not drawn (A-3): a class that needs a specific toolkit class says so in a tagged value
+TOOLKIT_TAGS = {
+    "mwb:Resource": ("rp_mixins", "StoredFile"),
+    "mwb:Collection": ("rp_mixins", "ReferenceCollection"),
+    "mwb:ConceptualMapping": ("workflow", "conceptual-mapping"),
+    "mwb:ValidationRun": ("rp_mixins", "Activity"),
+    "mwb:TestDataRun": ("rp_mixins", "Activity"),
+    "mwb:SourceImport": ("rp_mixins", "StoredFile"),
+    "mwb:MappingImport": ("rp_mixins", "StoredFile"),
+    "mwb:ConceptualMappingCollection": ("rp_mixins", "ReferenceCollection"),
+}
+V1_ATTRIBUTES = {
+    "mwb:Project": ["schema:startDate", "schema:endDate"],
+    "mwb:OntologyFile": ["mwb:classCount", "mwb:propertyCount", "mwb:unloadedImport"],
+}
+
+
+def q(s, *a):
+    return db.execute(s, a).fetchall()
+
+
+root_pkg = q("select Package_ID from t_package where Name='MWB2' and Parent_ID=0")[0][0]
+pkg, todo = (
+    {},
+    [(i, n) for i, n in q("select Package_ID, Name from t_package where Parent_ID=?", root_pkg)],
+)
+while todo:  # every package below MWB2, by its path (`resources/sparql-queries`)
+    i, path = todo.pop()
+    pkg[i] = path
+    todo += [
+        (c, f"{path}/{n}")
+        for c, n in q("select Package_ID, Name from t_package where Parent_ID=?", i)
+    ]
+xref = {
+    g: (re.findall(r"Name=([^;]*);", d or "") or [""])[0]
+    for g, d in q("select Client, Description from t_xref where Name='Stereotypes'")
+}
+obj = {}
+for oid, typ, name, st, p, note, ab, g in q(
+    "select Object_ID, Object_Type, Name, Stereotype, Package_ID, Note, Abstract, ea_guid from t_object"
+):
+    obj[oid] = dict(
+        type=typ,
+        name=name,
+        st=xref.get(g) or st or "",
+        pkg=pkg.get(p),
+        note=(note or "").strip(),
+        abstract=ab == "1",
+    )
+C = {
+    o
+    for o, d in obj.items()
+    if d["pkg"] in CONVERTED
+    and d["type"] in ("Class", "Enumeration")
+    and d["st"] not in NOT_GENERATED
+}
+
+
+def name(o):
+    return obj[o]["name"]
+
+
+attrs = defaultdict(list)
+for oid, n, lo, notes, st in q(
+    "select Object_ID, Name, LowerBound, Notes, Stereotype from t_attribute order by Pos"
+):
+    attrs[oid].append(dict(name=n, lower=lo, note=(notes or "").strip(), literal=st == "enum"))
+links = [
+    dict(id=c, type=t, src=s, dst=e, role=r or "", card=k or "", note=(n or "").strip())
+    for c, t, s, e, r, k, n in q(
+        "select Connector_ID, Connector_Type, Start_Object_ID, End_Object_ID, DestRole, DestCard, Notes from t_connector"
+    )
+    if s in obj and e in obj
+]
+gens = [k for k in links if k["type"] == "Generalization"]
+assocs = [k for k in links if k["type"] in ("Association", "Aggregation") and k["src"] in C]
+deps = [k for k in links if k["type"] == "Dependency" and k["src"] in C]
+parents = defaultdict(set)
+children = defaultdict(set)
+for g in gens:
+    parents[g["src"]].add(g["dst"])
+    children[g["dst"]].add(g["src"])
+
+
+def ancestors(o):
+    seen, todo = set(), [o]
+    while todo:
+        for p in parents[todo.pop()] - seen:
+            seen.add(p)
+            todo.append(p)
+    return seen
+
+
+def descendants(o):
+    seen, todo = set(), [o]
+    while todo:
+        for c in children[todo.pop()] - seen:
+            seen.add(c)
+            todo.append(c)
+    return seen
+
+
+def is_root(o):
+    return obj[o]["st"] in (ROOT, TENANT)
+
+
+classes = {o for o in C if obj[o]["type"] == "Class"}
+concrete = {o for o in classes if not obj[o]["abstract"]}
+
+# aggregates: each boundary in a converted package, on its diagram, encloses a root and its parts
+boundaries = [o for o, d in obj.items() if d["type"] == "Boundary" and d["pkg"] in CONVERTED]
+parts_of, part_root, bad_boundary = defaultdict(set), {}, []
+for b in boundaries:
+    m = re.fullmatch(r"Aggregate: (\S+)", name(b) or "")
+    rows = q(
+        "select Diagram_ID, RectLeft, RectTop, RectRight, RectBottom from t_diagramobjects where Object_ID=?",
+        b,
+    )
+    roots = [o for o in classes if m and name(o) == m.group(1) and is_root(o)]
+    if not (m and len(roots) == 1 and len(rows) == 1):
+        bad_boundary.append(f"`{name(b)}`")
+        continue
+    r = roots[0]
+    did, bl, bt, br, bb = rows[0]
+    for o, left, t, rt, bo in q(
+        "select Object_ID, RectLeft, RectTop, RectRight, RectBottom from t_diagramobjects "
+        "where Diagram_ID=?",
+        did,
+    ):
+        inside = left >= bl and rt <= br and t <= bt and bo >= bb
+        overlaps = (
+            left < br and rt > bl and t > bb and bo < bt
+        )  # EA's y grows upwards: top > bottom
+        if o in classes and o != r and inside:
+            owned = any(a["src"] == r and a["dst"] == o for a in assocs)
+            if is_root(o) or not owned:
+                bad_boundary.append(f"`{name(b)}` encloses `{name(o)}`")
+            else:
+                parts_of[r].add(o)
+                part_root[o] = r
+        elif (
+            o in classes and o != r and overlaps
+        ):  # the converter refuses a class across a boundary's edge
+            bad_boundary.append(f"`{name(o)}` straddles `{name(b)}`")
+
+
+def lower(card):
+    first = card.split("..")[0]
+    return int(first) if first.isdigit() else 0
+
+
+def prefixed(n):
+    return bool(n) and ":" in n and n.split(":")[0] in PREFIXES
+
+
+results = []
+
+
+def row(cid, rule, faults):
+    results.append((cid, rule, sorted(set(faults))))
+
+
+row(
+    "C-1",
+    "every class, attribute, role and enum literal has a prefixed name in the prefix map",
+    [f"`{name(o)}`" for o in C if not prefixed(name(o))]
+    + [f"`{name(o)}.{a['name']}`" for o in C for a in attrs[o] if not prefixed(a["name"])]
+    + [
+        f"`{name(k['src'])} → {name(k['dst'])}` role `{k['role']}`"
+        for k in assocs + deps
+        if not prefixed(k["role"])
+    ]
+    + [
+        f"boundary `{name(b)}`"
+        for b in boundaries
+        if not re.fullmatch(r"Aggregate: [a-z]+:\S+", name(b) or "")
+    ],
+)
+row(
+    "C-2",
+    "every association (and enumeration dependency) has a named destination role with multiplicity",
+    [
+        f"`{name(k['src'])} → {name(k['dst'])}` (`{k['role']}` `{k['card']}`)"
+        for k in assocs + deps
+        if (k["dst"] in C or k in assocs) and not (k["role"] and k["card"])
+    ],
+)
+row(
+    "C-3",
+    "every class, attribute and role has a note",
+    [f"`{name(o)}`" for o in C if not obj[o]["note"]]
+    + [
+        f"`{name(o)}.{a['name']}`"
+        for o in C
+        for a in attrs[o]
+        if not a["literal"] and not a["note"]
+    ]
+    + [
+        f"`{name(k['src'])}.{k['role']}`"
+        for k in assocs + deps
+        if (k["dst"] in C or k in assocs) and not k["note"]
+    ],
+)
+row(
+    "C-4",
+    "abstract classes are marked abstract: a concrete class is a root, the tenant root or a part",
+    [f"`{name(o)}`" for o in concrete if not is_root(o) and o not in part_root],
+)
+row(
+    "C-5",
+    "every enumeration is used by a dependency or marked not generated",
+    [
+        f"`{name(o)}`"
+        for o in C
+        if obj[o]["type"] == "Enumeration" and not any(d["dst"] == o for d in deps)
+    ],
+)
+edges = defaultdict(set)
+for k in gens + assocs + deps:
+    if k["src"] in C and k["dst"] in C and obj[k["src"]]["pkg"] != obj[k["dst"]]["pkg"]:
+        edges[obj[k["src"]]["pkg"]].add(obj[k["dst"]]["pkg"])
+
+
+def reach(p):
+    seen, todo = set(), [p]
+    while todo:
+        for n in edges[todo.pop()] - seen:
+            seen.add(n)
+            todo.append(n)
+    return seen
+
+
+def via(a, b):
+    return sorted(
+        {
+            f"{name(k['src'])}→{name(k['dst'])}"
+            for k in gens + assocs + deps
+            if k["src"] in C
+            and k["dst"] in C
+            and obj[k["src"]]["pkg"] == a
+            and obj[k["dst"]]["pkg"] == b
+        }
+    )[:3]
+
+
+row(
+    "C-6",
+    "each EA package maps to one module; the imports are acyclic",
+    [f"package `{p}` missing" for p in CONVERTED if p not in pkg.values()]
+    + [
+        f"`{a}` → `{b}` ({', '.join(via(a, b))}) closes a cycle"
+        for a in list(edges)
+        for b in edges[a]
+        if a in reach(b)
+    ],
+)
+row(
+    "C-7",
+    "every boundary encloses one «root» and only its parts; no stale boundaries",
+    bad_boundary,
+)
+row(
+    "C-8",
+    "no attribute duplicates a toolkit slot",
+    [
+        f"`{name(o)}.{a['name']}` (= {BANNED[a['name']]})"
+        for o in C
+        for a in attrs[o]
+        if a["name"] in BANNED
+    ],
+)
+owned_roles = {
+    k["role"] for k in assocs if k["dst"] in part_root and part_root[k["dst"]] == k["src"]
+}
+row(
+    "C-9",
+    "a role IRI is owned on one class kind only, never also a pointer",
+    [
+        f"`{k['role']}` on `{name(k['src'])} → {name(k['dst'])}`"
+        for k in assocs
+        if k["role"] in owned_roles and part_root.get(k["dst"]) != k["src"]
+    ],
+)
+row(
+    "C-10",
+    "pointers range over roots, or abstract classes whose concrete subclasses are roots",
+    [
+        f"`{name(k['src'])} → {name(k['dst'])}` (`{k['role']}`)"
+        for k in assocs
+        if k["dst"] in classes
+        and part_root.get(k["dst"]) != k["src"]
+        and not (
+            is_root(k["dst"])
+            or (
+                obj[k["dst"]]["abstract"]
+                and all(is_root(d) for d in descendants(k["dst"]) if d in concrete)
+            )
+        )
+    ],
+)
+tags = {(o, p): v for o, p, v in q("select Object_ID, Property, Value from t_objectproperties")}
+row(
+    "C-11",
+    "the model is the domain only: toolkit classes come by tagged value (rule 14), none is drawn or generalised",
+    [
+        f"`{n}` lacks `{p}={v}`"
+        for n, (p, v) in TOOLKIT_TAGS.items()
+        if not any(name(o) == n and v in tags.get((o, p), "").split(",") for o in classes)
+    ]
+    + [
+        f"`{name(k['src'])}` → `{name(k['dst'])}`"
+        for k in gens
+        if k["src"] in C and k["dst"] not in C
+    ],
+)
+tenant = [o for o in classes if obj[o]["st"] == TENANT]
+row(
+    "C-12",
+    "a required pointer can be satisfied when its tenant is created",
+    [
+        f"`{name(k['src'])}.{k['role']}` `{k['card']}`"
+        for t in tenant
+        for k in assocs
+        if k["src"] in {t, *parts_of[t]} and k["dst"] not in parts_of[t] and lower(k["card"]) >= 1
+    ]
+    + ([] if tenant else ["no «tenant root»"]),
+)
+row(
+    "C-13",
+    "v1 attributes still required by living specs are present",
+    [
+        f"`{c}.{a}`"
+        for c, need in V1_ATTRIBUTES.items()
+        for a in need
+        if a not in {x["name"] for o in classes if name(o) == c for x in attrs[o]}
+    ],
+)
+
+print("| # | Convention | Result | Elements at fault |\n|---|---|---|---|")
+for cid, rule, faults in results:
+    print(f"| {cid} | {rule} | {'fail' if faults else 'pass'} | {'; '.join(faults) or '—'} |")
+sys.exit(1 if any(f for _, _, f in results) else 0)
