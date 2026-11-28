@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import ClassVar, cast
 
+from pydantic import BaseModel
 from pyparsing import ParseException
 from rdflib import Dataset, Graph, Literal, URIRef
 from rdflib.namespace import XSD
@@ -15,6 +16,7 @@ from rdflib.query import Result
 from rdflib.term import Node
 
 from rdf_persistence.access.services.generated.rp_access_services import AccountSummary
+from rdf_persistence.collaboration.services.aggregate_validators import checked_find_values
 from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     Conflict,
@@ -31,6 +33,7 @@ from rdf_persistence.events.services.generated.rp_events_services import EventEn
 from rdf_persistence.files.domain.blob_keys import checked_blob_key
 from rdf_persistence.files.domain.generated.rp_files import BlobEntry
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.persistence.services.generated.rp_persistence_services import Contains
 from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
     LimitSettings,
 )
@@ -504,6 +507,85 @@ async def fake_session(
         limits=limits,
     ) as session:
         yield session
+
+
+class FakeAggregateReader:
+    """An ``AggregateReader`` over models seeded by hand, for a rule's unit test.
+
+    ``roots`` are the classes ``find`` accepts, as the real reader accepts only aggregate roots with
+    a path; ``unreadable`` are seeded ids the writer may not read, which no method then shows.
+    ``calls`` records ``(method, args, kwargs)`` of every call in order, refused calls included.
+
+    ``find`` answers the sorted ids of the readable models of exactly ``cls`` whose slots equal the
+    values: on a multivalued slot a single value means "one of the values is it", a list "all its
+    items are among them". It refuses what the real reader refuses (``ValueError``, ``TypeError``,
+    ``BadQuery``). A ``Contains`` and a dotted keyword are the fake's limit: ``NotImplementedError``.
+    ``rdf_persistence.testkit.reader_conformance`` holds it to the real reader.
+    """
+
+    def __init__(
+        self,
+        aggregates: Iterable[BaseModel] = (),
+        *,
+        roots: Iterable[type[BaseModel]],
+        unreadable: Iterable[str] = (),
+    ) -> None:
+        # a root has an ``id``; ``BaseModel`` does not say so
+        self._models = {str(getattr(model, "id")): model for model in aggregates}  # noqa: B009
+        self._roots = tuple(roots)
+        self._unreadable = frozenset(unreadable)
+        self.calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+
+    def _readable(self, iri: str) -> BaseModel | None:
+        return None if iri in self._unreadable else self._models.get(iri)
+
+    async def classes_of(self, iri: str) -> frozenset[str]:
+        self.calls.append(("classes_of", (iri,), {}))
+        model = self._readable(iri)
+        return frozenset() if model is None else frozenset({type(model).__name__})
+
+    async def aggregate(self, iri: str) -> BaseModel | None:
+        self.calls.append(("aggregate", (iri,), {}))
+        model = self._readable(iri)
+        return None if model is None else model.model_copy(deep=True)
+
+    async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
+        self.calls.append(("find", (cls,), dict(equals)))
+        for slot, value in equals.items():
+            if value is None:
+                raise TypeError(
+                    f"find({cls.__name__}): {slot} is None; a rule asks for a value, never for its absence"
+                )
+        if cls not in self._roots:
+            raise ValueError(f"{cls.__name__} is not an aggregate root with a path")
+        wanted = {slot: self._wanted(cls, slot, value) for slot, value in equals.items()}
+        return sorted(
+            iri
+            for iri, model in self._models.items()
+            if type(model) is cls
+            and iri not in self._unreadable
+            and all(self._holds(model, slot, wants) for slot, wants in wanted.items())
+        )
+
+    @staticmethod
+    def _wanted(cls: type[BaseModel], slot: str, value: object) -> list[object]:
+        """The values asked for on ``slot``, each validated against the slot's item type."""
+        items = list(value) if isinstance(value, (list, tuple)) else [value]
+        if slot.count(".") or any(isinstance(item, Contains) for item in items):
+            raise NotImplementedError(
+                f"the fake reader does not answer {slot!r} (a Contains or a dotted keyword)"
+            )
+        if slot not in cls.model_fields:
+            raise BadQuery(f"{slot} is not a slot of {cls.__name__}")
+        if not items:
+            raise ValueError(f"find({cls.__name__}): {slot} is an empty list")
+        return checked_find_values(cls, slot, items)
+
+    @staticmethod
+    def _holds(model: BaseModel, slot: str, wants: list[object]) -> bool:
+        stored = getattr(model, slot)
+        have = stored if isinstance(stored, list) else [] if stored is None else [stored]
+        return all(want in have for want in wants)
 
 
 class InMemoryBroker:

@@ -5,7 +5,11 @@ Stage 1 (tasks 1.1 to 1.8, and the stage-1 part of 3.1), PR #443, merged with `-
 this note on the developer's grant (D-14).
 
 ## Decided since the PLAN
-D-9 to D-19 (design.md, Delivery decisions).
+D-9 to D-21 (design.md, Delivery decisions). D-21: `develop` (aggregate composition, dependent
+aggregates) was merged into the branch instead of a rebase; the full gates ran again on the
+merge, `make test-containers` included. A second merge (e477171f: develop's `current_state` and
+`state_name`, `NAMES = 164`) passed `make check-all` again (quality 31/31, unit 9082, generator
+115, feature 2233, 12m43s).
 
 ## Open
 - The developer saw the CRITICAL GitNexus rating of stage 1 (the blast radius of the write path,
