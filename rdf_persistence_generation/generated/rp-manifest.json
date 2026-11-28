@@ -111,7 +111,7 @@
     },
     {
       "path": "rdf_persistence_generation/model/rp_generation.yaml",
-      "sha256": "c75a3565f8c341cf4f9a3c5eec43c499c5119166468af075b62558c24469ba7b"
+      "sha256": "84d3e929fbb9121b02a2cec48bebe6307f259a257c0a34e8a124eaa48139297e"
     },
     {
       "path": "rdf_persistence_generation/module_cycles.py",
@@ -182,6 +182,10 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
+      "path": "rdf_persistence_generation/uml/aggregates.py",
+      "sha256": "bdbce93ea7b7edfd108a6f4cb52ccdf1d895143abd605b884da339a0f628167d"
+    },
+    {
       "path": "rdf_persistence_generation/uml/classes.py",
       "sha256": "817077fb430adaef9bd9c60f29f51350be217785e92e09d1547d77dce0097e5d"
     },
@@ -195,7 +199,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/convert.py",
-      "sha256": "84bdb1a3810826008152edaa56e74c38677270d38a75e578a3f9588e26655da8"
+      "sha256": "5050d8d25b923957c25fafe5533f39ab4680fa30966a40feb78a4e35b5c81751"
     },
     {
       "path": "rdf_persistence_generation/uml/dump.py",
@@ -219,11 +223,11 @@
     },
     {
       "path": "rdf_persistence_generation/uml/qea.py",
-      "sha256": "a6eb99ea4af5c19f6de95705eae6c7168f96cd11ef4714ebac9dc3aa46d780be"
+      "sha256": "4f582f7f9d8caf44c8c66db6aceab827fdd1ede34d817f3fe174b40aefe5d2e8"
     },
     {
       "path": "rdf_persistence_generation/uml/roles.py",
-      "sha256": "baba49405b8a30198d12bb1bb05d9571ea40670a0a2c3740519b7542a86ab626"
+      "sha256": "ce5b1f0c7bd463a3063346c48015c65ef072ab7b5531af413b4b79d5831bbf87"
     },
     {
       "path": "rdf_persistence_generation/uml/slots.py",
@@ -253,15 +257,15 @@
     },
     {
       "path": "rdf_persistence_generation/generated/context.jsonld",
-      "sha256": "30f0c3b7083d9d0fab79f80c1e7a3449963fd46bb6eda92f08ea98639d560ee3"
+      "sha256": "6e10bbf0e3d24f96ca74c54cefebe2d84377b0276fa7d3a8403b02f8c140e359"
     },
     {
       "path": "rdf_persistence_generation/generated/rp_generation.py",
-      "sha256": "b8dd41d33ca475d50fd5a41b9cf61403d4d0726eacff6ce9c6cee5cc448f4fec"
+      "sha256": "119746f22f70e0a92d6da1d8d715d249e6174e4c41ecf9348f4669dc71f580b9"
     },
     {
       "path": "rdf_persistence_generation/generated/shapes.ttl",
-      "sha256": "ed7ac3123a60f509828d703e87768225263eccc2d1071891401f219703498f28"
+      "sha256": "1daa0797b9db6c32c07017a7759eceae3725ceb6152c1e6ea06482bc51dc77e2"
     }
   ]
 }

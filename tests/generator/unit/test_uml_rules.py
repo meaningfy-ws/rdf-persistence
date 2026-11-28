@@ -24,6 +24,7 @@ from rdflib.namespace import SH
 
 from rdf_persistence_generation.generated.rp_generation import (
     UmlAttribute,
+    UmlComposition,
     UmlLinkKind,
     UmlPackage,
     UmlPrefix,
@@ -3407,6 +3408,19 @@ def test_every_cited_rule_has_a_row(cited: str) -> None:
     rows = [*ROWS, *ROLE_ROWS, *WORKFLOW_ROWS]  # the role and workflow rules keep their own tables
     assert cited in {getattr(row, "cites", None) for row in rows}, (
         f"the rule {cited} has no row that cites it"
+    )
+
+
+def test_a_composition_is_refused_until_the_tree_is_wired() -> None:
+    """Task 1.4's stopgap: no Aggregation converts silently before 1.6; 1.6 deletes this row."""
+    uml = model(klass(BOOK, "lib:Book"), klass(CHAPTER, "lib:Chapter")).model_copy(
+        update={
+            "uml_compositions": [UmlComposition(composition_id=1, whole_id=BOOK, part_id=CHAPTER)]
+        }
+    )
+    out = run(uml)
+    assert out.problem_texts() == ["[no_rule] Book -> Chapter: composition: not converted yet"], (
+        "a composition is a no_rule problem naming both classes"
     )
 
 

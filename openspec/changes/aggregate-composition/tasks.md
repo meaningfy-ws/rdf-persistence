@@ -43,7 +43,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   `true` accepted. Then `rp_core.yaml` (the lead regenerates) and `ALLOWED_ANNOTATIONS`. Accept:
   pass; `make check-generated`; no file of `rdf_persistence/` other than the YAML and the generated
   ones changes.
-- [ ] 1.4 Unit, reader of compositions ([PD-1](design.md#pd-1), [D-5](design.md#d-5), A-9),
+- [x] 1.4 Unit, reader of compositions ([PD-1](design.md#pd-1), [D-5](design.md#d-5), A-9),
   after 1.2. File `tests/generator/unit/test_uml_qea.py`. First, failing:
   `test_a_composition_reads_its_whole_from_the_diamond_end` (parametrised over PD-1's two
   drawings, `SubType` NULL; each gives one `UmlComposition` with the same `whole_id`, `part_id`);
@@ -54,7 +54,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   tree, `convert` refuses every composition with a `no_rule` problem "composition: not converted
   yet", so no task between leaves an Aggregation converting silently; a row pins it and 1.6
   deletes both. Geometry is untouched here. Accept: all pass; the task gate green.
-- [ ] 1.5 Unit, the tree and the roots as a pure pass ([PD-2](design.md#pd-2),
+- [x] 1.5 Unit, the tree and the roots as a pure pass ([PD-2](design.md#pd-2),
   [PD-4](design.md#pd-4), [PD-5](design.md#pd-5), [PD-6](design.md#pd-6), [PD-8](design.md#pd-8),
   [PD-19](design.md#pd-19), [PD-19a](design.md#pd-19a), [D-6](design.md#d-6); worked example 3 of
   design.md is one row), after 1.2; not wired yet, so the gate is green alone. New
@@ -105,7 +105,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   parts (accepted as today); a role owned on one whole and a pointer elsewhere (refused); the same
   with `dct:hasPart` kept as a `ReferenceCollection`'s toolkit slot (accepted).
   `_owned_on_one_class` in `test_uml_rules.py` becomes the C-9 refusal. Accept: all pass.
-- [ ] 1.8 Unit, Realisation, reader and roles together ([PD-11](design.md#pd-11), A-20), after
+- [x] 1.8 Unit, Realisation, reader and roles together ([PD-11](design.md#pd-11), A-20), after
   1.2.
   `test_uml_qea.py`: `test_a_realisation_from_an_object_is_read_as_realised` (either drawing
   direction); class → class stays a problem; an excluded Object is skipped with a line; a target

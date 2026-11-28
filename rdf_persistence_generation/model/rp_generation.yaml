@@ -446,6 +446,7 @@ classes:
       - part_of
       - reached_from
       - owned_ends
+      - loaded_graph_ends
       - left_inside_ids
       - problems
       - report_lines
@@ -1468,6 +1469,15 @@ slots:
     title: Owned ends
     description: The connector ends whose slots are owned by their holder.
     slot_uri: rp:umlOwnedEnds
+    range: UmlOwnedEnd
+    multivalued: true
+    inlined_as_list: true
+  loaded_graph_ends:
+    title: Loaded-graph ends
+    description: >-
+      The connector ends of «own graph» compositions to a not-generated part: their slots range over
+      uri and carry rp_loaded_graph (PD-9, D-9); never owned.
+    slot_uri: rp:umlLoadedGraphEnds
     range: UmlOwnedEnd
     multivalued: true
     inlined_as_list: true

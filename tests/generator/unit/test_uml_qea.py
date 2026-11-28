@@ -9,6 +9,7 @@ import pytest
 from rdf_persistence_generation.exceptions import QeaUsageError
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
+    UmlComposition,
     UmlLinkKind,
     UmlModel,
     UmlRule,
@@ -639,6 +640,199 @@ def test_a_connector_to_a_note_boundary_text_or_package_is_skipped(tmp_path, obj
     model = as_model(read(builder))
     assert not model.uml_links, f"a {object_type} end makes no link and no problem"
     assert not model.uml_outside_classes, f"a {object_type} is not named as an outside class"
+
+
+# --- compositions (PD-1, D-5) ------------------------------------------------------------------
+
+DRAWINGS = [
+    pytest.param(False, id="whole_to_part"),
+    pytest.param(True, id="part_to_whole"),
+]
+
+
+@pytest.mark.parametrize("part_to_whole", DRAWINGS)
+def test_a_composition_reads_its_whole_from_the_diamond_end(tmp_path, part_to_whole):
+    builder, ids = build_library(tmp_path)
+    connector = builder.aggregation(ids["book"], ids["chapter"], part_to_whole=part_to_whole)
+    model = as_model(read(builder))
+    assert model.uml_compositions == [
+        UmlComposition(
+            composition_id=connector, whole_id=ids["book"], part_id=ids["chapter"], own_graph=False
+        )
+    ], "either drawing gives the same whole and part"
+    assert not model.uml_links, "a composition is a record of its own, not a link"
+
+
+@pytest.mark.parametrize("sub_type", ["Strong", "Weak", None])
+def test_subtype_is_not_read(tmp_path, sub_type):
+    builder, ids = build_library(tmp_path)
+    connector = builder.aggregation(ids["book"], ids["chapter"], sub_type=sub_type)
+    model = as_model(read(builder))
+    assert model.uml_compositions == [
+        UmlComposition(
+            composition_id=connector, whole_id=ids["book"], part_id=ids["chapter"], own_graph=False
+        )
+    ], f"SubType {sub_type!r} must not change the record (D-5)"
+
+
+BOTH_ENDS_MARKED = "composition with no single diamond end: no rule converts it"
+SHARED = "a shared aggregation; draw a composition (strong) or a plain association"
+REFUSED_AGGREGATIONS = [
+    pytest.param(
+        {"shared": True},
+        f"[boundary_owned] lib:Book -> lib:Chapter: {SHARED}",
+        id="shared_whole_to_part",
+    ),
+    pytest.param(
+        {"shared": True, "part_to_whole": True},
+        f"[boundary_owned] lib:Chapter -> lib:Book: {SHARED}",
+        id="shared_part_to_whole",
+    ),
+    pytest.param(
+        {"ends": (2, 1)},
+        f"[boundary_owned] lib:Book -> lib:Chapter: {SHARED}",
+        id="shared_beside_a_composition_end",
+    ),
+    pytest.param(
+        {"ends": (0, 0)},
+        f"[no_rule] lib:Book -> lib:Chapter: {BOTH_ENDS_MARKED}",
+        id="no_end_marked",
+    ),
+    pytest.param(
+        {"ends": (None, None)},
+        f"[no_rule] lib:Book -> lib:Chapter: {BOTH_ENDS_MARKED}",
+        id="no_end_marked_null",
+    ),
+    pytest.param(
+        {"ends": (2, 2)},
+        f"[no_rule] lib:Book -> lib:Chapter: {BOTH_ENDS_MARKED}",
+        id="both_ends_marked",
+    ),
+    pytest.param(
+        {"ends": (3, 0)},
+        "[no_rule] lib:Book -> lib:Chapter: aggregate value 3: no rule converts it",
+        id="other_value_at_source",
+    ),
+    pytest.param(
+        {"ends": (0, -1)},
+        "[no_rule] lib:Book -> lib:Chapter: aggregate value -1: no rule converts it",
+        id="other_value_at_destination",
+    ),
+]
+
+
+@pytest.mark.parametrize(("drawing", "expected"), REFUSED_AGGREGATIONS)
+def test_an_aggregation_without_one_diamond_end_is_refused(tmp_path, drawing, expected):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["chapter"], **drawing)
+    assert as_problems(read(builder)) == [expected], "exactly this problem, naming the connector"
+
+
+@pytest.mark.parametrize(
+    ("stereotype", "own_graph"),
+    [("own graph", True), ("Own Graph", True), (" own graph ", True), (None, False), ("x", False)],
+)
+def test_own_graph_is_read_from_the_stereotype(tmp_path, stereotype, own_graph):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["chapter"], stereotype=stereotype)
+    [composition] = as_model(read(builder)).uml_compositions
+    assert composition.own_graph is own_graph, f"stereotype {stereotype!r}"
+    assert composition.uml_stereotype == stereotype, (
+        "the stereotype is carried as written, for the converter to judge"
+    )
+
+
+@pytest.mark.parametrize("part_to_whole", DRAWINGS)
+def test_a_composition_role_is_the_one_at_the_part_end(tmp_path, part_to_whole):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["chapter"], part_to_whole=part_to_whole, role="lib:parts")
+    [composition] = as_model(read(builder)).uml_compositions
+    assert composition.role == "lib:parts", "the role is read at the part's end, whichever way"
+
+
+def test_a_composition_end_outside_the_subtree_is_listed(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["stray"])
+    model = as_model(read(builder))
+    assert [c.name for c in model.uml_outside_classes] == ["lib:Stray"], (
+        "the far end is listed, so the converter can name it (A-9)"
+    )
+    assert [(c.whole_id, c.part_id) for c in model.uml_compositions] == [
+        (ids["book"], ids["stray"])
+    ], "the composition is kept"
+
+
+def test_a_composition_between_two_outside_classes_is_not_read(tmp_path):
+    builder, ids = build_library(tmp_path)
+    other = builder.cls(ids["other"], "lib:Other")
+    builder.aggregation(ids["stray"], other)
+    model = as_model(read(builder))
+    assert not model.uml_compositions, "a connector away from every converted class is not read"
+    assert not model.uml_outside_classes, "and lists no class"
+
+
+# --- Realisation of an Object (PD-11, A-20) ----------------------------------------------------
+
+
+@pytest.mark.parametrize("spelling", ["Realisation", "Realization"])
+@pytest.mark.parametrize("from_target", [False, True], ids=["from_object", "from_class"])
+def test_a_realisation_from_an_object_is_read_as_realised(tmp_path, from_target, spelling):
+    builder, ids = build_library(tmp_path)
+    obj = builder.object_(ids["library"], "librarian", None)
+    builder.realisation(obj, ids["chapter"], from_target=from_target, spelling=spelling)
+    model = as_model(read(builder))
+    assert [o.realised_ids for o in model.uml_objects] == [[ids["chapter"]]], (
+        "the object's class is the target, whichever way the connector is drawn"
+    )
+    assert not model.uml_links, "a Realisation is never a link"
+
+
+def test_two_realisations_are_both_read_sorted(tmp_path):
+    builder, ids = build_library(tmp_path)
+    obj = builder.object_(ids["library"], "librarian", None)
+    builder.realisation(obj, ids["chapter"])
+    builder.realisation(obj, ids["book"])
+    [read_object] = as_model(read(builder)).uml_objects
+    assert read_object.realised_ids == sorted([ids["book"], ids["chapter"]]), "both, by id"
+
+
+def test_an_object_with_no_realisation_has_none(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.object_(ids["library"], "librarian", ids["book"])
+    [read_object] = as_model(read(builder)).uml_objects
+    assert not read_object.realised_ids, "no Realisation, nothing realised"
+
+
+def test_a_realisation_from_a_class_stays_a_problem(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.object_(ids["library"], "librarian", None)
+    builder.realisation(ids["book"], ids["chapter"])
+    assert as_problems(read(builder)) == [
+        "[no_rule] lib:Book -> lib:Chapter: Realisation connector: no rule converts it"
+    ], "only an Object may realise"
+
+
+@pytest.mark.parametrize(
+    "package", ["rare", "other"], ids=["excluded_package", "outside_the_subtree"]
+)
+def test_an_object_not_converted_is_skipped_with_its_realisation(tmp_path, package):
+    builder, ids = build_library(tmp_path)
+    obj = builder.object_(ids[package], "librarian", None)
+    builder.realisation(obj, ids["book"])
+    model = as_model(read(builder, excluded=("MODEL/library/rare-books",)))
+    assert not model.uml_objects, "the Object is not of the converted packages"
+    assert not model.uml_links, "and its Realisation is no link and no problem (A-20)"
+
+
+def test_a_realisation_to_a_target_outside_the_subtree_is_kept(tmp_path):
+    builder, ids = build_library(tmp_path)
+    obj = builder.object_(ids["library"], "librarian", None)
+    builder.realisation(obj, ids["stray"])
+    model = as_model(read(builder))
+    assert [o.realised_ids for o in model.uml_objects] == [[ids["stray"]]], "the target is kept"
+    assert [c.name for c in model.uml_outside_classes] == ["lib:Stray"], (
+        "and listed as an outside class, so the converter can name it"
+    )
 
 
 # --- TC-2: boundary membership by geometry -----------------------------------------------------

@@ -217,8 +217,19 @@ class Built:
         self.kinds = kinds
 
 
+def _refuse_compositions(ctx: Context, model: UmlModel) -> None:
+    """Task 1.4's stopgap: no composition converts silently until the tree is wired (task 1.6 deletes this)."""
+    for each in model.uml_compositions or []:
+        whole = ctx.class_names.get(each.whole_id, str(each.whole_id))
+        part = ctx.class_names.get(each.part_id, str(each.part_id))
+        ctx.findings.problem(
+            UmlRule.NO_RULE, f"{whole} -> {part}", "composition: not converted yet"
+        )
+
+
 def _build(ctx: Context, model: UmlModel) -> tuple[list[UmlElement], list[Usage], dict[int, str]]:
     collect_elements(ctx, model)
+    _refuse_compositions(ctx, model)
     elements = _generated(ctx)
     return elements, _usages(ctx, model, elements), parents(ctx, model)
 

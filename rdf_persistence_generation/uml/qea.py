@@ -24,6 +24,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlAttribute,
     UmlBoundary,
     UmlClass,
+    UmlComposition,
     UmlLink,
     UmlLinkKind,
     UmlModel,
@@ -128,6 +129,10 @@ LINK_KINDS: dict[str, UmlLinkKind] = {
     "Generalization": UmlLinkKind.GENERALISATION,
     "Generalisation": UmlLinkKind.GENERALISATION,
 }
+AGGREGATION_TYPE = "Aggregation"  # read as a UmlComposition, never a UmlLink (PD-1)
+REALISATION_TYPES = frozenset({"Realisation", "Realization"})  # read into UmlObject.realised_ids
+OWN_GRAPH_STEREOTYPE = "own graph"
+NOT_MARKED, SHARED_MARK, COMPOSITE_MARK = 0, 1, 2  # the values of an end's ``IsAggregate`` column
 ASSOCIATION_CLASS_SUB_TYPE = "class"
 MEMO = "<memo>"
 NO_CLASS = "0"  # what EA writes in `PDATA1` when no class backs the association
@@ -325,12 +330,46 @@ def _plain_boundaries(rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
     return [row for row in _of_types(rows, {BOUNDARY_TYPE}) if _text(row["Stereotype"]) is None]
 
 
+def _mark(value: object) -> int | str:
+    """An end's ``IsAggregate`` as a number, ``NULL`` being unmarked; text that is no number as written."""
+    text = _text(value)
+    if text is None:
+        return NOT_MARKED
+    try:
+        return int(text)
+    except ValueError:
+        return text
+
+
+def _diamond_refusals(label: str, marks: tuple[int | str, int | str]) -> list[CheckProblem]:
+    """The problems the two ``IsAggregate`` values of an Aggregation give, none for a composition (D-5)."""
+    odd = [str(mark) for mark in marks if mark not in (NOT_MARKED, SHARED_MARK, COMPOSITE_MARK)]
+    if odd:
+        return [_no_rule(label, f"aggregate value {value}") for value in odd]
+    if SHARED_MARK in marks:
+        return [
+            CheckProblem(
+                rule=UmlRule.BOUNDARY_OWNED.value,
+                element=label,
+                message="a shared aggregation; draw a composition (strong) or a plain association",
+            )
+        ]
+    if marks.count(COMPOSITE_MARK) != 1:
+        return [_no_rule(label, "composition with no single diamond end")]
+    return []
+
+
 class _Reading:
     """One read of an open file: the subtree's rows, copied into records, problems collected."""
 
     def __init__(self, connection: sqlite3.Connection, package: str, excluded: tuple[str, ...]):
         self.connection = connection
         self.problems: list[CheckProblem] = []
+        self.links: list[UmlLink] = []
+        self.compositions: list[UmlComposition] = []
+        self.realised: defaultdict[int, set[int]] = defaultdict(
+            set
+        )  # object id -> classes it realises
         package_rows = self._select("t_package")
         self.paths = _package_paths(package_rows)
         root_id = _resolve_package(self.paths, package)
@@ -385,18 +424,19 @@ class _Reading:
     def read(self) -> UmlModel | list[CheckProblem]:
         for row in self.unexpected_rows:
             self.problems.append(_no_rule(row["Name"] or "", f"{row['Object_Type']} object"))
-        links = self._links()
-        outside = self._outside_rows(links)
+        self._read_connectors()
+        outside = self._outside_rows(self._connector_ends())
         nodes, flows, charts = _StateMachines(self).read()
         model = UmlModel(
             uml_packages=self._packages(),
             uml_outside_packages=self._outside_packages(outside),
             uml_classes=self._classes(),
             uml_outside_classes=[self._class_record(row) for row in outside],
-            uml_links=links,
+            uml_links=self.links,
+            uml_compositions=self.compositions,
             uml_tagged_values=self._tags(),
             uml_boundaries=_Boundaries(self, self._select("t_diagramobjects")).read(),
-            uml_objects=self._objects(),
+            uml_objects=self._objects(self.realised),
             uml_state_nodes=nodes,
             uml_state_flows=flows,
             uml_statecharts=charts,
@@ -412,10 +452,11 @@ class _Reading:
     def _packages(self) -> list[UmlPackage]:
         return [self._package(row) for row in self._by_path(self.package_rows)]
 
-    def _outside_rows(self, links: Iterable[UmlLink]) -> list[sqlite3.Row]:
-        """The classes and enumerations at the far end of a link, not converted, once each."""
-        ends = {end for link in links for end in (link.source_id, link.target_id)}
-        rows = [self.object_rows[end] for end in ends - self.class_ids if end in self.object_rows]
+    def _outside_rows(self, ends: Iterable[int]) -> list[sqlite3.Row]:
+        """The classes and enumerations at the far end of a connector, not converted, once each."""
+        rows = [
+            self.object_rows[end] for end in set(ends) - self.class_ids if end in self.object_rows
+        ]
         return sorted(_of_types(rows, CONVERTED_TYPES), key=lambda row: row["Object_ID"])
 
     def _outside_packages(self, outside: Iterable[sqlite3.Row]) -> list[UmlPackage]:
@@ -441,13 +482,14 @@ class _Reading:
             object_id=self.package_objects.get(row["Package_ID"]),
         )
 
-    def _objects(self) -> list[UmlObject]:
+    def _objects(self, realised: Mapping[int, set[int]]) -> list[UmlObject]:
         rows = sorted(self.object_instance_rows, key=lambda r: (r["Name"] or "", r["Object_ID"]))
         return [
             UmlObject(
                 object_id=row["Object_ID"],
                 uml_name=row["Name"] or "",
                 classifier_id=_integer(row["Classifier"]) or None,
+                realised_ids=sorted(realised.get(row["Object_ID"], ())) or None,
                 package_path=self.paths[row["Package_ID"]],
                 run_values=_run_values(row["RunState"]),
                 run_state_rest=_run_state_rest(row["RunState"]),
@@ -524,20 +566,82 @@ class _Reading:
             uml_attributes=attributes or [],
         )
 
-    def _links(self) -> list[UmlLink]:
-        links = []
+    def _connector_ends(self) -> set[int]:
+        """The ends of every connector kept: a class away from the subtree is listed from these."""
+        ends = {end for link in self.links for end in (link.source_id, link.target_id)}
+        ends |= {each for c in self.compositions for each in (c.whole_id, c.part_id)}
+        return ends | {target for targets in self.realised.values() for target in targets}
+
+    def _read_connectors(self) -> None:
+        """Read every connector that touches a converted class into ``links``, ``compositions`` or ``realised``."""
         for row in self._select("t_connector"):
-            start, end = row["Start_Object_ID"], row["End_Object_ID"]
-            if start not in self.class_ids and end not in self.class_ids:
+            if row["Connector_Type"] in REALISATION_TYPES and self._realisation(row):
                 continue
-            if row["Connector_Type"] == STATE_FLOW_TYPE and {start, end} & self.state_ids:
-                continue  # a transition of the converted states: `_StateMachines` reads or refuses it
-            if {self.object_types.get(start), self.object_types.get(end)} & IGNORED_TYPES:
-                continue  # a note, text, boundary or package end: no link, no problem (D-25)
-            link = self._link(row)
-            if link is not None:
-                links.append(link)
-        return sorted(links, key=lambda link: link.connector_id)
+            if not self._is_skipped(row):
+                self._read_connector(row)
+        self.links.sort(key=lambda link: link.connector_id)
+        self.compositions.sort(key=lambda composition: composition.composition_id)
+
+    def _is_skipped(self, row: sqlite3.Row) -> bool:
+        """Whether a connector is no business of the reader: away from the classes, a transition, furniture."""
+        start, end = row["Start_Object_ID"], row["End_Object_ID"]
+        if start not in self.class_ids and end not in self.class_ids:
+            return True
+        if row["Connector_Type"] == STATE_FLOW_TYPE and {start, end} & self.state_ids:
+            return (
+                True  # a transition of the converted states: `_StateMachines` reads or refuses it
+            )
+        # a note, text, boundary or package end: no link, no problem (D-25)
+        return bool({self.object_types.get(start), self.object_types.get(end)} & IGNORED_TYPES)
+
+    def _read_connector(self, row: sqlite3.Row) -> None:
+        if row["Connector_Type"] == AGGREGATION_TYPE:
+            composition = self._composition(row)
+            if composition is not None:
+                self.compositions.append(composition)
+            return
+        link = self._link(row)
+        if link is not None:
+            self.links.append(link)
+
+    def _realisation(self, row: sqlite3.Row) -> bool:
+        """Read a Realisation between an Object and a class (PD-11), whichever way it is drawn.
+
+        Returns whether the connector is dealt with: the Object's realised class is recorded, or, for an
+        Object that is not of the converted packages (excluded, or outside the subtree), it is skipped
+        (A-20). A Realisation between anything else is left to the general rules (a class that
+        realises stays a problem).
+        """
+        ends = (row["Start_Object_ID"], row["End_Object_ID"])
+        objects = [end for end in ends if self.object_types.get(end) == OBJECT_TYPE]
+        if len(objects) != 1:
+            return False
+        (obj,) = objects
+        target = ends[0] if ends[1] == obj else ends[1]
+        if self.object_types.get(target) not in CONVERTED_TYPES:
+            return False
+        if obj in {each["Object_ID"] for each in self.object_instance_rows}:
+            self.realised[obj].add(target)
+        return True
+
+    def _composition(self, row: sqlite3.Row) -> UmlComposition | None:
+        """The composition an Aggregation draws: the end column alone says the whole (PD-1, D-5)."""
+        start, end = row["Start_Object_ID"], row["End_Object_ID"]
+        marks = (_mark(row["SourceIsAggregate"]), _mark(row["DestIsAggregate"]))
+        refusals = _diamond_refusals(f"{self.label(start)} -> {self.label(end)}", marks)
+        if refusals:
+            self.problems.extend(refusals)
+            return None
+        whole_is_start = marks[0] == COMPOSITE_MARK
+        stereotype = _text(row["Stereotype"])
+        return UmlComposition(
+            composition_id=row["Connector_ID"],
+            whole_id=start if whole_is_start else end,
+            part_id=end if whole_is_start else start,
+            own_graph=(stereotype or "").strip().lower() == OWN_GRAPH_STEREOTYPE,
+            uml_stereotype=stereotype,
+            role=_text(row["DestRole"] if whole_is_start else row["SourceRole"]),
+        )
 
     def _link(self, row: sqlite3.Row) -> UmlLink | None:
         start, end = row["Start_Object_ID"], row["End_Object_ID"]

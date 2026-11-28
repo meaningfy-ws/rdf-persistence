@@ -246,6 +246,11 @@
       "literal": {
          "@id": "literal"
       },
+      "loaded_graph_ends": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlLoadedGraphEnds"
+      },
       "locked_classes": {
          "@type": "@id",
          "@container": "@set",

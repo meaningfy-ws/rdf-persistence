@@ -625,4 +625,21 @@ Decisions the lead took without the developer, shown for validation at the end (
   associations between a whole and a part could carry a composition's property, a role written on
   the composition names the one it marks owned (attack A-3: two owned roles plus an internal
   reference to one part class). No candidate, or several and no role, stays a problem.
+- **D-7**, lead, 2026-11-28 (delivery): the machine's test queue is shared with other sessions and
+  serialises every gate (about 25 minutes each, mostly queued). Parallel builders on disjoint files
+  run only their narrow checks; the lead runs one task gate (`make test-changed check-quality`)
+  for the batch before its commit. Edits under `rdf_persistence_generation/` stale the generated
+  stamp: builders run narrow tests with the freshness plugin off and the lead regenerates before
+  the gate.
+- **D-8**, lead, 2026-11-28 (delivery, tasks 1.4/1.8): (a) an excluded or outside Object with a
+  Realisation is skipped without a report line. The reader returns only `UmlModel` and has no
+  place for one, so PD-11's "with a line" is dropped. Rejected: a skipped-realisations record for
+  an edge case. (b) The error-matrix row "other stereotype on a composition: `no_rule`" is the
+  converter's, in task 1.6: the reader carries the stereotype as written.
+- **D-9**, lead, 2026-11-28 (delivery, task 1.5): `UmlAggregates` gains `loaded_graph_ends` (the
+  ends of «own graph» compositions to a not-generated part, which 1.6 marks `rp_loaded_graph`; never
+  in `owned_ends`). PD-19's `derive_aggregates` also takes `drawn_toolkit` and `class_names`: its
+  six listed inputs cannot tell a drawn toolkit class from a not-generated one, nor name a class
+  that is not an element. Rejected: `UmlPartOf.link_id` (a part row is per class pair, not per
+  connector).
 

@@ -679,6 +679,7 @@ class UmlAggregates(ConfiguredBaseModel):
     part_of: _Optional[list[UmlPartOf]] = _Field(default=None, title="Part of", description="The tree as rows, one for each part and whole it belongs to.")
     reached_from: _Optional[list[UmlReach]] = _Field(default=None, title="Reached from", description="For each part class, the tops of the aggregates that reach it.")
     owned_ends: _Optional[list[UmlOwnedEnd]] = _Field(default=None, title="Owned ends", description="The connector ends whose slots are owned by their holder.")
+    loaded_graph_ends: _Optional[list[UmlOwnedEnd]] = _Field(default=None, title="Loaded-graph ends", description="The connector ends of \u00abown graph\u00bb compositions to a not-generated part: their slots range over uri and carry rp_loaded_graph (PD-9, D-9); never owned.")
     left_inside_ids: _Optional[list[int]] = _Field(default=None, title="Left-inside ids", description="The ids of the classes left inside the own graph of another class, so not generated.")
     problems: _Optional[list[CheckProblem]] = _Field(default=None, title="Problems", description="The problems a pass found.")
     report_lines: _Optional[list[ReportLine]] = _Field(default=None, title="Report lines", description="The report lines a pass wrote.")

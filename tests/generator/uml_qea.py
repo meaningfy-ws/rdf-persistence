@@ -337,6 +337,8 @@ BOUNDARY_TYPE = "Boundary"
 GENERALISATION_TYPE = "Generalization"
 ASSOCIATION_TYPE = "Association"
 DEPENDENCY_TYPE = "Dependency"
+AGGREGATION_TYPE = "Aggregation"
+REALISATION_TYPE = "Realisation"
 STATE_FLOW_TYPE = "StateFlow"
 STATECHART_TYPE = "Statechart"
 DIRECTED = "Source -> Destination"
@@ -398,7 +400,7 @@ class QeaBuilder:
         return object_id
 
     def object_(
-        self, package: int, name: str, classifier: int, run_state: str | None = None
+        self, package: int, name: str, classifier: int | None, run_state: str | None = None
     ) -> int:
         """An ``Object`` (an instance of a drawn class): its classifier's id and its ``RunState``."""
         object_id = self._insert(
@@ -575,6 +577,55 @@ class QeaBuilder:
             Start_Object_ID=source,
             End_Object_ID=destination,
         )
+
+    def aggregation(
+        self,
+        whole: int,
+        part: int,
+        part_to_whole: bool = False,
+        shared: bool = False,
+        sub_type: str | None = None,
+        stereotype: str | None = None,
+        role: str | None = None,
+        note: str | None = None,
+        ends: tuple[int | None, int | None] | None = None,
+    ) -> int:
+        """An Aggregation connector, in the columns PD-1 states (D-5: the end column alone decides).
+
+        Drawn whole to part: ``Start=whole``, ``SourceIsAggregate=2``; drawn part to whole:
+        ``Start=part``, ``DestIsAggregate=2``; ``shared`` writes ``1`` in place of ``2``. ``role`` is
+        written at the part's end. ``ends`` overrides the two columns, for the rows the drawing
+        never makes (``(source, dest)``).
+        """
+        mark = 1 if shared else 2
+        source_mark, dest_mark = (0, mark) if part_to_whole else (mark, 0)
+        start, end = (part, whole) if part_to_whole else (whole, part)
+        if ends is not None:
+            source_mark, dest_mark = ends
+        role_column = "SourceRole" if part_to_whole else "DestRole"
+        return self._insert(
+            "t_connector",
+            Connector_Type=AGGREGATION_TYPE,
+            SubType=sub_type,
+            Stereotype=stereotype,
+            Notes=note,
+            Start_Object_ID=start,
+            End_Object_ID=end,
+            SourceIsAggregate=source_mark,
+            DestIsAggregate=dest_mark,
+            **{role_column: role},
+        )
+
+    def realisation(
+        self,
+        obj: int,
+        target: int,
+        from_target: bool = False,
+        spelling: str = REALISATION_TYPE,
+    ) -> int:
+        """A Realisation between an Object and a class, drawn from the Object unless ``from_target``."""
+        start, end = (target, obj) if from_target else (obj, target)
+        return self.connector(spelling, start, end)
 
     def generalisation(self, child: int, parent: int) -> int:
         return self._insert(
