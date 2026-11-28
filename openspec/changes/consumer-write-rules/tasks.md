@@ -53,7 +53,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
   `tests/unit/testkit/test_fake_reader.py` and `test_reader_conformance.py`. Then
   `FakeAggregateReader`, `reader_conformance.py`, the export. Accept: TC-12, TC-13 pass for both
   readers; task gate green. Closes #386.
-- [ ] 2.4 **feature** — after 2.1 to 2.3; `features/consumer_write_rules.feature` appended to
+- [x] 2.4 **feature** — after 2.1 to 2.3; `features/consumer_write_rules.feature` appended to
   `tests/feature/consumer_write_rules.feature` with its steps (the toy `held_isbn` rule of worked
   example 1, added in 2.1). Accept: the feature lane passes the scenarios. Closes #397.
 - [x] 2.5 **docs** — after 2.4; PD-15's stage-2 half and the CHANGELOG *BREAKING* line (DEC-8).

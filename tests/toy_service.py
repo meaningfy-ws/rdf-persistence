@@ -14,6 +14,7 @@ from rdf_persistence import (
     AccessRules,
     IdSource,
     JwksTokenVerifier,
+    Principal,
     Problem,
     RuleRefusal,
     ServiceKit,
@@ -140,7 +141,9 @@ def fixed_refusal(old: object, new: Any, principal: object, reader: object) -> N
         )
 
 
-async def held_isbn(old: object, new: Any, principal: object, reader: AggregateReader) -> None:
+async def held_isbn(
+    old: BaseModel | None, new: Book, principal: Principal, reader: AggregateReader
+) -> None:
     """A write rule for ``Book`` that refuses an isbn another book holds, naming the holder (worked example 1)."""
     if new.isbn is None:
         return  # find refuses None (PD-10): absence is not a key
