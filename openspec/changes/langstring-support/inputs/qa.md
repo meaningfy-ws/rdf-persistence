@@ -92,3 +92,35 @@ commits behind; Serena's counts are the real ones):
 | Q-2 | What does the converter do with `rdf:PlainLiteral`? | Keep refusing it; map only `rdf:langString` | **Keep refusing**; recommended |
 | Q-3 | Risk of DEC-4 (refuse on read is BREAKING for stores holding tagged literals in `string` slots)? | Refuse, with a migration note; the first consumer's aggregates hold none | **Refuse, migration note**; recommended |
 | Q-4 | The decimal/double/float mismatch: in this EPIC? | A separate issue | **Include in stage 1**; the owner overrode the recommendation |
+
+## Planning round (2026-11-28): after the probes
+
+Two fact-finding agents read the code (ast-grep, Serena, GitNexus on an index ~219 commits behind)
+and ran probes in `temp/` (locked versions: rdflib 7.6.0, pydantic 2.14.2, pyld 3.3.0, linkml
+1.12.1). Findings that moved the PLAN:
+
+- **DEC-8, measured:** read back through `Documents.render`, `"1.5"^^xsd:decimal` and `xsd:float`
+  come out as JSON strings (TypeScript says `number`); `xsd:double` comes out as a native number
+  that the compactor cannot match to its typed term, so its key is the full IRI. Dropping `@type`
+  for all three stores a JSON decimal as a double and trips SHACL.
+- **JSON-LD context:** the stock term for a type with `uri: rdf:langString` carries
+  `"@type": "rdf:langString"`; pyld then compacts `"Dune"@en` to `null`. Without `@type` it
+  compacts to value objects.
+- **Tag case:** rdflib 7.6 keeps a tag as given (`"x"@EN`); `==` ignores case,
+  `rdflib.compare.isomorphic` does not. The EPIC's rabbit-hole said rdflib folds case: wrong.
+- **Read paths:** the API's GET and listing frame with pyld (`documents.render`) and never call
+  `Mapper._value`; the mapper serves Python sessions, write guards, the relay and events.
+  `Mapper._value` is CRITICAL in GitNexus (13 processes), `_without_languages` HIGH; both went to
+  the owner (AGENTS.md).
+- **Plain-JSON writes** refuse any object other than `{"@id"}` today (`documents.py` `_plain`).
+- **The toolkit's `label`** (`skos:prefLabel`, range `string`) is the slot most likely to hold
+  tagged data; SHACL already refuses a tagged value on API writes.
+- **Listing:** `?slot=Dune` on a lang slot builds `"Dune"^^rdf:langString` and matches nothing.
+- **TypeScript:** the generator's module model has no type alias.
+
+| Id | Question | Recommendation | Owner's answer |
+|---|---|---|---|
+| P-1 | DEC-4 scope (the API GET bypasses the mapper; `label` is the risky slot) | The mapper refuses; the API GET stays as it is; `label` stays `string`, the CHANGELOG tells consumers with tagged `prefLabel`s to fix their data | **As recommended** |
+| P-2 | Normalise language-tag case? | Keep as given (a write-back stays isomorphic; no hidden rewrite) | **As recommended** |
+| P-3 | DEC-8 fix | Split: decimal and float keep `@type`, TypeScript and OpenAPI say `string`; double becomes a native JSON number and plain-JSON writes coerce numbers to `xsd:double` | **As recommended** |
+| P-4 | Listing filter on a lang slot; TypeScript value-object type | `BadQuery` for `=` and `~`; an inline TypeScript type | **As recommended** |

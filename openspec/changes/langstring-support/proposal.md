@@ -78,7 +78,8 @@ outside DEC-8.
   (`_without_languages`). Rejected: flattening it too (drops tags), a language map (DEC-1).
 - **DEC-4** (owner, 2026-11-28, OPEN-2, Q-3): a tagged literal met in a `string` slot is
   **refused, naming the slot** and pointing to `lang_string`, with a BREAKING entry and its fix in
-  the CHANGELOG. Rejected: today's silent loss; keeping the tag in a `string` slot (the slot's type
+  the CHANGELOG. The refusal is the mapper's, the one read path that writes back; the API's GET
+  keeps its behaviour (`inputs/qa.md` P-1). Rejected: today's silent loss; keeping the tag in a `string` slot (the slot's type
   would no longer be the model's); refusing on write only (needs the original tag tracked through
   the session); a flag (a setting to retire).
 - **DEC-5**: the range is generated, not hand-written: a LinkML type in the toolkit metamodel whose
@@ -93,8 +94,8 @@ outside DEC-8.
   Rejected: swapping `term()` for `n3()`, `skolem_iri` for `BNode.skolemize`, `_last_segment` for
   `split_uri` (each would regress; reasons in `inputs/qa.md`).
 - **DEC-8** (owner, 2026-11-28, Q-4): the decimal/double/float mismatch is probed and fixed in
-  stage 1, so that a value's compacted-JSON form and its TypeScript type agree. Which side moves is
-  the PLAN's, after the probe. Rejected: a separate issue (the owner's call).
+  stage 1, so that a value's compacted-JSON form and its TypeScript type agree. After the probe the
+  owner chose the split fix (`inputs/qa.md` P-3). Rejected: a separate issue (the owner's call).
 - **DEC-9** (owner, 2026-11-28, Q-2): the converter maps only `rdf:langString`; `rdf:PlainLiteral`
   stays refused, its message naming `lang_string`. Rejected: mapping it too (its untagged values
   would be refused at write time, a surprise far from the model).
@@ -106,8 +107,8 @@ outside DEC-8.
 - Listing filters on a language-string slot (`contains` per language, language preference): a
   separate need; the existing filters keep their behaviour on `string` slots.
 - Pydantic and rdflib `Literal`: an arbitrary type needs its own core schema (validate from a
-  `Literal` or a value object, serialise to the value object) and a JSON Schema; rdflib folds the
-  language tag to lower case, so equality and round trips compare folded tags.
+  `Literal` or a value object, serialise to the value object) and a JSON Schema. (Corrected at
+  planning, `inputs/qa.md` P-2: rdflib keeps a tag's case; tags are kept as given.)
 - The JSON-LD context term of a `lang_string` slot must not coerce `@type` (a value object may
   not carry both `@type` and `@language`); the stock `gen-jsonld-context` output for the type's
   `uri` is checked, not assumed.
