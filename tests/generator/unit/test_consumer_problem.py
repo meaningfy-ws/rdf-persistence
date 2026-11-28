@@ -64,8 +64,16 @@ def test_the_closure_of_the_toy_adds_no_duplicate_module() -> None:
     toolkit = duplicate_modules(
         Path(rdf_persistence.__file__).parent / "model/technical/api/rp_api_entrypoints.yaml"
     )
+    # A metamodel module the toy's root imports by its package key is loaded once more (D-19).
+    direct = [
+        each
+        for each in load_schema(TOY / TECHNICAL_SCHEMA).schema.imports
+        if each.startswith("rdf_persistence/model/rp_")
+    ]
 
-    assert own <= toolkit, f"the toy's closure repeats {own} modules, the toolkit's own {toolkit}"
+    assert own <= toolkit + len(direct), (
+        f"the toy's closure repeats {own} modules, the toolkit's {toolkit}"
+    )
 
 
 def test_each_typescript_module_and_interface_is_written_once() -> None:
