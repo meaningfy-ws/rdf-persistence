@@ -11,6 +11,7 @@ from rdf_persistence_generation.config import GENERATOR_DIR
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions.jsonld_context import render, render_context
 from rdf_persistence_generation.steps import CONTEXT_STEP
+from tests.measures import generate_measures
 
 from .golden import TOY_TARGET, assert_matches_toy, run_toy
 
@@ -404,3 +405,21 @@ def test_a_range_narrowing_and_a_multivalued_usage_keep_both_terms(tmp_path: Pat
 @pytest.mark.parametrize("name", ["Abstract", "Mixed"])
 def test_a_class_without_a_node_gets_no_scoped_term(tmp_path: Path, name: str) -> None:
     assert scoped_terms(usage_context(tmp_path), name) == {}, f"{name} has no node type"
+
+
+@pytest.fixture(scope="module")
+def measures_context(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    _, generated = generate_measures(tmp_path_factory.mktemp("measures"))
+    context: dict = json.loads((generated / "context.jsonld").read_text(encoding="utf-8"))
+    return context["@context"]
+
+
+@pytest.mark.parametrize(
+    ("term", "datatype"),
+    [("dbl", None), ("dec", "xsd:decimal"), ("flt", "xsd:float")],
+    ids=["double-native", "decimal-typed", "float-typed"],
+)
+def test_a_double_term_has_no_datatype_and_a_decimal_or_float_keeps_it(
+    measures_context: dict, term: str, datatype: str | None
+) -> None:  # PD-9
+    assert measures_context[term].get("@type") == datatype, f"{term}: {measures_context[term]}"

@@ -33,6 +33,7 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import iri_types
 from rdf_persistence.testkit import assert_isomorphic
+from tests.measures import MEASURE, generate_measures
 from tests.toy import (
     BIBO,
     BOOK,
@@ -661,3 +662,117 @@ def test_a_folder_without_the_frame_of_a_served_type_stops_start_up(tmp_path) ->
     broken = Documents(load_schema(TOY_SCHEMA), folder)
     with pytest.raises(FileNotFoundError, match="Scan.frame"):
         broken.require_frames()
+
+
+# --- a double is a JSON number, written typed in either format (PD-9) -----------------------------
+
+MS = "https://example.org/ns/measures#"
+DOUBLE = URIRef(f"{MS}dbl")
+DECIMAL = URIRef(f"{MS}dec")
+MEASURE_LABEL = {"label": "m"}
+
+
+@pytest.fixture(scope="module")
+def measures(tmp_path_factory: pytest.TempPathFactory) -> Documents:
+    schema, generated = generate_measures(tmp_path_factory.mktemp("measures"))
+    return Documents(load_schema(schema), generated)
+
+
+@pytest.fixture(scope="module")
+def measure_class(measures: Documents):
+    return measures.aggregates["measures"]
+
+
+async def _measure_graph(measures: Documents, measure_class, body: dict, media_type: str) -> Graph:
+    """The triples of a measure body written in ``media_type``, as a replace reads them."""
+    if media_type == JSON_LD:
+        body = {"@context": measures.context, "type": "Measure", **body}
+    graph, _ = await measures.parse(
+        encoded({"id": MEASURE, **body}),
+        media_type,
+        measure_class,
+        MEASURE,
+        creating=False,
+        tenant=TENANT,
+    )
+    return graph
+
+
+@pytest.mark.parametrize("media_type", [JSON, JSON_LD], ids=["plain-json", "json-ld"])
+@pytest.mark.parametrize(
+    "written",
+    [3, 3.0, "3"],
+    ids=["integer", "float", "text"],
+)
+async def test_a_number_or_a_string_written_to_a_double_slot_is_stored_as_a_double(
+    measures, measure_class, written, media_type
+) -> None:
+    graph = await _measure_graph(
+        measures, measure_class, MEASURE_LABEL | {"dbl": written}, media_type
+    )
+    stored = list(graph.objects(URIRef(MEASURE), DOUBLE))
+    assert [(o.datatype, float(o)) for o in stored] == [(XSD.double, 3.0)], (
+        f"{written!r} in {media_type} is a double"
+    )
+
+
+@pytest.mark.parametrize("media_type", [JSON, JSON_LD], ids=["plain-json", "json-ld"])
+async def test_a_boolean_written_to_a_double_slot_is_refused_naming_the_slot(
+    measures, measure_class, media_type
+) -> None:
+    with pytest.raises(InvalidBody, match="dbl"):
+        await _measure_graph(measures, measure_class, MEASURE_LABEL | {"dbl": True}, media_type)
+
+
+@pytest.mark.parametrize("media_type", [JSON, JSON_LD], ids=["plain-json", "json-ld"])
+async def test_a_decimal_and_a_label_are_left_as_they_were_beside_a_double(
+    measures, measure_class, media_type
+) -> None:
+    body = {"label": "3", "dec": "1.5", "dbl": 1.5}
+    graph = await _measure_graph(measures, measure_class, body, media_type)
+    root = URIRef(MEASURE)
+    assert [(o.datatype, str(o)) for o in graph.objects(root, DECIMAL)] == [(XSD.decimal, "1.5")], (
+        "a decimal keeps its datatype from the context"
+    )
+    assert [(o.datatype, str(o)) for o in graph.objects(root, SKOS.prefLabel)] == [(None, "3")], (
+        "a string slot written as digits stays a plain string"
+    )
+
+
+async def test_a_double_is_read_as_a_number_and_a_decimal_as_text(measures, measure_class) -> None:
+    graph = await _measure_graph(
+        measures, measure_class, MEASURE_LABEL | {"dec": "1.5", "dbl": 1.5}, JSON
+    )
+    framed = measures.frame(graph, measure_class)
+    assert framed["dbl"] == 1.5, "a double reads under the slot's name"
+    assert isinstance(framed["dbl"], float), "a double reads as a JSON number"
+    assert framed["dec"] == "1.5", "a decimal reads as text"
+
+
+@pytest.mark.parametrize("media_type", [JSON, JSON_LD], ids=["plain-json", "json-ld"])
+async def test_a_string_an_integer_and_a_reference_are_left_as_they_were_by_the_double_helper(
+    default_documents, book_class, media_type
+) -> None:  # impact guard: Documents._valued serves every write
+    sequel = "https://example.org/books/9"
+    body = book_json() | {
+        "label": "3",
+        "sequel_of": sequel,
+        "chapters": [{"number": 1}],
+    }
+    if media_type == JSON_LD:
+        body = with_context(default_documents, body | {"type": "Book"})
+        body["chapters"] = [{"type": "Chapter", "number": 1}]
+    graph, _ = await parse(
+        default_documents, encoded(body), media_type, book_class, BOOK, creating=False
+    )
+    root = URIRef(BOOK)
+    assert [(o.datatype, str(o)) for o in graph.objects(root, SKOS.prefLabel)] == [(None, "3")], (
+        "a string slot keeps its text, typed as a string"
+    )
+    assert list(graph.objects(root, URIRef("https://example.org/ns/library#sequelOf"))) == [
+        URIRef(sequel)
+    ], "a reference stays an IRI"
+    numbers = list(graph.objects(None, URIRef(f"{BIBO}chapter")))
+    assert [(o.datatype, str(o)) for o in numbers if isinstance(o, Literal)] == [
+        (XSD.integer, "1")
+    ], "an integer keeps its own datatype"

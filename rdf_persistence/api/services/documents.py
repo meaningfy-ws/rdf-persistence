@@ -22,7 +22,7 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.formatutils import camelcase
 from linkml_runtime.utils.schemaview import SchemaView
 from pyld import jsonld
-from rdflib import RDF, SH, BNode, Dataset, Graph, Literal, URIRef
+from rdflib import RDF, SH, XSD, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.api.services.shacl import load_warm_shapes, validate_warm
@@ -120,6 +120,7 @@ class Documents:
             for name in view.all_classes()
         }
         self._internal = internal_predicates(view)
+        self._doubles = self._double_terms()
         self._parts = self._part_predicates()
 
     @cached_property
@@ -216,7 +217,9 @@ class Documents:
         if not isinstance(body, dict):
             raise InvalidBody("the body must be a JSON object")
         _bound(body, self._max_nodes)
-        return body if media_type == JSON_LD else self._plain_document(body, cls)
+        if media_type == JSON_LD:
+            return _double_values(body, self._doubles) if self._doubles else body
+        return self._plain_document(body, cls)
 
     def _plain_document(self, body: dict, cls: ClassDefinition) -> dict:
         """A plain JSON ``body`` as a JSON-LD document: typed by the schema, read with the generated context."""
@@ -277,7 +280,26 @@ class Documents:
     def _valued(self, slot: SlotDefinition, value: Any) -> Any:
         if holds_owned_part(self._view, slot):
             return self._typed_parts(value, str(slot.range))
+        if self._is_double(slot):
+            return _typed_doubles(self._plain(value), json_name(slot))
         return self._plain(value)
+
+    def _is_double(self, slot: SlotDefinition) -> bool:
+        """Whether ``slot`` takes ``xsd:double``: the context leaves it untagged, so a write is typed here (PD-9)."""
+        range_type = self._view.get_type(str(slot.range)) if slot.range else None
+        return (
+            range_type is not None
+            and URIRef(self._view.get_uri(range_type, expand=True)) == XSD.double
+        )
+
+    def _double_terms(self) -> frozenset[str]:
+        """The JSON names of the double slots, of any class."""
+        return frozenset(
+            name
+            for slots in self._slots.values()
+            for name, slot in slots.items()
+            if self._is_double(slot)
+        )
 
     def _typed_parts(self, value: Any, class_name: str) -> Any:
         if isinstance(value, list):
@@ -521,6 +543,41 @@ def _serialised(rdf: Graph, media_type: str) -> str:
         return str(rdf.serialize(format=media_type))
     except ValueError as refusal:  # rdflib's RDF/XML writer: "Can't split <predicate>"
         raise NotAcceptable(f"this aggregate has no {media_type} form") from refusal
+
+
+def _typed_doubles(value: Any, term: str) -> Any:
+    """What a body wrote on the double term ``term``, as typed value objects (PD-9).
+
+    The context leaves a double untagged, so JSON-LD would read ``3`` as an integer and ``"3"`` as a
+    string. A number or a string becomes ``{"@value": v, "@type": xsd:double}``; a list is typed item
+    by item; anything else (a value object, say) is left to JSON-LD.
+
+    Raises:
+        InvalidBody: A boolean, which JSON-LD would read as ``xsd:boolean``.
+    """
+    if isinstance(value, list):
+        return [_typed_doubles(item, term) for item in value]
+    if isinstance(value, bool):
+        raise InvalidBody(f"{term} must be a number, not a boolean")
+    if isinstance(value, int | float | str):
+        return {VALUE_KEY: value, TYPE_KEY: str(XSD.double)}
+    return value
+
+
+def _double_values(value: Any, terms: frozenset[str]) -> Any:
+    """``value``, a JSON-LD body, with the values under the double ``terms`` typed, at any depth (PD-9)."""
+    if isinstance(value, list):
+        return [_double_values(item, terms) for item in value]
+    if not isinstance(value, dict):
+        return value
+    return {
+        key: item
+        if key == CONTEXT_KEY
+        else _typed_doubles(item, key)
+        if key in terms
+        else _double_values(item, terms)
+        for key, item in value.items()
+    }
 
 
 def _without_languages(value: Any) -> Any:
