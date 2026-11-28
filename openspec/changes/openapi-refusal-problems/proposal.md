@@ -83,3 +83,17 @@ None.
 `tests/unit/api/test_openapi.py`; `tests/dump_openapi.py`; `docs/` (`architecture/api.adoc`,
 `user-manual/access.adoc`); `CHANGELOG.md`. Published document unchanged for a service with no
 `refusal_problems`.
+
+## Reconciliation (as delivered, P-0004)
+
+| Shaped | Delivered | PR | Difference |
+|---|---|---|---|
+| DEC-1 post-process in `install_openapi` | `_listed`, `_refusal_components`, `_accepting_refusals`; `route_options`, `AggregateOpenApi`, `RouteDocs`, `router.py` untouched | this PR | none |
+| DEC-2 tag + method | as shaped | this PR | none |
+| DEC-3 every `default` | as shaped, only where the answer has a problem schema (PD-5) | this PR | none |
+| DEC-4 S1–S4 | TC-1 to TC-4 in `test_openapi.py` and `test_contract.py`; `typecheck-openapi-ts` on the refusing toy | this PR | TC-4's red shown by an unregistered run, not against the parent commit (D-5, #459 W-3) |
+| Docs | `architecture/api.adoc`, `user-manual/access.adoc`, `CHANGELOG.md`, `install_service` docstring | this PR | none |
+
+What Changes, Capabilities and Impact hold as written. Not delivered, under the review floor:
+#459 (a `$defs` name shared by two listed classes is refused, W-1; tests and tidy-ups).
+`consumer-write-rules`' RISK-3 is closed by this change.

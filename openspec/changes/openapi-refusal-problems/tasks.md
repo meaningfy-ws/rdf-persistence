@@ -11,7 +11,7 @@
 - [x] 1.2 **contract + tsc** — after 1.1; design.md PD-7, TC-4. The contract cases of TC-4 in
   `tests/unit/api/test_contract.py`; `tests/dump_openapi.py` registers `HeldKeyProblem`. Accept:
   TC-4 passes; `make typecheck-openapi-ts` green; task gate green.
-- [ ] 1.3 **docs** — beside 1.1 (disjoint files). `architecture/api.adoc:210` and
+- [x] 1.3 **docs** — beside 1.1 (disjoint files). `architecture/api.adoc:210` and
   `user-manual/access.adoc:319` say the document lists the registered classes (components, the
   create/replace 409/422 and every `default`, the start-up `ValueError` on a taken name); the
   `CHANGELOG.md` Unreleased entry of `consumer-write-rules` drops "does not yet list the classes"

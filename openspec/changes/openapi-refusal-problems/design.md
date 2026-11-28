@@ -163,3 +163,20 @@ sections are unique headings.
   contract file 148 passed, `make typecheck-openapi-ts` green with `HeldKeyProblem` registered,
   `make test-changed` 11004 passed, `make check-quality` green after `ruff format` of
   `tests/dump_openapi.py` (formatting only, so `test-changed` was not re-run).
+- **D-6 Review of 1.2: `critical=0` (lead).** Under the floor, none re-labelled, added to #459:
+  W-3 TC-4's red not shown against the parent commit (see D-5); W-4 the generated-create test's
+  docstring overstates; S-5 repeated setup in the refusal cases; S-6 no refusal on another class.
+- **D-7 Rebase (lead).** Rebased onto `develop` at `c7a7b1fc` (#443, #458) before the full gates,
+  clean: no file of this change was touched there, `uv.lock` unchanged, so no `uv sync` and no
+  `make generate`; the golden `openapi.json` is `develop`'s.
+- **D-8 Check: 17 items, unmet 0, partial 3 (lead).** (a) 1.3 unticked: lead-fixed. (b) TC-4's red:
+  closed by a lead probe validating the refused 409 body (with `holder`) against the golden's
+  unwidened `Problem` with `jsonschema`: rejected, "Additional properties are not allowed ('holder'
+  was unexpected)"; #459 W-3 stands only for keeping that as a test. (c) S1 asserts the widening on
+  `books` only (every other aggregate is guarded by "nothing else changes", not "each is widened"):
+  under the floor, added to #459 as W-5.
+- **D-9 Pre-PR impact rated CRITICAL; the developer: proceed (2026-11-28).** `detect_changes`
+  against `develop` rated the branch critical: 16 start-up flows have `install_service` or
+  `install_openapi` as their first step. `install_service` changed only in its docstring;
+  `install_openapi` only after the build and only with a listed class (golden byte-identical
+  without). Asked, the developer chose to proceed with the PR and the authorised admin merge.
