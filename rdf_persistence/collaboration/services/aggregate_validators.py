@@ -95,7 +95,9 @@ def find_items(cls: type[BaseModel], equals: Mapping[str, object]) -> dict[str, 
         TypeError: A value is ``None``, alone or as an item of a list or tuple.
     """
     if not equals:
-        raise ValueError(f"find({cls.__name__}) needs a slot to match; a rule never reads a whole class")
+        raise ValueError(
+            f"find({cls.__name__}) needs a slot to match; a rule never reads a whole class"
+        )
     asked: dict[str, list[object]] = {}
     for slot, value in equals.items():
         if SLOT_PATH_MARK in slot:
