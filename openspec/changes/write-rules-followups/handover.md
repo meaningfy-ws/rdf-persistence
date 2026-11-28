@@ -5,11 +5,10 @@ Stage 1 (the only stage), its PR into `develop`, merged with `--admin` on the lo
 `make check-all` of the rebased head, as the developer authorised (`evidence/signoff.md`).
 
 ## Decided since the PLAN
-D-1 to D-9 (design.md, Delivery decisions).
+D-1 to D-10 (design.md, Delivery decisions).
 
 ## Open
 - Under the floor (D-7, D-8): W4, W5, S1 to S4 of the review; the tester's duplicated fixtures.
-- `openapi-refusal-problems` (#462) is still open and touches `kit.py`: it rebases onto this.
 - Issue #455 is closed by hand after the merge.
 
 ## Next
