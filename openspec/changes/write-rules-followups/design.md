@@ -240,3 +240,11 @@ None.
   site; S3 `is_python_name` and `is_toolkit_technical` sit in a checks module; S4 S1's test checks
   the registration, not a 409 through a generator-registered kit; the checker's Warnings (S3, S4,
   S6 tests name no scenario; the two helpers are public, undecided by PD-3).
+- **D-9 Before the last commit (lead).** `make reindex`, then impact upstream on `find_items`,
+  `refuse_values_not_of_the_slot`, `refuse_unsupported_extensions`: LOW; `Seeded`: UNKNOWN (no
+  caller edges), confirmed by text search: built only in `test_reader_conformance.py` and
+  `test_find_adversarial.py`, and nowhere in the consumer's checkout. None to the developer. The
+  first `make check-all` on `fc9d3bd7` was stopped while it waited in the test queue (its quality
+  checks had passed) and run again on the fix-pass head, so one run covers the final code. No
+  acceptance demo: no use case added (`evidence/acceptance.md`); no docs owed
+  (`evidence/docs-owed.md`).
