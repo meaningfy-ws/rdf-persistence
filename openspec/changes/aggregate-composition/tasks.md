@@ -182,13 +182,13 @@ assertion without a replacement row. Every decision a task cites links its ancho
   among them); and `test_the_reference_collection_pattern_passes_the_check`: the conventions page's
   abstract collection whose role stays `has_part` (`toolkit-slot-kept`) gives no convention line
   (A-14). Accept: all pass.
-- [ ] 2.5 Unit, each C-x fails the check (Q9), after 2.4. `test_uml_cli.py`
+- [x] 2.5 Unit, each C-x fails the check (Q9), after 2.4. `test_uml_cli.py`
   `test_each_convention_fails_the_check`, parametrised over the eleven rows of the outline
   "each convention fails the check" in [the spec](specs/rp-uml-import/spec.md) and
   [`conventions_check.feature`](features/conventions_check.feature), on
   a clean `.qea` seeded once per row. Accept: each row exits 1 naming its element; the clean
   model exits 0.
-- [ ] 2.6 Feature, after 2.5: the remaining scenarios of
+- [x] 2.6 Feature, after 2.5: the remaining scenarios of
   [`features/conventions_check.feature`](features/conventions_check.feature)
   appended verbatim to `uml_import.feature`, steps in `test_uml_import.py`. Accept: pass.
 - [ ] 2.7 Lead: `make check-all`; review; PR.
@@ -249,7 +249,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
 ## Roadmap
 
 - [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.8 · [x] 1.6 · [x] 1.7 ·
-  [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 ·
+  [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [x] 2.5 ·
   [ ] 2.6 · [ ] 2.7 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 3.6
   (1.0 is the lead's reading of Sparx's docs and gates nothing ([D-4](design.md#d-4)); the
   developer's EA probe is the `@manual` scenario run in 1.12 before any release; 1.2 and 1.3 in

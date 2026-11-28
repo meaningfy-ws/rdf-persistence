@@ -12,6 +12,7 @@ from rdf_persistence_generation.uml.cli import load_settings, main
 from rdf_persistence_generation.uml.toolkit import load_toolkit
 from tests.generator.uml_qea import QeaBuilder
 
+from . import uml_cli_breaches as breaches
 from .uml_cli_run import (
     PREFIX,
     PREFIXES,
@@ -386,6 +387,95 @@ def test_a_normal_run_with_a_convention_line_exits_zero_and_writes(tmp_path, cap
     assert (code, lines) == (0, []), f"a convention line never fails a normal run: {lines}"
     report = (tmp_path / "out" / "app.uml-report.txt").read_text(encoding="utf-8")
     assert "no-note\t" in report, "the line is in the report"
+
+
+# --- each convention fails the check (PD-13, D-14, Q9) --------------------------------------------
+# A convention line is printed on stdout in the report format, a problem on stderr as ``[rule] ...``.
+
+LINE, PROBLEM = "line", "problem"
+BREACHES = [
+    ("unprefixed-name", breaches.unprefixed_class, None, LINE, "unprefixed-name", "Shelf"),
+    (
+        "unspecified-multiplicity",
+        breaches.no_multiplicity,
+        None,
+        LINE,
+        "unspecified-multiplicity",
+        "Book.has_folio",
+    ),
+    ("no-note", breaches.no_note, None, LINE, "no-note", "Shelf"),
+    ("root_class", breaches.part_drawn_root, "root", PROBLEM, "root_class", "Chapter"),
+    ("unused-enumeration", breaches.unused_enumeration, None, LINE, "unused-enumeration", "Genre"),
+    (
+        "package_module",
+        breaches.two_packages_one_module,
+        None,
+        PROBLEM,
+        "package_module",
+        "app_rare_books",
+    ),
+    (
+        "boundary_owned role",
+        breaches.role_owned_and_pointer,
+        None,
+        PROBLEM,
+        "boundary_owned",
+        "has_chapter",
+    ),
+    (
+        "boundary_owned part",
+        breaches.pointer_into_a_part,
+        None,
+        PROBLEM,
+        "boundary_owned",
+        "Folio.cites",
+    ),
+    (
+        "drawn-toolkit-parent",
+        breaches.drawn_toolkit_parent,
+        None,
+        LINE,
+        "drawn-toolkit-parent",
+        "Book",
+    ),
+    (
+        "tenant-required-pointer",
+        breaches.tenant_required_pointer,
+        None,
+        LINE,
+        "tenant-required-pointer",
+        "Library.holds",
+    ),
+    (
+        "boundary-disagrees",
+        breaches.boundary_for_a_part,
+        None,
+        LINE,
+        "boundary-disagrees",
+        "Aggregate: Chapter",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("seed", "stereotype", "stream", "kind", "element"),
+    [row[1:] for row in BREACHES],
+    ids=[row[0] for row in BREACHES],
+)
+def test_each_convention_fails_the_check(tmp_path, capsys, seed, stereotype, stream, kind, element):
+    builder, ids = noted_library(tmp_path, stereotype)
+    seed(builder, ids)
+
+    code, stdout, stderr = run_check(
+        capsys, tmp_path, builder.finish(), prefixes=PREFIXES + breaches.TOOLKIT_PREFIX
+    )
+
+    printed, other = (stdout, stderr) if stream == LINE else (stderr, stdout)
+    assert code == 1, f"{kind} fails the check: {stdout} {stderr}"
+    assert len(printed) == 1, f"exactly one {stream}, the breach: {printed}"
+    assert kind in printed[0], f"it is a {kind} {stream}: {printed}"
+    assert element in printed[0], f"it names {element}: {printed}"
+    assert not other, f"nothing on the other stream: {other}"
 
 
 def test_a_reader_problem_short_circuits_check_and_is_the_only_output(tmp_path, capsys):

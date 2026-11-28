@@ -66,6 +66,7 @@ def run_check(
     qea: Path,
     *options: str,
     out: Path | None = None,
+    prefixes: str = PREFIXES,
 ) -> tuple[int, list[str], list[str]]:
     """Run with ``--check``, ``--out`` only when given; return the exit code, stdout and stderr lines."""
     argv = [
@@ -73,7 +74,7 @@ def run_check(
         "--package",
         ROOT,
         "--prefixes",
-        str(prefixes_file(tmp_path)),
+        str(prefixes_file(tmp_path, prefixes)),
         "--check",
         *(["--out", str(out)] if out else []),
         *options,
