@@ -7,7 +7,6 @@ aggregate and the record of the change (an ``Assignment``) are written in one tr
 ``Collaboration`` hands ``assign`` and ``assignments`` over to it.
 """
 
-import re
 from collections.abc import Awaitable, Callable
 from typing import cast
 
@@ -34,7 +33,7 @@ from rdf_persistence.core.domain.exceptions import (
     NotFound,
     StoredDataInvalid,
 )
-from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.core.domain.sparql import Triple, is_absolute_iri
 from rdf_persistence.core.services.yaml_files import SHOWN
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.mapper import Mapper
@@ -43,7 +42,6 @@ from rdf_persistence.provenance.services.provenance import new_activity_id
 from rdf_persistence.schema.services import vocabulary as v
 
 ASSIGNMENT_CLASS = "Assignment"
-_ABSOLUTE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:.+")  # an absolute IRI starts so
 
 AccessOf = Callable[[str], Awaitable[CallerAccess]]
 
@@ -116,7 +114,7 @@ class Assignments:
             raise Conflict(changed_text(iri, held), iris=(iri,))
         wanted = set(principals)
         for principal in sorted(wanted):
-            if not _ABSOLUTE.fullmatch(principal):
+            if not is_absolute_iri(principal):
                 raise InvalidBody(f"{principal[:SHOWN]!r} is not an absolute IRI")
         workflow = self._workflow_of(iri, graph)
         if wanted and not workflow.assignable:

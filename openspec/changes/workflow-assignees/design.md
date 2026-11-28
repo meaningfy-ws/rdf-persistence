@@ -247,7 +247,7 @@ guarded by `if_version`, so a retried call after success is a `Conflict`, not a 
 | A concurrent write during the release | `Conflict` on one root | re-read, retry once, then a warning naming the root; others go on |
 | A consumer's validator or guard refuses the release of one root | any refusal raised by the commit | warning naming the root and reason; others go on; the next grant change tries again |
 | A root of no workflow class holds `rp:assignedTo` | `of_types` finds no workflow | the release leaves it (the application's) |
-| A replace gives a workflow class to a root holding assignees | D-2 guard | `Forbidden` (`TAKES_A_CLASS`) |
+| A replace gives a workflow class to a root holding assignees | D-2 guard | `Forbidden` (`TAKES_A_CLASS_ASSIGNED`) |
 | An assignee in a state no edge leaves, without `modify` | D-3 step 8 | may still remove itself |
 | A caller adds itself while holding an edge role only through its token | D-3 step 8 (`roles` counts system token roles) | allowed; step 9 skips the caller (D-4) |
 | A tenant restored from a dump: assignees of the source tenant, few grants | not detected | kept until the first grant change on the new tenant releases them |
@@ -349,6 +349,22 @@ lane that ran them still runs them and they prove what they proved.
   the queue; and briefed the first builders before the worktree's seed had finished, so one
   task gate fell back to the full `test-fast` and hit the background limit. From here the lead
   runs only queued make lanes, and briefs builders only after the seed's notice.
+- **D-17** (lead, 2026-11-28): each stage of this EPIC is reviewed with one run of lenses L2 and L3
+  together, and the full review (L1, L2, L3 single; L4+L5 as one) runs once after the last stage.
+  This applies the repository's rule P-0005 and `develop/agents.adoc#challenge`, which override
+  `epic-delivery`'s MEDIUM default of two grouped runs in this repository.
+- **D-18** (lead, 2026-11-28, accepted finding F1 of stage 1, re-labelled Critical: input
+  validation at a trust boundary): `assign` accepts a principal with a space or `<>`, which then
+  fails in the store as `SparqlError` (a 500 at a consumer's route) instead of `InvalidBody` as the
+  error matrix says (reviewer L2+L3 #11, tester `test_a_principal_that_cannot_be_an_iri_is_refused`).
+  Fix: one shared absolute-IRI check, holding `FORBIDDEN_IRI_CHARS`, in
+  `rdf_persistence/core/domain/sparql.py`, used by `workflows.py` (its identifier check) and
+  `assignments.py` (D-3 step 5). The developer saw the CRITICAL GitNexus rating of the stage
+  (blast radius of the write path, 53 flows) and said proceed.
+- **D-19** (lead, 2026-11-28): the other 15 findings of the stage-1 review are under the floor
+  (listed in PR #443). Three are spine upkeep the lead carries: the error-matrix row of
+  `TAKES_A_CLASS_ASSIGNED` (amended below), and `architecture/data-flows.adoc` and an `rp-messages`
+  spec delta for the two new toolkit-filled slots, both added to task 2.4.
 - **D-16** (lead, 2026-11-27): the worktree was installed with a bare `uv sync`, without the
   extras `make install` adds (`--all-extras`); the API tests failed for a missing module and both
   first task gates fell back to the full lane and timed out. Reinstalled with `make install` and

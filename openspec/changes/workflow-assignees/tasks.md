@@ -38,7 +38,10 @@ EPIC: workflow-assignees (proposal.md, #426). Decisions: DEC-1 to DEC-10; design
   `docs/modules/ROOT/pages/howto/workflow.adoc` gains a section "Assign the work" (assignable,
   `assign`, the clearing edge, `assignments`, the queue filter);
   `docs/modules/ROOT/pages/user-manual/access.adoc#_grant_and_prohibit` gains who may assign, the
-  release, RISK-2 and RISK-3. Run `make refresh-surface`. Accept: `make check-docs`.
+  release, RISK-2 and RISK-3; `docs/modules/ROOT/pages/architecture/data-flows.adoc` (the
+  `keep_state` paragraph also keeps the assignees, D-19); a MODIFIED delta of `rp-messages`
+  naming the toolkit-filled slots `assigned_principals` and `released_principals` (D-19). Run
+  `make refresh-surface`. Accept: `make check-docs`, `openspec validate --strict`.
 - [ ] 2.5 Lead: the stage gate of `docs/modules/ROOT/pages/develop/agents.adoc#_the_gates`
   (`make check-all`, `make test-containers`), the review set, PR. Comment on #426 with the call,
   the filter and the release, for the consumer's change.

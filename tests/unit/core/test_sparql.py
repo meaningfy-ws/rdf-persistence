@@ -23,6 +23,7 @@ from rdf_persistence.core.domain.sparql import (
     fragment,
     fragment_terms,
     hop_patterns,
+    is_absolute_iri,
     join,
     match_patterns,
     no_value_patterns,
@@ -127,6 +128,36 @@ def test_a_control_character_goes_out_as_an_escape_nothing_can_extend():
 def test_an_iri_that_could_break_out_is_refused(iri):
     with pytest.raises(SparqlError, match="IRI"):
         term(URIRef(iri))
+
+
+@pytest.mark.parametrize(
+    ("value", "accepted"),
+    [
+        (f"{EX}a", True),
+        ("urn:uuid:1234", True),
+        ("mailto:a@b.org", True),
+        ("https://example.org/a#b?c=d", True),
+        (f"{EX}a b", False),
+        (f"{EX}a<b", False),
+        (f"{EX}a>b", False),
+        (f'{EX}a"b', False),
+        (f"{EX}a{{b", False),
+        (f"{EX}a}}b", False),
+        (f"{EX}a|b", False),
+        (f"{EX}a\\b", False),
+        (f"{EX}a^b", False),
+        (f"{EX}a`b", False),
+        (f"{EX}a\nb", False),
+        (f"{EX}a\x7fb", False),
+        ("a/relative/reference", False),
+        ("//example.org/a", False),
+        ("1http://x", False),
+        ("http:", False),
+        ("", False),
+    ],
+)
+def test_an_absolute_iri_is_told_from_what_cannot_be_one(value, accepted):
+    assert is_absolute_iri(value) is accepted, f"{value!r} should be accepted: {accepted}"
 
 
 def test_a_datatype_iri_that_could_break_out_is_refused():

@@ -5,7 +5,6 @@ against the role definitions and the schema, so a bad file stops the service bef
 ``Workflows`` maps each class that names a workflow (or inherits the name) to it.
 """
 
-import re
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
@@ -18,7 +17,7 @@ from rdf_persistence.access.services.access import AccessRules
 from rdf_persistence.collaboration.domain.generated.rp_workflow import Workflow
 from rdf_persistence.core.domain.exceptions import Forbidden, InvalidWorkflow, StoredDataInvalid
 from rdf_persistence.core.domain.generated.rp_annotations import Tracked
-from rdf_persistence.core.domain.sparql import FORBIDDEN_IRI_CHARS, Triple
+from rdf_persistence.core.domain.sparql import Triple, is_absolute_iri
 from rdf_persistence.core.services.yaml_files import SHOWN, problems_of, read_mapping, shown
 from rdf_persistence.persistence.services.session import Session
 from rdf_persistence.schema.services import vocabulary as v
@@ -52,16 +51,9 @@ def load_workflow(path: Path) -> Workflow:
     return workflow
 
 
-_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:.+")  # an absolute IRI starts so
-
-
 def _file_problem(workflow: Workflow) -> str | None:
     """What a valid ``Workflow`` still gets wrong that the schema does not say, or None (PD-31 item 5, PD-32 item 4)."""
-    if (
-        not _SCHEME.fullmatch(workflow.id)
-        or FORBIDDEN_IRI_CHARS.search(workflow.id)
-        or workflow.id.endswith(("/", "#"))
-    ):
+    if not is_absolute_iri(workflow.id) or workflow.id.endswith(("/", "#")):
         return (
             f"id {shown(workflow.id)} must be an absolute IRI with none of the characters an IRI "
             'may not hold (as in SPARQL: space, < > " { } | \\ ^ `, control characters), '
