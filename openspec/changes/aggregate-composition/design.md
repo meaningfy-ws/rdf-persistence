@@ -676,4 +676,12 @@ Decisions the lead took without the developer, shown for validation at the end (
   - `CONVENTION_KINDS` lives in `uml/conventions.py`, and `cli.py` imports it.
   - D-13's W1 (the doubled problem) and W4 (re-declared constants) are fixed in passing.
   - `t_diagramlinks`' columns were checked against an EA-saved file's schema.
+- **D-15**, lead, 2026-11-28 (stage 2 review, PR #449, no Critical):
+  - W1 re-labelled Critical (the spec disagreed with the code). Under `--check` a converter problem
+    stops the check as it stops a run, so the convention lines are printed only when there is no
+    problem. The spec delta now says so, and a fixer pins it with a test. Rejected: printing both,
+    which would report conventions of a model that cannot convert.
+  - Under the floor: W2, the seeds of rows the reviewer did not read; S3, the `NO_NOTE` alias kept
+    for the one-occurrence acceptance; S4, the Statechart filter in both reader and pass; S5, a
+    misplaced comment; S6, lookup by label in `_tenant_pointer_lines`.
 

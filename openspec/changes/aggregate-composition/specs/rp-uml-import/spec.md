@@ -304,8 +304,8 @@ slot is exempt.
 Every convention of the UML conventions page SHALL be a finding: a convention whose breach changes
 the generated LinkML a problem, any other a convention line of the report. `rp-uml2linkml --check`
 SHALL read and convert the model as a run does, write nothing (no schema, no side file, no report),
-print the problems and the convention lines, and exit 1 when there is any, 0 otherwise, 2 on a usage
-error. A normal run SHALL write on convention lines. Only diagram names and the elements and
+print the problems or, when there is none, the convention lines, and exit 1 when there is any, 0
+otherwise, 2 on a usage error (a problem stops the check as it stops a run). A normal run SHALL write on convention lines. Only diagram names and the elements and
 connectors a diagram shows SHALL be read: an aggregates diagram (`<package> · aggregates`) SHALL
 show classes and compositions only (notes, text, boundaries, note links and generalisations
 allowed), and no other class diagram of a converted package SHALL show a composition. When the

@@ -478,6 +478,20 @@ def test_each_convention_fails_the_check(tmp_path, capsys, seed, stereotype, str
     assert not other, f"nothing on the other stream: {other}"
 
 
+def test_a_converter_problem_stops_the_check_and_no_convention_line_is_printed(tmp_path, capsys):
+    """D-15: a problem and a convention line in one model; the problem alone is printed."""
+    builder, ids = noted_library(tmp_path, "root")
+    breaches.part_drawn_root(builder, ids)  # a converter problem (root_class)
+    breaches.unused_enumeration(builder, ids)  # a convention line, were the check to reach it
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish())
+
+    assert code == 1, "a problem exits 1"
+    assert len(stderr) == 1, f"the problem is printed on stderr: {stderr}"
+    assert "root_class" in stderr[0], f"it is the converter's problem: {stderr}"
+    assert not stdout, f"no convention line while a problem stands: {stdout}"
+
+
 def test_a_reader_problem_short_circuits_check_and_is_the_only_output(tmp_path, capsys):
     builder, ids = build_library(tmp_path)  # the noteless classes would give convention lines
     builder.realisation(ids["book"], ids["chapter"])
