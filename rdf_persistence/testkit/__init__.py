@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from rdf_persistence.testkit.bootstrap import wait_until, wait_until_async
 from rdf_persistence.testkit.exceptions import TokenRefusedError
 from rdf_persistence.testkit.fakes import (
+    FakeAggregateReader,
     FakeFileStore,
     FakeIdentity,
     FakeStore,
@@ -66,6 +67,7 @@ __all__ = [
     "assert_isomorphic",
     "assert_models_generated",
     "assert_public_imports",
+    "FakeAggregateReader",
     "FakeFileStore",
     "FakeIdentity",
     "FakeStore",

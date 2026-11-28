@@ -108,6 +108,20 @@ block and records them as deviations and skipped tests.
 
 ---
 
+## Delivered (reconciled 2026-11-28, P-0004)
+
+| Decision | Delivered | PR | Differs from the shape |
+|---|---|---|---|
+| DEC-1 importable technical modules | as shaped; `model/migrations/` unmapped | #434 | the living scenario "the schemas a consumer imports" forbade it; re-signed as MODIFIED (D-6) |
+| DEC-2 only exported classes, `Problem` promised | as shaped; also a shadowing slot is refused (PD-2a) | #434 | a consumer root drops unexported names from its package import (D-8) |
+| DEC-3 consumer `Problem` subclass | as shaped; TypeScript by assignability | #434 | — |
+| DEC-4 refusal answered by the routes | the answer, the registration and the 500 path as shaped | #434 | **the OpenAPI document does not list the registered classes**: task 1.4 stopped by the developer (D-5), the requirement's sentence and its scenario dropped from this change (D-20); RISK-3 stays open until a shaping session takes it |
+| DEC-5 `find` | as shaped; a value not of the slot's type is refused (`BadQuery`) | stage-2 PR | the tester found the real reader answered it (D-16) |
+| DEC-6 typed registration, `state_name` | as shaped | stage-2 PR | — |
+| DEC-7 fake reader and conformance kit | as shaped; one more kit case (a text slot given a number) | stage-2 PR | `Seeded` is a plain class (the testkit's model guard, D-17) |
+| DEC-8 BREAKING `find` on the protocol | as shaped; CHANGELOG line | stage-2 PR | — |
+| (not in the shape) | a cache of parsed schema imports in the generator, LinkML workaround (D-15, linkml/linkml#4306) | #434 | RISK-7 materialised on CI: the toy's technical closure doubled the generator lane |
+
 ## What Changes
 
 - `rdf_persistence/schema/services/schema.py`: `metamodel_importmap` also maps every
@@ -117,8 +131,10 @@ block and records them as deviations and skipped tests.
 - `rdf_persistence/core/domain/exceptions.py`: a `RuleRefusal` error carrying a problem.
 - `collaboration/services/aggregate_validators.py`: write rules may raise it; the reader gains
   `find`; typed registration helpers.
-- `api/entrypoints/problems.py`, `openapi.py`, `service.py`, `kit.py`: the refusal's answer, the
-  registered problem classes and their place in the document.
+- `api/entrypoints/problems.py`, `service.py`, `kit.py`: the refusal's answer and the registered
+  problem classes (as delivered: `openapi.py` unchanged, D-5).
+- `rdf_persistence_generation/schema_cache.py` (as delivered, not shaped): the parsed-import cache
+  of a generation (D-15).
 - `collaboration/services/workflows.py`: `state_name`.
 - `testkit/fakes.py`, a new `testkit/reader_conformance.py`.
 - The toy library: a technical problem module, a rule that names a key's holder.
@@ -143,4 +159,6 @@ None.
   `rdf_persistence.testkit.reader_conformance` holds the contract's cases, as
   `store_conformance` does for stores.
 - `install_service` and `ServiceKit` gain `refusal_problems`.
-- The OpenAPI document of a service with registered problems changes; one without is unchanged.
+- As delivered, the OpenAPI document is unchanged with or without registered problems (D-5): a
+  registered refusal's extra fields are answered but not yet listed in the published contract.
+- A consumer's generation that imports technical modules is faster with the cache (D-15).

@@ -106,6 +106,7 @@ class SchemaLoadCache:
 
 
 PROCESS_CACHE = SchemaLoadCache()
+_depth = 0  # the blocks open now; the outermost one ends a run
 
 
 @contextmanager
@@ -115,13 +116,20 @@ def cached_schema_loads(
     """Serve LinkML's schema loads from ``cache`` inside the block; put the stock loader back after.
 
     ``load`` is the parse behind the cache (LinkML's own by default); tests give a counting one.
+    The default cache lives for one run: it is cleared when the outermost block exits, so a stale
+    parse (an edit the stat cannot tell, a same-size one in the same clock tick) never reaches a later run.
     """
+    global _depth
     stock = schemaview.load_schema_wrap
     # ponytail: ceiling = LinkML offers no hook for how a SchemaView parses an import, and its
     # stock generators build views of their own, so the one module-level name is replaced for the
     # block; upstream issue to file: SchemaView re-parses every import on each construction.
     schemaview.load_schema_wrap = cache.loader(load or stock)
+    _depth += 1
     try:
         yield
     finally:
+        _depth -= 1
         schemaview.load_schema_wrap = stock
+        if cache is PROCESS_CACHE and _depth == 0:
+            cache.clear()

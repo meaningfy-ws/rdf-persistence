@@ -13,13 +13,15 @@ with the message as its ``detail``.
 import inspect
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Protocol
+from types import UnionType
+from typing import Any, Protocol, Union, cast, get_args, get_origin
 
 from linkml_runtime.utils.schemaview import SchemaView
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from rdflib import RDF, Graph, URIRef
 
 from rdf_persistence.core.domain.exceptions import (
+    BadQuery,
     Conflict,
     DatabaseGone,
     InvalidBody,
@@ -29,12 +31,55 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.persistence.services.generated.rp_persistence_services import Contains
 from rdf_persistence.persistence.services.session import GuardContext, Session
 from rdf_persistence.schema.services.schema_structure import (
     own_classes,
     own_schemas,
     root_classes,
 )
+
+# a keyword with it names a path through references, which a rule's find refuses
+SLOT_PATH_MARK = "."
+
+
+def _item_type(cls: type[BaseModel], slot: str) -> object:
+    """The type of one value of ``slot``: the annotation without ``None`` and without its list."""
+    annotation: object = cls.model_fields[slot].annotation
+    for _ in range(2):  # Optional[...] then list[...]
+        args = [a for a in get_args(annotation) if a is not type(None)]
+        origin = get_origin(annotation)
+        if (origin in (Union, UnionType) and len(args) == 1) or origin is list:
+            annotation = args[0]
+    return annotation
+
+
+def checked_find_values(cls: type[BaseModel], slot: str, items: Sequence[object]) -> list[object]:
+    """Each of ``items`` validated, strictly (no coercion: ``"5"`` or ``True`` is no int, a string no enum
+    member), against the item type of ``slot`` of ``cls``, as ``find`` takes it.
+
+    The one check both readers (the real one and the testkit's fake) apply, so they refuse alike.
+    A slot that ``cls`` does not have is left to the caller.
+
+    Raises:
+        BadQuery: A value is not of the slot's type.
+    """
+    adapter: TypeAdapter[object] = TypeAdapter(_item_type(cls, slot))  # type: ignore[arg-type]
+    try:
+        return [adapter.validate_python(item, strict=True) for item in items]  # no coercion (D-21)
+    except ValidationError as error:
+        raise BadQuery(f"{slot} of {cls.__name__} does not take {items!r}: {error}") from error
+
+
+def _refuse_values_not_of_the_slot(cls: type[BaseModel], equals: Mapping[str, object]) -> None:
+    """``BadQuery`` for a value not of its slot's type; an unknown slot, an empty list and a
+    ``Contains`` are left to ``Session.find``."""
+    for slot, value in equals.items():
+        if slot not in cls.model_fields:
+            continue
+        items = list(value) if isinstance(value, (list, tuple)) else [value]
+        if items and not any(isinstance(item, Contains) for item in items):
+            checked_find_values(cls, slot, items)
 
 
 class AggregateReader(Protocol):
@@ -50,6 +95,22 @@ class AggregateReader(Protocol):
 
         The write then depends on the version read: if the aggregate changes before the commit, the
         commit fails with a ``Conflict`` naming it. A removal collected after the read is not seen.
+        """
+        ...
+
+    async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
+        """The IRIs of the aggregates of ``cls`` whose slots equal ``equals``, in IRI order: only those
+        the writer may read in the write's tenant, and none that this transaction removed or changed earlier.
+
+        A root changed earlier in the transaction is left out because its stored values are stale; one
+        it kept at the value is missed, and the commit's unique key then refuses it. A ``None`` value is
+        refused: ``Session.find`` would read it as "no value" and match every aggregate without one.
+
+        Raises:
+            TypeError: A value is ``None``; the message names the slot. Nothing is queried.
+            BadQuery: A keyword is a slot path (it holds a dot), or a value is not of its slot's type
+                (strictly: no coercion); nothing is queried.
+            ValueError, RuntimeError: As ``Session.find``, which this wraps.
         """
         ...
 
@@ -130,6 +191,33 @@ DeleteValidator = Callable[[BaseModel, Principal, AggregateReader], Awaitable[No
 
 # The model class name to decode a root as, and the delete rules that apply to it, most general first.
 DeleteSelection = tuple[str, tuple[DeleteValidator, ...]]
+
+
+def aggregate_rules[M: BaseModel](
+    cls: type[M],
+    *rules: Callable[[BaseModel | None, M, Principal, AggregateReader], Awaitable[None] | None],
+) -> tuple[str, tuple[AggregateValidator, ...]]:
+    """The entry for ``cls`` in the rules mapping, with the rules typed for ``cls`` (consumer-write-rules PD-11).
+
+    ``new`` is typed ``M``: the guard decodes the new root as its most specific root class, which is
+    ``cls`` or derives from it. ``old`` is typed ``BaseModel | None``: a stored root is decoded by its
+    stored types, so a replace that moves it to a derived class hands that class's rule an ``old`` of the
+    class it was stored as; a rule narrows it with ``isinstance``.
+    """
+    # the one cast of the toolkit: the guard hands each rule a root of ``cls`` or a derived class
+    return cls.__name__, cast(tuple[AggregateValidator, ...], rules)
+
+
+def delete_rules[M: BaseModel](
+    cls: type[M],
+    *rules: Callable[[M, Principal, AggregateReader], Awaitable[None] | None],
+) -> tuple[str, tuple[DeleteValidator, ...]]:
+    """The entry for ``cls`` in the delete rules mapping, with the rules typed for ``cls`` (PD-11).
+
+    ``old`` is typed ``M``: a removal selects the rules by the stored root's own types.
+    """
+    # the same cast: the selection by the stored root's types makes ``old`` an ``M``
+    return cls.__name__, cast(tuple[DeleteValidator, ...], rules)
 
 
 class DeleteValidators:
@@ -263,6 +351,24 @@ class _Reader:
                 return None
             cache[iri] = model
         return model.model_copy(deep=True)
+
+    async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
+        for slot, value in equals.items():
+            if SLOT_PATH_MARK in slot:
+                raise BadQuery(
+                    f"find({cls.__name__}): {slot} is a slot path; a rule finds by a slot of the class itself"
+                )
+            if value is None:
+                raise TypeError(
+                    f"find({cls.__name__}): {slot} is None; a rule asks for a value, never for its absence"
+                )
+        _refuse_values_not_of_the_slot(cls, equals)  # before any query
+        context = self._context
+        return [
+            iri
+            for iri in await self._session.find(cls, **equals)
+            if self._visible(iri) and iri not in context.removed and iri not in context.collected
+        ]
 
     def _visible(self, iri: str) -> bool:
         """Whether ``iri`` is an aggregate IRI of the tenant the writer may read (no query)."""

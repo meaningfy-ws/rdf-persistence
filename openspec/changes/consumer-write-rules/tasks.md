@@ -39,27 +39,28 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
 
 ## 2. Stage 2: find, typed rules, the fake reader, state names (#397 part 2, #387, #386) — branch `change/consumer-write-rules-2`, one PR
 
-- [ ] 2.1 **unit + code (find)** — PD-10, TC-9. Failing tests first in
+- [x] 2.1 **unit + code (find)** — PD-10, TC-9. Failing tests first in
   `tests/unit/collaboration/test_aggregate_validators.py` (the scopes of TC-9, worked example 2's
   two variants, `None`) and one through the toy service's generic create with `held_isbn` (worked
   example 1, added to `tests/toy_service.py`). Then `find` on the protocol and `_Reader`. The
   existing hand-written reader stubs that type as `AggregateReader` gain `find` (DEC-8): the stub in
   `tests/unit/collaboration/test_aggregate_validators.py`; `ast-grep` for any other class with `classes_of` and
   `aggregate` under `tests/`. Accept: TC-9 passes; `make typecheck` green; task gate green.
-- [ ] 2.2 **unit + code (typed rules, state_name)** — independent of 2.1; PD-11, PD-12, TC-10,
+- [x] 2.2 **unit + code (typed rules, state_name)** — independent of 2.1; PD-11, PD-12, TC-10,
   TC-11. Failing tests first. Then `aggregate_rules`, `delete_rules`, `state_name`, the exports.
   Accept: TC-10, TC-11 pass; `make typecheck` green; task gate green. Closes #387.
-- [ ] 2.3 **testkit (fake + kit)** — after 2.1; PD-13, PD-14, TC-12, TC-13. Failing tests first in
+- [x] 2.3 **testkit (fake + kit)** — after 2.1; PD-13, PD-14, TC-12, TC-13. Failing tests first in
   `tests/unit/testkit/test_fake_reader.py` and `test_reader_conformance.py`. Then
   `FakeAggregateReader`, `reader_conformance.py`, the export. Accept: TC-12, TC-13 pass for both
   readers; task gate green. Closes #386.
-- [ ] 2.4 **feature** — after 2.1 to 2.3; `features/consumer_write_rules.feature` appended to
+- [x] 2.4 **feature** — after 2.1 to 2.3; `features/consumer_write_rules.feature` appended to
   `tests/feature/consumer_write_rules.feature` with its steps (the toy `held_isbn` rule of worked
   example 1, added in 2.1). Accept: the feature lane passes the scenarios. Closes #397.
-- [ ] 2.5 **docs** — after 2.4; PD-15's stage-2 half and the CHANGELOG *BREAKING* line (DEC-8).
+- [x] 2.5 **docs** — after 2.4; PD-15's stage-2 half and the CHANGELOG *BREAKING* line (DEC-8).
   Accept: `make check-docs` green.
-- [ ] 2.6 **lead** — scenario-map rows; `make check-all`; one review pass (two grouped runs);
-  PR into `develop`; merged on green CI; archive.
+- [ ] 2.6 **lead** — scenario-map rows (done); `make check-all`; the full review over both
+  stages (L1, L2, L3 apart, L4+L5 as one; P-0005, D-2); PR into `develop`; merged on green CI;
+  the reconcile (P-0004) and the archive.
 
 ## Roadmap
 

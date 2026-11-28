@@ -279,7 +279,7 @@ miss fails safe (PD-10).
 | `find` for an unreadable or another tenant's aggregate | not returned (PD-10) |
 | `aggregate_rules(cls, rule)` where `rule` is typed for another class | mypy error (PD-11) |
 | `state_name` with another workflow's IRI, or a name not among its states | `ValueError` naming IRI and workflow (PD-12) |
-| The fake asked a `Contains` or dotted `find` | `NotImplementedError` naming the keyword (PD-13) |
+| The fake asked a `Contains` or dotted `find` | `NotImplementedError` naming the keyword (PD-13); the real reader refuses a dotted keyword with `BadQuery` (D-21 F-1) |
 | No `refusal_problems` | handlers and the document as before (TC-6) |
 
 ## Anti-patterns
@@ -304,7 +304,7 @@ miss fails safe (PD-10).
 | TC-3 | rp-generation "a class the package does not export" | a `toy_copy` whose `library_problems` declares a class `is_a: InUseProblem` (not in `rdf_persistence.__all__`) fails naming both classes; no file written | generator unit |
 | TC-4 | PD-4 | `TsModule` of `library_problems`: every `Problem` field present with the same type and required-ness | generator unit |
 | TC-5 | rp-service-api "a refusal with a consumer problem type", "a 422 refusal" (#397 acceptance 1) | toy service with `fixed_refusal` (PD-9a): isbn `held` → 409, isbn `malformed` → 422, each with `type`, `detail`, `holder`; store unchanged | unit, `tests/unit/api/test_rule_refusal.py` |
-| TC-6 | "an unregistered problem class", "a status outside 409 and 422", "a class that is not a problem", no `refusal_problems` | 500 problem without the rule's fields; `caplog`: exactly one `log.error` record naming the class or status, with no `exc_info`, and none for a registered refusal (PD-6); start-up `TypeError`; the document's golden unchanged with none | unit |
+| TC-6 | "an unregistered problem class", "a status outside 409 and 422", "a class that is not a problem", no `refusal_problems` | 500 problem without the rule's fields; `caplog`: exactly one `log.error` record naming the class or status, with the refusal as its `exc_info` (D-22; PD-6 said none), and none for a registered refusal; start-up `TypeError`; the document's golden unchanged with none | unit |
 | TC-7 | "the document lists the problem" | `HeldKeyProblem` a component; `anyOf` on create/replace 409 and 422 and on `default`; `make typecheck-openapi-ts` compiles the toy document; the contract test (`test_the_service_keeps_to_its_document`) passes with the toy's refusal | unit, CI "types" |
 | TC-8 | in-process refusal | a unit of work commit raises `RuleRefusal`, nothing written | unit, `tests/unit/collaboration/test_aggregate_validators.py` |
 | TC-9 | rp-service-api find scenarios (#397 acceptance 2) | holder found; another tenant's not; unreadable not; removed-in-transaction not; replaced-earlier not (worked example 2, both variants: committed, and `KeyConflict`); `None` → `TypeError`; through the generic API's session (listings present) | unit + feature |
@@ -489,6 +489,57 @@ The lead's, per R-0007; the developer may overrule any of them.
   tests). PD-1a's "adds no further duplicate" assumed no direct metamodel import, which a consumer
   will have; the bound is now the toolkit closure's count plus one per metamodel module the root
   imports by its package key. Lead-fixed in the test.
+- **D-20 Stage 2's build (lead).** Waves per D-13: 2.1 ∥ 2.2 in two worktrees off the stage-1
+  head, merged by the lead with no conflict; the tester after 2.1 ∥ 2.3; 2.5 beside 2.3 (the D-9
+  pattern; its statements about 2.3 checked against the code); 2.4 ∥ the T2-F1 fix; replayed onto
+  `develop` after #434 merged (`git rebase --onto`). The stage-1 checker's C-1 is done here: the
+  rp-service-api delta no longer says the OpenAPI document lists the registered classes, and its
+  scenario "the document lists the problem" is dropped; both go back to shaping with task 1.4 (D-5).
+  Under the floor, follow-up candidates: `Session.find` documents `BadQuery` for a value not of
+  its slot but does not raise it (the reader now refuses it, D-16); 2.4's `ban_reading` step
+  repeats a test helper; `_Reader.find` and the fake still each split `None` and lists (one more
+  shared helper would do).
+- **D-21 The full review (P-0005: L1, L2, L3, L4+L5 over both stages): 26 findings, 0 rated
+  Critical; five accepted as Critical by re-label, the rest under the floor.** Grouped by
+  `file:line`, one decision per group at the highest severity any lens gave it.
+  - *F-1 (L4+L5), accepted:* `_Reader.find` passes dotted keywords to `Session.find`, which ignores
+    prohibitions on the aggregates it follows; a rule can learn a value on an aggregate the writer
+    may not read. Re-labelled Critical: the readability boundary (RISK-4, RISK-5). Fix: refuse a
+    dotted keyword with `BadQuery`, as the fake already does.
+  - *F-2 (L1, L4+L5), accepted:* `checked_find_values` validates in lax mode and the real reader
+    queries with the raw values, the fake with the converted ones (`"5"` or `True` for an int,
+    enum text). Re-labelled Critical: the same defect class as D-16. Fix: strict validation.
+  - *F-3 (L1, L4+L5), accepted:* the schema cache is never cleared and keys on size and mtime; a
+    same-size edit within one coarse mtime tick, in a long-lived process (a test session), serves
+    a stale parse: a wrong generation, silently. Fix: the cache lives for one `generate()` run.
+  - *F-4 (L2), accepted:* `user-manual/test.adoc` calls `Seeded` a frozen dataclass and omits
+    `text_slot` and `not_text`; a consumer following it gets a failing call (as R-W1).
+  - *F-5 (L2), accepted:* the signed scenario "the holder was removed in the same transaction" has
+    no map row and no test through the real guard (as R-W2).
+  - *Under the floor:* the cache's global swap under threads (generation is single-threaded);
+    the export check for technical enums (fails loudly at generation); a `TypeAdapter` built per
+    call; `find(cls)` with no filter; the undeclared `hbreader` (pinned by the lock); the ceiling of
+    `Pathilizer._strifier`; the readers' duplicated `None` handling (D-20); `pydantic_split.py`'s
+    size; the fake's check order; `_item_type`'s unwrap depth; an unbounded value in the
+    `BadQuery` text; a stale "to file" comment; the TypeScript `modules()` assumption comment.
+  - *Lead's reconcile (P-0004):* the `find` requirement in the rp-service-api delta states the
+    `BadQuery` for a value not of the slot's type (L2 Info).
+- **D-22 The refusal's 500 log carries `exc_info` (the developer, 2026-11-28).** L5 found PD-6's
+  "no traceback" against hard rule P-0010, and the operator could not tell which rule raised the
+  refusal. The developer chose P-0010: `exc_info=error`, so the traceback names the rule; the
+  answer to the client is unchanged.
+- **D-23 The stage-2 checker: pass, two Warnings.** The design text lagged D-22 (TC-6) and did not
+  name the readers' dotted-keyword difference: fixed here. The difference itself (the fake's
+  `NotImplementedError`, the real reader's `BadQuery`) is documented and under the floor; it is in
+  the follow-up issue with the other floor items. The developer skipped the acceptance demo
+  (`evidence/acceptance.md`); no docs are owed (`evidence/docs-owed.md`).
+- **D-24 No hand-over after stage 2 (the developer, 2026-11-28).** "No need to handover, do that
+  here": the archive runs in this session after #447 merges; `handover.md` becomes a close record
+  with no prompt for a fresh session.
+- **D-25 Admin merge without waiting for CI (the developer, 2026-11-28).** "You can skip the ci
+  and merge admin": #447 and the archive PR merge with `gh pr merge --admin` once the lead's local
+  `make check-all` on the rebased head is green; this overrides `epic-delivery`'s "merge only on
+  green CI" for this epic. CI still runs after the merge.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.

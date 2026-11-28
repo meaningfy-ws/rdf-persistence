@@ -24,7 +24,24 @@ xref:user-manual/generated-classes.adoc#guard[Guard the model in your tests].
 |`fake_session(store, *, tenant_iri, principal, clock, iris, listings)` |a real `Session` over a `FakeStore`,
 for a domain service's unit test; pass `iris` to test under your own IRI policy, and
 `listings=Listings(view)` (both from `rdf_persistence`) to use `find`
+|`FakeAggregateReader(aggregates, *, roots, unreadable=())` |the `AggregateReader` a write rule receives: see <<reader-fake>>
 |===
+
+[#reader-fake]
+=== The reader a rule receives
+
+A rule of `aggregate_validators` or `delete_validators` takes a reader as its last argument. Test
+the rule over `FakeAggregateReader`, seeded with generated models (keyed by their `id`):
+
+* `roots` names the classes `find` accepts, as the real reader accepts only aggregate roots with a
+path;
+* `unreadable` lists IRIs the writer may not read: they answer as absent;
+* `calls` lists `(method, args, kwargs)` for each call, in order, refused calls included.
+
+Its limit: a `Contains` value or a dotted keyword (a slot path) in `find` raises
+`NotImplementedError` naming it; the real reader refuses a dotted keyword with `BadQuery`.
+How a rule is written and tested over it is in
+xref:user-manual/access.adoc#test-a-rule[Unit-test a rule with `FakeAggregateReader`].
 
 [#whole-service]
 == The whole service over the fakes
@@ -363,8 +380,69 @@ Before you rely on an adapter of your own, run the testkit's conformance suites 
 The toolkit runs the same suites on its fakes and on Fuseki, Garage, Zitadel and Redis in
 containers; the fourth suite, `event_bus_conformance`, is for an event bus and runs on Redis. Its
 `run_case` takes `poll_seconds` (default `POLL_SECONDS`, one second) for every wait of the case; a
-bus that delivers within milliseconds can pass a shorter interval, such as `poll_seconds=0.05`.
+bus that delivers within milliseconds can pass a shorter interval, such as `poll_seconds=0.05`. A
+fifth suite, `reader_conformance`, is for an `AggregateReader` of your own (<<reader-conformance>>).
 
 To keep committed activities pending while a test looks at them, hold the relay with
 `async with kit.relay.paused():`; no round runs inside the block, and `run_once()` called inside it
 hangs, because the block holds the lock the round needs.
+
+[#reader-conformance]
+=== Check a reader of your own
+
+A hand-written `AggregateReader` (a stub of a consumer's tests, say) is held to the contract of the
+fake and the real reader by `rdf_persistence.testkit.reader_conformance`. Like the others, it has
+`CASES`; each case is `async def <case>(reader, seeded)`, where `seeded` is a `Seeded`: a
+plain class (not a dataclass) that names what your reader holds, so the kit uses no class of the
+toolkit's. It takes every field below, by keyword, and is read-only once built:
+
+* `root`, a concrete root class, and three IRIs: `readable` and `unreadable` (both of class `root`),
+and `absent` (seeded nowhere);
+* `other` and `other_iri`, a seeded aggregate of another root class, and `abstract_parent`, an
+abstract root class with no path from which `other` derives; `not_root`, a class that is no
+aggregate root;
+* `slot` and `value`, a single-valued slot of `root` that `readable` and `unreadable` both hold at
+`value`, and `wrong_value`, a value not of that slot's type;
+* `text_slot`, a text slot of `root`, and `not_text`, a value that is not text (a number);
+* `iri_slot` and `iri_value`, an IRI-ranged slot `readable` holds;
+* `multi_slot` and `multi_values`, a multivalued slot `readable` holds at least two values on.
+
+Seed your reader to match, build the `Seeded`, and run each case:
+
+[source,python]
+----
+import pytest
+
+from rdf_persistence.testkit.reader_conformance import CASES, Seeded
+
+
+@pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
+async def test_my_reader_keeps_the_contract(case):
+    reader = build_my_reader()  # seeded to match the fields below
+    seeded = Seeded(
+        root=Book,
+        readable="https://example.org/book/1",
+        unreadable="https://example.org/book/2",
+        absent="https://example.org/book/none",
+        other=Author,
+        other_iri="https://example.org/author/1",
+        abstract_parent=Agent,
+        not_root=Address,
+        slot="isbn",
+        value="978-0",
+        wrong_value=5,
+        text_slot="title",
+        not_text=5,
+        iri_slot="author",
+        iri_value="https://example.org/author/1",
+        multi_slot="tags",
+        multi_values=("fiction", "short"),
+    )
+    await case(reader, seeded)
+----
+
+The cases cover `classes_of` and `aggregate` for a readable, an unreadable, an absent and another
+class's IRI, and `find`: by a slot, omitting another class, refusing an abstract parent or a class
+that is no root (`ValueError`), a wrong-typed value (`BadQuery`) and `None` (`TypeError`), by an IRI
+slot, and by one and by all of the values of a multivalued slot. The toolkit runs them on
+`FakeAggregateReader` and on its real reader.

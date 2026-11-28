@@ -190,12 +190,21 @@ object (a subclass of `Problem`). The answer depends on what the application reg
 
 |`RuleRefusal` whose problem is of an unregistered class (a subclass of a registered one included),
 is not a `Problem`, or has another status
-|500 `internal-error`, with none of the rule's fields; one `error` record names the class or the
-status, with no traceback
+|500 `internal-error`, with none of the rule's fields; one `error` record names the rule and the
+class or the status, and carries the traceback
 
 |`RuleRefusal` raised by a delete rule
 |500, as any other exception of a rule
+
+|The rule's own `find` fails (a `None` value, a class that is no root, an unknown slot, a dotted
+keyword, a value of the wrong type judged strictly, a service without listings)
+|500, a `RuntimeError` naming the rule: a bug in the rule, never the client's
 |===
+
+A rule's `find` answers only the aggregates the writer may read in the write's tenant, so a
+refusal that names a holder never names one the caller cannot read. It leaves out the roots the
+transaction changed earlier; a holder it misses is refused by the unique key at commit (409
+`key-conflict`), so the miss fails safe.
 
 The check is on the exact class and runs before the internal-error logging, so a registered refusal
 is never logged as a fault. In this release the OpenAPI document does not list a consumer's problem

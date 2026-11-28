@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metamodel type) from that entry's folder. A project upgrading from before the release that
   stopped copying a module another entry owns (#371) also moves those imports to the owning
   entry's folder. A project with one TypeScript entry is unchanged.
+- **`AggregateReader` gains `find`** (`consumer-write-rules`, #397). A hand-written reader (a stub in
+  a consumer's tests) implements it, or uses `rdf_persistence.testkit.FakeAggregateReader`.
 - **`rp-uml2linkml` reads aggregates from compositions, not boundaries** (`aggregate-composition`,
   #437, #435). A composition is an EA Aggregation connector drawn beside the association that
   carries the property; the end that holds the diamond is the whole. Roots are derived: a concrete
@@ -43,6 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the report's convention lines are listed on the UML conventions page.
 - **Modelling rules adopted** (`aggregate-composition`): the rulebook gains P-0025 to
   P-0040, the generic modelling rules and the deletion test (scope `activity:modelling`).
+- **A rule finds the aggregates that hold a value, and is typed for its class**
+  (`consumer-write-rules`, #397, #387, #386). `reader.find(cls, **equals)` answers the IRIs of the
+  aggregates of `cls` whose slots equal the values, limited to what the writer may read in the
+  write's tenant and leaving out the roots the transaction removed or changed earlier; a `None`
+  value raises `TypeError`. `aggregate_rules(cls, *rules)` and `delete_rules(cls, *rules)` build the
+  mapping entries with rules typed for `cls` (`new` is the class; `old` is `BaseModel | None`).
+  `state_name(workflow, iri)` is the inverse of `state_iri`. `rdf_persistence.testkit` gains
+  `FakeAggregateReader`, an in-memory reader to unit-test a rule, and `reader_conformance` (`Seeded`,
+  `CASES`), the cases a reader of your own must pass.
 - **A rule refuses a write with a problem of the application's own** (`consumer-write-rules`, #397,
   #415). `RuleRefusal(problem)` is a new error: raised from a write rule with an instance of a
   subclass of `Problem`, it is answered as that problem, extra fields included, at 409 or 422.
