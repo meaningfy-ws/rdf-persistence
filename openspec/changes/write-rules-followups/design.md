@@ -248,3 +248,10 @@ None.
   checks had passed) and run again on the fix-pass head, so one run covers the final code. No
   acceptance demo: no use case added (`evidence/acceptance.md`); no docs owed
   (`evidence/docs-owed.md`).
+- **D-10 RISK-1 materialised: `openapi-refusal-problems` (#462) merged first.** Found after
+  `make check-all` passed on `4e60049c`. Rebased again (P-0002): `openspec/changes/README.md`
+  keeps both rows; `service.py`'s `refusal_problems` paragraph is resolved by hand to carry both
+  changes (every write that runs the rules, and the OpenAPI listing); `kit.py` and `problems.py`
+  merged cleanly, and #462's `openapi.py` reads `kit.refusal_problems`, the materialised tuple, so a
+  generator is listed too. No regeneration was needed. `make check-all` runs again on the rebased
+  head, which is the gate of record.
