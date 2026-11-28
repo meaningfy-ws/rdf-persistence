@@ -10,14 +10,11 @@ import httpx
 import pytest
 from pydantic import BaseModel
 
-from rdf_persistence import Action, GrantSet, Problem, RuleRefusal
-from rdf_persistence.access.domain.generated.rp_access import Prohibition
+from rdf_persistence import Problem, RuleRefusal
 from rdf_persistence.collaboration.services.aggregate_validators import AggregateReader
-from rdf_persistence.core.domain.media import JSON
 from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
-from tests.scene import PROBLEMS, Scene, problem_of
-from tests.toy import graph_of
+from tests.scene import PROBLEMS, Scene, ban_reading, problem_of
 from tests.toy_service import (
     DUNE_BODY,
     FIXED_HOLDER,
@@ -25,7 +22,6 @@ from tests.toy_service import (
     ToyService,
     fixed_refusal,
     held_isbn,
-    principal_of,
 )
 
 PROBLEM_LOG = "rdf_persistence.api.entrypoints.problems"
@@ -369,20 +365,6 @@ async def test_a_status_must_be_an_int_that_is_not_a_bool(  # S2, DEC-4
             assert f"status {status!r}" in str(records[0].__dict__), "the status is named as given"
         else:
             assert records == [], "answered as built, nothing logged"
-
-
-async def ban_reading(scene: Scene, iri: str) -> None:
-    grants = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
-    held_grants = GrantSet.model_validate(grants.json())
-    ban = Prohibition(assignee=principal_of("ada"), target=graph_of(iri), action=Action.READ)
-    put = await scene.http.put(
-        f"{scene.tenant}/grants",
-        content=GrantSet(grants=held_grants.grants, prohibitions=[ban]).model_dump_json(
-            exclude_none=True
-        ),
-        headers=scene.headers("ada", **{"If-Match": grants.headers["etag"], "Content-Type": JSON}),
-    )
-    assert put.status_code == 200, put.text
 
 
 async def test_a_holder_the_writer_may_not_read_is_never_copied_into_the_refusal():  # RISK-5
