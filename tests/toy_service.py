@@ -3,6 +3,7 @@
 import uuid
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 import httpx
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -14,6 +15,7 @@ from rdf_persistence import (
     IdSource,
     JwksTokenVerifier,
     Problem,
+    RuleRefusal,
     ServiceKit,
     ServiceSettings,
     Store,
@@ -38,6 +40,7 @@ from tests.fixtures.library.domain import generated
 from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre, Note
 from tests.fixtures.library.domain.generated.library import Library
 from tests.fixtures.library.domain.generated.scans import Scan
+from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
 from tests.toy import (
     REVIEW_WORKFLOW,
     ROLES,
@@ -116,6 +119,26 @@ DUNE_BODY = body_of(dune_book())
 SCAN_BODY = body_of(scan_of_dune())
 
 
+HELD = "https://example.org/problems/key-held"
+FIXED_HOLDER = "https://example.org/library/holder/1"
+_REFUSED_ISBNS = {"held": 409, "malformed": 422}
+
+
+def fixed_refusal(old: object, new: Any, principal: object, reader: object) -> None:
+    """A write rule for ``Book`` that refuses ``held`` (409) and ``malformed`` (422) isbns, with no reader call."""
+    status = _REFUSED_ISBNS.get(new.isbn or "")
+    if status is not None:
+        raise RuleRefusal(
+            HeldKeyProblem(
+                type=HELD,
+                title="Key held",
+                status=status,
+                detail=f"isbn {new.isbn} is {new.isbn}",
+                holder=FIXED_HOLDER,
+            )
+        )
+
+
 async def store_scan(
     kit: ServiceKit, tenant: str, principal: str, *, file_key: str | None = None
 ) -> Scan:
@@ -157,6 +180,7 @@ class ToyService:
         deployment: str | None = None,
         public_url: str | None = None,
         toolkit: ToolkitSettings | None = None,
+        refusal_problems: Sequence[type[BaseModel]] = (),
     ) -> None:
         self.signer = TokenSigner(key=shared_key())
         self.store = store or FakeStore()
@@ -202,6 +226,7 @@ class ToyService:
             stores=stores,
             event_bus=event_bus,
             toolkit=toolkit,
+            refusal_problems=refusal_problems,
         )
 
     def client(self) -> httpx.AsyncClient:

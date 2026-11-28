@@ -122,6 +122,7 @@
 |`RpAnnotation` |class |The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone.
 |`RpModel` |class |A pydantic model that refuses unknown fields and validates every assignment.
 |`Rule` |class |An ODRL rule that gives an assignee a ruling on an action over a target.
+|`RuleRefusal` |class |A write rule of the application refuses a write with a problem of its own (consumer-write-rules PD-5).
 |`S3FileStore` |class |A ``FileStore`` over an S3-compatible endpoint.
 |`ServiceKit` |class |The collaborators of the routes.
 |`ServiceSettings` |class |The settings of `install_service`: where the service is mounted, how it names tenants and which role its callers get on a tenant they create.

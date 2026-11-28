@@ -42,7 +42,9 @@ def test_an_importer_writes_no_shared_module_and_imports_them_from_the_owner() -
     )
     for name in TOOLKIT_NAMES:
         assert f"{name}.ts" not in files, f"{name} is the owner's file"
-    assert sorted(files) == ["index.ts", "loan_checks_response.ts"], "only the target's own files"
+    assert sorted(files) == ["index.ts", "library_problems.ts", "loan_checks_response.ts"], (
+        "only the target's own files"
+    )
     assert "rp_" not in files["index.ts"], "the index exports none of the shared modules"
     assert 'from "../../domain/generated/values/loan_checks"' in files["loan_checks_response.ts"], (
         "#371 imports still point at their owner"

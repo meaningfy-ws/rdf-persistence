@@ -62,6 +62,11 @@ ROWS = [
     (exceptions.MigrationFailed, 503, "unavailable"),
     (exceptions.TenantBehind, 503, "tenant-behind"),
     (exceptions.StoreNotWired, 500, "internal-error"),
+    (
+        exceptions.RuleRefusal,
+        500,
+        "internal-error",
+    ),  # the fallback; a registered refusal is answered as built
 ]
 TITLES = {
     "invalid-token": "Invalid token",

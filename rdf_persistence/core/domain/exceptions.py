@@ -67,6 +67,21 @@ class Refused(Conflict):
     """
 
 
+class RuleRefusal(PersistenceError):
+    """A write rule of the application refuses a write with a problem of its own (consumer-write-rules PD-5).
+
+    ``problem`` is the problem the rule built, an instance of a class the service registered as a
+    refusal; the domain does not import ``Problem``, so the entrypoint checks it. The text is the
+    problem's ``detail``, else its ``title``, else its class name. Not a ``Conflict``: code that
+    retries on a ``Conflict`` would retry a 422.
+    """
+
+    def __init__(self, problem: object) -> None:
+        text = getattr(problem, "detail", None) or getattr(problem, "title", None)
+        super().__init__(text if isinstance(text, str) and text else type(problem).__name__)
+        self.problem = problem
+
+
 class InUse(Conflict):
     """A removal is refused because an aggregate of the tenant still refers to a root it removes.
 
