@@ -142,3 +142,24 @@ sections are unique headings.
 ## Delivery decisions
 
 (Recorded by the lead during delivery, R-0007.)
+
+- **D-1 Impact (lead).** `install_openapi` LOW (1 caller, `install_service`); nothing HIGH or
+  CRITICAL, so nothing went to the developer.
+- **D-2 Build (lead).** 1.1 ∥ 1.3 (disjoint files), then 1.2. The review and the checker started
+  on 1.1 and 1.3 while 1.2's gate ran (the developer: "do in parallel if possible").
+- **D-3 1.1's gate in pieces (lead).** `make test-changed` fell back to the fast lane (the seed was
+  still running): 11000 passed. Its `typecheck` failed on `problems.Problem`; the builder switched
+  to the imported `Problem` and re-ran `make typecheck` and `make check-quality`, green. Accepted
+  without a re-run of the combined target: the fix is one name, both halves re-ran.
+- **D-4 Review: one L1–L5 pass, `critical=0` (lead).** Fix floor: Critical only. Under the floor,
+  none re-labelled, all in #459: W-1 a `$defs` name two listed classes share is refused as a clash
+  (no class brings `$defs` today); W-2 no test for a `$defs` clash or two classes sharing a name;
+  S-1 bare `dict` types in `_accepting_refusals`; S-2 the `Raises:` line of `install_service`;
+  S-3 a shorter `_listed`; S-4 grouping the helpers if more post-processing arrives.
+- **D-5 1.2's red evidence (lead).** The builder's red run (the four explicit cases with nothing
+  registered) failed on the unhandled refusal, not on the closed schema. Accepted: that the 409 body
+  with `holder` fails a closed `Problem` (`additionalProperties: false`) was verified on the golden
+  by the gate's reviewer; TC-1 pins the widened `anyOf` the cases now pass against. Gate: the
+  contract file 148 passed, `make typecheck-openapi-ts` green with `HeldKeyProblem` registered,
+  `make test-changed` 11004 passed, `make check-quality` green after `ruff format` of
+  `tests/dump_openapi.py` (formatting only, so `test-changed` was not re-run).

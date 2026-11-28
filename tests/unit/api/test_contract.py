@@ -17,7 +17,8 @@ from schemathesis.specs.openapi.checks import (
 )
 
 from rdf_persistence.core.domain.media import JSON, PROBLEM_JSON
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
+from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, fixed_refusal
 
 CHECKS: list[CheckFunction] = [
     not_a_server_error,
@@ -151,6 +152,69 @@ def test_the_delete_of_a_refusing_class_documents_the_in_use_problem(toy: ToySer
     plain = delete_conflict(toy, "books")["content"][PROBLEM_JSON]["schema"]
     assert plain == {"$ref": "#/components/schemas/Problem"}, "a book keeps today's 409"
     assert "InUseProblem" in toy.app.openapi()["components"]["schemas"], "the component exists"
+
+
+REFUSING_BOOKS = "/libraries/{t}/books"
+REFUSING_BOOK = "/libraries/{t}/books/{aggregate_id}"
+REFUSALS = [("held", 409), ("malformed", 422)]
+
+
+@pytest.fixture
+def refusing() -> Iterator[ToyService]:
+    """A toy whose ``Book`` rule refuses two isbns, with the refusal class registered in the document."""
+    yield ToyService(
+        aggregate_validators={"Book": [fixed_refusal]}, refusal_problems=[HeldKeyProblem]
+    )
+
+
+@pytest.mark.slow
+def test_the_refusing_toy_keeps_to_its_document_on_create(refusing: ToyService) -> None:
+    """TC-4: the generated create cases of a toy with a registered refusal class validate against its document."""
+    assert run_contract(refusing, path=REFUSING_BOOKS, method="POST") == 1
+
+
+@pytest.mark.parametrize(("isbn", "status"), REFUSALS)
+def test_a_refused_create_conforms_to_the_widened_problem(
+    refusing: ToyService, isbn: str, status: int
+) -> None:
+    """TC-4: the 409 and the 422 of a refused create validate against the document's widened ``Problem``."""
+    schema = schemathesis.openapi.from_asgi("/openapi.json", refusing.app)
+    headers = refusing.bearer("ada")
+    ids = make_ids(schema, headers)
+    case = schema[REFUSING_BOOKS]["POST"].Case(
+        path_parameters={"t": ids.tenant},
+        body={**DUNE_BODY, "isbn": isbn},
+        headers=headers,
+        media_type=JSON,
+    )
+    response = case.call()
+    assert response.status_code == status, f"the rule refuses isbn {isbn}: {response.text}"
+    case.validate_response(response, checks=[response_schema_conformance], headers=headers)
+
+
+@pytest.mark.parametrize(("isbn", "status"), REFUSALS)
+def test_a_refused_replace_conforms_to_the_widened_problem(
+    refusing: ToyService, isbn: str, status: int
+) -> None:
+    """TC-4: the 409 and the 422 of a refused replace validate against the document's widened ``Problem``."""
+    schema = schemathesis.openapi.from_asgi("/openapi.json", refusing.app)
+    headers = refusing.bearer("ada")
+    ids = make_ids(schema, headers)
+    current = (
+        schema[REFUSING_BOOK]["GET"]
+        .Case(path_parameters=ids.path_parameters, headers=headers)
+        .call()
+    )
+    assert current.status_code == 200, current.text  # the ETag is read first
+    case = schema[REFUSING_BOOK]["PUT"].Case(
+        path_parameters=ids.path_parameters,
+        body={**DUNE_BODY, "isbn": isbn},
+        headers={**headers, "If-Match": current.headers["etag"][0]},
+        media_type=JSON,
+    )
+    response = case.call()
+    assert response.status_code == status, f"the rule refuses isbn {isbn}: {response.text}"
+    case.validate_response(response, checks=[response_schema_conformance], headers=headers)
 
 
 @pytest.mark.slow

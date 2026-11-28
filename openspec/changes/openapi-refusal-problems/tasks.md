@@ -8,7 +8,7 @@
   `install_service`'s docstring (`service.py:132-133`) says the classes are listed and its
   `Raises:` names the new `ValueError`. Accept: TC-1 to TC-3b pass; `test_openapi_served` and
   `test_rule_refusal.py` pass unedited; task gate green.
-- [ ] 1.2 **contract + tsc** — after 1.1; design.md PD-7, TC-4. The contract cases of TC-4 in
+- [x] 1.2 **contract + tsc** — after 1.1; design.md PD-7, TC-4. The contract cases of TC-4 in
   `tests/unit/api/test_contract.py`; `tests/dump_openapi.py` registers `HeldKeyProblem`. Accept:
   TC-4 passes; `make typecheck-openapi-ts` green; task gate green.
 - [ ] 1.3 **docs** — beside 1.1 (disjoint files). `architecture/api.adoc:210` and
