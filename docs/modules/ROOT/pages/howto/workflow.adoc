@@ -43,10 +43,12 @@ workflow_transitions:
 |`workflow_name` |The name a class refers to. Lower-case letters, digits and hyphens, starting with a letter. Required.
 |`workflow_states` |The names of the states, each listed once: `^[a-z][a-z0-9_-]*$` (lower case, starting with a letter; digits, hyphens and underscores). Required.
 |`initial_state` |The state a new aggregate starts in, one of the states. Required.
+|`assignable` |`true` when the aggregates under the workflow may have assignees (<<assign-the-work>>); `false` when left out.
 |`workflow_transitions` |The transitions. A state may have none.
 |`from_state`, `to_state` |The names of the two states of a transition. Required.
 |`transition_roles` |The names of the roles of which the caller needs one; at least one. Each is a role the roles file defines (xref:user-manual/access.adoc#define-the-roles[step 11]). Required.
 |`comment_required` |`true` when the transition needs a comment; `false` when left out.
+|`clears_assignees` |`true` when the transition removes every assignee; only on an assignable workflow, else the file is refused; `false` when left out.
 |===
 
 The IRI of a state is the workflow's `id`, a slash and the state's name:
@@ -140,6 +142,10 @@ A plain write is any add or replace that is not a transition: the generic `POST`
 * *A new book gets the initial state.* Leave `workflow_status` out; reading the book shows
   `"workflow_status": "https://example.org/ns/library/workflows/review/draft"`.
 * *A write that leaves the state out keeps it.* So does one that names the stored state.
+* *A plain write cannot change the assignees either.* A replace that omits `assigned_to` keeps the
+  stored ones, and one that names exactly the stored set passes; any other set is refused
+  (`Forbidden`), and so is an add that names an assignee. Only `collab.assign`, a clearing
+  transition and the release described in <<Assign the work>> change them.
 * *A write that names another state is refused* with `Forbidden` and changes nothing. Through the
   generic API this is the 403 problem `forbidden`. A new book may name the initial state only.
   If the caller read the book before another writer moved it, and the write would change the state,
@@ -287,6 +293,124 @@ the provenance graph. Code that holds a session can read any activity of that gr
 * A plain write of the aggregate leaves its records as they are.
 * Deleting the aggregate deletes its comments, in the same request, and keeps its records.
 
+== Assign the work
+
+A workflow can say who has the work in hand. The assignees of an aggregate are the principals in
+its slot `assigned_to`, which the toolkit owns as it owns the state: only the calls below change
+it. Two switches in the workflow file turn it on:
+
+[source,yaml]
+----
+id: https://example.org/ns/library/workflows/review
+workflow_name: review
+assignable: true
+workflow_states: [draft, in_review, accepted]
+initial_state: draft
+workflow_transitions:
+  - {from_state: draft, to_state: in_review, transition_roles: [librarian]}
+  - {from_state: in_review, to_state: accepted, transition_roles: [librarian, reviewer], clears_assignees: true}
+----
+
+* `assignable: true` lets `assign` name principals; `false` when left out. A workflow that is not
+  assignable refuses a non-empty set (`InvalidBody`), and still accepts the empty one.
+* `clears_assignees: true` on an edge drops every assignee when the aggregate moves along it;
+  `false` when left out. A workflow file that has a clearing edge and is not assignable is refused
+  when the service starts (`InvalidWorkflow`, naming the file and the edge).
+
+=== Make the assignment
+
+[source,python]
+----
+async with kit.collaboration(checked) as collab:
+    v4 = await collab.assign(book, [ada, bob], if_version=v3)
+    v5 = await collab.assign(book, [], if_version=v4)    # nobody
+----
+
+`collab.assign(iri, principals, *, if_version, command=None)` makes `principals` (absolute IRIs)
+the whole set of assignees and returns the new version token; `command` is the `Assignment` to
+store, as for `transition`. It replaces the set: to add one principal, pass the stored ones and the
+new one. A set equal to the stored one stores nothing and returns `if_version`. The call checks, in
+this order:
+
+. the caller may read the aggregate;
+. no Prohibition of `modify` applies to the caller (it blocks every use of this call, taking the
+  work for oneself included);
+. the aggregate still has the version `if_version`, else `Conflict`, whatever the checks below
+  would say;
+. each principal is an absolute IRI that an IRI in a request may hold (`InvalidBody`);
+. the aggregate's class is under a workflow, and the workflow is assignable if the set is not empty
+  (`InvalidBody`);
+. the caller has the authority, as below;
+. every principal added reads the aggregate (`InvalidBody`, naming the first that does not).
+
+*Who may call it.*
+
+* A caller who may `modify` the aggregate sets any set.
+* A caller without `modify` may drop itself: it is an assignee and the new set is the stored one
+  less itself.
+* A caller without `modify` may take the work for itself: the new set is the stored one plus the
+  caller, and the caller holds a role on an edge that leaves the current state (a state none is
+  stored in counts as the initial one).
+* Every other change is `Forbidden`.
+
+*Who may be named.* Each principal added must be able to read the aggregate by the tenant's stored
+grants, tenant-level or on the aggregate. A principal that reads only through a role of its token
+(a system role) does not count, because the toolkit holds no token of another principal; it is
+refused as one who may not read. The caller who adds itself is not checked again.
+
+One assignment stores, in one request, the new set and an `Assignment`, a PROV activity written
+into the tenant's provenance graph, as a `Transition` is.
+
+=== Read the assignments
+
+`collab.assignments(iri)` returns the aggregate's `Assignment` models, oldest first, with the same
+checks as `transitions`: `read` on a stored aggregate, `NotFound` for one that is not stored. Its
+records stay in the provenance graph when the aggregate is deleted.
+
+[cols="1,3",options="header"]
+|===
+|Slot |What it holds
+|`used_resource` |The IRI of the aggregate.
+|`assigned_principals` |The principals this change added.
+|`released_principals` |The principals this change took away, or the toolkit released.
+|`started_at_time` |The time of the change.
+|`was_associated_with` |The IRI of the principal that made it, in a list.
+|===
+
+=== Clear the assignees with an edge
+
+A transition along a clearing edge stores the aggregate with no assignee, and its `Transition`
+names those it dropped in `released_principals`. A transition along any other edge leaves the
+assignees as they are.
+
+=== Release the assignees who lose access
+
+When a grant change removes the read access of an assignee, the toolkit releases it: the principal
+leaves the assignees of every aggregate it can no longer read, and an `Assignment` records it in
+`released_principals`, with the caller who changed the grants as its agent. It runs after the
+route that replaces the grants (`PUT …/grants`) has stored them, in the same request. A failure
+does not undo the grants: the route answers as before, a warning is logged, and a root that is
+refused (a validator of your own, a write guard) is logged and does not stop the others. The
+release recomputes from the grants as they are, so the next grant change finishes one that was
+interrupted.
+
+Two limits follow.
+
+* Only that route releases. A migration that renames or drops a role, or a direct call to
+  `Tenancy.set_grants`, releases nothing. A consumer that changes grants this way calls
+  `await kit.release_assignees(tenant, caller)`, which is public, once after the change.
+* The release is not atomic with the grants, and a call to `assign` that races a grant change can
+  leave an assignee without access until the next grant change.
+
+Each released aggregate is a commit: it changes the version of the aggregate, and a client that
+was editing it gets a `Conflict`.
+
+=== List the work of a principal
+
+The generic listing takes the filter that a review queue needs: `GET
+/libraries/{t}/books?assigned_to=<principal IRI, URL-encoded>` lists the books the caller may read
+that name the principal, and it combines with `workflow_status`.
+
 == Find the aggregates in a state
 
 `session.find(Book, workflow_status=state_iri(workflow, "in_review"))` answers the IRIs of the
@@ -315,6 +439,23 @@ Of `transition`; a refused transition stores nothing:
 |`DatabaseGone` |The tenant database does not exist.
 |===
 
+Of `assign`; a refused assignment stores nothing:
+
+[cols="1,3",options="header"]
+|===
+|Error |When
+|`LookupError` |The schema does not import `rp_workflow`.
+|`NotFound` |The caller can see nothing of the aggregate, or it is not stored.
+|`Forbidden` |The caller may see the aggregate but not read it; `modify` is prohibited on it, self-assignment included; or the caller lacks `modify` and changes more than itself (someone else, or itself without a role on an edge that leaves the current state).
+|`Conflict` |The version is not `if_version` (checked after the read and the Prohibition, before every refusal below), or the aggregate was removed meanwhile.
+|`InvalidBody` |A principal is not an absolute IRI (the message names it); the aggregate's class is under no workflow; the workflow is not assignable and the set is not empty; or an added principal may not read the aggregate, a read that only a token role gives included (the message names it).
+|`DatabaseGone` |The tenant database does not exist.
+|===
+
+A plain write that adds, drops or changes an assignee is `Forbidden`, as for the state.
+
+Of `assignments`: the errors of `transitions`, below.
+
 Of `transitions`:
 
 [cols="1,3",options="header"]
@@ -327,7 +468,8 @@ Of `transitions`:
 |===
 
 At start: `InvalidWorkflow`, from `install_service` or `ServiceKit`, for the faults listed under
-<<Start the service with the workflow>>. It is also a `ValueError`.
+<<Start the service with the workflow>>, and for a clearing edge in a workflow that is not
+assignable. It is also a `ValueError`.
 
 == Limits
 

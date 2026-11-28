@@ -76,6 +76,20 @@ target or an assignee that is not an IRI answers `InvalidGrant`. Only the new se
 tenant whose stored grants name a role that is no longer defined is not stuck: read the grants,
 drop the grant the error names, and write the set again.
 
+*Assignees.* An aggregate under an assignable workflow can name the principals who have the work
+in hand (xref:howto/workflow.adoc#assign-the-work[Assign the work]); the rules below touch your
+grants:
+
+* Who may assign: a caller with `modify` sets anyone. Without it, an assignee may drop itself, and a
+  caller holding a role on an edge that leaves the aggregate's state may take the work for itself.
+  A Prohibition of `modify` blocks every one of these.
+* Who may be named: only a principal that reads the aggregate by the tenant's stored grants. A
+  principal that reads only through a role of its token is refused.
+* Losing access: when `PUT …/grants` takes the read access of an assignee away, the toolkit releases
+  the assignee from the aggregates it can no longer read. A change of grants made any other way
+  (a migration's `grant_roles`, a direct `Tenancy.set_grants`) releases nothing; call
+  `kit.release_assignees(tenant, caller)` after it.
+
 == What the check answers
 
 *The check* runs on every tenant route, after the token is verified and before the route's own

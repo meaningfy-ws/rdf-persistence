@@ -365,6 +365,13 @@ lane that ran them still runs them and they prove what they proved.
   (listed in PR #443). Three are spine upkeep the lead carries: the error-matrix row of
   `TAKES_A_CLASS_ASSIGNED` (amended below), and `architecture/data-flows.adoc` and an `rp-messages`
   spec delta for the two new toolkit-filled slots, both added to task 2.4.
+- **D-20** (developer asked for parallel work, 2026-11-28): stage 2 starts before stage 1 has
+  merged, on `feat/assignee-release` stacked on stage 1's head (`378ca201`), in
+  `.worktrees/assignee-release`. It is rebased onto `develop` once #443 merges, before its PR. Order
+  inside the stage: the docs (2.4) at once (no seed needed); after the seed, the release (2.1,
+  2.2: `assignments.py`, `kit.py`, `router.py`, `tests/unit/api/`) beside the queue listing (2.3:
+  `tests/feature/assignees.feature` with T15); then T16 in that feature file. Impact on
+  `TenantApi.set_grants`: LOW (one caller, the route).
 - **D-16** (lead, 2026-11-27): the worktree was installed with a bare `uv sync`, without the
   extras `make install` adds (`--all-extras`); the API tests failed for a missing module and both
   first task gates fell back to the full lane and timed out. Reinstalled with `make install` and
