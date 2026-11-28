@@ -21,14 +21,67 @@ half old or refused (exit 2, `cannot be read`, step 2). Run it again once EA has
 `pip install 'rdf-persistence[generate]'`). It puts `rp-uml2linkml` and `rp-generate` on your path.
 If your project runs tools through uv, prefix every command here with `uv run`.
 . A model that follows the xref:reference/uml-conventions.adoc[UML conventions]. Make it follow them
-first: an element no convention maps stops the run. In short, a _root_ is a class stereotyped
-«root», the entry point of an aggregate (the unit the toolkit stores and loads whole); a _part_ is a
-class drawn inside the same aggregate boundary as its root; `Described` is the mixin that gives an
-object a label and a description, and `Tracked` the one that carries the tracking
-statements a commit writes about it. A root and its parts get both by default.
+first: an element no convention maps stops the run. In short, a _part_ is a class that a
+composition draws as part of another; a _root_ is a concrete class that is no one's part, the entry
+point of an aggregate (the unit the toolkit stores and loads whole), which the converter derives
+(<<aggregates>>); `Described` is the mixin that gives an object a label and a description, and
+`Tracked` the one that carries the tracking statements a commit writes about it. A root and its
+parts get both by default.
 
 The names in the snippets (`lib:`, `Book`) belong to a small library model. In EA a name carries its
 prefix: the class is `lib:Book`, an attribute `dct:title`, a role `lib:hasChapter`.
+
+[#aggregates]
+== Aggregates, transactions and queries
+
+Three words are used with one meaning each in a model and in this guide.
+
+* An _aggregate_ is a set of classes stored together and consistent at every moment: one named
+  graph, one version token, one atomic write, one API resource. Its _root_ is the class a pointer
+  from outside names.
+* A _transaction_ is the change a use case commits.
+* A _query_ is what a screen reads, from one aggregate or across several.
+
+The model decides aggregates, use cases decide transactions, screens decide queries. Only the first
+is drawn: transactions and queries are never drawn in the class model, and the converter converts
+nothing of them.
+
+The model states its aggregates with compositions
+(xref:reference/uml-conventions.adoc#composition[a composition]): a whole composes each part, beside
+the association that carries the property. The roots follow; nothing marks them. The rules for a
+model are the adopted `activity:modelling` rules of this repository, P-0025 to P-0040 in
+`docs/rules/`: for example P-0029 (state each fact once), P-0036 (generate every artefact from the
+UML, never edit it), P-0038 (fix the converter here, not in the application) and P-0040 (the
+deletion test, below). The conventions the converter checks are on the
+xref:reference/uml-conventions.adoc[conventions page].
+
+[#deletion-test]
+=== The deletion test
+
+Ask it of each class X that a class W holds. X is a part of W only when it cannot exist without W
+and goes down with it. Then draw a composition from W to X. Otherwise X is an aggregate of its own,
+and W points at its root.
+
+In the library, delete a `Book` and its `Chapter` objects go with it, and no `Chapter` lives
+without a `Book`: `Chapter` is a part, drawn `Book *-- Chapter`. A `Reader` outlives the book it
+borrowed: `Reader` is a root, and `borrows` is a pointer. A graph loaded for an aggregate is deleted
+with it but kept apart: that is an
+xref:reference/uml-conventions.adoc#own-graph[«own graph» composition].
+
+[#diagram-kinds]
+=== Two kinds of diagram
+
+A model draws two kinds of diagram of each converted package, so that each reads cleanly:
+
+* `<package> · aggregates` (a middle dot, U+00B7, between spaces) shows the classes and the
+  compositions only: the aggregates, as trees.
+* Every other class diagram of the package shows the associations and no composition.
+
+EA shows every connector whose two ends are on a diagram, so a new diagram starts with both kinds of
+connector. Hide the associations on the aggregates diagram and the compositions on the others with
+EA's connector visibility for the diagram. `rp-uml2linkml --check` reports a diagram that shows what
+it should not (`aggregates-diagram`, `composition-diagram`); the conversion never changes for it. It
+reads which elements and connectors a diagram shows, never where they are placed.
 
 [#prefixes]
 == 1. Write the prefixes file
@@ -87,7 +140,8 @@ xref:reference/uml-conventions.adoc#packages[conventions page] gives the rest.
 |`--package` |The package to convert, with its subpackages: a name, or a path from the model's root
 package (`MODEL/library`) when the name is ambiguous. Required.
 |`--prefixes` |The prefixes file of step 1. Required.
-|`--out` |The folder to write into. Required.
+|`--out` |The folder to write into. Required unless `--check` is given.
+|`--check` |Convert and report, write nothing (<<check-model>>).
 |`--root-name` |The root schema's name (default `app`). It is also the prefix of every module file
 and of the report.
 |`--exclude-package` |A package path to leave out with its subtree; repeatable. A connector that
@@ -139,6 +193,36 @@ add `.uml-write-*` to your project's `.gitignore` so that it is never committed.
 
 Run the converter once at a time for one `--out`: two runs into the same folder at once are not
 supported, and the last to move a file wins.
+
+[#check-model]
+=== Check the model
+
+[source,shell]
+----
+rp-uml2linkml library.qea --package MODEL/library --prefixes prefixes.yaml --check
+----
+
+`--check` reads and converts exactly as a run does and writes nothing, so it needs no `--out`. It
+exits 1 when the model has a problem (printed to standard error as above) or breaks a convention
+(its lines printed to standard output, in the report's format), and 0 otherwise; 2 is an unusable
+setup, as in the table above. Put it in CI and the build fails when a model drifts. The conventions
+it fails on are listed on
+xref:reference/uml-conventions.adoc#conventions[the conventions page]; a model that still draws
+«root» passes while its `root` and `deprecated-root` lines are only informational.
+
+Three limits:
+
+* Problems come first and alone. When the `.qea` cannot be read into a model (a diamond that names
+  no whole, a Realisation from a class), `--check` prints only those problems. When the conversion
+  has a problem, it prints only the problems too, not the convention lines: a model that cannot
+  convert has no conventions to report. Fix them and run again.
+* It does not run the whole-model check (<<whole-model>>), which loads staged files, and it does not
+  run `rp-generate`'s checks (step 4).
+* A normal run never fails on a convention line: it writes them in the report.
+
+A model's own checks (a naming rule of one application, say) reuse the public reader
+`rdf_persistence_generation.uml.qea.read_qea`, which returns the `UmlModel` the converter reads, or
+the problems. The converter has no plug-in for them.
 
 [#report]
 == 3. Read the report
@@ -197,7 +281,29 @@ a prefix (`lib:loan`) to choose the IRI, before the first data is stored.
 least one role, a `*.roles.yaml` other than `<root-name>.roles.yaml`, or, when it draws at least one
 workflow, a `workflows/*.workflow.yaml` this run did not write. Also a `.uml-write-*` folder a
 killed run left: `left by an interrupted run; delete it`.
+|`root` |A derived root and its parts: `Shelf	parts Book, Chapter, Page`, or `no parts`. Read these
+after each redraw: a class that no composition makes a part is a root, and the line is how you see
+that one became a root by omission. Informational.
+|`deprecated-root` |The model still draws «root» and the stereotypes agree with the derived roots:
+drop them (<<redraw>>). Informational, so `--check` passes.
+|`boundary-disagrees` |A boundary object in a converted package is named for no root. A boundary is
+an annotation now, never read for membership; rename it for its root or delete it.
+|`composition-named` |A composition carries a note, or a role that its association already gives; the
+association carries them.
+|`aggregates-diagram` |An aggregates diagram shows an association or an element that is no class,
+or is named for another package (<<diagram-kinds>>).
+|`composition-diagram` |A class diagram that is no aggregates diagram shows a composition
+(<<diagram-kinds>>).
+|`unprefixed-name` |A class, attribute or role is written with no prefix.
+|`unused-enumeration` |An enumeration that no dependency ranges over; it is generated all the same.
+|`drawn-toolkit-parent` |A class generalises a toolkit class that the model draws; write it as
+`rp_mixins=<Class>` on the class.
+|`tenant-required-pointer` |A required pointer from the tenant root or its parts to a class outside
+the tenant's aggregate: the tenant cannot be created before its target exists.
 |===
+
+Under `--check` (<<check-model>>), the kinds `no-note`, `unspecified-multiplicity`,
+`implicit-meaning` and each kind from `boundary-disagrees` down fail the check; the others never do.
 
 [#roles-file]
 === The roles file
@@ -354,6 +460,33 @@ and settings your composition root builds, and every argument but `app` is passe
   the creator of a tenant gets that role, so a name the file does not define gives the creator no
   rights. The settings are in xref:howto/settings.adoc[Configure the deployment values].
 
+[#redraw]
+== Redrawing a boundary model
+
+An earlier version read an aggregate from a Boundary object's rectangle and from composite
+associations. Neither is read now: a composite association is refused, and a boundary makes nothing
+owned. A model drawn that way is redrawn with compositions, in this order:
+
+. Run `rp-uml2linkml --check` on the unchanged model. It lists every composite association and every
+  class that would become a root by omission.
+. In EA, draw an Aggregation (composition, strong diamond at the whole) from each whole to each
+  part, beside the existing association, and replace each composite association by a plain
+  association and a composition. Keep «root» for now.
+. Convert and diff the schemas against the last conversion. They are the same when every
+  boundary-owned association was the only association between its two classes, the pairs you drew
+  as compositions are exactly those, and the boundary owned no association from a part to a part
+  (an internal reference, a self-association). That is the precondition. A boundary used to own every
+  association from a member to a member that was not the root, so a reference it owned by accident
+  changes the output once redrawn: decide each difference. The report gains the `root` and
+  `deprecated-root` lines, and a `root_class` problem names a class to fix.
+. Move loaded-graph parts to «own graph» compositions and point only at roots
+  (xref:reference/uml-conventions.adoc#pointers[pointers]).
+. Drop «root», turn each boundary into an annotation (or delete it) and add the
+  `<package> · aggregates` diagrams. An agreeing «root» does not fail `--check`, so steps 1 to 4 can
+  run under a CI gate.
+. Put `rp-uml2linkml --check` in CI.
+
+[#limits]
 == Limits
 
 * The converter reads `.qea` files only, not the XMI export model2owl reads, and writes schemas;
