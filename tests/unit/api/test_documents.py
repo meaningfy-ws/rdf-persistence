@@ -119,6 +119,9 @@ def test_the_aggregate_types_are_the_roots_with_a_path_in_the_tenant_database(
     default_documents,
 ) -> None:
     assert sorted(default_documents.aggregates) == [
+        "audit-findings",
+        "audit-results",
+        "audits",
         "authors",
         "book-collections",
         "books",

@@ -757,6 +757,30 @@ def test_a_referenced_delete_value_other_than_refuse_gives_one_problem_naming_it
     assert "'cascade'" in named[0], problems
 
 
+@pytest.mark.parametrize(
+    ("value", "refused"),
+    [
+        ("shelf", False),
+        ("owning_shelf", False),
+        ("Shelf", True),
+        ("owning-shelf", True),
+        ("2shelf", True),
+        ("''", True),
+    ],
+    ids=["one-word", "snake-case", "upper-case", "hyphen", "digit-first", "empty"],
+)
+def test_the_value_of_rp_dependent_on_is_a_snake_case_slot_name(
+    break_toy: Breaker, value: str, refused: bool
+) -> None:
+    """PD-12: the value names a slot, so it follows the slot-name pattern, not the URL-segment one."""
+    problems = _planted(
+        break_toy, "books.yaml", "rp_path: books", f"rp_path: books\n      rp_dependent_on: {value}"
+    )
+    named = [p for p in problems if f"[{HardRule.ANNOTATION.value}] Book:" in p]
+    assert bool(named) is refused, f"{value!r}: refused={refused}, problems {problems}"
+    assert all("rp_dependent_on" in p for p in named), f"only the new annotation: {named}"
+
+
 @pytest.mark.parametrize("slot", ["chapters", "authors", "id", "created", "binding"])
 def test_a_key_over_a_slot_that_cannot_be_keyed_names_class_key_and_slot(
     break_toy: Breaker, slot: str

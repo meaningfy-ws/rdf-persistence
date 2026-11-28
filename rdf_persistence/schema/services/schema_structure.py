@@ -30,6 +30,7 @@ from rdf_persistence.core.domain.exceptions import InvalidBody
 from rdf_persistence.core.domain.generated.rp_core import (
     AggregateKey,
     DatabaseKind,
+    DependenceLink,
     GraphKind,
     OnReferencedDelete,
     RpAnnotation,
@@ -636,6 +637,44 @@ def aggregate_keys(view: SchemaView) -> list[AggregateKey]:
         if is_scoped(key)
     ]
     return sorted(keys, key=lambda key: (key.root_class, key.key_name))
+
+
+def _concrete_iris(view: SchemaView, name: str) -> list[str]:
+    """The IRIs of the concrete classes of ``name`` and its ``is_a`` descendants, sorted."""
+    found = (
+        view.get_class(descendant) for descendant in view.class_descendants(name, mixins=False)
+    )
+    return sorted(
+        view.get_uri(cls, expand=True) for cls in found if not cls.abstract and not cls.mixin
+    )
+
+
+def _names_pointer(view: SchemaView, name: str) -> bool:
+    return bool(annotation_text(view.get_class(name), RpAnnotation.RP_DEPENDENT_ON))
+
+
+def dependence_links(view: SchemaView) -> list[DependenceLink]:
+    """The links of dependence of the schema: one per class that names a pointer slot (``rp_dependent_on``) and has no ``is_a`` ancestor that does.
+
+    A subclass of an annotated class shares its pointer, so it is a part of the same link: each side
+    lists the class and its concrete subclasses. The whole is what the pointer slot ranges over, read
+    from the annotated class. The entries are in the order of the part classes' IRIs.
+    """
+    links = [
+        DependenceLink(
+            part_classes=_concrete_iris(view, str(cls.name)),
+            pointer=view.get_uri(view.induced_slot(pointer, cls.name), expand=True),
+            whole_classes=_concrete_iris(view, str(view.induced_slot(pointer, cls.name).range)),
+        )
+        for cls in view.all_classes().values()
+        if not cls.mixin  # a mixin's annotation does not count (D-7)
+        and (pointer := annotation_text(cls, RpAnnotation.RP_DEPENDENT_ON))
+        and not any(
+            ancestor != cls.name and _names_pointer(view, ancestor)
+            for ancestor in view.class_ancestors(cls.name, mixins=False)
+        )
+    ]
+    return sorted(links, key=lambda link: link.part_classes)
 
 
 def keyed_slots(view: SchemaView, cls: ClassDefinition) -> list[tuple[SlotDefinition, UniqueKey]]:

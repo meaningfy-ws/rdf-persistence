@@ -123,6 +123,24 @@ classes:
       key_roots:
         required: true
         description: The IRIs of the roots that hold the values, sorted.
+  DependenceLink:
+    title: Dependence link
+    description: >-
+      One link of dependence read from the schema: the class of a dependent aggregate (its part) and
+      the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each
+      side lists the class and its concrete subclasses.
+    class_uri: rp:DependenceLink
+    slots:
+      - part_classes
+      - pointer
+      - whole_classes
+    slot_usage:
+      part_classes:
+        required: true
+      pointer:
+        required: true
+      whole_classes:
+        required: true
 
 slots:
   url_segment:
@@ -232,6 +250,23 @@ slots:
     slot_uri: rp:keyRoots
     range: uri
     multivalued: true
+  part_classes:
+    title: Part classes
+    description: The IRIs of the dependent class and of its concrete subclasses.
+    slot_uri: rp:partClass
+    range: uri
+    multivalued: true
+  pointer:
+    title: Pointer
+    description: The IRI of the predicate of the pointer slot, from the part to its whole.
+    slot_uri: rp:pointer
+    range: uri
+  whole_classes:
+    title: Whole classes
+    description: The IRIs of the class the pointer ranges over and of its concrete subclasses.
+    slot_uri: rp:wholeClass
+    range: uri
+    multivalued: true
 
 enums:
   RegistryKind:
@@ -313,6 +348,14 @@ enums:
           Class annotation (see OnReferencedDelete). `refuse` on an aggregate root class: deleting an
           instance that another aggregate still points at is refused, naming the referrers.
         meaning: rp:AnnotationOnReferencedDelete
+      rp_dependent_on:
+        title: Dependent on
+        description: >-
+          Class annotation on an aggregate root: the name of its pointer slot, a required single-valued
+          slot that ranges over the root it depends on (its whole). The class is a dependent aggregate:
+          stored in a graph of its own, written without touching its whole, and deleted with it. A
+          subclass inherits it; mixins do not carry it.
+        meaning: rp:AnnotationDependentOn
       workflow:
         title: Workflow
         description: >-

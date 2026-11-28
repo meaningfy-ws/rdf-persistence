@@ -1788,6 +1788,12 @@ enums:
           A target's modules are of one kind, derived from them, and its package sits in a folder that
           kind allows.
         meaning: rp:BoundaryRuleTargetKind
+      dependence:
+        title: Dependence
+        description: >-
+          A dependent class's pointer slot is required, single-valued and ranges over a served root,
+          and no cycle of dependence exists.
+        meaning: rp:BoundaryRuleDependence
   TargetKind:
     title: Target kind
     description: The kind of a generation target, derived from the modules it generates.

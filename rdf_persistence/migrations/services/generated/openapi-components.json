@@ -81,6 +81,44 @@
       "title": "DatabaseKind",
       "type": "string"
     },
+    "DependenceLink": {
+      "additionalProperties": false,
+      "description": "One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each side lists the class and its concrete subclasses.",
+      "properties": {
+        "part_classes": {
+          "description": "The IRIs of the dependent class and of its concrete subclasses.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "pointer": {
+          "description": "The IRI of the predicate of the pointer slot, from the part to its whole.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
+        "whole_classes": {
+          "description": "The IRIs of the class the pointer ranges over and of its concrete subclasses.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "part_classes",
+        "pointer",
+        "whole_classes"
+      ],
+      "title": "DependenceLink",
+      "type": "object"
+    },
     "Described": {
       "additionalProperties": false,
       "description": "A mixin giving an object an IRI, a label and a description. The application writes them.",
@@ -412,6 +450,7 @@
         "rp_unlabelled",
         "rp_writes",
         "rp_on_referenced_delete",
+        "rp_dependent_on",
         "workflow",
         "bookkeeping",
         "toolkit_filled",

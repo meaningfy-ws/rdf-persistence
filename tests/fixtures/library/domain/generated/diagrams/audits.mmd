@@ -1,0 +1,13 @@
+classDiagram
+    class Audit {
+        <<root>>
+    }
+    class AuditResult {
+        <<root>>
+    }
+    class AuditFinding {
+        <<root>>
+    }
+    Audit "1" --> "0..1" AuditFinding : cites_finding
+    AuditResult "1" --> "1" Audit : of_audit
+    AuditFinding "1" --> "1" AuditResult : of_result

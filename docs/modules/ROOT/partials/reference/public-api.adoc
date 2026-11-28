@@ -33,6 +33,7 @@
 |`DEFAULT_IRIS` |constant |
 |`DeleteFile` |class |The activity of removing a stored file, with the file aggregate it used and an invalidation of it.
 |`DeleteValidator` |function |
+|`DependenceLink` |class |One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer.
 |`Described` |class |A mixin giving an object an IRI, a label and a description.
 |`DirectorySettings` |class |How the user directory of the identity provider is read.
 |`EventBus` |class |Base class for protocol classes.

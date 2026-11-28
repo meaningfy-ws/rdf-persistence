@@ -271,6 +271,11 @@
          "@type": "@id",
          "@id": "rp:ownedBy"
       },
+      "part_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:partClass"
+      },
       "target": {
          "@type": "@id",
          "@id": "ODRL:target"
@@ -278,6 +283,10 @@
       "sort_by": {
          "@type": "@id",
          "@id": "rp:planSort"
+      },
+      "pointer": {
+         "@type": "@id",
+         "@id": "rp:pointer"
       },
       "principal": {
          "@type": "@id",
@@ -386,6 +395,11 @@
       "version": {
          "@id": "rp:version"
       },
+      "whole_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:wholeClass"
+      },
       "@version": 1.1,
       "AccountSummary": {
          "@id": "rp:AccountSummary"
@@ -416,6 +430,9 @@
       },
       "Contains": {
          "@id": "rp:Contains"
+      },
+      "DependenceLink": {
+         "@id": "rp:DependenceLink"
       },
       "Described": {
          "@id": "rp:Described"

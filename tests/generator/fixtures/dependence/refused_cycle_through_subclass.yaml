@@ -1,0 +1,45 @@
+id: https://example.org/ns/dependence/refused_cycle_through_subclass
+name: refused_cycle_through_subclass
+title: Refused, a cycle through a subclass
+description: X depends over an abstract Y, whose only concrete subclass Z depends on X.
+prefixes:
+  dep: https://example.org/ns/dependence#
+  linkml: https://w3id.org/linkml/
+default_prefix: dep
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Xray:
+    description: Depends on any Yankee.
+    mixins: [AggregateRoot]
+    slots: [yankee]
+    annotations:
+      rp_path: xrays
+      rp_dependent_on: yankee
+  Yankee:
+    description: An abstract root.
+    abstract: true
+    mixins: [AggregateRoot]
+  Zulu:
+    description: The one concrete Yankee; it depends on an Xray.
+    is_a: Yankee
+    slots: [xray]
+    annotations:
+      rp_path: zulus
+      rp_dependent_on: xray
+
+slots:
+  yankee:
+    description: The yankee the xray belongs to.
+    range: Yankee
+    required: true
+  xray:
+    description: The xray the zulu belongs to.
+    range: Xray
+    required: true

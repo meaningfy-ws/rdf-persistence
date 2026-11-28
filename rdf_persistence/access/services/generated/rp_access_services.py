@@ -52,6 +52,7 @@ from rdf_persistence.core.domain.generated.rp_core import (
     AggregateRoot,
     CommitMarker,
     DatabaseKind,
+    DependenceLink,
     GraphKind,
     KeyDuplicate,
     ModuleKind,

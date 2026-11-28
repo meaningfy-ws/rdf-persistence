@@ -645,9 +645,12 @@ classes:
 R = "https://example.org/ns/r#"
 
 
-def test_the_refusing_classes_of_the_toy_are_the_authors() -> None:
+def test_the_refusing_classes_of_the_toy_are_the_authors_and_the_audit_findings() -> None:
     assert refusing_classes(load_schema(TOY)) == frozenset(
-        {URIRef("https://example.org/ns/library#Author")}
+        {
+            URIRef("https://example.org/ns/library#Author"),
+            URIRef("https://example.org/ns/library#AuditFinding"),
+        }
     )
 
 

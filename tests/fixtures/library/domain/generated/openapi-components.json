@@ -248,6 +248,113 @@
       "title": "ApproveBook",
       "type": "object"
     },
+    "Audit": {
+      "additionalProperties": false,
+      "description": "An audit of the library; an aggregate root, the whole that its results depend on.",
+      "properties": {
+        "cites_finding": {
+          "description": "A finding the audit cites, another aggregate outside its own parts, stored as its IRI.",
+          "format": "uri",
+          "type": "string"
+        },
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Audit",
+      "type": "object"
+    },
+    "AuditFinding": {
+      "additionalProperties": false,
+      "description": "A finding of an audit result; an aggregate root that depends on its result, and that cannot be deleted while another aggregate still cites it.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "of_result": {
+          "description": "The audit result a finding belongs to, another aggregate, stored as its IRI.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "of_result",
+        "id",
+        "label"
+      ],
+      "title": "AuditFinding",
+      "type": "object"
+    },
+    "AuditResult": {
+      "additionalProperties": false,
+      "description": "The result of an audit; an aggregate root stored apart from its audit, which cannot exist without it.",
+      "properties": {
+        "description": {
+          "description": "A free-text description of the object.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The IRI that identifies the object.",
+          "format": "uri",
+          "readOnly": true,
+          "type": "string"
+        },
+        "label": {
+          "description": "The preferred label of the object.",
+          "type": "string"
+        },
+        "of_audit": {
+          "description": "The audit a result belongs to, another aggregate, stored as its IRI.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "of_audit",
+        "id",
+        "label"
+      ],
+      "title": "AuditResult",
+      "type": "object"
+    },
     "Author": {
       "additionalProperties": false,
       "description": "An author of the library; an aggregate root that books point at, and that cannot be deleted while a book still does.",
@@ -649,6 +756,44 @@
         "id"
       ],
       "title": "DeleteFile",
+      "type": "object"
+    },
+    "DependenceLink": {
+      "additionalProperties": false,
+      "description": "One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each side lists the class and its concrete subclasses.",
+      "properties": {
+        "part_classes": {
+          "description": "The IRIs of the dependent class and of its concrete subclasses.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "pointer": {
+          "description": "The IRI of the predicate of the pointer slot, from the part to its whole.",
+          "format": "uri",
+          "type": "string"
+        },
+        "type": {
+          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
+          "type": "string"
+        },
+        "whole_classes": {
+          "description": "The IRIs of the class the pointer ranges over and of its concrete subclasses.",
+          "items": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "part_classes",
+        "pointer",
+        "whole_classes"
+      ],
+      "title": "DependenceLink",
       "type": "object"
     },
     "Described": {
@@ -1803,6 +1948,7 @@
         "rp_unlabelled",
         "rp_writes",
         "rp_on_referenced_delete",
+        "rp_dependent_on",
         "workflow",
         "bookkeeping",
         "toolkit_filled",
