@@ -119,3 +119,21 @@ refusal from `aggregate-composition`.
   store.
 - Docs: the aggregate store how-to and the UML guide.
 - Consumers: the first consumer replaces its own cascade (its AG-6 exception) by the annotation.
+
+## Reconciliation (as delivered, 2026-11-28)
+
+| Shaped item | State | PR | Notes |
+|---|---|---|---|
+| The part points to its whole; `rp_dependent_on` (DEC-1) | delivered | #446 | D-6: `DependenceLink` lives in the core model. D-9: `limits` replaces the removed `max_roots` keyword. |
+| The whole's delete right is enough (DEC-2) | delivered | #450 | D-1: delete validators run in the cascade. PD-10: unreadable parts are never named, and D-13 extends this to `NotFound` and `Forbidden`. |
+| A write checks the whole; the pointer is fixed (DEC-3) | delivered | #450 | D-8: `NotFound` carries no `iris`. |
+| All or nothing, transitive, `max_roots` (DEC-4) | delivered | #450 | D-10: discovery counts parts, not rows. D-11: one linear late-part guard. D-3: starvation is accepted, and the caller retries. |
+| `InUse` for a refusing part (DEC-5) | delivered | #450 | |
+| One activity, one removal per aggregate (DEC-6) | delivered | #450 | D-2 |
+| `rp-generate` checks (DEC-7) | delivered | #446 | D-7: a mixin's annotation does not count. |
+| Converter emits the dependent root | delivered | #452 | D-12 |
+| On Fuseki (RISK-1) | delivered | #450 | IT-D1 to IT-D5 and a conformance scenario |
+
+Reviews: per-stage L2+L3 passes, checkers, an adversarial tester after the cascade, and the
+end-of-epic full review (D-13). Their floor is issue #453. Accepted by the developer on 2026-11-28,
+with two decisions standing as delivered (`evidence/acceptance.md`).

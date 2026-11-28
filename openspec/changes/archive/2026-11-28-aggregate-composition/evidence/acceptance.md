@@ -1,8 +1,19 @@
 # Acceptance: aggregate-composition
 
-2026-11-28: **deferred to the developer**, who was away and had granted delivery to the end. Not
-skipped and not accepted: validation ends with a person (epic-delivery). No release is cut before
-the developer has done what follows.
+**Verdict: accepted by the developer, 2026-11-28** ("I accept and do ea probe to complete epic").
+
+The developer accepted the delivered change as a whole: the scenarios, the DEC-4 re-shape and the
+DEC-2 amendment, the delivery decisions D-1 to D-17, and the rules P-0025 to P-0040. At the
+developer's request the lead ran the EA probe (task 1.13) on the EA-saved models available; it is
+recorded in `ea-connectors.md`, and RISK-9 is closed with one accepted residual (no composite
+`Aggregation` was found to read). No demo was run: the developer accepted on the delivered evidence.
+
+The record below is kept as written while the acceptance was pending.
+
+---
+
+2026-11-28, pending: **deferred to the developer**, who was away and had granted delivery to the
+end.
 
 ## What the developer validates
 

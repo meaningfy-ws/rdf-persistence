@@ -139,7 +139,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   rest open; the consumer told the change id (D-12). No release is cut before stage 3 merges
   ([PD-17](design.md#pd-17), A-23). Accept: gates green, PR merged. (The EA probe moved to 1.13,
   D-17.)
-- [ ] 1.13 Developer, before any release ([RISK-9](design.md#risk-9), [D-4](design.md#d-4),
+- [x] 1.13 Developer, before any release ([RISK-9](design.md#risk-9), [D-4](design.md#d-4),
   D-17): run the `@manual` scenario "An EA-drawn composition reads the same either way" of
   [`features/composition.feature`](features/composition.feature); the lead records EA's columns in
   `evidence/ea-connectors.md`. Accept: both drawings give the same schemas and the shared one is
@@ -251,7 +251,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
 ## Roadmap
 
 - [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.8 · [x] 1.6 · [x] 1.7 ·
-  [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [ ] 1.13 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 ·
+  [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 1.13 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 ·
   [x] 2.6 · [x] 2.7 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5 · [x] 3.6
   (1.0 is the lead's reading of Sparx's docs and gates nothing ([D-4](design.md#d-4)); the
   developer's EA probe is the `@manual` scenario run in 1.12 before any release; 1.2 and 1.3 in
