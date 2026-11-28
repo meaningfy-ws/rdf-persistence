@@ -49,7 +49,7 @@ from rdf_persistence_generation.uml.context import (
     path_of,
 )
 from rdf_persistence_generation.uml.conventions import convention_lines, missing_notes
-from rdf_persistence_generation.uml.links import link_usages
+from rdf_persistence_generation.uml.links import link_usages, tree_parts
 from rdf_persistence_generation.uml.mixins import check_default_mixins
 from rdf_persistence_generation.uml.modules import (
     PATH_SEPARATOR,
@@ -378,7 +378,7 @@ def _imports(
 
 def _parts(ctx: Context, found: UmlAggregates, parent_of: Mapping[int, str]) -> set[int]:
     """The classes that are parts: a tree member, or one that inherits from a part (PD-4, A-16)."""
-    direct = {row.part_id for row in found.part_of or []}
+    direct = tree_parts(ctx, found)
     by_label = {each.label: key for key, each in ctx.elements.items()}
     parts: set[int] = set()
     for key in ctx.elements:

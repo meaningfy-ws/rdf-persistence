@@ -345,13 +345,6 @@ Feature: A UML class model becomes LinkML that the toolkit accepts
     And the shape result is not generated and the report names it
     And the shelf count is an aggregate root
 
-  # spec: rp-uml-import / a generated part in its own graph
-  Scenario: A generated class in its own graph waits for dependent aggregates
-    Given an inventory with an "own graph" composition to the generated shelf count
-    When the package is converted
-    Then the run fails naming the inventory, the shelf count and "dependent-aggregates"
-    And nothing is written
-
   # spec: rp-uml-import / refused compositions (DEC-7)
   Scenario: A loaded graph cannot be an inline part
     Given a shelf count with a plain composition to a count report stereotyped "loaded graph"

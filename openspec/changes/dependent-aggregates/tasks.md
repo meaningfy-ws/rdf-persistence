@@ -1,4 +1,4 @@
-EPIC: dependent-aggregates (proposal.md, issue #437 A.5). Decisions: design.md PD-1 to PD-18, D-1 to D-10, DEC-1 to DEC-7.
+EPIC: dependent-aggregates (proposal.md, issue #437 A.5). Decisions: design.md PD-1 to PD-18, D-1 to D-13, DEC-1 to DEC-7.
 
 > Derives from: EPIC `dependent-aggregates`. Three stages (MEDIUM), one pull request each.
 
@@ -48,7 +48,7 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   test-generator`. Accept: both scenarios (all outline rows) pass.
 - [x] 1.7 Docs ([PD-16](design.md#pd-16)): `docs/modules/ROOT/pages/user-manual/model.adoc`
   (annotation, DEC-7 rules). Accept: `make check-docs` passes.
-- [ ] 1.8 Lead: `make check-all`; one review pass; PR. Accept: gates green; no Critical open.
+- [x] 1.8 Lead: `make check-all`; one review pass; PR. Accept: gates green; no Critical open.
 
 ## 2. Stage 2: write guard and cascade (PR 2), after stage 1
 
@@ -127,27 +127,27 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   (incl. [D-1](design.md#d-1) validators, [RISK-8](design.md#risk-8) retry, batch mode not atomic
   across batches, [RISK-4](design.md#risk-4) cost), `docs/modules/ROOT/pages/questions.adoc`.
   Accept: `make check-docs` passes.
-- [ ] 2.11 Lead: `make check-all`, `make test-containers`; review set for MEDIUM; PR. Accept: gates
+- [x] 2.11 Lead: `make check-all`, `make test-containers`; review set for MEDIUM; PR. Accept: gates
   green; no Critical open.
 
 ## 3. Stage 3: converter emission (PR 3), after stage 1 and `aggregate-composition`'s converter
 
-- [ ] 3.1 Lead ([PD-17](design.md#pd-17)): if `aggregate-composition` is archived, turn the
+- [x] 3.1 Lead ([PD-17](design.md#pd-17), [D-12](design.md#d-12): not applicable yet): if `aggregate-composition` is archived, turn the
   `rp-uml-import` delta into a MODIFIED of the requirement holding the refusal. Accept: `openspec
   validate dependent-aggregates --strict` passes.
-- [ ] 3.2 Converter ([PD-13](design.md#pd-13)). Rewrite the refusal test as
+- [x] 3.2 Converter ([PD-13](design.md#pd-13)). Rewrite the refusal test as
   `tests/generator/unit/test_uml_own_graph_generated.py`: a generated «own graph» part converts to a
   root with `rp_dependent_on`, the whole-end role required single over the whole; no whole-end role
   → problem; multiplicity `0..1` or `*` → problem; a part-end role → report line, no slot on the
   whole; `rp-generate` accepts the output. Then `rdf_persistence_generation/uml/links.py`,
   `rdf_persistence_generation/uml/classes.py`. Accept: every row passes; the refusal test is gone.
-- [ ] 3.3 Feature: scenario 12 of
+- [x] 3.3 Feature: scenario 12 of
   `openspec/changes/dependent-aggregates/features/dependent_aggregates_generation.feature` into
   `tests/generator/feature/dependent_aggregates_generation.feature`, verbatim. Lane `make
   test-generator`. Accept: it passes.
-- [ ] 3.4 Docs: `docs/modules/ROOT/pages/howto/uml-to-linkml.adoc` («own graph» generated part,
+- [x] 3.4 Docs: `docs/modules/ROOT/pages/howto/uml-to-linkml.adoc` («own graph» generated part,
   snippet and LinkML). Accept: `make check-docs` passes.
-- [ ] 3.5 Lead: `make check-all`; review; PR; the consumer told the change id (D-12). Accept: gates
+- [x] 3.5 Lead: `make check-all`; review; PR; the consumer told the change id (D-12). Accept: gates
   green; no Critical open.
 
 ## Roadmap

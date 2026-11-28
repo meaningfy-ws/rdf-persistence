@@ -72,6 +72,46 @@ because no composition makes it a part. A graph loaded for an aggregate is delet
 apart: that is an xref:reference/uml-conventions.adoc#own-graph[«own graph» composition]. The
 deletion test is rule P-0040.
 
+[#generated-own-graph]
+=== A part stored apart, as a generated class
+
+When the part that is deleted with its whole is kept apart and is a generated class (it has
+attributes the application reads and writes), draw the composition «own graph» and give the
+association beside it a role on the whole's end, with multiplicity `1`. Take an `Audit` and its
+`AuditResult`: a result is stored in a graph of its own, deleted with its audit, and cannot exist
+without it.
+
+[mermaid]
+....
+classDiagram
+  AuditResult --> "1" Audit : ofAudit
+  Audit *-- AuditResult : «own graph»
+....
+
+The converter makes `AuditResult` a root of its own that depends on `Audit`, and `ofAudit` the slot
+that points at it:
+
+[source,yaml]
+----
+classes:
+  AuditResult:
+    mixins: [AggregateRoot]
+    annotations:
+      rp_path: audit-results
+      rp_dependent_on: of_audit
+    slots: [of_audit]
+slots:
+  of_audit:
+    slot_uri: lib:ofAudit
+    range: Audit
+    required: true
+----
+
+`Audit` gets no slot that lists its results. A part with no role on the whole's end, or one with a
+multiplicity other than `1`, stops the run and names the association. The rules are on the
+xref:reference/uml-conventions.adoc#own-graph-generated[conventions page], and what the toolkit does
+with the annotation is in xref:user-manual/model.adoc#dependent-on[A part stored apart from its whole].
+
 [#diagram-kinds]
 === Two kinds of diagram
 

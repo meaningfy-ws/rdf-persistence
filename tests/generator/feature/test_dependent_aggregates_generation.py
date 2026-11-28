@@ -10,6 +10,11 @@ from pathlib import Path
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
+from rdf_persistence_generation.generated.rp_generation import UmlLink
+from tests.generator.uml_accept import generator_problems
+from tests.generator.uml_model import Converted, composition, klass, link, model
+from tests.generator.uml_model import run as convert
+
 from .toy_run import copy_toy, edit, generate, tree
 
 scenarios("dependent_aggregates_generation.feature")
@@ -64,7 +69,10 @@ class Run:
     """What one scenario has built and seen so far."""
 
     def __init__(self, tmp_path: Path) -> None:
+        self.tmp = tmp_path
         self.folder = tmp_path / "library"
+        self.drawn: list[UmlLink] = []
+        self.converted: Converted | None = None
         self.before: dict[str, bytes] = {}
         self.code: int | None = None
         self.error = ""
@@ -135,3 +143,76 @@ def fails_naming(run: Run, first: str, second: str) -> None:
 def nothing_changed(run: Run) -> None:
     after = tree(run.folder)
     assert after == run.before, f"files changed: {sorted(set(after) ^ set(run.before))}"
+
+
+# Scenario 12: the converter, a drawn model with an «own graph» composition to a generated class.
+
+AUDIT, RESULT = 20, 21
+MODULE = "app_library"
+
+
+@given(
+    parsers.parse(
+        'a UML model in which "{whole}" is composed «own graph» of the generated class "{part}"'
+    )
+)
+def an_own_graph_part(run: Run, whole: str, part: str) -> None:
+    assert (whole, part) == ("Audit", "AuditResult"), "the step knows the audit and its result only"
+
+
+@given(
+    parsers.parse(
+        'the association between them names the role "{role}" on the audit\'s end, exactly one'
+    )
+)
+def the_whole_end_role(run: Run, role: str) -> None:
+    assert role == "of_audit", "the step knows the role of_audit only"
+    run.drawn.append(link(1, RESULT, AUDIT, target_role="lib:ofAudit", target_card="1"))
+
+
+@when("the modeller converts the model")
+def converted(run: Run) -> None:
+    uml = model(
+        klass(AUDIT, "lib:Audit"),
+        klass(RESULT, "lib:AuditResult"),
+        links=tuple(run.drawn),
+        compositions=(composition(2, AUDIT, RESULT, own_graph=True, stereotype="own graph"),),
+    )
+    run.converted = convert(uml)
+
+
+def converted_run(run: Run) -> Converted:
+    assert run.converted is not None, "the model was not converted"
+    return run.converted
+
+
+@then(parsers.parse('"{part}" is a root that depends on "{whole}" through "{slot}"'))
+def depends_through(run: Run, part: str, whole: str, slot: str) -> None:
+    out = converted_run(run)
+    assert out.problems == [], out.problem_texts()
+    definition = out.klass(MODULE, part)
+    assert definition.mixins == ["AggregateRoot"], f"{part} is not a root"
+    assert definition.annotations["rp_dependent_on"].value == slot, (
+        f"{part} does not depend on {slot}"
+    )
+    assert out.slot(MODULE, slot).range == whole, f"{slot} does not range over {whole}"
+
+
+@then(parsers.parse('"{slot}" is required and holds one audit'))
+def required_and_single(run: Run, slot: str) -> None:
+    pointer = converted_run(run).slot(MODULE, slot)
+    assert pointer.required is True, f"{slot} is not required"
+    assert not pointer.multivalued, f"{slot} holds many"
+
+
+@then(parsers.parse('"{whole}" has no slot listing its results'))
+def no_listing(run: Run, whole: str) -> None:
+    out = converted_run(run)
+    held = out.klass(MODULE, whole).slots
+    assert list(held) == [], f"{whole} holds slots {list(held)}"
+
+
+@then("the generator accepts the converted schema")
+def generator_accepts(run: Run) -> None:
+    found = generator_problems(converted_run(run), run.tmp)
+    assert found == [], f"the generator refused: {found}"

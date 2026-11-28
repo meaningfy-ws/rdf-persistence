@@ -313,11 +313,6 @@ def _shape_results(world: World) -> None:
     world.drawn.append(lambda: _compose(world, "ShapeReport", "ShapeResult", "hasResult"))
 
 
-@given('an inventory with an "own graph" composition to the generated shelf count')
-def _inventory_own_graph(world: World) -> None:
-    _compose(world, "Inventory", "ShelfCount", "shelfCount", stereotype="own graph")
-
-
 @given(
     parsers.parse(
         'a shelf count with a plain composition to a count report stereotyped "{stereotype}"'
@@ -1274,11 +1269,6 @@ NAMED = {
     "the reader as a root not drawn «root»": ["Reader", "not drawn «root»"],
     "the chapter and the book": ["Chapter", "Book"],
     "the publication": ["Publication", "abstract"],
-    'the inventory, the shelf count and "dependent-aggregates"': [
-        "Inventory",
-        "ShelfCount",
-        "dependent-aggregates",
-    ],
     'the composition and "own graph"': ["ShelfCount -> CountReport", "own graph"],
     "the reader's slot, the book and the shelf": ["Reader.borrows", "Book", "Shelf"],
     "the object, RoleDefinition and Book": ["librarian", "RoleDefinition", "Book"],

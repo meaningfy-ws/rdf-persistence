@@ -372,3 +372,34 @@ Decisions the lead took without the developer, shown for validation at the end (
     validators see for a doubly typed part).
   - Checker findings fixed: task 2.2 ticked, the `tasks.md` header, and a write example in the
     manual.
+- <a id="d-12"></a>**D-12**, lead, 2026-11-28 (stage 3):
+  - Task 3.1 is not applicable yet: `aggregate-composition` is not archived (its acceptance waits for
+    the developer), so this change's `rp-uml-import` delta stays ADDED.
+  - The refusal `aggregate-composition` stated for a generated «own graph» part is replaced in that
+    change's spec delta and feature file, which are unarchived and in the same repository, so the
+    two changes never contradict each other.
+  - The converter carries the dependence through the existing `part_of` rows (`own_graph` set, the
+    part generated). It adds no `UmlAggregates` field, so no model change is needed.
+  - A role on the part's end reports as `composition-named`, and the pointer problems use the rule
+    `boundary_owned`, as the other composition problems do.
+  - The UML import feature's "waits for dependent aggregates" scenario is deleted with the refusal.
+- <a id="d-13"></a>**D-13**, lead, 2026-11-28: the full review at the epic's end (P-0005; L1, L2 and
+  L3 as separate passes, L4 and L5 as one; PRs #446, #450, #452). No Critical from any lens.
+  - Re-labelled Critical and fixed by one fixer:
+    - L1 W1: a cascaded part vanishing mid-delete leaked its IRI through `NotFound` (PD-10). It is
+      now veiled like the other refusals.
+    - L2 W2: the refusal of two whole-end roles had no test.
+    - L4 S2: a part with two «own graph» wholes kept one silently; it is now a problem.
+  - Lead-fixed:
+    - L2 W1: `evidence/acceptance.md`, deferred to the developer.
+    - L2 S4: the `tasks.md` header.
+    - L2 W3: task 3.1 stays not applicable until `aggregate-composition` is archived; the archive
+      order is in the hand-over note.
+  - For the developer to decide (in `evidence/acceptance.md`):
+    - L1 W2: a session opened without `may_read` names hidden parts (fail-open, documented).
+    - L1 S1: a part write answers `NotFound` for a missing whole even when the caller may not read
+      that whole, which discloses that the whole exists.
+  - Under the floor, filed as one follow-up issue: L3 W1 and L4 W1, a `Cascade` collaborator out of
+    `session.py`; L3 W2 and L5 W3, one home for the library and generator walks; L3 W3 and W4,
+    dependence logic spread over `uml/`; L5 W4, `is_whole` quadratic; L4 W2, S1 and S3; L3 S1–S4;
+    L2 S5 and S6.

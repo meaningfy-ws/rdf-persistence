@@ -113,6 +113,9 @@ class Context:
         self.slot_aliases: dict[
             int, dict[str, str]
         ] = {}  # a class's slot names by every name written for them (PD-21)
+        self.dependent_on: dict[
+            int, str
+        ] = {}  # a dependent root's id -> the slot that points at its whole (PD-13)
         self.unknown_prefixes: set[str] = set()
         self.drawn_toolkit: dict[
             int, str

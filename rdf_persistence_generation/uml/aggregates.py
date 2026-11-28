@@ -36,7 +36,6 @@ from rdf_persistence_generation.uml.slots import Usage, is_owned
 
 MODULE_KIND: Final = RpAnnotation.MODULE_KIND.value
 DOMAIN: Final = ModuleKind.DOMAIN.value
-OWN_GRAPH: Final = "own graph"
 DIRECTED: Final = "Source -> Destination"
 BIDIRECTIONAL: Final = "Bi-Directional"
 ARROW: Final = "→"
@@ -125,7 +124,12 @@ class _Pass:
         self.inside: dict[
             int, int
         ] = {}  # a class left inside an own graph -> the class that is its whole
-        self.live: list[UmlComposition] = []  # the compositions that convert to something
+        self.live: list[
+            UmlComposition
+        ] = []  # the compositions that make a part of the whole's tree
+        self.dependent: list[
+            UmlComposition
+        ] = []  # the «own graph» ones to a generated part (PD-13)
 
     def name(self, object_id: int) -> str:
         found = self.element.get(object_id)
@@ -166,7 +170,8 @@ class _Pass:
         )
 
     def is_own_graph(self, each: UmlComposition) -> bool:
-        return bool(each.own_graph) or (each.uml_stereotype or "").strip().lower() == OWN_GRAPH
+        """Whether the reader marked the composition «own graph» (``UmlComposition.own_graph``)."""
+        return bool(each.own_graph)
 
     def mark_inside(self) -> None:
         """Leave the classes below a not-generated own-graph part inside it, then refuse a generalisation to one (A-7, A-8)."""
@@ -271,12 +276,7 @@ class _Pass:
             )
             return True
         else:
-            message = (
-                "«own graph» to a generated class needs dependent-aggregates; mark the part "
-                "with a not-generated stereotype or draw a plain composition"
-                if own
-                else None
-            )
+            message = None
         if message is not None:
             self.refuse(UmlRule.BOUNDARY_OWNED, each, message)
         return message is not None
@@ -301,9 +301,15 @@ class _Pass:
     def screen(self) -> None:
         """Keep the compositions that convert: not exempt, not refused (Algorithm 2a, 2b)."""
         self.mark_inside()
-        self.live = [
+        kept = [
             each for each in self.compositions if not self.exempt(each) and not self.refused(each)
         ]
+        self.dependent = [each for each in kept if self.is_dependent(each)]
+        self.live = [each for each in kept if each not in self.dependent]
+
+    def is_dependent(self, each: UmlComposition) -> bool:
+        """An «own graph» composition to a generated part: the part is a root that depends on the whole (PD-13)."""
+        return self.is_own_graph(each) and each.part_id in self.element
 
     def kind_of(self, object_id: int) -> str:
         return self.kinds.get(self.element[object_id].uml_class.package_id, DOMAIN)
@@ -550,7 +556,7 @@ class _Pass:
                     own_graph=self.is_own_graph(each),
                     composition_id=each.composition_id,
                 )
-                for each in self.live
+                for each in [*self.live, *self.dependent]
             ],
             reached_from=[
                 UmlReach(part_id=part, top_ids=sorted(found))

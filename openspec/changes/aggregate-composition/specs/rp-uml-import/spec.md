@@ -258,7 +258,8 @@ A composition stereotyped «own graph» SHALL make its part stored apart from it
 with it. Its part SHALL be a class of a not-generated stereotype: the whole's slot then ranges over
 `uri`, is not owned, and carries the annotation `rp_loaded_graph: true`; a class below that part by
 a plain composition SHALL not be converted and SHALL be reported. An «own graph» composition to a
-generated class SHALL fail the run naming the change `dependent-aggregates`. A plain composition to
+generated class SHALL convert the part to a dependent root (the change `dependent-aggregates`,
+which superseded this change's refusal on 2026-11-28). A plain composition to
 a not-generated class, and any other stereotype on a composition, SHALL fail the run.
 
 #### Scenario: loaded reports of a shelf count
@@ -272,8 +273,8 @@ a not-generated class, and any other stereotype on a composition, SHALL fail the
 #### Scenario: a generated part in its own graph
 - **GIVEN** `lib:Inventory` with an «own graph» composition to the generated `lib:ShelfCount`
 - **WHEN** the model is converted
-- **THEN** the run fails naming `Inventory`, `ShelfCount` and `dependent-aggregates`, and nothing
-  is written
+- **THEN** `ShelfCount` is a root annotated `rp_dependent_on`, its pointer to `Inventory` required
+  and single-valued (the change `dependent-aggregates` replaced the refusal this change first had)
 
 ### Requirement: Pointers target roots
 

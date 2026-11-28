@@ -695,6 +695,21 @@ Decisions the lead took without the developer, shown for validation at the end (
   `make check-docs` and the rule lint; the stage's full gates, run on the same code, are not
   repeated. The guide's Mermaid snippets stand in for the PlantUML that task 3.1 named, because
   the page already uses Mermaid.
+- **D-17**, lead, 2026-11-28: the full review at the epic's end (P-0005; PRs #448, #449, #451,
+  reviewed after merge). No Critical from any lens.
+  - Fixed, in `dependent-aggregates`' PR #452 (which touches the same converter): L3 W5, `is_own_graph`
+    now trusts the reader's `own_graph` flag, and the duplicate «own graph» constant is gone.
+  - Spine fixed:
+    - L2 W1: the EA probe is split out of task 1.12 into an open task 1.13.
+    - L2 W2: acceptance records that the generated «own graph» scenario is accepted under
+      `dependent-aggregates`.
+    - L2 W3: acceptance records that `composition-named` and `implicit-meaning` are unit-tested
+      only, with no scenario that fails `--check`.
+  - Under the floor, filed as one follow-up issue (with #343): L3 W1 and L4/L5, split `_Pass`;
+    caching `part_ids` and the ancestors; duplicate constants (`DIRECTED`, `BIDIRECTIONAL`, `ARROW`,
+    `DOMAIN`); `conventions.py` importing reader constants; the order of `_adopt`; `check_reach`
+    reusing `wholes_of`; `_hidden` re-reading connectors; `Usage.order` read by position; L1 S1 and
+    S2, `cycle_through`'s exponential walk and recursion depth on very long chains.
   - Under the floor: W2, the seeds of rows the reviewer did not read; S3, the `NO_NOTE` alias kept
     for the one-occurrence acceptance; S4, the Statechart filter in both reader and pass; S5, a
     misplaced comment; S6, lookup by label in `_tenant_pointer_lines`.
