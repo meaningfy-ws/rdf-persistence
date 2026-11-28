@@ -58,8 +58,9 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
   example 1, added in 2.1). Accept: the feature lane passes the scenarios. Closes #397.
 - [x] 2.5 **docs** — after 2.4; PD-15's stage-2 half and the CHANGELOG *BREAKING* line (DEC-8).
   Accept: `make check-docs` green.
-- [ ] 2.6 **lead** — scenario-map rows; `make check-all`; one review pass (two grouped runs);
-  PR into `develop`; merged on green CI; archive.
+- [ ] 2.6 **lead** — scenario-map rows (done); `make check-all`; the full review over both
+  stages (L1, L2, L3 apart, L4+L5 as one; P-0005, D-2); PR into `develop`; merged on green CI;
+  the reconcile (P-0004) and the archive.
 
 ## Roadmap
 

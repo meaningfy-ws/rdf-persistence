@@ -489,6 +489,16 @@ The lead's, per R-0007; the developer may overrule any of them.
   tests). PD-1a's "adds no further duplicate" assumed no direct metamodel import, which a consumer
   will have; the bound is now the toolkit closure's count plus one per metamodel module the root
   imports by its package key. Lead-fixed in the test.
+- **D-20 Stage 2's build (lead).** Waves per D-13: 2.1 ∥ 2.2 in two worktrees off the stage-1
+  head, merged by the lead with no conflict; the tester after 2.1 ∥ 2.3; 2.5 beside 2.3 (the D-9
+  pattern; its statements about 2.3 checked against the code); 2.4 ∥ the T2-F1 fix; replayed onto
+  `develop` after #434 merged (`git rebase --onto`). The stage-1 checker's C-1 is done here: the
+  rp-service-api delta no longer says the OpenAPI document lists the registered classes, and its
+  scenario "the document lists the problem" is dropped; both go back to shaping with task 1.4 (D-5).
+  Under the floor, follow-up candidates: `Session.find` documents `BadQuery` for a value not of
+  its slot but does not raise it (the reader now refuses it, D-16); 2.4's `ban_reading` step
+  repeats a test helper; `_Reader.find` and the fake still each split `None` and lists (one more
+  shared helper would do).
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.

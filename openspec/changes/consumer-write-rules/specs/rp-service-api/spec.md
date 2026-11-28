@@ -10,8 +10,7 @@ SHALL answer with that problem: its status, type, title, detail and every extra 
 whose problem is not of a registered class, or whose status is neither 409 nor 422, SHALL be
 answered as the 500 internal-error problem and logged once, naming the rule's problem class,
 without a traceback; a refusal that is answered SHALL NOT be logged as an error. In-process,
-the commit SHALL raise the `RuleRefusal`. The OpenAPI document SHALL list each registered class
-among the problems of the generic create and replace routes and of every route's default problem.
+the commit SHALL raise the `RuleRefusal`.
 
 #### Scenario: a refusal with a consumer problem type
 - **GIVEN** a registered problem class `HeldKeyProblem` with an extra slot `holder`, and a write rule for `Book` that raises `RuleRefusal(HeldKeyProblem(type=T, title="Key held", status=409, detail=d, holder=h))`
@@ -32,11 +31,6 @@ among the problems of the generic create and replace routes and of every route's
 - **GIVEN** a rule that refuses with a registered class and status 403
 - **WHEN** a client creates a `Book` the rule refuses
 - **THEN** the answer is the 500 internal-error problem, and nothing is written
-
-#### Scenario: the document lists the problem
-- **GIVEN** a service installed with `refusal_problems=[HeldKeyProblem]`
-- **WHEN** a client reads the OpenAPI document
-- **THEN** `HeldKeyProblem` is a component, and the 409 and 422 answers of each create and replace route accept it
 
 #### Scenario: a class that is not a problem
 - **GIVEN** `refusal_problems` naming a class that does not extend `Problem`
