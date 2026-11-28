@@ -35,6 +35,13 @@ their own lane (`make test-perf`), outside `make check-all` and CI.
 - **WHEN** `make check-all` runs on a loaded machine
 - **THEN** the test does not run; `make test-perf` runs it
 
+#### Scenario: the worker count read under load
+- **GIVEN** the free memory changes while `make check-all` runs, so the worker count make computes
+  changes from one expansion of `PYTEST_N` to the next
+- **WHEN** `test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make` runs
+- **THEN** it reads the count once, from `PARALLEL`, and passes whenever that count is a whole
+  number within the worker bounds
+
 ### Requirement: The unit and feature tests run in parallel
 
 `make test` SHALL run the unit and feature tests on several worker processes (`pytest-xdist`) with

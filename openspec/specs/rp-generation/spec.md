@@ -770,7 +770,9 @@ the served types as `rp_service.ts` with the modules it imports. Every other ent
 `typescript` SHALL write none of those modules: its modules SHALL import their types from the
 owner's folder by a relative path, and its `index.ts` SHALL NOT export them. A toolkit module
 outside the shared set SHALL be written by each entry whose schema imports it, as before. When one
-entry sets `typescript`, the key SHALL change nothing. `rp-generate` SHALL refuse the configuration
+entry sets `typescript`, the key SHALL change nothing in the files written. An entry that sets both
+`typescript` and `toolkit-typescript = true` SHALL list the metamodel's schema files among its
+freshness inputs, since it writes their modules. `rp-generate` SHALL refuse the configuration
 before any step runs, naming the entries and the key, when several entries set `typescript` and
 none or more than one sets `toolkit-typescript = true`, or when an entry sets
 `toolkit-typescript = true` without `typescript`, or when two entries set the same `typescript`
@@ -810,3 +812,13 @@ folder.
 - **GIVEN** a project with two entries that set `typescript` and `toolkit-typescript = true`
 - **WHEN** the developer runs `rp-generate`
 - **THEN** it fails before writing anything, naming both entries and saying only one may set the key
+
+#### Scenario: the owner's freshness inputs
+- **GIVEN** an entry that sets `typescript` and `toolkit-typescript = true`
+- **WHEN** a metamodel schema file changes, one that entry's own schema does not import
+- **THEN** `rp-generate --check` reports that entry as stale
+
+#### Scenario: a toolkit module outside the shared set
+- **GIVEN** a project with an owner and an importer whose schema imports a toolkit module that is not a metamodel module nor a served one
+- **WHEN** the developer regenerates
+- **THEN** the importer's folder holds that module's file and its `index.ts` exports it
