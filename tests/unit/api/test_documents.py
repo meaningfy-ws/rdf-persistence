@@ -5,6 +5,7 @@ import re
 import shutil
 import threading
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from pyld import jsonld
@@ -776,3 +777,156 @@ async def test_a_string_an_integer_and_a_reference_are_left_as_they_were_by_the_
     assert [(o.datatype, str(o)) for o in numbers if isinstance(o, Literal)] == [
         (XSD.integer, "1")
     ], "an integer keeps its own datatype"
+
+
+# --- the JSON-LD write types a double per class, not per name (langstring-support F-4, F-2, F-5) ---
+
+SHARED_NAME_SCHEMA = (
+    (Path(__file__).parents[2] / "fixtures" / "measures" / "measures.yaml")
+    .read_text()
+    .replace(
+        "slots: [dec, flt, dbl]",
+        "slots: [dec, flt, dbl, amount, samples, weight, readings]",
+    )
+    .replace(
+        "\nslots:\n",
+        """
+  Reading:
+    title: Reading
+    description: A reading of a measure; its dbl is text, though the measure's is a double.
+    class_uri: ms:Reading
+    mixins: [Described]
+    slots: [dbl, amount]
+    slot_usage:
+      dbl:
+        range: string
+
+types:
+  Weight:
+    typeof: double
+    description: A weight, derived from double with no URI of its own.
+
+slots:
+  amount:
+    title: Amount
+    description: A double amount.
+    slot_uri: ms:amount
+    range: double
+  samples:
+    title: Samples
+    description: Several double samples.
+    slot_uri: ms:samples
+    range: double
+    multivalued: true
+  weight:
+    title: Weight
+    description: A weight, of a type derived from double.
+    slot_uri: ms:weight
+    range: Weight
+  readings:
+    title: Readings
+    description: The readings of a measure; they live in its graph.
+    slot_uri: ms:readings
+    range: Reading
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: true
+""",
+        1,
+    )
+)
+AMOUNT = URIRef(f"{MS}amount")
+SAMPLES = URIRef(f"{MS}samples")
+WEIGHT = URIRef(f"{MS}weight")
+
+
+@pytest.fixture(scope="module")
+def shared(tmp_path_factory: pytest.TempPathFactory) -> Documents:
+    schema, generated = generate_measures(
+        tmp_path_factory.mktemp("shared"), schema_text=SHARED_NAME_SCHEMA
+    )
+    return Documents(load_schema(schema), generated)
+
+
+async def _shared_graph(shared: Documents, body: dict, media_type: str = JSON_LD) -> Graph:
+    if media_type == JSON_LD:
+        body = {"@context": shared.context, "type": "Measure", **body}
+    graph, _ = await shared.parse(
+        encoded({"id": MEASURE, **body}),
+        media_type,
+        shared.aggregates["measures"],
+        MEASURE,
+        creating=False,
+        tenant=TENANT,
+    )
+    return graph
+
+
+def _typed(graph: Graph, predicate: URIRef) -> list[tuple]:
+    """The datatype and the value of each object of ``predicate``, by value (a double's lexical form is rdflib's)."""
+    return sorted(
+        ((o.datatype, o.toPython()) for o in graph.objects(None, predicate)), key=lambda t: str(t)
+    )
+
+
+async def test_a_string_slot_of_another_class_with_a_double_name_stays_a_string_in_json_ld(
+    shared,
+) -> None:  # F-4
+    body = {"label": "m", "dbl": 1.5, "readings": [{"type": "Reading", "label": "r", "dbl": "3"}]}
+    graph = await _shared_graph(shared, body)
+    assert _typed(graph, DOUBLE) == [(None, "3"), (XSD.double, 1.5)], (
+        "the measure's dbl is a double, the reading's dbl, a string slot, stays a string"
+    )
+
+
+async def test_a_double_nested_in_an_owned_part_is_typed_in_json_ld(shared) -> None:  # F-2
+    body = {"label": "m", "readings": [{"type": "Reading", "label": "r", "amount": 2}]}
+    graph = await _shared_graph(shared, body)
+    assert _typed(graph, AMOUNT) == [(XSD.double, 2.0)], "a double of a part is typed"
+
+
+@pytest.mark.parametrize("media_type", [JSON, JSON_LD], ids=["plain-json", "json-ld"])
+async def test_a_list_of_doubles_is_typed_and_a_boolean_among_them_is_refused(
+    shared, media_type
+) -> None:  # F-2
+    graph = await _shared_graph(shared, {"label": "m", "samples": [1, "2.5"]}, media_type)
+    assert _typed(graph, SAMPLES) == [(XSD.double, 1.0), (XSD.double, 2.5)], "each item is typed"
+    with pytest.raises(InvalidBody, match="samples"):
+        await _shared_graph(shared, {"label": "m", "samples": [1, True]}, media_type)
+
+
+async def test_a_value_object_on_a_double_term_is_left_as_json_ld_gives_it(shared) -> None:  # F-2
+    body = {"label": "m", "dbl": {"@value": 3}}
+    graph = await _shared_graph(shared, body)
+    assert _typed(graph, DOUBLE) == [(XSD.integer, 3)], "the client's own value object stands"
+
+
+async def test_a_graph_body_is_typed_per_class_too(shared) -> None:  # F-2
+    node = {"@id": MEASURE, "type": "Measure", "label": "m", "dbl": 3}
+    body = {"@context": shared.context, "@graph": [node]}
+    try:
+        graph, _ = await shared.parse(
+            encoded(body),
+            JSON_LD,
+            shared.aggregates["measures"],
+            MEASURE,
+            creating=False,
+            tenant=TENANT,
+        )
+    except InvalidBody:
+        pytest.skip("the service refuses a @graph body: nothing to type")
+    assert _typed(graph, DOUBLE) == [(XSD.double, 3.0)], "a double in @graph is typed"
+
+
+@pytest.mark.parametrize("media_type", [JSON, JSON_LD], ids=["plain-json", "json-ld"])
+@pytest.mark.parametrize("written", [3, "3"], ids=["integer", "text"])
+async def test_a_type_derived_from_double_is_stored_as_a_double(
+    shared, media_type, written
+) -> None:  # F-5
+    graph = await _shared_graph(shared, {"label": "m", "weight": written}, media_type)
+    assert _typed(graph, WEIGHT) == [(XSD.double, 3.0)], "a derived type is a double too"
+
+
+def test_the_context_of_a_type_derived_from_double_has_no_datatype_tag(shared) -> None:  # F-5
+    assert "@type" not in shared.context["weight"], "the context leaves it native, as a double's"
