@@ -195,14 +195,14 @@ assertion without a replacement row. Every decision a task cites links its ancho
 
 ## 3. Stage 3: guide, conventions page, rules, changelog
 
-- [ ] 3.1 Docs, conventions page ([PD-16](design.md#pd-16), P-0014): `reference/uml-conventions.adoc`: "A root"
+- [x] 3.1 Docs, conventions page ([PD-16](design.md#pd-16), P-0014): `reference/uml-conventions.adoc`: "A root"
   rewritten (derived roots, «root» deprecated), `[#boundary]` → `[#composition]` (composition
   beside its association, the diamond end, depth, abstract parts), "«own graph»", "Pointers target
   roots", "Realising an object's class", "Diagrams" (aggregates and association diagrams), each
   with a PlantUML snippet and the LinkML it becomes; "What fails" table updated from design.md's
   error matrix; the conventions list (one row per convention kind, problem or line). Accept:
   `make check-docs`; no boundary-geometry sentence left; no consumer term.
-- [ ] 3.2 Docs, guide ([PD-16](design.md#pd-16), [PD-6a](design.md#pd-6a),
+- [x] 3.2 Docs, guide ([PD-16](design.md#pd-16), [PD-6a](design.md#pd-6a),
   [PD-14](design.md#pd-14), DEC-12): `howto/uml-to-linkml.adoc`: a section "Aggregates,
   transactions and queries" (the three terms; "the model decides aggregates, use cases decide
   transactions, screens decide queries"; transactions and queries are never drawn), "The deletion
@@ -213,10 +213,10 @@ assertion without a replacement row. Every decision a task cites links its ancho
   lines `root`, `deprecated-root`, `boundary-disagrees`; links
   to the rules (3.4) and to the conventions page; `read_qea` named as the public reader for a
   model's own checks. Accept: `make check-docs`.
-- [ ] 3.3 Docs, `questions.adoc`: "Which classes are aggregate roots?", "How do I draw a part?",
+- [x] 3.3 Docs, `questions.adoc`: "Which classes are aggregate roots?", "How do I draw a part?",
   "How do I check a UML model in CI?", "Where are the modelling rules?", each linking its section.
   Accept: `make check-docs`.
-- [ ] 3.4 Rules (DEC-12), via the rulebook script by the lead (`rules.py`, scope
+- [x] 3.4 Rules (DEC-12), via the rulebook script by the lead (`rules.py`, scope
   `activity:modelling`, `private: false`, source quoting the consumer note it comes from). Content:
 
   | New id | From | Type, strength | When | Do | Because |
@@ -241,16 +241,16 @@ assertion without a replacement row. Every decision a task cites links its ancho
   Not adopted: the consumer's P-0010, P-0018, C-13; its "no hand-written models" is this
   repository's P-0007. The guide links the notes. Accept: `rules.py` validates the store; the ids
   follow P-0024 (re-checked at the time: the next free id is used if others landed).
-- [ ] 3.5 Changelog: `CHANGELOG.md` **BREAKING** entry with design.md's migration steps. Accept:
+- [x] 3.5 Changelog: `CHANGELOG.md` **BREAKING** entry with design.md's migration steps. Accept:
   the entry names `--check`, the composite-association refusal, derived roots and the steps.
-- [ ] 3.6 Lead: `make check-docs`, `make check-all`; review (docs lens); PR; the consumer told it
+- [x] 3.6 Lead: `make check-docs`, `make check-all`; review (docs lens); PR; the consumer told it
   can retire its copies (RISK-3).
 
 ## Roadmap
 
 - [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.8 · [x] 1.6 · [x] 1.7 ·
   [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 ·
-  [x] 2.6 · [x] 2.7 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 3.6
+  [x] 2.6 · [x] 2.7 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5 · [x] 3.6
   (1.0 is the lead's reading of Sparx's docs and gates nothing ([D-4](design.md#d-4)); the
   developer's EA probe is the `@manual` scenario run in 1.12 before any release; 1.2 and 1.3 in
   parallel; 1.5 and 1.8 need only 1.2;

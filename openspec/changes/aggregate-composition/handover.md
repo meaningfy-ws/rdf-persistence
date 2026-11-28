@@ -1,24 +1,25 @@
-# Hand-over: aggregate-composition, after stage 2
+# Hand-over: aggregate-composition, after stage 3
 
 ## Done
-Stage 1, PR #448 (merged). Stage 2 (the conventions as converter findings, `--check`), PR #449
-(merged by the watch-and-merge command after this note).
+Stage 1, PR #448; stage 2, PR #449 (both merged). Stage 3 (conventions page, guide, questions, the
+adopted rules P-0025 to P-0040, the changelog), this PR (merged by the watch-and-merge command after
+this note). Every build task is ticked.
 
 ## Decided since the PLAN
-D-1 to D-15 (design.md, Delivery decisions); DEC-4 re-shaped and DEC-2 amended (inputs/qa.md).
+D-1 to D-16 (design.md, Delivery decisions); DEC-4 re-shaped and DEC-2 amended (inputs/qa.md).
 
 ## Open
-- The developer validates D-1 to D-15, the DEC-4 re-shape, the DEC-2 amendment and the scenarios.
-- RISK-9: the developer's EA probe (`@manual` scenario) before any release.
-- Under the floor: D-13 (S5 split `_Pass`, S6 caching, S7 `_adopt` order test) and D-15 (S3–S6).
-- `evidence/acceptance.md` after stage 3.
-- The stage-2 checker passed every task; its one finding (stale roadmap ticks) is fixed.
-- No release before stage 3 merges (PD-17).
+- Acceptance is deferred to the developer (`evidence/acceptance.md`): the scenarios, the EPIC
+  changes, D-1 to D-16, the rules P-0025 to P-0040, and RISK-9's EA probe. No release before that.
+- Under the floor: D-13 (S5 to S7) and D-15 (S3 to S6).
+- The first consumer may retire its copies of the rules and its check script once this is released
+  (RISK-3); #437 is told.
+- After acceptance: archive the change (`openspec archive aggregate-composition --yes`), per
+  spec-stewardship.
 
 ## Next
-Stage 3, task 3.1 (guide, conventions page, adopted rules P-0025 onwards, changelog and migration
-notes). Read first: tasks.md §3, design.md PD-16, D-1..D-15, the release note section,
-inputs/consumer-rules.md and consumer-model-rules.md, proposal.md DEC-12.
+Acceptance by the developer, then the archive. Read first: evidence/acceptance.md.
 
 ## Prompt
-Act as the team lead. Deliver stage 3 of openspec/changes/aggregate-composition from handover.md.
+Act as the team lead. Run the acceptance of openspec/changes/aggregate-composition with me from
+evidence/acceptance.md, then archive it.

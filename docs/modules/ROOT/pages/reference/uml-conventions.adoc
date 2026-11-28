@@ -7,7 +7,8 @@ These conventions make an Enterprise Architect (EA) model convertible by `rp-uml
 the UML conventions of
 https://docs.ted.europa.eu/M2O/latest/uml/conceptual-model-conventions.html[model2owl], which the
 converter relies on (<<model2owl>>), plus the toolkit's own (<<toolkit>>). A model element that no
-convention maps stops the run (<<fails>>). The names in the examples (`lib:Book`, `lib:Chapter`,
+convention maps stops the run (<<fails>>); a convention that only concerns presentation is a report
+line, which `rp-uml2linkml --check` fails on (<<conventions>>). The names in the examples (`lib:Book`, `lib:Chapter`,
 `lib:Shelf`, `lib:Loan`) belong to a small library model. Mermaid cannot put a colon in a
 relationship label, so the diagrams write a role without its prefix (`hasChapter`, for
 `lib:hasChapter`); in EA the role carries the prefix, as the YAML shows.
@@ -74,11 +75,19 @@ named in each subsection.
 [#root]
 === A root
 
-A class stereotyped «root» is an aggregate root. It mixes in `AggregateRoot`, gets the default
-mixins (`--default-mixins`, `Described,Tracked`) and an `rp_path`. A part that an aggregate
-boundary or a composite association owns gets the default mixins too; a class that is neither a root
-nor a part gets none. A name in `--default-mixins` that is not a toolkit class fails (<<fails>>). The
-`rp_path` is the `rp_path`
+An aggregate is the unit the toolkit stores and loads whole, and its root is the class the rest hangs
+from. The converter derives the roots: a class is a root when it is concrete, in a module of kind
+`domain` (the default kind of a package, <<packages,Packages and modules>>), and is no
+composition's part (<<composition>>, also by inheritance). An enumeration, the
+«tenant root» (<<tenant-root>>), a class of a not-generated stereotype and a toolkit class drawn in
+the model are never roots. The converter lists each root, with its parts, in a `root` line of the
+report (`root`, `Shelf`, `parts Book, Chapter, Page`; `no parts` for a class with none), so a class
+that became a root only because nothing composes it is visible.
+
+A root mixes in `AggregateRoot`, gets the default mixins (`--default-mixins`, `Described,Tracked`)
+and an `rp_path`. A part gets the default mixins too; a class that is neither a root nor a part
+(a class of an `access` or `technical` module, say) gets none. A name in `--default-mixins` that is
+not a toolkit class fails (<<fails>>). The `rp_path` is the `rp_path`
 tagged value when the class has one, else the plural of the class name in kebab case (`Book` →
 `books`, `Library` → `libraries`, `Box` → `boxes`). The plural is simple and irregular nouns are not
 guessed: `Shelf` becomes `shelfs`, so give it `rp_path=shelves` (<<tagged-values>>). Two roots with
@@ -88,7 +97,6 @@ one `rp_path` fail.
 ....
 classDiagram
   class Book["lib:Book"] {
-    <<root>>
     xsd:string dct:title [1..1]
   }
 ....
@@ -103,38 +111,63 @@ classes:
       rp_path: books
 ----
 
-[#boundary]
-=== An aggregate boundary
+*The «root» stereotype is deprecated.* A model that still draws it is compared with the derived
+roots, over the concrete classes of `domain` modules:
 
-Which classes belong to an aggregate is drawn, not inferred from names or packages. In EA, place a
-_Boundary_ object (no stereotype) on a diagram and put the root and its parts wholly inside its
-rectangle. The converter reads the geometry: a class whose rectangle lies inside the boundary is a
-member. A slot from a member to another member that is not the boundary's root is `owned`. A
-boundary holds exactly one «root» or «tenant root». A shared aggregation is a plain reference; a
-composite association (the source is the whole) also makes the destination's slot owned.
+* the sets are equal: the schemas are those of a model that does not draw «root», and the report has
+  one `deprecated-root` line (`model`, `2 «root» stereotypes agree with the derived roots; drop them`).
+  The line is informational, so a model in this state passes `rp-uml2linkml --check`;
+* a class drawn «root» that is a part, or a derived root that is not drawn «root», each fails with
+  `[root_class] Chapter: drawn «root» but a part of Book` or `[root_class] Reader: a root (no
+  composition's part) but not drawn «root»`;
+* a «root» on an abstract class fails (`abstract «root»: drop it, the abstract-root rule derives
+  it`), as the abstract-root rule of <<abstract>> derives it;
+* a «root» in a module of another kind (an `access` class that is stored) keeps its old meaning
+  (`AggregateRoot` and an `rp_path`) and is outside the comparison.
 
-Mermaid has no boundary shape, so the diagram draws the boundary as a `namespace`; in EA it is a
-Boundary object around the two classes, the root and its part.
+To leave the stereotype, draw the compositions first, keep «root» while `--check` is clean, then
+remove it everywhere at once.
+
+[#composition]
+=== A composition
+
+Which classes belong to an aggregate is drawn as compositions, never inferred from names, packages
+or layout. A composition from a whole to a part means _stored together, consistent at every moment_.
+The deletion test (xref:howto/uml-to-linkml.adoc#deletion-test[the guide]) decides whether a class is
+a part: it cannot exist without its whole and goes down with it.
+
+In EA a composition is a connector of type _Aggregation_ with the _strong_ (filled) diamond at the
+whole. The diamond names the whole, so the direction the connector is drawn in does not matter. A
+hollow diamond (a shared aggregation) fails, and so does one with a diamond at both ends or at
+neither.
+
+The composition is drawn beside an association between the same two classes. The association keeps
+the property's role, multiplicity and note and gives the slot; the composition makes that slot
+`owned` and inlined. The association is the one from the whole to the part (`Source -> Destination`,
+or `Bi-Directional` with the role on the part's end), and the classes must be exactly the
+composition's two: an association to a subclass or a superclass of the part does not count.
 
 [mermaid]
 ....
 classDiagram
-  namespace BookAggregate {
-    class Book["lib:Book"] {
-      <<root>>
-    }
-    class Chapter["lib:Chapter"]
-  }
+  Shelf --> "0..*" Book : holds
+  Shelf *-- Book
   Book --> "1..*" Chapter : hasChapter
-  Book --> "0..1" Shelf : shelvedOn
-  class Shelf["lib:Shelf"] {
-    <<root>>
-  }
+  Book *-- Chapter
+  Chapter --> "1..*" Page : hasPage
+  Chapter *-- Page
 ....
 
 [source,yaml]
 ----
 slots:
+  holds:
+    slot_uri: lib:holds
+    range: Book
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: 'true'
   has_chapter:
     slot_uri: lib:hasChapter
     range: Chapter
@@ -143,23 +176,213 @@ slots:
     inlined_as_list: true
     annotations:
       owned: 'true'
-  shelved_on:
-    slot_uri: lib:shelvedOn
-    range: Shelf
+  has_page:
+    slot_uri: lib:hasPage
+    range: Page
+    required: true
+    multivalued: true
+    inlined_as_list: true
+    annotations:
+      owned: 'true'
 ----
 
-`shelved_on` points at another root, outside the boundary, so it is a reference and not owned.
+The depth is the depth of the compositions: `Page` is a part of `Chapter`, a part of `Book`, a part
+of `Shelf`, and `Shelf` is the root. A role with no composition beside it is a pointer to another
+aggregate (<<pointers>>).
 
-A class that is only partly inside a boundary, or that is inside two, fails. A boundary with no
-root, or with two, fails. Whether every part is reachable from its root is `rp-generate`'s boundary
-check, not the converter's.
+Which compositions the converter accepts:
+
+* *Several associations.* When two associations from the whole range over the part (two owned roles,
+  or an owned role and an internal reference), write the role on the composition (EA's end role,
+  equal to the association's role) to name the one it marks owned. With one association the role is
+  not needed. With no association, or with several and no role, or with a role that names none, the
+  run fails (<<fails>>). A note on the composition, or a role where it is not needed, is a
+  `composition-named` convention line: the association carries the role and the note.
+* *Inheritance.* A subclass of a part is a part. A whole may be abstract: its compositions apply to
+  its concrete subclasses.
+* *Recursion and sharing.* A composition may recurse (`Section` composes `Section`) and a part class
+  may have several wholes (`Section` under `Book` and under `Journal`): each instance sits in one
+  whole, and the class belongs to each aggregate that reaches it. Every part class must be reached
+  from a root; one that is not, or a cycle of compositions that no root enters, fails, naming the
+  classes.
+* *Not accepted.* A composite association (an association whose end is composite, the form earlier
+  versions read as ownership) fails, naming the fix: draw the composition beside a plain
+  association. A whole or a part that is outside the converted packages, in an excluded package or a
+  drawn toolkit class (<<toolkit-reuse>>) fails; so does an enumeration as a part, the «tenant root»
+  as a part, and a domain whole that composes a part of a module of another kind.
+
+The Boundary object of earlier versions no longer makes anything owned: only a composition does.
+A boundary left in the model is an annotation. One that sits in a converted package and is not named
+for a root (its name, after an optional `Aggregate:`, is the root's name) gets a `boundary-disagrees`
+convention line; the converter reads no membership from it.
+
+[#own-graph]
+=== «own graph»
+
+A composition stereotyped «own graph» makes its part separately stored but deleted with its whole.
+In this release the part must be a class of a not-generated stereotype (<<not-generated>>, by
+default `loaded graph`). A _loaded graph_ is raw RDF that a session loads into a named graph of its
+own, registered to the aggregate and deleted with it; no class models its content
+(xref:user-manual/store-and-read.adoc[Store and read]). Its slot on the whole is a URI
+that is not owned and carries `rp_loaded_graph`, which marks its values as the IRIs of graphs loaded
+for the whole and deleted with it. No class is generated for the part.
+
+A class that is a part of a not-generated «own graph» part is stored inside that graph: it is left
+out, with a `not-generated` line (`inside the own graph of ShapeReport`), and no slot is made to it. A
+composition whose whole is not generated, or left inside, converts to nothing. A generalisation to or
+from a class left inside fails.
+
+[mermaid]
+....
+classDiagram
+  class CountReport["lib:CountReport"] {
+    <<loaded graph>>
+  }
+  ShelfCount --> "0..1" CountReport : countReport
+  ShelfCount *-- CountReport : «own graph»
+....
+
+The example is a separate one: a `ShelfCount`, the count of the books on a shelf, whose report is a
+graph of raw RDF loaded for it. Mermaid has no stereotype for a connector, so the diagram writes it
+as the composition's label; in EA «own graph» is the stereotype of the composition connector
+itself, and `countReport` is the role of the association beside it.
+
+[source,yaml]
+----
+slots:
+  count_report:
+    slot_uri: lib:countReport
+    range: uri
+    annotations:
+      rp_loaded_graph: 'true'
+----
+
+«own graph» on a part that is generated fails: a later release will let a generated class be an
+«own graph» part; until then mark the part with a not-generated stereotype or draw a plain
+composition. A plain composition to a not-generated part fails too, since a not-generated part is
+stored apart: use «own graph». Any other stereotype on a composition fails.
+
+[#pointers]
+=== Pointers target roots
+
+An association that is not a composition's is a pointer to another aggregate. It ranges over a
+root, the «tenant root», or an abstract class whose concrete subclasses are all roots. It may not
+range over a part of an aggregate its holder does not belong to: the target of a pointer is the
+aggregate, not a part in it. A pointer into an aggregate the holder is itself in (a `Chapter` that
+points at another `Chapter` of its own book) is an internal reference and stays. A class that is no
+part (a class of an `access`, `technical` or `value` module) is a plain target as before.
+
+[mermaid]
+....
+classDiagram
+  Reader --> "0..*" Shelf : borrowsFrom
+  Reader --> "0..*" Book : borrows
+  Shelf *-- Book
+....
+
+`Reader.borrows` fails: `[boundary_owned] Reader.borrows: points at Book, a part of Shelf; point at
+Shelf`. Retarget it at `Shelf`. When `Book` is a part of two aggregates, the message names both
+roots, and a pointer from a class that is in one of them is allowed.
+
+One role IRI may not be owned on one whole and a pointer on another class: that splits one slot into
+an owned and a referencing usage (`[boundary_owned] <role>: role <role> is owned on <whole> and a
+pointer on <holder>`). Give the second use its own name. The toolkit's own slots (`dct:hasPart` of a reference collection, <<member-class>>)
+are exempt.
+
+[#realisation]
+=== Realising an object's class
+
+A role definition is an EA Object (<<roles>>) whose classifier is `rp:RoleDefinition`. A Realisation
+connector from the Object to a class is accepted as the visible form of the classifier. It converts
+to nothing. An Object with a Realisation and no classifier takes the Realisation's target as its
+classifier. A Realisation to another class than the classifier fails (`[role_definition] <object>:
+realises <class> but its classifier is <class>`), and so do two Realisations to different classes
+(`realises <class> and <class>`). A Realisation is read by the types of its ends, not its direction, so one drawn from the
+class to the Object counts as the Object's. A Realisation between two classes, or from a class, is
+still a connector no convention maps. An Object outside the converted packages, or in an excluded
+one, is skipped.
+
+[mermaid]
+....
+classDiagram
+  class librarian["librarian : rp:RoleDefinition"] {
+    role = librarian
+    level = tenant
+    actions = read, modify
+  }
+  RoleDefinition <|.. librarian : realises
+....
+
+[#diagrams]
+=== Diagrams
+
+Only the names and the contents of the class diagrams of the converted packages are read, never their
+positions or sizes. A diagram named `<package> · aggregates` (a middle dot, U+00B7, between spaces)
+shows classes and compositions only, and the text before the suffix is the name of its package.
+Any other class diagram of a converted package shows no composition. A diagram that breaks this
+gives a convention line:
+
+* `aggregates-diagram`: an aggregates diagram that shows an association or a dependency, an element
+  that is no class, note, text or boundary (an enumeration, an Object, a state), or whose name does
+  not begin with its package's name;
+* `composition-diagram`: any other class diagram that shows a composition.
+
+EA shows a connector on a diagram when both its ends are on it, unless the diagram hides it. So on
+the aggregates diagram hide the associations, and on the others hide the compositions: the guide
+(xref:howto/uml-to-linkml.adoc#diagram-kinds[Two kinds of diagram]) says how. Statechart diagrams
+(<<workflows>>) are not read here.
+
+[mermaid]
+....
+classDiagram
+  note for Shelf "diagram: library · aggregates (compositions only)"
+  Shelf *-- Book
+  Book *-- Chapter
+....
+
+The converter writes nothing for a diagram: the convention line is the only effect, and it fails
+`--check`.
+
+[#conventions]
+=== The conventions `--check` fails on
+
+`rp-uml2linkml --check` (xref:howto/uml-to-linkml.adoc#check-model[the guide]) reads and converts
+exactly as a run does, writes nothing, and exits 1 when the model has a problem or one of these
+convention lines. A normal run writes the same lines in the report and never fails on them. The
+report lines of the other kinds are informational: they never fail `--check`.
+
+[cols="2,5,3",options="header"]
+|===
+|Kind |The convention it reports |Where
+
+|`boundary-disagrees` |A boundary of a converted package named for no root. |<<composition>>
+|`composition-named` |A composition carries a note, or a role its association already gives. |<<composition>>
+|`aggregates-diagram` |An aggregates diagram that shows an association, an element that is no class, or
+is named for another package. |<<diagrams>>
+|`composition-diagram` |A class diagram that is no aggregates diagram and shows a composition. |<<diagrams>>
+|`unprefixed-name` |A class, attribute or role written with no prefix (an enumeration literal has
+`implicit-meaning`). |<<model2owl>>
+|`unused-enumeration` |An enumeration that no dependency ranges over; it is generated all the same. |<<empty-enumeration>>
+|`drawn-toolkit-parent` |A generalisation to a drawn toolkit class: say it with `rp_mixins=<Class>`
+(<<tagged-values>>). A drawn `rp:RoleDefinition` that classifies Objects is not reported. |<<toolkit-reuse>>
+|`tenant-required-pointer` |A required pointer from the tenant root or its parts to a class outside the
+tenant's aggregate: the tenant cannot be created before the target exists. |<<tenant-root>>
+|`no-note` |An element with no note. |<<model2owl>>
+|`unspecified-multiplicity` |A connector end with no multiplicity, read as `0..*`. |<<multiplicity>>
+|`implicit-meaning` |An enumeration literal with no prefix. |<<empty-enumeration>>
+|===
+
+`root`, `deprecated-root`, `not-generated`, `outside-link`, `excluded-link`, `toolkit-filled`,
+`toolkit-slot-kept`, `role`, `workflow`, `derived-iri`, `external-list`, `ignored-tag`,
+`ignored-stereotype` and `stale-file` are informational. A model that draws «root» (<<root>>) or
+follows the reference-collection pattern of <<member-class>> still passes `--check`.
 
 [#tenant-root]
 === A tenant root
 
 A class stereotyped «tenant root» is annotated `graph: meta`. It gets no `AggregateRoot` and no
-`rp_path`, but it takes the default mixins, and it counts as the one root of its boundary
-(<<boundary>>), so its parts are owned. A `graph` tagged value of `meta` is the same annotation;
+`rp_path`, but it takes the default mixins, and it is a root for the compositions (<<composition>>)
+that start at it, so its parts are owned. It is never a part. A `graph` tagged value of `meta` is the same annotation;
 one with another value is a problem, `[tenant_root] Library: graph: 'data' conflicts with the
 «tenant root» stereotype, which is graph meta`.
 
@@ -188,7 +411,7 @@ A class is abstract when EA's _Abstract_ flag is set or its stereotype is «Abst
 It becomes `abstract: true`; the stereotype is not reported.
 
 An abstract class is also an aggregate root of its own when it is the range of a generated slot and
-all its concrete descendants are «root», counted through any abstract classes between them, so a
+all its concrete descendants are roots, counted through any abstract classes between them, so a
 slot can point at "any of them". It then mixes in `AggregateRoot` and has no `rp_path` and no
 default mixins; the concrete roots keep their own. A `unique_key` on it is scoped to the tenant
 (`rp_unique_scope: tenant`), as on a root (<<tagged-values>>).
@@ -199,12 +422,8 @@ classDiagram
   class Holding["lib:Holding"] {
     <<Abstract>>
   }
-  class Book["lib:Book"] {
-    <<root>>
-  }
-  class Map["lib:Map"] {
-    <<root>>
-  }
+  class Book["lib:Book"]
+  class Map["lib:Map"]
   Holding <|-- Book
   Holding <|-- Map
   Shelf --> "0..*" Holding : holds
@@ -300,7 +519,7 @@ twice`.
 |Any other tag
 |Ignored, with an `ignored-tag` line (`tagged value rp_pth is not used`); a tag name is exact, so a
 misspelt `rp_path` is such a tag. A tag named like a metamodel annotation that is not a class
-annotation (`owned`) fails: `[class_annotation] Book: owned: tagged value is not a class annotation`.
+annotation (`owned`, `rp_loaded_graph`) fails: `[class_annotation] Book: owned: tagged value is not a class annotation`.
 |===
 
 A part tagged `rp_unlabelled=true` gets `Described` only, with the annotation, so its `label` is
@@ -313,7 +532,6 @@ A stereotype on an attribute is not used: the attribute converts as usual and th
 ....
 classDiagram
   class Book["lib:Book"] {
-    <<root>>
     rp_mixins = StoredFile
     rp_writes = service
     unique_key = title_subtitle: title, subtitle
@@ -321,6 +539,7 @@ classDiagram
   class Chapter["lib:Chapter"] {
     rp_unlabelled = true
   }
+  Book *-- Chapter
 ....
 
 [source,yaml]
@@ -352,7 +571,7 @@ toolkit's class, not generated. Drawn inside the converted subtree it is reporte
 `not-generated	Activity	drawn as the toolkit's Activity, not generated`, and a slot that points at
 it is `range: uri`; drawn outside the subtree, at the far end of a link, it is a class outside like
 any other (<<not-generated>>). A generalisation to it has the effect of `rp_mixins`: a mixin class is mixed in, a
-non-mixin becomes `is_a`. A «root» may be an `Activity`.
+non-mixin becomes `is_a`. A root may be an `Activity`.
 * An attribute or role whose IRI is a toolkit slot's `slot_uri` uses that slot, and no new one is
 made; a `[1..1]` on a slot the toolkit does not already require becomes a `slot_usage` with
 `required: true`. A bound on a slot the toolkit fills itself (`started_at_time`) is not carried: the
@@ -370,11 +589,9 @@ with a line such as
 classDiagram
   class Activity["prov:Activity"]
   class Loan["lib:Loan"] {
-    <<root>>
     xsd:dateTime prov:startedAtTime [1..1]
   }
   class Book["lib:Book"] {
-    <<root>>
     xsd:string dct:identifier [1..1]
   }
   Activity <|-- Loan
@@ -420,12 +637,8 @@ toolkit's `has_part`.
 [mermaid]
 ....
 classDiagram
-  class Shelf["lib:Shelf"] {
-    <<root>>
-  }
-  class Book["lib:Book"] {
-    <<root>>
-  }
+  class Shelf["lib:Shelf"]
+  class Book["lib:Book"]
   Shelf --> "0..*" Book : hasPart
   note for Shelf "rp_mixins = ReferenceCollection"
 ....
@@ -484,9 +697,7 @@ class as its own member class (DEC-2).
 [mermaid]
 ....
 classDiagram
-  class Shelf["lib:Shelf"] {
-    <<root>>
-  }
+  class Shelf["lib:Shelf"]
   Shelf --> "0..*" Shelf : hasPart
   note for Shelf "rp_mixins = ReferenceCollection"
 ....
@@ -1049,11 +1260,60 @@ class of B with a parent in A): the conversion succeeds and `rp-generate` refuse
 (xref:user-manual/generate.adoc#module-cycles[Schema modules that import each other])
 |Move the classes that inherit from one another into one package.
 
-|A class that straddles a boundary's edge, or is inside two boundaries
-|Move it wholly inside one boundary, or wholly outside.
+|An Aggregation connector that is shared (a hollow diamond), or whose diamond is at both ends or at
+neither (`[boundary_owned] Shelf -> Book: a shared aggregation; draw a composition (strong) or a plain
+association`; `[no_rule] A -> B: composition with no single diamond end`), or whose diamond value is
+not 0, 1 or 2 (`[no_rule] A -> B: aggregate value 3`)
+|Draw a composition: the strong diamond at the whole, and only there (<<composition>>).
 
-|A boundary with no root, or with two
-|Put exactly one «root» (or «tenant root») in it.
+|A composition with no association from the whole to the part (`[boundary_owned] Shelf -> Book: a
+composition needs an association Shelf -> Book that names the role`); two or more such associations
+and no role on the composition; a role on the composition that names none of them (`role r names no
+association ...`)
+|Draw the association beside the composition. With several, write the role on the composition
+(<<composition>>). An association to a subclass or a superclass of the part does not count.
+
+|Any composite association: an association with a composite end, whichever end it is (`[boundary_owned]
+Shelf.holds: a composite association; draw an Aggregation (composition) Shelf -> Book beside a plain
+association`; with the composite end at the destination, `[no_rule] Book.shelf: a composite whose
+whole is the destination`). A problem of composition kind carries the rule name `boundary_owned`
+for historical reasons, whatever the composition's shape.
+|Replace it by a plain association, and an Aggregation (composition) from the whole to the part
+beside it (<<composition>>).
+
+|A part class that no root reaches, or compositions that form a cycle no root enters
+(`[boundary_owned] Section: no root reaches it (wholes Book, Journal)`; `compositions form a cycle
+A → B → A that no root reaches`)
+|Give the part a whole that a root reaches, or break the cycle.
+
+|A composition whose end is outside the converted packages or in an excluded one, is a drawn toolkit
+class or an enumeration, whose part is the «tenant root», or where a domain whole composes a part of
+another module kind
+|Compose converted domain classes only; a toolkit class is a mixin (`rp_mixins`) (<<composition>>).
+
+|A stereotype on a composition other than «own graph» (`[no_rule] W -> P: connector stereotype S`);
+«own graph» to a generated class; a plain composition to a not-generated class
+|Use «own graph» for a part of a not-generated stereotype and a plain composition for a generated
+one (<<own-graph>>).
+
+|A generalisation to or from a class inside an own graph
+|Remove the generalisation; the class is stored inside the part's graph (<<own-graph>>).
+
+|A pointer at a part of an aggregate the holder is not in; a role owned on one whole and a pointer on
+another class (<<pointers>>)
+|Point at the aggregate's root, or give the pointer its own role name.
+
+|A class drawn «root» that is a part, a derived root not drawn «root», or a «root» on an abstract
+class (`[root_class] <class>: ...`); the «tenant root» as a part
+|Make the drawn set equal the derived roots, or drop «root» (<<root>>).
+
+|A Realisation from an Object to another class than its classifier, or to two classes
+(`[role_definition] <object>: realises ...`); a Realisation from a class
+(`[no_rule] A -> B: Realisation connector`)
+|Realise the classifier only (<<realisation>>). Draw nothing from a class.
+
+|A run with neither `--out` nor `--check`
+|Pass `--out`, or `--check` (<<conventions>>); this is a usage error, exit 2.
 
 |A class stereotype that is not `root`, `tenant root`, `Abstract` or in the not-generated list
 |Remove the stereotype, or add it with `--not-generated` if the class is out of scope.
@@ -1081,9 +1341,6 @@ enumeration
 |A dependency to a converted class
 |A dependency leads to an enumeration. For a class, use an association. A dependency to a class
 that is not generated or outside the package is a `range: uri` slot and does not fail.
-
-|An `Aggregation` connector, or a composite association whose whole is the destination
-|Draw the whole as the source of the composite association.
 
 |An attribute typed by a class, or by an XSD type not listed in <<model2owl>>
 |Use an XSD datatype or an enumeration, or draw an association.
