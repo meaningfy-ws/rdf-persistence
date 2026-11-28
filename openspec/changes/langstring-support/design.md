@@ -189,3 +189,30 @@ isomorphic, so a replay is a no-op. The converter stays byte-identical on an unc
 
 None: P-1 to P-4 and Q-1 to Q-4 are answered (`inputs/qa.md`). The attack's 15 findings are folded
 into the decisions above (probes in `temp/attack/`).
+
+## Delivery decisions
+
+Taken by the lead during delivery (R-0007), for the owner to validate at the end.
+
+**Stage 1**
+- **D-1** (1.3) An OpenAPI property rewritten to `{"type": "string"}` keeps its `title` and
+  `description`; only the numeric keywords (`minimum`, `maximum`, ...) go. PD-8 said the bare
+  schema; the docs text is still true of a string.
+- **D-2** (1.4) A double slot is one whose range type's IRI is `xsd:double` (no derived types: none
+  exists). In JSON-LD the double terms are matched by JSON name across every class, so a body that
+  writes a double by its full IRI or a renamed term is left to JSON-LD, untyped.
+- **D-3** (1.2) `local_of` keeps `rsplit(":")`: rdflib's `split_uri` works on IRIs, not on the
+  `pfx:Local` names UML authors write, and could change outputs on odd names (DEC-7).
+- **D-4** (1.6) `make generate` after stage 1 moves only the manifests' generator input hashes; no
+  generated output changes (DEC-7).
+- **D-5** `Documents._valued` came out CRITICAL in GitNexus impact (7 API write processes). PD-9
+  names that spot and the owner gated the PLAN; the builder added a "left as it was" row for a
+  string, an integer and a reference slot beside each double row.
+- **D-6** Parallel builders in one worktree cannot pass `make test-changed`: the freshness plugin
+  stops every pytest session while generator sources are mid-edit. Builders ran their tests with
+  `-p no:rdf_persistence_generation.testkit.freshness`; the lead regenerated and ran the full gates.
+  Stage 2 gives each wave-A builder of a generator file its own worktree, or accepts the same.
+- **D-7** `tests/measures.py` (1.4's helper, which runs `rp-generate` on the measures fixture into
+  `tmp_path`) is the tenth file of `TOOL_USERS` (`test_library_tests_stay_apart.py`, TC-28), whose
+  count test asks for a decision. Rejected: moving the generation into `tests/conftest.py`, already
+  listed, which keeps nine but hides which tests run the generator.

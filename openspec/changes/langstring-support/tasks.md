@@ -9,33 +9,33 @@ run in parallel on disjoint files; "lead" tasks are the lead's, as are `make gen
 
 Lead: 1.0. Wave A: 1.1 ∥ 1.2 ∥ 1.3 ∥ 1.4. Lead: 1.5, 1.6.
 
-- [ ] 1.0 Lead: the fixture 1.3 and 1.4 share, `tests/fixtures/measures/measures.yaml`: a LinkML
+- [x] 1.0 Lead: the fixture 1.3 and 1.4 share, `tests/fixtures/measures/measures.yaml`: a LinkML
   schema importing the toolkit, one aggregate `Measure` with `dec` (decimal), `flt` (float), `dbl`
   (double); no generated package (tests generate into `tmp_path`).
-- [ ] 1.1 Relay plumbing IRIs from the `rp` namespace ([PD-1](design.md#pd-1)). Files:
+- [x] 1.1 Relay plumbing IRIs from the `rp` namespace ([PD-1](design.md#pd-1)). Files:
   `rdf_persistence/schema/services/vocabulary.py`; a unit test that each of the four equals its
   literal IRI. Acceptance: that test, `test_session_unique_keys.py`, the relay and tenancy unit
   tests green, unchanged.
-- [ ] 1.2 UML converter cleanups ([PD-2](design.md#pd-2), [PD-3](design.md#pd-3),
+- [x] 1.2 UML converter cleanups ([PD-2](design.md#pd-2), [PD-3](design.md#pd-3),
   [PD-4](design.md#pd-4)). Files: `rdf_persistence_generation/uml/` `naming.py`, `context.py`,
   `classes.py`, `toolkit.py`, `slots.py`; tests first: a parametrised `local_of` case in
   `test_uml_naming.py`, `prefixes()` against the view's namespaces in `test_uml_cli.py:293`, the
   renamed table in `test_uml_rules.py`. Acceptance: `test_uml_golden` unchanged; generator unit
   tests green.
-- [ ] 1.3 Types from IRIs; decimal and float as strings ([PD-5](design.md#pd-5),
+- [x] 1.3 Types from IRIs; decimal and float as strings ([PD-5](design.md#pd-5),
   [PD-6](design.md#pd-6), [PD-8](design.md#pd-8)). Files: `extensions/typescript.py`,
   `extensions/pydantic_split.py` (the constant only), `rdf_persistence_generation/components.py`;
   tests first: one `_scalar` case per XSD type in `test_ext_typescript.py`, the components' tests on
   the measures fixture. Acceptance: the TypeScript and OpenAPI half of "reading the three ranges"
   (rp-generation delta); TypeScript goldens byte-identical.
-- [ ] 1.4 Double as a JSON number, writes typed in both formats ([PD-9](design.md#pd-9)). Files:
+- [x] 1.4 Double as a JSON number, writes typed in both formats ([PD-9](design.md#pd-9)). Files:
   `extensions/jsonld_context.py`, `rdf_persistence/api/services/documents.py`; tests first: a
   generator unit test (no `@type` on the double term) and `test_documents.py` on a context generated
   from the measures fixture. Then `features/decimal_numbers.feature` into `tests/feature/`, steps in
   `tests/feature/test_decimal_numbers.py` driving `Documents` on that context. Acceptance: "reading
   the three ranges" (JSON half), "a number or a string written to a double slot", "a boolean written
   to a double slot"; the feature passes.
-- [ ] 1.5 Lead: the comment of [PD-7](design.md#pd-7); the DEC-8 lines of
+- [x] 1.5 Lead: the comment of [PD-7](design.md#pd-7); the DEC-8 lines of
   [PD-19](design.md#pd-19) (RISK-3, RISK-4, RISK-5).
 - [ ] 1.6 Lead: `make check-generated` with no diff (DEC-7); `make check-all`; one review pass; PR
   "rdflib terms, and one form for decimal numbers".
@@ -101,7 +101,7 @@ lead: 2.11, 2.12.
 
 ## Roadmap
 
-- [ ] 1.0 · [ ] 1.1 ∥ 1.2 ∥ 1.3 ∥ 1.4 · [ ] 1.5 · [ ] 1.6 (stage 1 PR)
+- [x] 1.0 · [x] 1.1 ∥ 1.2 ∥ 1.3 ∥ 1.4 · [x] 1.5 · [ ] 1.6 (stage 1 PR)
 - [ ] 2.0 · [ ] 2.1 ∥ 2.2 ∥ 2.3 ∥ 2.4 · [ ] 2.5 · [ ] 2.6 ∥ 2.7 ∥ 2.8 ∥ 2.9 · [ ] 2.10 ·
   [ ] 2.11 · [ ] 2.12 (stage 2 PR)
 
