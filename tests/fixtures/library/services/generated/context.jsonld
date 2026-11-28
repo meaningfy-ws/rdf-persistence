@@ -1,8 +1,12 @@
 {
    "@context": {
       "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
       "lib": "https://example.org/ns/library#",
       "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
       "schema": "http://schema.org/",
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
@@ -25,14 +29,100 @@
          "@container": "@set",
          "@id": "checks"
       },
+      "id": "@id",
+      "data_schema_version": {
+         "@id": "rp:dataSchemaVersion"
+      },
       "finding_code": {
          "@id": "findingCode"
       },
       "finding_message": {
          "@id": "findingMessage"
       },
+      "graph": {
+         "@type": "@id",
+         "@id": "rp:graph"
+      },
+      "key_counts_absent": {
+         "@id": "rp:keyCountsAbsent"
+      },
+      "key_name": {
+         "@id": "rp:keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "rp:keyValues"
+      },
+      "kind": {
+         "@id": "rp:kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "rp:listedIn"
+      },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "rp:loadedAt"
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "rp:loadedGraph"
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "rp:ownedBy"
+      },
+      "registry_kind": {
+         "@id": "registryKind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rp:rootClass"
+      },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "rp:startedAt"
+      },
+      "url_segment": {
+         "@id": "rp:urlSegment"
+      },
+      "version": {
+         "@id": "rp:version"
+      },
       "@version": 1.1,
       "type": "@type",
+      "AggregateKey": {
+         "@id": "rp:AggregateKey"
+      },
+      "AggregateRoot": {
+         "@id": "rp:AggregateRoot"
+      },
+      "CommitMarker": {
+         "@id": "rp:CommitMarker"
+      },
+      "KeyDuplicate": {
+         "@id": "rp:KeyDuplicate"
+      },
       "LoanCheck": {
          "@id": "LoanCheck"
       },
@@ -41,6 +131,15 @@
       },
       "LoanFinding": {
          "@id": "LoanFinding"
+      },
+      "PendingLoad": {
+         "@id": "rp:PendingLoad"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "RegistryEntry": {
+         "@id": "rp:RegistryEntry"
       }
    }
 }

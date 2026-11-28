@@ -27,6 +27,23 @@ from pydantic import (
     field_validator,
     model_serializer
 )
+from rdf_persistence import (
+    AggregateKey,
+    AggregateRoot,
+    CommitMarker,
+    DatabaseKind,
+    GraphKind,
+    KeyDuplicate,
+    ModuleKind,
+    OnReferencedDelete,
+    PendingLoad,
+    Principal,
+    RegistryEntry,
+    RegistryKind,
+    RpAnnotation,
+    UniqueScope,
+    WritesKind
+)
 from tests.fixtures.library.domain.generated.values.loan_checks import (
     LoanCheck,
     LoanFinding,
@@ -46,6 +63,7 @@ linkml_meta = None
 class LoanChecksResponse(ConfiguredBaseModel):
     "The answer of a loan check, the outcomes of every check run."
     checks: _Optional[list[LoanCheck]] = _Field(default=None, title="Checks", description="The outcomes of the checks.")
+    registry_kind: _Optional[RegistryKind] = _Field(default=None, title="Registry kind", description="The kind of graph the answer was read from, when it names one.")
 
 
 # Model rebuild

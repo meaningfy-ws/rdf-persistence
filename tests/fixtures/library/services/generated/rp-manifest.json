@@ -291,7 +291,7 @@
     },
     {
       "path": "services/loan_checks_response.yaml",
-      "sha256": "34b7158d5eff1f77ab21e0b3c91c1aeee64dee6e7331de9be16fc41987650e56"
+      "sha256": "781e0f2038f7afec280bb1c603630573f364ca6d78c7376683f0f52b0f3f1791"
     },
     {
       "path": "values/loan_checks.yaml",
@@ -305,15 +305,15 @@
     },
     {
       "path": "services/generated/context.jsonld",
-      "sha256": "0c82ee214e1d46baaaba8029fab6de8763456304d0823f181ca777c9916fc366"
+      "sha256": "5556d900261a2cca19baa65df3a7e24473c175ef9e207ef888d7b6703b88c460"
     },
     {
       "path": "services/generated/loan_checks_response.py",
-      "sha256": "a06171ab988fa5fcf9d56a6ca25fcbbf17a9871b53249b37b42cf8bb231a3e9b"
+      "sha256": "da6be0e4545f61221d8d105ce94578cd40ac7c387d79ae383de49bff09c03943"
     },
     {
       "path": "services/generated/shapes.ttl",
-      "sha256": "97617c993af59caa63848a47d969d53ff7489102c375d9dd526f6855d0644f67"
+      "sha256": "dbabc11e828e886d05244b3f27f394622f6e2e245f6940a00136c2d2dc8453a3"
     },
     {
       "path": "web/src/services/generated/index.ts",
@@ -321,7 +321,7 @@
     },
     {
       "path": "web/src/services/generated/loan_checks_response.ts",
-      "sha256": "59014b64ec1351bbe1252c8fe21e7199d33901f6b4ebefb8fd1b4b4b9653363a"
+      "sha256": "1d4278308a66a74c2feac2aec1ad8245adeac90f93bbc9933be53b2dd6c63256"
     }
   ]
 }

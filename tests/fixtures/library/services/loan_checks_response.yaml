@@ -10,6 +10,7 @@ default_range: string
 imports:
   - linkml:types
   - ../values/loan_checks
+  - rdf_persistence/model/rp_core
 annotations:
   module_kind: technical
   python_package: tests.fixtures.library.services.generated
@@ -21,8 +22,14 @@ classes:
     class_uri: lib:LoanChecksResponse
     slots:
       - checks
+      - registry_kind
 
 slots:
+  registry_kind:
+    title: Registry kind
+    description: The kind of graph the answer was read from, when it names one.
+    slot_uri: lib:registryKind
+    range: RegistryKind
   checks:
     title: Checks
     description: The outcomes of the checks.
