@@ -160,7 +160,9 @@ def test_generation_output_is_the_same_with_a_cold_and_a_warm_cache(tmp_path: Pa
 
 def test_the_private_hbreader_attribute_the_cache_sets_still_exists():  # S7, DEC-5
     """The cache sets ``Pathilizer._strifier``, which only ``__str__`` reads: fail if hbreader drops it."""
-    assert "_strifier" in inspect.getsource(Pathilizer.__str__), "hbreader no longer reads _strifier"
+    assert "_strifier" in inspect.getsource(Pathilizer.__str__), (
+        "hbreader no longer reads _strifier"
+    )
     path = _pathilized("x")
     assert str(path) == "x", "a restored Pathilizer does not read as its text"
     buffer = io.BytesIO()
