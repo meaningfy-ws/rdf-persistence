@@ -16,7 +16,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
-from hbreader import Pathilizer
+from hbreader import Pathilizer  # type: ignore[import-untyped]  # LinkML's dependency, untyped
 from linkml_runtime.linkml_model.meta import SchemaDefinition
 from linkml_runtime.utils import schemaview
 
@@ -40,7 +40,7 @@ class _SchemaPickler(pickle.Pickler):
     base folder: a ``str`` that carries a lambda, which no pickle can hold."""
 
     def reducer_override(self, obj: object) -> Any:
-        if type(obj) is Pathilizer:
+        if type(obj) is Pathilizer and isinstance(obj, str):
             return _pathilized, (obj[:],)
         return NotImplemented
 
