@@ -106,3 +106,13 @@ integration lane, all in `make test-generator`.
   lead regenerates, so the one loop line of `validators.py.golden` was edited to the template's
   output; `test_ext_pydantic_validators.py` checks it (40 passed, guard off). After the lead's
   `make generate`, `make refresh-golden` left the fixture diff byte-identical (same sha256).
+- **D-6 Review findings under the floor** (one L2+L3 pass, PR #444, no Critical), lead,
+  2026-11-28:
+  - W1, mutation evidence not in the change: recorded in `evidence/red-runs.md` from the builder's
+    report (no code change).
+  - W2, `has_part`'s `# type: ignore[assignment]` mark not asserted: under the floor (mypy-clean
+    is asserted; the mark is covered by the unit rule-5 rows).
+  - Under the floor: S1, the long template loop line (readable enough, regeneration cost); S2, no
+    `None` case for the dict slot (the `None` branch is shared and tested); S3, source-text
+    assertions (deliberate, RISK-1); S4, scenario-map granularity; S5, the CHANGELOG not naming
+    `{}`.
