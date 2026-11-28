@@ -258,7 +258,7 @@ class ServiceKit:
             root_validators=root_validators,
             dependents=discussion_dependents(view),
             dependence=dependence_links(view),
-            max_roots=self.toolkit.limits.max_roots,
+            limits=self.toolkit.limits,
             stamps=[(schema_id, current_version(chain)) for schema_id, chain in self.chains],
             on_commit=self._publish,
             stores={name: wrapped[id(other)] for name, other in stores.items()},

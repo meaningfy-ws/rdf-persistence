@@ -343,3 +343,13 @@ Decisions the lead took without the developer, shown for validation at the end (
     placement, same-slot re-annotation); W4 (the annotation unit test only proves the enum); S1 (one
     concrete-descendants helper shared by library and generator); S2 (`pattern_of` bound twice in
     `uml/tags.py`); S3 (feature step texts tied to one class pair).
+- <a id="d-8"></a>**D-8**, lead, 2026-11-28 (delivery, tasks 2.3–2.5a): `NotFound` carries no
+  `iris`, so its rows assert that the message names the whole; the `Conflict` rows assert `iris`
+  (A-5). Rejected: adding `iris` to `NotFound`, a public exception change beyond this change.
+  Tasks 2.1 and 2.2 were committed before their batch gate. The gate of the 2.3–2.5a batch covers
+  them (D-5).
+- <a id="d-9"></a>**D-9**, lead, 2026-11-28 (delivery, batch gate of 2.1–2.5a): `max_roots` is a
+  keyword the package removed in favour of `limits: LimitSettings` (the central settings, P-0009),
+  so `Session`, `open_session`, `Tenancy` and `fake_session` take `limits` and read
+  `limits.max_roots`. The pure `discovery_query` takes the number as `limit`. Supersedes the
+  parameter name in PD-2, PD-6 and task 2.1. The new module gets its row in the theme layout.

@@ -31,6 +31,9 @@ from rdf_persistence.events.services.generated.rp_events_services import EventEn
 from rdf_persistence.files.domain.blob_keys import checked_blob_key
 from rdf_persistence.files.domain.generated.rp_files import BlobEntry
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.referrers import Dependents, RemovalRefusal
 from rdf_persistence.persistence.services.session import (
@@ -469,7 +472,7 @@ async def fake_session(
     on_commit: OnCommit | None = None,
     removals: RemovalRefusal | None = None,
     dependence: Sequence[DependenceLink] = (),
-    max_roots: int | None = None,
+    limits: LimitSettings | None = None,
 ) -> AsyncIterator[Session]:
     """A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 
@@ -478,8 +481,7 @@ async def fake_session(
     default policy). ``keys`` are the keys across aggregates the session enforces (default: none).
     ``record_activities`` and ``on_commit`` are the session's (message-bus PD-9, PD-10).
     ``removals`` are the session's: the classes whose roots it refuses to remove while referenced.
-    ``dependence`` and ``max_roots`` are the session's links of dependence and root limit; links
-    without a limit raise ``ValueError``.
+    ``dependence`` and ``limits`` are the session's links of dependence and central limits.
     """
     store = store or FakeStore()
     if FAKE_DATABASE not in await store.list_datasets():
@@ -499,7 +501,7 @@ async def fake_session(
         on_commit=on_commit,
         removals=removals,
         dependence=dependence,
-        max_roots=max_roots,
+        limits=limits,
     ) as session:
         yield session
 

@@ -58,6 +58,9 @@ from rdf_persistence.iris.services.generated.rp_iris_services import ServiceSett
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.migrations.services.migrations import stamp_if_none, stamp_problems
 from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import Mapper, UnitOfWork
 from rdf_persistence.persistence.services.referrers import Dependents, RemovalRefusal
@@ -148,22 +151,19 @@ class Tenancy:
         stores: Mapping[str, Store] = {},
         removals: RemovalRefusal | None = None,
         dependence: Sequence[DependenceLink] = (),
-        max_roots: int | None = None,
+        limits: LimitSettings | None = None,
     ) -> None:
         """``store`` is the ``default`` store, which holds the system database; ``stores`` are the others by name.
 
-        ``dependence`` (``dependence_links`` of the schema) and ``max_roots`` (the toolkit's limit) are
-        given to every session (dependent-aggregates PD-2, PD-6).
+        ``dependence`` (``dependence_links`` of the schema) and ``limits`` (the toolkit's) are
+        given to every session (dependent-aggregates PD-2, PD-6, D-9).
 
         Raises:
             ValueError: A name is ``default`` or one a record's ``store_name`` refuses, or one ``Store`` object
-                is wired under two names (the default one included); or ``dependence`` is given without
-                ``max_roots`` (A-8).
+                is wired under two names (the default one included).
         """
-        if dependence and max_roots is None:
-            raise ValueError("dependence needs max_roots: a cascade without a limit is unbounded")
         self._dependence = tuple(dependence)
-        self._max_roots = max_roots
+        self._limits = limits
         self._dependents = dependents
         self._removals = removals  # the refusal of removals, given to every session (PD-7)
         # given to the sessions of tenant and application databases, never the system database's
@@ -231,7 +231,7 @@ class Tenancy:
             removals=self._removals,
             may_read=may_read,
             dependence=self._dependence,
-            max_roots=self._max_roots,
+            limits=self._limits,
         )
 
     def tenant_session(

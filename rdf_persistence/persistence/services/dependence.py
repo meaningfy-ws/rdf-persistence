@@ -70,6 +70,13 @@ def pointer_of(part: str, triples: Iterable[Triple], link: DependenceLink) -> UR
     return whole
 
 
+def link_of(types: Iterable[object], links: Sequence[DependenceLink]) -> DependenceLink | None:
+    """The first of ``links`` whose part classes include one of ``types``, or ``None``: the
+    aggregate is no part."""
+    classes = {str(t) for t in types}
+    return next((link for link in links if classes & set(link.part_classes)), None)
+
+
 def whole_guard(whole_graph: URIRef, whole: URIRef, link: DependenceLink, n: int) -> SparqlTerm:
     """The guard of the part's request: ``whole`` holds a version in ``whole_graph`` and is of one
     of the link's whole classes (PD-3). Its variables end in ``n``, the guard's index."""
@@ -92,13 +99,13 @@ def link_pairs(links: Sequence[DependenceLink]) -> SparqlTerm:
 
 
 def discovery_query(
-    wholes: Iterable[URIRef], links: Sequence[DependenceLink], registry: URIRef, max_roots: int
+    wholes: Iterable[URIRef], links: Sequence[DependenceLink], registry: URIRef, limit: int
 ) -> str:
     """The query of one level of discovery: the parts of ``wholes`` as rows of ``?whole ?part ?type
-    ?version`` (PD-6), at most ``max_roots + 1`` of them, so the caller sees the limit passed.
+    ?version`` (PD-6), at most ``limit + 1`` of them, so the caller sees the limit passed.
 
     Raises:
-        SparqlError: A whole or a link is not a safe IRI, or ``max_roots`` is not a count.
+        SparqlError: A whole or a link is not a safe IRI, or ``limit`` is not a count.
     """
     return fill(
         _DISCOVERY,
@@ -109,13 +116,25 @@ def discovery_query(
         p_kind=term(v.REGISTRY_KIND),
         aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
         p_owned_by=term(v.REGISTRY_OWNED_BY),
-        limit=count(max_roots + 1),
+        limit=count(limit + 1),
     )
 
 
 def discovered(row: ResultRow) -> tuple[str, str, str, int]:
     """One solution of the discovery query as ``(whole, part, type, version)``."""
     return (str(row.whole), str(row.part), str(row.type), int(row.version))
+
+
+def whole_ask(whole_graph: URIRef, whole: URIRef, link: DependenceLink) -> str:
+    """The question whether ``whole`` exists and is of a whole class now: the guard as an ``ASK``."""
+    return fill("ASK { $guard }", guard=whole_guard(whole_graph, whole, link, 0))
+
+
+def no_late_part_ask(
+    root: URIRef, removed: Iterable[URIRef], links: Sequence[DependenceLink], registry: URIRef
+) -> str:
+    """The question whether no part of ``root`` outside ``removed`` is stored now (true: none)."""
+    return fill("ASK { $guard }", guard=no_late_part_guard(root, removed, links, registry, 0))
 
 
 def no_late_part_guard(

@@ -1,14 +1,18 @@
-"""A session carries the links of dependence and the root limit it was opened with (dependent-aggregates PD-2, PD-6).
+"""A session carries the links of dependence and the limits it was opened with (dependent-aggregates
+PD-2, PD-6, D-9).
 
-Only the wiring: the session stores them and refuses links without a limit (A-8); the checks that
-use them come with the write guard and the cascade.
+Only the wiring: the session stores the links and reads the root limit from the given or default
+``LimitSettings``, so a cascade is always bounded (A-8); the checks that use them are tested apart.
 """
 
 import pytest
 
 from rdf_persistence.core.domain.generated.rp_core import DependenceLink
 from rdf_persistence.iris.services.iris import Iris
-from rdf_persistence.persistence.services.session import Session, open_session
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
+from rdf_persistence.persistence.services.session import open_session
 from rdf_persistence.tenancy.services.tenancy import Tenancy
 from rdf_persistence.testkit import FakeFileStore, FakeStore, fake_session
 from tests.fixtures.library.domain.generated.library import Library
@@ -23,6 +27,8 @@ LINK = DependenceLink(
     whole_classes=["https://example.org/Report"],
 )
 MAX_ROOTS = 7
+LIMITS = LimitSettings(max_roots=MAX_ROOTS)
+DEFAULT_MAX_ROOTS = LimitSettings().max_roots
 
 
 def open_with(**extra):
@@ -55,60 +61,38 @@ async def make_tenancy(**extra) -> Tenancy:
 @pytest.mark.parametrize(
     ("given", "dependence", "max_roots"),
     [
-        pytest.param({}, (), None, id="nothing given"),
-        pytest.param({"max_roots": MAX_ROOTS}, (), MAX_ROOTS, id="a limit alone"),
+        pytest.param({}, (), DEFAULT_MAX_ROOTS, id="nothing given: the default limit"),
+        pytest.param({"limits": LIMITS}, (), MAX_ROOTS, id="limits alone"),
         pytest.param(
-            {"dependence": [LINK], "max_roots": MAX_ROOTS},
-            (LINK,),
-            MAX_ROOTS,
-            id="links with a limit",
+            {"dependence": [LINK], "limits": LIMITS}, (LINK,), MAX_ROOTS, id="links with limits"
+        ),
+        pytest.param(
+            {"dependence": [LINK]}, (LINK,), DEFAULT_MAX_ROOTS, id="links, the default limit"
         ),
     ],
 )
 async def test_a_session_keeps_what_it_was_opened_with(given, dependence, max_roots):
     async with open_with(**given) as session:
         assert session.dependence == dependence, "the links, as a tuple"
-        assert session.max_roots == max_roots, "the limit as given"
-
-
-async def test_links_without_a_limit_are_refused_by_the_constructor():
-    with pytest.raises(ValueError, match="max_roots"):
-        Session(
-            FakeStore(),
-            database="db",
-            tenant_iri=TENANT,
-            principal=CREATOR,
-            clock=lambda: NOW,
-            dependence=[LINK],
-        )
-
-
-async def test_links_without_a_limit_are_refused_when_opening():
-    with pytest.raises(ValueError, match="max_roots"):
-        async with open_with(dependence=[LINK]):
-            pytest.fail("a session must not open")
+        assert session.max_roots == max_roots, "the limit of the given or default settings"
 
 
 async def test_the_testkit_session_passes_both_on():
-    async with fake_session(dependence=[LINK], max_roots=MAX_ROOTS) as session:
+    async with fake_session(dependence=[LINK], limits=LIMITS) as session:
         assert session.dependence == (LINK,), "the links reach the session"
-        assert session.max_roots == MAX_ROOTS, "the limit reaches the session"
-
-
-async def test_the_testkit_session_refuses_links_without_a_limit():
-    with pytest.raises(ValueError, match="max_roots"):
-        async with fake_session(dependence=[LINK]):
-            pytest.fail("a session must not open")
+        assert session.max_roots == MAX_ROOTS, "the limits reach the session"
 
 
 async def test_a_tenant_session_carries_what_the_tenancy_was_given():
-    tenancy = await make_tenancy(dependence=[LINK], max_roots=MAX_ROOTS)
+    tenancy = await make_tenancy(dependence=[LINK], limits=LIMITS)
     tenant = (await tenancy.create("Ghent", library_slots(), CREATOR)).id
     async with tenancy.tenant_session(tenant, CREATOR) as session:
         assert session.dependence == (LINK,), "the tenancy's links"
-        assert session.max_roots == MAX_ROOTS, "the tenancy's limit"
+        assert session.max_roots == MAX_ROOTS, "the tenancy's limits"
 
 
-async def test_a_tenancy_refuses_links_without_a_limit_when_built():
-    with pytest.raises(ValueError, match="max_roots"):
-        await make_tenancy(dependence=[LINK])
+async def test_a_tenancy_without_limits_gives_its_sessions_the_default():
+    tenancy = await make_tenancy(dependence=[LINK])
+    tenant = (await tenancy.create("Ghent", library_slots(), CREATOR)).id
+    async with tenancy.tenant_session(tenant, CREATOR) as session:
+        assert session.max_roots == DEFAULT_MAX_ROOTS, "the default limit"

@@ -67,6 +67,14 @@ from rdf_persistence.core.services.telemetry import log_extra, traced
 from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.persistence.services.dependence import (
+    link_of,
+    no_late_part_ask,
+    no_late_part_guard,
+    pointer_of,
+    whole_ask,
+    whole_guard,
+)
 from rdf_persistence.persistence.services.generated.rows.rp_persistence_rows import ReferrerRow
 from rdf_persistence.persistence.services.generated.rp_persistence_services import (
     AggregateHead,
@@ -75,6 +83,9 @@ from rdf_persistence.persistence.services.generated.rp_persistence_services impo
     Filter,
     ListPlan,
     ListRequest,
+)
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
 )
 from rdf_persistence.persistence.services.listing import (
     PAGE,
@@ -600,19 +611,14 @@ class Session:
         removals: RemovalRefusal | None = None,
         may_read: Callable[[str], bool] | None = None,
         dependence: Sequence[DependenceLink] = (),
-        max_roots: int | None = None,
+        limits: LimitSettings | None = None,
     ) -> None:
-        """``dependence`` are the schema's links of dependence and ``max_roots`` the limit on the roots of
-        one commit, cascades included (dependent-aggregates PD-2, PD-6); both are kept here.
-
-        Raises:
-            ValueError: ``dependence`` is not empty and ``max_roots`` is ``None`` (A-8): a cascade
-                without a limit is unbounded.
-        """
-        if dependence and max_roots is None:
-            raise ValueError("dependence needs max_roots: a cascade without a limit is unbounded")
+        """``dependence`` are the schema's links of dependence and ``limits`` the central limits, whose
+        ``max_roots`` bounds the roots of one commit, cascades included (dependent-aggregates PD-2,
+        PD-6, D-9); both are kept here. Without ``limits`` a fresh ``LimitSettings`` gives the
+        default, so a cascade is always bounded (A-8)."""
         self._dependence = tuple(dependence)
-        self._max_roots = max_roots
+        self._max_roots = (limits or LimitSettings()).max_roots
         self._may_read = may_read  # kept for the reader; the session checks nothing with it (PD-4)
         self._removals = removals  # none: no removal is refused for being referenced (PD-7)
         self._record_activities = record_activities  # one activity per commit (message-bus PD-9)
@@ -643,8 +649,8 @@ class Session:
         return self._dependence
 
     @property
-    def max_roots(self) -> int | None:
-        """The most roots one commit may hold, cascades included; ``None``: no limit given."""
+    def max_roots(self) -> int:
+        """The most roots one commit may hold, cascades included."""
         return self._max_roots
 
     @property
@@ -729,7 +735,11 @@ class Session:
         return sorted(URIRef(r.lg) for r in rows)
 
     async def _ask(self, template: str, **terms) -> bool:
-        result = await self._store.query(self._database, fill(template, **terms))
+        return await self._asked(fill(template, **terms))
+
+    async def _asked(self, text: str) -> bool:
+        """The answer of the filled ``ASK`` query ``text``."""
+        result = await self._store.query(self._database, text)
         return bool(result.askAnswer)
 
     async def _stored(self, graph: URIRef, root: str) -> tuple[str, Tracked, str | None]:
@@ -1358,6 +1368,13 @@ class Transaction:
         self._read_cache: dict[str, BaseModel] = {}  # root -> the model a reader handed over
         self._key_claims: list[KeyClaim] = []  # what the changes claim of the session's keys (PD-6)
         self._allowed: dict[str, str] = {}  # root -> the one state this transaction may set (PD-19)
+        # part -> (its whole, its link), read from the collected triples (PD-3)
+        self._parts: dict[str, tuple[str, DependenceLink]] = {}
+        # graph of each whole a store guard covers -> (the part, the whole), for the diagnosis (PD-11)
+        self._wholes: dict[URIRef, tuple[str, str]] = {}
+        self._unlated: dict[
+            str, str
+        ] = {}  # root with a no-late-part guard -> the root it names (PD-7)
 
     def _end(self) -> None:
         """Refuse every later change: the block is over, so a change would be dropped."""
@@ -1465,6 +1482,7 @@ class Transaction:
             triples = await session._write_guards.prepare(
                 session, iri, triples, None, self._allowed.get(str(iri)), context=self._context()
             )
+        self._note_part(iri, triples)
         key_claims = claims_of(session._keys, iri, triples)
         version = str(uuid.uuid4())
         tracking = Tracked(created=session._clock(), creator=session._principal.id)
@@ -1514,6 +1532,8 @@ class Transaction:
                 ):  # the client read an older state: a conflict, not a refusal (PD-32)
                     raise Conflict(changed_text(str(iri), found), iris=(str(iri),)) from refusal
                 raise
+        if (link := self._note_part(iri, triples)) is not None:
+            await self._keep_pointer(iri, link)
         key_claims = claims_of(session._keys, iri, triples)
         if loaded_graphs is None:
             loaded_graphs = await session._registered_loaded(iri)
@@ -1543,6 +1563,30 @@ class Transaction:
         self._key_claims += key_claims
         self._note_links(iri, triples)
         return version
+
+    def _note_part(self, iri: str, triples: Sequence[Triple]) -> DependenceLink | None:
+        """Keep the whole a part points to (PD-3); its link, or ``None`` when ``iri`` is no part.
+
+        Raises:
+            InvalidBody: No pointer value, several, or the part's own IRI (A-7).
+        """
+        types = (o for s, p, o in triples if s == URIRef(iri) and p == RDF.type)
+        if (link := link_of(types, self._session._dependence)) is not None:
+            self._parts[str(iri)] = (str(pointer_of(iri, triples, link)), link)
+        return link
+
+    async def _keep_pointer(self, iri: str, link: DependenceLink) -> None:
+        """Refuse a replace whose pointer differs from the stored one (PD-4).
+
+        Raises:
+            Conflict: Naming the part; the message names the slot.
+        """
+        slot, whole = URIRef(link.pointer), self._parts[str(iri)][0]
+        stored = (await self._session.root_values(iri, [slot]))[slot]
+        if stored and stored != {URIRef(whole)}:
+            raise Conflict(
+                f"{slot} of {iri} cannot change: a part keeps its whole", iris=(str(iri),)
+            )
 
     async def remove(self, iri: str, if_version: str) -> None:
         """Collect the removal of the aggregate, its loaded graphs and entries, if it still has
@@ -1632,6 +1676,7 @@ class Transaction:
     async def _send_and_confirm(self) -> None:
         """The body of ``commit``, inside its span."""
         session = self._session
+        await self._check_wholes()
         if clash := same_value(self._key_claims):
             raise key_conflict(clash, within_commit=True)
         await self._refuse_links_to_removed()
@@ -1641,7 +1686,7 @@ class Transaction:
         referrer_guarded = referrer_guards(
             self._removed_graphs(), self._refusing, session._registry, session._dependents
         )
-        guards = [*self._guards, *key_guards, *referrer_guarded]
+        guards = [*self._guards, *key_guards, *referrer_guarded, *self._late_part_guards()]
         operations = list(self._operations)
         done = self._completed()
         confirm = list(self._confirm)
@@ -1666,6 +1711,56 @@ class Transaction:
         activity = None if done is None else done[0]
         if await self._confirmed(confirm, activity) and activity is not None:
             await self._publish(activity)
+
+    async def _check_wholes(self) -> None:
+        """Every part of this commit has its whole (PD-3, G-2): a whole this commit adds or replaces
+        is judged by its collected triples, any other by an ``ASK`` and a guard of the request. A
+        whole this commit removes is not judged here.
+
+        Raises:
+            NotFound: Naming the whole: it is no aggregate of the tenant, is absent, or is of no
+                whole class.
+        """
+        removed = set(self._removed_graphs().values())
+        for part, (whole, link) in sorted(self._parts.items()):
+            if whole in removed:
+                continue
+            if whole in self._collected:
+                self._judge_collected(whole, link)
+            else:
+                await self._guard_whole(part, whole, link)
+
+    def _judge_collected(self, whole: str, link: DependenceLink) -> None:
+        types = {
+            str(o) for s, p, o in self._collected[whole] if s == URIRef(whole) and p == RDF.type
+        }
+        if not types & set(link.whole_classes):
+            raise NotFound(f"{whole} is not of a class a part may depend on")
+
+    async def _guard_whole(self, part: str, whole: str, link: DependenceLink) -> None:
+        session = self._session
+        try:
+            graph = session._graph(whole)
+        except InvalidIri as error:
+            raise NotFound(f"{whole} does not exist in this tenant") from error
+        if not await session._asked(whole_ask(graph, URIRef(whole), link)):
+            raise NotFound(f"{whole} does not exist or is not of a class a part may depend on")
+        self._guards.append(whole_guard(graph, URIRef(whole), link, len(self._guards)))
+        self._wholes[graph] = (part, whole)
+
+    def _late_part_guards(self) -> list[SparqlTerm]:
+        """The no-late-part guard of each removed root (PD-7); empty for a session with no links."""
+        session = self._session
+        removed = self._removed_graphs()
+        if not session._dependence:
+            return []
+        self._unlated = {root: root for root in removed.values()}
+        return [
+            no_late_part_guard(
+                URIRef(root), sorted(removed), session._dependence, session._registry, n
+            )
+            for n, root in enumerate(sorted(self._unlated))
+        ]
 
     def _spend_served(self) -> None:
         """One command, one commit: the served command is spent as the request is sent (PD-8)."""
@@ -1847,7 +1942,10 @@ class Transaction:
         session = self._session
         text = fill(
             READ_VERSIONS,
-            graphs=join(term(graph) for graph in {**self._roots, **self._required, **self._relied}),
+            graphs=join(
+                term(graph)
+                for graph in {**self._roots, **self._required, **self._relied, **self._wholes}
+            ),
             p_version=term(v.VERSION),
         )
         rows = [
@@ -1902,12 +2000,36 @@ class Transaction:
             return Conflict(f"the activity {taken} already exists")
         return None
 
+    async def _refuse_gone_wholes(self, found: dict[URIRef, str | None]) -> None:
+        """A whole a part relies on that has no version now, or is of no whole class, is
+        ``NotFound``: a retry cannot succeed (PD-11)."""
+        session = self._session
+        for graph, (part, whole) in sorted(self._wholes.items(), key=lambda item: item[1][1]):
+            link = self._parts[part][1]
+            if found.get(graph) is None or not await session._asked(
+                whole_ask(graph, URIRef(whole), link)
+            ):
+                raise NotFound(f"{whole} does not exist or is not of a class a part may depend on")
+
+    async def _refuse_late_parts(self) -> None:
+        """A part written since discovery under a removed root: ``Conflict`` naming the root (PD-11)."""
+        session = self._session
+        removed = sorted(self._removed_graphs())
+        for root, named in sorted(self._unlated.items()):
+            ask = no_late_part_ask(URIRef(root), removed, session._dependence, session._registry)
+            if not await session._asked(ask):
+                raise Conflict(
+                    f"a part of {named} was added since its parts were read; retry", iris=(named,)
+                )
+
     async def _diagnose(self) -> None:
         """The confirmation failed: either nothing was written, or the commit applied and another
         writer changed a graph before the ``ASK``. Returns in the second case, else raises (PD-4)."""
         found = await self._versions_found()
         if any(found.get(graph) == token for graph, token in self._wrote.items()):
             return  # all or nothing: the commit applied, and a later writer changed some graph
+        await self._refuse_gone_wholes(found)
+        await self._refuse_late_parts()
         reasons = self._reasons(found)
         if not reasons and (refusal := await self._refused_by_store()) is not None:
             raise refusal
@@ -1976,7 +2098,7 @@ async def open_session(
     removals: RemovalRefusal | None = None,
     may_read: Callable[[str], bool] | None = None,
     dependence: Sequence[DependenceLink] = (),
-    max_roots: int | None = None,
+    limits: LimitSettings | None = None,
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
     (default: the default policy); ``listings`` lets the session ``find`` aggregates.
@@ -1995,7 +2117,8 @@ async def open_session(
     ``may_read`` tells whether the principal may read an aggregate IRI; the session keeps it, exposes
     it as ``Session.may_read`` and checks nothing with it (aggregate-validators PD-4).
     ``dependence`` are the links of dependence (``schema_structure.dependence_links``) and
-    ``max_roots`` the limit on the roots of one commit; links without a limit raise ``ValueError``.
+    ``limits`` the central limits, whose ``max_roots`` bounds the roots of one commit (default: a
+    fresh ``LimitSettings``).
     """
     yield Session(
         store,
@@ -2015,5 +2138,5 @@ async def open_session(
         removals=removals,
         may_read=may_read,
         dependence=dependence,
-        max_roots=max_roots,
+        limits=limits,
     )

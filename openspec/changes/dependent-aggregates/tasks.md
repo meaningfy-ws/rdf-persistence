@@ -65,7 +65,7 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   query (selecting `?whole ?part ?type ?version`), no-late-part guard.
   `tests/unit/persistence/test_dependence.py`. Accept: the test passes; each text is filled with
   terms, never concatenated input, and each guard's variables carry its index.
-- [ ] 2.3 Write guard ([PD-3](design.md#pd-3), [PD-11](design.md#pd-11)), after 2.1–2.2.
+- [x] 2.3 Write guard ([PD-3](design.md#pd-3), [PD-11](design.md#pd-11)), after 2.1–2.2.
   `tests/unit/persistence/test_session_dependent_write.py` on the fake store: add of R with A1
   present passes; A1 absent → `NotFound` naming A1, nothing written; A1 of another class →
   `NotFound`; whole removed by another session between the ASK and the send (fault hook) →
@@ -73,9 +73,9 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   (G-2); whole replaced in the same transaction to a class outside `whole_classes` → `NotFound`,
   nothing sent (A-3); no or two pointer values, or the part's own IRI → `InvalidBody` (A-7).
   Accept: every row passes, asserting the exception type and its `iris` (A-5).
-- [ ] 2.4 Pointer fixity ([PD-4](design.md#pd-4)). Same file: replace with another `of_audit` →
+- [x] 2.4 Pointer fixity ([PD-4](design.md#pd-4)). Same file: replace with another `of_audit` →
   `Conflict` naming the slot; same pointer passes. Accept: both rows pass.
-- [ ] 2.5a Diagnosis ([PD-11](design.md#pd-11); A-5, A-18), after 2.3, before 2.5: `_wholes`,
+- [x] 2.5a Diagnosis ([PD-11](design.md#pd-11); A-5, A-18), after 2.3, before 2.5: `_wholes`,
   `_unlated`, `_versions_found` reading their graphs, `_diagnose` order (gone whole → `NotFound`;
   late part → `Conflict` naming the removed root; then `_reasons`; then `_refused_by_store`).
   `tests/unit/persistence/test_session_dependent_diagnosis.py`: a commit that also replaces a stale
