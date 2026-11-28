@@ -77,6 +77,9 @@ def _literal(value: Literal) -> str:
     return text
 
 
+# Not rdflib's `n3()`: in rdflib 7.6 it escapes only `\ " \r \n` (#270, #108), lets control
+# characters into an IRI and accepts a language tag that ends in a newline, so this module escapes
+# and checks each term itself (P-0041's KEEP row).
 def term(value: URIRef | Literal | BNode) -> SparqlTerm:
     """Render an IRI, literal or blank node as an escaped SPARQL term.
 
