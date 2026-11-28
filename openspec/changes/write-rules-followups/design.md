@@ -253,5 +253,8 @@ None.
   keeps both rows; `service.py`'s `refusal_problems` paragraph is resolved by hand to carry both
   changes (every write that runs the rules, and the OpenAPI listing); `kit.py` and `problems.py`
   merged cleanly, and #462's `openapi.py` reads `kit.refusal_problems`, the materialised tuple, so a
-  generator is listed too. No regeneration was needed. `make check-all` runs again on the rebased
-  head, which is the gate of record.
+  generator is listed too. No regeneration was needed. Then #463 archived it, merging its delta
+  into `openspec/specs/rp-service-api`; a third rebase, and this change's MODIFIED requirement "A
+  consumer rule refuses a write with its own problem" now carries #462's OpenAPI paragraph and its
+  two scenarios, so the archive does not drop them. `make check-all` on that head is the gate of
+  record.

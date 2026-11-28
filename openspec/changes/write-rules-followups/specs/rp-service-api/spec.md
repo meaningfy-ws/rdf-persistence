@@ -13,6 +13,10 @@ integer 409 or 422 (a float or a boolean included), SHALL be answered as the 500
 problem and logged once, naming the rule's problem class or its status, with the refusal's
 traceback, which names the rule (D-22); a refusal that is answered SHALL NOT be logged as an
 error. In-process, the commit SHALL raise the `RuleRefusal`.
+The OpenAPI document SHALL list each registered class as a component schema, and the 409 and 422
+answers of the generic create and replace routes and every operation's `default` answer SHALL
+accept it beside their problem schema; start-up SHALL refuse a registered class whose name is
+already a component, naming it. With no registered class the document SHALL be unchanged.
 
 #### Scenario: a refusal with a consumer problem type
 - **GIVEN** a registered problem class `HeldKeyProblem` with an extra slot `holder`, and a write rule for `Book` that raises `RuleRefusal(HeldKeyProblem(type=T, title="Key held", status=409, detail=d, holder=h))`
@@ -46,6 +50,18 @@ error. In-process, the commit SHALL raise the `RuleRefusal`.
 
 #### Scenario: a class that is not a problem
 - **GIVEN** `refusal_problems` naming a class that does not extend `Problem`
+- **WHEN** the service starts
+- **THEN** it refuses to start, naming the class
+
+#### Scenario: the document lists the problem
+- **GIVEN** the registered problem class `HeldKeyProblem`
+- **WHEN** a client reads `/openapi.json`
+- **THEN** `HeldKeyProblem` is a component schema with `holder`
+- **AND** the 409 and 422 answers of each aggregate's create and replace, and every `default` answer, accept `HeldKeyProblem` or their former problem schema
+- **AND** no other answer changes
+
+#### Scenario: a registered name that is already a component
+- **GIVEN** a registered `Problem` subclass named like an aggregate class of the schema
 - **WHEN** the service starts
 - **THEN** it refuses to start, naming the class
 
