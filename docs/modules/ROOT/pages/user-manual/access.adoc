@@ -330,9 +330,12 @@ exception; use `Refused` there (<<delete-validators,below>>).
 CAUTION: The extra fields and the `detail` are sent as you build them. What they hold is your
 responsibility: do not copy into them an IRI or a value the caller may not read.
 
-NOTE: In this release the OpenAPI document does not list your problem classes: its `Problem`
-component does not name their extra fields. A client generated from the document does not see
-them in the type, though the service sends them.
+TIP: The OpenAPI document lists each class you register as a component schema. The 409 and 422
+answers of each aggregate's create and replace, and every operation's `default` answer, accept it
+beside the toolkit's `Problem`, so a client generated from the document sees your extra fields in
+the type. A class registered twice is listed once. A class whose name is already a component schema
+(for example the name of an aggregate class) stops the service at start-up with `ValueError`; rename
+it. A service with no refusal classes publishes the same document as before.
 
 === Ask the reader about other aggregates
 

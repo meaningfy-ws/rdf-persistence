@@ -75,7 +75,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `install_service` and `ServiceKit` gain `refusal_problems`, the classes allowed (a class that is
   not a `Problem` raises `TypeError` at start-up); any other class, a subclass of a registered one,
   a non-`Problem` object or another status is a 500 `internal-error`, logged once with the class or
-  the status. A delete rule raising it is a 500. The OpenAPI document does not yet list the classes.
+  the status. A delete rule raising it is a 500.
+- **The OpenAPI document lists the refusal classes** (`openapi-refusal-problems`, #457). Each
+  registered class is a component schema; the 409 and 422 answers of each aggregate's generic create
+  and replace, and every operation's `default` answer, accept it beside `Problem` (`anyOf`), so a
+  generated client types the extra fields. A class whose name is already a component schema stops the
+  service at start-up with `ValueError`; a service with no refusal classes publishes the same document.
 - **A consumer's technical module may import the toolkit's technical modules** (`consumer-write-rules`,
   #415): by `rdf_persistence/model/technical/<theme>/<module>` (`model/migrations/` stays out of the
   importmap). The one supported extension is `Problem`: generation refuses a class that uses a
