@@ -53,6 +53,20 @@ class AggregateReader(Protocol):
         """
         ...
 
+    async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
+        """The IRIs of the aggregates of ``cls`` whose slots equal ``equals``, in IRI order: only those
+        the writer may read in the write's tenant, and none that this transaction removed or changed earlier.
+
+        A root changed earlier in the transaction is left out because its stored values are stale; one
+        it kept at the value is missed, and the commit's unique key then refuses it. A ``None`` value is
+        refused: ``Session.find`` would read it as "no value" and match every aggregate without one.
+
+        Raises:
+            TypeError: A value is ``None``; the message names the slot. Nothing is queried.
+            ValueError, BadQuery, RuntimeError: As ``Session.find``, which this wraps.
+        """
+        ...
+
 
 # (model class name, root IRI, the root's graph, the graph IRI of its tracking or None) -> its model;
 # raises ValueError when the graph does not decode
@@ -263,6 +277,19 @@ class _Reader:
                 return None
             cache[iri] = model
         return model.model_copy(deep=True)
+
+    async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
+        for slot, value in equals.items():
+            if value is None:
+                raise TypeError(
+                    f"find({cls.__name__}): {slot} is None; a rule asks for a value, never for its absence"
+                )
+        context = self._context
+        return [
+            iri
+            for iri in await self._session.find(cls, **equals)
+            if self._visible(iri) and iri not in context.removed and iri not in context.collected
+        ]
 
     def _visible(self, iri: str) -> bool:
         """Whether ``iri`` is an aggregate IRI of the tenant the writer may read (no query)."""

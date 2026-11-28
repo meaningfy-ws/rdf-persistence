@@ -26,6 +26,7 @@ from rdf_persistence import (
 from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import ToolkitSettings
 from rdf_persistence.api.entrypoints.service import install_service
 from rdf_persistence.collaboration.services.aggregate_validators import (
+    AggregateReader,
     AggregateValidator,
     DeleteValidator,
 )
@@ -135,6 +136,23 @@ def fixed_refusal(old: object, new: Any, principal: object, reader: object) -> N
                 status=status,
                 detail=f"isbn {new.isbn} is {new.isbn}",
                 holder=FIXED_HOLDER,
+            )
+        )
+
+
+async def held_isbn(old: object, new: Any, principal: object, reader: AggregateReader) -> None:
+    """A write rule for ``Book`` that refuses an isbn another book holds, naming the holder (worked example 1)."""
+    if new.isbn is None:
+        return  # find refuses None (PD-10): absence is not a key
+    holders = [iri for iri in await reader.find(Book, isbn=new.isbn) if iri != new.id]
+    if holders:
+        raise RuleRefusal(
+            HeldKeyProblem(
+                type=HELD,
+                title="Key held",
+                status=409,
+                detail=f"isbn {new.isbn} is held",
+                holder=holders[0],
             )
         )
 

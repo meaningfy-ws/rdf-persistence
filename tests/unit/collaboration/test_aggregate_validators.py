@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import pytest
 from linkml_runtime.utils.schemaview import SchemaView
@@ -16,6 +17,7 @@ from rdf_persistence import (
     Conflict,
     DatabaseGone,
     InvalidBody,
+    KeyConflict,
     Principal,
     RuleRefusal,
     StoreUnavailable,
@@ -34,8 +36,10 @@ from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import GuardContext, Session, open_session
 from rdf_persistence.schema.services.schema import load_schema
+from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.fixtures.library.domain.generated.books import Book
 from tests.toy import (
     ADA,
     MODULES,
@@ -155,6 +159,12 @@ def named(label: str, calls: list[str]) -> AggregateValidator:
 class NoReader:
     async def classes_of(self, iri: str) -> frozenset[str]:
         return frozenset()
+
+    async def aggregate(self, iri: str) -> BaseModel | None:
+        return None
+
+    async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
+        return []
 
 
 READER: AggregateReader = NoReader()
@@ -371,16 +381,22 @@ async def reading_session(
         yield session
 
 
-def context(collected: dict[str, list] | None = None) -> GuardContext:
+def context(
+    collected: dict[str, list] | None = None, removed: frozenset[str] = frozenset()
+) -> GuardContext:
     held = {iri: tuple(triples) for iri, triples in (collected or {}).items()}
-    return GuardContext(collected=held, rely_on=lambda *_: None)
+    return GuardContext(collected=held, rely_on=lambda *_: None, removed=removed)
 
 
-def reader_of(session: Session, collected: dict[str, list] | None = None) -> AggregateReader:
+def reader_of(
+    session: Session,
+    collected: dict[str, list] | None = None,
+    removed: frozenset[str] = frozenset(),
+) -> AggregateReader:
     models = generated_models(*MODULES)
     return toy({}).reader(
         session,
-        context(collected),
+        context(collected, removed),
         lambda name, iri, graph, tracked: toy_mapper().from_graph(
             models.named(name), iri, graph, tracked
         ),
@@ -750,11 +766,15 @@ async def guarded_session(
     *,
     store: FakeStore | None = None,
     may_read: Callable[[str], bool] | None = None,
+    finding: bool = False,
 ) -> AsyncIterator[Session]:
-    """A session with the rules ``mapping`` and the caller's read check (``fake_session`` takes none)."""
+    """A session with the rules ``mapping`` and the caller's read check (``fake_session`` takes none).
+
+    ``finding`` opens it with listings and the toy's keys, as the kit does: ``find`` works, a key clash refuses."""
     store = store or FakeStore()
     if FAKE_DATABASE not in await store.list_datasets():
         await store.create_dataset(FAKE_DATABASE)
+    view = load_schema(TOY_SCHEMA)
     async with open_session(
         store,
         database=FAKE_DATABASE,
@@ -762,6 +782,8 @@ async def guarded_session(
         principal=WHO,
         guards=guarded(mapping),
         may_read=may_read,
+        listings=Listings(view) if finding else None,
+        keys=aggregate_keys(view) if finding else (),
     ) as session:
         yield session
 
@@ -1029,4 +1051,133 @@ async def test_an_aggregate_read_then_removed_by_the_unit_leaves_both_changes_in
             await t.remove(shelf_iri(1), version)
         assert seen[0].label == "Shelf", "the rule judged the aggregate as it was"
         assert len(await session.heads([book_iri(1)])) == 1, "the add is committed"
+
+
+# The reader finds the holder of a value (consumer-write-rules PD-10; TC-9)
+
+OTHER_TENANT = "https://example.org/libraries/0badc0de"
+ISBN = "978-0-441"
+
+
+def isbn_book_iri(n: int, tenant: str = TENANT) -> str:
+    return f"{tenant}/books/{UUID(int=n)}"
+
+
+@asynccontextmanager
+async def finding_session(
+    store: FakeStore,
+    *,
+    tenant: str = TENANT,
+    may_read: Callable[[str], bool] | None = None,
+) -> AsyncIterator[Session]:
+    """A session with listings, as the kit opens one, so that ``find`` works."""
+    if FAKE_DATABASE not in await store.list_datasets():
+        await store.create_dataset(FAKE_DATABASE)
+    async with open_session(
+        store,
+        database=FAKE_DATABASE,
+        tenant_iri=tenant,
+        principal=WHO,
+        listings=Listings(load_schema(TOY_SCHEMA)),
+        may_read=may_read,
+    ) as session:
+        yield session
+
+
+async def add_isbn_book(session: Session, n: int, isbn: str, tenant: str = TENANT) -> str:
+    iri = isbn_book_iri(n, tenant)
+    await session.add_graph(iri, toy_mapper().to_triples(dune(iri, chapters=0, isbn=isbn)))
+    return iri
+
+
+async def held_isbn_rule(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+    if new.isbn is None:
+        return
+    holders = [iri for iri in await reader.find(Book, isbn=new.isbn) if iri != new.id]
+    if holders:
+        raise InvalidBody(f"isbn {new.isbn} is held by {holders[0]}")
+
+
+@pytest.mark.parametrize(
+    ("scope", "found"),
+    [
+        ("held", True),
+        ("another tenant", False),
+        ("unreadable", False),
+        ("removed in the transaction", False),
+        ("replaced earlier in the transaction", False),
+    ],
+)
+async def test_find_returns_the_holder_only_inside_what_the_writer_may_read_in_the_tenant(
+    scope: str, found: bool
+):  # TC-9
+    tenant = OTHER_TENANT if scope == "another tenant" else TENANT
+    store = FakeStore()
+    async with finding_session(store, tenant=tenant) as owner:
+        holder = await add_isbn_book(owner, 1, ISBN, tenant)
+    collected = {holder: toy_mapper().to_triples(dune(holder, chapters=0, isbn=ISBN))}
+    async with finding_session(store, may_read=lambda iri: scope != "unreadable") as session:
+        reader = reader_of(
+            session,
+            collected if scope.startswith("replaced") else None,
+            frozenset({holder}) if scope.startswith("removed") else frozenset(),
+        )
+        assert (await reader.find(Book, isbn=ISBN) == [holder]) is found, scope
+
+
+async def test_find_keeps_the_order_of_the_store_and_leaves_out_what_does_not_match():  # TC-9
+    async with finding_session(FakeStore()) as session:
+        for n in (3, 1, 2):
+            await add_isbn_book(session, n, ISBN)
+        await add_isbn_book(session, 4, "other")
+        found = await reader_of(session).find(Book, isbn=ISBN)
+    assert found == [isbn_book_iri(n) for n in (1, 2, 3)], (
+        "the session's IRI order, only the holders"
+    )
+
+
+async def test_find_for_none_is_a_type_error_naming_the_slot_before_any_query():  # TC-9
+    store = FakeStore()
+    async with finding_session(store) as session:
+        seen = counting_queries(store)
+        with pytest.raises(TypeError, match=r"find\(Book\): isbn is None"):
+            await reader_of(session).find(Book, isbn=None)
+        assert seen == [], "refused before the store was asked"
+
+
+async def test_a_rule_that_finds_a_holder_refuses_a_second_book_with_its_key():  # TC-9
+    async with guarded_session({"Book": [held_isbn_rule]}, finding=True) as session:
+        await add_isbn_book(session, 1, ISBN)
+        with pytest.raises(InvalidBody, match=f"held by {isbn_book_iri(1)}"):
+            await add_isbn_book(session, 2, ISBN)
+        await add_isbn_book(session, 3, "free")
+        assert len(await session.heads([isbn_book_iri(n) for n in (1, 2, 3)])) == 2, "1 and 3"
+
+
+@pytest.mark.parametrize("keeps_the_key", [False, True])
+async def test_a_key_that_moves_within_one_unit_is_not_held_by_the_root_that_left_it(
+    keeps_the_key: bool,
+):  # TC-9, worked example 2: both variants
+    first, second = isbn_book_iri(1), isbn_book_iri(2)
+    async with guarded_session({"Book": [held_isbn_rule]}, finding=True) as session:
+        await add_isbn_book(session, 1, "v")
+        version = (await session.get_graph(first))[2]
+        replacement = dune(first, chapters=0, isbn="v" if keeps_the_key else "w")
+        if keeps_the_key:
+            replacement = replacement.model_copy(update={"label": "Dune, again"})
+
+        async def unit() -> None:
+            async with session.transaction() as t:
+                await t.replace_graph(first, toy_mapper().to_triples(replacement), version)
+                await t.add_graph(
+                    second, toy_mapper().to_triples(dune(second, chapters=0, isbn="v"))
+                )
+
+        if keeps_the_key:
+            with pytest.raises(KeyConflict):
+                await unit()  # the rule misses the holder; the commit's unique key refuses
+            assert await session.heads([second]) == [], "nothing was written"
+        else:
+            await unit()
+            assert len(await session.heads([first, second])) == 2, "both committed"
         assert await session.heads([shelf_iri(1)]) == [], "the removal is committed"

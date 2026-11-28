@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from rdf_persistence import Problem, RuleRefusal
 from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
 from tests.scene import PROBLEMS, Scene, problem_of
-from tests.toy_service import DUNE_BODY, FIXED_HOLDER, HELD, ToyService, fixed_refusal
+from tests.toy_service import DUNE_BODY, FIXED_HOLDER, HELD, ToyService, fixed_refusal, held_isbn
 
 PROBLEM_LOG = "rdf_persistence.api.entrypoints.problems"
 MESSAGE = "rule refusal answered as internal error"
@@ -115,6 +115,31 @@ async def test_a_registered_refusal_is_answered_as_the_rule_built_it(  # TC-5
 async def test_a_book_the_rule_accepts_is_created():  # TC-5, negative
     async with scene_with(fixed_refusal) as scene:
         assert (await create(scene, isbn="free")).status_code == 201
+
+
+@pytest.mark.parametrize(
+    ("second", "status"),
+    [
+        ({"isbn": "978-0"}, 409),  # the first book's key: refused, naming its holder
+        ({"isbn": "978-1"}, 201),  # another key
+        ({}, 201),  # no key: find refuses None, the rule guards it
+    ],
+)
+async def test_a_rule_names_the_holder_of_a_key_through_find(  # TC-9, worked example 1
+    second: dict[str, str], status: int
+):
+    async with scene_with(held_isbn) as scene:
+        first = await create(scene, isbn="978-0")
+        assert first.status_code == 201, first.text
+        before = await listed(scene)
+        response = await create(scene, **second)
+        assert response.status_code == status, response.text
+        if status == 409:
+            assert response.json()["holder"] in before, "the holder found by find is named"
+            assert response.json()["detail"] == "isbn 978-0 is held", "the rule's own text"
+            assert await listed(scene) == before, "nothing was written"
+        else:
+            assert len(await listed(scene)) == len(before) + 1, "the book was written"
 
 
 async def test_a_replace_refused_is_answered_as_the_rule_built_it():  # TC-5

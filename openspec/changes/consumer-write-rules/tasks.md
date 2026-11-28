@@ -39,7 +39,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
 
 ## 2. Stage 2: find, typed rules, the fake reader, state names (#397 part 2, #387, #386) — branch `change/consumer-write-rules-2`, one PR
 
-- [ ] 2.1 **unit + code (find)** — PD-10, TC-9. Failing tests first in
+- [x] 2.1 **unit + code (find)** — PD-10, TC-9. Failing tests first in
   `tests/unit/collaboration/test_aggregate_validators.py` (the scopes of TC-9, worked example 2's
   two variants, `None`) and one through the toy service's generic create with `held_isbn` (worked
   example 1, added to `tests/toy_service.py`). Then `find` on the protocol and `_Reader`. The
