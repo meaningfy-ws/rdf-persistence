@@ -353,3 +353,8 @@ Decisions the lead took without the developer, shown for validation at the end (
   so `Session`, `open_session`, `Tenancy` and `fake_session` take `limits` and read
   `limits.max_roots`. The pure `discovery_query` takes the number as `limit`. Supersedes the
   parameter name in PD-2, PD-6 and task 2.1. The new module gets its row in the theme layout.
+- <a id="d-10"></a>**D-10**, lead, 2026-11-28 (tester after task 2.5): ADV-1 is re-labelled Critical
+  and fixed. Discovery's `LIMIT max_roots + 1` counted rows, and a part with two `rdf:type`s gives
+  two, so past the limit a delete answered `Conflict` ("retry") on every retry instead of
+  `CommitTooLarge`. Discovery now counts distinct parts. The tester's two PD-10 probes (an
+  unreadable part named in a delete rule's refusal and in `InUse`) are task 2.6's red tests.

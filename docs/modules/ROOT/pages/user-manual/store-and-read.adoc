@@ -622,6 +622,108 @@ await import_books(kit, mapper, tenant, principal, rows)   # crashes after batch
 await import_books(kit, mapper, tenant, principal, rows)   # skips what is stored, writes the rest
 ----
 
+[#dependent-parts]
+== Store a part apart from its whole
+
+_An audit has results, and each result has findings. Each is stored in its own graph. How do I write
+one, and what happens to them when I delete the audit?_ Declare the parts in the model
+(xref:user-manual/model.adoc#dependent-on[A part stored apart from its whole]); the rest of this
+section is what the toolkit then does at runtime.
+
+*What a dependent part is.* An `AuditResult` is an aggregate root like any other: its own graph, its
+own IRI, its own route, its own version. It names its whole, an `Audit`, in its pointer slot
+`of_audit`. An `AuditFinding` is a part of an `AuditResult` through `of_result`, so a finding is
+a part of a part: its whole is the result, and the audit is its whole through the result.
+
+=== Write a part
+
+`add` and `replace` of a part check, in the same update request that writes it, that its whole
+exists. There is no gap between the check and the write for a concurrent delete of the whole to
+slip through.
+
+* *The whole must exist.* A part whose pointer names an `Audit` that is not stored, is not of a
+  class that can be the whole, or is not an aggregate IRI of the tenant, is refused with
+  `NotFound` naming the whole (404 over HTTP), and nothing is sent. This also holds when the whole
+  is deleted between your read and your write: the answer is the same `NotFound`, and retrying
+  cannot succeed.
+* *The whole may come in the same commit.* A unit of work that adds an `Audit` and its
+  `AuditResult` together is accepted, in either order of `add`.
+* *The pointer has exactly one value, and not the part itself.* Otherwise the write is refused with
+  `InvalidBody`. Over HTTP the SHACL shapes refuse most of it first.
+* *The pointer is fixed.* A `replace` that changes `of_audit` to another audit is refused with
+  `Conflict` naming the slot (409). A part does not move to another whole: write a new part under
+  the other whole and delete the old one.
+* *A part and the removal of its whole in one commit contradict each other.* Adding or replacing
+  an `AuditResult` and removing its `Audit` (or the audit's whole, further up) in one commit is
+  refused with `Conflict` naming both, before anything is sent; retrying it unchanged fails the same
+  way.
+
+=== Delete a whole
+
+`DELETE …/audits/{id}`, `session.remove` and `UnitOfWork` removals of an `Audit` remove the audit
+and all its parts, in one commit. Nothing in the call changes; the session finds the parts.
+
+* *The cascade is transitive.* The audit's results go, and the findings of those results, whatever
+  the depth.
+* *Everything a direct delete removes goes, for each part.* Its graph, its loaded graphs and the
+  records that depend on it (a comment on a part, for example).
+* *One commit, one activity.* The whole and its parts are one transaction, all or nothing, with one
+  `Remove` activity. Each removed aggregate gets its own `Invalidation`, so a listener that follows
+  one result is told that it is gone, as for any delete.
+* *The whole's delete right is enough.* A caller who may delete the audit need not hold any right on
+  its parts: the delete does not ask for one per part.
+* *The parts' delete validators run.* A part's `prepare_remove`, the consumer check that refuses a
+  direct delete, runs in the cascade. If it refuses one result, the delete of the audit is refused
+  with that refusal's type, and nothing is deleted: all or nothing. A cascade does not delete
+  what a direct delete would refuse.
+* *`InUse` applies.* A class with `rp_on_referenced_delete: refuse` (the toy's `AuditFinding`)
+  keeps its protection (<<refuse-referenced>>). If an aggregate outside the cascade holds a
+  reference to a finding, for example an `Audit` whose `cites_finding` names it, the delete of the
+  audit raises `InUse` and nothing is deleted. A referrer that is itself removed by the cascade
+  does not count.
+* *What an error names.* A part the caller may not read is never named. A refusal that comes from
+  such a part names the whole and says "a dependent part"; the type is kept. Over HTTP the caller
+  learns that the audit cannot be deleted, not which hidden part stands in the way.
+
+*Too large a cascade.* The audit, its parts and theirs count as roots of one commit, against
+`limits.max_roots` (500 by default, see <<transaction-batches>>); a root the caller also removes
+explicitly counts once. Over the limit, the delete raises `CommitTooLarge` (413), whose message
+gives the limit and no count, before anything is sent. Delete parts first, in smaller commits, or
+raise the limit. Batch mode does not help: `commit(batches=True)` splits a unit of work into several
+commits, and a split cascade is not atomic across batches, so the batches before a failing one stay
+committed (see <<transaction-batches>>). A whole deleted in one batch and its parts in another can
+leave the parts without their whole.
+
+*When parts are written while the delete runs.* The delete reads the parts, then sends one request
+that deletes them, guarded on what it read. A part added to the audit, or changed, in between makes
+the request fail with `Conflict` naming the audit, and nothing is deleted. Read again and retry, as
+for any stale write (<<handle-a-conflict>>); the retry normally succeeds. Writers that never pause
+can make it fail again each time: retry with a back-off, and stop the writers if it persists.
+
+[source,python]
+----
+from rdf_persistence import CommitTooLarge, Conflict, InUse
+
+async with kit.session(tenant, principal) as session:
+    try:
+        await session.remove(audit_iri, version)   # the results and findings go with it
+    except InUse:
+        ...             # a finding is cited from outside the audit: remove the citation first
+    except CommitTooLarge:
+        ...             # delete parts first, or raise limits.max_roots
+    except Conflict:
+        ...             # a part changed meanwhile: read again and retry, with a back-off
+----
+
+*What it costs.* The toolkit reads the parts level by level, one query per level for all the wholes
+of that level: an audit with results and findings costs two queries, however many results it
+has. A part is not read once more for its version. Each part whose class has delete rules adds one
+read of its graph, so a wide audit with such parts costs about one read per part. A schema with
+no dependent class adds no query and no guard to a delete. A session you open yourself does not
+cascade unless you give it the dependence links (`dependence=`; its `limits` default to
+`LimitSettings()`), as with `removals=`
+(<<refuse-referenced>>); `kit.session` and the generic router do.
+
 [#transaction-change]
 == Changed in 0.3.0: commits are all or nothing
 

@@ -289,8 +289,9 @@ it. The annotation may sit on an abstract base whose concrete subclasses are all
 |`cycle of dependence A -> B -> A (through the slots <slots>): a whole cannot depend on its own part`
 |===
 
-Today `rp-generate` checks the declaration only. The toolkit does not yet guard the writes of a part
-or delete it with its whole; this page will say so when it does.
+At runtime the toolkit checks, on every write of a part, that its whole exists, and deletes the
+parts with their whole. How is in
+xref:user-manual/store-and-read.adoc#dependent-parts[Store a part apart from its whole].
 
 The full list of annotations and mixins is in
 xref:architecture/generation.adoc#metamodel[the metamodel].

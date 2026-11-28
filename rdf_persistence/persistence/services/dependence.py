@@ -31,14 +31,15 @@ from rdf_persistence.schema.services import vocabulary as v
 _WHOLE_GUARD = (
     "GRAPH $graph { $graph $p_version ?wv$n . $whole a ?wt$n FILTER (?wt$n IN ($classes)) }"
 )
-# One level of the cascade: the parts of $wholes, each with its class and version (PD-6). The
+# One level of the cascade: the parts of $wholes, one row per part (a part of two classes gives its
+# first, so LIMIT counts parts, D-10), each with its class and version (PD-6). The
 # link pairs come first, so a store starts from the pointer triples.
 _DISCOVERY = """
-SELECT ?whole ?part ?type ?version WHERE {
-  VALUES ?whole { $wholes }  VALUES (?type ?pointer) { $links }
-  GRAPH ?g { ?part ?pointer ?whole ; a ?type . ?g $p_version ?version }
+SELECT (MIN(?w) AS ?whole) ?part (MIN(?t) AS ?type) ?version WHERE {
+  VALUES ?w { $wholes }  VALUES (?t ?pointer) { $links }
+  GRAPH ?g { ?part ?pointer ?w ; a ?t . ?g $p_version ?version }
   GRAPH $registry { ?g $p_kind $aggregate ; $p_owned_by ?part }
-} ORDER BY ?part LIMIT $limit
+} GROUP BY ?part ?version ORDER BY ?part LIMIT $limit
 """
 # No aggregate of a part class points to $root from a graph this request does not remove (PD-7).
 _NO_LATE_PART = """

@@ -1747,8 +1747,42 @@ class Transaction:
                 if session._graph(part) in self._roots:
                     continue
                 self._cascaded[part] = self._cascaded.get(whole, whole)
-                await self._remove_read(part, version, class_iri)
+                try:
+                    await self._remove_read(part, version, class_iri)
+                except (Conflict, RuntimeError) as error:
+                    if self._named(part) == part:
+                        raise
+                    raise self._veiled(error, self._cascaded[part]) from error
         self._refuse_parts_of_removed()
+
+    @staticmethod
+    def _veiled(error: Conflict | RuntimeError, whole: str) -> Conflict | RuntimeError:
+        """``error``, raised for a cascaded part the caller may not read, as the same kind of error
+        naming ``whole`` and "a dependent part" only; the original stays its cause, for logs (PD-10,
+        A-6). The type is kept, so the answer's status is the same."""
+        text = f"{whole} cannot be removed: a dependent part of it refuses or changed"
+        if isinstance(error, Conflict):
+            return type(error)(text, iris=(whole,))
+        return type(error)(text)
+
+    def _veil_in_use(self, error: InUse) -> InUse:
+        """``error`` with every cascaded part the caller may not read replaced by the removed root it
+        came from, in ``iris`` and in the message (PD-10); the referrers are the caller's own."""
+        hidden = {iri for iri in error.iris if self._named(iri) != iri}
+        if not hidden:
+            return error
+        iris = tuple(sorted({self._named(iri) for iri in error.iris}))
+        text = f"{', '.join(iris)} cannot be removed: a dependent part of it is still referred to"
+        veiled = InUse(
+            text,
+            iris=iris,
+            referrers=error.referrers,
+            more_count=error.more_count,
+            hidden_count=error.hidden_count,
+            filtered=error.filtered,
+        )
+        veiled.__cause__ = error
+        return veiled
 
     async def _discover(self, roots: set[str]) -> dict[str, tuple[str, str, str]]:
         """Part -> ``(its whole, class, version)`` of every part under ``roots``, in the order of the
@@ -1969,7 +2003,8 @@ class Transaction:
             root = refused[0]
             rows = {row_key(row): row for target, row in self._links if target == root}
             ordered = [rows[key] for key in sorted(rows)]
-            raise await removals.in_use(tuple(refused), root, ordered, self._readable)
+            refusal = await removals.in_use(tuple(refused), root, ordered, self._readable)
+            raise self._veil_in_use(refusal)
 
     def _refuse_dependents_of_removed(self) -> None:
         """An add or replace of this commit whose root is a dependent record (a ``dependents`` pair)
@@ -2013,7 +2048,8 @@ class Transaction:
         if not referenced:
             return None
         roots = tuple(referenced)  # in IRI order
-        return await removals.in_use(roots, roots[0], referenced[roots[0]], self._readable)
+        refusal = await removals.in_use(roots, roots[0], referenced[roots[0]], self._readable)
+        return self._veil_in_use(refusal)
 
     async def _claims_held(self) -> list[KeyClaim]:
         """The claims of the transaction that another aggregate holds now (PD-9)."""

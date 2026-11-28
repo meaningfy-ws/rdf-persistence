@@ -97,19 +97,19 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   ([PD-7](design.md#pd-7)); discovery over a schema link that would revisit a root terminates
   (A-7); no `_stored` read per cascaded part (A-15: the fake store counts queries). Accept: every
   row passes, asserting type and `iris`.
-- [ ] 2.7 Service API (DEC-3, [PD-18](design.md#pd-18)), after 2.5: `POST /audit-results` naming a
+- [x] 2.7 Service API (DEC-3, [PD-18](design.md#pd-18)), after 2.5: `POST /audit-results` naming a
   missing audit → 404 naming it; `PUT` changing `of_audit` → 409; listing `audit-results` filtered
   on `of_audit` A1 returns A1's results only (A-17). The OpenAPI document lists 404 on the create
   and replace routes of `AuditResult` and 413 on the delete route of `Audit`; the lead refreshes
   the OpenAPI golden in the same commit. `tests/unit/api/test_dependent_routes.py`. Accept: the
   test passes; the golden diff holds only those answers and the toy's new routes.
-- [ ] 2.6 Access ([PD-10](design.md#pd-10), DEC-2), after 2.7 (A-18).
+- [x] 2.6 Access ([PD-10](design.md#pd-10), DEC-2), after 2.7 (A-18).
   `tests/unit/api/test_dependent_delete_route.py`: a caller with delete on A1 and no right on parts
   gets 204 and the parts are gone; with a Prohibition of read on F1, the `InUse` and conflict
   answers do not name F1; a delete validator refusing F1 with a message naming F1 is answered
   naming A1 and "a dependent part" only (A-6); an SSE follower without read on R1 does not receive
   R1's invalidation. Accept: every row passes.
-- [ ] 2.8 Integration ([RISK-1](design.md#risk-1), A-13), after 2.5.
+- [x] 2.8 Integration ([RISK-1](design.md#risk-1), A-13), after 2.5.
   `tests/integration/store/test_dependent_aggregates.py` on Fuseki: IT-D1 cascade of three levels
   with a loaded graph; IT-D2 twenty rounds of concurrent part writes and the whole's delete
   (`asyncio.gather`) leave no part without its whole; IT-D3 two parts written in parallel both
@@ -123,7 +123,7 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   `openspec/changes/dependent-aggregates/features/dependent_aggregates.feature` into
   `tests/feature/dependent_aggregates.feature`, steps in `tests/feature/test_dependent_aggregates.py`,
   verbatim. Lane `make test-feature`. Accept: the nine pass.
-- [ ] 2.10 Docs ([PD-16](design.md#pd-16)): `docs/modules/ROOT/pages/user-manual/store-and-read.adoc`
+- [x] 2.10 Docs ([PD-16](design.md#pd-16)): `docs/modules/ROOT/pages/user-manual/store-and-read.adoc`
   (incl. [D-1](design.md#d-1) validators, [RISK-8](design.md#risk-8) retry, batch mode not atomic
   across batches, [RISK-4](design.md#risk-4) cost), `docs/modules/ROOT/pages/questions.adoc`.
   Accept: `make check-docs` passes.
