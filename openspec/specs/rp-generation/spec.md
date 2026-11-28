@@ -298,7 +298,9 @@ model MAY import a domain model. The domain schemas SHALL stay at their paths.
 
 #### Scenario: the schemas a consumer imports
 - **WHEN** a consumer schema imports `rdf_persistence/model/rp_core`
-- **THEN** it resolves as before, and no technical schema can be imported that way
+- **THEN** it resolves as before
+- **AND** a consumer schema that imports a technical module by its path under `model/` (`rdf_persistence/model/technical/<theme>/<module>`) resolves too
+- **AND** a path under `rdf_persistence/model/migrations/` does not resolve: that folder holds migrations, not schemas
 
 #### Scenario: a setting used by an adapter and by the service kit
 - **GIVEN** the HTTP settings, read by the HTTP adapter base and composed into the toolkit settings the kit takes
@@ -874,3 +876,33 @@ a class depending on itself included, naming the classes of the cycle in order.
 - **GIVEN** `AuditFinding` dependent on `AuditResult`, itself dependent on `Audit`
 - **WHEN** `rp-generate` runs
 - **THEN** it succeeds
+
+### Requirement: A consumer schema imports the toolkit's technical modules
+
+A consumer schema SHALL be able to import each schema module under
+`rdf_persistence/model/technical/` by the path `rdf_persistence/model/technical/<theme>/<module>`,
+as it imports a metamodel module by `rdf_persistence/model/<module>`. The imports a consumer could
+write before SHALL resolve as before.
+
+#### Scenario: the problem module
+- **GIVEN** a consumer technical schema whose `imports` hold `rdf_persistence/model/technical/api/rp_api_entrypoints`
+- **WHEN** `rp-generate` runs
+- **THEN** the import resolves to the installed package's module, and no file is looked up under the consumer's folder
+
+### Requirement: A consumer class extends a toolkit technical class the package exports
+
+When a class of a consumer schema is `is_a` a class of a toolkit technical module, the generated
+Python class SHALL inherit that class, imported from `rdf_persistence`, and the generated
+TypeScript interface SHALL hold every field of the toolkit class, so that it is assignable to it.
+When `rdf_persistence` does not export the toolkit class, generation SHALL fail, naming the
+consumer class and the toolkit class.
+
+#### Scenario: a consumer problem
+- **GIVEN** a consumer technical module that imports the problem module and declares `HeldKeyProblem` with `is_a: Problem` and one extra slot
+- **WHEN** `rp-generate` runs
+- **THEN** the generated Pydantic class inherits `Problem` imported from `rdf_persistence`, and `tsc --strict` accepts assigning a `HeldKeyProblem` to a `Problem`
+
+#### Scenario: a class the package does not export
+- **GIVEN** a consumer class `is_a` a technical class that `rdf_persistence` does not export
+- **WHEN** `rp-generate` runs
+- **THEN** it fails, naming both classes, and writes nothing

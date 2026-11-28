@@ -1,5 +1,6 @@
 """D-15: a generation run parses each imported schema once, however many views it builds."""
 
+import os
 import shutil
 from pathlib import Path
 
@@ -95,6 +96,26 @@ def test_an_import_read_with_a_base_folder_is_kept_as_pickled_bytes_and_keeps_it
     assert str(second) == str(first), "the copy lost the file the import came from"
 
 
+def test_the_process_cache_lives_for_one_run_so_a_same_size_edit_is_seen_by_the_next(
+    tmp_path: Path,
+) -> None:  # F-3
+    root = _write(tmp_path, leaf_text="first")
+    leaf = tmp_path / "leaf.yaml"
+    stat = leaf.stat()
+    PROCESS_CACHE.clear()
+    with cached_schema_loads():
+        with cached_schema_loads():  # a nested block does not end the run
+            _closure(root)
+        assert PROCESS_CACHE.entries, "the inner block ended the run: nothing kept within it"
+        _closure(root)
+    assert not PROCESS_CACHE.entries, "a parse survived the run that made it"
+    _write(tmp_path, leaf_text="second")  # the same size
+    os.utime(leaf, ns=(stat.st_atime_ns, stat.st_mtime_ns))  # and the same stat
+    with cached_schema_loads():
+        view = _closure(root)
+    assert view.get_class("Leaf").description == "second", "the next run saw the stale parse"
+
+
 def test_the_cache_is_off_outside_the_block(tmp_path: Path) -> None:
     root = _write(tmp_path)
     before = schemaview.load_schema_wrap
@@ -125,7 +146,7 @@ def test_generation_output_is_the_same_with_a_cold_and_a_warm_cache(tmp_path: Pa
     warm.mkdir()
     PROCESS_CACHE.clear()
     uncached = _generate(cold)  # every import is parsed
-    cached = _generate(warm)  # every import now comes from the process-wide cache
+    cached = _generate(warm)  # a run of its own: the process cache ends with each run (F-3)
     assert cached.keys() == uncached.keys(), "the two runs wrote different files"
     differing = [name for name in cached if cached[name] != uncached[name]]
     assert differing == [], f"files differ between the runs: {differing}"

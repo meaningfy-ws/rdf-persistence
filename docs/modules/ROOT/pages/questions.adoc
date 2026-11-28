@@ -156,7 +156,11 @@ Pass `aggregate_validators` to `install_service`: a mapping from a class name to
 is 422 and nothing is written. See
 xref:user-manual/access.adoc#aggregate-validators[Enforce your own rules on aggregate writes]. To
 answer with a problem of your own (extra fields, 409 or 422), see
-xref:user-manual/access.adoc#refuse-with-own-problem[Refuse with your own problem].
+xref:user-manual/access.adoc#refuse-with-own-problem[Refuse with your own problem]. To ask which
+aggregate holds a value, see xref:user-manual/access.adoc#find[Find the aggregates that hold a value];
+to type the rules and test them over `FakeAggregateReader`, see
+xref:user-manual/access.adoc#typed-rules[Type the rules for their class] and
+xref:user-manual/access.adoc#test-a-rule[Unit-test a rule with `FakeAggregateReader`].
 
 *How do I refuse a delete?*::
 Pass `delete_validators` to `install_service`: a mapping from a class name to rules, each

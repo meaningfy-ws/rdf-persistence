@@ -9,9 +9,9 @@ write SHALL then be refused before anything is written, and the generic create a
 SHALL answer with that problem: its status, type, title, detail and every extra field. A refusal
 whose problem is not of a registered class, or whose status is neither 409 nor 422, SHALL be
 answered as the 500 internal-error problem and logged once, naming the rule's problem class,
-without a traceback; a refusal that is answered SHALL NOT be logged as an error. In-process,
-the commit SHALL raise the `RuleRefusal`. The OpenAPI document SHALL list each registered class
-among the problems of the generic create and replace routes and of every route's default problem.
+with the refusal's traceback, which names the rule (D-22); a refusal that is answered SHALL NOT
+be logged as an error. In-process,
+the commit SHALL raise the `RuleRefusal`.
 
 #### Scenario: a refusal with a consumer problem type
 - **GIVEN** a registered problem class `HeldKeyProblem` with an extra slot `holder`, and a write rule for `Book` that raises `RuleRefusal(HeldKeyProblem(type=T, title="Key held", status=409, detail=d, holder=h))`
@@ -33,11 +33,6 @@ among the problems of the generic create and replace routes and of every route's
 - **WHEN** a client creates a `Book` the rule refuses
 - **THEN** the answer is the 500 internal-error problem, and nothing is written
 
-#### Scenario: the document lists the problem
-- **GIVEN** a service installed with `refusal_problems=[HeldKeyProblem]`
-- **WHEN** a client reads the OpenAPI document
-- **THEN** `HeldKeyProblem` is a component, and the 409 and 422 answers of each create and replace route accept it
-
 #### Scenario: a class that is not a problem
 - **GIVEN** `refusal_problems` naming a class that does not extend `Problem`
 - **WHEN** the service starts
@@ -47,7 +42,9 @@ among the problems of the generic create and replace routes and of every route's
 
 The reader an aggregate validator receives SHALL give, through `find(cls, **equals)`, the IRIs of
 the aggregates of `cls` in the write's tenant whose slots equal `equals`, in IRI order, with the
-filters `Session.find` takes, except that a `None` value SHALL raise `TypeError` naming the slot.
+filters `Session.find` takes, except that a `None` value SHALL raise `TypeError` naming the slot,
+and a value not of the slot's type, or a dotted slot path, SHALL raise `BadQuery`, each before any
+query.
 It SHALL leave out an aggregate the writer may not read, one the transaction has removed, and one
 the transaction has added or replaced earlier. It SHALL read the store as committed, and no version
 guard is recorded.

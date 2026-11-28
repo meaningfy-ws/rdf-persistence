@@ -156,6 +156,8 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         AggregateReader,
         AggregateValidator,
         DeleteValidator,
+        aggregate_rules,
+        delete_rules,
     )
     from rdf_persistence.collaboration.services.collaboration import Collaboration
     from rdf_persistence.collaboration.services.generated.rp_collaboration_services import (
@@ -163,7 +165,7 @@ if TYPE_CHECKING:  # what the lazy names are, for type checkers and editors
         Referrer,
         ReferrerList,
     )
-    from rdf_persistence.collaboration.services.workflows import Workflows, state_iri
+    from rdf_persistence.collaboration.services.workflows import Workflows, state_iri, state_name
     from rdf_persistence.core.services.generated.rp_core_services import HttpSettings
     from rdf_persistence.events.services.events import EventBus, Receive, context_link
     from rdf_persistence.events.services.generated.rp_events_services import EventEnvelope
@@ -297,6 +299,9 @@ _LAZY_MODULES = {
     "DeleteValidator": f"{_COLLABORATION}.aggregate_validators",
     "Workflows": f"{_COLLABORATION}.workflows",
     "state_iri": f"{_COLLABORATION}.workflows",
+    "state_name": f"{_COLLABORATION}.workflows",
+    "aggregate_rules": f"{_COLLABORATION}.aggregate_validators",
+    "delete_rules": f"{_COLLABORATION}.aggregate_validators",
     "MessageBus": f"{_MESSAGING}.messagebus",
     "Work": f"{_MESSAGING}.messagebus",
     "command": f"{_MESSAGING}.messagebus",
@@ -474,5 +479,8 @@ __all__ = [
     "remove_with_files",
     "settings_from_env",
     "state_iri",
+    "state_name",
+    "aggregate_rules",
+    "delete_rules",
     "zitadel_roles_claim",
 ]
