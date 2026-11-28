@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-28
+
 ### ⚠ BREAKING
 - **The toolkit's TypeScript modules are written once, in the entry that owns them**
   (`typescript-toolkit-modules`). A project with two or more TypeScript entries sets
@@ -97,6 +99,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   importmap). The one supported extension is `Problem`: generation refuses a class that uses a
   toolkit technical class `rdf_persistence` does not export, and a slot that shadows a field of the
   class it extends.
+- **Dependent aggregates** (`dependent-aggregates`, #437). A root class annotated
+  `rp_dependent_on: <slot>` is a part stored as an aggregate of its own (its own graph, version
+  token, resource and access) that points to its whole by that slot, required, single-valued and
+  fixed at creation. A part's write checks in the same update that the whole exists (else
+  `NotFound`, nothing written), so parallel writers of parts never conflict on the whole's
+  version. Deleting a whole deletes its parts transitively in one commit, with the delete right on
+  the whole alone, all or nothing: above `max_roots` it is `CommitTooLarge`, a part added
+  meanwhile is a `Conflict` to retry, and a part referenced from outside the cascade whose class
+  refuses is `InUse`. `rp-generate` refuses a pointer slot that is not required, single-valued and
+  ranged over a served root, and a cycle of dependence. `rp-uml2linkml` emits a generated «own
+  graph» part as such a root. See the aggregate store how-to and the UML guide.
+
+### Changed
+- **`rp-generate` parses each imported schema once per generation**, not each time a schema view
+  is built: a generation that imports a technical module's closure runs about a quarter faster,
+  and its output is byte-identical.
 
 ### Fixed
 - **A narrowed or re-ranged slot generates a field mypy accepts** (`narrowed-slot-override`, #417).
@@ -1048,7 +1066,8 @@ capabilities in `openspec/specs/`.
 
 <!-- Release process: docs/modules/ROOT/pages/develop/index.adoc#release -->
 
-[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/meaningfy-ws/rdf-persistence/compare/v0.13.0...v0.14.0
