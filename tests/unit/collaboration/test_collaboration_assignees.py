@@ -10,11 +10,9 @@ from rdflib import RDF, RDFS, Literal, URIRef
 
 from rdf_persistence import Action, generated_models
 from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
-from rdf_persistence.collaboration.services.collaboration import Collaboration
 from rdf_persistence.collaboration.services.workflows import Workflows
 from rdf_persistence.collaboration.services.write_guards import WriteGuards
 from rdf_persistence.core.domain.exceptions import Conflict, Forbidden, InvalidBody, NotFound
-from rdf_persistence.iris.services.iris import DEFAULT_IRIS
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.mapper import UnitOfWork
 from rdf_persistence.provenance.services.provenance import new_activity_id
@@ -22,59 +20,45 @@ from rdf_persistence.schema.services import vocabulary as v
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import (
-    ADA,
     BOB,
     BOOK_CLASS,
     MODULES,
     TENANT,
     ban,
     book_iri,
-    caller,
     dune,
-    held,
-    role,
     toy_mapper,
 )
-from tests.unit.collaboration.assignees_world import write_world
+from tests.unit.collaboration.assignees_world import (
+    LIBRARIAN,
+    NOBODY,
+    NONE,
+    ONE,
+    OTHER,
+    OUTSIDER,
+    P1,
+    P2,
+    READER,
+    REVIEWER,
+    RITA,
+    STRANGER,
+    TWO,
+    B,
+    a_book,
+    add,
+    assignees_of,
+    assigner,
+    in_review,
+    replace,
+    write_world,
+)
 from tests.unit.collaboration.collaboration_data import REVIEW, VIEW, version_of
-
-B = book_iri(1)
-P1, P2 = "https://example.org/people/p1", "https://example.org/people/p2"
-NONE = frozenset()
-ONE = frozenset({P1})
-TWO = frozenset({P1, P2})
-OTHER = frozenset({P2})
 
 
 @pytest.fixture
 def guards(tmp_path) -> WriteGuards:
     world = write_world(tmp_path)
     return WriteGuards(toy_mapper(), generated_models(*MODULES), Listings(VIEW), world.workflows)
-
-
-def a_book(assignees=NONE):
-    """The book B naming ``assignees`` (none: the slot unset, as an application that knows nothing of them writes it)."""
-    return dune(B).model_copy(update={"assigned_to": sorted(assignees) or None})
-
-
-async def assignees_of(session, iri: str = B) -> frozenset[str]:
-    held = await session.root_values(iri, [v.WORKFLOW_ASSIGNEES])
-    return frozenset(str(o) for o in held[v.WORKFLOW_ASSIGNEES])
-
-
-async def replace(session, book, *, allowing: frozenset[str] | None = None) -> None:
-    """Replace the stored book; ``allowing`` is what only an assignment or a clearing transition does."""
-    version = await version_of(session, str(book.id))
-    async with session.transaction() as t:
-        if allowing is not None:
-            t._allow_assignees(str(book.id), allowing)
-        await t.replace_graph(str(book.id), toy_mapper().to_triples(book), version)
-
-
-async def add(session, book) -> None:
-    work = UnitOfWork(session, toy_mapper())
-    work.add(book)
-    await work.commit()
 
 
 async def seeded(session, stored: frozenset[str]) -> None:
@@ -233,37 +217,6 @@ async def test_a_root_of_no_workflow_class_keeps_its_own_assignees(guards):  # D
 
 # -- Assignments (D-3, D-4): T4 to T11 and T13 ------------------------------------------------------
 
-RITA = "https://example.org/people/rita"  # holds ``reviewer`` only
-NOBODY = "https://example.org/people/nobody"  # no grant at all
-OUTSIDER = "not-an-absolute-iri"
-LIBRARIAN, REVIEWER, READER, STRANGER = "librarian", "reviewer", "reader", "stranger"
-
-
-def access_for(who: str):
-    """What the tenant's access record says of ``who``, by the way the test names the caller."""
-    return {
-        LIBRARIAN: held(role("librarian", who=ADA)),
-        REVIEWER: held(role("reviewer", who=RITA)),
-        READER: held(role("reader", who=BOB)),
-        STRANGER: held(),
-    }[who]
-
-
-PRINCIPAL_OF = {LIBRARIAN: ADA, REVIEWER: RITA, READER: BOB, STRANGER: NOBODY}
-# who may read the book, for ``access_of``: the principals the toolkit is asked about
-READERS = {
-    P1: held(role("reader", who=P1)),
-    P2: held(role("reader", who=P2)),
-    RITA: held(role("reviewer", who=RITA)),
-    ADA: held(role("librarian", who=ADA)),
-    NOBODY: held(),
-}
-
-
-async def reads(principal: str):
-    """The ``access_of`` of the tests: the stored access of the few principals they know."""
-    return READERS[principal]
-
 
 @pytest.fixture
 def world(tmp_path):
@@ -278,33 +231,6 @@ async def open_session(world):
     guards = WriteGuards(toy_mapper(), generated_models(*MODULES), Listings(VIEW), world.workflows)
     async with fake_session(store, tenant_iri=TENANT, guards=guards) as session:
         yield session
-
-
-def assigner(world, session, who: str, *, bans=None, access_of=reads, workflow=True):
-    """A ``Collaboration`` for the caller named ``who``; ``workflow=False`` leaves the toy book under none."""
-    return Collaboration(
-        session,
-        view=VIEW,
-        rules=world.rules,
-        iris=DEFAULT_IRIS,
-        mapper=toy_mapper(),
-        models=generated_models(*MODULES),
-        listings=Listings(VIEW),
-        workflows=(world.workflows if workflow is True else workflow or None),
-        caller=caller(principal=PRINCIPAL_OF[who]),
-        access=access_for(who).model_copy(update={"prohibitions": bans}),
-        access_of=access_of,
-    )
-
-
-async def in_review(world, session, stored: frozenset[str] = NONE) -> str:
-    """The book B in ``in_review``, holding ``stored``; returns its version."""
-    await add(session, a_book())
-    lib = assigner(world, session, LIBRARIAN)
-    await lib.transition(B, "in_review", if_version=await version_of(session, B))
-    if stored:
-        await replace(session, a_book(stored), allowing=stored)
-    return await version_of(session, B)
 
 
 async def recorded(session) -> list:

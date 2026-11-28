@@ -14,9 +14,7 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.toy import ADA, MODULES, TENANT, ban, held, role, toy_mapper
-from tests.unit.collaboration.assignees_world import write_world
-from tests.unit.collaboration.collaboration_data import REVIEW, VIEW, version_of
-from tests.unit.collaboration.test_collaboration_assignees import (
+from tests.unit.collaboration.assignees_world import (
     LIBRARIAN,
     NONE,
     P1,
@@ -29,7 +27,9 @@ from tests.unit.collaboration.test_collaboration_assignees import (
     assignees_of,
     assigner,
     in_review,
+    write_world,
 )
+from tests.unit.collaboration.collaboration_data import REVIEW, VIEW, version_of
 
 
 @pytest.fixture
