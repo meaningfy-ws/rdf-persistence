@@ -41,7 +41,7 @@ after an attack; until then it is the planner's own score.
 | 10 | `aggregate-events` | LARGE (3 stages) | none | delivered 2026-11-16 (#124, #126), accepted, archived | 3, 9 (publishes 9's one message per commit) | outbox, relay, `EventBus` port on FastStream (Redis Streams first), incoming messages into the bus, SSE |
 | 11 | `schema-migrations` | LARGE (3 stages) | none | delivered 2026-11-15 (#109, #112, #113), accepted, archived | 6 (reads the dump's schema version), 7 (its last stage reaches the application database) | schema version per database, the schema lock and its rules in `rp-generate`, migrations applied at start-up |
 | 12 | `second-store` | MEDIUM | none | no | 3, 5 (the descriptor states their atomicity need) | GraphDB (confirmed), the capability descriptor |
-| 13 | `typescript-client` | LARGE | none | no | 2 | the generated client |
+| 13 | `typescript-client` | LARGE | none | closed unbuilt 2026-11-27, overtaken by consumer practice; archived with `--skip-specs`; live remainder #402, #415 | 2 | the generated client |
 | 14 | `fine-grained-access` | VERY LARGE (staged) | none | no | 10 | OpenFGA, property- and triple-level access |
 | — | `graphql-read-api` | LARGE | none | no | — | deferred by the developer (2026-11-06) |
 
@@ -72,7 +72,7 @@ Work outside the table, all delivered and archived: `test-suite-grooming`, `alig
 | `ci-minimal-gate` (the developer, 2026-11-28: no 10k tests per PR) | SMALL (1 stage) | shaped and planned in one session 2026-11-28, no clarity-gate score (developer's "quickly") | delivered 2026-11-28 (#439, #440, admin-merged on the developer's word), `main` fast-forwarded to `develop` so the schedule runs; first nightly run 46084903352; archived `2026-11-28-ci-minimal-gate`. Supersedes D12 one way (DEC-4) |
 | `openapi-refusal-problems` (#457; task 1.4 of `consumer-write-rules`, stopped by its D-5) | SMALL (1 stage) | 2026-11-28, one question round (`inputs/qa.md`); gated by a fresh reviewer 8.2 → 8.9, accepted (R-0005); scenarios S1–S4 signed off | delivered 2026-11-28 (#462, admin-merged on the local green gate at the developer's word), demo skipped, archived `2026-11-28-openapi-refusal-problems`; #457 closed; under the floor: #459 |
 | `write-rules-followups` (#455, `consumer-write-rules`' floor) | SMALL (1 stage) | 2026-11-28, shaped in one round (`inputs/qa.md`); `_item_type` and the cache's lock dropped (DEC-1); gated by a fresh reviewer 8.1 → 8.8, accepted (R-0005); scenarios signed off | delivered 2026-11-28 (#464, admin-merged on the local green gate at the developer's word), demo not run (no use case added), no docs owed; archived `2026-11-28-write-rules-followups`; #455 closed; under the floor: D-7, D-8. **BREAKING**: a rule's `find(cls)` with no slot, the fake's `BadQuery` for a dotted keyword (DEC-6), `Seeded`'s two new arguments (D-8) |
-| `second-store`, `typescript-client`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
+| `second-store`, `fine-grained-access`, `graphql-read-api` | as above | no | a shaping session; no consumer need yet |
 
 ### The first consumer's needs (shaped 2026-11-20)
 

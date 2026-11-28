@@ -4,6 +4,11 @@
 
 # EPIC: A TypeScript client library
 
+> **Closed unbuilt 2026-11-27: overtaken by consumer practice.** The model half is delivered (the
+> generated TypeScript for every served schema); the calls half is the consumer's own server-side
+> layer over those types. Archived with `--skip-specs`. Why, and what stays live (#402, #415):
+> `inputs/closure-2026-11-27.md`.
+>
 > Candidate EPIC, shaped 2026-11-06 from the v1 future list. Not planned: the PLAN (design.md, tasks.md) waits for the developer's answers in inputs/seed.md.
 >
 > **Backlog position (2026-11-12):** after `release-pipeline` (a versioned client pairs with a versioned server); independent of the rest. See `openspec/changes/README.md`.
@@ -45,6 +50,7 @@ as the server, so it cannot drift from it, and a test runs it against the served
   `ETag`/`If-Match`, problem responses (D-1, `rp-service-api`).
 - **DEC-4**: Sign-in stays with the identity provider's flows; the client carries a token it is given
   and has no login of its own (D-10).
+- **DEC-5**: Closed unbuilt as overtaken (developer, 2026-11-27); see `inputs/closure-2026-11-27.md`.
 
 ## Rabbit-holes
 
