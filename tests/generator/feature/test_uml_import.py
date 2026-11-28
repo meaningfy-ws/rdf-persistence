@@ -5,8 +5,10 @@ Architect model with ``QeaBuilder``; the When calls ``cli.main`` as the command 
 the written YAML, the report and the standard error, and one hands the output to ``rp-generate``'s checks.
 """
 
+import re
 import shutil
 import sqlite3
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -20,6 +22,7 @@ from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.steps import BOUNDARY_STEP, LINT_STEP
 from rdf_persistence_generation.uml.cli import main
+from tests.generator import uml_library
 from tests.generator.uml_library_stage2 import write_prefixes
 from tests.generator.uml_qea import QeaBuilder
 
@@ -37,6 +40,7 @@ migrations = "migrations"
 """
 TOOLKIT_NAMESPACE = "https://meaningfy.ws/ns/rdf-persistence#"
 COUNTS = {"no": 0, "one": 1}
+GOLDEN = Path(__file__).parents[1] / "fixtures" / "uml" / "golden" / "stage1"
 NONE = "none"
 
 
@@ -56,6 +60,15 @@ class World:
         self.stderr: str | None = None
         self.out = folder / "out"
         self.again = folder / "again"
+        self.stereotypes: dict[
+            str, str
+        ] = {}  # a class name -> its stereotype, set by a later Given
+        self.drawn: list[
+            Callable[[], None]
+        ] = []  # drawings that wait for the whole Given to be said
+        self.subject = ""  # the class a scenario asks about
+        self.reversed = False  # a composition is drawn from the part to the whole
+        self.drawing: dict[str, str] = {}  # what a Given drew, for a Then that draws it again
 
     def prefixes(self) -> Path:
         """The library's prefixes plus ``rp``, which a drawn toolkit class (``rp:RoleDefinition``) needs."""
@@ -66,7 +79,10 @@ class World:
         return path
 
     def convert(self, out: Path, *options: str) -> None:
-        self.qea = self.qea or self.builder.finish()
+        if self.qea is None:
+            for draw in self.drawn:
+                draw()
+            self.qea = self.builder.finish()
         self.code = main(
             [
                 str(self.qea),
@@ -93,6 +109,30 @@ class World:
 
     def klass(self, name: str, module: str = LIBRARY_MODULE) -> dict:
         return self.module(module)["classes"][name]
+
+    def slots(self) -> dict[str, dict]:
+        """Every slot of every module written, by name."""
+        found: dict[str, dict] = {}
+        for file in sorted(self.out.glob("*.yaml")):
+            found.update((yaml.safe_load(file.read_text(encoding="utf-8")) or {}).get("slots", {}))
+        return found
+
+    def roots(self) -> set[str]:
+        """The classes that mix in ``AggregateRoot``."""
+        return {
+            name
+            for name, each in self.classes().items()
+            if "AggregateRoot" in each.get("mixins", [])
+        }
+
+    def classes(self) -> dict[str, dict]:
+        """Every class of every module written, by name."""
+        found: dict[str, dict] = {}
+        for file in sorted(self.out.glob("*.yaml")):
+            found.update(
+                (yaml.safe_load(file.read_text(encoding="utf-8")) or {}).get("classes", {})
+            )
+        return found
 
     def report(self) -> list[list[str]]:
         text = (self.out / f"{ROOT_NAME}.uml-report.txt").read_text(encoding="utf-8")
@@ -127,26 +167,395 @@ def _chapters(world: World, card: str | None, **options: object) -> int:
     )
 
 
+def _named(world: World, name: str, **options: object) -> int:
+    """The class ``lib:<name>``, drawn once; the stereotype a Given has set for it applies."""
+    key = name.lower()
+    if key not in world.ids:
+        options.setdefault("stereotype", world.stereotypes.get(name))
+        world.ids[key] = world.builder.cls(
+            world.library, f"lib:{name}", note=f"A {name}.", **options
+        )
+    return world.ids[key]
+
+
+def _associate(world: World, whole: str, part: str, role: str, card: str = "0..*") -> int:
+    """A plain association from ``whole`` to ``part`` named ``role``."""
+    return world.builder.association(
+        _named(world, whole), _named(world, part), f"lib:{role}", card, note=f"The {role}."
+    )
+
+
+def _compose(world: World, whole: str, part: str, role: str, **options: object) -> int:
+    """An association with a composition beside it: the part is owned by the whole."""
+    _associate(world, whole, part, role)
+    return world.builder.aggregation(_named(world, whole), _named(world, part), **options)
+
+
+def _tree(world: World, *pairs: tuple[str, str, str]) -> None:
+    for whole, part, role in pairs:
+        _compose(world, whole, part, role)
+
+
+def _roles_of(names: str) -> list[str]:
+    """The quoted names of a step's list: ``"a", "b" and "c"``."""
+    return re.findall(r'"([^"]+)"', names)
+
+
 # --- Given ----------------------------------------------------------------------------------------------
 
 
-@given("a library package where the book is a root that owns its chapters in one boundary")
+@given("a shelf that holds books with chapters, and a reader that is no one's part")
+def _shelf_and_reader(world: World) -> None:
+    _tree(world, ("Shelf", "Book", "holds"), ("Book", "Chapter", "hasChapter"))
+    _named(world, "Reader")
+
+
+@given("a library package that draws «root» on the shelf")
+def _drawn_shelf_root(world: World) -> None:
+    world.stereotypes["Shelf"] = "root"
+    _named(world, "Shelf")
+
+
+@given("the reader is no one's part and not drawn «root»")
+def _reader_not_drawn(world: World) -> None:
+    _named(world, "Reader")
+
+
+@given("the chapter, a part of the book, is drawn «root»")
+def _chapter_drawn_root(world: World) -> None:
+    world.stereotypes.update({"Book": "root", "Chapter": "root"})
+    _tree(world, ("Book", "Chapter", "hasChapter"))
+
+
+@given("the abstract publication is drawn «root»")
+def _publication_drawn_root(world: World) -> None:
+    _named(world, "Publication", abstract=True, stereotype="root")
+
+
+@given("the library model drawn with «root» and a boundary, converted before compositions existed")
+def _old_library(world: World) -> None:
+    world.qea = uml_library.build_library(world.folder)
+
+
+def _connectors(world: World, kind: str) -> list[tuple[int, int]]:
+    with sqlite3.connect(world.qea) as db:
+        rows = db.execute(
+            "SELECT Start_Object_ID, End_Object_ID FROM t_connector WHERE Connector_Type = ?",
+            (kind,),
+        )
+        return list(rows)
+
+
+@given("each association its boundary owned is the only one between its two classes")
+def _only_association(world: World) -> None:
+    associations = _connectors(world, "Association")
+    for whole, part in _connectors(world, "Aggregation"):
+        between = [each for each in associations if each == (whole, part)]
+        assert len(between) == 1, f"one association beside the composition {whole} -> {part}"
+
+
+@given("the same model with a composition beside each owned association")
+def _compositions_beside(world: World) -> None:
+    golden = yaml.safe_load((GOLDEN / "library_catalogue.yaml").read_text(encoding="utf-8"))
+    owned = [
+        name for name, slot in golden["slots"].items() if "owned" in slot.get("annotations", {})
+    ]
+    assert len(_connectors(world, "Aggregation")) == len(owned), (
+        "a composition for each slot the earlier conversion owned"
+    )
+
+
+@given(
+    parsers.parse(
+        'a shelf count with "own graph" compositions to a count report and a shape report'
+    )
+)
+def _shelf_count_own_graphs(world: World) -> None:
+    def draw() -> None:
+        for part, role in (("CountReport", "countReport"), ("ShapeReport", "shapeReport")):
+            _compose(world, "ShelfCount", part, role, stereotype="own graph")
+
+    world.drawn.append(draw)
+
+
+@given(parsers.parse('both reports are stereotyped "{stereotype}"'))
+def _reports_stereotyped(world: World, stereotype: str) -> None:
+    world.stereotypes.update({"CountReport": stereotype, "ShapeReport": stereotype})
+
+
+@given("the shape report holds its shape results by a plain composition")
+def _shape_results(world: World) -> None:
+    world.drawn.append(lambda: _compose(world, "ShapeReport", "ShapeResult", "hasResult"))
+
+
+@given('an inventory with an "own graph" composition to the generated shelf count')
+def _inventory_own_graph(world: World) -> None:
+    _compose(world, "Inventory", "ShelfCount", "shelfCount", stereotype="own graph")
+
+
+@given(
+    parsers.parse(
+        'a shelf count with a plain composition to a count report stereotyped "{stereotype}"'
+    )
+)
+def _plain_to_loaded_graph(world: World, stereotype: str) -> None:
+    world.stereotypes["CountReport"] = stereotype
+    _compose(world, "ShelfCount", "CountReport", "countReport")
+
+
+@given("a shelf that holds books")
+def _shelf_holds_books(world: World) -> None:
+    _tree(world, ("Shelf", "Book", "holds"))
+
+
+@given(parsers.parse('a reader whose association "{role}" points at {target}'))
+def _reader_points(world: World, role: str, target: str) -> None:
+    if target == "an access class":
+        _access_package(world)
+        target = "Clearance"
+    _associate(world, "Reader", target.removeprefix("the ").capitalize(), role, "0..1")
+
+
+@given(
+    parsers.re(r'a role object "librarian" (?P<classifier>.+) and a Realisation to (?P<target>.+)')
+)
+def _role_object_realising(world: World, classifier: str, target: str) -> None:
+    _realised_role(world, classifier, target)
+
+
+BOUNDARY_BOX = (0, 0, 140, 60)  # (left, top, right, bottom): around the book and the chapter
+BOOK_BOX = (10, 10, 60, 50)
+CHAPTER_BOX = (80, 10, 130, 50)
+MOVED_BOXES = {
+    "shrunk so the chapter is outside": (0, 0, 70, 60),
+    "slid off every class": (1000, 1000, 1140, 1060),
+}
+
+
+@given(
+    parsers.parse(
+        'the book has associations "{first}" and "{second}" to the section, each with a '
+        "composition naming its role"
+    )
+)
+def _two_owned_roles(world: World, first: str, second: str) -> None:
+    for role in (first, second):
+        _associate(world, "Book", "Section", role)
+        world.builder.aggregation(
+            world.ids["book"], world.ids["section"], role=f"lib:{role}", note=f"The {role}."
+        )
+
+
+@given(parsers.parse('an association "{role}" from the book to the section with no composition'))
+def _reference_to_part(world: World, role: str) -> None:
+    _associate(world, "Book", "Section", role, "0..1")
+
+
+@given("compositions from the book to the section and from the section to the section")
+def _sections(world: World) -> None:
+    _tree(world, ("Book", "Section", "hasSection"), ("Section", "Section", "hasSubsection"))
+
+
+@given("the note is a part of the book and of the chapter")
+def _shared_note(world: World) -> None:
+    _tree(
+        world,
+        ("Book", "Chapter", "hasChapter"),
+        ("Book", "Note", "hasNote"),
+        ("Chapter", "Note", "hasNote"),
+    )
+
+
+@given(
+    "a library package where the book owns its chapters through an association with a composite end"
+)
+def _composite_association(world: World) -> None:
+    """The old drawing: one association whose end at the book is composite (PD-3)."""
+    connector = _associate(world, "Book", "Chapter", "hasChapter")
+    world.qea = world.builder.finish()
+    with sqlite3.connect(world.qea) as db:
+        db.execute(
+            "UPDATE t_connector SET SourceIsAggregate = 2 WHERE Connector_ID = ?", (connector,)
+        )
+
+
+def _no_association(world: World) -> None:
+    world.builder.aggregation(_named(world, "Book"), _named(world, "Chapter"))
+
+
+def _two_associations(world: World) -> None:
+    _associate(world, "Book", "Chapter", "hasChapter")
+    _associate(world, "Book", "Chapter", "firstChapter")
+    world.builder.aggregation(world.ids["book"], world.ids["chapter"])
+
+
+def _a_cycle(world: World) -> None:
+    _tree(world, ("Chapter", "Page", "hasPage"), ("Page", "Chapter", "hasChapter"))
+
+
+def _unreached_page(world: World) -> None:
+    _named(world, "Container", abstract=True)
+    _tree(world, ("Container", "Page", "hasPage"))
+
+
+def _outside_part(world: World) -> None:
+    elsewhere = world.builder.package("elsewhere", note="Another model.")
+    stranger = world.builder.cls(elsewhere, "lib:Stranger", note="A class elsewhere.")
+    world.builder.aggregation(_named(world, "Book"), stranger)
+
+
+def _shared_aggregation(world: World) -> None:
+    _associate(world, "Book", "Chapter", "hasChapter")
+    world.builder.aggregation(world.ids["book"], world.ids["chapter"], shared=True)
+
+
+def _a_part(world: World) -> None:
+    world.subject = "Chapter"
+    _tree(world, ("Book", "Chapter", "hasChapter"))
+
+
+def _abstract_publication(world: World) -> None:
+    world.subject = "Publication"
+    _named(world, "Publication", abstract=True)
+    _named(world, "Book")
+
+
+def _authority(world: World) -> None:
+    world.subject = "Authority"
+    _named(world, "Authority", stereotype="loaded graph")
+    _named(world, "Book")
+
+
+def _toolkit_role_definition(world: World) -> None:
+    world.subject = "RoleDefinition"
+    world.builder.cls(world.library, "rp:RoleDefinition")
+    _named(world, "Book")
+
+
+def _tenant_root(world: World) -> None:
+    world.subject = "Library"
+    _named(world, "Library", stereotype="tenant root")
+    _named(world, "Book")
+
+
+def _access_class(world: World) -> None:
+    world.subject = "Clearance"
+    _access_package(world)
+    _named(world, "Book")
+
+
+def _access_package(world: World) -> int:
+    """A class ``Clearance`` in a package tagged ``module_kind=access``; its id."""
+    access = world.builder.package("access", parent=world.model, note="Who may do what.")
+    world.builder.tag(world.builder.package_element(access), "module_kind", "access")
+    clearance = world.builder.cls(access, "lib:Clearance", note="A clearance.")
+    world.ids["clearance"] = clearance
+    return clearance
+
+
+DRAWINGS: dict[str, Callable[[World], None]] = {
+    "a composition from the book to the chapter and no association": _no_association,
+    "two associations beside one composition that names no role": _two_associations,
+    "compositions from the chapter to the page and back, no root composing either": _a_cycle,
+    "a page whose whole no root reaches": _unreached_page,
+    "a composition to a class outside the converted package": _outside_part,
+    "a shared aggregation from the book to the chapter": _shared_aggregation,
+    "an association whose end at the book is composite": _composite_association,
+    "a chapter that is the part of a book": _a_part,
+    "an abstract publication with no root below it": _abstract_publication,
+    'an authority stereotyped "loaded graph"': _authority,
+    "a drawn toolkit role definition": _toolkit_role_definition,
+    'the library stereotyped "tenant root"': _tenant_root,
+    'a plain class in a package tagged "module_kind=access"': _access_class,
+}
+
+
+@given(parsers.parse("a library package with {drawing}"))
+def _drawing(world: World, drawing: str) -> None:
+    DRAWINGS[drawing](world)
+
+
+@given("a converted library package with a boundary around the book and its chapters")
+def _boundary_around(world: World) -> None:
+    _compose(world, "Book", "Chapter", "hasChapter")
+    world.builder.place(1, world.ids["book"], BOOK_BOX)
+    world.builder.place(1, world.ids["chapter"], CHAPTER_BOX)
+    world.ids["boundary"] = world.builder.boundary(diagram=1, package=world.library, name="Book")
+    world.qea = world.builder.finish()
+    _resize_boundary(world, BOUNDARY_BOX)
+    world.convert(world.out)
+    assert world.code == 0, f"the library with its boundary must convert first: {world.error()}"
+
+
+def _resize_boundary(world: World, box: tuple[int, int, int, int]) -> None:
+    left, top, right, bottom = box
+    with sqlite3.connect(world.qea) as db:
+        db.execute(
+            "UPDATE t_diagramobjects SET RectLeft = ?, RectTop = ?, RectRight = ?, RectBottom = ? "
+            "WHERE Object_ID = ?",
+            (left, top, right, bottom, world.ids["boundary"]),
+        )
+
+
+def _move_boundary(world: World, moved: str) -> None:
+    """Change the boundary's row in the finished file: resize it, slide it or delete it."""
+    if moved in MOVED_BOXES:
+        _resize_boundary(world, MOVED_BOXES[moved])
+        return
+    with sqlite3.connect(world.qea) as db:
+        db.execute("DELETE FROM t_diagramobjects WHERE Object_ID = ?", (world.ids["boundary"],))
+        db.execute("DELETE FROM t_object WHERE Object_ID = ?", (world.ids["boundary"],))
+
+
+@given(
+    parsers.parse('a library package where the book has an association "{role}" to its chapters')
+)
+def _book_with_association(world: World, role: str) -> None:
+    _associate(world, "Book", "Chapter", role)
+
+
+@given("a composition from the book to the chapter beside it")
+def _composition_beside(world: World) -> None:
+    world.builder.aggregation(world.ids["book"], world.ids["chapter"])
+
+
+@given("the composition from the book to the chapter is drawn from the chapter to the book")
+def _drawn_from_the_part(world: World) -> None:
+    _associate(world, "Book", "Chapter", "hasChapter")
+    world.reversed = True
+
+
+@given("its diamond is at the book")
+def _diamond_at_the_whole(world: World) -> None:
+    world.builder.aggregation(world.ids["book"], world.ids["chapter"], part_to_whole=world.reversed)
+
+
+@given(
+    "compositions from the shelf to the book, from the book to the chapter and from the chapter "
+    "to the page"
+)
+def _three_deep(world: World) -> None:
+    _tree(
+        world,
+        ("Shelf", "Book", "holds"),
+        ("Book", "Chapter", "hasChapter"),
+        ("Chapter", "Page", "hasPage"),
+    )
+
+
+@given("a library package where the book owns its chapters through a composition")
 def _root_with_part(world: World) -> None:
-    book, chapter = _book(world, stereotype="root"), _chapter(world)
+    book, chapter = _book(world), _chapter(world)
     world.builder.attribute(book, "dct:title", "xsd:string", "1", "1", note="The title.")
     _chapters(world, "2..5")
     world.builder.aggregation(book, chapter)  # the composition that owns the chapters (PD-1)
-    resource = world.builder.cls(
-        world.library, "lib:Resource", stereotype="root", note="A resource."
-    )
+    resource = world.builder.cls(world.library, "lib:Resource", note="A resource.")
     world.builder.generalisation(book, resource)
     genre = world.builder.cls(
         world.library, "lib:Genre", object_type="Enumeration", note="The genres."
     )
     world.builder.attribute(genre, "lib:novel", note="A novel.")
     world.builder.dependency(book, genre, "lib:genre", note="Its genre.")
-    # the boundary is an annotation named for its root, in the root's converted package (PD-7)
-    world.builder.boundary(diagram=1, package=world.library, name="Book")
 
 
 @given("an abstract class whose concrete subclasses are all roots, and a slot ranging over it")
@@ -273,13 +682,37 @@ def _role_object(world: World, name: str, role: str, level: str, actions: str) -
     if "role_definition" not in world.ids:
         _book(world)  # the package also draws a domain class, as a real model does
         world.ids["role_definition"] = world.builder.cls(world.library, "rp:RoleDefinition")
-    run_state = "".join(
+    return world.builder.object_(
+        world.library,
+        name,
+        world.ids["role_definition"],
+        run_state=_run_state(role, level, actions),
+    )
+
+
+def _run_state(role: str, level: str, actions: str) -> str:
+    return "".join(
         f"@VAR;Variable={variable};Value={value};Op==;@ENDVAR;"
         for variable, value in (("role", role), ("level", level), ("actions", actions))
     )
-    return world.builder.object_(
-        world.library, name, world.ids["role_definition"], run_state=run_state
+
+
+def _realised_role(world: World, classifier: str, target: str, realise: bool = True) -> None:
+    """The object ``librarian``, classified or not, with a Realisation to the role definition or the book."""
+    world.drawing = {"classifier": classifier, "target": target}
+    if "role_definition" not in world.ids:
+        _book(world)
+        world.ids["role_definition"] = world.builder.cls(world.library, "rp:RoleDefinition")
+    classifier_id = world.ids["role_definition"] if classifier.startswith("classified") else None
+    librarian = world.builder.object_(
+        world.library,
+        "librarian",
+        classifier_id,
+        run_state=_run_state("librarian", "tenant", "read"),
     )
+    if realise:
+        realised = world.ids["role_definition"] if target == "RoleDefinition" else world.ids["book"]
+        world.builder.realisation(librarian, realised)
 
 
 @given("three role definition objects with valid run-state values")
@@ -359,8 +792,32 @@ def _shelf_of_shelves(world: World, written: str) -> None:
 
 
 @when("the model is converted")
+@when("the package is converted")
 def _converted(world: World) -> None:
     world.convert(world.out)
+
+
+@when("it is converted")
+def _library_converted(world: World) -> None:
+    world.code = main(
+        [
+            str(world.qea),
+            "--package",
+            uml_library.PACKAGE,
+            "--prefixes",
+            str(uml_library.write_prefixes(world.folder)),
+            "--out",
+            str(world.out),
+            "--root-name",
+            uml_library.ROOT_NAME,
+        ]
+    )
+
+
+@when(parsers.parse("the boundary is {moved} and the package is converted again"))
+def _boundary_moved(world: World, moved: str) -> None:
+    _move_boundary(world, moved)
+    world.convert(world.again)
 
 
 @when("the model is converted again")
@@ -600,6 +1057,226 @@ def _no_slot(world: World, name: str) -> None:
 @then(parsers.parse('the book has no slot "{name}"'))
 def _book_lacks(world: World, name: str) -> None:
     assert name not in world.klass("Book").get("slots", []), f"the book has no slot {name}"
+
+
+# --- Then: compositions, roots and what a refused drawing says ---------------------------------------------
+
+NAMED = {
+    # what each "the run fails naming ..." of the features expects the problems to say
+    "the book, the chapter and the missing association": [
+        "Book -> Chapter",
+        "needs an association",
+    ],
+    "both roles": ["lib:hasChapter", "lib:firstChapter"],
+    "the cycle": ["cycle"],
+    "the page": ["Page", "no root reaches it"],
+    "the composition and the subtree": ["Book -> Stranger", "converted subtree"],
+    "the connector and the composition to draw": ["shared aggregation", "composition"],
+    "the slot and the two-connector form": ["Book.has_chapter", "Aggregation"],
+    "the slot": ["Book.has_chapter"],
+    "the reader as a root not drawn «root»": ["Reader", "not drawn «root»"],
+    "the chapter and the book": ["Chapter", "Book"],
+    "the publication": ["Publication", "abstract"],
+    'the inventory, the shelf count and "dependent-aggregates"': [
+        "Inventory",
+        "ShelfCount",
+        "dependent-aggregates",
+    ],
+    'the composition and "own graph"': ["ShelfCount -> CountReport", "own graph"],
+    "the reader's slot, the book and the shelf": ["Reader.borrows", "Book", "Shelf"],
+    "the object, RoleDefinition and Book": ["librarian", "RoleDefinition", "Book"],
+}
+
+
+@then(parsers.parse("the run fails naming {named}"))
+def _fails_naming(world: World, named: str) -> None:
+    assert world.code == 1, "the command must exit 1, the model having problems"
+    error = world.error()
+    for text in NAMED[named]:
+        assert text in error, f"the problems must say {text}: {error}"
+
+
+@then("the message says to draw a composition beside a plain association")
+def _says_what_to_draw(world: World) -> None:
+    assert "beside a plain association" in world.error(), "the message names the form to draw"
+
+
+@then("the conversion writes")
+def _writes(world: World) -> None:
+    assert world.code == 0, f"the command must exit 0: {world.error()}"
+    assert list(world.out.glob("*.yaml")), "the schemas are written"
+
+
+@then(parsers.parse('the slot "{name}" is owned and inlined as a list'))
+def _owned_as_list(world: World, name: str) -> None:
+    slot = world.slots()[name]
+    assert slot["annotations"]["owned"]["value"] == "true", f"the slot {name} is owned"
+    assert slot["inlined_as_list"] is True, f"the slot {name} is inlined as a list"
+
+
+@then(parsers.re(r"the slots (?P<names>\"[^\"]+\"(?:, \"[^\"]+\")* and \"[^\"]+\") are owned"))
+def _slots_owned(world: World, names: str) -> None:
+    for name in _roles_of(names):
+        owned = world.slots()[name].get("annotations", {}).get("owned", {}).get("value")
+        assert owned == "true", f"the slot {name} is owned"
+
+
+@then(parsers.parse('the slot "{name}" is a reference'))
+def _slot_reference(world: World, name: str) -> None:
+    slot = world.slots()[name]
+    assert "owned" not in slot.get("annotations", {}), f"the slot {name} is not owned"
+    assert not slot.get("inlined"), f"the slot {name} is not inlined"
+    assert not slot.get("inlined_as_list"), f"the slot {name} is not inlined as a list"
+
+
+@then("the book is an aggregate root and the chapter is its part")
+def _book_root_chapter_part(world: World) -> None:
+    assert world.roots() == {"Book"}, "the book alone is a root; the chapter is its part"
+
+
+@then(parsers.parse("the {name} is the only root of the four"))
+@then(parsers.parse("the {name} is the only root among them"))
+def _only_root(world: World, name: str) -> None:
+    assert world.roots() == {name.capitalize()}, f"the {name} alone is a root"
+
+
+@then("that class is not an aggregate root")
+def _not_a_root(world: World) -> None:
+    assert world.code == 0, f"the package must convert: {world.error()}"
+    found = world.classes().get(world.subject)
+    assert found is None or "AggregateRoot" not in found.get("mixins", []), (
+        f"{world.subject} is no aggregate root"
+    )
+
+
+def _schemas(folder: Path) -> dict[str, bytes]:
+    return {file.name: file.read_bytes() for file in sorted(folder.glob("*.yaml"))}
+
+
+@then("the schemas are byte-identical to the first conversion")
+def _same_schemas(world: World) -> None:
+    assert world.code == 0, f"the second conversion must succeed: {world.error()}"
+    assert _schemas(world.again) == _schemas(world.out), "a layout pass changes no schema"
+
+
+@then("the output is the same as when it is drawn from the book to the chapter")
+def _same_either_way(world: World) -> None:
+    assert world.code == 0, f"the reversed drawing must convert: {world.error()}"
+    folder = world.folder / "forward"
+    folder.mkdir()
+    forward = World(folder, world.capsys)
+    _compose(forward, "Book", "Chapter", "hasChapter")
+    forward.convert(forward.out)
+    assert forward.code == 0, "the forward drawing must convert"
+    assert _schemas(forward.out) == _schemas(world.out), "the direction drawn changes no schema"
+
+
+@then("the package converts")
+def _package_converts(world: World) -> None:
+    assert world.code == 0, f"the package must convert: {world.error()}"
+
+
+@then("the package converts, the slot a reference as before")
+def _converts_with_reference(world: World) -> None:
+    _package_converts(world)
+    slot = world.slots()["borrows"]
+    assert "owned" not in slot.get("annotations", {}), "the slot borrows is a reference, not owned"
+
+
+@then(
+    parsers.re(
+        r"the slots (?P<names>\"[^\"]+\"(?:, \"[^\"]+\")* and \"[^\"]+\") "
+        r"range over URIs and are marked as loaded graphs"
+    )
+)
+def _loaded_graph_slots(world: World, names: str) -> None:
+    assert world.code == 0, f"the package must convert: {world.error()}"
+    for name in _roles_of(names):
+        slot = world.slots()[name]
+        assert slot["range"] == "uri", f"the slot {name} ranges over URIs"
+        marked = slot["annotations"]["rp_loaded_graph"]["value"]
+        assert marked == "true", f"the slot {name} is marked as a loaded graph"
+
+
+@then("neither slot is owned")
+def _neither_owned(world: World) -> None:
+    for name in ("count_report", "shape_report"):
+        assert "owned" not in world.slots()[name].get("annotations", {}), f"{name} is not owned"
+
+
+@then("the shape result is not generated and the report names it")
+def _shape_result_left_out(world: World) -> None:
+    assert "ShapeResult" not in world.classes(), "the shape result is no class"
+    lines = [
+        line for line in world.report() if line[0] == "not-generated" and "ShapeResult" in line[1]
+    ]
+    assert lines, f"the report names the shape result: {world.report()}"
+
+
+@then("the shelf count is an aggregate root")
+def _shelf_count_root(world: World) -> None:
+    assert "ShelfCount" in world.roots(), "the shelf count is a root"
+
+
+@then(parsers.parse("the report has a root line for the reader with no parts"))
+def _reader_root_line(world: World) -> None:
+    assert ["root", "Reader", "no parts"] in world.report(), (
+        f"the reader's root line: {world.report()}"
+    )
+
+
+@then(parsers.parse('a root line for the shelf with the parts "{parts}"'))
+def _shelf_root_line(world: World, parts: str) -> None:
+    assert ["root", "Shelf", f"parts {parts}"] in world.report(), (
+        f"the shelf's root line: {world.report()}"
+    )
+
+
+@then("the schema files are byte-identical to the earlier conversion")
+def _same_as_earlier(world: World) -> None:
+    assert world.code == 0, "the library must convert"
+    earlier = {file.name: file.read_bytes() for file in sorted(GOLDEN.glob("*.yaml"))}
+    assert _schemas(world.out) == earlier, "the compositions change no schema file"
+
+
+@then("the report adds the root lines and one deprecated-root line")
+def _report_gains_lines(world: World) -> None:
+    lines = [
+        line.split("\t")
+        for line in (world.out / f"{uml_library.ROOT_NAME}.uml-report.txt")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    added = {"root", "deprecated-root"}
+    assert [line for line in lines if line[0] == "deprecated-root"] != [], "a deprecated-root line"
+    assert len([line for line in lines if line[0] == "deprecated-root"]) == 1, "only one"
+    assert [line for line in lines if line[0] == "root"] != [], "the root lines"
+    golden = (GOLDEN / f"{uml_library.ROOT_NAME}.uml-report.txt").read_text(encoding="utf-8")
+    kept = [line for line in lines if line[0] not in added]
+    earlier = [line.split("\t") for line in golden.splitlines() if line.split("\t")[0] not in added]
+    assert kept == earlier, "no other line of the report changes"
+
+
+@then("the roles file is the one written without the Realisation")
+def _roles_unchanged(world: World) -> None:
+    assert world.code == 0, f"the model must convert: {world.error()}"
+    folder = world.folder / "without"
+    folder.mkdir()
+    bare = World(folder, world.capsys)
+    _realised_role(bare, world.drawing["classifier"], world.drawing["target"], realise=False)
+    bare.convert(bare.out)
+    assert bare.code == 0, "the model without the Realisation must convert"
+    name = f"{ROOT_NAME}.roles.yaml"
+    assert (world.out / name).read_bytes() == (bare.out / name).read_bytes(), (
+        "the Realisation changes nothing in the roles file"
+    )
+
+
+@then("it is read as a role definition")
+def _read_as_role(world: World) -> None:
+    assert world.code == 0, f"the model must convert: {world.error()}"
+    found = yaml.safe_load((world.out / f"{ROOT_NAME}.roles.yaml").read_text(encoding="utf-8"))
+    assert [each["role"] for each in found] == ["librarian"], "the object is a role definition"
 
 
 # --- Then: the roles file ------------------------------------------------------------------------------

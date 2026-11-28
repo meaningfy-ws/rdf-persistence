@@ -120,7 +120,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   `test_a_boundary_model_outside_the_precondition_changes_output` (a boundary that owned a
   part → part reference: after the redraw the slot is a plain reference, as PD-6a says). Accept:
   both pass.
-- [ ] 1.10 Feature, after 1.6–1.8: the scenarios (all but `@manual`) of
+- [x] 1.10 Feature, after 1.6–1.8: the scenarios (all but `@manual`) of
   [`features/composition.feature`](features/composition.feature),
   [`derived_roots.feature`](features/derived_roots.feature),
   [`own_graph_and_pointers.feature`](features/own_graph_and_pointers.feature) and the Realisation
@@ -129,10 +129,11 @@ assertion without a replacement row. Every decision a task cites links its ancho
   `tests/generator/feature/uml_import.feature`;
   the existing "A package with a root and a part" rewritten to its MODIFIED form; steps in
   `test_uml_import.py`. Accept: all pass in `make test-generator`.
-- [ ] 1.11 Integration, after 1.9: `tests/generator/integration/test_uml_generate.py` converts the
+- [x] 1.11 Integration, after 1.9: `tests/generator/integration/test_uml_generate.py` converts the
   redrawn library and the shelf-count model of design.md example 2 and runs `rp-generate` on each.
-  Lead runs `make test-containers`. Accept: both generate; the generated shelf count has the
-  `rp_loaded_graph` slots as `uri`.
+  Lead runs `make test-containers`. Accept ([D-11](design.md#d-11)): the library passes lint and
+  boundary; the shelf count generates with every step and has the `rp_loaded_graph` slots as
+  `uri`.
 - [ ] 1.12 Lead: `make check-all`, `make test-containers`, `make check-generated`; review (two
   grouped runs, LARGE); PR into `develop`; a comment on #343 naming the three items done and the
   rest open; the consumer told the change id (D-12). No release is cut before stage 3 merges

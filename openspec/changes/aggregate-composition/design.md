@@ -648,4 +648,9 @@ Decisions the lead took without the developer, shown for validation at the end (
   descendants are all parts of other aggregates, is not refused. `check_pointers` keeps PD-19's
   signature, with no `parent_of`. Rejected: a `parent_of` input for that rarer case (a signature
   and model change for a shape no test or consumer draws).
+- **D-11**, lead, 2026-11-28 (delivery, task 1.11): the redrawn library runs `rp-generate`'s lint
+  and boundary steps, not every step. Its enumeration value `poetry` has no note on purpose (the
+  no-note tests need it), so the hard check refuses it. The shelf-count model runs every step.
+  1.11's accept line is reworded so. Rejected: a note on `poetry`, which changes a fixture other
+  tests rely on.
 
