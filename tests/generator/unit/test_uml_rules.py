@@ -481,7 +481,7 @@ def _book_with(declared: str = "xsd:string", **bounds: str | None) -> object:
     )
 
 
-_XSD = {
+_XSD_RANGES = {
     "xsd:string": ("string", None),
     "xsd:normalizedString": ("string", None),
     "xsd:anyURI": ("uri", None),
@@ -507,6 +507,12 @@ _BOUNDS = {
     ("3", "3"): (True, True, 3, 3),
     ("0", "3"): (False, True, None, 3),
 }
+
+
+def test_the_xsd_ranges_table_is_the_one_the_rows_exercise() -> None:
+    from rdf_persistence_generation.uml.slots import XSD_RANGES
+
+    assert dict(XSD_RANGES) == _XSD_RANGES, "every XSD range the converter maps has a row"
 
 
 def _langstring(declared: str) -> Check:
@@ -562,7 +568,7 @@ ROWS_R5 = [
             _book_with(declared),
             _range_is(*expected),
         )
-        for declared, expected in _XSD.items()
+        for declared, expected in _XSD_RANGES.items()
     ],
     *[
         Row(

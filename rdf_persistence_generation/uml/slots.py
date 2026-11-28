@@ -20,11 +20,12 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlRule,
 )
 from rdf_persistence_generation.uml.classes import annotation, description_of
-from rdf_persistence_generation.uml.context import Context, literals_of, local_of, path_of
+from rdf_persistence_generation.uml.context import Context, literals_of, path_of
 from rdf_persistence_generation.uml.modules import ModulePath
 from rdf_persistence_generation.uml.naming import (
     check_local_name,
     check_slot_name,
+    local_of,
     slot_name,
     title_for,
 )
@@ -48,7 +49,7 @@ _MANY = "*"
 _MINIMUM: Final = "minimum_cardinality"
 _MAXIMUM: Final = "maximum_cardinality"
 LANG_STRINGS: Final = ("rdf:langString", "rdf:PlainLiteral")
-XSD: Final[dict[str, tuple[str, int | None]]] = {
+XSD_RANGES: Final[dict[str, tuple[str, int | None]]] = {
     "xsd:string": ("string", None),
     "xsd:normalizedString": ("string", None),
     "xsd:anyURI": (URI, None),
@@ -342,8 +343,8 @@ def _typed(
 def _plain_type(ctx: Context, element: str, declared: str) -> tuple[str, int | None] | None:
     if declared in LANG_STRINGS:
         ctx.findings.no_rule(element, f"{declared} has no toolkit range yet (#209)")
-    elif declared in XSD:
-        return XSD[declared]
+    elif declared in XSD_RANGES:
+        return XSD_RANGES[declared]
     else:
         ctx.findings.no_rule(element, f"type {declared or 'none'}")
     return None

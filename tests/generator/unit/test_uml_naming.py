@@ -10,6 +10,7 @@ from rdf_persistence_generation.uml.naming import (
     SLOT_NAME_PATTERN,
     check_class_name,
     check_slot_name,
+    local_of,
     permissible_value_key,
     resolve_name,
     rp_path_for,
@@ -22,6 +23,20 @@ METAMODEL_PREFIXES = {
     "dcterms": "http://purl.org/dc/terms/",
     "skos": "http://www.w3.org/2004/02/skos/core#",
 }
+
+
+@pytest.mark.parametrize(
+    ("written", "expected"),
+    [
+        ("lib:Book", "Book"),
+        ("Book", "Book"),
+        ("lib:a:b", "b"),
+        ("dct:title", "title"),
+        ("", ""),
+    ],
+)
+def test_the_local_name_is_what_follows_the_last_separator(written: str, expected: str) -> None:
+    assert local_of(written) == expected, f"the local name of {written!r} is {expected!r}"
 
 
 @pytest.mark.parametrize(

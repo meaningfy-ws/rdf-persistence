@@ -21,12 +21,12 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlObject,
     UmlReach,
 )
-from rdf_persistence_generation.uml.context import local_of
 from rdf_persistence_generation.uml.conventions import (
     CONVENTION_KINDS,
     convention_lines,
     missing_notes,
 )
+from rdf_persistence_generation.uml.naming import local_of
 from rdf_persistence_generation.uml.slots import (
     FROM_ATTRIBUTE,
     FROM_LINK,

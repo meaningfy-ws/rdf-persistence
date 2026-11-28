@@ -28,11 +28,6 @@ NO_RULE_TAIL: Final = "no rule converts it"
 TOOLKIT_PREFIX: Final = "rp"  # the metamodel's name for the toolkit's own namespace
 
 
-def local_of(written: str) -> str:
-    """The local name of a written ``pfx:Local`` name, how an element is named in a problem or a report line."""
-    return written.rsplit(CURIE_SEPARATOR, 1)[-1]
-
-
 class Findings:
     """The problems and report lines of a run, each kept once and handed back sorted (PD-22)."""
 

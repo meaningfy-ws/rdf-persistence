@@ -31,7 +31,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlRule,
     UmlTaggedValue,
 )
-from rdf_persistence_generation.uml.context import local_of
+from rdf_persistence_generation.uml.naming import local_of
 from rdf_persistence_generation.uml.slots import Usage, is_owned
 
 MODULE_KIND: Final = RpAnnotation.MODULE_KIND.value

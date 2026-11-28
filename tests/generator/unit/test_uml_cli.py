@@ -298,6 +298,13 @@ def test_the_metamodel_prefixes_name_the_toolkit_namespaces():
     assert prefixes["rp"] == "https://meaningfy.ws/ns/rdf-persistence#", "rp is the toolkit's"
 
 
+def test_the_metamodel_prefixes_are_the_views_namespaces():
+    toolkit = load_toolkit()
+    expected = {p: str(ns) for p, ns in toolkit._view.namespaces().items()}
+
+    assert dict(toolkit.prefixes()) == expected, "prefixes() is the view's namespaces, as strings"
+
+
 def test_the_defaults_are_the_documented_ones(tmp_path):
     from rdf_persistence_generation.uml.cli import build_parser
 

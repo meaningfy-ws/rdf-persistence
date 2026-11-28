@@ -142,7 +142,9 @@ def test_a_serialisation_without_a_media_type_is_refused_by_name(tmp_path):  # T
         ("ABSENT_KEY_VALUE", "https://meaningfy.ws/ns/rdf-persistence#absentKeyValue"),
     ],
 )
-def test_a_plumbing_iri_is_its_literal_iri_in_the_metamodels_namespace(constant, iri):  # PD-1, DEC-7
+def test_a_plumbing_iri_is_its_literal_iri_in_the_metamodels_namespace(
+    constant, iri
+):  # PD-1, DEC-7
     value = getattr(vocabulary, constant)
     assert value == URIRef(iri), f"{constant} moved: {value}"
     assert value in vocabulary.RP, f"{constant} is outside the metamodel's default namespace"
