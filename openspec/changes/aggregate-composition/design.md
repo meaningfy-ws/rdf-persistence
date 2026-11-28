@@ -658,4 +658,16 @@ Decisions the lead took without the developer, shown for validation at the end (
   branch's commits conflicted on generated manifests. One merge resolves them once: the generated
   files are regenerated from the merged sources. P-0002's aim, conflicts surfaced before review,
   holds. Rejected: replaying eight commits through the same generated conflicts.
+- **D-13**, lead, 2026-11-28 (stage 1 review, PR #448, one L2+L3 pass, no Critical): all seven
+  findings are under the floor.
+  - W1: a generalisation with both ends inside an own graph is reported twice
+    (`aggregates.refuse_inside_generalisations`); a follow-up for stage 2's conventions work.
+  - W2: the two-roots boundary row is deferred to task 2.4 (A-23); C-9 replaces the old
+    owned-on-one-class row.
+  - W3: the 8 skips are `test_uml_pass_signatures.py`'s checks of `convention_lines` and
+    `missing_notes`, which stage 2 writes.
+  - W4: `MODULE_KIND`/`DOMAIN` re-declared in `aggregates.py` (use the generated enums in stage 2).
+  - S5: split `_Pass` before stage 2 adds passes.
+  - S6: cache `part_ids` and the ancestors.
+  - S7: a test pinning `_adopt`'s order.
 
