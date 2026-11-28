@@ -17,12 +17,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metamodel type) from that entry's folder. A project upgrading from before the release that
   stopped copying a module another entry owns (#371) also moves those imports to the owning
   entry's folder. A project with one TypeScript entry is unchanged.
+- **`rp-uml2linkml` reads aggregates from compositions, not boundaries** (`aggregate-composition`,
+  #437, #435). A composition is an EA Aggregation connector drawn beside the association that
+  carries the property; the end that holds the diamond is the whole. Roots are derived: a concrete
+  domain class that is no composition's part is a root, and the report lists each with its parts.
+  A composite association (a diamond on an association) is refused, and boundary geometry is no
+  longer read. A drawn «root» must agree with the derived roots. Pointers may target roots only.
+  To move a model (the guide's "Redrawing a boundary model" has the details):
+  1. Keep the schemas of the last conversion made with the previous release as the baseline.
+  2. Run `rp-uml2linkml --check`: it lists every composite association, alone, as a problem.
+     Replace each by a plain association plus an Aggregation (composition) from the whole to the
+     part, and re-run until no problem is left. Keep «root» for now.
+  3. Convert and diff the schemas against the baseline. They are byte-identical when each
+     boundary-owned association was the only one between its classes; any other difference is a
+     reference a boundary owned by accident, to decide. A `root_class` problem names a class to
+     fix: draw its missing composition, or drop «root» from every class at once.
+  4. Move loaded-graph parts to «own graph» compositions; point only at roots.
+  5. Drop «root», turn boundaries into annotations, and add `<package> · aggregates` diagrams.
+  6. Put `rp-uml2linkml --check` in CI; retire the model's own copies of the conventions check.
+
+### Added
+- **`rp-uml2linkml --check`** (`aggregate-composition`): reads and converts the model, writes
+  nothing, and exits 1 on any problem or convention line, 0 otherwise. `--out` is optional with
+  `--check`. The conventions a model's own script used to check are converter findings now, and
+  the report's convention lines are listed on the UML conventions page.
+- **Modelling rules adopted** (`aggregate-composition`): the rulebook gains P-0025 to
+  P-0040, the generic modelling rules and the deletion test (scope `activity:modelling`).
+- **A rule refuses a write with a problem of the application's own** (`consumer-write-rules`, #397,
+  #415). `RuleRefusal(problem)` is a new error: raised from a write rule with an instance of a
+  subclass of `Problem`, it is answered as that problem, extra fields included, at 409 or 422.
+  `install_service` and `ServiceKit` gain `refusal_problems`, the classes allowed (a class that is
+  not a `Problem` raises `TypeError` at start-up); any other class, a subclass of a registered one,
+  a non-`Problem` object or another status is a 500 `internal-error`, logged once with the class or
+  the status. A delete rule raising it is a 500. The OpenAPI document does not yet list the classes.
+- **A consumer's technical module may import the toolkit's technical modules** (`consumer-write-rules`,
+  #415): by `rdf_persistence/model/technical/<theme>/<module>` (`model/migrations/` stays out of the
+  importmap). The one supported extension is `Problem`: generation refuses a class that uses a
+  toolkit technical class `rdf_persistence` does not export, and a slot that shadows a field of the
+  class it extends.
 
 ### Fixed
 - **A narrowed or re-ranged slot generates a field mypy accepts** (`narrowed-slot-override`, #417).
   A subclass that narrows an inherited list slot to one value (or changes its range to one not
   under the parent's) generates a field mypy accepts, and an inherited unique-key check accepts
   the single value.
+- **A unique key over a slot rendered as a dict is checked** (`narrowed-slot-followups`, #428).
+  The generated unique-key check of a keyed slot that LinkML renders as a dict (multivalued,
+  `inlined: true`, no `inlined_as_list`, over a class with an identifier) checks the dict's values
+  instead of failing with `AttributeError`.
 
 ## [0.16.0] - 2026-11-27
 

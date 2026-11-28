@@ -21,5 +21,7 @@ body `Refs: ci-minimal-gate <task> <PD>`.
 
 ## 3. Close
 
-- [ ] 3.1 `make check-spec check-quality`; the developer runs `nightly.yaml` once by hand after
-  merge.
+- [x] 3.1 `make check-spec check-quality`; the developer runs `nightly.yaml` once by hand after
+  merge. Done 2026-11-28: gates green; `main` fast-forwarded to `develop` (the schedule runs from
+  `main`, PD-1); first nightly run 46084903352 started all 9 jobs on `develop`, and the change was
+  archived on the developer's word before it finished.

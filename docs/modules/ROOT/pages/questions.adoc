@@ -58,13 +58,37 @@ Write one LinkML file per module: each domain module holds one aggregate, a root
 xref:architecture/generation.adoc#metamodel[the metamodel].
 
 *Which UML conventions does a model for rdf-persistence follow?*::
-model2owl's UML conventions plus the toolkit's own: «root» and «tenant root» classes, aggregates
-drawn as boundary objects, class tagged values, multiplicity and empty enumerations. Each is shown
+model2owl's UML conventions plus the toolkit's own: roots derived from compositions, the «tenant
+root», «own graph» parts, class tagged values, multiplicity and empty enumerations. Each is shown
 as UML and as the LinkML it becomes. See xref:reference/uml-conventions.adoc[UML conventions].
+
+*Which classes are aggregate roots?*::
+The converter derives them: a concrete class of a domain module that no composition makes a part
+is a root, and the report lists each with its parts in a `root` line. Only the «tenant root» is
+drawn; the «root» stereotype is deprecated. See
+xref:reference/uml-conventions.adoc#root[A root] and
+xref:howto/uml-to-linkml.adoc#aggregates[Aggregates, transactions and queries].
+
+*How do I draw a part?*::
+Draw an Aggregation (composition) connector from the whole to the part, beside the association that
+carries the role, once the deletion test says the part cannot exist without its whole and goes down
+with it. See xref:reference/uml-conventions.adoc#composition[A composition] and
+xref:howto/uml-to-linkml.adoc#deletion-test[The deletion test].
+
+*How do I check a UML model in CI?*::
+Run `rp-uml2linkml --check`: it converts, writes nothing and exits 1 on any problem or convention
+line. See xref:howto/uml-to-linkml.adoc#check-model[Check the model].
+
+*Where are the modelling rules?*::
+In the adopted `activity:modelling` rules, P-0025 to P-0040 in `docs/rules/`, and in the guide, which
+holds the terms, the deletion test, the two kinds of diagram and the redrawing steps. See
+xref:howto/uml-to-linkml.adoc#aggregates[Aggregates, transactions and queries] and
+xref:reference/uml-conventions.adoc#conventions[the conventions `--check` fails on].
 
 *I draw my model in Enterprise Architect: how do I get the LinkML from it?*::
 Run `rp-uml2linkml` on the `.qea` file with a prefixes file; it writes the schemas and a report of
-what it left out, and `rp-generate --check` then checks them. See
+what it left out, and `rp-generate --check` then checks them. A model drawn with boundaries is
+redrawn with compositions first. See
 xref:howto/uml-to-linkml.adoc[Generate the model from UML].
 
 *How do I turn the model into code?*::
@@ -130,7 +154,9 @@ xref:user-manual/access.adoc#validators[Enforce your own rules on tenant writes]
 Pass `aggregate_validators` to `install_service`: a mapping from a class name to rules, each
 `(old, new, principal, reader)`, sync or async; a rule raises `InvalidBody` to refuse, the answer
 is 422 and nothing is written. See
-xref:user-manual/access.adoc#aggregate-validators[Enforce your own rules on aggregate writes].
+xref:user-manual/access.adoc#aggregate-validators[Enforce your own rules on aggregate writes]. To
+answer with a problem of your own (extra fields, 409 or 422), see
+xref:user-manual/access.adoc#refuse-with-own-problem[Refuse with your own problem].
 
 *How do I refuse a delete?*::
 Pass `delete_validators` to `install_service`: a mapping from a class name to rules, each
@@ -206,6 +232,11 @@ xref:howto/reference-collections.adoc[Group resources you do not own].
 Set a new quoted `version:` in the root schema and run `make generate`: `rp-generate` drafts a
 migration file for you to review, and the service applies it at start-up, once per database,
 before it serves. See xref:howto/migrate.adoc[Change a schema that has stored data].
+
+*How do I store a part apart from its whole and still delete it with the whole?*::
+Annotate the part's class `rp_dependent_on` with its pointer slot. A write of the part then checks
+that the whole exists, and deleting the whole deletes its parts, transitively, in one commit. See
+xref:user-manual/store-and-read.adoc#dependent-parts[Store a part apart from its whole].
 
 *Where does data that belongs to no tenant go?*::
 Into the application database, one per deployment: mark the class `database: application` in the

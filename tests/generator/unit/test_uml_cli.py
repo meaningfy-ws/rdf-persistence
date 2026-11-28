@@ -12,11 +12,17 @@ from rdf_persistence_generation.uml.cli import load_settings, main
 from rdf_persistence_generation.uml.toolkit import load_toolkit
 from tests.generator.uml_qea import QeaBuilder
 
-from .uml_cli_run import PREFIX, PREFIXES, ROOT, build_library, prefixes_file, run
-
-BOX = (-20, 30, 320, -298)  # (left, top, right, bottom)
-INSIDE = (0, 0, 100, -50)
-STRADDLING = (300, 0, 400, -50)
+from . import uml_cli_breaches as breaches
+from .uml_cli_run import (
+    PREFIX,
+    PREFIXES,
+    ROOT,
+    build_library,
+    noted_library,
+    prefixes_file,
+    run,
+    run_check,
+)
 
 
 def snapshot(folder: Path) -> dict[str, bytes]:
@@ -28,9 +34,8 @@ def snapshot(folder: Path) -> dict[str, bytes]:
 
 def test_three_faults_give_three_sorted_lines_exit_one_and_leave_out_unchanged(tmp_path, capsys):
     builder, ids = build_library(tmp_path)
-    builder.boundary(diagram=1, rect=BOX, members=[])
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["chapter"], STRADDLING)  # a straddling class
+    # a class to class Realisation: the reader has no geometry fault left, so this is the third one
+    builder.realisation(ids["book"], ids["chapter"])
     builder.association(ids["book"], ids["folio"], role="lib:y", card="1", pdata1=str(ids["book"]))
     builder.extra_stereotypes(ids["folio"], "root", "loaded graph")  # a second stereotype
     out = tmp_path / "out"
@@ -304,3 +309,196 @@ def test_the_defaults_are_the_documented_ones(tmp_path):
 
     assert settings.not_generated_stereotypes == ["loaded graph"], "loaded graph is not generated"
     assert not settings.exclude_packages, "nothing is excluded by default"
+
+
+# --- --check (PD-14, PD-13) ---------------------------------------------------------------------
+
+
+def test_check_on_a_model_with_a_problem_exits_one_and_leaves_a_filled_out_identical(
+    tmp_path, capsys
+):
+    builder = QeaBuilder(tmp_path / "empty.qea")
+    builder.package("library", parent=builder.package("MODEL"))
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "app.uml-report.txt").write_text("kept\n", encoding="utf-8")
+    before = snapshot(out)
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish(), out=out)
+
+    assert code == 1, "a problem exits 1"
+    assert len(stderr) == 1, f"the problem is printed on stderr: {stderr}"
+    assert not stdout, f"no convention line without a converted model: {stdout}"
+    assert snapshot(out) == before, "--check rewrites no report and writes nothing"
+
+
+def test_check_with_only_a_convention_line_prints_it_to_stdout_and_exits_one(tmp_path, capsys):
+    builder, _ = build_library(tmp_path)  # Chapter and Folio carry no note
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish())
+
+    assert code == 1, "a convention line fails the check"
+    assert not stderr, f"nothing on stderr: {stderr}"
+    assert len(stdout) == 2, f"one no-note line per noteless class: {stdout}"
+    assert all(len(line.split("\t")) == 3 for line in stdout), f"report format: {stdout}"
+    assert all(line.startswith("no-note\t") for line in stdout), f"kind no-note: {stdout}"
+    assert stdout == sorted(stdout), "the lines are sorted"
+
+
+@pytest.mark.parametrize("stereotype", [None, "root"], ids=["no stereotype", "agreeing root"])
+def test_check_on_a_clean_model_exits_zero_prints_nothing_and_needs_no_out(
+    tmp_path, capsys, stereotype
+):
+    builder, _ = noted_library(tmp_path, stereotype)
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish())
+
+    assert code == 0, f"a clean model, or one with only an agreeing root, passes: {stdout}"
+    assert not stdout, f"nothing on stdout: {stdout}"
+    assert not stderr, f"nothing on stderr: {stderr}"
+    assert not (tmp_path / "out").exists(), "--check writes nothing"
+
+
+def test_check_with_an_out_still_writes_nothing(tmp_path, capsys):
+    builder, _ = noted_library(tmp_path, None)
+    out = tmp_path / "given"
+
+    code, _, _ = run_check(capsys, tmp_path, builder.finish(), out=out)
+
+    assert code == 0, "the clean model passes"
+    assert not out.exists(), "--out is accepted under --check and not written"
+
+
+def test_a_run_without_check_and_without_out_exits_two(tmp_path, capsys):
+    builder, _ = noted_library(tmp_path)
+    argv = [str(builder.finish()), "--package", ROOT, "--prefixes", str(prefixes_file(tmp_path))]
+
+    code = main(argv)
+
+    assert code == 2, "--out is required unless --check is given"
+    assert capsys.readouterr().err.startswith(PREFIX), "one usage line with the program name"
+
+
+def test_a_normal_run_with_a_convention_line_exits_zero_and_writes(tmp_path, capsys):
+    builder, _ = build_library(tmp_path)
+
+    code, lines = run(capsys, tmp_path, builder.finish())
+
+    assert (code, lines) == (0, []), f"a convention line never fails a normal run: {lines}"
+    report = (tmp_path / "out" / "app.uml-report.txt").read_text(encoding="utf-8")
+    assert "no-note\t" in report, "the line is in the report"
+
+
+# --- each convention fails the check (PD-13, D-14, Q9) --------------------------------------------
+# A convention line is printed on stdout in the report format, a problem on stderr as ``[rule] ...``.
+
+LINE, PROBLEM = "line", "problem"
+BREACHES = [
+    ("unprefixed-name", breaches.unprefixed_class, None, LINE, "unprefixed-name", "Shelf"),
+    (
+        "unspecified-multiplicity",
+        breaches.no_multiplicity,
+        None,
+        LINE,
+        "unspecified-multiplicity",
+        "Book.has_folio",
+    ),
+    ("no-note", breaches.no_note, None, LINE, "no-note", "Shelf"),
+    ("root_class", breaches.part_drawn_root, "root", PROBLEM, "root_class", "Chapter"),
+    ("unused-enumeration", breaches.unused_enumeration, None, LINE, "unused-enumeration", "Genre"),
+    (
+        "package_module",
+        breaches.two_packages_one_module,
+        None,
+        PROBLEM,
+        "package_module",
+        "app_rare_books",
+    ),
+    (
+        "boundary_owned role",
+        breaches.role_owned_and_pointer,
+        None,
+        PROBLEM,
+        "boundary_owned",
+        "has_chapter",
+    ),
+    (
+        "boundary_owned part",
+        breaches.pointer_into_a_part,
+        None,
+        PROBLEM,
+        "boundary_owned",
+        "Folio.cites",
+    ),
+    (
+        "drawn-toolkit-parent",
+        breaches.drawn_toolkit_parent,
+        None,
+        LINE,
+        "drawn-toolkit-parent",
+        "Book",
+    ),
+    (
+        "tenant-required-pointer",
+        breaches.tenant_required_pointer,
+        None,
+        LINE,
+        "tenant-required-pointer",
+        "Library.holds",
+    ),
+    (
+        "boundary-disagrees",
+        breaches.boundary_for_a_part,
+        None,
+        LINE,
+        "boundary-disagrees",
+        "Aggregate: Chapter",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("seed", "stereotype", "stream", "kind", "element"),
+    [row[1:] for row in BREACHES],
+    ids=[row[0] for row in BREACHES],
+)
+def test_each_convention_fails_the_check(tmp_path, capsys, seed, stereotype, stream, kind, element):
+    builder, ids = noted_library(tmp_path, stereotype)
+    seed(builder, ids)
+
+    code, stdout, stderr = run_check(
+        capsys, tmp_path, builder.finish(), prefixes=PREFIXES + breaches.TOOLKIT_PREFIX
+    )
+
+    printed, other = (stdout, stderr) if stream == LINE else (stderr, stdout)
+    assert code == 1, f"{kind} fails the check: {stdout} {stderr}"
+    assert len(printed) == 1, f"exactly one {stream}, the breach: {printed}"
+    assert kind in printed[0], f"it is a {kind} {stream}: {printed}"
+    assert element in printed[0], f"it names {element}: {printed}"
+    assert not other, f"nothing on the other stream: {other}"
+
+
+def test_a_converter_problem_stops_the_check_and_no_convention_line_is_printed(tmp_path, capsys):
+    """D-15: a problem and a convention line in one model; the problem alone is printed."""
+    builder, ids = noted_library(tmp_path, "root")
+    breaches.part_drawn_root(builder, ids)  # a converter problem (root_class)
+    breaches.unused_enumeration(builder, ids)  # a convention line, were the check to reach it
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish())
+
+    assert code == 1, "a problem exits 1"
+    assert len(stderr) == 1, f"the problem is printed on stderr: {stderr}"
+    assert "root_class" in stderr[0], f"it is the converter's problem: {stderr}"
+    assert not stdout, f"no convention line while a problem stands: {stdout}"
+
+
+def test_a_reader_problem_short_circuits_check_and_is_the_only_output(tmp_path, capsys):
+    builder, ids = build_library(tmp_path)  # the noteless classes would give convention lines
+    builder.realisation(ids["book"], ids["chapter"])
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish())
+
+    assert code == 1, "a reader problem exits 1"
+    assert len(stderr) == 1, f"the problem only: {stderr}"
+    assert stderr[0].startswith("[no_rule] "), f"it is the reader's: {stderr}"
+    assert not stdout, f"the convention lines wait until it is fixed (A-21): {stdout}"

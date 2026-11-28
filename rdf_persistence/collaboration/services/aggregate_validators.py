@@ -24,6 +24,7 @@ from rdf_persistence.core.domain.exceptions import (
     DatabaseGone,
     InvalidBody,
     NotFound,
+    RuleRefusal,
     StoreUnavailable,
 )
 from rdf_persistence.core.domain.generated.rp_core import Principal
@@ -324,7 +325,8 @@ async def run_aggregate_validators(
 ) -> None:
     """Run ``rules`` in order on copies of ``old`` and ``new``; the first refusal stops the write (PD-7).
 
-    ``InvalidBody`` and pydantic's ``ValidationError`` pass as they are (422), and so do the store errors
+    ``InvalidBody`` and pydantic's ``ValidationError`` pass as they are (422), and so does ``RuleRefusal``,
+    which carries a problem of the application's own (the entrypoint answers it), and so do the store errors
     the reader may raise and the ``Conflict`` it raises when an aggregate read changed within the
     transaction (409). Anything else a rule raises is a bug in it: ``RuntimeError`` naming the rule,
     chained to the error. A result other than None, after awaiting, is ``TypeError``.
@@ -340,7 +342,14 @@ async def run_aggregate_validators(
             )
             if inspect.isawaitable(result):
                 result = await result
-        except (InvalidBody, ValidationError, StoreUnavailable, DatabaseGone, Conflict):
+        except (
+            InvalidBody,
+            ValidationError,
+            StoreUnavailable,
+            DatabaseGone,
+            Conflict,
+            RuleRefusal,
+        ):
             raise
         except Exception as error:
             raise RuntimeError(

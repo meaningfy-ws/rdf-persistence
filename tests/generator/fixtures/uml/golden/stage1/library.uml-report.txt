@@ -1,6 +1,10 @@
+deprecated-root	model	3 «root» stereotypes agree with the derived roots; drop them
 external-list	Language	no literals; its list is kept outside the model, so slots range over a URI
 no-note	Genre.poetry	no note, so no description
 not-generated	Authority	stereotype loaded graph, not generated
 outside-link	Book.related_work	the target is outside the converted subtree, a URI
+root	Book	parts Chapter
+root	Periodical	no parts
+root	Shelf	no parts
 unspecified-multiplicity	Book.genre	read as 0..*
 unspecified-multiplicity	Book.language	read as 0..*

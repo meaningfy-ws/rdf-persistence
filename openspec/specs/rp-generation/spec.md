@@ -743,8 +743,8 @@ is single-valued or the reverse, optional where an ancestor is required, or a ra
 the ancestor's range nor under it), `rp-generate` SHALL mark that field's line with
 `# type: ignore[assignment]` and keep the field's own type. A field whose type is a subtype of
 every ancestor's SHALL carry no mark. A unique-key check a class inherits SHALL accept the slot
-it checks holding a list, one value or none. The generated package SHALL pass mypy with
-`mypy-generated.ini`.
+it checks holding a list, a mapping of values by identifier, one value or none, and SHALL check
+the values of a mapping. The generated package SHALL pass mypy with `mypy-generated.ini`.
 
 #### Scenario: an inherited list narrowed to one value
 - **GIVEN** an abstract class with an optional multivalued slot `p`, and a subclass whose `slot_usage` sets `p` to `required: true`, `multivalued: false` and a narrower range
@@ -761,6 +761,11 @@ it checks holding a list, one value or none. The generated package SHALL pass my
 - **WHEN** the developer generates
 - **THEN** the subclass's field line carries no `# type: ignore`, and mypy reports no error
 
+#### Scenario: a unique key over a slot rendered as a mapping
+- **GIVEN** a class with a multivalued slot, `inlined: true` and no `inlined_as_list`, over a class with an identifier that declares a unique key
+- **WHEN** the developer generates and builds instances with an empty mapping, with two values of different keys, and with two values repeating the key
+- **THEN** the first two validate, the third is refused naming the unique key, and mypy reports no error
+
 ### Requirement: The toolkit's TypeScript has one owner in a project
 
 When two or more entries of a project's `[tool.rp-generate]` set `typescript`, exactly one of them
@@ -770,7 +775,9 @@ the served types as `rp_service.ts` with the modules it imports. Every other ent
 `typescript` SHALL write none of those modules: its modules SHALL import their types from the
 owner's folder by a relative path, and its `index.ts` SHALL NOT export them. A toolkit module
 outside the shared set SHALL be written by each entry whose schema imports it, as before. When one
-entry sets `typescript`, the key SHALL change nothing. `rp-generate` SHALL refuse the configuration
+entry sets `typescript`, the key SHALL change nothing in the files written. An entry that sets both
+`typescript` and `toolkit-typescript = true` SHALL list the metamodel's schema files among its
+freshness inputs, since it writes their modules. `rp-generate` SHALL refuse the configuration
 before any step runs, naming the entries and the key, when several entries set `typescript` and
 none or more than one sets `toolkit-typescript = true`, or when an entry sets
 `toolkit-typescript = true` without `typescript`, or when two entries set the same `typescript`
@@ -810,3 +817,60 @@ folder.
 - **GIVEN** a project with two entries that set `typescript` and `toolkit-typescript = true`
 - **WHEN** the developer runs `rp-generate`
 - **THEN** it fails before writing anything, naming both entries and saying only one may set the key
+
+#### Scenario: the owner's freshness inputs
+- **GIVEN** an entry that sets `typescript` and `toolkit-typescript = true`
+- **WHEN** a metamodel schema file changes, one that entry's own schema does not import
+- **THEN** `rp-generate --check` reports that entry as stale
+
+#### Scenario: a toolkit module outside the shared set
+- **GIVEN** a project with an owner and an importer whose schema imports a toolkit module that is not a metamodel module nor a served one
+- **WHEN** the developer regenerates
+- **THEN** the importer's folder holds that module's file and its `index.ts` exports it
+
+### Requirement: A dependent class points at its whole with a required single slot
+
+`rp-generate` SHALL fail, naming the class and the slot, when a class annotated `rp_dependent_on`
+is neither a served aggregate root nor an abstract class whose concrete subclasses are all served
+roots; when a subclass of a dependent class annotates another slot; or when, for any concrete
+dependent class, the named slot as induced for that class is missing, not required or multivalued,
+or does not range over a served root or over an abstract class whose concrete subclasses are all
+served roots, or ranges over the tenant root or a root the toolkit writes. It SHALL fail when the
+dependence between concrete classes, ranges expanded to their concrete subclasses, forms a cycle,
+a class depending on itself included, naming the classes of the cycle in order.
+
+#### Scenario: an optional pointer
+- **GIVEN** `AuditResult` annotated `rp_dependent_on: of_audit` and `of_audit` not required
+- **WHEN** `rp-generate` runs
+- **THEN** it fails naming `AuditResult` and `of_audit`, and no output file changes
+
+#### Scenario: a multivalued pointer
+- **GIVEN** `of_audit` multivalued
+- **WHEN** `rp-generate` runs
+- **THEN** it fails naming `AuditResult` and `of_audit`
+
+#### Scenario: a pointer over a class that is no root
+- **GIVEN** `of_audit` ranging over an owned class
+- **WHEN** `rp-generate` runs
+- **THEN** it fails naming `AuditResult` and `of_audit`
+
+#### Scenario: a cycle of dependence
+- **GIVEN** `AuditResult` dependent on `AuditFinding` and `AuditFinding` dependent on `AuditResult`
+- **WHEN** `rp-generate` runs
+- **THEN** it fails naming both classes
+
+#### Scenario: a subclass that relaxes the pointer
+- **GIVEN** a concrete subclass of `AuditResult` whose `slot_usage` makes `of_audit` optional
+- **WHEN** `rp-generate` runs
+- **THEN** it fails naming the subclass and `of_audit`
+
+#### Scenario: the annotation on an abstract base
+- **GIVEN** an abstract `AuditResult` annotated `rp_dependent_on: of_audit` whose concrete
+  subclasses are served roots
+- **WHEN** `rp-generate` runs
+- **THEN** it succeeds
+
+#### Scenario: a chain of two levels
+- **GIVEN** `AuditFinding` dependent on `AuditResult`, itself dependent on `Audit`
+- **WHEN** `rp-generate` runs
+- **THEN** it succeeds

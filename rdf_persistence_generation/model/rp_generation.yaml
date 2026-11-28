@@ -216,6 +216,8 @@ classes:
       - uml_links
       - uml_tagged_values
       - uml_boundaries
+      - uml_compositions
+      - uml_diagrams
       - uml_objects
       - uml_state_nodes
       - uml_state_flows
@@ -333,14 +335,14 @@ classes:
   UmlBoundary:
     title: UML boundary
     description: >-
-      A boundary drawn on a diagram, with the classes and enumerations whose rectangles lie wholly
-      inside it.
+      A boundary drawn on a diagram, read by its name, its package and the diagram it sits on; it is
+      an annotation, no membership is read from it (PD-7).
     class_uri: rp:UmlBoundary
     slots:
       - object_id
       - name
       - diagram_id
-      - member_ids
+      - package_id
     slot_usage:
       object_id:
         required: true
@@ -348,6 +350,107 @@ classes:
         required: true
       diagram_id:
         required: true
+  UmlComposition:
+    title: UML composition
+    description: >-
+      A composition of the UML model, read once from the end columns of an Aggregation connector
+      (PD-1): the class that is the whole and the class that is the part, whatever way it was drawn,
+      with the stereotype and the role written on it.
+    class_uri: rp:UmlComposition
+    slots:
+      - composition_id
+      - whole_id
+      - part_id
+      - own_graph
+      - uml_stereotype
+      - role
+      - note
+    slot_usage:
+      composition_id:
+        required: true
+      whole_id:
+        required: true
+      part_id:
+        required: true
+  UmlDiagram:
+    title: UML diagram
+    description: >-
+      A class diagram of the UML model, read by membership only (PD-12): the package it sits in, the
+      elements it shows and the connectors it hides. No geometry.
+    class_uri: rp:UmlDiagram
+    slots:
+      - diagram_id
+      - name
+      - package_id
+      - diagram_type
+      - element_ids
+      - hidden_connector_ids
+    slot_usage:
+      diagram_id:
+        required: true
+      name:
+        required: true
+  UmlPartOf:
+    title: UML part of
+    description: >-
+      One row of the aggregate tree (PD-19): a class that is a part, the class that is its whole, the
+      composition that says so and whether that composition is an own graph. A part with two wholes
+      has two rows.
+    class_uri: rp:UmlPartOf
+    slots:
+      - part_id
+      - whole_id
+      - own_graph
+      - composition_id
+    slot_usage:
+      part_id:
+        required: true
+      whole_id:
+        required: true
+      composition_id:
+        required: true
+  UmlReach:
+    title: UML reach
+    description: >-
+      The tops of the aggregates that reach one part class (PD-4): a part class may be reached from
+      several tops.
+    class_uri: rp:UmlReach
+    slots:
+      - part_id
+      - top_ids
+    slot_usage:
+      part_id:
+        required: true
+  UmlOwnedEnd:
+    title: UML owned end
+    description: >-
+      A connector end that gives an owned slot (PD-5): the connector and the class that holds the slot.
+    class_uri: rp:UmlOwnedEnd
+    slots:
+      - link_id
+      - holder_id
+    slot_usage:
+      link_id:
+        required: true
+      holder_id:
+        required: true
+  UmlAggregates:
+    title: UML aggregates
+    description: >-
+      What the aggregate pass returns (PD-19): the derived roots, the tenant root, the tree as rows of
+      parts and wholes, the tops that reach each part, the owned ends, the classes left inside an own
+      graph, and the findings, which the converter merges into its own.
+    class_uri: rp:UmlAggregates
+    slots:
+      - root_ids
+      - tenant_root_id
+      - part_of
+      - reached_from
+      - owned_ends
+      - loaded_graph_ends
+      - left_inside_ids
+      - problems
+      - report_lines
   UmlObject:
     title: UML object
     description: >-
@@ -358,6 +461,7 @@ classes:
       - object_id
       - uml_name
       - classifier_id
+      - realised_ids
       - package_path
       - run_values
       - run_state_rest
@@ -490,6 +594,7 @@ classes:
       - label
       - module_path
       - is_enum
+      - is_drawn_root
       - is_root
       - is_abstract
       - is_tenant_root
@@ -1263,6 +1368,145 @@ slots:
     range: UmlBoundary
     multivalued: true
     inlined_as_list: true
+  uml_compositions:
+    title: UML compositions
+    description: The compositions of a UML model, the whole and the part of each read once.
+    slot_uri: rp:umlCompositions
+    range: UmlComposition
+    multivalued: true
+    inlined_as_list: true
+  uml_diagrams:
+    title: UML diagrams
+    description: The class diagrams of the converted packages of a UML model, by membership.
+    slot_uri: rp:umlDiagrams
+    range: UmlDiagram
+    multivalued: true
+    inlined_as_list: true
+  composition_id:
+    title: Composition id
+    description: The id of the connector a composition was read from.
+    slot_uri: rp:umlCompositionId
+    range: integer
+  whole_id:
+    title: Whole id
+    description: The id of the class that is the whole of a composition.
+    slot_uri: rp:umlWholeId
+    range: integer
+  part_id:
+    title: Part id
+    description: The id of the class that is the part of a composition.
+    slot_uri: rp:umlPartId
+    range: integer
+  own_graph:
+    title: Own graph
+    description: Whether a composition is drawn with the «own graph» stereotype.
+    slot_uri: rp:umlOwnGraph
+    range: boolean
+    ifabsent: "false"
+  role:
+    title: Role
+    description: The role written on a composition, naming the association beside it that it marks.
+    slot_uri: rp:umlCompositionRole
+  diagram_type:
+    title: Diagram type
+    description: The type of a diagram as the model file writes it.
+    slot_uri: rp:umlDiagramType
+  element_ids:
+    title: Element ids
+    description: The ids of the elements a diagram shows.
+    slot_uri: rp:umlElementIds
+    range: integer
+    multivalued: true
+  hidden_connector_ids:
+    title: Hidden connector ids
+    description: The ids of the connectors a diagram hides although both their ends are on it.
+    slot_uri: rp:umlHiddenConnectorIds
+    range: integer
+    multivalued: true
+  realised_ids:
+    title: Realised ids
+    description: The ids of the classes an object realises, read from its Realisation connectors.
+    slot_uri: rp:umlRealisedIds
+    range: integer
+    multivalued: true
+  is_drawn_root:
+    title: Is drawn root
+    description: Whether the model draws an element with the «root» stereotype, whatever the derivation says.
+    slot_uri: rp:umlIsDrawnRoot
+    range: boolean
+    ifabsent: "false"
+  root_ids:
+    title: Root ids
+    description: The ids of the classes derived as aggregate roots.
+    slot_uri: rp:umlRootIds
+    range: integer
+    multivalued: true
+  tenant_root_id:
+    title: Tenant root id
+    description: The id of the tenant root, absent when the model has none.
+    slot_uri: rp:umlTenantRootId
+    range: integer
+  part_of:
+    title: Part of
+    description: The tree as rows, one for each part and whole it belongs to.
+    slot_uri: rp:umlPartOf
+    range: UmlPartOf
+    multivalued: true
+    inlined_as_list: true
+  reached_from:
+    title: Reached from
+    description: For each part class, the tops of the aggregates that reach it.
+    slot_uri: rp:umlReachedFrom
+    range: UmlReach
+    multivalued: true
+    inlined_as_list: true
+  top_ids:
+    title: Top ids
+    description: The ids of the tops (roots, the tenant root, abstract tops) of aggregates.
+    slot_uri: rp:umlTopIds
+    range: integer
+    multivalued: true
+  owned_ends:
+    title: Owned ends
+    description: The connector ends whose slots are owned by their holder.
+    slot_uri: rp:umlOwnedEnds
+    range: UmlOwnedEnd
+    multivalued: true
+    inlined_as_list: true
+  loaded_graph_ends:
+    title: Loaded-graph ends
+    description: >-
+      The connector ends of «own graph» compositions to a not-generated part: their slots range over
+      uri and carry rp_loaded_graph (PD-9, D-9); never owned.
+    slot_uri: rp:umlLoadedGraphEnds
+    range: UmlOwnedEnd
+    multivalued: true
+    inlined_as_list: true
+  link_id:
+    title: Link id
+    description: The id of the connector an owned end belongs to.
+    slot_uri: rp:umlLinkId
+    range: integer
+  left_inside_ids:
+    title: Left-inside ids
+    description: The ids of the classes left inside the own graph of another class, so not generated.
+    slot_uri: rp:umlLeftInsideIds
+    range: integer
+    multivalued: true
+  problems:
+    title: Problems
+    description: The problems a pass found.
+    slot_uri: rp:problems
+    range: CheckProblem
+    multivalued: true
+    inlined_as_list: true
+  report_lines:
+    title: Report lines
+    description: The report lines a pass wrote.
+    slot_uri: rp:reportLines
+    range: ReportLine
+    multivalued: true
+    inlined_as_list: true
   uml_objects:
     title: UML objects
     description: The objects of a UML model, the instances of its drawn classes.
@@ -1396,12 +1640,6 @@ slots:
     description: The id of the diagram a boundary is drawn on.
     slot_uri: rp:umlDiagramId
     range: integer
-  member_ids:
-    title: Member ids
-    description: The ids of the classes and enumerations that lie inside a boundary.
-    slot_uri: rp:umlMemberIds
-    range: integer
-    multivalued: true
   object_type:
     title: Object type
     description: The kind of element a UML object is, as the model file names it (`Class`, `Enumeration`).
@@ -1788,6 +2026,12 @@ enums:
           A target's modules are of one kind, derived from them, and its package sits in a folder that
           kind allows.
         meaning: rp:BoundaryRuleTargetKind
+      dependence:
+        title: Dependence
+        description: >-
+          A dependent class's pointer slot is required, single-valued and ranges over a served root,
+          and no cycle of dependence exists.
+        meaning: rp:BoundaryRuleDependence
   TargetKind:
     title: Target kind
     description: The kind of a generation target, derived from the modules it generates.
@@ -2001,6 +2245,46 @@ enums:
         title: Derived IRI
         description: A workflow whose diagram name has no prefix, so its IRI is made from the schema base.
         meaning: rp:ReportKindDerivedIri
+      root:
+        title: Root
+        description: An aggregate root the converter derived, with the parts of its aggregate.
+        meaning: rp:ReportKindRoot
+      deprecated_root:
+        title: Deprecated root
+        description: A «root» stereotype the model still draws that agrees with the derived roots; informational.
+        meaning: rp:ReportKindDeprecatedRoot
+      boundary_disagrees:
+        title: Boundary disagrees
+        description: A boundary in a converted package whose name is not the name of a derived root or the tenant root.
+        meaning: rp:ReportKindBoundaryDisagrees
+      composition_named:
+        title: Composition named
+        description: A composition that carries a note, or a role where a single candidate makes it unneeded.
+        meaning: rp:ReportKindCompositionNamed
+      aggregates_diagram:
+        title: Aggregates diagram
+        description: An aggregates diagram that shows what it should not, or whose name does not start with its package's name.
+        meaning: rp:ReportKindAggregatesDiagram
+      composition_diagram:
+        title: Composition diagram
+        description: A class diagram that is not an aggregates diagram and shows a composition.
+        meaning: rp:ReportKindCompositionDiagram
+      unprefixed_name:
+        title: Unprefixed name
+        description: A class or an attribute written without a prefix.
+        meaning: rp:ReportKindUnprefixedName
+      unused_enumeration:
+        title: Unused enumeration
+        description: An enumeration no slot ranges over.
+        meaning: rp:ReportKindUnusedEnumeration
+      drawn_toolkit_parent:
+        title: Drawn toolkit parent
+        description: A class that draws a generalisation to a class of the toolkit instead of taking its mixin.
+        meaning: rp:ReportKindDrawnToolkitParent
+      tenant_required_pointer:
+        title: Tenant required pointer
+        description: A required pointer to the tenant root, which the toolkit fills.
+        meaning: rp:ReportKindTenantRequiredPointer
   LeftOutReason:
     title: Left-out reason
     description: >-

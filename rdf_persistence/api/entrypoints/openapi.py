@@ -86,6 +86,7 @@ from rdf_persistence.persistence.services.listing import (
 from rdf_persistence.schema.services.schema_structure import (
     DESCRIPTION,
     holds_text,
+    is_whole,
     refuses_deletion,
     refusing_classes,
 )
@@ -529,11 +530,13 @@ class AggregateOpenApi:
     def remove(self) -> RouteDocs:
         deleted = (HTTPStatus.NO_CONTENT, _success(description="Deleted"))
         refused = (problems.IN_USE,) if refuses_deletion(self._view, self._cls.name) else ()
+        # a whole's delete removes its dependent parts, and a cascade above max_roots is refused
+        cascading = (problems.PAYLOAD_TOO_LARGE,) if is_whole(self._view, self._cls.name) else ()
         return route_options(
             f"Delete a {self._cls.name}",
             self._tag,
             deleted,
-            (*_WRITES, *refused, problems.PRECONDITION_REQUIRED),
+            (*_WRITES, *refused, *cascading, problems.PRECONDITION_REQUIRED),
             parameters=[EXPECTED_VERSION],
         )
 

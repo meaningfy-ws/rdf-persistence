@@ -33,6 +33,7 @@ from .golden import assert_matches_toy, run_toy
 TOOLKIT_DOMAIN = theme_package(THEME_OF_ROOT["rp"])
 TOY_MODULES = [
     "__init__.py",
+    "audits.py",
     "books.py",
     "books_activities.py",
     "library.py",
@@ -388,6 +389,11 @@ MARK = "# type: ignore[assignment]"
         ),
         ("{range: Colour}", "{range: Shade}", True),
         ("{range: string}", "{range: Colour}", True),
+        ("{range: B, inlined: true}", "{range: A}", True),
+        ("{range: string}", "{range: uri}", True),
+        ("{range: A, inlined: true}", "{range: string}", True),
+        ("{range: string}", "{range: A, inlined: true}", True),
+        ("{range: A, inlined: true}", "{range: Colour}", True),
         ("{range: A, inlined: true}", "{range: B}", False),
         ("{range: string}", "{range: Label}", False),
         ("{range: string}", "{description: again.}", False),
@@ -400,6 +406,11 @@ MARK = "# type: ignore[assignment]"
         "list-against-dict",
         "enum-changed",
         "type-against-enum",
+        "class-not-under",
+        "uri-against-string",
+        "class-against-type",
+        "type-against-class",
+        "class-against-enum",
         "single-class-narrowed",
         "custom-string-type",
         "unchanged-redeclaration",
@@ -412,6 +423,15 @@ def test_a_field_overriding_a_slot_incompatibly_carries_a_type_ignore_and_only_t
     assert line.endswith(MARK) is marked, (
         f"Child.s, {parent_slot} narrowed by {usage}: marked exactly when not a subtype: {line}"
     )
+
+
+@pytest.mark.parametrize("flag", ["identifier", "key"])
+def test_an_identifier_or_key_slot_is_never_marked(tmp_path: Path, flag: str) -> None:
+    """Rule 5 would mark ``uri`` over ``string``; an identifier or key slot is left unmarked."""
+    line = child_field_s(
+        tmp_path, "{range: string}", f"{{{flag}: true, range: uri, required: true}}"
+    )
+    assert not line.endswith(MARK), f"Child.s as {flag} is marked: {line}"
 
 
 def test_a_mixin_declaring_the_slot_as_a_list_marks_the_class_that_narrows_it(

@@ -1,0 +1,39 @@
+id: https://example.org/ns/dependence/refused_cycle_own_superclass
+name: refused_cycle_own_superclass
+title: Refused, a class depends on its own abstract superclass
+description: The pointer ranges over the abstract root the class itself is a subclass of.
+prefixes:
+  dep: https://example.org/ns/dependence#
+  linkml: https://w3id.org/linkml/
+default_prefix: dep
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Item:
+    description: An abstract root.
+    abstract: true
+    mixins: [AggregateRoot]
+  Leaf:
+    description: A concrete item that depends on an item, so on itself or its siblings.
+    is_a: Item
+    slots: [parent]
+    annotations:
+      rp_path: leaves
+      rp_dependent_on: parent
+  Twig:
+    description: Another concrete item.
+    is_a: Item
+    annotations:
+      rp_path: twigs
+
+slots:
+  parent:
+    description: The item the leaf belongs to.
+    range: Item
+    required: true

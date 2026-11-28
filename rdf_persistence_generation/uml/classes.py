@@ -44,6 +44,7 @@ ROOT_STEREOTYPE = "root"
 TENANT_STEREOTYPE = "tenant root"
 ABSTRACT_STEREOTYPE = "abstract"
 RP_PATH: Final = RpAnnotation.RP_PATH.value
+RP_DEPENDENT_ON: Final = RpAnnotation.RP_DEPENDENT_ON.value
 META: Final = GraphKind.META.value
 EMPTY_LIST_NOTE = "no literals; its list is kept outside the model, so slots range over a URI"
 
@@ -112,7 +113,7 @@ def _register(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
         label=name.name,
         module_path=list(path),
         is_enum=uml.object_type == ENUMERATION_TYPE,
-        is_root=stereotype == ROOT_STEREOTYPE,
+        is_drawn_root=stereotype == ROOT_STEREOTYPE,  # is_root is the derivation's (PD-5)
         is_abstract=bool(uml.is_abstract) or stereotype == ABSTRACT_STEREOTYPE,
         is_tenant_root=stereotype == TENANT_STEREOTYPE,
     )
@@ -157,7 +158,6 @@ def collect_elements(ctx: Context, model: UmlModel) -> None:
         else:
             _admit(ctx, uml, below_of(path))
     _check_clashes(ctx)
-    _check_root_paths(ctx)
 
 
 def _iri_of(ctx: Context, name: UmlName) -> str:
@@ -197,7 +197,8 @@ def root_path(ctx: Context, element: UmlElement) -> str:
     return ctx.tags.get(element.uml_class.object_id, {}).get(RP_PATH) or rp_path_for(element.label)
 
 
-def _check_root_paths(ctx: Context) -> None:
+def check_root_paths(ctx: Context) -> None:
+    """Two roots with one ``rp_path`` are a problem; run once the roots are derived (PD-4)."""
     seen: dict[str, UmlElement] = {}
     for element in sorted(ctx.elements.values(), key=lambda each: each.label):
         if not element.is_root:
@@ -227,26 +228,19 @@ def _note_tags(ctx: Context, element: UmlElement, skip: tuple[str, ...]) -> None
             )
 
 
-def _described(ctx: Context, element: UmlElement) -> str | None:
-    description = description_of(element.uml_class.note)
-    if description is None:
-        ctx.findings.note(ReportKind.NO_NOTE, element.label, "no note, so no description")
-    return description
-
-
 def build_class(
     ctx: Context, element: UmlElement, parent: str | None, owned: bool, defaults: list[str]
 ) -> ClassDefinition:
     """The class of a UML class: title, description, IRI, abstract flag, parent, mixins and the root's path.
 
-    ``parent`` is the domain parent; ``owned`` whether a boundary or composite makes the class a part;
+    ``parent`` is the domain parent; ``owned`` whether the composition tree makes the class a part;
     ``defaults`` the default mixins (PD-17).
     """
     composed = compose(ctx, element, parent, owned, defaults)
     definition = ClassDefinition(
         name=element.label,
         title=title_for(element.label, element.uml_class.uml_alias),
-        description=_described(ctx, element),
+        description=description_of(element.uml_class.note),
         class_uri=class_uri_of(ctx, element.resolved_name),
         is_a=composed.is_a,
         mixins=composed.mixins,
@@ -256,6 +250,9 @@ def build_class(
     derived: dict[str, Annotation] = {}
     if element.is_root:
         derived[RP_PATH] = annotation(RP_PATH, root_path(ctx, element))
+    pointer = ctx.dependent_on.get(element.uml_class.object_id)
+    if pointer is not None:
+        derived[RP_DEPENDENT_ON] = annotation(RP_DEPENDENT_ON, pointer)
     if element.is_tenant_root:
         derived[GRAPH] = annotation(GRAPH, META)
         _check_tenant_graph(ctx, element)
@@ -370,8 +367,6 @@ def _permissible_value(
         ctx.findings.add(invalid)
         return None
     description = description_of(note)
-    if description is None:
-        ctx.findings.note(ReportKind.NO_NOTE, element, "no note, so no description")
     meaning = _literal_meaning(ctx, enum, literal)
     key = permissible_value_key(literal)
     problem: CheckProblem | None = check_slot_name(key, element)
@@ -409,6 +404,6 @@ def build_enum(ctx: Context, element: UmlElement) -> EnumDefinition | None:
     return EnumDefinition(
         name=element.label,
         title=title_for(element.label, element.uml_class.uml_alias),
-        description=_described(ctx, element),
+        description=description_of(element.uml_class.note),
         permissible_values=values,
     )

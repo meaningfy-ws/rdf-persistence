@@ -1,0 +1,46 @@
+id: https://example.org/ns/dependence/ok_abstract_base
+name: ok_abstract_base
+title: Accepted, the annotation on an abstract base
+description: The annotation sits on an abstract base whose concrete subclasses are served roots.
+prefixes:
+  dep: https://example.org/ns/dependence#
+  linkml: https://w3id.org/linkml/
+default_prefix: dep
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Run:
+    description: The whole, a served root.
+    mixins: [AggregateRoot]
+    annotations:
+      rp_path: runs
+  Output:
+    description: An abstract dependent base; its subclasses are dependent too.
+    abstract: true
+    mixins: [AggregateRoot]
+    slots: [run]
+    annotations:
+      rp_dependent_on: run
+  Metric:
+    description: A served dependent kind of output.
+    is_a: Output
+    annotations:
+      rp_path: metrics
+  Artefact:
+    description: Another served dependent kind of output, repeating the same slot.
+    is_a: Output
+    annotations:
+      rp_path: artefacts
+      rp_dependent_on: run
+
+slots:
+  run:
+    description: The run the output belongs to.
+    range: Run
+    required: true

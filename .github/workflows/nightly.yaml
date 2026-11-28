@@ -15,7 +15,9 @@ name: Nightly
 
 on:
   schedule:
-    - cron: "0 2 * * *"  # 02:00 UTC; a scheduled run checks out the default branch, develop
+    # 02:00 UTC. GitHub runs a schedule from the default branch, main, so this file must be on
+    # main and every job checks out develop; a dispatch checks out the ref it was given.
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -38,6 +40,8 @@ jobs:
         group: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}
       - uses: ./.github/actions/setup
       - run: make test-unit-ci GROUP=${{ matrix.group }}
 
@@ -61,6 +65,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}
       - uses: ./.github/actions/setup
       - uses: actions/download-artifact@v4
         with:
@@ -89,6 +95,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}
           fetch-depth: 0  # SonarCloud reads the history
       - uses: actions/download-artifact@v4
         continue-on-error: true  # a failed lane may have uploaded nothing
@@ -110,6 +117,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}
       - uses: ./.github/actions/setup
       - uses: actions/setup-node@v4
         with:

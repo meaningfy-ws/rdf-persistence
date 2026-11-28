@@ -67,6 +67,8 @@ class RpAnnotation(str, _Enum):
     "Class annotation (see WritesKind). `service` marks an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it. `toolkit` marks a root the toolkit writes and reads itself, which no route serves."
     RP_ON_REFERENCED_DELETE = "rp_on_referenced_delete"
     "Class annotation (see OnReferencedDelete). `refuse` on an aggregate root class: deleting an instance that another aggregate still points at is refused, naming the referrers."
+    RP_DEPENDENT_ON = "rp_dependent_on"
+    "Class annotation on an aggregate root: the name of its pointer slot, a required single-valued slot that ranges over the root it depends on (its whole). The class is a dependent aggregate: stored in a graph of its own, written without touching its whole, and deleted with it. A subclass inherits it; mixins do not carry it."
     WORKFLOW = "workflow"
     "Class annotation on an aggregate root: the name of the workflow its instances follow, which follows the pattern of the url_segment slot; the root includes UnderWorkflow. A subclass inherits it."
     BOOKKEEPING = "bookkeeping"
@@ -77,6 +79,8 @@ class RpAnnotation(str, _Enum):
     "Annotation of a `slot_usage` entry in a command class, `true` when the command carries the slot but the stored record does not; it is never required there."
     RP_UNIQUE_SCOPE = "rp_unique_scope"
     "Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant` (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate. A key without it keeps its in-aggregate meaning."
+    RP_LOADED_GRAPH = "rp_loaded_graph"
+    "Slot annotation, `true` when the slot\u0027s values are the IRIs of graphs loaded for the holder\u0027s aggregate and deleted with it; the converter writes it for an \"own graph\" composition."
     MEDIA_TYPE = "media_type"
     "Permissible value annotation: the IANA media type of a serialisation."
 
@@ -175,6 +179,13 @@ class KeyDuplicate(ConfiguredBaseModel):
     key_roots: list[str] = _Field(default=..., title="Key roots", description="The IRIs of the roots that hold the values, sorted.")
 
 
+class DependenceLink(ConfiguredBaseModel):
+    "One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each side lists the class and its concrete subclasses."
+    part_classes: list[str] = _Field(default=..., title="Part classes", description="The IRIs of the dependent class and of its concrete subclasses.")
+    pointer: str = _Field(default=..., title="Pointer", description="The IRI of the predicate of the pointer slot, from the part to its whole.")
+    whole_classes: list[str] = _Field(default=..., title="Whole classes", description="The IRIs of the class the pointer ranges over and of its concrete subclasses.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 AggregateRoot.model_rebuild()
@@ -184,3 +195,4 @@ PendingLoad.model_rebuild()
 CommitMarker.model_rebuild()
 AggregateKey.model_rebuild()
 KeyDuplicate.model_rebuild()
+DependenceLink.model_rebuild()

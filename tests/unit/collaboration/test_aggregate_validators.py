@@ -17,6 +17,7 @@ from rdf_persistence import (
     DatabaseGone,
     InvalidBody,
     Principal,
+    RuleRefusal,
     StoreUnavailable,
     generated_models,
     load_role_definitions,
@@ -250,6 +251,34 @@ async def test_a_rule_is_run_as_the_contract_says(
 ):  # T-4
     with pytest.raises(raised, match=message):
         await run_aggregate_validators([rule], None, shelf(shelf_iri(1)), WHO, READER)
+
+
+def refuses_with_a_problem(old: Any, new: Any, who: Any, reader: Any) -> None:
+    raise RuleRefusal(Marker("held"))
+
+
+class Marker:
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
+
+
+@pytest.mark.parametrize(
+    ("rule", "raised"),
+    [(refuses_with_a_problem, RuleRefusal), (has_a_bug, RuntimeError)],
+    ids=lambda case: getattr(case, "__name__", None) if callable(case) else None,
+)
+async def test_a_rule_refusal_passes_as_it_is_and_any_other_error_is_wrapped(
+    rule: AggregateValidator, raised: type[Exception]
+):  # PD-5
+    with pytest.raises(raised) as caught:
+        await run_aggregate_validators([rule], None, shelf(shelf_iri(1)), WHO, READER)
+    assert type(caught.value) is raised, "RuleRefusal is not wrapped in RuntimeError"
+
+
+async def test_a_rule_refusal_carries_its_problem_and_its_detail_as_text():  # PD-5
+    marker = Marker("isbn x is held")
+    assert RuleRefusal(marker).problem is marker, "the problem is kept"
+    assert str(RuleRefusal(marker)) == "isbn x is held", "the text is the problem's detail"
 
 
 async def test_a_rule_that_is_a_bug_is_chained_to_its_error():  # T-4
@@ -526,6 +555,21 @@ async def test_a_refused_unit_of_work_commit_raises_invalid_body_and_writes_noth
     ) as session:
         with pytest.raises(InvalidBody, match="no bad labels"):
             await save(session, shelf(shelf_iri(2)), relabelled(shelf_iri(1), "bad"))
+        assert await session.heads([shelf_iri(1), shelf_iri(2)]) == [], "one refusal, no write"
+
+
+def refuses_the_label(old: Any, new: Any, who: Any, reader: Any) -> None:
+    if new.label == "bad":
+        raise RuleRefusal(Marker("no bad labels"))
+
+
+async def test_a_refused_unit_of_work_commit_raises_rule_refusal_and_writes_nothing():  # TC-8
+    async with fake_session(
+        tenant_iri=TENANT, guards=guarded({"Shelf": [refuses_the_label]})
+    ) as session:
+        with pytest.raises(RuleRefusal, match="no bad labels") as caught:
+            await save(session, shelf(shelf_iri(2)), relabelled(shelf_iri(1), "bad"))
+        assert isinstance(caught.value.problem, Marker), "the problem the rule built"
         assert await session.heads([shelf_iri(1), shelf_iri(2)]) == [], "one refusal, no write"
 
 

@@ -26,7 +26,7 @@ from rdf_persistence.access.services.generated.rp_access_services import (
 from rdf_persistence.access.services.identity import Identity
 from rdf_persistence.access.services.tokens import TokenVerifier
 from rdf_persistence.api.entrypoints.auth import Gate
-from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import Authorised
+from rdf_persistence.api.entrypoints.generated.rp_api_entrypoints import Authorised, Problem
 from rdf_persistence.api.entrypoints.generated.settings.rp_api_settings import ToolkitSettings
 from rdf_persistence.api.services import file_removal
 from rdf_persistence.api.services.aggregates import Aggregates
@@ -85,6 +85,7 @@ from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.provenance.services.provenance import activity_class_named
 from rdf_persistence.schema.services.schema import service_view
 from rdf_persistence.schema.services.schema_structure import (
+    dependence_links,
     iri_types,
     root_paths,
     tenant_access_class,
@@ -108,6 +109,16 @@ log = logging.getLogger(__name__)
 def toolkit_store(raw: Store) -> ToolkitStore:
     """The store the kit's services use: ``raw`` traced under its system name, then guarded (DEC-6)."""
     return ToolkitStore(TracedStore(raw, system_name_of(raw)))
+
+
+def _checked_refusal_problems(
+    classes: Sequence[type[BaseModel]],
+) -> tuple[type[BaseModel], ...]:
+    """``classes`` as a tuple; ``TypeError`` naming the first that is not a subclass of ``Problem``."""
+    for cls in classes:
+        if not (isinstance(cls, type) and issubclass(cls, Problem)):
+            raise TypeError(f"refusal problem {cls!r} is not a subclass of Problem")
+    return tuple(classes)
 
 
 class ServiceKit:
@@ -143,8 +154,11 @@ class ServiceKit:
         stores: Mapping[str, Store] = {},
         event_bus: EventBus | None = None,
         toolkit: ToolkitSettings | None = None,
+        refusal_problems: Sequence[type[BaseModel]] = (),
     ) -> None:
-        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows``, ``stores``, ``event_bus`` and ``toolkit`` are ``install_service``'s arguments of those names.
+        """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows``, ``stores``, ``event_bus``, ``toolkit`` and ``refusal_problems`` are ``install_service``'s arguments of those names.
+
+        ``refusal_problems`` are kept as the tuple ``kit.refusal_problems``.
 
         ``toolkit`` (a fresh ``ToolkitSettings`` unless given) is kept as ``kit.toolkit``; the kit hands its
         ``limits`` to the documents, the mapper and the restore, its ``events`` to the hub and the relay, and
@@ -166,8 +180,10 @@ class ServiceKit:
                 is wired under two names (the default store included); ``Tenancy`` raises it and the
                 message names the key.
                 The same for a key of ``delete_validators``.
-            TypeError: A rule of ``aggregate_validators`` or ``delete_validators`` is not callable.
+            TypeError: A rule of ``aggregate_validators`` or ``delete_validators`` is not callable, or
+                a class of ``refusal_problems`` is not a subclass of ``Problem`` (the message names it).
         """
+        self.refusal_problems = _checked_refusal_problems(refusal_problems)
         view = service_view(schema)
         self.view = view
         self.toolkit = toolkit or ToolkitSettings()
@@ -242,6 +258,8 @@ class ServiceKit:
             grant_validators=grant_validators,
             root_validators=root_validators,
             dependents=discussion_dependents(view),
+            dependence=dependence_links(view),
+            limits=self.toolkit.limits,
             stamps=[(schema_id, current_version(chain)) for schema_id, chain in self.chains],
             on_commit=self._publish,
             stores={name: wrapped[id(other)] for name, other in stores.items()},

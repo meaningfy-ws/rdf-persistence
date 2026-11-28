@@ -367,11 +367,19 @@ lane that ran them still runs them and they prove what they proved.
   spec delta for the two new toolkit-filled slots, both added to task 2.4.
 - **D-20** (developer asked for parallel work, 2026-11-28): stage 2 starts before stage 1 has
   merged, on `feat/assignee-release` stacked on stage 1's head (`378ca201`), in
-  `.worktrees/assignee-release`. It is rebased onto `develop` once #443 merges, before its PR. Order
+  `.worktrees/assignee-release`. It takes stage 1's merge of `develop` (D-21) by a merge of
+  `feat/workflow-assignees`, then is brought up to `develop` again once #443 merges. Order
   inside the stage: the docs (2.4) at once (no seed needed); after the seed, the release (2.1,
   2.2: `assignments.py`, `kit.py`, `router.py`, `tests/unit/api/`) beside the queue listing (2.3:
   `tests/feature/assignees.feature` with T15); then T16 in that feature file. Impact on
   `TenantApi.set_grants`: LOW (one caller, the route).
+- **D-21** (lead, 2026-11-28, amends P-0002 for this stage): `develop` gained two epics
+  (aggregate composition, dependent aggregates) while stage 1 was in review, and a rebase
+  conflicted on generated files in several of this branch's commits. `develop` is merged into the
+  branch once instead: the three source conflicts kept both sides (`session.py`'s transaction
+  fields; `NAMES` 160 + `Assignment` = 161; both blocks of scenario-map rows), and every
+  generated file and snapshot was regenerated from the sources (P-0003). The full gates run again
+  on the merge, `make test-containers` included, since `develop` changed the persistence layer.
 - **D-16** (lead, 2026-11-27): the worktree was installed with a bare `uv sync`, without the
   extras `make install` adds (`--all-extras`); the API tests failed for a missing module and both
   first task gates fell back to the full lane and timed out. Reinstalled with `make install` and

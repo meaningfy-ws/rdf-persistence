@@ -757,6 +757,30 @@ def test_a_referenced_delete_value_other_than_refuse_gives_one_problem_naming_it
     assert "'cascade'" in named[0], problems
 
 
+@pytest.mark.parametrize(
+    ("value", "refused"),
+    [
+        ("shelf", False),
+        ("owning_shelf", False),
+        ("Shelf", True),
+        ("owning-shelf", True),
+        ("2shelf", True),
+        ("''", True),
+    ],
+    ids=["one-word", "snake-case", "upper-case", "hyphen", "digit-first", "empty"],
+)
+def test_the_value_of_rp_dependent_on_is_a_snake_case_slot_name(
+    break_toy: Breaker, value: str, refused: bool
+) -> None:
+    """PD-12: the value names a slot, so it follows the slot-name pattern, not the URL-segment one."""
+    problems = _planted(
+        break_toy, "books.yaml", "rp_path: books", f"rp_path: books\n      rp_dependent_on: {value}"
+    )
+    named = [p for p in problems if f"[{HardRule.ANNOTATION.value}] Book:" in p]
+    assert bool(named) is refused, f"{value!r}: refused={refused}, problems {problems}"
+    assert all("rp_dependent_on" in p for p in named), f"only the new annotation: {named}"
+
+
 @pytest.mark.parametrize("slot", ["chapters", "authors", "id", "created", "binding"])
 def test_a_key_over_a_slot_that_cannot_be_keyed_names_class_key_and_slot(
     break_toy: Breaker, slot: str
@@ -976,6 +1000,25 @@ def test_a_value_outside_the_allowed_ones_is_refused_for_every_annotation_the_to
     assert [p for p in problems if f"Probe: {tag.value}: 'not-a-value' is not one of" in p], (
         f"a bad {tag.value} value is not refused: {problems}"
     )
+
+
+@pytest.mark.parametrize(
+    ("value", "refused"),
+    [("maybe", True), ("true", False), ("false", False)],
+    ids=["maybe-refused", "true-accepted", "false-accepted"],
+)
+def test_rp_loaded_graph_on_a_slot_takes_a_boolean_only(
+    tmp_path: Path, value: str, refused: bool
+) -> None:
+    """PD-9, A-22: the tag the converter writes is checked like every other boolean annotation."""
+    tag = RpAnnotation.RP_LOADED_GRAPH.value
+    classes = f"  Probe:\n    attributes:\n      graphs:\n        annotations:\n          {tag}: {value}\n"
+
+    problems = _annotation_problems(tmp_path, classes)
+
+    hits = [p for p in problems if f"graphs: {tag}: {value!r} is not one of" in p]
+    assert bool(hits) is refused, f"{tag}: {value} on a slot, refused={refused}: {problems}"
+    assert refused or problems == [], f"{tag}: {value} must raise no annotation problem: {problems}"
 
 
 def test_a_field_name_annotation_other_than_slot_is_refused_naming_the_slot(tmp_path: Path) -> None:

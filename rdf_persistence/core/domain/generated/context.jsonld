@@ -265,6 +265,15 @@
          "@type": "@id",
          "@id": "ownedBy"
       },
+      "part_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "partClass"
+      },
+      "pointer": {
+         "@type": "@id",
+         "@id": "pointer"
+      },
       "prohibitions": {
          "@type": "@id",
          "@container": "@set",
@@ -379,6 +388,11 @@
          "@type": "@id",
          "@id": "prov:wasGeneratedBy"
       },
+      "whole_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "wholeClass"
+      },
       "workflow_name": {
          "@id": "workflowName"
       },
@@ -423,6 +437,9 @@
       },
       "DeleteFile": {
          "@id": "DeleteFile"
+      },
+      "DependenceLink": {
+         "@id": "DependenceLink"
       },
       "Described": {
          "@id": "Described"
