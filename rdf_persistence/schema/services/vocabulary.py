@@ -155,7 +155,8 @@ COMMIT_MARKER = class_iri("CommitMarker")
 STARTED_AT = predicate("started_at")
 # The relay's plumbing on an activity (aggregate-events PD-1): not slots, so no model and no message
 # carries them; reads of an activity exclude them and a restore drops them (PD-14).
-RP = Namespace(metamodel().namespaces()[metamodel().schema.default_prefix])
+_view = metamodel()
+RP = Namespace(_view.namespaces()[_view.schema.default_prefix])
 PENDING_SINCE = RP.pendingSince
 RELAYED_AT = RP.relayedAt
 PUBLICATION_FAILED = RP.publicationFailed

@@ -216,3 +216,12 @@ Taken by the lead during delivery (R-0007), for the owner to validate at the end
   `tmp_path`) is the tenth file of `TOOL_USERS` (`test_library_tests_stay_apart.py`, TC-28), whose
   count test asks for a decision. Rejected: moving the generation into `tests/conftest.py`, already
   listed, which keeps nine but hides which tests run the generator.
+- **D-8** Review (L2+L3, one pass, 8 findings). Accepted as Critical: **F-4**, the JSON-LD path
+  types a key as a double wherever any class has a double slot of that name, so a string slot of
+  another class with the same JSON name is silently stored as `xsd:double`; the walk becomes per
+  class, like the plain-JSON path. Fixed with it: **F-2** (nested owned part, multivalued list with
+  a boolean item, a value object left alone), **F-5** (`_is_double` walks `type_ancestors`, as
+  `_scalar` and `_is_string_range` do). Lead-fixed: **F-7** (`metamodel()` called once).
+  Under the floor: F-1 (accepted and refused rows in two tests; the 422 mapping is the
+  entrypoint's, tested there), F-3 (D-1's kept title and derived decimal types untested), F-6
+  (`_hidden_properties` computed twice), F-8 (Examples table alignment in a signed-off feature).
