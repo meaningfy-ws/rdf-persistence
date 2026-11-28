@@ -5,9 +5,11 @@ Stage 1 (tasks 1.1, 1.2, 1.3, 1.5, 1.6; 1.4 stopped), PR #434, merged by the wat
 command after this note.
 
 ## Decided since the PLAN
-D-1 to D-14 (design.md, Delivery decisions). The developer decided D-5 (task 1.4 stopped), D-6 (a
-living scenario re-signed as MODIFIED) and D-13 (the whole epic in this session); the lead
-decided the rest.
+D-1 to D-16 (design.md, Delivery decisions). The developer decided D-5 (task 1.4 stopped), D-6 (a
+living scenario re-signed as MODIFIED), D-13 (the whole epic in this session) and D-15 (cache the
+schema loads after CI's generator lane ran twice as long); the lead decided the rest, and placed
+D-15's cache in the generator package. D-16 is stage 2's (recorded here because the stage-1
+worktree holds design.md until this merge).
 
 ## Open
 - **Task 1.4, the OpenAPI document (D-5).** Back to a shaping session: `route_options` rated
@@ -19,6 +21,10 @@ decided the rest.
   T-F2 (status `409.0`), both D-10; R-S4 (`service.py` docstring, D-12).
 - **Carried into stage 2:** the how-to's cold-reader gap, which target generates the problem module
   and where its class is imported from (D-14 C-2), goes to task 2.5.
+- **The generator's schema cache (D-15)** is a workaround of LinkML (external), in one module,
+  `rdf_persistence_generation/schema_cache.py`; upstream linkml/linkml#4306. It imports `hbreader`,
+  a LinkML dependency this project does not declare (under the floor). It goes when LinkML offers
+  a hook.
 - **`RuleRefusal` rated CRITICAL by GitNexus** (D-11): an artefact of file-level edges on
   `exceptions.py`.
 - **Flaky tooling test** `test_lanes.py::test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make`

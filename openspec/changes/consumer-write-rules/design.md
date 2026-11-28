@@ -461,8 +461,8 @@ The lead's, per R-0007; the developer may overrule any of them.
   lane back to back under the same load: develop 269 s, the branch 298 s (1.11×). `make generate`
   byte-identical (manifests only). The first fixer stopped at 27 % recovery (blocked); a fresh
   fixer measured first and found the copy cost. Under the floor: the module imports `hbreader`, a
-  LinkML dependency this project does not declare. The LinkML issue names the re-parse and the
-  `Pathilizer` that blocks pickling.
+  LinkML dependency this project does not declare. Upstream: linkml/linkml#4306 (the re-parse and
+  the `Pathilizer` that blocks pickling); the cache goes when LinkML offers a hook.
 - **D-16 The tester after 2.1 (stage 2): one finding, accepted as Critical by re-label.** 38
   tests; the tenant, readability, removed and collected, `None`, error-wrapping and leak (RISK-5)
   probes all hold. *T2-F1:* the real reader's `find` answers a value not of the slot's type (a
