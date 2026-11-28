@@ -536,6 +536,10 @@ The lead's, per R-0007; the developer may overrule any of them.
 - **D-24 No hand-over after stage 2 (the developer, 2026-11-28).** "No need to handover, do that
   here": the archive runs in this session after #447 merges; `handover.md` becomes a close record
   with no prompt for a fresh session.
+- **D-25 Admin merge without waiting for CI (the developer, 2026-11-28).** "You can skip the ci
+  and merge admin": #447 and the archive PR merge with `gh pr merge --admin` once the lead's local
+  `make check-all` on the rebased head is green; this overrides `epic-delivery`'s "merge only on
+  green CI" for this epic. CI still runs after the merge.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.
