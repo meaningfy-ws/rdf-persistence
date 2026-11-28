@@ -119,7 +119,7 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   `NotFound` naming A1, no R3 graph. Plus the conformance scenario "a guard reads a graph the
   request does not write" in `tests/integration/store/test_store_conformance.py`. Builder writes,
   lead runs `make test-containers`. Accept: all five and the conformance scenario pass on Fuseki.
-- [ ] 2.9 Feature, after 2.6: scenarios 1–9 of
+- [x] 2.9 Feature, after 2.6: scenarios 1–9 of
   `openspec/changes/dependent-aggregates/features/dependent_aggregates.feature` into
   `tests/feature/dependent_aggregates.feature`, steps in `tests/feature/test_dependent_aggregates.py`,
   verbatim. Lane `make test-feature`. Accept: the nine pass.
