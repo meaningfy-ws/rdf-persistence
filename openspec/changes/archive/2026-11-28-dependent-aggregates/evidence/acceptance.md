@@ -1,8 +1,19 @@
 # Acceptance: dependent-aggregates
 
-2026-11-28: **deferred to the developer**, who was away and had granted delivery to the end. Not
-skipped and not accepted: validation ends with a person (epic-delivery). No release is cut before
-the developer has done what follows.
+**Verdict: accepted by the developer, 2026-11-28** ("I accept and do ea probe to complete epic").
+
+The developer accepted the delivered change as a whole: the scenarios and the delivery decisions D-1
+to D-13. The two decisions the end-of-epic review left open stand as delivered and documented: a
+session without `may_read` names cascaded parts (full reach), and a part write answers `NotFound`
+for a missing whole whether or not the caller may read it. Either can be reopened as its own change.
+No demo was run: the developer accepted on the delivered evidence.
+
+The record below is kept as written while the acceptance was pending.
+
+---
+
+2026-11-28, pending: **deferred to the developer**, who was away and had granted delivery to the
+end.
 
 ## What the developer validates
 

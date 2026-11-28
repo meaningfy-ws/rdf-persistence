@@ -197,3 +197,23 @@ generic modelling rules become P- rules here. The consumer can then retire its c
 - Consumers: a model using composite associations or relying on boundaries must be redrawn; the
   release notes carry the steps. The first consumer then retires its P-0007..P-0017, P-0026, P-0027
   and its check script.
+
+## Reconciliation (as delivered, 2026-11-28)
+
+| Shaped item | State | PR | Notes |
+|---|---|---|---|
+| Composition beside its association; diamond end (DEC-2) | delivered, amended | #448 | D-5: the end column decides and `SubType` is not read. D-6: a role on the composition picks among candidate associations. |
+| Composite association refused (DEC-3) | delivered | #448 | |
+| Tree of compositions (DEC-4) | delivered, re-shaped | #448 | A tree of instances: several wholes and recursion are allowed (`inputs/qa.md`). |
+| Derived roots, «root» transition (DEC-5, DEC-6) | delivered | #448 | `deprecated-root` is informational (PD-13). |
+| «own graph» (DEC-7) | delivered, then extended | #448 | `dependent-aggregates` (#452) replaced the refusal of a generated part. |
+| Pointers target roots (DEC-8) | delivered, narrowed | #448 | D-10: an abstract target counts only when the tree reaches it. |
+| Realisation from an Object (DEC-9, #435) | delivered | #448 | D-8: a skipped Object has no report line. |
+| Conventions in the converter, `--check` (DEC-10) | delivered | #449 | D-15: a problem stops the check. |
+| Diagrams read by membership (DEC-11) | delivered | #449 | |
+| Rules and conventions adopted (DEC-12) | delivered | #451 | P-0025 to P-0040; P-0040's direction corrected (D-16). |
+| #343 items (DEC-13) | delivered | #448, #449 | The rest of #343 stays open. |
+| EA probe (RISK-9) | done, one residual accepted | this PR | `evidence/ea-connectors.md` |
+
+Reviews: per-stage L2+L3 passes and checkers, and the end-of-epic full review (D-13, D-15, D-17).
+Their floor is issue #453. Accepted by the developer on 2026-11-28 (`evidence/acceptance.md`).
