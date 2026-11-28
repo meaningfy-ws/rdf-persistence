@@ -6,9 +6,10 @@
 ### Requirement: A language tag is never dropped
 
 A value of a language-string slot SHALL keep every language tag through store, read, write and
-every document form: plain JSON SHALL show it as a language map, JSON-LD as value objects or a
-language map, and an RDF serialisation as tagged literals. A tagged literal found in a slot ranged
-`string` SHALL NOT be written back without its tag.
+every document form: plain JSON and JSON-LD SHALL show each value as a value object
+`{"@value": …, "@language": …}`, and an RDF serialisation as tagged literals. A tagged literal
+found in a slot ranged `string` SHALL be refused, naming the slot, never written back without its
+tag.
 
 #### Scenario: a read-modify-write keeps the tags
 - **GIVEN** a stored book whose `title` is `"Dune"@en` and `"Dune"@fr`
@@ -18,4 +19,9 @@ language map, and an RDF serialisation as tagged literals. A tagged literal foun
 #### Scenario: plain JSON of a language-string slot
 - **GIVEN** that book
 - **WHEN** it is read as plain JSON
-- **THEN** `title` is `{"en": "Dune", "fr": "Dune"}`
+- **THEN** `title` is `[{"@value": "Dune", "@language": "en"}, {"@value": "Dune", "@language": "fr"}]`
+
+#### Scenario: a tagged literal in a string slot
+- **GIVEN** a stored book whose `subtitle`, ranged `string`, holds `"Arrakis"@en`
+- **WHEN** it is read
+- **THEN** the read is refused naming `subtitle`, and the store is unchanged

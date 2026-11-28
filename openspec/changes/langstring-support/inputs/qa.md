@@ -41,3 +41,23 @@ OPEN-3 and OPEN-4 matter only when the EPIC is planned.
 
 The owner parked the question round: the OPEN items above are unanswered. The PLAN stands
 under the recommended answers; nothing is decided until the owner answers.
+
+## Owner's answers (2026-11-28)
+
+- **OPEN-1: plan now.** The owner overrode the recommendation to park.
+- **OPEN-2: keep it in this EPIC** (DEC-4 stays here). The owner asked whether rdflib's
+  language-string support could carry it; it does, through OPEN-3's answer. Asked again in a
+  follow-up round (what a `string` slot does on meeting a tagged literal), the owner chose
+  **refuse, naming the slot**; recommended. Rejected: keep the tag in a `string` slot (the slot's
+  type would no longer be what the model says).
+- **OPEN-3 and OPEN-4: rdflib `Literal`, not a language map.** The owner asked whether rdflib's
+  `Literal` can be adopted broadly, in the model and in plain JSON. Checked: rdflib is an allowed
+  root package in `.importlinter`, and domain modules already import it
+  (`core/domain/sparql.py`, `iris/domain/layout.py`), so DEC-1's reason for rejecting it does not
+  hold. Offered three options (rdflib `Literal`; a toolkit `LangString` model; the language map as
+  shaped); the owner chose **rdflib `Literal`**; recommended. The generated field is a
+  Pydantic-validated `Annotated[rdflib.Literal, …]` that must carry a language; a multivalued slot
+  is a list of them, so several values per language work (`skos:altLabel`); plain JSON, JSON-LD
+  and TypeScript show each value as a JSON-LD value object `{"@value": …, "@language": …}`, so
+  the JSON-LD context needs no `@language` container. Supersedes DEC-1 and DEC-3 as shaped and,
+  for this range, DEC-35 of the SOA study (`LangString` as a language map).
