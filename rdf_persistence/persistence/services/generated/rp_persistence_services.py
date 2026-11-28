@@ -96,6 +96,13 @@ class AggregateHead(ConfiguredBaseModel):
     head_version: _Optional[str] = _Field(default=None, title="Head version", description="The version token of the stored aggregate\u0027s graph.")
 
 
+class DependenceLink(ConfiguredBaseModel):
+    "One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each side lists the class and its concrete subclasses."
+    part_classes: list[str] = _Field(default=..., title="Part classes", description="The IRIs of the dependent class and of its concrete subclasses.")
+    pointer: str = _Field(default=..., title="Pointer", description="The IRI of the predicate of the pointer slot, from the part to its whole.")
+    whole_classes: list[str] = _Field(default=..., title="Whole classes", description="The IRIs of the class the pointer ranges over and of its concrete subclasses.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 Page.model_rebuild()
@@ -105,3 +112,4 @@ ListRequest.model_rebuild()
 Condition.model_rebuild()
 ListPlan.model_rebuild()
 AggregateHead.model_rebuild()
+DependenceLink.model_rebuild()

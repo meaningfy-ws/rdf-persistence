@@ -1,0 +1,36 @@
+id: https://example.org/ns/dependence/refused_over_tenant_root
+name: refused_over_tenant_root
+title: Refused, the pointer ranges over the tenant root
+description: The pointer ranges over the tenant root, which lives in the meta graph and is never removed.
+prefixes:
+  dep: https://example.org/ns/dependence#
+  linkml: https://w3id.org/linkml/
+default_prefix: dep
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Estate:
+    description: The tenant root.
+    mixins: [AggregateRoot]
+    annotations:
+      graph: meta
+      database: tenant
+  Result:
+    description: The part.
+    mixins: [AggregateRoot]
+    slots: [estate]
+    annotations:
+      rp_path: results
+      rp_dependent_on: estate
+
+slots:
+  estate:
+    description: The estate the result belongs to; wrongly the tenant root.
+    range: Estate
+    required: true

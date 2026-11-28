@@ -67,6 +67,8 @@ class RpAnnotation(str, _Enum):
     "Class annotation (see WritesKind). `service` marks an aggregate root whose generic create, replace and delete are not served; the consumer writes it through a session. A root that mixes in StoredFile is service-written without it. `toolkit` marks a root the toolkit writes and reads itself, which no route serves."
     RP_ON_REFERENCED_DELETE = "rp_on_referenced_delete"
     "Class annotation (see OnReferencedDelete). `refuse` on an aggregate root class: deleting an instance that another aggregate still points at is refused, naming the referrers."
+    RP_DEPENDENT_ON = "rp_dependent_on"
+    "Class annotation on an aggregate root: the name of its pointer slot, a required single-valued slot that ranges over the root it depends on (its whole). The class is a dependent aggregate: stored in a graph of its own, written without touching its whole, and deleted with it. A subclass inherits it; mixins do not carry it."
     WORKFLOW = "workflow"
     "Class annotation on an aggregate root: the name of the workflow its instances follow, which follows the pattern of the url_segment slot; the root includes UnderWorkflow. A subclass inherits it."
     BOOKKEEPING = "bookkeeping"

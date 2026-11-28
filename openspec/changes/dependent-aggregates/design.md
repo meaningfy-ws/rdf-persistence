@@ -319,3 +319,7 @@ Decisions the lead took without the developer, shown for validation at the end (
   loaded-graph removal and events). Also rejected: guarding cascaded parts on existence instead of
   their version (the invalidation would record a version the delete never read, and D-1's
   validators judged another state).
+- <a id="d-4"></a>**D-4**, lead, 2026-11-28 (delivery): tasks 1.2 and 1.3 land in one commit with one
+  task gate. 1.2 alone cannot pass it: the enum-wide tests (`BoundaryRule` table, the annotation
+  value rules) need 1.3's check and `hard.py` rule. `rp_dependent_on`'s value rule is the
+  slot-name pattern (`PATTERNED_ANNOTATIONS`). Rejected: a stopgap row that 1.3 would delete.

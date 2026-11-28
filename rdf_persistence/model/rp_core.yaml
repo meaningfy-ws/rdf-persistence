@@ -313,6 +313,14 @@ enums:
           Class annotation (see OnReferencedDelete). `refuse` on an aggregate root class: deleting an
           instance that another aggregate still points at is refused, naming the referrers.
         meaning: rp:AnnotationOnReferencedDelete
+      rp_dependent_on:
+        title: Dependent on
+        description: >-
+          Class annotation on an aggregate root: the name of its pointer slot, a required single-valued
+          slot that ranges over the root it depends on (its whole). The class is a dependent aggregate:
+          stored in a graph of its own, written without touching its whole, and deleted with it. A
+          subclass inherits it; mixins do not carry it.
+        meaning: rp:AnnotationDependentOn
       workflow:
         title: Workflow
         description: >-

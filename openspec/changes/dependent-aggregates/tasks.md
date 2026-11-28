@@ -12,16 +12,16 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
 
 ## 1. Stage 1: the annotation and its schema check (PR 1)
 
-- [ ] 1.1 Lead: `openspec validate dependent-aggregates --strict`; ADDED requirements only, no
+- [x] 1.1 Lead: `openspec validate dependent-aggregates --strict`; ADDED requirements only, no
   living text changed. Accept: validation passes.
-- [ ] 1.2 Metamodel and models ([PD-1](design.md#pd-1), [PD-2](design.md#pd-2)), lead.
+- [x] 1.2 Metamodel and models ([PD-1](design.md#pd-1), [PD-2](design.md#pd-2)), lead.
   `rp_dependent_on` in `RpAnnotation` (`rdf_persistence/model/rp_core.yaml`); `DependenceLink` in
   `rdf_persistence/model/technical/persistence/rp_persistence_services.yaml`;
   `BoundaryRule.DEPENDENCE` in `rdf_persistence_generation/model/rp_generation.yaml`; `make
   generate`, `make check-generated`. Unit first: `tests/unit/core/test_annotations.py`
   `test_rp_dependent_on_is_an_annotation_the_toolkit_reads`. Accept: passes; regenerated files in
   the same commit.
-- [ ] 1.3 Generator check ([PD-12](design.md#pd-12)), after 1.2. First, failing, in
+- [x] 1.3 Generator check ([PD-12](design.md#pd-12)), after 1.2. First, failing, in
   `tests/generator/unit/test_dependence_check.py`, one schema per row under
   `tests/generator/fixtures/dependence/`: refused — pointer not required, multivalued, over a
   non-root, over a toolkit-written root, over the tenant root, slot not on the class, annotation on

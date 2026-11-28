@@ -15,7 +15,7 @@ from rdf_persistence.core.domain.generated.rp_core import RpAnnotation, UniqueSc
 from rdf_persistence_generation.checks.hard import (
     ALLOWED_ANNOTATIONS,
     PATTERNED_ANNOTATIONS,
-    segment_pattern,
+    pattern_of,
 )
 from rdf_persistence_generation.generated.rp_generation import ReportKind, UmlElement, UmlRule
 from rdf_persistence_generation.uml.context import Context
@@ -84,9 +84,8 @@ def _value_problem(tag: RpAnnotation, text: str) -> str | None:
     allowed = ALLOWED_ANNOTATIONS.get(tag)
     if allowed is not None and text.lower() not in allowed:
         return f"{tag.value}: {text.lower()!r} is not one of {allowed}"
-    pattern = segment_pattern()
-    if tag in PATTERNED_ANNOTATIONS and not re.fullmatch(pattern, text):
-        return f"{tag.value}: {text!r} does not match {pattern}"
+    if tag in PATTERNED_ANNOTATIONS and not re.fullmatch(pattern_of(tag), text):
+        return f"{tag.value}: {text!r} does not match {pattern_of(tag)}"
     return None
 
 

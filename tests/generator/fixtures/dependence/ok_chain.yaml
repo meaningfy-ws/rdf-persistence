@@ -1,0 +1,46 @@
+id: https://example.org/ns/dependence/ok_chain
+name: ok_chain
+title: Accepted, a two-level chain
+description: A part that is itself the whole of another part; no cycle.
+prefixes:
+  dep: https://example.org/ns/dependence#
+  linkml: https://w3id.org/linkml/
+default_prefix: dep
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Run:
+    description: The top whole.
+    mixins: [AggregateRoot]
+    annotations:
+      rp_path: runs
+  Result:
+    description: Depends on a run, and is the whole of its details.
+    mixins: [AggregateRoot]
+    slots: [run]
+    annotations:
+      rp_path: results
+      rp_dependent_on: run
+  Detail:
+    description: Depends on a result.
+    mixins: [AggregateRoot]
+    slots: [result]
+    annotations:
+      rp_path: details
+      rp_dependent_on: result
+
+slots:
+  run:
+    description: The run the result belongs to.
+    range: Run
+    required: true
+  result:
+    description: The result the detail belongs to.
+    range: Result
+    required: true

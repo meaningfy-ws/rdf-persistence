@@ -506,6 +506,20 @@
     required: false
     multivalued: true
     range: Principal
+- class_name: DependenceLink
+  slots:
+  - name: part_classes
+    required: true
+    multivalued: true
+    range: uri
+  - name: pointer
+    required: true
+    multivalued: false
+    range: uri
+  - name: whole_classes
+    required: true
+    multivalued: true
+    range: uri
 - class_name: Described
   slots:
   - name: description
