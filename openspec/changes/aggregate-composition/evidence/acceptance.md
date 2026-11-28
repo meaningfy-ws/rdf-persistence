@@ -1,0 +1,26 @@
+# Acceptance: aggregate-composition
+
+2026-11-28: **deferred to the developer**, who was away and had granted delivery to the end. Not
+skipped and not accepted: validation ends with a person (epic-delivery). No release is cut before
+the developer has done what follows.
+
+## What the developer validates
+
+1. The scenarios (`features/*.feature`), accepted by the lead under the grant
+   (`scenario-signoff.md`).
+2. The EPIC changes made by the lead: DEC-4 re-shaped (a tree of instances) and DEC-2 amended (a
+   role on the composition picks among candidate associations), both in `inputs/qa.md`.
+3. The delivery decisions D-1 to D-16 in `design.md`.
+4. The adopted modelling rules P-0025 to P-0040 in `docs/rules/` (the script stamps `approved`; the
+   developer's approval is the merge of this change and this validation).
+5. RISK-9, the `@manual` scenario "An EA-drawn composition reads the same either way": draw, in a
+   scratch `.qea` saved by EA, one composition whole → part, one part → whole and one shared
+   aggregation; `rp-uml2linkml --check` and a conversion must read both compositions the same way
+   and refuse the shared one. Record the columns in `ea-connectors.md`.
+
+## The demo to run (suggested)
+
+On a copy of a consumer model: draw one Aggregation beside an association, drop «root» from a
+class, run `rp-uml2linkml --check` (exit 1 names any composite association; after the redraw, exit
+0 with `root` lines), convert, and diff the schemas against the previous release's output per the
+guide's "Redrawing a boundary model".

@@ -243,14 +243,14 @@ assertion without a replacement row. Every decision a task cites links its ancho
   follow P-0024 (re-checked at the time: the next free id is used if others landed).
 - [x] 3.5 Changelog: `CHANGELOG.md` **BREAKING** entry with design.md's migration steps. Accept:
   the entry names `--check`, the composite-association refusal, derived roots and the steps.
-- [ ] 3.6 Lead: `make check-docs`, `make check-all`; review (docs lens); PR; the consumer told it
+- [x] 3.6 Lead: `make check-docs`, `make check-all`; review (docs lens); PR; the consumer told it
   can retire its copies (RISK-3).
 
 ## Roadmap
 
 - [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.8 · [x] 1.6 · [x] 1.7 ·
   [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 ·
-  [x] 2.6 · [x] 2.7 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 3.6
+  [x] 2.6 · [x] 2.7 · [x] 3.1 · [x] 3.2 · [x] 3.3 · [x] 3.4 · [x] 3.5 · [x] 3.6
   (1.0 is the lead's reading of Sparx's docs and gates nothing ([D-4](design.md#d-4)); the
   developer's EA probe is the `@manual` scenario run in 1.12 before any release; 1.2 and 1.3 in
   parallel; 1.5 and 1.8 need only 1.2;
