@@ -5,7 +5,7 @@ Stage 1 (tasks 1.1, 1.2, 1.3, 1.5, 1.6; 1.4 stopped), PR #434, merged by the wat
 command after this note.
 
 ## Decided since the PLAN
-D-1 to D-16 (design.md, Delivery decisions). The developer decided D-5 (task 1.4 stopped), D-6 (a
+D-1 to D-19 (design.md, Delivery decisions). The developer decided D-5 (task 1.4 stopped), D-6 (a
 living scenario re-signed as MODIFIED), D-13 (the whole epic in this session) and D-15 (cache the
 schema loads after CI's generator lane ran twice as long); the lead decided the rest, and placed
 D-15's cache in the generator package. D-16 is stage 2's (recorded here because the stage-1

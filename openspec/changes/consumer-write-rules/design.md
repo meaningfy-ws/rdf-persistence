@@ -473,6 +473,22 @@ The lead's, per R-0007; the developer may overrule any of them.
   row defeats it. Fix: `_Reader.find` validates each value against the slot's item type, as the
   fake does, raising `BadQuery`; a kit case with a string slot given an int. The tester's tests are
   sorted before the full gates (the D-10 order).
+- **D-17 `Seeded` is a plain class (task 2.3).** The testkit's model guard refuses a hand-written
+  `@dataclass` (`FORBIDDEN_DECORATORS`), which PD-14 named; the fields and behaviour are PD-14's.
+  The generator's `SchemaLoadCache` (D-15) is a plain class for the same reason.
+- **D-18 Gates after a rebase onto sibling merges (stage 1).** Siblings kept merging into
+  `develop` during stage 1 (#425, #433, #442, #444), and each full `make check-all` takes 20 to 40
+  minutes behind the shared test queue. After a rebase that only brings in merged PRs, the lead
+  re-runs the lanes the merge can reach (quality, generator and feature here, since #444 also
+  edited the toy's `loan_checks_response.yaml`, whose two imports are both kept by P-0003) and lets
+  CI, which runs every lane, be the full check on the rebased head.
+- **D-19 TC-1b's bound after #444.** #444 made the toy's technical root import
+  `rdf_persistence/model/rp_core` directly; with `rp_api_entrypoints` imported too, LinkML loads
+  `rp_core` under one more import string (6 duplicate names against the toolkit closure's 5).
+  The output is unaffected: every module and class is still written once (TC-1b's other two
+  tests). PD-1a's "adds no further duplicate" assumed no direct metamodel import, which a consumer
+  will have; the bound is now the toolkit closure's count plus one per metamodel module the root
+  imports by its package key. Lead-fixed in the test.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.
