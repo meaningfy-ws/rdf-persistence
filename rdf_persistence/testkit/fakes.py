@@ -23,7 +23,7 @@ from rdf_persistence.core.domain.exceptions import (
     PersistenceError,
     TenantGone,
 )
-from rdf_persistence.core.domain.generated.rp_core import AggregateKey, Principal
+from rdf_persistence.core.domain.generated.rp_core import AggregateKey, DependenceLink, Principal
 from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.core.domain.sparql_parsing import prepare_query, prepare_update
 from rdf_persistence.events.services.events import Receive
@@ -31,6 +31,9 @@ from rdf_persistence.events.services.generated.rp_events_services import EventEn
 from rdf_persistence.files.domain.blob_keys import checked_blob_key
 from rdf_persistence.files.domain.generated.rp_files import BlobEntry
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
 from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.referrers import Dependents, RemovalRefusal
 from rdf_persistence.persistence.services.session import (
@@ -468,6 +471,8 @@ async def fake_session(
     record_activities: bool = True,
     on_commit: OnCommit | None = None,
     removals: RemovalRefusal | None = None,
+    dependence: Sequence[DependenceLink] = (),
+    limits: LimitSettings | None = None,
 ) -> AsyncIterator[Session]:
     """A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 
@@ -476,6 +481,7 @@ async def fake_session(
     default policy). ``keys`` are the keys across aggregates the session enforces (default: none).
     ``record_activities`` and ``on_commit`` are the session's (message-bus PD-9, PD-10).
     ``removals`` are the session's: the classes whose roots it refuses to remove while referenced.
+    ``dependence`` and ``limits`` are the session's links of dependence and central limits.
     """
     store = store or FakeStore()
     if FAKE_DATABASE not in await store.list_datasets():
@@ -494,6 +500,8 @@ async def fake_session(
         record_activities=record_activities,
         on_commit=on_commit,
         removals=removals,
+        dependence=dependence,
+        limits=limits,
     ) as session:
         yield session
 

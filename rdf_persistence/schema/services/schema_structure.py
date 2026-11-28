@@ -677,6 +677,12 @@ def dependence_links(view: SchemaView) -> list[DependenceLink]:
     return sorted(links, key=lambda link: link.part_classes)
 
 
+def is_whole(view: SchemaView, class_name: str) -> bool:
+    """True when another class depends on this one, directly or through an ancestor it is a concrete subclass of: its delete cascades to the parts (PD-5)."""
+    iri = view.get_uri(class_name, expand=True)
+    return any(iri in link.whole_classes for link in dependence_links(view))
+
+
 def keyed_slots(view: SchemaView, cls: ClassDefinition) -> list[tuple[SlotDefinition, UniqueKey]]:
     """``(slot, key)`` of each multivalued slot of ``cls`` holding objects whose class declares a key.
 

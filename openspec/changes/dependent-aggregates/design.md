@@ -117,8 +117,8 @@ What the code already gives (read 2026-11-28):
   what `remove` does (graph, loaded graphs, entries, #226 records, delete validators, D-1); a part
   gone meanwhile fails its version guard (PD-11). The session receives the limit with the links
   (`dependence=…, max_roots=…`), from the same `LimitSettings` the mapper uses (P-0009);
-  `max_roots` is required whenever `dependence` is non-empty, else the constructor raises
-  `ValueError` (A-8). *Rejected:* a SPARQL property path across graphs (each part is in its own
+  (superseded by D-9: `limits` default to `LimitSettings()`, so there is no `ValueError`; A-8 has no
+  case left). *Rejected:* a SPARQL property path across graphs (each part is in its own
   graph; not portable); batching (DEC-4).
 - <a id="pd-7"></a>**PD-7** (DEC-3, DEC-4): the delete's request carries a **no-late-part** guard per removed root
   when the session has links: no registered aggregate of a part class whose pointer names that root
@@ -242,7 +242,7 @@ SELECT ?whole ?part ?type ?version WHERE {
 | Part replace changes the pointer | `root_values` check (PD-4) | `Conflict` naming the slot; 409 | none |
 | Commit adds a referrer (A2 `cites_finding` F1, or a #226 comment on R1) to a part the cascade removes | existing pre-checks, run after expansion (PD-5, A-1) | `InUse` / `Conflict` as today; nothing sent | none |
 | Cascade larger than `max_roots` (a root counted once) | count during discovery (PD-6) | `CommitTooLarge`, limit only; 413; nothing sent | caller deletes parts first or raises the limit |
-| Session built with `dependence` and no `max_roots` | constructor (PD-6, A-8) | `ValueError` | none |
+| Session built with `dependence` and no `limits` | constructor (PD-6, A-8, D-9) | none: `LimitSettings()` by default | none |
 | Discovery revisits a root | visited set (PD-6, A-7) | read once; no loop | none |
 | Part written after discovery, before the delete | no-late-part guard (PD-7) | `Conflict` naming the whole (PD-11) | retry; may repeat under live writers (RISK-8) |
 | Cascaded part changed or removed meanwhile | version guard | `Conflict` naming the whole (PD-10) | retry (RISK-8) |
@@ -343,3 +343,32 @@ Decisions the lead took without the developer, shown for validation at the end (
     placement, same-slot re-annotation); W4 (the annotation unit test only proves the enum); S1 (one
     concrete-descendants helper shared by library and generator); S2 (`pattern_of` bound twice in
     `uml/tags.py`); S3 (feature step texts tied to one class pair).
+- <a id="d-8"></a>**D-8**, lead, 2026-11-28 (delivery, tasks 2.3–2.5a): `NotFound` carries no
+  `iris`, so its rows assert that the message names the whole; the `Conflict` rows assert `iris`
+  (A-5). Rejected: adding `iris` to `NotFound`, a public exception change beyond this change.
+  Tasks 2.1 and 2.2 were committed before their batch gate. The gate of the 2.3–2.5a batch covers
+  them (D-5).
+- <a id="d-9"></a>**D-9**, lead, 2026-11-28 (delivery, batch gate of 2.1–2.5a): `max_roots` is a
+  keyword the package removed in favour of `limits: LimitSettings` (the central settings, P-0009),
+  so `Session`, `open_session`, `Tenancy` and `fake_session` take `limits` and read
+  `limits.max_roots`. The pure `discovery_query` takes the number as `limit`. Supersedes the
+  parameter name in PD-2, PD-6 and task 2.1. The new module gets its row in the theme layout.
+- <a id="d-10"></a>**D-10**, lead, 2026-11-28 (tester after task 2.5): ADV-1 is re-labelled Critical
+  and fixed. Discovery's `LIMIT max_roots + 1` counted rows, and a part with two `rdf:type`s gives
+  two, so past the limit a delete answered `Conflict` ("retry") on every retry instead of
+  `CommitTooLarge`. Discovery now counts distinct parts. The tester's two PD-10 probes (an
+  unreadable part named in a delete rule's refusal and in `InUse`) are task 2.6's red tests.
+- <a id="d-11"></a>**D-11**, lead, 2026-11-28 (stage 2 review, PR #450, one L2+L3 pass, no Critical;
+  RISK recorded: concurrency and write order).
+  - Re-labelled Critical, one fixer: W7, the late-part guards were quadratic in the commit size
+    (made linear); W2, the unit-of-work path of a spec scenario had no test; W4, the whole's
+    version unchanged by a part write was not asserted in the unit lane; W5, PD-15's
+    `rp.session.cascade` span was missing.
+  - Lead-fixed: W1, the manual's cost (three queries for two levels); W6, a session with no
+    `may_read` has full reach and names parts, now said in the manual; the stale A-8 `ValueError`
+    text and matrix row (D-9).
+  - Under the floor: W3, the batch-mode rows have no test (the mapper's; documented); S8 (folded into
+    W7 where small), S9 (a `Cascade` helper), S10 (`is_whole` per class), S12 (the class the
+    validators see for a doubly typed part).
+  - Checker findings fixed: task 2.2 ticked, the `tasks.md` header, and a write example in the
+    manual.

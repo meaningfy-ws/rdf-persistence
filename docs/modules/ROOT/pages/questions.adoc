@@ -233,6 +233,11 @@ Set a new quoted `version:` in the root schema and run `make generate`: `rp-gene
 migration file for you to review, and the service applies it at start-up, once per database,
 before it serves. See xref:howto/migrate.adoc[Change a schema that has stored data].
 
+*How do I store a part apart from its whole and still delete it with the whole?*::
+Annotate the part's class `rp_dependent_on` with its pointer slot. A write of the part then checks
+that the whole exists, and deleting the whole deletes its parts, transitively, in one commit. See
+xref:user-manual/store-and-read.adoc#dependent-parts[Store a part apart from its whole].
+
 *Where does data that belongs to no tenant go?*::
 Into the application database, one per deployment: mark the class `database: application` in the
 schema; access to it comes from global roles at level `system`. See

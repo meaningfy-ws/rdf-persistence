@@ -84,6 +84,7 @@ from rdf_persistence.provenance.domain.generated.rp_provenance import Activity
 from rdf_persistence.provenance.services.provenance import activity_class_named
 from rdf_persistence.schema.services.schema import service_view
 from rdf_persistence.schema.services.schema_structure import (
+    dependence_links,
     iri_types,
     root_paths,
     tenant_access_class,
@@ -256,6 +257,8 @@ class ServiceKit:
             grant_validators=grant_validators,
             root_validators=root_validators,
             dependents=discussion_dependents(view),
+            dependence=dependence_links(view),
+            limits=self.toolkit.limits,
             stamps=[(schema_id, current_version(chain)) for schema_id, chain in self.chains],
             on_commit=self._publish,
             stores={name: wrapped[id(other)] for name, other in stores.items()},
