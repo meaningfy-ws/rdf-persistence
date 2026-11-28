@@ -103,6 +103,8 @@ class BoundaryRule(str, _Enum):
     "A slot of a class that is not an activity does not range over an application activity class that is not an aggregate root: the stored model never refers to a use case."
     TARGET_KIND = "target_kind"
     "A target\u0027s modules are of one kind, derived from them, and its package sits in a folder that kind allows."
+    DEPENDENCE = "dependence"
+    "A dependent class\u0027s pointer slot is required, single-valued and ranges over a served root, and no cycle of dependence exists."
 
 
 class TargetKind(str, _Enum):

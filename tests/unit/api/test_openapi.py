@@ -55,6 +55,9 @@ ROUTES = [
     (f"{TENANT}/grants", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     (f"{TENANT}/label", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     (f"{TENANT}/rp-events", "get", {200, 401, 403, 404, 503}),
+    *aggregate_routes("audit-findings"),
+    *aggregate_routes("audit-results"),
+    *aggregate_routes("audits"),
     *aggregate_routes("authors"),
     *aggregate_routes("book-collections"),
     *aggregate_routes("books"),
@@ -147,7 +150,10 @@ def test_a_problem_response_is_an_rfc_9457_problem_with_the_fixed_title(
     # two kinds share 409: the description of a status names the titles of its kinds the route has
     for status in expected - SUCCESS:
         response = op["responses"][str(status)]
-        refusing = (path, method, status) == (f"{TENANT}/authors/{{aggregate_id}}", "delete", 409)
+        refusing = (method, status) == ("delete", 409) and path in {
+            f"{TENANT}/authors/{{aggregate_id}}",
+            f"{TENANT}/audit-findings/{{aggregate_id}}",
+        }
         schema = (
             "InUseProblem" if refusing else "Problem"
         )  # a refusing class's 409 may say who refers

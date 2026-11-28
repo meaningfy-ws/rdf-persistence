@@ -160,6 +160,108 @@
     required: false
     multivalued: true
     range: Principal
+- class_name: Audit
+  slots:
+  - name: cites_finding
+    required: false
+    multivalued: false
+    range: AuditFinding
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
+- class_name: AuditFinding
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
+  - name: of_result
+    required: true
+    multivalued: false
+    range: AuditResult
+- class_name: AuditResult
+  slots:
+  - name: contributor
+    required: false
+    multivalued: true
+    range: Principal
+  - name: created
+    required: false
+    multivalued: false
+    range: datetime
+  - name: creator
+    required: false
+    multivalued: false
+    range: Principal
+  - name: description
+    required: false
+    multivalued: false
+    range: string
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: label
+    required: true
+    multivalued: false
+    range: string
+  - name: modified
+    required: false
+    multivalued: false
+    range: datetime
+  - name: of_audit
+    required: true
+    multivalued: false
+    range: Audit
 - class_name: Author
   slots:
   - name: contributor
@@ -506,6 +608,20 @@
     required: false
     multivalued: true
     range: Principal
+- class_name: DependenceLink
+  slots:
+  - name: part_classes
+    required: true
+    multivalued: true
+    range: uri
+  - name: pointer
+    required: true
+    multivalued: false
+    range: uri
+  - name: whole_classes
+    required: true
+    multivalued: true
+    range: uri
 - class_name: Described
   slots:
   - name: description

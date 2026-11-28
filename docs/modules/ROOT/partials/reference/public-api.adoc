@@ -33,6 +33,7 @@
 |`DEFAULT_IRIS` |constant |
 |`DeleteFile` |class |The activity of removing a stored file, with the file aggregate it used and an invalidation of it.
 |`DeleteValidator` |function |
+|`DependenceLink` |class |One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer.
 |`Described` |class |A mixin giving an object an IRI, a label and a description.
 |`DirectorySettings` |class |How the user directory of the identity provider is read.
 |`EventBus` |class |Base class for protocol classes.
@@ -122,6 +123,7 @@
 |`RpAnnotation` |class |The annotations the toolkit reads from a schema, one entry per tag; any other tag is left alone.
 |`RpModel` |class |A pydantic model that refuses unknown fields and validates every assignment.
 |`Rule` |class |An ODRL rule that gives an assignee a ruling on an action over a target.
+|`RuleRefusal` |class |A write rule of the application refuses a write with a problem of its own (consumer-write-rules PD-5).
 |`S3FileStore` |class |A ``FileStore`` over an S3-compatible endpoint.
 |`ServiceKit` |class |The collaborators of the routes.
 |`ServiceSettings` |class |The settings of `install_service`: where the service is mounted, how it names tenants and which role its callers get on a tenant they create.

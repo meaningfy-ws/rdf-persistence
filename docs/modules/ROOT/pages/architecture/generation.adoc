@@ -521,6 +521,37 @@ from UML gets no `python_package` from the converter: add the annotation by hand
 imports it. TypeScript is not generated across targets; set `typescript` on the value target itself when
 a consumer needs the types.
 
+[#technical-imports]
+==== Importing the toolkit's technical modules
+
+A consumer's technical module may import a schema of the toolkit's technical models by its path
+under `model/`: `rdf_persistence/model/technical/<theme>/<module>`, for example
+`rdf_persistence/model/technical/api/rp_api_entrypoints`. The importmap keeps every key it had and
+maps one more key per file under `model/technical/`; `model/migrations/` holds migration files, not
+schemas, and is not mapped. A path that names no file fails as any unknown import does.
+
+The generated Python imports such a module's classes from `rdf_persistence`, as it does the
+metamodel's, and does not generate them again. A class the package does not export therefore cannot
+be used, and the supported extension point is one class: `Problem`. Two checks, run before any file
+is written, enforce it:
+
+* *The export check.* A consumer class that names a toolkit technical class (as `is_a`, a mixin or a
+  slot range) which `rdf_persistence` does not export fails with `<consumer class> uses <toolkit
+  class> of <module>, which rdf_persistence does not export`.
+* *The shadow check.* A consumer class that extends a toolkit technical class and has a slot whose
+  Python field name (its `alias`, else its name) is a field of that class, without being that slot,
+  fails with `<consumer class>.<slot> shadows <toolkit class>.<field>`. Narrowing the inherited slot
+  with `slot_usage` stays allowed. A shadowed `type` or `status` would break assignability to
+  `Problem`.
+
+The layer rule stays: a domain or value module never imports a technical one (the boundary check,
+<<toolchain>>, step 2); the subclass goes in a technical module. The toolkit's other technical
+classes may move between releases, which is why only `Problem` is promised.
+
+In TypeScript, the subclass "extends" by assignability, not with the `extends` keyword: the
+generated interface lists every slot it induces, `Problem`'s included, so a value of it is a
+`Problem`, and the names of the toolkit's module are imported from the served types.
+
 [#python-import]
 ==== Two annotations for technical models
 

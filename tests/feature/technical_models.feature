@@ -19,11 +19,12 @@ Feature: Technical models are kept apart from the domain
     And it names the IRI layout module and the service settings module
 
   # spec: rp-generation / the schemas a consumer imports
-  Scenario: A consumer imports the domain schemas and no technical schema
+  Scenario: A consumer imports the domain schemas and the technical schemas
     Given a consumer schema that imports "rdf_persistence/model/rp_core"
     When the schema is loaded
     Then it resolves as before
-    But a consumer schema that imports "rdf_persistence/model/technical/api/rp_api_settings" is refused
+    And a consumer schema that imports "rdf_persistence/model/technical/api/rp_api_settings" resolves
+    But a consumer schema that imports "rdf_persistence/model/migrations/1__2" is refused
 
   # spec: rp-generation / a domain module in a technical target
   Scenario: A technical layer refuses a domain module

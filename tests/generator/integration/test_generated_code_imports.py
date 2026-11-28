@@ -164,26 +164,52 @@ slots:
     slot_uri: lib:counts
     range: integer
     multivalued: true
+  main_part:
+    title: Main part
+    description: The main piece, one object.
+    slot_uri: lib:mainPart
+    range: Piece
+    inlined: true
+    annotations:
+      owned: true
 """
 NARROWED_USAGE = """\
     slot_usage:
       has_part:
+        range: SubPart
         required: true
         multivalued: false
       counts:
         multivalued: false
         equals_number: 1
+      main_part:
+        range: SubPiece
+"""
+PIECE_CLASSES = """\
+  Piece:
+    title: Piece
+    description: A piece, inlined in its holder.
+    class_uri: lib:Piece
+    mixins: [Described]
+  SubPiece:
+    title: Sub piece
+    description: A narrower piece.
+    class_uri: lib:SubPiece
+    is_a: Piece
 """
 
 
 def test_a_subclass_narrowing_a_list_slot_to_one_value_generates_a_package_mypy_accepts(
     project: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """#417: an optional list in the parent, a required single value in the subclass (TC-1, TC-5)."""
+    """#417: an optional list in the parent, a required single value of a narrower range in the
+    subclass (TC-1, TC-5); beside it a compatible covariant override, unmarked (#428 W2)."""
     classes = (
         root_class("Part")
+        + root_class("SubPart", parent="Part")
+        + PIECE_CLASSES
         + root_class("Holder", abstract=True)
-        + "    slots: [has_part, counts]\n"
+        + "    slots: [has_part, counts, main_part]\n"
         + root_class("OnePartHolder", parent="Holder")
         + NARROWED_USAGE
     )
@@ -193,6 +219,11 @@ def test_a_subclass_narrowing_a_list_slot_to_one_value_generates_a_package_mypy_
 
     assert main(["--project", str(pyproject)]) == 0, capsys.readouterr().err
 
+    text = (project / PACKAGE / "domain" / "generated" / "app_narrow.py").read_text()
+    narrower = text[text.index("class OnePartHolder(") :]
+    main_part = next(line for line in narrower.splitlines() if line.startswith("    main_part:"))
+    assert "SubPiece" in main_part, f"the covariant override keeps its range: {main_part}"
+    assert "# type: ignore" not in main_part, f"a covariant override is marked: {main_part}"
     assert mypy_output(project) == "", "the narrowed field is not marked for mypy"
 
 
@@ -232,6 +263,8 @@ KEYED_CLASSES = (
     + "    slots: [parts]\n"
     + root_class("OneKeyedHolder", parent="KeyedHolder")
     + "    slot_usage:\n      parts:\n        required: true\n        multivalued: false\n"
+    + root_class("OptionalOneKeyedHolder", parent="KeyedHolder")
+    + "    slot_usage:\n      parts:\n        multivalued: false\n"
 )
 
 
@@ -252,7 +285,62 @@ def test_a_narrowed_keyed_slot_validates_one_value_and_a_list_still_refuses_a_re
         parts=keyed.Part(id=PART_ID, label="P", code="a"),
     )
     assert one.parts.code == "a", "the narrowed holder validates one part"
+    none = keyed.OptionalOneKeyedHolder(id="https://example.org/ns/library#k-0", label="K")
+    assert none.parts is None, "an absent narrowed keyed slot validates (#428 S2)"
     parts = [keyed.Part(id=PART_ID, label="P", code="a") for _ in range(2)]
     with pytest.raises(ValueError, match="unique_keys by_code"):
         keyed.KeyedHolder(id="https://example.org/ns/library#k-2", label="K", parts=parts)
+    assert mypy_output(project) == "", "the generated package is mypy-clean"
+
+
+DICT_KEYED_SLOTS = """\
+slots:
+  code:
+    title: Code
+    description: The code of a part.
+    slot_uri: lib:code
+    range: string
+  parts_by_id:
+    title: Parts by id
+    description: The parts, keyed by their identifier.
+    slot_uri: lib:partsById
+    range: Part
+    multivalued: true
+    inlined: true
+    annotations:
+      owned: true
+"""
+DICT_KEYED_CLASSES = PART_CLASS + root_class("DictKeyedHolder") + "    slots: [parts_by_id]\n"
+
+
+def test_a_keyed_slot_rendered_as_a_dict_checks_its_values(
+    project: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#428 S1: a multivalued inlined slot over a class with an identifier, no ``inlined_as_list``,
+    is a dict; its unique-key check reads the dict's values (PD-1)."""
+    pyproject = write_project(
+        project,
+        {"app_dict": module("app_dict", DICT_KEYED_CLASSES, slots=DICT_KEYED_SLOTS)},
+    )
+
+    assert main(["--project", str(pyproject)]) == 0, capsys.readouterr().err
+
+    text = (project / PACKAGE / "domain" / "generated" / "app_dict.py").read_text()
+    field = next(line for line in text.splitlines() if line.startswith("    parts_by_id:"))
+    assert "dict[" in field, f"LinkML renders the slot as a dict (RISK-1): {field}"
+    keyed = generated("app_dict")
+
+    def holder(*codes: str) -> object:
+        parts = {
+            f"{PART_ID}-{n}": keyed.Part(id=f"{PART_ID}-{n}", label="P", code=code)
+            for n, code in enumerate(codes)
+        }
+        return keyed.DictKeyedHolder(
+            id="https://example.org/ns/library#d-1", label="D", parts_by_id=parts
+        )
+
+    assert holder().parts_by_id == {}, "an empty dict validates"
+    assert len(holder("a", "b").parts_by_id) == 2, "two parts of different codes validate"
+    with pytest.raises(ValueError, match="unique_keys by_code"):
+        holder("a", "a")
     assert mypy_output(project) == "", "the generated package is mypy-clean"

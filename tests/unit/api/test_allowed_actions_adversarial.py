@@ -359,6 +359,9 @@ def test_the_header_is_documented_on_exactly_the_two_reads(service) -> None:
     }
     assert found == {
         ("/libraries/{t}", "get", "200"),
+        ("/libraries/{t}/audit-findings/{aggregate_id}", "get", "200"),
+        ("/libraries/{t}/audit-results/{aggregate_id}", "get", "200"),
+        ("/libraries/{t}/audits/{aggregate_id}", "get", "200"),
         ("/libraries/{t}/authors/{aggregate_id}", "get", "200"),
         ("/libraries/{t}/book-collections/{aggregate_id}", "get", "200"),
         ("/libraries/{t}/books/{aggregate_id}", "get", "200"),

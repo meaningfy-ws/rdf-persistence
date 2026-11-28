@@ -52,6 +52,7 @@ from rdf_persistence.core.domain.generated.rp_core import (
     AggregateRoot,
     CommitMarker,
     DatabaseKind,
+    DependenceLink,
     GraphKind,
     KeyDuplicate,
     ModuleKind,
@@ -91,7 +92,7 @@ class GrantSet(ConfiguredBaseModel):
         seen: set[str] = set()
         repeated: list[tuple] = []
         value = self.grants
-        for item in value if isinstance(value, list) else ([] if value is None else [value]):
+        for item in value.values() if isinstance(value, dict) else value if isinstance(value, list) else ([] if value is None else [value]):
             key = (item.assignee, item.target, item.role, item.action,)
             if repr(key) in seen:
                 repeated.append(key)
@@ -116,7 +117,7 @@ class CallerAccess(ConfiguredBaseModel):
         seen: set[str] = set()
         repeated: list[tuple] = []
         value = self.grants
-        for item in value if isinstance(value, list) else ([] if value is None else [value]):
+        for item in value.values() if isinstance(value, dict) else value if isinstance(value, list) else ([] if value is None else [value]):
             key = (item.assignee, item.target, item.role, item.action,)
             if repr(key) in seen:
                 repeated.append(key)

@@ -20,6 +20,7 @@ CLASS_ANNOTATIONS = {
     "rp_unlabelled",
     "rp_writes",
     "rp_on_referenced_delete",
+    "rp_dependent_on",
     "workflow",
 }
 

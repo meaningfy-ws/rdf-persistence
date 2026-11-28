@@ -81,7 +81,10 @@ SEGMENT_ANNOTATIONS = (
     RpAnnotation.RP_PATH,
     RpAnnotation.RP_IRI_TYPE,
 )  # the ones a segment of a route or IRI
-PATTERNED_ANNOTATIONS = (*SEGMENT_ANNOTATIONS, RpAnnotation.WORKFLOW)
+SLOT_NAME_PATTERN = (
+    "^[a-z][a-z0-9_]*$"  # a snake_case LinkML slot name, the value of rp_dependent_on
+)
+PATTERNED_ANNOTATIONS = (*SEGMENT_ANNOTATIONS, RpAnnotation.WORKFLOW, RpAnnotation.RP_DEPENDENT_ON)
 # Read from the toolkit's own metamodel only (permissible values); `vocabulary.media_types` checks it at import.
 METAMODEL_ANNOTATIONS = (RpAnnotation.MEDIA_TYPE,)
 # Every annotation the toolkit reads, and the values it accepts (the enums of rp_core). rp_path takes
@@ -220,13 +223,18 @@ def segment_pattern() -> str:
     return str(load_schema(CORE_MODEL).get_slot(URL_SEGMENT).pattern)
 
 
+def pattern_of(tag: Enum) -> str:
+    """The pattern the value of a patterned annotation must match: a slot name for ``rp_dependent_on``, else a URL segment."""
+    return SLOT_NAME_PATTERN if tag == RpAnnotation.RP_DEPENDENT_ON else segment_pattern()
+
+
 def _lowered(element: object, tag: Enum) -> str | None:
     """The lower-cased value of the element's annotation ``tag``, of either annotation enum."""
     text = annotation_text(element, tag)
     return None if text is None else text.lower()
 
 
-def _annotation_problems(schema: SchemaDefinition, pattern: str) -> Iterator[CheckProblem]:
+def _annotation_problems(schema: SchemaDefinition) -> Iterator[CheckProblem]:
     for element in _annotated_elements(schema):
         name = str(element.name)
         for tag, allowed in (*ALLOWED_ANNOTATIONS.items(), *GENERATION_ALLOWED_ANNOTATIONS.items()):
@@ -237,6 +245,7 @@ def _annotation_problems(schema: SchemaDefinition, pattern: str) -> Iterator[Che
                 )
         for tag in PATTERNED_ANNOTATIONS:
             text = annotation_text(element, tag)
+            pattern = pattern_of(tag)
             if text is not None and not re.fullmatch(pattern, text):
                 yield rule_problem(
                     HardRule.ANNOTATION,
@@ -429,7 +438,7 @@ def hard_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
     own = {schema.name for schema in schemas}
     return [
         *(p for schema in schemas for p in _schema_problems(schema)),
-        *(p for schema in schemas for p in _annotation_problems(schema, segment_pattern())),
+        *(p for schema in schemas for p in _annotation_problems(schema)),
         *default_instance_problems(view, schemas),
         *_class_problems(view, classes),
         *_slot_name_problems(view, own),

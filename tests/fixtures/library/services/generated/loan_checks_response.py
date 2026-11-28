@@ -28,20 +28,48 @@ from pydantic import (
     model_serializer
 )
 from rdf_persistence import (
+    AccountSummary,
+    Action,
     AggregateKey,
     AggregateRoot,
+    Authorised,
+    CallerAccess,
     CommitMarker,
+    Contains,
     DatabaseKind,
+    DependenceLink,
+    Described,
+    Grant,
+    GrantSet,
     GraphKind,
     KeyDuplicate,
+    LabelUpdate,
+    MemberList,
     ModuleKind,
     OnReferencedDelete,
+    Page,
     PendingLoad,
+    Policy,
     Principal,
+    Problem,
+    ProblemKind,
+    Prohibition,
+    Referrer,
+    ReferrerList,
     RegistryEntry,
     RegistryKind,
+    RoleDefinition,
+    RoleLevel,
     RpAnnotation,
+    Rule,
+    TenantAccess,
+    TenantCreate,
+    TenantLabelled,
+    TenantState,
+    TenantSweepReport,
+    Tracked,
     UniqueScope,
+    VerifiedCaller,
     WritesKind
 )
 from tests.fixtures.library.domain.generated.values.loan_checks import (
@@ -49,6 +77,8 @@ from tests.fixtures.library.domain.generated.values.loan_checks import (
     LoanFinding,
     LoanStatus
 )
+
+from .library_problems import HeldKeyProblem
 
 
 metamodel_version = "1.12.0"

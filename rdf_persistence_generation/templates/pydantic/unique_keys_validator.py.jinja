@@ -3,7 +3,7 @@
         seen: set[str] = set()
         repeated: list[tuple] = []
         value = self.{{ slot }}
-        for item in value if isinstance(value, list) else ([] if value is None else [value]):
+        for item in value.values() if isinstance(value, dict) else value if isinstance(value, list) else ([] if value is None else [value]):
             key = ({% for key_slot in key_slots %}item.{{ key_slot }},{{ " " if not loop.last }}{% endfor %})
             if repr(key) in seen:
                 repeated.append(key)

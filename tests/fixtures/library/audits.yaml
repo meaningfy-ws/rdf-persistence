@@ -1,0 +1,71 @@
+id: https://example.org/ns/library/audits
+name: audits
+title: Audits module
+description: Audits of the library, their results and findings; a result and a finding are aggregate roots stored apart from the whole they depend on.
+prefixes:
+  lib: https://example.org/ns/library#
+  linkml: https://w3id.org/linkml/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: lib
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Audit:
+    title: Audit
+    description: An audit of the library; an aggregate root, the whole that its results depend on.
+    class_uri: lib:Audit
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [cites_finding]
+    annotations:
+      rp_path: audits
+      database: tenant
+  AuditResult:
+    title: Audit result
+    description: The result of an audit; an aggregate root stored apart from its audit, which cannot exist without it.
+    class_uri: lib:AuditResult
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [of_audit]
+    slot_usage:
+      of_audit:
+        required: true
+    annotations:
+      rp_path: audit-results
+      database: tenant
+      rp_dependent_on: of_audit
+  AuditFinding:
+    title: Audit finding
+    description: A finding of an audit result; an aggregate root that depends on its result, and that cannot be deleted while another aggregate still cites it.
+    class_uri: lib:AuditFinding
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [of_result]
+    slot_usage:
+      of_result:
+        required: true
+    annotations:
+      rp_path: audit-findings
+      database: tenant
+      rp_dependent_on: of_result
+      rp_on_referenced_delete: refuse
+
+slots:
+  of_audit:
+    title: Of audit
+    description: The audit a result belongs to, another aggregate, stored as its IRI.
+    slot_uri: lib:ofAudit
+    range: Audit
+  of_result:
+    title: Of result
+    description: The audit result a finding belongs to, another aggregate, stored as its IRI.
+    slot_uri: lib:ofResult
+    range: AuditResult
+  cites_finding:
+    title: Cites finding
+    description: A finding the audit cites, another aggregate outside its own parts, stored as its IRI.
+    slot_uri: lib:citesFinding
+    range: AuditFinding

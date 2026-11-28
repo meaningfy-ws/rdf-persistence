@@ -50,12 +50,21 @@ LOAD_ERRORS = (OSError, yaml.YAMLError, ValueError, TypeError)
 
 
 def metamodel_importmap() -> dict[str, str]:
-    """Map each ``rdf_persistence/model/<module>`` import to the installed package's module file."""
+    """Map each ``rdf_persistence/model/<module>`` import to the installed package's module file.
+
+    The technical modules are mapped too, by their path under ``model/``
+    (``rdf_persistence/model/technical/<theme>/<module>``); ``model/migrations/`` is not.
+    """
     model_dir = PACKAGE_DIR / "model"
-    return {
+    importmap = {
         f"{MODEL_PREFIX}/{module.stem}": str(module.with_suffix(""))
         for module in model_dir.glob("*.yaml")
     }
+    for module in model_dir.glob("technical/**/*.yaml"):
+        importmap[f"{MODEL_PREFIX}/{module.relative_to(model_dir).with_suffix('').as_posix()}"] = (
+            str(module.with_suffix(""))
+        )
+    return importmap
 
 
 def generated_folder(schema_path: Path) -> Path:

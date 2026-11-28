@@ -2,6 +2,10 @@
   "linkml": "1.12.1",
   "inputs": [
     {
+      "path": "audits.yaml",
+      "sha256": "78656ce3bbac359090e2368c186652a8d3f5858f96f7a4caabc5c339674619a5"
+    },
+    {
       "path": "books.yaml",
       "sha256": "85a6afa3c83350a0d501431e0b6a460d6ec044cb7d14d1ffdc35e9ee5bda5ee0"
     },
@@ -11,7 +15,7 @@
     },
     {
       "path": "library.yaml",
-      "sha256": "026bf658d6444304e9dd5309129f3f1054590feb4a6156566d622c31d1082c85"
+      "sha256": "f8166b3d8f6ae4f320ac202f8833ab009fad6e76a42002f4d6ef08de86241eed"
     },
     {
       "path": "library_access.yaml",
@@ -39,7 +43,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "bd729b1def754fa3f10d3bc9d49f62e1a0eba04e2d3a2e36e5f1a76515d56dd9"
+      "sha256": "baa950c438b57a6905d88eaa24d2c33a9492ead62e3a543814d5756e99bf15b0"
     },
     {
       "path": "rdf_persistence/model/rp_discussion.yaml",
@@ -95,11 +99,11 @@
     },
     {
       "path": "rdf_persistence/schema/services/schema.py",
-      "sha256": "5ddb6000ffe09e97e4824bf3f935a5eb50217130afcdf3e97f55176fb62c5f79"
+      "sha256": "f1573618e006538ecd609a11f6d89823b6764f8497d60e4855f1676e061abdaa"
     },
     {
       "path": "rdf_persistence/schema/services/schema_structure.py",
-      "sha256": "f36aa1f7164890c96fa827397d82aecf4dbfe4be091fc33e7a17068d0d8336a5"
+      "sha256": "74d9bc74388ac49efc423f58c0b14d99269f679d1eebb91583df403a71f19391"
     },
     {
       "path": "rdf_persistence_generation/__init__.py",
@@ -115,15 +119,19 @@
     },
     {
       "path": "rdf_persistence_generation/checks/boundary.py",
-      "sha256": "342d23f5b5c9f322b87a1c4e9454e262eae8c9e84223575944abaa2956ab83a8"
+      "sha256": "8a9ce24dafe9bb9d8921900c33b90507737989d6057257ca1a2e7e29283f63cb"
     },
     {
       "path": "rdf_persistence_generation/checks/default_instance.py",
       "sha256": "fa8f1537a696c43d86997d935eccd14b15154a6c14d41e922448ff5aca1dac5e"
     },
     {
+      "path": "rdf_persistence_generation/checks/dependence.py",
+      "sha256": "91c962f393111fc29d5db20e26afa394c13f937a560945560576ca8b3d905a60"
+    },
+    {
       "path": "rdf_persistence_generation/checks/hard.py",
-      "sha256": "61160a9c24f6e5394801a8db690cf147f8786343a90891b52bc4a79df5a2505f"
+      "sha256": "4ac246b5682df37e36e1fde3c40d1b799c62ebe47a9f5d784d77d480c4f855f3"
     },
     {
       "path": "rdf_persistence_generation/checks/importable.py",
@@ -171,7 +179,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_split.py",
-      "sha256": "399d213d9716273bf821ed4e6cd07c1e36e63f71f96ade8c2c8e40edbcc273b5"
+      "sha256": "16a2da1727412e9ec05959f5b0d0dabf2ae10ea875f8f62172652701d0dc3875"
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_validators.py",
@@ -187,7 +195,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/typescript.py",
-      "sha256": "d1aba6a8c2059e93985eafc1d72ce9b046aaa54de885f7d627c0da618bd9fe2c"
+      "sha256": "0cb54b5cfe5d7002752c91b7f11b74bd5eb5e652b7ee8ae59575ef365a921f4e"
     },
     {
       "path": "rdf_persistence_generation/lock.py",
@@ -207,11 +215,15 @@
     },
     {
       "path": "rdf_persistence_generation/pipeline.py",
-      "sha256": "e4b0aa72d71aea4f199624b742c176b9d8814013705d0e6db4174a3ccc323f1d"
+      "sha256": "767feaec047eb797c8d4cf377b5f422672884881d97d8735a56c8fed34c799f4"
     },
     {
       "path": "rdf_persistence_generation/problems.py",
       "sha256": "e001f00d0286a4cb6a736a13b9176eb01e32dc8af7eb0f5d3cc78405dc0c33d0"
+    },
+    {
+      "path": "rdf_persistence_generation/schema_cache.py",
+      "sha256": "e8a71d2c78258fd99ac0780dfe88f0c6a286f7f1052a7f2fc3511f2fb9187855"
     },
     {
       "path": "rdf_persistence_generation/steps.py",
@@ -247,7 +259,7 @@
     },
     {
       "path": "rdf_persistence_generation/templates/pydantic/unique_keys_validator.py.jinja",
-      "sha256": "ec9a89704984d61bb2995bf60b321c4514ddf997339c8af7adc4baec96ecf0c1"
+      "sha256": "c523508daf5685a375ee49beb05e57c26bb92a29825f9adf1e637d8df0cee260"
     },
     {
       "path": "rdf_persistence_generation/templates/pydantic/validator.py.jinja",
@@ -323,7 +335,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/tags.py",
-      "sha256": "338a6db1655e29b43e668d3143db6d0c27e86bc86f40565af5be6715073b921b"
+      "sha256": "a082fee20135f33c89f866f73c4d98dfc2add7b9e53ba6d15e5602cf02a1e825"
     },
     {
       "path": "rdf_persistence_generation/uml/toolkit.py",
@@ -358,6 +370,18 @@
     {
       "path": "domain/generated/ApproveBook.frame.jsonld",
       "sha256": "844013c34c1d2fc4a2dd3305aa6ff33914019105f8e39e9a99f33d213338b6b2"
+    },
+    {
+      "path": "domain/generated/Audit.frame.jsonld",
+      "sha256": "306edb0d4723af7c057e08fcdecb865f6696dc10df4d2ec329ecf1d83b1182fd"
+    },
+    {
+      "path": "domain/generated/AuditFinding.frame.jsonld",
+      "sha256": "1d003325a472a79004ee4fa7f04f5360f9db83d68ea27acf6038abbe0793c12d"
+    },
+    {
+      "path": "domain/generated/AuditResult.frame.jsonld",
+      "sha256": "df7d54153e4ad4ba5aae57fa4d0618b68a79453bd17e37ecfc796d4cb9ca2e37"
     },
     {
       "path": "domain/generated/Author.frame.jsonld",
@@ -444,6 +468,10 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
+      "path": "domain/generated/audits.py",
+      "sha256": "7fce219debb489e51717c438332a44c94c236e9afc1c9d459dd3fa18e6cc253b"
+    },
+    {
       "path": "domain/generated/books.py",
       "sha256": "1fd90759d6fb3ad054a48de68021256e17cc311223aad93121c9ec166e04abac"
     },
@@ -453,7 +481,11 @@
     },
     {
       "path": "domain/generated/context.jsonld",
-      "sha256": "2435c558b77aab63e5f3b13b6f578dc5c362d4f2eba128f203e84ebce31d41a8"
+      "sha256": "967bea40c97ec0b40e17613e8df02f2ede0fc206cd918c0feece0df68c1676f7"
+    },
+    {
+      "path": "domain/generated/diagrams/audits.mmd",
+      "sha256": "060df7e4d964e3aca6a2cdbc34d9d28a619e41f29369f4f015fa57cbb2a72a5c"
     },
     {
       "path": "domain/generated/diagrams/books.mmd",
@@ -481,7 +513,7 @@
     },
     {
       "path": "domain/generated/library.py",
-      "sha256": "b812c648380567001bfcabfa0990938c71d47acff4f6f80b8af7a08b6285b877"
+      "sha256": "811a0bc88a599442ff446cf2a431dbba15951ab56bbfe7808177605b8a85df14"
     },
     {
       "path": "domain/generated/library_access.py",
@@ -493,7 +525,7 @@
     },
     {
       "path": "domain/generated/openapi-components.json",
-      "sha256": "a221567012bcc850b6990b5dce9aafe6e83ae3eca4a5dd0f6aca6fb529c7acf9"
+      "sha256": "4503936571f5ffeb032ad9b69f81884eb6f50633b1846b5ccd6691c3477ca696"
     },
     {
       "path": "domain/generated/scans.py",
@@ -501,7 +533,7 @@
     },
     {
       "path": "domain/generated/shapes.ttl",
-      "sha256": "44550f2996e2ceeda74410e4b77dba7e7ac524be889609351e24ddaabbc8029e"
+      "sha256": "183b44c82b4a2485d36c003fe59db7ecb00f8355de115d9a5c020fa88a21307c"
     },
     {
       "path": "domain/generated/templates.py",
@@ -509,7 +541,11 @@
     },
     {
       "path": "migrations/schema.lock.json",
-      "sha256": "8a077311c8d072dedde90144f35b5e4df67089880c71ddfc6a021b25747fe1cd"
+      "sha256": "1a4491470e35d4a4f353ba0bd9f50b8dca1236687a4bee153a2586a3cb97239e"
+    },
+    {
+      "path": "web/src/domain/generated/audits.ts",
+      "sha256": "9d42e9eec0efadc7397346f3e5fefaa83237063389575e4d618b2ea48343e7ee"
     },
     {
       "path": "web/src/domain/generated/books.ts",
@@ -521,7 +557,7 @@
     },
     {
       "path": "web/src/domain/generated/index.ts",
-      "sha256": "5c3f30ec1ad50020ba6f1dbb42010af17a0db7d89229bd1386310a81e111e091"
+      "sha256": "b2976f083426b1db63c1f3f19329d6de6f38389949b45922d6a364b339639ad8"
     },
     {
       "path": "web/src/domain/generated/library_access.ts",
@@ -541,7 +577,7 @@
     },
     {
       "path": "web/src/domain/generated/rp_core.ts",
-      "sha256": "2106c1a6aaf5c10847fad5e0459422d6195715407f58e65e00e62472d96a2e1f"
+      "sha256": "000ae28f3603b45e284089ce9293bbb79c6f43f3baab937aff2f41e4747c933a"
     },
     {
       "path": "web/src/domain/generated/rp_discussion.ts",

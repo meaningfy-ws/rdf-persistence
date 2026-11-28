@@ -14,7 +14,7 @@ from http import HTTPStatus
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from starlette.exceptions import HTTPException
 
 from rdf_persistence.api.entrypoints.auth import BEARER_SCHEME
@@ -132,7 +132,10 @@ ERROR_KINDS: tuple[tuple[type[PersistenceError], ProblemKind], ...] = (
     (errors.MigrationFailed, UNAVAILABLE),  # raised at start-up, for the same reason
     (errors.TenantBehind, TENANT_BEHIND),
     (errors.StoreNotWired, INTERNAL_ERROR),
+    (errors.RuleRefusal, INTERNAL_ERROR),  # the fallback; a registered refusal is answered as built
 )
+# The statuses a rule's own problem may have.
+_REFUSAL_STATUSES = frozenset({HTTPStatus.CONFLICT, HTTPStatus.UNPROCESSABLE_ENTITY})
 # The statuses the framework raises on its own, which have a kind of their own.
 _OF_THE_FRAMEWORK = {
     HTTPStatus.NOT_FOUND.value: NOT_FOUND,
@@ -243,17 +246,53 @@ def validation_detail(error: ValidationError) -> str:
     return "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in error.errors())
 
 
+def refusal_response(
+    base: str, error: errors.RuleRefusal, refusal_problems: tuple[type[BaseModel], ...]
+) -> Response:
+    """The answer to a rule's refusal (PD-6): its problem as built, or a 500 internal-error.
+
+    The problem is sent as the rule built it, extra fields and ``detail`` included, when its class is
+    exactly one of ``refusal_problems`` and its status is 409 or 422. Any other (an unregistered
+    class, a subclass of a registered one, an object that is no problem, another status) is a bug of
+    the rule: one error record, no traceback, and the 500 problem.
+    """
+    problem = error.problem
+    status = getattr(problem, "status", None)
+    if type(problem) in refusal_problems and status in _REFUSAL_STATUSES:
+        assert isinstance(problem, Problem), "registration admits only subclasses of Problem"
+        return problem_response(problem)
+    reason = "unregistered class" if type(problem) not in refusal_problems else f"status {status}"
+    log.error(
+        "rule refusal answered as internal error",
+        extra=log_extra(
+            LogContext(
+                step="answer-rule-refusal",
+                error_type=f"{type(problem).__module__}.{type(problem).__qualname__}",
+                error_detail=reason,
+            )
+        ),
+    )
+    return problem_response(problem_for(base, INTERNAL_ERROR))
+
+
 def install_problem_handlers(
     app: FastAPI,
     base: str,
     locate: Callable[[str, str], tuple[str, str] | None] | None = None,
+    *,
+    refusal_problems: tuple[type[BaseModel], ...] = (),
 ) -> None:
     """Make ``app`` answer every mapped toolkit error, every validation error and every unknown path as a problem.
 
     ``locate`` is given to ``in_use_problem``, so the referrers it names carry the address they are served at.
+    ``refusal_problems`` are the problem classes a rule may refuse with (``refusal_response``).
     """
 
     async def toolkit_error(_: Request, error: Exception) -> Response:
+        if isinstance(
+            error, errors.RuleRefusal
+        ):  # first: never logged as an internal error with a traceback
+            return refusal_response(base, error, refusal_problems)
         kind = kind_of(error)
         assert kind is not None, "a handler is registered only for mapped errors"
         if kind.status == HTTPStatus.INTERNAL_SERVER_ERROR:

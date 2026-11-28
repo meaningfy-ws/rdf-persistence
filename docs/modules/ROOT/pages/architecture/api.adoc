@@ -177,6 +177,32 @@ store refuses (`ToolkitStore` in `persistence/services/store.py` turns the store
 `SparqlError`), or stored data that does not validate. A bad query string from the caller stays 400
 `bad-query`; so does a filter on an IRI-valued slot whose value is not an IRI SPARQL can carry.
 
+*A refusal by a rule with its own problem.* A write rule may raise `RuleRefusal` with a problem
+object (a subclass of `Problem`). The answer depends on what the application registered with
+`refusal_problems`:
+
+[cols="3,2",options="header"]
+|===
+|The refusal |The answer
+
+|`RuleRefusal` whose problem is of a registered class, with status 409 or 422
+|that problem as the rule built it, extra fields and `detail` included; nothing is logged
+
+|`RuleRefusal` whose problem is of an unregistered class (a subclass of a registered one included),
+is not a `Problem`, or has another status
+|500 `internal-error`, with none of the rule's fields; one `error` record names the class or the
+status, with no traceback
+
+|`RuleRefusal` raised by a delete rule
+|500, as any other exception of a rule
+|===
+
+The check is on the exact class and runs before the internal-error logging, so a registered refusal
+is never logged as a fault. In this release the OpenAPI document does not list a consumer's problem
+classes: the published `Problem` component is closed and does not name their extra fields. How to
+write one is in
+xref:user-manual/access.adoc#refuse-with-own-problem[Refuse with your own problem].
+
 *Listings.* A query takes `limit` (1 to 200, default 50), `offset` (default 0),
 `sort` (a slot name, descending with a leading `-`; by IRI when absent) and `?<slot>=<value>`
 equality filters. Filters are typed by the slot's range: an enum value is matched by its meaning

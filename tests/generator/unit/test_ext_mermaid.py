@@ -33,6 +33,7 @@ def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
 def test_one_diagram_per_module_of_the_application(staged: Path) -> None:
     names = sorted(p.name for p in staged.iterdir())
     assert names == [
+        "audits.mmd",
         "books.mmd",
         "books_activities.mmd",
         "library_access.mmd",

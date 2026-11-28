@@ -134,6 +134,18 @@ FAULTS = (
         "books",
         ("library_access", "technical"),
     ),
+    Fault(  # the dependence rule; its own cases are in test_dependence_check.py
+        BoundaryRule.DEPENDENCE,
+        (
+            Edit(
+                "books.yaml",
+                "      rp_path: books\n",
+                "      rp_path: books\n      rp_dependent_on: owner\n",
+            ),
+        ),
+        "Book",
+        ("owner",),
+    ),
 )
 
 PASSING = (

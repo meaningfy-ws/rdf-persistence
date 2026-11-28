@@ -29,6 +29,8 @@ export type RpAnnotation =
   | "rp_writes"
   /** Class annotation (see OnReferencedDelete). `refuse` on an aggregate root class: deleting an instance that another aggregate still points at is refused, naming the referrers. */
   | "rp_on_referenced_delete"
+  /** Class annotation on an aggregate root: the name of its pointer slot, a required single-valued slot that ranges over the root it depends on (its whole). The class is a dependent aggregate: stored in a graph of its own, written without touching its whole, and deleted with it. A subclass inherits it; mixins do not carry it. */
+  | "rp_dependent_on"
   /** Class annotation on an aggregate root: the name of the workflow its instances follow, which follows the pattern of the url_segment slot; the root includes UnderWorkflow. A subclass inherits it. */
   | "workflow"
   /** Slot annotation, `true` when the session writes the slot about a graph (its version, who created or contributed to it, when); closed shapes ignore the statement. */
@@ -140,4 +142,14 @@ export interface KeyDuplicate {
   key_values: string[];
   /** The IRIs of the roots that hold the values, sorted. */
   key_roots: string[];
+}
+
+/** One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each side lists the class and its concrete subclasses. */
+export interface DependenceLink {
+  /** The IRIs of the dependent class and of its concrete subclasses. */
+  part_classes: string[];
+  /** The IRI of the predicate of the pointer slot, from the part to its whole. */
+  pointer: string;
+  /** The IRIs of the class the pointer ranges over and of its concrete subclasses. */
+  whole_classes: string[];
 }

@@ -130,7 +130,9 @@ xref:user-manual/access.adoc#validators[Enforce your own rules on tenant writes]
 Pass `aggregate_validators` to `install_service`: a mapping from a class name to rules, each
 `(old, new, principal, reader)`, sync or async; a rule raises `InvalidBody` to refuse, the answer
 is 422 and nothing is written. See
-xref:user-manual/access.adoc#aggregate-validators[Enforce your own rules on aggregate writes].
+xref:user-manual/access.adoc#aggregate-validators[Enforce your own rules on aggregate writes]. To
+answer with a problem of your own (extra fields, 409 or 422), see
+xref:user-manual/access.adoc#refuse-with-own-problem[Refuse with your own problem].
 
 *How do I refuse a delete?*::
 Pass `delete_validators` to `install_service`: a mapping from a class name to rules, each
