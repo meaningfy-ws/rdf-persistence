@@ -214,3 +214,12 @@ None.
   and 1.1's test files in the worktree (all passed) and mypy on the three changed modules (clean),
   and read the diff. The builder did not see its new tests fail first (it wrote them before the code
   but first ran them after). The adversarial tester follows on 1.2's commit (`1f838c23`).
+- **D-7 The tester after 1.2: 137 probes, no behavioural defect; one finding, lead-fixed.**
+  `tests/unit/collaboration/test_find_adversarial.py` probes the order of refusals in both readers
+  (31 rows each), `find_items`, the cache (generic and same-named classes), the bounded message
+  (to 100k characters, recursive values) and the conformance kit against six mutant fakes. *T-1:*
+  Xenon ranked `FakeAggregateReader.find` C after 1.2; the lead split its last refusals into
+  `_refuse_after_the_values` (light chore, `lead-fixed: T-1`). The tester waited on a `sleep` once
+  (a guard slip, T1): its report is not taken as the gate; the lead's wave gate is (D-3). Its
+  fixtures duplicate `test_reader_conformance.py`'s, since the suite forbids cross-test imports:
+  under the floor.
