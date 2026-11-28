@@ -82,7 +82,42 @@ def _refused(*fragments: str) -> Callable[[Converted], None]:
     return check
 
 
+def second_pointer() -> UmlLink:
+    """A second association whose role on ``Audit``'s end is another slot of ``AuditResult``."""
+    return link(4, RESULT, AUDIT, target_role="lib:ofAuditToo", target_card="1")
+
+
+REVIEW = 22
+
+
+def under_two_wholes() -> UmlModel:
+    """``AuditResult`` is the «own graph» part of ``Audit`` and of ``Review``, each with its pointer."""
+    return model(
+        klass(AUDIT, "lib:Audit"),
+        klass(RESULT, "lib:AuditResult"),
+        klass(REVIEW, "lib:Review"),
+        links=(
+            pointer(),
+            link(5, RESULT, REVIEW, target_role="lib:ofReview", target_card="1"),
+        ),
+        compositions=(
+            composition(3, AUDIT, RESULT, own_graph=True, stereotype="own graph"),
+            composition(6, REVIEW, RESULT, own_graph=True, stereotype="own graph"),
+        ),
+    )
+
+
 ROWS = [
+    pytest.param(
+        drawn(pointer(), second_pointer()),
+        _refused("AuditResult -> Audit", "two roles", POINTER, "of_audit_too"),
+        id="failure: two roles on the whole's end",
+    ),
+    pytest.param(
+        under_two_wholes(),
+        _refused("AuditResult", "Audit", "Review", "one whole"),
+        id="failure: a part with two «own graph» wholes",
+    ),
     pytest.param(drawn(pointer()), _converts, id="a role on the whole's end, exactly one"),
     pytest.param(drawn(pointer("1..1")), _converts, id="a role on the whole's end, 1..1"),
     pytest.param(

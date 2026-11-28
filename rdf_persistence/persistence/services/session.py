@@ -1753,14 +1753,16 @@ class Transaction:
                 self._cascaded[part] = self._cascaded.get(whole, whole)
                 try:
                     await self._remove_read(part, version, class_iri)
-                except (Conflict, RuntimeError) as error:
+                except (Conflict, NotFound, Forbidden, RuntimeError) as error:
                     if self._named(part) == part:
                         raise
                     raise self._veiled(error, self._cascaded[part]) from error
         self._refuse_parts_of_removed()
 
     @staticmethod
-    def _veiled(error: Conflict | RuntimeError, whole: str) -> Conflict | RuntimeError:
+    def _veiled(
+        error: Conflict | NotFound | Forbidden | RuntimeError, whole: str
+    ) -> Conflict | NotFound | Forbidden | RuntimeError:
         """``error``, raised for a cascaded part the caller may not read, as the same kind of error
         naming ``whole`` and "a dependent part" only; the original stays its cause, for logs (PD-10,
         A-6). The type is kept, so the answer's status is the same."""

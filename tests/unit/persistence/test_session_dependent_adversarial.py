@@ -11,6 +11,7 @@ from rdflib import RDF, URIRef
 from rdf_persistence.core.domain.exceptions import (
     CommitTooLarge,
     Conflict,
+    Forbidden,
     InUse,
     NotFound,
     Refused,
@@ -364,6 +365,32 @@ async def test_a_refusing_part_cited_from_outside_is_named_only_when_readable(st
         shown = names(error.value, F1) or F1 in error.value.iris
         assert shown is named, "the part is named exactly when the caller may read it"
         assert await is_stored(session, F1), "nothing was removed"
+
+
+class Vanishing(Pinning):
+    """A write guard that finds a cascaded part gone or barred when it prepares the removal."""
+
+    def __init__(self, kind: type[Exception], gone: frozenset[str]) -> None:
+        super().__init__(gone)
+        self.kind = kind
+
+    async def prepare_remove(self, session, iri, if_version, *, context):
+        if iri in self.pinned:
+            raise self.kind(f"no graph {iri}")
+
+
+@pytest.mark.parametrize("kind", [NotFound, Forbidden])
+async def test_a_part_gone_or_barred_before_collection_is_never_named_when_unreadable(store, kind):
+    """Attacks PD-10 (a NotFound from the read of a part that vanished after discovery, or a
+    Forbidden from a workflow guard, names the part's IRI)."""
+    guards = Vanishing(kind, frozenset({R2}))
+    async with opened(store, guards=guards, may_read=reading(R2)) as session:
+        a1 = await session.add_graph(A1, audit(A1))
+        await session.add_graph(R2, result(R2, A1))
+        with pytest.raises(kind) as error:
+            await session.remove(A1, a1)
+        assert R2 not in str(error.value), "the unreadable part is not named"
+        assert A1 in str(error.value), "the whole is named"
 
 
 async def test_a_part_changed_meanwhile_is_never_named_when_unreadable(store):

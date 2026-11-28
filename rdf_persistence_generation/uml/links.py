@@ -115,12 +115,23 @@ def _end_name(ctx: Context, end: UmlLinkEnd, holder: UmlElement | None) -> UmlNa
 
 
 def dependent_parts(ctx: Context, aggregates: UmlAggregates) -> dict[int, int]:
-    """The generated classes in an «own graph» composition, each with the class that is its whole (PD-13)."""
-    return {
-        row.part_id: row.whole_id
-        for row in aggregates.part_of or []
-        if row.own_graph and row.part_id in ctx.elements
-    }
+    """The generated classes in an «own graph» composition, each with the class that is its whole (PD-13).
+
+    A part has exactly one pointer (DEC-1): a part under two wholes is a problem naming it and both.
+    """
+    wholes: dict[int, int] = {}
+    for row in aggregates.part_of or []:
+        if not (row.own_graph and row.part_id in ctx.elements):
+            continue
+        first = wholes.setdefault(row.part_id, row.whole_id)
+        if first != row.whole_id:
+            ctx.findings.problem(
+                UmlRule.BOUNDARY_OWNED,
+                _name_of(ctx, row.part_id),
+                f"an «own graph» part of two wholes ({_name_of(ctx, first)}, "
+                f"{_name_of(ctx, row.whole_id)}); it has one whole and one pointer",
+            )
+    return wholes
 
 
 def tree_parts(ctx: Context, aggregates: UmlAggregates) -> set[int]:

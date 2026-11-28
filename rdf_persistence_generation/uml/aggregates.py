@@ -36,7 +36,6 @@ from rdf_persistence_generation.uml.slots import Usage, is_owned
 
 MODULE_KIND: Final = RpAnnotation.MODULE_KIND.value
 DOMAIN: Final = ModuleKind.DOMAIN.value
-OWN_GRAPH: Final = "own graph"
 DIRECTED: Final = "Source -> Destination"
 BIDIRECTIONAL: Final = "Bi-Directional"
 ARROW: Final = "→"
@@ -171,7 +170,8 @@ class _Pass:
         )
 
     def is_own_graph(self, each: UmlComposition) -> bool:
-        return bool(each.own_graph) or (each.uml_stereotype or "").strip().lower() == OWN_GRAPH
+        """Whether the reader marked the composition «own graph» (``UmlComposition.own_graph``)."""
+        return bool(each.own_graph)
 
     def mark_inside(self) -> None:
         """Leave the classes below a not-generated own-graph part inside it, then refuse a generalisation to one (A-7, A-8)."""
