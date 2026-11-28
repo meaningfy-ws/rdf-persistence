@@ -1,0 +1,9 @@
+# One target over measures.yaml (langstring-support 1.0). Tests generate it into tmp_path;
+# no generated package is kept in the repository.
+[[tool.rp-generate]]
+schema = "measures.yaml"
+package = "ms.domain.generated"
+python = "domain/generated"
+typescript = "web/src/domain/generated"
+toolkit-typescript = true
+migrations = "migrations"

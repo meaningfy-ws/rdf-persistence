@@ -1,0 +1,45 @@
+id: https://example.org/ns/measures
+name: measures
+title: Measures
+version: "1"
+description: One aggregate with a decimal, a float and a double slot; the JSON and TypeScript forms of the three ranges are tested on it (langstring-support DEC-8).
+prefixes:
+  ms: https://example.org/ns/measures#
+  linkml: https://w3id.org/linkml/
+  rp: https://meaningfy.ws/ns/rdf-persistence#
+default_prefix: ms
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Measure:
+    title: Measure
+    description: A measure taken three ways.
+    class_uri: ms:Measure
+    mixins: [AggregateRoot, Described]
+    slots: [dec, flt, dbl]
+    annotations:
+      rp_path: measures
+      database: tenant
+
+slots:
+  dec:
+    title: Decimal value
+    description: A decimal value.
+    slot_uri: ms:dec
+    range: decimal
+  flt:
+    title: Float value
+    description: A float value.
+    slot_uri: ms:flt
+    range: float
+  dbl:
+    title: Double value
+    description: A double value.
+    slot_uri: ms:dbl
+    range: double
