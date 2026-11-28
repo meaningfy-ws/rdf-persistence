@@ -50,15 +50,44 @@ def role_entries(ctx: Context, model: UmlModel) -> list[RoleDefinition]:
     return sorted(entries, key=lambda e: (e.role, e.level))
 
 
+def _classifier_of(ctx: Context, drawn: UmlObject) -> int | None:
+    """The class that types the Object, or None after a problem (PD-11).
+
+    The classifier, or with none the one class the Object realises; a Realisation to another class
+    than the classifier, or to two classes, is a ``role_definition`` problem naming the classes.
+    """
+    realised = sorted(set(drawn.realised_ids or []), key=lambda each: _label(ctx, each))
+    classifier = drawn.classifier_id
+    if classifier is None and not realised:
+        ctx.findings.no_rule(drawn.uml_name, "Object without a classifier")
+        return None
+    if len(realised) > 1:
+        names = " and ".join(_label(ctx, each) for each in realised)
+        _refuse(ctx, drawn, f"realises {names}")
+        return None
+    if classifier is None:
+        return realised[0]
+    if realised and realised[0] != classifier:
+        _refuse(
+            ctx,
+            drawn,
+            f"realises {_label(ctx, realised[0])} but its classifier is {_label(ctx, classifier)}",
+        )
+        return None
+    return classifier
+
+
+def _label(ctx: Context, class_id: int) -> str:
+    return ctx.class_names.get(class_id, str(class_id))
+
+
 def _is_role(ctx: Context, drawn: UmlObject) -> bool:
     """Whether the Object is typed by the drawn toolkit role class; any other is a ``no_rule`` problem."""
-    classifier = drawn.classifier_id
+    classifier = _classifier_of(ctx, drawn)
     if classifier is None:
-        ctx.findings.no_rule(drawn.uml_name, "Object without a classifier")
         return False
     if ctx.drawn_toolkit.get(classifier) != TOOLKIT_CLASS:
-        label = ctx.class_names.get(classifier, str(classifier))
-        ctx.findings.no_rule(drawn.uml_name, f"Object of {label}")
+        ctx.findings.no_rule(drawn.uml_name, f"Object of {_label(ctx, classifier)}")
         return False
     return True
 

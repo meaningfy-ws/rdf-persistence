@@ -337,6 +337,8 @@ BOUNDARY_TYPE = "Boundary"
 GENERALISATION_TYPE = "Generalization"
 ASSOCIATION_TYPE = "Association"
 DEPENDENCY_TYPE = "Dependency"
+AGGREGATION_TYPE = "Aggregation"
+REALISATION_TYPE = "Realisation"
 STATE_FLOW_TYPE = "StateFlow"
 STATECHART_TYPE = "Statechart"
 DIRECTED = "Source -> Destination"
@@ -398,7 +400,7 @@ class QeaBuilder:
         return object_id
 
     def object_(
-        self, package: int, name: str, classifier: int, run_state: str | None = None
+        self, package: int, name: str, classifier: int | None, run_state: str | None = None
     ) -> int:
         """An ``Object`` (an instance of a drawn class): its classifier's id and its ``RunState``."""
         object_id = self._insert(
@@ -488,7 +490,7 @@ class QeaBuilder:
             "t_diagram", Name=name, Package_ID=package, Diagram_Type=diagram_type
         )
         for member in members:
-            self.place(diagram, member, (0, 0, 10, -10))
+            self.place(diagram, member)
         return diagram
 
     def statechart(self, name: str, package: int, nodes: Iterable[int]) -> int:
@@ -576,6 +578,55 @@ class QeaBuilder:
             End_Object_ID=destination,
         )
 
+    def aggregation(
+        self,
+        whole: int,
+        part: int,
+        part_to_whole: bool = False,
+        shared: bool = False,
+        sub_type: str | None = None,
+        stereotype: str | None = None,
+        role: str | None = None,
+        note: str | None = None,
+        ends: tuple[int | None, int | None] | None = None,
+    ) -> int:
+        """An Aggregation connector, in the columns PD-1 states (D-5: the end column alone decides).
+
+        Drawn whole to part: ``Start=whole``, ``SourceIsAggregate=2``; drawn part to whole:
+        ``Start=part``, ``DestIsAggregate=2``; ``shared`` writes ``1`` in place of ``2``. ``role`` is
+        written at the part's end. ``ends`` overrides the two columns, for the rows the drawing
+        never makes (``(source, dest)``).
+        """
+        mark = 1 if shared else 2
+        source_mark, dest_mark = (0, mark) if part_to_whole else (mark, 0)
+        start, end = (part, whole) if part_to_whole else (whole, part)
+        if ends is not None:
+            source_mark, dest_mark = ends
+        role_column = "SourceRole" if part_to_whole else "DestRole"
+        return self._insert(
+            "t_connector",
+            Connector_Type=AGGREGATION_TYPE,
+            SubType=sub_type,
+            Stereotype=stereotype,
+            Notes=note,
+            Start_Object_ID=start,
+            End_Object_ID=end,
+            SourceIsAggregate=source_mark,
+            DestIsAggregate=dest_mark,
+            **{role_column: role},
+        )
+
+    def realisation(
+        self,
+        obj: int,
+        target: int,
+        from_target: bool = False,
+        spelling: str = REALISATION_TYPE,
+    ) -> int:
+        """A Realisation between an Object and a class, drawn from the Object unless ``from_target``."""
+        start, end = (target, obj) if from_target else (obj, target)
+        return self.connector(spelling, start, end)
+
     def generalisation(self, child: int, parent: int) -> int:
         return self._insert(
             "t_connector",
@@ -593,32 +644,38 @@ class QeaBuilder:
         return self._insert("t_objectproperties", Object_ID=owner, Property=name, Value=value)
 
     def boundary(
-        self, diagram: int, rect: tuple[int, int, int, int], members: Iterable[int]
+        self,
+        diagram: int,
+        package: int | None = None,
+        name: str = "Boundary",
+        stereotype: str | None = None,
     ) -> int:
-        """Place a boundary on a diagram, each member as a small rectangle at its centre.
-
-        ``rect`` is ``(left, top, right, bottom)``; the boundary stays out of every package.
-        """
-        left, top, right, bottom = rect
-        boundary = self._insert("t_object", Object_Type=BOUNDARY_TYPE, Name="Boundary")
-        self.place(diagram, boundary, rect)
-        centre_x, centre_y = (left + right) // 2, (top + bottom) // 2
-        for member in members:
-            self.place(diagram, member, (centre_x - 1, centre_y + 1, centre_x + 1, centre_y - 1))
+        """Place a boundary object on a diagram; it sits in ``package`` (none: in no package), by name only (PD-7)."""
+        boundary = self._insert(
+            "t_object",
+            Object_Type=BOUNDARY_TYPE,
+            Name=name,
+            Package_ID=package,
+            Stereotype=stereotype,
+        )
+        self.place(diagram, boundary)
         return boundary
 
-    def place(self, diagram: int, obj: int, rect: tuple[int, int, int, int]) -> None:
-        """Place an object on a diagram as ``(left, top, right, bottom)``, as given, unnormalised."""
-        left, top, right, bottom = rect
-        self._insert(
-            "t_diagramobjects",
-            Diagram_ID=diagram,
-            Object_ID=obj,
-            RectTop=top,
-            RectLeft=left,
-            RectRight=right,
-            RectBottom=bottom,
-        )
+    def place(self, diagram: int, obj: int, rect: tuple[int, int, int, int] | None = None) -> None:
+        """Place an object on a diagram; ``rect`` is ``(left, top, right, bottom)``, as given, when a row wants one.
+
+        The reader reads no geometry (PD-18), so most rows give none.
+        """
+        geometry: dict[str, object] = {}
+        if rect is not None:
+            left, top, right, bottom = rect
+            geometry = {
+                "RectTop": top,
+                "RectLeft": left,
+                "RectRight": right,
+                "RectBottom": bottom,
+            }
+        self._insert("t_diagramobjects", Diagram_ID=diagram, Object_ID=obj, **geometry)
 
     def finish(self) -> Path:
         """Commit, close and return the path of the file."""

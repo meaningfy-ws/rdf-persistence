@@ -1,1 +1,6 @@
+deprecated-root	model	4 «root» stereotypes agree with the derived roots; drop them
+root	Book	parts Chapter
+root	Loan	no parts
+root	Periodical	no parts
+root	Shelf	no parts
 toolkit-filled	Loan.started_at_time	the toolkit fills started_at_time; [1..1] is not carried

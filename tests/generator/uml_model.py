@@ -19,6 +19,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlAttribute,
     UmlBoundary,
     UmlClass,
+    UmlComposition,
     UmlLink,
     UmlLinkKind,
     UmlModel,
@@ -174,9 +175,29 @@ def tag(owner: int, name: str, value: str) -> UmlTaggedValue:
     return UmlTaggedValue(owner_id=owner, name=name, tag_value=value)
 
 
-def boundary(object_id: int, *members: int) -> UmlBoundary:
-    return UmlBoundary(
-        object_id=object_id, name="Aggregate", diagram_id=1, member_ids=list(members)
+def boundary(object_id: int, name: str = "Aggregate", *, package: int | None = None) -> UmlBoundary:
+    """A boundary as the reader gives it (PD-7): a name and a package, no membership."""
+    extra = {"package_id": package} if package is not None else {}
+    return UmlBoundary(object_id=object_id, name=name, diagram_id=1, **extra)
+
+
+def composition(
+    composition_id: int,
+    whole: int,
+    part: int,
+    *,
+    own_graph: bool = False,
+    stereotype: str | None = None,
+    role: str | None = None,
+) -> UmlComposition:
+    """A composition as the reader gives it (PD-1): the whole and the part, whichever way it was drawn."""
+    return UmlComposition(
+        composition_id=composition_id,
+        whole_id=whole,
+        part_id=part,
+        own_graph=own_graph,
+        uml_stereotype=stereotype,
+        role=role,
     )
 
 
@@ -246,6 +267,7 @@ def model(
     state_flows: tuple[UmlStateFlow, ...] = (),
     statecharts: tuple[UmlStatechart, ...] = (),
     links: tuple[UmlLink, ...] = (),
+    compositions: tuple[UmlComposition, ...] = (),
     tags: tuple[UmlTaggedValue, ...] = (),
     boundaries: tuple[UmlBoundary, ...] = (),
     packages: tuple[UmlPackage, ...] = PACKAGES,
@@ -263,6 +285,7 @@ def model(
         uml_state_flows=list(state_flows),
         uml_statecharts=list(statecharts),
         uml_links=list(links),
+        uml_compositions=list(compositions),
         uml_tagged_values=list(tags),
         uml_boundaries=list(boundaries),
     )

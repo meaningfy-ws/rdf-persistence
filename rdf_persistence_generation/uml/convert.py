@@ -19,16 +19,25 @@ from linkml_runtime.linkml_model import (
 from rdf_persistence.core.domain.generated.rp_core import ModuleKind, RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
+    LeftOutReason,
+    ReportKind,
     ReportLine,
+    UmlAggregates,
     UmlElement,
     UmlModel,
     UmlRule,
     UmlSettings,
 )
+from rdf_persistence_generation.uml.aggregates import (
+    check_pointers,
+    derive_aggregates,
+    package_kinds,
+)
 from rdf_persistence_generation.uml.classes import (
     annotation,
     build_class,
     build_enum,
+    check_root_paths,
     collect_elements,
     mark_abstract_roots,
     parents,
@@ -36,11 +45,10 @@ from rdf_persistence_generation.uml.classes import (
 from rdf_persistence_generation.uml.context import (
     Context,
     below_of,
-    is_boundary_root,
     literals_of,
     path_of,
 )
-from rdf_persistence_generation.uml.links import link_usages, owned_pairs
+from rdf_persistence_generation.uml.links import link_usages
 from rdf_persistence_generation.uml.mixins import check_default_mixins
 from rdf_persistence_generation.uml.modules import (
     PATH_SEPARATOR,
@@ -56,7 +64,6 @@ from rdf_persistence_generation.uml.slots import (
     Usage,
     attribute_usages,
     choose_homes,
-    is_owned,
     name_slots,
     share,
     shared_edges,
@@ -105,14 +112,16 @@ def _generated(ctx: Context) -> list[UmlElement]:
     ]
 
 
-def _usages(ctx: Context, model: UmlModel, elements: list[UmlElement]) -> list[Usage]:
+def _usages(
+    ctx: Context, model: UmlModel, elements: list[UmlElement], aggregates: UmlAggregates
+) -> list[Usage]:
     usages = [
         usage
         for element in elements
         if not element.is_enum
         for usage in attribute_usages(ctx, element)
     ]
-    usages.extend(link_usages(ctx, model, owned_pairs(ctx, model)))
+    usages.extend(link_usages(ctx, model, aggregates))
     return usages
 
 
@@ -217,10 +226,55 @@ class Built:
         self.kinds = kinds
 
 
-def _build(ctx: Context, model: UmlModel) -> tuple[list[UmlElement], list[Usage], dict[int, str]]:
+def _leave_inside(ctx: Context, inside: list[int], parent_of: dict[int, str]) -> None:
+    """Take the classes inside an own graph out of the run: not generated, no generalisation (PD-8, A-7)."""
+    labels = {ctx.elements[key].label for key in inside}
+    for key in inside:
+        element = ctx.elements.pop(key)
+        ctx.left_out[key] = LeftOutReason.NOT_GENERATED
+        if element.is_enum:
+            ctx.left_out_enums.add(key)
+        parent_of.pop(key, None)
+    for key in [child for child, parent in parent_of.items() if parent in labels]:
+        del parent_of[key]
+
+
+def _adopt(
+    ctx: Context, found: UmlAggregates, kinds: Mapping[int, str], parent_of: dict[int, str]
+) -> None:
+    """Merge what the aggregate pass found into the run: its findings, the roots and the classes left inside."""
+    for problem in found.problems or []:
+        ctx.findings.add(problem)
+    for line in found.report_lines or []:
+        ctx.findings.note(ReportKind(line.report_kind), line.element, line.message)
+    roots = set(found.root_ids or [])
+    for key, element in ctx.elements.items():
+        outside_domain = kinds.get(element.uml_class.package_id, DOMAIN) != DOMAIN
+        element.is_root = key in roots or bool(element.is_drawn_root and outside_domain)
+    _leave_inside(ctx, list(found.left_inside_ids or []), parent_of)
+    check_root_paths(ctx)
+
+
+def _build(
+    ctx: Context, model: UmlModel
+) -> tuple[list[UmlElement], list[Usage], dict[int, str], UmlAggregates]:
+    """The classes, the composition tree and the slots, in the order of design.md's Algorithm (PD-19)."""
     collect_elements(ctx, model)
+    parent_of = parents(ctx, model)
+    kinds = package_kinds(model.uml_packages or [], model.uml_tagged_values or [])
+    found = derive_aggregates(
+        sorted(ctx.elements.values(), key=lambda each: each.uml_class.object_id),
+        model.uml_compositions or [],
+        model.uml_links or [],
+        parent_of,
+        kinds,
+        ctx.left_out,
+        ctx.drawn_toolkit,
+        ctx.class_names,
+    )
+    _adopt(ctx, found, kinds, parent_of)
     elements = _generated(ctx)
-    return elements, _usages(ctx, model, elements), parents(ctx, model)
+    return elements, _usages(ctx, model, elements, found), parent_of, found
 
 
 def _enums(ctx: Context) -> dict[int, EnumDefinition]:
@@ -316,18 +370,35 @@ def _imports(
     return [LINKML_TYPES, *sorted(toolkit), *sorted(refs - {name})]
 
 
+def _parts(ctx: Context, found: UmlAggregates, parent_of: Mapping[int, str]) -> set[int]:
+    """The classes that are parts: a tree member, or one that inherits from a part (PD-4, A-16)."""
+    direct = {row.part_id for row in found.part_of or []}
+    by_label = {each.label: key for key, each in ctx.elements.items()}
+    parts: set[int] = set()
+    for key in ctx.elements:
+        seen = {key}
+        current: int | None = key
+        while current is not None and current not in direct and parent_of.get(current) in by_label:
+            current = by_label[parent_of[current]]
+            if current in seen:
+                break
+            seen.add(current)
+        if current in direct:
+            parts.add(key)
+    return parts
+
+
 def _classes(
-    ctx: Context, elements: list[UmlElement], usages: list[Usage], parent_of: Mapping[int, str]
+    ctx: Context, elements: list[UmlElement], parts: set[int], parent_of: Mapping[int, str]
 ) -> dict[int, ClassDefinition]:
-    """The class of each UML class; a part is a class an owned slot ranges over (PD-13, PD-17)."""
+    """The class of each UML class; a part is a member of the composition tree (PD-5, PD-17)."""
     defaults = check_default_mixins(ctx)
-    owned = {usage.shape.range for usage in usages if is_owned(usage.shape)}
     return {
         e.uml_class.object_id: build_class(
             ctx,
             e,
             parent_of.get(e.uml_class.object_id),
-            e.label in owned and not is_boundary_root(e),
+            e.uml_class.object_id in parts,
             defaults,
         )
         for e in elements
@@ -360,8 +431,10 @@ def convert(
     prefixes = {each.prefix_name: each.namespace for each in settings.prefixes or []}
     ctx = Context(settings, toolkit, prefixes)
     ctx.paths = package_paths(model, settings)
-    elements, usages, parent_of = _build(ctx, model)
+    elements, usages, parent_of, aggregates = _build(ctx, model)
     toolkit_usages, usages = split_toolkit(ctx, usages)
+    for problem in check_pointers(usages, toolkit_usages, aggregates, elements):
+        ctx.findings.add(problem)
     name_slots(ctx, usages, toolkit_usages)
     if not ctx.elements and not ctx.findings.problems():
         ctx.findings.problem(
@@ -371,7 +444,7 @@ def convert(
         )
     layout, shared = _lay_out(ctx, elements, usages, parent_of)
     mark_abstract_roots(ctx, {usage.shape.range for usage in usages}, parent_of)
-    classes = _classes(ctx, elements, usages, parent_of)
+    classes = _classes(ctx, elements, _parts(ctx, aggregates, parent_of), parent_of)
     kinds = _module_kinds(ctx, model, layout)
     built = Built((classes, _enums(ctx)), shared, _slot_names(usages, ctx), kinds)
     use_toolkit_slots(ctx, toolkit_usages, classes, shared, built.slot_names)
