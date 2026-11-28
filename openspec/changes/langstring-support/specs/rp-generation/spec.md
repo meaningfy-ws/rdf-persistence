@@ -26,9 +26,26 @@ one. A slot ranged `string` SHALL keep generating as it does today.
 
 #### Scenario: an untagged value in a language-string field
 - **GIVEN** the generated `Book`
-- **WHEN** it is built with `titles` `["Dune"]`, `[Literal("Dune")]` or
-  `[{"@value": "Dune", "@language": "not a tag!"}]`
+- **WHEN** it is built with `titles` `["Dune"]`, `[Literal("Dune")]`,
+  `[{"@value": "Dune", "@language": "not a tag!"}]` or `[{"@value": "Dune", "@language": "en\n"}]`
 - **THEN** it is refused naming `titles`
+
+### Requirement: A language-string slot keeps one range and stays out of unique keys
+
+`rp-generate` SHALL refuse, naming the class and the slot, a `slot_usage` or an attribute that
+changes a slot's range to or from `lang_string`, and a `lang_string` slot among a class's unique-key
+slots.
+
+#### Scenario: a range narrowed to a language string
+- **GIVEN** a model whose class `Book` narrows the inherited `label`, ranged `string`, to
+  `lang_string` in its `slot_usage`
+- **WHEN** it is generated
+- **THEN** `rp-generate` refuses it naming `Book` and `label`
+
+#### Scenario: a language string in a unique key
+- **GIVEN** a model whose class `Book` declares a unique key over `titles`, ranged `lang_string`
+- **WHEN** it is generated
+- **THEN** `rp-generate` refuses it naming `Book` and `titles`
 
 ### Requirement: A decimal number has one form in JSON and TypeScript
 
@@ -44,7 +61,13 @@ each slot's datatype whether the client sends a number or a string.
 - **THEN** both show `"dec": "1.5"`, `"flt": "1.5"` and `"dbl": 1.5`, and the generated TypeScript
   says `dec: string`, `flt: string`, `dbl: number`
 
-#### Scenario: a whole number written to a double slot
-- **GIVEN** a plain-JSON write with `"dbl": 3`
+#### Scenario: a number or a string written to a double slot
+- **GIVEN** a plain-JSON write with `"dbl"` set to `3`, `3.0` or `"3"`, or a JSON-LD write with
+  `"dbl"` set to `3` or `"3"`
 - **WHEN** it is stored
 - **THEN** the store holds `dbl` as an `xsd:double`, and the SHACL datatype check passes
+
+#### Scenario: a boolean written to a double slot
+- **GIVEN** a plain-JSON or JSON-LD write with `"dbl": true`
+- **WHEN** it is written
+- **THEN** it is refused as an invalid body naming `dbl`
