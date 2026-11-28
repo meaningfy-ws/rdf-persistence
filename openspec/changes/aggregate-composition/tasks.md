@@ -146,13 +146,13 @@ assertion without a replacement row. Every decision a task cites links its ancho
 
 ## 2. Stage 2: the conventions check and diagrams
 
-- [ ] 2.1 Unit, CLI ([PD-14](design.md#pd-14), [PD-13](design.md#pd-13)). `tests/generator/unit/test_uml_cli.py`: `--check` on a model with a
+- [x] 2.1 Unit, CLI ([PD-14](design.md#pd-14), [PD-13](design.md#pd-13)). `tests/generator/unit/test_uml_cli.py`: `--check` on a model with a
   problem exits 1 and leaves a filled `--out` byte-identical (no report rewritten); with only a
   convention line exits 1 and prints it to stdout in report format; clean exits 0, prints nothing,
   needs no `--out`; a run without `--check` and without `--out` exits 2; a normal run with a
   convention line exits 0 and writes; a reader problem short-circuits and is the only output
   (A-21); a model with only an agreeing «root» (`deprecated-root`) exits 0. Then `cli.py`. Accept: all pass.
-- [ ] 2.2 Unit, diagrams ([PD-12](design.md#pd-12), [RISK-6](design.md#risk-6)), after 2.1. `test_uml_qea.py`: `UmlDiagram` membership from
+- [x] 2.2 Unit, diagrams ([PD-12](design.md#pd-12), [RISK-6](design.md#risk-6)), after 2.1. `test_uml_qea.py`: `UmlDiagram` membership from
   `t_diagramobjects` and `t_diagramlinks` (a connector is shown when both ends are members, hidden
   when a row says so, shown when no row exists); `QeaBuilder.diagram_link(...)` with
   `t_diagramlinks`'s real EA columns in `EA_COLUMNS`. New
@@ -161,7 +161,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   suffix is never read as one), none for a NoteLink, a generalisation or a boundary
   on an aggregates diagram (A-18), `composition-diagram`, Statechart ignored. Then
   `qea.py` and `uml/conventions.py`. Accept: all pass.
-- [ ] 2.3 Unit, one home for "no note" ([PD-20](design.md#pd-20), [PD-19](design.md#pd-19)),
+- [x] 2.3 Unit, one home for "no note" ([PD-20](design.md#pd-20), [PD-19](design.md#pd-19)),
   parallel to 2.2.
   `tests/generator/unit/test_uml_no_note_coverage.py` passes unchanged before and after; new rows
   in `test_uml_conventions.py` call `missing_notes` with records and no `Context`, and pin today's
@@ -169,7 +169,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   toolkit slot (A-19), each written before the move and passing on today's code. Then move the
   three writes (`classes._described`, the literal line, `slots.described`) into `conventions.py`. Accept: `ast-grep` finds `ReportKind.NO_NOTE` once in
   `rdf_persistence_generation/uml/`; the stage-2 golden report's `no-note` lines unchanged.
-- [ ] 2.4 Unit, the ported conventions ([PD-13](design.md#pd-13), [PD-15](design.md#pd-15),
+- [x] 2.4 Unit, the ported conventions ([PD-13](design.md#pd-13), [PD-15](design.md#pd-15),
   [D-1](design.md#d-1), [D-3](design.md#d-3), C-1..C-12), after 2.2. In
   `test_uml_conventions.py`, one row per finding of design.md's classification:
   `unprefixed-name`, `unused-enumeration`, `drawn-toolkit-parent` (and none for a drawn

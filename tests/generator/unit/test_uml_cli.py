@@ -12,7 +12,16 @@ from rdf_persistence_generation.uml.cli import load_settings, main
 from rdf_persistence_generation.uml.toolkit import load_toolkit
 from tests.generator.uml_qea import QeaBuilder
 
-from .uml_cli_run import PREFIX, PREFIXES, ROOT, build_library, prefixes_file, run
+from .uml_cli_run import (
+    PREFIX,
+    PREFIXES,
+    ROOT,
+    build_library,
+    noted_library,
+    prefixes_file,
+    run,
+    run_check,
+)
 
 
 def snapshot(folder: Path) -> dict[str, bytes]:
@@ -299,3 +308,93 @@ def test_the_defaults_are_the_documented_ones(tmp_path):
 
     assert settings.not_generated_stereotypes == ["loaded graph"], "loaded graph is not generated"
     assert not settings.exclude_packages, "nothing is excluded by default"
+
+
+# --- --check (PD-14, PD-13) ---------------------------------------------------------------------
+
+
+def test_check_on_a_model_with_a_problem_exits_one_and_leaves_a_filled_out_identical(
+    tmp_path, capsys
+):
+    builder = QeaBuilder(tmp_path / "empty.qea")
+    builder.package("library", parent=builder.package("MODEL"))
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "app.uml-report.txt").write_text("kept\n", encoding="utf-8")
+    before = snapshot(out)
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish(), out=out)
+
+    assert code == 1, "a problem exits 1"
+    assert len(stderr) == 1, f"the problem is printed on stderr: {stderr}"
+    assert not stdout, f"no convention line without a converted model: {stdout}"
+    assert snapshot(out) == before, "--check rewrites no report and writes nothing"
+
+
+def test_check_with_only_a_convention_line_prints_it_to_stdout_and_exits_one(tmp_path, capsys):
+    builder, _ = build_library(tmp_path)  # Chapter and Folio carry no note
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish())
+
+    assert code == 1, "a convention line fails the check"
+    assert not stderr, f"nothing on stderr: {stderr}"
+    assert len(stdout) == 2, f"one no-note line per noteless class: {stdout}"
+    assert all(len(line.split("\t")) == 3 for line in stdout), f"report format: {stdout}"
+    assert all(line.startswith("no-note\t") for line in stdout), f"kind no-note: {stdout}"
+    assert stdout == sorted(stdout), "the lines are sorted"
+
+
+@pytest.mark.parametrize("stereotype", [None, "root"], ids=["no stereotype", "agreeing root"])
+def test_check_on_a_clean_model_exits_zero_prints_nothing_and_needs_no_out(
+    tmp_path, capsys, stereotype
+):
+    builder, _ = noted_library(tmp_path, stereotype)
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish())
+
+    assert code == 0, f"a clean model, or one with only an agreeing root, passes: {stdout}"
+    assert not stdout, f"nothing on stdout: {stdout}"
+    assert not stderr, f"nothing on stderr: {stderr}"
+    assert not (tmp_path / "out").exists(), "--check writes nothing"
+
+
+def test_check_with_an_out_still_writes_nothing(tmp_path, capsys):
+    builder, _ = noted_library(tmp_path, None)
+    out = tmp_path / "given"
+
+    code, _, _ = run_check(capsys, tmp_path, builder.finish(), out=out)
+
+    assert code == 0, "the clean model passes"
+    assert not out.exists(), "--out is accepted under --check and not written"
+
+
+def test_a_run_without_check_and_without_out_exits_two(tmp_path, capsys):
+    builder, _ = noted_library(tmp_path)
+    argv = [str(builder.finish()), "--package", ROOT, "--prefixes", str(prefixes_file(tmp_path))]
+
+    code = main(argv)
+
+    assert code == 2, "--out is required unless --check is given"
+    assert capsys.readouterr().err.startswith(PREFIX), "one usage line with the program name"
+
+
+def test_a_normal_run_with_a_convention_line_exits_zero_and_writes(tmp_path, capsys):
+    builder, _ = build_library(tmp_path)
+
+    code, lines = run(capsys, tmp_path, builder.finish())
+
+    assert (code, lines) == (0, []), f"a convention line never fails a normal run: {lines}"
+    report = (tmp_path / "out" / "app.uml-report.txt").read_text(encoding="utf-8")
+    assert "no-note\t" in report, "the line is in the report"
+
+
+def test_a_reader_problem_short_circuits_check_and_is_the_only_output(tmp_path, capsys):
+    builder, ids = build_library(tmp_path)  # the noteless classes would give convention lines
+    builder.realisation(ids["book"], ids["chapter"])
+
+    code, stdout, stderr = run_check(capsys, tmp_path, builder.finish())
+
+    assert code == 1, "a reader problem exits 1"
+    assert len(stderr) == 1, f"the problem only: {stderr}"
+    assert stderr[0].startswith("[no_rule] "), f"it is the reader's: {stderr}"
+    assert not stdout, f"the convention lines wait until it is fixed (A-21): {stdout}"

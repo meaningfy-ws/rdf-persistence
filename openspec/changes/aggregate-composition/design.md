@@ -670,4 +670,10 @@ Decisions the lead took without the developer, shown for validation at the end (
   - S5: split `_Pass` before stage 2 adds passes.
   - S6: cache `part_ids` and the ancestors.
   - S7: a test pinning `_adopt`'s order.
+- **D-14**, lead, 2026-11-28 (stage 2, tasks 2.1–2.4):
+  - `UmlComposition` gains `note`, so `composition-named` covers a note as well as a role.
+  - `convention_lines` takes `drawn_toolkit` beside PD-19's inputs, as `derive_aggregates` does.
+  - `CONVENTION_KINDS` lives in `uml/conventions.py`, and `cli.py` imports it.
+  - D-13's W1 (the doubled problem) and W4 (re-declared constants) are fixed in passing.
+  - `t_diagramlinks`' columns were checked against an EA-saved file's schema.
 

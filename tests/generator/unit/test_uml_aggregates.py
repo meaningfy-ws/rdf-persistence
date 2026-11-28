@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 import pytest
 from linkml_runtime.linkml_model import SlotDefinition
 
+from rdf_persistence.core.domain.generated.rp_core import ModuleKind, RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     LeftOutReason,
@@ -641,6 +642,34 @@ def test_a_generalisation_to_or_from_a_class_inside_an_own_graph_is_refused(
     ), f"A-7: {problems(found)}"
 
 
+def test_a_generalisation_between_two_classes_inside_an_own_graph_is_refused_once() -> None:
+    """D-13 W1: one generalisation, one problem, though both its ends are inside."""
+    drawing = _own_graph_in_own_graph()
+    drawing.cls("ShapeDetail")
+    drawing.part("ShapeReport", "ShapeDetail")
+    drawing.assoc("ShapeReport", "ShapeDetail", "detail")
+    drawing.isa("ShapeDetail", "ShapeResult")
+    refused = [each for each in problems(drawing.derive()) if "generalisation" in each]
+    assert refused == [
+        "[boundary_owned] ShapeDetail: inside the own graph of ShapeReport; "
+        "it cannot take part in a generalisation"
+    ], "the child end names the generalisation once"
+
+
+def test_the_module_kind_the_pass_reads_is_the_generated_enum_value() -> None:
+    """D-13 W4: the tag name and the default kind are the metamodel's, not a second copy."""
+    packages = [
+        UmlPackage(package_id=1, name="a", object_id=11),
+        UmlPackage(package_id=2, name="b"),
+    ]
+    tags = [
+        UmlTaggedValue(owner_id=11, name=RpAnnotation.MODULE_KIND.value, tag_value=" Technical ")
+    ]
+    assert package_kinds(packages, tags) == {1: "technical", 2: ModuleKind.DOMAIN.value}, (
+        "read case-blind from the generated tag name; the default is the generated DOMAIN"
+    )
+
+
 def _other_stereotype() -> Drawing:
     drawing = shelf_and_books()
     drawing.compositions[0].uml_stereotype = "loaded"
@@ -811,6 +840,13 @@ def _to_a_superclass_of_the_part() -> Drawing:
     return drawing
 
 
+def _book_and_chapter_one_unnamed() -> Drawing:
+    drawing = _book_and_chapter()
+    drawing.part("Book", "Chapter")
+    drawing.assoc("Book", "Chapter", "hasChapter")
+    return drawing
+
+
 def _drawn_bidirectional_from_the_part() -> Drawing:
     drawing = _book_and_chapter()
     drawing.part("Book", "Chapter")
@@ -878,6 +914,44 @@ def test_the_association_beside_a_composition(
     found = drawing.derive()
     assert problems(found) == expected_problems, "PD-2 and D-6"
     assert owned(drawing, found) == expected_owned, "the owned ends are the matched associations"
+
+
+@pytest.mark.parametrize(
+    ("build", "named"),
+    [
+        (_one_association_with_a_role_on_the_composition, True),
+        (_two_and_the_role_names_one, False),
+        (_book_and_chapter_one_unnamed, False),
+    ],
+    ids=["one candidate and a role", "two candidates, the role chooses", "one candidate, no role"],
+)
+def test_a_role_where_one_candidate_makes_it_unneeded_is_a_composition_named_line(
+    build: Callable[[], Drawing], named: bool
+) -> None:
+    found = build().derive()
+    assert report(found, ReportKind.COMPOSITION_NAMED) == (
+        {"Book -> Chapter the association carries the role"} if named else set()
+    ), "PD-2: a role the single candidate makes unneeded is presentation"
+
+
+@pytest.mark.parametrize(
+    ("note", "expected"),
+    [
+        ("Written on the wrong connector.", {"Book -> Chapter the association carries the note"}),
+        ("  ", set()),
+        (None, set()),
+    ],
+    ids=["a note", "a blank note", "no note"],
+)
+def test_a_note_on_a_composition_is_a_composition_named_line(
+    note: str | None, expected: set[str]
+) -> None:
+    drawing = _book_and_chapter_one_unnamed()
+    drawing.compositions[0].note = note
+    found = drawing.derive()
+    assert report(found, ReportKind.COMPOSITION_NAMED) == expected, (
+        "the association carries the description, not the composition"
+    )
 
 
 def test_two_owned_roles_to_one_part_class_beside_an_internal_reference() -> None:
