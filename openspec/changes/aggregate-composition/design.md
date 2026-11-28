@@ -653,4 +653,9 @@ Decisions the lead took without the developer, shown for validation at the end (
   no-note tests need it), so the hard check refuses it. The shelf-count model runs every step.
   1.11's accept line is reworded so. Rejected: a note on `poetry`, which changes a fixture other
   tests rely on.
+- **D-12**, lead, 2026-11-28 (delivery, stage 1 PR): `develop` is merged into the branch, not rebased
+  under it. `dependent-aggregates` stage 1 had changed the same metamodel, so every one of the
+  branch's commits conflicted on generated manifests. One merge resolves them once: the generated
+  files are regenerated from the merged sources. P-0002's aim, conflicts surfaced before review,
+  holds. Rejected: replaying eight commits through the same generated conflicts.
 
