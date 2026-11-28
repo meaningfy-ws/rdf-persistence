@@ -258,10 +258,11 @@ def refusal_response(
     """
     problem = error.problem
     status = getattr(problem, "status", None)
-    if type(problem) in refusal_problems and status in _REFUSAL_STATUSES:
+    is_int = isinstance(status, int) and not isinstance(status, bool)
+    if type(problem) in refusal_problems and is_int and status in _REFUSAL_STATUSES:
         assert isinstance(problem, Problem), "registration admits only subclasses of Problem"
         return problem_response(problem)
-    reason = "unregistered class" if type(problem) not in refusal_problems else f"status {status}"
+    reason = "unregistered class" if type(problem) not in refusal_problems else f"status {status!r}"
     log.error(
         "rule refusal answered as internal error",
         exc_info=error,

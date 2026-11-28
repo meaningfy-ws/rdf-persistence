@@ -1,7 +1,7 @@
 """``install_service``: mounts the generic router on a consumer's FastAPI app (PD-13)."""
 
 import asyncio
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Iterable, Mapping, Sequence
 from contextlib import asynccontextmanager
 from functools import partial
 from pathlib import Path
@@ -64,7 +64,7 @@ def install_service(
     stores: Mapping[str, Store] = {},
     event_bus: EventBus | None = None,
     toolkit: ToolkitSettings | None = None,
-    refusal_problems: Sequence[type[BaseModel]] = (),
+    refusal_problems: Iterable[type[BaseModel]] = (),
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 
@@ -127,11 +127,12 @@ def install_service(
     ``directory`` groups are for the adapters your composition root builds.
 
     ``refusal_problems`` are the classes of problem a rule may refuse with, by raising ``RuleRefusal``:
-    each is a subclass of ``Problem`` (else ``TypeError``, naming it). The generic create and replace
-    answer a refusal whose problem is exactly one of them, at 409 or 422, as the rule built it, extra
-    fields included; any other refusal is a 500 ``internal-error``, logged once. They are listed in
-    the OpenAPI document: as component schemas, in the ``409`` and ``422`` of the generic create and
-    replace, and in every operation's ``default``.
+    each is a subclass of ``Problem`` (else ``TypeError``, naming it). Every write that runs the rules
+    (the generic create, replace and every other guarded write) answers a refusal whose problem is
+    exactly one of them, at 409 or 422, as the rule built it, extra fields included; any other
+    refusal is a 500 ``internal-error``, logged once. They are listed in the OpenAPI document: as
+    component schemas, in the ``409`` and ``422`` of the generic create and replace, and in every
+    operation's ``default``.
 
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check

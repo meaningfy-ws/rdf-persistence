@@ -3,6 +3,7 @@
 import logging
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 from typing import Any
 
 import httpx
@@ -336,6 +337,38 @@ class NotAProblem(BaseModel):
 def test_a_registered_class_that_is_not_a_problem_stops_the_start_up(bad: type):  # TC-6
     with pytest.raises(TypeError, match=bad.__name__):
         ToyService(refusal_problems=[bad])
+
+
+def test_a_generator_of_registered_classes_registers_all():  # S1, positive
+    toy = ToyService(refusal_problems=(cls for cls in (Sibling, HeldKeyProblem)))
+    assert toy.kit.refusal_problems == (Sibling, HeldKeyProblem), (
+        "the generator is read once, whole"
+    )
+
+
+def test_a_generator_yielding_a_non_problem_stops_the_start_up():  # S1, negative
+    with pytest.raises(TypeError, match="NotAProblem"):
+        ToyService(refusal_problems=(cls for cls in (HeldKeyProblem, NotAProblem)))
+
+
+@pytest.mark.parametrize(
+    ("status", "answered"),
+    [(409.0, 500), (True, 500), (HTTPStatus.CONFLICT, 409)],
+    ids=["float", "bool", "int-subclass"],
+)
+async def test_a_status_must_be_an_int_that_is_not_a_bool(  # S2, DEC-4
+    status: Any, answered: int, caplog: pytest.LogCaptureFixture
+):
+    async with scene_with(refusing(built(status))) as scene:
+        with caplog.at_level(logging.DEBUG):
+            response = await create(scene, isbn="x")
+        assert response.status_code == answered, response.text
+        records = internal_error_records(caplog)
+        if answered == 500:
+            assert len(records) == 1, f"exactly one error record: {[r.__dict__ for r in records]}"
+            assert f"status {status!r}" in str(records[0].__dict__), "the status is named as given"
+        else:
+            assert records == [], "answered as built, nothing logged"
 
 
 async def ban_reading(scene: Scene, iri: str) -> None:

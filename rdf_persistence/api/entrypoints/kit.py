@@ -1,7 +1,7 @@
 """What the routes share: the ports, the settings, and the pieces built from the application's schema (PD-13)."""
 
 import logging
-from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Iterable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from datetime import timedelta
 from functools import partial
@@ -112,13 +112,14 @@ def toolkit_store(raw: Store) -> ToolkitStore:
 
 
 def _checked_refusal_problems(
-    classes: Sequence[type[BaseModel]],
+    classes: Iterable[type[BaseModel]],
 ) -> tuple[type[BaseModel], ...]:
-    """``classes`` as a tuple; ``TypeError`` naming the first that is not a subclass of ``Problem``."""
+    """``classes`` as a tuple (read once); ``TypeError`` naming the first that is not a subclass of ``Problem``."""
+    classes = tuple(classes)
     for cls in classes:
         if not (isinstance(cls, type) and issubclass(cls, Problem)):
             raise TypeError(f"refusal problem {cls!r} is not a subclass of Problem")
-    return tuple(classes)
+    return classes
 
 
 class ServiceKit:
@@ -154,7 +155,7 @@ class ServiceKit:
         stores: Mapping[str, Store] = {},
         event_bus: EventBus | None = None,
         toolkit: ToolkitSettings | None = None,
-        refusal_problems: Sequence[type[BaseModel]] = (),
+        refusal_problems: Iterable[type[BaseModel]] = (),
     ) -> None:
         """Build the kit; ``migrations``, ``prefix``, ``id_source``, the validators, ``workflows``, ``stores``, ``event_bus``, ``toolkit`` and ``refusal_problems`` are ``install_service``'s arguments of those names.
 

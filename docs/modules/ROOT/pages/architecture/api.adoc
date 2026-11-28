@@ -189,7 +189,8 @@ object (a subclass of `Problem`). The answer depends on what the application reg
 |that problem as the rule built it, extra fields and `detail` included; nothing is logged
 
 |`RuleRefusal` whose problem is of an unregistered class (a subclass of a registered one included),
-is not a `Problem`, or has another status
+is not a `Problem`, or has another status (one that is not an `int`, or is a `bool`, such as `409.0`
+or `True`, counts as another status)
 |500 `internal-error`, with none of the rule's fields; one `error` record names the rule and the
 class or the status, and carries the traceback
 
