@@ -315,7 +315,9 @@ class Pinning:
     def __init__(self, pinned: frozenset[str]) -> None:
         self.pinned = pinned
 
-    async def prepare(self, session, iri, triples, stored, allowed_state, *, context):
+    async def prepare(
+        self, session, iri, triples, stored, allowed_state, *, context, allowed_assignees=None
+    ):
         return triples
 
     async def prepare_remove(self, session, iri, if_version, *, context):
