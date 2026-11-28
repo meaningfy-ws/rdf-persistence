@@ -183,7 +183,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/aggregates.py",
-      "sha256": "334b7b0f00a73282c16ebb962e8f7d23dbbcc63338f6756ca0804fa4efd0e99f"
+      "sha256": "fd38e79f6d169eda389352e5bdc7e5f9acd3f825f923de3171ab35fb0ea2eeac"
     },
     {
       "path": "rdf_persistence_generation/uml/classes.py",
@@ -199,7 +199,7 @@
     },
     {
       "path": "rdf_persistence_generation/uml/convert.py",
-      "sha256": "596fd4ee147900475f85356575d447bb115d3521cc7f65df57d296a64da92edf"
+      "sha256": "d4462a886f63ae7af5417c97a7b63227a832b15725e7eef47cf3146380a22faa"
     },
     {
       "path": "rdf_persistence_generation/uml/dump.py",

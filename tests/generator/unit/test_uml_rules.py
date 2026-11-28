@@ -1553,31 +1553,18 @@ def _isbn_pair(book: dict[str, object], series: dict[str, object]) -> object:
 
 
 def _owned_on_one_class() -> object:
-    """Book owns its parts by a composition; Series refers to the same slot name as a plain reference.
+    """Book owns its parts by a composition; Series points at Book by the same role (C-9, PD-10).
 
     Series is drawn «root» as Book is: both are the derived roots, so the drawn set agrees (PD-6).
+    The pointer targets a root, so only C-9 refuses: one slot would be owned and a reference.
     """
     return _owning(
         klass(BOOK, "lib:Book", stereotype="root"),
         klass(CHAPTER, "lib:Chapter"),
         klass(SERIES, "lib:Series", stereotype="root"),
         parts=((BOOK, CHAPTER, "lib:hasPart"),),
-        links=(link(2, SERIES, CHAPTER, target_role="lib:hasPart", target_card="0..*"),),
+        links=(link(2, SERIES, BOOK, target_role="lib:hasPart", target_card="0..*"),),
     )
-
-
-def _owned_on_book_only(out: Converted) -> None:
-    _agreed_and_narrowed(
-        "has_part",
-        {"range": "Chapter", "multivalued": True, "description": _LINK_NOTE},
-        {"inlined_as_list": True},
-        {},
-    )(out)
-    assert "owned" not in out.slot("app_library", "has_part").annotations, (
-        "the owned annotation must not leak from Book to the shared slot"
-    )
-    book_usage = out.klass("app_library", "Book").slot_usage["has_part"]
-    assert book_usage.annotations["owned"].value == "true", "Book's own usage carries owned"
 
 
 _TEXT = {"range": "string", "description": _ATTRIBUTE_NOTE}
@@ -1614,10 +1601,10 @@ ROWS_R13 = [
         ),
     ),
     Row(
-        "ownership on one class does not leak inlined to the other",
-        UmlRule.SHARED_SLOT,
+        "a role owned on one whole and a pointer on another class is refused (C-9)",
+        UmlRule.BOUNDARY_OWNED,
         _owned_on_one_class(),
-        _owned_on_book_only,
+        _problem(UmlRule.BOUNDARY_OWNED, "has_part", "owned on Book", "pointer on Series"),
     ),
     Row(
         "a description on the first usage only is the slot's, and the other usage inherits it",

@@ -31,6 +31,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlTaggedValue,
 )
 from rdf_persistence_generation.uml.context import local_of
+from rdf_persistence_generation.uml.slots import Usage, is_owned
 
 MODULE_KIND: Final = "module_kind"
 DOMAIN: Final = "domain"
@@ -553,6 +554,105 @@ class _Pass:
                 key=lambda each: (ReportKind(each.report_kind).value, each.element, each.message),
             ),
         )
+
+
+class _Pointers:
+    """The pointers of a converted model against its aggregates (PD-10, C-9): the indexes and the problems."""
+
+    def __init__(
+        self,
+        usages: list[Usage],
+        toolkit_usages: list[Usage],
+        aggregates: UmlAggregates,
+        elements: list[UmlElement],
+    ) -> None:
+        self.usages = usages
+        self.toolkit_iris = {each.iri for each in toolkit_usages}
+        self.by_label = {each.label: each for each in elements}
+        self.name_of = {each.uml_class.object_id: each.label for each in elements}
+        self.reach = {row.part_id: set(row.top_ids or []) for row in aggregates.reached_from or []}
+
+    def pointer_target(self, usage: Usage) -> UmlElement | None:
+        """The generated class a slot that is not owned ranges over; None for any other slot."""
+        target = self.by_label.get(str(usage.shape.range))
+        return None if is_owned(usage.shape) or target is None or target.is_enum else target
+
+    def tops_of(self, element: UmlElement) -> set[int]:
+        """The tops a class belongs to: those that reach it, itself when no top does (PD-10)."""
+        key = element.uml_class.object_id
+        return self.reach.get(key) or {key}
+
+    def names(self, tops: set[int]) -> list[str]:
+        return sorted(self.name_of.get(each, str(each)) for each in tops)
+
+    def into_a_part(self, usage: Usage) -> CheckProblem | None:
+        """A pointer at a part of an aggregate its holder does not share (PD-10, A-13)."""
+        target = self.pointer_target(usage)
+        if target is None:
+            return None
+        wanted = self.reach.get(target.uml_class.object_id)
+        if not wanted or wanted & self.tops_of(usage.holder):
+            return None
+        roots = self.names(wanted)
+        return CheckProblem(
+            rule=UmlRule.BOUNDARY_OWNED.value,
+            element=f"{usage.holder.label}.{usage.name}",
+            message=f"points at {target.label}, a part of {', '.join(roots)}; "
+            f"point at {' or '.join(roots)}",
+        )
+
+    def split_roles(self, kept: list[Usage]) -> list[CheckProblem]:
+        """A role owned on one whole and a pointer on another class; a toolkit slot is exempt (C-9, A-26)."""
+        found = [
+            self.split_role([each for each in kept if each.iri == iri])
+            for iri in sorted({each.iri for each in kept} - self.toolkit_iris)
+        ]
+        return [each for each in found if each is not None]
+
+    def split_role(self, same: list[Usage]) -> CheckProblem | None:
+        """The problem of the usages of one role, when it is owned on some class and a pointer on another."""
+        owners = sorted({each.holder.label for each in same if is_owned(each.shape)})
+        holders = sorted(
+            {each.holder.label for each in same if self.pointer_target(each) is not None}
+        )
+        if not (owners and holders):
+            return None
+        role = same[0].name
+        return CheckProblem(
+            rule=UmlRule.BOUNDARY_OWNED.value,
+            element=role,
+            message=f"role {role} is owned on {', '.join(owners)} "
+            f"and a pointer on {', '.join(holders)}",
+        )
+
+    def problems(self) -> list[CheckProblem]:
+        """The refused pointers, then the split roles of the pointers that remain."""
+        found = [(usage, self.into_a_part(usage)) for usage in self.usages]
+        refused = [problem for _, problem in found if problem is not None]
+        kept = [usage for usage, problem in found if problem is None]
+        return [*refused, *self.split_roles(kept)]
+
+
+def check_pointers(
+    usages: list[Usage],
+    toolkit_usages: list[Usage],
+    aggregates: UmlAggregates,
+    elements: list[UmlElement],
+) -> list[CheckProblem]:
+    """The pointers PD-10 and C-9 refuse: into another aggregate's part, and a role owned and pointed at.
+
+    Args:
+        usages: The slots that stay domain slots; an owned one carries the ``owned`` annotation.
+        toolkit_usages: The slots that are the toolkit's (PD-18); they are not checked, and a role
+            they hold is exempt from C-9 (A-26).
+        aggregates: The result of ``derive_aggregates``: the tops that reach each part.
+        elements: The classes and enumerations the conversion generates.
+
+    Returns:
+        One problem for each pointer at a class that is a part of an aggregate its holder does not
+        belong to, and one for each role owned on a whole and a pointer on another class.
+    """
+    return _Pointers(usages, toolkit_usages, aggregates, elements).problems()
 
 
 def derive_aggregates(  # noqa: PLR0913 - PD-19's six inputs and the two a message needs, no Context

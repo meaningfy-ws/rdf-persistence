@@ -28,7 +28,11 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlRule,
     UmlSettings,
 )
-from rdf_persistence_generation.uml.aggregates import derive_aggregates, package_kinds
+from rdf_persistence_generation.uml.aggregates import (
+    check_pointers,
+    derive_aggregates,
+    package_kinds,
+)
 from rdf_persistence_generation.uml.classes import (
     annotation,
     build_class,
@@ -429,6 +433,8 @@ def convert(
     ctx.paths = package_paths(model, settings)
     elements, usages, parent_of, aggregates = _build(ctx, model)
     toolkit_usages, usages = split_toolkit(ctx, usages)
+    for problem in check_pointers(usages, toolkit_usages, aggregates, elements):
+        ctx.findings.add(problem)
     name_slots(ctx, usages, toolkit_usages)
     if not ctx.elements and not ctx.findings.problems():
         ctx.findings.problem(

@@ -642,4 +642,10 @@ Decisions the lead took without the developer, shown for validation at the end (
   six listed inputs cannot tell a drawn toolkit class from a not-generated one, nor name a class
   that is not an element. Rejected: `UmlPartOf.link_id` (a part row is per class pair, not per
   connector).
+- **D-10**, lead, 2026-11-28 (delivery, task 1.7): PD-10 narrowed. A pointer's target counts as a
+  part only when it is in `UmlAggregates.reached_from` (a concrete part, or an abstract part whose
+  descendants the tree walks). An abstract class that is no part itself, but whose concrete
+  descendants are all parts of other aggregates, is not refused. `check_pointers` keeps PD-19's
+  signature, with no `parent_of`. Rejected: a `parent_of` input for that rarer case (a signature
+  and model change for a shape no test or consumer draws).
 

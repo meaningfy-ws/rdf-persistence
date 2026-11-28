@@ -10,8 +10,10 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import pytest
+from linkml_runtime.linkml_model import SlotDefinition
 
 from rdf_persistence_generation.generated.rp_generation import (
+    CheckProblem,
     LeftOutReason,
     ReportKind,
     UmlAggregates,
@@ -25,7 +27,12 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlRule,
     UmlTaggedValue,
 )
-from rdf_persistence_generation.uml.aggregates import derive_aggregates, package_kinds
+from rdf_persistence_generation.uml.aggregates import (
+    check_pointers,
+    derive_aggregates,
+    package_kinds,
+)
+from rdf_persistence_generation.uml.slots import OWNED, Usage, shape_of
 
 DIRECTED = "Source -> Destination"
 BIDIRECTIONAL = "Bi-Directional"
@@ -51,6 +58,8 @@ class Drawing:
     toolkit: dict[int, str] = field(default_factory=dict)
     ids: dict[str, int] = field(default_factory=dict)
     slots: dict[int, str] = field(default_factory=dict)
+    usages: list[Usage] = field(default_factory=list)
+    toolkit_usages: list[Usage] = field(default_factory=list)
 
     def _id(self, label: str) -> int:
         return self.ids.setdefault(label, len(self.ids) + 100)
@@ -148,8 +157,35 @@ class Drawing:
             {object_id: label for label, object_id in self.ids.items()},
         )
 
+    def point(
+        self,
+        holder: str,
+        role: str,
+        target: str,
+        *,
+        owned: bool = False,
+        iri: str | None = None,
+        toolkit: bool = False,
+    ) -> None:
+        """A slot ``role`` on ``holder`` over ``target``, as the usage the slot pass would give it."""
+        element = next(each for each in self.elements if each.label == holder)
+        written = UmlName(name=role, iri=iri or f"http://example.org/lib#{role}")
+        limits = SlotDefinition(name=role)
+        shape = shape_of(role, (target, None), limits, marked=(OWNED,) if owned else ())
+        usage = Usage(element, (SlotDefinition(name=role), written), (1, 0, role), shape)
+        (self.toolkit_usages if toolkit else self.usages).append(usage)
+
+    def pointers(self) -> list[str]:
+        """The problems of ``check_pointers`` over the usages drawn, as the text a row compares."""
+        found = check_pointers(self.usages, self.toolkit_usages, self.derive(), self.elements)
+        return [_text(each) for each in found]
+
     def label(self, object_id: int) -> str:
         return next(label for label, each in self.ids.items() if each == object_id)
+
+
+def _text(problem: CheckProblem) -> str:
+    return f"[{problem.rule}] {problem.element}: {problem.message}"
 
 
 def roots(drawing: Drawing, found: UmlAggregates) -> set[str]:
@@ -865,3 +901,111 @@ def test_a_composition_under_a_not_generated_whole_needs_no_association() -> Non
     drawing.cls("Result")
     drawing.part("Report", "Result")
     assert problems(drawing.derive()) == [], "A-8: it converts to nothing, so every rule is exempt"
+
+
+HAS_PART = "http://purl.org/dc/terms/hasPart"
+
+
+def _library() -> Drawing:
+    """Book and Journal share Section; Reader, a tenant root and every other kind of class stand apart."""
+    drawing = Drawing()
+    for label in ("Book", "Journal", "Section", "Reader"):
+        drawing.cls(label)
+    drawing.cls("Tenant", tenant=True)
+    drawing.cls("Publication", abstract=True)
+    drawing.cls("Mixed", abstract=True)
+    drawing.cls("Staff", package=ACCESS_PACKAGE)
+    drawing.cls("Currency", package=TECHNICAL_PACKAGE)
+    for whole in ("Book", "Journal"):
+        drawing.part(whole, "Section")
+        drawing.assoc(whole, "Section", "hasSection")
+        drawing.point(whole, "hasSection", "Section", owned=True)
+        drawing.isa(whole, "Publication")
+    drawing.isa("Section", "Mixed")
+    drawing.isa("Reader", "Mixed")
+    return drawing
+
+
+def _pointing(target: str, holder: str = "Reader") -> Drawing:
+    drawing = _library()
+    drawing.point(holder, "cites", target)
+    return drawing
+
+
+def _owned_and_pointing(*, kept: bool = False, toolkit: bool = False) -> Drawing:
+    drawing = _library()
+    drawing.point("Book", "hasPart", "Section", owned=True, iri=HAS_PART, toolkit=toolkit)
+    drawing.point("Reader", "hasPart", "Book", iri=HAS_PART, toolkit=toolkit)
+    if kept:
+        drawing.point("Reader", "hasPart", "Book", toolkit=True, iri=HAS_PART)
+    return drawing
+
+
+def _owned_only() -> Drawing:
+    drawing = _library()
+    drawing.point("Book", "hasPart", "Section", owned=True, iri=HAS_PART)
+    return drawing
+
+
+def _pointers_only() -> Drawing:
+    drawing = _library()
+    drawing.point("Reader", "hasPart", "Book", iri=HAS_PART)
+    drawing.point("Staff", "hasPart", "Journal", iri=HAS_PART)
+    return drawing
+
+
+SECTION_REFUSED = [
+    "[boundary_owned] Reader.cites: points at Section, a part of Book, Journal; "
+    "point at Book or Journal"
+]
+ROLE_SPLIT = ["[boundary_owned] hasPart: role hasPart is owned on Book and a pointer on Reader"]
+
+
+@pytest.mark.parametrize(
+    ("build", "expected"),
+    [
+        (lambda: _pointing("Section"), SECTION_REFUSED),
+        (lambda: _pointing("Section", "Staff"), [SECTION_REFUSED[0].replace("Reader", "Staff")]),
+        (lambda: _pointing("Book"), []),
+        (lambda: _pointing("Journal"), []),
+        (lambda: _pointing("Tenant"), []),
+        (lambda: _pointing("Publication"), []),
+        (lambda: _pointing("Section", "Book"), []),
+        (lambda: _pointing("Section", "Section"), []),
+        (lambda: _pointing("Staff"), []),
+        (lambda: _pointing("Currency"), []),
+        (lambda: _pointing("Mixed"), []),
+        (_owned_and_pointing, ROLE_SPLIT),
+        (_owned_only, []),
+        (_pointers_only, []),
+        (lambda: _owned_and_pointing(toolkit=True), []),
+        (lambda: _owned_and_pointing(kept=True), []),
+    ],
+    ids=[
+        "into another aggregate's part, naming slot, part and roots",
+        "into a part from a class of no aggregate",
+        "to a root",
+        "to another root",
+        "to the tenant root",
+        "to an abstract class whose descendants are all roots",
+        "to a part of the aggregate the holder is the top of",
+        "to a part from a part of the same aggregate",
+        "to an access class",
+        "to a technical class",
+        "to an abstract class mixing a root and a part",
+        "a role owned on one whole and a pointer elsewhere (C-9)",
+        "a role owned and no pointer",
+        "a role used as pointers only",
+        "the same role kept as the toolkit's slot, owned and pointing (A-26)",
+        "the role is the toolkit's besides a domain pointer (A-26)",
+    ],
+)
+def test_pointers_target_roots_only(build: Callable[[], Drawing], expected: list[str]) -> None:
+    assert build().pointers() == expected, "PD-10 and C-9: only a part of another aggregate refused"
+
+
+def test_a_pointer_refused_for_its_target_is_not_refused_again_for_its_role() -> None:
+    drawing = _library()
+    drawing.point("Book", "cites", "Section", owned=True)
+    drawing.point("Reader", "cites", "Section")
+    assert len(drawing.pointers()) == 1, "one slot gives one problem, the target's (PD-10)"

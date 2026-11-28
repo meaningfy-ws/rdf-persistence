@@ -97,7 +97,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   goldens byte-identical; the report golden diff shows only `root` and `deprecated-root` lines
   (no `boundary-disagrees`: the fixture boundary names its root); `ast-grep` finds no
   `RectTop`/`RectLeft` in `rdf_persistence_generation/`; `make test-generator` green.
-- [ ] 1.7 Unit, pointers ([PD-10](design.md#pd-10), [PD-19](design.md#pd-19), C-9, A-13, A-26),
+- [x] 1.7 Unit, pointers ([PD-10](design.md#pd-10), [PD-19](design.md#pd-19), C-9, A-13, A-26),
   after 1.6. `test_uml_aggregates.py`, calling `aggregates.check_pointers(usages, toolkit_usages,
   aggregates, elements)` with records and no `Context`; then wired in `convert.py`. Rows: into another aggregate's part (problem names slot, part, roots); to a
   root, the tenant root, an abstract all-root class, a part of an aggregate the holder shares
@@ -113,7 +113,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   unchanged), no classifier (target taken, also outside the subtree), disagreeing and two-target
   (problem `role_definition` naming both classes); an Object of a domain class still refused. Then
   `qea.py` (`QeaBuilder.realisation(...)`) and `roles.py`. Accept: all pass.
-- [ ] 1.9 Unit, the byte-identity claim ([PD-6a](design.md#pd-6a), [RISK-4](design.md#risk-4),
+- [x] 1.9 Unit, the byte-identity claim ([PD-6a](design.md#pd-6a), [RISK-4](design.md#risk-4),
   [RISK-10](design.md#risk-10)), after 1.6. `test_uml_golden.py`
   `test_a_model_drawn_both_ways_converts_the_same` (the stage-1 model with «root» and a boundary,
   and with neither, give identical schemas) and

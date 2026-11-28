@@ -31,9 +31,9 @@ def write_prefixes(folder: Path) -> Path:
     return path
 
 
-def _catalogue(builder: QeaBuilder, package: int) -> dict[str, int]:
+def _catalogue(builder: QeaBuilder, package: int, root: str | None) -> dict[str, int]:
     ids: dict[str, int] = {}
-    ids["book"] = builder.cls(package, "lib:Book", stereotype="root", note="A book in the library.")
+    ids["book"] = builder.cls(package, "lib:Book", stereotype=root, note="A book in the library.")
     ids["chapter"] = builder.cls(package, "lib:Chapter", note="A chapter of a book.")
     builder.attribute(
         ids["book"], "dct:title", "xsd:string", "1", "1", note="The title of the book."
@@ -60,7 +60,7 @@ def _catalogue(builder: QeaBuilder, package: int) -> dict[str, int]:
         ids["publication"], "lib:issued", "xsd:date", "0", "1", note="When it was issued."
     )
     ids["periodical"] = builder.cls(
-        package, "lib:Periodical", stereotype="root", note="A publication in issues."
+        package, "lib:Periodical", stereotype=root, note="A publication in issues."
     )
     builder.attribute(ids["periodical"], "lib:issn", "xsd:string", "0", "1", note="Its ISSN.")
     ids["authority"] = builder.cls(
@@ -89,20 +89,26 @@ def _links(builder: QeaBuilder, ids: dict[str, int]) -> None:
     builder.generalisation(ids["periodical"], ids["publication"])
 
 
-def build_library(folder: Path) -> Path:
-    """Write ``library.qea`` into ``folder``; the package to convert is ``PACKAGE``."""
+def build_library(folder: Path, annotated: bool = True) -> Path:
+    """Write ``library.qea`` into ``folder``; the package to convert is ``PACKAGE``.
+
+    ``annotated=False`` draws the same model with no «root» and no boundary (compositions stay): the
+    other drawing of the byte-identity claim (PD-6a).
+    """
+    root = "root" if annotated else None
     builder = QeaBuilder(folder / "library.qea")
     model = builder.package("MODEL")
     library = builder.package("library", parent=model, note="The library and its books.")
     catalogue = builder.package("catalogue", parent=library, note="What the library holds.")
     shelves = builder.package("shelves", parent=library, note="Where the books stand.")
     external = builder.package("external", parent=model)
-    ids = _catalogue(builder, catalogue)
-    ids["shelf"] = builder.cls(shelves, "lib:Shelf", stereotype="root", note="A shelf of books.")
+    ids = _catalogue(builder, catalogue, root)
+    ids["shelf"] = builder.cls(shelves, "lib:Shelf", stereotype=root, note="A shelf of books.")
     builder.attribute(ids["shelf"], "lib:location", "xsd:string", "1", "1", note="Where it is.")
     builder.tag(ids["shelf"], "rp_path", "shelves")  # the derived plural would be "shelfs"
     ids["work"] = builder.cls(external, "ext:Work", note="A work in another model.")
     _links(builder, ids)
     # a boundary is an annotation, named for its root and kept in the root's converted package (PD-7)
-    builder.boundary(diagram=1, package=catalogue, name="Book")
+    if annotated:
+        builder.boundary(diagram=1, package=catalogue, name="Book")
     return builder.finish()

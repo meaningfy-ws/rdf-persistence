@@ -1,8 +1,8 @@
 """PD-19a: the new passes take arguments and return values, never a ``Context``.
 
 The five functions of PD-19 are inspected by their annotations and called with empty, hand-built
-inputs. A pass that a later task adds (1.7, stage 2) is skipped until its module has it, so this
-file is green alone and starts to bind the day the function lands.
+inputs. A pass that a later task adds (stage 2) is skipped until its module has it, so this
+file is green alone and starts to bind the day the function lands; ``check_pointers`` (1.7) binds.
 """
 
 import importlib
