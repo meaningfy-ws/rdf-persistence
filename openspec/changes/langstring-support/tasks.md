@@ -37,7 +37,7 @@ Lead: 1.0. Wave A: 1.1 ∥ 1.2 ∥ 1.3 ∥ 1.4. Lead: 1.5, 1.6.
   to a double slot"; the feature passes.
 - [x] 1.5 Lead: the comment of [PD-7](design.md#pd-7); the DEC-8 lines of
   [PD-19](design.md#pd-19) (RISK-3, RISK-4, RISK-5).
-- [ ] 1.6 Lead: `make check-generated` with no diff (DEC-7); `make check-all`; one review pass; PR
+- [x] 1.6 Lead: `make check-generated` with no diff (DEC-7); `make check-all`; one review pass; PR
   "rdflib terms, and one form for decimal numbers".
 
 ## 2. Stage 2: `lang_string`
@@ -101,7 +101,7 @@ lead: 2.11, 2.12.
 
 ## Roadmap
 
-- [x] 1.0 · [x] 1.1 ∥ 1.2 ∥ 1.3 ∥ 1.4 · [x] 1.5 · [ ] 1.6 (stage 1 PR)
+- [x] 1.0 · [x] 1.1 ∥ 1.2 ∥ 1.3 ∥ 1.4 · [x] 1.5 · [x] 1.6 (stage 1 PR #474)
 - [ ] 2.0 · [ ] 2.1 ∥ 2.2 ∥ 2.3 ∥ 2.4 · [ ] 2.5 · [ ] 2.6 ∥ 2.7 ∥ 2.8 ∥ 2.9 · [ ] 2.10 ·
   [ ] 2.11 · [ ] 2.12 (stage 2 PR)
 

@@ -1,44 +1,38 @@
-# Hand-over: langstring-support, PLAN gated, scenarios signed off (2026-11-28)
+# Hand-over: langstring-support, stage 1 in PR #474, stage 2 next (2026-11-28)
 
 **Where:** worktree `/home/lps/work/workspace-charm/rdf-persistence/.worktrees/langstring-support`,
-branch `docs/plan-langstring-support` (draft PR #467), rebased on `develop`. `.venv` synced with
-`uv sync --all-extras` (Python 3.13; `make install` is the target; a bare `uv sync` drops the
-`generate` extra and `linkml`).
+branch `feat/langstring-stage-1` (PR #474 into `develop`; it carries the PLAN commits of draft #467).
+`.venv` synced with `uv sync --all-extras` (`make install`; a bare `uv sync` drops `linkml`).
 
-**State of the PLAN**
-- EPIC (`proposal.md`) re-shaped to SMALL, two stages (DEC-6); DEC-1 to DEC-9.
-- Owner's answers: `inputs/qa.md` (OPEN-1..4, Q-1..4, P-1..4). Question rounds spent (SMALL: two).
-- `design.md` PD-1 to PD-20, error matrix, RISK-1 to RISK-7; `tasks.md` stage 1 (1.0 to 1.6) and
-  stage 2 (2.0 to 2.12) in waves.
-- Attack done (15 findings folded in; `design.md` "Attack").
-- Scenarios signed off (`evidence/signoff.md`): `features/*.feature` and the spec deltas. Do not
-  change them without the owner.
-- **PLAN gated:** run 1 8.5 (ten gaps, folded in), run 2 9.2, pass (`evidence/clarity-gate.md`).
-  design.md carries `<a id="pd-n">` anchors; tasks link `design.md#pd-n`.
+**Stage 1: done, awaiting the owner's merge.** Tasks 1.0 to 1.6. `make check-all` green after the
+fix pass (unit 9295, feature 133, generator 2258; coverage 97.21 %). One review pass L2+L3: 8
+findings, F-4 accepted as Critical and fixed with F-2, F-5; F-7 lead-fixed; the rest under the
+floor (D-8). Delivery decisions D-1 to D-8 in `design.md`, for the owner to validate.
 
-**Next: delivery, in this session, as team lead** (`epic-delivery`; `develop/agents.adoc`).
-1. Stage 1 branch off `develop` (e.g. `feat/langstring-stage-1`), in a worktree of its own or this
-   one after the PLAN PR merges; the PLAN files travel on #467.
-2. Stage start: GitNexus impact on the existing index (the owner said no reindex unless asked);
-   `make test-seed` in the background.
-3. Lead task 1.0 (measures fixture), then wave A builders 1.1 ∥ 1.2 ∥ 1.3 ∥ 1.4 in parallel.
-4. Then 1.5, 1.6 (`make check-generated` no diff, `make check-all`, one review pass, PR). Stage 2
-   the same, from 2.0.
+**Next: stage 2 (`lang_string`)**, tasks 2.0 to 2.12, from a fresh session (or this one, if the
+owner says so), after #474 merges:
+1. Branch `feat/langstring-stage-2` off `develop`. GitNexus impact on the existing index (no
+   reindex unless the owner asks); `make test-seed` in the background only if builders share the
+   worktree.
+2. Lead 2.0; wave A 2.1 ∥ 2.2 ∥ 2.3 ∥ 2.4; lead 2.5 (`make generate`, `make refresh-golden`);
+   wave B 2.6 ∥ 2.7 ∥ 2.8 ∥ 2.9; 2.10; lead 2.11, 2.12 (`make check-all`, `make test-containers`).
+3. **D-6:** builders sharing a worktree cannot pass `make test-changed` while generator sources are
+   mid-edit (the freshness plugin stops every session). Either a worktree per generator builder
+   (2.2, 2.3, 2.4, 2.9), or builders run `uv run pytest -p no:rdf_persistence_generation.testkit.freshness
+   -W ignore::pytest.PytestConfigWarning <files>` and the lead regenerates and runs the gates.
+4. Kill no other session's queued run; stop only this worktree's stale builder runs, by pid.
 
-**Every subagent brief carries** (the owner asked twice; candidate rule pending on the card):
-- the absolute worktree path, and "call `mcp__serena__activate_project` on it first" (three
-  subagents found ToolSearch does not return it; the lead activates the worktree in Serena itself
-  before briefing, or states which checkout Serena reads);
-- `develop/agents.adoc#brief` checklist pasted, and `#tools`: Serena for Python symbols and
-  callers, ast-grep for shapes, Grep only for YAML/JSON/docs/Makefile, no `s.shell`/`s.mem`, no
-  re-index; the report says which tool backed each finding;
-- `rules.py load --activity <coding|review|planning> --brief` output;
-- the AGENTS.md guards for builders, word for word.
+**Every subagent brief carries:** the standing block used in stage 1 (the lead's scratch
+`common-brief.md`, rebuilt from): the absolute worktree path and base sha; `develop/agents.adoc#brief`
+checklist and `#tools`; the AGENTS.md builder guards word for word; `rules.py load --activity coding
+--brief`. **Serena:** `activate_project` is not available in this CLI; Serena reads the main
+checkout (`develop`), so it is read-only orientation on unchanged code; edits with Edit on absolute
+worktree paths; ast-grep on the worktree.
 
 **Pending with the owner**
-- Rule-learner card: the candidate "every subagent brief, builders and read-only alike, carries
-  `agents.adoc#tools` and the Serena activation on its worktree" (and an optional skillery issue:
-  `rules.py --brief` and `epic-delivery`'s brief carry no tool rules for read-only subagents).
-- PR #468 (rule P-0041), release 0.17.0 (changelog PR, nightly, merge #429, fast-forward `main`).
+- Merge #474; validate D-1 to D-8.
+- Rule-learner card, row 1: every subagent brief, builders and read-only alike, carries
+  `agents.adoc#tools` and the Serena activation on its worktree (optional skillery issue).
+- Release follow-ups: nightly run, fast-forward `main`.
 
-**Probes** (not committed): `temp/` (`probe_*.py`, `dec8/`, `lang/`, `attack/`).
+**Probes** (not committed): `temp/` (`probe_*.py`, `dec8/`, `lang/`, `attack/`, gate logs).
