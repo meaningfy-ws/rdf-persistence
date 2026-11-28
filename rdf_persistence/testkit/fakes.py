@@ -558,14 +558,7 @@ class FakeAggregateReader:
         self.calls.append(("find", (cls,), dict(equals)))
         wanted = find_items(cls, equals)  # the real reader's order: items, values, root, slots
         refuse_values_not_of_the_slot(cls, wanted)
-        if cls not in self._roots:
-            raise ValueError(f"{cls.__name__} is not an aggregate root with a path")
-        for slot in wanted:
-            if slot not in cls.model_fields:
-                raise BadQuery(f"{slot} is not a slot of {cls.__name__}")
-        for slot, items in wanted.items():
-            if any(isinstance(item, Contains) for item in items):
-                raise NotImplementedError(f"the fake reader does not answer {slot!r} (a Contains)")
+        self._refuse_after_the_values(cls, wanted)
         return sorted(
             iri
             for iri, model in self._models.items()
@@ -573,6 +566,22 @@ class FakeAggregateReader:
             and iri not in self._unreadable
             and all(self._holds(model, slot, wants) for slot, wants in wanted.items())
         )
+
+    def _refuse_after_the_values(
+        self, cls: type[BaseModel], wanted: dict[str, list[object]]
+    ) -> None:
+        """The real reader's last refusals, in its order: a class that is no root, an unknown slot;
+        then the fake's one limit, a ``Contains``."""
+        if cls not in self._roots:
+            raise ValueError(f"{cls.__name__} is not an aggregate root with a path")
+        unknown = [slot for slot in wanted if slot not in cls.model_fields]
+        if unknown:
+            raise BadQuery(f"{unknown[0]} is not a slot of {cls.__name__}")
+        contains = [s for s, items in wanted.items() if any(isinstance(i, Contains) for i in items)]
+        if contains:
+            raise NotImplementedError(
+                f"the fake reader does not answer {contains[0]!r} (a Contains)"
+            )
 
     @staticmethod
     def _holds(model: BaseModel, slot: str, wants: list[object]) -> bool:
