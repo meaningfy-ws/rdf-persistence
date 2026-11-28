@@ -380,6 +380,11 @@ lane that ran them still runs them and they prove what they proved.
   fields; `NAMES` 160 + `Assignment` = 161; both blocks of scenario-map rows), and every
   generated file and snapshot was regenerated from the sources (P-0003). The full gates run again
   on the merge, `make test-containers` included, since `develop` changed the persistence layer.
+- **D-22** (lead, 2026-11-28): the release builder (2.1, 2.2) wrote the code before its tests, against
+  R-0003; its eight tests passed at once, and "a member leaves" fails without the release, so
+  they are kept. Its task gate (exit 0) reported no test count, and the listing builder's (2.3)
+  hit its 900 s background limit: T1 and T2, the lead runs the stage's task gate once on both.
+  T15 was green with no production change, as D-7 expected.
 - **D-16** (lead, 2026-11-27): the worktree was installed with a bare `uv sync`, without the
   extras `make install` adds (`--all-extras`); the API tests failed for a missing module and both
   first task gates fell back to the full lane and timed out. Reinstalled with `make install` and

@@ -7,6 +7,7 @@ aggregate and the record of the change (an ``Assignment``) are written in one tr
 ``Collaboration`` hands ``assign`` and ``assignments`` over to it.
 """
 
+import logging
 from collections.abc import Awaitable, Callable
 from typing import cast
 
@@ -34,12 +35,16 @@ from rdf_persistence.core.domain.exceptions import (
     StoredDataInvalid,
 )
 from rdf_persistence.core.domain.sparql import Triple, is_absolute_iri
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import error_type, log_extra
 from rdf_persistence.core.services.yaml_files import SHOWN
 from rdf_persistence.iris.services.iris import Iris
 from rdf_persistence.persistence.services.mapper import Mapper
 from rdf_persistence.persistence.services.session import Session, changed_text
 from rdf_persistence.provenance.services.provenance import new_activity_id
 from rdf_persistence.schema.services import vocabulary as v
+
+log = logging.getLogger(__name__)
 
 ASSIGNMENT_CLASS = "Assignment"
 
@@ -144,6 +149,61 @@ class Assignments:
         if not await self._session.heads([iri]):  # an aggregate that is not stored has no changes
             raise NotFound(f"no graph for {iri}")
         return await activities_about(self._session, self._mapper, Assignment, v.ASSIGNMENT, iri)
+
+    async def release_unreadable(self, record: CallerAccess) -> None:
+        """Release, on every aggregate under a workflow, the assignees who may no longer read it by ``record``.
+
+        ``record`` is the whole access record of the tenant (every principal's grants and
+        prohibitions), taken after a change of grants; no query is made to test it. Each root that
+        loses assignees is stored with an ``Assignment`` naming them as released and the caller of
+        the session as its agent. The caller is not checked: this is a system act after the grants
+        changed. A root that is refused, or that stays in conflict after one more try, is logged
+        and left, and the release goes on with the next. Running it again changes nothing.
+
+        Raises:
+            LookupError: The schema does not import the module rp_workflow.
+            DatabaseGone: The tenant database does not exist.
+        """
+        self._require_module()
+        if self._workflows is None:
+            return
+        for iri, graph in sorted((await self._session.graphs_with(v.WORKFLOW_ASSIGNEES)).items()):
+            if self._workflows.of_types(graph.objects(URIRef(iri), RDF.type)) and self._unreadable(
+                iri, graph, record
+            ):
+                await self._release_root(iri, record)
+
+    def _unreadable(self, iri: str, graph: Graph, record: CallerAccess) -> set[str]:
+        """The assignees of ``iri`` in ``graph`` who may not read it by ``record``."""
+        return {
+            principal
+            for principal in (str(o) for o in graph.objects(URIRef(iri), v.WORKFLOW_ASSIGNEES))
+            if not self._rules.may(
+                VerifiedCaller(principal=principal, global_roles=[]), record, iri, Action.READ
+            )
+        }
+
+    async def _release_root(self, iri: str, record: CallerAccess) -> None:
+        """Store ``iri`` without the assignees who may not read it; once more after a conflict."""
+        reason = ""
+        for _ in range(2):
+            try:
+                graph, _, version = await self._session.get_graph(iri)
+                dropped = self._unreadable(iri, graph, record)
+                if not dropped:  # released meanwhile
+                    return
+                stored = {str(o) for o in graph.objects(URIRef(iri), v.WORKFLOW_ASSIGNEES)}
+                await self._store(iri, graph, stored - dropped, set(), dropped, version, None)
+                return
+            except Conflict as error:
+                reason = error_type(error)
+            except Exception as error:  # noqa: BLE001 -- any refusal leaves the root, logged (D-6)
+                reason = error_type(error)
+                break
+        log.warning(
+            "left the assignees of an aggregate that lost its readers",
+            extra=log_extra(LogContext(step="release-assignees", resource=iri, error_type=reason)),
+        )
 
     def _require_module(self) -> None:
         if self._view.get_class(ASSIGNMENT_CLASS) is None:

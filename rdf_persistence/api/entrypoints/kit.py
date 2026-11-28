@@ -613,9 +613,40 @@ class ServiceKit:
             principal=authorised.principal, global_roles=authorised.global_roles
         )
         access = authorised.caller_access
-        may_read = self.readable_by(caller, access)
+        async with self._collaboration(caller, access, self.readable_by(caller, access)) as opened:
+            yield opened
+
+    async def release_assignees(self, tenant: str, caller: VerifiedCaller) -> None:
+        """Release, on every aggregate under a workflow, the assignees who may no longer read it.
+
+        Call it after the grants of ``tenant`` changed (the grants route does): it reads the tenant's
+        access record and stores each aggregate without the assignees that record no longer lets
+        read it, with an ``Assignment`` naming ``caller`` as its agent and the principals released.
+        It checks no right of ``caller``: it is a system act after the grant change, which the
+        caller's right to administer already allowed. An aggregate it cannot store is logged and
+        left; running it again changes nothing once it is done.
+
+        Raises:
+            NotFound: The tenant has no access record.
+            LookupError: The schema does not import the module rp_workflow.
+            DatabaseGone: The tenant database does not exist.
+        """
+        record, _ = await self.tenancy.get(tenant)
+        access = CallerAccess(
+            tenant=tenant,
+            state=record.state,
+            grants=record.grants,
+            prohibitions=record.prohibitions,
+        )
+        async with self._collaboration(caller, access, lambda _iri: True) as collaboration:
+            await collaboration.release_unreadable(access)
+
+    @asynccontextmanager
+    async def _collaboration(
+        self, caller: VerifiedCaller, access: CallerAccess, may_read: Callable[[str], bool]
+    ) -> AsyncIterator[Collaboration]:
         async with self.tenancy.tenant_session(
-            access.tenant, Principal(id=authorised.principal), may_read=may_read
+            access.tenant, Principal(id=caller.principal), may_read=may_read
         ) as session:
             yield Collaboration(
                 session,

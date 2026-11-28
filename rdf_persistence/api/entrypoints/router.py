@@ -11,6 +11,7 @@ caller, before it counts and pages. It is JSON or JSON-LD, never Turtle (PD-15).
 """
 
 import json
+import logging
 from collections.abc import Awaitable, Callable
 from http import HTTPMethod, HTTPStatus
 
@@ -57,12 +58,16 @@ from rdf_persistence.core.domain.exceptions import BadQuery, InvalidBody, Payloa
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.media import ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, JSON, JSON_LD
 from rdf_persistence.core.services.artifacts import CONTEXT_FILE, CONTEXT_KEY
+from rdf_persistence.core.services.generated.rp_core_services import LogContext
+from rdf_persistence.core.services.telemetry import error_type, log_extra
 from rdf_persistence.iris.domain.layout import graph_iri
 from rdf_persistence.persistence.services.generated.rp_persistence_services import Page
 from rdf_persistence.persistence.services.listing import items_of, list_request, total_of
 from rdf_persistence.persistence.services.session import Stored
 from rdf_persistence.schema.services.schema_structure import is_service_written, stored_file_class
 from rdf_persistence.tenancy.services.generated.rp_tenancy_services import TenantSummary
+
+log = logging.getLogger(__name__)
 
 CONTEXT_ROUTE = "context"
 
@@ -327,6 +332,20 @@ class TenantApi:
         version = await self._kit.tenancy.set_grants(
             access.tenant, grants, expected, Principal(id=caller.principal)
         )
+        try:
+            await self._kit.release_assignees(access.tenant, caller)
+        except Exception as error:  # noqa: BLE001 -- the grants changed and stay (D-6)
+            log.warning(
+                "could not release the assignees after a change of grants",
+                exc_info=True,
+                extra=log_extra(
+                    LogContext(
+                        step="release-assignees-after-grants",
+                        tenant_id=access.tenant,
+                        error_type=error_type(error),
+                    )
+                ),
+            )
         return model_response(grants, version=version)
 
     async def set_label(
