@@ -33,6 +33,7 @@ from rdflib import RDF, BNode, Graph, Literal, URIRef
 from rdflib.query import ResultRow
 
 from rdf_persistence.core.domain.exceptions import (
+    CommitTooLarge,
     Conflict,
     Forbidden,
     InUse,
@@ -68,6 +69,8 @@ from rdf_persistence.files.domain.generated.rp_files import RdfFormat
 from rdf_persistence.iris.domain.layout import graph_iri, skolem_iri
 from rdf_persistence.iris.services.iris import DEFAULT_IRIS, Iris
 from rdf_persistence.persistence.services.dependence import (
+    discovered,
+    discovery_query,
     link_of,
     no_late_part_ask,
     no_late_part_guard,
@@ -1375,6 +1378,8 @@ class Transaction:
         self._unlated: dict[
             str, str
         ] = {}  # root with a no-late-part guard -> the root it names (PD-7)
+        # part the cascade reached -> the explicitly removed root it came from (PD-10)
+        self._cascaded: dict[str, str] = {}
 
     def _end(self) -> None:
         """Refuse every later change: the block is over, so a change would be dropped."""
@@ -1597,9 +1602,20 @@ class Transaction:
         Raises:
             NotFound: The aggregate has no graph.
         """
-        session = self._session
         graph = self._claim(iri)
-        _, _, was = await session._stored(graph, iri)
+        _, _, was = await self._session._stored(graph, iri)
+        await self._collect_removal(iri, graph, if_version, was)
+
+    async def _remove_read(self, iri: str, version: str, class_iri: str | None) -> None:
+        """Collect the removal of a part the cascade found, with the version and class discovery
+        read instead of a ``_stored`` read per part (PD-6, A-15); otherwise ``remove``."""
+        await self._collect_removal(iri, self._claim(iri), version, class_iri)
+
+    async def _collect_removal(
+        self, iri: str, graph: URIRef, if_version: str, was: str | None
+    ) -> None:
+        """The body of ``remove`` once the aggregate's graph is claimed and its class known."""
+        session = self._session
         if session._write_guards is not None:
             await session._write_guards.prepare_remove(
                 session, iri, if_version, context=self._context()
@@ -1676,6 +1692,7 @@ class Transaction:
     async def _send_and_confirm(self) -> None:
         """The body of ``commit``, inside its span."""
         session = self._session
+        await self._cascade()
         await self._check_wholes()
         if clash := same_value(self._key_claims):
             raise key_conflict(clash, within_commit=True)
@@ -1711,6 +1728,73 @@ class Transaction:
         activity = None if done is None else done[0]
         if await self._confirmed(confirm, activity) and activity is not None:
             await self._publish(activity)
+
+    async def _cascade(self) -> None:
+        """The first step of the commit (PD-5): every part of a removed root is removed with it, and
+        a part this commit writes under a removed root is refused. A part the transaction holds a
+        change for is not collected again, but it is still discovered from; a session with no
+        links discovers nothing.
+
+        Raises:
+            CommitTooLarge: The roots removed and found are more than ``max_roots`` (PD-6).
+            Conflict: A part is added or replaced under a removed root, explicit or cascaded; naming
+                both, nothing is sent (A-2, G-1).
+        """
+        session = self._session
+        roots = set(self._removed_graphs().values())
+        if session._dependence and roots:
+            for part, (whole, class_iri, version) in (await self._discover(roots)).items():
+                if session._graph(part) in self._roots:
+                    continue
+                self._cascaded[part] = self._cascaded.get(whole, whole)
+                await self._remove_read(part, version, class_iri)
+        self._refuse_parts_of_removed()
+
+    async def _discover(self, roots: set[str]) -> dict[str, tuple[str, str, str]]:
+        """Part -> ``(its whole, class, version)`` of every part under ``roots``, in the order of the
+        levels, one query per level, each root read once (PD-6, A-7)."""
+        session = self._session
+        limit = session._max_roots
+        seen, found, level = set(roots), {}, sorted(roots)
+        while level:
+            text = discovery_query(
+                [URIRef(w) for w in level], session._dependence, session._registry, limit
+            )
+            result = await session._store.query(session._database, text)
+            level = []
+            for whole, part, class_iri, version in (
+                discovered(r) for r in result if isinstance(r, ResultRow)
+            ):
+                if part not in seen:
+                    seen.add(part)
+                    level.append(part)
+                    found[part] = (whole, class_iri, version)
+            if len(seen) > limit:
+                raise CommitTooLarge(
+                    f"the removal and its dependent parts are more than the {limit} roots "
+                    "one commit holds"
+                )
+        return found
+
+    def _refuse_parts_of_removed(self) -> None:
+        """An add or replace of a part whose whole this commit removes, by cascade or not, is refused
+        before anything is sent (PD-5, step 2)."""
+        removed = set(self._removed_graphs().values())
+        for part, (whole, _) in sorted(self._parts.items()):
+            if whole in removed:
+                named = self._named(whole)
+                raise Conflict(
+                    f"{part} depends on {named}, which the same commit removes",
+                    iris=tuple(sorted((part, named))),
+                )
+
+    def _named(self, root: str) -> str:
+        """The root to name for ``root`` in a refusal: a cascaded part the caller may not read gives
+        the removed root it came from (PD-10)."""
+        may = self._session._may_read
+        if root in self._cascaded and may is not None and not may(root):
+            return self._cascaded[root]
+        return root
 
     async def _check_wholes(self) -> None:
         """Every part of this commit has its whole (PD-3, G-2): a whole this commit adds or replaces
@@ -1754,7 +1838,7 @@ class Transaction:
         removed = self._removed_graphs()
         if not session._dependence:
             return []
-        self._unlated = {root: root for root in removed.values()}
+        self._unlated = {root: self._cascaded.get(root, root) for root in removed.values()}
         return [
             no_late_part_guard(
                 URIRef(root), sorted(removed), session._dependence, session._registry, n
@@ -1969,7 +2053,10 @@ class Transaction:
         reasons = {}
         for graph in sorted(self._roots, key=self._roots.__getitem__):
             if (reason := self._refused(graph, found.get(graph))) is not None:
-                reasons[self._roots[graph]] = reason
+                root = self._roots[graph]
+                if whole := self._cascaded.get(root):  # never name the part (PD-10)
+                    root, reason = whole, f"a part of {whole} changed since the delete read it"
+                reasons[root] = reason
         for graph, root in self._required.items():
             if found.get(graph) is None:
                 reasons[root] = f"{root} was removed by someone else since it was read"

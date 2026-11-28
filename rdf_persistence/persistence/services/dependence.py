@@ -120,9 +120,10 @@ def discovery_query(
     )
 
 
-def discovered(row: ResultRow) -> tuple[str, str, str, int]:
-    """One solution of the discovery query as ``(whole, part, type, version)``."""
-    return (str(row.whole), str(row.part), str(row.type), int(row.version))
+def discovered(row: ResultRow) -> tuple[str, str, str, str]:
+    """One solution of the discovery query as ``(whole, part, type, version)``; a version is a
+    token (a UUID), not a number."""
+    return (str(row.whole), str(row.part), str(row.type), str(row.version))
 
 
 def whole_ask(whole_graph: URIRef, whole: URIRef, link: DependenceLink) -> str:

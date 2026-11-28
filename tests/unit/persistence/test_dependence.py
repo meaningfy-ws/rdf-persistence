@@ -122,9 +122,9 @@ def test_discovery_query_rows() -> None:
     query = discovery_query([A1, R1], LINKS, REGISTRY, 10)
     rows = sorted(discovered(r) for r in data.query(query))
     assert rows == [
-        (str(A1), str(R1), str(RESULT), 4),
-        (str(A1), str(R2), str(RESULT), 5),
-        (str(R1), str(F1), str(FINDING), 7),
+        (str(A1), str(R1), str(RESULT), "4"),
+        (str(A1), str(R2), str(RESULT), "5"),
+        (str(R1), str(F1), str(FINDING), "7"),
     ], "each row is whole, part, type and version, of the given wholes only"
 
 

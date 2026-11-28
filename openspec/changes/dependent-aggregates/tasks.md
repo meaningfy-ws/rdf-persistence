@@ -82,7 +82,7 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   book and whose whole is gone raises `NotFound` naming the whole, not the book's conflict; a
   failed no-late-part guard raises `Conflict` with `iris == (A1,)`, not "lost a race". Accept:
   both pass.
-- [ ] 2.5 Cascade ([PD-5](design.md#pd-5), [PD-6](design.md#pd-6), [PD-8](design.md#pd-8),
+- [x] 2.5 Cascade ([PD-5](design.md#pd-5), [PD-6](design.md#pd-6), [PD-8](design.md#pd-8),
   [PD-9](design.md#pd-9)), after 2.5a. `tests/unit/persistence/test_session_dependent_cascade.py`:
   removing A1 removes R1, R2, F1, L1 and their entries in one request; one `Remove` activity, four
   invalidations; a unit of work removing A1 and R2 removes each once and F1 too, and at exactly

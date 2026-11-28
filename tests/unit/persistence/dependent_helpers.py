@@ -4,9 +4,10 @@
 Not collected as tests (dependent-aggregates PD-3, PD-4, PD-11).
 """
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from rdflib import RDF, URIRef
@@ -63,15 +64,24 @@ async def new_store() -> RacingStore:
     return store
 
 
-def opened(store: FakeStore, who: str = "ada") -> AbstractAsyncContextManager[Session]:
+def opened(
+    store: FakeStore,
+    who: str = "ada",
+    *,
+    links: Sequence[DependenceLink] = (LINK,),
+    max_roots: int = MAX_ROOTS,
+    **options: Any,
+) -> AbstractAsyncContextManager[Session]:
+    """A session over ``links`` (default ``LINK``); ``options`` go to ``open_session`` as given."""
     return open_session(
         store,
         database=FAKE_DATABASE,
         tenant_iri=TENANT,
         principal=Principal(id=f"https://example.org/people/{who}"),
         clock=lambda: NOW,
-        dependence=[LINK],
-        limits=LimitSettings(max_roots=MAX_ROOTS),
+        dependence=links,
+        limits=LimitSettings(max_roots=max_roots),
+        **options,
     )
 
 

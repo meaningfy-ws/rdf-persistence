@@ -63,10 +63,14 @@ async def test_a_whole_that_changed_class_is_not_found(store):
 async def test_a_part_added_after_the_delete_was_collected_is_a_conflict_naming_the_whole(store):
     async with opened(store) as session, opened(store, "ben") as other:
         version = await session.add_graph(A1, audit(A1))
+
+        async def add_part() -> None:  # after the cascade read the parts of A1
+            await other.add_graph(R2, result(R2, A1))
+
+        store.before_update = add_part
         with pytest.raises(Conflict) as error:
             async with session.transaction() as transaction:
                 await transaction.remove(A1, version)
-                await other.add_graph(R2, result(R2, A1))
         assert error.value.iris == (A1,), "the Conflict names the removed root"
         assert "lost a race" not in str(error.value), "it is no generic lost race"
         assert await is_stored(session, A1), "nothing was removed"
@@ -85,15 +89,15 @@ async def test_a_gone_whole_is_named_before_a_late_part(store):
         a2_version = await session.add_graph(A2, audit(A2))
         _, _, a1_version = await other.get_graph(A1)
 
-        async def remove_whole() -> None:
+        async def remove_whole_and_add_part() -> None:  # after the cascade read the parts of A2
             await other.remove(A1, a1_version)
+            await other.add_graph(R2, result(R2, A2))
 
         with pytest.raises(NotFound) as error:
             async with session.transaction() as transaction:
                 await transaction.add_graph(R1, result(R1, A1))
                 await transaction.remove(A2, a2_version)
-                await other.add_graph(R2, result(R2, A2))
-                store.before_update = remove_whole
+                store.before_update = remove_whole_and_add_part
         assert names(error.value, A1), "the gone whole comes first"
 
 
@@ -102,9 +106,13 @@ async def test_a_late_part_is_named_before_a_stale_replace(store):
         a1_version = await session.add_graph(A1, audit(A1))
         old = await session.add_graph(O1, audit(O1, OTHER))
         await other.replace_graph(O1, audit(O1, OTHER), old)
+
+        async def add_part() -> None:  # after the cascade read the parts of A1
+            await other.add_graph(R2, result(R2, A1))
+
+        store.before_update = add_part
         with pytest.raises(Conflict) as error:
             async with session.transaction() as transaction:
                 await transaction.replace_graph(O1, audit(O1, OTHER), old)
                 await transaction.remove(A1, a1_version)
-                await other.add_graph(R2, result(R2, A1))
         assert error.value.iris == (A1,), "the late part comes before the stale replace"
