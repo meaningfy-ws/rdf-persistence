@@ -184,3 +184,33 @@ None.
   `Chapter` lacks, a `None` inside a list on an unknown slot, the `HTTPStatus` row's reference) are
   folded into PD-3, PD-6 and the error matrix without a third run, per the developer's rule
   R-0005. The tasks cite the Decisions bullets by PD id, not by anchor: the bullets have none.
+- **D-2 Stage start (lead).** `make reindex`; GitNexus impact, upstream, on `checked_find_values`,
+  `refusal_response`, `_checked_refusal_problems`, `FakeAggregateReader`,
+  `refuse_unsupported_extensions`, `_unexported_technical`: all LOW, none to the developer. Task
+  1.4 done by the lead before the seed (`uv lock` adds two lines of metadata; `uv sync`), then
+  `make test-seed`. Wave A: 1.1 ∥ 1.2 ∥ 1.3, three builders in this one worktree (disjoint files,
+  agents.adoc#gates); the lead commits each task's files apart. `openapi-refusal-problems` is in
+  flight in its own worktree (RISK-1).
+- **D-3 The freshness stop (lead's slip, 1.4).** Editing `schema_cache.py` made every generated
+  manifest stale, so the freshness plugin stopped each builder's pytest session; builder 1.1 ran
+  its narrow check with the plugin off and could not run its task gate (and `format-check` flagged
+  the parallel builders' unfinished files). The lead ran `make generate`; the manifests are
+  committed only after 1.3, whose generator files they hash, and the wave's task gate is run by
+  the lead once 1.1 to 1.3 are in (one `make test-changed check-quality` over the wave). 1.1
+  accepted on its narrow check (41 passed) and mypy, its diff read; `access.adoc` holds both 1.1's
+  and 1.2's edits and is committed with 1.2.
+- **D-4 1.3 in one commit.** PD-7 asked for the move and the enum check as two commits; the new
+  `technical_checks.py` holds both, and the generator tests passed after the move alone (the
+  builder's report), so the lead committed them together rather than splitting the file's hunks.
+  Its task gate never ran: `make test-changed` waited behind the sibling session's seed until the
+  run's time limit; the lead's wave gate covers it (D-3). The builder's note: S6's test assumes
+  `ProblemSlug` stays unexported.
+- **D-5 `technical_checks.py` at the package root, not in `extensions/` (deviation from PD-7).**
+  The seed failed four `test_extension_register` cases: every module under `extensions/` must have
+  a register row and a golden, and `technical_checks` renders nothing. It moved beside
+  `schema_cache.py` (`rdf_persistence_generation/technical_checks.py`). Lead-fixed.
+- **D-6 1.2 accepted on the lead's run.** Builder 1.2's gate also stopped at the freshness plugin
+  (D-3), so it ran its tests in a copy. After the manifests were regenerated, the lead ran 1.2's
+  and 1.1's test files in the worktree (all passed) and mypy on the three changed modules (clean),
+  and read the diff. The builder did not see its new tests fail first (it wrote them before the code
+  but first ran them after). The adversarial tester follows on 1.2's commit (`1f838c23`).
