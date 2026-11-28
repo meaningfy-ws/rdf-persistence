@@ -7,7 +7,7 @@ status: active
 scope:
   - activity:modelling
 when: deciding whether a class X is a part of a class W
-do: draw a composition only when X cannot exist without W and goes down with it; otherwise a pointer to W's root
+do: draw a composition from W to X only when X cannot exist without W and goes down with it; otherwise let W hold a pointer to the root of X's aggregate
 because: the deletion test decides an aggregate
 source: "2026-11-28 adopted from #437 B and the first consumer's S8-15 (#437, aggregate-composition DEC-12): 'draw a composition only when X cannot exist without W and goes down with it; otherwise a pointer to W's root'"
 added: 2026-11-28
