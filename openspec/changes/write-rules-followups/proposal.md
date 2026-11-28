@@ -81,6 +81,10 @@ cheapest moment to tighten them.
 - **BREAKING** `AggregateReader.find(cls)` with no keyword raises `ValueError` in the real reader
   and in `FakeAggregateReader`.
 - **BREAKING** `FakeAggregateReader.find` raises `BadQuery` for a dotted keyword, as the real reader.
+- **BREAKING** (found in delivery, `design.md` D-8) `reader_conformance.Seeded` takes
+  `not_root_slot` and `not_root_wrong_value`, and `CASES` gains three cases.
+- Both readers refuse in one order (no slot, dotted keyword, `None`, empty list, mistyped value,
+  then a class that is no root and an unknown slot), a `None` inside a list included.
 - A `BadQuery` from the rule readers quotes a bounded value.
 - Generation fails, naming it, when a consumer slot is ranged to a technical enum the package does
   not export.
@@ -104,6 +108,11 @@ None.
 `rdf_persistence/collaboration/services/aggregate_validators.py`,
 `rdf_persistence/persistence/services/session.py` (docstring),
 `rdf_persistence/testkit/{fakes,reader_conformance}.py`,
-`rdf_persistence_generation/extensions/{pydantic_split,technical_checks,typescript}.py`,
-`rdf_persistence_generation/schema_cache.py`, `pyproject.toml`, `uv.lock`, the tests, `CHANGELOG.md`,
-`user-manual/{access,files,test}.adoc`. No generated artefact, no schema, no migration.
+`rdf_persistence_generation/extensions/{pydantic_split,typescript}.py`,
+`rdf_persistence_generation/technical_checks.py` (at the package root, not in `extensions/`: D-5),
+`rdf_persistence_generation/schema_cache.py`, `pyproject.toml`, `uv.lock`, the tests (and
+`tests/scene.py`), `CHANGELOG.md`, `user-manual/{access,files,test}.adoc`,
+`architecture/api.adoc`. No schema, no migration; the generated manifests changed only in the
+hashes of their generator inputs.
+
+**Delivered** in one PR (stage 1), every item of the shape built; nothing promised was dropped.

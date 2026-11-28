@@ -29,7 +29,7 @@ Each task's decisions are the `design.md` Decisions bullets named (PD-n).
 
 ## Roadmap
 
-- [ ] 1.1 ∥ 1.2 ∥ 1.3 ∥ 1.4 · [ ] tester after 1.2 · [ ] 1.5 · [ ] 1.6 · [ ] review (one pass)
+- [x] 1.1 ∥ 1.2 ∥ 1.3 ∥ 1.4 · [x] tester after 1.2 · [x] 1.5 · [x] 1.6 · [x] review (one pass)
   ∥ checker · [ ] fix to the floor · [ ] `make check-all` · [ ] PR
 
 ## Verification

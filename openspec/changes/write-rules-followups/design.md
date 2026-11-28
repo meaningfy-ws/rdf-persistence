@@ -223,3 +223,20 @@ None.
   (a guard slip, T1): its report is not taken as the gate; the lead's wave gate is (D-3). Its
   fixtures duplicate `test_reader_conformance.py`'s, since the suite forbids cross-test imports:
   under the floor.
+- **D-8 The review (L2+L3, one pass, SMALL) and the checker.** Review: 0 Critical, 5 Warnings, 4
+  Suggestions. Checker: fail on one item (the CHANGELOG lines landed inside the rebased
+  `aggregate-composition` entry), two Warnings. *Accepted as Critical by re-label*, all for one
+  reason, the docs or CHANGELOG contradicting this change's own consumer-facing behaviour (the
+  defect class `consumer-write-rules` accepted as F-4): W1 the `Seeded` example in
+  `user-manual/test.adoc` lacks the two new required arguments (a consumer copying it gets a
+  `TypeError`); W2 that `Seeded` change and the three new `CASES` had no BREAKING line, and the
+  checker's placement finding; W3 `access.adoc` still said the fake raises `NotImplementedError`
+  for a dotted keyword. All lead-fixed (under ten lines of docs). `Seeded`'s two new arguments are
+  a third BREAKING item beyond DEC-6, shown here for the developer's validation (R-0007).
+  *Under the floor:* W4 `architecture/generation.adoc` and `technical_checks.py`'s docstring
+  describe the export check for classes only; W5 S6's test asserts the refusal, not "writes
+  nothing" (`render` raises before returning files); S1 `access.adoc`'s errors table omits "no
+  slot" and "an empty list"; S2 one public `checked_find_items` would keep PD-3's order at one call
+  site; S3 `is_python_name` and `is_toolkit_technical` sit in a checks module; S4 S1's test checks
+  the registration, not a 409 through a generator-registered kit; the checker's Warnings (S3, S4,
+  S6 tests name no scenario; the two helpers are public, undecided by PD-3).

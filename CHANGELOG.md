@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
      agreeing «root» is informational and does not fail `--check`, so steps 1 to 4 can run under a
      CI gate.
   6. Put `rp-uml2linkml --check` in CI; retire the model's own copies of the conventions check.
+
+  New with it: an «own graph» composition to a part that is not generated (the whole's slot is a
+  URI marked `rp_loaded_graph`), and a Realisation from an Object to its classifier. See
+  `howto/uml-to-linkml.adoc` and `reference/uml-conventions.adoc`.
 - **A rule's `reader.find(cls)` with no slot raises `ValueError`** (`write-rules-followups`, #455),
   in the real reader and in `FakeAggregateReader`, before any query: on every write it would page
   through every aggregate of the class. Pass the slot the rule matches on. `Session.find` is
@@ -47,10 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`FakeAggregateReader.find` raises `BadQuery` for a dotted keyword** (`write-rules-followups`,
   #455), as the real reader does; it raised `NotImplementedError`. A test that expected
   `NotImplementedError` for a slot path expects `BadQuery`; a `Contains` is still the fake's limit.
-
-  New with it: an «own graph» composition to a part that is not generated (the whole's slot is a
-  URI marked `rp_loaded_graph`), and a Realisation from an Object to its classifier. See
-  `howto/uml-to-linkml.adoc` and `reference/uml-conventions.adoc`.
+- **`reader_conformance.Seeded` takes `not_root_slot` and `not_root_wrong_value`**
+  (`write-rules-followups`, #455): a slot of `not_root` and a value not of its type. `CASES` gains
+  three cases a reader of your own must pass: `find` with no slot (`ValueError`), a dotted keyword
+  (`BadQuery`), and a mistyped value checked before the root (`BadQuery`).
 
 ### Added
 - **Assignees on aggregates under a workflow** (`workflow-assignees`, #426). A workflow file with

@@ -518,10 +518,9 @@ exactly `cls` whose slots equal the values, the refusals of <<find,`find`>> incl
 `TypeError`, `BadQuery`). `calls` lists each call as `(method, args, kwargs)`, in order, the refused
 ones too, so a test asserts what the rule asked.
 
-The fake has one documented limit. A `Contains` value (a substring filter of the listings) or a
-dotted keyword (a slot path) raises `NotImplementedError` naming it: use the real reader, or
-another test, for a rule that needs a `Contains`; the real reader refuses a dotted keyword with
-`BadQuery`. A hand-written reader of your own is held to the same contract by
+The fake has one documented limit. A `Contains` value (a substring filter of the listings) raises
+`NotImplementedError` naming it: use the real reader, or another test, for a rule that needs a
+`Contains`. A dotted keyword (a slot path) is `BadQuery` in both readers. A hand-written reader of your own is held to the same contract by
 the conformance kit of xref:user-manual/test.adoc#reader-conformance[Check a reader of your own].
 
 === Which writes run the rules
