@@ -27,6 +27,7 @@ class Seeded:
     - ``not_root``: a class that is no aggregate root.
     - ``slot`` and ``value``: a single-valued slot of ``root`` that ``readable`` and ``unreadable``
       both hold at ``value``; ``wrong_value`` is not of the slot's type.
+    - ``text_slot`` and ``not_text``: a text slot of ``root`` and a value that is not text (a number).
     - ``iri_slot`` and ``iri_value``: an IRI-ranged slot ``readable`` holds.
     - ``multi_slot`` and ``multi_values``: a multivalued slot ``readable`` holds at least two
       values on.
@@ -46,6 +47,8 @@ class Seeded:
         slot: str,
         value: object,
         wrong_value: object,
+        text_slot: str,
+        not_text: object,
         iri_slot: str,
         iri_value: str,
         multi_slot: str,
@@ -62,6 +65,8 @@ class Seeded:
         self.slot = slot
         self.value = value
         self.wrong_value = wrong_value
+        self.text_slot = text_slot
+        self.not_text = not_text
         self.iri_slot = iri_slot
         self.iri_value = iri_value
         self.multi_slot = multi_slot
@@ -133,6 +138,14 @@ async def find_by_a_value_of_the_wrong_type_is_bad_query(
         await reader.find(seeded.root, **{seeded.slot: seeded.wrong_value})
 
 
+async def find_a_text_slot_by_a_number_is_bad_query(
+    reader: AggregateReader, seeded: Seeded
+) -> None:
+    """Found T2-F1: the real reader answered, where the fake refused (a number is no text)."""
+    with pytest.raises(BadQuery):
+        await reader.find(seeded.root, **{seeded.text_slot: seeded.not_text})
+
+
 async def find_by_none_is_refused(reader: AggregateReader, seeded: Seeded) -> None:
     with pytest.raises(TypeError, match=seeded.slot):
         await reader.find(seeded.root, **{seeded.slot: None})
@@ -167,6 +180,7 @@ CASES: tuple[Case, ...] = (
     find_on_an_abstract_parent_is_refused,
     find_on_a_class_that_is_no_root_is_refused,
     find_by_a_value_of_the_wrong_type_is_bad_query,
+    find_a_text_slot_by_a_number_is_bad_query,
     find_by_none_is_refused,
     find_by_an_iri_slot_compares_the_iri,
     find_by_one_of_many_values_matches,

@@ -6,10 +6,9 @@ from collections import defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
 from contextlib import asynccontextmanager
 from datetime import datetime
-from types import UnionType
-from typing import ClassVar, Union, cast, get_args, get_origin
+from typing import ClassVar, cast
 
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel
 from pyparsing import ParseException
 from rdflib import Dataset, Graph, Literal, URIRef
 from rdflib.namespace import XSD
@@ -17,6 +16,7 @@ from rdflib.query import Result
 from rdflib.term import Node
 
 from rdf_persistence.access.services.generated.rp_access_services import AccountSummary
+from rdf_persistence.collaboration.services.aggregate_validators import checked_find_values
 from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     Conflict,
@@ -509,17 +509,6 @@ async def fake_session(
         yield session
 
 
-def _item_type(cls: type[BaseModel], slot: str) -> object:
-    """The type of one value of ``slot``: the annotation without ``None`` and without its list."""
-    annotation: object = cls.model_fields[slot].annotation
-    for _ in range(2):  # Optional[...] then list[...]
-        args = [a for a in get_args(annotation) if a is not type(None)]
-        origin = get_origin(annotation)
-        if (origin in (Union, UnionType) and len(args) == 1) or origin is list:
-            annotation = args[0]
-    return annotation
-
-
 class FakeAggregateReader:
     """An ``AggregateReader`` over models seeded by hand, for a rule's unit test.
 
@@ -590,11 +579,7 @@ class FakeAggregateReader:
             raise BadQuery(f"{slot} is not a slot of {cls.__name__}")
         if not items:
             raise ValueError(f"find({cls.__name__}): {slot} is an empty list")
-        adapter: TypeAdapter[object] = TypeAdapter(_item_type(cls, slot))  # type: ignore[arg-type]
-        try:
-            return [adapter.validate_python(item) for item in items]
-        except ValidationError as error:
-            raise BadQuery(f"{slot} of {cls.__name__} does not take {value!r}: {error}") from error
+        return checked_find_values(cls, slot, items)
 
     @staticmethod
     def _holds(model: BaseModel, slot: str, wants: list[object]) -> bool:

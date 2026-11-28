@@ -9,10 +9,23 @@ import httpx
 import pytest
 from pydantic import BaseModel
 
-from rdf_persistence import Problem, RuleRefusal
+from rdf_persistence import Action, GrantSet, Problem, RuleRefusal
+from rdf_persistence.access.domain.generated.rp_access import Prohibition
+from rdf_persistence.collaboration.services.aggregate_validators import AggregateReader
+from rdf_persistence.core.domain.media import JSON
+from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
 from tests.scene import PROBLEMS, Scene, problem_of
-from tests.toy_service import DUNE_BODY, FIXED_HOLDER, HELD, ToyService, fixed_refusal, held_isbn
+from tests.toy import graph_of
+from tests.toy_service import (
+    DUNE_BODY,
+    FIXED_HOLDER,
+    HELD,
+    ToyService,
+    fixed_refusal,
+    held_isbn,
+    principal_of,
+)
 
 PROBLEM_LOG = "rdf_persistence.api.entrypoints.problems"
 MESSAGE = "rule refusal answered as internal error"
@@ -322,3 +335,48 @@ class NotAProblem(BaseModel):
 def test_a_registered_class_that_is_not_a_problem_stops_the_start_up(bad: type):  # TC-6
     with pytest.raises(TypeError, match=bad.__name__):
         ToyService(refusal_problems=[bad])
+
+
+async def ban_reading(scene: Scene, iri: str) -> None:
+    grants = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
+    held_grants = GrantSet.model_validate(grants.json())
+    ban = Prohibition(assignee=principal_of("ada"), target=graph_of(iri), action=Action.READ)
+    put = await scene.http.put(
+        f"{scene.tenant}/grants",
+        content=GrantSet(grants=held_grants.grants, prohibitions=[ban]).model_dump_json(
+            exclude_none=True
+        ),
+        headers=scene.headers("ada", **{"If-Match": grants.headers["etag"], "Content-Type": JSON}),
+    )
+    assert put.status_code == 200, put.text
+
+
+async def test_a_holder_the_writer_may_not_read_is_never_copied_into_the_refusal():  # RISK-5
+    """probe of RISK-5: an unreadable holder is no holder for the rule, so no problem names it."""
+    async with scene_with(held_isbn) as scene:
+        holder = (await create(scene, isbn="978-key")).json()["id"]
+        control = await create(scene, isbn="978-key")
+        assert control.json()["holder"] == holder, "the control: a readable holder is named"
+        await ban_reading(scene, holder)
+        answer = await create(scene, isbn="978-key")
+        assert holder not in answer.text, "the unreadable holder's IRI is nowhere in the answer"
+
+
+@pytest.mark.parametrize(
+    "slot_and_value",
+    [{"nope": "x"}, {"isbn": 5}, {"isbn": None}],
+    ids=["unknown slot", "wrong type", "None value"],
+)
+async def test_a_find_error_in_a_rule_is_a_500_and_the_rule_name_stays_in_the_log(
+    slot_and_value: dict[str, Any],
+):
+    """probe of the matrix rows on find: BadQuery and TypeError are the rule's bug, 500 through the API."""
+
+    async def sloppy_rule(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        if new.isbn == "boom":  # the scene's own book has none, so set_up passes
+            await reader.find(Book, **slot_and_value)
+
+    async with scene_with(sloppy_rule) as scene:
+        answer = await create(scene, isbn="boom")
+        assert answer.status_code == 500, answer.text
+        assert "sloppy_rule" not in answer.text, "the rule's name stays in the log, not the answer"

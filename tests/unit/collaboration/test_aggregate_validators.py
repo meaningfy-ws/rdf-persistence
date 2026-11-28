@@ -15,6 +15,7 @@ from rdflib import RDF, URIRef
 
 from rdf_persistence import (
     AccessRules,
+    BadQuery,
     Conflict,
     DatabaseGone,
     InvalidBody,
@@ -42,7 +43,7 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.fixtures.library.domain.generated.books import Book
+from tests.fixtures.library.domain.generated.books import Book, Chapter
 from tests.toy import (
     ADA,
     MODULES,
@@ -1160,8 +1161,9 @@ async def finding_session(
     *,
     tenant: str = TENANT,
     may_read: Callable[[str], bool] | None = None,
+    listings: bool = True,
 ) -> AsyncIterator[Session]:
-    """A session with listings, as the kit opens one, so that ``find`` works."""
+    """A session with listings, as the kit opens one, so that ``find`` works (``listings=False``: none)."""
     if FAKE_DATABASE not in await store.list_datasets():
         await store.create_dataset(FAKE_DATABASE)
     async with open_session(
@@ -1169,7 +1171,7 @@ async def finding_session(
         database=FAKE_DATABASE,
         tenant_iri=tenant,
         principal=WHO,
-        listings=Listings(load_schema(TOY_SCHEMA)),
+        listings=Listings(load_schema(TOY_SCHEMA)) if listings else None,
         may_read=may_read,
     ) as session:
         yield session
@@ -1272,3 +1274,62 @@ async def test_a_key_that_moves_within_one_unit_is_not_held_by_the_root_that_lef
             await unit()
             assert len(await session.heads([first, second])) == 2, "both committed"
         assert await session.heads([shelf_iri(1)]) == [], "the removal is committed"
+
+
+@pytest.mark.parametrize("value", [5, 0, 0.0, False])
+async def test_find_for_a_value_not_of_the_slots_type_is_bad_query_before_any_query(
+    value: object,
+):
+    """probe of the matrix row 'a value not of the slot's type'; found T2-F1: the real reader answered
+    a string slot given a number, a falsy one included, where the fake refuses (PD-13)."""
+    store = FakeStore()
+    async with finding_session(store) as session:
+        await add_isbn_book(session, 1, ISBN)
+        seen = counting_queries(store)
+        with pytest.raises(BadQuery):
+            await reader_of(session).find(Book, isbn=value)
+        assert seen == [], "refused before the store was asked"
+
+
+@pytest.mark.parametrize(
+    ("stored", "asked", "expected"),
+    [("", "", [1]), ("x", "", []), ("", "x", [])],
+)
+async def test_find_for_an_empty_string_is_a_value_matched_exactly(
+    stored: str, asked: str, expected: list[int]
+):
+    """probe of the matrix row 'a None value': a falsy value is not an absent one."""
+    async with finding_session(FakeStore()) as session:
+        await add_isbn_book(session, 1, stored)
+        await session.add_graph(
+            isbn_book_iri(2), toy_mapper().to_triples(dune(isbn_book_iri(2), chapters=0))
+        )  # no isbn: never matches ""
+        found = await reader_of(session).find(Book, isbn=asked)
+    assert found == [isbn_book_iri(n) for n in expected], f"{stored!r} asked as {asked!r}"
+
+
+@pytest.mark.parametrize(
+    ("row", "call", "listings", "cause"),
+    [
+        ("an unknown slot", lambda r: r.find(Book, nope="x"), True, BadQuery),
+        ("a value not of the slot's type", lambda r: r.find(Book, isbn=5), True, BadQuery),
+        ("a class that is no root", lambda r: r.find(Chapter, label="x"), True, ValueError),
+        ("a session without listings", lambda r: r.find(Book, isbn="x"), False, RuntimeError),
+        ("a None value", lambda r: r.find(Book, isbn=None), True, TypeError),
+        ("an empty list value", lambda r: r.find(Book, authors=[]), True, ValueError),
+    ],
+)
+async def test_a_find_error_inside_a_rule_is_a_rule_bug_naming_the_rule_and_keeping_the_cause(
+    row: str, call: Callable[[AggregateReader], Any], listings: bool, cause: type[Exception]
+):
+    """probe of every error-matrix row on find, through run_aggregate_validators."""
+
+    async def my_find_rule(old: Any, new: Any, who: Any, reader: AggregateReader) -> None:
+        await call(reader)
+
+    async with finding_session(FakeStore(), listings=listings) as session:
+        with pytest.raises(RuntimeError, match="my_find_rule") as caught:
+            await run_aggregate_validators(
+                [my_find_rule], None, dune(isbn_book_iri(1), chapters=0), WHO, reader_of(session)
+            )
+    assert isinstance(caught.value.__cause__, cause), f"{row}: {caught.value.__cause__!r}"

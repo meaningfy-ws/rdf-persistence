@@ -13,13 +13,15 @@ with the message as its ``detail``.
 import inspect
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Protocol, cast
+from types import UnionType
+from typing import Any, Protocol, Union, cast, get_args, get_origin
 
 from linkml_runtime.utils.schemaview import SchemaView
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from rdflib import RDF, Graph, URIRef
 
 from rdf_persistence.core.domain.exceptions import (
+    BadQuery,
     Conflict,
     DatabaseGone,
     InvalidBody,
@@ -29,12 +31,51 @@ from rdf_persistence.core.domain.exceptions import (
 )
 from rdf_persistence.core.domain.generated.rp_core import Principal
 from rdf_persistence.core.domain.sparql import Triple
+from rdf_persistence.persistence.services.generated.rp_persistence_services import Contains
 from rdf_persistence.persistence.services.session import GuardContext, Session
 from rdf_persistence.schema.services.schema_structure import (
     own_classes,
     own_schemas,
     root_classes,
 )
+
+
+def _item_type(cls: type[BaseModel], slot: str) -> object:
+    """The type of one value of ``slot``: the annotation without ``None`` and without its list."""
+    annotation: object = cls.model_fields[slot].annotation
+    for _ in range(2):  # Optional[...] then list[...]
+        args = [a for a in get_args(annotation) if a is not type(None)]
+        origin = get_origin(annotation)
+        if (origin in (Union, UnionType) and len(args) == 1) or origin is list:
+            annotation = args[0]
+    return annotation
+
+
+def checked_find_values(cls: type[BaseModel], slot: str, items: Sequence[object]) -> list[object]:
+    """Each of ``items`` validated against the item type of ``slot`` of ``cls``, as ``find`` takes it.
+
+    The one check both readers (the real one and the testkit's fake) apply, so they refuse alike.
+    A slot that ``cls`` does not have is left to the caller.
+
+    Raises:
+        BadQuery: A value is not of the slot's type.
+    """
+    adapter: TypeAdapter[object] = TypeAdapter(_item_type(cls, slot))  # type: ignore[arg-type]
+    try:
+        return [adapter.validate_python(item) for item in items]
+    except ValidationError as error:
+        raise BadQuery(f"{slot} of {cls.__name__} does not take {items!r}: {error}") from error
+
+
+def _refuse_values_not_of_the_slot(cls: type[BaseModel], equals: Mapping[str, object]) -> None:
+    """``BadQuery`` for a value not of its slot's type; an unknown or dotted slot, an empty list and a
+    ``Contains`` are left to ``Session.find``."""
+    for slot, value in equals.items():
+        if slot not in cls.model_fields:
+            continue
+        items = list(value) if isinstance(value, (list, tuple)) else [value]
+        if items and not any(isinstance(item, Contains) for item in items):
+            checked_find_values(cls, slot, items)
 
 
 class AggregateReader(Protocol):
@@ -311,6 +352,7 @@ class _Reader:
                 raise TypeError(
                     f"find({cls.__name__}): {slot} is None; a rule asks for a value, never for its absence"
                 )
+        _refuse_values_not_of_the_slot(cls, equals)  # before any query
         context = self._context
         return [
             iri
