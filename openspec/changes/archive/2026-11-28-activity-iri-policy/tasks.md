@@ -117,13 +117,13 @@ otherwise. No existing test is moved or rewritten; every new test runs in the la
   `partials/reference/public-api.adoc`, and the docstrings of `Served` (its stale `urn:uuid:`
   restore rationale), `Mapper.served` and `messagebus.command`. No new page. Accept: `make check-docs` passes; no page
   says an activity IRI is always `urn:uuid:`.
-- [ ] 1.9 Lead: `make check-all`, `make test-containers`, `make check-generated`; one review pass
+- [x] 1.9 Lead: `make check-all`, `make test-containers`, `make check-generated`; one review pass
   (SMALL); each spec scenario and the issue's three acceptance items shown in
   `evidence/acceptance.md`; the consumer told the change id (D-12).
 
 ## Roadmap
 
-- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.6 · [x] 1.4 · [x] 1.5 · [x] 1.7a · [x] 1.7 · [x] 1.8 · [ ] 1.9
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.6 · [x] 1.4 · [x] 1.5 · [x] 1.7a · [x] 1.7 · [x] 1.8 · [x] 1.9
   (1.6's first three tests need only 1.2; its restore test needs 1.4; 1.4 and 1.5 may run in
   parallel after 1.3.)
 
