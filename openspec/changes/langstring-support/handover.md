@@ -1,4 +1,4 @@
-# Hand-over: langstring-support, PLAN derived, scenarios signed off (2026-11-28)
+# Hand-over: langstring-support, PLAN gated, scenarios signed off (2026-11-28)
 
 **Where:** worktree `/home/lps/work/workspace-charm/rdf-persistence/.worktrees/langstring-support`,
 branch `docs/plan-langstring-support` (draft PR #467), rebased on `develop`. `.venv` synced with
@@ -13,11 +13,8 @@ branch `docs/plan-langstring-support` (draft PR #467), rebased on `develop`. `.v
 - Attack done (15 findings folded in; `design.md` "Attack").
 - Scenarios signed off (`evidence/signoff.md`): `features/*.feature` and the spec deltas. Do not
   change them without the owner.
-- **Clarity gate: run 1 was started in a fresh subagent before the compact; its result may arrive
-  after it.** On arrival: fold small gaps into `design.md`/`tasks.md` (never the signed-off
-  scenarios), append its line to `evidence/clarity-gate.md`, commit. R-0005: >= 8.8 is accepted; at
-  most one more run, on the listed gaps only. If the result is lost, re-run the gate once with the
-  brief below.
+- **PLAN gated:** run 1 8.5 (ten gaps, folded in), run 2 9.2, pass (`evidence/clarity-gate.md`).
+  design.md carries `<a id="pd-n">` anchors; tasks link `design.md#pd-n`.
 
 **Next: delivery, in this session, as team lead** (`epic-delivery`; `develop/agents.adoc`).
 1. Stage 1 branch off `develop` (e.g. `feat/langstring-stage-1`), in a worktree of its own or this
@@ -29,7 +26,9 @@ branch `docs/plan-langstring-support` (draft PR #467), rebased on `develop`. `.v
    the same, from 2.0.
 
 **Every subagent brief carries** (the owner asked twice; candidate rule pending on the card):
-- the absolute worktree path, and "call `mcp__serena__activate_project` on it first";
+- the absolute worktree path, and "call `mcp__serena__activate_project` on it first" (three
+  subagents found ToolSearch does not return it; the lead activates the worktree in Serena itself
+  before briefing, or states which checkout Serena reads);
 - `develop/agents.adoc#brief` checklist pasted, and `#tools`: Serena for Python symbols and
   callers, ast-grep for shapes, Grep only for YAML/JSON/docs/Makefile, no `s.shell`/`s.mem`, no
   re-index; the report says which tool backed each finding;

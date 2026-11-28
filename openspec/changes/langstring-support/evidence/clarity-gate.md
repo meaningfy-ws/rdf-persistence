@@ -24,3 +24,7 @@ location (pydantic_split.py, checks/hard.py), G6 PD-11 types section is new, G7 
 design.md#pd-n anchors, G8 PD-6 "…" and the unnamed PD-9 helper, G9 design.md 20,253 B over the
 SMALL budget of 8,192 B, G10 langstring.feature's header names task 2.9. All ten folded in; run 2
 reads only these gaps. The signed-off scenarios were not changed (G10 is a comment line).
+
+run 2, 2026-11-28, 9.2/10, pass (fresh gate subagent, run 1's gaps only): G1 to G10 closed; G9 closed
+by judgement (design.md 13,834 B, over the SMALL budget, but what remains is decisions and error
+rows the builders need), scored as a Structure deduction.
