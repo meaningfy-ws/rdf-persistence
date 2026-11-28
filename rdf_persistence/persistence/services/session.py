@@ -1104,8 +1104,10 @@ class Session:
             RuntimeError: The session was opened without listings.
             ValueError: ``cls`` is not an aggregate root with a path in the tenant databases, or a
                 list value is empty.
-            BadQuery: A name is not a slot a listing may filter on, a value is not one of its slot,
-                or a ``Contains`` is on a slot that is not text or has an empty text.
+            BadQuery: A name is not a slot a listing may filter on, a value whose text is not a
+                value of its slot (each value is taken as its RDF text: ``5`` for a string slot is
+                ``"5"``; a rule's reader checks the Python type strictly), or a ``Contains`` is on
+                a slot that is not text or has an empty text.
             DatabaseGone: The tenant database does not exist.
         """
         if self._listings is None:

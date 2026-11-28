@@ -38,8 +38,9 @@ path;
 * `unreadable` lists IRIs the writer may not read: they answer as absent;
 * `calls` lists `(method, args, kwargs)` for each call, in order, refused calls included.
 
-Its limit: a `Contains` value or a dotted keyword (a slot path) in `find` raises
-`NotImplementedError` naming it; the real reader refuses a dotted keyword with `BadQuery`.
+It refuses what the real reader refuses, in the same order: `find` with no slot (`ValueError`), a
+dotted keyword (a slot path, `BadQuery`), a `None` or an empty list, a value not of its slot's type.
+Its one limit: a `Contains` value in `find` raises `NotImplementedError` naming the slot.
 How a rule is written and tested over it is in
 xref:user-manual/access.adoc#test-a-rule[Unit-test a rule with `FakeAggregateReader`].
 

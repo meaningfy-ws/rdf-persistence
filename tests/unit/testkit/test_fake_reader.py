@@ -65,27 +65,36 @@ async def test_classes_of_a_readable_aggregate_is_its_own_class():
 
 
 @pytest.mark.parametrize(
-    ("case", "cls", "equals", "error"),
+    ("case", "cls", "equals", "error", "match"),
     [
-        ("a class that is not among the roots", Chapter, {}, ValueError),
-        ("a None value", Book, {"isbn": None}, TypeError),
-        ("a name that is no field", Book, {"nope": "x"}, BadQuery),
-        ("a value of the wrong type", Book, {"published": "yesterday"}, BadQuery),
-        ("a Contains", Book, {"label": Contains(text="dun")}, NotImplementedError),
-        ("a dotted keyword", Book, {"written_by.label": "x"}, NotImplementedError),
-        ("an empty list", Book, {"authors": []}, ValueError),
+        (
+            "a class that is not among the roots",
+            Chapter,
+            {"number": 1},
+            ValueError,
+            "not an aggregate root",
+        ),
+        ("no keyword", Book, {}, ValueError, "needs a slot"),
+        ("a None value", Book, {"isbn": None}, TypeError, "isbn"),
+        ("a name that is no field", Book, {"nope": "x"}, BadQuery, "nope"),
+        ("a value of the wrong type", Book, {"published": "yesterday"}, BadQuery, "published"),
+        ("a Contains", Book, {"label": Contains(text="dun")}, NotImplementedError, "label"),
+        ("a dotted keyword", Book, {"written_by.label": "x"}, BadQuery, "written_by.label"),
+        ("an empty list", Book, {"authors": []}, ValueError, "empty list"),
     ],
 )
 async def test_find_refuses(
-    case: str, cls: type[BaseModel], equals: dict[str, object], error: type[Exception]
+    case: str,
+    cls: type[BaseModel],
+    equals: dict[str, object],
+    error: type[Exception],
+    match: str,
 ):
-    with pytest.raises(error):
+    with pytest.raises(error, match=match):
         await two_books().find(cls, **equals)
 
 
 async def test_the_limit_of_the_fake_is_named_in_the_refusal():
-    with pytest.raises(NotImplementedError, match="written_by.label"):
-        await two_books().find(Book, **{"written_by.label": "x"})
     with pytest.raises(NotImplementedError, match="label"):
         await two_books().find(Book, label=Contains(text="x"))
 

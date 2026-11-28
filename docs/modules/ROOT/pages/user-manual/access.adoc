@@ -269,7 +269,8 @@ slots:
 module uses another one the package does not export, or when one of your slots has the name of a
 field of `Problem` (a slot `kind` with `alias: type`, for example): see
 xref:architecture/generation.adoc#technical-imports[Importing the toolkit's technical modules].
-. *Register the class* when you build the service. `ServiceKit` takes the same argument; each class
+. *Register the class* when you build the service, as any iterable of classes (a generator is read
+once). `ServiceKit` takes the same argument; each class
 must be a subclass of `Problem`, else start-up raises `TypeError` naming it.
 +
 [source,python]
@@ -403,7 +404,9 @@ the commit does not fail the commit.
 whose slots equal the values given, in IRI order: `reader.find(Book, isbn=new.isbn)` is how a rule
 learns which book holds a key. It is the listing of the generic API (`?<slot>=<value>`) seen from
 inside a rule. `cls` is a generated class that is an aggregate root with a path; an abstract
-parent or a class that is no root raises `ValueError`; a slot the class does not have, a dotted
+parent or a class that is no root raises `ValueError`, and so does `find` with no slot (a rule
+never reads a whole class: pass at least one) or with an empty list; a `None`, alone or in a
+list, raises `TypeError`; a slot the class does not have, a dotted
 keyword (a slot path such as `holder.name`) or a value of another type than the slot's raises
 `BadQuery`. A dotted keyword is refused so that a rule cannot reach into an aggregate the writer
 may not read. A model of a derived class is found by its own class only.
