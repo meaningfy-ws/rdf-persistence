@@ -1,22 +1,26 @@
-# Hand-over: dependent-aggregates, after stage 2
+# Hand-over: dependent-aggregates, after stage 3
 
 ## Done
-Stage 1, PR #446 (merged). Stage 2 (write guard and cascade delete), PR #450 (merged by the
-watch-and-merge command after this note).
+Stage 1, PR #446; stage 2, PR #450 (both merged). Stage 3 (the converter emits a dependent root for
+a generated «own graph» part), PR #452 (merged by the watch-and-merge command after this note), with
+the end-of-epic full review (D-13) and its fix pass. Every build task is ticked.
 
 ## Decided since the PLAN
-D-1 to D-11 (design.md, Delivery decisions).
+D-1 to D-13 (design.md, Delivery decisions).
 
 ## Open
-- The developer validates D-1 to D-11 and the scenarios (`evidence/scenario-signoff.md`).
-- Under the floor (D-11): batch-mode rows untested (the mapper's); a `Cascade` helper out of
-  `session.py`; `is_whole` per class in the OpenAPI build; the class the validators see for a doubly
-  typed part.
-- Stage 3 can start now: `aggregate-composition`'s converter is merged (PRs #448, #449, #451).
+- Acceptance is deferred to the developer (`evidence/acceptance.md`): the scenarios, D-1 to D-13,
+  and two decisions the review left open (a session without `may_read` names parts; a part write
+  discloses whether an unreadable whole exists). No release before that.
+- Archive order: archive `aggregate-composition` first, then turn this change's `rp-uml-import`
+  delta into a MODIFIED (task 3.1, D-12), then archive this change.
+- Under the floor: issue #453 (both changes' review floor).
 
 ## Next
-Stage 3, task 3.1. Read first: tasks.md §3, design.md PD-13, PD-17, the converter's
-`uml/aggregates.py` refusal of a generated «own graph» part (aggregate-composition DEC-7).
+Acceptance by the developer, then the two archives in that order. Read first:
+evidence/acceptance.md of both changes.
 
 ## Prompt
-Act as the team lead. Deliver stage 3 of openspec/changes/dependent-aggregates from handover.md.
+Act as the team lead. Run the acceptance of openspec/changes/aggregate-composition and
+openspec/changes/dependent-aggregates with me from their evidence/acceptance.md, then archive both,
+aggregate-composition first.

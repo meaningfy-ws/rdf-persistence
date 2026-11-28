@@ -18,6 +18,15 @@ the developer has done what follows.
    aggregation; `rp-uml2linkml --check` and a conversion must read both compositions the same way
    and refuse the shared one. Record the columns in `ea-connectors.md`.
 
+## Notes for the validation (end-of-epic review, D-17)
+
+- The scenario "a generated part in its own graph" of `own_graph_and_pointers.feature` was replaced
+  by the change `dependent-aggregates` (its generation scenario 12): it is accepted there.
+- `composition-named` and `implicit-meaning` fail `--check` (they are in `CONVENTION_KINDS`) but
+  have no spec scenario of their own; unit rows prove them (`test_uml_conventions.py`,
+  `test_uml_aggregates.py`).
+- Task 1.13 (the EA probe) stays open until the developer runs it.
+
 ## The demo to run (suggested)
 
 On a copy of a consumer model: draw one Aggregation beside an association, drop «root» from a
