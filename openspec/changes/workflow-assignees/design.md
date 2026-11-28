@@ -384,7 +384,9 @@ lane that ran them still runs them and they prove what they proved.
   R-0003; its eight tests passed at once, and "a member leaves" fails without the release, so
   they are kept. Its task gate (exit 0) reported no test count, and the listing builder's (2.3)
   hit its 900 s background limit: T1 and T2, the lead runs the stage's task gate once on both.
-  T15 was green with no production change, as D-7 expected.
+  T15 was green with no production change, as D-7 expected. The T16 builder's task gate, run
+  over every stage-2 change uncommitted on 33ac4c47, exited 0 with 10987 passed and 5 xfailed;
+  it stands as that re-run.
 - **D-16** (lead, 2026-11-27): the worktree was installed with a bare `uv sync`, without the
   extras `make install` adds (`--all-extras`); the API tests failed for a missing module and both
   first task gates fell back to the full lane and timed out. Reinstalled with `make install` and
