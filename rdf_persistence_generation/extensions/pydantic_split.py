@@ -85,12 +85,6 @@ from rdf_persistence.schema.services.vocabulary import METAMODEL
 from rdf_persistence_generation.config import METAMODEL_ROOT, toolkit_roots
 from rdf_persistence_generation.exceptions import SchemaGenerationError
 from rdf_persistence_generation.extensions.pydantic_validators import with_validators
-from rdf_persistence_generation.extensions.technical_checks import (
-    is_python_name,
-    is_toolkit_technical,
-    refuse_unsupported_extensions,
-    unexported_technical,
-)
 from rdf_persistence_generation.generated.rp_generation import (
     GeneratedFile,
     GenerationAnnotation,
@@ -99,6 +93,12 @@ from rdf_persistence_generation.module_cycles import (
     analyse,
     deferred_by_module,
     modules_in_cycles,
+)
+from rdf_persistence_generation.technical_checks import (
+    is_python_name,
+    is_toolkit_technical,
+    refuse_unsupported_extensions,
+    unexported_technical,
 )
 
 TEMPLATE_DIR = Path(__file__).parents[1] / "templates" / "pydantic"
