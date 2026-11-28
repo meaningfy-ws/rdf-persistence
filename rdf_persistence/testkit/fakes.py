@@ -16,7 +16,10 @@ from rdflib.query import Result
 from rdflib.term import Node
 
 from rdf_persistence.access.services.generated.rp_access_services import AccountSummary
-from rdf_persistence.collaboration.services.aggregate_validators import checked_find_values
+from rdf_persistence.collaboration.services.aggregate_validators import (
+    find_items,
+    refuse_values_not_of_the_slot,
+)
 from rdf_persistence.core.domain.exceptions import (
     BadQuery,
     Conflict,
@@ -518,8 +521,10 @@ class FakeAggregateReader:
 
     ``find`` answers the sorted ids of the readable models of exactly ``cls`` whose slots equal the
     values: on a multivalued slot a single value means "one of the values is it", a list "all its
-    items are among them". It refuses what the real reader refuses (``ValueError``, ``TypeError``,
-    ``BadQuery``). A ``Contains`` and a dotted keyword are the fake's limit: ``NotImplementedError``.
+    items are among them". It refuses what the real reader refuses, in its order: no keyword,
+    a dotted keyword, a ``None`` or an empty list, a value not of its slot's type, a class that is no
+    root, an unknown slot (``ValueError``, ``TypeError``, ``BadQuery``). A ``Contains`` is the fake's
+    one limit: ``NotImplementedError``.
     ``rdf_persistence.testkit.reader_conformance`` holds it to the real reader.
     """
 
@@ -551,14 +556,9 @@ class FakeAggregateReader:
 
     async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
         self.calls.append(("find", (cls,), dict(equals)))
-        for slot, value in equals.items():
-            if value is None:
-                raise TypeError(
-                    f"find({cls.__name__}): {slot} is None; a rule asks for a value, never for its absence"
-                )
-        if cls not in self._roots:
-            raise ValueError(f"{cls.__name__} is not an aggregate root with a path")
-        wanted = {slot: self._wanted(cls, slot, value) for slot, value in equals.items()}
+        wanted = find_items(cls, equals)  # the real reader's order: items, values, root, slots
+        refuse_values_not_of_the_slot(cls, wanted)
+        self._refuse_after_the_values(cls, wanted)
         return sorted(
             iri
             for iri, model in self._models.items()
@@ -567,19 +567,21 @@ class FakeAggregateReader:
             and all(self._holds(model, slot, wants) for slot, wants in wanted.items())
         )
 
-    @staticmethod
-    def _wanted(cls: type[BaseModel], slot: str, value: object) -> list[object]:
-        """The values asked for on ``slot``, each validated against the slot's item type."""
-        items = list(value) if isinstance(value, (list, tuple)) else [value]
-        if slot.count(".") or any(isinstance(item, Contains) for item in items):
+    def _refuse_after_the_values(
+        self, cls: type[BaseModel], wanted: dict[str, list[object]]
+    ) -> None:
+        """The real reader's last refusals, in its order: a class that is no root, an unknown slot;
+        then the fake's one limit, a ``Contains``."""
+        if cls not in self._roots:
+            raise ValueError(f"{cls.__name__} is not an aggregate root with a path")
+        unknown = [slot for slot in wanted if slot not in cls.model_fields]
+        if unknown:
+            raise BadQuery(f"{unknown[0]} is not a slot of {cls.__name__}")
+        contains = [s for s, items in wanted.items() if any(isinstance(i, Contains) for i in items)]
+        if contains:
             raise NotImplementedError(
-                f"the fake reader does not answer {slot!r} (a Contains or a dotted keyword)"
+                f"the fake reader does not answer {contains[0]!r} (a Contains)"
             )
-        if slot not in cls.model_fields:
-            raise BadQuery(f"{slot} is not a slot of {cls.__name__}")
-        if not items:
-            raise ValueError(f"find({cls.__name__}): {slot} is an empty list")
-        return checked_find_values(cls, slot, items)
 
     @staticmethod
     def _holds(model: BaseModel, slot: str, wants: list[object]) -> bool:

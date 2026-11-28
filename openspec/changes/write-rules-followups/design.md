@@ -1,0 +1,260 @@
+# Design: write-rules-followups
+
+> Derives from: EPIC `write-rules-followups` (proposal.md, DEC-1 to DEC-6); issue #455.
+
+## Context
+
+`consumer-write-rules` (archived 2026-11-28) left the items of #455 under its review floor. Each
+item was checked against `origin/develop` 6bcad805 (`inputs/qa.md`); two were dropped (DEC-1) and
+one narrowed to a docstring (DEC-2). Nothing here touches a schema, a generated artefact or a
+migration. The library change sits in `collaboration/services`, `api/entrypoints` and `testkit`;
+the generator change in `rdf_persistence_generation`. Layers are unchanged.
+
+## Goals / Non-Goals
+
+**Goals:** S1 to S7 hold (the spec deltas); the two readers refuse alike in one order; the docs and
+docstrings say what the code does; the refactors leave every existing test green.
+
+**Non-Goals:** the EPIC's no-gos.
+
+## Decisions
+
+- **PD-1 Refusal registration (DEC-4, T-F1).** `_checked_refusal_problems(classes: Iterable[...])`
+  does `classes = tuple(classes)` first, then checks each, then returns it. `ServiceKit`'s and
+  `install_service`'s parameter type becomes `Iterable[type[BaseModel]]`. `refusal_response` admits
+  a problem when `type(problem) in refusal_problems`, `isinstance(status, int) and not
+  isinstance(status, bool)`, and `status in _REFUSAL_STATUSES` (so an `HTTPStatus.CONFLICT`, an
+  `int` subclass, still passes; `409.0` and `True` do not). The logged reason for a bad status
+  changes from `f"status {status}"` to `f"status {status!r}"`, so `409.0` and `True` are named
+  as given.
+- **PD-2 R-S4.** `service.py`'s `refusal_problems` paragraph says "every write that runs the rules
+  (the generic create, replace and every other guarded write)" in place of "the generic create and
+  replace".
+- **PD-3 The shared find helper (D-20, DEC-3, the fake's check order).** In
+  `aggregate_validators.py`, beside `checked_find_values`:
+  `def find_items(cls: type[BaseModel], equals: Mapping[str, object]) -> dict[str, list[object]]`,
+  "the items asked per slot". In this order, before any query: no keyword → `ValueError(f"find
+  ({cls.__name__}) needs a slot to match; a rule never reads a whole class")`; for each keyword in
+  order, a dotted one → the existing `BadQuery` text, a `None`, alone or as an item of a list or
+  tuple → the existing `TypeError` text, an empty list or tuple → `ValueError(f"find({cls.__name__}): {slot} is an empty list")`; then each
+  value is split (`list`/`tuple` → its items, else `[value]`).
+  **One order for both readers** (the spec's "same order"): (1) the helper; (2) the value check,
+  strict, over the slots `cls` has, skipping an item that is a `Contains`
+  (`_refuse_values_not_of_the_slot`, which now takes the helper's output) → `BadQuery`; (3) the root
+  check → `ValueError("{name} is not an aggregate root with a path")`; (4) an unknown slot →
+  `BadQuery`. `_Reader.find` does (1), (2), then `Session.find`, which does (3) in `served_root` and
+  (4) in the listing plan. The fake does (1), (2), (3), (4), then a `Contains` →
+  `NotImplementedError` (its one limit), then matches.
+- **PD-4 The value check (perf, robustness).** `_adapter(cls, slot)` is `@functools.cache`
+  (`TypeAdapter(_item_type(cls, slot))`), with a `ponytail:` comment naming the ceiling (one entry
+  per (class, slot) asked for; classes are module-level, so it stays small). The `BadQuery` text is
+  `f"{slot} of {cls.__name__} does not take {reprlib.repr(items)}: {reasons}"`, where `reasons` is
+  `"; ".join(e["msg"] for e in error.errors(include_input=False))`: no part of it repeats the
+  value unbounded.
+- **PD-5 `Session.find`'s docstring (DEC-2).** Its `BadQuery` line reads: "a value whose text is
+  not a value of its slot (each value is taken as its RDF text: `5` for a string slot is `"5"`;
+  a rule's reader checks the Python type strictly)". `user-manual/files.adoc` says the same in its
+  `BadQuery` bullet.
+- **PD-6 The conformance kit.** Two new cases in `CASES`: `find_without_a_slot_is_refused`
+  (`ValueError`, matching `"needs a slot"`) and `find_by_a_dotted_keyword_is_bad_query`
+  (`**{f"{seeded.slot}.x": seeded.value}`, `BadQuery`). The three unfiltered calls get
+  `**{seeded.slot: seeded.value}`: `find_on_a_root_omits_another_root` still asserts `other_iri`
+  is absent; the abstract-parent and not-root cases match `"not an aggregate root"` (both readers
+  raise `"{name} is not an aggregate root with a path"`), and their filter is a slot those classes
+  lack, so they reach the root check (3) and cannot pass on the empty-filter refusal. A third new
+  case, `find_checks_the_value_before_the_root`: `Seeded` gains two keyword arguments,
+  `not_root_slot` and `not_root_wrong_value` (a slot of `not_root` and a value not of its type;
+  the toy's are `number` and `"x"` on `Chapter`), and the case asserts
+  `find(seeded.not_root, **{seeded.not_root_slot: seeded.not_root_wrong_value})` → `BadQuery`
+  (the order (2) before (3)), unskipped. In `tests/unit/testkit/test_fake_reader.py`, the
+  case "a class that is not among the roots" (`Chapter, {}`) gets `{"number": 1}` and
+  `match="not an aggregate root"`; the dotted-keyword cases move from `NotImplementedError` to
+  `BadQuery`.
+- **PD-7 `technical_checks.py` (the move).** `rdf_persistence_generation/extensions/technical_checks.py`
+  takes `refuse_unsupported_extensions`, `_refuse_shadowing`, `_named_by`, `_technical_classes`,
+  `_exported_names`, `unexported_technical` (public now: `pydantic_split` uses it) and
+  `is_toolkit_technical` (public: both modules use it), `_field_name`, and `is_python_name` (public:
+  rendering's `_named_after_slot` uses it; `_field_name` needs it). `technical_checks` defines its
+  own `METAMODEL_DIR = METAMODEL.parent` if it needs it and **imports nothing from
+  `pydantic_split`**; `pydantic_split` imports from it (no cycle). No behaviour changes in the
+  move; it is its own commit.
+- **PD-8 The enum export check.** `refuse_unsupported_extensions` also refuses a consumer slot whose
+  range (from `_named_by`) is an enum of a technical module that `rdf_persistence` does not export:
+  `SchemaGenerationError(f"{cls.name} uses {name} of {module}, which rdf_persistence does not
+  export")`, the class message's shape. A `_technical_enums(view)` beside `_technical_classes`
+  feeds both this and `unexported_technical`. S6's test ranges a toy consumer slot to
+  `ProblemSlug` (in `rp_api_entrypoints`, not exported), through the generator tests'
+  `break_toy` fixture.
+- **PD-9 TypeScript `modules()`.** One comment line above `first.setdefault`: "a schema name is
+  unique within one import closure; two distinct schemas under one name would be merged here".
+- **PD-10 Schema cache (DEC-5).** The ceiling comment cites linkml/linkml#4306 in place of "upstream
+  issue to file", and names `hbreader.Pathilizer._strifier` as a private attribute it sets.
+  `pyproject.toml`'s `generate` extra gains `"hbreader>=0.9.1",` with a comment ("the schema
+  cache pickles its `Pathilizer`"). The lead runs `uv lock` and `uv sync`, then `make test-seed`
+  again. A unit test (S7): `"_strifier" in inspect.getsource(Pathilizer.__str__)` (a fresh
+  `Pathilizer` has no such attribute: only `__str__` reads it), `str(_pathilized("x")) == "x"`,
+  and `_pathilized("x")` round-trips through `pickle` with `_SchemaPickler`.
+- **PD-11 `ban_reading`.** `tests/scene.py` gains `async def ban_reading(scene: Scene, iri: str) ->
+  None` (the `test_aggregate_validators_api` body, which also records `scene.access_etag`); the two
+  module-level copies are deleted and import it. The feature test's harness holds a `Scene`: its
+  method delegates to it. `test_delete_in_use`'s harness has no `Scene`: it keeps its own copy.
+- **PD-12 Docs and CHANGELOG.** `user-manual/access.adoc`, the paragraph on `reader.find`: `find`
+  with no slot raises `ValueError`; `user-manual/test.adoc`, the paragraph on
+  `FakeAggregateReader`'s limits: the fake refuses a dotted keyword with `BadQuery`, as the real
+  reader, and `Contains` is its one limit. `CHANGELOG.md` `[Unreleased]`: the two BREAKING lines
+  (DEC-6) and a Fixed entry for T-F1, T-F2 and the enum check.
+
+## Algorithm / approach
+
+**Worked example 1, the shared helper.** `find(Book)` → `ValueError`, nothing queried, in both
+readers. `find(Book, **{"holder.name": "x"}, isbn=None)` → `BadQuery` (the dotted keyword comes
+first in keyword order). `find(Book, isbn=None, **{"holder.name": "x"})` → `TypeError`.
+`find(Chapter, number="x")` (a non-root, a mistyped value) → `BadQuery` in both readers (the value
+before the root); `find(Book, nosuch=1, authors=[])` → `ValueError` in both (the empty list in the
+helper). The conformance kit holds the value-before-root order (PD-6).
+
+**Worked example 2, a bounded `BadQuery`.** `find(Book, pages="x" * 10_000)` on an int slot →
+`BadQuery("pages of Book does not take ['xxxxxxxxxxxx...xxxxxxxxxxxxx']: Input should be a valid
+integer")`: about 90 characters, under S5's bound of 300, naming the slot and the class.
+
+**Worked example 3, a registered refusal at `409.0`.** A rule raises `RuleRefusal(HeldKeyProblem.
+model_construct(status=409.0, ...))` → the client gets the 500 internal-error problem; one error
+record with `error_detail="status 409.0"` and the refusal as `exc_info`.
+
+Every change is a pure function or a check before a query: nothing to retry or replay.
+
+### Anti-patterns
+
+| Don't | Do instead | Why |
+|---|---|---|
+| Let the conformance kit's refusal cases match a bare `ValueError` | match the message | the empty-filter refusal is also a `ValueError` (Rabbit-holes) |
+| Make `Session.find` strict | fix its docstring | DEC-2 |
+| Mix the move (PD-7) with the enum check (PD-8) in one commit | move first, then change | the move must show no behaviour change |
+| Put `hbreader` in the base dependencies | the `generate` extra | only the generator imports it |
+| Import anything from `pydantic_split` in `technical_checks` | move `is_python_name` and `_field_name` with the checks | an import cycle |
+| Leave a fake-reader or conformance refusal case with an empty filter | give it a filter and a message match | it would pass on the empty-filter refusal |
+| Test `Pathilizer("x")._strifier` | inspect `Pathilizer.__str__`'s source | the attribute exists only after hbreader sets it |
+
+## Error matrix
+
+| Failure mode | How it is detected | Expected handling |
+|---|---|---|
+| `refusal_problems` a generator | S1 | registered in full |
+| A non-problem class inside a generator | S1 | `TypeError` naming it, at start-up |
+| A refusal status `409.0` or `True` | S2 | 500 internal-error, one error record naming the status |
+| A refusal status `HTTPStatus.CONFLICT` (an `int` subclass, via `model_construct`) | a row of S2's parametrized test in `test_rule_refusal.py` (`409.0`, `True` → 500; `HTTPStatus.CONFLICT` → answered) | answered as built, as today |
+| A `None` inside a list on an unknown slot (`find(Book, nosuch=["a", None])`) | a unit test of the helper | `TypeError`, both readers (step 1) |
+| An empty list beside an unknown keyword | worked example 1 | `ValueError`, both readers |
+| A non-root class with a mistyped value | conformance (PD-6) | `BadQuery`, both readers |
+| A rule's `find(cls)` with no keyword | S3, conformance | `ValueError`, nothing queried, both readers; the rule is a bug: 500 |
+| A rule's dotted keyword | S4, conformance | `BadQuery` in both readers, nothing queried |
+| A huge mistyped value | S5 | `BadQuery`, the message bounded |
+| A consumer slot ranged to an unexported technical enum | S6 | `SchemaGenerationError` naming the class, the enum and its module; nothing written |
+| A linkml upgrade drops `Pathilizer._strifier` | S7 | the unit test fails in CI |
+| An abstract parent or non-root asked with a filter | conformance (PD-6) | `ValueError` with its own message, both readers |
+
+## Risks / Trade-offs
+
+- **RISK-1** `openapi-refusal-problems` merges first and edits `kit.py` (likelihood medium, impact
+  low). Mitigation: rebase before the gates; resolve `kit.py` by hand, keeping both changes; the
+  rebased head is what `make check-all` runs on.
+- **RISK-2** A linkml upgrade changes `hbreader` (likelihood low, impact medium: a silent wrong
+  cache). Mitigation: S7 and DEC-5's declared lower bound.
+- **RISK-3** A consumer rule or test relies on `find(cls)` unfiltered or on the fake's
+  `NotImplementedError` (likelihood low: the consumer's checkout uses neither today; impact low).
+  Mitigation: the two BREAKING lines say what to do (pass a slot; expect `BadQuery`).
+
+## Open Questions
+
+None.
+
+## Lanes for moved or rewritten tests
+
+| Test | Lane that still runs it in CI | What it still proves |
+|---|---|---|
+| `test_fake_reader.py` dotted case (`NotImplementedError` → `BadQuery`) | unit | the fake refuses a dotted keyword, now as the real reader |
+| `reader_conformance` cases given a filter (PD-6) | unit (`tests/unit/testkit/test_reader_conformance.py`, the fake and the real reader over a `FakeStore`) | the root, abstract-parent and non-root rules, each by its own message |
+| The `ban_reading` users (PD-11) | unit, feature | unchanged |
+| The generator tests of `refuse_unsupported_extensions` (PD-7) | generator | unchanged, now importing `technical_checks` |
+
+## Delivery decisions
+
+- **D-1 The PLAN gate: 8.1, then 8.8, accepted (R-0005).** A fresh reviewer attacked and gated
+  the PLAN twice (`evidence/clarity-gate.md`). Run 2's three gaps (the order case on a slot
+  `Chapter` lacks, a `None` inside a list on an unknown slot, the `HTTPStatus` row's reference) are
+  folded into PD-3, PD-6 and the error matrix without a third run, per the developer's rule
+  R-0005. The tasks cite the Decisions bullets by PD id, not by anchor: the bullets have none.
+- **D-2 Stage start (lead).** `make reindex`; GitNexus impact, upstream, on `checked_find_values`,
+  `refusal_response`, `_checked_refusal_problems`, `FakeAggregateReader`,
+  `refuse_unsupported_extensions`, `_unexported_technical`: all LOW, none to the developer. Task
+  1.4 done by the lead before the seed (`uv lock` adds two lines of metadata; `uv sync`), then
+  `make test-seed`. Wave A: 1.1 ∥ 1.2 ∥ 1.3, three builders in this one worktree (disjoint files,
+  agents.adoc#gates); the lead commits each task's files apart. `openapi-refusal-problems` is in
+  flight in its own worktree (RISK-1).
+- **D-3 The freshness stop (lead's slip, 1.4).** Editing `schema_cache.py` made every generated
+  manifest stale, so the freshness plugin stopped each builder's pytest session; builder 1.1 ran
+  its narrow check with the plugin off and could not run its task gate (and `format-check` flagged
+  the parallel builders' unfinished files). The lead ran `make generate`; the manifests are
+  committed only after 1.3, whose generator files they hash, and the wave's task gate is run by
+  the lead once 1.1 to 1.3 are in (one `make test-changed check-quality` over the wave). 1.1
+  accepted on its narrow check (41 passed) and mypy, its diff read; `access.adoc` holds both 1.1's
+  and 1.2's edits and is committed with 1.2.
+- **D-4 1.3 in one commit.** PD-7 asked for the move and the enum check as two commits; the new
+  `technical_checks.py` holds both, and the generator tests passed after the move alone (the
+  builder's report), so the lead committed them together rather than splitting the file's hunks.
+  Its task gate never ran: `make test-changed` waited behind the sibling session's seed until the
+  run's time limit; the lead's wave gate covers it (D-3). The builder's note: S6's test assumes
+  `ProblemSlug` stays unexported.
+- **D-5 `technical_checks.py` at the package root, not in `extensions/` (deviation from PD-7).**
+  The seed failed four `test_extension_register` cases: every module under `extensions/` must have
+  a register row and a golden, and `technical_checks` renders nothing. It moved beside
+  `schema_cache.py` (`rdf_persistence_generation/technical_checks.py`). Lead-fixed.
+- **D-6 1.2 accepted on the lead's run.** Builder 1.2's gate also stopped at the freshness plugin
+  (D-3), so it ran its tests in a copy. After the manifests were regenerated, the lead ran 1.2's
+  and 1.1's test files in the worktree (all passed) and mypy on the three changed modules (clean),
+  and read the diff. The builder did not see its new tests fail first (it wrote them before the code
+  but first ran them after). The adversarial tester follows on 1.2's commit (`1f838c23`).
+- **D-7 The tester after 1.2: 137 probes, no behavioural defect; one finding, lead-fixed.**
+  `tests/unit/collaboration/test_find_adversarial.py` probes the order of refusals in both readers
+  (31 rows each), `find_items`, the cache (generic and same-named classes), the bounded message
+  (to 100k characters, recursive values) and the conformance kit against six mutant fakes. *T-1:*
+  Xenon ranked `FakeAggregateReader.find` C after 1.2; the lead split its last refusals into
+  `_refuse_after_the_values` (light chore, `lead-fixed: T-1`). The tester waited on a `sleep` once
+  (a guard slip, T1): its report is not taken as the gate; the lead's wave gate is (D-3). Its
+  fixtures duplicate `test_reader_conformance.py`'s, since the suite forbids cross-test imports:
+  under the floor.
+- **D-8 The review (L2+L3, one pass, SMALL) and the checker.** Review: 0 Critical, 5 Warnings, 4
+  Suggestions. Checker: fail on one item (the CHANGELOG lines landed inside the rebased
+  `aggregate-composition` entry), two Warnings. *Accepted as Critical by re-label*, all for one
+  reason, the docs or CHANGELOG contradicting this change's own consumer-facing behaviour (the
+  defect class `consumer-write-rules` accepted as F-4): W1 the `Seeded` example in
+  `user-manual/test.adoc` lacks the two new required arguments (a consumer copying it gets a
+  `TypeError`); W2 that `Seeded` change and the three new `CASES` had no BREAKING line, and the
+  checker's placement finding; W3 `access.adoc` still said the fake raises `NotImplementedError`
+  for a dotted keyword. All lead-fixed (under ten lines of docs). `Seeded`'s two new arguments are
+  a third BREAKING item beyond DEC-6, shown here for the developer's validation (R-0007).
+  *Under the floor:* W4 `architecture/generation.adoc` and `technical_checks.py`'s docstring
+  describe the export check for classes only; W5 S6's test asserts the refusal, not "writes
+  nothing" (`render` raises before returning files); S1 `access.adoc`'s errors table omits "no
+  slot" and "an empty list"; S2 one public `checked_find_items` would keep PD-3's order at one call
+  site; S3 `is_python_name` and `is_toolkit_technical` sit in a checks module; S4 S1's test checks
+  the registration, not a 409 through a generator-registered kit; the checker's Warnings (S3, S4,
+  S6 tests name no scenario; the two helpers are public, undecided by PD-3).
+- **D-9 Before the last commit (lead).** `make reindex`, then impact upstream on `find_items`,
+  `refuse_values_not_of_the_slot`, `refuse_unsupported_extensions`: LOW; `Seeded`: UNKNOWN (no
+  caller edges), confirmed by text search: built only in `test_reader_conformance.py` and
+  `test_find_adversarial.py`, and nowhere in the consumer's checkout. None to the developer. The
+  first `make check-all` on `fc9d3bd7` was stopped while it waited in the test queue (its quality
+  checks had passed) and run again on the fix-pass head, so one run covers the final code. No
+  acceptance demo: no use case added (`evidence/acceptance.md`); no docs owed
+  (`evidence/docs-owed.md`).
+- **D-10 RISK-1 materialised: `openapi-refusal-problems` (#462) merged first.** Found after
+  `make check-all` passed on `4e60049c`. Rebased again (P-0002): `openspec/changes/README.md`
+  keeps both rows; `service.py`'s `refusal_problems` paragraph is resolved by hand to carry both
+  changes (every write that runs the rules, and the OpenAPI listing); `kit.py` and `problems.py`
+  merged cleanly, and #462's `openapi.py` reads `kit.refusal_problems`, the materialised tuple, so a
+  generator is listed too. No regeneration was needed. Then #463 archived it, merging its delta
+  into `openspec/specs/rp-service-api`; a third rebase, and this change's MODIFIED requirement "A
+  consumer rule refuses a write with its own problem" now carries #462's OpenAPI paragraph and its
+  two scenarios, so the archive does not drop them. `make check-all` on that head is the gate of
+  record.

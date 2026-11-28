@@ -157,6 +157,19 @@ def test_a_class_the_package_does_not_export_is_refused(toy_copy: Path, break_to
     assert PROBLEM_MODULE in text, "the toolkit module is not named"
 
 
+def test_an_enum_the_package_does_not_export_is_refused(toy_copy: Path, break_toy: Breaker) -> None:
+    """S6: a consumer slot ranged to a toolkit technical enum that ``rdf_persistence`` does not export."""
+    break_toy(PROBLEMS_MODULE, "    range: uri", "    range: ProblemSlug")
+
+    with pytest.raises(SchemaGenerationError) as refused:
+        pydantic_split.render(toy_copy / TECHNICAL_SCHEMA)
+
+    text = str(refused.value)
+    assert "HeldKeyProblem" in text, "the consumer class is not named"
+    assert "ProblemSlug" in text, "the toolkit enum is not named"
+    assert PROBLEM_MODULE in text, "the toolkit module is not named"
+
+
 def test_a_slot_that_shadows_a_field_of_the_toolkit_class_is_refused(
     toy_copy: Path, break_toy: Breaker
 ) -> None:

@@ -10,7 +10,9 @@ on every removal of a root through a transaction; they refuse by raising ``Refus
 with the message as its ``detail``.
 """
 
+import functools
 import inspect
+import reprlib
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 from types import UnionType
@@ -54,6 +56,13 @@ def _item_type(cls: type[BaseModel], slot: str) -> object:
     return annotation
 
 
+@functools.cache
+def _adapter(cls: type[BaseModel], slot: str) -> TypeAdapter[object]:
+    # ponytail: one entry per (class, slot) a rule ever asks for; classes are module-level, so the
+    # cache stays small. Ceiling: a service that builds classes at run time would grow it unbounded.
+    return TypeAdapter(_item_type(cls, slot))  # type: ignore[arg-type]
+
+
 def checked_find_values(cls: type[BaseModel], slot: str, items: Sequence[object]) -> list[object]:
     """Each of ``items`` validated, strictly (no coercion: ``"5"`` or ``True`` is no int, a string no enum
     member), against the item type of ``slot`` of ``cls``, as ``find`` takes it.
@@ -62,24 +71,56 @@ def checked_find_values(cls: type[BaseModel], slot: str, items: Sequence[object]
     A slot that ``cls`` does not have is left to the caller.
 
     Raises:
-        BadQuery: A value is not of the slot's type.
+        BadQuery: A value is not of the slot's type; the message is bounded, it never repeats a value
+            in full.
     """
-    adapter: TypeAdapter[object] = TypeAdapter(_item_type(cls, slot))  # type: ignore[arg-type]
+    adapter = _adapter(cls, slot)
     try:
         return [adapter.validate_python(item, strict=True) for item in items]  # no coercion (D-21)
     except ValidationError as error:
-        raise BadQuery(f"{slot} of {cls.__name__} does not take {items!r}: {error}") from error
+        reasons = "; ".join(e["msg"] for e in error.errors(include_input=False))
+        raise BadQuery(
+            f"{slot} of {cls.__name__} does not take {reprlib.repr(list(items))}: {reasons}"
+        ) from error
 
 
-def _refuse_values_not_of_the_slot(cls: type[BaseModel], equals: Mapping[str, object]) -> None:
-    """``BadQuery`` for a value not of its slot's type; an unknown slot, an empty list and a
-    ``Contains`` are left to ``Session.find``."""
+def find_items(cls: type[BaseModel], equals: Mapping[str, object]) -> dict[str, list[object]]:
+    """The items asked per slot, after the checks a rule's ``find`` makes before any query, in order.
+
+    The one first step of both readers (the real one and the testkit's fake).
+
+    Raises:
+        ValueError: There is no keyword, or a list or tuple is empty.
+        BadQuery: A keyword is a slot path (it holds a dot).
+        TypeError: A value is ``None``, alone or as an item of a list or tuple.
+    """
+    if not equals:
+        raise ValueError(
+            f"find({cls.__name__}) needs a slot to match; a rule never reads a whole class"
+        )
+    asked: dict[str, list[object]] = {}
     for slot, value in equals.items():
-        if slot not in cls.model_fields:
-            continue
+        if SLOT_PATH_MARK in slot:
+            raise BadQuery(
+                f"find({cls.__name__}): {slot} is a slot path; a rule finds by a slot of the class itself"
+            )
         items = list(value) if isinstance(value, (list, tuple)) else [value]
-        if items and not any(isinstance(item, Contains) for item in items):
-            checked_find_values(cls, slot, items)
+        if any(item is None for item in items):
+            raise TypeError(
+                f"find({cls.__name__}): {slot} is None; a rule asks for a value, never for its absence"
+            )
+        if isinstance(value, (list, tuple)) and not items:
+            raise ValueError(f"find({cls.__name__}): {slot} is an empty list")
+        asked[slot] = items
+    return asked
+
+
+def refuse_values_not_of_the_slot(cls: type[BaseModel], asked: Mapping[str, list[object]]) -> None:
+    """``BadQuery`` for an item not of its slot's type, over the slots ``cls`` has; an unknown slot and a
+    ``Contains`` item are left to the caller."""
+    for slot, items in asked.items():
+        if slot in cls.model_fields:
+            checked_find_values(cls, slot, [i for i in items if not isinstance(i, Contains)])
 
 
 class AggregateReader(Protocol):
@@ -105,12 +146,16 @@ class AggregateReader(Protocol):
         A root changed earlier in the transaction is left out because its stored values are stale; one
         it kept at the value is missed, and the commit's unique key then refuses it. A ``None`` value is
         refused: ``Session.find`` would read it as "no value" and match every aggregate without one.
+        With no keyword, ``find`` is refused too: a rule never reads a whole class.
 
         Raises:
-            TypeError: A value is ``None``; the message names the slot. Nothing is queried.
+            ValueError: There is no keyword, or a list is empty; nothing is queried. Also, as
+                ``Session.find``, which this wraps, a ``cls`` that is no aggregate root with a path.
+            TypeError: A value is ``None``, alone or inside a list; the message names the slot.
+                Nothing is queried.
             BadQuery: A keyword is a slot path (it holds a dot), or a value is not of its slot's type
                 (strictly: no coercion); nothing is queried.
-            ValueError, RuntimeError: As ``Session.find``, which this wraps.
+            RuntimeError: As ``Session.find``.
         """
         ...
 
@@ -353,16 +398,7 @@ class _Reader:
         return model.model_copy(deep=True)
 
     async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
-        for slot, value in equals.items():
-            if SLOT_PATH_MARK in slot:
-                raise BadQuery(
-                    f"find({cls.__name__}): {slot} is a slot path; a rule finds by a slot of the class itself"
-                )
-            if value is None:
-                raise TypeError(
-                    f"find({cls.__name__}): {slot} is None; a rule asks for a value, never for its absence"
-                )
-        _refuse_values_not_of_the_slot(cls, equals)  # before any query
+        refuse_values_not_of_the_slot(cls, find_items(cls, equals))  # before any query
         context = self._context
         return [
             iri

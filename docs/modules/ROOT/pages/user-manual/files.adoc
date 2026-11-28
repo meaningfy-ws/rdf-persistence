@@ -174,8 +174,9 @@ pass a caller's input to it unfiltered. `find` raises:
   with them.
 * `ValueError`, when the class is not an aggregate root the service serves, or a list value is
   empty.
-* `BadQuery`, when a name is not a slot, a value does not fit its slot, or a `Contains` is on a slot
-  that holds no text or has an empty text.
+* `BadQuery`, when a name is not a slot, a value's text is not a value of its slot (each value is
+  taken as its RDF text: `5` for a string slot is `"5"`; a rule's reader checks the Python type
+  strictly), or a `Contains` is on a slot that holds no text or has an empty text.
 
 [#sweep-live-tenant]
 == Sweep a live tenant

@@ -12,7 +12,7 @@ from rdf_persistence.access.domain.generated.rp_access import (
 )
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.core.domain.media import JSON, PROBLEM_JSON
-from tests.toy import ROLES, SETTINGS
+from tests.toy import ROLES, SETTINGS, graph_of
 from tests.toy_service import ADA, DUNE_BODY, RITA, TENANT_BODY, ToyService, principal_of
 
 PROBLEMS = f"{SETTINGS.base}problems/"
@@ -67,6 +67,20 @@ class Scene:
 def problem_of(response: httpx.Response) -> Problem:
     assert response.headers["content-type"] == PROBLEM_JSON, response.text
     return Problem.model_validate(response.json())
+
+
+async def ban_reading(scene: Scene, iri: str) -> None:
+    """Prohibit ada from reading ``iri``, keeping her grants, and keep the new access ETag on the scene."""
+    grants = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
+    held = GrantSet.model_validate(grants.json())
+    ban = Prohibition(assignee=principal_of("ada"), target=graph_of(iri), action=Action.READ)
+    put = await scene.http.put(
+        f"{scene.tenant}/grants",
+        content=GrantSet(grants=held.grants, prohibitions=[ban]).model_dump_json(exclude_none=True),
+        headers=scene.headers("ada", **{"If-Match": grants.headers["etag"], "Content-Type": JSON}),
+    )
+    assert put.status_code == 200, put.text
+    scene.access_etag = put.headers["etag"]
 
 
 def use_roles(scene: Scene, definitions: list[RoleDefinition]) -> None:

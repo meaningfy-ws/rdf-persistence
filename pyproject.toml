@@ -58,6 +58,8 @@ generate = [
     "linkml==1.12.1",
     # `rp-generate --check` type-checks what it generated (#242).
     "mypy==1.20.2",
+    # The schema cache pickles hbreader's `Pathilizer` (write-rules-followups DEC-5).
+    "hbreader>=0.9.1",
 ]
 # The container fixtures of `rdf_persistence.testkit.containers` (PD-16).
 testkit = [

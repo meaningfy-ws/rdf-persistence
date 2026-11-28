@@ -7,18 +7,16 @@ from typing import Any
 import httpx
 import pytest
 
-from rdf_persistence import Action, GrantSet, InvalidBody, Refused, UnitOfWork
-from rdf_persistence.access.domain.generated.rp_access import Prohibition
+from rdf_persistence import Action, InvalidBody, Refused, UnitOfWork
 from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateReader,
     AggregateValidator,
     DeleteValidator,
 )
-from rdf_persistence.core.domain.media import JSON
 from tests.fixtures.library.domain.generated.books import Shelf
-from tests.scene import PROBLEMS, Scene, problem_of
-from tests.toy import graph_of, toy_mapper
-from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService, principal_of
+from tests.scene import PROBLEMS, Scene, ban_reading, problem_of
+from tests.toy import toy_mapper
+from tests.toy_service import DUNE_BODY, TENANT_BODY, ToyService
 
 REFUSED = "a shelf holds one book at most"
 SHELF_BODY = {"label": "Shelf", "description": "A shelf.", "member_class": "Book"}
@@ -66,19 +64,6 @@ async def post(scene: Scene, collection: str, body: dict) -> httpx.Response:
 async def shelf_listing(scene: Scene) -> list[str]:
     page = await scene.http.get(f"{scene.tenant}/shelves", headers=scene.headers("ada"))
     return [item["id"] for item in page.json()["items"]]
-
-
-async def ban_reading(scene: Scene, iri: str) -> None:
-    grants = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
-    held = GrantSet.model_validate(grants.json())
-    ban = Prohibition(assignee=principal_of("ada"), target=graph_of(iri), action=Action.READ)
-    put = await scene.http.put(
-        f"{scene.tenant}/grants",
-        content=GrantSet(grants=held.grants, prohibitions=[ban]).model_dump_json(exclude_none=True),
-        headers=scene.headers("ada", **{"If-Match": grants.headers["etag"], "Content-Type": JSON}),
-    )
-    assert put.status_code == 200, put.text
-    scene.access_etag = put.headers["etag"]
 
 
 async def two_books(scene: Scene) -> list[str]:

@@ -38,8 +38,9 @@ path;
 * `unreadable` lists IRIs the writer may not read: they answer as absent;
 * `calls` lists `(method, args, kwargs)` for each call, in order, refused calls included.
 
-Its limit: a `Contains` value or a dotted keyword (a slot path) in `find` raises
-`NotImplementedError` naming it; the real reader refuses a dotted keyword with `BadQuery`.
+It refuses what the real reader refuses, in the same order: `find` with no slot (`ValueError`), a
+dotted keyword (a slot path, `BadQuery`), a `None` or an empty list, a value not of its slot's type.
+Its one limit: a `Contains` value in `find` raises `NotImplementedError` naming the slot.
 How a rule is written and tested over it is in
 xref:user-manual/access.adoc#test-a-rule[Unit-test a rule with `FakeAggregateReader`].
 
@@ -400,7 +401,8 @@ toolkit's. It takes every field below, by keyword, and is read-only once built:
 and `absent` (seeded nowhere);
 * `other` and `other_iri`, a seeded aggregate of another root class, and `abstract_parent`, an
 abstract root class with no path from which `other` derives; `not_root`, a class that is no
-aggregate root;
+aggregate root, with `not_root_slot`, one of its slots, and `not_root_wrong_value`, a value not of
+that slot's type;
 * `slot` and `value`, a single-valued slot of `root` that `readable` and `unreadable` both hold at
 `value`, and `wrong_value`, a value not of that slot's type;
 * `text_slot`, a text slot of `root`, and `not_text`, a value that is not text (a number);
@@ -428,6 +430,8 @@ async def test_my_reader_keeps_the_contract(case):
         other_iri="https://example.org/author/1",
         abstract_parent=Agent,
         not_root=Address,
+        not_root_slot="street",
+        not_root_wrong_value=5,
         slot="isbn",
         value="978-0",
         wrong_value=5,

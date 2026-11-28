@@ -13,14 +13,12 @@ import httpx
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from rdf_persistence import Action, GrantSet, RuleRefusal, aggregate_rules
-from rdf_persistence.access.domain.generated.rp_access import Prohibition
-from rdf_persistence.core.domain.media import JSON
+from rdf_persistence import RuleRefusal, aggregate_rules
 from rdf_persistence.testkit import FakeAggregateReader
 from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
-from tests.scene import Scene
-from tests.toy import book_iri, dune, graph_of
+from tests.scene import Scene, ban_reading
+from tests.toy import book_iri, dune
 from tests.toy_service import (
     DUNE_BODY,
     HELD,
@@ -71,22 +69,6 @@ class Run:
         assert listed.status_code == 200, listed.text
         return listed.json()["items"]
 
-    async def ban_reading(self, iri: str) -> None:
-        scene = self.scene
-        grants = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
-        held = GrantSet.model_validate(grants.json())
-        ban = Prohibition(assignee=principal_of("ada"), target=graph_of(iri), action=Action.READ)
-        put = await scene.http.put(
-            f"{scene.tenant}/grants",
-            content=GrantSet(grants=held.grants, prohibitions=[ban]).model_dump_json(
-                exclude_none=True
-            ),
-            headers=scene.headers(
-                "ada", **{"If-Match": grants.headers["etag"], "Content-Type": JSON}
-            ),
-        )
-        assert put.status_code == 200, put.text
-
     def close(self) -> None:
         self.go(self.stack.aclose())
         self.runner.close()
@@ -119,7 +101,7 @@ def _stored(run: Run, isbn: str) -> None:
 @given(parsers.parse('a stored book with isbn "{isbn}" that the writer may not read'))
 def _stored_unreadable(run: Run, isbn: str) -> None:
     _stored(run, isbn)
-    run.go(run.ban_reading(run.stored))
+    run.go(ban_reading(run.scene, run.stored))
 
 
 @given(parsers.parse('a book with isbn "{isbn}" stored only in another tenant'))

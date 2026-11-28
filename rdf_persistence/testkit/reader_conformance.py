@@ -24,7 +24,8 @@ class Seeded:
       the writer may not read the second; ``absent`` is an IRI seeded nowhere.
     - ``other`` and ``other_iri``: a seeded aggregate of another root class.
     - ``abstract_parent``: an abstract root class with no path, which ``other`` derives from.
-    - ``not_root``: a class that is no aggregate root.
+    - ``not_root``: a class that is no aggregate root; ``not_root_slot`` is a slot of it and
+      ``not_root_wrong_value`` a value not of that slot's type.
     - ``slot`` and ``value``: a single-valued slot of ``root`` that ``readable`` and ``unreadable``
       both hold at ``value``; ``wrong_value`` is not of the slot's type.
     - ``text_slot`` and ``not_text``: a text slot of ``root`` and a value that is not text (a number).
@@ -44,6 +45,8 @@ class Seeded:
         other_iri: str,
         abstract_parent: type[BaseModel],
         not_root: type[BaseModel],
+        not_root_slot: str,
+        not_root_wrong_value: object,
         slot: str,
         value: object,
         wrong_value: object,
@@ -62,6 +65,8 @@ class Seeded:
         self.other_iri = other_iri
         self.abstract_parent = abstract_parent
         self.not_root = not_root
+        self.not_root_slot = not_root_slot
+        self.not_root_wrong_value = not_root_wrong_value
         self.slot = slot
         self.value = value
         self.wrong_value = wrong_value
@@ -116,19 +121,35 @@ async def find_by_a_slot_returns_only_the_readable(reader: AggregateReader, seed
 
 
 async def find_on_a_root_omits_another_root(reader: AggregateReader, seeded: Seeded) -> None:
-    assert seeded.other_iri not in await reader.find(seeded.root), "another class is not found"
+    found = await reader.find(seeded.root, **{seeded.slot: seeded.value})
+    assert seeded.other_iri not in found, "another class is not found"
 
 
 async def find_on_an_abstract_parent_is_refused(reader: AggregateReader, seeded: Seeded) -> None:
-    with pytest.raises(ValueError):
-        await reader.find(seeded.abstract_parent)
+    with pytest.raises(ValueError, match="not an aggregate root"):
+        await reader.find(seeded.abstract_parent, **{f"no_{seeded.slot}": seeded.value})
 
 
 async def find_on_a_class_that_is_no_root_is_refused(
     reader: AggregateReader, seeded: Seeded
 ) -> None:
-    with pytest.raises(ValueError):
-        await reader.find(seeded.not_root)
+    with pytest.raises(ValueError, match="not an aggregate root"):
+        await reader.find(seeded.not_root, **{f"no_{seeded.slot}": seeded.value})
+
+
+async def find_checks_the_value_before_the_root(reader: AggregateReader, seeded: Seeded) -> None:
+    with pytest.raises(BadQuery):
+        await reader.find(seeded.not_root, **{seeded.not_root_slot: seeded.not_root_wrong_value})
+
+
+async def find_without_a_slot_is_refused(reader: AggregateReader, seeded: Seeded) -> None:
+    with pytest.raises(ValueError, match="needs a slot"):
+        await reader.find(seeded.root)
+
+
+async def find_by_a_dotted_keyword_is_bad_query(reader: AggregateReader, seeded: Seeded) -> None:
+    with pytest.raises(BadQuery):
+        await reader.find(seeded.root, **{f"{seeded.slot}.x": seeded.value})
 
 
 async def find_by_a_value_of_the_wrong_type_is_bad_query(
@@ -179,6 +200,9 @@ CASES: tuple[Case, ...] = (
     find_on_a_root_omits_another_root,
     find_on_an_abstract_parent_is_refused,
     find_on_a_class_that_is_no_root_is_refused,
+    find_checks_the_value_before_the_root,
+    find_without_a_slot_is_refused,
+    find_by_a_dotted_keyword_is_bad_query,
     find_by_a_value_of_the_wrong_type_is_bad_query,
     find_a_text_slot_by_a_number_is_bad_query,
     find_by_none_is_refused,

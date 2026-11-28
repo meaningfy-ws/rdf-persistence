@@ -44,6 +44,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   New with it: an «own graph» composition to a part that is not generated (the whole's slot is a
   URI marked `rp_loaded_graph`), and a Realisation from an Object to its classifier. See
   `howto/uml-to-linkml.adoc` and `reference/uml-conventions.adoc`.
+- **A rule's `reader.find(cls)` with no slot raises `ValueError`** (`write-rules-followups`, #455),
+  in the real reader and in `FakeAggregateReader`, before any query: on every write it would page
+  through every aggregate of the class. Pass the slot the rule matches on. `Session.find` is
+  unchanged.
+- **`FakeAggregateReader.find` raises `BadQuery` for a dotted keyword** (`write-rules-followups`,
+  #455), as the real reader does; it raised `NotImplementedError`. A test that expected
+  `NotImplementedError` for a slot path expects `BadQuery`; a `Contains` is still the fake's limit.
+- **`reader_conformance.Seeded` takes `not_root_slot` and `not_root_wrong_value`**
+  (`write-rules-followups`, #455): a slot of `not_root` and a value not of its type. `CASES` gains
+  three cases a reader of your own must pass: `find` with no slot (`ValueError`), a dotted keyword
+  (`BadQuery`), and a mistyped value checked before the root (`BadQuery`).
 
 ### Added
 - **Assignees on aggregates under a workflow** (`workflow-assignees`, #426). A workflow file with
@@ -96,6 +107,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The generated unique-key check of a keyed slot that LinkML renders as a dict (multivalued,
   `inlined: true`, no `inlined_as_list`, over a class with an identifier) checks the dict's values
   instead of failing with `AttributeError`.
+- **The follow-ups of the consumer's write rules** (`write-rules-followups`, #455).
+  `refusal_problems` given as a generator registers every class (it registered none). A refusal
+  whose status equals 409 or 422 but is not an `int` (`409.0`) or is a `bool` is a 500, as any
+  other status. Both readers' `find` refuse in one order, a `None` inside a list included, and a
+  `BadQuery` for a value of the wrong type quotes it bounded. Generation refuses a consumer slot
+  ranged to a toolkit technical enum that `rdf_persistence` does not export, naming it, as for a
+  class. `hbreader`, which the generator's schema cache uses, is a declared dependency of the
+  `generate` extra.
 
 ## [0.16.0] - 2026-11-27
 

@@ -3,20 +3,18 @@
 import logging
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 from typing import Any
 
 import httpx
 import pytest
 from pydantic import BaseModel
 
-from rdf_persistence import Action, GrantSet, Problem, RuleRefusal
-from rdf_persistence.access.domain.generated.rp_access import Prohibition
+from rdf_persistence import Problem, RuleRefusal
 from rdf_persistence.collaboration.services.aggregate_validators import AggregateReader
-from rdf_persistence.core.domain.media import JSON
 from tests.fixtures.library.domain.generated.books import Book
 from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
-from tests.scene import PROBLEMS, Scene, problem_of
-from tests.toy import graph_of
+from tests.scene import PROBLEMS, Scene, ban_reading, problem_of
 from tests.toy_service import (
     DUNE_BODY,
     FIXED_HOLDER,
@@ -24,7 +22,6 @@ from tests.toy_service import (
     ToyService,
     fixed_refusal,
     held_isbn,
-    principal_of,
 )
 
 PROBLEM_LOG = "rdf_persistence.api.entrypoints.problems"
@@ -338,18 +335,36 @@ def test_a_registered_class_that_is_not_a_problem_stops_the_start_up(bad: type):
         ToyService(refusal_problems=[bad])
 
 
-async def ban_reading(scene: Scene, iri: str) -> None:
-    grants = await scene.http.get(f"{scene.tenant}/grants", headers=scene.headers("ada"))
-    held_grants = GrantSet.model_validate(grants.json())
-    ban = Prohibition(assignee=principal_of("ada"), target=graph_of(iri), action=Action.READ)
-    put = await scene.http.put(
-        f"{scene.tenant}/grants",
-        content=GrantSet(grants=held_grants.grants, prohibitions=[ban]).model_dump_json(
-            exclude_none=True
-        ),
-        headers=scene.headers("ada", **{"If-Match": grants.headers["etag"], "Content-Type": JSON}),
+def test_a_generator_of_registered_classes_registers_all():  # S1, positive
+    toy = ToyService(refusal_problems=(cls for cls in (Sibling, HeldKeyProblem)))
+    assert toy.kit.refusal_problems == (Sibling, HeldKeyProblem), (
+        "the generator is read once, whole"
     )
-    assert put.status_code == 200, put.text
+
+
+def test_a_generator_yielding_a_non_problem_stops_the_start_up():  # S1, negative
+    with pytest.raises(TypeError, match="NotAProblem"):
+        ToyService(refusal_problems=(cls for cls in (HeldKeyProblem, NotAProblem)))
+
+
+@pytest.mark.parametrize(
+    ("status", "answered"),
+    [(409.0, 500), (True, 500), (HTTPStatus.CONFLICT, 409)],
+    ids=["float", "bool", "int-subclass"],
+)
+async def test_a_status_must_be_an_int_that_is_not_a_bool(  # S2, DEC-4
+    status: Any, answered: int, caplog: pytest.LogCaptureFixture
+):
+    async with scene_with(refusing(built(status))) as scene:
+        with caplog.at_level(logging.DEBUG):
+            response = await create(scene, isbn="x")
+        assert response.status_code == answered, response.text
+        records = internal_error_records(caplog)
+        if answered == 500:
+            assert len(records) == 1, f"exactly one error record: {[r.__dict__ for r in records]}"
+            assert f"status {status!r}" in str(records[0].__dict__), "the status is named as given"
+        else:
+            assert records == [], "answered as built, nothing logged"
 
 
 async def test_a_holder_the_writer_may_not_read_is_never_copied_into_the_refusal():  # RISK-5

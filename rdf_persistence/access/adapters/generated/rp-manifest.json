@@ -87,7 +87,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_split.py",
-      "sha256": "16a2da1727412e9ec05959f5b0d0dabf2ae10ea875f8f62172652701d0dc3875"
+      "sha256": "a304d328028c16880be75ad5dfab83dca9206207a97002d892d6ebdb38ecc0af"
     },
     {
       "path": "rdf_persistence_generation/extensions/pydantic_validators.py",
@@ -103,7 +103,7 @@
     },
     {
       "path": "rdf_persistence_generation/extensions/typescript.py",
-      "sha256": "0cb54b5cfe5d7002752c91b7f11b74bd5eb5e652b7ee8ae59575ef365a921f4e"
+      "sha256": "937c25bcabe6ebf0fdb7b8faa6b2ac25e24c023466c47124a73dc79025c6ab73"
     },
     {
       "path": "rdf_persistence_generation/lock.py",
@@ -131,11 +131,15 @@
     },
     {
       "path": "rdf_persistence_generation/schema_cache.py",
-      "sha256": "91a04136d51e480f01d9b47f60d96d46d54e8e075f4abefff993fae16d98797f"
+      "sha256": "ee875923691f9709d42109225558070579d51cd2d1a13f97ecf5b9366ea41c68"
     },
     {
       "path": "rdf_persistence_generation/steps.py",
       "sha256": "ad97d9616a20d27eed5b79f8483edf4a5182c7c65f0baeb4a457b1373170f181"
+    },
+    {
+      "path": "rdf_persistence_generation/technical_checks.py",
+      "sha256": "931dd41e63257b3610be9d0ae6f73012e4ec17d1a644d1ffbe9dd4c0cf9114f3"
     },
     {
       "path": "rdf_persistence_generation/templates/mermaid/module.mmd.jinja",

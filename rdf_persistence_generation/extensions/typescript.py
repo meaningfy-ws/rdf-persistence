@@ -166,6 +166,7 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
         first: dict[str, SchemaDefinition] = {}
         for schema in self.schemaview.schema_map.values():
             if schema.enums or any(_has_interface(cls) for cls in schema.classes.values()):
+                # a schema name is unique within one import closure; two distinct schemas under one name would be merged here
                 first.setdefault(schema.name, schema)
         modules = [self.module(schema) for schema in first.values()]
         return sorted(modules, key=lambda module: module.name)

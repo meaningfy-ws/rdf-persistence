@@ -35,6 +35,7 @@ from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateValidator,
     AggregateValidators,
     checked_find_values,
+    find_items,
     run_aggregate_validators,
 )
 from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
@@ -43,7 +44,7 @@ from rdf_persistence.persistence.services.listing import Listings
 from rdf_persistence.persistence.services.session import GuardContext, Session, open_session
 from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import aggregate_keys
-from rdf_persistence.testkit import FakeStore, fake_session
+from rdf_persistence.testkit import FakeAggregateReader, FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
 from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre
 from tests.toy import (
@@ -1371,6 +1372,60 @@ def test_find_values_are_validated_strictly(slot: str, value: object, accepted: 
     else:
         with pytest.raises(BadQuery, match=slot):
             checked_find_values(Counted, slot, [value])
+
+
+@pytest.mark.parametrize(
+    ("row", "equals", "error", "match"),
+    [
+        ("no keyword", {}, ValueError, "needs a slot"),
+        ("a None inside a list on an unknown slot", {"nosuch": ["a", None]}, TypeError, "nosuch"),
+        ("a None inside a tuple", {"isbn": ("a", None)}, TypeError, "isbn"),
+        ("an empty list on an unknown slot", {"nosuch": 1, "authors": []}, ValueError, "authors"),
+        ("an empty tuple", {"authors": ()}, ValueError, "authors"),
+        ("a dotted keyword before a None", {"holder.name": "x", "isbn": None}, BadQuery, "holder"),
+        ("a None before a dotted keyword", {"isbn": None, "holder.name": "x"}, TypeError, "isbn"),
+    ],
+)
+async def test_both_readers_refuse_a_find_by_the_helpers_order(
+    row: str, equals: dict[str, object], error: type[Exception], match: str
+):  # PD-3, worked example 1
+    fake = FakeAggregateReader([], roots=[Book])
+    with pytest.raises(error, match=match):
+        await fake.find(Book, **equals)
+    store = FakeStore()
+    async with finding_session(store) as session:
+        seen = counting_queries(store)
+        with pytest.raises(error, match=match):
+            await reader_of(session).find(Book, **equals)
+        assert seen == [], f"{row}: refused before the store was asked"
+
+
+def test_find_items_splits_each_value_into_its_items():
+    items = find_items(Book, {"isbn": "a", "authors": ["x", "y"], "genre": (Genre.FICTION,)})
+    assert items == {"isbn": ["a"], "authors": ["x", "y"], "genre": [Genre.FICTION]}, "per slot"
+
+
+def test_a_find_for_a_huge_mistyped_value_is_a_bounded_bad_query():  # S5, worked example 2
+    huge = "x" * 10_000
+    with pytest.raises(BadQuery, match="count of Counted") as caught:
+        checked_find_values(Counted, "count", [huge])
+    assert len(str(caught.value)) < 300, "the message does not repeat the value"
+
+
+async def test_a_huge_mistyped_value_is_bounded_in_both_readers():  # S5
+    huge = "x" * 10_000
+    with pytest.raises(BadQuery) as fake_error:
+        await FakeAggregateReader([], roots=[Book]).find(Book, published=huge)
+    async with finding_session(FakeStore()) as session:
+        with pytest.raises(BadQuery) as real_error:
+            await reader_of(session).find(Book, published=huge)
+    for error in (fake_error, real_error):
+        assert len(str(error.value)) < 300, "bounded"
+
+
+async def test_a_dotted_keyword_is_bad_query_in_the_fake_too():  # DEC-6
+    with pytest.raises(BadQuery, match=r"chapters\.label"):
+        await FakeAggregateReader([], roots=[Book]).find(Book, **{"chapters.label": "x"})
 
 
 async def test_a_rule_finds_no_holder_that_the_unit_removed_before_it_added_the_same_key():  # F-5
