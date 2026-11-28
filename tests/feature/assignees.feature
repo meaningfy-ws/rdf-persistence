@@ -18,3 +18,18 @@ Feature: A person's queue of work is one listing of the books
       | Pol    | b1, b2 | 2     |
       | Pia    | b1     | 1     |
       | Quinn  | none   | 0     |
+
+  # spec: rp-workflow / Losing read access releases an assignment
+  Scenario Outline: Losing read access releases an assignment
+    Given Ada's library holds the books b1
+    And Pia and Pol may read the library
+    And Pia holds <own grant> on b1
+    And Ada assigns b1 to Pia and Pol
+    When Ada replaces the grants without Pia's reading of the library
+    Then b1 is assigned to <assignees>
+    And its last assignment, by Ada, released <released>
+
+    Examples:
+      | own grant | assignees | released |
+      | no grant  | Pol       | Pia      |
+      | a grant   | Pia, Pol  | no one   |
