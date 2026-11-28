@@ -604,16 +604,17 @@ slot; no new route is added.
 
 ### Requirement: A consumer rule refuses a write with its own problem
 
-`install_service` and `ServiceKit` SHALL take optional `refusal_problems`, generated classes that
-extend `Problem`; start-up SHALL refuse one that does not, naming it. A write rule SHALL be able to
-raise `RuleRefusal(problem)` with an instance of a registered class whose status is 409 or 422. The
-write SHALL then be refused before anything is written, and the generic create and replace routes
-SHALL answer with that problem: its status, type, title, detail and every extra field. A refusal
-whose problem is not of a registered class, or whose status is neither 409 nor 422, SHALL be
-answered as the 500 internal-error problem and logged once, naming the rule's problem class,
-with the refusal's traceback, which names the rule (D-22); a refusal that is answered SHALL NOT
-be logged as an error. In-process,
-the commit SHALL raise the `RuleRefusal`.
+`install_service` and `ServiceKit` SHALL take optional `refusal_problems`, any iterable of
+generated classes that extend `Problem`, a generator included, and SHALL register every class it
+yields; start-up SHALL refuse one that does not extend `Problem`, naming it. A write rule SHALL be
+able to raise `RuleRefusal(problem)` with an instance of a registered class whose status is the
+integer 409 or 422. The write SHALL then be refused before anything is written, and every write
+that runs the rules SHALL answer with that problem: its status, type, title, detail and every
+extra field. A refusal whose problem is not of a registered class, or whose status is not the
+integer 409 or 422 (a float or a boolean included), SHALL be answered as the 500 internal-error
+problem and logged once, naming the rule's problem class or its status, with the refusal's
+traceback, which names the rule (D-22); a refusal that is answered SHALL NOT be logged as an
+error. In-process, the commit SHALL raise the `RuleRefusal`.
 The OpenAPI document SHALL list each registered class as a component schema, and the 409 and 422
 answers of the generic create and replace routes and every operation's `default` answer SHALL
 accept it beside their problem schema; start-up SHALL refuse a registered class whose name is
@@ -639,6 +640,16 @@ already a component, naming it. With no registered class the document SHALL be u
 - **WHEN** a client creates a `Book` the rule refuses
 - **THEN** the answer is the 500 internal-error problem, and nothing is written
 
+#### Scenario: a status equal to 409 but not an integer (S2)
+- **GIVEN** a rule that refuses with a registered class built with `model_construct` and status `409.0`, or `True`
+- **WHEN** a client creates a `Book` the rule refuses
+- **THEN** the answer is the 500 internal-error problem, and exactly one error record names the status
+
+#### Scenario: registered through a generator (S1)
+- **GIVEN** `refusal_problems` given as a generator of registered classes
+- **WHEN** the service starts and a rule refuses with one of them at 409
+- **THEN** the answer is that problem; and a generator yielding a class that does not extend `Problem` stops the start-up, naming it
+
 #### Scenario: a class that is not a problem
 - **GIVEN** `refusal_problems` naming a class that does not extend `Problem`
 - **WHEN** the service starts
@@ -660,9 +671,11 @@ already a component, naming it. With no registered class the document SHALL be u
 
 The reader an aggregate validator receives SHALL give, through `find(cls, **equals)`, the IRIs of
 the aggregates of `cls` in the write's tenant whose slots equal `equals`, in IRI order, with the
-filters `Session.find` takes, except that a `None` value SHALL raise `TypeError` naming the slot,
-and a value not of the slot's type, or a dotted slot path, SHALL raise `BadQuery`, each before any
-query.
+filters `Session.find` takes, except that, each before any query and in this order, no keyword at
+all SHALL raise `ValueError`, a dotted slot path SHALL raise `BadQuery`, a `None` value SHALL raise
+`TypeError` naming the slot, an empty list SHALL raise `ValueError`, and a value not of the slot's
+type SHALL raise `BadQuery`, before the class is checked to be a root, whose
+message names the slot and the class and quotes the value bounded in length.
 It SHALL leave out an aggregate the writer may not read, one the transaction has removed, and one
 the transaction has added or replaced earlier. It SHALL read the store as committed, and no version
 guard is recorded.
@@ -695,6 +708,14 @@ guard is recorded.
 #### Scenario: a None value
 - **WHEN** a rule calls `reader.find(Book, isbn=None)`
 - **THEN** it raises `TypeError` naming `isbn`, before any query
+
+#### Scenario: no slot at all (S3)
+- **WHEN** a rule calls `reader.find(Book)`
+- **THEN** it raises `ValueError`, before any query, in the real reader and in the testkit's fake
+
+#### Scenario: a long value of the wrong type (S5)
+- **WHEN** a rule calls `reader.find(Book, pages="x" * 10000)` on an integer slot
+- **THEN** it raises `BadQuery` naming `pages` and `Book`, whose message is under 300 characters
 
 ### Requirement: A consumer registers a rule for its generated class
 
