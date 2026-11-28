@@ -131,3 +131,18 @@ def test_a_serialisation_without_a_media_type_is_refused_by_name(tmp_path):  # T
     path.write_text(yaml.safe_dump(schema))
     with pytest.raises(ValueError, match="ntriples"):
         vocabulary.media_types(RdfFormat, view=load_schema(folder / "rp.yaml"))
+
+
+@pytest.mark.parametrize(
+    ("constant", "iri"),
+    [
+        ("PENDING_SINCE", "https://meaningfy.ws/ns/rdf-persistence#pendingSince"),
+        ("RELAYED_AT", "https://meaningfy.ws/ns/rdf-persistence#relayedAt"),
+        ("PUBLICATION_FAILED", "https://meaningfy.ws/ns/rdf-persistence#publicationFailed"),
+        ("ABSENT_KEY_VALUE", "https://meaningfy.ws/ns/rdf-persistence#absentKeyValue"),
+    ],
+)
+def test_a_plumbing_iri_is_its_literal_iri_in_the_metamodels_namespace(constant, iri):  # PD-1, DEC-7
+    value = getattr(vocabulary, constant)
+    assert value == URIRef(iri), f"{constant} moved: {value}"
+    assert value in vocabulary.RP, f"{constant} is outside the metamodel's default namespace"
