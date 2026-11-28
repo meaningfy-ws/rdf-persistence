@@ -24,8 +24,7 @@ from rdf_persistence_generation.generated.rp_generation import (
 )
 from rdf_persistence_generation.uml.aggregates import BIDIRECTIONAL
 from rdf_persistence_generation.uml.classes import description_of
-from rdf_persistence_generation.uml.context import local_of
-from rdf_persistence_generation.uml.naming import CURIE_SEPARATOR, check_local_name
+from rdf_persistence_generation.uml.naming import CURIE_SEPARATOR, check_local_name, local_of
 from rdf_persistence_generation.uml.qea import ENUMERATION_TYPE, STATECHART_TYPE
 from rdf_persistence_generation.uml.roles import TOOLKIT_CLASS
 from rdf_persistence_generation.uml.slots import FROM_ATTRIBUTE, Usage, is_owned

@@ -20,7 +20,8 @@ _VOWELS = "aeiou"
 _ES_ENDINGS = ("s", "x", "z", "ch", "sh")
 
 
-def _local_part(written: str) -> str:
+def local_of(written: str) -> str:
+    """The local name of a written ``pfx:Local`` name, how an element is named in a problem or a report line."""
     return written.rsplit(CURIE_SEPARATOR, 1)[-1]
 
 
@@ -30,7 +31,7 @@ def _words(local: str) -> list[str]:
 
 def slot_name(written: str) -> str:
     """The local name in snake case: ``hasChapter`` -> ``has_chapter``, ``ISBNRecord`` -> ``isbn_record``."""
-    return "_".join(word.lower() for word in _words(_local_part(written)))
+    return "_".join(word.lower() for word in _words(local_of(written)))
 
 
 def permissible_value_key(literal: str) -> str:

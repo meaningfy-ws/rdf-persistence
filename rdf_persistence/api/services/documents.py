@@ -22,7 +22,7 @@ from linkml_runtime.linkml_model.meta import ClassDefinition, SlotDefinition
 from linkml_runtime.utils.formatutils import camelcase
 from linkml_runtime.utils.schemaview import SchemaView
 from pyld import jsonld
-from rdflib import RDF, SH, BNode, Dataset, Graph, Literal, URIRef
+from rdflib import RDF, SH, XSD, BNode, Dataset, Graph, Literal, URIRef
 from rdflib.term import Node
 
 from rdf_persistence.api.services.shacl import load_warm_shapes, validate_warm
@@ -80,6 +80,7 @@ ONE_GRAPH = "a body describes one graph"
 MAX_MESSAGES = 5
 TYPE_KEYS = ("type", TYPE_KEY)
 VALUE_KEY = "@value"
+GRAPH_KEY = "@graph"
 LANGUAGE_KEY = "@language"
 # What XML 1.0 forbids in text: rdflib's RDF/XML writer passes it through, and no XML parser reads it.
 XML_FORBIDDEN = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
@@ -216,7 +217,9 @@ class Documents:
         if not isinstance(body, dict):
             raise InvalidBody("the body must be a JSON object")
         _bound(body, self._max_nodes)
-        return body if media_type == JSON_LD else self._plain_document(body, cls)
+        if media_type == JSON_LD:
+            return dict(self._double_values(body, cls.name))
+        return self._plain_document(body, cls)
 
     def _plain_document(self, body: dict, cls: ClassDefinition) -> dict:
         """A plain JSON ``body`` as a JSON-LD document: typed by the schema, read with the generated context."""
@@ -277,7 +280,70 @@ class Documents:
     def _valued(self, slot: SlotDefinition, value: Any) -> Any:
         if holds_owned_part(self._view, slot):
             return self._typed_parts(value, str(slot.range))
+        if self._is_double(slot):
+            return _typed_doubles(self._plain(value), json_name(slot))
         return self._plain(value)
+
+    def _is_double(self, slot: SlotDefinition) -> bool:
+        """Whether ``slot`` takes ``xsd:double``: the context leaves it untagged, so a write is typed here (PD-9).
+
+        The range is a type whose nearest URI, up its ancestors, is ``xsd:double``: a type derived
+        from double is one too.
+        """
+        range_name = str(slot.range) if slot.range else None
+        if range_name is None or range_name not in self._view.all_types():
+            return False
+        for ancestor in self._view.type_ancestors(range_name):
+            curie = self._view.get_type(ancestor).uri
+            if curie:
+                return URIRef(self._view.expand_curie(str(curie))) == XSD.double
+        return False
+
+    def _double_values(self, node: Any, class_name: str) -> Any:
+        """``node``, a JSON-LD body of class ``class_name``, with the values of its double slots typed (PD-9).
+
+        Per class, as a plain JSON body is: a key is looked up in the slots of the node's class, and an
+        owned part is walked as its own class. ``@context`` and any key that is no slot stay as written.
+        """
+        if isinstance(node, list):
+            return [self._double_values(item, class_name) for item in node]
+        if not isinstance(node, dict):
+            return node
+        class_name = self._named_class(node, class_name)
+        slots = self._slots[class_name]
+        return {
+            key: self._double_value(slots.get(key), key, value, class_name)
+            for key, value in node.items()
+        }
+
+    def _double_value(
+        self, slot: SlotDefinition | None, key: str, value: Any, class_name: str
+    ) -> Any:
+        """One entry of a JSON-LD node: typed if ``slot`` is a double, walked if it holds a part or is ``@graph``."""
+        if key == GRAPH_KEY and isinstance(value, list):  # each node of the graph is its own class
+            return [
+                self._double_values(item, self._named_class(item, class_name, everywhere=True))
+                if isinstance(item, dict)
+                else item
+                for item in value
+            ]
+        if slot is None:
+            return value
+        if holds_owned_part(self._view, slot):
+            return self._double_values(value, str(slot.range))
+        return _typed_doubles(value, key) if self._is_double(slot) else value
+
+    def _named_class(self, node: dict, class_name: str, everywhere: bool = False) -> str:
+        """The class a node says it is, when it names ``class_name`` or a subclass of it (any class, if ``everywhere``); else ``class_name``."""
+        named = next((node[key] for key in TYPE_KEYS if key in node), None)
+        if isinstance(named, str):
+            candidates = (
+                self._view.all_classes() if everywhere else self._view.class_descendants(class_name)
+            )
+            for name in candidates:
+                if named in (camelcase(name), str(self._iri_of(self._view.get_class(name)))):
+                    return str(name)
+        return class_name
 
     def _typed_parts(self, value: Any, class_name: str) -> Any:
         if isinstance(value, list):
@@ -521,6 +587,25 @@ def _serialised(rdf: Graph, media_type: str) -> str:
         return str(rdf.serialize(format=media_type))
     except ValueError as refusal:  # rdflib's RDF/XML writer: "Can't split <predicate>"
         raise NotAcceptable(f"this aggregate has no {media_type} form") from refusal
+
+
+def _typed_doubles(value: Any, term: str) -> Any:
+    """What a body wrote on the double term ``term``, as typed value objects (PD-9).
+
+    The context leaves a double untagged, so JSON-LD would read ``3`` as an integer and ``"3"`` as a
+    string. A number or a string becomes ``{"@value": v, "@type": xsd:double}``; a list is typed item
+    by item; anything else (a value object, say) is left to JSON-LD.
+
+    Raises:
+        InvalidBody: A boolean, which JSON-LD would read as ``xsd:boolean``.
+    """
+    if isinstance(value, list):
+        return [_typed_doubles(item, term) for item in value]
+    if isinstance(value, bool):
+        raise InvalidBody(f"{term} must be a number, not a boolean")
+    if isinstance(value, int | float | str):
+        return {VALUE_KEY: value, TYPE_KEY: str(XSD.double)}
+    return value
 
 
 def _without_languages(value: Any) -> Any:

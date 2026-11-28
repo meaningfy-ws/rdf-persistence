@@ -55,11 +55,7 @@ class Toolkit:
 
     def prefixes(self) -> Mapping[str, str]:
         """The prefix name and namespace of every prefix the metamodel declares (PD-6)."""
-        return {
-            prefix.prefix_prefix: prefix.prefix_reference
-            for schema in self._view.all_schema()
-            for prefix in schema.prefixes.values()
-        }
+        return {prefix: str(namespace) for prefix, namespace in self._view.namespaces().items()}
 
     def class_names(self) -> list[str]:
         """The names of every toolkit class, sorted."""

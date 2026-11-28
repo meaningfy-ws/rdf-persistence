@@ -13,7 +13,7 @@ from enum import Enum
 from functools import cache
 
 from linkml_runtime.utils.schemaview import SchemaView
-from rdflib import Literal, URIRef
+from rdflib import Literal, Namespace, URIRef
 
 from rdf_persistence.core.domain.generated.rp_core import RegistryKind, RpAnnotation
 from rdf_persistence.core.domain.sparql import SparqlTerm, term, term_list
@@ -155,13 +155,15 @@ COMMIT_MARKER = class_iri("CommitMarker")
 STARTED_AT = predicate("started_at")
 # The relay's plumbing on an activity (aggregate-events PD-1): not slots, so no model and no message
 # carries them; reads of an activity exclude them and a restore drops them (PD-14).
-PENDING_SINCE = URIRef(f"{STARTED_AT.removesuffix('startedAt')}pendingSince")
-RELAYED_AT = URIRef(f"{STARTED_AT.removesuffix('startedAt')}relayedAt")
-PUBLICATION_FAILED = URIRef(f"{STARTED_AT.removesuffix('startedAt')}publicationFailed")
+_view = metamodel()
+RP = Namespace(_view.namespaces()[_view.schema.default_prefix])
+PENDING_SINCE = RP.pendingSince
+RELAYED_AT = RP.relayedAt
+PUBLICATION_FAILED = RP.publicationFailed
 RELAY_PLUMBING = (PENDING_SINCE, RELAYED_AT, PUBLICATION_FAILED)
 # The value of an absent slot of a unique key that counts absences (unique-key-nulls-equal PD-2): held
 # in memory and shown in the key-duplicates report, never written to a graph or matched in a pattern.
-ABSENT_KEY_VALUE = URIRef(f"{STARTED_AT.removesuffix('startedAt')}absentKeyValue")
+ABSENT_KEY_VALUE = RP.absentKeyValue
 # A graph naming a blob of the tenant's bucket by its key (PD-3 of the live-tenant sweep).
 FILE_KEY = predicate("file_key")
 # A listing states the graph it found each subject in (PD-7); the toolkit drops it before answering.

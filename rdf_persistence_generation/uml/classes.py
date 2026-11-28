@@ -26,13 +26,14 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlName,
     UmlRule,
 )
-from rdf_persistence_generation.uml.context import Context, below_of, local_of
+from rdf_persistence_generation.uml.context import Context, below_of
 from rdf_persistence_generation.uml.mixins import compose
 from rdf_persistence_generation.uml.naming import (
     CURIE_SEPARATOR,
     check_class_name,
     check_local_name,
     check_slot_name,
+    local_of,
     permissible_value_key,
     rp_path_for,
     title_for,
@@ -376,7 +377,7 @@ def _permissible_value(
         return None
     return PermissibleValue(
         text=key,
-        title=title_for(literal.rsplit(":", 1)[-1]),
+        title=title_for(local_of(literal)),
         description=description,
         meaning=meaning,
     )

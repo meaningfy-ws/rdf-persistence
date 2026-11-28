@@ -253,3 +253,36 @@ def test_the_served_schemas_are_built_once_per_process() -> None:
         "a second call rebuilt the served schemas' modules instead of reusing them"
     )
     assert isinstance(first[0], tuple), "the cached names are mutable; a caller could change them"
+
+
+# --- decimal and float are strings, double a number (langstring-support PD-5, PD-6, PD-8) ----------
+
+MEASURES = Path(__file__).parents[2] / "fixtures" / "measures" / "measures.yaml"
+
+
+@pytest.mark.parametrize(
+    ("type_name", "expected"),
+    [
+        pytest.param("integer", "number", id="integer"),
+        pytest.param("double", "number", id="double"),
+        pytest.param("decimal", "string", id="decimal"),
+        pytest.param("float", "string", id="float"),
+        pytest.param("boolean", "boolean", id="boolean"),
+        pytest.param("string", "string", id="string"),
+        pytest.param("date", "string", id="date"),
+        pytest.param(None, "string", id="no-range"),
+    ],
+)
+def test_a_scalar_type_follows_the_xsd_type_of_its_uri(
+    type_name: str | None, expected: str
+) -> None:
+    generator = typescript._generator(MEASURES)
+    assert generator._scalar(type_name) == expected, f"the TypeScript type of {type_name}"
+
+
+def test_the_three_ranges_read_as_string_string_number() -> None:
+    files = {f.name: f.text for f in typescript.render(MEASURES, folder=Path("ts"))}
+    lines = files["measures.ts"].splitlines()
+    assert "  dec?: string;" in lines, "a decimal is a string"
+    assert "  flt?: string;" in lines, "a float is a string"
+    assert "  dbl?: number;" in lines, "a double is a number"

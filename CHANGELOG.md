@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠ BREAKING
+- **Decimal and float are strings in TypeScript and OpenAPI; double is a JSON number**
+  (`langstring-support`, DEC-8). A read has always returned a decimal or a float as a JSON string,
+  while the generated TypeScript said `number` and the OpenAPI schema `number`: both now say
+  `string`, so TypeScript code that does arithmetic on such a field converts it first. A double
+  is now read as a JSON number under the slot's name (it was keyed by the full IRI), and a number
+  or a string written to a double slot is stored as `xsd:double`; a boolean is refused. Send an
+  exact decimal as a string: a JSON number passes through a float on the way in. `NaN` and `INF`
+  doubles have no JSON form and are not supported.
+
 ## [0.17.0] - 2026-11-28
 
 ### ⚠ BREAKING

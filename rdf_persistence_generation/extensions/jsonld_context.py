@@ -39,8 +39,9 @@ from rdf_persistence_generation.generated.rp_generation import (
     GenerationAnnotation,
 )
 
-# JSON carries these natively: a datatype tag would turn them into strings when framed back.
-NATIVE_JSON_DATATYPES = ("xsd:integer", "xsd:boolean")
+# JSON carries these natively: a datatype tag would turn them into strings when framed back. A
+# write to a double slot is typed by the service instead (PD-9); decimal and float stay tagged.
+NATIVE_JSON_DATATYPES = ("xsd:integer", "xsd:boolean", "xsd:double")
 JSON_LD_VERSION = 1.1  # property-scoped contexts are a JSON-LD 1.1 feature
 CONTAINER_KEY = "@container"
 SET_CONTAINER = "@set"
