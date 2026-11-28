@@ -279,7 +279,7 @@ miss fails safe (PD-10).
 | `find` for an unreadable or another tenant's aggregate | not returned (PD-10) |
 | `aggregate_rules(cls, rule)` where `rule` is typed for another class | mypy error (PD-11) |
 | `state_name` with another workflow's IRI, or a name not among its states | `ValueError` naming IRI and workflow (PD-12) |
-| The fake asked a `Contains` or dotted `find` | `NotImplementedError` naming the keyword (PD-13) |
+| The fake asked a `Contains` or dotted `find` | `NotImplementedError` naming the keyword (PD-13); the real reader refuses a dotted keyword with `BadQuery` (D-21 F-1) |
 | No `refusal_problems` | handlers and the document as before (TC-6) |
 
 ## Anti-patterns
@@ -304,7 +304,7 @@ miss fails safe (PD-10).
 | TC-3 | rp-generation "a class the package does not export" | a `toy_copy` whose `library_problems` declares a class `is_a: InUseProblem` (not in `rdf_persistence.__all__`) fails naming both classes; no file written | generator unit |
 | TC-4 | PD-4 | `TsModule` of `library_problems`: every `Problem` field present with the same type and required-ness | generator unit |
 | TC-5 | rp-service-api "a refusal with a consumer problem type", "a 422 refusal" (#397 acceptance 1) | toy service with `fixed_refusal` (PD-9a): isbn `held` → 409, isbn `malformed` → 422, each with `type`, `detail`, `holder`; store unchanged | unit, `tests/unit/api/test_rule_refusal.py` |
-| TC-6 | "an unregistered problem class", "a status outside 409 and 422", "a class that is not a problem", no `refusal_problems` | 500 problem without the rule's fields; `caplog`: exactly one `log.error` record naming the class or status, with no `exc_info`, and none for a registered refusal (PD-6); start-up `TypeError`; the document's golden unchanged with none | unit |
+| TC-6 | "an unregistered problem class", "a status outside 409 and 422", "a class that is not a problem", no `refusal_problems` | 500 problem without the rule's fields; `caplog`: exactly one `log.error` record naming the class or status, with the refusal as its `exc_info` (D-22; PD-6 said none), and none for a registered refusal; start-up `TypeError`; the document's golden unchanged with none | unit |
 | TC-7 | "the document lists the problem" | `HeldKeyProblem` a component; `anyOf` on create/replace 409 and 422 and on `default`; `make typecheck-openapi-ts` compiles the toy document; the contract test (`test_the_service_keeps_to_its_document`) passes with the toy's refusal | unit, CI "types" |
 | TC-8 | in-process refusal | a unit of work commit raises `RuleRefusal`, nothing written | unit, `tests/unit/collaboration/test_aggregate_validators.py` |
 | TC-9 | rp-service-api find scenarios (#397 acceptance 2) | holder found; another tenant's not; unreadable not; removed-in-transaction not; replaced-earlier not (worked example 2, both variants: committed, and `KeyConflict`); `None` → `TypeError`; through the generic API's session (listings present) | unit + feature |
@@ -528,6 +528,14 @@ The lead's, per R-0007; the developer may overrule any of them.
   "no traceback" against hard rule P-0010, and the operator could not tell which rule raised the
   refusal. The developer chose P-0010: `exc_info=error`, so the traceback names the rule; the
   answer to the client is unchanged.
+- **D-23 The stage-2 checker: pass, two Warnings.** The design text lagged D-22 (TC-6) and did not
+  name the readers' dotted-keyword difference: fixed here. The difference itself (the fake's
+  `NotImplementedError`, the real reader's `BadQuery`) is documented and under the floor; it is in
+  the follow-up issue with the other floor items. The developer skipped the acceptance demo
+  (`evidence/acceptance.md`); no docs are owed (`evidence/docs-owed.md`).
+- **D-24 No hand-over after stage 2 (the developer, 2026-11-28).** "No need to handover, do that
+  here": the archive runs in this session after #447 merges; `handover.md` becomes a close record
+  with no prompt for a fresh session.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.
