@@ -13,7 +13,6 @@ import pickle
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import dataclass, field
 from typing import Any
 
 from hbreader import Pathilizer  # type: ignore[import-untyped]  # LinkML's dependency, untyped
@@ -45,16 +44,14 @@ class _SchemaPickler(pickle.Pickler):
         return NotImplemented
 
 
-@dataclass
 class SchemaLoadCache:
     """Pickled schemas by (path as given, base folder, absolute path), each with the stat it was read at.
 
     An index of files, not a model: the values are LinkML's own objects, pickled.
     """
 
-    entries: dict[tuple[str, str | None, str], tuple[Stat, bytes | SchemaDefinition]] = field(
-        default_factory=dict
-    )
+    def __init__(self) -> None:
+        self.entries: dict[tuple[str, str | None, str], tuple[Stat, bytes | SchemaDefinition]] = {}
 
     def clear(self) -> None:
         self.entries.clear()

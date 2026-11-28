@@ -163,7 +163,7 @@
     },
     {
       "path": "rdf_persistence_generation/schema_cache.py",
-      "sha256": "b767ab37a25c02871c5b5cae480fb4bf81e986dcbb5c0a23592d4d7728434a9f"
+      "sha256": "e8a71d2c78258fd99ac0780dfe88f0c6a286f7f1052a7f2fc3511f2fb9187855"
     },
     {
       "path": "rdf_persistence_generation/steps.py",
