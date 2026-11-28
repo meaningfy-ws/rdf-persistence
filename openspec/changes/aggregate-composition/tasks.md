@@ -134,7 +134,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   Lead runs `make test-containers`. Accept ([D-11](design.md#d-11)): the library passes lint and
   boundary; the shelf count generates with every step and has the `rp_loaded_graph` slots as
   `uri`.
-- [ ] 1.12 Lead: `make check-all`, `make test-containers`, `make check-generated`; review (two
+- [x] 1.12 Lead: `make check-all`, `make test-containers`, `make check-generated`; review (two
   grouped runs, LARGE); PR into `develop`; a comment on #343 naming the three items done and the
   rest open; the consumer told the change id (D-12). No release is cut before stage 3 merges
   ([PD-17](design.md#pd-17), A-23). Before any release (stage 1 merged or later): the developer runs
@@ -191,7 +191,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
 - [x] 2.6 Feature, after 2.5: the remaining scenarios of
   [`features/conventions_check.feature`](features/conventions_check.feature)
   appended verbatim to `uml_import.feature`, steps in `test_uml_import.py`. Accept: pass.
-- [ ] 2.7 Lead: `make check-all`; review; PR.
+- [x] 2.7 Lead: `make check-all`; review; PR.
 
 ## 3. Stage 3: guide, conventions page, rules, changelog
 
@@ -249,8 +249,8 @@ assertion without a replacement row. Every decision a task cites links its ancho
 ## Roadmap
 
 - [x] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.8 · [x] 1.6 · [x] 1.7 ·
-  [x] 1.9 · [x] 1.10 · [x] 1.11 · [ ] 1.12 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [x] 2.5 ·
-  [ ] 2.6 · [ ] 2.7 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 3.6
+  [x] 1.9 · [x] 1.10 · [x] 1.11 · [x] 1.12 · [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 ·
+  [x] 2.6 · [x] 2.7 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 3.6
   (1.0 is the lead's reading of Sparx's docs and gates nothing ([D-4](design.md#d-4)); the
   developer's EA probe is the `@manual` scenario run in 1.12 before any release; 1.2 and 1.3 in
   parallel; 1.5 and 1.8 need only 1.2;

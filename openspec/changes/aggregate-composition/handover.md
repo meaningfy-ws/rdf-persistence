@@ -12,6 +12,7 @@ D-1 to D-15 (design.md, Delivery decisions); DEC-4 re-shaped and DEC-2 amended (
 - RISK-9: the developer's EA probe (`@manual` scenario) before any release.
 - Under the floor: D-13 (S5 split `_Pass`, S6 caching, S7 `_adopt` order test) and D-15 (S3–S6).
 - `evidence/acceptance.md` after stage 3.
+- The stage-2 checker passed every task; its one finding (stale roadmap ticks) is fixed.
 - No release before stage 3 merges (PD-17).
 
 ## Next
