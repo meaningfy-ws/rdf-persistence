@@ -56,7 +56,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
 - [ ] 2.4 **feature** — after 2.1 to 2.3; `features/consumer_write_rules.feature` appended to
   `tests/feature/consumer_write_rules.feature` with its steps (the toy `held_isbn` rule of worked
   example 1, added in 2.1). Accept: the feature lane passes the scenarios. Closes #397.
-- [ ] 2.5 **docs** — after 2.4; PD-15's stage-2 half and the CHANGELOG *BREAKING* line (DEC-8).
+- [x] 2.5 **docs** — after 2.4; PD-15's stage-2 half and the CHANGELOG *BREAKING* line (DEC-8).
   Accept: `make check-docs` green.
 - [ ] 2.6 **lead** — scenario-map rows; `make check-all`; one review pass (two grouped runs);
   PR into `develop`; merged on green CI; archive.
