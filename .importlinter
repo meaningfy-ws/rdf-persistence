@@ -163,13 +163,14 @@ forbidden_modules =
     rdf_persistence_generation
 
 [importlinter:contract:collaboration-layers]
-name = the collaboration modules layer above the session: messagebus > collaboration > transitions | write_guards | referenced_removals > discussion | reference_collections | workflows | referrer_naming > access > session (PD-28, PD-32, review-floors PD-2)
+name = the collaboration modules layer above the session: messagebus > collaboration > transitions | assignments | write_guards | referenced_removals > aggregate_activities > discussion | reference_collections | workflows | referrer_naming > access > session (PD-28, PD-32, review-floors PD-2)
 ; access sits above session, not beside it: it reaches the session through the mapper (access -> mapper -> session).
 type = layers
 layers =
     rdf_persistence.messaging.services.messagebus
     rdf_persistence.collaboration.services.collaboration
-    rdf_persistence.collaboration.services.transitions | rdf_persistence.collaboration.services.write_guards | rdf_persistence.collaboration.services.referenced_removals
+    rdf_persistence.collaboration.services.transitions | rdf_persistence.collaboration.services.assignments | rdf_persistence.collaboration.services.write_guards | rdf_persistence.collaboration.services.referenced_removals
+    rdf_persistence.collaboration.services.aggregate_activities
     rdf_persistence.collaboration.services.discussion | rdf_persistence.collaboration.services.reference_collections | rdf_persistence.collaboration.services.workflows | rdf_persistence.collaboration.services.referrer_naming
     rdf_persistence.access.services.access
     rdf_persistence.persistence.services.session

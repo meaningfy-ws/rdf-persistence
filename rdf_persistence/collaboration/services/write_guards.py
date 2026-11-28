@@ -114,12 +114,14 @@ class WriteGuards:
         stored: Tracked | None,
         allowed_state: str | None,
         *,
+        allowed_assignees: frozenset[str] | None = None,
         context: GuardContext,
     ) -> list[Triple]:
         """The triples to write for the root ``iri`` (``stored`` is ``None`` for an add).
 
-        ``allowed_state`` is the state the transaction allows the root to take; only the workflow
-        rule uses it.
+        ``allowed_state`` is the state the transaction allows the root to take, and
+        ``allowed_assignees`` the exact set of assignees it allows the root to hold; only the
+        workflow rule uses them.
 
         Raises:
             InvalidBody: The triples of a collection do not decode, or it names a member class that
@@ -136,7 +138,9 @@ class WriteGuards:
                 _CollectionCheck(session, iri, name, decoded, context, adding=stored is None)
             )
         if self._workflows is not None:
-            triples = await self._workflows.keep_state(session, iri, triples, stored, allowed_state)
+            triples = await self._workflows.keep_state(
+                session, iri, triples, stored, allowed_state, allowed_assignees=allowed_assignees
+            )
         await self._run_aggregate_validators(session, iri, triples, stored, context)
         return triples
 

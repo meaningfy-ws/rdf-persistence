@@ -36,6 +36,7 @@ from rdf_persistence.collaboration.domain.generated.rp_discussion import (
     PostReply,
 )
 from rdf_persistence.collaboration.domain.generated.rp_workflow import (
+    Assignment,
     Transition,
     UnderWorkflow,
     Workflow,
@@ -327,6 +328,7 @@ __all__ = [
     "AggregateReader",
     "AggregateRoot",
     "AggregateValidator",
+    "Assignment",
     "Authorised",
     "BadQuery",
     "BlobEntry",

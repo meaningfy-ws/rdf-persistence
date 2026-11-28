@@ -75,6 +75,7 @@ class Book(UnderWorkflow, Tracked, Described, AggregateRoot):
     creator: _Optional[str] = _Field(default=None, title="Creator", description="The principal that first committed the graph.")
     contributor: _Optional[list[str]] = _Field(default=None, title="Contributor", description="A principal that committed a later version of the graph.")
     workflow_status: _Optional[str] = _Field(default=None, title="Workflow status", description="The current state of the aggregate, the IRI of a state of its workflow.")
+    assigned_to: _Optional[list[str]] = _Field(default=None, title="Assigned to", description="The principals the aggregate is assigned to, each one who may read it. The toolkit owns the slot: only an assignment or a clearing transition changes it.")
 
 
 class Shelf(ReferenceCollection, Tracked, Described, AggregateRoot):

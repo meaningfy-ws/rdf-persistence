@@ -18,7 +18,8 @@ from rdf_persistence.access.services.generated.rp_access_services import (
     VerifiedCaller,
 )
 from rdf_persistence.collaboration.domain.generated.rp_discussion import Comment, PostComment
-from rdf_persistence.collaboration.domain.generated.rp_workflow import Transition
+from rdf_persistence.collaboration.domain.generated.rp_workflow import Assignment, Transition
+from rdf_persistence.collaboration.services.assignments import AccessOf, Assignments
 from rdf_persistence.collaboration.services.discussion import Discussion
 from rdf_persistence.collaboration.services.generated.rp_collaboration_services import (
     MemberList,
@@ -52,6 +53,7 @@ class Collaboration:
         caller: VerifiedCaller,
         access: CallerAccess,
         workflows: Workflows | None = None,
+        access_of: AccessOf | None = None,
     ) -> None:
         self._session = session
         self._view = view
@@ -88,6 +90,17 @@ class Collaboration:
             caller=caller,
             access=access,
             workflows=workflows,
+        )
+        self._assignments = Assignments(
+            session,
+            view=view,
+            rules=rules,
+            iris=iris,
+            mapper=mapper,
+            caller=caller,
+            access=access,
+            workflows=workflows,
+            access_of=access_of,
         )
 
     @property
@@ -220,6 +233,30 @@ class Collaboration:
         The ``Raises`` are those of ``Transitions.transitions``.
         """
         return await self._transitions.transitions(iri)
+
+    async def assign(
+        self,
+        iri: str,
+        principals: Sequence[str],
+        *,
+        if_version: str,
+        command: Assignment | None = None,
+    ) -> str:
+        """Make ``principals`` the assignees of the aggregate ``iri`` and return its new version.
+
+        The set is stored in one request, whose activity is the change (``command``, if given, or a
+        new ``Assignment``). The ``Raises`` are those of ``Assignments.assign``.
+        """
+        return await self._assignments.assign(
+            iri, list(principals), if_version=if_version, command=command
+        )
+
+    async def assignments(self, iri: str) -> list[Assignment]:
+        """The changes of the assignees of ``iri``, oldest first.
+
+        The ``Raises`` are those of ``Assignments.assignments``.
+        """
+        return await self._assignments.assignments(iri)
 
     async def roles_held(self, iri: str) -> frozenset[str]:
         """The names of the roles the caller holds on ``iri``: the roles that decide who sees a

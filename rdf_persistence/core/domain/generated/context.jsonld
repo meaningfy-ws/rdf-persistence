@@ -41,6 +41,19 @@
          "@type": "@id",
          "@id": "prov:activity"
       },
+      "assignable": {
+         "@id": "assignable"
+      },
+      "assigned_principals": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "assignedPrincipal"
+      },
+      "assigned_to": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "assignedTo"
+      },
       "assignee": {
          "@type": "@id",
          "@id": "ODRL:assignee"
@@ -58,6 +71,9 @@
       },
       "byte_size": {
          "@id": "byteSize"
+      },
+      "clears_assignees": {
+         "@id": "clearsAssignees"
       },
       "comment_audience": {
          "@container": "@set",
@@ -263,6 +279,11 @@
          "@container": "@set",
          "@id": "prohibition"
       },
+      "released_principals": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "releasedPrincipal"
+      },
       "removed_blobs": {
          "@id": "removedBlobs"
       },
@@ -401,6 +422,9 @@
       },
       "AggregateRoot": {
          "@id": "AggregateRoot"
+      },
+      "Assignment": {
+         "@id": "Assignment"
       },
       "BlobEntry": {
          "@id": "BlobEntry"

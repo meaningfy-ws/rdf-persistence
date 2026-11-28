@@ -565,7 +565,8 @@ class WriteGuard(Protocol):
     """What a transaction asks before it collects an add or a replace (PD-6): the triples to write.
 
     ``stored`` is ``None`` for an add, the stored tracking for a replace. ``allowed_state`` is the one
-    state the transaction allows this root to take (PD-19), or ``None``. ``context`` is what the
+    state the transaction allows this root to take (PD-19), or ``None``; ``allowed_assignees`` is the
+    exact set of assignees it allows this root to hold (workflow-assignees D-2), or ``None``. ``context`` is what the
     transaction offers the guard. It raises to refuse.
     """
 
@@ -577,6 +578,7 @@ class WriteGuard(Protocol):
         stored: Tracked | None,
         allowed_state: str | None,
         *,
+        allowed_assignees: frozenset[str] | None = None,
         context: GuardContext,
     ) -> list[Triple]: ...
 
@@ -1371,6 +1373,8 @@ class Transaction:
         self._read_cache: dict[str, BaseModel] = {}  # root -> the model a reader handed over
         self._key_claims: list[KeyClaim] = []  # what the changes claim of the session's keys (PD-6)
         self._allowed: dict[str, str] = {}  # root -> the one state this transaction may set (PD-19)
+        # root -> the exact assignees this transaction may leave on it (workflow-assignees D-2)
+        self._allowed_assignees: dict[str, frozenset[str]] = {}
         # part -> (its whole, its link), read from the collected triples (PD-3)
         self._parts: dict[str, tuple[str, DependenceLink]] = {}
         # graph of each whole a store guard covers -> (the part, the whole), for the diagnosis (PD-11)
@@ -1485,7 +1489,13 @@ class Transaction:
         await session._check_commit(iri, loaded_graphs)
         if session._write_guards is not None:
             triples = await session._write_guards.prepare(
-                session, iri, triples, None, self._allowed.get(str(iri)), context=self._context()
+                session,
+                iri,
+                triples,
+                None,
+                self._allowed.get(str(iri)),
+                allowed_assignees=self._allowed_assignees.get(str(iri)),
+                context=self._context(),
             )
         self._note_part(iri, triples)
         key_claims = claims_of(session._keys, iri, triples)
@@ -1529,6 +1539,7 @@ class Transaction:
                     triples,
                     stored,
                     self._allowed.get(str(iri)),
+                    allowed_assignees=self._allowed_assignees.get(str(iri)),
                     context=self._context(),
                 )
             except Forbidden as refusal:
@@ -1653,6 +1664,13 @@ class Transaction:
         no change."""
         self._require_open()
         self._allowed[str(iri)] = str(state_iri)
+
+    def _allow_assignees(self, iri: str, principals: Iterable[str]) -> None:
+        """Let this transaction leave exactly the set ``principals`` as the assignees of the
+        aggregate ``iri`` (empty included): the one thing a plain write may not do, which only an
+        assignment or a clearing transition does (workflow-assignees D-2). It collects no change."""
+        self._require_open()
+        self._allowed_assignees[str(iri)] = frozenset(str(p) for p in principals)
 
     def _require_match(self, iri: str, class_iri: str, conditions: Sequence[Condition]) -> None:
         """Guard the commit on ``iri`` being of exactly ``class_iri`` and holding every condition

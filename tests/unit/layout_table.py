@@ -133,6 +133,8 @@ LAYOUT: tuple[Move, ...] = (
         "referenced_removals",
         "workflows",
         "transitions",
+        "assignments",
+        "aggregate_activities",
         "write_guards",
         "aggregate_validators",
         "collaboration",

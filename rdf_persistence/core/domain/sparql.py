@@ -19,6 +19,7 @@ from rdf_persistence.core.domain.exceptions import SparqlError
 from rdf_persistence.core.domain.sparql_parsing import CompValue, parse_query, parse_update
 
 FORBIDDEN_IRI_CHARS = re.compile(r'[\x00-\x20<>"{}|\\^`\x7f]')
+_ABSOLUTE_IRI = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:.+")  # a scheme, then something
 _BLANK_LABEL = re.compile(r"[A-Za-z0-9_]([A-Za-z0-9_.-]*[A-Za-z0-9_-])?")  # may not end in "."
 _LANGUAGE_TAG = re.compile(r"[A-Za-z]+(-[A-Za-z0-9]+)*")
 _STRING_ESCAPES = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"}
@@ -38,6 +39,11 @@ class SparqlTerm(str):
     ) -> core_schema.CoreSchema:
         """A model field of this type takes a ``SparqlTerm`` and nothing else: a raw ``str`` fails."""
         return core_schema.is_instance_schema(cls)
+
+
+def is_absolute_iri(value: str) -> bool:
+    """Whether ``value`` is an absolute IRI (a scheme, then more) holding none of ``FORBIDDEN_IRI_CHARS``."""
+    return bool(_ABSOLUTE_IRI.fullmatch(value)) and not FORBIDDEN_IRI_CHARS.search(value)
 
 
 def _iri(value: str) -> str:

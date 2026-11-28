@@ -35,6 +35,7 @@ classes:
       - workflow_states
       - initial_state
       - workflow_transitions
+      - assignable
     slot_usage:
       id:
         required: true
@@ -55,6 +56,7 @@ classes:
       - to_state
       - transition_roles
       - comment_required
+      - clears_assignees
     slot_usage:
       from_state:
         required: true
@@ -66,11 +68,14 @@ classes:
     title: Under workflow
     description: >-
       A mixin for an aggregate root that follows a workflow, which its class names with the workflow
-      annotation. It gives the root its current state; only a transition changes it.
+      annotation. It gives the root its current state, which only a transition changes, and, under
+      an assignable workflow, its assignees, which only an assignment or a clearing transition
+      changes.
     class_uri: rp:UnderWorkflow
     mixin: true
     slots:
       - workflow_status
+      - assigned_to
   Transition:
     title: Transition
     description: >-
@@ -85,6 +90,7 @@ classes:
       - from_state_iri
       - to_state_iri
       - transition_comment
+      - released_principals
       - to_state
       - expected_version
       - body_value
@@ -98,6 +104,30 @@ classes:
         annotations:
           payload: true
       body_value:
+        annotations:
+          payload: true
+  Assignment:
+    title: Assignment
+    description: >-
+      One change of the assignees of an aggregate, as an activity: which aggregate it used, which
+      principals it added and which it removed, when and by whom. The toolkit stores it as the activity
+      of the commit that changes the assignees, in the provenance graph, and keeps it when the aggregate
+      is deleted. The payload slots belong to the command only: the stored record has none of them.
+    class_uri: rp:Assignment
+    is_a: Activity
+    slots:
+      - used_resource
+      - assigned_principals
+      - released_principals
+      - assigned_to
+      - expected_version
+    slot_usage:
+      used_resource:
+        required: true
+      assigned_to:
+        annotations:
+          payload: true
+      expected_version:
         annotations:
           payload: true
 
@@ -152,6 +182,44 @@ slots:
     slot_uri: rp:commentRequired
     range: boolean
     ifabsent: "false"
+  assignable:
+    title: Assignable
+    description: Whether the aggregates under the workflow may have assignees; no by default.
+    slot_uri: rp:assignable
+    range: boolean
+    ifabsent: "false"
+  clears_assignees:
+    title: Clears assignees
+    description: >-
+      Whether the transition removes every assignee of the aggregate as it moves it; no by default.
+      Only an edge of an assignable workflow may say yes.
+    slot_uri: rp:clearsAssignees
+    range: boolean
+    ifabsent: "false"
+  assigned_to:
+    title: Assigned to
+    description: >-
+      The principals the aggregate is assigned to, each one who may read it. The toolkit owns the
+      slot: only an assignment or a clearing transition changes it.
+    slot_uri: rp:assignedTo
+    range: Principal
+    multivalued: true
+  assigned_principals:
+    title: Assigned principals
+    description: The principals an assignment added to the aggregate's assignees.
+    slot_uri: rp:assignedPrincipal
+    range: Principal
+    multivalued: true
+    annotations:
+      toolkit_filled: true
+  released_principals:
+    title: Released principals
+    description: The principals an assignment or a clearing transition removed from the aggregate's assignees.
+    slot_uri: rp:releasedPrincipal
+    range: Principal
+    multivalued: true
+    annotations:
+      toolkit_filled: true
   workflow_status:
     title: Workflow status
     description: The current state of the aggregate, the IRI of a state of its workflow.

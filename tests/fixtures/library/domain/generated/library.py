@@ -33,6 +33,7 @@ from rdf_persistence import (
     Add,
     AggregateKey,
     AggregateRoot,
+    Assignment,
     BlobEntry,
     Comment,
     CommitMarker,

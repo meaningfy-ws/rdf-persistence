@@ -1476,6 +1476,16 @@
             }
           },
           {
+            "description": "Only the books whose assigned_to is this value. May be repeated: all the values must be present.",
+            "required": false,
+            "schema": {
+              "format": "uri",
+              "type": "string"
+            },
+            "name": "assigned_to",
+            "in": "query"
+          },
+          {
             "description": "Only the books whose authors is this value. May be repeated: all the values must be present.",
             "required": false,
             "schema": {
@@ -1639,6 +1649,7 @@
               "type": "string",
               "enum": [
                 "id",
+                "assigned_to",
                 "authors",
                 "description",
                 "genre",
@@ -1650,6 +1661,7 @@
                 "workflow_status",
                 "written_by",
                 "-id",
+                "-assigned_to",
                 "-authors",
                 "-description",
                 "-genre",
@@ -1672,6 +1684,7 @@
               "items": {
                 "type": "string",
                 "enum": [
+                  "assigned_to",
                   "authors",
                   "description",
                   "genre",
@@ -14628,6 +14641,14 @@
       },
       "Book": {
         "properties": {
+          "assigned_to": {
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "type": "array",
+            "description": "The principals the aggregate is assigned to, each one who may read it. The toolkit owns the slot: only an assignment or a clearing transition changes it."
+          },
           "authors": {
             "items": {
               "type": "string"

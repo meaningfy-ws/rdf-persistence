@@ -170,6 +170,54 @@ def test_a_file_that_is_no_workflow_is_refused_naming_the_file(tmp_path, text, n
         assert name in str(refused.value), f"{name!r} is named in {refused.value}"
 
 
+def a_file_with(folder: Path, *, assignable: bool | None, clears: bool | None) -> Path:
+    """The review workflow with ``assignable`` and the clearing of its in_review -> accepted edge as given."""
+    moves = [
+        move.model_copy(update={"clears_assignees": clears})
+        if (move.from_state, move.to_state) == ("in_review", "accepted")
+        else move
+        for move in review().workflow_transitions
+    ]
+    workflow = review().model_copy(update={"assignable": assignable, "workflow_transitions": moves})
+    path = folder / "clearing.workflow.yaml"
+    path.write_text(yaml.safe_dump(workflow.model_dump(mode="json", exclude_none=True)))
+    return path
+
+
+# (id, assignable, clears, loads)  T1: only an assignable workflow may have a clearing edge
+CLEARING = [
+    ("clearing-on-an-assignable-workflow", True, True, True),
+    ("clearing-on-a-workflow-with-assignable-absent", None, True, False),
+    ("clearing-on-a-workflow-that-is-not-assignable", False, True, False),
+    ("no-clearing-on-a-workflow-that-is-not-assignable", False, None, True),
+    ("clearing-said-no-on-a-workflow-that-is-not-assignable", False, False, True),
+]
+
+
+@pytest.mark.parametrize(
+    ("assignable", "clears", "loads"),
+    [c[1:] for c in CLEARING],
+    ids=[c[0] for c in CLEARING],
+)
+def test_a_clearing_edge_is_refused_on_a_workflow_that_is_not_assignable(
+    tmp_path, assignable, clears, loads
+):
+    path = a_file_with(tmp_path, assignable=assignable, clears=clears)
+    if loads:
+        assert load_workflow(path).workflow_name == "review", "the file is loaded"
+        return
+    with pytest.raises(InvalidWorkflow) as refused:
+        load_workflow(path)
+    for name in (str(path), "in_review -> accepted", "clears_assignees", "assignable"):
+        assert name in str(refused.value), f"{name!r} is named in {refused.value}"
+
+
+def test_the_review_file_is_not_assignable_and_clears_nothing():
+    workflow = review()
+    assert not workflow.assignable, "assignable is absent, so false"
+    assert not any(m.clears_assignees for m in workflow.workflow_transitions), "no edge clears"
+
+
 def test_a_file_that_cannot_be_read_is_refused_naming_the_file(tmp_path):
     with pytest.raises(InvalidWorkflow, match="missing.workflow.yaml"):
         load_workflow(tmp_path / "missing.workflow.yaml")

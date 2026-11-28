@@ -183,6 +183,8 @@ COMMENT_REFERENCES = predicate("comment_references")
 
 # An aggregate under a workflow holds its current state, the IRI of one of the workflow's states (PD-16).
 WORKFLOW_STATUS = predicate("workflow_status")
+# Under an assignable workflow it holds its assignees, the IRIs of principals (workflow-assignees DEC-1).
+WORKFLOW_ASSIGNEES = predicate("assigned_to")
 
 # A transition is an activity: its class, the aggregate it moved by prov:used, the states and the comment
 # it names (message-bus PD-11).
@@ -191,6 +193,10 @@ USED = predicate("used_resource")
 FROM_STATE = predicate("from_state_iri")
 TO_STATE = predicate("to_state_iri")
 TRANSITION_COMMENT = predicate("transition_comment")
+# A change of the assignees is an activity too: the principals it added and removed (workflow-assignees DEC-8).
+ASSIGNMENT = class_iri("Assignment")
+ASSIGNED_PRINCIPALS = predicate("assigned_principals")
+RELEASED_PRINCIPALS = predicate("released_principals")
 
 # Posting a comment, replying to one and deleting a file are activities too (message-bus PD-18, PD-19).
 POST_COMMENT = class_iri("PostComment")

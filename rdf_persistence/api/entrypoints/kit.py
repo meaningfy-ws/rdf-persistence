@@ -4,6 +4,7 @@ import logging
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
 from types import ModuleType
 from typing import BinaryIO, cast
@@ -17,7 +18,7 @@ from rdf_persistence.access.domain.generated.rp_tenancy import (
     TenantState,
     TenantSweepReport,
 )
-from rdf_persistence.access.services.access import AccessRules
+from rdf_persistence.access.services.access import AccessRules, load_caller_access
 from rdf_persistence.access.services.generated.rp_access_services import (
     CallerAccess,
     VerifiedCaller,
@@ -627,6 +628,13 @@ class ServiceKit:
                 caller=caller,
                 access=access,
                 workflows=self.workflows,
+                access_of=partial(
+                    load_caller_access,
+                    self.store,
+                    self.system_database,
+                    access.tenant,
+                    iris=self.iris,
+                ),
             )
 
     def readable_by(self, caller: VerifiedCaller, access: CallerAccess) -> Callable[[str], bool]:

@@ -61,6 +61,7 @@ def test_the_output_equals_the_committed_tree(rendered: Path) -> None:
 ACTIVITY_FRAMES = [
     "Activity.frame.jsonld",
     "Add.frame.jsonld",
+    "Assignment.frame.jsonld",
     "DeleteFile.frame.jsonld",
     "PostComment.frame.jsonld",
     "PostReply.frame.jsonld",

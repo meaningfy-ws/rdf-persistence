@@ -136,6 +136,10 @@
     required: false
     multivalued: true
     range: Invalidation
+  - name: released_principals
+    required: false
+    multivalued: true
+    range: Principal
   - name: started_at_time
     required: false
     multivalued: false
@@ -152,6 +156,52 @@
     required: false
     multivalued: false
     range: uri
+  - name: used_resource
+    required: true
+    multivalued: false
+    range: uri
+  - name: was_associated_with
+    required: false
+    multivalued: true
+    range: Principal
+- class_name: Assignment
+  slots:
+  - name: assigned_principals
+    required: false
+    multivalued: true
+    range: Principal
+  - name: assigned_to
+    required: false
+    multivalued: true
+    range: Principal
+  - name: ended_at_time
+    required: false
+    multivalued: false
+    range: datetime
+  - name: expected_version
+    required: false
+    multivalued: false
+    range: string
+  - name: generations
+    required: false
+    multivalued: true
+    range: Generation
+  - name: id
+    required: true
+    multivalued: false
+    range: uri
+  - name: invalidations
+    required: false
+    multivalued: true
+    range: Invalidation
+  - name: released_principals
+    required: false
+    multivalued: true
+    range: Principal
+  - name: started_at_time
+    required: false
+    multivalued: false
+    range: datetime
   - name: used_resource
     required: true
     multivalued: false
@@ -322,6 +372,10 @@
     range: datetime
 - class_name: Book
   slots:
+  - name: assigned_to
+    required: false
+    multivalued: true
+    range: Principal
   - name: authors
     required: false
     multivalued: true
@@ -2089,6 +2143,10 @@
     required: false
     multivalued: true
     range: Invalidation
+  - name: released_principals
+    required: false
+    multivalued: true
+    range: Principal
   - name: started_at_time
     required: false
     multivalued: false
@@ -2115,6 +2173,10 @@
     range: Principal
 - class_name: UnderWorkflow
   slots:
+  - name: assigned_to
+    required: false
+    multivalued: true
+    range: Principal
   - name: workflow_status
     required: false
     multivalued: false
@@ -2131,6 +2193,10 @@
     range: Principal
 - class_name: Workflow
   slots:
+  - name: assignable
+    required: false
+    multivalued: false
+    range: boolean
   - name: id
     required: true
     multivalued: false
@@ -2153,6 +2219,10 @@
     range: WorkflowTransition
 - class_name: WorkflowTransition
   slots:
+  - name: clears_assignees
+    required: false
+    multivalued: false
+    range: boolean
   - name: comment_required
     required: false
     multivalued: false

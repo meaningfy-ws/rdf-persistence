@@ -10,6 +10,7 @@
     "Replace",
     "Remove",
     "Transition",
+    "Assignment",
     "PostReply"
   ],
   "was_associated_with": {

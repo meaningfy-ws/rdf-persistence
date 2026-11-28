@@ -653,7 +653,9 @@ class Recording:
         self.collected: list[dict] = []
         self.removals: list[tuple[str, str, frozenset[str]]] = []
 
-    async def prepare(self, session, iri, triples, stored, allowed_state, *, context):
+    async def prepare(
+        self, session, iri, triples, stored, allowed_state, *, allowed_assignees=None, context
+    ):
         self.collected.append(dict(context.collected))
         return triples
 

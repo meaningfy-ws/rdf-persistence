@@ -9,6 +9,7 @@
     "Replace",
     "Remove",
     "Transition",
+    "Assignment",
     "ShelveBooks",
     "Review",
     "PostComment",

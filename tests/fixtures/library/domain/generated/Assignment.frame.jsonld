@@ -1,0 +1,33 @@
+{
+  "@context": "context.jsonld",
+  "@omitGraph": true,
+  "@embed": "@always",
+  "@omitDefault": true,
+  "@type": "Assignment",
+  "assigned_principals": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "released_principals": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "assigned_to": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "was_associated_with": {
+    "@embed": "@never",
+    "@omitDefault": true
+  },
+  "generations": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "Generation"
+  },
+  "invalidations": {
+    "@embed": "@always",
+    "@omitDefault": true,
+    "@type": "Invalidation"
+  }
+}
