@@ -1,10 +1,14 @@
 """D-15: a generation run parses each imported schema once, however many views it builds."""
 
+import inspect
+import io
 import os
+import pickle
 import shutil
 from pathlib import Path
 
 import pytest
+from hbreader import Pathilizer  # type: ignore[import-untyped]
 from linkml_runtime.linkml_model.meta import SchemaDefinition
 from linkml_runtime.utils import schemaview
 from linkml_runtime.utils.schemaview import SchemaView
@@ -13,6 +17,8 @@ from rdf_persistence_generation.cli import main
 from rdf_persistence_generation.schema_cache import (
     PROCESS_CACHE,
     SchemaLoadCache,
+    _pathilized,
+    _SchemaPickler,
     cached_schema_loads,
 )
 
@@ -150,3 +156,13 @@ def test_generation_output_is_the_same_with_a_cold_and_a_warm_cache(tmp_path: Pa
     assert cached.keys() == uncached.keys(), "the two runs wrote different files"
     differing = [name for name in cached if cached[name] != uncached[name]]
     assert differing == [], f"files differ between the runs: {differing}"
+
+
+def test_the_private_hbreader_attribute_the_cache_sets_still_exists():  # S7, DEC-5
+    """The cache sets ``Pathilizer._strifier``, which only ``__str__`` reads: fail if hbreader drops it."""
+    assert "_strifier" in inspect.getsource(Pathilizer.__str__), "hbreader no longer reads _strifier"
+    path = _pathilized("x")
+    assert str(path) == "x", "a restored Pathilizer does not read as its text"
+    buffer = io.BytesIO()
+    _SchemaPickler(buffer).dump(path)
+    assert str(pickle.loads(buffer.getvalue())) == "x", "a Pathilizer does not survive the pickle"

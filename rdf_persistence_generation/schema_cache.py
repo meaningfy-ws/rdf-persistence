@@ -123,7 +123,9 @@ def cached_schema_loads(
     stock = schemaview.load_schema_wrap
     # ponytail: ceiling = LinkML offers no hook for how a SchemaView parses an import, and its
     # stock generators build views of their own, so the one module-level name is replaced for the
-    # block; upstream issue to file: SchemaView re-parses every import on each construction.
+    # block (upstream: linkml/linkml#4306, SchemaView re-parses every import on each construction).
+    # It also leans on hbreader, a declared dependency of the `generate` extra: a pickled
+    # `Pathilizer` is restored by setting its private `_strifier` (pinned by a unit test).
     schemaview.load_schema_wrap = cache.loader(load or stock)
     _depth += 1
     try:
