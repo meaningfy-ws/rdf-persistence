@@ -33,10 +33,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   3. Convert and diff the schemas against the baseline. They are byte-identical when each
      boundary-owned association was the only one between its classes; any other difference is a
      reference a boundary owned by accident, to decide. A `root_class` problem names a class to
-     fix: draw its missing composition, or drop «root» from every class at once.
+     fix: draw its missing composition, or drop «root» from every class at once. The report gains
+     `root` and `deprecated_root` lines.
   4. Move loaded-graph parts to «own graph» compositions; point only at roots.
-  5. Drop «root», turn boundaries into annotations, and add `<package> · aggregates` diagrams.
+  5. Drop «root», turn boundaries into annotations, and add `<package> · aggregates` diagrams. An
+     agreeing «root» is informational and does not fail `--check`, so steps 1 to 4 can run under a
+     CI gate.
   6. Put `rp-uml2linkml --check` in CI; retire the model's own copies of the conventions check.
+
+  New with it: an «own graph» composition to a part that is not generated (the whole's slot is a
+  URI marked `rp_loaded_graph`), and a Realisation from an Object to its classifier. See
+  `howto/uml-to-linkml.adoc` and `reference/uml-conventions.adoc`.
 
 ### Added
 - **Assignees on aggregates under a workflow** (`workflow-assignees`, #426). A workflow file with
