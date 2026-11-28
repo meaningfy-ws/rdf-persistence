@@ -17,3 +17,10 @@ two named stages (DEC-6); the problem carries its evidence (#209, the P-0041 swe
 DEC-8's direction (which side of JSON/TypeScript moves), left to the PLAN's probe. Weakest points:
 DEC-8 is a behaviour change inside a cleanup stage, and the JSON-LD context term of `lang_string`
 (rabbit-hole) is unverified. The PLAN (design.md, tasks.md) is next.
+
+run 1, 2026-11-28, 8.5/10, fail (fresh gate subagent): G1 unowned rp-generation scenarios (2.1),
+G2/G3 error-matrix rows contradict PD-10/PD-16, G4 RISK-4 cites a missing docs line, G5 task 2.9
+location (pydantic_split.py, checks/hard.py), G6 PD-11 types section is new, G7 tasks lack
+design.md#pd-n anchors, G8 PD-6 "…" and the unnamed PD-9 helper, G9 design.md 20,253 B over the
+SMALL budget of 8,192 B, G10 langstring.feature's header names task 2.9. All ten folded in; run 2
+reads only these gaps. The signed-off scenarios were not changed (G10 is a comment line).

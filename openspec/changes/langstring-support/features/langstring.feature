@@ -1,4 +1,4 @@
-# Scenarios of the change langstring-support, stage 2, for the owner's sign-off. Task 2.9 appends
+# Scenarios of the change langstring-support, stage 2, for the owner's sign-off. Task 2.10 appends
 # them to tests/feature/ with their steps. Each scenario names the spec delta it proves. The decimal
 # numbers are in decimal_numbers.feature, the converter in uml_langstring.feature.
 
