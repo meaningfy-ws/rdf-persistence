@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A subclass that narrows an inherited list slot to one value (or changes its range to one not
   under the parent's) generates a field mypy accepts, and an inherited unique-key check accepts
   the single value.
+- **A unique key over a slot rendered as a dict is checked** (`narrowed-slot-followups`, #428).
+  The generated unique-key check of a keyed slot that LinkML renders as a dict (multivalued,
+  `inlined: true`, no `inlined_as_list`, over a class with an identifier) checks the dict's values
+  instead of failing with `AttributeError`.
 
 ## [0.16.0] - 2026-11-27
 

@@ -110,7 +110,7 @@ class Ledger(ConfiguredBaseModel):
         seen: set[str] = set()
         repeated: list[tuple] = []
         value = self.entries
-        for item in value if isinstance(value, list) else ([] if value is None else [value]):
+        for item in value.values() if isinstance(value, dict) else value if isinstance(value, list) else ([] if value is None else [value]):
             key = (item.name, item.tag,)
             if repr(key) in seen:
                 repeated.append(key)

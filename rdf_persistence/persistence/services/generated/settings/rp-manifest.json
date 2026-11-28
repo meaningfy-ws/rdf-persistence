@@ -159,7 +159,7 @@
     },
     {
       "path": "rdf_persistence_generation/templates/pydantic/unique_keys_validator.py.jinja",
-      "sha256": "ec9a89704984d61bb2995bf60b321c4514ddf997339c8af7adc4baec96ecf0c1"
+      "sha256": "c523508daf5685a375ee49beb05e57c26bb92a29825f9adf1e637d8df0cee260"
     },
     {
       "path": "rdf_persistence_generation/templates/pydantic/validator.py.jinja",
