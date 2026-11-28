@@ -667,7 +667,8 @@ def dependence_links(view: SchemaView) -> list[DependenceLink]:
             whole_classes=_concrete_iris(view, str(view.induced_slot(pointer, cls.name).range)),
         )
         for cls in view.all_classes().values()
-        if (pointer := annotation_text(cls, RpAnnotation.RP_DEPENDENT_ON))
+        if not cls.mixin  # a mixin's annotation does not count (D-7)
+        and (pointer := annotation_text(cls, RpAnnotation.RP_DEPENDENT_ON))
         and not any(
             ancestor != cls.name and _names_pointer(view, ancestor)
             for ancestor in view.class_ancestors(cls.name, mixins=False)

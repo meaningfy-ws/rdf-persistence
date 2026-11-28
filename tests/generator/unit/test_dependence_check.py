@@ -68,7 +68,14 @@ REFUSALS = (
     ),
     Refusal("refused_cycle_own_superclass", "Leaf", ("Leaf -> Leaf", "parent"), "_cycle_problems"),
 )
-ACCEPTED = ("ok_served_root", "ok_abstract_range", "ok_abstract_base", "ok_chain")
+ACCEPTED = (
+    "ok_served_root",
+    "ok_abstract_range",
+    "ok_abstract_base",
+    "ok_chain",
+    "ok_concrete_subclass",
+)
+MIXIN_FIXTURE = "ignored_mixin_annotation"
 
 
 def dependence_lines(fixture: str) -> list[str]:
@@ -91,6 +98,12 @@ def test_an_accepted_schema_passes_the_whole_boundary_check(fixture: str) -> Non
     assert found == [], f"{fixture} must pass: {found}"
 
 
+def test_a_class_mixing_in_an_annotated_mixin_is_not_dependent() -> None:
+    lines = dependence_lines(MIXIN_FIXTURE)
+    assert len(lines) == 1, f"only the mixin's own placement is refused; Memo is no part: {lines}"
+    assert lines[0].startswith(f"{RULE} Tagged:"), f"wrong element: {lines[0]}"
+
+
 @pytest.mark.parametrize("refusal", REFUSALS, ids=lambda r: r.fixture)
 def test_a_refusal_is_lost_when_its_check_is_removed(
     refusal: Refusal, monkeypatch: pytest.MonkeyPatch
@@ -103,5 +116,5 @@ def test_a_refusal_is_lost_when_its_check_is_removed(
 
 def test_every_fixture_on_disk_has_a_row() -> None:
     on_disk = {path.stem for path in FIXTURES.glob("*.yaml")}
-    rows = {r.fixture for r in REFUSALS} | set(ACCEPTED)
+    rows = {r.fixture for r in REFUSALS} | set(ACCEPTED) | {MIXIN_FIXTURE}
     assert on_disk == rows, f"fixtures without a row, or rows without a fixture: {on_disk ^ rows}"

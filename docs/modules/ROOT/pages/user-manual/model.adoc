@@ -244,14 +244,14 @@ The annotation states that the part is deleted with its whole. In the toy librar
   AuditResult:
     title: Audit result
     description: The outcome of one audit, stored apart from it.
-    is_a: AggregateRoot
-    mixins: [Described]
+    mixins: [AggregateRoot, Described, Tracked]
     slots: [of_audit]
     slot_usage:
       of_audit:
         required: true                       # a part cannot exist without its whole
     annotations:
       rp_path: audit-results
+      database: tenant
       rp_dependent_on: of_audit              # the pointer slot, not a class
 
   # of_audit is single-valued and ranges over a served root:

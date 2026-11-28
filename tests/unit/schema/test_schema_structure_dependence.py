@@ -83,6 +83,44 @@ ABSTRACT_BASE = (
     + SLOTS
 )
 
+CONCRETE_ROOT = (
+    HEAD
+    + WHOLES
+    + """
+  Output:
+    title: Output
+    description: A part, annotated itself.
+    mixins: [AggregateRoot]
+    slots: [shelf]
+    annotations: {rp_path: outputs, rp_dependent_on: shelf}
+  Metric:
+    title: Metric
+    description: A subclass of a part.
+    is_a: Output
+    annotations: {rp_path: metrics}
+"""
+    + SLOTS
+)
+
+MIXED_IN = (
+    HEAD
+    + WHOLES
+    + """
+  Tagged:
+    title: Tagged
+    description: A mixin that carries the annotation.
+    mixin: true
+    slots: [shelf]
+    annotations: {rp_dependent_on: shelf}
+  Memo:
+    title: Memo
+    description: A root that mixes Tagged in.
+    mixins: [AggregateRoot, Tagged]
+    annotations: {rp_path: memos}
+"""
+    + SLOTS
+)
+
 
 def links_of(tmp_path: Path, schema: str) -> list[DependenceLink]:
     path = tmp_path / "dependence.yaml"
@@ -112,3 +150,21 @@ def test_an_abstract_annotated_base_gives_one_link_with_its_concrete_subclasses(
             whole_classes=[f"{R}BigShelf", f"{R}Shelf"],
         )
     ], "PD-2: the abstract Note is no part itself; one link lists Memo and Remark, sorted"
+
+
+def test_a_concrete_subclass_of_an_annotated_root_is_a_part_of_the_same_link(
+    tmp_path: Path,
+) -> None:
+    assert links_of(tmp_path, CONCRETE_ROOT) == [
+        DependenceLink(
+            part_classes=[f"{R}Metric", f"{R}Output"],
+            pointer=f"{R}shelf",
+            whole_classes=[f"{R}BigShelf", f"{R}Shelf"],
+        )
+    ], "PD-2: Metric is dependent through its is_a ancestor; one link lists both classes"
+
+
+def test_the_annotation_of_a_mixin_gives_no_link(tmp_path: Path) -> None:
+    assert links_of(tmp_path, MIXED_IN) == [], (
+        "PD-2: a mixin's annotation does not count; Memo only mixes Tagged in"
+    )

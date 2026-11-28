@@ -1,0 +1,40 @@
+id: https://example.org/ns/dependence/ok_concrete_subclass
+name: ok_concrete_subclass
+title: Accepted, a concrete subclass of an annotated concrete root
+description: The annotation sits on a served root; its served subclass is dependent too, on the same slot.
+prefixes:
+  dep: https://example.org/ns/dependence#
+  linkml: https://w3id.org/linkml/
+default_prefix: dep
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Run:
+    description: The whole, a served root.
+    mixins: [AggregateRoot]
+    annotations:
+      rp_path: runs
+  Output:
+    description: A served dependent root, annotated itself.
+    mixins: [AggregateRoot]
+    slots: [run]
+    annotations:
+      rp_path: outputs
+      rp_dependent_on: run
+  Metric:
+    description: A served subclass of Output, dependent through its superclass.
+    is_a: Output
+    annotations:
+      rp_path: metrics
+
+slots:
+  run:
+    description: The run the output belongs to.
+    range: Run
+    required: true

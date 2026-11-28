@@ -333,3 +333,13 @@ Decisions the lead took without the developer, shown for validation at the end (
   only builder, `schema_structure.dependence_links`, sits in the `schema` theme, which the
   `themes-ordered` import contract forbids from importing `persistence`. Supersedes PD-2's
   placement. Rejected: a factory passed in by the caller (a workaround of our own layering).
+- <a id="d-7"></a>**D-7**, lead, 2026-11-28 (stage 1 review, PR #446, one L2+L3 pass): two Warnings
+  re-labelled Critical and fixed.
+  - W1 (`model.adoc` example `is_a: AggregateRoot`): a copied example would be refused, since
+    `AggregateRoot` is a mixin. `lead-fixed: W1`: the example now matches `audits.yaml`.
+  - W2 (no test for "a subclass is dependent too" nor for "a mixin's annotation does not count"):
+    a spec scenario without a test. One fixer adds both shapes to the structure and check tests.
+  - Under the floor: W3 (more refusal-branch fixtures: "not a class", "no concrete class", abstract
+    placement, same-slot re-annotation); W4 (the annotation unit test only proves the enum); S1 (one
+    concrete-descendants helper shared by library and generator); S2 (`pattern_of` bound twice in
+    `uml/tags.py`); S3 (feature step texts tied to one class pair).
