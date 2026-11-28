@@ -17,11 +17,8 @@ Feature: Parts in their own graph, and pointers to roots
     And the shelf count is an aggregate root
 
   # spec: rp-uml-import / a generated part in its own graph
-  Scenario: A generated class in its own graph waits for dependent aggregates
-    Given an inventory with an "own graph" composition to the generated shelf count
-    When the package is converted
-    Then the run fails naming the inventory, the shelf count and "dependent-aggregates"
-    And nothing is written
+  # Replaced on 2026-11-28 by the change dependent-aggregates (scenario 12 of its generation
+  # feature): a generated «own graph» part converts to a dependent root; the refusal is gone.
 
   # spec: rp-uml-import / refused compositions (DEC-7)
   Scenario: A loaded graph cannot be an inline part

@@ -559,11 +559,7 @@ def _not_generated_under_not_generated() -> Drawing:
         (_counting, [], []),
         (
             lambda: _counting(part_is_generated=True),
-            [
-                "[boundary_owned] ShelfCount -> CountReport: «own graph» to a generated class "
-                "needs dependent-aggregates; mark the part with a not-generated stereotype "
-                "or draw a plain composition"
-            ],
+            [],
             [],
         ),
         (
@@ -579,7 +575,7 @@ def _not_generated_under_not_generated() -> Drawing:
     ],
     ids=[
         "own graph to a not-generated part",
-        "own graph to a generated part (DEC-7)",
+        "own graph to a generated part, a dependent root (PD-13)",
         "plain composition to a not-generated part",
         "own graph nested, a plain part inside (A-8)",
         "not-generated part under a not-generated whole (A-8)",

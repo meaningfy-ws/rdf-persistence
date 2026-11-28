@@ -372,3 +372,14 @@ Decisions the lead took without the developer, shown for validation at the end (
     validators see for a doubly typed part).
   - Checker findings fixed: task 2.2 ticked, the `tasks.md` header, and a write example in the
     manual.
+- <a id="d-12"></a>**D-12**, lead, 2026-11-28 (stage 3):
+  - Task 3.1 is not applicable yet: `aggregate-composition` is not archived (its acceptance waits for
+    the developer), so this change's `rp-uml-import` delta stays ADDED.
+  - The refusal `aggregate-composition` stated for a generated «own graph» part is replaced in that
+    change's spec delta and feature file, which are unarchived and in the same repository, so the
+    two changes never contradict each other.
+  - The converter carries the dependence through the existing `part_of` rows (`own_graph` set, the
+    part generated). It adds no `UmlAggregates` field, so no model change is needed.
+  - A role on the part's end reports as `composition-named`, and the pointer problems use the rule
+    `boundary_owned`, as the other composition problems do.
+  - The UML import feature's "waits for dependent aggregates" scenario is deleted with the refusal.

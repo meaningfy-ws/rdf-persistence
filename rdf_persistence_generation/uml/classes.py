@@ -44,6 +44,7 @@ ROOT_STEREOTYPE = "root"
 TENANT_STEREOTYPE = "tenant root"
 ABSTRACT_STEREOTYPE = "abstract"
 RP_PATH: Final = RpAnnotation.RP_PATH.value
+RP_DEPENDENT_ON: Final = RpAnnotation.RP_DEPENDENT_ON.value
 META: Final = GraphKind.META.value
 EMPTY_LIST_NOTE = "no literals; its list is kept outside the model, so slots range over a URI"
 
@@ -249,6 +250,9 @@ def build_class(
     derived: dict[str, Annotation] = {}
     if element.is_root:
         derived[RP_PATH] = annotation(RP_PATH, root_path(ctx, element))
+    pointer = ctx.dependent_on.get(element.uml_class.object_id)
+    if pointer is not None:
+        derived[RP_DEPENDENT_ON] = annotation(RP_DEPENDENT_ON, pointer)
     if element.is_tenant_root:
         derived[GRAPH] = annotation(GRAPH, META)
         _check_tenant_graph(ctx, element)

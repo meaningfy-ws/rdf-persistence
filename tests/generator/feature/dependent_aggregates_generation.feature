@@ -23,3 +23,13 @@ Feature: The model says which aggregates depend on a whole
     Given a schema in which "AuditResult" depends on "AuditFinding" and "AuditFinding" depends on "AuditResult"
     When the developer generates the schema
     Then generation fails naming "AuditResult" and "AuditFinding"
+
+  # 12. spec: rp-uml-import / An «own graph» composition to a generated part converts to a dependent root
+  Scenario: The converter makes a generated «own graph» part a dependent root
+    Given a UML model in which "Audit" is composed «own graph» of the generated class "AuditResult"
+    And the association between them names the role "of_audit" on the audit's end, exactly one
+    When the modeller converts the model
+    Then "AuditResult" is a root that depends on "Audit" through "of_audit"
+    And "of_audit" is required and holds one audit
+    And "Audit" has no slot listing its results
+    And the generator accepts the converted schema

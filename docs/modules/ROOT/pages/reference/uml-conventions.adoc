@@ -220,8 +220,8 @@ convention line; the converter reads no membership from it.
 === «own graph»
 
 A composition stereotyped «own graph» makes its part separately stored but deleted with its whole.
-In this release the part must be a class of a not-generated stereotype (<<not-generated>>, by
-default `loaded graph`). A _loaded graph_ is raw RDF that a session loads into a named graph of its
+The part is either a class of a not-generated stereotype (<<not-generated>>, by default `loaded
+graph`), or a generated class (<<own-graph-generated>>). A _loaded graph_ is raw RDF that a session loads into a named graph of its
 own, registered to the aggregate and deleted with it; no class models its content
 (xref:user-manual/store-and-read.adoc[Store and read]). Its slot on the whole is a URI
 that is not owned and carries `rp_loaded_graph`, which marks its values as the IRIs of graphs loaded
@@ -257,10 +257,56 @@ slots:
       rp_loaded_graph: 'true'
 ----
 
-«own graph» on a part that is generated fails: a later release will let a generated class be an
-«own graph» part; until then mark the part with a not-generated stereotype or draw a plain
-composition. A plain composition to a not-generated part fails too, since a not-generated part is
-stored apart: use «own graph». Any other stereotype on a composition fails.
+A plain composition to a not-generated part fails, since a not-generated part is stored apart: use
+«own graph». Any other stereotype on a composition fails.
+
+[#own-graph-generated]
+==== A generated «own graph» part
+
+«own graph» on a part that is a generated class makes the part a root that depends on its whole: it
+is stored in a graph of its own and deleted with the whole. The converter reads its pointer from the
+association beside the composition, from the role on the _whole's_ end (the role the part holds,
+ranging over the whole).
+
+[mermaid]
+....
+classDiagram
+  class Audit["lib:Audit"]
+  class AuditResult["lib:AuditResult"]
+  AuditResult --> "1" Audit : ofAudit
+  Audit *-- AuditResult : «own graph»
+....
+
+The example is a separate one: an `Audit`, and an `AuditResult` of it that is a generated class stored
+apart from it. `ofAudit` is the role of the association on the audit's end, with multiplicity `1`.
+It becomes:
+
+[source,yaml]
+----
+classes:
+  AuditResult:
+    mixins: [AggregateRoot]
+    annotations:
+      rp_path: audit-results
+      rp_dependent_on: of_audit
+    slots: [of_audit]
+slots:
+  of_audit:
+    slot_uri: lib:ofAudit
+    range: Audit
+    required: true
+----
+
+`AuditResult` is a root, not a part of `Audit`; `Audit` has no slot listing its results. The rules:
+
+* The role on the whole's end is required, and its multiplicity is `1` (or `1..1`). A part with no
+  such role fails, naming the association (`Audit -> AuditResult`); so does a multiplicity of `0..1`,
+  `*`, `1..*` or any other, naming the slot (`AuditResult.of_audit`). Two roles on that end fail too.
+* A role on the part's end, a slot the whole would hold to list its parts, is not converted and gets a
+  `composition-named` line: the whole lists no parts.
+* The whole must be a root itself (a class no composition makes a part, and not the «tenant root»);
+  `rp-generate` refuses the schema otherwise (xref:user-manual/model.adoc#dependent-on[A part stored
+  apart from its whole]).
 
 [#pointers]
 === Pointers target roots
@@ -1292,9 +1338,14 @@ another module kind
 |Compose converted domain classes only; a toolkit class is a mixin (`rp_mixins`) (<<composition>>).
 
 |A stereotype on a composition other than «own graph» (`[no_rule] W -> P: connector stereotype S`);
-«own graph» to a generated class; a plain composition to a not-generated class
+a plain composition to a not-generated class
 |Use «own graph» for a part of a not-generated stereotype and a plain composition for a generated
 one (<<own-graph>>).
+
+|A generated «own graph» part with no role on the whole's end, a second one, or a multiplicity other
+than `1` there
+|Draw the association with the role on the whole's end and multiplicity `1`
+(<<own-graph-generated>>).
 
 |A generalisation to or from a class inside an own graph
 |Remove the generalisation; the class is stored inside the part's graph (<<own-graph>>).
