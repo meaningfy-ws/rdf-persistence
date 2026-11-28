@@ -2,7 +2,7 @@
 
 ## 1. Stage 1: the document lists the refusal problems
 
-- [ ] 1.1 **unit + code** — design.md §Decisions PD-1 to PD-6, §Test cases TC-1 to TC-3b. Failing
+- [x] 1.1 **unit + code** — design.md §Decisions PD-1 to PD-6, §Test cases TC-1 to TC-3b. Failing
   tests first in `tests/unit/api/test_openapi.py`, then `_refusal_components`,
   `_accepting_refusals` and their call sites in `install_openapi` (`api/entrypoints/openapi.py`);
   `install_service`'s docstring (`service.py:132-133`) says the classes are listed and its
