@@ -25,6 +25,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlBoundary,
     UmlClass,
     UmlComposition,
+    UmlDiagram,
     UmlLink,
     UmlLinkKind,
     UmlModel,
@@ -96,6 +97,7 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
     "t_objectproperties": ("Object_ID", "Property", "Value", "Notes"),
     "t_xref": ("Client", "Name", "Description"),
     "t_diagramobjects": ("Diagram_ID", "Object_ID"),
+    "t_diagramlinks": ("DiagramID", "ConnectorID", "Hidden"),
     "t_diagram": ("Diagram_ID", "Name", "Package_ID", "Diagram_Type"),
     "t_connectortag": ("ElementID", "Property", "VALUE", "NOTES"),
     "t_operation": ("Object_ID",),
@@ -116,6 +118,8 @@ CONVERTED_TYPES = frozenset({CLASS_TYPE, ENUMERATION_TYPE})
 # Object types that are drawing furniture, never converted and never a problem.
 PACKAGE_TYPE = "Package"  # the object that draws a package; it shares the package's ea_guid
 IGNORED_TYPES = frozenset({PACKAGE_TYPE, "Note", "Text", BOUNDARY_TYPE})
+# Drawing furniture a diagram may show with no record of its own: not a member of a ``UmlDiagram`` (PD-12).
+FURNITURE_TYPES = frozenset({PACKAGE_TYPE, "Note", "Text"})
 LINK_KINDS: dict[str, UmlLinkKind] = {
     "Association": UmlLinkKind.ASSOCIATION,
     "Dependency": UmlLinkKind.DEPENDENCY,
@@ -429,6 +433,7 @@ class _Reading:
             uml_compositions=self.compositions,
             uml_tagged_values=self._tags(),
             uml_boundaries=self._boundaries(),
+            uml_diagrams=self._diagrams(),
             uml_objects=self._objects(self.realised),
             uml_state_nodes=nodes,
             uml_state_flows=flows,
@@ -634,6 +639,7 @@ class _Reading:
             own_graph=(stereotype or "").strip().lower() == OWN_GRAPH_STEREOTYPE,
             uml_stereotype=stereotype,
             role=_text(row["DestRole"] if whole_is_start else row["SourceRole"]),
+            note=_text(row["Notes"]),
         )
 
     def _link(self, row: sqlite3.Row) -> UmlLink | None:
@@ -700,6 +706,50 @@ class _Reading:
             )
             for row in sorted(self.boundary_rows, key=lambda each: each["Object_ID"])
             if row["Object_ID"] in diagrams
+        ]
+
+    def _placed(self) -> defaultdict[int, set[int]]:
+        """The objects each diagram shows, by diagram id, drawing furniture aside."""
+        placed: defaultdict[int, set[int]] = defaultdict(set)
+        for row in self._select("t_diagramobjects"):
+            if self.object_types.get(row["Object_ID"]) not in FURNITURE_TYPES:
+                placed[row["Diagram_ID"]].add(row["Object_ID"])
+        return placed
+
+    def _hidden(self, placed: Mapping[int, set[int]]) -> defaultdict[int, set[int]]:
+        """The connectors each diagram hides although both their ends are on it, by diagram id."""
+        ends = {
+            row["Connector_ID"]: (row["Start_Object_ID"], row["End_Object_ID"])
+            for row in self._select("t_connector")
+        }
+        hidden: defaultdict[int, set[int]] = defaultdict(set)
+        for row in self._select("t_diagramlinks"):
+            members = placed.get(row["DiagramID"], set())
+            on_it = row["ConnectorID"] in ends and set(ends[row["ConnectorID"]]) <= members
+            if _integer(row["Hidden"]) and on_it:
+                hidden[row["DiagramID"]].add(row["ConnectorID"])
+        return hidden
+
+    def _diagrams(self) -> list[UmlDiagram]:
+        """The class diagrams of the converted packages, by membership only (PD-12, RISK-6).
+
+        A member is an object placed on the diagram, drawing furniture (a note, a text, a package
+        object) aside. A connector is hidden when ``t_diagramlinks`` has a row of that diagram that says
+        so and both its ends are members; with no row, EA shows it. A Statechart is read apart.
+        """
+        placed = self._placed()
+        hidden = self._hidden(placed)
+        return [
+            UmlDiagram(
+                diagram_id=row["Diagram_ID"],
+                name=row["Name"] or "",
+                package_id=row["Package_ID"],
+                diagram_type=_text(row["Diagram_Type"]),
+                element_ids=sorted(placed[row["Diagram_ID"]]),
+                hidden_connector_ids=sorted(hidden[row["Diagram_ID"]]),
+            )
+            for row in sorted(self._select("t_diagram"), key=lambda each: each["Diagram_ID"])
+            if row["Package_ID"] in self.package_ids and row["Diagram_Type"] != STATECHART_TYPE
         ]
 
     def _tags(self) -> list[UmlTaggedValue]:

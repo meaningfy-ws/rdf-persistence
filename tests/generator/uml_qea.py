@@ -1,7 +1,7 @@
 """Build a small Enterprise Architect ``.qea`` file for tests (PD-24).
 
 A helper, not a test module. No binary is checked in: a test builds the file in ``tmp_path``
-with the stdlib ``sqlite3``. The ten tables are the ones the reader reads (PD-3), with
+with the stdlib ``sqlite3``. The eleven tables are the ones the reader reads (PD-3), with
 exactly the columns it reads; ``EA_COLUMNS`` lists the real columns of each, so a unit test can
 assert that the DDL here invents none.
 """
@@ -10,7 +10,7 @@ import sqlite3
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-# The column names of the seven tables, taken from EA's own schema (``pragma table_info`` on an
+# The column names of the eleven tables, taken from EA's own schema (``pragma table_info`` on an
 # EA file) on 2026-11-20. They are EA's schema, not model data.
 EA_COLUMNS: dict[str, tuple[str, ...]] = {
     "t_package": (
@@ -234,6 +234,15 @@ EA_COLUMNS: dict[str, tuple[str, ...]] = {
         "ObjectStyle",
         "Instance_ID",
     ),
+    "t_diagramlinks": (
+        "DiagramID",
+        "ConnectorID",
+        "Geometry",
+        "Style",
+        "Hidden",
+        "Path",
+        "Instance_ID",
+    ),
     "t_diagram": (
         "Diagram_ID",
         "Package_ID",
@@ -322,6 +331,9 @@ DDL: dict[str, str] = {
     "t_diagramobjects": (
         "CREATE TABLE t_diagramobjects (Diagram_ID INTEGER, Object_ID INTEGER, RectTop INTEGER,"
         " RectLeft INTEGER, RectRight INTEGER, RectBottom INTEGER)"
+    ),
+    "t_diagramlinks": (
+        "CREATE TABLE t_diagramlinks (DiagramID INTEGER, ConnectorID INTEGER, Hidden INTEGER)"
     ),
     "t_diagram": (
         "CREATE TABLE t_diagram (Diagram_ID INTEGER PRIMARY KEY, Name TEXT, Package_ID INTEGER,"
@@ -492,6 +504,15 @@ class QeaBuilder:
         for member in members:
             self.place(diagram, member)
         return diagram
+
+    def diagram_link(self, diagram: int, connector: int, *, hidden: bool = False) -> None:
+        """The row EA keeps for a connector on a diagram: ``Hidden`` is 1 when the modeller hid it (PD-12).
+
+        EA writes a row for a connector it has drawn on a diagram; a connector with no row is shown.
+        """
+        self._insert(
+            "t_diagramlinks", DiagramID=diagram, ConnectorID=connector, Hidden=1 if hidden else 0
+        )
 
     def statechart(self, name: str, package: int, nodes: Iterable[int]) -> int:
         """A ``Statechart`` diagram: the one thing that groups states into a workflow (probe)."""

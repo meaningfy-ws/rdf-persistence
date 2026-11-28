@@ -58,3 +58,42 @@ def run(
     ]
     code = main(argv)
     return code, capsys.readouterr().err.splitlines()
+
+
+def run_check(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    qea: Path,
+    *options: str,
+    out: Path | None = None,
+    prefixes: str = PREFIXES,
+) -> tuple[int, list[str], list[str]]:
+    """Run with ``--check``, ``--out`` only when given; return the exit code, stdout and stderr lines."""
+    argv = [
+        str(qea),
+        "--package",
+        ROOT,
+        "--prefixes",
+        str(prefixes_file(tmp_path, prefixes)),
+        "--check",
+        *(["--out", str(out)] if out else []),
+        *options,
+    ]
+    code = main(argv)
+    captured = capsys.readouterr()
+    return code, captured.out.splitlines(), captured.err.splitlines()
+
+
+def noted_library(
+    tmp_path: Path, stereotype: str | None = "root"
+) -> tuple[QeaBuilder, dict[str, int]]:
+    """The library with a note on every class: the conversion has nothing to say."""
+    builder = QeaBuilder(tmp_path / "library.qea")
+    ids: dict[str, int] = {}
+    ids["model"] = builder.package("MODEL")
+    ids["library"] = builder.package("library", parent=ids["model"])
+    for name in ("Book", "Chapter", "Folio"):
+        ids[name.lower()] = builder.cls(
+            ids["library"], f"lib:{name}", stereotype=stereotype, note=f"A {name}."
+        )
+    return builder, ids

@@ -1081,3 +1081,123 @@ def test_a_memo_connector_tag_takes_its_text_from_the_notes(tmp_path):
     assert [(t.owner_id, t.name, t.tag_value) for t in read_flow.uml_tagged_values] == [
         (flow, "roles", "librarian,reader")
     ], "a <memo> value is read from NOTES, as for a class tag"
+
+
+# --- diagrams: membership and hidden connectors, no geometry (PD-12, RISK-6) ----------------------
+
+
+def build_shelf(tmp_path: Path) -> tuple[QeaBuilder, dict[str, int]]:
+    """The library with one association Book -> Folio, which a diagram may show or hide."""
+    builder, ids = build_library(tmp_path)
+    ids["has_folio"] = builder.association(ids["book"], ids["folio"], "lib:hasFolio", "0..*")
+    return builder, ids
+
+
+def _row_hiding(builder, diagram, connector):
+    builder.diagram_link(diagram, connector, hidden=True)
+
+
+def _row_not_hiding(builder, diagram, connector):
+    builder.diagram_link(diagram, connector, hidden=False)
+
+
+def _row_of_another_diagram(builder, diagram, connector):
+    other = builder.diagram("elsewhere", 0, "Logical", [])
+    builder.diagram_link(other, connector, hidden=True)
+
+
+def _no_row(builder, diagram, connector):
+    return None
+
+
+@pytest.mark.parametrize(
+    ("write_row", "hidden"),
+    [
+        (_no_row, False),
+        (_row_not_hiding, False),
+        (_row_hiding, True),
+        (_row_of_another_diagram, False),
+    ],
+)
+def test_a_connector_is_hidden_only_by_a_row_of_its_own_diagram_that_says_so(
+    tmp_path, write_row, hidden
+):
+    builder, ids = build_shelf(tmp_path)
+    diagram = builder.diagram("shelf", ids["library"], "Logical", [ids["book"], ids["folio"]])
+    write_row(builder, diagram, ids["has_folio"])
+    (found,) = as_model(read(builder)).uml_diagrams
+    assert list(found.hidden_connector_ids or []) == ([ids["has_folio"]] if hidden else []), (
+        f"{write_row.__name__}: hidden {hidden}"
+    )
+
+
+def test_a_hidden_row_of_a_connector_with_an_end_off_the_diagram_is_not_kept(tmp_path):
+    builder, ids = build_shelf(tmp_path)
+    diagram = builder.diagram("shelf", ids["library"], "Logical", [ids["book"]])
+    builder.diagram_link(diagram, ids["has_folio"], hidden=True)
+    (found,) = as_model(read(builder)).uml_diagrams
+    assert not found.hidden_connector_ids, "the connector is not shown anyway: nothing to hide"
+
+
+def test_a_diagram_is_read_by_its_members_its_package_and_its_type(tmp_path):
+    builder, ids = build_shelf(tmp_path)
+    note = builder.cls(ids["library"], "a note", object_type="Note")
+    diagram = builder.diagram("shelf", ids["library"], "Logical", [ids["folio"], ids["book"], note])
+    boundary = builder.boundary(diagram, package=ids["library"], name="Aggregate: Book")
+    (found,) = as_model(read(builder)).uml_diagrams
+    assert (found.diagram_id, found.name, found.package_id, found.diagram_type) == (
+        diagram,
+        "shelf",
+        ids["library"],
+        "Logical",
+    ), "the diagram is one record: its name, its package and its type as EA writes it"
+    assert list(found.element_ids) == sorted([ids["book"], ids["folio"], boundary]), (
+        "its members are the objects placed on it, by id; a note is furniture and is left out"
+    )
+
+
+@pytest.mark.parametrize(
+    ("diagram_type", "package", "read_back"),
+    [
+        ("Logical", "library", True),
+        ("Statechart", "library", False),
+        ("Logical", "other", False),
+    ],
+)
+def test_only_a_class_diagram_of_a_converted_package_is_read(
+    tmp_path, diagram_type, package, read_back
+):
+    builder, ids = build_shelf(tmp_path)
+    builder.diagram("d", ids[package], diagram_type, [ids["book"]])
+    found = as_model(read(builder)).uml_diagrams or []
+    assert bool(found) is read_back, f"{diagram_type} in {package}: read {read_back}"
+
+
+@pytest.mark.parametrize(
+    ("written", "read_back"), [("Holds.", "Holds."), (None, None), ("  ", None)]
+)
+def test_a_composition_carries_the_note_written_on_its_connector(tmp_path, written, read_back):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["folio"], note=written)
+    (found,) = as_model(read(builder)).uml_compositions
+    assert found.note == read_back, f"note {written!r}"
+
+
+def test_a_model_with_no_diagram_reads_no_diagram(tmp_path):
+    builder, _ = build_shelf(tmp_path)
+    assert not as_model(read(builder)).uml_diagrams, "nothing drawn, nothing read"
+
+
+def test_the_diagram_tables_are_read_by_their_ids_only():
+    assert TABLE_COLUMNS["t_diagramlinks"] == ("DiagramID", "ConnectorID", "Hidden"), (
+        "no geometry, no style: membership and visibility only (PD-12)"
+    )
+
+
+def test_a_missing_diagram_links_table_is_named(tmp_path):
+    builder, _ = build_shelf(tmp_path)
+    path = builder.finish()
+    _alter(path, "DROP TABLE t_diagramlinks")
+    with pytest.raises(QeaUsageError) as error:
+        read_qea(path, ROOT, ())
+    assert error.value.message == f"{path} has no table t_diagramlinks", error.value.message

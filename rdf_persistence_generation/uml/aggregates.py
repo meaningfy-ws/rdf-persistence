@@ -13,6 +13,7 @@ class that is no element, for a message).
 from collections.abc import Mapping
 from typing import Final
 
+from rdf_persistence.core.domain.generated.rp_core import ModuleKind, RpAnnotation
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
     LeftOutReason,
@@ -33,8 +34,8 @@ from rdf_persistence_generation.generated.rp_generation import (
 from rdf_persistence_generation.uml.context import local_of
 from rdf_persistence_generation.uml.slots import Usage, is_owned
 
-MODULE_KIND: Final = "module_kind"
-DOMAIN: Final = "domain"
+MODULE_KIND: Final = RpAnnotation.MODULE_KIND.value
+DOMAIN: Final = ModuleKind.DOMAIN.value
 OWN_GRAPH: Final = "own graph"
 DIRECTED: Final = "Source -> Destination"
 BIDIRECTIONAL: Final = "Bi-Directional"
@@ -202,16 +203,16 @@ class _Pass:
                 queue.append(part)
 
     def refuse_inside_generalisations(self) -> None:
-        """A generalisation to or from a class left inside is refused and dropped (A-7)."""
+        """A generalisation to or from a class left inside is refused once, naming its first inside end, and dropped (A-7, D-13 W1)."""
         for child, parent in sorted(self.parent.items()):
-            for end in (child, parent):
-                if end in self.inside:
-                    self.problem(
-                        UmlRule.BOUNDARY_OWNED,
-                        self.name(end),
-                        f"inside the own graph of {self.name(self.inside[end])}; "
-                        "it cannot take part in a generalisation",
-                    )
+            inside = next((end for end in (child, parent) if end in self.inside), None)
+            if inside is not None:
+                self.problem(
+                    UmlRule.BOUNDARY_OWNED,
+                    self.name(inside),
+                    f"inside the own graph of {self.name(self.inside[inside])}; "
+                    "it cannot take part in a generalisation",
+                )
         self.parent = {
             child: parent
             for child, parent in self.parent.items()
@@ -424,6 +425,10 @@ class _Pass:
         elif each.role:
             named = [end for end in candidates if local_of(end.role) == local_of(each.role)]
             if named:
+                if len(candidates) == 1:
+                    self.note(
+                        ReportKind.COMPOSITION_NAMED, pair, "the association carries the role"
+                    )
                 return named[0]
             message = f"role {each.role} names no association {pair}"
         elif len(candidates) == 1:
@@ -446,6 +451,12 @@ class _Pass:
                 for end in self.ends
                 if end.holder_id == each.whole_id and end.other_id == each.part_id
             ]
+            if (each.note or "").strip():
+                self.note(
+                    ReportKind.COMPOSITION_NAMED,
+                    self.pair(each),
+                    "the association carries the note",
+                )
             chosen = self.choose(each, candidates)
             if chosen is not None:
                 end = UmlOwnedEnd(link_id=chosen.link_id, holder_id=each.whole_id)

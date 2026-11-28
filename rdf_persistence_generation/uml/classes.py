@@ -227,13 +227,6 @@ def _note_tags(ctx: Context, element: UmlElement, skip: tuple[str, ...]) -> None
             )
 
 
-def _described(ctx: Context, element: UmlElement) -> str | None:
-    description = description_of(element.uml_class.note)
-    if description is None:
-        ctx.findings.note(ReportKind.NO_NOTE, element.label, "no note, so no description")
-    return description
-
-
 def build_class(
     ctx: Context, element: UmlElement, parent: str | None, owned: bool, defaults: list[str]
 ) -> ClassDefinition:
@@ -246,7 +239,7 @@ def build_class(
     definition = ClassDefinition(
         name=element.label,
         title=title_for(element.label, element.uml_class.uml_alias),
-        description=_described(ctx, element),
+        description=description_of(element.uml_class.note),
         class_uri=class_uri_of(ctx, element.resolved_name),
         is_a=composed.is_a,
         mixins=composed.mixins,
@@ -370,8 +363,6 @@ def _permissible_value(
         ctx.findings.add(invalid)
         return None
     description = description_of(note)
-    if description is None:
-        ctx.findings.note(ReportKind.NO_NOTE, element, "no note, so no description")
     meaning = _literal_meaning(ctx, enum, literal)
     key = permissible_value_key(literal)
     problem: CheckProblem | None = check_slot_name(key, element)
@@ -409,6 +400,6 @@ def build_enum(ctx: Context, element: UmlElement) -> EnumDefinition | None:
     return EnumDefinition(
         name=element.label,
         title=title_for(element.label, element.uml_class.uml_alias),
-        description=_described(ctx, element),
+        description=description_of(element.uml_class.note),
         permissible_values=values,
     )

@@ -18,17 +18,18 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlName,
     UmlRule,
 )
+from rdf_persistence_generation.uml.classes import description_of
 from rdf_persistence_generation.uml.context import Context, literals_of
 from rdf_persistence_generation.uml.naming import slot_name
 from rdf_persistence_generation.uml.slots import (
     COMPOSITE,
+    FROM_LINK,
     LOADED_GRAPH,
     OWNED,
     UNSPECIFIED,
     URI,
     Usage,
     check_bounds,
-    described,
     shape_of,
     slot_identity,
 )
@@ -124,9 +125,8 @@ def _end_usage(ctx: Context, link: UmlLink, end: UmlLinkEnd, marks: Marks) -> Us
     target_range = URI if LOADED_GRAPH in marked else _range_of(ctx, end, holder, slot)
     if bounds is None or target_range is None:
         return None
-    described_as = (target_range, described(ctx, element, link.note))
-    shape = shape_of(slot, described_as, bounds, marked=marked)
-    return Usage(holder, identities, (1, 0, slot), shape)
+    shape = shape_of(slot, (target_range, description_of(link.note)), bounds, marked=marked)
+    return Usage(holder, identities, (FROM_LINK, 0, slot), shape)
 
 
 def _card_text(ctx: Context, element: str, card: str | None) -> str:

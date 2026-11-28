@@ -15,6 +15,7 @@ PD3_TABLES = (
     "t_objectproperties",
     "t_xref",
     "t_diagramobjects",
+    "t_diagramlinks",
     "t_diagram",
     "t_connectortag",
     "t_operation",
@@ -25,9 +26,9 @@ def _columns(connection: sqlite3.Connection, table: str) -> set[str]:
     return {row[1] for row in connection.execute(f"pragma table_info({table})")}
 
 
-def test_ea_columns_and_ddl_cover_the_ten_tables():
-    assert set(EA_COLUMNS) == set(PD3_TABLES), "EA_COLUMNS names the ten tables"
-    assert set(DDL) == set(PD3_TABLES), "DDL names the ten tables"
+def test_ea_columns_and_ddl_cover_the_eleven_tables():
+    assert set(EA_COLUMNS) == set(PD3_TABLES), "EA_COLUMNS names the eleven tables"
+    assert set(DDL) == set(PD3_TABLES), "DDL names the eleven tables"
 
 
 @pytest.mark.parametrize("table", PD3_TABLES)
@@ -82,6 +83,7 @@ def test_a_built_model_reopens_read_only_with_the_rows_written(tmp_path):
         "t_objectproperties": 2,
         "t_xref": 0,
         "t_diagramobjects": 3,  # the boundary and its two members
+        "t_diagramlinks": 0,
         "t_diagram": 0,
         "t_connectortag": 0,
         "t_operation": 0,
@@ -106,6 +108,7 @@ def test_the_state_machine_helpers_write_the_rows_the_reader_reads(tmp_path):
         "t_objectproperties": 0,
         "t_xref": 1,  # the trigger
         "t_diagramobjects": 2,
+        "t_diagramlinks": 0,
         "t_diagram": 1,
         "t_connectortag": 1,
         "t_operation": 1,

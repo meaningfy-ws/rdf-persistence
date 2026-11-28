@@ -58,6 +58,8 @@ class World:
         self.workflow: Workflow | None = None
         self.capsys = capsys
         self.stderr: str | None = None
+        self.stdout = ""  # what a check printed
+        self.earlier: dict[str, bytes] = {}  # the output folder as a Given left it
         self.out = folder / "out"
         self.again = folder / "again"
         self.stereotypes: dict[
@@ -78,11 +80,34 @@ class World:
         )
         return path
 
-    def convert(self, out: Path, *options: str) -> None:
+    def finished(self) -> Path:
+        """The ``.qea``, closed once the whole Given has been drawn."""
         if self.qea is None:
             for draw in self.drawn:
                 draw()
             self.qea = self.builder.finish()
+        return self.qea
+
+    def check(self, *options: str) -> None:
+        """Run ``--check`` (D-7: it writes nothing); read both streams so each Then sees them whole."""
+        self.code = main(
+            [
+                str(self.finished()),
+                "--package",
+                "MODEL",
+                "--prefixes",
+                str(self.prefixes()),
+                "--check",
+                "--root-name",
+                ROOT_NAME,
+                *options,
+            ]
+        )
+        captured = self.capsys.readouterr()
+        self.stdout, self.stderr = captured.out, captured.err
+
+    def convert(self, out: Path, *options: str) -> None:
+        self.finished()
         self.code = main(
             [
                 str(self.qea),
@@ -788,6 +813,167 @@ def _shelf_of_shelves(world: World, written: str) -> None:
     world.builder.association(shelf, shelf, "dct:hasPart", "0..*", note="The shelves it holds.")
 
 
+# --- Given: the conventions check -----------------------------------------------------------------------
+
+
+def _clean(world: World) -> None:
+    """A library with a note on every class and association, a multiplicity on every role: no finding."""
+    _tree(world, ("Shelf", "Book", "holds"), ("Book", "Chapter", "hasChapter"))
+
+
+@given("a library model with no problem and no convention line")
+def _clean_model(world: World) -> None:
+    _clean(world)
+
+
+@given("a library model with one problem")
+def _model_with_a_problem(world: World) -> None:
+    world.stereotypes.update({"Shelf": "root", "Book": "root"})
+    _clean(world)  # the book is a part of the shelf, and drawn «root»
+
+
+@given("an output folder holding an earlier conversion")
+def _earlier_conversion(world: World) -> None:
+    world.out.mkdir()
+    (world.out / f"{ROOT_NAME}_library.yaml").write_text("earlier: conversion\n", encoding="utf-8")
+    (world.out / f"{ROOT_NAME}.uml-report.txt").write_text("kept\n", encoding="utf-8")
+    world.earlier = _files(world.out)
+
+
+def _files(folder: Path) -> dict[str, bytes]:
+    return {file.name: file.read_bytes() for file in sorted(folder.iterdir())}
+
+
+def _no_prefix(world: World) -> None:
+    world.subject = "Stray"
+    _clean(world)
+    world.builder.cls(world.library, "Stray", note="A stray.")
+
+
+def _no_multiplicity(world: World) -> None:
+    world.subject = "reads"
+    _clean(world)
+    world.builder.association(
+        _named(world, "Shelf"), _named(world, "Reader"), "lib:reads", None, note="Reads."
+    )
+
+
+def _no_note(world: World) -> None:
+    world.subject = "Stray"
+    _clean(world)
+    world.builder.cls(world.library, "lib:Stray")
+
+
+def _part_drawn_root(world: World) -> None:
+    world.subject = "Chapter"
+    world.stereotypes.update({"Shelf": "root", "Chapter": "root"})
+    _clean(world)
+
+
+def _unused_enumeration(world: World) -> None:
+    world.subject = "Genre"
+    _clean(world)
+    genre = world.builder.cls(world.library, "lib:Genre", object_type="Enumeration", note="Genres.")
+    world.builder.attribute(genre, "lib:fiction", "", note="Made up.")
+
+
+def _two_packages_one_module(world: World) -> None:
+    world.subject = "rare_books"
+    _clean(world)
+    for package, name in (("rare-books", "Folio"), ("rare_books", "Quarto")):
+        home = world.builder.package(package, parent=world.library, note="Rare books.")
+        world.builder.cls(home, f"lib:{name}", note=f"A {name}.")
+
+
+def _role_owned_and_pointing(world: World) -> None:
+    world.subject = "holds"
+    _clean(world)
+    _associate(world, "Reader", "Shelf", "holds", "0..1")
+
+
+def _pointer_into_a_part(world: World) -> None:
+    world.subject = "Reader.borrows"
+    _clean(world)
+    _associate(world, "Reader", "Book", "borrows", "0..1")
+
+
+def _drawn_toolkit_parent(world: World) -> None:
+    world.subject = "Book"
+    _clean(world)
+    parent = world.builder.cls(world.library, "rp:Described")
+    world.builder.generalisation(world.ids["book"], parent)
+
+
+def _required_tenant_pointer(world: World) -> None:
+    world.subject = "Library.tenancy"
+    world.stereotypes["Library"] = "tenant root"
+    _clean(world)
+    _associate(world, "Library", "Shelf", "tenancy", "1")
+
+
+def _boundary_for_a_part(world: World) -> None:
+    world.subject = "Aggregate: Chapter"
+    _clean(world)
+    diagram = world.builder.diagram("library", world.library, "Logical", [])
+    world.builder.boundary(diagram, package=world.library, name=world.subject)
+
+
+BREACHES: dict[str, Callable[[World], None]] = {
+    "a class without a prefix": _no_prefix,
+    "an association with no multiplicity": _no_multiplicity,
+    "a class without a note": _no_note,
+    "a part drawn «root»": _part_drawn_root,
+    "an enumeration no dependency uses": _unused_enumeration,
+    "two packages that give one module name": _two_packages_one_module,
+    "a role owned by the book and used as a pointer by the reader": _role_owned_and_pointing,
+    "a pointer into another aggregate's part": _pointer_into_a_part,
+    "a generalisation to a drawn toolkit class": _drawn_toolkit_parent,
+    "a required pointer from the tenant root to a root": _required_tenant_pointer,
+    "a boundary named for a class that is no root": _boundary_for_a_part,
+}
+
+
+@given(parsers.parse("a clean library model seeded with {breach}"))
+def _seeded(world: World, breach: str) -> None:
+    BREACHES[breach](world)
+
+
+@given("a clean library model with an abstract collection whose part role stays the toolkit's")
+def _abstract_collection(world: World) -> None:
+    collection = _named(world, "Collection", abstract=True)
+    resource = _named(world, "Resource", abstract=True)
+    world.builder.association(collection, resource, "dct:hasPart", "0..*", note="The parts.")
+    world.builder.tag(collection, "rp_mixins", "ReferenceCollection")
+
+
+@given("a shelf that narrows it to books")
+def _shelf_narrows(world: World) -> None:
+    shelf, book = _named(world, "Shelf"), _named(world, "Book")
+    world.builder.generalisation(shelf, world.ids["collection"])
+    world.builder.generalisation(book, world.ids["resource"])
+    world.builder.association(shelf, book, "dct:hasPart", "0..*", note="Its books.")
+
+
+def _on_a_diagram(world: World, name: str, package: int, *classes: str) -> None:
+    world.builder.diagram(name, package, "Logical", [world.ids[each.lower()] for each in classes])
+
+
+@given(parsers.parse('a diagram "{name}" that shows the association "{role}"'))
+def _diagram_shows_association(world: World, name: str, role: str) -> None:
+    home = world.builder.package(
+        name.removesuffix(" · aggregates"), parent=world.model, note="Home."
+    )
+    _compose(world, "Book", "Chapter", role)
+    _on_a_diagram(world, name, home, "Book", "Chapter")
+    world.drawing = {"diagram": name, "role": role}
+
+
+@given(parsers.parse('a diagram "{name}" that shows the composition from the book to the chapter'))
+def _diagram_shows_composition(world: World, name: str) -> None:
+    _compose(world, "Book", "Chapter", "hasChapter")
+    _on_a_diagram(world, name, world.library, "Book", "Chapter")
+
+
 # --- When -----------------------------------------------------------------------------------------------
 
 
@@ -828,6 +1014,17 @@ def _converted_again(world: World) -> None:
 @when(parsers.parse('the model is converted leaving out the package "{package}"'))
 def _converted_without(world: World, package: str) -> None:
     world.convert(world.out, "--exclude-package", package)
+
+
+@when("the model is checked")
+def _checked(world: World) -> None:
+    """With an output folder when a Given made one: the check must leave it as it is."""
+    world.check(*(["--out", str(world.out)] if world.earlier else []))
+
+
+@when("the model is checked without an output folder")
+def _checked_without_out(world: World) -> None:
+    world.check()
 
 
 # --- Then: the outcome ------------------------------------------------------------------------------------
@@ -1357,3 +1554,67 @@ def _report_count(world: World, count: str, kind: str) -> None:
 @then(parsers.parse('the report names "{name}"'))
 def _report_mentions(world: World, name: str) -> None:
     assert any(name in line[1] for line in world.report()), f"the report must name {name}"
+
+
+# --- Then: the conventions check ------------------------------------------------------------------------
+
+
+@then("the problem is printed")
+def _problem_printed(world: World) -> None:
+    assert "[root_class]" in world.stderr, f"the problem is printed on stderr: {world.stderr}"
+
+
+@then("the check fails")
+def _check_fails(world: World) -> None:
+    assert world.code == 1, f"the check must exit 1: {world.stdout} {world.stderr}"
+
+
+@then("the output folder is unchanged")
+def _out_unchanged(world: World) -> None:
+    assert _files(world.out) == world.earlier, "a check leaves the output folder as it was"
+
+
+@then("the check passes and prints nothing")
+def _check_passes_silently(world: World) -> None:
+    assert world.code == 0, f"the check must exit 0: {world.stdout} {world.stderr}"
+    assert (world.stdout, world.stderr) == ("", ""), "a clean model prints nothing"
+
+
+@then("the check passes")
+def _check_passes(world: World) -> None:
+    assert world.code == 0, f"the check must exit 0: {world.stdout} {world.stderr}"
+
+
+@then(
+    parsers.re(
+        r"the check fails with an? (?P<kind>[a-z_-]+) (?P<what>line|problem)"
+        r"(?P<named> naming the element)?"
+    )
+)
+def _check_fails_with(world: World, kind: str, what: str, named: str | None) -> None:
+    """A convention line is on stdout (``kind<TAB>element<TAB>message``); a problem on stderr (``[kind] ...``)."""
+    assert world.code == 1, f"the check must exit 1: {world.stdout} {world.stderr}"
+    if what == "line":
+        found = [line for line in world.stdout.splitlines() if line.startswith(f"{kind}\t")]
+    else:
+        found = [line for line in world.stderr.splitlines() if f"[{kind}]" in line]
+    assert found, f"a {kind} {what}: {world.stdout} {world.stderr}"
+    if named:
+        assert any(world.subject in line for line in found), (
+            f"the {kind} {what} names {world.subject}: {found}"
+        )
+
+
+@then("the report has an aggregates-diagram line naming the diagram and the association")
+def _aggregates_diagram_line(world: World) -> None:
+    lines = [line for line in world.report() if line[0] == "aggregates-diagram"]
+    assert lines, f"the report has an aggregates-diagram line: {world.report()}"
+    assert lines[0][1] == world.drawing["diagram"], f"it names the diagram: {lines}"
+    assert world.drawing["role"] in lines[0][2], f"it names the association: {lines}"
+
+
+@then("checking the model fails")
+def _checking_fails(world: World) -> None:
+    world.check()
+    assert world.code == 1, "the same model fails the check"
+    assert "aggregates-diagram\t" in world.stdout, f"on its aggregates-diagram line: {world.stdout}"
