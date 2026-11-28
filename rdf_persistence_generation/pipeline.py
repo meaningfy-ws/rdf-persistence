@@ -19,6 +19,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     GenerationTarget,
     ManifestEntry,
 )
+from rdf_persistence_generation.schema_cache import cached_schema_loads
 
 STAGING_PREFIX = ".rp-generate-"
 NOT_PLAIN_NAMES = ("", ".", "..")  # what a path component can be without naming a file
@@ -241,7 +242,10 @@ def generate(
     if not check and (unusable := _unusable_manifests(targets, base)):
         return unusable
     selected = [step for step in steps if not (check and step.writes)]
-    with tempfile.TemporaryDirectory(dir=base, prefix=STAGING_PREFIX) as folder:
+    with (
+        cached_schema_loads(),
+        tempfile.TemporaryDirectory(dir=base, prefix=STAGING_PREFIX) as folder,
+    ):
         stagings = [Path(folder) / str(index) for index, _ in enumerate(targets)]
         problems = _run_targets(targets, base, stagings, selected)
         if not problems and not check:

@@ -135,11 +135,15 @@
     },
     {
       "path": "rdf_persistence_generation/pipeline.py",
-      "sha256": "e4b0aa72d71aea4f199624b742c176b9d8814013705d0e6db4174a3ccc323f1d"
+      "sha256": "767feaec047eb797c8d4cf377b5f422672884881d97d8735a56c8fed34c799f4"
     },
     {
       "path": "rdf_persistence_generation/problems.py",
       "sha256": "e001f00d0286a4cb6a736a13b9176eb01e32dc8af7eb0f5d3cc78405dc0c33d0"
+    },
+    {
+      "path": "rdf_persistence_generation/schema_cache.py",
+      "sha256": "8ca546f3b889c0a0fe32e43074785fc085a992722fe7321db41e85ebadf6136a"
     },
     {
       "path": "rdf_persistence_generation/steps.py",

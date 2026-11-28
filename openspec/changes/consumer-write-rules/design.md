@@ -440,6 +440,39 @@ The lead's, per R-0007; the developer may overrule any of them.
   - *C-2:* the cold reader of `access.adoc#refuse-with-own-problem` could not tell which target
     generates the problem module or where its class is imported from: task 2.5 rewrites that
     section and takes it.
+- **D-15 RISK-7 materialised; cache the schema loads (the developer, 2026-11-28).** PR #434's CI
+  generator lane ran 539 s → 1137 s, and two `test_lock_step` tests passed the 120 s timeout.
+  Measured locally, generator lane at 4 workers: `develop` 199 s wall / 602 s CPU, this branch
+  374 s / 871 s. The profile puts the cost in LinkML (external) re-loading and deep-copying the
+  import closure of `rp_api_entrypoints`, which the toy now imports (PD-9), on every `SchemaView`;
+  the new checks cost 0.2 s. A consumer importing a technical module pays the same. Decision
+  (dependencies rule, external library): a workaround in one place, our schema loading: a
+  process-wide cache of parsed imported schemas keyed by resolved path and file stat, behaviour
+  identical (`make generate` byte-identical), plus an upstream LinkML issue. Rejected: moving the
+  toy's problem into its own target (consumers keep paying), raising the timeout (hides it).
+  *The lead narrowed the place:* `load_schema` rates CRITICAL (305 dependants, the service's
+  runtime included), and the cost is in generation, so the cache lives in the generator package
+  (`rdf_persistence_generation/`), active in generation runs only; the library and its runtime are
+  untouched (`library-never-imports-the-generator` holds). The developer may overrule.
+  *Outcome:* `rdf_persistence_generation/schema_cache.py`, active in `generate()`: parsed imports
+  are kept as pickled bytes keyed by path and stat (a deep copy per hit cost more than the parse;
+  a small pickler rebuilds LinkML's `Pathilizer`). One toy generation: develop 50.4 M calls,
+  17.6 s CPU cold; the branch without the cache 63.3 M; with it 37.0 M, 12.9 s. The generator
+  lane back to back under the same load: develop 269 s, the branch 298 s (1.11×). `make generate`
+  byte-identical (manifests only). The first fixer stopped at 27 % recovery (blocked); a fresh
+  fixer measured first and found the copy cost. Under the floor: the module imports `hbreader`, a
+  LinkML dependency this project does not declare. The LinkML issue names the re-parse and the
+  `Pathilizer` that blocks pickling.
+- **D-16 The tester after 2.1 (stage 2): one finding, accepted as Critical by re-label.** 38
+  tests; the tenant, readability, removed and collected, `None`, error-wrapping and leak (RISK-5)
+  probes all hold. *T2-F1:* the real reader's `find` answers a value not of the slot's type (a
+  string slot given `5`, `0`, `False`) where the error matrix says `BadQuery` for both readers, and
+  the fake (PD-13) refuses it; the kit's `wrong_value` case passes only because the toy's value is
+  one `Session.find` happens to refuse. Re-labelled Critical: the kit exists so a rule tested on
+  the fake behaves the same on the real reader (#386); a known disagreement on a stated contract
+  row defeats it. Fix: `_Reader.find` validates each value against the slot's item type, as the
+  fake does, raising `BadQuery`; a kit case with a string slot given an int. The tester's tests are
+  sorted before the full gates (the D-10 order).
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.
