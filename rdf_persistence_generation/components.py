@@ -14,7 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from linkml.generators.jsonschemagen import JsonSchemaGenerator
+from linkml_runtime.linkml_model.meta import SlotDefinition
 from linkml_runtime.utils.schemaview import SchemaView
+from rdflib import XSD, URIRef
 
 from rdf_persistence.core.services.artifacts import (
     COMPONENT_REFERENCES,
@@ -74,17 +76,61 @@ TYPE_SCHEMA: JsonSchema = {
 }
 
 
+STRING_SCHEMA: JsonSchema = {"type": "string"}
+# The ranges a read gives as a JSON string holding the lexical form (DEC-8, PD-8); the stock generator says number.
+STRING_RANGES = frozenset({XSD.decimal, XSD.float})
+ITEMS_KEY = "items"
+ARRAY_TYPE = "array"
+KEPT_ON_REWRITE = ("title", "description")  # a bound such as ``minimum`` means nothing on a string
+
+
+def _is_string_range(view: SchemaView, slot: SlotDefinition) -> bool:
+    """Whether the slot's range is, or derives from, ``xsd:decimal`` or ``xsd:float``."""
+    if slot.range not in view.all_types():
+        return False
+    return any(
+        URIRef(view.expand_curie(view.get_type(ancestor).uri)) in STRING_RANGES
+        for ancestor in view.type_ancestors(slot.range)
+        if view.get_type(ancestor).uri
+    )
+
+
+def _as_string(body: JsonSchema) -> JsonSchema:
+    """``body`` as a string schema: its item schema when it is a list, keeping its title and description."""
+    if body.get("type") == ARRAY_TYPE:
+        return {**body, ITEMS_KEY: STRING_SCHEMA}
+    return {**{key: body[key] for key in KEPT_ON_REWRITE if key in body}, **STRING_SCHEMA}
+
+
+def _string_properties(view: SchemaView, class_name: str) -> set[str]:
+    """The JSON names of the slots of a class that a read gives as strings though the stock schema says number."""
+    return {
+        json_name(slot)
+        for slot in view.class_induced_slots(class_name)
+        if _is_string_range(view, slot)
+    }
+
+
+def _shown_properties(view: SchemaView, name: str, definition: JsonSchema) -> dict[str, JsonSchema]:
+    """The properties the API shows: strings where a read gives text, the identifier read-only."""
+    hidden = _hidden_properties(view, name)
+    identifiers = _identifier_properties(view, name)
+    strings = _string_properties(view, name)
+    shown = {}
+    for prop, body in definition["properties"].items():
+        if prop in hidden:
+            continue
+        body = _as_string(body) if prop in strings else body
+        shown[prop] = {**body, "readOnly": True} if prop in identifiers else body
+    return shown
+
+
 def _trimmed(view: SchemaView, name: str, definition: JsonSchema) -> JsonSchema:
     """The definition without the slots the API does not show, its identifier read-only."""
     if name not in view.all_classes() or PROPERTIES_KEY not in definition:
         return definition
     hidden = _hidden_properties(view, name)
-    identifiers = _identifier_properties(view, name)
-    kept = {
-        prop: {**body, "readOnly": True} if prop in identifiers else body
-        for prop, body in definition["properties"].items()
-        if prop not in hidden
-    }
+    kept = _shown_properties(view, name, definition)
     required = [prop for prop in definition.get("required", []) if prop not in hidden]
     kept.setdefault(TYPE_PROPERTY, TYPE_SCHEMA)
     trimmed = {**definition, "properties": kept}

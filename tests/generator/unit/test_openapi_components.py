@@ -183,3 +183,61 @@ def test_a_class_with_its_own_type_slot_keeps_its_definition(tmp_path: Path) -> 
     prop = json.loads(file.text)["schemas"]["Typed"]["properties"]["type"]
     assert prop["type"] == "integer", "its own definition stays, not the generic string"
     assert "Its own kind." in prop.get("description", ""), "its own description stays"
+
+
+# --- decimal and float are strings, double a number (langstring-support PD-8) ---------------------
+
+MEASURES = Path(__file__).parents[2] / "fixtures" / "measures" / "measures.yaml"
+MULTIVALUED_MEASURES = """
+id: https://example.org/ns/many
+name: many
+title: Many
+version: "1"
+description: A multivalued decimal.
+prefixes:
+  ma: https://example.org/ns/many#
+  linkml: https://w3id.org/linkml/
+default_prefix: ma
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+classes:
+  Many:
+    title: Many
+    description: Many decimals.
+    mixins: [AggregateRoot, Described]
+    slots: [decs]
+    annotations:
+      rp_path: many
+slots:
+  decs:
+    title: Decimals
+    description: Decimals.
+    range: decimal
+    multivalued: true
+"""
+
+
+@pytest.mark.parametrize(
+    ("prop", "expected"),
+    [
+        pytest.param("dec", "string", id="decimal-is-a-string"),
+        pytest.param("flt", "string", id="float-is-a-string"),
+        pytest.param("dbl", "number", id="double-stays-a-number"),
+    ],
+)
+def test_the_three_ranges_have_their_json_type(prop: str, expected: str) -> None:
+    [file] = render(MEASURES)
+    schema = json.loads(file.text)["schemas"]["Measure"]["properties"][prop]
+    assert schema["type"] == expected, f"the JSON type of {prop}"
+    assert "anyOf" not in schema, f"{prop} is one plain type"
+
+
+def test_a_multivalued_decimal_has_string_items(tmp_path: Path) -> None:
+    (tmp_path / "many.yaml").write_text(MULTIVALUED_MEASURES, encoding="utf-8")
+    [file] = render(tmp_path / "many.yaml")
+    schema = json.loads(file.text)["schemas"]["Many"]["properties"]["decs"]
+    assert schema["type"] == "array", "still a list"
+    assert schema["items"] == {"type": "string"}, "the item is a string"

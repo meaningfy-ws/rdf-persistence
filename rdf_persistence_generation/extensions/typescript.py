@@ -19,6 +19,7 @@ from pathlib import Path
 
 from linkml.generators.typescriptgen import TypescriptGenerator
 from linkml_runtime.linkml_model.meta import ClassDefinition, SchemaDefinition, SlotDefinition
+from rdflib import XSD, URIRef
 
 from rdf_persistence.schema.services.schema import (
     SERVED_SCHEMAS,
@@ -35,6 +36,7 @@ from rdf_persistence.schema.services.schema_structure import (
 from rdf_persistence.schema.services.vocabulary import METAMODEL
 from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.exceptions import SchemaGenerationError
+from rdf_persistence_generation.extensions.pydantic_split import ANY_CLASS_URI
 from rdf_persistence_generation.generated.rp_generation import (
     GeneratedFile,
     TsEnum,
@@ -54,14 +56,13 @@ SERVICE_MODULE = "rp_service"
 MODULE_TEMPLATE = "module.ts.jinja"
 INDEX_TEMPLATE = "index.ts.jinja"
 INDEX_NAME = "index.ts"
-NUMBER_URIS = ("xsd:integer", "xsd:decimal", "xsd:double", "xsd:float")
-BOOLEAN_URI = "xsd:boolean"
-ANY_URI = "linkml:Any"
+# Decimal and float are JSON strings holding their lexical form, so they are not here (DEC-8, PD-8).
+NUMBER_URIS = frozenset({XSD.integer, XSD.double})
 
 
 def _has_interface(cls: ClassDefinition) -> bool:
     """Mixins fold into their users and ``linkml:Any`` is ``unknown``; neither is an interface."""
-    return not cls.mixin and cls.class_uri != ANY_URI
+    return not cls.mixin and cls.class_uri != ANY_CLASS_URI
 
 
 def doc(text: str | None) -> str:
@@ -87,7 +88,7 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
         view = self.schemaview
         if slot.range in view.all_classes():
             cls = view.get_class(slot.range)
-            if cls.class_uri == ANY_URI:
+            if cls.class_uri == ANY_CLASS_URI:
                 return "unknown"
             return self.name(cls) if is_owned(slot) or view.is_inlined(slot) else "string"
         if slot.range in view.all_enums():
@@ -95,15 +96,18 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
         return self._scalar(slot.range)
 
     def _scalar(self, type_name: str | None) -> str:
+        """The TypeScript type of a LinkML type, by its IRI: decimal and float are strings (PD-8)."""
         view = self.schemaview
         for ancestor in view.type_ancestors(type_name) if type_name in view.all_types() else []:
-            uri = view.get_type(ancestor).uri
+            curie = view.get_type(ancestor).uri
+            if not curie:
+                continue
+            uri = URIRef(view.expand_curie(curie))
             if uri in NUMBER_URIS:
                 return "number"
-            if uri == BOOLEAN_URI:
+            if uri == XSD.boolean:
                 return "boolean"
-            if uri:
-                return "string"
+            return "string"
         return "string"
 
     def _field(self, slot: SlotDefinition) -> TsField:
