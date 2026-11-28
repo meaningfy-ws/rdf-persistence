@@ -743,8 +743,8 @@ is single-valued or the reverse, optional where an ancestor is required, or a ra
 the ancestor's range nor under it), `rp-generate` SHALL mark that field's line with
 `# type: ignore[assignment]` and keep the field's own type. A field whose type is a subtype of
 every ancestor's SHALL carry no mark. A unique-key check a class inherits SHALL accept the slot
-it checks holding a list, one value or none. The generated package SHALL pass mypy with
-`mypy-generated.ini`.
+it checks holding a list, a mapping of values by identifier, one value or none, and SHALL check
+the values of a mapping. The generated package SHALL pass mypy with `mypy-generated.ini`.
 
 #### Scenario: an inherited list narrowed to one value
 - **GIVEN** an abstract class with an optional multivalued slot `p`, and a subclass whose `slot_usage` sets `p` to `required: true`, `multivalued: false` and a narrower range
@@ -760,6 +760,11 @@ it checks holding a list, one value or none. The generated package SHALL pass my
 - **GIVEN** a subclass that narrows an inherited single-valued slot to a range under the inherited range, keeping its multiplicity and requiredness
 - **WHEN** the developer generates
 - **THEN** the subclass's field line carries no `# type: ignore`, and mypy reports no error
+
+#### Scenario: a unique key over a slot rendered as a mapping
+- **GIVEN** a class with a multivalued slot, `inlined: true` and no `inlined_as_list`, over a class with an identifier that declares a unique key
+- **WHEN** the developer generates and builds instances with an empty mapping, with two values of different keys, and with two values repeating the key
+- **THEN** the first two validate, the third is refused naming the unique key, and mypy reports no error
 
 ### Requirement: The toolkit's TypeScript has one owner in a project
 
