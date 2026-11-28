@@ -61,3 +61,34 @@ under the recommended answers; nothing is decided until the owner answers.
   and TypeScript show each value as a JSON-LD value object `{"@value": …, "@language": …}`, so
   the JSON-LD context needs no `@language` container. Supersedes DEC-1 and DEC-3 as shaped and,
   for this range, DEC-35 of the SOA study (`LangString` as a language map).
+
+## Re-shape round (2026-11-28): the P-0041 findings join the EPIC
+
+The owner approved rule P-0041 (use rdflib's terms layer and utilities, #468) and asked to shape
+"an epic as small as possible to address the lang strings and the rest of rdflib discoveries".
+The findings came from two read-only sweeps with ast-grep, Serena and GitNexus (the index 212
+commits behind; Serena's counts are the real ones):
+
+- **Replace:** `rdf_persistence/schema/services/vocabulary.py:158-164` derives `PENDING_SINCE`,
+  `RELAYED_AT`, `PUBLICATION_FAILED`, `ABSENT_KEY_VALUE` by `STARTED_AT.removesuffix('startedAt')`;
+  a renamed `slot_uri` would move them silently. rdflib `Namespace` over the schema's `rp` prefix.
+- **Small cleanups in the generator:** three copies of the `rsplit(":", 1)[-1]` local-name helper
+  (`uml/naming.py:24`, `uml/context.py:33`, `uml/classes.py:379`); `uml/toolkit.py` `prefixes()`
+  vs `SchemaView.namespaces()`; the `XSD` dict in `uml/slots.py:50-66` shadows `rdflib.XSD`;
+  `ANY_URI = "linkml:Any"` defined twice; `extensions/typescript.py` `NUMBER_URIS`/`BOOLEAN_URI`
+  compare CURIE strings.
+- **Keep, documented:** `core/domain/sparql.py` `term()` and its escaping. rdflib 7.6.0
+  `Literal._quote_encode` escapes only `\`, `"`, `\r`, `\n`, so `n3()` would reopen #270 and
+  #108; `_is_valid_uri` lets control characters through; the language-tag regex is stricter
+  (`fullmatch`). Skolem IRIs (`iris/domain/layout.py`) stay: rdflib's `skolemize` replaces the
+  path, so it cannot scope one under its graph (PD-8a).
+- **Outside P-0041, found on the way:** TypeScript types `xsd:decimal`, `double` and `float` as
+  `number` while the JSON-LD context keeps their `@type`, so compacted JSON may carry them as
+  strings (not probed).
+
+| Id | Question | Recommendation | Owner's answer |
+|---|---|---|---|
+| Q-1 | How is the EPIC cut? | SMALL, 2 stages: rdflib cleanups first, then `lang_string` | **SMALL, 2 stages**; recommended |
+| Q-2 | What does the converter do with `rdf:PlainLiteral`? | Keep refusing it; map only `rdf:langString` | **Keep refusing**; recommended |
+| Q-3 | Risk of DEC-4 (refuse on read is BREAKING for stores holding tagged literals in `string` slots)? | Refuse, with a migration note; the first consumer's aggregates hold none | **Refuse, migration note**; recommended |
+| Q-4 | The decimal/double/float mismatch: in this EPIC? | A separate issue | **Include in stage 1**; the owner overrode the recommendation |
