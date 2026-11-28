@@ -11,6 +11,7 @@ D-24; the lead decided the rest.
 
 ## Open
 - **Task 1.4, the OpenAPI document lists the registered problem classes (D-5):** back to a shaping
-  session. RISK-3 stays open until then.
+  session. RISK-3 stays open until then. **Closed 2026-11-28** by `openapi-refusal-problems`
+  (#462, archived `2026-11-28-openapi-refusal-problems`).
 - **Follow-ups under the review floor:** #455.
 - **The generator's schema cache (D-15):** a LinkML workaround, upstream linkml/linkml#4306.
