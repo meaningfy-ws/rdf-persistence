@@ -182,6 +182,7 @@
 |`clear_caches` |function |Call ``cache_clear()`` on every cached ``SchemaView`` method and FastAPI dependency function.
 |`create_machine_user` |function |Create a machine user whose tokens are JWTs, with a key, and the given global roles.
 |`fake_session` |function |A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
+|`FakeAggregateReader` |class |An ``AggregateReader`` over models seeded by hand, for a rule's unit test.
 |`FakeFileStore` |class |A ``FileStore`` in memory, with the same failure injection as ``FakeStore``.
 |`FakeIdentity` |class |An ``Identity`` over accounts in memory, with the same failure injection as ``FakeStore``.
 |`FakeStore` |class |A ``Store`` over one rdflib ``Dataset`` per dataset name, with failure injection.

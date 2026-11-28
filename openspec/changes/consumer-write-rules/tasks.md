@@ -49,7 +49,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
 - [ ] 2.2 **unit + code (typed rules, state_name)** — independent of 2.1; PD-11, PD-12, TC-10,
   TC-11. Failing tests first. Then `aggregate_rules`, `delete_rules`, `state_name`, the exports.
   Accept: TC-10, TC-11 pass; `make typecheck` green; task gate green. Closes #387.
-- [ ] 2.3 **testkit (fake + kit)** — after 2.1; PD-13, PD-14, TC-12, TC-13. Failing tests first in
+- [x] 2.3 **testkit (fake + kit)** — after 2.1; PD-13, PD-14, TC-12, TC-13. Failing tests first in
   `tests/unit/testkit/test_fake_reader.py` and `test_reader_conformance.py`. Then
   `FakeAggregateReader`, `reader_conformance.py`, the export. Accept: TC-12, TC-13 pass for both
   readers; task gate green. Closes #386.
