@@ -93,7 +93,7 @@ A person's own queue is one listing: `?assigned_to=<principal IRI>`.
 
 ## What Changes
 
-As delivered (PR #443, stage 1; PR #STAGE2, stage 2):
+As delivered (PR #443, stage 1; PR #458, stage 2):
 
 - `rdf_persistence/model/rp_workflow.yaml`: `assigned_to` on `UnderWorkflow`; `assignable` on
   `Workflow`; `clears_assignees` on `WorkflowTransition`; the `Assignment` activity (payload
@@ -145,12 +145,12 @@ None.
 | DEC-4 who may assign, like Jira | `Assignments._require_authority`: modify sets anyone; a role on a leaving edge adds itself; any assignee drops itself; a Prohibition of modify blocks all | delivered, PR #443 |
 | DEC-5 an edge may only clear | `clears_assignees`, `Transitions._moved(clear=True)`, the released principals on the `Transition` | delivered, PR #443 |
 | DEC-6 an assignee may read | `_require_readers` by the stored grants, through `access_of`; principals checked as absolute IRIs (D-18) | delivered, PR #443; checked before the commit, not inside it (L1 #2 under the floor) |
-| DEC-7 release after the grants route | `ServiceKit.release_assignees` after `PUT …/grants`; failure logged, 200 kept; idempotent | delivered, PR #STAGE2; only that route (RISK-2, L3 #1 under the floor) |
+| DEC-7 release after the grants route | `ServiceKit.release_assignees` after `PUT …/grants`; failure logged, 200 kept; idempotent | delivered, PR #458; only that route (RISK-2, L3 #1 under the floor) |
 | DEC-8 the `Assignment` record | `Assignment` (`prov:Activity`) in the commit's update; `assignments(iri)` oldest first, kept after delete | delivered, PR #443 |
-| DEC-9 a service call; the queue as a filter | `Collaboration.assign`; `?assigned_to=` on the generic listing, no code change (D-7, T15) | delivered, PR #443 and PR #STAGE2 |
+| DEC-9 a service call; the queue as a filter | `Collaboration.assign`; `?assigned_to=` on the generic listing, no code change (D-7, T15) | delivered, PR #443 and PR #458 |
 | DEC-10 the version first | `if_version` checked after read and the Prohibition, before anything about the assignees; `Conflict` | delivered, PR #443 |
 | Tests T1 to T16 | unit, adversarial and feature tests, scenario-map rows | delivered; T16 never red, since the release was built first (D-22) |
-| Docs | howto, user manual, data flows, `rp-messages` delta, CHANGELOG | delivered, PR #STAGE2 |
+| Docs | howto, user manual, data flows, `rp-messages` delta, CHANGELOG | delivered, PR #458 |
 
 Not shaped but built: `aggregate_activities.py` (D-13), `core/domain/sparql.is_absolute_iri`
 (D-18), the `rp-messages` delta (D-19). Shaped but not built: nothing.
