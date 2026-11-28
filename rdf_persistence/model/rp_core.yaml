@@ -345,6 +345,12 @@ enums:
           (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate.
           A key without it keeps its in-aggregate meaning.
         meaning: rp:AnnotationUniqueScope
+      rp_loaded_graph:
+        title: Loaded graph
+        description: >-
+          Slot annotation, `true` when the slot's values are the IRIs of graphs loaded for the holder's
+          aggregate and deleted with it; the converter writes it for an "own graph" composition.
+        meaning: rp:AnnotationLoadedGraph
       media_type:
         title: Media type
         description: >-

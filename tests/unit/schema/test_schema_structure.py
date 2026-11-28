@@ -164,6 +164,15 @@ def test_a_tag_that_is_not_there_gives_none_and_a_false_flag() -> None:
     assert not flag(slot, RpAnnotation.OWNED), "an absent annotation is not a true flag"
 
 
+def test_the_metamodel_declares_rp_loaded_graph_with_its_description() -> None:
+    """PD-9: the tag is listed and documented where every `rp_` tag is."""
+    declared = load_schema(METAMODEL).get_enum("RpAnnotation").permissible_values
+
+    assert RpAnnotation.RP_LOADED_GRAPH.value == "rp_loaded_graph", "the generated enum has the tag"
+    assert "rp_loaded_graph" in declared, "the metamodel declares the tag"
+    assert declared["rp_loaded_graph"].description, "the tag has a description"
+
+
 def test_the_tenant_root_is_the_class_in_the_meta_graph() -> None:
     view = load_schema(TOY)
     assert is_tenant_root(view.get_class("Library")), "Library lives in the meta graph"

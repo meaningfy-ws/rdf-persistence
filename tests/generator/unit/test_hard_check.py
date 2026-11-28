@@ -978,6 +978,25 @@ def test_a_value_outside_the_allowed_ones_is_refused_for_every_annotation_the_to
     )
 
 
+@pytest.mark.parametrize(
+    ("value", "refused"),
+    [("maybe", True), ("true", False), ("false", False)],
+    ids=["maybe-refused", "true-accepted", "false-accepted"],
+)
+def test_rp_loaded_graph_on_a_slot_takes_a_boolean_only(
+    tmp_path: Path, value: str, refused: bool
+) -> None:
+    """PD-9, A-22: the tag the converter writes is checked like every other boolean annotation."""
+    tag = RpAnnotation.RP_LOADED_GRAPH.value
+    classes = f"  Probe:\n    attributes:\n      graphs:\n        annotations:\n          {tag}: {value}\n"
+
+    problems = _annotation_problems(tmp_path, classes)
+
+    hits = [p for p in problems if f"graphs: {tag}: {value!r} is not one of" in p]
+    assert bool(hits) is refused, f"{tag}: {value} on a slot, refused={refused}: {problems}"
+    assert refused or problems == [], f"{tag}: {value} must raise no annotation problem: {problems}"
+
+
 def test_a_field_name_annotation_other_than_slot_is_refused_naming_the_slot(tmp_path: Path) -> None:
     """D-52: `field_name` takes the one value `slot`."""
     tag = GenerationAnnotation.FIELD_NAME

@@ -99,6 +99,7 @@ ALLOWED_ANNOTATIONS = {
     RpAnnotation.TOOLKIT_FILLED: BOOLEAN,
     RpAnnotation.PAYLOAD: BOOLEAN,
     RpAnnotation.RP_UNIQUE_SCOPE: tuple(scope.value for scope in UniqueScope),
+    RpAnnotation.RP_LOADED_GRAPH: BOOLEAN,
 }
 # The annotations of the generation metamodel the check reads, and their values (D-52).
 GENERATION_ALLOWED_ANNOTATIONS: dict[Enum, tuple[str, ...]] = {

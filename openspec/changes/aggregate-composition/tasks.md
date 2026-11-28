@@ -23,12 +23,12 @@ assertion without a replacement row. Every decision a task cites links its ancho
   only, never model content. Accept: the record exists and either agrees with
   [PD-1](design.md#pd-1)'s columns or names the difference for the lead. The developer's EA probe is
   not here: it is the `@manual` scenario of task 1.12.
-- [ ] 1.1 Lead: `openspec validate aggregate-composition --strict`; the MODIFIED requirements of
+- [x] 1.1 Lead: `openspec validate aggregate-composition --strict`; the MODIFIED requirements of
   [`specs/rp-uml-import/spec.md`](specs/rp-uml-import/spec.md) copy the living text and scenarios
   and change only the composition, boundary and Realisation sentences. Developer signs off
   `features/*.feature`. Accept: validate passes; a diff against `openspec/specs/rp-uml-import/spec.md`
   shows only those.
-- [ ] 1.2 Unit, generation model, additive only ([PD-1](design.md#pd-1), [PD-11](design.md#pd-11),
+- [x] 1.2 Unit, generation model, additive only ([PD-1](design.md#pd-1), [PD-11](design.md#pd-11),
   [PD-12](design.md#pd-12), [PD-13](design.md#pd-13), [PD-19](design.md#pd-19)). First,
   failing: `tests/generator/unit/test_uml_records.py` rows building `UmlComposition`,
   `UmlDiagram`, `UmlAggregates` (`UmlPartOf` per (part, whole), `UmlReach` with `top_ids`,
@@ -36,7 +36,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   values. Nothing is removed here (`UmlBoundary.member_ids` goes in 1.6, A-11). Then
   `rp_generation.yaml`; the lead regenerates. Accept: rows pass; `make check-generated`; the task
   gate green.
-- [ ] 1.3 Unit, metamodel annotation ([PD-9](design.md#pd-9), [D-2](design.md#d-2), A-22),
+- [x] 1.3 Unit, metamodel annotation ([PD-9](design.md#pd-9), [D-2](design.md#d-2), A-22),
   parallel to 1.2. First, failing: a row in `tests/unit/schema/test_schema_structure.py` that
   `RpAnnotation.RP_LOADED_GRAPH` exists with its description; a row in
   `tests/generator/unit/test_hard_check.py` that `rp_loaded_graph: maybe` on a slot is refused and
@@ -247,7 +247,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
 
 ## Roadmap
 
-- [ ] 1.0 · [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.8 · [ ] 1.6 · [ ] 1.7 ·
+- [ ] 1.0 · [x] 1.1 · [x] 1.2 · [x] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.8 · [ ] 1.6 · [ ] 1.7 ·
   [ ] 1.9 · [ ] 1.10 · [ ] 1.11 · [ ] 1.12 · [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 ·
   [ ] 2.6 · [ ] 2.7 · [ ] 3.1 · [ ] 3.2 · [ ] 3.3 · [ ] 3.4 · [ ] 3.5 · [ ] 3.6
   (1.0 is the lead's reading of Sparx's docs and gates nothing ([D-4](design.md#d-4)); the

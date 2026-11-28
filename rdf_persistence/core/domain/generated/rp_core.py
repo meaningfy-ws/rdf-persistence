@@ -77,6 +77,8 @@ class RpAnnotation(str, _Enum):
     "Annotation of a `slot_usage` entry in a command class, `true` when the command carries the slot but the stored record does not; it is never required there."
     RP_UNIQUE_SCOPE = "rp_unique_scope"
     "Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant` (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate. A key without it keeps its in-aggregate meaning."
+    RP_LOADED_GRAPH = "rp_loaded_graph"
+    "Slot annotation, `true` when the slot\u0027s values are the IRIs of graphs loaded for the holder\u0027s aggregate and deleted with it; the converter writes it for an \"own graph\" composition."
     MEDIA_TYPE = "media_type"
     "Permissible value annotation: the IANA media type of a serialisation."
 

@@ -39,6 +39,8 @@ export type RpAnnotation =
   | "payload"
   /** Annotation of a `unique_keys` entry on an aggregate root (or an ancestor of roots), `tenant` (see UniqueScope): the key holds across the aggregates of a tenant, not inside one aggregate. A key without it keeps its in-aggregate meaning. */
   | "rp_unique_scope"
+  /** Slot annotation, `true` when the slot's values are the IRIs of graphs loaded for the holder's aggregate and deleted with it; the converter writes it for an "own graph" composition. */
+  | "rp_loaded_graph"
   /** Permissible value annotation: the IANA media type of a serialisation. */
   | "media_type";
 

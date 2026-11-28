@@ -211,6 +211,26 @@ class ReportKind(str, _Enum):
     "A Statechart diagram read as a workflow, with its state and transition counts, or a workflow no class names."
     DERIVED_IRI = "derived_iri"
     "A workflow whose diagram name has no prefix, so its IRI is made from the schema base."
+    ROOT = "root"
+    "An aggregate root the converter derived, with the parts of its aggregate."
+    DEPRECATED_ROOT = "deprecated_root"
+    "A \u00abroot\u00bb stereotype the model still draws that agrees with the derived roots; informational."
+    BOUNDARY_DISAGREES = "boundary_disagrees"
+    "A boundary in a converted package whose name is not the name of a derived root or the tenant root."
+    COMPOSITION_NAMED = "composition_named"
+    "A composition that carries a note, or a role where a single candidate makes it unneeded."
+    AGGREGATES_DIAGRAM = "aggregates_diagram"
+    "An aggregates diagram that shows what it should not, or whose name does not start with its package\u0027s name."
+    COMPOSITION_DIAGRAM = "composition_diagram"
+    "A class diagram that is not an aggregates diagram and shows a composition."
+    UNPREFIXED_NAME = "unprefixed_name"
+    "A class or an attribute written without a prefix."
+    UNUSED_ENUMERATION = "unused_enumeration"
+    "An enumeration no slot ranges over."
+    DRAWN_TOOLKIT_PARENT = "drawn_toolkit_parent"
+    "A class that draws a generalisation to a class of the toolkit instead of taking its mixin."
+    TENANT_REQUIRED_POINTER = "tenant_required_pointer"
+    "A required pointer to the tenant root, which the toolkit fills."
 
 
 class LeftOutReason(str, _Enum):
@@ -532,6 +552,8 @@ class UmlModel(ConfiguredBaseModel):
     uml_links: _Optional[list[UmlLink]] = _Field(default=None, title="UML links", description="The connectors of a UML model.")
     uml_tagged_values: _Optional[list[UmlTaggedValue]] = _Field(default=None, title="UML tagged values", description="The tagged values of the classes of a UML model.")
     uml_boundaries: _Optional[list[UmlBoundary]] = _Field(default=None, title="UML boundaries", description="The boundaries of a UML model.")
+    uml_compositions: _Optional[list[UmlComposition]] = _Field(default=None, title="UML compositions", description="The compositions of a UML model, the whole and the part of each read once.")
+    uml_diagrams: _Optional[list[UmlDiagram]] = _Field(default=None, title="UML diagrams", description="The class diagrams of the converted packages of a UML model, by membership.")
     uml_objects: _Optional[list[UmlObject]] = _Field(default=None, title="UML objects", description="The objects of a UML model, the instances of its drawn classes.")
     uml_state_nodes: _Optional[list[UmlStateNode]] = _Field(default=None, title="UML state nodes", description="The states and state nodes of the converted packages of a UML model.")
     uml_state_flows: _Optional[list[UmlStateFlow]] = _Field(default=None, title="UML state flows", description="The transitions between the state nodes of the converted packages of a UML model.")
@@ -610,11 +632,64 @@ class UmlBoundary(ConfiguredBaseModel):
     member_ids: _Optional[list[int]] = _Field(default=None, title="Member ids", description="The ids of the classes and enumerations that lie inside a boundary.")
 
 
+class UmlComposition(ConfiguredBaseModel):
+    "A composition of the UML model, read once from the end columns of an Aggregation connector (PD-1): the class that is the whole and the class that is the part, whatever way it was drawn, with the stereotype and the role written on it."
+    composition_id: int = _Field(default=..., title="Composition id", description="The id of the connector a composition was read from.")
+    whole_id: int = _Field(default=..., title="Whole id", description="The id of the class that is the whole of a composition.")
+    part_id: int = _Field(default=..., title="Part id", description="The id of the class that is the part of a composition.")
+    own_graph: _Optional[bool] = _Field(default=False, title="Own graph", description="Whether a composition is drawn with the \u00abown graph\u00bb stereotype.")
+    uml_stereotype: _Optional[str] = _Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
+    role: _Optional[str] = _Field(default=None, title="Role", description="The role written on a composition, naming the association beside it that it marks.")
+
+
+class UmlDiagram(ConfiguredBaseModel):
+    "A class diagram of the UML model, read by membership only (PD-12): the package it sits in, the elements it shows and the connectors it hides. No geometry."
+    diagram_id: int = _Field(default=..., title="Diagram id", description="The id of the diagram a boundary is drawn on.")
+    name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
+    package_id: _Optional[int] = _Field(default=None, title="Package id", description="The id a UML model gives a package.")
+    diagram_type: _Optional[str] = _Field(default=None, title="Diagram type", description="The type of a diagram as the model file writes it.")
+    element_ids: _Optional[list[int]] = _Field(default=None, title="Element ids", description="The ids of the elements a diagram shows.")
+    hidden_connector_ids: _Optional[list[int]] = _Field(default=None, title="Hidden connector ids", description="The ids of the connectors a diagram hides although both their ends are on it.")
+
+
+class UmlPartOf(ConfiguredBaseModel):
+    "One row of the aggregate tree (PD-19): a class that is a part, the class that is its whole, the composition that says so and whether that composition is an own graph. A part with two wholes has two rows."
+    part_id: int = _Field(default=..., title="Part id", description="The id of the class that is the part of a composition.")
+    whole_id: int = _Field(default=..., title="Whole id", description="The id of the class that is the whole of a composition.")
+    own_graph: _Optional[bool] = _Field(default=False, title="Own graph", description="Whether a composition is drawn with the \u00abown graph\u00bb stereotype.")
+    composition_id: int = _Field(default=..., title="Composition id", description="The id of the connector a composition was read from.")
+
+
+class UmlReach(ConfiguredBaseModel):
+    "The tops of the aggregates that reach one part class (PD-4): a part class may be reached from several tops."
+    part_id: int = _Field(default=..., title="Part id", description="The id of the class that is the part of a composition.")
+    top_ids: _Optional[list[int]] = _Field(default=None, title="Top ids", description="The ids of the tops (roots, the tenant root, abstract tops) of aggregates.")
+
+
+class UmlOwnedEnd(ConfiguredBaseModel):
+    "A connector end that gives an owned slot (PD-5): the connector and the class that holds the slot."
+    link_id: int = _Field(default=..., title="Link id", description="The id of the connector an owned end belongs to.")
+    holder_id: int = _Field(default=..., title="Holder id", description="The id of the class that holds the slot an end of a connector gives.")
+
+
+class UmlAggregates(ConfiguredBaseModel):
+    "What the aggregate pass returns (PD-19): the derived roots, the tenant root, the tree as rows of parts and wholes, the tops that reach each part, the owned ends, the classes left inside an own graph, and the findings, which the converter merges into its own."
+    root_ids: _Optional[list[int]] = _Field(default=None, title="Root ids", description="The ids of the classes derived as aggregate roots.")
+    tenant_root_id: _Optional[int] = _Field(default=None, title="Tenant root id", description="The id of the tenant root, absent when the model has none.")
+    part_of: _Optional[list[UmlPartOf]] = _Field(default=None, title="Part of", description="The tree as rows, one for each part and whole it belongs to.")
+    reached_from: _Optional[list[UmlReach]] = _Field(default=None, title="Reached from", description="For each part class, the tops of the aggregates that reach it.")
+    owned_ends: _Optional[list[UmlOwnedEnd]] = _Field(default=None, title="Owned ends", description="The connector ends whose slots are owned by their holder.")
+    left_inside_ids: _Optional[list[int]] = _Field(default=None, title="Left-inside ids", description="The ids of the classes left inside the own graph of another class, so not generated.")
+    problems: _Optional[list[CheckProblem]] = _Field(default=None, title="Problems", description="The problems a pass found.")
+    report_lines: _Optional[list[ReportLine]] = _Field(default=None, title="Report lines", description="The report lines a pass wrote.")
+
+
 class UmlObject(ConfiguredBaseModel):
     "An object of the UML model, an instance of a drawn class, with the class that types it, the package it sits in and the values its run state sets, as the model file writes them."
     object_id: int = _Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
     uml_name: str = _Field(default=..., title="UML name", description="The name of a UML element, as drawn.")
     classifier_id: _Optional[int] = _Field(default=None, title="Classifier id", description="The id of the class an attribute or an object is typed by, absent for a plain type.")
+    realised_ids: _Optional[list[int]] = _Field(default=None, title="Realised ids", description="The ids of the classes an object realises, read from its Realisation connectors.")
     package_path: _Optional[str] = _Field(default=None, title="Package path", description="The path of the package a UML element sits in, the package names joined by `/`.")
     run_values: _Optional[list[UmlRunValue]] = _Field(default=None, title="Run values", description="The variables a UML object\u0027s run state sets, in the order the model file writes them.")
     run_state_rest: _Optional[str] = _Field(default=None, title="Run state rest", description="The text of a UML object\u0027s run state outside its variable blocks, stripped; absent when blank.")
@@ -685,6 +760,7 @@ class UmlElement(ConfiguredBaseModel):
     label: str = _Field(default=..., title="Label", description="A readable label.")
     module_path: _Optional[list[str]] = _Field(default=None, title="Module path", description="The names of the packages below the subtree package that an element sits in, outermost first.")
     is_enum: _Optional[bool] = _Field(default=False, title="Is enumeration", description="Whether an element is an enumeration.")
+    is_drawn_root: _Optional[bool] = _Field(default=False, title="Is drawn root", description="Whether the model draws an element with the \u00abroot\u00bb stereotype, whatever the derivation says.")
     is_root: _Optional[bool] = _Field(default=False, title="Is root", description="Whether an element is the root of an application aggregate.")
     is_abstract: _Optional[bool] = _Field(default=False, title="Is abstract", description="Whether a UML class is abstract.")
     is_tenant_root: _Optional[bool] = _Field(default=False, title="Is tenant root", description="Whether an element is the root of the tenant, a root of its own kind (R-18).")
@@ -850,6 +926,12 @@ UmlAttribute.model_rebuild()
 UmlLink.model_rebuild()
 UmlTaggedValue.model_rebuild()
 UmlBoundary.model_rebuild()
+UmlComposition.model_rebuild()
+UmlDiagram.model_rebuild()
+UmlPartOf.model_rebuild()
+UmlReach.model_rebuild()
+UmlOwnedEnd.model_rebuild()
+UmlAggregates.model_rebuild()
 UmlObject.model_rebuild()
 UmlStateNode.model_rebuild()
 UmlStateFlow.model_rebuild()

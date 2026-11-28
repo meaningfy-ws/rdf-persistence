@@ -15,7 +15,7 @@
     },
     {
       "path": "rdf_persistence/model/rp_core.yaml",
-      "sha256": "f444961c71a7d68cc1023ce550eaeb9251a9a518368a14fac7dc5238fc996924"
+      "sha256": "bd729b1def754fa3f10d3bc9d49f62e1a0eba04e2d3a2e36e5f1a76515d56dd9"
     },
     {
       "path": "rdf_persistence/model/rp_discussion.yaml",
@@ -59,7 +59,7 @@
     },
     {
       "path": "rdf_persistence_generation/checks/hard.py",
-      "sha256": "1408a455839915210c47bb9085273905832545bc096015435df03f7ab6e50ddb"
+      "sha256": "61160a9c24f6e5394801a8db690cf147f8786343a90891b52bc4a79df5a2505f"
     },
     {
       "path": "rdf_persistence_generation/checks/importable.py",

@@ -39,6 +39,9 @@
       "classifier_id": {
          "@id": "umlClassifierId"
       },
+      "composition_id": {
+         "@id": "umlCompositionId"
+      },
       "connector_id": {
          "@id": "umlConnectorId"
       },
@@ -71,6 +74,9 @@
       "diagram_id": {
          "@id": "umlDiagramId"
       },
+      "diagram_type": {
+         "@id": "umlDiagramType"
+      },
       "diagrams": {
          "@id": "diagramsFolder"
       },
@@ -85,6 +91,10 @@
       },
       "element": {
          "@id": "element"
+      },
+      "element_ids": {
+         "@container": "@set",
+         "@id": "umlElementIds"
       },
       "end_card": {
          "@id": "umlEndCard"
@@ -127,6 +137,10 @@
          "@type": "@id",
          "@id": "partFrame"
       },
+      "hidden_connector_ids": {
+         "@container": "@set",
+         "@id": "umlHiddenConnectorIds"
+      },
       "holder_id": {
          "@id": "umlHolderId"
       },
@@ -167,6 +181,9 @@
       "is_abstract_root": {
          "@id": "umlIsAbstractRoot"
       },
+      "is_drawn_root": {
+         "@id": "umlIsDrawnRoot"
+      },
       "is_enum": {
          "@id": "umlIsEnum"
       },
@@ -205,6 +222,13 @@
       },
       "label": {
          "@id": "label"
+      },
+      "left_inside_ids": {
+         "@container": "@set",
+         "@id": "umlLeftInsideIds"
+      },
+      "link_id": {
+         "@id": "umlLinkId"
       },
       "link_kind": {
          "@id": "umlLinkKind",
@@ -328,8 +352,16 @@
          "@container": "@set",
          "@id": "manifestOutputs"
       },
+      "own_graph": {
+         "@id": "umlOwnGraph"
+      },
       "owned_by_composite": {
          "@id": "umlOwnedByComposite"
+      },
+      "owned_ends": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlOwnedEnds"
       },
       "owner_id": {
          "@id": "umlOwnerId"
@@ -345,6 +377,14 @@
       },
       "parent_id": {
          "@id": "umlParentId"
+      },
+      "part_id": {
+         "@id": "umlPartId"
+      },
+      "part_of": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlPartOf"
       },
       "parts": {
          "@type": "@id",
@@ -365,11 +405,25 @@
          "@container": "@set",
          "@id": "umlPrefixes"
       },
+      "problems": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "problems"
+      },
       "python": {
          "@id": "pythonFolder"
       },
       "range": {
          "@id": "range"
+      },
+      "reached_from": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlReachedFrom"
+      },
+      "realised_ids": {
+         "@container": "@set",
+         "@id": "umlRealisedIds"
       },
       "references": {
          "@container": "@set",
@@ -402,8 +456,23 @@
             "unspecified_multiplicity": "https://meaningfy.ws/ns/rdf-persistence#ReportKindUnspecifiedMultiplicity",
             "role": "https://meaningfy.ws/ns/rdf-persistence#ReportKindRole",
             "workflow": "https://meaningfy.ws/ns/rdf-persistence#ReportKindWorkflow",
-            "derived_iri": "https://meaningfy.ws/ns/rdf-persistence#ReportKindDerivedIri"
+            "derived_iri": "https://meaningfy.ws/ns/rdf-persistence#ReportKindDerivedIri",
+            "root": "https://meaningfy.ws/ns/rdf-persistence#ReportKindRoot",
+            "deprecated_root": "https://meaningfy.ws/ns/rdf-persistence#ReportKindDeprecatedRoot",
+            "boundary_disagrees": "https://meaningfy.ws/ns/rdf-persistence#ReportKindBoundaryDisagrees",
+            "composition_named": "https://meaningfy.ws/ns/rdf-persistence#ReportKindCompositionNamed",
+            "aggregates_diagram": "https://meaningfy.ws/ns/rdf-persistence#ReportKindAggregatesDiagram",
+            "composition_diagram": "https://meaningfy.ws/ns/rdf-persistence#ReportKindCompositionDiagram",
+            "unprefixed_name": "https://meaningfy.ws/ns/rdf-persistence#ReportKindUnprefixedName",
+            "unused_enumeration": "https://meaningfy.ws/ns/rdf-persistence#ReportKindUnusedEnumeration",
+            "drawn_toolkit_parent": "https://meaningfy.ws/ns/rdf-persistence#ReportKindDrawnToolkitParent",
+            "tenant_required_pointer": "https://meaningfy.ws/ns/rdf-persistence#ReportKindTenantRequiredPointer"
          }
+      },
+      "report_lines": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "reportLines"
       },
       "required": {
          "@id": "required"
@@ -412,8 +481,15 @@
          "@type": "@id",
          "@id": "umlElementName"
       },
+      "role": {
+         "@id": "umlCompositionRole"
+      },
       "root_database": {
          "@id": "lockedRootDatabase"
+      },
+      "root_ids": {
+         "@container": "@set",
+         "@id": "umlRootIds"
       },
       "root_name": {
          "@id": "umlRootName"
@@ -497,11 +573,18 @@
       "target_role": {
          "@id": "umlTargetRole"
       },
+      "tenant_root_id": {
+         "@id": "umlTenantRootId"
+      },
       "text": {
          "@id": "text"
       },
       "toolkit_typescript": {
          "@id": "toolkitTypescript"
+      },
+      "top_ids": {
+         "@container": "@set",
+         "@id": "umlTopIds"
       },
       "type": "@type",
       "type_terms": {
@@ -532,6 +615,16 @@
          "@type": "@id",
          "@container": "@set",
          "@id": "umlClasses"
+      },
+      "uml_compositions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlCompositions"
+      },
+      "uml_diagrams": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "umlDiagrams"
       },
       "uml_links": {
          "@type": "@id",
@@ -604,6 +697,9 @@
       },
       "what": {
          "@id": "what"
+      },
+      "whole_id": {
+         "@id": "umlWholeId"
       },
       "@version": 1.1,
       "CheckProblem": {
@@ -693,6 +789,9 @@
       "TsModule": {
          "@id": "TsModule"
       },
+      "UmlAggregates": {
+         "@id": "UmlAggregates"
+      },
       "UmlAttribute": {
          "@id": "UmlAttribute"
       },
@@ -701,6 +800,12 @@
       },
       "UmlClass": {
          "@id": "UmlClass"
+      },
+      "UmlComposition": {
+         "@id": "UmlComposition"
+      },
+      "UmlDiagram": {
+         "@id": "UmlDiagram"
       },
       "UmlElement": {
          "@id": "UmlElement"
@@ -720,14 +825,23 @@
       "UmlObject": {
          "@id": "UmlObject"
       },
+      "UmlOwnedEnd": {
+         "@id": "UmlOwnedEnd"
+      },
       "UmlPackage": {
          "@id": "UmlPackage"
       },
       "UmlPackagePath": {
          "@id": "UmlPackagePath"
       },
+      "UmlPartOf": {
+         "@id": "UmlPartOf"
+      },
       "UmlPrefix": {
          "@id": "UmlPrefix"
+      },
+      "UmlReach": {
+         "@id": "UmlReach"
       },
       "UmlRunValue": {
          "@id": "UmlRunValue"
