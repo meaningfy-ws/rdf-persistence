@@ -48,7 +48,7 @@ may write it as a single `[tool.rp-generate]` table. The example has two entries
 |`migrations` |when the schema defines aggregate roots of its own |the folder of the schema lock and the migration files
 |`python` |no |the folder that receives every Python-side file (see <<outputs>>); the `package` path when absent
 |`typescript` |no |the folder of the TypeScript types; none are written when absent
-|`toolkit-typescript` |no (default `false`; required on exactly one entry when two or more set `typescript`) |`true` makes this entry's `typescript` folder the one that holds the toolkit's shared modules (`rp_core.ts`, `rp_service.ts` and the rest); the other TypeScript entries import them from it. It needs `typescript` on the same entry
+|`toolkit-typescript` |no (default `false`; required on exactly one entry when two or more set `typescript`) |`true` makes this entry's `typescript` folder the one that holds the toolkit's shared modules (`rp_core.ts`, `rp_service.ts` and the rest); the other TypeScript entries import them from it. It also makes the metamodel's schema files freshness inputs of this entry. It needs `typescript` on the same entry
 |`diagrams` |no |the folder of the Mermaid diagrams; none are written when absent
 |`openapi` |no (default `true`) |`false` leaves out `openapi-components.json`
 |`regenerate-command` |no |the command named when the freshness check fails; `rp-generate` when absent
@@ -126,7 +126,7 @@ xref:architecture/generation.adoc#hard-check[The hard check].
 |`schema.lock.json` and a drafted migration when the `version:` changes
 |see xref:howto/migrate.adoc[Change a schema that has stored data]
 |`typescript`
-|one file per module the target owns, `index.ts`, `rp_service.ts`; a module another target writes as TypeScript is imported from that target's folder; in a project with several TypeScript entries, the toolkit's modules only in the entry with `toolkit-typescript`
+|one file per module the target owns, `index.ts`; a module another target writes as TypeScript is imported from that target's folder; in a project with several TypeScript entries, the metamodel modules that have classes or enums and `rp_service.ts` only in the entry with `toolkit-typescript`
 |the TypeScript types
 |`diagrams`
 |one `.mmd` file per module

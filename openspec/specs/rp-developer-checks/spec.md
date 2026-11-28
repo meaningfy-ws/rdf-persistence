@@ -35,6 +35,13 @@ their own lane (`make test-perf`), outside `make check-all` and CI.
 - **WHEN** `make check-all` runs on a loaded machine
 - **THEN** the test does not run; `make test-perf` runs it
 
+#### Scenario: the worker count read under load
+- **GIVEN** the free memory changes while `make check-all` runs, so the worker count make computes
+  changes from one expansion of `PYTEST_N` to the next
+- **WHEN** `test_on_ci_pytest_runs_unqueued_with_the_workers_counted_by_make` runs
+- **THEN** it reads the count once, from `PARALLEL`, and passes whenever that count is a whole
+  number within the worker bounds
+
 ### Requirement: The unit and feature tests run in parallel
 
 `make test` SHALL run the unit and feature tests on several worker processes (`pytest-xdist`) with
@@ -59,27 +66,35 @@ divided by `PYTEST_WORKER_MB` (default 1536), at least 1, counted when the run l
 
 ### Requirement: CI runs the static checks and the tests in parallel jobs, without containers
 
-The CI workflow SHALL run one job per make group, in parallel: `check-style`, `check-types`,
-`check-architecture`, `check-spec-docs` with `check-generation`, `test-unit`, `test-feature` and
-`test-generator`; each group SHALL be a make target that runs alone. `test-unit` SHALL fail under
-80 % coverage of `rdf_persistence` and `test-feature` under 50 %; `test-unit` and `test-feature`
-SHALL NOT collect `tests/generator/`. `test-generator` SHALL run the generator's unit, feature and
-integration tests and fail under 80 % coverage of `rdf_persistence_generation`.
-CI SHALL NOT run container, e2e or Fuseki work; `make test-containers` runs locally.
+The CI workflow SHALL run on pull requests into `develop`, one job per make group, in parallel:
+`check-style`, `check-types`, `check-architecture`, `check-spec-docs` with `check-generation`, and
+`test-feature`; each group SHALL be a make target that runs alone. It SHALL NOT run the unit lane or
+`test-generator`. A nightly workflow SHALL run on a schedule and by hand, on `develop`: the unit
+lane in shards whose combined coverage SHALL fail under 80 % of `rdf_persistence`, and
+`test-generator`, which SHALL fail under 80 % coverage of `rdf_persistence_generation`.
+`test-feature` SHALL fail under 50 %; `test-unit` and `test-feature` SHALL NOT collect
+`tests/generator/`. `test-generator` SHALL run the generator's unit, feature and integration tests.
+Neither workflow SHALL run container, e2e or Fuseki work; `make test-containers` runs locally.
 
 #### Scenario: a failing lint in CI
-- **GIVEN** a PR with a lint error and failing unit tests
+- **GIVEN** a PR with a lint error and a failing feature test
 - **WHEN** CI runs
-- **THEN** the style and unit jobs both fail and report, without one waiting for the other
+- **THEN** the style and feature jobs both fail and report, without one waiting for the other
 
 #### Scenario: no containers in CI
-- **WHEN** CI runs on a PR or a push to develop
+- **WHEN** CI runs on a PR, or the nightly workflow runs
 - **THEN** no job starts a Docker container or builds the Fuseki image
 
-#### Scenario: a generator change
-- **GIVEN** a PR that breaks a generator test only
+#### Scenario: a PR runs no unit or generator tests
+- **GIVEN** a PR into `develop`
 - **WHEN** CI runs
-- **THEN** the `test-generator` job fails and the `test-unit` job passes
+- **THEN** no job runs `make test-unit-ci` or `make test-generator`, and the PR's gate takes minutes,
+  not a quarter of an hour
+
+#### Scenario: a generator change
+- **GIVEN** a commit on `develop` that breaks a generator test only
+- **WHEN** the nightly workflow runs
+- **THEN** its `test-generator` job fails and its unit jobs pass
 
 ### Requirement: The testing checklist names only public helpers
 
@@ -220,8 +235,9 @@ NOT run; a changed container test SHALL be named with the hint `make test-contai
 
 `make test-fast` SHALL run every unit and feature test not marked `slow`, in parallel, without
 coverage. A test that takes seconds on its own, because it runs a tool, a subprocess or a whole
-generation, SHALL carry `@pytest.mark.slow`. `make check-all`, `make test`, `make test-unit`,
-`make test-feature` and CI SHALL run slow tests too, with their coverage floors unchanged.
+generation, SHALL carry `@pytest.mark.slow`. `make check-all`, `make test`, `make test-unit` and
+`make test-feature` SHALL run slow tests too, with their coverage floors unchanged; the nightly
+unit shards SHALL leave them out.
 
 #### Scenario: the fast lane
 - **WHEN** `make test-fast` runs

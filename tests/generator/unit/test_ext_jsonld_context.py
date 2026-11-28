@@ -75,6 +75,9 @@ def test_one_frame_per_aggregate_type_the_tenant_root_and_each_activity(staged: 
     frames = sorted(p.name for p in staged.glob("*.frame.jsonld"))
     assert frames == sorted(
         [
+            "Audit.frame.jsonld",
+            "AuditFinding.frame.jsonld",
+            "AuditResult.frame.jsonld",
             "Author.frame.jsonld",
             "Book.frame.jsonld",
             "BookCollection.frame.jsonld",

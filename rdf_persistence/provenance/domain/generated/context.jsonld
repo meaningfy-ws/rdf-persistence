@@ -99,6 +99,15 @@
          "@type": "@id",
          "@id": "ownedBy"
       },
+      "part_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "partClass"
+      },
+      "pointer": {
+         "@type": "@id",
+         "@id": "pointer"
+      },
       "root_class": {
          "@type": "@id",
          "@id": "rootClass"
@@ -139,6 +148,11 @@
          "@type": "@id",
          "@id": "prov:wasGeneratedBy"
       },
+      "whole_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "wholeClass"
+      },
       "@version": 1.1,
       "type": "@type",
       "Activity": {
@@ -155,6 +169,9 @@
       },
       "CommitMarker": {
          "@id": "CommitMarker"
+      },
+      "DependenceLink": {
+         "@id": "DependenceLink"
       },
       "Generation": {
          "@id": "prov:Generation"

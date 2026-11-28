@@ -1,0 +1,32 @@
+id: https://example.org/ns/dependence/refused_over_non_root
+name: refused_over_non_root
+title: Refused, the pointer ranges over a class that is no root
+description: The pointer ranges over a plain class, not an aggregate root.
+prefixes:
+  dep: https://example.org/ns/dependence#
+  linkml: https://w3id.org/linkml/
+default_prefix: dep
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Plain:
+    description: A class that is not an aggregate root.
+  Result:
+    description: The part.
+    mixins: [AggregateRoot]
+    slots: [plain]
+    annotations:
+      rp_path: results
+      rp_dependent_on: plain
+
+slots:
+  plain:
+    description: The plain object the result belongs to; wrongly not a root.
+    range: Plain
+    required: true

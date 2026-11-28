@@ -39,6 +39,7 @@ from rdf_persistence import (
     CommitMarker,
     DatabaseKind,
     DeleteFile,
+    DependenceLink,
     Described,
     Generation,
     Grant,
@@ -81,6 +82,11 @@ from rdf_persistence import (
     WritesKind
 )
 
+from .audits import (
+    Audit,
+    AuditFinding,
+    AuditResult
+)
 from .books import (
     Author,
     Book,

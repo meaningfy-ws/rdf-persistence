@@ -425,8 +425,10 @@ has none and copies every module.
 
 The toolkit's own TypeScript has one owner too. When two or more entries of a project set
 `typescript`, exactly one of them sets `toolkit-typescript = true`. That entry's folder holds the
-shared set: every module of the metamodel (`rp_core.ts`, `rp_access.ts`, `rp_tenancy.ts` and the
-rest) and `rp_service.ts`, the served types. The other entries do not write these files; their
+shared set: every module of the metamodel that has classes or enums (`rp_core.ts`, `rp_access.ts`,
+`rp_tenancy.ts` and the rest) and `rp_service.ts`, the served types. The owner's manifest lists the
+metamodel's schema files as inputs, so a change to a metamodel module it writes makes it stale.
+The other entries do not write these files; their
 imports of them point at the owner's folder by a relative path, and their `index.ts` does not list
 them. A toolkit module outside the shared set, for example a technical module that a consumer's
 schema imports, is still copied into each entry that imports it. A project with one TypeScript
@@ -437,7 +439,8 @@ which reads the same table:
 * an entry sets `toolkit-typescript` but not `typescript`;
 * two or more entries set `typescript` and none sets `toolkit-typescript`;
 * more than one entry sets `toolkit-typescript`;
-* two entries set the same `typescript` folder, because each entry's manifest owns the files it
+* two entries set the same `typescript` folder (the `relative_path` pattern already refuses `.` and
+  `..`), because each entry's manifest owns the files it
   wrote, and one entry's removal of stale files would delete a file the other just wrote.
 
 The stored-schema check and the lock stay with `rp.yaml`, whose closure holds every domain module
@@ -517,6 +520,37 @@ target imports its classes instead of generating a second copy (<<cross-target>>
 from UML gets no `python_package` from the converter: add the annotation by hand when another target
 imports it. TypeScript is not generated across targets; set `typescript` on the value target itself when
 a consumer needs the types.
+
+[#technical-imports]
+==== Importing the toolkit's technical modules
+
+A consumer's technical module may import a schema of the toolkit's technical models by its path
+under `model/`: `rdf_persistence/model/technical/<theme>/<module>`, for example
+`rdf_persistence/model/technical/api/rp_api_entrypoints`. The importmap keeps every key it had and
+maps one more key per file under `model/technical/`; `model/migrations/` holds migration files, not
+schemas, and is not mapped. A path that names no file fails as any unknown import does.
+
+The generated Python imports such a module's classes from `rdf_persistence`, as it does the
+metamodel's, and does not generate them again. A class the package does not export therefore cannot
+be used, and the supported extension point is one class: `Problem`. Two checks, run before any file
+is written, enforce it:
+
+* *The export check.* A consumer class that names a toolkit technical class (as `is_a`, a mixin or a
+  slot range) which `rdf_persistence` does not export fails with `<consumer class> uses <toolkit
+  class> of <module>, which rdf_persistence does not export`.
+* *The shadow check.* A consumer class that extends a toolkit technical class and has a slot whose
+  Python field name (its `alias`, else its name) is a field of that class, without being that slot,
+  fails with `<consumer class>.<slot> shadows <toolkit class>.<field>`. Narrowing the inherited slot
+  with `slot_usage` stays allowed. A shadowed `type` or `status` would break assignability to
+  `Problem`.
+
+The layer rule stays: a domain or value module never imports a technical one (the boundary check,
+<<toolchain>>, step 2); the subclass goes in a technical module. The toolkit's other technical
+classes may move between releases, which is why only `Problem` is promised.
+
+In TypeScript, the subclass "extends" by assignability, not with the `extends` keyword: the
+generated interface lists every slot it induces, `Problem`'s included, so a value of it is a
+`Problem`, and the names of the toolkit's module are imported from the served types.
 
 [#python-import]
 ==== Two annotations for technical models

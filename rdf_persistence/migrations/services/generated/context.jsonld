@@ -105,6 +105,15 @@
          "@type": "@id",
          "@id": "ownedBy"
       },
+      "part_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "partClass"
+      },
+      "pointer": {
+         "@type": "@id",
+         "@id": "pointer"
+      },
       "rename": {
          "@type": "@id",
          "@container": "@set",
@@ -148,6 +157,11 @@
       "where_pattern": {
          "@id": "wherePattern"
       },
+      "whole_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "wholeClass"
+      },
       "@version": 1.1,
       "type": "@type",
       "AggregateKey": {
@@ -158,6 +172,9 @@
       },
       "CommitMarker": {
          "@id": "CommitMarker"
+      },
+      "DependenceLink": {
+         "@id": "DependenceLink"
       },
       "Described": {
          "@id": "Described"

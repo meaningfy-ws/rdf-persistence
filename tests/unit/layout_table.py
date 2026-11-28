@@ -102,6 +102,7 @@ LAYOUT: tuple[Move, ...] = (
         "jsonld",
         "mapper",
         "decoding",
+        created=("dependence",),
     ),
     *_rows("persistence", "adapters", "fuseki", created=("sparql_protocol",)),
     *_rows("migrations", "services", "migrations"),

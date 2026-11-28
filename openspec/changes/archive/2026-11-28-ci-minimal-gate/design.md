@@ -10,9 +10,11 @@ same `paths-ignore`. `concurrency` and `permissions` stay.
 
 `nightly.yaml` takes the jobs `unit-shard`, `unit`, `sonar` and `test-generator` verbatim from
 `ci.yaml`, with the same `needs:` and artifact names (D-15, D-19 of `generator-package` still hold).
-Its `on:` is `schedule: cron "0 2 * * *"` (02:00 UTC) and `workflow_dispatch`. A scheduled run
-checks out the default branch, `develop`. Its concurrency group is `nightly`, without cancelling a
-run in progress.
+Its `on:` is `schedule: cron "0 2 * * *"` (02:00 UTC) and `workflow_dispatch`. GitHub runs a
+schedule from the repository's default branch, which is `main`, not `develop`: the file must be on
+`main` (the developer fast-forwarded `main` to `develop`, 2026-11-28), and every job's checkout
+asks for `develop` on a schedule and for the dispatched ref otherwise. Its concurrency group is
+`nightly`, without cancelling a run in progress.
 
 ## PD-2 The tests follow the jobs
 

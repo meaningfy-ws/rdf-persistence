@@ -21,6 +21,7 @@ from rdf_persistence import (
     NotFound,
     Principal,
     Refused,
+    RuleRefusal,
     StoreUnavailable,
     generated_models,
     load_role_definitions,
@@ -629,6 +630,10 @@ def raises_invalid_body(old: Any, who: Any, reader: AggregateReader) -> None:
     raise InvalidBody("a delete is no invalid body")
 
 
+def raises_rule_refusal(old: Any, who: Any, reader: AggregateReader) -> None:
+    raise RuleRefusal(object())
+
+
 def raises_value_error(old: Any, who: Any, reader: AggregateReader) -> None:
     raise ValueError("a bug in the rule")
 
@@ -645,6 +650,7 @@ async def returns_a_value_late(old: Any, who: Any, reader: AggregateReader) -> A
     ("rule", "error"),
     [
         (raises_invalid_body, RuntimeError),
+        (raises_rule_refusal, RuntimeError),
         (raises_value_error, RuntimeError),
         (returns_a_value, TypeError),
         (returns_a_value_late, TypeError),

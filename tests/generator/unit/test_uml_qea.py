@@ -9,12 +9,13 @@ import pytest
 from rdf_persistence_generation.exceptions import QeaUsageError
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
+    UmlComposition,
     UmlLinkKind,
     UmlModel,
     UmlRule,
 )
 from rdf_persistence_generation.problems import format_problem
-from rdf_persistence_generation.uml.qea import read_qea
+from rdf_persistence_generation.uml.qea import TABLE_COLUMNS, read_qea
 from tests.generator.uml_qea import QeaBuilder
 
 ROOT = "MODEL/library"
@@ -641,119 +642,250 @@ def test_a_connector_to_a_note_boundary_text_or_package_is_skipped(tmp_path, obj
     assert not model.uml_outside_classes, f"a {object_type} is not named as an outside class"
 
 
-# --- TC-2: boundary membership by geometry -----------------------------------------------------
+# --- compositions (PD-1, D-5) ------------------------------------------------------------------
 
-BOX = (-20, 30, 320, -298)  # (left, top, right, bottom); y grows upwards, so top > bottom
-INSIDE = (0, 0, 100, -50)
-ON_THE_EDGE = (-20, 30, 100, -50)
-STRADDLING = (300, 0, 400, -50)
-OUTSIDE = (500, 0, 600, -50)
+DRAWINGS = [
+    pytest.param(False, id="whole_to_part"),
+    pytest.param(True, id="part_to_whole"),
+]
 
 
-def boundary_world(tmp_path: Path) -> tuple[QeaBuilder, dict[str, int]]:
+@pytest.mark.parametrize("part_to_whole", DRAWINGS)
+def test_a_composition_reads_its_whole_from_the_diamond_end(tmp_path, part_to_whole):
     builder, ids = build_library(tmp_path)
-    ids["box"] = builder.boundary(diagram=1, rect=BOX, members=[])
-    return builder, ids
-
-
-def members(model: UmlModel) -> list[tuple[int, list[int]]]:
-    return [(b.diagram_id, sorted(b.member_ids)) for b in model.uml_boundaries]
-
-
-def test_classes_inside_or_on_the_edge_are_members_and_outside_ones_are_not(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["chapter"], ON_THE_EDGE)
-    builder.place(1, ids["genre"], OUTSIDE)
+    connector = builder.aggregation(ids["book"], ids["chapter"], part_to_whole=part_to_whole)
     model = as_model(read(builder))
-    assert members(model) == [(1, sorted([ids["book"], ids["chapter"]]))], (
-        "inside and on the edge are members, outside is not"
-    )
-    assert model.uml_boundaries[0].object_id == ids["box"], "the boundary is the box"
+    assert model.uml_compositions == [
+        UmlComposition(
+            composition_id=connector, whole_id=ids["book"], part_id=ids["chapter"], own_graph=False
+        )
+    ], "either drawing gives the same whole and part"
+    assert not model.uml_links, "a composition is a record of its own, not a link"
 
 
-def test_the_rectangles_are_normalised_whichever_way_they_are_written(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], (100, -50, 0, 0))  # left > right, top < bottom
-    builder.place(1, ids["chapter"], (310, -290, 320, -298))  # on the corner
-    assert members(as_model(read(builder))) == [(1, sorted([ids["book"], ids["chapter"]]))], (
-        "a rectangle written the other way round is normalised"
-    )
-
-
-def test_a_boundary_written_the_other_way_up_still_holds_its_members(tmp_path):
+@pytest.mark.parametrize("sub_type", ["Strong", "Weak", None])
+def test_subtype_is_not_read(tmp_path, sub_type):
     builder, ids = build_library(tmp_path)
-    builder.boundary(diagram=1, rect=(-20, -298, 320, 30), members=[])  # top < bottom
-    builder.place(1, ids["book"], INSIDE)
-    assert members(as_model(read(builder))) == [(1, [ids["book"]])], "Book is a member"
-
-
-def test_a_class_that_straddles_a_boundary_is_a_no_rule_problem(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["chapter"], STRADDLING)
-    assert as_problems(read(builder)) == [
-        "[no_rule] lib:Chapter: straddles boundary Boundary: no rule converts it"
-    ], "a class half in the boundary is a problem"
-
-
-def test_a_class_placed_twice_inside_and_outside_is_a_no_rule_problem(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["book"], OUTSIDE)
-    assert as_problems(read(builder)) == [
-        "[no_rule] lib:Book: placed twice on the diagram of boundary Boundary, "
-        "inside and outside: no rule converts it"
-    ], "a class placed both inside and outside is a problem"
-
-
-def test_a_class_placed_twice_inside_is_still_one_member(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["book"], ON_THE_EDGE)
-    assert members(as_model(read(builder))) == [(1, [ids["book"]])], "Book is one member"
-
-
-def test_a_class_inside_two_boundaries_is_a_no_rule_problem(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.boundary(diagram=2, rect=BOX, members=[])
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(2, ids["book"], INSIDE)
-    assert as_problems(read(builder)) == [
-        "[no_rule] lib:Book: inside two boundaries: no rule converts it"
-    ], "a class in two boundaries is a problem"
-
-
-def test_a_boundary_on_two_diagrams_with_equal_members_is_one_boundary(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(2, ids["box"], BOX)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(2, ids["book"], INSIDE)
+    connector = builder.aggregation(ids["book"], ids["chapter"], sub_type=sub_type)
     model = as_model(read(builder))
-    assert members(model) == [(1, [ids["book"]])], "the two diagrams give one boundary"
+    assert model.uml_compositions == [
+        UmlComposition(
+            composition_id=connector, whole_id=ids["book"], part_id=ids["chapter"], own_graph=False
+        )
+    ], f"SubType {sub_type!r} must not change the record (D-5)"
 
 
-def test_a_boundary_on_two_diagrams_with_unequal_members_is_a_no_rule_problem(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(2, ids["box"], BOX)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(2, ids["chapter"], INSIDE)
+BOTH_ENDS_MARKED = "composition with no single diamond end: no rule converts it"
+SHARED = "a shared aggregation; draw a composition (strong) or a plain association"
+REFUSED_AGGREGATIONS = [
+    pytest.param(
+        {"shared": True},
+        f"[boundary_owned] lib:Book -> lib:Chapter: {SHARED}",
+        id="shared_whole_to_part",
+    ),
+    pytest.param(
+        {"shared": True, "part_to_whole": True},
+        f"[boundary_owned] lib:Chapter -> lib:Book: {SHARED}",
+        id="shared_part_to_whole",
+    ),
+    pytest.param(
+        {"ends": (2, 1)},
+        f"[boundary_owned] lib:Book -> lib:Chapter: {SHARED}",
+        id="shared_beside_a_composition_end",
+    ),
+    pytest.param(
+        {"ends": (0, 0)},
+        f"[no_rule] lib:Book -> lib:Chapter: {BOTH_ENDS_MARKED}",
+        id="no_end_marked",
+    ),
+    pytest.param(
+        {"ends": (None, None)},
+        f"[no_rule] lib:Book -> lib:Chapter: {BOTH_ENDS_MARKED}",
+        id="no_end_marked_null",
+    ),
+    pytest.param(
+        {"ends": (2, 2)},
+        f"[no_rule] lib:Book -> lib:Chapter: {BOTH_ENDS_MARKED}",
+        id="both_ends_marked",
+    ),
+    pytest.param(
+        {"ends": (3, 0)},
+        "[no_rule] lib:Book -> lib:Chapter: aggregate value 3: no rule converts it",
+        id="other_value_at_source",
+    ),
+    pytest.param(
+        {"ends": (0, -1)},
+        "[no_rule] lib:Book -> lib:Chapter: aggregate value -1: no rule converts it",
+        id="other_value_at_destination",
+    ),
+]
+
+
+@pytest.mark.parametrize(("drawing", "expected"), REFUSED_AGGREGATIONS)
+def test_an_aggregation_without_one_diamond_end_is_refused(tmp_path, drawing, expected):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["chapter"], **drawing)
+    assert as_problems(read(builder)) == [expected], "exactly this problem, naming the connector"
+
+
+@pytest.mark.parametrize(
+    ("stereotype", "own_graph"),
+    [("own graph", True), ("Own Graph", True), (" own graph ", True), (None, False), ("x", False)],
+)
+def test_own_graph_is_read_from_the_stereotype(tmp_path, stereotype, own_graph):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["chapter"], stereotype=stereotype)
+    [composition] = as_model(read(builder)).uml_compositions
+    assert composition.own_graph is own_graph, f"stereotype {stereotype!r}"
+    assert composition.uml_stereotype == stereotype, (
+        "the stereotype is carried as written, for the converter to judge"
+    )
+
+
+@pytest.mark.parametrize("part_to_whole", DRAWINGS)
+def test_a_composition_role_is_the_one_at_the_part_end(tmp_path, part_to_whole):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["chapter"], part_to_whole=part_to_whole, role="lib:parts")
+    [composition] = as_model(read(builder)).uml_compositions
+    assert composition.role == "lib:parts", "the role is read at the part's end, whichever way"
+
+
+def test_a_composition_end_outside_the_subtree_is_listed(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["stray"])
+    model = as_model(read(builder))
+    assert [c.name for c in model.uml_outside_classes] == ["lib:Stray"], (
+        "the far end is listed, so the converter can name it (A-9)"
+    )
+    assert [(c.whole_id, c.part_id) for c in model.uml_compositions] == [
+        (ids["book"], ids["stray"])
+    ], "the composition is kept"
+
+
+def test_a_composition_between_two_outside_classes_is_not_read(tmp_path):
+    builder, ids = build_library(tmp_path)
+    other = builder.cls(ids["other"], "lib:Other")
+    builder.aggregation(ids["stray"], other)
+    model = as_model(read(builder))
+    assert not model.uml_compositions, "a connector away from every converted class is not read"
+    assert not model.uml_outside_classes, "and lists no class"
+
+
+# --- Realisation of an Object (PD-11, A-20) ----------------------------------------------------
+
+
+@pytest.mark.parametrize("spelling", ["Realisation", "Realization"])
+@pytest.mark.parametrize("from_target", [False, True], ids=["from_object", "from_class"])
+def test_a_realisation_from_an_object_is_read_as_realised(tmp_path, from_target, spelling):
+    builder, ids = build_library(tmp_path)
+    obj = builder.object_(ids["library"], "librarian", None)
+    builder.realisation(obj, ids["chapter"], from_target=from_target, spelling=spelling)
+    model = as_model(read(builder))
+    assert [o.realised_ids for o in model.uml_objects] == [[ids["chapter"]]], (
+        "the object's class is the target, whichever way the connector is drawn"
+    )
+    assert not model.uml_links, "a Realisation is never a link"
+
+
+def test_two_realisations_are_both_read_sorted(tmp_path):
+    builder, ids = build_library(tmp_path)
+    obj = builder.object_(ids["library"], "librarian", None)
+    builder.realisation(obj, ids["chapter"])
+    builder.realisation(obj, ids["book"])
+    [read_object] = as_model(read(builder)).uml_objects
+    assert read_object.realised_ids == sorted([ids["book"], ids["chapter"]]), "both, by id"
+
+
+def test_an_object_with_no_realisation_has_none(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.object_(ids["library"], "librarian", ids["book"])
+    [read_object] = as_model(read(builder)).uml_objects
+    assert not read_object.realised_ids, "no Realisation, nothing realised"
+
+
+def test_a_realisation_from_a_class_stays_a_problem(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.object_(ids["library"], "librarian", None)
+    builder.realisation(ids["book"], ids["chapter"])
     assert as_problems(read(builder)) == [
-        "[no_rule] Boundary: members differ between diagrams 1 and 2: no rule converts it"
-    ], "a boundary whose diagrams disagree is a problem"
+        "[no_rule] lib:Book -> lib:Chapter: Realisation connector: no rule converts it"
+    ], "only an Object may realise"
 
 
-def test_a_boundary_with_a_stereotype_is_ignored(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.cls(ids["library"], "Legend", stereotype="legend", object_type="Boundary")
-    builder.place(1, ids["book"], INSIDE)
-    assert members(as_model(read(builder))) == [(1, [ids["book"]])], "the legend is no boundary"
+@pytest.mark.parametrize(
+    "package", ["rare", "other"], ids=["excluded_package", "outside_the_subtree"]
+)
+def test_an_object_not_converted_is_skipped_with_its_realisation(tmp_path, package):
+    builder, ids = build_library(tmp_path)
+    obj = builder.object_(ids[package], "librarian", None)
+    builder.realisation(obj, ids["book"])
+    model = as_model(read(builder, excluded=("MODEL/library/rare-books",)))
+    assert not model.uml_objects, "the Object is not of the converted packages"
+    assert not model.uml_links, "and its Realisation is no link and no problem (A-20)"
 
 
-def test_a_boundary_holding_no_converted_class_is_left_out(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["stray"], INSIDE)
-    assert as_model(read(builder)).uml_boundaries == [], "a boundary with no converted class goes"
+def test_a_realisation_to_a_target_outside_the_subtree_is_kept(tmp_path):
+    builder, ids = build_library(tmp_path)
+    obj = builder.object_(ids["library"], "librarian", None)
+    builder.realisation(obj, ids["stray"])
+    model = as_model(read(builder))
+    assert [o.realised_ids for o in model.uml_objects] == [[ids["stray"]]], "the target is kept"
+    assert [c.name for c in model.uml_outside_classes] == ["lib:Stray"], (
+        "and listed as an outside class, so the converter can name it"
+    )
+
+
+# --- PD-7, PD-18: a boundary is read by name and package, no geometry ----------------------------
+
+
+def test_the_reader_reads_no_geometry(tmp_path):
+    builder, ids = build_library(tmp_path)
+    builder.boundary(diagram=1, package=ids["library"], name="Aggregate: Book")
+    path = builder.finish()
+    with sqlite3.connect(path) as connection:
+        for column in ("RectTop", "RectLeft", "RectRight", "RectBottom"):
+            connection.execute(f"ALTER TABLE t_diagramobjects DROP COLUMN {column}")
+    model = as_model(read_qea(path, ROOT, ()))
+    assert [b.name for b in model.uml_boundaries] == ["Aggregate: Book"], (
+        "a file whose t_diagramobjects has no rectangle columns reads"
+    )
+    assert TABLE_COLUMNS["t_diagramobjects"] == ("Diagram_ID", "Object_ID"), (
+        "the required columns of t_diagramobjects are the diagram and the object"
+    )
+
+
+def _boundary_in_the_subtree(builder, ids):
+    return builder.boundary(diagram=1, package=ids["library"], name="Aggregate: Book")
+
+
+def _boundary_in_no_package(builder, ids):
+    return builder.boundary(diagram=1, name="Aggregate: Book")
+
+
+def _boundary_in_a_package_outside(builder, ids):
+    return builder.boundary(diagram=1, package=ids["other"], name="Aggregate: Book")
+
+
+def _boundary_with_a_stereotype(builder, ids):
+    return builder.boundary(diagram=1, package=ids["library"], stereotype="legend")
+
+
+@pytest.mark.parametrize(
+    ("draw", "listed"),
+    [
+        (_boundary_in_the_subtree, True),
+        (_boundary_in_a_package_outside, False),
+        (_boundary_in_no_package, False),
+        (_boundary_with_a_stereotype, False),
+    ],
+)
+def test_a_boundary_of_a_converted_package_is_read_by_name_and_package(tmp_path, draw, listed):
+    builder, ids = build_library(tmp_path)
+    drawn = draw(builder, ids)
+    found = as_model(read(builder)).uml_boundaries or []
+    assert [(b.object_id, b.name, b.package_id, b.diagram_id) for b in found] == (
+        [(drawn, "Aggregate: Book", ids["library"], 1)] if listed else []
+    ), f"{draw.__name__}: listed {listed}"
 
 
 # --- state machines: states, the initial node, StateFlows, Statechart diagrams (PD-1, PD-2) -----
@@ -949,3 +1081,123 @@ def test_a_memo_connector_tag_takes_its_text_from_the_notes(tmp_path):
     assert [(t.owner_id, t.name, t.tag_value) for t in read_flow.uml_tagged_values] == [
         (flow, "roles", "librarian,reader")
     ], "a <memo> value is read from NOTES, as for a class tag"
+
+
+# --- diagrams: membership and hidden connectors, no geometry (PD-12, RISK-6) ----------------------
+
+
+def build_shelf(tmp_path: Path) -> tuple[QeaBuilder, dict[str, int]]:
+    """The library with one association Book -> Folio, which a diagram may show or hide."""
+    builder, ids = build_library(tmp_path)
+    ids["has_folio"] = builder.association(ids["book"], ids["folio"], "lib:hasFolio", "0..*")
+    return builder, ids
+
+
+def _row_hiding(builder, diagram, connector):
+    builder.diagram_link(diagram, connector, hidden=True)
+
+
+def _row_not_hiding(builder, diagram, connector):
+    builder.diagram_link(diagram, connector, hidden=False)
+
+
+def _row_of_another_diagram(builder, diagram, connector):
+    other = builder.diagram("elsewhere", 0, "Logical", [])
+    builder.diagram_link(other, connector, hidden=True)
+
+
+def _no_row(builder, diagram, connector):
+    return None
+
+
+@pytest.mark.parametrize(
+    ("write_row", "hidden"),
+    [
+        (_no_row, False),
+        (_row_not_hiding, False),
+        (_row_hiding, True),
+        (_row_of_another_diagram, False),
+    ],
+)
+def test_a_connector_is_hidden_only_by_a_row_of_its_own_diagram_that_says_so(
+    tmp_path, write_row, hidden
+):
+    builder, ids = build_shelf(tmp_path)
+    diagram = builder.diagram("shelf", ids["library"], "Logical", [ids["book"], ids["folio"]])
+    write_row(builder, diagram, ids["has_folio"])
+    (found,) = as_model(read(builder)).uml_diagrams
+    assert list(found.hidden_connector_ids or []) == ([ids["has_folio"]] if hidden else []), (
+        f"{write_row.__name__}: hidden {hidden}"
+    )
+
+
+def test_a_hidden_row_of_a_connector_with_an_end_off_the_diagram_is_not_kept(tmp_path):
+    builder, ids = build_shelf(tmp_path)
+    diagram = builder.diagram("shelf", ids["library"], "Logical", [ids["book"]])
+    builder.diagram_link(diagram, ids["has_folio"], hidden=True)
+    (found,) = as_model(read(builder)).uml_diagrams
+    assert not found.hidden_connector_ids, "the connector is not shown anyway: nothing to hide"
+
+
+def test_a_diagram_is_read_by_its_members_its_package_and_its_type(tmp_path):
+    builder, ids = build_shelf(tmp_path)
+    note = builder.cls(ids["library"], "a note", object_type="Note")
+    diagram = builder.diagram("shelf", ids["library"], "Logical", [ids["folio"], ids["book"], note])
+    boundary = builder.boundary(diagram, package=ids["library"], name="Aggregate: Book")
+    (found,) = as_model(read(builder)).uml_diagrams
+    assert (found.diagram_id, found.name, found.package_id, found.diagram_type) == (
+        diagram,
+        "shelf",
+        ids["library"],
+        "Logical",
+    ), "the diagram is one record: its name, its package and its type as EA writes it"
+    assert list(found.element_ids) == sorted([ids["book"], ids["folio"], boundary]), (
+        "its members are the objects placed on it, by id; a note is furniture and is left out"
+    )
+
+
+@pytest.mark.parametrize(
+    ("diagram_type", "package", "read_back"),
+    [
+        ("Logical", "library", True),
+        ("Statechart", "library", False),
+        ("Logical", "other", False),
+    ],
+)
+def test_only_a_class_diagram_of_a_converted_package_is_read(
+    tmp_path, diagram_type, package, read_back
+):
+    builder, ids = build_shelf(tmp_path)
+    builder.diagram("d", ids[package], diagram_type, [ids["book"]])
+    found = as_model(read(builder)).uml_diagrams or []
+    assert bool(found) is read_back, f"{diagram_type} in {package}: read {read_back}"
+
+
+@pytest.mark.parametrize(
+    ("written", "read_back"), [("Holds.", "Holds."), (None, None), ("  ", None)]
+)
+def test_a_composition_carries_the_note_written_on_its_connector(tmp_path, written, read_back):
+    builder, ids = build_library(tmp_path)
+    builder.aggregation(ids["book"], ids["folio"], note=written)
+    (found,) = as_model(read(builder)).uml_compositions
+    assert found.note == read_back, f"note {written!r}"
+
+
+def test_a_model_with_no_diagram_reads_no_diagram(tmp_path):
+    builder, _ = build_shelf(tmp_path)
+    assert not as_model(read(builder)).uml_diagrams, "nothing drawn, nothing read"
+
+
+def test_the_diagram_tables_are_read_by_their_ids_only():
+    assert TABLE_COLUMNS["t_diagramlinks"] == ("DiagramID", "ConnectorID", "Hidden"), (
+        "no geometry, no style: membership and visibility only (PD-12)"
+    )
+
+
+def test_a_missing_diagram_links_table_is_named(tmp_path):
+    builder, _ = build_shelf(tmp_path)
+    path = builder.finish()
+    _alter(path, "DROP TABLE t_diagramlinks")
+    with pytest.raises(QeaUsageError) as error:
+        read_qea(path, ROOT, ())
+    assert error.value.message == f"{path} has no table t_diagramlinks", error.value.message

@@ -21,6 +21,7 @@ from rdf_persistence.schema.services.schema_structure import (
     own_schemas,
     owned_classes,
 )
+from rdf_persistence_generation.checks.dependence import dependence_problems
 from rdf_persistence_generation.config import toolkit_roots
 from rdf_persistence_generation.generated.rp_generation import (
     BoundaryRule,
@@ -381,4 +382,5 @@ def boundary_problems(view: SchemaView, folder: Path) -> list[CheckProblem]:
         *_module_problems(view, schemas),
         *_holding_problems(view, schemas, homes),
         *_never_stored_root_problems(view, schemas),
+        *dependence_problems(view, stored),
     ]

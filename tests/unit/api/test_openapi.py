@@ -37,11 +37,20 @@ REPLACE = {200, 401, 403, 404, 406, 409, 413, 415, 422, 428, 503}
 DELETE = {204, 401, 403, 404, 409, 428, 503}
 
 
-def aggregate_routes(rp_path: str, *, written: bool = True) -> list[tuple[str, str, set[int]]]:
-    """The routes of a root; ``written=False`` for one the consumer writes through a session (PD-3)."""
+DELETE_OF_A_WHOLE = DELETE | {413}  # its cascade may exceed max_roots (dependent-aggregates PD-18)
+
+
+def aggregate_routes(
+    rp_path: str, *, written: bool = True, whole: bool = False
+) -> list[tuple[str, str, set[int]]]:
+    """The routes of a root; ``written=False`` for one the consumer writes through a session (PD-3).
+
+    ``whole=True`` for a class that another class depends on: its delete answers 413 too.
+    """
     collection, member = f"{TENANT}/{rp_path}", f"{TENANT}/{rp_path}/{{aggregate_id}}"
     reads = [(collection, "get", LIST), (member, "get", READ)]
-    writes = [(collection, "post", CREATE), (member, "put", REPLACE), (member, "delete", DELETE)]
+    removal = DELETE_OF_A_WHOLE if whole else DELETE
+    writes = [(collection, "post", CREATE), (member, "put", REPLACE), (member, "delete", removal)]
     return reads + (writes if written else [])
 
 
@@ -55,6 +64,9 @@ ROUTES = [
     (f"{TENANT}/grants", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     (f"{TENANT}/label", "put", {200, 401, 403, 404, 409, 413, 415, 422, 428, 503}),
     (f"{TENANT}/rp-events", "get", {200, 401, 403, 404, 503}),
+    *aggregate_routes("audit-findings"),
+    *aggregate_routes("audit-results", whole=True),
+    *aggregate_routes("audits", whole=True),
     *aggregate_routes("authors"),
     *aggregate_routes("book-collections"),
     *aggregate_routes("books"),
@@ -147,7 +159,10 @@ def test_a_problem_response_is_an_rfc_9457_problem_with_the_fixed_title(
     # two kinds share 409: the description of a status names the titles of its kinds the route has
     for status in expected - SUCCESS:
         response = op["responses"][str(status)]
-        refusing = (path, method, status) == (f"{TENANT}/authors/{{aggregate_id}}", "delete", 409)
+        refusing = (method, status) == ("delete", 409) and path in {
+            f"{TENANT}/authors/{{aggregate_id}}",
+            f"{TENANT}/audit-findings/{{aggregate_id}}",
+        }
         schema = (
             "InUseProblem" if refusing else "Problem"
         )  # a refusing class's 409 may say who refers
@@ -170,6 +185,29 @@ def test_a_write_that_a_unique_key_can_refuse_lists_the_key_conflict(
     assert KEY_CONFLICT.title in description, "the key conflict is listed"
     if method == "put":
         assert VERSION_CONFLICT.title in description, "beside the version conflict"
+
+
+@pytest.mark.parametrize(
+    ("rp_path", "method", "status", "listed"),
+    [
+        ("audit-results", "post", 404, True),
+        ("audit-results", "put", 404, True),
+        ("audit-findings", "post", 404, True),
+        ("audit-findings", "put", 404, True),
+        ("audits", "delete", 413, True),
+        ("audit-results", "delete", 413, True),  # a part with parts of its own is a whole too
+        ("audit-findings", "delete", 413, False),  # nothing depends on a finding
+        ("books", "delete", 413, False),
+        ("authors", "delete", 413, False),
+    ],
+)
+def test_a_dependent_class_lists_404_on_its_writes_and_a_whole_413_on_its_delete(
+    document, rp_path, method, status, listed
+) -> None:  # dependent-aggregates PD-18
+    path = f"{TENANT}/{rp_path}" + ("" if method == "post" else "/{aggregate_id}")
+    assert (str(status) in operation(document, path, method)["responses"]) is listed, (
+        f"{method.upper()} {rp_path}: {status} listed is {listed}"
+    )
 
 
 def test_fastapis_own_validation_error_is_not_published(document) -> None:

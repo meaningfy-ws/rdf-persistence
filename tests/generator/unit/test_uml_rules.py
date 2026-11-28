@@ -24,6 +24,7 @@ from rdflib.namespace import SH
 
 from rdf_persistence_generation.generated.rp_generation import (
     UmlAttribute,
+    UmlLink,
     UmlLinkKind,
     UmlPackage,
     UmlPrefix,
@@ -45,7 +46,7 @@ from tests.generator.uml_model import (
     SHELVES_PKG,
     Converted,
     attribute,
-    boundary,
+    composition,
     enumeration,
     generalisation,
     klass,
@@ -95,6 +96,31 @@ def _all(*checks: Check) -> Check:
             each(out)
 
     return check
+
+
+def _owning(
+    *classes: object,
+    parts: tuple[tuple[int, int, str], ...],
+    links: tuple[UmlLink, ...] = (),
+    card: str = "0..*",
+    **rest: object,
+) -> object:
+    """A model whose ``parts`` ``(whole, part, role)`` are each drawn as a composition beside the
+    association that carries its slot (PD-2). The association is connector ``90 + n``, the composition
+    ``1090 + n``; ``rest`` goes to ``model`` as given."""
+    pairs = [
+        (
+            link(90 + n, whole, part, target_role=role, target_card=card),
+            composition(1090 + n, whole, part),
+        )
+        for n, (whole, part, role) in enumerate(parts)
+    ]
+    return model(
+        *classes,
+        links=(*links, *(each[0] for each in pairs)),
+        compositions=tuple(each[1] for each in pairs),
+        **rest,
+    )
 
 
 # --- R-1 package module (PD-5, D-5) ---------------------------------------------------------------
@@ -261,7 +287,12 @@ ROWS_R2 = [
     Row(
         "failure: one name with two IRIs",
         UmlRule.CLASS_IRI,
-        model(klass(BOOK, "lib:Book"), klass(SHELF, "bibo:Book", SHELVES_PKG)),
+        # both derive as roots named Book; a path of its own keeps the one problem the IRI clash
+        model(
+            klass(BOOK, "lib:Book"),
+            klass(SHELF, "bibo:Book", SHELVES_PKG),
+            tags=(tag(SHELF, "rp_path", "tomes"),),
+        ),
         _problem(
             UmlRule.CLASS_IRI,
             "Book",
@@ -353,9 +384,12 @@ ROWS_R4 = [
     Row(
         "one parent is is_a",
         UmlRule.GENERALISATION,
-        model(
+        # Book is drawn a part of Shelf, so it is no derived root and the "no mixin" claim stays true
+        _owning(
             klass(BOOK, "lib:Book"),
             klass(SERIES, "lib:Series"),
+            klass(SHELF, "lib:Shelf"),
+            parts=((SHELF, BOOK, "lib:books"),),
             links=(generalisation(1, BOOK, SERIES),),
         ),
         _is_a,
@@ -934,18 +968,34 @@ def _not_owned(out: Converted) -> None:
     )
 
 
+def _loaded_graph_slot(out: Converted) -> None:
+    _no_problems(out)
+    slot = out.slot("app_library", "has_chapter")
+    assert slot.range == "uri", "an own-graph slot holds the IRIs of the graphs"
+    assert slot.annotations["rp_loaded_graph"].value == "true", "the slot says it holds graph IRIs"
+    assert "owned" not in slot.annotations, "an own-graph slot is not owned"
+    assert "Chapter" not in out.schemas["app_library"].classes, "the part is not generated"
+
+
 def _book_chapter(
     card: str,
     *,
-    boundaries: tuple = (),
+    composed: bool = True,
     source_aggregate: int = 0,
     target_aggregate: int = 0,
-    root: str | None = "root",
+    root: str | None = None,
     tags: tuple = (),
+    part_stereotype: str | None = None,
+    own_graph: bool = False,
 ) -> object:
+    """Book and its Chapter by one association; ``composed`` draws the composition beside it (PD-2).
+
+    ``root`` is the stereotype drawn on Book: a drawn «root» must agree with the derived roots (PD-6),
+    so a row that draws it composes the Chapter or draws it «root» too.
+    """
     return model(
         klass(BOOK, "lib:Book", stereotype=root),
-        klass(CHAPTER, "lib:Chapter"),
+        klass(CHAPTER, "lib:Chapter", stereotype=part_stereotype),
         links=(
             link(
                 1,
@@ -957,7 +1007,19 @@ def _book_chapter(
                 target_aggregate=target_aggregate,
             ),
         ),
-        boundaries=boundaries,
+        compositions=(
+            (
+                composition(
+                    2,
+                    BOOK,
+                    CHAPTER,
+                    own_graph=own_graph,
+                    stereotype="own graph" if own_graph else None,
+                ),
+            )
+            if composed
+            else ()
+        ),
         tags=tags,
     )
 
@@ -987,41 +1049,41 @@ ROWS_R10 = [
         _problem(UmlRule.ROOT_CLASS, "books", "Book", "Volume"),
     ),
     Row(
-        "a part in the root's boundary is owned, inlined as a list when many",
+        "a composition owns its part, inlined as a list when many",
         UmlRule.BOUNDARY_OWNED,
-        _book_chapter("1..*", boundaries=(boundary(20, BOOK, CHAPTER),)),
+        _book_chapter("1..*", root="root"),
         _owned(True),
         cites="R-11",
     ),
     Row(
-        "an owned single slot is inlined",
+        "a single part is inlined",
         UmlRule.BOUNDARY_OWNED,
-        _book_chapter("1..1", boundaries=(boundary(20, BOOK, CHAPTER),)),
+        _book_chapter("1..1"),
         _owned(False),
     ),
     Row(
-        "a composite association owns its destination",
+        "an association with no composition beside it is a reference between two roots",
         UmlRule.BOUNDARY_OWNED,
-        _book_chapter("0..*", source_aggregate=2, root=None),
-        _owned(True),
-    ),
-    Row(
-        "a plain association outside a boundary is a reference",
-        UmlRule.BOUNDARY_OWNED,
-        _book_chapter("0..*", root=None),
+        _book_chapter("0..*", composed=False),
         _not_owned,
     ),
     Row(
-        "failure: a boundary with no root",
-        UmlRule.NO_RULE,
-        _book_chapter("1..*", boundaries=(boundary(20, BOOK, CHAPTER),), root=None),
-        _problem(UmlRule.NO_RULE, "Aggregate", "root", "no rule converts it"),
+        "failure: a composite association names the two-connector form (PD-3)",
+        UmlRule.BOUNDARY_OWNED,
+        _book_chapter("0..*", composed=False, source_aggregate=2),
+        _problem(UmlRule.BOUNDARY_OWNED, "Book.has_chapter", "Aggregation", "plain association"),
     ),
     Row(
         "failure: the part points at its whole as a composite",
         UmlRule.NO_RULE,
-        _book_chapter("1..*", target_aggregate=2, root=None),
+        _book_chapter("1..*", composed=False, target_aggregate=2),
         _problem(UmlRule.NO_RULE, "Book.has_chapter", "no rule converts it"),
+    ),
+    Row(
+        "an own-graph composition to a not-generated part is a URI slot that says it holds graphs (PD-9)",
+        UmlRule.BOUNDARY_OWNED,
+        _book_chapter("0..*", part_stereotype="loaded graph", own_graph=True),
+        _loaded_graph_slot,
     ),
 ]
 
@@ -1119,8 +1181,13 @@ _KEYED = (
 
 
 def _keyed(*tags: object, stereotype: str | None = "root") -> object:
-    return model(
-        klass(BOOK, "lib:Book", stereotype=stereotype, attributes=_KEYED), tags=tuple(tags)
+    """A keyed Book: the «root» of its aggregate, or (no stereotype) a part of a Shelf, since a plain
+    concrete class would derive as a root and a root's key is scoped to the tenant."""
+    return _owning(
+        klass(BOOK, "lib:Book", stereotype=stereotype, attributes=_KEYED),
+        *(() if stereotype else (klass(SHELF, "lib:Shelf"),)),
+        parts=() if stereotype else ((SHELF, BOOK, "lib:books"),),
+        tags=tuple(tags),
     )
 
 
@@ -1486,31 +1553,18 @@ def _isbn_pair(book: dict[str, object], series: dict[str, object]) -> object:
 
 
 def _owned_on_one_class() -> object:
-    """Book owns its parts through a boundary; Series refers to the same slot name as a plain reference."""
-    return model(
+    """Book owns its parts by a composition; Series points at Book by the same role (C-9, PD-10).
+
+    Series is drawn «root» as Book is: both are the derived roots, so the drawn set agrees (PD-6).
+    The pointer targets a root, so only C-9 refuses: one slot would be owned and a reference.
+    """
+    return _owning(
         klass(BOOK, "lib:Book", stereotype="root"),
         klass(CHAPTER, "lib:Chapter"),
-        klass(SERIES, "lib:Series"),
-        links=(
-            link(1, BOOK, CHAPTER, target_role="lib:hasPart", target_card="0..*"),
-            link(2, SERIES, CHAPTER, target_role="lib:hasPart", target_card="0..*"),
-        ),
-        boundaries=(boundary(20, BOOK, CHAPTER),),
+        klass(SERIES, "lib:Series", stereotype="root"),
+        parts=((BOOK, CHAPTER, "lib:hasPart"),),
+        links=(link(2, SERIES, BOOK, target_role="lib:hasPart", target_card="0..*"),),
     )
-
-
-def _owned_on_book_only(out: Converted) -> None:
-    _agreed_and_narrowed(
-        "has_part",
-        {"range": "Chapter", "multivalued": True, "description": _LINK_NOTE},
-        {"inlined_as_list": True},
-        {},
-    )(out)
-    assert "owned" not in out.slot("app_library", "has_part").annotations, (
-        "the owned annotation must not leak from Book to the shared slot"
-    )
-    book_usage = out.klass("app_library", "Book").slot_usage["has_part"]
-    assert book_usage.annotations["owned"].value == "true", "Book's own usage carries owned"
 
 
 _TEXT = {"range": "string", "description": _ATTRIBUTE_NOTE}
@@ -1547,10 +1601,10 @@ ROWS_R13 = [
         ),
     ),
     Row(
-        "ownership on one class does not leak inlined to the other",
-        UmlRule.SHARED_SLOT,
+        "a role owned on one whole and a pointer on another class is refused (C-9)",
+        UmlRule.BOUNDARY_OWNED,
         _owned_on_one_class(),
-        _owned_on_book_only,
+        _problem(UmlRule.BOUNDARY_OWNED, "has_part", "owned on Book", "pointer on Series"),
     ),
     Row(
         "a description on the first usage only is the slot's, and the other usage inherits it",
@@ -1609,11 +1663,14 @@ _ABSTRACT_PARENT, _CHILD, _VALUE, _NARROWER_VALUE = 51, 52, 53, 54
 
 def _narrowed_role(parent_card: str, child_card: str, *, root: bool = False) -> object:
     """``A.p`` to ``V`` and ``B.p`` to ``W is_a V``, B being A's child, the two roles' cardinalities given."""
+    drawn = (
+        "root" if root else None
+    )  # every concrete class is a derived root, so «root» is drawn on all
     return model(
         klass(_ABSTRACT_PARENT, "lib:Base", abstract=True),
-        klass(_CHILD, "lib:Derived", stereotype="root" if root else None),
-        klass(_VALUE, "lib:Value"),
-        klass(_NARROWER_VALUE, "lib:Narrower"),
+        klass(_CHILD, "lib:Derived", stereotype=drawn),
+        klass(_VALUE, "lib:Value", stereotype=drawn),
+        klass(_NARROWER_VALUE, "lib:Narrower", stereotype=drawn),
         links=(
             generalisation(1, _CHILD, _ABSTRACT_PARENT),
             generalisation(2, _NARROWER_VALUE, _VALUE),
@@ -1911,7 +1968,7 @@ def _from_library(**overrides: object) -> Converted:
     """The model as the reader gives it: the subtree root first, its ancestor ``MODEL`` not listed."""
     uml = model(
         klass(BOOK, "lib:Book", stereotype="root"),
-        klass(CHAPTER, "lib:Chapter", _RARE_BOOKS),
+        klass(CHAPTER, "lib:Chapter", _RARE_BOOKS, stereotype="root"),  # both are derived roots
         packages=(
             UmlPackage(package_id=LIBRARY_PKG, name="library", parent_id=MODEL_PKG),
             UmlPackage(package_id=_RARE_BOOKS, name="rare-books", parent_id=LIBRARY_PKG),
@@ -2068,25 +2125,31 @@ ROWS_R25 = [
     Row(
         "an owned part has the default mixins and no aggregate-root mixin",
         UmlRule.TOOLKIT_MIXINS,
-        _book_chapter("1..*", boundaries=(boundary(20, BOOK, CHAPTER),)),
+        _book_chapter("1..*"),
         _mixed(["Described", "Tracked"], name="Chapter"),
         _DEFAULTS,
     ),
     Row(
         "a part tagged rp_unlabelled has Described only (PD-29)",
         UmlRule.TOOLKIT_MIXINS,
-        _book_chapter(
-            "1..*",
-            boundaries=(boundary(20, BOOK, CHAPTER),),
-            tags=(tag(CHAPTER, "rp_unlabelled", "true"),),
-        ),
+        _book_chapter("1..*", tags=(tag(CHAPTER, "rp_unlabelled", "true"),)),
         _mixed(["Described"], name="Chapter"),
         _DEFAULTS,
     ),
     Row(
+        # a plain concrete class of a domain module is a derived root; one of an access module is not
         "a class that is neither a root nor owned has no default mixin",
         UmlRule.TOOLKIT_MIXINS,
-        model(klass(BOOK, "lib:Book")),
+        model(
+            klass(BOOK, "lib:Book"),
+            packages=(
+                UmlPackage(package_id=MODEL_PKG, name="model"),
+                UmlPackage(
+                    package_id=LIBRARY_PKG, name="library", parent_id=MODEL_PKG, object_id=30
+                ),
+            ),
+            tags=(tag(30, "module_kind", "access"),),
+        ),
         _mixed([]),
         _DEFAULTS,
     ),
@@ -2196,9 +2259,12 @@ ROWS_R28 = [
     Row(
         "a drawn mixin parent beside a domain parent: the domain parent is the is_a",
         UmlRule.TOOLKIT_MIXINS,
-        model(
+        # Book is drawn a part of Shelf: a derived root would list AggregateRoot, which is not the claim
+        _owning(
             klass(BOOK, "lib:Book"),
             klass(SERIES, "lib:Series"),
+            klass(SHELF, "lib:Shelf"),
+            parts=((SHELF, BOOK, "lib:books"),),
             links=(generalisation(1, BOOK, SERIES), generalisation(2, BOOK, _COLLECTION)),
             **_drawn((_COLLECTION, "rp:ReferenceCollection")),
         ),
@@ -2536,7 +2602,7 @@ def _tenant(out: Converted) -> None:
 def _tenant_with_part(out: Converted) -> None:
     _no_problems(out)
     assert out.slot("app_library", "has_chapter").annotations["owned"].value == "true", (
-        "the part of a tenant root's boundary is owned"
+        "the part of a tenant root's composition is owned"
     )
     assert list(out.klass("app_library", "Chapter").mixins) == ["Described", "Tracked"], (
         "the part has the default mixins"
@@ -2562,13 +2628,12 @@ ROWS_R18 = [
         _DEFAULTS,
     ),
     Row(
-        "a boundary holding a tenant root has its one root, and owns the parts",
+        "a tenant root's composition part is owned",
         UmlRule.TENANT_ROOT,
-        model(
+        _owning(
             klass(BOOK, "lib:Book", stereotype="tenant root"),
             klass(CHAPTER, "lib:Chapter"),
-            links=(link(1, BOOK, CHAPTER, target_role="lib:hasChapter", target_card="0..*"),),
-            boundaries=(boundary(20, BOOK, CHAPTER),),
+            parts=((BOOK, CHAPTER, "lib:hasChapter"),),
         ),
         _tenant_with_part,
         _DEFAULTS,
@@ -2596,11 +2661,16 @@ def _work_model(
     work_attributes: tuple[UmlAttribute, ...] = (),
     tags: tuple[object, ...] = (),
 ) -> object:
-    """An abstract Work, specialised by a Book; a root Shelf points at the Work when ``ranged``."""
-    return model(
+    """An abstract Work, specialised by a Book; a root Shelf points at the Work when ``ranged``.
+
+    With ``book=None`` the Book is no root: it is drawn a part of the Shelf (a plain concrete class
+    would derive as a root).
+    """
+    return _owning(
         klass(WORK, "lib:Work", abstract=True, attributes=work_attributes),
         klass(BOOK, "lib:Book", stereotype=book),
         klass(SHELF, "lib:Shelf", stereotype="root"),
+        parts=() if book else ((SHELF, BOOK, "lib:books"),),
         links=(
             generalisation(1, BOOK, WORK),
             *(
@@ -2911,7 +2981,7 @@ def _keys_of(name: str, slots: list[str]) -> Check:
 def _keyed_with_role(*tags: object) -> object:
     return model(
         klass(BOOK, "lib:Book", stereotype="root", attributes=_KEYED[:1]),
-        klass(CHAPTER, "lib:Chapter"),
+        klass(CHAPTER, "lib:Chapter", stereotype="root"),  # a derived root, so drawn «root» too
         links=(link(1, BOOK, CHAPTER, target_role="lib:hasChapter", target_card="0..*"),),
         tags=tuple(tags),
     )
@@ -3329,9 +3399,7 @@ ROWS: list[Row] = [
 
 
 def test_the_schemas_dump_to_yaml_the_way_the_toolkit_writes_them() -> None:
-    out = run(
-        _book_chapter("1..*", boundaries=(boundary(20, BOOK, CHAPTER),)),
-    )
+    out = run(_book_chapter("1..*", root="root"))
     text = yaml_dumper.dumps(out.schemas["app_library"])
     wanted = (
         "value: domain",

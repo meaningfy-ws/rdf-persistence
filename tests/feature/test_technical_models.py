@@ -197,6 +197,11 @@ def _resolves(run: Run) -> None:
     assert run.loaded, "the schema loaded without an error"
 
 
+@then(parsers.parse('a consumer schema that imports "{imported}" resolves'))
+def _resolving_import(run: Run, imported: str) -> None:
+    assert _load_consumer(run, imported) > 0, f"{imported} resolved with its classes"
+
+
 @then(parsers.parse('a consumer schema that imports "{imported}" is refused'))
 def _refused_import(run: Run, imported: str) -> None:
     with pytest.raises(FileNotFoundError):

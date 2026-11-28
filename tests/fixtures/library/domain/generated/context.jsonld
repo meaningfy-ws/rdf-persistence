@@ -92,6 +92,10 @@
          "@type": "@id",
          "@id": "charter"
       },
+      "cites_finding": {
+         "@type": "@id",
+         "@id": "citesFinding"
+      },
       "city": {
          "@id": "schema:addressLocality"
       },
@@ -315,12 +319,29 @@
       "number": {
          "@id": "bibo:chapter"
       },
+      "of_audit": {
+         "@type": "@id",
+         "@id": "ofAudit"
+      },
+      "of_result": {
+         "@type": "@id",
+         "@id": "ofResult"
+      },
       "older_than_seconds": {
          "@id": "rp:olderThanSeconds"
       },
       "owned_by": {
          "@type": "@id",
          "@id": "rp:ownedBy"
+      },
+      "part_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:partClass"
+      },
+      "pointer": {
+         "@type": "@id",
+         "@id": "rp:pointer"
       },
       "prohibitions": {
          "@type": "@id",
@@ -458,6 +479,11 @@
          "@type": "@id",
          "@id": "prov:wasGeneratedBy"
       },
+      "whole_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:wholeClass"
+      },
       "workflow_name": {
          "@id": "rp:workflowName"
       },
@@ -498,6 +524,15 @@
       "Assignment": {
          "@id": "rp:Assignment"
       },
+      "Audit": {
+         "@id": "Audit"
+      },
+      "AuditFinding": {
+         "@id": "AuditFinding"
+      },
+      "AuditResult": {
+         "@id": "AuditResult"
+      },
       "Author": {
          "@id": "Author"
       },
@@ -524,6 +559,9 @@
       },
       "DeleteFile": {
          "@id": "rp:DeleteFile"
+      },
+      "DependenceLink": {
+         "@id": "rp:DependenceLink"
       },
       "Described": {
          "@id": "rp:Described"

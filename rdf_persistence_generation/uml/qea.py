@@ -24,6 +24,8 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlAttribute,
     UmlBoundary,
     UmlClass,
+    UmlComposition,
+    UmlDiagram,
     UmlLink,
     UmlLinkKind,
     UmlModel,
@@ -94,14 +96,8 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
     ),
     "t_objectproperties": ("Object_ID", "Property", "Value", "Notes"),
     "t_xref": ("Client", "Name", "Description"),
-    "t_diagramobjects": (
-        "Diagram_ID",
-        "Object_ID",
-        "RectTop",
-        "RectLeft",
-        "RectRight",
-        "RectBottom",
-    ),
+    "t_diagramobjects": ("Diagram_ID", "Object_ID"),
+    "t_diagramlinks": ("DiagramID", "ConnectorID", "Hidden"),
     "t_diagram": ("Diagram_ID", "Name", "Package_ID", "Diagram_Type"),
     "t_connectortag": ("ElementID", "Property", "VALUE", "NOTES"),
     "t_operation": ("Object_ID",),
@@ -122,12 +118,18 @@ CONVERTED_TYPES = frozenset({CLASS_TYPE, ENUMERATION_TYPE})
 # Object types that are drawing furniture, never converted and never a problem.
 PACKAGE_TYPE = "Package"  # the object that draws a package; it shares the package's ea_guid
 IGNORED_TYPES = frozenset({PACKAGE_TYPE, "Note", "Text", BOUNDARY_TYPE})
+# Drawing furniture a diagram may show with no record of its own: not a member of a ``UmlDiagram`` (PD-12).
+FURNITURE_TYPES = frozenset({PACKAGE_TYPE, "Note", "Text"})
 LINK_KINDS: dict[str, UmlLinkKind] = {
     "Association": UmlLinkKind.ASSOCIATION,
     "Dependency": UmlLinkKind.DEPENDENCY,
     "Generalization": UmlLinkKind.GENERALISATION,
     "Generalisation": UmlLinkKind.GENERALISATION,
 }
+AGGREGATION_TYPE = "Aggregation"  # read as a UmlComposition, never a UmlLink (PD-1)
+REALISATION_TYPES = frozenset({"Realisation", "Realization"})  # read into UmlObject.realised_ids
+OWN_GRAPH_STEREOTYPE = "own graph"
+NOT_MARKED, SHARED_MARK, COMPOSITE_MARK = 0, 1, 2  # the values of an end's ``IsAggregate`` column
 ASSOCIATION_CLASS_SUB_TYPE = "class"
 MEMO = "<memo>"
 NO_CLASS = "0"  # what EA writes in `PDATA1` when no class backs the association
@@ -325,12 +327,46 @@ def _plain_boundaries(rows: Iterable[sqlite3.Row]) -> list[sqlite3.Row]:
     return [row for row in _of_types(rows, {BOUNDARY_TYPE}) if _text(row["Stereotype"]) is None]
 
 
+def _mark(value: object) -> int | str:
+    """An end's ``IsAggregate`` as a number, ``NULL`` being unmarked; text that is no number as written."""
+    text = _text(value)
+    if text is None:
+        return NOT_MARKED
+    try:
+        return int(text)
+    except ValueError:
+        return text
+
+
+def _diamond_refusals(label: str, marks: tuple[int | str, int | str]) -> list[CheckProblem]:
+    """The problems the two ``IsAggregate`` values of an Aggregation give, none for a composition (D-5)."""
+    odd = [str(mark) for mark in marks if mark not in (NOT_MARKED, SHARED_MARK, COMPOSITE_MARK)]
+    if odd:
+        return [_no_rule(label, f"aggregate value {value}") for value in odd]
+    if SHARED_MARK in marks:
+        return [
+            CheckProblem(
+                rule=UmlRule.BOUNDARY_OWNED.value,
+                element=label,
+                message="a shared aggregation; draw a composition (strong) or a plain association",
+            )
+        ]
+    if marks.count(COMPOSITE_MARK) != 1:
+        return [_no_rule(label, "composition with no single diamond end")]
+    return []
+
+
 class _Reading:
     """One read of an open file: the subtree's rows, copied into records, problems collected."""
 
     def __init__(self, connection: sqlite3.Connection, package: str, excluded: tuple[str, ...]):
         self.connection = connection
         self.problems: list[CheckProblem] = []
+        self.links: list[UmlLink] = []
+        self.compositions: list[UmlComposition] = []
+        self.realised: defaultdict[int, set[int]] = defaultdict(
+            set
+        )  # object id -> classes it realises
         package_rows = self._select("t_package")
         self.paths = _package_paths(package_rows)
         root_id = _resolve_package(self.paths, package)
@@ -370,7 +406,7 @@ class _Reading:
         self.state_rows = _of_types(in_subtree, STATE_TYPES)
         self.state_ids = {row["Object_ID"] for row in self.state_rows}
         self.class_ids = {row["Object_ID"] for row in self.class_rows}
-        self.boundary_rows = _plain_boundaries(objects)
+        self.boundary_rows = _plain_boundaries(in_subtree)
         self.package_objects = _package_objects(self.package_rows, objects)
 
     def _select(self, table: str) -> list[sqlite3.Row]:
@@ -385,18 +421,20 @@ class _Reading:
     def read(self) -> UmlModel | list[CheckProblem]:
         for row in self.unexpected_rows:
             self.problems.append(_no_rule(row["Name"] or "", f"{row['Object_Type']} object"))
-        links = self._links()
-        outside = self._outside_rows(links)
+        self._read_connectors()
+        outside = self._outside_rows(self._connector_ends())
         nodes, flows, charts = _StateMachines(self).read()
         model = UmlModel(
             uml_packages=self._packages(),
             uml_outside_packages=self._outside_packages(outside),
             uml_classes=self._classes(),
             uml_outside_classes=[self._class_record(row) for row in outside],
-            uml_links=links,
+            uml_links=self.links,
+            uml_compositions=self.compositions,
             uml_tagged_values=self._tags(),
-            uml_boundaries=_Boundaries(self, self._select("t_diagramobjects")).read(),
-            uml_objects=self._objects(),
+            uml_boundaries=self._boundaries(),
+            uml_diagrams=self._diagrams(),
+            uml_objects=self._objects(self.realised),
             uml_state_nodes=nodes,
             uml_state_flows=flows,
             uml_statecharts=charts,
@@ -412,10 +450,11 @@ class _Reading:
     def _packages(self) -> list[UmlPackage]:
         return [self._package(row) for row in self._by_path(self.package_rows)]
 
-    def _outside_rows(self, links: Iterable[UmlLink]) -> list[sqlite3.Row]:
-        """The classes and enumerations at the far end of a link, not converted, once each."""
-        ends = {end for link in links for end in (link.source_id, link.target_id)}
-        rows = [self.object_rows[end] for end in ends - self.class_ids if end in self.object_rows]
+    def _outside_rows(self, ends: Iterable[int]) -> list[sqlite3.Row]:
+        """The classes and enumerations at the far end of a connector, not converted, once each."""
+        rows = [
+            self.object_rows[end] for end in set(ends) - self.class_ids if end in self.object_rows
+        ]
         return sorted(_of_types(rows, CONVERTED_TYPES), key=lambda row: row["Object_ID"])
 
     def _outside_packages(self, outside: Iterable[sqlite3.Row]) -> list[UmlPackage]:
@@ -441,13 +480,14 @@ class _Reading:
             object_id=self.package_objects.get(row["Package_ID"]),
         )
 
-    def _objects(self) -> list[UmlObject]:
+    def _objects(self, realised: Mapping[int, set[int]]) -> list[UmlObject]:
         rows = sorted(self.object_instance_rows, key=lambda r: (r["Name"] or "", r["Object_ID"]))
         return [
             UmlObject(
                 object_id=row["Object_ID"],
                 uml_name=row["Name"] or "",
                 classifier_id=_integer(row["Classifier"]) or None,
+                realised_ids=sorted(realised.get(row["Object_ID"], ())) or None,
                 package_path=self.paths[row["Package_ID"]],
                 run_values=_run_values(row["RunState"]),
                 run_state_rest=_run_state_rest(row["RunState"]),
@@ -524,20 +564,83 @@ class _Reading:
             uml_attributes=attributes or [],
         )
 
-    def _links(self) -> list[UmlLink]:
-        links = []
+    def _connector_ends(self) -> set[int]:
+        """The ends of every connector kept: a class away from the subtree is listed from these."""
+        ends = {end for link in self.links for end in (link.source_id, link.target_id)}
+        ends |= {each for c in self.compositions for each in (c.whole_id, c.part_id)}
+        return ends | {target for targets in self.realised.values() for target in targets}
+
+    def _read_connectors(self) -> None:
+        """Read every connector that touches a converted class into ``links``, ``compositions`` or ``realised``."""
         for row in self._select("t_connector"):
-            start, end = row["Start_Object_ID"], row["End_Object_ID"]
-            if start not in self.class_ids and end not in self.class_ids:
+            if row["Connector_Type"] in REALISATION_TYPES and self._realisation(row):
                 continue
-            if row["Connector_Type"] == STATE_FLOW_TYPE and {start, end} & self.state_ids:
-                continue  # a transition of the converted states: `_StateMachines` reads or refuses it
-            if {self.object_types.get(start), self.object_types.get(end)} & IGNORED_TYPES:
-                continue  # a note, text, boundary or package end: no link, no problem (D-25)
-            link = self._link(row)
-            if link is not None:
-                links.append(link)
-        return sorted(links, key=lambda link: link.connector_id)
+            if not self._is_skipped(row):
+                self._read_connector(row)
+        self.links.sort(key=lambda link: link.connector_id)
+        self.compositions.sort(key=lambda composition: composition.composition_id)
+
+    def _is_skipped(self, row: sqlite3.Row) -> bool:
+        """Whether a connector is no business of the reader: away from the classes, a transition, furniture."""
+        start, end = row["Start_Object_ID"], row["End_Object_ID"]
+        if start not in self.class_ids and end not in self.class_ids:
+            return True
+        if row["Connector_Type"] == STATE_FLOW_TYPE and {start, end} & self.state_ids:
+            return (
+                True  # a transition of the converted states: `_StateMachines` reads or refuses it
+            )
+        # a note, text, boundary or package end: no link, no problem (D-25)
+        return bool({self.object_types.get(start), self.object_types.get(end)} & IGNORED_TYPES)
+
+    def _read_connector(self, row: sqlite3.Row) -> None:
+        if row["Connector_Type"] == AGGREGATION_TYPE:
+            composition = self._composition(row)
+            if composition is not None:
+                self.compositions.append(composition)
+            return
+        link = self._link(row)
+        if link is not None:
+            self.links.append(link)
+
+    def _realisation(self, row: sqlite3.Row) -> bool:
+        """Read a Realisation between an Object and a class (PD-11), whichever way it is drawn.
+
+        Returns whether the connector is dealt with: the Object's realised class is recorded, or, for an
+        Object that is not of the converted packages (excluded, or outside the subtree), it is skipped
+        (A-20). A Realisation between anything else is left to the general rules (a class that
+        realises stays a problem).
+        """
+        ends = (row["Start_Object_ID"], row["End_Object_ID"])
+        objects = [end for end in ends if self.object_types.get(end) == OBJECT_TYPE]
+        if len(objects) != 1:
+            return False
+        (obj,) = objects
+        target = ends[0] if ends[1] == obj else ends[1]
+        if self.object_types.get(target) not in CONVERTED_TYPES:
+            return False
+        if obj in {each["Object_ID"] for each in self.object_instance_rows}:
+            self.realised[obj].add(target)
+        return True
+
+    def _composition(self, row: sqlite3.Row) -> UmlComposition | None:
+        """The composition an Aggregation draws: the end column alone says the whole (PD-1, D-5)."""
+        start, end = row["Start_Object_ID"], row["End_Object_ID"]
+        marks = (_mark(row["SourceIsAggregate"]), _mark(row["DestIsAggregate"]))
+        refusals = _diamond_refusals(f"{self.label(start)} -> {self.label(end)}", marks)
+        if refusals:
+            self.problems.extend(refusals)
+            return None
+        whole_is_start = marks[0] == COMPOSITE_MARK
+        stereotype = _text(row["Stereotype"])
+        return UmlComposition(
+            composition_id=row["Connector_ID"],
+            whole_id=start if whole_is_start else end,
+            part_id=end if whole_is_start else start,
+            own_graph=(stereotype or "").strip().lower() == OWN_GRAPH_STEREOTYPE,
+            uml_stereotype=stereotype,
+            role=_text(row["DestRole"] if whole_is_start else row["SourceRole"]),
+            note=_text(row["Notes"]),
+        )
 
     def _link(self, row: sqlite3.Row) -> UmlLink | None:
         start, end = row["Start_Object_ID"], row["End_Object_ID"]
@@ -583,6 +686,72 @@ class _Reading:
         target = self.label(row["End_Object_ID"])
         return f"{source}.{role} -> {target}" if role else f"{source} -> {target}"
 
+    def _boundaries(self) -> list[UmlBoundary]:
+        """The boundaries of the converted packages, by name and package only (PD-7, PD-18).
+
+        A boundary is an annotation: no membership and no geometry is read. It is kept when a diagram
+        shows it, with the first such diagram.
+        """
+        diagrams: dict[int, int] = {}
+        for row in self._select("t_diagramobjects"):
+            diagrams[row["Object_ID"]] = min(
+                diagrams.get(row["Object_ID"], row["Diagram_ID"]), row["Diagram_ID"]
+            )
+        return [
+            UmlBoundary(
+                object_id=row["Object_ID"],
+                name=row["Name"] or "",
+                diagram_id=diagrams[row["Object_ID"]],
+                package_id=row["Package_ID"],
+            )
+            for row in sorted(self.boundary_rows, key=lambda each: each["Object_ID"])
+            if row["Object_ID"] in diagrams
+        ]
+
+    def _placed(self) -> defaultdict[int, set[int]]:
+        """The objects each diagram shows, by diagram id, drawing furniture aside."""
+        placed: defaultdict[int, set[int]] = defaultdict(set)
+        for row in self._select("t_diagramobjects"):
+            if self.object_types.get(row["Object_ID"]) not in FURNITURE_TYPES:
+                placed[row["Diagram_ID"]].add(row["Object_ID"])
+        return placed
+
+    def _hidden(self, placed: Mapping[int, set[int]]) -> defaultdict[int, set[int]]:
+        """The connectors each diagram hides although both their ends are on it, by diagram id."""
+        ends = {
+            row["Connector_ID"]: (row["Start_Object_ID"], row["End_Object_ID"])
+            for row in self._select("t_connector")
+        }
+        hidden: defaultdict[int, set[int]] = defaultdict(set)
+        for row in self._select("t_diagramlinks"):
+            members = placed.get(row["DiagramID"], set())
+            on_it = row["ConnectorID"] in ends and set(ends[row["ConnectorID"]]) <= members
+            if _integer(row["Hidden"]) and on_it:
+                hidden[row["DiagramID"]].add(row["ConnectorID"])
+        return hidden
+
+    def _diagrams(self) -> list[UmlDiagram]:
+        """The class diagrams of the converted packages, by membership only (PD-12, RISK-6).
+
+        A member is an object placed on the diagram, drawing furniture (a note, a text, a package
+        object) aside. A connector is hidden when ``t_diagramlinks`` has a row of that diagram that says
+        so and both its ends are members; with no row, EA shows it. A Statechart is read apart.
+        """
+        placed = self._placed()
+        hidden = self._hidden(placed)
+        return [
+            UmlDiagram(
+                diagram_id=row["Diagram_ID"],
+                name=row["Name"] or "",
+                package_id=row["Package_ID"],
+                diagram_type=_text(row["Diagram_Type"]),
+                element_ids=sorted(placed[row["Diagram_ID"]]),
+                hidden_connector_ids=sorted(hidden[row["Diagram_ID"]]),
+            )
+            for row in sorted(self._select("t_diagram"), key=lambda each: each["Diagram_ID"])
+            if row["Package_ID"] in self.package_ids and row["Diagram_Type"] != STATECHART_TYPE
+        ]
+
     def _tags(self) -> list[UmlTaggedValue]:
         """The tagged values of the converted classes and of the converted packages' objects."""
         owners = self.class_ids | set(self.package_objects.values())
@@ -596,108 +765,6 @@ class _Reading:
             if row["Object_ID"] in owners
         ]
         return sorted(tags, key=lambda tag: (tag.owner_id, tag.name))
-
-
-# A rectangle as (x_min, y_min, x_max, y_max): EA writes left/right and top/bottom in either order.
-Rect = tuple[int, int, int, int]
-INSIDE = "inside"
-STRADDLE = "straddle"
-OUTSIDE = "outside"
-
-
-def _relation(rect: Rect, box: Rect) -> str:
-    """``inside`` (edges inclusive), ``straddle`` (shares area without lying inside) or ``outside``."""
-    x_min, y_min, x_max, y_max = rect
-    box_x_min, box_y_min, box_x_max, box_y_max = box
-    if box_x_min <= x_min and x_max <= box_x_max and box_y_min <= y_min and y_max <= box_y_max:
-        return INSIDE
-    shares_x = min(x_max, box_x_max) > max(x_min, box_x_min)
-    shares_y = min(y_max, box_y_max) > max(y_min, box_y_min)
-    return STRADDLE if shares_x and shares_y else OUTSIDE
-
-
-def _joined(numbers: Sequence[int]) -> str:
-    words = [str(number) for number in numbers]
-    return words[0] if len(words) == 1 else f"{', '.join(words[:-1])} and {words[-1]}"
-
-
-class _Boundaries:
-    """Boundary membership by geometry (PD-4): the classes whose rectangle lies inside the box."""
-
-    def __init__(self, reading: _Reading, placements: Iterable[sqlite3.Row]) -> None:
-        self.reading = reading
-        self.on_diagram: dict[int, dict[int, list[Rect]]] = defaultdict(lambda: defaultdict(list))
-        for row in placements:
-            top, left, right, bottom = (
-                row["RectTop"],
-                row["RectLeft"],
-                row["RectRight"],
-                row["RectBottom"],
-            )
-            if None in (top, left, right, bottom):
-                continue
-            rect = (min(left, right), min(top, bottom), max(left, right), max(top, bottom))
-            self.on_diagram[row["Diagram_ID"]][row["Object_ID"]].append(rect)
-
-    def read(self) -> list[UmlBoundary]:
-        found: list[UmlBoundary] = []
-        boundaries_of: dict[int, set[int]] = defaultdict(set)
-        for row in sorted(self.reading.boundary_rows, key=lambda r: r["Object_ID"]):
-            boundary = self._boundary(row)
-            if boundary is None:
-                continue
-            found.append(boundary)
-            for member in boundary.member_ids or []:
-                boundaries_of[member].add(boundary.object_id)
-        for class_id, boundaries in sorted(boundaries_of.items()):
-            if len(boundaries) > 1:
-                self.reading.problems.append(
-                    _no_rule(self.reading.label(class_id), "inside two boundaries")
-                )
-        return found
-
-    def _boundary(self, row: sqlite3.Row) -> UmlBoundary | None:
-        boundary_id = row["Object_ID"]
-        label = row["Name"] or f"boundary {boundary_id}"
-        diagrams = sorted(d for d, placed in self.on_diagram.items() if boundary_id in placed)
-        member_sets = {
-            diagram: self._members(label, self.on_diagram[diagram][boundary_id][0], diagram)
-            for diagram in diagrams
-        }
-        if len({frozenset(members) for members in member_sets.values()}) > 1:
-            self.reading.problems.append(
-                _no_rule(label, f"members differ between diagrams {_joined(diagrams)}")
-            )
-            return None
-        members = member_sets[diagrams[0]] if diagrams else set()
-        if not members:
-            return None
-        return UmlBoundary(
-            object_id=boundary_id,
-            name=row["Name"] or "",
-            diagram_id=diagrams[0],
-            member_ids=sorted(members),
-        )
-
-    def _members(self, label: str, box: Rect, diagram: int) -> set[int]:
-        members: set[int] = set()
-        for object_id, rects in self.on_diagram[diagram].items():
-            if object_id not in self.reading.class_ids:
-                continue
-            relations = {_relation(rect, box) for rect in rects}
-            element = self.reading.label(object_id)
-            if STRADDLE in relations:
-                self.reading.problems.append(_no_rule(element, f"straddles boundary {label}"))
-            elif relations == {INSIDE, OUTSIDE}:
-                self.reading.problems.append(
-                    _no_rule(
-                        element,
-                        f"placed twice on the diagram of boundary {label}, inside and outside",
-                    )
-                )
-            elif INSIDE in relations:
-                members.add(object_id)
-        return members
 
 
 class _StateMachines:

@@ -1,0 +1,50 @@
+id: https://example.org/ns/dependence/refused_re_annotation
+name: refused_re_annotation
+title: Refused, a subclass re-annotates with another slot
+description: The base is dependent through run, and its subclass names another slot.
+prefixes:
+  dep: https://example.org/ns/dependence#
+  linkml: https://w3id.org/linkml/
+default_prefix: dep
+default_range: string
+imports:
+  - linkml:types
+  - rdf_persistence/model/rp_core
+  - rdf_persistence/model/rp_annotations
+annotations:
+  module_kind: domain
+
+classes:
+  Run:
+    description: A served root.
+    mixins: [AggregateRoot]
+    annotations:
+      rp_path: runs
+  Batch:
+    description: Another served root.
+    mixins: [AggregateRoot]
+    annotations:
+      rp_path: batches
+  Output:
+    description: An abstract dependent base, through run.
+    abstract: true
+    mixins: [AggregateRoot]
+    slots: [run, batch]
+    annotations:
+      rp_dependent_on: run
+  Metric:
+    description: A subclass that names the other slot, batch.
+    is_a: Output
+    annotations:
+      rp_path: metrics
+      rp_dependent_on: batch
+
+slots:
+  run:
+    description: The run the output belongs to.
+    range: Run
+    required: true
+  batch:
+    description: The batch the output was made in.
+    range: Batch
+    required: true

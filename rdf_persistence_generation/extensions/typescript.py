@@ -157,13 +157,17 @@ class ToolkitTypescriptGenerator(TypescriptGenerator):
         )
 
     def modules(self) -> list[TsModule]:
-        """The modules that define classes or enums, sorted by name."""
+        """The modules that define classes or enums, sorted by name.
+
+        A schema the closure loads under several import strings (a technical module imported by its
+        package path and by a relative path) is one module: the first of each name is kept (PD-1a).
+        """
         self.schemaview.imports_closure()
-        modules = [
-            self.module(schema)
-            for schema in self.schemaview.schema_map.values()
-            if schema.enums or any(_has_interface(cls) for cls in schema.classes.values())
-        ]
+        first: dict[str, SchemaDefinition] = {}
+        for schema in self.schemaview.schema_map.values():
+            if schema.enums or any(_has_interface(cls) for cls in schema.classes.values()):
+                first.setdefault(schema.name, schema)
+        modules = [self.module(schema) for schema in first.values()]
         return sorted(modules, key=lambda module: module.name)
 
     def module_files(self) -> list[GeneratedFile]:

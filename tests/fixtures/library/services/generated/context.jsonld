@@ -1,12 +1,57 @@
 {
    "@context": {
       "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "ODRL": "http://www.w3.org/ns/odrl/2/",
+      "dcterms": "http://purl.org/dc/terms/",
       "lib": "https://example.org/ns/library#",
       "linkml": "https://w3id.org/linkml/",
+      "prov": "http://www.w3.org/ns/prov#",
+      "rp": "https://meaningfy.ws/ns/rdf-persistence#",
       "schema": "http://schema.org/",
       "shex": "http://www.w3.org/ns/shex#",
       "skos": "http://www.w3.org/2004/02/skos/core#",
       "@vocab": "https://example.org/ns/library#",
+      "account_id": {
+         "@id": "rp:accountId"
+      },
+      "action": {
+         "@id": "ODRL:action",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
+         }
+      },
+      "actions": {
+         "@container": "@set",
+         "@id": "rp:permits",
+         "@type": "@vocab",
+         "@context": {
+            "read": "http://www.w3.org/ns/odrl/2/read",
+            "modify": "http://www.w3.org/ns/odrl/2/modify",
+            "delete": "http://www.w3.org/ns/odrl/2/delete",
+            "administer": "https://meaningfy.ws/ns/rdf-persistence#administer",
+            "annotate": "http://www.w3.org/ns/odrl/2/annotate"
+         }
+      },
+      "active": {
+         "@id": "rp:accountActive"
+      },
+      "assignee": {
+         "@type": "@id",
+         "@id": "ODRL:assignee"
+      },
+      "blobs": {
+         "@container": "@set",
+         "@id": "rp:sweptBlob"
+      },
+      "caller_access": {
+         "@type": "@id",
+         "@id": "rp:callerAccess"
+      },
       "check_findings": {
          "@type": "@id",
          "@container": "@set",
@@ -20,10 +65,81 @@
             "overdue": "https://example.org/ns/library#LoanStatusOverdue"
          }
       },
+      "checked_target": {
+         "@type": "@id",
+         "@id": "rp:checkedTarget"
+      },
       "checks": {
          "@type": "@id",
          "@container": "@set",
          "@id": "checks"
+      },
+      "id": "@id",
+      "datatype": {
+         "@type": "@id",
+         "@id": "rp:conditionDatatype"
+      },
+      "predicate": {
+         "@type": "@id",
+         "@id": "rp:conditionPredicate"
+      },
+      "reference": {
+         "@id": "rp:conditionReference"
+      },
+      "value": {
+         "@id": "rp:filterValue"
+      },
+      "via": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:conditionVia"
+      },
+      "conditions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:condition"
+      },
+      "text": {
+         "@id": "rp:containsText"
+      },
+      "contributor": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "dcterms:contributor"
+      },
+      "created": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:created"
+      },
+      "creator": {
+         "@type": "@id",
+         "@id": "dcterms:creator"
+      },
+      "data_schema_version": {
+         "@id": "rp:dataSchemaVersion"
+      },
+      "descending": {
+         "@id": "rp:descending"
+      },
+      "description": {
+         "@id": "dcterms:description"
+      },
+      "email": {
+         "@id": "rp:email"
+      },
+      "absent": {
+         "@id": "rp:filterAbsent"
+      },
+      "contains": {
+         "@id": "rp:filterContains"
+      },
+      "slot": {
+         "@id": "rp:filterSlot"
+      },
+      "filters": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:filter"
       },
       "finding_code": {
          "@id": "findingCode"
@@ -31,8 +147,323 @@
       "finding_message": {
          "@id": "findingMessage"
       },
-      "@version": 1.1,
+      "global_roles": {
+         "@container": "@set",
+         "@id": "rp:globalRole"
+      },
+      "grants": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:grant"
+      },
+      "graph": {
+         "@type": "@id",
+         "@id": "rp:graph"
+      },
+      "head_iri": {
+         "@type": "@id",
+         "@id": "rp:headIri"
+      },
+      "head_types": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:headType"
+      },
+      "head_version": {
+         "@id": "rp:headVersion"
+      },
+      "hidden_count": {
+         "@id": "rp:hiddenCount"
+      },
+      "hidden_graphs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:hiddenGraph"
+      },
+      "holder": {
+         "@type": "@id",
+         "@id": "holder"
+      },
+      "items": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:items"
+      },
+      "key_counts_absent": {
+         "@id": "rp:keyCountsAbsent"
+      },
+      "key_name": {
+         "@id": "rp:keyName"
+      },
+      "key_predicates": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:keyPredicates"
+      },
+      "key_roots": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:keyRoots"
+      },
+      "key_values": {
+         "@container": "@set",
+         "@id": "rp:keyValues"
+      },
+      "kind": {
+         "@id": "rp:kind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "label": {
+         "@id": "skos:prefLabel"
+      },
+      "level": {
+         "@id": "rp:level",
+         "@type": "@vocab",
+         "@context": {
+            "system": "https://meaningfy.ws/ns/rdf-persistence#SystemLevel",
+            "tenant": "https://meaningfy.ws/ns/rdf-persistence#TenantLevel",
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#AggregateLevel"
+         }
+      },
+      "limit": {
+         "@id": "rp:limit"
+      },
+      "listed_in": {
+         "@type": "@id",
+         "@id": "rp:listedIn"
+      },
+      "loaded_at": {
+         "@type": "xsd:dateTime",
+         "@id": "rp:loadedAt"
+      },
+      "loaded_graph": {
+         "@type": "@id",
+         "@id": "rp:loadedGraph"
+      },
+      "loaded_graphs": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:sweptLoadedGraph"
+      },
+      "member_iris": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:memberIri"
+      },
+      "modified": {
+         "@type": "xsd:dateTime",
+         "@id": "dcterms:modified"
+      },
+      "more_count": {
+         "@id": "rp:moreCount"
+      },
+      "offset": {
+         "@id": "rp:offset"
+      },
+      "older_than_seconds": {
+         "@id": "rp:olderThanSeconds"
+      },
+      "owned_by": {
+         "@type": "@id",
+         "@id": "rp:ownedBy"
+      },
+      "part_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:partClass"
+      },
+      "target": {
+         "@type": "@id",
+         "@id": "ODRL:target"
+      },
+      "sort_by": {
+         "@type": "@id",
+         "@id": "rp:planSort"
+      },
+      "pointer": {
+         "@type": "@id",
+         "@id": "rp:pointer"
+      },
+      "principal": {
+         "@type": "@id",
+         "@id": "rp:principal"
+      },
+      "detail": {
+         "@id": "rp:problemDetail"
+      },
+      "instance": {
+         "@type": "@id",
+         "@id": "rp:problemInstance"
+      },
+      "slug": {
+         "@id": "rp:problemSlug"
+      },
+      "status": {
+         "@id": "rp:problemStatus"
+      },
+      "title": {
+         "@id": "rp:problemTitle"
+      },
       "type": "@type",
+      "prohibitions": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:prohibition"
+      },
+      "referrer": {
+         "@type": "@id",
+         "@id": "rp:referrer"
+      },
+      "referrer_class": {
+         "@id": "rp:referrerClass"
+      },
+      "referrer_id": {
+         "@id": "rp:referrerId"
+      },
+      "referrer_rp_path": {
+         "@id": "rp:referrerRpPath"
+      },
+      "referrer_slot": {
+         "@id": "rp:referrerSlot"
+      },
+      "referrers": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:referrers"
+      },
+      "registry_kind": {
+         "@id": "registryKind",
+         "@type": "@vocab",
+         "@context": {
+            "aggregate": "https://meaningfy.ws/ns/rdf-persistence#Aggregate",
+            "loaded_graph": "https://meaningfy.ws/ns/rdf-persistence#LoadedGraph"
+         }
+      },
+      "removed_blobs": {
+         "@id": "rp:removedBlobs"
+      },
+      "removed_loaded_graphs": {
+         "@id": "rp:removedLoadedGraphs"
+      },
+      "role": {
+         "@id": "rp:role"
+      },
+      "root": {
+         "@type": "@id",
+         "@id": "rp:root"
+      },
+      "root_class": {
+         "@type": "@id",
+         "@id": "rp:rootClass"
+      },
+      "skipped_blobs": {
+         "@container": "@set",
+         "@id": "rp:skippedBlob"
+      },
+      "sort": {
+         "@id": "rp:sort"
+      },
+      "started_at": {
+         "@type": "xsd:dateTime",
+         "@id": "rp:startedAt"
+      },
+      "state": {
+         "@id": "rp:state",
+         "@type": "@vocab",
+         "@context": {
+            "active": "https://meaningfy.ws/ns/rdf-persistence#Active",
+            "deleting": "https://meaningfy.ws/ns/rdf-persistence#Deleting"
+         }
+      },
+      "tenant": {
+         "@type": "@id",
+         "@id": "rp:tenant"
+      },
+      "total": {
+         "@id": "rp:total"
+      },
+      "url_segment": {
+         "@id": "rp:urlSegment"
+      },
+      "user_name": {
+         "@id": "rp:userName"
+      },
+      "version": {
+         "@id": "rp:version"
+      },
+      "whole_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "rp:wholeClass"
+      },
+      "@version": 1.1,
+      "AccountSummary": {
+         "@id": "rp:AccountSummary"
+      },
+      "AggregateHead": {
+         "@id": "rp:AggregateHead"
+      },
+      "AggregateKey": {
+         "@id": "rp:AggregateKey"
+      },
+      "AggregateRoot": {
+         "@id": "rp:AggregateRoot"
+      },
+      "Any": {
+         "@id": "linkml:Any"
+      },
+      "Authorised": {
+         "@id": "rp:Authorised"
+      },
+      "CallerAccess": {
+         "@id": "rp:CallerAccess"
+      },
+      "CommitMarker": {
+         "@id": "rp:CommitMarker"
+      },
+      "Condition": {
+         "@id": "rp:Condition"
+      },
+      "Contains": {
+         "@id": "rp:Contains"
+      },
+      "DependenceLink": {
+         "@id": "rp:DependenceLink"
+      },
+      "Described": {
+         "@id": "rp:Described"
+      },
+      "Filter": {
+         "@id": "rp:Filter"
+      },
+      "Grant": {
+         "@id": "ODRL:Permission"
+      },
+      "GrantSet": {
+         "@id": "rp:GrantSet"
+      },
+      "HeldKeyProblem": {
+         "@id": "HeldKeyProblem"
+      },
+      "InUseProblem": {
+         "@id": "rp:InUseProblem"
+      },
+      "KeyDuplicate": {
+         "@id": "rp:KeyDuplicate"
+      },
+      "LabelUpdate": {
+         "@id": "rp:LabelUpdate"
+      },
+      "ListPlan": {
+         "@id": "rp:ListPlan"
+      },
+      "ListRequest": {
+         "@id": "rp:ListRequest"
+      },
       "LoanCheck": {
          "@id": "LoanCheck"
       },
@@ -41,6 +472,63 @@
       },
       "LoanFinding": {
          "@id": "LoanFinding"
+      },
+      "MemberList": {
+         "@id": "rp:MemberList"
+      },
+      "Page": {
+         "@id": "rp:Page"
+      },
+      "PendingLoad": {
+         "@id": "rp:PendingLoad"
+      },
+      "Policy": {
+         "@id": "ODRL:Set"
+      },
+      "Principal": {
+         "@id": "prov:Agent"
+      },
+      "Problem": {
+         "@id": "rp:Problem"
+      },
+      "ProblemKind": {
+         "@id": "rp:ProblemKind"
+      },
+      "Prohibition": {
+         "@id": "ODRL:Prohibition"
+      },
+      "Referrer": {
+         "@id": "rp:Referrer"
+      },
+      "ReferrerList": {
+         "@id": "rp:ReferrerList"
+      },
+      "RegistryEntry": {
+         "@id": "rp:RegistryEntry"
+      },
+      "RoleDefinition": {
+         "@id": "rp:RoleDefinition"
+      },
+      "Rule": {
+         "@id": "ODRL:Rule"
+      },
+      "TenantAccess": {
+         "@id": "rp:TenantAccess"
+      },
+      "TenantCreate": {
+         "@id": "rp:TenantCreate"
+      },
+      "TenantLabelled": {
+         "@id": "rp:TenantLabelled"
+      },
+      "TenantSweepReport": {
+         "@id": "rp:TenantSweepReport"
+      },
+      "Tracked": {
+         "@id": "rp:Tracked"
+      },
+      "VerifiedCaller": {
+         "@id": "rp:VerifiedCaller"
       }
    }
 }

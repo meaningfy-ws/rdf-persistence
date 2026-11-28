@@ -230,5 +230,68 @@ On a key across aggregates, `rp-generate` refuses the option beside any scope ot
 two absent values are already equal there. How such a key behaves is in
 xref:user-manual/store-and-read.adoc#key-conflict[Keep a value unique across aggregates].
 
+[#dependent-on]
+== A part stored apart from its whole
+
+Some aggregates are parts of another aggregate and are stored on their own: each in a graph of its
+own, written through its own route, yet meaningless without the root it belongs to (its whole).
+Annotate the class of the part `rp_dependent_on`, with the name of the slot that points to its whole.
+The annotation states that the part is deleted with its whole. In the toy library, an
+`AuditResult` is a part of an `Audit`:
+
+[source,yaml]
+----
+  AuditResult:
+    title: Audit result
+    description: The outcome of one audit, stored apart from it.
+    mixins: [AggregateRoot, Described, Tracked]
+    slots: [of_audit]
+    slot_usage:
+      of_audit:
+        required: true                       # a part cannot exist without its whole
+    annotations:
+      rp_path: audit-results
+      database: tenant
+      rp_dependent_on: of_audit              # the pointer slot, not a class
+
+  # of_audit is single-valued and ranges over a served root:
+  #   of_audit:
+  #     range: Audit
+----
+
+The pointer slot, here `of_audit`, follows these rules:
+
+* it is a slot of the part (after `slot_usage`), *required* and *single-valued*;
+* its range is a served aggregate root, or an abstract class whose concrete subclasses all are.
+
+A class carries the annotation when it or an `is_a` ancestor does, so a subclass of a dependent root
+is dependent too, on the same slot. A class that only mixes in an annotated class does not inherit
+it. The annotation may sit on an abstract base whose concrete subclasses are all served roots.
+
+`rp-generate` refuses a schema that breaks a rule, and names the class (and the slot):
+
+[cols="2,3",options="header"]
+|===
+|Rule |Message
+|The annotated class is a served root, or an abstract class whose concrete subclasses all are
+|`carries rp_dependent_on: <slot> but is not a served aggregate root, nor an abstract class whose concrete subclasses all are: annotate a root with a path, or an abstract base of such roots`
+|A subclass does not name another slot than its ancestor
+|`names the slot <slot> but an ancestor names <other>: a subclass may not re-annotate with another slot, so drop the annotation or use the same slot`
+|The pointer slot exists
+|`names the pointer slot <slot>, which is not a slot of <class>`
+|The pointer slot is required
+|`pointer slot <slot> is not required in <class>: a part cannot exist without its whole`
+|The pointer slot is single-valued
+|`pointer slot <slot> is multivalued in <class>: a part has one whole`
+|The slot's range can be a whole
+|`pointer slot <slot> ranges over <range>, which cannot be a whole: <why>`, where the reason is that the range is not a class, has no concrete class, is the tenant root (which no delete removes), is a root the toolkit writes (which no route serves), or is not a served aggregate root
+|No cycle of dependence
+|`cycle of dependence A -> B -> A (through the slots <slots>): a whole cannot depend on its own part`
+|===
+
+At runtime the toolkit checks, on every write of a part, that its whole exists, and deletes the
+parts with their whole. How is in
+xref:user-manual/store-and-read.adoc#dependent-parts[Store a part apart from its whole].
+
 The full list of annotations and mixins is in
 xref:architecture/generation.adoc#metamodel[the metamodel].

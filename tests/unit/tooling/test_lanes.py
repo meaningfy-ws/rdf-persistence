@@ -460,6 +460,14 @@ def test_the_full_suite_runs_nightly_and_by_hand() -> None:
     assert sorted(_jobs(nightly)) == ["sonar", "test-generator", "unit", "unit-shard"]
 
 
+def test_a_scheduled_nightly_run_checks_out_develop() -> None:
+    """ci-minimal-gate PD-1: a schedule runs on the default branch, main, so every job asks for develop."""
+    nightly = _workflow("nightly.yaml")
+    ref = "ref: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}"
+
+    assert nightly.count("uses: actions/checkout@v4") == nightly.count(ref) == 4
+
+
 def _ci_job(name: str) -> str:
     ci = _workflow("nightly.yaml")
     match = re.search(rf"^  {re.escape(name)}:\n(.*?)(?=^  \S|\Z)", ci, re.DOTALL | re.MULTILINE)

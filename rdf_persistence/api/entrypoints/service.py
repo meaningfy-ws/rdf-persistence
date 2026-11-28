@@ -9,6 +9,7 @@ from types import ModuleType
 from typing import Any
 
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 from rdf_persistence.access.services.access import AccessRules, load_role_definitions
 from rdf_persistence.access.services.identity import Identity
@@ -63,6 +64,7 @@ def install_service(
     stores: Mapping[str, Store] = {},
     event_bus: EventBus | None = None,
     toolkit: ToolkitSettings | None = None,
+    refusal_problems: Sequence[type[BaseModel]] = (),
 ) -> ServiceKit:
     """Serve the application's schema on ``app``: its routes, its problem responses, its start-up.
 
@@ -124,6 +126,12 @@ def install_service(
     ``events`` to its hub and relay, and the events route its ``sse``. The ``http``, ``jwks`` and
     ``directory`` groups are for the adapters your composition root builds.
 
+    ``refusal_problems`` are the classes of problem a rule may refuse with, by raising ``RuleRefusal``:
+    each is a subclass of ``Problem`` (else ``TypeError``, naming it). The generic create and replace
+    answer a refusal whose problem is exactly one of them, at 409 or 422, as the rule built it, extra
+    fields included; any other refusal is a 500 ``internal-error``, logged once. They are not yet
+    listed in the OpenAPI document (consumer-write-rules D-5).
+
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
     of the toolkit's routes.
@@ -172,10 +180,16 @@ def install_service(
         stores=stores,
         event_bus=event_bus,
         toolkit=toolkit,
+        refusal_problems=refusal_problems,
     )
     kit.bus = bus
     _require_same_principals(kit)
-    install_problem_handlers(app, settings.base, partial(located, kit.view, kit.iris))
+    install_problem_handlers(
+        app,
+        settings.base,
+        partial(located, kit.view, kit.iris),
+        refusal_problems=kit.refusal_problems,
+    )
     app.include_router(build_router(kit), prefix=prefix)
     install_openapi(app, kit)
     _run_at_startup(app, kit)

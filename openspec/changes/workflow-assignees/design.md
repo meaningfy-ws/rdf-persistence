@@ -365,6 +365,13 @@ lane that ran them still runs them and they prove what they proved.
   (listed in PR #443). Three are spine upkeep the lead carries: the error-matrix row of
   `TAKES_A_CLASS_ASSIGNED` (amended below), and `architecture/data-flows.adoc` and an `rp-messages`
   spec delta for the two new toolkit-filled slots, both added to task 2.4.
+- **D-21** (lead, 2026-11-28, amends P-0002 for this stage): `develop` gained two epics
+  (aggregate composition, dependent aggregates) while stage 1 was in review, and a rebase
+  conflicted on generated files in several of this branch's commits. `develop` is merged into the
+  branch once instead: the three source conflicts kept both sides (`session.py`'s transaction
+  fields; `NAMES` 160 + `Assignment` = 161; both blocks of scenario-map rows), and every
+  generated file and snapshot was regenerated from the sources (P-0003). The full gates run again
+  on the merge, `make test-containers` included, since `develop` changed the persistence layer.
 - **D-16** (lead, 2026-11-27): the worktree was installed with a bare `uv sync`, without the
   extras `make install` adds (`--all-extras`); the API tests failed for a missing module and both
   first task gates fell back to the full lane and timed out. Reinstalled with `make install` and
