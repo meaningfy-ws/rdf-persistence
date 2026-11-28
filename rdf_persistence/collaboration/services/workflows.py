@@ -79,6 +79,19 @@ def state_iri(workflow: Workflow, state: str) -> str:
     return f"{workflow.id}/{state}"
 
 
+def state_name(workflow: Workflow, iri: str) -> str:
+    """The name of the state with IRI ``iri``, the inverse of ``state_iri``.
+
+    Raises:
+        ValueError: ``iri`` is not the IRI of a state of ``workflow``; the message names both.
+    """
+    prefix = f"{workflow.id}/"
+    name = iri.removeprefix(prefix)
+    if not iri.startswith(prefix) or name not in workflow.workflow_states:
+        raise ValueError(f"{iri} is not a state of workflow {workflow.workflow_name}")
+    return name
+
+
 class Workflows:
     """The workflows of a service, checked, and the class each one governs."""
 

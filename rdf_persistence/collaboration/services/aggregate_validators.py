@@ -13,7 +13,7 @@ with the message as its ``detail``.
 import inspect
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from linkml_runtime.utils.schemaview import SchemaView
 from pydantic import BaseModel, ValidationError
@@ -144,6 +144,33 @@ DeleteValidator = Callable[[BaseModel, Principal, AggregateReader], Awaitable[No
 
 # The model class name to decode a root as, and the delete rules that apply to it, most general first.
 DeleteSelection = tuple[str, tuple[DeleteValidator, ...]]
+
+
+def aggregate_rules[M: BaseModel](
+    cls: type[M],
+    *rules: Callable[[BaseModel | None, M, Principal, AggregateReader], Awaitable[None] | None],
+) -> tuple[str, tuple[AggregateValidator, ...]]:
+    """The entry for ``cls`` in the rules mapping, with the rules typed for ``cls`` (consumer-write-rules PD-11).
+
+    ``new`` is typed ``M``: the guard decodes the new root as its most specific root class, which is
+    ``cls`` or derives from it. ``old`` is typed ``BaseModel | None``: a stored root is decoded by its
+    stored types, so a replace that moves it to a derived class hands that class's rule an ``old`` of the
+    class it was stored as; a rule narrows it with ``isinstance``.
+    """
+    # the one cast of the toolkit: the guard hands each rule a root of ``cls`` or a derived class
+    return cls.__name__, cast(tuple[AggregateValidator, ...], rules)
+
+
+def delete_rules[M: BaseModel](
+    cls: type[M],
+    *rules: Callable[[M, Principal, AggregateReader], Awaitable[None] | None],
+) -> tuple[str, tuple[DeleteValidator, ...]]:
+    """The entry for ``cls`` in the delete rules mapping, with the rules typed for ``cls`` (PD-11).
+
+    ``old`` is typed ``M``: a removal selects the rules by the stored root's own types.
+    """
+    # the same cast: the selection by the stored root's types makes ``old`` an ``M``
+    return cls.__name__, cast(tuple[DeleteValidator, ...], rules)
 
 
 class DeleteValidators:

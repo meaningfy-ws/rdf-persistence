@@ -11,6 +11,7 @@
 |`Action` |class |The actions a rule can name.
 |`Activity` |class |Something that happened and generated or changed entities, carried out by principals.
 |`Add` |class |An activity that added an aggregate.
+|`aggregate_rules` |function |The entry for ``cls`` in the rules mapping, with the rules typed for ``cls`` (consumer-write-rules PD-11).
 |`AggregateKey` |class |A key across aggregates, as the runtime reads it from the schema: no two aggregate roots of one class in a tenant's database hold the same values for its predicates.
 |`AggregateReader` |class |What a rule may ask about the aggregates a root names: their classes, and the aggregate itself.
 |`AggregateRoot` |class |A mixin for classes whose instances are aggregate roots.
@@ -31,6 +32,7 @@
 |`DatabaseGone` |class |The dataset a request names does not exist (it was dropped, or never created).
 |`DatabaseKind` |class |The databases an aggregate can live in, the values of the database annotation.
 |`DEFAULT_IRIS` |constant |
+|`delete_rules` |function |The entry for ``cls`` in the delete rules mapping, with the rules typed for ``cls`` (PD-11).
 |`DeleteFile` |class |The activity of removing a stored file, with the file aggregate it used and an invalidation of it.
 |`DeleteValidator` |function |
 |`DependenceLink` |class |One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer.
@@ -132,6 +134,7 @@
 |`SlotEquality` |class |One condition of a membership rule, a slot of the member class and the value it must equal.
 |`SseSettings` |class |The lifetime, the access check, the keep-alive and the resume window of the events route.
 |`state_iri` |function |The IRI of the state named ``state``: the workflow's identifier, a slash and the name.
+|`state_name` |function |The name of the state with IRI ``iri``, the inverse of ``state_iri``.
 |`Store` |class |A SPARQL 1.1 store with a Graph Store endpoint and dataset administration.
 |`StoredDataInvalid` |class |What the store holds cannot be decoded: a fault of the service or its data, never of the request.
 |`StoredFile` |class |A mixin for the current content of a kept file; the bytes live in the tenant's bucket under the file key.

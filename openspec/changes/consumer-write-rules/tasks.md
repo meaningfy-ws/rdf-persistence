@@ -46,7 +46,7 @@ Builders never commit; the lead does and ticks this file. Only the lead runs `ma
   existing hand-written reader stubs that type as `AggregateReader` gain `find` (DEC-8): the stub in
   `tests/unit/collaboration/test_aggregate_validators.py`; `ast-grep` for any other class with `classes_of` and
   `aggregate` under `tests/`. Accept: TC-9 passes; `make typecheck` green; task gate green.
-- [ ] 2.2 **unit + code (typed rules, state_name)** — independent of 2.1; PD-11, PD-12, TC-10,
+- [x] 2.2 **unit + code (typed rules, state_name)** — independent of 2.1; PD-11, PD-12, TC-10,
   TC-11. Failing tests first. Then `aggregate_rules`, `delete_rules`, `state_name`, the exports.
   Accept: TC-10, TC-11 pass; `make typecheck` green; task gate green. Closes #387.
 - [x] 2.3 **testkit (fake + kit)** — after 2.1; PD-13, PD-14, TC-12, TC-13. Failing tests first in

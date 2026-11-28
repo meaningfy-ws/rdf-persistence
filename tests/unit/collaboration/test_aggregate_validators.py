@@ -9,6 +9,7 @@ from uuid import UUID
 
 import pytest
 from linkml_runtime.utils.schemaview import SchemaView
+from mypy import api as mypy_api
 from pydantic import BaseModel, ValidationError
 from rdflib import RDF, URIRef
 
@@ -21,6 +22,8 @@ from rdf_persistence import (
     Principal,
     RuleRefusal,
     StoreUnavailable,
+    aggregate_rules,
+    delete_rules,
     generated_models,
     load_role_definitions,
 )
@@ -228,6 +231,94 @@ async def test_rules_run_from_the_most_general_key_to_the_class_in_list_order(
     rules = _selected_rules(validators, [SHAPES_NS + "Shelf"])
     await run_aggregate_validators(rules, None, shelf("urn:s"), WHO, READER)
     assert calls == ["item", "shelf-1", "shelf-2"], "parent first, then the class, each in order"
+
+
+# Typed registration (consumer-write-rules PD-11: TC-10)
+
+TYPED_HEAD = """
+from pydantic import BaseModel
+from rdf_persistence import AggregateReader, Principal, aggregate_rules, delete_rules
+
+
+class Book(BaseModel):
+    title: str
+
+
+class Loan(BaseModel):
+    days: int
+
+"""
+
+# (id, the rule's signature, what mypy must report)
+TYPED_RULES = [
+    ("new-typed-for-the-class", "old: BaseModel | None, new: Book", None),
+    ("new-typed-for-another-class", "old: BaseModel | None, new: Loan", "[arg-type]"),
+    ("old-typed-as-the-class", "old: Book | None, new: Book", "[arg-type]"),
+]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    ("signature", "reported"), [pytest.param(s, r, id=k) for k, s, r in TYPED_RULES]
+)
+def test_a_rule_registers_for_its_class_with_no_cast_and_a_wrong_type_is_a_mypy_error(
+    signature: str, reported: str | None, tmp_path: Path
+):  # TC-10
+    code = (
+        TYPED_HEAD
+        + f"def rule({signature}, who: Principal, reader: AggregateReader) -> None:\n"
+        + "    return None\n\n\n"
+        + "registered = aggregate_rules(Book, rule)\n"
+    )
+    out, _, status = mypy_api.run(["--cache-dir", str(tmp_path / "cache"), "-c", code])
+    if reported is None:
+        assert status == 0, f"mypy accepts the rule with no cast: {out}"
+    else:
+        assert status == 1, f"mypy refuses the rule: {out}"
+        assert reported in out, f"mypy reports {reported}: {out}"
+
+
+@pytest.mark.slow
+def test_a_delete_rule_takes_the_class_as_old_and_another_class_is_a_mypy_error(tmp_path: Path):
+    ok = (
+        TYPED_HEAD
+        + "def rule(old: Book, who: Principal, reader: AggregateReader) -> None:\n"
+        + "    return None\n\n\n"
+        + "def other(old: Loan, who: Principal, reader: AggregateReader) -> None:\n"
+        + "    return None\n\n\n"
+        + "good = delete_rules(Book, rule)\n"
+    )
+    bad = ok + "bad = delete_rules(Book, other)\n"
+    args = ["--cache-dir", str(tmp_path / "cache")]
+    assert mypy_api.run([*args, "-c", ok])[2] == 0, "a rule typed for the class registers"
+    out, _, status = mypy_api.run([*args, "-c", bad])
+    assert status == 1, f"another class is refused: {out}"
+    assert "[arg-type]" in out, f"as an arg-type error: {out}"
+
+
+async def test_a_registered_rule_receives_the_class_as_new_and_the_key_is_its_name():  # TC-10
+    root_class = type(shelf(shelf_iri(1)))
+    seen: list[object] = []
+
+    def rule(old: BaseModel | None, new: Any, who: Principal, reader: AggregateReader) -> None:
+        seen.append(new)
+
+    key, rules = aggregate_rules(root_class, rule)
+    assert key == root_class.__name__, "the key is the class name"
+    selected = toy({key: rules}).select("urn:s", [SHELF])
+    assert selected is not None, "the rule applies to a Shelf"
+    await run_aggregate_validators(selected[1], None, shelf(shelf_iri(1)), WHO, READER)
+    assert len(seen) == 1, "the rule ran once"
+    assert isinstance(seen[0], root_class), "the rule received a Shelf as new"
+
+
+def test_delete_rules_keys_the_rules_by_the_class_name():
+    root_class = type(shelf(shelf_iri(1)))
+
+    def rule(old: Any, who: Principal, reader: AggregateReader) -> None:
+        return None
+
+    assert delete_rules(root_class, rule) == (root_class.__name__, (rule,)), "name and rules"
 
 
 async def test_the_first_refusal_stops_the_rest(shapes: tuple[SchemaView, Path]):  # T-3

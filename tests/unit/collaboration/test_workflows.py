@@ -7,7 +7,12 @@ import yaml
 
 from rdf_persistence import AccessRules, load_role_definitions
 from rdf_persistence.collaboration.domain.generated.rp_workflow import WorkflowTransition
-from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
+from rdf_persistence.collaboration.services.workflows import (
+    Workflows,
+    load_workflow,
+    state_iri,
+    state_name,
+)
 from rdf_persistence.core.domain.exceptions import InvalidWorkflow
 from rdf_persistence.schema.services.schema import load_schema
 from tests.toy import REVIEW_WORKFLOW, ROLES, TOY_SCHEMA
@@ -43,6 +48,36 @@ def test_a_state_is_the_workflow_id_a_slash_and_its_name():
     assert (
         state_iri(review(), "draft") == "https://example.org/ns/library/workflows/review/draft"
     ), "the id, a slash and the name"
+
+
+def test_state_name_is_the_inverse_of_state_iri():  # TC-11
+    workflow = review()
+    for state in workflow.workflow_states:
+        assert state_name(workflow, state_iri(workflow, state)) == state, f"the name of {state}"
+
+
+# (id, the IRI, what the error must name)
+NOT_A_STATE = [
+    (
+        "another-workflows-iri",
+        "https://example.org/ns/library/workflows/other/draft",
+        ["https://example.org/ns/library/workflows/other/draft", "review"],
+    ),
+    (
+        "an-unknown-name",
+        "https://example.org/ns/library/workflows/review/archived",
+        ["https://example.org/ns/library/workflows/review/archived", "review"],
+    ),
+    ("the-bare-id", "https://example.org/ns/library/workflows/review", ["review"]),
+]
+
+
+@pytest.mark.parametrize(("iri", "named"), [pytest.param(i, n, id=k) for k, i, n in NOT_A_STATE])
+def test_state_name_refuses_an_iri_that_is_not_a_state_of_the_workflow(iri, named):  # TC-11
+    with pytest.raises(ValueError) as caught:
+        state_name(review(), iri)
+    for text in named:
+        assert text in str(caught.value), f"the error names {text}"
 
 
 def with_transitions(*moves: WorkflowTransition):
