@@ -15,6 +15,8 @@ D-1 to D-7 (design.md, Delivery decisions).
 - Stage 2 must change the OpenAPI table rows of `audit-results` and `audit-findings` (404 on create
   and replace, PD-18); the refusing-classes lists in tests still name classes by hand.
 - Stage 3 waits for `aggregate-composition` to merge its converter (stage 1 of that change).
+- A rebase on `develop` before the merge regenerated the toy's services and moved the public
+  surface count to 160 (develop added a name too).
 
 ## Next
 Stage 2, task 2.1. Read first: tasks.md §2 (Roadmap order: 2.5a before 2.5, 2.7 before 2.6),
