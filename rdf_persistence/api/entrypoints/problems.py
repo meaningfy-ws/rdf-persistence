@@ -254,7 +254,7 @@ def refusal_response(
     The problem is sent as the rule built it, extra fields and ``detail`` included, when its class is
     exactly one of ``refusal_problems`` and its status is 409 or 422. Any other (an unregistered
     class, a subclass of a registered one, an object that is no problem, another status) is a bug of
-    the rule: one error record, no traceback, and the 500 problem.
+    the rule: one error record carrying the refusal as its exception (D-22), and the 500 problem.
     """
     problem = error.problem
     status = getattr(problem, "status", None)
@@ -264,6 +264,7 @@ def refusal_response(
     reason = "unregistered class" if type(problem) not in refusal_problems else f"status {status}"
     log.error(
         "rule refusal answered as internal error",
+        exc_info=error,
         extra=log_extra(
             LogContext(
                 step="answer-rule-refusal",
@@ -291,7 +292,7 @@ def install_problem_handlers(
     async def toolkit_error(_: Request, error: Exception) -> Response:
         if isinstance(
             error, errors.RuleRefusal
-        ):  # first: never logged as an internal error with a traceback
+        ):  # first: the 500 for a refusal is logged by its own
             return refusal_response(base, error, refusal_problems)
         kind = kind_of(error)
         assert kind is not None, "a handler is registered only for mapped errors"

@@ -499,6 +499,35 @@ The lead's, per R-0007; the developer may overrule any of them.
   its slot but does not raise it (the reader now refuses it, D-16); 2.4's `ban_reading` step
   repeats a test helper; `_Reader.find` and the fake still each split `None` and lists (one more
   shared helper would do).
+- **D-21 The full review (P-0005: L1, L2, L3, L4+L5 over both stages): 26 findings, 0 rated
+  Critical; five accepted as Critical by re-label, the rest under the floor.** Grouped by
+  `file:line`, one decision per group at the highest severity any lens gave it.
+  - *F-1 (L4+L5), accepted:* `_Reader.find` passes dotted keywords to `Session.find`, which ignores
+    prohibitions on the aggregates it follows; a rule can learn a value on an aggregate the writer
+    may not read. Re-labelled Critical: the readability boundary (RISK-4, RISK-5). Fix: refuse a
+    dotted keyword with `BadQuery`, as the fake already does.
+  - *F-2 (L1, L4+L5), accepted:* `checked_find_values` validates in lax mode and the real reader
+    queries with the raw values, the fake with the converted ones (`"5"` or `True` for an int,
+    enum text). Re-labelled Critical: the same defect class as D-16. Fix: strict validation.
+  - *F-3 (L1, L4+L5), accepted:* the schema cache is never cleared and keys on size and mtime; a
+    same-size edit within one coarse mtime tick, in a long-lived process (a test session), serves
+    a stale parse: a wrong generation, silently. Fix: the cache lives for one `generate()` run.
+  - *F-4 (L2), accepted:* `user-manual/test.adoc` calls `Seeded` a frozen dataclass and omits
+    `text_slot` and `not_text`; a consumer following it gets a failing call (as R-W1).
+  - *F-5 (L2), accepted:* the signed scenario "the holder was removed in the same transaction" has
+    no map row and no test through the real guard (as R-W2).
+  - *Under the floor:* the cache's global swap under threads (generation is single-threaded);
+    the export check for technical enums (fails loudly at generation); a `TypeAdapter` built per
+    call; `find(cls)` with no filter; the undeclared `hbreader` (pinned by the lock); the ceiling of
+    `Pathilizer._strifier`; the readers' duplicated `None` handling (D-20); `pydantic_split.py`'s
+    size; the fake's check order; `_item_type`'s unwrap depth; an unbounded value in the
+    `BadQuery` text; a stale "to file" comment; the TypeScript `modules()` assumption comment.
+  - *Lead's reconcile (P-0004):* the `find` requirement in the rp-service-api delta states the
+    `BadQuery` for a value not of the slot's type (L2 Info).
+- **D-22 The refusal's 500 log carries `exc_info` (the developer, 2026-11-28).** L5 found PD-6's
+  "no traceback" against hard rule P-0010, and the operator could not tell which rule raised the
+  refusal. The developer chose P-0010: `exc_info=error`, so the traceback names the rule; the
+  answer to the client is unchanged.
 - **RISK-7 measured (stage 1).** `make generate` took 29 s at 1.1 and 38 s at 1.2 on a machine
   loaded by two sibling sessions: no slowdown that can be told apart from the load; the
   generator lane is compared again in `make check-all`'s timings.

@@ -211,7 +211,7 @@ async def test_a_replace_refused_is_answered_as_the_rule_built_it():  # TC-5
         "status-not-an-int",
     ],
 )
-async def test_any_other_refusal_is_a_500_internal_error_logged_once_without_a_traceback(  # TC-6
+async def test_any_other_refusal_is_a_500_internal_error_logged_once_with_the_refusal_as_its_exception(  # TC-6, D-22
     problem: object,
     registered: tuple[type[BaseModel], ...],
     why: str,
@@ -228,7 +228,8 @@ async def test_any_other_refusal_is_a_500_internal_error_logged_once_without_a_t
         records = internal_error_records(caplog)
         assert len(records) == 1, f"exactly one error record: {[r.getMessage() for r in records]}"
         assert records[0].getMessage() == MESSAGE, "the constant message"
-        assert records[0].exc_info is None, "no traceback"
+        assert records[0].exc_info is not None, "the record carries the exception"
+        assert isinstance(records[0].exc_info[1], RuleRefusal), "the refusal, with its traceback"
         assert why in str(records[0].__dict__), "the record says why"
 
 

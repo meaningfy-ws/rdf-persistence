@@ -38,7 +38,8 @@ path;
 * `unreadable` lists IRIs the writer may not read: they answer as absent;
 * `calls` lists `(method, args, kwargs)` for each call, in order, refused calls included.
 
-Its limits: a `Contains` value or a dotted keyword in `find` raises `NotImplementedError` naming it.
+Its limit: a `Contains` value or a dotted keyword (a slot path) in `find` raises
+`NotImplementedError` naming it; the real reader refuses a dotted keyword with `BadQuery`.
 How a rule is written and tested over it is in
 xref:user-manual/access.adoc#test-a-rule[Unit-test a rule with `FakeAggregateReader`].
 
@@ -391,8 +392,9 @@ hangs, because the block holds the lock the round needs.
 
 A hand-written `AggregateReader` (a stub of a consumer's tests, say) is held to the contract of the
 fake and the real reader by `rdf_persistence.testkit.reader_conformance`. Like the others, it has
-`CASES`; each case is `async def <case>(reader, seeded)`, where `seeded` is a `Seeded`: a frozen
-dataclass that names what your reader holds, so the kit uses no class of the toolkit's:
+`CASES`; each case is `async def <case>(reader, seeded)`, where `seeded` is a `Seeded`: a
+plain class (not a dataclass) that names what your reader holds, so the kit uses no class of the
+toolkit's. It takes every field below, by keyword, and is read-only once built:
 
 * `root`, a concrete root class, and three IRIs: `readable` and `unreadable` (both of class `root`),
 and `absent` (seeded nowhere);
@@ -401,6 +403,7 @@ abstract root class with no path from which `other` derives; `not_root`, a class
 aggregate root;
 * `slot` and `value`, a single-valued slot of `root` that `readable` and `unreadable` both hold at
 `value`, and `wrong_value`, a value not of that slot's type;
+* `text_slot`, a text slot of `root`, and `not_text`, a value that is not text (a number);
 * `iri_slot` and `iri_value`, an IRI-ranged slot `readable` holds;
 * `multi_slot` and `multi_values`, a multivalued slot `readable` holds at least two values on.
 
@@ -415,7 +418,26 @@ from rdf_persistence.testkit.reader_conformance import CASES, Seeded
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.__name__)
 async def test_my_reader_keeps_the_contract(case):
-    reader, seeded = build_my_reader_and_seed()  # a Seeded, as above
+    reader = build_my_reader()  # seeded to match the fields below
+    seeded = Seeded(
+        root=Book,
+        readable="https://example.org/book/1",
+        unreadable="https://example.org/book/2",
+        absent="https://example.org/book/none",
+        other=Author,
+        other_iri="https://example.org/author/1",
+        abstract_parent=Agent,
+        not_root=Address,
+        slot="isbn",
+        value="978-0",
+        wrong_value=5,
+        text_slot="title",
+        not_text=5,
+        iri_slot="author",
+        iri_value="https://example.org/author/1",
+        multi_slot="tags",
+        multi_values=("fiction", "short"),
+    )
     await case(reader, seeded)
 ----
 

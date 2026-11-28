@@ -304,7 +304,7 @@ first refusal stops the write. Its text, for a log or an in-process caller, is t
 `detail`, else its `title`, else its class name.
 
 What goes wrong shows as a 500 `internal-error` without your fields, and one `error` log record
-that names the class or the status, with no traceback:
+that names the rule and the class or the status, logged with its traceback:
 
 * the class is not registered, or is a subclass of a registered one (the match is on the exact class);
 * the object is not a `Problem`;
@@ -386,9 +386,13 @@ the commit does not fail the commit.
 whose slots equal the values given, in IRI order: `reader.find(Book, isbn=new.isbn)` is how a rule
 learns which book holds a key. It is the listing of the generic API (`?<slot>=<value>`) seen from
 inside a rule. `cls` is a generated class that is an aggregate root with a path; an abstract
-parent or a class that is no root raises `ValueError`, a slot the class does not have or a value of
-another type than the slot's raises `BadQuery`. A model of a derived class is found by its own
-class only.
+parent or a class that is no root raises `ValueError`; a slot the class does not have, a dotted
+keyword (a slot path such as `holder.name`) or a value of another type than the slot's raises
+`BadQuery`. A dotted keyword is refused so that a rule cannot reach into an aggregate the writer
+may not read. A model of a derived class is found by its own class only.
+
+*Values are checked strictly.* `"5"` for an int slot, `True` for an int slot and plain text for an
+enum slot are each `BadQuery`: pass the value in the slot's own type.
 
 *What it returns.* Only the aggregates the writer may read, in the write's tenant. An aggregate of
 another tenant, or one the caller may not read, is not in the answer, as for `classes_of`: a rule
@@ -494,9 +498,10 @@ exactly `cls` whose slots equal the values, the refusals of <<find,`find`>> incl
 `TypeError`, `BadQuery`). `calls` lists each call as `(method, args, kwargs)`, in order, the refused
 ones too, so a test asserts what the rule asked.
 
-The fake has two documented limits. A `Contains` value (a substring filter of the listings) and a
-dotted keyword (a slot path) raise `NotImplementedError` naming it: use the real reader, or another
-test, for a rule that needs them. A hand-written reader of your own is held to the same contract by
+The fake has one documented limit. A `Contains` value (a substring filter of the listings) or a
+dotted keyword (a slot path) raises `NotImplementedError` naming it: use the real reader, or
+another test, for a rule that needs a `Contains`; the real reader refuses a dotted keyword with
+`BadQuery`. A hand-written reader of your own is held to the same contract by
 the conformance kit of xref:user-manual/test.adoc#reader-conformance[Check a reader of your own].
 
 === Which writes run the rules
@@ -554,8 +559,8 @@ at another version
 |An aggregate that the reader reads does not decode
 |500: a `RuntimeError` naming it
 
-|`find` is given a `None` value, a class that is no root, a slot the class lacks or a value of
-another type (<<find,above>>)
+|`find` is given a `None` value, a class that is no root, a slot the class lacks, a dotted keyword
+or a value of another type (<<find,above>>)
 |500: a `RuntimeError` that names the rule and the exception (`TypeError`, `ValueError`, `BadQuery`);
 a bug in the rule, never the client's
 |===

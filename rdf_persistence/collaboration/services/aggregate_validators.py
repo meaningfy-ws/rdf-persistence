@@ -39,6 +39,9 @@ from rdf_persistence.schema.services.schema_structure import (
     root_classes,
 )
 
+# a keyword with it names a path through references, which a rule's find refuses
+SLOT_PATH_MARK = "."
+
 
 def _item_type(cls: type[BaseModel], slot: str) -> object:
     """The type of one value of ``slot``: the annotation without ``None`` and without its list."""
@@ -52,7 +55,8 @@ def _item_type(cls: type[BaseModel], slot: str) -> object:
 
 
 def checked_find_values(cls: type[BaseModel], slot: str, items: Sequence[object]) -> list[object]:
-    """Each of ``items`` validated against the item type of ``slot`` of ``cls``, as ``find`` takes it.
+    """Each of ``items`` validated, strictly (no coercion: ``"5"`` or ``True`` is no int, a string no enum
+    member), against the item type of ``slot`` of ``cls``, as ``find`` takes it.
 
     The one check both readers (the real one and the testkit's fake) apply, so they refuse alike.
     A slot that ``cls`` does not have is left to the caller.
@@ -62,13 +66,13 @@ def checked_find_values(cls: type[BaseModel], slot: str, items: Sequence[object]
     """
     adapter: TypeAdapter[object] = TypeAdapter(_item_type(cls, slot))  # type: ignore[arg-type]
     try:
-        return [adapter.validate_python(item) for item in items]
+        return [adapter.validate_python(item, strict=True) for item in items]  # no coercion (D-21)
     except ValidationError as error:
         raise BadQuery(f"{slot} of {cls.__name__} does not take {items!r}: {error}") from error
 
 
 def _refuse_values_not_of_the_slot(cls: type[BaseModel], equals: Mapping[str, object]) -> None:
-    """``BadQuery`` for a value not of its slot's type; an unknown or dotted slot, an empty list and a
+    """``BadQuery`` for a value not of its slot's type; an unknown slot, an empty list and a
     ``Contains`` are left to ``Session.find``."""
     for slot, value in equals.items():
         if slot not in cls.model_fields:
@@ -104,7 +108,9 @@ class AggregateReader(Protocol):
 
         Raises:
             TypeError: A value is ``None``; the message names the slot. Nothing is queried.
-            ValueError, BadQuery, RuntimeError: As ``Session.find``, which this wraps.
+            BadQuery: A keyword is a slot path (it holds a dot), or a value is not of its slot's type
+                (strictly: no coercion); nothing is queried.
+            ValueError, RuntimeError: As ``Session.find``, which this wraps.
         """
         ...
 
@@ -348,6 +354,10 @@ class _Reader:
 
     async def find(self, cls: type[BaseModel], **equals: object) -> list[str]:
         for slot, value in equals.items():
+            if SLOT_PATH_MARK in slot:
+                raise BadQuery(
+                    f"find({cls.__name__}): {slot} is a slot path; a rule finds by a slot of the class itself"
+                )
             if value is None:
                 raise TypeError(
                     f"find({cls.__name__}): {slot} is None; a rule asks for a value, never for its absence"

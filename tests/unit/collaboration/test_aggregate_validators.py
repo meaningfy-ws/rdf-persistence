@@ -3,6 +3,7 @@
 import functools
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -33,6 +34,7 @@ from rdf_persistence.collaboration.services.aggregate_validators import (
     AggregateReader,
     AggregateValidator,
     AggregateValidators,
+    checked_find_values,
     run_aggregate_validators,
 )
 from rdf_persistence.collaboration.services.workflows import Workflows, load_workflow, state_iri
@@ -43,7 +45,7 @@ from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.schema.services.schema_structure import aggregate_keys
 from rdf_persistence.testkit import FakeStore, fake_session
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
-from tests.fixtures.library.domain.generated.books import Book, Chapter
+from tests.fixtures.library.domain.generated.books import Book, Chapter, Genre
 from tests.toy import (
     ADA,
     MODULES,
@@ -1333,3 +1335,52 @@ async def test_a_find_error_inside_a_rule_is_a_rule_bug_naming_the_rule_and_keep
                 [my_find_rule], None, dune(isbn_book_iri(1), chapters=0), WHO, reader_of(session)
             )
     assert isinstance(caught.value.__cause__, cause), f"{row}: {caught.value.__cause__!r}"
+
+
+async def test_find_for_a_dotted_keyword_is_bad_query_naming_it_before_any_query():  # F-1
+    """a rule cannot probe an aggregate the writer may not read through a slot path (D-21)."""
+    store = FakeStore()
+    async with finding_session(store) as session:
+        await add_isbn_book(session, 1, ISBN)
+        seen = counting_queries(store)
+        with pytest.raises(BadQuery, match=r"chapters\.label"):
+            await reader_of(session).find(Book, **{"chapters.label": "x"})
+        assert seen == [], "refused before the store was asked"
+
+
+class Counted(BaseModel):
+    count: int | None = None
+    genre: Genre | None = None
+    on: date | None = None
+
+
+@pytest.mark.parametrize(
+    ("slot", "value", "accepted"),
+    [
+        ("count", 5, True),
+        ("count", "5", False),
+        ("count", True, False),
+        ("genre", Genre.FICTION, True),
+        ("genre", "fiction", False),
+        ("on", date(2020, 1, 2), True),
+    ],
+)
+def test_find_values_are_validated_strictly(slot: str, value: object, accepted: bool):  # F-2
+    if accepted:
+        assert checked_find_values(Counted, slot, [value]) == [value], f"{slot}={value!r} taken"
+    else:
+        with pytest.raises(BadQuery, match=slot):
+            checked_find_values(Counted, slot, [value])
+
+
+async def test_a_rule_finds_no_holder_that_the_unit_removed_before_it_added_the_same_key():  # F-5
+    first, second = isbn_book_iri(1), isbn_book_iri(2)
+    async with guarded_session({"Book": [held_isbn_rule]}, finding=True) as session:
+        await add_isbn_book(session, 1, ISBN)
+        version = (await session.get_graph(first))[2]
+        async with session.transaction() as t:
+            await t.remove(first, version)
+            await t.add_graph(second, toy_mapper().to_triples(dune(second, chapters=0, isbn=ISBN)))
+        assert [h.head_iri for h in await session.heads([first, second])] == [second], (
+            "the holder is gone and the new book is written, with no refusal"
+        )
