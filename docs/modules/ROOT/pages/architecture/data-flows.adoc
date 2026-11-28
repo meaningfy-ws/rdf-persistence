@@ -586,7 +586,10 @@ it, nothing else. A replace with neither S nor N is written as it is. With an S 
 class under it (N must be S, else `Forbidden`), and a write without a state keeps the stored one
 (none stays none); one that names another state is refused (`Forbidden`) unless the transaction is a
 transition's, which allows the one state it moves to. With no S but an N the aggregate must hold no
-state and write none. When a replace is refused on a version that is no longer the one the caller
+state and write none. The same read also keeps the assignees (`rp:assignedTo`) of the root: where the transaction allowed
+a set (an assignment, or a clearing transition), the set written must be exactly that one, the
+empty set included; otherwise a write that omits them keeps the stored ones, and one that names
+another set is refused (`Forbidden`), as is an add that names any. When a replace is refused on a version that is no longer the one the caller
 read, the answer is a `Conflict`, not a refusal of the state. A service where no class follows a
 workflow pays nothing; where one does, every guarded replace costs one small read of the stored
 classes and state (an add costs none). The guard's last step runs the consumer's *aggregate

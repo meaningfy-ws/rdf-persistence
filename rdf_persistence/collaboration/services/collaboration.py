@@ -251,6 +251,13 @@ class Collaboration:
             iri, list(principals), if_version=if_version, command=command
         )
 
+    async def release_unreadable(self, record: CallerAccess) -> None:
+        """Release the assignees who may no longer read what they are assigned, by the access ``record`` of the tenant.
+
+        The ``Raises`` are those of ``Assignments.release_unreadable``.
+        """
+        await self._assignments.release_unreadable(record)
+
     async def assignments(self, iri: str) -> list[Assignment]:
         """The changes of the assignees of ``iri``, oldest first.
 

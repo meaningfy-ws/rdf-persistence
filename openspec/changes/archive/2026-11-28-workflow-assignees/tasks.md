@@ -23,18 +23,18 @@ EPIC: workflow-assignees (proposal.md, #426). Decisions: DEC-1 to DEC-10; design
 - [x] 1.7 `assignments` and the shared provenance helper ([D-3](design.md#d-3), DEC-8). Accept:
   T13, and the existing transition-history tests unchanged.
 - [x] 1.8 The clearing edge in `Transitions._store` ([D-5](design.md#d-5), DEC-5). Accept: T12.
-- [ ] 1.9 Lead: `make refresh-surface` (the new public names), then the stage gate of
+- [x] 1.9 Lead: `make refresh-surface` (the new public names), then the stage gate of
   `docs/modules/ROOT/pages/develop/agents.adoc#_the_gates` (`make check-all`,
   `make test-containers`), the review set, PR.
 
 ## 2. Release on lost access, the queue, docs, PR 2, branch `feat/assignee-release`
 
-- [ ] 2.1 Tests first: T14 to T16. RED: grants removed, assignee kept.
-- [ ] 2.2 `Assignments.release_unreadable`, `ServiceKit.release_assignees`, the call after
+- [x] 2.1 Tests first: T14 to T16. RED: grants removed, assignee kept.
+- [x] 2.2 `Assignments.release_unreadable`, `ServiceKit.release_assignees`, the call after
   `tenancy.set_grants` in `TenantApi.set_grants` ([D-6](design.md#d-6), DEC-7). Accept: T14, T16.
-- [ ] 2.3 The queue listing ([D-7](design.md#d-7), DEC-9): no code change planned. Accept: T15;
+- [x] 2.3 The queue listing ([D-7](design.md#d-7), DEC-9): no code change planned. Accept: T15;
   a red T15 stops the builder and goes to the developer.
-- [ ] 2.4 Docs ([D-6](design.md#d-6), [Risks](design.md#risks--trade-offs)):
+- [x] 2.4 Docs ([D-6](design.md#d-6), [Risks](design.md#risks--trade-offs)):
   `docs/modules/ROOT/pages/howto/workflow.adoc` gains a section "Assign the work" (assignable,
   `assign`, the clearing edge, `assignments`, the queue filter);
   `docs/modules/ROOT/pages/user-manual/access.adoc#_grant_and_prohibit` gains who may assign, the
@@ -42,21 +42,21 @@ EPIC: workflow-assignees (proposal.md, #426). Decisions: DEC-1 to DEC-10; design
   `keep_state` paragraph also keeps the assignees, D-19); a MODIFIED delta of `rp-messages`
   naming the toolkit-filled slots `assigned_principals` and `released_principals` (D-19). Run
   `make refresh-surface`. Accept: `make check-docs`, `openspec validate --strict`.
-- [ ] 2.5 Lead: the stage gate of `docs/modules/ROOT/pages/develop/agents.adoc#_the_gates`
+- [x] 2.5 Lead: the stage gate of `docs/modules/ROOT/pages/develop/agents.adoc#_the_gates`
   (`make check-all`, `make test-containers`), the review set, PR. Comment on #426 with the call,
   the filter and the release, for the consumer's change.
 
 ## 3. Close
 
-- [ ] 3.1 Rows in `tests/audit/scenario-map.csv` for the new tests T1 to T16
+- [x] 3.1 Rows in `tests/audit/scenario-map.csv` for the new tests T1 to T16
   ([Tests](design.md#tests)), each stage adding its own; `make refresh-map` exits 0.
-- [ ] 3.2 After the last merge: reconcile `proposal.md` with what shipped, archive the change
+- [x] 3.2 After the last merge: reconcile `proposal.md` with what shipped, archive the change
   (`/opsx:archive`), close #426.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 ·
-  [ ] 2.1 · [ ] 2.2 · [ ] 2.3 · [ ] 2.4 · [ ] 2.5 · [ ] 3.1 · [ ] 3.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 ·
+  [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 3.1 · [x] 3.2
 
 ## Verification
 

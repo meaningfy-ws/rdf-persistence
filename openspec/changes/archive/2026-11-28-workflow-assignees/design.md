@@ -365,6 +365,14 @@ lane that ran them still runs them and they prove what they proved.
   (listed in PR #443). Three are spine upkeep the lead carries: the error-matrix row of
   `TAKES_A_CLASS_ASSIGNED` (amended below), and `architecture/data-flows.adoc` and an `rp-messages`
   spec delta for the two new toolkit-filled slots, both added to task 2.4.
+- **D-20** (developer asked for parallel work, 2026-11-28): stage 2 starts before stage 1 has
+  merged, on `feat/assignee-release` stacked on stage 1's head (`378ca201`), in
+  `.worktrees/assignee-release`. It takes stage 1's merge of `develop` (D-21) by a merge of
+  `feat/workflow-assignees`, then is brought up to `develop` again once #443 merges. Order
+  inside the stage: the docs (2.4) at once (no seed needed); after the seed, the release (2.1,
+  2.2: `assignments.py`, `kit.py`, `router.py`, `tests/unit/api/`) beside the queue listing (2.3:
+  `tests/feature/assignees.feature` with T15); then T16 in that feature file. Impact on
+  `TenantApi.set_grants`: LOW (one caller, the route).
 - **D-21** (lead, 2026-11-28, amends P-0002 for this stage): `develop` gained two epics
   (aggregate composition, dependent aggregates) while stage 1 was in review, and a rebase
   conflicted on generated files in several of this branch's commits. `develop` is merged into the
@@ -372,6 +380,17 @@ lane that ran them still runs them and they prove what they proved.
   fields; `NAMES` 160 + `Assignment` = 161; both blocks of scenario-map rows), and every
   generated file and snapshot was regenerated from the sources (P-0003). The full gates run again
   on the merge, `make test-containers` included, since `develop` changed the persistence layer.
+- **D-22** (lead, 2026-11-28): the release builder (2.1, 2.2) wrote the code before its tests, against
+  R-0003; its eight tests passed at once, and "a member leaves" fails without the release, so
+  they are kept. Its task gate (exit 0) reported no test count, and the listing builder's (2.3)
+  hit its 900 s background limit: T1 and T2, the lead runs the stage's task gate once on both.
+  T15 was green with no production change, as D-7 expected. The T16 builder's task gate, run
+  over every stage-2 change uncommitted on 33ac4c47, exited 0 with 10987 passed and 5 xfailed;
+  it stands as that re-run.
+- **D-23** (lead, 2026-11-28): stage 2 is the last stage, so its L2+L3 run is folded into the
+  full review of D-17 (L1, L2, L3 single; L4+L5 as one), run over the whole EPIC diff from
+  `f0080218`. It runs while stage 1 waits on its gates and before stage 2's own full gates, to
+  use the wait; reviewers run no tests, and the stage-2 gate report goes in the PR body.
 - **D-16** (lead, 2026-11-27): the worktree was installed with a bare `uv sync`, without the
   extras `make install` adds (`--all-extras`); the API tests failed for a missing module and both
   first task gates fell back to the full lane and timed out. Reinstalled with `make install` and

@@ -39,6 +39,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   6. Put `rp-uml2linkml --check` in CI; retire the model's own copies of the conventions check.
 
 ### Added
+- **Assignees on aggregates under a workflow** (`workflow-assignees`, #426). A workflow file with
+  `assignable: true` gives its aggregates `assigned_to`, owned by the toolkit like the state.
+  `Collaboration.assign(iri, principals, if_version)` sets it: whoever may modify sets anyone; a
+  caller with a role on an edge leaving the current state takes the work; any assignee drops
+  itself; each added principal must read the aggregate by the stored grants. Every change is an
+  `Assignment` activity, listed by `Collaboration.assignments(iri)`. An edge with
+  `clears_assignees: true` clears them. After `PUT …/grants`, the assignees who lost read access
+  are released (`ServiceKit.release_assignees`). A person's queue is `?assigned_to=<principal>`.
 - **`rp-uml2linkml --check`** (`aggregate-composition`): reads and converts the model, writes
   nothing, and exits 1 on any problem or convention line, 0 otherwise. `--out` is optional with
   `--check`. The conventions a model's own script used to check are converter findings now, and

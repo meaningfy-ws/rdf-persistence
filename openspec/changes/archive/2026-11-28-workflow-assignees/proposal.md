@@ -93,13 +93,25 @@ A person's own queue is one listing: `?assigned_to=<principal IRI>`.
 
 ## What Changes
 
+As delivered (PR #443, stage 1; PR #458, stage 2):
+
 - `rdf_persistence/model/rp_workflow.yaml`: `assigned_to` on `UnderWorkflow`; `assignable` on
-  `Workflow`; `clears_assignees` on `WorkflowTransition`; the `Assignment` activity;
-  `released_principals` on `Transition`. Then `make generate`.
-- `rdf_persistence/collaboration/services/`: a new `assignments.py`; the write guard keeps the
-  assignees; the transition clears them; `Collaboration.assign` and `assignments`.
-- `rdf_persistence/api/`: the grants routes run the release after the grant change.
-- Docs: `howto/workflow.adoc` (assign the work), `user-manual/access.adoc` (who may assign).
+  `Workflow`; `clears_assignees` on `WorkflowTransition`; the `Assignment` activity (payload
+  `assigned_to`, `expected_version`; toolkit-filled `assigned_principals`, `released_principals`);
+  `released_principals` on `Transition`. Then `make generate`. `Assignment` is public (164 names).
+- `rdf_persistence/collaboration/services/`: a new `assignments.py` (`assign`, `assignments`,
+  `release_unreadable`); a new `aggregate_activities.py` (one reader of an aggregate's activities,
+  shared with the transitions, its own import-linter layer, D-13); `workflows.keep_state` keeps the
+  assignees through an exact allowed set (`Transaction._allow_assignees`, the `WriteGuard.prepare`
+  keyword `allowed_assignees`, an internal port); the transition clears them;
+  `Collaboration.assign`, `assignments` and `release_unreadable`.
+- `rdf_persistence/core/domain/sparql.py`: `is_absolute_iri`, the check an added principal passes
+  (D-18).
+- `rdf_persistence/api/`: `ServiceKit.release_assignees`, run by `PUT …/grants` after its commit;
+  `access_of` wired into `collaboration()`.
+- Docs: `howto/workflow.adoc` (assign the work), `user-manual/access.adoc` (who may assign, the
+  release, RISK-2, RISK-3), `architecture/data-flows.adoc` (the guard keeps the assignees),
+  `CHANGELOG.md`.
 
 ## Capabilities
 
@@ -111,10 +123,34 @@ None.
 
 - `rp-workflow`: ADDED requirements for assignees, who may assign, the record, the clearing
   edge, the release on lost access and the queue listing.
+- `rp-messages`: MODIFIED, the toolkit-filled slots gain `assigned_principals` and
+  `released_principals` (found by the stage-1 review, D-19).
 
 ## Impact
 
 - Generated classes, shapes, the JSON-LD context and the TypeScript types gain the new slots; an
   existing aggregate holds no assignees and is unchanged (no data migration).
-- A grant change on a tenant with many assignments costs one query plus one commit per released
-  aggregate.
+- A grant change costs more than shaped: the release loads the graph of every aggregate that
+  holds assignees, then reads again and commits each one it releases. A
+  narrower scan (only the roots of principals whose access changed) is a follow-up (L5 #3, under
+  the floor).
+
+## Reconciliation (as delivered)
+
+| Shaped | Delivered | State |
+|---|---|---|
+| DEC-1 `assigned_to` on `UnderWorkflow` | `rp_workflow.yaml`, generated classes, shapes, context, TypeScript | delivered, PR #443 |
+| DEC-2 the toolkit owns the assignees | `workflows.keep_state` with an exact allowed set, checked before the stored one (RDF cannot tell omitted from empty) | delivered, PR #443 |
+| DEC-3 opt-in `assignable` | `Assignments.assign` refuses a non-empty set under a workflow not assignable; an empty set clears | delivered, PR #443; the release ignores `assignable` by design, untested (L2 #3 under the floor) |
+| DEC-4 who may assign, like Jira | `Assignments._require_authority`: modify sets anyone; a role on a leaving edge adds itself; any assignee drops itself; a Prohibition of modify blocks all | delivered, PR #443 |
+| DEC-5 an edge may only clear | `clears_assignees`, `Transitions._moved(clear=True)`, the released principals on the `Transition` | delivered, PR #443 |
+| DEC-6 an assignee may read | `_require_readers` by the stored grants, through `access_of`; principals checked as absolute IRIs (D-18) | delivered, PR #443; checked before the commit, not inside it (L1 #2 under the floor) |
+| DEC-7 release after the grants route | `ServiceKit.release_assignees` after `PUT …/grants`; failure logged, 200 kept; idempotent | delivered, PR #458; only that route (RISK-2, L3 #1 under the floor) |
+| DEC-8 the `Assignment` record | `Assignment` (`prov:Activity`) in the commit's update; `assignments(iri)` oldest first, kept after delete | delivered, PR #443 |
+| DEC-9 a service call; the queue as a filter | `Collaboration.assign`; `?assigned_to=` on the generic listing, no code change (D-7, T15) | delivered, PR #443 and PR #458 |
+| DEC-10 the version first | `if_version` checked after read and the Prohibition, before anything about the assignees; `Conflict` | delivered, PR #443 |
+| Tests T1 to T16 | unit, adversarial and feature tests, scenario-map rows | delivered; T16 never red, since the release was built first (D-22) |
+| Docs | howto, user manual, data flows, `rp-messages` delta, CHANGELOG | delivered, PR #458 |
+
+Not shaped but built: `aggregate_activities.py` (D-13), `core/domain/sparql.is_absolute_iri`
+(D-18), the `rp-messages` delta (D-19). Shaped but not built: nothing.
