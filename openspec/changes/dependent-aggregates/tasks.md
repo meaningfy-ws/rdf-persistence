@@ -16,7 +16,7 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   living text changed. Accept: validation passes.
 - [x] 1.2 Metamodel and models ([PD-1](design.md#pd-1), [PD-2](design.md#pd-2)), lead.
   `rp_dependent_on` in `RpAnnotation` (`rdf_persistence/model/rp_core.yaml`); `DependenceLink` in
-  `rdf_persistence/model/technical/persistence/rp_persistence_services.yaml`;
+  `rdf_persistence/model/rp_core.yaml` (D-6);
   `BoundaryRule.DEPENDENCE` in `rdf_persistence_generation/model/rp_generation.yaml`; `make
   generate`, `make check-generated`. Unit first: `tests/unit/core/test_annotations.py`
   `test_rp_dependent_on_is_an_annotation_the_toolkit_reads`. Accept: passes; regenerated files in
@@ -33,20 +33,20 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   `rdf_persistence_generation/checks/dependence.py`, called from `boundary_problems` in
   `rdf_persistence_generation/checks/boundary.py`. Accept: each refusal names class and slot
   (cycle: its classes in order) and fails when its check is removed.
-- [ ] 1.4 Schema structure ([PD-2](design.md#pd-2)), after 1.2.
+- [x] 1.4 Schema structure ([PD-2](design.md#pd-2)), after 1.2.
   `tests/unit/schema/test_schema_structure_dependence.py`
   `test_dependence_links_read_the_annotation_and_subclasses`, then `dependence_links(view)` in
   `rdf_persistence/schema/services/schema_structure.py`. Accept: the test passes on the toy and on
   a fixture with an abstract annotated base (one link, its concrete subclasses as `part_classes`).
-- [ ] 1.5 Toy module ([PD-14](design.md#pd-14)), lead, after 1.3. `tests/fixtures/library/audits.yaml`,
+- [x] 1.5 Toy module ([PD-14](design.md#pd-14)), lead, after 1.3. `tests/fixtures/library/audits.yaml`,
   imported by `tests/fixtures/library/library.yaml`; `make generate`; goldens refreshed in one
   commit. Accept: `rp-generate` passes on the toy; `make check-generated`.
-- [ ] 1.6 Generation feature, after 1.3: scenarios 10–11 of
+- [x] 1.6 Generation feature, after 1.3: scenarios 10–11 of
   `openspec/changes/dependent-aggregates/features/dependent_aggregates_generation.feature` into
   `tests/generator/feature/dependent_aggregates_generation.feature`, steps in
   `tests/generator/feature/test_dependent_aggregates_generation.py`, verbatim. Lane: `make
   test-generator`. Accept: both scenarios (all outline rows) pass.
-- [ ] 1.7 Docs ([PD-16](design.md#pd-16)): `docs/modules/ROOT/pages/user-manual/model.adoc`
+- [x] 1.7 Docs ([PD-16](design.md#pd-16)): `docs/modules/ROOT/pages/user-manual/model.adoc`
   (annotation, DEC-7 rules). Accept: `make check-docs` passes.
 - [ ] 1.8 Lead: `make check-all`; one review pass; PR. Accept: gates green; no Critical open.
 

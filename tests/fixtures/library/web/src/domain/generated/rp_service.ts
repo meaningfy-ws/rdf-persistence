@@ -198,16 +198,6 @@ export interface AggregateHead {
   head_version?: string;
 }
 
-/** One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each side lists the class and its concrete subclasses. */
-export interface DependenceLink {
-  /** The IRIs of the dependent class and of its concrete subclasses. */
-  part_classes: string[];
-  /** The IRI of the predicate of the pointer slot, from the part to its whole. */
-  pointer: string;
-  /** The IRIs of the class the pointer ranges over and of its concrete subclasses. */
-  whole_classes: string[];
-}
-
 /** One step of a migration: three group graph patterns, as text, that the toolkit wraps into one update request over the graphs of a database. A step with `unresolved` is a draft and does not load. */
 export interface MigrationStep {
   /** A short name for what a record describes. */

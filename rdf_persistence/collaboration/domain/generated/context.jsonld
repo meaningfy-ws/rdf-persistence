@@ -186,6 +186,15 @@
          "@type": "@id",
          "@id": "ownedBy"
       },
+      "part_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "partClass"
+      },
+      "pointer": {
+         "@type": "@id",
+         "@id": "pointer"
+      },
       "replies_to": {
          "@type": "@id",
          "@id": "repliesTo"
@@ -250,6 +259,11 @@
          "@type": "@id",
          "@id": "prov:wasGeneratedBy"
       },
+      "whole_classes": {
+         "@type": "@id",
+         "@container": "@set",
+         "@id": "wholeClass"
+      },
       "workflow_name": {
          "@id": "workflowName"
       },
@@ -285,6 +299,9 @@
       },
       "CommitMarker": {
          "@id": "CommitMarker"
+      },
+      "DependenceLink": {
+         "@id": "DependenceLink"
       },
       "Described": {
          "@id": "Described"

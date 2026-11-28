@@ -148,43 +148,8 @@ classes:
       - head_iri
       - head_types
       - head_version
-  DependenceLink:
-    title: Dependence link
-    description: >-
-      One link of dependence read from the schema: the class of a dependent aggregate (its part) and
-      the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each
-      side lists the class and its concrete subclasses.
-    class_uri: rp:DependenceLink
-    slots:
-      - part_classes
-      - pointer
-      - whole_classes
-    slot_usage:
-      part_classes:
-        required: true
-      pointer:
-        required: true
-      whole_classes:
-        required: true
 
 slots:
-  part_classes:
-    title: Part classes
-    description: The IRIs of the dependent class and of its concrete subclasses.
-    slot_uri: rp:partClass
-    range: uri
-    multivalued: true
-  pointer:
-    title: Pointer
-    description: The IRI of the predicate of the pointer slot, from the part to its whole.
-    slot_uri: rp:pointer
-    range: uri
-  whole_classes:
-    title: Whole classes
-    description: The IRIs of the class the pointer ranges over and of its concrete subclasses.
-    slot_uri: rp:wholeClass
-    range: uri
-    multivalued: true
   items:
     title: Items
     description: The objects of the page; framed aggregates, or tenant summaries.

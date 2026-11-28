@@ -37,6 +37,7 @@ from rdf_persistence import (
     CommitMarker,
     Contains,
     DatabaseKind,
+    DependenceLink,
     Described,
     Grant,
     GrantSet,

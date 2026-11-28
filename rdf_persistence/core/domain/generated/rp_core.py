@@ -177,6 +177,13 @@ class KeyDuplicate(ConfiguredBaseModel):
     key_roots: list[str] = _Field(default=..., title="Key roots", description="The IRIs of the roots that hold the values, sorted.")
 
 
+class DependenceLink(ConfiguredBaseModel):
+    "One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each side lists the class and its concrete subclasses."
+    part_classes: list[str] = _Field(default=..., title="Part classes", description="The IRIs of the dependent class and of its concrete subclasses.")
+    pointer: str = _Field(default=..., title="Pointer", description="The IRI of the predicate of the pointer slot, from the part to its whole.")
+    whole_classes: list[str] = _Field(default=..., title="Whole classes", description="The IRIs of the class the pointer ranges over and of its concrete subclasses.")
+
+
 # Model rebuild
 # see https://pydantic-docs.helpmanual.io/usage/models/#rebuilding-a-model
 AggregateRoot.model_rebuild()
@@ -186,3 +193,4 @@ PendingLoad.model_rebuild()
 CommitMarker.model_rebuild()
 AggregateKey.model_rebuild()
 KeyDuplicate.model_rebuild()
+DependenceLink.model_rebuild()

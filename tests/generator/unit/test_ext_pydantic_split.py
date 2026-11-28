@@ -33,6 +33,7 @@ from .golden import assert_matches_toy, run_toy
 TOOLKIT_DOMAIN = theme_package(THEME_OF_ROOT["rp"])
 TOY_MODULES = [
     "__init__.py",
+    "audits.py",
     "books.py",
     "books_activities.py",
     "library.py",

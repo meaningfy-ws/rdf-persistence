@@ -110,44 +110,6 @@
       "title": "Contains",
       "type": "object"
     },
-    "DependenceLink": {
-      "additionalProperties": false,
-      "description": "One link of dependence read from the schema: the class of a dependent aggregate (its part) and the classes of the aggregate it points to (its whole), with the predicate of the pointer. Each side lists the class and its concrete subclasses.",
-      "properties": {
-        "part_classes": {
-          "description": "The IRIs of the dependent class and of its concrete subclasses.",
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "pointer": {
-          "description": "The IRI of the predicate of the pointer slot, from the part to its whole.",
-          "format": "uri",
-          "type": "string"
-        },
-        "type": {
-          "description": "The class of the node: its name or IRI. Set by the service on a read; a write may name the class or one of its subclasses.",
-          "type": "string"
-        },
-        "whole_classes": {
-          "description": "The IRIs of the class the pointer ranges over and of its concrete subclasses.",
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "part_classes",
-        "pointer",
-        "whole_classes"
-      ],
-      "title": "DependenceLink",
-      "type": "object"
-    },
     "Filter": {
       "additionalProperties": false,
       "description": "One filter of a listing, the name of a slot of the listed type and the value it must have, or whose text it must contain, as the text the caller sent.",

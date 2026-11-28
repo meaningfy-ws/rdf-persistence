@@ -15,6 +15,7 @@ imports:
   - books
   - books_activities
   - scans
+  - audits
   - templates
   - library_access
   - rdf_persistence/model/rp_discussion

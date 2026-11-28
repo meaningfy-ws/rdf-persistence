@@ -70,7 +70,7 @@ What the code already gives (read 2026-11-28):
   annotation on the pointer (a class may have several root-valued slots; the class is what is
   dependent).
 - <a id="pd-2"></a>**PD-2** (P-0007): the runtime reads a generated concept, not tuples or dicts. A new class
-  `DependenceLink` in `model/technical/persistence/rp_persistence_services.yaml`: `part_classes`
+  `DependenceLink` in `model/rp_core.yaml`, beside `AggregateKey` (D-6): `part_classes`
   (IRIs of the dependent class and its concrete subclasses), `pointer` (the slot's predicate IRI),
   `whole_classes` (IRIs of the range class and its concrete subclasses). `schema_structure.dependence_links(view)`
   builds them; `make generate` (lead only). The name avoids `dependents` (#226 records). *Rejected:*
@@ -323,3 +323,13 @@ Decisions the lead took without the developer, shown for validation at the end (
   task gate. 1.2 alone cannot pass it: the enum-wide tests (`BoundaryRule` table, the annotation
   value rules) need 1.3's check and `hard.py` rule. `rp_dependent_on`'s value rule is the
   slot-name pattern (`PATTERNED_ANNOTATIONS`). Rejected: a stopgap row that 1.3 would delete.
+- <a id="d-5"></a>**D-5**, lead, 2026-11-28 (delivery): the machine's test queue is shared with
+  other sessions and serialises every gate (about 25 minutes each, mostly queued). Parallel
+  builders on disjoint files run only their narrow checks; the lead runs one task gate
+  (`make test-changed check-quality`) for the batch before the commit. Rejected: one gate per
+  builder, which queued five full runs behind each other.
+- <a id="d-6"></a>**D-6**, lead, 2026-11-28 (delivery, task 1.4): `DependenceLink` moves from
+  `rp_persistence_services.yaml` to the core module (`rp_core.yaml`), beside `AggregateKey`. Its
+  only builder, `schema_structure.dependence_links`, sits in the `schema` theme, which the
+  `themes-ordered` import contract forbids from importing `persistence`. Supersedes PD-2's
+  placement. Rejected: a factory passed in by the caller (a workaround of our own layering).

@@ -4,18 +4,15 @@ Each scenario copies the toy library's schemas, migrations and ``pyproject.toml`
 calls ``cli.main`` there, as the command line does. TC-41 to TC-45 of ``generator-package``.
 """
 
-import shutil
 from pathlib import Path
 
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from rdf_persistence_generation.cli import main
+from .toy_run import copy_toy, edit, generate, tree
 
 scenarios("generation.feature")
 
-TOY = Path(__file__).parents[2] / "fixtures" / "library"
-IGNORED = shutil.ignore_patterns("__pycache__", "generated", "web")
 OUTPUT = "domain/generated"
 TYPESCRIPT = "web/src/domain/generated"
 MANIFEST = "rp-manifest.json"
@@ -54,28 +51,6 @@ class Run:
 @pytest.fixture
 def run(tmp_path: Path) -> Run:
     return Run(tmp_path)
-
-
-def copy_toy(folder: Path) -> None:
-    shutil.copytree(TOY, folder, ignore=IGNORED)
-
-
-def generate(project: Path, capsys: pytest.CaptureFixture[str], *flags: str) -> tuple[int, str]:
-    capsys.readouterr()
-    code = main(["--project", str(project), *flags])
-    return code, capsys.readouterr().err
-
-
-def edit(path: Path, old: str, new: str) -> None:
-    text = path.read_text(encoding="utf-8")
-    assert old in text, f"{old!r} is not in {path.name}: the edit would change nothing"
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
-
-
-def tree(folder: Path) -> dict[str, bytes]:
-    return {
-        str(p.relative_to(folder)): p.read_bytes() for p in sorted(folder.rglob("*")) if p.is_file()
-    }
 
 
 def output(run: Run) -> Path:
