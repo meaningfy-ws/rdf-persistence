@@ -23,7 +23,7 @@ from rdf_persistence.core.domain.exceptions import (
     PersistenceError,
     TenantGone,
 )
-from rdf_persistence.core.domain.generated.rp_core import AggregateKey, Principal
+from rdf_persistence.core.domain.generated.rp_core import AggregateKey, DependenceLink, Principal
 from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.core.domain.sparql_parsing import prepare_query, prepare_update
 from rdf_persistence.events.services.events import Receive
@@ -468,6 +468,8 @@ async def fake_session(
     record_activities: bool = True,
     on_commit: OnCommit | None = None,
     removals: RemovalRefusal | None = None,
+    dependence: Sequence[DependenceLink] = (),
+    max_roots: int | None = None,
 ) -> AsyncIterator[Session]:
     """A real ``Session`` over a ``FakeStore``, for unit tests of domain services.
 
@@ -476,6 +478,8 @@ async def fake_session(
     default policy). ``keys`` are the keys across aggregates the session enforces (default: none).
     ``record_activities`` and ``on_commit`` are the session's (message-bus PD-9, PD-10).
     ``removals`` are the session's: the classes whose roots it refuses to remove while referenced.
+    ``dependence`` and ``max_roots`` are the session's links of dependence and root limit; links
+    without a limit raise ``ValueError``.
     """
     store = store or FakeStore()
     if FAKE_DATABASE not in await store.list_datasets():
@@ -494,6 +498,8 @@ async def fake_session(
         record_activities=record_activities,
         on_commit=on_commit,
         removals=removals,
+        dependence=dependence,
+        max_roots=max_roots,
     ) as session:
         yield session
 

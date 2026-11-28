@@ -43,6 +43,7 @@ from rdf_persistence.core.domain.generated.rp_annotations import Tracked
 from rdf_persistence.core.domain.generated.rp_core import (
     AggregateKey,
     CommitMarker,
+    DependenceLink,
     KeyDuplicate,
     PendingLoad,
     Principal,
@@ -598,7 +599,20 @@ class Session:
         on_commit: OnCommit | None = None,
         removals: RemovalRefusal | None = None,
         may_read: Callable[[str], bool] | None = None,
+        dependence: Sequence[DependenceLink] = (),
+        max_roots: int | None = None,
     ) -> None:
+        """``dependence`` are the schema's links of dependence and ``max_roots`` the limit on the roots of
+        one commit, cascades included (dependent-aggregates PD-2, PD-6); both are kept here.
+
+        Raises:
+            ValueError: ``dependence`` is not empty and ``max_roots`` is ``None`` (A-8): a cascade
+                without a limit is unbounded.
+        """
+        if dependence and max_roots is None:
+            raise ValueError("dependence needs max_roots: a cascade without a limit is unbounded")
+        self._dependence = tuple(dependence)
+        self._max_roots = max_roots
         self._may_read = may_read  # kept for the reader; the session checks nothing with it (PD-4)
         self._removals = removals  # none: no removal is refused for being referenced (PD-7)
         self._record_activities = record_activities  # one activity per commit (message-bus PD-9)
@@ -622,6 +636,16 @@ class Session:
     def principal(self) -> Principal:
         """The principal this session writes for."""
         return self._principal
+
+    @property
+    def dependence(self) -> tuple[DependenceLink, ...]:
+        """The links of dependence of the schema this session was opened with (none: no part depends)."""
+        return self._dependence
+
+    @property
+    def max_roots(self) -> int | None:
+        """The most roots one commit may hold, cascades included; ``None``: no limit given."""
+        return self._max_roots
 
     @property
     def may_read(self) -> Callable[[str], bool] | None:
@@ -1951,6 +1975,8 @@ async def open_session(
     on_commit: OnCommit | None = None,
     removals: RemovalRefusal | None = None,
     may_read: Callable[[str], bool] | None = None,
+    dependence: Sequence[DependenceLink] = (),
+    max_roots: int | None = None,
 ) -> AsyncIterator[Session]:
     """Open a session on the tenant database ``database`` for ``principal``; ``iris`` is the IRI policy
     (default: the default policy); ``listings`` lets the session ``find`` aggregates.
@@ -1968,6 +1994,8 @@ async def open_session(
     refers to them and builds the ``InUse`` (none: no removal is refused for it, as for ``keys``).
     ``may_read`` tells whether the principal may read an aggregate IRI; the session keeps it, exposes
     it as ``Session.may_read`` and checks nothing with it (aggregate-validators PD-4).
+    ``dependence`` are the links of dependence (``schema_structure.dependence_links``) and
+    ``max_roots`` the limit on the roots of one commit; links without a limit raise ``ValueError``.
     """
     yield Session(
         store,
@@ -1986,4 +2014,6 @@ async def open_session(
         on_commit=on_commit,
         removals=removals,
         may_read=may_read,
+        dependence=dependence,
+        max_roots=max_roots,
     )

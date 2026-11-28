@@ -36,7 +36,12 @@ from rdf_persistence.core.domain.exceptions import (
     StoreNotWired,
     TenantBehind,
 )
-from rdf_persistence.core.domain.generated.rp_core import DatabaseKind, Principal, RpAnnotation
+from rdf_persistence.core.domain.generated.rp_core import (
+    DatabaseKind,
+    DependenceLink,
+    Principal,
+    RpAnnotation,
+)
 from rdf_persistence.core.domain.media import N_QUADS
 from rdf_persistence.core.domain.sparql import Triple, fill, term
 from rdf_persistence.core.services.generated.rp_core_services import LogContext
@@ -142,13 +147,23 @@ class Tenancy:
         on_commit: OnCommit | None = None,
         stores: Mapping[str, Store] = {},
         removals: RemovalRefusal | None = None,
+        dependence: Sequence[DependenceLink] = (),
+        max_roots: int | None = None,
     ) -> None:
         """``store`` is the ``default`` store, which holds the system database; ``stores`` are the others by name.
 
+        ``dependence`` (``dependence_links`` of the schema) and ``max_roots`` (the toolkit's limit) are
+        given to every session (dependent-aggregates PD-2, PD-6).
+
         Raises:
             ValueError: A name is ``default`` or one a record's ``store_name`` refuses, or one ``Store`` object
-                is wired under two names (the default one included).
+                is wired under two names (the default one included); or ``dependence`` is given without
+                ``max_roots`` (A-8).
         """
+        if dependence and max_roots is None:
+            raise ValueError("dependence needs max_roots: a cascade without a limit is unbounded")
+        self._dependence = tuple(dependence)
+        self._max_roots = max_roots
         self._dependents = dependents
         self._removals = removals  # the refusal of removals, given to every session (PD-7)
         # given to the sessions of tenant and application databases, never the system database's
@@ -215,6 +230,8 @@ class Tenancy:
             on_commit=None if database == self._system else self._on_commit,
             removals=self._removals,
             may_read=may_read,
+            dependence=self._dependence,
+            max_roots=self._max_roots,
         )
 
     def tenant_session(

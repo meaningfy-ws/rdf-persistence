@@ -52,7 +52,7 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
 
 ## 2. Stage 2: write guard and cascade (PR 2), after stage 1
 
-- [ ] 2.1 Wiring ([PD-2](design.md#pd-2), [PD-6](design.md#pd-6)): `Session` and `tenant_session`
+- [x] 2.1 Wiring ([PD-2](design.md#pd-2), [PD-6](design.md#pd-6)): `Session` and `tenant_session`
   (`rdf_persistence/persistence/services/session.py`) take `dependence: Sequence[DependenceLink]`
   and `max_roots: int | None`; the kit (`rdf_persistence/api/entrypoints/kit.py`), `Tenancy`
   (`rdf_persistence/tenancy/services/tenancy.py`) and the testkit's `fake_session`
