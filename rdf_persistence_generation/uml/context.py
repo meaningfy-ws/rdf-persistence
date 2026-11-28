@@ -74,7 +74,7 @@ def below_of(path: UmlPackagePath) -> tuple[str, ...]:
 
 
 def is_boundary_root(element: UmlElement) -> bool:
-    """Whether the class may be the one root of a boundary: a root or the tenant root (PD-13)."""
+    """Whether the class is the top of an aggregate: a root (derived, PD-5) or the tenant root."""
     return bool(element.is_root or element.is_tenant_root)
 
 

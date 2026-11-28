@@ -456,6 +456,7 @@
         "toolkit_filled",
         "payload",
         "rp_unique_scope",
+        "rp_loaded_graph",
         "media_type"
       ],
       "title": "RpAnnotation",

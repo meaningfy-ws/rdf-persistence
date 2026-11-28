@@ -5,7 +5,7 @@ Feature: A UML class model becomes LinkML that the toolkit accepts
 
   # spec: rp-uml-import / a package with a root and a part
   Scenario: A package with a root and a part
-    Given a library package where the book is a root that owns its chapters in one boundary
+    Given a library package where the book owns its chapters through a composition
     When the model is converted
     Then the conversion succeeds
     And the book is an aggregate root
@@ -103,7 +103,7 @@ Feature: A UML class model becomes LinkML that the toolkit accepts
 
   # spec: rp-uml-import / stable output
   Scenario: Stable output
-    Given a library package where the book is a root that owns its chapters in one boundary
+    Given a library package where the book owns its chapters through a composition
     When the model is converted
     And the model is converted again
     Then the second output is byte-identical to the first
@@ -221,3 +221,171 @@ Feature: A UML class model becomes LinkML that the toolkit accepts
     And the class "Item" has no annotation "rp_path"
     And the class "Book" mixes in "AggregateRoot"
     And the class "Magazine" mixes in "AggregateRoot"
+
+  # spec: rp-uml-import / the composition drawn either way (composition.feature)
+  Scenario: A book owns its chapters through a composition
+    Given a library package where the book has an association "hasChapter" to its chapters
+    And a composition from the book to the chapter beside it
+    When the package is converted
+    Then the slot "has_chapter" is owned and inlined as a list
+    And the book is an aggregate root and the chapter is its part
+    And the generator's lint and boundary checks accept the output
+
+  # spec: rp-uml-import / the composition drawn either way
+  Scenario: The direction a composition was drawn in does not matter
+    Given the composition from the book to the chapter is drawn from the chapter to the book
+    And its diamond is at the book
+    When the package is converted
+    Then the output is the same as when it is drawn from the book to the chapter
+
+  # spec: rp-uml-import / parts three deep
+  Scenario: Parts nest three deep
+    Given compositions from the shelf to the book, from the book to the chapter and from the chapter to the page
+    When the package is converted
+    Then the shelf is the only root of the four
+    And the slots "holds", "has_chapter" and "has_page" are owned
+
+  # spec: rp-uml-import / a boundary moved in a layout pass
+  Scenario Outline: A layout change never changes what is stored together
+    Given a converted library package with a boundary around the book and its chapters
+    When the boundary is <moved> and the package is converted again
+    Then the schemas are byte-identical to the first conversion
+
+    Examples:
+      | moved                            |
+      | shrunk so the chapter is outside |
+      | slid off every class             |
+      | deleted                          |
+
+  # spec: rp-uml-import / recursive and shared part classes
+  Scenario: Sections hold subsections, and a note sits under two wholes
+    Given compositions from the book to the section and from the section to the section
+    And the note is a part of the book and of the chapter
+    When the package is converted
+    Then the conversion writes
+    And the book is the only root among them
+
+  # spec: rp-uml-import / two roles to one part class
+  Scenario: Two owned roles and a reference to one part class
+    Given the book has associations "frontMatter" and "body" to the section, each with a composition naming its role
+    And an association "firstSection" from the book to the section with no composition
+    When the package is converted
+    Then the slots "front_matter" and "body" are owned
+    And the slot "first_section" is a reference
+
+  # spec: rp-uml-import / refused compositions
+  Scenario Outline: A composition the converter cannot read fails the run
+    Given a library package with <drawing>
+    When the package is converted
+    Then the run fails naming <named>
+    And nothing is written
+
+    Examples:
+      | drawing                                                                      | named                                             |
+      | a composition from the book to the chapter and no association                | the book, the chapter and the missing association |
+      | two associations beside one composition that names no role                   | both roles                                        |
+      | compositions from the chapter to the page and back, no root composing either | the cycle                                         |
+      | a page whose whole no root reaches                                           | the page                                          |
+      | a composition to a class outside the converted package                       | the composition and the subtree                   |
+      | a shared aggregation from the book to the chapter                            | the connector and the composition to draw         |
+      | an association whose end at the book is composite                            | the slot and the two-connector form               |
+
+  # spec: rp-uml-import / what is not a root (derived_roots.feature)
+  Scenario Outline: A class that is not a root
+    Given a library package with <class>
+    When the package is converted
+    Then that class is not an aggregate root
+
+    Examples:
+      | class                                                  |
+      | a chapter that is the part of a book                   |
+      | an abstract publication with no root below it          |
+      | an authority stereotyped "loaded graph"                |
+      | a drawn toolkit role definition                        |
+      | the library stereotyped "tenant root"                  |
+      | a plain class in a package tagged "module_kind=access" |
+
+  # spec: rp-uml-import / the roots are reported
+  Scenario: The report lists every root with its parts
+    Given a shelf that holds books with chapters, and a reader that is no one's part
+    When the package is converted
+    Then the report has a root line for the reader with no parts
+    And a root line for the shelf with the parts "Book, Chapter"
+
+  # spec: rp-uml-import / a «root» that disagrees
+  Scenario Outline: A drawn «root» that disagrees with the compositions fails
+    Given a library package that draws «root» on the shelf
+    And <disagreement>
+    When the package is converted
+    Then the run fails naming <named>
+
+    Examples:
+      | disagreement                                     | named                                 |
+      | the reader is no one's part and not drawn «root» | the reader as a root not drawn «root» |
+      | the chapter, a part of the book, is drawn «root» | the chapter and the book              |
+      | the abstract publication is drawn «root»         | the publication                       |
+
+  # spec: rp-uml-import / «root» and compositions that agree
+  Scenario: A model drawn the old way and with compositions converts the same
+    Given the library model drawn with «root» and a boundary, converted before compositions existed
+    And each association its boundary owned is the only one between its two classes
+    And the same model with a composition beside each owned association
+    When it is converted
+    Then the schema files are byte-identical to the earlier conversion
+    And the report adds the root lines and one deprecated-root line
+
+  # spec: rp-uml-import / loaded reports of a shelf count (own_graph_and_pointers.feature)
+  Scenario: A shelf count keeps its loaded reports in their own graphs
+    Given a shelf count with "own graph" compositions to a count report and a shape report
+    And both reports are stereotyped "loaded graph"
+    And the shape report holds its shape results by a plain composition
+    When the package is converted
+    Then the slots "count_report" and "shape_report" range over URIs and are marked as loaded graphs
+    And neither slot is owned
+    And the shape result is not generated and the report names it
+    And the shelf count is an aggregate root
+
+  # spec: rp-uml-import / a generated part in its own graph
+  Scenario: A generated class in its own graph waits for dependent aggregates
+    Given an inventory with an "own graph" composition to the generated shelf count
+    When the package is converted
+    Then the run fails naming the inventory, the shelf count and "dependent-aggregates"
+    And nothing is written
+
+  # spec: rp-uml-import / refused compositions (DEC-7)
+  Scenario: A loaded graph cannot be an inline part
+    Given a shelf count with a plain composition to a count report stereotyped "loaded graph"
+    When the package is converted
+    Then the run fails naming the composition and "own graph"
+
+  # spec: rp-uml-import / a pointer into another aggregate's part
+  Scenario Outline: A pointer must target a root
+    Given a shelf that holds books
+    And a reader whose association "borrows" points at <target>
+    When the package is converted
+    Then <outcome>
+
+    Examples:
+      | target          | outcome                                                        |
+      | the book        | the run fails naming the reader's slot, the book and the shelf |
+      | the shelf       | the package converts                                           |
+      | an access class | the package converts, the slot a reference as before           |
+
+  # spec: rp-uml-import / refused compositions (DEC-3)
+  Scenario: The old composite association is refused
+    Given a library package where the book owns its chapters through an association with a composite end
+    When the package is converted
+    Then the run fails naming the slot
+    And the message says to draw a composition beside a plain association
+
+  # spec: rp-uml-import / a role object that realises its class (#435; conventions_check.feature)
+  Scenario Outline: A role object and its Realisation
+    Given a role object "librarian" <classifier> and a Realisation to <target>
+    When the model is converted
+    Then <outcome>
+
+    Examples:
+      | classifier                   | target         | outcome                                                   |
+      | classified by RoleDefinition | RoleDefinition | the roles file is the one written without the Realisation |
+      | with no classifier           | RoleDefinition | it is read as a role definition                           |
+      | classified by RoleDefinition | the book       | the run fails naming the object, RoleDefinition and Book  |

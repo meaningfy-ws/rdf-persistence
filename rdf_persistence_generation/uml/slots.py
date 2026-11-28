@@ -31,6 +31,8 @@ from rdf_persistence_generation.uml.naming import (
 
 URI: Final = "uri"
 OWNED: Final = RpAnnotation.OWNED.value
+LOADED_GRAPH: Final = RpAnnotation.RP_LOADED_GRAPH.value  # an «own graph» slot (PD-9)
+ANNOTATED: Final = (OWNED, LOADED_GRAPH)  # the shape fields a slot states as an annotation
 HAS_PART: Final = "has_part"  # the toolkit slot of a collection's members (dcterms:hasPart)
 MEMBER_CLASS: Final = "member_class"  # the toolkit slot a reference collection's member role fixes
 MULTIPLICITY: Final = (
@@ -107,6 +109,7 @@ SHAPE_FIELDS: Final = (
     "maximum_cardinality",
     "minimum_value",
     OWNED,
+    LOADED_GRAPH,
 )
 # What the slot states only when every usage agrees; ``range`` and ``description`` always follow PD-16.
 LIMIT_FIELDS: Final = tuple(each for each in SHAPE_FIELDS if each not in ("range", "description"))
@@ -119,12 +122,14 @@ def shape_of(
     range_and_description: tuple[str, str | None],
     bounds: SlotDefinition,
     minimum_value: int | None = None,
-    owned: bool = False,
+    marked: tuple[str, ...] = (),
 ) -> SlotDefinition:
     """What a slot looks like on one class, as a slot named ``name``: the fields that may differ from one class to the next.
 
     ``bounds`` gives the multiplicity's limits. A metaslot has no ``owned``, so an owned slot carries the
-    ``owned`` annotation that the output states too (``is_owned`` reads it).
+    ``owned`` annotation that the output states too (``is_owned`` reads it); a slot of an «own graph»
+    composition carries ``rp_loaded_graph`` the same way (PD-9). ``marked`` names the annotations
+    (``ANNOTATED``) the slot carries.
     """
     range_, description = range_and_description
     return SlotDefinition(
@@ -136,7 +141,7 @@ def shape_of(
         minimum_cardinality=bounds.minimum_cardinality,
         maximum_cardinality=bounds.maximum_cardinality,
         minimum_value=minimum_value,
-        annotations={OWNED: annotation(OWNED, "true")} if owned else {},
+        annotations={tag: annotation(tag, "true") for tag in marked},
     )
 
 
@@ -176,26 +181,29 @@ class Usage:
 
 
 def _value(shape: SlotDefinition, field_name: str) -> object:
-    return is_owned(shape) if field_name == OWNED else getattr(shape, field_name)
+    return (
+        field_name in shape.annotations if field_name in ANNOTATED else getattr(shape, field_name)
+    )
 
 
 def _shape_kwargs(shape: SlotDefinition, only: set[str] | frozenset[str]) -> dict[str, object]:
     """The LinkML keywords of the ``only`` fields of a shape; an unset or false field writes nothing."""
     kwargs: dict[str, object] = {}
+    notes = {}
     for field_name in SHAPE_FIELDS:
         value = _value(shape, field_name)
         if field_name in only and value is not None and value is not False:
+            if field_name in ANNOTATED:
+                notes[field_name] = annotation(field_name, str(value).lower())
             kwargs.update(_keyword(field_name, value, shape))
-    return kwargs
+    return {**kwargs, "annotations": notes} if notes else kwargs
 
 
 def _keyword(name: str, value: object, shape: SlotDefinition) -> dict[str, object]:
+    if name == LOADED_GRAPH:
+        return {}
     if name == OWNED:
-        inline = "inlined_as_list" if shape.multivalued else "inlined"
-        return {
-            "annotations": {OWNED: annotation(OWNED, str(value).lower())},
-            inline: bool(value) or None,
-        }
+        return {("inlined_as_list" if shape.multivalued else "inlined"): bool(value) or None}
     return {name: value}
 
 

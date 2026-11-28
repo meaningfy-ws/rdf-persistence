@@ -1,7 +1,7 @@
 """The generic library model of the stage-2 golden (TC-11) and IT-1, written as a ``.qea`` file.
 
 A helper, not a test module. It is the worked example of the design (``Book`` with ``rp_mixins=StoredFile``
-and a unique key, ``dct:identifier``, a ``1..*`` part ``Chapter`` in its boundary, ``shelvedOn`` to the root
+and a unique key, ``dct:identifier``, a ``1..*`` part ``Chapter`` by a composition, ``shelvedOn`` to the root
 ``Shelf``) with what the extended model adds, each once: an activity root ``Loan``, a «tenant root» ``Library``, an
 abstract root ``Work`` that its two roots specialise and that a slot ranges over, and a slot (``location``)
 used in two packages, so it is defined once in the package the other imports. Every element has a note.
@@ -13,8 +13,6 @@ from tests.generator.uml_qea import QeaBuilder
 
 PACKAGE = "MODEL/library"
 ROOT_NAME = "library"
-BOX = (-20, 30, 320, -298)  # (left, top, right, bottom) of Book's boundary on diagram 1
-INSIDE = (0, 0, 100, -50)
 PREFIXES = """\
 schema_base: https://example.org/ns/library/
 default_prefix: lib
@@ -93,6 +91,7 @@ def _links(builder: QeaBuilder, ids: dict[str, int]) -> None:
     builder.association(
         book, ids["chapter"], "lib:hasChapter", "1..*", note="The chapters of the book."
     )
+    builder.aggregation(book, ids["chapter"])  # the composition that owns the chapters (PD-1, PD-2)
     builder.association(
         book, ids["shelf"], "lib:shelvedOn", "0..1", note="The shelf the book stands on."
     )
@@ -112,7 +111,6 @@ def build_library(folder: Path) -> Path:
     ids |= _shelves(builder, shelves)
     ids |= _circulation(builder, circulation)
     _links(builder, ids)
-    builder.boundary(diagram=1, rect=BOX, members=[])
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["chapter"], (10, -10, 60, -40))
+    # a boundary is an annotation, named for its root and kept in the root's converted package (PD-7)
+    builder.boundary(diagram=1, package=catalogue, name="Book")
     return builder.finish()

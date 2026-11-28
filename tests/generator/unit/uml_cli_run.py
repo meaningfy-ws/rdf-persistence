@@ -25,8 +25,9 @@ def build_library(tmp_path: Path) -> tuple[QeaBuilder, dict[str, int]]:
     ids["model"] = builder.package("MODEL")
     ids["library"] = builder.package("library", parent=ids["model"])
     ids["book"] = builder.cls(ids["library"], "lib:Book", stereotype="root", note="A book.")
-    ids["chapter"] = builder.cls(ids["library"], "lib:Chapter")
-    ids["folio"] = builder.cls(ids["library"], "lib:Folio")
+    # every plain concrete class derives as a root, so a drawn «root» must be on all three (PD-6)
+    ids["chapter"] = builder.cls(ids["library"], "lib:Chapter", stereotype="root")
+    ids["folio"] = builder.cls(ids["library"], "lib:Folio", stereotype="root")
     return builder, ids
 
 

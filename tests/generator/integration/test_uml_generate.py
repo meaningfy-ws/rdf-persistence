@@ -30,6 +30,8 @@ from rdf_persistence_generation.steps import (
     RULES_STEP,
     STEPS,
 )
+from rdf_persistence_generation.uml.cli import main as uml2linkml
+from tests.generator import uml_library
 from tests.generator.uml_model import (
     BOOK,
     CHAPTER,
@@ -39,6 +41,7 @@ from tests.generator.uml_model import (
     SERIES,
     SHELF,
     attribute,
+    composition,
     generalisation,
     klass,
     link,
@@ -256,3 +259,105 @@ def test_an_access_package_passes_the_boundary_rule_for_the_root_that_imports_it
     )
 
     assert problems == [], "the boundary rule passes for a root that imports an access module"
+
+
+def test_the_redrawn_library_converts_and_passes_the_generator_checks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """D-9: the library drawn with compositions and a boundary goes through ``rp-uml2linkml``, then the checks."""
+    project = tmp_path / "project"
+    project.mkdir()
+    converted = uml2linkml(
+        [
+            str(uml_library.build_library(tmp_path)),
+            "--package",
+            uml_library.PACKAGE,
+            "--prefixes",
+            str(uml_library.write_prefixes(tmp_path)),
+            "--out",
+            str(project),
+            "--root-name",
+            uml_library.ROOT_NAME,
+        ]
+    )
+    assert converted == 0, capsys.readouterr().err
+    (project / "pyproject.toml").write_text(PYPROJECT, encoding="utf-8")
+    (project / PACKAGE / "domain").mkdir(parents=True)
+    (project / PACKAGE / "__init__.py").write_text("", encoding="utf-8")
+    (project / PACKAGE / "domain" / "__init__.py").write_text("", encoding="utf-8")
+
+    # the hard check is left out: the library leaves one enumeration literal without a note on purpose
+    problems = generate(
+        read_targets(project / "pyproject.toml"), project, (LINT_STEP, BOUNDARY_STEP), check=True
+    )
+
+    assert problems == [], "the redrawn library must pass the lint and the boundary check"
+    root = yaml.safe_load((project / "library.yaml").read_text(encoding="utf-8"))
+    assert "library_catalogue" in root["imports"], "the root imports the catalogue module"
+
+
+_SHELF_COUNT, _COUNT_REPORT, _SHAPE_REPORT, _SHAPE_RESULT = 30, 31, 32, 33
+_OWN_GRAPH = "own graph"
+
+
+def _shelf_count_model() -> UmlModel:
+    """Design example 2: a shelf count with two «own graph» reports that are not generated."""
+    return model(
+        klass(_SHELF_COUNT, "lib:ShelfCount"),
+        klass(_COUNT_REPORT, "lib:CountReport", stereotype="loaded graph"),
+        klass(_SHAPE_REPORT, "lib:ShapeReport", stereotype="loaded graph"),
+        klass(_SHAPE_RESULT, "lib:ShapeResult"),
+        links=(
+            link(1, _SHELF_COUNT, _COUNT_REPORT, target_role="lib:countReport", target_card="0..1"),
+            link(2, _SHELF_COUNT, _SHAPE_REPORT, target_role="lib:shapeReport", target_card="0..1"),
+            link(3, _SHAPE_REPORT, _SHAPE_RESULT, target_role="lib:result", target_card="0..*"),
+        ),
+        compositions=(
+            composition(4, _SHELF_COUNT, _COUNT_REPORT, own_graph=True, stereotype=_OWN_GRAPH),
+            composition(5, _SHELF_COUNT, _SHAPE_REPORT, own_graph=True, stereotype=_OWN_GRAPH),
+            composition(6, _SHAPE_REPORT, _SHAPE_RESULT),
+        ),
+    )
+
+
+def _loaded_graph_problems(project: Path) -> list[str]:
+    """What is wrong with the shelf count's report slots in the converted schema."""
+    problems: list[str] = []
+    schema = yaml.safe_load((project / "library_library.yaml").read_text(encoding="utf-8"))
+    for slot in ("count_report", "shape_report"):
+        found = schema["slots"][slot]
+        annotations = found.get("annotations", {})
+        if found.get("range") != "uri":
+            problems.append(f"{slot} ranges over {found.get('range')}, not uri")
+        if "owned" in annotations:
+            problems.append(f"{slot} is owned")
+        if annotations.get("rp_loaded_graph", {}).get("value") != "true":
+            problems.append(f"{slot} does not carry rp_loaded_graph")
+    for part in ("CountReport", "ShapeReport", "ShapeResult"):
+        if part in schema["classes"]:
+            problems.append(f"{part} is generated")
+    return problems
+
+
+@pytest.mark.slow
+def test_the_shelf_count_generates_with_its_loaded_graph_slots_as_uri(
+    tmp_path: Path, importable_project: Path
+) -> None:
+    """D-9, PD-9: an «own graph» composition to a not-generated part is a ``uri`` slot, not an owned part."""
+    project = _converted_project(_shelf_count_model(), tmp_path, default_mixins=["Described"])
+    assert _loaded_graph_problems(project) == [], "the converted report slots hold graph IRIs"
+
+    problems = generate(read_targets(project / "pyproject.toml"), project, STEPS, check=False)
+
+    assert problems == [], "rp-generate must accept the shelf count with every step"
+    generated = importlib.import_module(f"{PACKAGE}.domain.generated.library_library")
+    for part in ("CountReport", "ShapeReport", "ShapeResult"):
+        assert not hasattr(generated, part), f"{part} is inside an own graph: no class is generated"
+    fields = generated.ShelfCount.model_fields
+    for slot in ("count_report", "shape_report"):
+        assert fields[slot].annotation == str | None, f"{slot} is a plain IRI string in Python"
+    iri = "https://example.org/ns/library#graph-1"
+    count = generated.ShelfCount(
+        id="https://example.org/ns/library#count-1", label="A count", count_report=iri
+    )
+    assert count.count_report == iri, "the slot holds an IRI"
