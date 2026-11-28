@@ -4,11 +4,14 @@ import json
 import sys
 from pathlib import Path
 
+from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
 from tests.toy_service import ToyService
 
 
 def main(target: str) -> None:
-    Path(target).write_text(json.dumps(ToyService().app.openapi(), indent=2))
+    Path(target).write_text(
+        json.dumps(ToyService(refusal_problems=[HeldKeyProblem]).app.openapi(), indent=2)
+    )
 
 
 if __name__ == "__main__":

@@ -7,12 +7,14 @@ from typing import Any
 import pytest
 from openapi_spec_validator import validate
 
+from rdf_persistence import Problem
 from rdf_persistence.api.entrypoints.openapi import PATH_FILTER_DESCRIPTION
 from rdf_persistence.api.entrypoints.problems import CONFLICT as VERSION_CONFLICT
 from rdf_persistence.api.entrypoints.problems import KEY_CONFLICT, KINDS
 from rdf_persistence.core.domain.media import JSON, JSON_LD, PROBLEM_JSON, REPRESENTATIONS, TURTLE
 from rdf_persistence.persistence.services.listing import listable_slots
 from rdf_persistence.schema.services.schema_structure import holds_text, is_internal
+from tests.fixtures.library.services.generated.library_problems import HeldKeyProblem
 from tests.toy_service import ToyService
 
 COMPONENT = "#/components/schemas/"
@@ -502,3 +504,97 @@ def test_an_application_class_has_no_path_and_no_component(document) -> None:
     assert "Template" not in document["components"]["schemas"], (
         "an application class has no component"
     )
+
+
+HELD_REF = {"$ref": f"{COMPONENT}HeldKeyProblem"}
+BOOKS, BOOK = f"{TENANT}/books", f"{TENANT}/books/{{aggregate_id}}"
+WIDENED_WRITES = {(BOOKS, "post"), (BOOK, "put")}
+
+
+def problem_schema(response: dict) -> dict:
+    return response["content"][PROBLEM_JSON]["schema"]
+
+
+def widened(former: dict) -> dict:
+    return {"anyOf": [former, HELD_REF]}
+
+
+@pytest.fixture(scope="module")
+def refusing_document() -> dict[str, Any]:
+    return ToyService(refusal_problems=[HeldKeyProblem]).app.openapi()
+
+
+def test_a_registered_refusal_problem_is_a_component(refusing_document) -> None:
+    """TC-1: the class is listed with its own fields."""
+    held = refusing_document["components"]["schemas"]["HeldKeyProblem"]
+    assert "holder" in held["properties"], "the extra field is described"
+    assert "holder" in held["required"], "the extra field is required"
+
+
+@pytest.mark.parametrize(("path", "method"), sorted(WIDENED_WRITES), ids=["create", "replace"])
+@pytest.mark.parametrize("status", ["409", "422"])
+def test_a_generic_write_answers_the_refusal_problem_too(
+    refusing_document, document, path: str, method: str, status: str
+) -> None:  # TC-1
+    former = problem_schema(operation(document, path, method)["responses"][status])
+    answered = problem_schema(operation(refusing_document, path, method)["responses"][status])
+    assert answered == widened(former), f"{method} {path} {status} is a union with the former"
+
+
+def test_only_the_widened_answers_differ(refusing_document, document) -> None:
+    """TC-1: every other response of every operation, ``default`` aside, is as without refusals."""
+    changed = {
+        (path, method, status)
+        for path, methods in document["paths"].items()
+        for method, op in methods.items()
+        for status, response in op["responses"].items()
+        if status != "default"
+        and response != refusing_document["paths"][path][method]["responses"][status]
+    }
+    assert changed, "the refusals change some answers"
+    for path, method, status in changed:
+        assert status in ("409", "422"), f"{method} {path} {status} changed"
+        assert method in ("post", "put"), f"{method} {path} {status} changed"
+        tag = operation(document, path, method)["tags"][0]
+        assert tag != "tenants", f"{method} {path} {status}: a tenant route widened"
+
+
+def test_every_default_answer_lists_the_problem(refusing_document, document) -> None:
+    """TC-2: each operation with a ``default`` has the union; the context route has none."""
+    seen = 0
+    for path, methods in document["paths"].items():
+        for method, op in methods.items():
+            after = refusing_document["paths"][path][method]["responses"]
+            if "default" not in op["responses"]:
+                assert "default" not in after, f"{method} {path} gained a default"
+                continue
+            seen += 1
+            assert problem_schema(after["default"]) == widened(
+                problem_schema(op["responses"]["default"])
+            ), f"{method} {path} default"
+    assert seen, "some operation has a default"
+    assert refusing_document["paths"]["/context.jsonld"] == document["paths"]["/context.jsonld"], (
+        "the context route is unchanged"
+    )
+
+
+def test_a_name_already_a_component_stops_the_service() -> None:
+    """TC-3."""
+
+    class Book(Problem):
+        pass
+
+    with pytest.raises(ValueError, match="Book"):
+        ToyService(refusal_problems=[Book])
+
+
+def test_a_class_registered_twice_is_listed_once() -> None:
+    """TC-3b."""
+    doc = ToyService(refusal_problems=[HeldKeyProblem, HeldKeyProblem]).app.openapi()
+    got = problem_schema(operation(doc, BOOKS, "post")["responses"]["409"])
+    assert got["anyOf"].count(HELD_REF) == 1, "listed once"
+
+
+def test_the_base_problem_alone_leaves_the_document_as_it_is(document) -> None:
+    """TC-3b."""
+    assert ToyService(refusal_problems=[Problem]).app.openapi() == document, "no change"

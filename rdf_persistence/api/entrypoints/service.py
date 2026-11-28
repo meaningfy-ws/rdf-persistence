@@ -129,15 +129,16 @@ def install_service(
     ``refusal_problems`` are the classes of problem a rule may refuse with, by raising ``RuleRefusal``:
     each is a subclass of ``Problem`` (else ``TypeError``, naming it). The generic create and replace
     answer a refusal whose problem is exactly one of them, at 409 or 422, as the rule built it, extra
-    fields included; any other refusal is a 500 ``internal-error``, logged once. They are not yet
-    listed in the OpenAPI document (consumer-write-rules D-5).
+    fields included; any other refusal is a 500 ``internal-error``, logged once. They are listed in
+    the OpenAPI document: as component schemas, in the ``409`` and ``422`` of the generic create and
+    replace, and in every operation's ``default``.
 
     Returns the kit the routes share, for the consumer's own routes: its ``tenancy``, ``store``,
     ``files`` and ``identity``, and ``require`` and ``require_aggregate``, the token and access check
     of the toolkit's routes.
 
     Raises:
-        ValueError: A key of ``aggregate_validators`` or ``delete_validators`` is not a root class or a parent of one. Or ``stores`` has the key ``default``, or one ``Store`` object is wired under two names
+        ValueError: A class of ``refusal_problems`` (or a definition it brings) has the name of a component schema of the document; the message names it. Or a key of ``aggregate_validators`` or ``delete_validators`` is not a root class or a parent of one. Or ``stores`` has the key ``default``, or one ``Store`` object is wired under two names
             (the default included); the message names the key. Or ``event_bus`` is given and ``settings.deployment`` is empty: the deployments
             could not tell their own messages from the others'.
         StoreNotWired: (at start-up) an access record names a store that is not wired.

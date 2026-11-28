@@ -207,9 +207,15 @@ transaction changed earlier; a holder it misses is refused by the unique key at 
 `key-conflict`), so the miss fails safe.
 
 The check is on the exact class and runs before the internal-error logging, so a registered refusal
-is never logged as a fault. In this release the OpenAPI document does not list a consumer's problem
-classes: the published `Problem` component is closed and does not name their extra fields. How to
-write one is in
+is never logged as a fault.
+
+The OpenAPI document lists each registered refusal class as a component schema. The 409 and 422
+answers of each aggregate's generic create and replace, and the `default` answer of every operation,
+accept it beside the toolkit's `Problem` schema (`anyOf`), so a client generated from the document
+types the extra fields. A class registered twice is listed once, and `Problem` itself adds nothing.
+A class whose name is already a component schema (for example the name of an aggregate class) stops
+the service at start-up with `ValueError`. A service with no refusal classes publishes the same
+document as before. How to write a class is in
 xref:user-manual/access.adoc#refuse-with-own-problem[Refuse with your own problem].
 
 *Listings.* A query takes `limit` (1 to 200, default 50), `offset` (default 0),
