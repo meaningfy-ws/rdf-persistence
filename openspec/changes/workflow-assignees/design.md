@@ -387,6 +387,10 @@ lane that ran them still runs them and they prove what they proved.
   T15 was green with no production change, as D-7 expected. The T16 builder's task gate, run
   over every stage-2 change uncommitted on 33ac4c47, exited 0 with 10987 passed and 5 xfailed;
   it stands as that re-run.
+- **D-23** (lead, 2026-11-28): stage 2 is the last stage, so its L2+L3 run is folded into the
+  full review of D-17 (L1, L2, L3 single; L4+L5 as one), run over the whole EPIC diff from
+  `f0080218`. It runs while stage 1 waits on its gates and before stage 2's own full gates, to
+  use the wait; reviewers run no tests, and the stage-2 gate report goes in the PR body.
 - **D-16** (lead, 2026-11-27): the worktree was installed with a bare `uv sync`, without the
   extras `make install` adds (`--all-extras`); the API tests failed for a missing module and both
   first task gates fell back to the full lane and timed out. Reinstalled with `make install` and
