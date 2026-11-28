@@ -23,7 +23,7 @@ EPIC: workflow-assignees (proposal.md, #426). Decisions: DEC-1 to DEC-10; design
 - [x] 1.7 `assignments` and the shared provenance helper ([D-3](design.md#d-3), DEC-8). Accept:
   T13, and the existing transition-history tests unchanged.
 - [x] 1.8 The clearing edge in `Transitions._store` ([D-5](design.md#d-5), DEC-5). Accept: T12.
-- [ ] 1.9 Lead: `make refresh-surface` (the new public names), then the stage gate of
+- [x] 1.9 Lead: `make refresh-surface` (the new public names), then the stage gate of
   `docs/modules/ROOT/pages/develop/agents.adoc#_the_gates` (`make check-all`,
   `make test-containers`), the review set, PR.
 
@@ -42,7 +42,7 @@ EPIC: workflow-assignees (proposal.md, #426). Decisions: DEC-1 to DEC-10; design
   `keep_state` paragraph also keeps the assignees, D-19); a MODIFIED delta of `rp-messages`
   naming the toolkit-filled slots `assigned_principals` and `released_principals` (D-19). Run
   `make refresh-surface`. Accept: `make check-docs`, `openspec validate --strict`.
-- [ ] 2.5 Lead: the stage gate of `docs/modules/ROOT/pages/develop/agents.adoc#_the_gates`
+- [x] 2.5 Lead: the stage gate of `docs/modules/ROOT/pages/develop/agents.adoc#_the_gates`
   (`make check-all`, `make test-containers`), the review set, PR. Comment on #426 with the call,
   the filter and the release, for the consumer's change.
 
@@ -50,13 +50,13 @@ EPIC: workflow-assignees (proposal.md, #426). Decisions: DEC-1 to DEC-10; design
 
 - [x] 3.1 Rows in `tests/audit/scenario-map.csv` for the new tests T1 to T16
   ([Tests](design.md#tests)), each stage adding its own; `make refresh-map` exits 0.
-- [ ] 3.2 After the last merge: reconcile `proposal.md` with what shipped, archive the change
+- [x] 3.2 After the last merge: reconcile `proposal.md` with what shipped, archive the change
   (`/opsx:archive`), close #426.
 
 ## Roadmap
 
-- [ ] 1.1 · [ ] 1.2 · [ ] 1.3 · [ ] 1.4 · [ ] 1.5 · [ ] 1.6 · [ ] 1.7 · [ ] 1.8 · [ ] 1.9 ·
-  [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [ ] 2.5 · [x] 3.1 · [ ] 3.2
+- [x] 1.1 · [x] 1.2 · [x] 1.3 · [x] 1.4 · [x] 1.5 · [x] 1.6 · [x] 1.7 · [x] 1.8 · [x] 1.9 ·
+  [x] 2.1 · [x] 2.2 · [x] 2.3 · [x] 2.4 · [x] 2.5 · [x] 3.1 · [x] 3.2
 
 ## Verification
 
