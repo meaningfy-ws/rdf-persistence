@@ -14,10 +14,6 @@ from tests.generator.uml_qea import QeaBuilder
 
 from .uml_cli_run import PREFIX, PREFIXES, ROOT, build_library, prefixes_file, run
 
-BOX = (-20, 30, 320, -298)  # (left, top, right, bottom)
-INSIDE = (0, 0, 100, -50)
-STRADDLING = (300, 0, 400, -50)
-
 
 def snapshot(folder: Path) -> dict[str, bytes]:
     return {file.name: file.read_bytes() for file in sorted(folder.iterdir())}
@@ -28,9 +24,8 @@ def snapshot(folder: Path) -> dict[str, bytes]:
 
 def test_three_faults_give_three_sorted_lines_exit_one_and_leave_out_unchanged(tmp_path, capsys):
     builder, ids = build_library(tmp_path)
-    builder.boundary(diagram=1, rect=BOX, members=[])
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["chapter"], STRADDLING)  # a straddling class
+    # a class to class Realisation: the reader has no geometry fault left, so this is the third one
+    builder.realisation(ids["book"], ids["chapter"])
     builder.association(ids["book"], ids["folio"], role="lib:y", card="1", pdata1=str(ids["book"]))
     builder.extra_stereotypes(ids["folio"], "root", "loaded graph")  # a second stereotype
     out = tmp_path / "out"

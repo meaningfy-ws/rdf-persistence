@@ -104,7 +104,7 @@ def compose(
 ) -> Composed:
     """The ``is_a`` and the mixins of a class; two ``is_a`` sources are a problem naming the class (PD-17).
 
-    ``owned`` is whether a boundary or a composite association makes the class a part; ``defaults`` are the
+    ``owned`` is whether the composition tree makes the class a part; ``defaults`` are the
     default mixins that are toolkit classes (``check_default_mixins``).
     """
     tags = ctx.tags.get(element.uml_class.object_id, {})

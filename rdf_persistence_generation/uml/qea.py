@@ -95,14 +95,7 @@ TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
     ),
     "t_objectproperties": ("Object_ID", "Property", "Value", "Notes"),
     "t_xref": ("Client", "Name", "Description"),
-    "t_diagramobjects": (
-        "Diagram_ID",
-        "Object_ID",
-        "RectTop",
-        "RectLeft",
-        "RectRight",
-        "RectBottom",
-    ),
+    "t_diagramobjects": ("Diagram_ID", "Object_ID"),
     "t_diagram": ("Diagram_ID", "Name", "Package_ID", "Diagram_Type"),
     "t_connectortag": ("ElementID", "Property", "VALUE", "NOTES"),
     "t_operation": ("Object_ID",),
@@ -409,7 +402,7 @@ class _Reading:
         self.state_rows = _of_types(in_subtree, STATE_TYPES)
         self.state_ids = {row["Object_ID"] for row in self.state_rows}
         self.class_ids = {row["Object_ID"] for row in self.class_rows}
-        self.boundary_rows = _plain_boundaries(objects)
+        self.boundary_rows = _plain_boundaries(in_subtree)
         self.package_objects = _package_objects(self.package_rows, objects)
 
     def _select(self, table: str) -> list[sqlite3.Row]:
@@ -435,7 +428,7 @@ class _Reading:
             uml_links=self.links,
             uml_compositions=self.compositions,
             uml_tagged_values=self._tags(),
-            uml_boundaries=_Boundaries(self, self._select("t_diagramobjects")).read(),
+            uml_boundaries=self._boundaries(),
             uml_objects=self._objects(self.realised),
             uml_state_nodes=nodes,
             uml_state_flows=flows,
@@ -687,6 +680,28 @@ class _Reading:
         target = self.label(row["End_Object_ID"])
         return f"{source}.{role} -> {target}" if role else f"{source} -> {target}"
 
+    def _boundaries(self) -> list[UmlBoundary]:
+        """The boundaries of the converted packages, by name and package only (PD-7, PD-18).
+
+        A boundary is an annotation: no membership and no geometry is read. It is kept when a diagram
+        shows it, with the first such diagram.
+        """
+        diagrams: dict[int, int] = {}
+        for row in self._select("t_diagramobjects"):
+            diagrams[row["Object_ID"]] = min(
+                diagrams.get(row["Object_ID"], row["Diagram_ID"]), row["Diagram_ID"]
+            )
+        return [
+            UmlBoundary(
+                object_id=row["Object_ID"],
+                name=row["Name"] or "",
+                diagram_id=diagrams[row["Object_ID"]],
+                package_id=row["Package_ID"],
+            )
+            for row in sorted(self.boundary_rows, key=lambda each: each["Object_ID"])
+            if row["Object_ID"] in diagrams
+        ]
+
     def _tags(self) -> list[UmlTaggedValue]:
         """The tagged values of the converted classes and of the converted packages' objects."""
         owners = self.class_ids | set(self.package_objects.values())
@@ -700,108 +715,6 @@ class _Reading:
             if row["Object_ID"] in owners
         ]
         return sorted(tags, key=lambda tag: (tag.owner_id, tag.name))
-
-
-# A rectangle as (x_min, y_min, x_max, y_max): EA writes left/right and top/bottom in either order.
-Rect = tuple[int, int, int, int]
-INSIDE = "inside"
-STRADDLE = "straddle"
-OUTSIDE = "outside"
-
-
-def _relation(rect: Rect, box: Rect) -> str:
-    """``inside`` (edges inclusive), ``straddle`` (shares area without lying inside) or ``outside``."""
-    x_min, y_min, x_max, y_max = rect
-    box_x_min, box_y_min, box_x_max, box_y_max = box
-    if box_x_min <= x_min and x_max <= box_x_max and box_y_min <= y_min and y_max <= box_y_max:
-        return INSIDE
-    shares_x = min(x_max, box_x_max) > max(x_min, box_x_min)
-    shares_y = min(y_max, box_y_max) > max(y_min, box_y_min)
-    return STRADDLE if shares_x and shares_y else OUTSIDE
-
-
-def _joined(numbers: Sequence[int]) -> str:
-    words = [str(number) for number in numbers]
-    return words[0] if len(words) == 1 else f"{', '.join(words[:-1])} and {words[-1]}"
-
-
-class _Boundaries:
-    """Boundary membership by geometry (PD-4): the classes whose rectangle lies inside the box."""
-
-    def __init__(self, reading: _Reading, placements: Iterable[sqlite3.Row]) -> None:
-        self.reading = reading
-        self.on_diagram: dict[int, dict[int, list[Rect]]] = defaultdict(lambda: defaultdict(list))
-        for row in placements:
-            top, left, right, bottom = (
-                row["RectTop"],
-                row["RectLeft"],
-                row["RectRight"],
-                row["RectBottom"],
-            )
-            if None in (top, left, right, bottom):
-                continue
-            rect = (min(left, right), min(top, bottom), max(left, right), max(top, bottom))
-            self.on_diagram[row["Diagram_ID"]][row["Object_ID"]].append(rect)
-
-    def read(self) -> list[UmlBoundary]:
-        found: list[UmlBoundary] = []
-        boundaries_of: dict[int, set[int]] = defaultdict(set)
-        for row in sorted(self.reading.boundary_rows, key=lambda r: r["Object_ID"]):
-            boundary = self._boundary(row)
-            if boundary is None:
-                continue
-            found.append(boundary)
-            for member in boundary.member_ids or []:
-                boundaries_of[member].add(boundary.object_id)
-        for class_id, boundaries in sorted(boundaries_of.items()):
-            if len(boundaries) > 1:
-                self.reading.problems.append(
-                    _no_rule(self.reading.label(class_id), "inside two boundaries")
-                )
-        return found
-
-    def _boundary(self, row: sqlite3.Row) -> UmlBoundary | None:
-        boundary_id = row["Object_ID"]
-        label = row["Name"] or f"boundary {boundary_id}"
-        diagrams = sorted(d for d, placed in self.on_diagram.items() if boundary_id in placed)
-        member_sets = {
-            diagram: self._members(label, self.on_diagram[diagram][boundary_id][0], diagram)
-            for diagram in diagrams
-        }
-        if len({frozenset(members) for members in member_sets.values()}) > 1:
-            self.reading.problems.append(
-                _no_rule(label, f"members differ between diagrams {_joined(diagrams)}")
-            )
-            return None
-        members = member_sets[diagrams[0]] if diagrams else set()
-        if not members:
-            return None
-        return UmlBoundary(
-            object_id=boundary_id,
-            name=row["Name"] or "",
-            diagram_id=diagrams[0],
-            member_ids=sorted(members),
-        )
-
-    def _members(self, label: str, box: Rect, diagram: int) -> set[int]:
-        members: set[int] = set()
-        for object_id, rects in self.on_diagram[diagram].items():
-            if object_id not in self.reading.class_ids:
-                continue
-            relations = {_relation(rect, box) for rect in rects}
-            element = self.reading.label(object_id)
-            if STRADDLE in relations:
-                self.reading.problems.append(_no_rule(element, f"straddles boundary {label}"))
-            elif relations == {INSIDE, OUTSIDE}:
-                self.reading.problems.append(
-                    _no_rule(
-                        element,
-                        f"placed twice on the diagram of boundary {label}, inside and outside",
-                    )
-                )
-            elif INSIDE in relations:
-                members.add(object_id)
-        return members
 
 
 class _StateMachines:

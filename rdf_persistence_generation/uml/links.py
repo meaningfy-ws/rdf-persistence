@@ -1,25 +1,29 @@
-"""Slots of associations and dependencies, and what a boundary owns (R-6, R-8, R-11, R-12; PD-8, PD-13, PD-15).
+"""Slots of associations and dependencies, and what the composition tree owns (R-6, R-8, R-11, R-12; PD-3, PD-8, PD-9, PD-13, PD-15).
 
 An association gives a slot at each end that has a role; a dependency gives one, on its source, ranged
-by the enumeration it points at. A slot from a member of a boundary to another member than its root is
-owned (and so is the destination of a composite association).
+by the enumeration it points at. A slot is owned only when the composition tree names its end
+(``UmlAggregates.owned_ends``); the end of an «own graph» composition ranges over ``uri`` and carries
+``rp_loaded_graph`` (``loaded_graph_ends``). A composite association is refused (PD-3).
 """
 
 from rdf_persistence_generation.generated.rp_generation import (
     LeftOutReason,
     ReportKind,
-    UmlBoundary,
+    UmlAggregates,
     UmlElement,
     UmlLink,
     UmlLinkEnd,
     UmlLinkKind,
     UmlModel,
     UmlName,
+    UmlRule,
 )
-from rdf_persistence_generation.uml.context import Context, is_boundary_root, literals_of
+from rdf_persistence_generation.uml.context import Context, literals_of
 from rdf_persistence_generation.uml.naming import slot_name
 from rdf_persistence_generation.uml.slots import (
     COMPOSITE,
+    LOADED_GRAPH,
+    OWNED,
     UNSPECIFIED,
     URI,
     Usage,
@@ -34,24 +38,17 @@ DIRECTED = "Source -> Destination"
 BIDIRECTIONAL = "Bi-Directional"
 
 
-def _boundary_pairs(ctx: Context, boundary: UmlBoundary) -> set[tuple[int, int]]:
-    """The owned pairs of one boundary: from each member to each member but its root."""
-    members = [m for m in boundary.member_ids or [] if m in ctx.elements]
-    roots = [m for m in members if is_boundary_root(ctx.elements[m])]
-    if len(roots) != 1:
-        ctx.findings.no_rule(
-            boundary.name, f"a boundary needs exactly one root, this one has {len(roots)}"
-        )
-        return set()
-    return {(m, p) for m in members for p in members if p != roots[0]}
+Marks = dict[
+    tuple[int, int], tuple[str, ...]
+]  # (connector, holder) -> the annotations its slot carries
 
 
-def owned_pairs(ctx: Context, model: UmlModel) -> set[tuple[int, int]]:
-    """The (holder, target) pairs a boundary makes owned; a boundary without exactly one root is a problem."""
-    pairs: set[tuple[int, int]] = set()
-    for each in sorted(model.uml_boundaries or [], key=lambda b: (b.name, b.object_id)):
-        pairs |= _boundary_pairs(ctx, each)
-    return pairs
+def _marks(aggregates: UmlAggregates) -> Marks:
+    """The ends the tree owns and those of an «own graph» composition, each with its annotation (PD-9)."""
+    marks: Marks = {(end.link_id, end.holder_id): (OWNED,) for end in aggregates.owned_ends or []}
+    for end in aggregates.loaded_graph_ends or []:
+        marks[(end.link_id, end.holder_id)] = (LOADED_GRAPH,)
+    return marks
 
 
 def _name_of(ctx: Context, element_id: int) -> str:
@@ -109,14 +106,7 @@ def _end_name(ctx: Context, end: UmlLinkEnd, holder: UmlElement | None) -> UmlNa
     return ctx.resolve(end.end_role, _name_of(ctx, end.holder_id))
 
 
-def _is_owned(end: UmlLinkEnd, owned: set[tuple[int, int]]) -> bool:
-    """Whether the slot an end gives is owned: a composite end, or a pair a boundary makes owned."""
-    return bool(end.owned_by_composite) or (end.holder_id, end.other_id) in owned
-
-
-def _end_usage(
-    ctx: Context, link: UmlLink, end: UmlLinkEnd, owned: set[tuple[int, int]]
-) -> Usage | None:
+def _end_usage(ctx: Context, link: UmlLink, end: UmlLinkEnd, marks: Marks) -> Usage | None:
     holder = ctx.elements.get(end.holder_id)
     name = _end_name(ctx, end, holder)
     if holder is None or name is None:
@@ -130,11 +120,12 @@ def _end_usage(
     if _enum_holder(ctx, holder, element):
         return None
     bounds = check_bounds(ctx, element, _card_text(ctx, element, end.end_card))
-    target_range = _range_of(ctx, end, holder, slot)
+    marked = marks.get((link.connector_id, end.holder_id), ())
+    target_range = URI if LOADED_GRAPH in marked else _range_of(ctx, end, holder, slot)
     if bounds is None or target_range is None:
         return None
     described_as = (target_range, described(ctx, element, link.note))
-    shape = shape_of(slot, described_as, bounds, owned=_is_owned(end, owned))
+    shape = shape_of(slot, described_as, bounds, marked=marked)
     return Usage(holder, identities, (1, 0, slot), shape)
 
 
@@ -171,8 +162,25 @@ def _refusal(link: UmlLink) -> str | None:
     return _wrong_direction(link)
 
 
+def _composite_association(ctx: Context, link: UmlLink) -> bool:
+    """A composite association whose whole is the source is refused, naming the two-connector form (PD-3)."""
+    if link.link_kind != UmlLinkKind.ASSOCIATION or link.source_aggregate != COMPOSITE:
+        return False
+    whole, part = _name_of(ctx, link.source_id), _name_of(ctx, link.target_id)
+    role = slot_name(link.target_role) if link.target_role else ""
+    ctx.findings.problem(
+        UmlRule.BOUNDARY_OWNED,
+        f"{whole}.{role}".rstrip("."),
+        f"a composite association; draw an Aggregation (composition) {whole} -> {part} "
+        "beside a plain association",
+    )
+    return True
+
+
 def _refused(ctx: Context, link: UmlLink) -> bool:
     """A connector no rule maps (see ``_refusal``), or one with no role at all."""
+    if _composite_association(ctx, link):
+        return True
     reason = _refusal(link)
     if reason is not None:
         role = slot_name(link.target_role) if link.target_role else ""
@@ -193,7 +201,6 @@ def _ends(link: UmlLink) -> list[UmlLinkEnd]:
         other_id=link.target_id,
         end_role=link.target_role,
         end_card=link.target_card,
-        owned_by_composite=link.source_aggregate == COMPOSITE,
     )
     if link.link_kind == UmlLinkKind.DEPENDENCY:
         return [forward]
@@ -232,14 +239,15 @@ def _dependency_target_ok(ctx: Context, link: UmlLink) -> bool:
     return True
 
 
-def link_usages(ctx: Context, model: UmlModel, owned: set[tuple[int, int]]) -> list[Usage]:
-    """The slots of every association and dependency, in connector order."""
+def link_usages(ctx: Context, model: UmlModel, aggregates: UmlAggregates) -> list[Usage]:
+    """The slots of every association and dependency, in connector order; the tree says which are owned."""
+    marks = _marks(aggregates)
     usages: list[Usage] = []
     for link in sorted(model.uml_links or [], key=lambda each: each.connector_id):
         if link.link_kind == UmlLinkKind.GENERALISATION or _refused(ctx, link):
             continue
         if link.link_kind == UmlLinkKind.DEPENDENCY and not _dependency_target_ok(ctx, link):
             continue
-        made = (_end_usage(ctx, link, end, owned) for end in _ends(link))
+        made = (_end_usage(ctx, link, end, marks) for end in _ends(link))
         usages.extend(usage for usage in made if usage is not None)
     return usages

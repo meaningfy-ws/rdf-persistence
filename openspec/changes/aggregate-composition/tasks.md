@@ -74,7 +74,7 @@ assertion without a replacement row. Every decision a task cites links its ancho
   composition, a role naming no candidate, an association to the part's subclass (A-3, A-17). New
   `tests/generator/unit/test_uml_pass_signatures.py` (PD-19a). Then `uml/aggregates.py`. Accept:
   all pass; the task gate green.
-- [ ] 1.6 Unit, the tree replaces boundaries, one task ([PD-3](design.md#pd-3),
+- [x] 1.6 Unit, the tree replaces boundaries, one task ([PD-3](design.md#pd-3),
   [PD-5](design.md#pd-5), [PD-7](design.md#pd-7), [PD-17](design.md#pd-17),
   [PD-18](design.md#pd-18), [PD-19](design.md#pd-19), [RISK-5](design.md#risk-5), A-11),
   after 1.4 and 1.5. The lead may give it to two builders by file, with one task gate at the end.

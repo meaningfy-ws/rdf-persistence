@@ -490,7 +490,7 @@ class QeaBuilder:
             "t_diagram", Name=name, Package_ID=package, Diagram_Type=diagram_type
         )
         for member in members:
-            self.place(diagram, member, (0, 0, 10, -10))
+            self.place(diagram, member)
         return diagram
 
     def statechart(self, name: str, package: int, nodes: Iterable[int]) -> int:
@@ -644,32 +644,38 @@ class QeaBuilder:
         return self._insert("t_objectproperties", Object_ID=owner, Property=name, Value=value)
 
     def boundary(
-        self, diagram: int, rect: tuple[int, int, int, int], members: Iterable[int]
+        self,
+        diagram: int,
+        package: int | None = None,
+        name: str = "Boundary",
+        stereotype: str | None = None,
     ) -> int:
-        """Place a boundary on a diagram, each member as a small rectangle at its centre.
-
-        ``rect`` is ``(left, top, right, bottom)``; the boundary stays out of every package.
-        """
-        left, top, right, bottom = rect
-        boundary = self._insert("t_object", Object_Type=BOUNDARY_TYPE, Name="Boundary")
-        self.place(diagram, boundary, rect)
-        centre_x, centre_y = (left + right) // 2, (top + bottom) // 2
-        for member in members:
-            self.place(diagram, member, (centre_x - 1, centre_y + 1, centre_x + 1, centre_y - 1))
+        """Place a boundary object on a diagram; it sits in ``package`` (none: in no package), by name only (PD-7)."""
+        boundary = self._insert(
+            "t_object",
+            Object_Type=BOUNDARY_TYPE,
+            Name=name,
+            Package_ID=package,
+            Stereotype=stereotype,
+        )
+        self.place(diagram, boundary)
         return boundary
 
-    def place(self, diagram: int, obj: int, rect: tuple[int, int, int, int]) -> None:
-        """Place an object on a diagram as ``(left, top, right, bottom)``, as given, unnormalised."""
-        left, top, right, bottom = rect
-        self._insert(
-            "t_diagramobjects",
-            Diagram_ID=diagram,
-            Object_ID=obj,
-            RectTop=top,
-            RectLeft=left,
-            RectRight=right,
-            RectBottom=bottom,
-        )
+    def place(self, diagram: int, obj: int, rect: tuple[int, int, int, int] | None = None) -> None:
+        """Place an object on a diagram; ``rect`` is ``(left, top, right, bottom)``, as given, when a row wants one.
+
+        The reader reads no geometry (PD-18), so most rows give none.
+        """
+        geometry: dict[str, object] = {}
+        if rect is not None:
+            left, top, right, bottom = rect
+            geometry = {
+                "RectTop": top,
+                "RectLeft": left,
+                "RectRight": right,
+                "RectBottom": bottom,
+            }
+        self._insert("t_diagramobjects", Diagram_ID=diagram, Object_ID=obj, **geometry)
 
     def finish(self) -> Path:
         """Commit, close and return the path of the file."""

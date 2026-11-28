@@ -269,10 +269,6 @@
       "lower_bound": {
          "@id": "umlLowerBound"
       },
-      "member_ids": {
-         "@container": "@set",
-         "@id": "umlMemberIds"
-      },
       "message": {
          "@id": "message"
       },

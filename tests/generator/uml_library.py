@@ -2,7 +2,7 @@
 
 A helper, not a test module. The model is ``MODEL/library`` with the packages ``catalogue`` and
 ``shelves``, plus ``MODEL/external`` that is not converted. It carries every stage-1 rule once: a root
-with attributes, a part reached by a ``1..*`` association inside the root's boundary, a root in another
+with attributes, a part reached by a ``1..*`` association with a composition beside it, a root in another
 package that the first one points at, an enumeration with literals and a dependency to it, an empty
 enumeration, an abstract parent with a subclass, a not-generated class and a link to a class outside
 the subtree. Most elements have a note, one has none. No stage-2 feature (toolkit slots, tagged
@@ -15,8 +15,6 @@ from tests.generator.uml_qea import QeaBuilder
 
 PACKAGE = "MODEL/library"
 ROOT_NAME = "library"
-BOX = (-20, 30, 320, -298)  # (left, top, right, bottom) of the boundary on diagram 1
-INSIDE = (0, 0, 100, -50)
 PREFIXES = """\
 schema_base: https://example.org/ns/library/
 default_prefix: lib
@@ -76,6 +74,7 @@ def _links(builder: QeaBuilder, ids: dict[str, int]) -> None:
     builder.association(
         book, ids["chapter"], "lib:hasChapter", "1..*", note="The chapters of the book."
     )
+    builder.aggregation(book, ids["chapter"])  # the composition that owns the chapters (PD-1, PD-2)
     builder.association(
         book, ids["shelf"], "lib:shelvedOn", "0..1", note="The shelf the book stands on."
     )
@@ -104,7 +103,6 @@ def build_library(folder: Path) -> Path:
     builder.tag(ids["shelf"], "rp_path", "shelves")  # the derived plural would be "shelfs"
     ids["work"] = builder.cls(external, "ext:Work", note="A work in another model.")
     _links(builder, ids)
-    builder.boundary(diagram=1, rect=BOX, members=[])
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["chapter"], (10, -10, 60, -40))
+    # a boundary is an annotation, named for its root and kept in the root's converted package (PD-7)
+    builder.boundary(diagram=1, package=catalogue, name="Book")
     return builder.finish()

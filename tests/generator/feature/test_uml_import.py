@@ -20,7 +20,7 @@ from rdf_persistence_generation.config import read_targets
 from rdf_persistence_generation.pipeline import generate
 from rdf_persistence_generation.steps import BOUNDARY_STEP, LINT_STEP
 from rdf_persistence_generation.uml.cli import main
-from tests.generator.uml_library_stage2 import BOX, INSIDE, write_prefixes
+from tests.generator.uml_library_stage2 import write_prefixes
 from tests.generator.uml_qea import QeaBuilder
 
 scenarios("uml_import.feature")
@@ -135,6 +135,7 @@ def _root_with_part(world: World) -> None:
     book, chapter = _book(world, stereotype="root"), _chapter(world)
     world.builder.attribute(book, "dct:title", "xsd:string", "1", "1", note="The title.")
     _chapters(world, "2..5")
+    world.builder.aggregation(book, chapter)  # the composition that owns the chapters (PD-1)
     resource = world.builder.cls(
         world.library, "lib:Resource", stereotype="root", note="A resource."
     )
@@ -144,9 +145,8 @@ def _root_with_part(world: World) -> None:
     )
     world.builder.attribute(genre, "lib:novel", note="A novel.")
     world.builder.dependency(book, genre, "lib:genre", note="Its genre.")
-    world.builder.boundary(diagram=1, rect=BOX, members=[])
-    world.builder.place(1, book, INSIDE)
-    world.builder.place(1, chapter, (10, -10, 60, -40))
+    # the boundary is an annotation named for its root, in the root's converted package (PD-7)
+    world.builder.boundary(diagram=1, package=world.library, name="Book")
 
 
 @given("an abstract class whose concrete subclasses are all roots, and a slot ranging over it")

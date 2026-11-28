@@ -625,11 +625,11 @@ class UmlTaggedValue(ConfiguredBaseModel):
 
 
 class UmlBoundary(ConfiguredBaseModel):
-    "A boundary drawn on a diagram, with the classes and enumerations whose rectangles lie wholly inside it."
+    "A boundary drawn on a diagram, read by its name, its package and the diagram it sits on; it is an annotation, no membership is read from it (PD-7)."
     object_id: int = _Field(default=..., title="Object id", description="The id a UML model gives a class, an enumeration, a boundary or the object of a package.")
     name: str = _Field(default=..., title="Name", description="The name of the thing a record describes (a slot, a file, a class, a rule).")
     diagram_id: int = _Field(default=..., title="Diagram id", description="The id of the diagram a boundary is drawn on.")
-    member_ids: _Optional[list[int]] = _Field(default=None, title="Member ids", description="The ids of the classes and enumerations that lie inside a boundary.")
+    package_id: _Optional[int] = _Field(default=None, title="Package id", description="The id a UML model gives a package.")
 
 
 class UmlComposition(ConfiguredBaseModel):

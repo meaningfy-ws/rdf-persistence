@@ -565,6 +565,21 @@ def test_an_own_graph_part_gives_a_tree_row_but_no_owned_slot_and_no_part_in_the
     assert report(found, ReportKind.ROOT) == {"ShelfCount no parts"}, "example 2"
 
 
+@pytest.mark.parametrize(
+    ("own", "expected"),
+    [(True, {"ShelfCount.countReport"}), (False, set())],
+    ids=["own graph", "plain composition"],
+)
+def test_loaded_graph_ends_hold_the_slot_of_an_own_graph_composition_to_a_not_generated_part(
+    own: bool, expected: set[str]
+) -> None:
+    drawing = _counting(own=own)
+    found = drawing.derive()
+    ends = {drawing.slots[row.link_id] for row in found.loaded_graph_ends or []}
+    assert ends == expected, "D-9: only an own-graph end to a not-generated part is marked"
+    assert owned(drawing, found) == set(), "a loaded-graph end is never owned"
+
+
 def test_a_class_inside_an_own_graph_is_in_no_aggregate_and_no_root() -> None:
     drawing = _own_graph_in_own_graph()
     found = drawing.derive()

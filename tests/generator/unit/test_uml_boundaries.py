@@ -1,4 +1,4 @@
-"""Converter-side cases the rule table does not hold: a boundary's roots, a dependency to an excluded enum.
+"""Converter-side cases the rule table does not hold: a link to a note or boundary, a dependency to an excluded enum.
 
 Records are built as ``test_uml_rules.py`` builds them (the reader is not involved).
 """
@@ -11,18 +11,14 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlLinkKind,
     UmlModel,
     UmlPackage,
-    UmlRule,
 )
 from rdf_persistence_generation.uml.qea import read_qea
 from tests.generator.uml_model import (
     BOOK,
     CATALOGUE_PKG,
-    CHAPTER,
     GENRE,
     LIBRARY_PKG,
     MODEL_PKG,
-    SERIES,
-    boundary,
     enumeration,
     klass,
     link,
@@ -52,25 +48,6 @@ def test_a_link_the_reader_skipped_to_a_note_or_boundary_does_not_stop_the_conve
     slots = out.schemas["app_library"].slots
     assert "ignored" not in slots, f"no slot for the association: {sorted(slots)}"
     assert "dep" not in slots, f"no slot for the dependency: {sorted(slots)}"
-
-
-def _two_roots_model() -> object:
-    return model(
-        klass(BOOK, "lib:Book", stereotype="root"),
-        klass(SERIES, "lib:Series", stereotype="root"),
-        klass(CHAPTER, "lib:Chapter"),
-        links=(link(1, BOOK, CHAPTER, target_role="lib:hasChapter", target_card="0..*"),),
-        boundaries=(boundary(20, BOOK, SERIES, CHAPTER),),
-    )
-
-
-def test_a_boundary_with_two_roots_is_a_no_rule_problem() -> None:
-    out = run(_two_roots_model())
-
-    assert [p.rule for p in out.problems] == [UmlRule.NO_RULE.value], out.problem_texts()
-    (text,) = out.problem_texts()
-    assert "Aggregate" in text, text
-    assert "exactly one root, this one has 2" in text, text
 
 
 def test_a_dependency_to_an_enumeration_in_an_excluded_package_makes_no_slot_and_a_report_line():

@@ -112,7 +112,7 @@ def _register(ctx: Context, uml: UmlClass, path: tuple[str, ...]) -> None:
         label=name.name,
         module_path=list(path),
         is_enum=uml.object_type == ENUMERATION_TYPE,
-        is_root=stereotype == ROOT_STEREOTYPE,
+        is_drawn_root=stereotype == ROOT_STEREOTYPE,  # is_root is the derivation's (PD-5)
         is_abstract=bool(uml.is_abstract) or stereotype == ABSTRACT_STEREOTYPE,
         is_tenant_root=stereotype == TENANT_STEREOTYPE,
     )
@@ -157,7 +157,6 @@ def collect_elements(ctx: Context, model: UmlModel) -> None:
         else:
             _admit(ctx, uml, below_of(path))
     _check_clashes(ctx)
-    _check_root_paths(ctx)
 
 
 def _iri_of(ctx: Context, name: UmlName) -> str:
@@ -197,7 +196,8 @@ def root_path(ctx: Context, element: UmlElement) -> str:
     return ctx.tags.get(element.uml_class.object_id, {}).get(RP_PATH) or rp_path_for(element.label)
 
 
-def _check_root_paths(ctx: Context) -> None:
+def check_root_paths(ctx: Context) -> None:
+    """Two roots with one ``rp_path`` are a problem; run once the roots are derived (PD-4)."""
     seen: dict[str, UmlElement] = {}
     for element in sorted(ctx.elements.values(), key=lambda each: each.label):
         if not element.is_root:
@@ -239,7 +239,7 @@ def build_class(
 ) -> ClassDefinition:
     """The class of a UML class: title, description, IRI, abstract flag, parent, mixins and the root's path.
 
-    ``parent`` is the domain parent; ``owned`` whether a boundary or composite makes the class a part;
+    ``parent`` is the domain parent; ``owned`` whether the composition tree makes the class a part;
     ``defaults`` the default mixins (PD-17).
     """
     composed = compose(ctx, element, parent, owned, defaults)

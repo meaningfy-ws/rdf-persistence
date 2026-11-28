@@ -68,7 +68,9 @@ def test_a_built_model_reopens_read_only_with_the_rows_written(tmp_path):
     builder.generalisation(shelf, book)
     builder.tag(book, "graph", "lib:books")
     builder.tag(book, "rp_mixins", "long text", memo="long text")
-    builder.boundary(diagram=1, rect=(0, 100, 100, 0), members=[book, chapter])
+    builder.boundary(diagram=1, package=library)
+    builder.place(1, book)
+    builder.place(1, chapter)
     path = builder.finish()
 
     assert path == tmp_path / "library.qea", "finish returns the file's path"

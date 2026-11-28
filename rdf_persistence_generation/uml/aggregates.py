@@ -435,9 +435,10 @@ class _Pass:
         self.problem(UmlRule.BOUNDARY_OWNED, pair, message)
         return None
 
-    def owned_ends(self) -> list[UmlOwnedEnd]:
-        """The ends the compositions mark; an own-graph composition marks one too, which is not owned (PD-9)."""
+    def owned_ends(self) -> tuple[list[UmlOwnedEnd], list[UmlOwnedEnd]]:
+        """The ends the compositions mark: the owned ones, and apart those of an own graph, never owned (PD-9, D-9)."""
         found: list[UmlOwnedEnd] = []
+        loaded: list[UmlOwnedEnd] = []
         for each in self.live:
             candidates = [
                 end
@@ -445,9 +446,13 @@ class _Pass:
                 if end.holder_id == each.whole_id and end.other_id == each.part_id
             ]
             chosen = self.choose(each, candidates)
-            if chosen is not None and not self.is_own_graph(each):
-                found.append(UmlOwnedEnd(link_id=chosen.link_id, holder_id=each.whole_id))
-        return sorted(found, key=lambda end: end.link_id)
+            if chosen is not None:
+                end = UmlOwnedEnd(link_id=chosen.link_id, holder_id=each.whole_id)
+                (loaded if self.is_own_graph(each) else found).append(end)
+        return (
+            sorted(found, key=lambda end: end.link_id),
+            sorted(loaded, key=lambda end: end.link_id),
+        )
 
     def compare_drawn(self, roots: list[int]) -> None:
         """DEC-6: the drawn «root» classes of domain modules against the derived ones (PD-6, A-12)."""
@@ -520,7 +525,7 @@ class _Pass:
             for part in self.walk(top):
                 reach.setdefault(part, set()).add(top)
         self.check_reach(reach)
-        owned = self.owned_ends()
+        owned, loaded = self.owned_ends()
         self.compare_drawn(roots)
         self.root_lines(roots)
         return UmlAggregates(
@@ -540,6 +545,7 @@ class _Pass:
                 for part, found in sorted(reach.items())
             ],
             owned_ends=owned,
+            loaded_graph_ends=loaded,
             left_inside_ids=sorted(self.inside),
             problems=sorted(self.problems, key=lambda each: (each.element or "", each.message)),
             report_lines=sorted(

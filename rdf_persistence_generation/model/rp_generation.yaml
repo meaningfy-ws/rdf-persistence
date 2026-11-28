@@ -335,14 +335,14 @@ classes:
   UmlBoundary:
     title: UML boundary
     description: >-
-      A boundary drawn on a diagram, with the classes and enumerations whose rectangles lie wholly
-      inside it.
+      A boundary drawn on a diagram, read by its name, its package and the diagram it sits on; it is
+      an annotation, no membership is read from it (PD-7).
     class_uri: rp:UmlBoundary
     slots:
       - object_id
       - name
       - diagram_id
-      - member_ids
+      - package_id
     slot_usage:
       object_id:
         required: true
@@ -1639,12 +1639,6 @@ slots:
     description: The id of the diagram a boundary is drawn on.
     slot_uri: rp:umlDiagramId
     range: integer
-  member_ids:
-    title: Member ids
-    description: The ids of the classes and enumerations that lie inside a boundary.
-    slot_uri: rp:umlMemberIds
-    range: integer
-    multivalued: true
   object_type:
     title: Object type
     description: The kind of element a UML object is, as the model file names it (`Class`, `Enumeration`).

@@ -15,7 +15,7 @@ from rdf_persistence_generation.generated.rp_generation import (
     UmlRule,
 )
 from rdf_persistence_generation.problems import format_problem
-from rdf_persistence_generation.uml.qea import read_qea
+from rdf_persistence_generation.uml.qea import TABLE_COLUMNS, read_qea
 from tests.generator.uml_qea import QeaBuilder
 
 ROOT = "MODEL/library"
@@ -835,119 +835,57 @@ def test_a_realisation_to_a_target_outside_the_subtree_is_kept(tmp_path):
     )
 
 
-# --- TC-2: boundary membership by geometry -----------------------------------------------------
-
-BOX = (-20, 30, 320, -298)  # (left, top, right, bottom); y grows upwards, so top > bottom
-INSIDE = (0, 0, 100, -50)
-ON_THE_EDGE = (-20, 30, 100, -50)
-STRADDLING = (300, 0, 400, -50)
-OUTSIDE = (500, 0, 600, -50)
+# --- PD-7, PD-18: a boundary is read by name and package, no geometry ----------------------------
 
 
-def boundary_world(tmp_path: Path) -> tuple[QeaBuilder, dict[str, int]]:
+def test_the_reader_reads_no_geometry(tmp_path):
     builder, ids = build_library(tmp_path)
-    ids["box"] = builder.boundary(diagram=1, rect=BOX, members=[])
-    return builder, ids
-
-
-def members(model: UmlModel) -> list[tuple[int, list[int]]]:
-    return [(b.diagram_id, sorted(b.member_ids)) for b in model.uml_boundaries]
-
-
-def test_classes_inside_or_on_the_edge_are_members_and_outside_ones_are_not(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["chapter"], ON_THE_EDGE)
-    builder.place(1, ids["genre"], OUTSIDE)
-    model = as_model(read(builder))
-    assert members(model) == [(1, sorted([ids["book"], ids["chapter"]]))], (
-        "inside and on the edge are members, outside is not"
+    builder.boundary(diagram=1, package=ids["library"], name="Aggregate: Book")
+    path = builder.finish()
+    with sqlite3.connect(path) as connection:
+        for column in ("RectTop", "RectLeft", "RectRight", "RectBottom"):
+            connection.execute(f"ALTER TABLE t_diagramobjects DROP COLUMN {column}")
+    model = as_model(read_qea(path, ROOT, ()))
+    assert [b.name for b in model.uml_boundaries] == ["Aggregate: Book"], (
+        "a file whose t_diagramobjects has no rectangle columns reads"
     )
-    assert model.uml_boundaries[0].object_id == ids["box"], "the boundary is the box"
-
-
-def test_the_rectangles_are_normalised_whichever_way_they_are_written(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], (100, -50, 0, 0))  # left > right, top < bottom
-    builder.place(1, ids["chapter"], (310, -290, 320, -298))  # on the corner
-    assert members(as_model(read(builder))) == [(1, sorted([ids["book"], ids["chapter"]]))], (
-        "a rectangle written the other way round is normalised"
+    assert TABLE_COLUMNS["t_diagramobjects"] == ("Diagram_ID", "Object_ID"), (
+        "the required columns of t_diagramobjects are the diagram and the object"
     )
 
 
-def test_a_boundary_written_the_other_way_up_still_holds_its_members(tmp_path):
+def _boundary_in_the_subtree(builder, ids):
+    return builder.boundary(diagram=1, package=ids["library"], name="Aggregate: Book")
+
+
+def _boundary_in_no_package(builder, ids):
+    return builder.boundary(diagram=1, name="Aggregate: Book")
+
+
+def _boundary_in_a_package_outside(builder, ids):
+    return builder.boundary(diagram=1, package=ids["other"], name="Aggregate: Book")
+
+
+def _boundary_with_a_stereotype(builder, ids):
+    return builder.boundary(diagram=1, package=ids["library"], stereotype="legend")
+
+
+@pytest.mark.parametrize(
+    ("draw", "listed"),
+    [
+        (_boundary_in_the_subtree, True),
+        (_boundary_in_a_package_outside, False),
+        (_boundary_in_no_package, False),
+        (_boundary_with_a_stereotype, False),
+    ],
+)
+def test_a_boundary_of_a_converted_package_is_read_by_name_and_package(tmp_path, draw, listed):
     builder, ids = build_library(tmp_path)
-    builder.boundary(diagram=1, rect=(-20, -298, 320, 30), members=[])  # top < bottom
-    builder.place(1, ids["book"], INSIDE)
-    assert members(as_model(read(builder))) == [(1, [ids["book"]])], "Book is a member"
-
-
-def test_a_class_that_straddles_a_boundary_is_a_no_rule_problem(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["chapter"], STRADDLING)
-    assert as_problems(read(builder)) == [
-        "[no_rule] lib:Chapter: straddles boundary Boundary: no rule converts it"
-    ], "a class half in the boundary is a problem"
-
-
-def test_a_class_placed_twice_inside_and_outside_is_a_no_rule_problem(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["book"], OUTSIDE)
-    assert as_problems(read(builder)) == [
-        "[no_rule] lib:Book: placed twice on the diagram of boundary Boundary, "
-        "inside and outside: no rule converts it"
-    ], "a class placed both inside and outside is a problem"
-
-
-def test_a_class_placed_twice_inside_is_still_one_member(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(1, ids["book"], ON_THE_EDGE)
-    assert members(as_model(read(builder))) == [(1, [ids["book"]])], "Book is one member"
-
-
-def test_a_class_inside_two_boundaries_is_a_no_rule_problem(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.boundary(diagram=2, rect=BOX, members=[])
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(2, ids["book"], INSIDE)
-    assert as_problems(read(builder)) == [
-        "[no_rule] lib:Book: inside two boundaries: no rule converts it"
-    ], "a class in two boundaries is a problem"
-
-
-def test_a_boundary_on_two_diagrams_with_equal_members_is_one_boundary(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(2, ids["box"], BOX)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(2, ids["book"], INSIDE)
-    model = as_model(read(builder))
-    assert members(model) == [(1, [ids["book"]])], "the two diagrams give one boundary"
-
-
-def test_a_boundary_on_two_diagrams_with_unequal_members_is_a_no_rule_problem(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(2, ids["box"], BOX)
-    builder.place(1, ids["book"], INSIDE)
-    builder.place(2, ids["chapter"], INSIDE)
-    assert as_problems(read(builder)) == [
-        "[no_rule] Boundary: members differ between diagrams 1 and 2: no rule converts it"
-    ], "a boundary whose diagrams disagree is a problem"
-
-
-def test_a_boundary_with_a_stereotype_is_ignored(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.cls(ids["library"], "Legend", stereotype="legend", object_type="Boundary")
-    builder.place(1, ids["book"], INSIDE)
-    assert members(as_model(read(builder))) == [(1, [ids["book"]])], "the legend is no boundary"
-
-
-def test_a_boundary_holding_no_converted_class_is_left_out(tmp_path):
-    builder, ids = boundary_world(tmp_path)
-    builder.place(1, ids["stray"], INSIDE)
-    assert as_model(read(builder)).uml_boundaries == [], "a boundary with no converted class goes"
+    drawn = draw(builder, ids)
+    found = as_model(read(builder)).uml_boundaries or []
+    assert [(b.object_id, b.name, b.package_id, b.diagram_id) for b in found] == (
+        [(drawn, "Aggregate: Book", ids["library"], 1)] if listed else []
+    ), f"{draw.__name__}: listed {listed}"
 
 
 # --- state machines: states, the initial node, StateFlows, Statechart diagrams (PD-1, PD-2) -----
