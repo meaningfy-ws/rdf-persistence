@@ -39,6 +39,8 @@ MULTIPLICITY: Final = (
     "multiplicity"  # the name of the slot that carries a multiplicity's limits only
 )
 COMPOSITE: Final = 2
+FROM_ATTRIBUTE: Final = 0  # the first of a usage's ``order`` for a slot an attribute gave
+FROM_LINK: Final = 1  # ... for a slot an association or a dependency gave
 UNSPECIFIED: Final = "0..*"
 _RANGE_ONLY = re.compile(r"(\d+)\.\.(\d+|\*)")
 _EXACT = re.compile(r"\d+")
@@ -367,14 +369,6 @@ def check_bounds(ctx: Context, element: str, text: str) -> SlotDefinition | None
     return bounds
 
 
-def described(ctx: Context, element: str, note: str | None) -> str | None:
-    """A note as a description; an empty one is a report line (PD-11)."""
-    description = description_of(note)
-    if description is None:
-        ctx.findings.note(ReportKind.NO_NOTE, element, "no note, so no description")
-    return description
-
-
 def _attribute_usage(ctx: Context, holder: UmlElement, attribute: UmlAttribute) -> Usage | None:
     element = f"{holder.label}.{local_of(attribute.name)}"
     name = ctx.resolve(attribute.name, element)
@@ -389,10 +383,10 @@ def _attribute_usage(ctx: Context, holder: UmlElement, attribute: UmlAttribute) 
         )
     if identities is None or typed is None or bounds is None:
         return None
-    description = described(ctx, element, attribute.note)
+    description = description_of(attribute.note)
     name_of_slot = str(identities[0].name)
     shape = shape_of(name_of_slot, (typed[0], description), bounds, typed[1])
-    return Usage(holder, identities, (0, attribute.position or 0, name_of_slot), shape)
+    return Usage(holder, identities, (FROM_ATTRIBUTE, attribute.position or 0, name_of_slot), shape)
 
 
 class SharedSlots:

@@ -565,7 +565,8 @@ a line row marked informational never fails `--check`.
 `CHANGELOG.md`, under the release that carries this change, **BREAKING** `rp-uml2linkml`:
 
 1. Upgrade, then run `rp-uml2linkml --check` on the unchanged model: every composite association
-   and every class that would become a root by omission is listed.
+   is listed, alone, as a problem (D-15); the `root` lines appear once no problem is left. The
+   baseline to diff against is the last conversion made with the previous release (D-16).
 2. In EA, for each aggregate, draw an Aggregation (composition, strong) from the whole to each part
    beside the existing association; replace each composite association by a plain association plus
    a composition. Keep «root» for now.
@@ -670,4 +671,31 @@ Decisions the lead took without the developer, shown for validation at the end (
   - S5: split `_Pass` before stage 2 adds passes.
   - S6: cache `part_ids` and the ancestors.
   - S7: a test pinning `_adopt`'s order.
+- **D-14**, lead, 2026-11-28 (stage 2, tasks 2.1–2.4):
+  - `UmlComposition` gains `note`, so `composition-named` covers a note as well as a role.
+  - `convention_lines` takes `drawn_toolkit` beside PD-19's inputs, as `derive_aggregates` does.
+  - `CONVENTION_KINDS` lives in `uml/conventions.py`, and `cli.py` imports it.
+  - D-13's W1 (the doubled problem) and W4 (re-declared constants) are fixed in passing.
+  - `t_diagramlinks`' columns were checked against an EA-saved file's schema.
+- **D-15**, lead, 2026-11-28 (stage 2 review, PR #449, no Critical):
+  - W1 re-labelled Critical (the spec disagreed with the code). Under `--check` a converter problem
+    stops the check as it stops a run, so the convention lines are printed only when there is no
+    problem. The spec delta now says so, and a fixer pins it with a test. Rejected: printing both,
+    which would report conventions of a model that cannot convert.
+- **D-16**, lead, 2026-11-28 (stage 3): a cold reader of the guide found contradictions, all
+  fixed:
+  - the redraw steps against D-15 (problems come alone; the baseline comes from the previous
+    release);
+  - the deletion-test direction and its Reader example;
+  - two disagreeing "What fails" rows;
+  - undefined terms ("loaded graph", an internal change id).
+
+  P-0040 is reworded through the rulebook to the right direction ("let W hold a pointer to the
+  root of X's aggregate"). The fix pass touched docs and one rule note only. It is verified by
+  `make check-docs` and the rule lint; the stage's full gates, run on the same code, are not
+  repeated. The guide's Mermaid snippets stand in for the PlantUML that task 3.1 named, because
+  the page already uses Mermaid.
+  - Under the floor: W2, the seeds of rows the reviewer did not read; S3, the `NO_NOTE` alias kept
+    for the one-occurrence acceptance; S4, the Statechart filter in both reader and pass; S5, a
+    misplaced comment; S6, lookup by label in `_tenant_pointer_lines`.
 

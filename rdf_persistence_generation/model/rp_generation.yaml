@@ -364,6 +364,7 @@ classes:
       - own_graph
       - uml_stereotype
       - role
+      - note
     slot_usage:
       composition_id:
         required: true

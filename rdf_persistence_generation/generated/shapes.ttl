@@ -14,7 +14,7 @@ rp:CliFlag a sh:NodeShape ;
 	rdfs:comment "A command-line flag of `rp-generate` and the GenerationTarget field it overrides." ;
 	rdfs:label "Command-line flag" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n325 ;
+	sh:ignoredProperties _:c14n326 ;
 	sh:property _:c14n109 , _:c14n200 ;
 	sh:targetClass rp:CliFlag .
 rp:ConstraintCase a sh:NodeShape ;
@@ -22,7 +22,7 @@ rp:ConstraintCase a sh:NodeShape ;
 	rdfs:label "Constraint case" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n252 ;
-	sh:property _:c14n105 , _:c14n166 , _:c14n32 , _:c14n340 ;
+	sh:property _:c14n105 , _:c14n166 , _:c14n32 , _:c14n341 ;
 	sh:targetClass rp:ConstraintCase .
 rp:CycleAnalysis a sh:NodeShape ;
 	rdfs:comment "What the modules of a target need in order to load: the groups that import each other, and per module of a group the names it defers." ;
@@ -42,7 +42,7 @@ rp:FramePart a sh:NodeShape ;
 	rdfs:comment "The frame of the parts nested in one owned slot of a frame." ;
 	rdfs:label "Frame part" ;
 	sh:closed true ;
-	sh:ignoredProperties _:c14n326 ;
+	sh:ignoredProperties _:c14n327 ;
 	sh:property _:c14n151 , _:c14n290 ;
 	sh:targetClass rp:FramePart .
 rp:GeneratedFile a sh:NodeShape ;
@@ -64,7 +64,7 @@ rp:GenerationTarget a sh:NodeShape ;
 	rdfs:label "Generation target" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n122 ;
-	sh:property _:c14n18 , _:c14n204 , _:c14n238 , _:c14n272 , _:c14n286 , _:c14n332 , _:c14n47 , _:c14n54 , _:c14n7 ;
+	sh:property _:c14n18 , _:c14n204 , _:c14n238 , _:c14n272 , _:c14n286 , _:c14n333 , _:c14n47 , _:c14n54 , _:c14n7 ;
 	sh:targetClass rp:GenerationTarget .
 rp:LockChange a sh:NodeShape ;
 	rdfs:comment "One difference between two locks: the rule that treats it, a sentence, and what it is about (a class and a slot, or an enum and a value)." ;
@@ -92,7 +92,7 @@ rp:LockedSlot a sh:NodeShape ;
 	rdfs:label "Locked slot" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n221 ;
-	sh:property _:c14n150 , _:c14n169 , _:c14n222 , _:c14n269 , _:c14n321 ;
+	sh:property _:c14n150 , _:c14n169 , _:c14n222 , _:c14n269 , _:c14n322 ;
 	sh:targetClass rp:LockedSlot .
 rp:ManifestEntry a sh:NodeShape ;
 	rdfs:comment "A file and the SHA-256 of its bytes, as recorded by a generation run." ;
@@ -141,7 +141,7 @@ rp:PresenceRule a sh:NodeShape ;
 	rdfs:label "Presence rule" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n275 ;
-	sh:property _:c14n171 , _:c14n267 , _:c14n336 ;
+	sh:property _:c14n171 , _:c14n267 , _:c14n337 ;
 	sh:targetClass rp:PresenceRule .
 rp:ReportLine a sh:NodeShape ;
 	rdfs:comment "One line of the report a conversion writes beside its output, saying what was left out or changed." ;
@@ -218,28 +218,28 @@ rp:UmlAttribute a sh:NodeShape ;
 	rdfs:label "UML attribute" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n88 ;
-	sh:property _:c14n10 , _:c14n163 , _:c14n250 , _:c14n259 , _:c14n260 , _:c14n28 , _:c14n323 , _:c14n37 , _:c14n66 , _:c14n93 ;
+	sh:property _:c14n10 , _:c14n163 , _:c14n250 , _:c14n259 , _:c14n260 , _:c14n28 , _:c14n324 , _:c14n37 , _:c14n66 , _:c14n93 ;
 	sh:targetClass rp:UmlAttribute .
 rp:UmlBoundary a sh:NodeShape ;
 	rdfs:comment "A boundary drawn on a diagram, read by its name, its package and the diagram it sits on; it is an annotation, no membership is read from it (PD-7)." ;
 	rdfs:label "UML boundary" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n83 ;
-	sh:property _:c14n128 , _:c14n255 , _:c14n304 , _:c14n329 ;
+	sh:property _:c14n128 , _:c14n255 , _:c14n304 , _:c14n330 ;
 	sh:targetClass rp:UmlBoundary .
 rp:UmlClass a sh:NodeShape ;
 	rdfs:comment "A class or an enumeration of the UML model. For an enumeration the attributes are its literals." ;
 	rdfs:label "UML class" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n195 ;
-	sh:property _:c14n108 , _:c14n11 , _:c14n190 , _:c14n237 , _:c14n25 , _:c14n280 , _:c14n309 , _:c14n341 , _:c14n69 , _:c14n8 , _:c14n84 ;
+	sh:property _:c14n108 , _:c14n11 , _:c14n190 , _:c14n237 , _:c14n25 , _:c14n280 , _:c14n309 , _:c14n342 , _:c14n69 , _:c14n8 , _:c14n84 ;
 	sh:targetClass rp:UmlClass .
 rp:UmlComposition a sh:NodeShape ;
 	rdfs:comment "A composition of the UML model, read once from the end columns of an Aggregation connector (PD-1): the class that is the whole and the class that is the part, whatever way it was drawn, with the stereotype and the role written on it." ;
 	rdfs:label "UML composition" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n56 ;
-	sh:property _:c14n26 , _:c14n285 , _:c14n328 , _:c14n330 , _:c14n333 , _:c14n79 ;
+	sh:property _:c14n26 , _:c14n285 , _:c14n320 , _:c14n329 , _:c14n331 , _:c14n334 , _:c14n79 ;
 	sh:targetClass rp:UmlComposition .
 rp:UmlDiagram a sh:NodeShape ;
 	rdfs:comment "A class diagram of the UML model, read by membership only (PD-12): the package it sits in, the elements it shows and the connectors it hides. No geometry." ;
@@ -260,7 +260,7 @@ rp:UmlLink a sh:NodeShape ;
 	rdfs:label "UML link" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n57 ;
-	sh:property _:c14n0 , _:c14n107 , _:c14n138 , _:c14n148 , _:c14n215 , _:c14n227 , _:c14n247 , _:c14n248 , _:c14n3 , _:c14n316 , _:c14n327 , _:c14n331 , _:c14n74 , _:c14n75 , _:c14n78 ;
+	sh:property _:c14n0 , _:c14n107 , _:c14n138 , _:c14n148 , _:c14n215 , _:c14n227 , _:c14n247 , _:c14n248 , _:c14n3 , _:c14n316 , _:c14n328 , _:c14n332 , _:c14n74 , _:c14n75 , _:c14n78 ;
 	sh:targetClass rp:UmlLink .
 rp:UmlLinkEnd a sh:NodeShape ;
 	rdfs:comment "One end of a connector that may become a slot: the class that holds it, the one it points at, and the role and cardinality written at that end." ;
@@ -281,7 +281,7 @@ rp:UmlName a sh:NodeShape ;
 	rdfs:label "UML name" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n76 ;
-	sh:property _:c14n145 , _:c14n183 , _:c14n339 ;
+	sh:property _:c14n145 , _:c14n183 , _:c14n340 ;
 	sh:targetClass rp:UmlName .
 rp:UmlObject a sh:NodeShape ;
 	rdfs:comment "An object of the UML model, an instance of a drawn class, with the class that types it, the package it sits in and the values its run state sets, as the model file writes them." ;
@@ -344,7 +344,7 @@ rp:UmlSettings a sh:NodeShape ;
 	rdfs:label "UML settings" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n188 ;
-	sh:property _:c14n198 , _:c14n2 , _:c14n225 , _:c14n265 , _:c14n322 , _:c14n335 , _:c14n68 , _:c14n80 , _:c14n96 ;
+	sh:property _:c14n198 , _:c14n2 , _:c14n225 , _:c14n265 , _:c14n323 , _:c14n336 , _:c14n68 , _:c14n80 , _:c14n96 ;
 	sh:targetClass rp:UmlSettings .
 rp:UmlStateFlow a sh:NodeShape ;
 	rdfs:comment "A transition of the UML model between two state nodes of the converted packages, with its tags as the model file writes them." ;
@@ -358,14 +358,14 @@ rp:UmlStateNode a sh:NodeShape ;
 	rdfs:label "UML state node" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n212 ;
-	sh:property _:c14n257 , _:c14n296 , _:c14n306 , _:c14n342 , _:c14n9 ;
+	sh:property _:c14n257 , _:c14n296 , _:c14n306 , _:c14n343 , _:c14n9 ;
 	sh:targetClass rp:UmlStateNode .
 rp:UmlStatechart a sh:NodeShape ;
 	rdfs:comment "A Statechart diagram of the UML model, with the package it sits in and the state nodes placed on it." ;
 	rdfs:label "UML statechart" ;
 	sh:closed true ;
 	sh:ignoredProperties _:c14n17 ;
-	sh:property _:c14n164 , _:c14n196 , _:c14n337 , _:c14n45 ;
+	sh:property _:c14n164 , _:c14n196 , _:c14n338 , _:c14n45 ;
 	sh:targetClass rp:UmlStatechart .
 rp:UmlTaggedValue a sh:NodeShape ;
 	rdfs:comment "A named value attached to a class of the UML model, its text resolved from the memo when it is one." ;
@@ -809,7 +809,7 @@ _:c14n164 sh:datatype xsd:string ;
 _:c14n165 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
 _:c14n166 sh:description "The kind of constraint a case exercises." ;
-	sh:in _:c14n320 ;
+	sh:in _:c14n321 ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
 	sh:name "Constraint kind" ;
@@ -1505,7 +1505,7 @@ _:c14n272 sh:datatype xsd:string ;
 	sh:path rp:typescriptFolder ;
 	sh:pattern "^(?:^(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+)(?:/(?:[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.[^/:\\\\.\\x00-\\x1f\\x7f][^/:\\\\\\x00-\\x1f\\x7f]*|\\.\\.[^/:\\\\\\x00-\\x1f\\x7f]+))*$)(?![\\s\\S])" .
 _:c14n273 rdf:first rp:ReportKindCompositionDiagram ;
-	rdf:rest _:c14n324 .
+	rdf:rest _:c14n325 .
 _:c14n274 sh:datatype xsd:string ;
 	sh:description "The `meaning` IRI, or the text, of the enum value a lock change is about." ;
 	sh:maxCount 1 ;
@@ -1730,7 +1730,7 @@ _:c14n306 sh:datatype xsd:integer ;
 	sh:order 3 ;
 	sh:path rp:umlNodeType .
 _:c14n307 rdf:first rp:ConstraintKindExactlyOneOf ;
-	rdf:rest _:c14n334 .
+	rdf:rest _:c14n335 .
 _:c14n308 sh:description "The values of a union type." ;
 	sh:minCount 1 ;
 	sh:name "Values" ;
@@ -1800,16 +1800,23 @@ _:c14n32 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:invalidInstances .
-_:c14n320 rdf:first rp:ConstraintKindRequired ;
+_:c14n320 sh:datatype xsd:string ;
+	sh:description "The note of a UML element." ;
+	sh:maxCount 1 ;
+	sh:name "Note" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 6 ;
+	sh:path rp:umlNote .
+_:c14n321 rdf:first rp:ConstraintKindRequired ;
 	rdf:rest _:c14n48 .
-_:c14n321 sh:datatype xsd:boolean ;
+_:c14n322 sh:datatype xsd:boolean ;
 	sh:description "Whether a value is required." ;
 	sh:maxCount 1 ;
 	sh:name "Required" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path rp:required .
-_:c14n322 sh:datatype xsd:string ;
+_:c14n323 sh:datatype xsd:string ;
 	sh:description "The name of the root schema, and the prefix of the module names." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1817,41 +1824,33 @@ _:c14n322 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 5 ;
 	sh:path rp:umlRootName .
-_:c14n323 sh:datatype xsd:integer ;
+_:c14n324 sh:datatype xsd:integer ;
 	sh:description "The id of the class an attribute or an object is typed by, absent for a plain type." ;
 	sh:maxCount 1 ;
 	sh:name "Classifier id" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 5 ;
 	sh:path rp:umlClassifierId .
-_:c14n324 rdf:first rp:ReportKindUnprefixedName ;
+_:c14n325 rdf:first rp:ReportKindUnprefixedName ;
 	rdf:rest _:c14n24 .
-_:c14n325 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
 _:c14n326 rdf:first rdf:type ;
 	rdf:rest rdf:nil .
-_:c14n327 sh:datatype xsd:string ;
+_:c14n327 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n328 sh:datatype xsd:string ;
 	sh:description "The role name at the source end of a connector." ;
 	sh:maxCount 1 ;
 	sh:name "Source role" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 7 ;
 	sh:path rp:umlSourceRole .
-_:c14n328 sh:datatype xsd:string ;
+_:c14n329 sh:datatype xsd:string ;
 	sh:description "The stereotype of a UML element, absent when it has none." ;
 	sh:maxCount 1 ;
 	sh:name "UML stereotype" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path rp:umlStereotype .
-_:c14n329 sh:datatype xsd:string ;
-	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
-	sh:maxCount 1 ;
-	sh:minCount 1 ;
-	sh:name "Name" ;
-	sh:nodeKind sh:Literal ;
-	sh:order 1 ;
-	sh:path rp:slotName .
 _:c14n33 sh:datatype xsd:string ;
 	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
 	sh:maxCount 1 ;
@@ -1860,7 +1859,15 @@ _:c14n33 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:slotName .
-_:c14n330 sh:datatype xsd:integer ;
+_:c14n330 sh:datatype xsd:string ;
+	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
+	sh:maxCount 1 ;
+	sh:minCount 1 ;
+	sh:name "Name" ;
+	sh:nodeKind sh:Literal ;
+	sh:order 1 ;
+	sh:path rp:slotName .
+_:c14n331 sh:datatype xsd:integer ;
 	sh:description "The id of the connector a composition was read from." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1868,14 +1875,14 @@ _:c14n330 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:umlCompositionId .
-_:c14n331 sh:datatype xsd:string ;
+_:c14n332 sh:datatype xsd:string ;
 	sh:description "The note of a UML element." ;
 	sh:maxCount 1 ;
 	sh:name "Note" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path rp:umlNote .
-_:c14n332 sh:datatype xsd:string ;
+_:c14n333 sh:datatype xsd:string ;
 	sh:description "The Python import path of the generated package, a dotted identifier." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1884,7 +1891,7 @@ _:c14n332 sh:datatype xsd:string ;
 	sh:order 1 ;
 	sh:path rp:package ;
 	sh:pattern "^(?:^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$)(?![\\s\\S])" .
-_:c14n333 sh:datatype xsd:integer ;
+_:c14n334 sh:datatype xsd:integer ;
 	sh:description "The id of the class that is the whole of a composition." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1892,15 +1899,15 @@ _:c14n333 sh:datatype xsd:integer ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:umlWholeId .
-_:c14n334 rdf:first rp:ConstraintKindAnyOf ;
+_:c14n335 rdf:first rp:ConstraintKindAnyOf ;
 	rdf:rest _:c14n172 .
-_:c14n335 sh:datatype xsd:string ;
+_:c14n336 sh:datatype xsd:string ;
 	sh:description "The mixins a root class and its labelled parts get by default." ;
 	sh:name "Default mixins" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 7 ;
 	sh:path rp:umlDefaultMixins .
-_:c14n336 sh:datatype xsd:string ;
+_:c14n337 sh:datatype xsd:string ;
 	sh:description "The name of the thing a record describes (a slot, a file, a class, a rule)." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1908,24 +1915,24 @@ _:c14n336 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 0 ;
 	sh:path rp:slotName .
-_:c14n337 sh:datatype xsd:integer ;
+_:c14n338 sh:datatype xsd:integer ;
 	sh:description "The ids of the state nodes placed on a diagram." ;
 	sh:name "Node ids" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 3 ;
 	sh:path rp:umlNodeIds .
-_:c14n338 rdf:first rp:ReportKindNoNote ;
+_:c14n339 rdf:first rp:ReportKindNoNote ;
 	rdf:rest _:c14n127 .
-_:c14n339 sh:datatype xsd:string ;
+_:c14n34 rdf:first rdf:type ;
+	rdf:rest rdf:nil .
+_:c14n340 sh:datatype xsd:string ;
 	sh:description "The prefixed name written to the output, in the metamodel's prefix name when it names the namespace." ;
 	sh:maxCount 1 ;
 	sh:name "CURIE" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 2 ;
 	sh:path rp:nameCurie .
-_:c14n34 rdf:first rdf:type ;
-	rdf:rest rdf:nil .
-_:c14n340 sh:datatype xsd:string ;
+_:c14n341 sh:datatype xsd:string ;
 	sh:description "The name of a class of the schema." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -1933,14 +1940,14 @@ _:c14n340 sh:datatype xsd:string ;
 	sh:nodeKind sh:Literal ;
 	sh:order 1 ;
 	sh:path rp:className .
-_:c14n341 sh:datatype xsd:string ;
+_:c14n342 sh:datatype xsd:string ;
 	sh:description "The note of a UML element." ;
 	sh:maxCount 1 ;
 	sh:name "Note" ;
 	sh:nodeKind sh:Literal ;
 	sh:order 4 ;
 	sh:path rp:umlNote .
-_:c14n342 sh:datatype xsd:integer ;
+_:c14n343 sh:datatype xsd:integer ;
 	sh:description "The id a UML model gives a class, an enumeration, a boundary or the object of a package." ;
 	sh:maxCount 1 ;
 	sh:minCount 1 ;
@@ -2078,7 +2085,7 @@ _:c14n60 sh:datatype xsd:string ;
 	sh:order 1 ;
 	sh:path rp:slotIri .
 _:c14n61 rdf:first rp:ReportKindOutsideLink ;
-	rdf:rest _:c14n338 .
+	rdf:rest _:c14n339 .
 _:c14n62 sh:datatype xsd:integer ;
 	sh:description "The id a UML model gives a class, an enumeration, a boundary or the object of a package." ;
 	sh:maxCount 1 ;

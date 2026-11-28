@@ -642,6 +642,7 @@ class UmlComposition(ConfiguredBaseModel):
     own_graph: _Optional[bool] = _Field(default=False, title="Own graph", description="Whether a composition is drawn with the \u00abown graph\u00bb stereotype.")
     uml_stereotype: _Optional[str] = _Field(default=None, title="UML stereotype", description="The stereotype of a UML element, absent when it has none.")
     role: _Optional[str] = _Field(default=None, title="Role", description="The role written on a composition, naming the association beside it that it marks.")
+    note: _Optional[str] = _Field(default=None, title="Note", description="The note of a UML element.")
 
 
 class UmlDiagram(ConfiguredBaseModel):

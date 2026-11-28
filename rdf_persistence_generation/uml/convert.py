@@ -48,6 +48,7 @@ from rdf_persistence_generation.uml.context import (
     literals_of,
     path_of,
 )
+from rdf_persistence_generation.uml.conventions import convention_lines, missing_notes
 from rdf_persistence_generation.uml.links import link_usages
 from rdf_persistence_generation.uml.mixins import check_default_mixins
 from rdf_persistence_generation.uml.modules import (
@@ -239,14 +240,19 @@ def _leave_inside(ctx: Context, inside: list[int], parent_of: dict[int, str]) ->
         del parent_of[key]
 
 
+def _merge_lines(ctx: Context, lines: list[ReportLine]) -> None:
+    """Merge the report lines a pure pass returned into the run's findings."""
+    for line in lines:
+        ctx.findings.note(ReportKind(line.report_kind), line.element, line.message)
+
+
 def _adopt(
     ctx: Context, found: UmlAggregates, kinds: Mapping[int, str], parent_of: dict[int, str]
 ) -> None:
     """Merge what the aggregate pass found into the run: its findings, the roots and the classes left inside."""
     for problem in found.problems or []:
         ctx.findings.add(problem)
-    for line in found.report_lines or []:
-        ctx.findings.note(ReportKind(line.report_kind), line.element, line.message)
+    _merge_lines(ctx, found.report_lines or [])
     roots = set(found.root_ids or [])
     for key, element in ctx.elements.items():
         outside_domain = kinds.get(element.uml_class.package_id, DOMAIN) != DOMAIN
@@ -433,6 +439,9 @@ def convert(
     ctx.paths = package_paths(model, settings)
     elements, usages, parent_of, aggregates = _build(ctx, model)
     toolkit_usages, usages = split_toolkit(ctx, usages)
+    _merge_lines(ctx, missing_notes(elements, usages, toolkit_usages))
+    every_slot = [*usages, *toolkit_usages]
+    _merge_lines(ctx, convention_lines(model, elements, aggregates, every_slot, ctx.drawn_toolkit))
     for problem in check_pointers(usages, toolkit_usages, aggregates, elements):
         ctx.findings.add(problem)
     name_slots(ctx, usages, toolkit_usages)

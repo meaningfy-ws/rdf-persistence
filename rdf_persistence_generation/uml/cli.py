@@ -3,6 +3,7 @@
 The flow: parse, read the prefixes file into ``UmlSettings``, read the ``.qea``, convert, write.
 Exit 0 written; 1 the model has problems (all printed, sorted, nothing written); 2 the setup is
 unusable (arguments, prefixes file, ``.qea`` file or package) or ``--out`` cannot be written, one ``rp-uml2linkml: <message>`` line.
+``--check`` (PD-14) converts and writes nothing: the convention lines go to stdout, exit 1 when there is one.
 """
 
 import argparse
@@ -23,15 +24,17 @@ from rdf_persistence_generation.exceptions import (
 )
 from rdf_persistence_generation.generated.rp_generation import (
     CheckProblem,
+    ReportLine,
     UmlModel,
     UmlPrefix,
     UmlSettings,
 )
 from rdf_persistence_generation.problems import format_problems
+from rdf_persistence_generation.uml.conventions import CONVENTION_KINDS
 from rdf_persistence_generation.uml.convert import convert
 from rdf_persistence_generation.uml.qea import read_qea
 from rdf_persistence_generation.uml.toolkit import load_toolkit
-from rdf_persistence_generation.uml.write import write
+from rdf_persistence_generation.uml.write import report_text, write
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2
 PROG = "rp-uml2linkml"
@@ -49,7 +52,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("qea", type=Path, help="the Enterprise Architect .qea (SQLite) file")
     parser.add_argument("--package", required=True, help="the package to convert: a name or a path")
     parser.add_argument("--prefixes", required=True, type=Path, help="the prefixes YAML file")
-    parser.add_argument("--out", required=True, type=Path, help="the folder to write into")
+    parser.add_argument(
+        "--out", type=Path, help="the folder to write into (required unless --check is given)"
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="convert and print the conventions the model breaks; write nothing",
+    )
     parser.add_argument(
         "--root-name", default=DEFAULT_ROOT_NAME, help="the root schema's name (default: app)"
     )
@@ -156,10 +166,21 @@ def _problems_found(problems: Sequence[CheckProblem]) -> int:
     return EXIT_FAILED
 
 
+def _check_conventions(report: Sequence[ReportLine]) -> int:
+    """``--check`` (PD-14): the convention lines on stdout, exit 1 when there is one, else 0."""
+    failing = [line for line in report if line.report_kind in CONVENTION_KINDS]
+    if failing:
+        print(report_text(failing), end="")
+        return EXIT_FAILED
+    return EXIT_OK
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run ``rp-uml2linkml``; return the exit code: 0 written, 1 model problems, 2 unusable setup."""
+    """Run ``rp-uml2linkml``; return the exit code: 0 written or checked, 1 problems, 2 unusable setup."""
     args = build_parser().parse_args(argv)
     try:
+        if args.out is None and not args.check:
+            raise UsageError("--out is required unless --check is given")
         _check_root_name(args.root_name)
         settings = load_settings(args.prefixes, args)
         model = read_qea(args.qea, args.package, args.exclude_package)
@@ -172,6 +193,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     schemas, report, problems, files = convert(model, settings, load_toolkit())
     if problems:
         return _problems_found(problems)
+    if args.check:
+        return _check_conventions(report)
     try:
         write(schemas, report, args.out, args.root_name, files)
     except StagedFileRefused as error:
