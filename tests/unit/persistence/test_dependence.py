@@ -155,16 +155,29 @@ def test_discovery_query_is_filled_with_terms() -> None:
 )
 def test_no_late_part_guard(aggregates, removed, allowed) -> None:
     graphs = [graph_of(r) for r in removed]
-    guards = " ".join(
-        no_late_part_guard(root, graphs, LINKS, REGISTRY, n) for n, root in enumerate(removed)
-    )
-    assert holds(store(*aggregates), guards) is allowed, (
-        "the delete passes only without a late part"
-    )
+    guard = no_late_part_guard(removed, graphs, LINKS, REGISTRY, 0)
+    assert holds(store(*aggregates), guard) is allowed, "the delete passes only without a late part"
+
+
+def test_one_no_late_part_guard_covers_every_root() -> None:
+    removed = [A1, A2]
+    guard = no_late_part_guard(removed, [graph_of(r) for r in removed], LINKS, REGISTRY, 0)
+    late = store((A1, AUDIT, 1, None), (A2, AUDIT, 1, None), (R1, RESULT, 1, A2))
+    assert not holds(late, guard), "a late part of the second root is found by the one guard"
+
+
+def test_no_late_part_guard_grows_linearly_with_the_roots() -> None:
+    def size(n: int) -> int:
+        roots = [URIRef(f"{EX}root{i}") for i in range(n)]
+        return len(no_late_part_guard(roots, [graph_of(r) for r in roots], LINKS, REGISTRY, 0))
+
+    small, large = size(100), size(200)
+    base = size(0)
+    assert large - base <= 2.2 * (small - base), "doubling the roots at most doubles the guard"
 
 
 def test_no_late_part_guards_carry_their_index() -> None:
-    first, second = (no_late_part_guard(A1, [graph_of(A1)], LINKS, REGISTRY, n) for n in (0, 2))
+    first, second = (no_late_part_guard([A1], [graph_of(A1)], LINKS, REGISTRY, n) for n in (0, 2))
     assert "?lg0" in first, "the first guard names its variables with 0"
     assert "?lg2" in second, "the later guard names its variables with 2"
     assert "?lg0" not in second, "the later guard shares no variable with the first"

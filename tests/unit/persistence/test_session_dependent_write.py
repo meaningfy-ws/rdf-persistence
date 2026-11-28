@@ -59,6 +59,14 @@ async def test_a_part_is_added_only_while_its_whole_exists(store, seeded, whole,
             assert await is_stored(session, R1), "the part was written"
 
 
+async def test_writing_a_part_leaves_the_version_of_its_whole_unchanged(store):
+    async with opened(store) as session:
+        before = await session.add_graph(A1, audit(A1))
+        await session.add_graph(R1, result(R1, A1))
+        _, _, after = await session.get_graph(A1)
+        assert after == before, "the whole's token is not touched by a part's write"
+
+
 async def test_an_aggregate_with_no_link_is_written_without_a_pointer(store):
     async with opened(store) as session:
         await session.add_graph(O1, audit(O1, OTHER))

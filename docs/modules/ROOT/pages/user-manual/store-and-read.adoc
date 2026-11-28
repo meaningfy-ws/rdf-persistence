@@ -658,6 +658,44 @@ slip through.
   refused with `Conflict` naming both, before anything is sent; retrying it unchanged fails the same
   way.
 
+In code, write a part as any aggregate, with its pointer slot set to the IRI of its whole.
+`mapper` is the one of the examples above; `Audit` and `AuditResult` are the toy's generated classes,
+as `Book` is. One unit of work adds a whole and its part in one commit, in either order of `add`:
+
+[source,python]
+----
+from rdf_persistence import NotFound, UnitOfWork
+
+async with kit.session(tenant, principal) as session:
+    work = UnitOfWork(session, mapper)
+    work.add(Audit(id=audit_iri, label="Audit 2026"))
+    work.add(AuditResult(id=result_iri, label="Result 1", of_audit=audit_iri))
+    await work.commit()                              # both, or none
+    audit_version = work.version(audit_iri)          # the token the commit returned
+
+async with kit.session(tenant, principal) as session:
+    work = UnitOfWork(session, mapper)
+    try:
+        work.add(AuditResult(id=other_iri, label="Result 2", of_audit=missing_audit_iri))
+        await work.commit()
+    except NotFound as refused:
+        print(refused)                               # names the whole that does not exist
+----
+
+To delete the audit later, you need its version, the token `session.remove(iri, version)` takes.
+Read it with `UnitOfWork`, as above, or with the session: `get_graph(iri)` returns the triples, the
+graph IRI and the version, in that order. Over HTTP it is the `ETag` of a `GET`, sent back as
+`If-Match`.
+
+[source,python]
+----
+async with kit.session(tenant, principal) as session:
+    work = UnitOfWork(session, mapper)
+    await work.get(Audit, audit_iri)                 # NotFound if there is no such audit
+    audit_version = work.version(audit_iri)
+    # or: _, _, audit_version = await session.get_graph(audit_iri)
+----
+
 === Delete a whole
 
 `DELETE …/audits/{id}`, `session.remove` and `UnitOfWork` removals of an `Audit` remove the audit
@@ -716,13 +754,15 @@ async with kit.session(tenant, principal) as session:
 ----
 
 *What it costs.* The toolkit reads the parts level by level, one query per level for all the wholes
-of that level: an audit with results and findings costs two queries, however many results it
-has. A part is not read once more for its version. Each part whose class has delete rules adds one
+of that level, plus one that finds the last level empty: an audit with results and findings costs
+three queries, however many results it has. A part is not read once more for its version. Each part whose class has delete rules adds one
 read of its graph, so a wide audit with such parts costs about one read per part. A schema with
 no dependent class adds no query and no guard to a delete. A session you open yourself does not
 cascade unless you give it the dependence links (`dependence=`; its `limits` default to
 `LimitSettings()`), as with `removals=`
-(<<refuse-referenced>>); `kit.session` and the generic router do.
+(<<refuse-referenced>>); `kit.session` and the generic router do. A session opened without a
+`may_read` has full reach, so its errors name the parts; a caller's session hides the parts the
+caller may not read.
 
 [#transaction-change]
 == Changed in 0.3.0: commits are all or nothing

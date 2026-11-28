@@ -1,4 +1,4 @@
-EPIC: dependent-aggregates (proposal.md, issue #437 A.5). Decisions: design.md PD-1 to PD-18, D-1 to D-3, DEC-1 to DEC-7.
+EPIC: dependent-aggregates (proposal.md, issue #437 A.5). Decisions: design.md PD-1 to PD-18, D-1 to D-10, DEC-1 to DEC-7.
 
 > Derives from: EPIC `dependent-aggregates`. Three stages (MEDIUM), one pull request each.
 
@@ -60,7 +60,7 @@ wins where the ids disagree (stage 2: 2.5a before 2.5, 2.7 before 2.6).
   `toolkit.limits`. Unit first: `tests/unit/persistence/test_session_dependence_wiring.py`,
   including `dependence` without `max_roots` → `ValueError` (A-8). Accept: the new test passes;
   every existing `tests/unit/persistence/` and `tests/unit/tenancy/` test passes unchanged.
-- [ ] 2.2 Pure fragments ([PD-3](design.md#pd-3), [PD-6](design.md#pd-6), [PD-7](design.md#pd-7)):
+- [x] 2.2 Pure fragments ([PD-3](design.md#pd-3), [PD-6](design.md#pd-6), [PD-7](design.md#pd-7)):
   `rdf_persistence/persistence/services/dependence.py` — pointer of a part, whole guard, discovery
   query (selecting `?whole ?part ?type ?version`), no-late-part guard.
   `tests/unit/persistence/test_dependence.py`. Accept: the test passes; each text is filled with

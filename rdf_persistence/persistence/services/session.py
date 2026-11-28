@@ -1692,12 +1692,16 @@ class Transaction:
     async def _send_and_confirm(self) -> None:
         """The body of ``commit``, inside its span."""
         session = self._session
-        await self._cascade()
+        with traced(
+            "rp.session.cascade", LogContext(step="cascade", db_namespace=session._database)
+        ):
+            await self._cascade()  # a span of the discovery; no part's IRI in it (PD-10, PD-15)
         await self._check_wholes()
         if clash := same_value(self._key_claims):
             raise key_conflict(clash, within_commit=True)
         await self._refuse_links_to_removed()
         self._refuse_dependents_of_removed()
+        self._note_unlated()
         excluded = self._excluded()
         key_guards = [guard(c, session._registry, excluded) for c in self._key_claims]
         referrer_guarded = referrer_guards(
@@ -1867,18 +1871,27 @@ class Transaction:
         self._wholes[graph] = (part, whole)
 
     def _late_part_guards(self) -> list[SparqlTerm]:
-        """The no-late-part guard of each removed root (PD-7); empty for a session with no links."""
+        """The one no-late-part guard over the roots of ``_unlated`` (PD-7, D-11); none when there
+        is no root to guard."""
         session = self._session
-        removed = self._removed_graphs()
-        if not session._dependence:
+        if not self._unlated:
             return []
-        self._unlated = {root: self._cascaded.get(root, root) for root in removed.values()}
-        return [
-            no_late_part_guard(
-                URIRef(root), sorted(removed), session._dependence, session._registry, n
-            )
-            for n, root in enumerate(sorted(self._unlated))
-        ]
+        guard = no_late_part_guard(
+            map(URIRef, self._unlated),
+            sorted(self._removed_graphs()),
+            session._dependence,
+            session._registry,
+            0,
+        )
+        return [guard]
+
+    def _note_unlated(self) -> None:
+        """Keep each removed root with the root to name for it, for the diagnosis (PD-10, PD-11);
+        none for a session with no links."""
+        if self._session._dependence:
+            self._unlated = {
+                root: self._cascaded.get(root, root) for root in self._removed_graphs().values()
+            }
 
     def _spend_served(self) -> None:
         """One command, one commit: the served command is spent as the request is sent (PD-8)."""

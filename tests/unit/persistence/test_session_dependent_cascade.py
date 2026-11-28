@@ -11,9 +11,17 @@ from rdflib import RDF, URIRef
 from rdf_persistence.core.domain.exceptions import CommitTooLarge, Conflict, InUse
 from rdf_persistence.core.domain.generated.rp_core import DependenceLink
 from rdf_persistence.files.domain.generated.rp_files import RdfFormat
+from rdf_persistence.persistence.services.generated.settings.rp_persistence_settings import (
+    LimitSettings,
+)
+from rdf_persistence.persistence.services.mapper import Mapper, UnitOfWork, generated_models
 from rdf_persistence.provenance.domain.generated.rp_provenance import Remove
 from rdf_persistence.schema.services import vocabulary as v
+from rdf_persistence.schema.services.schema import load_schema
 from rdf_persistence.testkit.fakes import FAKE_DATABASE
+from tests.fixtures.library.domain.generated import audits
+from tests.fixtures.library.domain.generated.audits import Audit, AuditFinding, AuditResult
+from tests.toy import MODULES, TOY_SCHEMA
 from tests.unit.activity_helpers import Hook
 from tests.unit.persistence.dependent_helpers import (
     A1,
@@ -114,6 +122,78 @@ async def test_each_root_counts_once_against_max_roots(store, max_roots, refused
             await delete()
             stored = [await is_stored(session, root) for root in (A1, R1, R2, F1)]
             assert stored == [False] * 4, "each root removed once, F1 with them"
+
+
+async def test_a_cascade_of_four_roots_sends_one_no_late_part_guard(store):
+    async with opened(store, links=LINKS) as session:
+        tree = await seeded(session)
+        await session.remove(A1, tree.a1)
+        request = store.sent("update")[-1]
+        assert request.count("VALUES ?lroot") == 1, "one guard for the four removed roots (D-11)"
+
+
+async def test_the_cascade_is_a_span_inside_the_commit_that_names_no_part(store, spans):
+    async with opened(store, links=LINKS) as session:
+        tree = await seeded(session)
+        await session.remove(A1, tree.a1)
+    *_, cascade = [s for s in spans() if s.name == "rp.session.cascade"]  # the last: the delete
+    *_, commit = [s for s in spans() if s.name == "rp.session.commit"]
+    assert cascade.attributes["rp.step"] == "cascade", "the step (PD-15)"
+    assert cascade.parent.span_id == commit.context.span_id, "inside the commit's span"
+    shown = " ".join(str(value) for value in cascade.attributes.values())
+    assert not any(part in shown for part in (R1, R2, F1)), "no part's IRI in the span (PD-10)"
+
+
+def audit_links() -> tuple[DependenceLink, ...]:
+    """The links of the library's audits: a result depends on an audit, a finding on a result."""
+    return (
+        DependenceLink(
+            part_classes=[LIB + "AuditResult"],
+            pointer=LIB + "ofAudit",
+            whole_classes=[LIB + "Audit"],
+        ),
+        DependenceLink(
+            part_classes=[LIB + "AuditFinding"],
+            pointer=LIB + "ofResult",
+            whole_classes=[LIB + "AuditResult"],
+        ),
+    )
+
+
+@pytest.mark.parametrize(("max_roots", "refused"), [(4, False), (3, True)], ids=["exact", "over"])
+async def test_each_root_counts_once_against_max_roots_through_the_unit_of_work(
+    store, max_roots, refused
+):
+    """The mapper counts the two roots the caller removed, the session the four of the commit; the
+    session's count decides (A-7, PD-6)."""
+    ids = {kind: iri(kind, 1) for kind in ("audits", "audit-results", "audit-findings")}
+    second = iri("audit-results", 2)
+    mapper = Mapper(
+        load_schema(TOY_SCHEMA),
+        generated_models(*MODULES, audits),
+        limits=LimitSettings(max_roots=max_roots),
+    )
+    async with opened(store, links=audit_links(), max_roots=max_roots) as session:
+        seed = UnitOfWork(session, mapper)
+        for root in (
+            Audit(id=ids["audits"], label="a"),
+            AuditResult(id=ids["audit-results"], label="r1", of_audit=ids["audits"]),
+            AuditResult(id=second, label="r2", of_audit=ids["audits"]),
+            AuditFinding(id=ids["audit-findings"], label="f", of_result=ids["audit-results"]),
+        ):
+            seed.add(root)
+            await seed.commit()
+        work = UnitOfWork(session, mapper)
+        work.remove(await work.get(Audit, ids["audits"]))
+        work.remove(await work.get(AuditResult, second))
+        if refused:
+            with pytest.raises(CommitTooLarge, match=str(max_roots)):
+                await work.commit()
+            assert await is_stored(session, ids["audits"]), "nothing was written"
+        else:
+            await work.commit()
+            stored = [await is_stored(session, root) for root in (*ids.values(), second)]
+            assert stored == [False] * 4, "each root removed once, the parts found with them"
 
 
 async def test_a_whole_with_three_parts_over_a_limit_of_three_is_too_large(store):

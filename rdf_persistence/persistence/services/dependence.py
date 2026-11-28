@@ -41,11 +41,12 @@ SELECT (MIN(?w) AS ?whole) ?part (MIN(?t) AS ?type) ?version WHERE {
   GRAPH $registry { ?g $p_kind $aggregate ; $p_owned_by ?part }
 } GROUP BY ?part ?version ORDER BY ?part LIMIT $limit
 """
-# No aggregate of a part class points to $root from a graph this request does not remove (PD-7).
+# No aggregate of a part class points to any of $roots from a graph this request does not remove
+# (PD-7): one guard for all the roots, so the request grows linearly with them (D-11).
 _NO_LATE_PART = """
 FILTER NOT EXISTS {
-  VALUES (?lt$n ?lp$n) { $links }
-  GRAPH ?lg$n { ?lpart$n ?lp$n $root ; a ?lt$n }
+  VALUES (?lt$n ?lp$n) { $links }  VALUES ?lroot$n { $roots }
+  GRAPH ?lg$n { ?lpart$n ?lp$n ?lroot$n ; a ?lt$n }
   GRAPH $registry { ?lg$n $p_kind $aggregate ; $p_owned_by ?lpart$n }
   FILTER (?lg$n NOT IN ($removed))
 }
@@ -136,23 +137,24 @@ def no_late_part_ask(
     root: URIRef, removed: Iterable[URIRef], links: Sequence[DependenceLink], registry: URIRef
 ) -> str:
     """The question whether no part of ``root`` outside ``removed`` is stored now (true: none)."""
-    return fill("ASK { $guard }", guard=no_late_part_guard(root, removed, links, registry, 0))
+    return fill("ASK { $guard }", guard=no_late_part_guard([root], removed, links, registry, 0))
 
 
 def no_late_part_guard(
-    root: URIRef,
+    roots: Iterable[URIRef],
     removed: Iterable[URIRef],
     links: Sequence[DependenceLink],
     registry: URIRef,
     n: int,
 ) -> SparqlTerm:
-    """The guard of a delete for ``root``: no aggregate of a part class points to it from a graph
-    outside ``removed`` (the graphs the request drops), i.e. no part was written after discovery
-    (PD-7). Its variables end in ``n``, the guard's index."""
+    """The guard of a delete for ``roots``: no aggregate of a part class points to one of them from
+    a graph outside ``removed`` (the graphs the request drops), i.e. no part was written after
+    discovery (PD-7). One guard serves every root, so its size is linear in the roots and the
+    graphs (D-11). Its variables end in ``n``, the guard's index."""
     return fragment(
         _NO_LATE_PART,
         links=link_pairs(links),
-        root=term(root),
+        roots=join(term(r) for r in sorted(set(roots))),
         registry=term(registry),
         p_kind=term(v.REGISTRY_KIND),
         aggregate=term(v.REGISTRY_KIND_IRIS[RegistryKind.AGGREGATE]),
