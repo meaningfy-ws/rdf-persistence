@@ -77,7 +77,8 @@ named in each subsection.
 
 An aggregate is the unit the toolkit stores and loads whole, and its root is the class the rest hangs
 from. The converter derives the roots: a class is a root when it is concrete, in a module of kind
-`domain` (the default kind of a package, <<packages,Packages and modules>>), and no composition's part (<<composition>>, also by inheritance). An enumeration, the
+`domain` (the default kind of a package, <<packages,Packages and modules>>), and is no
+composition's part (<<composition>>, also by inheritance). An enumeration, the
 «tenant root» (<<tenant-root>>), a class of a not-generated stereotype and a toolkit class drawn in
 the model are never roots. The converter lists each root, with its parts, in a `root` line of the
 report (`root`, `Shelf`, `parts Book, Chapter, Page`; `no parts` for a class with none), so a class

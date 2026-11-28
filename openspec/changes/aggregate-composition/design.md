@@ -565,7 +565,8 @@ a line row marked informational never fails `--check`.
 `CHANGELOG.md`, under the release that carries this change, **BREAKING** `rp-uml2linkml`:
 
 1. Upgrade, then run `rp-uml2linkml --check` on the unchanged model: every composite association
-   and every class that would become a root by omission is listed.
+   is listed, alone, as a problem (D-15); the `root` lines appear once no problem is left. The
+   baseline to diff against is the last conversion made with the previous release (D-16).
 2. In EA, for each aggregate, draw an Aggregation (composition, strong) from the whole to each part
    beside the existing association; replace each composite association by a plain association plus
    a composition. Keep «root» for now.
